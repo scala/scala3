@@ -12,7 +12,7 @@ case class MSequitor[A]( a_ : A* ) extends Seq[A] with MBrace[MSequitor,A]
 {
  override def nest( a : A ) = new MSequitor[A]( a )
  override def flatten[T <: MSequitor[MSequitor[A]]]( bsq : T ) : MSequitor[A] = {
-   (new MSequitor[A]( ) /: bsq)( {
+   bsq.foldLeft(new MSequitor[A]( ))( {
      ( acc : MSequitor[A], e : MSequitor[A] ) => ( acc ++ e ).asInstanceOf[MSequitor[A]]
    } )
  }

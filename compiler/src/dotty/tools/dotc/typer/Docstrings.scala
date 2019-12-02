@@ -20,13 +20,12 @@ object Docstrings {
    * @param sym   The symbol for which the comment is being cooked.
    * @param owner The class for which comments are being cooked.
    */
-  def cookComment(sym: Symbol, owner: Symbol)(implicit ctx: Context): Option[Comment] = {
+  def cookComment(sym: Symbol, owner: Symbol)(implicit ctx: Context): Option[Comment] =
     ctx.docCtx.flatMap { docCtx =>
       expand(sym, owner)(ctx, docCtx)
     }
-  }
 
-  private def expand(sym: Symbol, owner: Symbol)(implicit ctx: Context, docCtx: ContextDocstrings): Option[Comment] = {
+  private def expand(sym: Symbol, owner: Symbol)(implicit ctx: Context, docCtx: ContextDocstrings): Option[Comment] =
     docCtx.docstring(sym).flatMap {
       case cmt if cmt.isExpanded =>
         Some(cmt)
@@ -34,7 +33,7 @@ object Docstrings {
         expandComment(sym).map { expanded =>
           val typedUsecases = expanded.usecases.map { usecase =>
             ctx.typer.enterSymbol(ctx.typer.createSymbol(usecase.untpdCode))
-            ctx.typer.typedStats(usecase.untpdCode :: Nil, owner) match {
+            ctx.typer.typedStats(usecase.untpdCode :: Nil, owner)._1 match {
               case List(df: tpd.DefDef) =>
                 usecase.typed(df)
               case _ =>
@@ -48,7 +47,6 @@ object Docstrings {
           commentWithUsecases
         }
     }
-  }
 
   private def expandComment(sym: Symbol, owner: Symbol, comment: Comment)(implicit ctx: Context, docCtx: ContextDocstrings): Comment = {
     val tplExp = docCtx.templateExpander
@@ -58,13 +56,12 @@ object Docstrings {
     newComment
   }
 
-  private def expandComment(sym: Symbol)(implicit ctx: Context, docCtx: ContextDocstrings): Option[Comment] = {
+  private def expandComment(sym: Symbol)(implicit ctx: Context, docCtx: ContextDocstrings): Option[Comment] =
     if (sym eq NoSymbol) None
-    else {
+    else
       for {
         cmt <- docCtx.docstring(sym) if !cmt.isExpanded
         _ = expandComment(sym.owner)
-      } yield expandComment(sym, sym.owner, cmt)
-    }
-  }
+      }
+      yield expandComment(sym, sym.owner, cmt)
 }

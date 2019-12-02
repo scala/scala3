@@ -196,7 +196,7 @@ object messages {
                                                pt: Type)
                                               (implicit ctx: Context)
   extends Message(AnonymousFunctionMissingParamTypeID) {
-    val kind: String = "Syntax"
+    val kind: String = "Type"
 
     val msg: String = {
       val ofFun =
@@ -226,7 +226,7 @@ object messages {
       """
         |object TyperDemo {
         |  class Team[A]
-        |  val team = new Team[_]
+        |  val team = new Team[?]
         |}
       """.stripMargin
 
@@ -315,13 +315,15 @@ object messages {
     val msg: String = {
       import core.Flags._
       val maxDist = 3
-      val decls = site.decls.toList.flatMap { sym =>
-        if (sym.flagsUNSAFE.is(Synthetic | PrivateOrLocal) || sym.isConstructor) Nil
-        else List((sym.name.show, sym))
-      }
+      val decls = site.decls.toList
+        .filter(_.isType == name.isTypeName)
+        .flatMap { sym =>
+          if (sym.flagsUNSAFE.isOneOf(Synthetic | PrivateLocal) || sym.isConstructor) Nil
+          else List((sym.name.show, sym))
+        }
 
       // Calculate Levenshtein distance
-      def distance(n1: Iterable[_], n2: Iterable[_]) =
+      def distance(n1: Iterable[?], n2: Iterable[?]) =
         n1.foldLeft(List.range(0, n2.size)) { (prev, x) =>
           (prev zip prev.tail zip n2).scanLeft(prev.head + 1) {
             case (h, ((d, v), y)) => math.min(
@@ -358,7 +360,8 @@ object messages {
       }
 
       val closeMember = closest match {
-        case (n, sym) :: Nil => s" - did you mean $siteName.$n?"
+        case (n, sym) :: Nil =>
+          s" - did you mean $siteName.$n?"
         case Nil => ""
         case _ => assert(
           false,
@@ -575,7 +578,7 @@ object messages {
   case class IllegalStartSimpleExpr(illegalToken: String)(implicit ctx: Context)
   extends Message(IllegalStartSimpleExprID) {
     val kind: String = "Syntax"
-    val msg: String = "expression expected"
+    val msg: String = em"expression expected but ${Red(illegalToken)} found"
     val explanation: String = {
       em"""|An expression cannot start with ${Red(illegalToken)}."""
     }
@@ -1031,7 +1034,7 @@ object messages {
            |
            |Try using a wildcard type variable
            |
-           |${hl("List[_]")}
+           |${hl("List[?]")}
            |"""
   }
 
@@ -1057,7 +1060,7 @@ object messages {
            |- Type arguments
            |
            |  Instead of:
-           |    ${hl("val foo = List[_](1, 2)")}
+           |    ${hl("val foo = List[?](1, 2)")}
            |
            |  Use:
            |    ${hl("val foo = List[Int](1, 2)")}
@@ -1314,23 +1317,24 @@ object messages {
            |"""
   }
 
-  case class AmbiguousImport(name: Name, newPrec: Int, prevPrec: Int, prevCtx: Context)(implicit ctx: Context)
-    extends Message(AmbiguousImportID) {
+  import typer.Typer.BindingPrec
 
-    import typer.Typer.BindingPrec
+  case class AmbiguousImport(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: Context)(implicit ctx: Context)
+    extends Message(AmbiguousImportID) {
 
     /** A string which explains how something was bound; Depending on `prec` this is either
       *      imported by <tree>
       *  or  defined in <symbol>
       */
-    private def bindingString(prec: Int, whereFound: Context, qualifier: String = "") = {
+    private def bindingString(prec: BindingPrec, whereFound: Context, qualifier: String = "") = {
       val howVisible = prec match {
-        case BindingPrec.definition => "defined"
-        case BindingPrec.namedImport => "imported by name"
-        case BindingPrec.wildImport => "imported"
-        case BindingPrec.packageClause => "found"
+        case BindingPrec.Definition => "defined"
+        case BindingPrec.NamedImport => "imported by name"
+        case BindingPrec.WildImport => "imported"
+        case BindingPrec.PackageClause => "found"
+        case BindingPrec.NothingBound => assert(false)
       }
-      if (BindingPrec.isImportPrec(prec)) {
+      if (prec.isImportPrec) {
         ex"""$howVisible$qualifier by ${em"${whereFound.importInfo}"}"""
       } else
         ex"""$howVisible$qualifier in ${em"${whereFound.owner}"}"""
@@ -1363,7 +1367,9 @@ object messages {
 
     val msg: String = {
       val more = if (tree.isInstanceOf[tpd.Apply]) " more" else ""
-      em"${methodSymbol.showLocated} does not take$more parameters"
+      val meth = methodSymbol
+      val methStr = if (meth.exists) methodSymbol.showLocated else "expression"
+      em"$methStr does not take$more parameters"
     }
 
     val explanation: String = {
@@ -1499,7 +1505,7 @@ object messages {
   case class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
     implicit ctx: Context)
     extends Message(AbstractMemberMayNotHaveModifierID) {
-    val msg: String = em"""${hl("abstract")} $sym may not have `$flag' modifier"""
+    val msg: String = em"""${hl("abstract")} $sym may not have `${flag.flagsString}` modifier"""
     val kind: String = "Syntax"
     val explanation: String = ""
   }
@@ -1692,7 +1698,7 @@ object messages {
   case class ModifiersNotAllowed(flags: FlagSet, printableType: Option[String])(implicit ctx: Context)
     extends Message(ModifiersNotAllowedID) {
     val kind: String = "Syntax"
-    val msg: String = em"Modifier(s) $flags not allowed for ${printableType.getOrElse("combination")}"
+    val msg: String = em"Modifier(s) `${flags.flagsString}` not allowed for ${printableType.getOrElse("combination")}"
     val explanation: String = {
       val first = "sealed def y: Int = 1"
       val second = "sealed lazy class z"
@@ -1784,13 +1790,10 @@ object messages {
     extends Message(ClassAndCompanionNameClashID) {
     val kind: String = "Naming"
     val msg: String = em"Name clash: both ${cls.owner} and its companion object defines ${cls.name.stripModuleClassSuffix}"
-    val explanation: String = {
-      val kind = if (cls.owner.is(Flags.Trait)) "trait" else "class"
-
-      em"""|A $kind and its companion object cannot both define a ${hl("class")}, ${hl("trait")} or ${hl("object")} with the same name:
+    val explanation: String =
+      em"""|A ${cls.kindString} and its companion object cannot both define a ${hl("class")}, ${hl("trait")} or ${hl("object")} with the same name:
            |  - ${cls.owner} defines ${cls}
            |  - ${other.owner} defines ${other}"""
-      }
   }
 
   case class TailrecNotApplicable(symbol: Symbol)(implicit ctx: Context)
@@ -1928,7 +1931,7 @@ object messages {
     extends Message(UnapplyInvalidReturnTypeID) {
     val kind = "Type Mismatch"
     val addendum =
-      if (ctx.scala2Mode && unapplyName == nme.unapplySeq)
+      if (ctx.scala2CompatMode && unapplyName == nme.unapplySeq)
         "\nYou might want to try to rewrite the extractor to use `unapply` instead."
       else ""
     val msg = em"""| ${Red(i"$unapplyResult")} is not a valid result type of an $unapplyName method of an ${Magenta("extractor")}.$addendum"""
@@ -2146,21 +2149,30 @@ object messages {
     val kind: String = "Duplicate Symbol"
     val msg: String = {
       def nameAnd = if (decl.name != previousDecl.name) " name and" else ""
-      val details = if (decl.isRealMethod && previousDecl.isRealMethod) {
-        // compare the signatures when both symbols represent methods
-        decl.signature.matchDegree(previousDecl.signature) match {
-          case Signature.NoMatch =>
-            "" // shouldn't be reachable
-          case Signature.ParamMatch =>
-            "have matching parameter types."
-          case Signature.FullMatch =>
-            i"have the same$nameAnd type after erasure."
+      def details(implicit ctx: Context): String =
+        if (decl.isRealMethod && previousDecl.isRealMethod) {
+          // compare the signatures when both symbols represent methods
+          decl.signature.matchDegree(previousDecl.signature) match {
+            case Signature.MatchDegree.NoMatch =>
+              // If the signatures don't match at all at the current phase, then
+              // they might match after erasure.
+              val elimErasedCtx = ctx.withPhaseNoEarlier(ctx.elimErasedValueTypePhase.next)
+              if (elimErasedCtx != ctx)
+                details(elimErasedCtx)
+              else
+                "" // shouldn't be reachable
+            case Signature.MatchDegree.ParamMatch =>
+              "have matching parameter types."
+            case Signature.MatchDegree.FullMatch =>
+              i"have the same$nameAnd type after erasure."
+          }
         }
-      } else ""
+        else ""
       def symLocation(sym: Symbol) = {
         val lineDesc =
           if (sym.span.exists && sym.span != sym.owner.span)
-            s" at line ${sym.sourcePos.line + 1}" else ""
+            s" at line ${sym.sourcePos.line + 1}"
+          else ""
         i"in ${sym.owner}${lineDesc}"
       }
       val clashDescription =
@@ -2286,7 +2298,7 @@ object messages {
   }
   case class StableIdentPattern(tree: untpd.Tree, pt: Type)(implicit val ctx: Context)
     extends Message(StableIdentPatternID) {
-    override def kind: String = "Syntax"
+    override def kind: String = "Type"
     override def msg: String =
       em"""Stable identifier required, but $tree found"""
     override def explanation: String = ""
@@ -2347,4 +2359,41 @@ object messages {
     }
     val explanation: String = ""
   }
+
+  case class TraitParameterUsedAsParentPrefix(cls: Symbol)(implicit val ctx: Context)
+    extends Message(TraitParameterUsedAsParentPrefixID) {
+    val kind: String = "Reference"
+    val msg: String =
+      s"${cls.show} cannot extend from a parent that is derived via its own parameters"
+    val explanation: String =
+      ex"""
+          |The parent class/trait that ${cls.show} extends from is obtained from
+          |the parameter of ${cls.show}. This is disallowed in order to prevent
+          |outer-related Null Pointer Exceptions in Scala.
+          |
+          |In order to fix this issue consider directly extending from the parent rather
+          |than obtaining it from the parameters of ${cls.show}.
+          |""".stripMargin
+  }
+
+  case class UnknownNamedEnclosingClassOrObject(name: TypeName)(implicit val ctx: Context)
+    extends Message(UnknownNamedEnclosingClassOrObjectID) {
+    val kind: String = "Reference"
+    val msg: String =
+      em"""no enclosing class or object is named '${hl(name.show)}'"""
+    val explanation: String =
+      ex"""
+      |The class or object named '${hl(name.show)}' was used as a visibility
+      |modifier, but could not be resolved. Make sure that
+      |'${hl(name.show)}' is not misspelled and has been imported into the
+      |current scope.
+      """.stripMargin
+    }
+
+    case class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(implicit val ctx: Context)
+      extends Message(IllegalCyclicTypeReferenceID) {
+      val kind: String = "Cyclic"
+      val msg: String = i"illegal cyclic type reference: ${where} ${hl(lastChecked.show)} of $sym refers back to the type itself"
+      val explanation: String = ""
+    }
 }

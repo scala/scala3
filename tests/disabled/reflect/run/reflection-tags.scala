@@ -1,7 +1,7 @@
 import scala.reflect.runtime.universe._
 import scala.reflect.ClassTag
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   var typeMembers = typeOf[scala.reflect.api.Universe].members.filter(sym => sym.isType && !sym.isClass).toList
   typeMembers = typeMembers.filter(_.name != TypeName("ModifiersCreator")) // type ModifiersCreator = ModifiersExtractor
   typeMembers = typeMembers.filter(_.name != TypeName("Importer")) // deprecated

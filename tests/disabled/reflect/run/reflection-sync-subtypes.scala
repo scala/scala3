@@ -1,6 +1,6 @@
 import scala.reflect.runtime.universe._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val n = 1000
   val rng = new scala.util.Random()
   val tasks = List(

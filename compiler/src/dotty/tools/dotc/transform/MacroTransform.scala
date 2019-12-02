@@ -33,7 +33,7 @@ abstract class MacroTransform extends Phase {
 
     protected def localCtx(tree: Tree)(implicit ctx: Context): FreshContext = {
       val sym = tree.symbol
-      val owner = if (sym is PackageVal) sym.moduleClass else sym
+      val owner = if (sym.is(PackageVal)) sym.moduleClass else sym
       ctx.fresh.setTree(tree).setOwner(owner)
     }
 
@@ -64,7 +64,7 @@ abstract class MacroTransform extends Phase {
         }
       catch {
         case ex: TypeError =>
-          ctx.error(ex.toMessage, tree.sourcePos, sticky = true)
+          ctx.error(ex, tree.sourcePos)
           tree
       }
 

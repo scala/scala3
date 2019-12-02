@@ -6,21 +6,21 @@ title: "Union Types - More Details"
 ## Syntax
 
 Syntactically, unions follow the same rules as intersections, but have a lower precedence, see
-[Intersection Types - More Details](http://lampepfl.github.io/dotty/docs/reference/new-types/intersection-types-spec.html).
+[Intersection Types - More Details](./intersection-types-spec.md).
 
 ### Interaction with pattern matching syntax
 `|` is also used in pattern matching to separate pattern alternatives and has
 lower precedence than `:` as used in typed patterns, this means that:
 
-``` scala
+```scala
 case _: A | B => ...
 ```
 is still equivalent to:
-``` scala
+```scala
 case (_: A) | B => ...
 ```
 and not to:
-``` scala
+```scala
 case _: (A | B) => ...
 ```
 
@@ -136,6 +136,7 @@ exhaustive if all parts of the union are covered.
 The erased type for `A | B` is the _erased least upper bound_ of the erased
 types of `A` and `B`. Quoting from the documentation of `TypeErasure#erasedLub`,
 the erased lub is computed as follows:
+
 - if both argument are arrays of objects, an array of the erased lub of the element types
 - if both arguments are arrays of same primitives, an array of this primitive
 - if one argument is array of primitives and the other is array of objects, Object
@@ -148,4 +149,3 @@ the erased lub is computed as follows:
                   come after S.
   The reason to pick last is that we prefer classes over traits that way,
   which leads to more predictable bytecode and (?) faster dynamic dispatch.
-

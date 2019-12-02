@@ -68,7 +68,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
           case _ =>
             if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
-              if (variance <= 0 && !isLegalPrefix(pre)) {
+              if (variance <= 0 && !isLegalPrefix(pre))
                 if (variance < 0) {
                   approximated = true
                   defn.NothingType
@@ -80,16 +80,15 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
                   // is not possible, then `expandBounds` will end up being
                   // called which we override to set the `approximated` flag.
                   range(defn.NothingType, pre)
-              }
               else pre
-            else if ((pre.termSymbol is Package) && !(thiscls is Package))
+            else if (pre.termSymbol.is(Package) && !thiscls.is(Package))
               toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
             else
               toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
         }
       }
 
-      /*>|>*/ trace.conditionally(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
+      trace.conditionally(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) { // !!! DEBUG
         // All cases except for ThisType are the same as in Map. Inlined for performance
         // TODO: generalize the inlining trick?
         tp match {
@@ -338,8 +337,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       tpe
     else
       tpe.prefix match {
-        case pre: ThisType if pre.cls is Package => tryInsert(pre.cls)
-        case pre: TermRef if pre.symbol is Package => tryInsert(pre.symbol.moduleClass)
+        case pre: ThisType if pre.cls.is(Package) => tryInsert(pre.cls)
+        case pre: TermRef if pre.symbol.is(Package) => tryInsert(pre.symbol.moduleClass)
         case _ => tpe
       }
   }
@@ -370,7 +369,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
      *  type parameter corresponding to the wildcard.
      */
     def skolemizeWildcardArgs(tps: List[Type], app: Type) = app match {
-      case AppliedType(tycon, args) if tycon.typeSymbol.isClass && !scala2Mode =>
+      case AppliedType(tycon, args) if tycon.typeSymbol.isClass && !scala2CompatMode =>
         tps.zipWithConserve(tycon.typeSymbol.typeParams) {
           (tp, tparam) => tp match {
             case _: TypeBounds => app.select(tparam)
@@ -409,9 +408,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
           for (sym <- lazyRefs) {
 
-            // If symbol `S` has an F-bound such as `C[_, S]` that contains wildcards,
+            // If symbol `S` has an F-bound such as `C[?, S]` that contains wildcards,
             // add a modifieed bound where wildcards are skolemized as a GADT bound for `S`.
-            // E.g. for `C[_, S]` we would add `C[C[_, S]#T0, S]` where `T0` is the first
+            // E.g. for `C[?, S]` we would add `C[C[?, S]#T0, S]` where `T0` is the first
             // type parameter of `C`. The new bound is added as a GADT bound for `S` in
             // `checkCtx`.
             // This mirrors what we do for the bounds that are checked and allows us thus
@@ -458,6 +457,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   /** Are we in an inline method body? */
   def inInlineMethod: Boolean = owner.ownersIterator.exists(_.isInlineMethod)
 
+  /** Are we in a macro? */
+  def inMacro: Boolean = owner.ownersIterator.exists(s => s.isInlineMethod && s.is(Macro))
+
   /** Is `feature` enabled in class `owner`?
    *  This is the case if one of the following two alternatives holds:
    *
@@ -480,7 +482,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    */
   def featureEnabled(feature: TermName, owner: Symbol = NoSymbol): Boolean = {
     def hasImport = {
-      val owner1 = if (!owner.exists) defn.LanguageModuleClass else owner
+      val owner1 = if (!owner.exists) defn.LanguageModule.moduleClass else owner
       ctx.importInfo != null &&
       ctx.importInfo.featureImported(feature, owner1)(ctx.withPhase(ctx.typerPhase))
     }
@@ -489,7 +491,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         if (!sym.exists) ""
         else toPrefix(sym.owner) + sym.name + "."
       val featureName = toPrefix(owner) + feature
-      ctx.base.settings.language.value exists (s => s == featureName || s == "_")
+      ctx.base.settings.language.value exists (s => s == featureName)
     }
     hasOption || hasImport
   }
@@ -498,25 +500,25 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   def canAutoTuple: Boolean =
     !featureEnabled(nme.noAutoTupling)
 
-  def scala2Mode: Boolean =
-    featureEnabled(nme.Scala2)
+  def scala2CompatMode: Boolean =
+    featureEnabled(nme.Scala2Compat)
 
   def dynamicsEnabled: Boolean =
     featureEnabled(nme.dynamics)
 
-  def testScala2Mode(msg: => Message, pos: SourcePosition, replace: => Unit = ()): Boolean = {
-    if (scala2Mode) {
+  def testScala2CompatMode(msg: => Message, pos: SourcePosition, replace: => Unit = ()): Boolean = {
+    if (scala2CompatMode) {
       migrationWarning(msg, pos)
       replace
     }
-    scala2Mode
+    scala2CompatMode
   }
 
-  /** Is option -language:Scala2 set?
+  /** Is option -language:Scala2Compat set?
    *  This test is used when we are too early in the pipeline to consider imports.
    */
-  def scala2Setting: Boolean =
-    ctx.settings.language.value.contains(nme.Scala2.toString)
+  def scala2CompatSetting: Boolean =
+    ctx.settings.language.value.contains(nme.Scala2Compat.toString)
 
   /** Refine child based on parent
    *
@@ -649,16 +651,14 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       parent.argInfos.nonEmpty && minTypeMap.apply(parent) <:< maxTypeMap.apply(tp2)
     }
 
-    if (protoTp1 <:< tp2) {
+    if (protoTp1 <:< tp2)
       if (isFullyDefined(protoTp1, force)) protoTp1
       else instUndetMap.apply(protoTp1)
-    }
     else {
       val protoTp2 = maxTypeMap.apply(tp2)
-      if (protoTp1 <:< protoTp2 || parentQualify) {
+      if (protoTp1 <:< protoTp2 || parentQualify)
         if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
         else instUndetMap.apply(protoTp1)
-      }
       else {
         typr.println(s"$protoTp1 <:< $protoTp2 = false")
         NoType
@@ -673,5 +673,5 @@ object TypeOps {
   // TODO: Move other typeops here. It's a bit weird that they are a part of `ctx`
 
   def nestedPairs(ts: List[Type])(implicit ctx: Context): Type =
-    (ts :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
+    ts.foldRight(defn.UnitType: Type)(defn.PairClass.typeRef.appliedTo(_, _))
 }

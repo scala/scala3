@@ -20,7 +20,7 @@ import diagnostic.messages._
   */
 class StoreReporter(outer: Reporter) extends Reporter {
 
-  protected[this] var infos: mutable.ListBuffer[MessageContainer] = null
+  protected var infos: mutable.ListBuffer[MessageContainer] = null
 
   def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
     typr.println(s">>>> StoredError: ${m.message}") // !!! DEBUG

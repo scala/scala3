@@ -7,7 +7,7 @@ import util.NameTransformer
 import printing.{Showable, Texts, Printer}
 import Texts.Text
 import StdNames.str
-import scala.tasty.util.Chars.isIdentifierStart
+import scala.internal.Chars.isIdentifierStart
 import collection.immutable
 import config.Config
 import java.util.HashMap
@@ -147,8 +147,8 @@ object Names {
     /** Is this name empty? */
     def isEmpty: Boolean
 
-    /** Does (the first part of) this name start with `str`? */
-    def startsWith(str: String): Boolean = firstPart.startsWith(str)
+    /** Does (the first part of) this name starting at index `start` starts with `str`? */
+    def startsWith(str: String, start: Int = 0): Boolean = firstPart.startsWith(str, start)
 
     /** Does (the last part of) this name end with `str`? */
     def endsWith(str: String): Boolean = lastPart.endsWith(str)
@@ -164,11 +164,11 @@ object Names {
     override def isTypeName: Boolean = false
     override def isTermName: Boolean = true
     override def toTermName: TermName = this
-    override def asTypeName: Nothing = throw new ClassCastException(this + " is not a type name")
+    override def asTypeName: Nothing = throw new ClassCastException(s"$this is not a type name")
     override def asTermName: TermName = this
 
     @sharable // because it is only modified in the synchronized block of toTypeName.
-    @volatile private[this] var _typeName: TypeName = null
+    @volatile private var _typeName: TypeName = null
 
     override def toTypeName: TypeName = {
       if (_typeName == null)
@@ -185,10 +185,10 @@ object Names {
     def underlying: TermName = unsupported("underlying")
 
     @sharable // because of synchronized block in `and`
-    private[this] var derivedNames: AnyRef /* immutable.Map[NameInfo, DerivedName] | j.u.HashMap */ =
+    private var derivedNames: immutable.Map[NameInfo, DerivedName] | HashMap[NameInfo, DerivedName] =
       immutable.Map.empty[NameInfo, DerivedName]
 
-    private def getDerived(info: NameInfo): DerivedName /* | Null */ = derivedNames match {
+    private def getDerived(info: NameInfo): DerivedName /* | Null */ = (derivedNames: @unchecked) match {
       case derivedNames: immutable.AbstractMap[NameInfo, DerivedName] @unchecked =>
         if (derivedNames.contains(info)) derivedNames(info) else null
       case derivedNames: HashMap[NameInfo, DerivedName] @unchecked =>
@@ -253,10 +253,10 @@ object Names {
     }
 
     @sharable // because it's just a cache for performance
-    private[this] var myMangledString: String = null
+    private var myMangledString: String = null
 
     @sharable // because it's just a cache for performance
-    private[this] var myMangled: Name = null
+    private var myMangled: Name = null
 
     protected[Names] def mangle: ThisName
 
@@ -362,9 +362,9 @@ object Names {
 
     override def isEmpty: Boolean = length == 0
 
-    override def startsWith(str: String): Boolean = {
+    override def startsWith(str: String, start: Int): Boolean = {
       var i = 0
-      while (i < str.length && i < length && apply(i) == str(i)) i += 1
+      while (i < str.length && start + i < length && apply(start + i) == str(i)) i += 1
       i == str.length
     }
 
@@ -377,9 +377,8 @@ object Names {
     override def replace(from: Char, to: Char): SimpleName = {
       val cs = new Array[Char](length)
       System.arraycopy(chrs, start, cs, 0, length)
-      for (i <- 0 until length) {
+      for (i <- 0 until length)
         if (cs(i) == from) cs(i) = to
-      }
       termName(cs, 0, length)
     }
 
@@ -391,7 +390,7 @@ object Names {
     override def toString: String =
       if (length == 0) ""
       else {
-        if (Config.checkBackendNames) {
+        if (Config.checkBackendNames)
           if (!toStringOK) {
             // We print the stacktrace instead of doing an assert directly,
             // because asserts are caught in exception handlers which might
@@ -401,7 +400,6 @@ object Names {
             Thread.dumpStack()
             assert(false)
           }
-        }
         new String(chrs, start, length)
       }
 
@@ -436,7 +434,7 @@ object Names {
     override def isTermName: Boolean = false
     override def toTypeName: TypeName = this
     override def asTypeName: TypeName = this
-    override def asTermName: Nothing = throw new ClassCastException(this + " is not a term name")
+    override def asTermName: Nothing = throw new ClassCastException(s"$this is not a term name")
 
     override def asSimpleName: SimpleName = toTermName.asSimpleName
     override def toSimpleName: SimpleName = toTermName.toSimpleName
@@ -534,15 +532,15 @@ object Names {
 
   /** The number of characters filled. */
   @sharable // because it's only mutated in synchronized block of termName
-  private[this] var nc = 0
+  private var nc = 0
 
   /** Hashtable for finding term names quickly. */
   @sharable // because it's only mutated in synchronized block of termName
-  private[this] var table = new Array[SimpleName](InitialHashSize)
+  private var table = new Array[SimpleName](InitialHashSize)
 
   /** The number of defined names. */
   @sharable // because it's only mutated in synchronized block of termName
-  private[this] var size = 1
+  private var size = 1
 
   /** The hash of a name made of from characters cs[offset..offset+len-1].  */
   private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {
@@ -681,12 +679,11 @@ object Names {
       val until = x.length min y.length
       var i = 0
       while (i < until && x(i) == y(i)) i = i + 1
-      if (i < until) {
+      if (i < until)
         if (x(i) < y(i)) -1
         else /*(x(i) > y(i))*/ 1
-      } else {
+      else
         x.length - y.length
-      }
     }
     private def compareTermNames(x: TermName, y: TermName): Int = x match {
       case x: SimpleName =>
@@ -702,11 +699,10 @@ object Names {
           case _ => 1
         }
     }
-    def compare(x: Name, y: Name): Int = {
+    def compare(x: Name, y: Name): Int =
       if (x.isTermName && y.isTypeName) 1
       else if (x.isTypeName && y.isTermName) -1
       else if (x eq y) 0
       else compareTermNames(x.toTermName, y.toTermName)
-    }
   }
 }

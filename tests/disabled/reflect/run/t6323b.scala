@@ -2,7 +2,7 @@ import scala.reflect.runtime.universe._
 import scala.reflect.runtime.{currentMirror => m}
 import scala.reflect.runtime.{universe => u}
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   locally {
     try {
       case class Test(a:String,b:List[Int])

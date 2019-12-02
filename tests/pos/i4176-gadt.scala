@@ -1,7 +1,7 @@
 object i4176 {
   sealed trait TNat
   case class TZero() extends TNat
-  case class TSucc[N <: TNat] extends TNat
+  case class TSucc[N <: TNat]() extends TNat
 
   object TNatSum {
     sealed trait TSum[M, N, R]

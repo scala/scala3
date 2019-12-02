@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   class Result(_str: => String) {
     lazy val str = _str
   }

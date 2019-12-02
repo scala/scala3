@@ -3,6 +3,10 @@ package dotc
 package core
 package tasty
 
+import dotty.tools.tasty.TastyFormat.SOURCE
+import dotty.tools.tasty.TastyBuffer
+import TastyBuffer._
+
 import ast._
 import ast.Trees._
 import ast.Trees.WithLazyField
@@ -10,9 +14,7 @@ import util.{SourceFile, NoSource}
 import core._
 import Contexts._, Symbols._, Annotations._, Decorators._
 import collection.mutable
-import TastyBuffer._
 import util.Spans._
-import TastyFormat.SOURCE
 
 class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
   val buf: TastyBuffer = new TastyBuffer(5000)
@@ -45,7 +47,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
 
     def pickleSource(source: SourceFile): Unit = {
       buf.writeInt(SOURCE)
-      buf.writeInt(pickler.nameBuffer.nameIndex(source.pathName).index)
+      buf.writeInt(pickler.nameBuffer.nameIndex(source.path.toTermName).index)
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span
@@ -53,16 +55,16 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
     def alwaysNeedsPos(x: Positioned) = x match {
       case
           // initialSpan is inaccurate for trees with lazy field
-          _: WithLazyField[_]
+          _: WithLazyField[?]
 
           // A symbol is created before the corresponding tree is unpickled,
           // and its position cannot be changed afterwards.
           // so we cannot use the tree initialSpan to set the symbol position.
           // Instead, we always pickle the position of definitions.
-          | _: Trees.DefTree[_]
+          | _: Trees.DefTree[?]
 
           // package defs might be split into several Tasty files
-          | _: Trees.PackageDef[_]
+          | _: Trees.PackageDef[?]
           // holes can change source files when filled, which means
           // they might lose their position
           | _: TreePickler.Hole => true
@@ -103,8 +105,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
         traverse(x.tree, current)
       case _ =>
     }
-    for (root <- roots) {
+    for (root <- roots)
       traverse(root, NoSource)
-    }
   }
 }

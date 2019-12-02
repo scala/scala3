@@ -13,7 +13,7 @@ class B {
   }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val outer1 = new B()
   val b = cm.moduleSymbol(classTag[outer1.BB.type].runtimeClass)
   println(b)

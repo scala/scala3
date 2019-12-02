@@ -21,5 +21,9 @@ object Modes {
     def bootstrappedAggregate(s: ProjectReference*)(implicit mode: Mode): Project =
       if (mode == NonBootstrapped) project else project.aggregate(s: _*)
 
+    /** Depends only if the mode is bootstrapped */
+    def bootstrappedDependsOn(s: sbt.ClasspathDep[ProjectReference]*)(implicit mode: Mode): Project =
+      if (mode == NonBootstrapped) project else project.dependsOn(s: _*)
+
   }
 }

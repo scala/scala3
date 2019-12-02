@@ -210,8 +210,8 @@ trait Symbols { this: Context =>
       Nil, decls)
 
   /** Define a new symbol associated with a Bind or pattern wildcard and, by default, make it gadt narrowable. */
-  def newPatternBoundSymbol(name: Name, info: Type, span: Span, addToGadt: Boolean = true): Symbol = {
-    val sym = newSymbol(owner, name, Case, info, coord = span)
+  def newPatternBoundSymbol(name: Name, info: Type, span: Span, addToGadt: Boolean = true, flags: FlagSet = EmptyFlags): Symbol = {
+    val sym = newSymbol(owner, name, Case | flags, info, coord = span)
     if (addToGadt && name.isTypeName) gadt.addToConstraint(sym)
     sym
   }
@@ -221,7 +221,7 @@ trait Symbols { this: Context =>
    */
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
     def stubCompleter = new StubInfo()
-    val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
+    val normalizedOwner = if (owner.is(ModuleVal)) owner.moduleClass else owner
     typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
     typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
@@ -288,7 +288,7 @@ trait Symbols { this: Context =>
     }
     val tparams = tparamBuf.toList
     val bounds = boundsFn(trefBuf.toList)
-    for ((name, tparam, bound) <- (names, tparams, bounds).zipped)
+    for ((name, tparam, bound) <- names.lazyZip(tparams).lazyZip(bounds))
       tparam.denot = SymDenotation(tparam, owner, name, flags | owner.typeParamCreationFlags, bound)
     tparams
   }
@@ -323,7 +323,7 @@ trait Symbols { this: Context =>
             newNakedSymbol[original.ThisName](original.coord)
         }
       val ttmap1 = ttmap.withSubstitution(originals, copies)
-      (originals, copies).zipped foreach { (original, copy) =>
+      originals.lazyZip(copies) foreach { (original, copy) =>
         val odenot = original.denot
         val oinfo = original.info match {
           case ClassInfo(pre, _, parents, decls, selfInfo) =>
@@ -359,7 +359,7 @@ trait Symbols { this: Context =>
 
   def requiredPackage(path: PreName): TermSymbol = {
     val name = path.toTermName
-    base.staticRef(name, isPackage = true).requiredSymbol("package", name)(_ is Package).asTerm
+    base.staticRef(name, isPackage = true).requiredSymbol("package", name)(_.is(Package)).asTerm
   }
 
   def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
@@ -394,14 +394,14 @@ trait Symbols { this: Context =>
 
   def requiredModule(path: PreName): TermSymbol = {
     val name = path.toTermName
-    base.staticRef(name).requiredSymbol("object", name)(_ is Module).asTerm
+    base.staticRef(name).requiredSymbol("object", name)(_.is(Module)).asTerm
   }
 
   def requiredModuleRef(path: PreName): TermRef = requiredModule(path).termRef
 
   def requiredMethod(path: PreName): TermSymbol = {
     val name = path.toTermName
-    base.staticRef(name).requiredSymbol("method", name)(_ is Method).asTerm
+    base.staticRef(name).requiredSymbol("method", name)(_.is(Method)).asTerm
   }
 
   def requiredMethodRef(path: PreName): TermRef = requiredMethod(path).termRef
@@ -418,7 +418,7 @@ object Symbols {
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (private[this] var myCoord: Coord, val id: Int)
+  class Symbol private[Symbols] (private var myCoord: Coord, val id: Int)
     extends Designator with ParamInfo with printing.Showable {
 
     type ThisName <: Name
@@ -437,7 +437,7 @@ object Symbols {
       myCoord = c
     }
 
-    private[this] var myDefTree: Tree = null
+    private var myDefTree: Tree = null
 
     /** The tree defining the symbol at pickler time, EmptyTree if none was retained */
     def defTree: Tree =
@@ -454,11 +454,11 @@ object Symbols {
     def retainsDefTree(implicit ctx: Context): Boolean =
       ctx.settings.YretainTrees.value ||
       denot.owner.isTerm ||        // no risk of leaking memory after a run for these
-      denot.is(InlineOrProxy)      // need to keep inline info
+      denot.isOneOf(InlineOrProxy)      // need to keep inline info
 
     /** The last denotation of this symbol */
-    private[this] var lastDenot: SymDenotation = _
-    private[this] var checkedPeriod: Period = Nowhere
+    private var lastDenot: SymDenotation = _
+    private var checkedPeriod: Period = Nowhere
 
     private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
 
@@ -540,6 +540,11 @@ object Symbols {
       d != null && d.flagsUNSAFE.is(Private)
     }
 
+    /** Is the symbol a pattern bound symbol?
+     */
+    final def isPatternBound(implicit ctx: Context): Boolean =
+      !isClass && this.is(Case, butNot = Enum | Module)
+
     /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
     final def signature(implicit ctx: Context): Signature =
       if (lastDenot != null && (lastDenot.isCompleted || lastDenot.is(Method)))
@@ -553,9 +558,10 @@ object Symbols {
 
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(implicit ctx: Context): this.type = {
-      assert(this.owner.isClass, s"symbol ($this) entered the scope of non-class owner ${this.owner}") // !!! DEBUG
-      this.owner.asClass.enter(this)
-      if (this is Module) this.owner.asClass.enter(this.moduleClass)
+      if (this.owner.isClass) {
+        this.owner.asClass.enter(this)
+        if (this.is(Module)) this.owner.asClass.enter(this.moduleClass)
+      }
       this
     }
 
@@ -566,20 +572,22 @@ object Symbols {
      */
     def enteredAfter(phase: DenotTransformer)(implicit ctx: Context): this.type =
       if (ctx.phaseId != phase.next.id) enteredAfter(phase)(ctx.withPhase(phase.next))
-      else {
-        if (this.owner.is(Package)) {
-          denot.validFor |= InitialPeriod
-          if (this is Module) this.moduleClass.validFor |= InitialPeriod
-        }
-        else this.owner.asClass.ensureFreshScopeAfter(phase)
-        assert(isPrivate || phase.changesMembers, i"$this entered in ${this.owner} at undeclared phase $phase")
-        entered
+      else this.owner match {
+        case owner: ClassSymbol =>
+          if (owner.is(Package)) {
+            denot.validFor |= InitialPeriod
+            if (this.is(Module)) this.moduleClass.validFor |= InitialPeriod
+          }
+          else owner.ensureFreshScopeAfter(phase)
+          assert(isPrivate || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
+          entered
+        case _ => this
       }
 
     /** Remove symbol from scope of owning class */
     final def drop()(implicit ctx: Context): Unit = {
       this.owner.asClass.delete(this)
-      if (this is Module) this.owner.asClass.delete(this.moduleClass)
+      if (this.is(Module)) this.owner.asClass.delete(this.moduleClass)
     }
 
     /** Remove symbol from scope of owning class after given `phase`. Create a fresh
@@ -626,15 +634,27 @@ object Symbols {
     final def symbol(implicit ev: DontUseSymbolOnSymbol): Nothing = unsupported("symbol")
     type DontUseSymbolOnSymbol
 
-    final def source(implicit ctx: Context): SourceFile =
-      if (!defTree.isEmpty && !ctx.erasedTypes) defTree.source
-      else this match {
-        case cls: ClassSymbol => cls.sourceOfClass
-        case _ =>
-          if (denot.is(Module)) denot.moduleClass.source
-          else if (denot.exists) denot.owner.source
-          else NoSource
-      }
+    final def source(implicit ctx: Context): SourceFile = {
+      def valid(src: SourceFile): SourceFile =
+        if (src.exists && src.file.extension != "class") src
+        else NoSource
+
+      if (!denot.exists) NoSource
+      else
+        valid(defTree.source) match {
+          case NoSource =>
+            valid(denot.owner.source) match {
+              case NoSource =>
+                this match {
+                  case cls: ClassSymbol      => valid(cls.sourceOfClass)
+                  case _ if denot.is(Module) => valid(denot.moduleClass.source)
+                  case _ => NoSource
+                }
+              case src => src
+            }
+          case src => src
+        }
+    }
 
     /** A symbol related to `sym` that is defined in source code.
      *
@@ -704,9 +724,9 @@ object Symbols {
 
     type ThisName = TypeName
 
-    type TreeOrProvider = AnyRef /* tpd.TreeProvider | tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree | Null */
+    type TreeOrProvider = tpd.TreeProvider | tpd.Tree
 
-    private[this] var myTree: TreeOrProvider = tpd.EmptyTree
+    private var myTree: TreeOrProvider = tpd.EmptyTree
 
     /** If this is a top-level class and `-Yretain-trees` (or `-from-tasty`) is set.
       * Returns the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
@@ -760,10 +780,10 @@ object Symbols {
 
     /** The source or class file from which this class was generated, null if not applicable. */
     override def associatedFile(implicit ctx: Context): AbstractFile =
-      if (assocFile != null || (this.owner is PackageClass) || this.isEffectiveRoot) assocFile
+      if (assocFile != null || this.owner.is(PackageClass) || this.isEffectiveRoot) assocFile
       else super.associatedFile
 
-    private[this] var mySource: SourceFile = NoSource
+    private var mySource: SourceFile = NoSource
 
     final def sourceOfClass(implicit ctx: Context): SourceFile = {
       if (!mySource.exists && !denot.is(Package))
@@ -782,7 +802,7 @@ object Symbols {
               }
             sourceFromTopLevel(ctx.withPhaseNoLater(ctx.flattenPhase))
           }
-        }//.reporting(res => i"source of $this # $id in ${denot.owner} = $res")
+        }
       mySource
     }
 
@@ -888,6 +908,6 @@ object Symbols {
     override def toString: String = value.asScala.toString()
   }
 
-  @forceInline def newMutableSymbolMap[T]: MutableSymbolMap[T] =
+  inline def newMutableSymbolMap[T]: MutableSymbolMap[T] =
     new MutableSymbolMap(new java.util.IdentityHashMap[Symbol, T]())
 }

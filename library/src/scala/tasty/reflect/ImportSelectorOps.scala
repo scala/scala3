@@ -3,37 +3,37 @@ package reflect
 
 trait ImportSelectorOps extends Core {
 
-  implicit class SimpleSelectorAPI(self: SimpleSelector) {
-    def selection(implicit ctx: Context): Id =
-      kernel.SimpleSelector_selection(self)
+  given SimpleSelectorOps: (self: SimpleSelector) {
+    def selection(given ctx: Context): Id =
+      internal.SimpleSelector_selection(self)
   }
 
-  object SimpleSelector {
-    def unapply(importSelector: ImportSelector)(implicit ctx: Context): Option[Id] =
-      kernel.matchSimpleSelector(importSelector).map(_.selection)
+  given (given Context): IsInstanceOf[SimpleSelector] = internal.isInstanceOfSimpleSelector
+
+  object SimpleSelector
+    def unapply(x: SimpleSelector)(given ctx: Context): Option[Id] = Some(x.selection)
+
+  given RenameSelectorOps: (self: RenameSelector) {
+    def from(given ctx: Context): Id =
+      internal.RenameSelector_from(self)
+
+    def to(given ctx: Context): Id =
+      internal.RenameSelector_to(self)
   }
 
-  implicit class RenameSelectorAPI(self: RenameSelector) {
-    def from(implicit ctx: Context): Id =
-      kernel.RenameSelector_from(self)
+  given (given Context): IsInstanceOf[RenameSelector] = internal.isInstanceOfRenameSelector
 
-    def to(implicit ctx: Context): Id =
-      kernel.RenameSelector_to(self)
+  object RenameSelector
+    def unapply(x: RenameSelector)(given ctx: Context): Option[(Id, Id)] = Some((x.from, x.to))
+
+  given OmitSelectorOps: (self: OmitSelector) {
+    def omitted(given ctx: Context): Id =
+      internal.SimpleSelector_omitted(self)
   }
 
-  object RenameSelector {
-    def unapply(importSelector: ImportSelector)(implicit ctx: Context): Option[(Id, Id)] =
-      kernel.matchRenameSelector(importSelector).map(x => (x.from, x.to))
-  }
+  given (given Context): IsInstanceOf[OmitSelector] = internal.isInstanceOfOmitSelector
 
-  implicit class OmitSelectorAPI(self: OmitSelector) {
-    def omitted(implicit ctx: Context): Id =
-      kernel.SimpleSelector_omited(self)
-  }
-
-  object OmitSelector {
-    def unapply(importSelector: ImportSelector)(implicit ctx: Context): Option[Id] =
-      kernel.matchOmitSelector(importSelector).map(_.omitted)
-  }
+  object OmitSelector
+    def unapply(x: OmitSelector)(given ctx: Context): Option[Id] = Some(x.omitted)
 
 }

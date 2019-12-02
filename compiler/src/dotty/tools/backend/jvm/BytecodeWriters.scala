@@ -50,9 +50,7 @@ trait BytecodeWriters {
   }
 
   class DirectToJarfileWriter(jfile: JFile) extends BytecodeWriter {
-    val jarMainAttrs = mainClass.map(nm => List(Name.MAIN_CLASS -> nm)).getOrElse(Nil)
-
-    val writer = new Jar(jfile).jarWriter(jarMainAttrs: _*)
+    val writer = new Jar(jfile).jarWriter()
 
     def writeClass(label: String, jclassName: String, jclassBytes: Array[Byte], outfile: AbstractFile): Unit = {
       assert(outfile == null,
@@ -84,7 +82,7 @@ trait BytecodeWriters {
     private def emitAsmp(jclassBytes: Array[Byte], asmpFile: dotty.tools.io.File): Unit = {
       val pw = asmpFile.printWriter()
       try {
-        val cnode = new asm.tree.ClassNode()
+        val cnode = new ClassNode1()
         val cr    = new asm.ClassReader(jclassBytes)
         cr.accept(cnode, 0)
         val trace = new scala.tools.asm.util.TraceClassVisitor(new java.io.PrintWriter(new java.io.StringWriter()))

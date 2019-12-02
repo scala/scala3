@@ -22,7 +22,7 @@ object Test extends DirectTest {
   }
 
   def test_2 = """
-    object Test extends dotty.runtime.LegacyApp {
+    object Test extends App {
       println(Macros.foo)
     }
   """

@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val c = new C()
   println(c.t())
   println((c: T).t())

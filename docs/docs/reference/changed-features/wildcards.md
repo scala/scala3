@@ -21,7 +21,7 @@ We pick `?` as a replacement syntax for wildcard types, since it aligns with Jav
 
 ### Migration Strategy
 
-The migration to the new scheme is complicated, in particular since the [kind projector](https://github.com/typelevel/kind-projector])
+The migration to the new scheme is complicated, in particular since the [kind projector](https://github.com/typelevel/kind-projector)
 compiler plugin still uses the reverse convention, with `?` meaning parameter placeholder instead of wildcard. Fortunately, kind projector has added `*` as an alternative syntax for `?`.
 
 A step-by-step migration is made possible with the following measures:

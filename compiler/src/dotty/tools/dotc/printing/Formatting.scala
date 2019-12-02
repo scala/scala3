@@ -38,9 +38,9 @@ object Formatting {
     }
 
     private def treatArg(arg: Any, suffix: String)(implicit ctx: Context): (Any, String) = arg match {
-      case arg: Seq[_] if suffix.nonEmpty && suffix.head == '%' =>
+      case arg: Seq[?] if suffix.nonEmpty && suffix.head == '%' =>
         val (rawsep, rest) = suffix.tail.span(_ != '%')
-        val sep = StringContext.treatEscapes(rawsep)
+        val sep = StringContext.processEscapes(rawsep)
         if (rest.nonEmpty) (arg.map(showArg).mkString(sep), rest.tail)
         else (arg, suffix)
       case _ =>
@@ -57,7 +57,7 @@ object Formatting {
         case head :: tail => (head.stripMargin, tail map stripTrailingPart)
         case Nil => ("", Nil)
       }
-      val (args1, suffixes1) = (args, suffixes).zipped.map(treatArg(_, _)).unzip
+      val (args1, suffixes1) = args.lazyZip(suffixes).map(treatArg(_, _)).unzip
       new StringContext(prefix :: suffixes1.toList: _*).s(args1: _*)
     }
   }
@@ -86,7 +86,7 @@ object Formatting {
       }
   }
 
-  private def wrapNonSensical(arg: Any /* Type | Symbol */, str: String)(implicit ctx: Context): String = {
+  private def wrapNonSensical(arg: Any, str: String)(implicit ctx: Context): String = {
     import MessageContainer._
     def isSensical(arg: Any): Boolean = arg match {
       case tpe: Type =>
@@ -103,7 +103,7 @@ object Formatting {
     else nonSensicalStartTag + str + nonSensicalEndTag
   }
 
-  private type Recorded = AnyRef /*Symbol | ParamRef | SkolemType */
+  private type Recorded = Symbol | ParamRef | SkolemType
 
   private case class SeenKey(str: String, isType: Boolean)
   private class Seen extends mutable.HashMap[SeenKey, List[Recorded]] {
@@ -132,7 +132,22 @@ object Formatting {
         alts = entry :: existing
         update(key, alts)
       }
-      str + "'" * (alts.length - 1)
+      val suffix = alts.length match {
+        case 1 => ""
+        case n => n.toString.toCharArray.map {
+          case '0' => '⁰'
+          case '1' => '¹'
+          case '2' => '²'
+          case '3' => '³'
+          case '4' => '⁴'
+          case '5' => '⁵'
+          case '6' => '⁶'
+          case '7' => '⁷'
+          case '8' => '⁸'
+          case '9' => '⁹'
+        }.mkString
+      }
+      str + suffix
     }
   }
 
@@ -206,23 +221,23 @@ object Formatting {
   private def explanations(seen: Seen)(implicit ctx: Context): String = {
     def needsExplanation(entry: Recorded) = entry match {
       case param: TypeParamRef => ctx.typerState.constraint.contains(param)
-      case param: TermParamRef => false
+      case param: ParamRef     => false
       case skolem: SkolemType => true
       case sym: Symbol =>
         ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
-      case _ =>
-        assert(false, "unreachable")
-        false
     }
 
-    val toExplain: List[(String, Recorded)] = seen.toList.flatMap {
-      case (key, entry :: Nil) =>
-        if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil
-      case (key, entries) =>
-        for (alt <- entries) yield {
-          val tickedString = seen.record(key.str, key.isType, alt)
-          (tickedString, alt)
-        }
+    val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
+      val res: List[(String, Recorded)] = kvs match {
+        case (key, entry :: Nil) =>
+          if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil
+        case (key, entries) =>
+          for (alt <- entries) yield {
+            val tickedString = seen.record(key.str, key.isType, alt)
+            (tickedString, alt)
+          }
+      }
+      res // help the inferrencer out
     }.sortBy(_._1)
 
     def columnar(parts: List[(String, String)]): List[String] = {
@@ -252,9 +267,9 @@ object Formatting {
     * ex"disambiguate $tpe1 and $tpe2"
     * ```
     */
-  def explained(op: Context => String)(implicit ctx: Context): String = {
+  def explained(op: (given Context) => String)(implicit ctx: Context): String = {
     val seen = new Seen
-    val msg = op(explainCtx(seen))
+    val msg = op(given explainCtx(seen))
     val addendum = explanations(seen)
     if (addendum.isEmpty) msg else msg ++ "\n\n" ++ addendum
   }

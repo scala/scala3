@@ -53,7 +53,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     final val MaximumJvmParameters = 254
 
     // current class
-    var cnode: asm.tree.ClassNode  = null
+    var cnode: ClassNode1          = null
     var thisName: String           = null // the internal name of the class being emitted
 
     var claszSymbol: Symbol        = null
@@ -88,7 +88,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       isCZStaticModule  = claszSymbol.isStaticModuleClass
       thisName          = internalName(claszSymbol)
 
-      cnode = new asm.tree.ClassNode()
+      cnode = new ClassNode1()
 
       initJClass(cnode)
 
@@ -248,7 +248,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     } // end of method addClassFields()
 
     // current method
-    var mnode: asm.tree.MethodNode = null
+    var mnode: MethodNode1         = null
     var jMethodName: String        = null
     var isMethSymStaticCtor        = false
     var returnType: BType          = null
@@ -526,7 +526,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         mdesc,
         jgensig,
         mkArrayS(thrownExceptions)
-      ).asInstanceOf[asm.tree.MethodNode]
+      ).asInstanceOf[MethodNode1]
 
       // TODO param names: (m.params map (p => javaName(p.sym)))
 

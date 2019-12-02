@@ -22,7 +22,7 @@ ambiguities. For instance, you might try to extend `Greeting` twice,
 with different parameters.
 
 ```scala
-/*!*/ class D extends C with Greeting("Bill") // error: parameter passed twice
+class D extends C with Greeting("Bill") // error: parameter passed twice
 ```
 
 Should this print "Bob" or "Bill"? In fact this program is illegal,
@@ -45,7 +45,7 @@ As is required, no arguments are passed to `Greeting`. However, this poses an is
 when defining a class that extends `FormalGreeting`:
 
 ```scala
-/*!*/ class E extends FormalGreeting // error: missing arguments for `Greeting`.
+class E extends FormalGreeting // error: missing arguments for `Greeting`.
 ```
 
 The correct way to write `E` is to extend both `Greeting` and

@@ -18,5 +18,5 @@ package object tastyreflect {
 
     override def denot(implicit ctx: Context): SymDenotation = sym.denot
   }
-
 }
+

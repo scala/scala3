@@ -6,6 +6,7 @@ import core._
 import Phases._
 import Contexts._
 import Symbols._
+import Decorators._
 import dotty.tools.dotc.parsing.JavaParsers.JavaParser
 import parsing.Parsers.Parser
 import config.Config
@@ -24,12 +25,12 @@ class FrontEnd extends Phase {
   override def allowsImplicitSearch: Boolean = true
 
   /** The contexts for compilation units that are parsed but not yet entered */
-  private[this] var remaining: List[Context] = Nil
+  private var remaining: List[Context] = Nil
 
   /** The position of the first XML literal encountered while parsing,
    *  NoSourcePosition if there were no XML literals.
    */
-  private[this] var firstXmlPos: SourcePosition = NoSourcePosition
+  private var firstXmlPos: SourcePosition = NoSourcePosition
 
   /** Does a source file ending with `<name>.scala` belong to a compilation unit
    *  that is parsed but not yet entered?
@@ -71,29 +72,33 @@ class FrontEnd extends Phase {
   }
 
   def typeCheck(implicit ctx: Context): Unit = monitor("typechecking") {
-    val unit = ctx.compilationUnit
-    unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
-    typr.println("typed: " + unit.source)
-    record("retained untyped trees", unit.untpdTree.treeSize)
-    record("retained typed trees after typer", unit.tpdTree.treeSize)
+    try
+      val unit = ctx.compilationUnit
+      if !unit.suspended then
+        unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
+        typr.println("typed: " + unit.source)
+        record("retained untyped trees", unit.untpdTree.treeSize)
+        record("retained typed trees after typer", unit.tpdTree.treeSize)
+    catch
+      case ex: CompilationUnit.SuspendException =>
   }
 
   private def firstTopLevelDef(trees: List[tpd.Tree])(implicit ctx: Context): Symbol = trees match {
     case PackageDef(_, defs) :: _    => firstTopLevelDef(defs)
-    case Import(_, _, _) :: defs     => firstTopLevelDef(defs)
+    case Import(_, _) :: defs        => firstTopLevelDef(defs)
     case (tree @ TypeDef(_, _)) :: _ => tree.symbol
     case _ => NoSymbol
   }
 
   protected def discardAfterTyper(unit: CompilationUnit)(implicit ctx: Context): Boolean =
-    unit.isJava || firstTopLevelDef(unit.tpdTree :: Nil).isPrimitiveValueClass
+    unit.isJava || unit.suspended
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     val unitContexts = for (unit <- units) yield {
       ctx.inform(s"compiling ${unit.source}")
       ctx.fresh.setCompilationUnit(unit)
     }
-    unitContexts foreach (parse(_))
+    unitContexts.foreach(parse(_))
     record("parsedTrees", ast.Trees.ntrees)
     remaining = unitContexts
     while (remaining.nonEmpty) {
@@ -108,7 +113,23 @@ class FrontEnd extends Phase {
 
     unitContexts.foreach(typeCheck(_))
     record("total trees after typer", ast.Trees.ntrees)
-    unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
+    val newUnits = unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
+    val suspendedUnits = ctx.run.suspendedUnits
+    if newUnits.isEmpty && suspendedUnits.nonEmpty && !ctx.reporter.errorsReported then
+      val where =
+        if suspendedUnits.size == 1 then i"in ${suspendedUnits.head}."
+        else i"""among
+                |
+                |  ${suspendedUnits.toList}%, %
+                |"""
+      val enableXprintSuspensionHint =
+        if (ctx.settings.XprintSuspension.value) ""
+        else "\n\nCompiling with  -Xprint-suspension   gives more information."
+      ctx.error(em"""Cyclic macro dependencies $where
+                    |Compilation stopped since no further progress can be made.
+                    |
+                    |To fix this, place macros in one set of files and their callers in another.$enableXprintSuspensionHint""")
+    newUnits
   }
 
   def run(implicit ctx: Context): Unit = unsupported("run")

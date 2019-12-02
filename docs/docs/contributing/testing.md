@@ -69,7 +69,7 @@ If the actual output mismatches the expected output, the test framework will dum
 Test output dumped in: tests/playground/neg/Sample.check.out
   See diff of the checkfile
     > diff tests/playground/neg/Sample.check tests/playground/neg/Sample.check.out
-  Replace checkfile with current output output
+  Replace checkfile with current output
     > mv tests/playground/neg/Sample.check.out tests/playground/neg/Sample.check
 ```
 
@@ -132,5 +132,5 @@ with `with-compiler` in their name.
  $ sbt
  > testCompilation --from-tasty
  ```
- 
+
  This mode can be run under `dotty-compiler-bootstrapped/testCompilation` to test on a bootstrapped Dotty compiler.

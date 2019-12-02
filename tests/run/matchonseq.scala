@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   Vector(1,2,3) match {
     case head +: tail => println("It worked! head=" + head)
   }

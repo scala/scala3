@@ -30,7 +30,7 @@ You can learn more about Dotty on our [website](https://dotty.epfl.ch).
 <!--more-->
 
 This is our 15th scheduled release according to our
-[6-week release schedule](https://dotty.epfl.ch/docs/contributing/release.html).
+[6-week release schedule](https://dotty.epfl.ch/docs/contributing/procedures/release.html).
 
 # What’s new in the 0.15.0-RC1 technology preview?
 ## Full Bootstrap
@@ -83,7 +83,7 @@ val res3: Int = 3
 
 To smoothen the migration, the deprecation warnings will only be emitted if you compile with the `-strict` flag under Scala 3. Alphanumeric methods that are defined without the `@infix` annotation used in an infix position will be deprecated by default starting with Scala 3.1.
 
-For more information, see the the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/operators.html#the-infix-annotation). Note that the `@alpha` annotation also described in the documentation is planned for the future and is not available in this release.
+For more information, see the the [documentation](https://dotty.epfl.ch/docs/reference/changed-features/operators.html#the-infix-annotation). Note that the `@alpha` annotation also described in the documentation is planned for the future and is not available in this release.
 
 ## `given` clause comes last
 In the previous release, you could write something like this:
@@ -116,9 +116,9 @@ We changed this to reduce confusion when calling functions with mixed explicit a
 
 ## Type-safe Pattern Bindings
 ```scala
-  val xs: List[Any] = List(1, 2, 3)
-  val (x: String) :: _ = xs   // error: pattern's type String is more specialized
-                              // than the right hand side expression's type Any
+val xs: List[Any] = List(1, 2, 3)
+val (x: String) :: _ = xs   // error: pattern's type String is more specialized
+                            // than the right hand side expression's type Any
 ```
 
 The above code will fail with a compile-time error in Scala 3.1 and in Scala 3 with the `-strict` flag. In contrast, in Scala 2, the above would have compiled fine but failed on runtime with an exception.
@@ -126,15 +126,15 @@ The above code will fail with a compile-time error in Scala 3.1 and in Scala 3 w
 Dotty compiler will allow such a pattern binding only if the pattern is *irrefutable* – that is, if the right-hand side conforms to the pattern's type. E.g. the following is OK:
 
 ```scala
-  val pair = (1, true)
-  val (x, y) = pair
+val pair = (1, true)
+val (x, y) = pair
 ```
 
 If we want to force the pattern binding if the pattern is not irrefutable, we can do so with an annotation:
 
 ```scala
-  val xs: List[Any] = List("1", "2", "3")
-  val (x: String) :: _: @unchecked = xs
+val xs: List[Any] = List("1", "2", "3")
+val (x: String) :: _: @unchecked = xs
 ```
 
 The same is implemented for pattern bindings in `for` expressions:
@@ -147,7 +147,7 @@ The same is implemented for pattern bindings in `for` expressions:
 
 For the migration purposes, the above change will only take effect in Scala 3.1. You can use it in Scala 3 with the `-strict` flag.
 
-For more information, see the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/pattern-bindings.html).
+For more information, see the [documentation](https://dotty.epfl.ch/docs/reference/changed-features/pattern-bindings.html).
 
 ## Further improvements to Generalised Algebraic Data Types (GADTs) support
 In this release, we've further improved our support for GADTs. Most notably, we now support variant GADTs, thus fixing [#2985](https://github.com/lampepfl/dotty/issues/2985):

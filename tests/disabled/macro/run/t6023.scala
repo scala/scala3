@@ -2,7 +2,7 @@ import scala.reflect.runtime.universe._
 import scala.reflect.runtime.{currentMirror => cm}
 import scala.tools.reflect.ToolBox
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   // test 1: reify
   val tree = reify{ trait Foo { val a: Int } }.tree
   println(tree.toString)

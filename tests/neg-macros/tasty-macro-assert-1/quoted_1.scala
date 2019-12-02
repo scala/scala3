@@ -1,7 +1,5 @@
 import scala.quoted._
 
-import scala.tasty._
-
 object Asserts {
 
   implicit class Ops[T](left: T) {
@@ -14,13 +12,13 @@ object Asserts {
   inline def macroAssert(cond: => Boolean): Unit =
     ${impl('cond)}
 
-  def impl(cond: Expr[Boolean])(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect._
+  def impl(cond: Expr[Boolean])(given qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty.{_, given}
 
     val tree = cond.unseal
 
     def isOps(tpe: TypeOrBounds): Boolean = tpe match {
-      case Type.SymRef(IsDefDefSymbol(sym), _) => sym.name == "Ops" // TODO check that the parent is Asserts
+      case tpe: TermRef => tpe.termSymbol.isDefDef && tpe.name == "Ops"// TODO check that the parent is Asserts
       case _ => false
     }
 

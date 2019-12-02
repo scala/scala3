@@ -19,7 +19,7 @@ import scala.collection.mutable
 trait WorklistAlgorithm {
   type Elem
   class WList {
-    private[this] var list: List[Elem] = Nil
+    private var list: List[Elem] = Nil
     def isEmpty = list.isEmpty
     def nonEmpty = !isEmpty
     def push(e: Elem): Unit = { list = e :: list }

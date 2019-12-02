@@ -24,7 +24,7 @@ object Comments {
     */
   class ContextDocstrings {
 
-    private[this] val _docstrings: MutableSymbolMap[Comment] = newMutableSymbolMap
+    private val _docstrings: MutableSymbolMap[Comment] = newMutableSymbolMap
 
     val templateExpander: CommentExpander = new CommentExpander
 
@@ -78,13 +78,12 @@ object Comments {
       Comment(span, raw, None, Nil)
 
     private def parseUsecases(expandedComment: String, span: Span)(implicit ctx: Context): List[UseCase] =
-      if (!isDocComment(expandedComment)) {
+      if (!isDocComment(expandedComment))
         Nil
-      } else {
+      else
         tagIndex(expandedComment)
           .filter { startsWithTag(expandedComment, _, "@usecase") }
           .map { case (start, end) => decomposeUseCase(expandedComment, span, start, end) }
-      }
 
     /** Turns a usecase section into a UseCase, with code changed to:
      *  {{{
@@ -94,7 +93,7 @@ object Comments {
      *  def foo: A = ???
      *  }}}
      */
-    private[this] def decomposeUseCase(body: String, span: Span, start: Int, end: Int)(implicit ctx: Context): UseCase = {
+    private def decomposeUseCase(body: String, span: Span, start: Int, end: Int)(implicit ctx: Context): UseCase = {
       def subPos(start: Int, end: Int) =
         if (span == NoSpan) NoSpan
         else {
@@ -236,12 +235,11 @@ object Comments {
           if (end > tocopy) tocopy = end
         case None =>
           srcSec match {
-            case Some((start1, end1)) => {
+            case Some((start1, end1)) =>
               out append dst.substring(copied, tocopy).trim
               out append "\n"
               copied = tocopy
               out append src.substring(start1, end1).trim
-            }
             case None =>
           }
       }
@@ -357,7 +355,7 @@ object Comments {
         // excluding variables written as \$foo so we can use them when
         // necessary to document things like Symbol#decode
         def isEscaped = idx > 0 && str.charAt(idx - 1) == '\\'
-        while (idx < str.length) {
+        while (idx < str.length)
           if ((str charAt idx) != '$' || isEscaped)
             idx += 1
           else {
@@ -383,9 +381,8 @@ object Comments {
                   case None              =>
                     dottydoc.println(s"Variable $vname undefined in comment for $sym in $site")
                 }
-              }
+            }
           }
-        }
         if (out.length == 0) str
         else {
           out append str.substring(copied)
@@ -448,11 +445,10 @@ object Comments {
      *  an infinite loop has broken out between superComment and cookedDocComment
      *  since r23926.
      */
-    private def allInheritedOverriddenSymbols(sym: Symbol)(implicit ctx: Context): List[Symbol] = {
+    private def allInheritedOverriddenSymbols(sym: Symbol)(implicit ctx: Context): List[Symbol] =
       if (!sym.owner.isClass) Nil
       else sym.allOverriddenSymbols.toList.filter(_ != NoSymbol) //TODO: could also be `sym.owner.allOverrid..`
       //else sym.owner.ancestors map (sym overriddenSymbol _) filter (_ != NoSymbol)
-    }
 
     class ExpansionLimitExceeded(str: String) extends Exception
   }

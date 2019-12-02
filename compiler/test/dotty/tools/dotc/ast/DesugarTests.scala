@@ -17,7 +17,7 @@ class DesugarTests extends DottyTest {
         sym.is(Synthetic) ||
         // or be a constructor:
         sym.name == nme.CONSTRUCTOR,
-        s"found: $sym (${sym.flags})"
+        s"found: $sym (${sym.flagsString})"
       )
   }
 

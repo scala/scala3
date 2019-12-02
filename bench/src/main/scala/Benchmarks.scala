@@ -13,7 +13,7 @@ import org.openjdk.jmh.results.format._
 import java.util.concurrent.TimeUnit
 
 import java.io.{File, FileOutputStream, BufferedWriter, FileWriter}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.io.Source
 
 object Bench {
@@ -86,7 +86,7 @@ class CompilerOptions {
 
   @Setup
   def prepare: Unit = {
-    opts = Bench.readCompileOptions.to[Array]
+    opts = Bench.readCompileOptions.toArray
   }
 }
 

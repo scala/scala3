@@ -7,7 +7,7 @@ import org.junit.Test
 class TabcompleteTests extends ReplTest {
 
   /** Returns the `(<instance completions>, <companion completions>)`*/
-  private[this] def tabComplete(src: String)(implicit state: State): List[String] =
+  private def tabComplete(src: String)(implicit state: State): List[String] =
     completions(src.length, src, state).map(_.value).sorted
 
   @Test def tabCompleteList = fromInitialState { implicit s =>
@@ -100,7 +100,7 @@ class TabcompleteTests extends ReplTest {
   @Test def importScala = fromInitialState { implicit s =>
     val comp = tabComplete("import scala.")
     // check that there are no special symbols leaked: <byname>, <special-ops>, ...
-    assertEquals(comp.find(_.startsWith("<")), None)
+    assertEquals(comp.find(_.startsWith("<")), Some("<:<"))
     assert(!comp.contains("package"))
   }
 
@@ -115,7 +115,7 @@ class TabcompleteTests extends ReplTest {
   @Test def anyRef = fromInitialState { implicit s =>
     val comp = tabComplete("(null: AnyRef).")
     assertEquals(
-      List("!=", "##", "+", "->", "==", "asInstanceOf", "clone", "ensuring", "eq", "equals", "finalize", "formatted",
+      List("!=", "##", "->", "==", "asInstanceOf", "clone", "ensuring", "eq", "equals", "finalize", "formatted",
           "getClass", "hashCode", "isInstanceOf", "ne", "notify", "notifyAll", "synchronized", "toString", "wait", "→"),
       comp.distinct.sorted)
   }

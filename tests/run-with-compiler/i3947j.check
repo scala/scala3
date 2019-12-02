@@ -1,6 +1,0 @@
-
-scala.Predef.classOf[scala.Array[scala.Array[scala.Int]]].getCanonicalName()
-int[][]
-
-scala.Predef.classOf[scala.Array[scala.Array[scala.Array[scala.Int]]]].getCanonicalName()
-int[][][]

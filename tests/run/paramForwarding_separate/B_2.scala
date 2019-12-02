@@ -4,7 +4,7 @@ class B(member: Int) extends SubA(member) {
 
 object Test {
   def printFields(cls: Class[_]) =
-    println(cls.getDeclaredFields.map(_.toString).sorted.deep.mkString("\n"))
+    println(cls.getDeclaredFields.map(_.toString).sorted.toList.mkString("\n"))
 
   def main(args: Array[String]): Unit = {
     val a = new A(10)

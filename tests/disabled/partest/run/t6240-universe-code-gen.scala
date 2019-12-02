@@ -1,6 +1,6 @@
 import scala.tools.partest.nest.FileManager._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val cm = reflect.runtime.currentMirror
   val u = cm.universe
   import u._

@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val x = Array[Unit]((), ())
   println(x.toString.substring(0, x.toString.indexOf(";")))
   println(x(0))

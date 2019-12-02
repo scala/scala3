@@ -65,7 +65,7 @@ class ReplCompilerTests extends ReplTest {
       assertEquals(1, state.imports.size)
       run("""mutable.Map("one" -> 1)""")
       assertEquals(
-        "val res0: scala.collection.mutable.Map[String, Int] = Map(one -> 1)",
+        "val res0: scala.collection.mutable.Map[String, Int] = HashMap(one -> 1)",
         storedOutput().trim
       )
     }
@@ -129,10 +129,10 @@ class ReplCompilerTests extends ReplTest {
   }
 
   @Test def i5897 =
-    fromInitialState { implicit state => run("delegate for Int = 10") }
+    fromInitialState { implicit state => run("given Int = 10") }
     .andThen         { implicit state =>
       assertEquals(
-        "def Int_instance: Int",
+        "def given_Int: Int",
         storedOutput().trim
       )
       run("implicitly[Int]")
@@ -151,7 +151,7 @@ class ReplCompilerTests extends ReplTest {
         |  def (x: T) > (y: T) = compare(x, y) > 0
         |}
         |
-        |delegate IntOrd for Ord[Int] {
+        |given IntOrd : Ord[Int] {
         |  def compare(x: Int, y: Int) =
         |  if (x < y) -1 else if (x > y) +1 else 0
         |}

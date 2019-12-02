@@ -117,7 +117,7 @@ object PickleFormat {
  *   len is remaining length after `len`.
  */
   val MajorVersion: Int = 5
-  val MinorVersion: Int = 0
+  val MinorVersion: Int = 2
 
   final val TERMname = 1
   final val TYPEname = 2
@@ -218,10 +218,10 @@ object PickleFormat {
   final val firstSymTag = NONEsym
   final val lastSymTag = VALsym
   final val lastExtSymTag = EXTMODCLASSref
+}
 
 
   //The following two are no longer accurate, because ANNOTATEDtpe,
   //SUPERtpe, ... are not in the same range as the other types
   //final val firstTypeTag = NOtpe
   //final val lastTypeTag = POLYtpe
-}

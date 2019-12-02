@@ -1,3 +1,3 @@
-object B extends dotty.runtime.LegacyApp {
+object B extends App {
    println(A.`=`)
 }

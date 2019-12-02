@@ -31,7 +31,7 @@ object Memory {
     def free = runtime.freeMemory
     def used = total - free
     def usedIsCloseToMax =
-      if (maximal == Long.MaxValue) free.toDouble / used < FreeThreshold
+      if maximal == Long.MaxValue then free.toDouble / used < FreeThreshold
       else used.toDouble / maximal > UsedThreshold
     usedIsCloseToMax && { runtime.gc(); usedIsCloseToMax }
   }

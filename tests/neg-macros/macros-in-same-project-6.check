@@ -1,0 +1,5 @@
+-- Error: tests/neg-macros/macros-in-same-project-6/Bar.scala:4:13 -----------------------------------------------------
+4 |  Foo.myMacro() // error
+  |  ^^^^^^^^^^^^^
+  |  some error
+  | This location is in code that was inlined at Bar.scala:4

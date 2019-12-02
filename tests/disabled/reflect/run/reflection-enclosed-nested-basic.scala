@@ -11,7 +11,7 @@ object B {
   private object B6 extends B2 { override def toString = "B6"; override def foo = 6 }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val b = cm.moduleSymbol(classTag[B.type].runtimeClass)
   println(b)
   println(b.info.decls.toList)

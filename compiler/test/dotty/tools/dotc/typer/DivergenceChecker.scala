@@ -21,7 +21,7 @@ class DivergenceCheckerTests extends DottyTest {
     val types = List(
       "A",
       "B",
-      "List[_]",
+      "List[?]",
       "List[Int]",
       "List[AnyRef]",
       "List[String]",
@@ -29,7 +29,7 @@ class DivergenceCheckerTests extends DottyTest {
       "List[List[(A, B) { type Baz = Int }]] { type Foo = A }"
     )
 
-    val elements = List("A", "B", "Nothing", "Object", "String", "Tuple2[_, _]", "Int", "List[_]")
+    val elements = List("A", "B", "Nothing", "Object", "String", "Tuple2[?, ?]", "Int", "List[?]")
 
     checkTypes(source, List(types, elements)) {
       case (List(tpes, elements0), context) =>
@@ -58,7 +58,7 @@ class DivergenceCheckerTests extends DottyTest {
           5
         )
 
-        (tpes, expectedSizes, expectedCoveringSets).zipped.foreach {
+        tpes.lazyZip(expectedSizes).lazyZip(expectedCoveringSets).foreach {
           case (tpe, expectedSize, expectedCoveringSet) =>
             val size = tpe.typeSize
             val cs = tpe.coveringSet

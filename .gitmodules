@@ -39,8 +39,32 @@
 	url = https://github.com/dotty-staging/sourcecode
 [submodule "community-build/community-projects/scala-xml"]
 	path = community-build/community-projects/scala-xml
-	url = https://github.com/scala/scala-xml
+	url = https://github.com/dotty-staging/scala-xml
 [submodule "community-build/community-projects/shapeless"]
 	path = community-build/community-projects/shapeless
-	url = https://github.com/milessabin/shapeless
-	branch = shapeless-3
+	url = https://github.com/dotty-staging/shapeless
+	branch = shapeless-3-staging
+[submodule "community-build/community-projects/xml-interpolator"]
+	path = community-build/community-projects/xml-interpolator
+	url = https://github.com/lampepfl/xml-interpolator.git
+[submodule "community-build/community-projects/semanticdb"]
+	path = community-build/community-projects/semanticdb
+	url = https://github.com/lampepfl/dotty-semanticdb.git
+[submodule "community-build/community-projects/effpi"]
+	path = community-build/community-projects/effpi
+	url = https://github.com/dotty-staging/effpi
+[submodule "community-build/community-projects/intent"]
+	path = community-build/community-projects/intent
+	url = https://github.com/dotty-staging/intent
+[submodule "community-build/community-projects/utest"]
+	path = community-build/community-projects/utest
+	url = https://github.com/dotty-staging/utest.git
+[submodule "community-build/community-projects/os-lib"]
+	path = community-build/community-projects/os-lib
+	url = https://github.com/dotty-staging/os-lib.git
+[submodule "community-build/community-projects/scalatestplus-scalacheck"]
+	path = community-build/community-projects/scalatestplus-scalacheck
+	url = https://github.com/dotty-staging/scalatestplus-scalacheck.git
+[submodule "community-build/community-projects/upickle"]
+	path = community-build/community-projects/upickle
+	url = https://github.com/dotty-staging/upickle.git

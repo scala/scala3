@@ -2,31 +2,25 @@
 import scala.quoted._
 import scala.quoted.matching._
 
-import scala.tasty.Reflection
-
-
 object Macros {
 
   inline def lift[T](sym: Symantics[T])(a: => DSL): T = ${impl[T]('sym, 'a)}
 
-  private def impl[T: Type](sym: Expr[Symantics[T]], a: Expr[DSL])(implicit reflect: Reflection): Expr[T] = {
+  private def impl[T: Type](sym: Expr[Symantics[T]], a: Expr[DSL])(given qctx: QuoteContext): Expr[T] = {
 
     def lift(e: Expr[DSL]): Expr[T] = e match {
 
       case '{ LitDSL(${ Const(c) }) } =>
-      // case scala.internal.quoted.Matcher.unapply[Tuple1[Expr[Int]]](Tuple1(Literal(c)))(/*implicits*/ '{ LitDSL(patternHole[Int]) }, reflect) =>
-        '{ $sym.value(${c.toExpr}) }
+        '{ $sym.value(${Expr(c)}) }
 
       case '{ ($x: DSL) + ($y: DSL) } =>
-      // case scala.internal.quoted.Matcher.unapply[Tuple2[Expr[DSL], Expr[DSL]]](Tuple2(x, y))(/*implicits*/ '{ patternHole[DSL] + patternHole[DSL] }, reflect) =>
         '{ $sym.plus(${lift(x)}, ${lift(y)}) }
 
       case '{ ($x: DSL) * ($y: DSL) } =>
-       // case scala.internal.quoted.Matcher.unapply[Tuple2[Expr[DSL], Expr[DSL]]](Tuple2(x, y))(/*implicits*/ '{ patternHole[DSL] * patternHole[DSL] }, reflect) =>
         '{ $sym.times(${lift(x)}, ${lift(y)}) }
 
       case _ =>
-        import reflect._
+        import qctx.tasty.{_, given}
         error("Expected explicit DSL", e.unseal.pos)
         '{ ??? }
 

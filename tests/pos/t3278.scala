@@ -20,7 +20,7 @@ object Test {
 }
 object Test2 {
     def main(args : Array[String]): Unit = {
-                args(0) += "a"
+        args(0) += "a"
         val a = new Test2
         val f = new Foo
         a(f) = 1 //works

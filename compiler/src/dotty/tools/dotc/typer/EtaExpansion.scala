@@ -14,6 +14,7 @@ import NameKinds.UniqueName
 import util.Spans._
 import collection.mutable
 import Trees._
+import Decorators._
 
 /** A class that handles argument lifting. Argument lifting is needed in the following
  *  scenarios:
@@ -47,7 +48,10 @@ abstract class Lifter {
       var liftedType = expr.tpe.widen
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
       val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span))
-      defs += liftedDef(lifted, expr).withSpan(expr.span).setDefTree
+      defs += liftedDef(lifted, expr)
+        .withSpan(expr.span)
+        .changeNonLocalOwners(lifted)
+        .setDefTree
       ref(lifted.termRef).withSpan(expr.span.focus)
     }
 
@@ -80,7 +84,7 @@ abstract class Lifter {
   def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(implicit ctx: Context): List[Tree] =
     methRef.widen match {
       case mt: MethodType =>
-        (args, mt.paramNames, mt.paramInfos).zipped.map { (arg, name, tp) =>
+        args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map { (arg, name, tp) =>
           val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
           lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
         }
@@ -179,7 +183,7 @@ object EtaExpansion extends LiftImpure {
    *  If `expr` has implicit function type, the arguments are passed with `given`.
    *  E.g. for (1):
    *
-   *      { val xs = es; (x1, ..., xn) => expr given (x1, ..., xn) }
+   *      { val xs = es; (x1, ..., xn) => expr(given x1, ..., xn) }
    *
    *  Case (3) applies if the method is curried, i.e. its result type is again a method
    *  type. Case (2) applies if the expected arity of the function type `xarity` differs
@@ -210,7 +214,7 @@ object EtaExpansion extends LiftImpure {
     var paramFlag = Synthetic | Param
     if (mt.isContextualMethod) paramFlag |= Given
     else if (mt.isImplicitMethod) paramFlag |= Implicit
-    val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
+    val params = mt.paramNames.lazyZip(paramTypes).map((name, tpe) =>
       ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.span.startPos))
     var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)

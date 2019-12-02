@@ -2,7 +2,7 @@ import scala.reflect.runtime.universe._
 import scala.reflect.runtime.{currentMirror => cm}
 import scala.reflect.{ClassTag, classTag}
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def test[T: ClassTag: TypeTag](x: T) = {
     println(s"========${classTag[T].runtimeClass}========")
     println(cm.reflect(x).reflectMethod(typeOf[T].member(TermName("getClass")).asMethod)())

@@ -12,7 +12,7 @@ trait Extractors {
   }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def typeMatch[T: ClassTag](a: Any) = a match {
     case x : T => println(x +" is a "+ implicitly[ClassTag[T]])
     case _ => println(a+ " is not a "+ implicitly[ClassTag[T]] +"; it's a "+ a.getClass)

@@ -5,7 +5,7 @@ class C(v: Any) extends Dynamic {
   def applyDynamic[T](n: String)(): Option[T] = Option(v.asInstanceOf[T])
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   // this should be converted to
   // C(42).selectDynamic[Int]("foo").get
   // but, before fixing SI-6663, became

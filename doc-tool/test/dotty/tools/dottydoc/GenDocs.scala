@@ -22,19 +22,10 @@ trait LocalResources extends DocDriver {
   def withClasspath(files: Array[String]) =
     "-siteroot" +: "../docs" +:
     "-project" +: "Dotty" +:
-    "-language:Scala2" +:
+    "-language:Scala2Compat" +:
     "-classpath" +:
     TestConfiguration.basicClasspath +:
     files
-}
-
-object GenCollections extends LocalResources {
-  import Files._
-
-  val collections = TestWhitelistedCollections.files
-
-  override def main(args: Array[String]): Unit =
-    super.main(withClasspath(collections.toArray))
 }
 
 object GenDottyDocs extends LocalResources {

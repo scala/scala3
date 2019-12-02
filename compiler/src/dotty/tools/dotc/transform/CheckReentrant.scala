@@ -32,18 +32,27 @@ class CheckReentrant extends MiniPhase {
 
   override def phaseName: String = "checkReentrant"
 
-  private[this] var shared: Set[Symbol] = Set()
-  private[this] var seen: Set[ClassSymbol] = Set()
-  private[this] var indent: Int = 0
+  private var shared: Set[Symbol] = Set()
+  private var seen: Set[ClassSymbol] = Set()
+  private var indent: Int = 0
 
-  private val sharableAnnot = new CtxLazy(implicit ctx =>
-    ctx.requiredClass("scala.annotation.internal.sharable"))
-  private val unsharedAnnot = new CtxLazy(implicit ctx =>
-    ctx.requiredClass("scala.annotation.internal.unshared"))
+  private val sharableAnnot = new CtxLazy(
+    summon[Context].requiredClass("scala.annotation.internal.sharable"))
+  private val unsharedAnnot = new CtxLazy(
+    summon[Context].requiredClass("scala.annotation.internal.unshared"))
+
+  private val scalaJSIRPackageClass = new CtxLazy(
+    summon[Context].getPackageClassIfDefined("org.scalajs.ir"))
 
   def isIgnored(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
-    sym.hasAnnotation(unsharedAnnot())
+    sym.hasAnnotation(unsharedAnnot()) ||
+    sym.topLevelClass.owner == scalaJSIRPackageClass() ||
+      // We would add @sharable annotations on ScalaJSVersions and
+      // VersionChecks but we do not have control over that code
+    sym.owner == defn.EnumValuesClass
+      // enum values are initialized eagerly before use
+      // in the long run, we should make them vals
 
   def scanning(sym: Symbol)(op: => Unit)(implicit ctx: Context): Unit = {
     ctx.log(i"${"  " * indent}scanning $sym")
@@ -52,7 +61,7 @@ class CheckReentrant extends MiniPhase {
     finally indent -= 1
   }
 
-  def addVars(cls: ClassSymbol)(implicit ctx: Context): Unit = {
+  def addVars(cls: ClassSymbol)(implicit ctx: Context): Unit =
     if (!seen.contains(cls) && !isIgnored(cls)) {
       seen += cls
       scanning(cls) {
@@ -63,16 +72,15 @@ class CheckReentrant extends MiniPhase {
                 i"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
                    |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""")
               shared += sym
-            } else if (!sym.is(Method) || sym.is(Accessor | ParamAccessor)) {
+            }
+            else if (!sym.is(Method) || sym.isOneOf(Accessor | ParamAccessor))
               scanning(sym) {
                 sym.info.widenExpr.classSymbols.foreach(addVars)
               }
-            }
         for (parent <- cls.classInfo.classParents)
           addVars(parent.classSymbol.asClass)
       }
     }
-  }
 
   override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = {
     if (ctx.settings.YcheckReentrant.value && tree.symbol.owner.isStaticOwner)

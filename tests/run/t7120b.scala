@@ -17,7 +17,7 @@ class CHK extends BaseHK[BaseHK.Id, String] {
 }
 
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val c = new C
   val d = new c.D()
   val meth = d.getClass.getMethods.find(_.getName == "foo").get

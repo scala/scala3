@@ -24,29 +24,29 @@ object Test extends App {
   }
 
   // An example tree
-  def tf0[T] given (e: Exp[T]): T =
+  def tf0[T](given e: Exp[T]): T =
     e.add(e.lit(8), e.neg(e.add(e.lit(1), e.lit(2))))
 
   // Typeclass-style Exp syntax
   object ExpSyntax {
-    def lit[T](i: Int)     given (e: Exp[T]): T = e.lit(i)
-    def neg[T](t: T)       given (e: Exp[T]): T = e.neg(t)
-    def add[T](l: T, r: T) given (e: Exp[T]): T = e.add(l, r)
+    def lit[T](i: Int)    (given e: Exp[T]): T = e.lit(i)
+    def neg[T](t: T)      (given e: Exp[T]): T = e.neg(t)
+    def add[T](l: T, r: T)(given e: Exp[T]): T = e.add(l, r)
   }
   import ExpSyntax._ // It's safe to always have these in scope
 
   // Another tree
-  def tf1[T] given Exp[T]: T =
+  def tf1[T](given Exp[T]): T =
     add(lit(8), neg(add(lit(1), lit(2))))
 
   // Base operations as typeclasses
-  delegate for Exp[Int] {
+  given Exp[Int] {
     def lit(i: Int): Int = i
     def neg(t: Int): Int = -t
     def add(l: Int, r: Int): Int = l + r
   }
 
-  delegate for Exp[String] {
+  given Exp[String] {
     def lit(i: Int): String = i.toString
     def neg(t: String): String = s"(-$t)"
     def add(l: String, r: String): String = s"($l + $r)"
@@ -60,18 +60,18 @@ object Test extends App {
     def mul(l: T, r: T): T
   }
   object MultSyntax {
-    def mul[T](l: T, r: T) given (e: Mult[T]): T = e.mul(l, r)
+    def mul[T](l: T, r: T)(given e: Mult[T]): T = e.mul(l, r)
   }
   import MultSyntax._
 
   def tfm1[T: Exp : Mult] = add(lit(7), neg(mul(lit(1), lit(2))))
   def tfm2[T: Exp : Mult] = mul(lit(7), tf1)
 
-  delegate for Mult[Int] {
+  given Mult[Int] {
     def mul(l: Int, r: Int): Int = l * r
   }
 
-  delegate for Mult[String] {
+  given Mult[String] {
     def mul(l: String, r: String): String = s"$l * $r"
   }
 
@@ -87,7 +87,7 @@ object Test extends App {
   }
   import Tree._
 
-  delegate for Exp[Tree], Mult[Tree] {
+  given Exp[Tree], Mult[Tree] {
     def lit(i: Int): Tree = Node("Lit", Leaf(i.toString))
     def neg(t: Tree): Tree = Node("Neg", t)
     def add(l: Tree, r: Tree): Tree = Node("Add", l , r)
@@ -106,9 +106,9 @@ object Test extends App {
 
   object CanThrow {
     private class Exc(msg: String) extends Exception(msg)
-    def _throw(msg: String) given CanThrow: Nothing = throw new Exc(msg)
+    def _throw(msg: String)(given CanThrow): Nothing = throw new Exc(msg)
     def _try[T](op: Maybe[T])(handler: String => T): T = {
-      delegate for CanThrow
+      given CanThrow
       try op
       catch {
         case ex: Exception => handler(ex.getMessage)
@@ -117,7 +117,7 @@ object Test extends App {
   }
   import CanThrow._
 
-  type Maybe[T] = given CanThrow => T
+  type Maybe[T] = (given CanThrow) => T
 
   def show[T](op: Maybe[T]): Unit =
     println(_try(op.toString)(identity))
@@ -138,7 +138,7 @@ object Test extends App {
   show(readInt("2"))
   show(readInt("X"))
 
-  def fromTree[T](t: Tree) given Exp[T]: Maybe[T] = t match {
+  def fromTree[T](t: Tree)(given Exp[T]): Maybe[T] = t match {
     case Node("Lit", Leaf(n)) => lit(readInt(n))
     case Node("Neg", t) => neg(fromTree(t))
     case Node("Add", l , r) => add(fromTree(l), fromTree(r))
@@ -150,18 +150,18 @@ object Test extends App {
   show(fromTree[Tree](tf1Tree))
 
   trait Wrapped {
-    def value[T] given Exp[T]: T
+    def value[T](given Exp[T]): T
   }
 
-  delegate for Exp[Wrapped] {
+  given Exp[Wrapped] {
     def lit(i: Int) = new Wrapped {
-      def value[T] given (e: Exp[T]): T = e.lit(i)
+      def value[T](given e: Exp[T]): T = e.lit(i)
     }
     def neg(t: Wrapped) = new Wrapped {
-      def value[T] given (e: Exp[T]): T = e.neg(t.value)
+      def value[T](given e: Exp[T]): T = e.neg(t.value)
     }
     def add(l: Wrapped, r: Wrapped) = new Wrapped {
-      def value[T] given (e: Exp[T]): T = e.add(l.value, r.value)
+      def value[T](given e: Exp[T]): T = e.add(l.value, r.value)
     }
   }
 
@@ -170,7 +170,7 @@ object Test extends App {
     s"${t.value[Int]}\n${t.value[String]}"
 
   }
-  def fromTreeExt[T](recur: => Tree => Maybe[T]) given Exp[T]: Tree => Maybe[T] = {
+  def fromTreeExt[T](recur: => Tree => Maybe[T])(given Exp[T]): Tree => Maybe[T] = {
     case Node("Lit", Leaf(n)) => lit(readInt(n))
     case Node("Neg", t) => neg(recur(t))
     case Node("Add", l , r) => add(recur(l), recur(r))
@@ -181,7 +181,7 @@ object Test extends App {
 
   def fromTree2[T: Exp](t: Tree): Maybe[T] = fix(fromTreeExt[T])(t)
 
-  def fromTreeExt2[T](recur: => Tree => Maybe[T]) given Exp[T], Mult[T]: Tree => Maybe[T] = {
+  def fromTreeExt2[T](recur: => Tree => Maybe[T])(given Exp[T], Mult[T]): Tree => Maybe[T] = {
     case Node("Mult", l , r) => mul(recur(l), recur(r))
     case t => fromTreeExt(recur)(t)
   }
@@ -196,7 +196,7 @@ object Test extends App {
   // Added operation: negation pushdown
   enum NCtx { case Pos, Neg }
 
-  delegate [T] for Exp[NCtx => T] given (e: Exp[T]) {
+  given [T](given e: Exp[T]): Exp[NCtx => T] {
     import NCtx._
     def lit(i: Int) = {
       case Pos => e.lit(i)
@@ -216,7 +216,7 @@ object Test extends App {
   println(pushNeg(tf1[NCtx => String]))
   println(pushNeg(pushNeg(pushNeg(tf1))): String)
 
-  delegate [T] for Mult[NCtx => T] given (e: Mult[T]) {
+  given [T](given e: Mult[T]) : Mult[NCtx => T] {
     import NCtx._
     def mul(l: NCtx => T, r: NCtx => T): NCtx => T = {
       case Pos => e.mul(l(Pos), r(Pos))
@@ -230,21 +230,21 @@ object Test extends App {
   import IExp._
 
   // Going from type class encoding to ADT encoding
-  delegate initialize for Exp[IExp] {
+  given initialize : Exp[IExp] {
     def lit(i: Int): IExp = Lit(i)
     def neg(t: IExp): IExp = Neg(t)
     def add(l: IExp, r: IExp): IExp = Add(l, r)
   }
 
   // Going from ADT encoding to type class encoding
-  def finalize[T](i: IExp) given (e: Exp[T]): T = i match {
+  def finalize[T](i: IExp)(given e: Exp[T]): T = i match {
     case Lit(l) => e.lit(l)
     case Neg(n) => e.neg(finalize[T](n))
     case Add(l, r) => e.add(finalize[T](l), finalize[T](r))
   }
 
   // Abstracting over multiple typeclasses
-  type Ring[T] = given Exp[T] => given Mult[T] => T
+  type Ring[T] = (given Exp[T]) => (given Mult[T]) => T
 
   def tfm1a[T]: Ring[T] = add(lit(7), neg(mul(lit(1), lit(2))))
   def tfm2a[T]: Ring[T] = mul(lit(7), tf1)

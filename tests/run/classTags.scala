@@ -3,7 +3,8 @@ object Test {
 
 /*  val a /* : Class[T]                  */ = classOf[T]                        // [Ljava/lang/String;
   println(a)
-*/  val b /* : ClassTag[T]               */ = reflect.classTag[T]               // ClassTag(classOf[java.lang.String])
+*/
+  val b /* : ClassTag[T]               */ = reflect.classTag[T]               // ClassTag(classOf[java.lang.String])
 /*  println(b)
 
   val d /* : ClassTag[T with U]        */ = reflect.classTag[T with U]        // ClassTag(classOf[java.lang.String])

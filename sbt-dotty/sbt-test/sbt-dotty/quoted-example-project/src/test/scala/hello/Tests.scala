@@ -7,7 +7,7 @@ import scala.quoted._
 
 class Tests {
 
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
 
   @Test def test(): Unit = {
     import hello.Main._

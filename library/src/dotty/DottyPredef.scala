@@ -1,0 +1,41 @@
+package dotty
+
+object DottyPredef {
+  import compiletime.summonFrom
+
+  inline final def assert(assertion: => Boolean, message: => Any): Unit = {
+    if (!assertion)
+      assertFail(message)
+  }
+
+  inline final def assert(assertion: => Boolean) <: Unit = {
+    if (!assertion)
+      assertFail()
+  }
+
+  def assertFail(): Nothing = throw new java.lang.AssertionError("assertion failed")
+  def assertFail(message: => Any): Nothing = throw new java.lang.AssertionError("assertion failed: " + message)
+
+  inline final def implicitly[T](implicit ev: T): T = ev
+
+  inline def locally[T](body: => T): T = body
+
+  /**
+   * Retrieve the single value of a type with a unique inhabitant.
+   *
+   * @example {{{
+   * object Foo
+   * val foo = valueOf[Foo.type]
+   * // foo is Foo.type = Foo
+   *
+   * val bar = valueOf[23]
+   * // bar is 23.type = 23
+   * }}}
+   * @group utilities
+   */
+  inline def valueOf[T]: T = summonFrom {
+    case ev: ValueOf[T] => ev.value
+  }
+
+  inline def summon[T](given x: T): x.type = x
+}

@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   println(f"%n")
   println(f"aaaa%n")
   println(f"%naaaa")

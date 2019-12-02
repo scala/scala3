@@ -4,7 +4,7 @@ import annotation._
   def foo(t: T) = t
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def checkUID(cls: Class[_], expected: Long) = {
     val actual = java.io.ObjectStreamClass.lookup(cls).getSerialVersionUID
     assert(actual == expected, s"$actual != expected for ${cls}")

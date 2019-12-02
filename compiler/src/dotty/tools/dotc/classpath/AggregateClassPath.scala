@@ -23,7 +23,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
       case Some(x) => x
     }
   }
-  private[this] val packageIndex: collection.mutable.Map[String, Seq[ClassPath]] = collection.mutable.Map()
+  private val packageIndex: collection.mutable.Map[String, Seq[ClassPath]] = collection.mutable.Map()
   private def aggregatesForPackage(pkg: String): Seq[ClassPath] = packageIndex.synchronized {
     packageIndex.getOrElseUpdate(pkg, aggregates.filter(_.hasPackage(pkg)))
   }
@@ -31,12 +31,11 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   override def findClass(className: String): Option[ClassRepresentation] = {
     val (pkg, _) = PackageNameUtils.separatePkgAndClassNames(className)
 
-    def findEntry(isSource: Boolean): Option[ClassRepresentation] = {
+    def findEntry(isSource: Boolean): Option[ClassRepresentation] =
       aggregatesForPackage(pkg).iterator.map(_.findClass(className)).collectFirst {
         case Some(s: SourceFileEntry) if isSource => s
         case Some(s: ClassFileEntry) if !isSource => s
       }
-    }
 
     val classEntry = findEntry(isSource = false)
     val sourceEntry = findEntry(isSource = true)
@@ -68,9 +67,9 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   override private[dotty] def hasPackage(pkg: String): Boolean = aggregates.exists(_.hasPackage(pkg))
   override private[dotty] def list(inPackage: String): ClassPathEntries = {
     val (packages, classesAndSources) = aggregates.map { cp =>
-      try {
+      try
         cp.list(inPackage).toTuple
-      } catch {
+      catch {
         case ex: java.io.IOException =>
           val e = new FatalError(ex.getMessage)
           e.initCause(ex)
@@ -87,7 +86,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
    * creates an entry containing both of them. If there would be more than one class or source
    * entries for the same class it always would use the first entry of each type found on a classpath.
    */
-  private def mergeClassesAndSources(entries: Seq[ClassRepresentation]*): Seq[ClassRepresentation] = {
+  private def mergeClassesAndSources(entries: scala.collection.Seq[ClassRepresentation]*): Seq[ClassRepresentation] = {
     // based on the implementation from MergedClassPath
     var count = 0
     val indices = collection.mutable.HashMap[String, Int]()
@@ -96,7 +95,8 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
     for {
       partOfEntries <- entries
       entry <- partOfEntries
-    } {
+    }
+    {
       val name = entry.name
       if (indices contains name) {
         val index = indices(name)
@@ -122,7 +122,8 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
     for {
       cp <- aggregates
       entry <- getEntries(cp) if !seenNames.contains(entry.name)
-    } {
+    }
+    {
       entriesBuffer += entry
       seenNames += entry.name
     }

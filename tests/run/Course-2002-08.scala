@@ -517,9 +517,9 @@ abstract class CircuitSimulator() extends BasicCircuitSimulator() {
   def demux2(in: Wire, ctrl: List[Wire], out: List[Wire]) : Unit = {
     val ctrlN = ctrl.map(w => { val iw = new Wire(); inverter(w,iw); iw});
     val w0 = new Wire();
-	val w1 = new Wire();
-	val w2 = new Wire();
-	val w3 = new Wire();
+    val w1 = new Wire();
+    val w2 = new Wire();
+    val w3 = new Wire();
 
     andGate(in, ctrl(1), w3);
     andGate(in, ctrl(1), w2);

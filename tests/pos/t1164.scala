@@ -1,11 +1,11 @@
 object test {
 
-        class Foo[a](val arg : a)
+    class Foo[a](val arg : a)
 
-        object Foo  {
+    object Foo  {
         def apply [a](arg : a, right :a) = new Foo[a](arg)
         def unapply [a](m : Foo[a]) = Some (m.arg)
-        }
+    }
 
     def matchAndGetArgFromFoo[a]( e:Foo[a]):a = {e match { case Foo(x) => x }}
   // Unapply node here will have type argument [a] instantiated to scala.Nothing:
@@ -18,7 +18,7 @@ object test {
     // constructor
 
     type FunIntToA [a] = (Int) => a
-        class Bar[a] (var f: FunIntToA[a])
+    class Bar[a] (var f: FunIntToA[a])
 
     object Bar {
         def apply[a](f: FunIntToA[a]) = new Bar[a](f)

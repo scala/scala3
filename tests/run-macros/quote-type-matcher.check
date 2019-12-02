@@ -1,0 +1,20 @@
+Scrutinee: scala.Int
+Pattern: scala.Int
+Result: Some(List())
+
+Scrutinee: 1
+Pattern: scala.Int
+Result: Some(List())
+
+Scrutinee: scala.Int
+Pattern: 2
+Result: None
+
+Scrutinee: scala.collection.immutable.List[scala.Int]
+Pattern: scala.collection.immutable.List[scala.Int]
+Result: Some(List())
+
+Scrutinee: scala.collection.immutable.List[scala.Int]
+Pattern: scala.collection.immutable.List[scala.Double]
+Result: None
+

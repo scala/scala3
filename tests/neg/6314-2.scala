@@ -12,11 +12,11 @@ object G {
     case Y => Int
   }
 
-  val a: Bar[X & Foo] = "hello"
+  val a: Bar[X & Foo] = "hello" // error
   val b: Bar[Y & Foo] = 1 // error
 
   def main(args: Array[String]): Unit = {
-    val a: Bar[X & Foo] = "hello"
+    val a: Bar[X & Foo] = "hello" // error
     val i: Bar[Y & Foo] = Foo.apply[Bar](a)
     val b: Int = i // error
     println(b + 1)

@@ -96,7 +96,8 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
             .withType(tree.tpe.asInstanceOf[NamedType].prefix.select(directMethod(tree.symbol)))
       }
       directQual(tree.qualifier)
-    } else tree
+    }
+    else tree
 
   /** Transform methods with implicit function type result according to rewrite rule (1) above */
   override def transformDefDef(mdef: DefDef)(implicit ctx: Context): Tree = {

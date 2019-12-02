@@ -1,3 +1,3 @@
-object Test extends dotty.runtime.LegacyApp {
-  println(Stream.from(1).take(5).mkString)
+object Test extends App {
+  println(LazyList.from(1).take(5).mkString)
 }

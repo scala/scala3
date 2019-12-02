@@ -5,7 +5,7 @@ title: Inline
 
 ## Inline Definitions
 
-`inline` is a new [soft modifier](../soft-modifier.html) that guarantees that a
+`inline` is a new [soft modifier](../soft-modifier.md) that guarantees that a
 definition will be inlined at the point of use. Example:
 
 ```scala
@@ -33,8 +33,8 @@ object Logger {
 The `Config` object contains a definition of the **inline value** `logging`.
 This means that `logging` is treated as a _constant value_, equivalent to its
 right-hand side `false`. The right-hand side of such an `inline val` must itself
-be a [constant expression](https://scala-lang.org/files/archive/spec/2.12/06-expressions.html#constant-expressions). Used in this
-way, `inline` is equivalent to Java and Scala 2's `final`. Note that `final`, meaning
+be a [constant expression](https://scala-lang.org/files/archive/spec/2.12/06-expressions.html#constant-expressions).
+Used in this way, `inline` is equivalent to Java and Scala 2's `final`. Note that `final`, meaning
 _inlined constant_, is still supported in Dotty, but will be phased out.
 
 The `Logger` object contains a definition of the **inline method** `log`. This
@@ -42,7 +42,7 @@ method will always be inlined at the point of call.
 
 In the inlined code, an `if-then-else` with a constant condition will be rewritten
 to its `then`- or `else`-part. Consequently, in the `log` method above the
-`if (Config.loggi0ng)` with `Config.logging == true` will get rewritten into its
+`if (Config.logging)` with `Config.logging == true` will get rewritten into its
 `then`-part.
 
 Here's an example:
@@ -58,7 +58,7 @@ def factorial(n: BigInt): BigInt = {
 }
 ```
 
-If `Config.logging == false`, this will be rewritten (simplified) to
+If `Config.logging == false`, this will be rewritten (simplified) to:
 
 ```scala
 def factorial(n: BigInt): BigInt = {
@@ -120,7 +120,7 @@ inline def power(x: Double, n: Int): Double = {
 }
 ```
 
-Parameters of inline methods can be marked `inline`. This means
+Parameters of inline methods can have an `inline` modifier as well. This means
 that actual arguments to these parameters must be constant expressions.
 For example:
 
@@ -216,14 +216,14 @@ type `1`.
 ```scala
 inline def zero() <: Int = 0
 
-final val one: 1 = zero() + 1
+val one: 1 = zero() + 1
 ```
 
 ## Inline Conditionals
 
-If the condition of an if-then-else expressions is a constant, the expression simplifies to
-the selected branch. Prefixing an if-then-else expression with `inline` forces
-the condition to be a constant, and thus guarantees that the conditional will always
+If the condition of an if-then-else expressions is a constant expression then it simplifies to
+the selected branch. Prefixing an if-then-else expression with `inline` enforces that
+the condition has to be a constant expression, and thus guarantees that the conditional will always
 simplify.
 
 Example:
@@ -272,8 +272,8 @@ The scrutinee `x` is examined statically and the inline match is reduced
 accordingly returning the corresponding value (with the type specialized due to
 the `<:` in the return type). This example performs a simple type test over the
 scrutinee. The type can have a richer structure like the simple ADT below.
-`toInt` matches the structure of a number in Church-encoding and _computes_ the
-corresponding integer.
+`toInt` matches the structure of a number in [Church-encoding](https://en.wikipedia.org/wiki/Church_encoding)
+and _computes_ the corresponding integer.
 
 ```scala
 trait Nat
@@ -319,11 +319,11 @@ the singleton type `2`.
 
 #### `erasedValue`
 
-We have seen so far inline methods that take terms (tuples and integers) as
+So far we have seen inline methods that take terms (tuples and integers) as
 parameters. What if we want to base case distinctions on types instead? For
 instance, one would like to be able to write a function `defaultValue`, that,
-given a type `T` returns optionally the default value of `T`, if it exists. In
-fact, we can already express this using rewrite match expressions and a simple
+given a type `T`, returns optionally the default value of `T`, if it exists.
+We can already express this using rewrite match expressions and a simple
 helper function, `scala.compiletime.erasedValue`, which is defined as follows:
 
 ```scala
@@ -333,11 +333,13 @@ erased def erasedValue[T]: T = ???
 The `erasedValue` function _pretends_ to return a value of its type argument
 `T`. In fact, it would always raise a `NotImplementedError` exception when
 called. But the function can in fact never be called, since it is declared
-`erased`, so can be only used at compile-time during type checking.
+`erased`, so can only be used at compile-time during type checking.
 
 Using `erasedValue`, we can then define `defaultValue` as follows:
 
 ```scala
+import scala.compiletime.erasedValue
+
 inline def defaultValue[T] = inline erasedValue[T] match {
   case _: Byte => Some(0: Byte)
   case _: Char => Some(0: Char)
@@ -360,10 +362,11 @@ Then:
   val dAny: None.type = defaultValue[Any]
 ```
 
-As another example, consider the type-level version of `toNat` above the we call
-`toIntT`: given a _type_ representing a Peano number, return the integer _value_
-corresponding to it. Consider the definitions of numbers as in the _Inline
-Match_ section aboce. Here's how `toIntT` can be defined:
+As another example, consider the type-level version of `toInt` below:
+given a _type_ representing a Peano number,
+return the integer _value_ corresponding to it.
+Consider the definitions of numbers as in the _Inline
+Match_ section above. Here is how `toIntT` can be defined:
 
 ```scala
 inline def toIntT[N <: Nat] <: Int = inline scala.compiletime.erasedValue[N] match {
@@ -391,6 +394,8 @@ If an inline expansion results in a call `error(msgStr)` the compiler
 produces an error message containing the given `msgStr`.
 
 ```scala
+import scala.compiletime.{error, code}
+
 inline def fail() = {
   error("failed for a reason")
 }
@@ -403,10 +408,10 @@ or
 inline def fail(p1: => Any) = {
   error(code"failed on: $p1")
 }
-fail(indentity("foo")) // error: failed on: indentity("foo")
+fail(identity("foo")) // error: failed on: identity("foo")
 ```
 
-## Implicit Matches
+## Summoning Implicits Selectively
 
 It is foreseen that many areas of typelevel programming can be done with rewrite
 methods instead of implicits. But sometimes implicits are unavoidable. The
@@ -441,54 +446,50 @@ There are some proposals to improve the situation in specific areas, for
 instance by allowing more elaborate schemes to specify priorities. But they all
 keep the viral nature of implicit search programs based on logic programming.
 
-By contrast, the new `implicit match` construct makes implicit search available
+By contrast, the new `summonFrom` construct makes implicit search available
 in a functional context. To solve the problem of creating the right set, one
 would use it as follows:
 ```scala
-inline def setFor[T]: Set[T] = implicit match {
-  case ord: Ordering[T] => new TreeSet[T]
-  case _                => new HashSet[T]
+import scala.compiletime.summonFrom
+
+inline def setFor[T]: Set[T] = summonFrom {
+  case given ord: Ordering[T] => new TreeSet[T]
+  case _                      => new HashSet[T]
 }
 ```
-An implicit match uses the `implicit` keyword in the place of the scrutinee. Its
-patterns are type ascriptions of the form `identifier : Type`.
+A `summonFrom` call takes a pattern matching closure as argument. All patterns
+in the closure are type ascriptions of the form `identifier : Type`.
 
 Patterns are tried in sequence. The first case with a pattern `x: T` such that
-an implicit value of type `T` can be summoned is chosen. The variable `x` is
-then bound to the implicit value for the remainder of the case. It can in turn
-be used as an implicit in the right hand side of the case. It is an error if one
-of the tested patterns gives rise to an ambiguous implicit search.
+an implicit value of type `T` can be summoned is chosen. If the pattern is prefixed
+with `given`, the variable `x` is bound to the implicit value for the remainder of the case. It can in turn be used as an implicit in the right hand side of the case. It is an error if one of the tested patterns gives rise to an ambiguous implicit search.
 
-An implicit matches is considered to be a special kind of a inline match. This
-means it can only occur in the body of an inline method, and it must be reduced
-at compile time.
+`summonFrom` applications must be reduced at compile time.
 
 Consequently, if we summon an `Ordering[String]` the code above will return a
 new instance of `TreeSet[String]`.
 
 ```scala
-the[Ordering[String]]
+summon[Ordering[String]]
 
 println(setFor[String].getClass) // prints class scala.collection.immutable.TreeSet
 ```
 
-**Note** implicit matches can raise ambiguity errors. Consider the following
-code with two implicit values in scope of type `A`. The single pattern match
-case of the implicit match with type ascription of an `A` raises the ambiguity
-error.
+**Note** `summonFrom` applications can raise ambiguity errors. Consider the following
+code with two implicit values in scope of type `A`. The pattern match in `f` will raise
+an ambiguity error of `f` is applied.
 
 ```scala
 class A
 implicit val a1: A = new A
 implicit val a2: A = new A
 
-inline def f: Any = implicit match {
-  case _: A => ???  // error: ambiguous implicits
+inline def f: Any = summonFrom {
+  case given _: A => ???  // error: ambiguous implicits
 }
 ```
 
 ### Reference
 
-For more info, see [PR #4927](https://github.com/lampepfl/dotty/pull/4768),
-which explains how inline methods can be used for typelevel programming and code
-specialization.
+For more info, see [PR #4768](https://github.com/lampepfl/dotty/pull/4768),
+which explains how `summonFrom`'s predecessor (implicit matches) can be used for typelevel programming and code specialization and [PR #7201](https://github.com/lampepfl/dotty/pull/7201) which explains the new `summonFrom` syntax.

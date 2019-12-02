@@ -34,7 +34,7 @@ trait ConstraintHandling[AbstractContext] {
   protected def constraint: Constraint
   protected def constraint_=(c: Constraint): Unit
 
-  private[this] var addConstraintInvocations = 0
+  private var addConstraintInvocations = 0
 
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint: Boolean = false
@@ -72,10 +72,10 @@ trait ConstraintHandling[AbstractContext] {
   def nonParamBounds(param: TypeParamRef)(implicit actx: AbstractContext): TypeBounds = constraint.nonParamBounds(param)
 
   def fullLowerBound(param: TypeParamRef)(implicit actx: AbstractContext): Type =
-    (nonParamBounds(param).lo /: constraint.minLower(param))(_ | _)
+    constraint.minLower(param).foldLeft(nonParamBounds(param).lo)(_ | _)
 
   def fullUpperBound(param: TypeParamRef)(implicit actx: AbstractContext): Type =
-    (nonParamBounds(param).hi /: constraint.minUpper(param))(_ & _)
+    constraint.minUpper(param).foldLeft(nonParamBounds(param).hi)(_ & _)
 
   /** Full bounds of `param`, including other lower/upper params.
     *
@@ -199,14 +199,13 @@ trait ConstraintHandling[AbstractContext] {
   }
 
 
-  protected def isSubType(tp1: Type, tp2: Type, whenFrozen: Boolean)(implicit actx: AbstractContext): Boolean = {
+  protected def isSubType(tp1: Type, tp2: Type, whenFrozen: Boolean)(implicit actx: AbstractContext): Boolean =
     if (whenFrozen)
       isSubTypeWhenFrozen(tp1, tp2)
     else
       isSubType(tp1, tp2)
-  }
 
-  @forceInline final def inFrozenConstraint[T](op: => T): T = {
+  inline final def inFrozenConstraint[T](op: => T): T = {
     val savedFrozen = frozenConstraint
     val savedLambda = caseLambda
     frozenConstraint = true
@@ -527,7 +526,7 @@ trait ConstraintHandling[AbstractContext] {
 
   /** Check that constraint is fully propagated. See comment in Config.checkConstraintsPropagated */
   def checkPropagated(msg: => String)(result: Boolean)(implicit actx: AbstractContext): Boolean = {
-    if (Config.checkConstraintsPropagated && result && addConstraintInvocations == 0) {
+    if (Config.checkConstraintsPropagated && result && addConstraintInvocations == 0)
       inFrozenConstraint {
         for (p <- constraint.domainParams) {
           def check(cond: => Boolean, q: TypeParamRef, ordering: String, explanation: String): Unit =
@@ -540,7 +539,6 @@ trait ConstraintHandling[AbstractContext] {
           }
         }
       }
-    }
     result
   }
 }

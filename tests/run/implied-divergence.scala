@@ -2,12 +2,12 @@
 // recursions.
 case class E(x: E | Null)
 
-delegate e for E(null)
+given e : E(null)
 
 object Test extends App {
 
-  delegate f for E(e) given (e: E)
+  given f(given e: E): E(e)
 
-  assert(the[E].toString == "E(E(null))")
+  assert(summon[E].toString == "E(E(null))")
 
 }

@@ -23,7 +23,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   /** the following two members override abstract members in Transform */
   val phaseName: String = "capturedVars"
 
-  private var Captured: Store.Location[collection.Set[Symbol]] = _
+  private[this] var Captured: Store.Location[collection.Set[Symbol]] = _
   private def captured(implicit ctx: Context) = ctx.store(Captured)
 
   override def initContext(ctx: FreshContext): Unit =
@@ -32,7 +32,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   private class RefInfo(implicit ctx: Context) {
     /** The classes for which a Ref type exists. */
     val refClassKeys: collection.Set[Symbol] =
-      defn.ScalaNumericValueClasses() + defn.BooleanClass + defn.ObjectClass
+      defn.ScalaNumericValueClasses() `union` Set(defn.BooleanClass, defn.ObjectClass)
 
     val refClass: Map[Symbol, Symbol] =
       refClassKeys.map(rc => rc -> ctx.requiredClass(s"scala.runtime.${rc.name}Ref")).toMap
@@ -44,7 +44,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
       refClassKeys.flatMap(k => Set(refClass(k), volatileRefClass(k)))
   }
 
-  private[this] var myRefInfo: RefInfo = null
+  private var myRefInfo: RefInfo = null
   private def refInfo(implicit ctx: Context) = {
     if (myRefInfo == null) myRefInfo = new RefInfo()
     myRefInfo
@@ -82,9 +82,8 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     */
   def refClass(cls: Symbol, isVolatile: Boolean)(implicit ctx: Context): Symbol = {
     val refMap = if (isVolatile) refInfo.volatileRefClass else refInfo.refClass
-    if (cls.isClass)  {
+    if (cls.isClass)
       refMap.getOrElse(cls, refMap(defn.ObjectClass))
-    }
     else refMap(defn.ObjectClass)
   }
 
@@ -108,7 +107,8 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
       cpy.ValDef(vdef)(
         rhs = boxMethod(nme.create).appliedTo(vdef.rhs),
         tpt = TypeTree(vble.info).withSpan(vdef.tpt.span))
-    } else vdef
+    }
+    else vdef
   }
 
   override def transformIdent(id: Ident)(implicit ctx: Context): Tree = {

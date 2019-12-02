@@ -7,7 +7,7 @@ package jvm
  * the compiler cake (Global).
  */
 final class BCodeAsmCommon[I <: BackendInterface](val interface: I) {
-import interface._
+  import interface._
 
   /**
    * True if `classSym` is an anonymous class or a local class. I.e., false if `classSym` is a

@@ -1,7 +1,7 @@
 // a quickly assembled test of equality.  Needs work.
 object Test
 {
-  import scala.runtime.ScalaRunTime.hash
+  def hash(x: Any): Int = x.## // forces upcast to Any
 
   def makeFromInt(x: Int) = List(
     x.toByte, x.toShort, x.toInt, x.toLong, x.toFloat, x.toDouble, BigInt(x), BigDecimal(x)
@@ -15,19 +15,19 @@ object Test
   def main(args: Array[String]): Unit = {
     var xs = makeFromInt(5)
     for (x <- xs ; y <- xs) {
-      assert(x == y, x + " == " + y)
+      assert(x == y, x.toString + " == " + y)
       assert(hash(x) == hash(y), "hash(%s) == hash(%s)".format(x, y))
     }
 
     xs = makeFromInt(-5)
     for (x <- xs ; y <- xs) {
-      assert(x == y, x + " == " + y)
+      assert(x == y, x.toString + " == " + y)
       assert(hash(x) == hash(y), "hash(%s) == hash(%s)".format(x, y))
     }
 
     xs = makeFromDouble(500.0)
     for (x <- xs ; y <- xs) {
-      assert(x == y, x + " == " + y)
+      assert(x == y, x.toString + " == " + y)
       assert(hash(x) == hash(y), "hash(%s) == hash(%s)".format(x, y))
     }
 

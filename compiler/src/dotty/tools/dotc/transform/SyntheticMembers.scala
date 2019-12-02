@@ -53,16 +53,17 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   import SyntheticMembers._
   import ast.tpd._
 
-  private[this] var myValueSymbols: List[Symbol] = Nil
-  private[this] var myCaseSymbols: List[Symbol] = Nil
-  private[this] var myCaseModuleSymbols: List[Symbol] = Nil
-  private[this] var myEnumCaseSymbols: List[Symbol] = Nil
+  private var myValueSymbols: List[Symbol] = Nil
+  private var myCaseSymbols: List[Symbol] = Nil
+  private var myCaseModuleSymbols: List[Symbol] = Nil
+  private var myEnumCaseSymbols: List[Symbol] = Nil
 
   private def initSymbols(implicit ctx: Context) =
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
       myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
-        defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement)
+        defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement,
+        defn.Product_productElementName)
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
       myEnumCaseSymbols = List(defn.Enum_ordinal)
     }
@@ -92,11 +93,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val isEnumCase = clazz.derivesFrom(defn.EnumClass) && clazz != defn.EnumClass
 
     val symbolsToSynthesize: List[Symbol] =
-      if (clazz.is(Case)) {
+      if (clazz.is(Case))
         if (clazz.is(Module)) caseModuleSymbols
         else if (isEnumCase) caseSymbols ++ enumCaseSymbols
         else caseSymbols
-      }
       else if (isEnumCase) enumCaseSymbols
       else if (isDerivedValueClass(clazz)) valueSymbols
       else Nil
@@ -119,13 +119,14 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
       def syntheticRHS(vrefss: List[List[Tree]])(implicit ctx: Context): Tree = synthetic.name match {
         case nme.hashCode_ if isDerivedValueClass(clazz) => valueHashCodeBody
-        case nme.hashCode_ => caseHashCodeBody
+        case nme.hashCode_ => chooseHashcode
         case nme.toString_ => if (clazz.is(ModuleClass)) ownName else forwardToRuntime(vrefss.head)
         case nme.equals_ => equalsBody(vrefss.head.head)
         case nme.canEqual_ => canEqualBody(vrefss.head.head)
         case nme.productArity => Literal(Constant(accessors.length))
         case nme.productPrefix => ownName
         case nme.productElement => productElementBody(accessors.length, vrefss.head.head)
+        case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
         case nme.ordinal => Select(This(clazz), nme.ordinalDollar)
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
@@ -149,6 +150,40 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  ```
      */
     def productElementBody(arity: Int, index: Tree)(implicit ctx: Context): Tree = {
+      // case N => _${N + 1}
+      val cases = 0.until(arity).map { i =>
+        CaseDef(Literal(Constant(i)), EmptyTree, Select(This(clazz), nme.selectorName(i)))
+      }
+
+      Match(index, (cases :+ generateIOBECase(index)).toList)
+    }
+
+    /** The class
+     *
+     *  ```
+     *  case class C(x: T, y: T)
+     *  ```
+     *
+     *  gets the `productElementName` method:
+     *
+     *  ```
+     *  def productElementName(index: Int): String = index match {
+     *    case 0 => "x"
+     *    case 1 => "y"
+     *    case _ => throw new IndexOutOfBoundsException(index.toString)
+     *  }
+     *  ```
+     */
+    def productElementNameBody(arity: Int, index: Tree)(implicit ctx: Context): Tree = {
+      // case N => // name for case arg N
+      val cases = 0.until(arity).map { i =>
+        CaseDef(Literal(Constant(i)), EmptyTree, Literal(Constant(accessors(i).name.toString)))
+      }
+
+      Match(index, (cases :+ generateIOBECase(index)).toList)
+    }
+
+    def generateIOBECase(index: Tree): CaseDef = {
       val ioob = defn.IndexOutOfBoundsException.typeRef
       // Second constructor of ioob that takes a String argument
       def filterStringConstructor(s: Symbol): Boolean = s.info match {
@@ -160,14 +195,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val error = Throw(New(ioob, constructor, List(stringIndex)))
 
       // case _ => throw new IndexOutOfBoundsException(i.toString)
-      val defaultCase = CaseDef(Underscore(defn.IntType), EmptyTree, error)
-
-      // case N => _${N + 1}
-      val cases = 0.until(arity).map { i =>
-        CaseDef(Literal(Constant(i)), EmptyTree, Select(This(clazz), nme.selectorName(i)))
-      }
-
-      Match(index, (cases :+ defaultCase).toList)
+      CaseDef(Underscore(defn.IntType), EmptyTree, error)
     }
 
     /** The class
@@ -193,7 +221,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *
      */
     def equalsBody(that: Tree)(implicit ctx: Context): Tree = {
-      val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic, clazzType, coord = ctx.owner.span) // x$0
+      val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic | Case, clazzType, coord = ctx.owner.span) // x$0
       def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
       val pattern = Bind(thatAsClazz, wildcardAscription(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))) // x$0 @ (_: C @unchecked)
       // compare primitive fields first, slow equality checks of non-primitive fields can be skipped when primitives differ
@@ -232,15 +260,49 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     /** The class
      *
      *  ```
-     *  package p
-     *  case class C(x: T, y: T)
+     *  case object C
+     *  ```
+     *
+     *  gets the `hashCode` method:
+     *
+     *  ```
+     *  def hashCode: Int = "C".hashCode // constant folded
+     *  ```
+     *
+     *  The class
+     *
+     *  ```
+     *  case class C(x: T, y: U)
+     *  ```
+     *
+     *  if none of `T` or `U` are primitive types, gets the `hashCode` method:
+     *
+     *  ```
+     *  def hashCode: Int = ScalaRunTime._hashCode(this)
+     *  ```
+     *
+     *  else if either `T` or `U` are primitive, gets the `hashCode` method implemented by [[caseHashCodeBody]]
+     */
+    def chooseHashcode(implicit ctx: Context) =
+      if (clazz.is(ModuleClass))
+        Literal(Constant(clazz.name.stripModuleClassSuffix.toString.hashCode))
+      else if (accessors.exists(_.info.finalResultType.classSymbol.isPrimitiveValueClass))
+        caseHashCodeBody
+      else
+        ref(defn.ScalaRuntime__hashCode).appliedTo(This(clazz))
+
+    /** The class
+     *
+     *  ```
+     *  case class C(x: Int, y: T)
      *  ```
      *
      *  gets the `hashCode` method:
      *
      *  ```
      *  def hashCode: Int = {
-     *    <synthetic> var acc: Int = "p.C".hashCode // constant folded
+     *    <synthetic> var acc: Int = 0xcafebabe
+     *    acc = Statics.mix(acc, this.productPrefix.hashCode());
      *    acc = Statics.mix(acc, x);
      *    acc = Statics.mix(acc, Statics.this.anyHash(y));
      *    Statics.finalizeHash(acc, 2)
@@ -248,19 +310,14 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  ```
      */
     def caseHashCodeBody(implicit ctx: Context): Tree = {
-      val seed = clazz.fullName.toString.hashCode
-      if (accessors.nonEmpty) {
-        val acc = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.span)
-        val accDef = ValDef(acc, Literal(Constant(seed)))
-        val mixes = for (accessor <- accessors) yield
-          Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
-        val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
-        Block(accDef :: mixes, finish)
-      } else {
-        // Pre-compute the hash code
-        val hash = scala.runtime.Statics.finalizeHash(seed, 0)
-        Literal(Constant(hash))
-      }
+      val acc = ctx.newSymbol(ctx.owner, nme.acc, Mutable | Synthetic, defn.IntType, coord = ctx.owner.span)
+      val accDef = ValDef(acc, Literal(Constant(0xcafebabe)))
+      val mixPrefix = Assign(ref(acc),
+        ref(defn.staticsMethod("mix")).appliedTo(ref(acc), This(clazz).select(defn.Product_productPrefix).select(defn.Any_hashCode).appliedToNone))
+      val mixes = for (accessor <- accessors) yield
+        Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
+      val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
+      Block(accDef :: mixPrefix :: mixes, finish)
     }
 
     /** The `hashCode` implementation for given symbol `sym`. */
@@ -312,7 +369,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
       List(
         DefDef(writeReplace,
-          _ => New(defn.ModuleSerializationProxyType,
+          _ => New(defn.ModuleSerializationProxyClass.typeRef,
                    defn.ModuleSerializationProxyConstructor,
                    List(Literal(Constant(clazz.sourceModule.termRef)))))
           .withSpan(ctx.owner.span.focus))
@@ -321,51 +378,51 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       Nil
   }
 
-   /** The class
-     *
-     *  ```
-     *  case class C[T <: U](x: T, y: String*)
-     *  ```
-     *
-     *  gets the `fromProduct` method:
-     *
-     *  ```
-     *  def fromProduct(x$0: Product): MirroredMonoType =
-     *    new C[U](
-     *      x$0.productElement(0).asInstanceOf[U],
-     *      x$0.productElement(1).asInstanceOf[Seq[String]]: _*)
-     *  ```
-     *  where
-     *  ```
-     *  type MirroredMonoType = C[_]
-     *  ```
-     */
-    def fromProductBody(caseClass: Symbol, param: Tree)(implicit ctx: Context): Tree = {
-      val (classRef, methTpe) =
-        caseClass.primaryConstructor.info match {
-          case tl: PolyType =>
-            val (tl1, tpts) = constrained(tl, untpd.EmptyTree, alwaysAddTypeVars = true)
-            val targs =
-              for (tpt <- tpts) yield
-                tpt.tpe match {
-                  case tvar: TypeVar => tvar.instantiate(fromBelow = false)
-                }
-            (caseClass.typeRef.appliedTo(targs), tl.instantiate(targs))
-          case methTpe =>
-            (caseClass.typeRef, methTpe)
-        }
-      methTpe match {
-        case methTpe: MethodType =>
-          val elems =
-            for ((formal, idx) <- methTpe.paramInfos.zipWithIndex) yield {
-              val elem =
-                param.select(defn.Product_productElement).appliedTo(Literal(Constant(idx)))
-                  .ensureConforms(formal.underlyingIfRepeated(isJava = false))
-               if (formal.isRepeatedParam) ctx.typer.seqToRepeated(elem) else elem
-            }
-          New(classRef, elems)
+  /** The class
+   *
+   *  ```
+   *  case class C[T <: U](x: T, y: String*)
+   *  ```
+   *
+   *  gets the `fromProduct` method:
+   *
+   *  ```
+   *  def fromProduct(x$0: Product): MirroredMonoType =
+   *    new C[U](
+   *      x$0.productElement(0).asInstanceOf[U],
+   *      x$0.productElement(1).asInstanceOf[Seq[String]]: _*)
+   *  ```
+   *  where
+   *  ```
+   *  type MirroredMonoType = C[?]
+   *  ```
+   */
+  def fromProductBody(caseClass: Symbol, param: Tree)(implicit ctx: Context): Tree = {
+    val (classRef, methTpe) =
+      caseClass.primaryConstructor.info match {
+        case tl: PolyType =>
+          val (tl1, tpts) = constrained(tl, untpd.EmptyTree, alwaysAddTypeVars = true)
+          val targs =
+            for (tpt <- tpts) yield
+              tpt.tpe match {
+                case tvar: TypeVar => tvar.instantiate(fromBelow = false)
+              }
+          (caseClass.typeRef.appliedTo(targs), tl.instantiate(targs))
+        case methTpe =>
+          (caseClass.typeRef, methTpe)
       }
+    methTpe match {
+      case methTpe: MethodType =>
+        val elems =
+          for ((formal, idx) <- methTpe.paramInfos.zipWithIndex) yield {
+            val elem =
+              param.select(defn.Product_productElement).appliedTo(Literal(Constant(idx)))
+                .ensureConforms(formal.underlyingIfRepeated(isJava = false))
+            if (formal.isRepeatedParam) ctx.typer.seqToRepeated(elem) else elem
+          }
+        New(classRef, elems)
     }
+  }
 
   /** For an enum T:
    *
@@ -379,7 +436,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *        case _: C_n => n - 1
    *     }
    *
-   *  Here, the normalized type of a class C is C[_, ...., _] with
+   *  Here, the normalized type of a class C is C[?, ...., ?] with
    *  a wildcard for each type parameter. The normalized type of an object
    *  O is O.type.
    */
@@ -436,14 +493,14 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       }
     }
     def makeSingletonMirror() =
-      addParent(defn.Mirror_SingletonType)
+      addParent(defn.Mirror_SingletonClass.typeRef)
     def makeProductMirror(cls: Symbol) = {
-      addParent(defn.Mirror_ProductType)
-      addMethod(nme.fromProduct, MethodType(defn.ProductType :: Nil, monoType.typeRef), cls,
+      addParent(defn.Mirror_ProductClass.typeRef)
+      addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
         fromProductBody(_, _)(_).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
     }
     def makeSumMirror(cls: Symbol) = {
-      addParent(defn.Mirror_SumType)
+      addParent(defn.Mirror_SumClass.typeRef)
       addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType), cls,
         ordinalBody(_, _)(_))
     }

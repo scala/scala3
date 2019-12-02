@@ -96,7 +96,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
     attrs: Tree,
     scope: Tree,
     empty: Boolean,
-    children: Seq[Tree]): Tree =
+    children: collection.Seq[Tree]): Tree =
   {
     def starArgs =
       if (children.isEmpty) Nil
@@ -129,7 +129,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   protected def ProcInstr(target: Tree, txt: Tree): Tree  = New(_scala_xml_ProcInstr, LL(target, txt))
 
   /** @todo: attributes */
-  def makeXMLpat(span: Span, n: String, args: Seq[Tree]): Tree = {
+  def makeXMLpat(span: Span, n: String, args: collection.Seq[Tree]): Tree = {
     val (prepat, labpat) = splitPrefix(n) match {
       case (Some(pre), rest)  => (const(pre), const(rest))
       case _                  => (wild, const(n))
@@ -141,7 +141,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
     case _: Literal => makeTextPat(t)
     case _          => t
   }
-  protected def convertToTextPat(buf: Seq[Tree]): List[Tree] =
+  protected def convertToTextPat(buf: collection.Seq[Tree]): List[Tree] =
     (buf map convertToTextPat).toList
 
   def parseAttribute(span: Span, s: String): Tree = {
@@ -159,7 +159,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   }
 
   /** could optimize if args.length == 0, args.length == 1 AND args(0) is <: Node. */
-  def makeXMLseq(span: Span, args: Seq[Tree]): Block = {
+  def makeXMLseq(span: Span, args: collection.Seq[Tree]): Block = {
     val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfNil))
     val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), List(t)))
 
@@ -173,13 +173,13 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   }
 
   /** Various node constructions. */
-  def group(span: Span, args: Seq[Tree]): Tree =
+  def group(span: Span, args: collection.Seq[Tree]): Tree =
     atSpan(span)( New(_scala_xml_Group, LL(makeXMLseq(span, args))) )
 
   def unparsed(span: Span, str: String): Tree =
     atSpan(span)( New(_scala_xml_Unparsed, LL(const(str))) )
 
-  def element(span: Span, qname: String, attrMap: mutable.Map[String, Tree], empty: Boolean, args: Seq[Tree]): Tree = {
+  def element(span: Span, qname: String, attrMap: mutable.Map[String, Tree], empty: Boolean, args: collection.Seq[Tree]): Tree = {
     def handleNamespaceBinding(pre: String, z: String): Tree = {
       def mkAssign(t: Tree): Tree = Assign(
         Ident(_tmpscope),

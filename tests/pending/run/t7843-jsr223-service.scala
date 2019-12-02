@@ -1,6 +1,6 @@
 import scala.tools.nsc.interpreter.IMain
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val engine = new IMain.Factory getScriptEngine()
   engine.asInstanceOf[IMain].settings.usejavacp.value = true
   engine put ("n", 10)

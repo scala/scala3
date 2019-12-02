@@ -1,8 +1,3 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
- * @author  Paul Phillips
- */
-
 package dotty.tools
 package dotc
 package config
@@ -12,6 +7,7 @@ import core.Contexts._, core.Symbols._
 import core.SymbolLoader
 import core.SymDenotations.SymDenotation
 import core.StdNames.nme
+import core.Flags.Module
 
 /** The platform dependent pieces of Global.
  */
@@ -44,7 +40,7 @@ abstract class Platform {
   /** The given class has a main method. */
   final def hasMainMethod(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.info.member(nme.main).hasAltWith {
-      case x: SymDenotation => isMainMethod(x)
+      case x: SymDenotation => isMainMethod(x) && (sym.is(Module) || x.isStatic)
       case _ => false
     }
 }

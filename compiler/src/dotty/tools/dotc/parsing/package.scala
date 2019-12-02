@@ -1,6 +1,6 @@
 package dotty.tools.dotc
 
-import scala.tasty.util.Chars._
+import scala.internal.Chars._
 import core.Names.Name
 import core.StdNames.nme
 import core.NameOps._
@@ -36,5 +36,5 @@ package object parsing {
   def minPrec: Int = 0
   def minInfixPrec: Int = 1
   def maxPrec: Int = 11
-
 }
+

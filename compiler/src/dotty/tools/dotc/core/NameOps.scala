@@ -4,7 +4,7 @@ package core
 import java.security.MessageDigest
 import scala.io.Codec
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
-import scala.tasty.util.Chars
+import scala.internal.Chars
 import Chars.isOperatorPart
 import Definitions._
 
@@ -123,7 +123,7 @@ object NameOps {
 
     /** If flags is a ModuleClass but not a Package, add module class suffix */
     def adjustIfModuleClass(flags: FlagSet): N = likeSpacedN {
-      if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
+      if (flags.is(ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
       else name.toTermName.exclude(AvoidClashName)
     }
 
@@ -187,17 +187,15 @@ object NameOps {
 
     /** Is an implicit function name, i.e one of ImplicitFunctionN for N >= 0 or ErasedImplicitFunctionN for N > 0
      */
-    def isImplicitFunction: Boolean = {
+    def isImplicitFunction: Boolean =
       functionArityFor(str.ImplicitFunction) >= 0 ||
       functionArityFor(str.ErasedImplicitFunction) > 0
-    }
 
     /** Is an erased function name, i.e. one of ErasedFunctionN, ErasedImplicitFunctionN for N > 0
       */
-    def isErasedFunction: Boolean = {
+    def isErasedFunction: Boolean =
       functionArityFor(str.ErasedFunction) > 0 ||
       functionArityFor(str.ErasedImplicitFunction) > 0
-    }
 
     /** Is a synthetic function name, i.e. one of
      *    - FunctionN for N > 22
@@ -205,22 +203,21 @@ object NameOps {
      *    - ErasedFunctionN for N > 0
      *    - ErasedImplicitFunctionN for N > 0
      */
-    def isSyntheticFunction: Boolean = {
+    def isSyntheticFunction: Boolean =
       functionArityFor(str.Function) > MaxImplementedFunctionArity ||
       functionArityFor(str.ImplicitFunction) >= 0 ||
       isErasedFunction
-    }
 
     /** Parsed function arity for function with some specific prefix */
-    private def functionArityFor(prefix: String): Int = {
+    private def functionArityFor(prefix: String): Int =
       if (name.startsWith(prefix)) {
         val suffix = name.toString.substring(prefix.length)
         if (suffix.matches("\\d+"))
           suffix.toInt
         else
           -1
-      } else -1
-    }
+      }
+      else -1
 
     /** The name of the generic runtime operation corresponding to an array operation */
     def genericArrayOp: TermName = name match {
@@ -271,7 +268,7 @@ object NameOps {
     }
 
     def unmangle(kinds: List[NameKind]): N = {
-      val unmangled = (name /: kinds)(_.unmangle(_))
+      val unmangled = kinds.foldLeft(name)(_.unmangle(_))
       if (unmangled eq name) name else unmangled.unmangle(kinds)
     }
   }
@@ -287,13 +284,12 @@ object NameOps {
         else n)
 
     def fieldName: TermName =
-      if (name.isSetterName) {
+      if (name.isSetterName)
         if (name.is(TraitSetterName)) {
           val TraitSetterName(_, original) = name
           original.fieldName
         }
         else getterName.fieldName
-      }
       else FieldName(name)
 
     def stripScala2LocalSuffix: TermName =

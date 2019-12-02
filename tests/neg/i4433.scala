@@ -1,7 +1,7 @@
 
 object Foo {
-  inline def g(inline p: Int => Boolean): Boolean = ${ // error
-    if(p(5)) 'true
+  inline def g(inline p: Int => Boolean): Boolean = ${
+    if (p(5)) 'true // error
     else 'false
   }
 }

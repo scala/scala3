@@ -60,36 +60,61 @@ The framework as discussed so far allows code to be staged, i.e. be prepared
 to be executed at a later stage. To run that code, there is another method
 in class `Expr` called `run`. Note that `$` and `run` both map from `Expr[T]`
 to `T` but only `$` is subject to the PCP, whereas `run` is just a normal method.
+Run provides a `QuoteContext` that can be used to show the expression in the scope of `run`.
+On the other hand `withQuoteContext` provides a `QuoteContext` without evauating the expression.
 
 ```scala
-sealed abstract class Expr[T] {
-  def run  given (toolbox: Toolbox): T       // run staged code
-  def show given (toolbox: Toolbox): String  // show staged code
-}
+package scala.quoted.staging
+
+def run[T](expr:(given QuoteContext) => Expr[T])(given toolbox: Toolbox): T = ...
+
+def withQuoteContext[T](thunk:(given QuoteContext) => T)(given toolbox: Toolbox): T = ...
 ```
+
+## Create a new Dotty project with staging enabled
+
+```shell
+sbt new lampepfl/dotty-staging.g8
+```
+
+From [lampepfl/dotty-staging.g8](https://github.com/lampepfl/dotty-staging.g8).
+
+It will create a project with the necessary dependencies and some examples.
 
 ## Example
 
-Now take exactly the same example as in [Macros](./macros.html). Assume that we
+Now take exactly the same example as in [Macros](./macros.md). Assume that we
 do not want to pass an array statically but generated code at run-time and pass
 the value, also at run-time. Note, how we make a future-stage function of type
-`Expr[Array[Int] => Int]` in line 4 below. Invoking the `.show` or `.run` we can
-either show the code or run it respectivelly.
+`Expr[Array[Int] => Int]` in line 4 below. Using `run { ... }` we can evaluate an
+expression at runtime. Within the scope of `run` we can also invoke `show` on an expression
+to get a source-like representation of the expression.
 
 ```scala
+import scala.quoted.staging._
+
 // make available the necessary toolbox for runtime code generation
-implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+given Toolbox = Toolbox.make(getClass.getClassLoader)
 
-val stagedSum: Expr[Array[Int] => Int] = '{ (arr: Array[Int]) => ${sum('arr)}}
+val f: Array[Int] => Int = run {
+  val stagedSum: Expr[Array[Int] => Int] = '{ (arr: Array[Int]) => ${sum('arr)}}
+  println(stagedSum.show) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"
+  stagedSum
+}
 
-println(stagedSum.show)
-
-stagedSum.run.apply(Array(1, 2, 3)) // Returns 6
+f.apply(Array(1, 2, 3)) // Returns 6
 ```
 
 Note that if we need to run the main (in an object called `Test`) after
 compilation we need make available the compiler to the runtime:
 
 ```shell
-sbt:dotty> dotr -classpath out -with-compiler Test
+dotc -with-compiler -d out Test.scala
+dotr -with-compiler -classpath out Test
+```
+
+Or, from SBT:
+
+```scala
+libraryDependencies += "ch.epfl.lamp" %% "dotty-staging" % scalaVersion.value
 ```

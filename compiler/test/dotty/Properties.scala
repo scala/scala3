@@ -6,7 +6,7 @@ import java.nio.file._
 object Properties {
 
   /** If property is unset or "TRUE" we consider it `true` */
-  private[this] def propIsNullOrTrue(prop: String): Boolean = {
+  private def propIsNullOrTrue(prop: String): Boolean = {
     val prop = System.getProperty("dotty.tests.interactive")
     prop == null || prop == "TRUE"
   }
@@ -49,6 +49,12 @@ object Properties {
 
   /** dotty-compiler jar */
   def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler")
+
+  /** dotty-staging jar */
+  def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging")
+
+  /** tasty-core jar */
+  def tastyCore: String = sys.props("dotty.tests.classes.tastyCore")
 
   /** compiler-interface jar */
   def compilerInterface: String = sys.props("dotty.tests.classes.compilerInterface")

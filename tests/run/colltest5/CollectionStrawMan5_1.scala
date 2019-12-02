@@ -441,10 +441,11 @@ object CollectionStrawMan5 {
       private var hdDefined: Boolean = false
 
       def hasNext: Boolean = hdDefined || {
-        do {
+        while {
           if (!self.hasNext) return false
           hd = self.next()
-        } while (!p(hd))
+          !p(hd)
+        } do ()
         hdDefined = true
         true
       }

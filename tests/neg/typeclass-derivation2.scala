@@ -101,10 +101,10 @@ object TypeLevel {
   enum Shape {
 
     /** A sum with alternative types `Alts` */
-    case Cases[Alts <: Tuple]
+    case Cases[Alts <: Tuple]()
 
     /** A product type `T` with element types `Elems` */
-    case Case[T, Elems <: Tuple]
+    case Case[T, Elems <: Tuple]()
   }
 
   /** Every generic derivation starts with a typeclass instance of this type.
@@ -210,10 +210,10 @@ trait Show[T] {
   def show(x: T): String
 }
 object Show {
-  import scala.compiletime.{erasedValue, error}
+  import scala.compiletime.{erasedValue, error, summonFrom}
   import TypeLevel._
 
-  inline def tryShow[T](x: T): String = delegate match {
+  inline def tryShow[T](x: T): String = summonFrom {
     case s: Show[T] => s.show(x)
   }
 

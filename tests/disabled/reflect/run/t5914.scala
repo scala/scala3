@@ -15,7 +15,7 @@ trait Trees {
     }
 }
 
-object Test extends dotty.runtime.LegacyApp with Trees {
+object Test extends App with Trees {
   val ttTag = implicitly[ClassTag[TypeTree]]
   case class TypeTree(meh: String) extends Tree
   object TypeTree extends TypeTreeExtractor

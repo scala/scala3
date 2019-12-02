@@ -3,7 +3,7 @@ import scala.reflect.runtime.{universe => ru}
 import scala.reflect.runtime.{currentMirror => cm}
 import scala.tools.reflect.{ToolBox, mkConsoleFrontEnd}
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   //val oldErr = Console.err;
   val baos = new java.io.ByteArrayOutputStream()
   val errs = new java.io.PrintStream(baos)

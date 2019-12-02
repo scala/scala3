@@ -41,16 +41,16 @@ class ReplCompiler extends Compiler {
   def newRun(initCtx: Context, state: State): Run = new Run(this, initCtx) {
 
     /** Import previous runs and user defined imports */
-    override protected[this] def rootContext(implicit ctx: Context): Context = {
+    override protected def rootContext(implicit ctx: Context): Context = {
       def importContext(imp: tpd.Import)(implicit ctx: Context) =
         ctx.importContext(imp, imp.symbol)
 
       def importPreviousRun(id: Int)(implicit ctx: Context) = {
         // we first import the wrapper object id
         val path = nme.EMPTY_PACKAGE ++ "." ++ objectNames(id)
-        def importWrapper(c: Context, importImplied: Boolean) = {
+        def importWrapper(c: Context, importGiven: Boolean) = {
           val importInfo = ImportInfo.rootImport(() =>
-            c.requiredModuleRef(path), importImplied)
+            c.requiredModuleRef(path), importGiven)
           c.fresh.setNewScope.setImportInfo(importInfo)
         }
         val ctx0 = importWrapper(importWrapper(ctx, false), true)
@@ -67,7 +67,7 @@ class ReplCompiler extends Compiler {
     }
   }
 
-  private[this] val objectNames = mutable.Map.empty[Int, TermName]
+  private val objectNames = mutable.Map.empty[Int, TermName]
 
   private case class Definitions(stats: List[untpd.Tree], state: State)
 

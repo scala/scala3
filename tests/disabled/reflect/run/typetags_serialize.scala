@@ -3,7 +3,7 @@ import scala.reflect.runtime.universe._
 import scala.reflect.runtime.{universe => ru}
 import scala.reflect.runtime.{currentMirror => cm}
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   class C[A] {
     def m(a: A): Int = 5
   }

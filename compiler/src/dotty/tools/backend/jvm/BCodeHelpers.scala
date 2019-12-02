@@ -3,6 +3,7 @@ package backend
 package jvm
 
 import scala.tools.asm
+import scala.tools.asm.ClassWriter
 import scala.collection.mutable
 import dotty.tools.io.AbstractFile
 
@@ -77,27 +78,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   /*
    * must-single-thread
    */
-  def initBytecodeWriter(entryPoints: List[Symbol]): BytecodeWriter = {
+  def initBytecodeWriter(): BytecodeWriter = {
     getSingleOutput match {
-      case Some(f) if f hasExtension "jar" =>
-        // If no main class was specified, see if there's only one
-        // entry point among the classes going into the jar.
-        if (mainClass.isEmpty) {
-          entryPoints map (_.fullName('.')) match {
-            case Nil =>
-              log("No Main-Class designated or discovered.")
-            case name :: Nil =>
-              log(s"Unique entry point: setting Main-Class to $name")
-              setMainClass(name)
-            case names =>
-              log(s"No Main-Class due to multiple entry points:\n  ${names.mkString("\n  ")}")
-          }
-        }
-        else log(s"Main-Class was specified: ${mainClass.get}")
-
+      case Some(f) if f.hasExtension("jar") =>
         new DirectToJarfileWriter(f.file)
-
-      case _ => factoryNonJarBytecodeWriter()
+      case _ =>
+        factoryNonJarBytecodeWriter()
     }
   }
 
@@ -127,6 +113,20 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   }
 
   /*
+   * can-multi-thread
+   */
+  def createJAttribute(name: String, b: Array[Byte], offset: Int, len: Int): asm.Attribute = {
+    new asm.Attribute(name) {
+      override def write(classWriter: ClassWriter, code: Array[Byte],
+        codeLength: Int, maxStack: Int, maxLocals: Int): asm.ByteVector = {
+        val byteVector = new asm.ByteVector(len)
+        byteVector.putByteArray(b, offset, len)
+        byteVector
+      }
+    }
+  }
+
+  /*
    * Custom attribute (JVMS 4.7.1) "ScalaSig" used as marker only
    * i.e., the pickle is contained in a custom annotation, see:
    *   (1) `addAnnotations()`,
@@ -149,15 +149,6 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       vp writeNat PickleFormat.MinorVersion
       vp writeNat 0
       vp
-    }
-
-    /*
-     * can-multi-thread
-     */
-    def createJAttribute(name: String, b: Array[Byte], offset: Int, len: Int): asm.Attribute = {
-      val dest = new Array[Byte](len)
-      System.arraycopy(b, offset, dest, 0, len)
-      new asm.CustomAttr(name, dest)
     }
 
     /*
@@ -235,7 +226,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       if (sym == NothingClass) RT_NOTHING
       else if (sym == NullClass) RT_NULL
       else {
-       val r = classBTypeFromSymbol(sym)
+        val r = classBTypeFromSymbol(sym)
         if (r.isNestedClass) innerClassBufferASM += r
         r
       }
@@ -387,7 +378,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       }
       debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
-      for (m0 <- moduleClass.info.membersBasedOnFlags(ExcludedForwarderFlags, Flag_METHOD)) {
+      for (m0 <- moduleClass.info.sortedMembersBasedOnFlags(required = Flag_METHOD, excluded = ExcludedForwarderFlags)) {
         val m = if (m0.isBridge) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
           log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
@@ -436,7 +427,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     def addSerialVUID(id: Long, jclass: asm.ClassVisitor): Unit = {
       // add static serialVersionUID field if `clasz` annotated with `@SerialVersionUID(uid: Long)`
       jclass.visitField(
-        GenBCodeOps.PublicStaticFinal,
+        GenBCodeOps.PrivateStaticFinal,
         "serialVersionUID",
         "J",
         null, // no java-generic-signature

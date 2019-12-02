@@ -21,5 +21,5 @@ object Test {
 
     "".yy
 
-  true.zz
+    true.zz
 }

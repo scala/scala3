@@ -23,7 +23,7 @@ class C4 {
   }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def check(c: Class[_]): Unit = {
     val methodName = "f"
     val methods = c.getDeclaredMethods.filter(_.getName == methodName)

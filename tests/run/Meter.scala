@@ -48,7 +48,7 @@ package b {
 }
 import a._
 import _root_.b._
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   {
   val x: Meter = new Meter(1)
@@ -69,6 +69,7 @@ object Test extends dotty.runtime.LegacyApp {
 
 
   println("x.hashCode: "+x.hashCode)
+  // println("x == 1: "+(x == 1))
   println("x == y: "+(x == y))
   assert(x.hashCode == (1.0).hashCode)
 
@@ -78,7 +79,7 @@ object Test extends dotty.runtime.LegacyApp {
 
   { println("testing native arrays")
     val arr = Array(x, y + x)
-    println(arr.deep)
+    println(arr.toList)
     def foo[T <: Printable](x: Array[T]): Unit = {
       for (i <- 0 until x.length) { x(i).print; println(" "+x(i)) }
     }

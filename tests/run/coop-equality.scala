@@ -17,6 +17,6 @@ object Test extends App {
       val a = A("")
       val b = B("")
 
-  assert(a === b)
-  assert(!((a: ANY) === (b: ANY)))
+      assert(a === b)
+      assert(!((a: ANY) === (b: ANY)))
 }

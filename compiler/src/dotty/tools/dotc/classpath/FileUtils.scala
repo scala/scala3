@@ -37,11 +37,10 @@ object FileUtils {
       // FIXME: drop last condition when we stop being compatible with Scala 2.11
   }
 
-  def stripSourceExtension(fileName: String): String = {
+  def stripSourceExtension(fileName: String): String =
     if (endsScala(fileName)) stripClassExtension(fileName)
     else if (endsJava(fileName)) stripJavaExtension(fileName)
     else throw new FatalError("Unexpected source file ending: " + fileName)
-  }
 
   def dirPath(forPackage: String): String = forPackage.replace('.', JFile.separatorChar)
 

@@ -3,9 +3,11 @@ package dotc
 package core
 package tasty
 
+import dotty.tools.tasty.{TastyBuffer, TastyFormat, TastyHash}
 import TastyFormat._
-import collection.mutable
 import TastyBuffer._
+
+import collection.mutable
 import core.Symbols.{Symbol, ClassSymbol}
 import ast.tpd
 import Decorators._
@@ -77,5 +79,4 @@ class TastyPickler(val rootCls: ClassSymbol) {
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
 
   val treePkl: TreePickler = new TreePickler(this)
-
 }

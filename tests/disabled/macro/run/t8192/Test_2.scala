@@ -6,7 +6,7 @@ class C(x: Int) {
   def this(x: String) = this(x.toInt)
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def test(sym: ClassSymbol): Unit = {
     def fullyInitializeSymbol(sym: Symbol): Unit = {
       val internal = ru.asInstanceOf[scala.reflect.internal.SymbolTable]

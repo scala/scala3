@@ -1,20 +1,20 @@
 import scala.quoted._
-import scala.tasty._
+import scala.quoted.show.SyntaxHighlight.ANSI
 
 object api {
   inline def (x: => String) reflect : String =
     ${ reflImpl('x) }
 
-  private def reflImpl(x: Expr[String])(implicit refl: Reflection): Expr[String] = {
-    import refl._
-    x.show(the[Context].withoutColors).toExpr
+  private def reflImpl(x: Expr[String])(given qctx: QuoteContext): Expr[String] = {
+    import qctx.tasty.{_, given}
+    Expr(x.show)
   }
 
   inline def (x: => String) reflectColor : String =
     ${ reflImplColor('x) }
 
-  private def reflImplColor(x: Expr[String])(implicit refl: Reflection): Expr[String] = {
-    import refl._
-    x.show(the[Context].withColors).toExpr
+  private def reflImplColor(x: Expr[String])(given qctx: QuoteContext): Expr[String] = {
+    import qctx.tasty.{_, given}
+    Expr(x.show(ANSI))
   }
 }

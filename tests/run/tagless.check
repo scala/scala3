@@ -4,13 +4,13 @@
 (7 + (-1 * 2))
 35
 7 * (8 + (-(1 + 2)))
-tf1Tree = Node(Add,WrappedArray(Node(Lit,WrappedArray(Leaf(8))), Node(Neg,WrappedArray(Node(Add,WrappedArray(Node(Lit,WrappedArray(Leaf(1))), Node(Lit,WrappedArray(Leaf(2)))))))))
-tfm1Tree = Node(Add,WrappedArray(Node(Lit,WrappedArray(Leaf(7))), Node(Neg,WrappedArray(Node(Mult,WrappedArray(Node(Lit,WrappedArray(Leaf(1))), Node(Lit,WrappedArray(Leaf(2)))))))))
+tf1Tree = Node(Add,ArraySeq(Node(Lit,ArraySeq(Leaf(8))), Node(Neg,ArraySeq(Node(Add,ArraySeq(Node(Lit,ArraySeq(Leaf(1))), Node(Lit,ArraySeq(Leaf(2)))))))))
+tfm1Tree = Node(Add,ArraySeq(Node(Lit,ArraySeq(Leaf(7))), Node(Neg,ArraySeq(Node(Mult,ArraySeq(Node(Lit,ArraySeq(Leaf(1))), Node(Lit,ArraySeq(Leaf(2)))))))))
 2
 Not a number: "X"
 5
 (8 + (-(1 + 2)))
-Node(Add,WrappedArray(Node(Lit,WrappedArray(Leaf(8))), Node(Neg,WrappedArray(Node(Add,WrappedArray(Node(Lit,WrappedArray(Leaf(1))), Node(Lit,WrappedArray(Leaf(2)))))))))
+Node(Add,ArraySeq(Node(Lit,ArraySeq(Leaf(8))), Node(Neg,ArraySeq(Node(Add,ArraySeq(Node(Lit,ArraySeq(Leaf(1))), Node(Lit,ArraySeq(Leaf(2)))))))))
 5
 (8 + (-(1 + 2)))
 (8 + ((-1) + (-2)))

@@ -27,9 +27,9 @@ object FunDemo extends App {
   }
 
   // Precise version of implicitly that keeps type members
-  def the[T <: AnyRef](implicit ev: T): ev.type = ev
+  def summon[T <: AnyRef](implicit ev: T): ev.type = ev
 
-  val adhl = the[Fun[A]]
+  val adhl = summon[Fun[A]]
 
   // Compiles in scalac: the tagged case wins the implicit search using A.tag
   // Does not compile in Dotty: because of Tagged.Aux[T, _] the companion

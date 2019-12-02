@@ -103,7 +103,7 @@ object TypeSafeLambda {
     val interped: (Env) => String =
       interp[Term, Exp, Prod, Arr, Env, String] (c, exp)
 
-    interped((((), 1), { i: Int => i.toString })) : String // "1"
+    interped((((), 1), { (i: Int) => i.toString })) : String // "1"
   }
 
 }

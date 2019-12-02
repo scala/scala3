@@ -21,7 +21,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   // Test suite configuration --------------------------------------------------
 
-  def maxDuration = 30.seconds
+  def maxDuration = 60.seconds
   def numberOfSlaves = 5
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
@@ -39,6 +39,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("compilePosWithCompiler")
     aggregateTests(
       compileFilesInDir("tests/pos-with-compiler", withCompilerOptions),
+      compileFilesInDir("tests/pos-staging", withStagingOptions),
       compileDir("compiler/src/dotty/tools/dotc/ast", withCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/config", withCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/core", withCompilerOptions),
@@ -49,10 +50,20 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
       compileDir("compiler/src/dotty/tools/dotc/typer", withCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/util", withCompilerOptions),
       compileDir("compiler/src/dotty/tools/io", withCompilerOptions),
+      compileDir("tasty/src/dotty/tools/tasty", withCompilerOptions),
       compileList(
         "testIssue6460",
         List(
           "compiler/src/dotty/tools/dotc/core/SymbolLoaders.scala",
+          "compiler/src/dotty/tools/dotc/core/Types.scala"
+        ),
+        withCompilerOptions
+      ),
+      compileList(
+        "testIssue6603",
+        List(
+          "compiler/src/dotty/tools/dotc/ast/Desugar.scala",
+          "compiler/src/dotty/tools/dotc/ast/Trees.scala",
           "compiler/src/dotty/tools/dotc/core/Types.scala"
         ),
         withCompilerOptions
@@ -94,22 +105,35 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def negWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
-    compileFilesInDir("tests/neg-with-compiler", withCompilerOptions).checkExpectedErrors()
+    aggregateTests(
+      compileFilesInDir("tests/neg-with-compiler", withCompilerOptions),
+      compileFilesInDir("tests/neg-staging", withStagingOptions),
+    ).checkExpectedErrors()
   }
 
   // Run tests -----------------------------------------------------------------
 
   @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
-    compileFilesInDir("tests/run-macros", defaultOptions)
+    aggregateTests(
+      compileFilesInDir("tests/run-macros", defaultOptions),
+      compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees"),
+    )
   }.checkRuns()
 
   @Test def runWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
     aggregateTests(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),
-      compileDir("tests/run-with-compiler-custom-args/tasty-interpreter", withCompilerOptions),
-      compileFile("tests/run-with-compiler-custom-args/staged-streams_1.scala", withCompilerOptions without "-Yno-deep-subtypes")
+      compileFilesInDir("tests/run-staging", withStagingOptions),
+      compileDir("tests/run-with-compiler-custom-args/tasty-interpreter", withCompilerOptions)
+    ).checkRuns()
+  }
+
+  @Test def runBootstrappedOnly: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("runBootstrappedOnly")
+    aggregateTests(
+      compileFilesInDir("tests/run-bootstrapped", withCompilerOptions),
     ).checkRuns()
   }
 
@@ -140,11 +164,13 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
       compileFile("tests/pos/pickleinf.scala", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/core/classfile", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/core/tasty", picklingWithCompilerOptions),
-      compileDir("compiler/src/dotty/tools/dotc/core/unpickleScala2", picklingWithCompilerOptions)
+      compileDir("compiler/src/dotty/tools/dotc/core/unpickleScala2", picklingWithCompilerOptions),
+      compileDir("tasty/src/dotty/tools/tasty", picklingWithCompilerOptions)
     ).limitThreads(4).checkCompile()
   }
 
   @Test def testPlugins: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("testPlugins")
     val pluginFile = "plugin.properties"
 
     // 1. hack with absolute path for -Xplugin
@@ -165,6 +191,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     }
 
     compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
+    compileDir("tests/plugins/custom/analyzer", withCompilerOptions.and("-Yretain-trees")).checkCompile()
   }
 }
 

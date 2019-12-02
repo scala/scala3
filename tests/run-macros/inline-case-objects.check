@@ -3,4 +3,4 @@ scala.None$
 Bar$
 Bar.Baz$
 foo.Bar$
-Bar.Baz$
+foo.Bar.Baz$

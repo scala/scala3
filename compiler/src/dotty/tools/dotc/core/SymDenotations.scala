@@ -40,7 +40,7 @@ trait SymDenotations { this: Context =>
     initPrivateWithin: Symbol = NoSymbol)(implicit ctx: Context): SymDenotation = {
     val result =
       if (symbol.isClass)
-        if (initFlags is Package) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+        if (initFlags.is(Package)) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
         else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
       else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
     result.validFor = stablePeriod
@@ -48,7 +48,7 @@ trait SymDenotations { this: Context =>
   }
 
   def stillValid(denot: SymDenotation): Boolean =
-    if (denot.is(ValidForever) || denot.isRefinementClass || denot.isImport) true
+    if (denot.isOneOf(ValidForeverFlags) || denot.isRefinementClass || denot.isImport) true
     else {
       val initial = denot.initial
       val firstPhaseId = initial.validFor.firstPhaseId.max(ctx.typerPhase.id)
@@ -67,7 +67,8 @@ trait SymDenotations { this: Context =>
       || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
       || denot.isSelfSym
       || denot.isLocalDummy)
-  } catch {
+  }
+  catch {
     case ex: StaleSymbol => false
   }
 
@@ -81,29 +82,34 @@ trait SymDenotations { this: Context =>
     denot match {
       case denot: SymDenotation =>
         def explainSym(msg: String) = explain(s"$msg\ndefined = ${denot.definedPeriodsString}")
-        if (denot.is(ValidForever) || denot.isRefinementClass) true
+        if (denot.isOneOf(ValidForeverFlags) || denot.isRefinementClass) true
         else {
           implicit val ctx = this
           val initial = denot.initial
-          if ((initial ne denot) || ctx.phaseId != initial.validFor.firstPhaseId) {
+          if ((initial ne denot) || ctx.phaseId != initial.validFor.firstPhaseId)
             ctx.withPhase(initial.validFor.firstPhaseId).traceInvalid(initial)
-          } else try {
+          else try {
             val owner = denot.owner.denot
             if (!traceInvalid(owner)) explainSym("owner is invalid")
             else if (!owner.isClass || owner.isRefinementClass || denot.isSelfSym) true
             else if (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol) true
             else explainSym(s"decls of ${show(owner)} are ${owner.unforcedDecls.lookupAll(denot.name).toList}, do not contain ${denot.symbol}")
-          } catch {
+          }
+          catch {
             case ex: StaleSymbol => explainSym(s"$ex was thrown")
           }
-      }
+        }
       case _ =>
         explain("denotation is not a SymDenotation")
     }
   }
 
-  /** Configurable: Accept stale symbol with warning if in IDE */
-  def staleOK: Boolean = Config.ignoreStaleInIDE && mode.is(Mode.Interactive)
+  /** Configurable: Accept stale symbol with warning if in IDE
+   *  Always accept stale symbols when testing pickling.
+   */
+  def staleOK: Boolean =
+    Config.ignoreStaleInIDE && mode.is(Mode.Interactive) ||
+    settings.YtestPickler.value
 
   /** Possibly accept stale symbol with warning if in IDE */
   def acceptStale(denot: SingleDenotation): Boolean =
@@ -139,9 +145,9 @@ object SymDenotations {
 
     // ------ Getting and setting fields -----------------------------
 
-    private[this] var myFlags: FlagSet = adaptFlags(initFlags)
-    private[this] var myPrivateWithin: Symbol = initPrivateWithin
-    private[this] var myAnnotations: List[Annotation] = Nil
+    private var myFlags: FlagSet = adaptFlags(initFlags)
+    private var myPrivateWithin: Symbol = initPrivateWithin
+    private var myAnnotations: List[Annotation] = Nil
 
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = maybeOwner
@@ -153,6 +159,8 @@ object SymDenotations {
      *  Should be used only for printing.
      */
     private[dotc] final def flagsUNSAFE: FlagSet = myFlags
+
+    final def flagsString(implicit ctx: Context): String = flags.flagsString
 
     /** Adapt flag set to this denotation's term or type nature */
     private def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
@@ -184,25 +192,35 @@ object SymDenotations {
     final def relevantFlagsFor(fs: FlagSet)(implicit ctx: Context) =
       if (isCurrent(fs)) myFlags else flags
 
+    /** Has this denotation one of given flag set? */
+    final def is(flag: Flag)(implicit ctx: Context): Boolean =
+      (if (isCurrent(flag)) myFlags else flags).is(flag)
+
     /** Has this denotation one of the flags in `fs` set? */
-    final def is(fs: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs)) myFlags else flags) is fs
+    final def isOneOf(fs: FlagSet)(implicit ctx: Context): Boolean =
+      (if (isCurrent(fs)) myFlags else flags).isOneOf(fs)
+
+    /** Has this denotation the given flag set, whereas none of the flags
+     *  in `butNot` are set?
+     */
+    final def is(flag: Flag, butNot: FlagSet)(implicit ctx: Context): Boolean =
+      (if (isCurrent(flag) && isCurrent(butNot)) myFlags else flags).is(flag, butNot)
 
     /** Has this denotation one of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
-    final def is(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags) is (fs, butNot)
+    final def isOneOf(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean =
+      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).isOneOf(fs, butNot)
 
     /** Has this denotation all of the flags in `fs` set? */
-    final def is(fs: FlagConjunction)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs)) myFlags else flags) is fs
+    final def isAllOf(fs: FlagSet)(implicit ctx: Context): Boolean =
+      (if (isCurrent(fs)) myFlags else flags).isAllOf(fs)
 
     /** Has this denotation all of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
-    final def is(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags) is (fs, butNot)
+    final def isAllOf(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean =
+      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).isAllOf(fs, butNot)
 
     /** The type info, or, if symbol is not yet completed, the completer */
     final def infoOrCompleter: Type = myInfo
@@ -218,7 +236,7 @@ object SymDenotations {
         println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
         indent += 1
 
-        if (myFlags is Touched) throw CyclicReference(this)
+        if (myFlags.is(Touched)) throw CyclicReference(this)
         myFlags |= Touched
 
         // completions.println(s"completing ${this.debugString}")
@@ -234,7 +252,7 @@ object SymDenotations {
         }
       }
       else {
-        if (myFlags is Touched) throw CyclicReference(this)
+        if (myFlags.is(Touched)) throw CyclicReference(this)
         myFlags |= Touched
         completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
       }
@@ -260,16 +278,36 @@ object SymDenotations {
      *     "avoid clash" suffix
      */
     def effectiveName(implicit ctx: Context): Name =
-      if (this is ModuleClass) name.stripModuleClassSuffix
+      if (this.is(ModuleClass)) name.stripModuleClassSuffix
       else name.exclude(AvoidClashName)
 
     /** The privateWithin boundary, NoSymbol if no boundary is given.
      */
-    final def privateWithin(implicit ctx: Context): Symbol = { ensureCompleted(); myPrivateWithin }
+    @tailrec
+    final def privateWithin(implicit ctx: Context): Symbol = myInfo match {
+      case myInfo: ModuleCompleter =>
+        // Instead of completing the ModuleCompleter, we can get `privateWithin`
+        // directly from the module class, which might require less completions.
+        myInfo.moduleClass.privateWithin
+      case _: SymbolLoader =>
+         // Completing a SymbolLoader might call `setPrivateWithin()`
+        completeOnce()
+        privateWithin
+      case _ =>
+        // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
+        myPrivateWithin
+    }
 
-    /** Set privateWithin. */
-    protected[dotc] final def privateWithin_=(sym: Symbol): Unit =
-      myPrivateWithin = sym
+    /** Set privateWithin, prefer setting it at symbol-creation time instead if
+     *  possible.
+     *  @pre `isCompleting` is false, or this is a ModuleCompleter or SymbolLoader
+     */
+    protected[dotc] final def setPrivateWithin(pw: Symbol)(implicit ctx: Context): Unit = {
+      if (isCompleting)
+        assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
+          s"Illegal call to `setPrivateWithin($pw)` while completing $this using completer $myInfo")
+      myPrivateWithin = pw
+    }
 
     /** The annotations of this denotation */
     final def annotations(implicit ctx: Context): List[Annotation] = {
@@ -324,7 +362,7 @@ object SymDenotations {
 
     /** Add all given annotations to this symbol */
     final def addAnnotations(annots: TraversableOnce[Annotation])(implicit ctx: Context): Unit =
-      annots.foreach(addAnnotation)
+      annots.iterator.foreach(addAnnotation)
 
     @tailrec
     private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(implicit ctx: Context): List[Annotation] = anns match {
@@ -336,12 +374,26 @@ object SymDenotations {
     final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
 
     /** The denotation is in train of being completed */
-    final def isCompleting: Boolean = (myFlags is Touched) && !isCompleted
+    final def isCompleting: Boolean = myFlags.is(Touched) && !isCompleted
 
     /** The completer of this denotation. @pre: Denotation is not yet completed */
     final def completer: LazyType = myInfo.asInstanceOf[LazyType]
 
-    /** Make sure this denotation is completed */
+    /** If this denotation is not completed, run the completer.
+     *  The resulting info might be another completer.
+     *
+     *  @see ensureCompleted
+     */
+    final def completeOnce()(implicit ctx: Context): Unit = myInfo match {
+      case myInfo: LazyType =>
+        completeFrom(myInfo)
+      case _ =>
+    }
+
+    /** Make sure this denotation is fully completed.
+     *
+     *  @see completeOnce
+     */
     final def ensureCompleted()(implicit ctx: Context): Unit = info
 
     /** The symbols defined in this class or object.
@@ -358,7 +410,7 @@ object SymDenotations {
       case cinfo: LazyType =>
         val knownDecls = cinfo.decls
         if (knownDecls ne EmptyScope) knownDecls
-        else { completeFrom(cinfo); unforcedDecls } // complete-once
+        else { completeOnce(); unforcedDecls }
       case _ => info.decls
     }
 
@@ -383,7 +435,7 @@ object SymDenotations {
         case tp: HKTypeLambda => tp.derivedLambdaType(resType = abstractRHS(tp.resType))
         case _ => defn.AnyType
       }
-      if (isOpaqueAlias) {
+      if (isOpaqueAlias)
         info match {
           case TypeAlias(alias) =>
             val (refiningAlias, bounds) = alias match {
@@ -397,7 +449,8 @@ object SymDenotations {
             val enclClassInfo = owner.asClass.classInfo
             enclClassInfo.selfInfo match {
               case self: Type =>
-                owner.info = enclClassInfo.derivedClassInfo(selfInfo = refineSelfType(self))
+                owner.info = enclClassInfo.derivedClassInfo(
+                  selfInfo = refineSelfType(self.orElse(defn.AnyType)))
               case self: Symbol =>
                 self.info = refineSelfType(self.info)
             }
@@ -406,7 +459,6 @@ object SymDenotations {
             typeRef.recomputeDenot()
           case _ =>
         }
-      }
     }
 
     // ------ Names ----------------------------------------------
@@ -435,7 +487,7 @@ object SymDenotations {
      *  followed by the separator implied by `kind` and the given `name`.
      *  Drops package objects. Represents each term in the owner chain by a simple `_$`.
      */
-     def fullNameSeparated(prefixKind: QualifiedNameKind, kind: QualifiedNameKind, name: Name)(implicit ctx: Context): Name =
+    def fullNameSeparated(prefixKind: QualifiedNameKind, kind: QualifiedNameKind, name: Name)(implicit ctx: Context): Name =
       if (symbol == NoSymbol || isEffectiveRoot || kind == FlatName && is(PackageClass))
         name
       else {
@@ -493,20 +545,33 @@ object SymDenotations {
     /** is this symbol the result of an erroneous definition? */
     def isError: Boolean = false
 
-    /** Make denotation not exist */
-    final def markAbsent(): Unit =
+    /** Make denotation not exist.
+     *  @pre `isCompleting` is false, or this is a ModuleCompleter or SymbolLoader
+     */
+    final def markAbsent()(implicit ctx: Context): Unit = {
+      if (isCompleting)
+        assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
+          s"Illegal call to `markAbsent()` while completing $this using completer $myInfo")
       myInfo = NoType
+    }
 
-    /** Is symbol known to not exist, or potentially not completed yet? */
-    final def unforcedIsAbsent(implicit ctx: Context): Boolean =
-      myInfo == NoType ||
-      (this is (ModuleVal, butNot = Package)) && moduleClass.unforcedIsAbsent
-
-    /** Is symbol known to not exist? */
-    final def isAbsent(implicit ctx: Context): Boolean = {
-      ensureCompleted()
-      (myInfo `eq` NoType) ||
-      (this is (ModuleVal, butNot = Package)) && moduleClass.isAbsent
+    /** Is symbol known to not exist?
+     *  @param canForce  If this is true, the info may be forced to avoid a false-negative result
+     */
+    @tailrec
+    final def isAbsent(canForce: Boolean = true)(implicit ctx: Context): Boolean = myInfo match {
+      case myInfo: ModuleCompleter =>
+        // Instead of completing the ModuleCompleter, we can check whether
+        // the module class is absent, which might require less completions.
+        myInfo.moduleClass.isAbsent(canForce)
+      case _: SymbolLoader if canForce =>
+         // Completing a SymbolLoader might call `markAbsent()`
+        completeOnce()
+        isAbsent(canForce)
+      case _ =>
+        // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
+        (myInfo `eq` NoType) ||
+        is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
     }
 
     /** Is this symbol the root class or its companion object? */
@@ -558,19 +623,19 @@ object SymDenotations {
 
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean =
-      name.isPackageObjectName && (owner is Package) && (this is Module)
+      name.isPackageObjectName && owner.is(Package) && this.is(Module)
 
     /** Is this symbol an abstract type? */
-    final def isAbstractType(implicit ctx: Context): Boolean = this is DeferredType
+    final def isAbstractType(implicit ctx: Context): Boolean = this.is(DeferredType)
 
     /** Is this symbol an alias type? */
-    final def isAliasType(implicit ctx: Context): Boolean = isAbstractOrAliasType && !(this is Deferred)
+    final def isAliasType(implicit ctx: Context): Boolean = isAbstractOrAliasType && !this.is(Deferred)
 
     /** Is this symbol an abstract or alias type? */
     final def isAbstractOrAliasType: Boolean = isType & !isClass
 
     /** Is this symbol an abstract type or type parameter? */
-    final def isAbstractOrParamType(implicit ctx: Context): Boolean = this is DeferredOrTypeParam
+    final def isAbstractOrParamType(implicit ctx: Context): Boolean = this.isOneOf(DeferredOrTypeParam)
 
     /** Is this symbol a user-defined opaque alias type? */
     def isOpaqueAlias(implicit ctx: Context): Boolean = is(Opaque) && !isClass
@@ -580,7 +645,7 @@ object SymDenotations {
 
     def seesOpaques(implicit ctx: Context): Boolean =
       containsOpaques ||
-      is(Module, butNot = Package) && owner.containsOpaques
+      is(Module, butNot = Package) && owner.seesOpaques
 
     /** Is this the denotation of a self symbol of some class?
      *  This is the case if one of two conditions holds:
@@ -606,7 +671,7 @@ object SymDenotations {
       def recur(sym: Symbol): Boolean =
         if (sym eq boundary) true
         else if (sym eq NoSymbol) false
-        else if ((sym is PackageClass) && !(boundary is PackageClass)) false
+        else if (sym.is(PackageClass) && !boundary.is(PackageClass)) false
         else recur(sym.owner)
       recur(symbol)
     }
@@ -626,8 +691,8 @@ object SymDenotations {
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     final def isCoDefinedWith(other: Symbol)(implicit ctx: Context): Boolean =
       (this.effectiveOwner == other.effectiveOwner) &&
-      (  !(this.effectiveOwner is PackageClass)
-        || this.unforcedIsAbsent || other.unforcedIsAbsent
+      (  !this.effectiveOwner.is(PackageClass)
+        || this.isAbsent(canForce = false) || other.isAbsent(canForce = false)
         || { // check if they are defined in the same file(or a jar)
            val thisFile = this.symbol.associatedFile
            val thatFile = other.associatedFile
@@ -650,7 +715,7 @@ object SymDenotations {
       * So the first call to a stable member might fail and/or produce side effects.
       */
     final def isStableMember(implicit ctx: Context): Boolean = {
-      def isUnstableValue = is(UnstableValue) || info.isInstanceOf[ExprType]
+      def isUnstableValue = isOneOf(UnstableValueFlags) || info.isInstanceOf[ExprType]
       isType || is(StableRealizable) || !isUnstableValue
     }
 
@@ -670,11 +735,11 @@ object SymDenotations {
 
     /** Is this a getter? */
     final def isGetter(implicit ctx: Context): Boolean =
-      (this is Accessor) && !originalName.isSetterName && !originalName.isScala2LocalSuffix
+      this.is(Accessor) && !originalName.isSetterName && !originalName.isScala2LocalSuffix
 
     /** Is this a setter? */
     final def isSetter(implicit ctx: Context): Boolean =
-      (this is Accessor) &&
+      this.is(Accessor) &&
       originalName.isSetterName &&
       (!isCompleted || info.firstParamTypes.nonEmpty) // to avoid being fooled by   var x_= : Unit = ...
 
@@ -730,6 +795,9 @@ object SymDenotations {
      *  @param superAccess  Access is via super
      *  Everything is accessible if `pre` is `NoPrefix`.
      *  A symbol with type `NoType` is not accessible for any other prefix.
+     *
+     *  As a side effect, drop Local flags of members that are not accessed via the ThisType
+     *  of their owner.
      */
     final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer = null)(implicit ctx: Context): Boolean = {
 
@@ -747,7 +815,7 @@ object SymDenotations {
        */
       def isCorrectThisType(pre: Type): Boolean = pre match {
         case pre: ThisType =>
-          (pre.cls eq owner) || (this is Protected) && pre.cls.derivesFrom(owner)
+          (pre.cls eq owner) || this.is(Protected) && pre.cls.derivesFrom(owner)
         case pre: TermRef =>
           pre.symbol.moduleClass == owner
         case _ =>
@@ -766,12 +834,13 @@ object SymDenotations {
             i"""
                | Access to protected $this not permitted because enclosing ${ctx.owner.enclosingClass.showLocated}
                | is not a subclass of ${owner.showLocated} where target is defined""")
-        else if (
+        else if
           !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
            || pre.derivesFrom(cls)
            || isConstructor
-           || (owner is ModuleClass) // don't perform this check for static members
-           ))
+           || owner.is(ModuleClass) // don't perform this check for static members
+           )
+        then
           fail(
             i"""
                | Access to protected ${symbol.show} not permitted because prefix type ${pre.widen.show}
@@ -780,17 +849,22 @@ object SymDenotations {
       }
 
       if (pre eq NoPrefix) true
-      else if (info eq NoType) false
+      else if (isAbsent()) false
       else {
         val boundary = accessBoundary(owner)
 
         (  boundary.isTerm
         || boundary.isRoot
         || (accessWithin(boundary) || accessWithinLinked(boundary)) &&
-             (  !(this is Local)
+             (  !this.is(Local)
              || isCorrectThisType(pre)
+             || canBeLocal(name, flags)
+                && {
+                  resetFlag(Local)
+                  true
+                }
              )
-        || (this is Protected) &&
+        || this.is(Protected) &&
              (  superAccess
              || pre.isInstanceOf[ThisType]
              || ctx.phase.erasedTypes
@@ -813,12 +887,12 @@ object SymDenotations {
 
     /** Is this symbol concrete, or that symbol deferred? */
     def isAsConcrete(that: Symbol)(implicit ctx: Context): Boolean =
-      !(this is Deferred) || (that is Deferred)
+      !this.is(Deferred) || that.is(Deferred)
 
     /** Does this symbol have defined or inherited default parameters? */
     def hasDefaultParams(implicit ctx: Context): Boolean =
-      if (this is HasDefaultParams) true
-      else if (this is NoDefaultParams) false
+      if (this.isOneOf(HasDefaultParamsFlags)) true
+      else if (this.is(NoDefaultParams)) false
       else {
         val result = allOverriddenSymbols exists (_.hasDefaultParams)
         setFlag(if (result) InheritedDefaultParams else NoDefaultParams)
@@ -831,12 +905,12 @@ object SymDenotations {
      */
     def isWeakOwner(implicit ctx: Context): Boolean =
       isPackageObject ||
-      isTerm && !is(MethodOrLazy) && !isLocalDummy
+      isTerm && !isOneOf(MethodOrLazy) && !isLocalDummy
 
     def isSkolem: Boolean = name == nme.SKOLEM
 
     def isInlineMethod(implicit ctx: Context): Boolean =
-      is(InlineMethod, butNot = Accessor) &&
+      isAllOf(InlineMethod, butNot = Accessor) &&
       !name.isUnapplyName  // unapply methods do not count as inline methods
                            // we need an inline flag on them only do that
                            // reduceProjection gets access to their rhs
@@ -844,17 +918,10 @@ object SymDenotations {
     /** Is this a Scala 2 macro */
     final def isScala2Macro(implicit ctx: Context): Boolean = is(Macro) && symbol.owner.is(Scala2x)
 
-    /** An erased value or an inline method, excluding @forceInline annotated methods.
-     *  The latter have to be kept around to get to parity with Scala.
-     *  This is necessary at least until we have full bootstrap. Right now
-     *  dotty-bootstrapped involves running the Dotty compiler compiled with Scala 2 with
-     *  a Dotty runtime library compiled with Dotty. If we erase @forceInline annotated
-     *  methods, this means that the support methods in dotty.runtime.LazyVals vanish.
-     *  But they are needed for running the lazy val implementations in the Scala-2 compiled compiler.
+    /** An erased value or an inline method.
      */
     def isEffectivelyErased(implicit ctx: Context): Boolean =
-      is(Erased) ||
-      isInlineMethod && unforcedAnnotation(defn.ForceInlineAnnot).isEmpty
+      is(Erased) || isInlineMethod
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,
@@ -890,7 +957,7 @@ object SymDenotations {
       	if (Config.showCompletions) println(s"missing module class for $name: $myInfo")
       	NoSymbol
       }
-      if (this is ModuleVal)
+      if (this.is(ModuleVal))
         myInfo match {
           case info: TypeRef           => info.symbol
           case ExprType(info: TypeRef) => info.symbol // needed after uncurry, when module terms might be accessor defs
@@ -902,7 +969,7 @@ object SymDenotations {
             }
           case _ => notFound
         }
-      else if (this is ModuleClass)
+      else if (this.is(ModuleClass))
         symbol
       else
         NoSymbol
@@ -912,10 +979,10 @@ object SymDenotations {
      *  otherwise NoSymbol
      */
     final def sourceModule(implicit ctx: Context): Symbol =
-      if (this is ModuleClass)
+      if (this.is(ModuleClass))
         myInfo match {
           case ClassInfo(_, _, _, _, selfType) =>
-            def sourceOfSelf(tp: TypeOrSymbol): Symbol = tp match {
+            def sourceOfSelf(tp: TypeOrSymbol): Symbol = (tp: @unchecked) match {
               case tp: TermRef => tp.symbol
               case tp: Symbol => sourceOfSelf(tp.info)
               case tp: RefinedType => sourceOfSelf(tp.parent)
@@ -926,7 +993,7 @@ object SymDenotations {
           case _ =>
             NoSymbol
         }
-      else if (this is ModuleVal)
+      else if (this.is(ModuleVal))
         symbol
       else
         NoSymbol
@@ -949,7 +1016,7 @@ object SymDenotations {
 
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
     final def ownersIterator(implicit ctx: Context): Iterator[Symbol] = new Iterator[Symbol] {
-      private[this] var current = symbol
+      private var current = symbol
       def hasNext = current.exists
       def next: Symbol = {
         val result = current
@@ -995,7 +1062,13 @@ object SymDenotations {
 
     /** A symbol is effectively final if it cannot be overridden in a subclass */
     final def isEffectivelyFinal(implicit ctx: Context): Boolean =
-      is(EffectivelyFinal) || !owner.isClass || owner.is(ModuleOrFinal) || owner.isAnonymousClass
+      isOneOf(EffectivelyFinalFlags) || !owner.isClass || owner.isOneOf(FinalOrModuleClass) || owner.isAnonymousClass
+
+    /** A class is effectively sealed if has the `final` or `sealed` modifier, or it
+     *  is defined in Scala 3 and is neither abstract nor open.
+     */
+    final def isEffectivelySealed(given Context): Boolean =
+      isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
 
     /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {
@@ -1016,21 +1089,20 @@ object SymDenotations {
      *  except for a toplevel module, where its module class is returned.
      */
     final def topLevelClass(implicit ctx: Context): Symbol = {
-      @tailrec def topLevel(d: SymDenotation): Symbol = {
+      @tailrec def topLevel(d: SymDenotation): Symbol =
         if (d.isTopLevelClass) d.symbol
         else topLevel(d.owner)
-      }
 
       val sym = topLevel(this)
       if (sym.isClass) sym else sym.moduleClass
     }
 
     final def isTopLevelClass(implicit ctx: Context): Boolean =
-      !this.exists || this.isEffectiveRoot || (this is PackageClass) || (this.owner is PackageClass)
+      !this.exists || this.isEffectiveRoot || this.is(PackageClass) || this.owner.is(PackageClass)
 
     /** The package class containing this denotation */
     final def enclosingPackageClass(implicit ctx: Context): Symbol =
-      if (this is PackageClass) symbol else owner.enclosingPackageClass
+      if (this.is(PackageClass)) symbol else owner.enclosingPackageClass
 
     /** Register target as a companion; overridden in ClassDenotation */
     def registerCompanion(target: Symbol)(implicit ctx: Context) = ()
@@ -1060,7 +1132,7 @@ object SymDenotations {
       companionType.suchThat(_.isClass).symbol
 
     final def scalacLinkedClass(implicit ctx: Context): Symbol =
-      if (this is ModuleClass) companionNamed(effectiveName.toTypeName)
+      if (this.is(ModuleClass)) companionNamed(effectiveName.toTypeName)
       else if (this.isClass) companionNamed(effectiveName.moduleClassName).sourceModule.moduleClass
       else NoSymbol
 
@@ -1098,7 +1170,7 @@ object SymDenotations {
      *  NoSymbol otherwise.
      */
     final def linkedClass(implicit ctx: Context): Symbol =
-      if (this is ModuleClass) companionClass
+      if (this.is(ModuleClass)) companionClass
       else if (this.isClass) companionModule.moduleClass
       else NoSymbol
 
@@ -1118,7 +1190,7 @@ object SymDenotations {
         case _ =>
           NoType
       }
-      recur(owner.asClass.classInfo.selfType)
+      recur(owner.asClass.givenSelfType)
     }
 
     /** The non-private symbol whose name and type matches the type of this symbol
@@ -1204,7 +1276,7 @@ object SymDenotations {
       @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
         case bc :: bcs1 =>
           val sym = matchingDecl(bcs.head, base.thisType)
-            .suchThat(alt => !(alt is Deferred)).symbol
+            .suchThat(alt => !alt.is(Deferred)).symbol
           if (sym.exists) sym else loop(bcs.tail)
         case _ =>
           NoSymbol
@@ -1218,8 +1290,8 @@ object SymDenotations {
      *      nonexistent or incomplete.
      */
     @tailrec final def isIncompleteIn(base: Symbol)(implicit ctx: Context): Boolean =
-      (this is Deferred) ||
-      (this is AbsOverride) && {
+      this.is(Deferred) ||
+      this.is(AbsOverride) && {
         val supersym = superSymbolIn(base)
         supersym == NoSymbol || supersym.isIncompleteIn(base)
       }
@@ -1230,14 +1302,15 @@ object SymDenotations {
      *  as public.
      *  @param base  The access boundary to assume if this symbol is protected
      */
-    final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol = {
-      val fs = flags
-      if (fs is Private) owner
-      else if (fs is StaticProtected) defn.RootClass
+    final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol =
+      if (this.is(Private)) owner
+      else if (this.isAllOf(StaticProtected)) defn.RootClass
       else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
-      else if (fs is Protected) base
+      else if (this.is(Protected)) base
       else defn.RootClass
-    }
+
+    final def isPublic(implicit ctx: Context): Boolean =
+      accessBoundary(owner) == defn.RootClass
 
     /** The primary constructor of a class or trait, NoSymbol if not applicable. */
     def primaryConstructor(implicit ctx: Context): Symbol = NoSymbol
@@ -1286,8 +1359,8 @@ object SymDenotations {
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
      */
     final def variance(implicit ctx: Context): Int =
-      if (this is Covariant) 1
-      else if (this is Contravariant) -1
+      if (this.is(Covariant)) 1
+      else if (this.is(Contravariant)) -1
       else 0
 
     /** The flags to be used for a type parameter owned by this symbol.
@@ -1295,16 +1368,16 @@ object SymDenotations {
      */
     def typeParamCreationFlags: FlagSet = TypeParam
 
-    override def toString: String = {
-      val kindString =
-        if (myFlags is ModuleClass) "module class"
-        else if (isClass) "class"
-        else if (isType) "type"
-        else if (myFlags is Module) "module"
-        else if (myFlags is Method) "method"
-        else "val"
-      s"$kindString $name"
-    }
+    def kindString: String =
+      if myFlags.is(ModuleClass) then "module class"
+      else if myFlags.is(Trait)  then "trait"
+      else if isClass            then "class"
+      else if isType             then "type"
+      else if myFlags.is(Module) then "module"
+      else if myFlags.is(Method) then "method"
+      else                            "val"
+
+    override def toString: String = s"$kindString $name"
 
     // ----- Sanity checks and debugging */
 
@@ -1332,7 +1405,8 @@ object SymDenotations {
 
     // ----- copies and transforms  ----------------------------------------
 
-    protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
+      new UniqueRefDenotation(s, i, validFor, pre)
 
     /** Copy this denotation, overriding selective fields */
     final def copySymDenotation(
@@ -1342,8 +1416,8 @@ object SymDenotations {
       initFlags: FlagSet = UndefinedFlags,
       info: Type = null,
       privateWithin: Symbol = null,
-      annotations: List[Annotation] = null)(implicit ctx: Context): SymDenotation =
-    { // simulate default parameters, while also passing implicit context ctx to the default values
+      annotations: List[Annotation] = null)(implicit ctx: Context): SymDenotation = {
+      // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
       val info1 = if (info != null) info else this.info
       if (ctx.isAfterTyper && changedClassParents(info, info1, completersMatter = false))
@@ -1408,16 +1482,16 @@ object SymDenotations {
 
     // ----- caches -------------------------------------------------------
 
-    private[this] var myTypeParams: List[TypeSymbol] = null
-    private[this] var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.Empty
+    private var myTypeParams: List[TypeSymbol] = null
+    private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.Empty
 
-    private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
-    private[this] var myMemberCachePeriod: Period = Nowhere
+    private var myMemberCache: LRUCache[Name, PreDenotation] = null
+    private var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
     type BaseTypeMap = java.util.IdentityHashMap[CachedType, Type]
-    private[this] var myBaseTypeCache: BaseTypeMap = null
-    private[this] var myBaseTypeCachePeriod: Period = Nowhere
+    private var myBaseTypeCache: BaseTypeMap = null
+    private var myBaseTypeCachePeriod: Period = Nowhere
 
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
@@ -1468,7 +1542,7 @@ object SymDenotations {
 
     // ----- denotation fields and accessors ------------------------------
 
-    if (initFlags is (Module, butNot = Package))
+    if (initFlags.is(Module, butNot = Package))
       assert(name.is(ModuleClassName), s"module naming inconsistency: ${name.debugString}")
 
     /** The symbol asserted to have type ClassSymbol */
@@ -1484,7 +1558,7 @@ object SymDenotations {
      */
     private def typeParamsFromDecls(implicit ctx: Context) =
       unforcedDecls.filter(sym =>
-        (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
+        sym.is(TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
 
     /** The type parameters of this class */
     override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
@@ -1519,7 +1593,7 @@ object SymDenotations {
     def superClass(implicit ctx: Context): Symbol = classParents match {
       case parent :: _ =>
         val cls = parent.classSymbol
-        if (cls is Trait) NoSymbol else cls
+        if (cls.is(Trait)) NoSymbol else cls
       case _ =>
         NoSymbol
     }
@@ -1534,7 +1608,7 @@ object SymDenotations {
 
    // ------ class-specific operations -----------------------------------
 
-    private[this] var myThisType: Type = null
+    private var myThisType: Type = null
 
     /** The this-type depends on the kind of class:
      *  - for a package class `p`:  ThisType(TypeRef(Noprefix, p))
@@ -1548,11 +1622,11 @@ object SymDenotations {
 
     private def computeThisType(implicit ctx: Context): Type = {
       val cls = symbol.asType
-      val pre = if (this is Package) NoPrefix else owner.thisType
+      val pre = if (this.is(Package)) NoPrefix else owner.thisType
       ThisType.raw(TypeRef(pre, cls))
     }
 
-    private[this] var myTypeRef: TypeRef = null
+    private var myTypeRef: TypeRef = null
 
     override def typeRef(implicit ctx: Context): TypeRef = {
       if (myTypeRef == null) myTypeRef = super.typeRef
@@ -1596,7 +1670,7 @@ object SymDenotations {
     }
 
     final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
-      !isAbsent &&
+      !isAbsent() &&
       base.isClass &&
       (  (symbol eq base)
       || (baseClassSet contains base)
@@ -1644,9 +1718,8 @@ object SymDenotations {
       if (proceedWithEnter(sym, mscope)) {
         enterNoReplace(sym, mscope)
         val nxt = this.nextInRun
-        if (nxt.validFor.code > this.validFor.code) {
+        if (nxt.validFor.code > this.validFor.code)
           this.nextInRun.asSymDenotation.asClass.enter(sym)
-        }
         if (defn.isScalaShadowingPackageClass(sym.owner))
           defn.ScalaPackageClass.enter(sym)  // ScalaShadowing members are mirrored in ScalaPackage
       }
@@ -1714,15 +1787,17 @@ object SymDenotations {
         if (denots == null) {
           denots = computeNPMembersNamed(name)
           memberCache.enter(name, denots)
-        } else if (Config.checkCacheMembersNamed) {
+        }
+        else if (Config.checkCacheMembersNamed) {
           val denots1 = computeNPMembersNamed(name)
           assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")
         }
         denots
-      } else computeNPMembersNamed(name)
+      }
+      else computeNPMembersNamed(name)
     }
 
-    private[core] def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = /*>|>*/ Stats.track("computeNPMembersNamed") /*<|<*/ {
+    private[core] def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
       Stats.record("computeNPMembersNamed after fingerprint")
       ensureCompleted()
       val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)
@@ -1746,8 +1821,8 @@ object SymDenotations {
       else collect(ownDenots, classParents)
     }
 
-    override final def findMember(name: Name, pre: Type, required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Denotation = {
-      val raw = if (excluded is Private) nonPrivateMembersNamed(name) else membersNamed(name)
+    override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(implicit ctx: Context): Denotation = {
+      val raw = if (excluded.is(Private)) nonPrivateMembersNamed(name) else membersNamed(name)
       raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre)
     }
 
@@ -1830,8 +1905,8 @@ object SymDenotations {
             def computeApplied = {
               btrCache.put(tp, NoPrefix)
               val baseTp =
-              	if (tycon.typeSymbol eq symbol) tp
-              	else (tycon.typeParams: @unchecked) match {
+                if (tycon.typeSymbol eq symbol) tp
+                else (tycon.typeParams: @unchecked) match {
                   case LambdaParam(_, _) :: _ =>
                     recur(tp.superType)
                   case tparams: List[Symbol @unchecked] =>
@@ -1894,14 +1969,14 @@ object SymDenotations {
       }
 
 
-      /*>|>*/ trace.onDebug(s"$tp.baseType($this)") /*<|<*/ {
+      trace.onDebug(s"$tp.baseType($this)") {
         Stats.record("baseTypeOf")
         recur(tp)
       }
     }
 
     def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] =
-     if ((this is PackageClass) || !Config.cacheMemberNames)
+      if (this.is(PackageClass) || !Config.cacheMemberNames)
         computeMemberNames(keepOnly) // don't cache package member names; they might change
       else {
         if (!memberNamesCache.isValid) memberNamesCache = MemberNames.newCache()
@@ -1917,9 +1992,9 @@ object SymDenotations {
             maybeAdd(name)
         val ownSyms =
           if (keepOnly eq implicitFilter)
-            if (this is Package) Iterator.empty
+            if (this.is(Package)) Iterator.empty
               // implicits in package objects are added by the overriding `memberNames` in `PackageClassDenotation`
-            else info.decls.iterator filter (_ is ImplicitOrImpliedOrGiven)
+            else info.decls.iterator.filter(_.isOneOf(GivenOrImplicit))
           else info.decls.iterator
         for (sym <- ownSyms) maybeAdd(sym.name)
         names
@@ -1971,11 +2046,11 @@ object SymDenotations {
             .installAfter(phase)
       }
 
-    private[this] var myCompanion: Symbol = NoSymbol
+    private var myCompanion: Symbol = NoSymbol
 
     /** Register companion class */
     override def registerCompanion(companion: Symbol)(implicit ctx: Context) =
-      if (companion.isClass && !unforcedIsAbsent && !companion.unforcedIsAbsent)
+      if (companion.isClass && !isAbsent(canForce = false) && !companion.isAbsent(canForce = false))
         myCompanion = companion
 
     override def registeredCompanion(implicit ctx: Context) = { ensureCompleted(); myCompanion }
@@ -1994,8 +2069,8 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
-    private[this] var packageObjsCache: List[ClassDenotation] = _
-    private[this] var packageObjsRunId: RunId = NoRunId
+    private var packageObjsCache: List[ClassDenotation] = _
+    private var packageObjsRunId: RunId = NoRunId
 
     /** The package objects in this class */
     def packageObjs(implicit ctx: Context): List[ClassDenotation] = {
@@ -2057,7 +2132,7 @@ object SymDenotations {
           }
         case nil =>
           val directMembers = super.computeNPMembersNamed(name)
-          if (acc.exists) acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent))
+          if (acc.exists) acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent()))
           else directMembers
       }
       if (symbol `eq` defn.ScalaPackageClass) {
@@ -2096,12 +2171,11 @@ object SymDenotations {
     /** Unlink all package members defined in `file` in a previous run. */
     def unlinkFromFile(file: AbstractFile)(implicit ctx: Context): Unit = {
       val scope = unforcedDecls.openForMutations
-      for (sym <- scope.toList.iterator) {
+      for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
         if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
           scope.unlink(sym, sym.lastKnownDenotation.name)
-      }
     }
   }
 
@@ -2116,6 +2190,17 @@ object SymDenotations {
     NoSymbol.denot = this
     validFor = Period.allInRun(NoRunId)
   }
+
+  /** Can a private symbol with given name and flags be inferred to be local,
+   *  if all references to such symbols are via `this`?
+   *  This holds for all symbols except
+   *   - constructors, since they can never be referred to as members of their
+   *     own, fully elaborated `this`.
+   *   - parameters and parameter accessors, since their Local status is already
+   *     determined by whether they have a `val` or `var` or not.
+   */
+  def canBeLocal(name: Name, flags: FlagSet)(given Context) =
+    !name.isConstructorName && !flags.is(Param) && !flags.is(ParamAccessor)
 
   // ---- Completion --------------------------------------------------------
 
@@ -2135,21 +2220,14 @@ object SymDenotations {
     def apply(sym: Symbol): LazyType = this
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this
 
-    private[this] val NoSymbolFn = (_: Context) => NoSymbol
-    private[this] var myDecls: Scope = EmptyScope
-    private[this] var mySourceModuleFn: Context => Symbol = NoSymbolFn
-    private[this] var myModuleClassFn: Context => Symbol = NoSymbolFn
-
-    /** A proxy to this lazy type that keeps the complete operation
-     *  but provides fresh slots for scope/sourceModule/moduleClass
-     */
-    def proxy: LazyType = new LazyType {
-      override def complete(denot: SymDenotation)(implicit ctx: Context) = self.complete(denot)
-    }
+    private val NoSymbolFn = (_: Context) => NoSymbol
+    private var myDecls: Scope = EmptyScope
+    private var mySourceModuleFn: Context => Symbol = NoSymbolFn
+    private var myModuleClassFn: Context => Symbol = NoSymbolFn
 
     /** The type parameters computed by the completer before completion has finished */
     def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeParamInfo] =
-      if (sym is Touched) Nil // return `Nil` instead of throwing a cyclic reference
+      if (sym.is(Touched)) Nil // return `Nil` instead of throwing a cyclic reference
       else sym.info.typeParams
 
     def decls: Scope = myDecls
@@ -2159,6 +2237,8 @@ object SymDenotations {
     def withDecls(decls: Scope): this.type = { myDecls = decls; this }
     def withSourceModule(sourceModuleFn: Context => Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
     def withModuleClass(moduleClassFn: Context => Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
+
+    override def toString: String = getClass.toString
   }
 
   /** A subtrait of LazyTypes where completerTypeParams yields a List[TypeSymbol], which
@@ -2170,11 +2250,11 @@ object SymDenotations {
   }
 
   /** A missing completer */
-  @sharable class NoCompleter extends LazyType {
+  trait NoCompleter extends LazyType {
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = unsupported("complete")
   }
 
-  object NoCompleter extends NoCompleter
+  @sharable object NoCompleter extends NoCompleter
 
   /** A lazy type for modules that points to the module class.
    *  Needed so that `moduleClass` works before completion.
@@ -2192,7 +2272,7 @@ object SymDenotations {
         // is to have the module class completer set the annotations of both the
         // class and the module.
       denot.info = moduleClass.typeRef
-      denot.privateWithin = from.privateWithin
+      denot.setPrivateWithin(from.privateWithin)
     }
   }
 
@@ -2206,7 +2286,7 @@ object SymDenotations {
         case _ =>
           ErrorType(errMsg)
       }
-      denot.privateWithin = NoSymbol
+      denot.setPrivateWithin(NoSymbol)
     }
 
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
@@ -2266,8 +2346,8 @@ object SymDenotations {
   private abstract class InheritedCacheImpl(val createdAt: Period) extends InheritedCache {
     protected def sameGroup(p1: Phase, p2: Phase): Boolean
 
-    private[this] var dependent: WeakHashMap[InheritedCache, Unit] = null
-    private[this] var checkedPeriod: Period = Nowhere
+    private var dependent: WeakHashMap[InheritedCache, Unit] = null
+    private var checkedPeriod: Period = Nowhere
 
     protected def invalidateDependents() = {
       if (dependent != null) {
@@ -2297,12 +2377,12 @@ object SymDenotations {
   }
 
   private class MemberNamesImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with MemberNames {
-    private[this] var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.Empty
+    private var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.Empty
 
     final def isValid(implicit ctx: Context): Boolean =
       cache != null && isValidAt(ctx.phase)
 
-    private[this] var locked = false
+    private var locked = false
 
     /** Computing parent member names might force parents, which could invalidate
      *  the cache itself. In that case we should cancel invalidation and
@@ -2336,11 +2416,11 @@ object SymDenotations {
   }
 
   private class BaseDataImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with BaseData {
-    private[this] var cache: (List[ClassSymbol], BaseClassSet) = null
+    private var cache: (List[ClassSymbol], BaseClassSet) = null
 
-    private[this] var valid = true
-    private[this] var locked = false
-    private[this] var provisional = false
+    private var valid = true
+    private var locked = false
+    private var provisional = false
 
     final def isValid(implicit ctx: Context): Boolean = valid && isValidAt(ctx.phase)
 
@@ -2356,7 +2436,7 @@ object SymDenotations {
     def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context)
         : (List[ClassSymbol], BaseClassSet) = {
       assert(isValid)
-      try {
+      try
         if (cache != null) cache
         else {
           if (locked) throw CyclicReference(clsd)
@@ -2369,7 +2449,6 @@ object SymDenotations {
           else onBehalf.signalProvisional()
           computed
         }
-      }
       finally addDependent(onBehalf)
     }
 
@@ -2400,9 +2479,9 @@ object SymDenotations {
 
   /** A class to combine base data from parent types */
   class BaseDataBuilder {
-    private[this] var classes: List[ClassSymbol] = Nil
-    private[this] var classIds = new Array[Int](32)
-    private[this] var length = 0
+    private var classes: List[ClassSymbol] = Nil
+    private var classIds = new Array[Int](32)
+    private var length = 0
 
     private def resize(size: Int) = {
       val classIds1 = new Array[Int](size)
@@ -2440,5 +2519,5 @@ object SymDenotations {
 
   private val packageTypeName = ModuleClassName(nme.PACKAGE).toTypeName
 
-  @sharable private[this] var indent = 0 // for completions printing
+  @sharable private var indent = 0 // for completions printing
 }

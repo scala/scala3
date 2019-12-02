@@ -102,7 +102,8 @@ case class SpecificScalaVersion(major: Int, minor: Int, rev: Int, build: ScalaBu
       case R(_, majorS, _, minorS, _, revS, _, buildS) =>
         Success(SpecificScalaVersion(toInt(majorS), toInt(minorS), toInt(revS), toBuild(buildS)))
       case _ => failure
-    } catch {
+    }
+    catch {
       case e: NumberFormatException => failure
     }
   }
@@ -179,7 +180,7 @@ object ScalaBuild {
       case Milestone(thatN) => n - thatN
       // a milestone is older than anything other than another milestone
       case _ => -1
-
     }
   }
 }
+

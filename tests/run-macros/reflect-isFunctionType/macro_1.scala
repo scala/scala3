@@ -1,34 +1,33 @@
 import scala.quoted._
-import scala.tasty._
 
 
 inline def isFunctionType[T:Type]: Boolean = ${ isFunctionTypeImpl('[T]) }
 
-def isFunctionTypeImpl[T](tp: Type[T])(implicit refl: Reflection): Expr[Boolean] = {
-  import refl._
-  tp.unseal.tpe.isFunctionType.toExpr
+def isFunctionTypeImpl[T](tp: Type[T])(given qctx: QuoteContext): Expr[Boolean] = {
+  import qctx.tasty.{_, given}
+  Expr(tp.unseal.tpe.isFunctionType)
 }
 
 
 inline def isImplicitFunctionType[T:Type]: Boolean = ${ isImplicitFunctionTypeImpl('[T]) }
 
-def isImplicitFunctionTypeImpl[T](tp: Type[T])(implicit refl: Reflection): Expr[Boolean] = {
-  import refl._
-  tp.unseal.tpe.isImplicitFunctionType.toExpr
+def isImplicitFunctionTypeImpl[T](tp: Type[T])(given qctx: QuoteContext): Expr[Boolean] = {
+  import qctx.tasty.{_, given}
+  Expr(tp.unseal.tpe.isImplicitFunctionType)
 }
 
 
 inline def isErasedFunctionType[T:Type]: Boolean = ${ isErasedFunctionTypeImpl('[T]) }
 
-def isErasedFunctionTypeImpl[T](tp: Type[T])(implicit refl: Reflection): Expr[Boolean] = {
-  import refl._
-  tp.unseal.tpe.isErasedFunctionType.toExpr
+def isErasedFunctionTypeImpl[T](tp: Type[T])(given qctx: QuoteContext): Expr[Boolean] = {
+  import qctx.tasty.{_, given}
+  Expr(tp.unseal.tpe.isErasedFunctionType)
 }
 
 inline def isDependentFunctionType[T:Type]: Boolean = ${ isDependentFunctionTypeImpl('[T]) }
 
-def isDependentFunctionTypeImpl[T](tp: Type[T])(implicit refl: Reflection): Expr[Boolean] = {
-  import refl._
-  tp.unseal.tpe.isDependentFunctionType.toExpr
+def isDependentFunctionTypeImpl[T](tp: Type[T])(given qctx: QuoteContext): Expr[Boolean] = {
+  import qctx.tasty.{_, given}
+  Expr(tp.unseal.tpe.isDependentFunctionType)
 }
 

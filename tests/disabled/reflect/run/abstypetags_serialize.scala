@@ -4,7 +4,7 @@ import scala.reflect.runtime.universe._
 import scala.reflect.runtime.{universe => ru}
 import scala.reflect.runtime.{currentMirror => cm}
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def test(tag: WeakTypeTag[_]) =
     try {
       val fout = new ByteArrayOutputStream()

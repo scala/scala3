@@ -20,7 +20,7 @@ class IntBomb extends Bomb {
 
 case class Mean(var bomb: Bomb)
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def foo(x: Mean) = x match {
     case Mean(b) =>
       // BUG: b is assumed to be a stable identifier, but it can actually be mutated

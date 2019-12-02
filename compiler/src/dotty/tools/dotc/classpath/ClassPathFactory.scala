@@ -25,7 +25,8 @@ class ClassPathFactory {
     for {
       file <- expandPath(path, expandStar = false)
       dir <- Option(AbstractFile getDirectory file)
-    } yield createSourcePath(dir)
+    }
+    yield createSourcePath(dir)
 
 
   def expandPath(path: String, expandStar: Boolean = true): List[String] = dotty.tools.io.ClassPath.expandPath(path, expandStar)
@@ -37,7 +38,8 @@ class ClassPathFactory {
       dir <- expandPath(path, expandStar = false)
       name <- expandDir(dir)
       entry <- Option(AbstractFile.getDirectory(name))
-    } yield newClassPath(entry)
+    }
+    yield newClassPath(entry)
 
   def classesInExpandedPath(path: String)(implicit ctx: Context): IndexedSeq[ClassPath] =
     classesInPathImpl(path, expand = true).toIndexedSeq
@@ -56,7 +58,8 @@ class ClassPathFactory {
         def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file)) else None
         Option(AbstractFile.getDirectory(file)).orElse(asImage)
       }
-    } yield newClassPath(dir)
+    }
+    yield newClassPath(dir)
 
   private def createSourcePath(file: AbstractFile)(implicit ctx: Context): ClassPath =
     if (file.isJarOrZip)

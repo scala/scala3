@@ -38,7 +38,7 @@ object Deriving {
   }
 
   object Eq {
-    inline def tryEq[T](x: T, y: T) = delegate match {
+    inline def tryEq[T](x: T, y: T) = summonFrom {
       case eq: Eq[T] => eq.equals(x, y)
     }
 

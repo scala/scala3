@@ -1,12 +1,11 @@
 import scala.quoted._
-import scala.tasty._
 
 object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition) }
 
-  def assertImpl(cond: Expr[Boolean])(implicit refl: Reflection): Expr[Unit] = {
-    import refl._
+  def assertImpl(cond: Expr[Boolean])(given qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty.{_, given}
     import util._
 
     cond.unseal.underlyingArgument match {

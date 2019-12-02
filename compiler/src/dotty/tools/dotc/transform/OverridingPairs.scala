@@ -82,10 +82,10 @@ object OverridingPairs {
 
     /** The current entry candidate for overriding
      */
-    private[this] var curEntry = decls.lastEntry
+    private var curEntry = decls.lastEntry
 
     /** The current entry candidate for overridden */
-    private[this] var nextEntry = curEntry
+    private var nextEntry = curEntry
 
     /** The current candidate symbol for overriding */
     var overriding: Symbol = _
@@ -122,7 +122,7 @@ object OverridingPairs {
     @tailrec final def next(): Unit =
       if (nextEntry ne null) {
         nextEntry = decls.lookupNextEntry(nextEntry)
-        if (nextEntry ne null) {
+        if (nextEntry ne null)
           try {
             overridden = nextEntry.sym
             if (overriding.owner != overridden.owner && matches(overriding, overridden)) {
@@ -134,9 +134,9 @@ object OverridingPairs {
             case ex: TypeError =>
               // See neg/i1750a for an example where a cyclic error can arise.
               // The root cause in this example is an illegal "override" of an inner trait
-              ctx.error(ex.toMessage, base.sourcePos, sticky = true)
+              ctx.error(ex, base.sourcePos)
           }
-        } else {
+        else {
           curEntry = curEntry.prev
           nextOverriding()
         }

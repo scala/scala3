@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   val buf = new scala.collection.mutable.ArrayBuffer[String](0)
   buf += "initial"

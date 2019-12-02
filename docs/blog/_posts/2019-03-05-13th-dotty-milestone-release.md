@@ -209,7 +209,7 @@ object B {
 ```
 
 **You can read more about** [implied
-imports](https://dotty.epfl.ch/docs/reference/contextual/import-implied.html)
+imports](https://dotty.epfl.ch/docs/reference/contextual/import-delegate.html)
 from the docs or the relevant PR
 [#5868](https://github.com/lampepfl/dotty/pull/5868).
 

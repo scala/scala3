@@ -155,7 +155,7 @@ object M0 {
    *  changing the appearance of the painter
    */
   def transformPainter(origin: Vector, newX: Vector, newY: Vector)(painter: Painter): Painter = {
-    frame: Frame => {
+    (frame: Frame) => {
       val newOrigin = frame.coordMap(origin);
       val newFrame = new Frame(newOrigin,
                                frame.coordMap(newX) - newOrigin,
@@ -182,7 +182,7 @@ object M0 {
   /** Compose a painter that draws p1 on the left of p2
    */
   def beside(p1: Painter, p2: Painter) : Painter = {
-    frame: Frame => {
+    (frame: Frame) => {
       transformPainter(new Vector(0.0, 0.0),
                        new Vector(0.5, 0.0),
                        new Vector(0.0, 1.0))(p1)(frame);
@@ -195,7 +195,7 @@ object M0 {
   /** Compose a painter that draws p1 below p2
    */
   def below(p1: Painter, p2: Painter): Painter = {
-    frame: Frame => {
+    (frame: Frame) => {
       transformPainter(new Vector(0.0, 0.0),
                        new Vector(1.0, 0.0),
                        new Vector(0.0, 0.5))(p1)(frame);

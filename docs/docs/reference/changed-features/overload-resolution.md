@@ -17,20 +17,20 @@ For example, the following code compiles in Dotty, while it results in an
 ambiguous overload error in Scala2:
 
 ```scala
-  def f(x: Int)(y: String): Int = 0
-  def f(x: Int)(y: Int): Int = 0
+def f(x: Int)(y: String): Int = 0
+def f(x: Int)(y: Int): Int = 0
 
-  f(3)("")     // ok
+f(3)("")     // ok
 ```
 
 The following code compiles as well:
 
 ```scala
-  def g(x: Int)(y: Int)(z: Int): Int = 0
-  def g(x: Int)(y: Int)(z: String): Int = 0
+def g(x: Int)(y: Int)(z: Int): Int = 0
+def g(x: Int)(y: Int)(z: String): Int = 0
 
-  g(2)(3)(4)     // ok
-  g(2)(3)("")    // ok
+g(2)(3)(4)     // ok
+g(2)(3)("")    // ok
 ```
 
 To make this work, the rules for overloading resolution in section 6.23.3 of the SLS are augmented
@@ -41,7 +41,7 @@ resolution yields several competing alternatives when `n >= 1` parameter lists a
 into account, then resolution re-tried using `n + 1` argument lists.
 
 This change is motivated by the new language feature [extension
-methods](../contextual/extension-methods.html), where emerges the need to do
+methods](../contextual/extension-methods.md), where emerges the need to do
 overload resolution based on additional argument blocks.
 
 ## Parameter Types of Function Values
@@ -52,9 +52,9 @@ that the remaining parameters suffice for picking a variant of the overloaded fu
 For example, the following code compiles in Dotty, while it results in an
 missing parameter type error in Scala2:
 ```scala
-  def f(x: Int, f: Int => Int) = f(x)
-  def f(x: String, f: String => String) = f(x)
-  f("a", _.length)
+def f(x: Int, f: Int => Int) = f(x)
+def f(x: String, f: String => String) = f(x)
+f("a", _.length)
 ```
 To make this work, the rules for overloading resolution in section 6.23.3 of the SLS are modified
 as follows:
@@ -75,10 +75,10 @@ is determined as followed:
 
 A pattern matching closure
 ```scala
-  { case P1 => B1 ... case P_n => B_n }
+{ case P1 => B1 ... case P_n => B_n }
 ````
 is treated as if it was expanded to the function value
 ```scala
-  x => x match { case P1 => B1 ... case P_n => B_n }
+x => x match { case P1 => B1 ... case P_n => B_n }
 ```
 and is therefore also approximated with a `? => ?` type.

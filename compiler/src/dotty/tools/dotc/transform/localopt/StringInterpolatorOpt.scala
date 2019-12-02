@@ -2,10 +2,12 @@ package dotty.tools.dotc.transform.localopt
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Types.MethodType
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 /**
@@ -20,6 +22,16 @@ class StringInterpolatorOpt extends MiniPhase {
   import tpd._
 
   override def phaseName: String = "stringInterpolatorOpt"
+
+  override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+    tree match {
+      case tree: RefTree =>
+        val sym = tree.symbol
+        assert(sym != defn.StringContext_raw && sym != defn.StringContext_s,
+          i"$tree in ${ctx.owner.showLocated} should have been rewritten by phase $phaseName")
+      case _ =>
+    }
+  }
 
   /** Matches a list of constant literals */
   private object Literals {
@@ -60,7 +72,7 @@ class StringInterpolatorOpt extends MiniPhase {
     def unapply(tree: Apply)(implicit ctx: Context): Option[(List[Literal], List[Tree])] = {
       tree match {
         case SOrRawInterpolator(strs, elems) =>
-          if (tree.symbol == defn.StringContextRaw) Some(strs, elems)
+          if (tree.symbol == defn.StringContext_raw) Some(strs, elems)
           else { // tree.symbol == defn.StringContextS
             try {
               val escapedStrs = strs.map { str =>
@@ -80,28 +92,46 @@ class StringInterpolatorOpt extends MiniPhase {
   override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
     val sym = tree.symbol
     val isInterpolatedMethod = // Test names first to avoid loading scala.StringContext if not used
-      (sym.name == nme.raw_ && sym.eq(defn.StringContextRaw)) ||
-      (sym.name == nme.s && sym.eq(defn.StringContextS))
-    if (isInterpolatedMethod) transformInterpolator(tree)
-    else tree
-  }
+      (sym.name == nme.raw_ && sym.eq(defn.StringContext_raw)) ||
+      (sym.name == nme.s && sym.eq(defn.StringContext_s))
+    if (isInterpolatedMethod)
+      tree match {
+        case StringContextIntrinsic(strs: List[Literal], elems: List[Tree]) =>
+          val stri = strs.iterator
+          val elemi = elems.iterator
+          var result: Tree = stri.next
+          def concat(tree: Tree): Unit = {
+            result = result.select(defn.String_+).appliedTo(tree)
+          }
+          while (elemi.hasNext) {
+            concat(elemi.next)
+            val str = stri.next
+            if (!str.const.stringValue.isEmpty) concat(str)
+          }
+          result
+        // Starting with Scala 2.13, s and raw are macros in the standard
+        // library, so we need to expand them manually.
+        // sc.s(args)    -->   standardInterpolator(processEscapes, args, sc.parts)
+        // sc.raw(args)  -->   standardInterpolator(x => x,         args, sc.parts)
+        case Apply(intp, args :: Nil) =>
+          val pre = intp match {
+            case Select(pre, _) => pre
+            case intp: Ident => tpd.desugarIdentPrefix(intp)
+          }
+          val isRaw = sym eq defn.StringContext_raw
+          val stringToString = defn.StringContextModule_processEscapes.info.asInstanceOf[MethodType]
 
-  private def transformInterpolator(tree: Tree)(implicit ctx: Context): Tree = {
-    tree match {
-      case StringContextIntrinsic(strs: List[Literal], elems: List[Tree]) =>
-        val stri = strs.iterator
-        val elemi = elems.iterator
-        var result: Tree = stri.next
-        def concat(tree: Tree): Unit = {
-          result = result.select(defn.String_+).appliedTo(tree)
-        }
-        while (elemi.hasNext) {
-          concat(elemi.next)
-          val str = stri.next
-          if (!str.const.stringValue.isEmpty) concat(str)
-        }
-        result
-      case _ => tree
-    }
+          val process = tpd.Lambda(stringToString, args =>
+            if (isRaw) args.head else ref(defn.StringContextModule_processEscapes).appliedToArgs(args))
+
+          evalOnce(pre) { sc =>
+            val parts = sc.select(defn.StringContext_parts)
+
+            ref(defn.StringContextModule_standardInterpolator)
+              .appliedToArgs(List(process, args, parts))
+          }
+      }
+    else
+      tree
   }
 }

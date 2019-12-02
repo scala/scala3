@@ -3,7 +3,7 @@ import scala.reflect.runtime.{universe => ru}
 import scala.reflect.runtime.{currentMirror => cm}
 import scala.tools.reflect.ToolBox
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val outer = {
     val x = 2
     reify{x}

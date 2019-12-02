@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 object Test {
 

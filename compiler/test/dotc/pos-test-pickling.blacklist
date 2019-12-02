@@ -11,6 +11,9 @@ t3612.scala
 reference
 scala-days-2019-slides
 
+# Stale symbol: package object scala
+seqtype-cycle
+
 # type of super reference changes due to late addition of Mirror.Singleton
 i939.scala
 
@@ -18,6 +21,14 @@ i939.scala
 typelevel0.scala
 matchtype.scala
 6322.scala
+i7087.scala
 
 # Opaque type
 i5720.scala
+
+# Tuples
+toexproftuple.scala
+i7580.scala
+
+# Nullability
+nullable.scala

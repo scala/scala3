@@ -1,7 +1,5 @@
 import scala.quoted._
 
-import scala.tasty._
-
 object Macros {
 
   inline def fun(x: Any): Unit = ${ impl('x) }
@@ -10,28 +8,29 @@ object Macros {
 
   inline def fun3[T]: Unit = ${ impl2('[T]) }
 
-  def impl(x: Expr[Any])(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect._
+  def impl(x: Expr[Any])(given qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty.{_, given}
     val pos = x.unseal.underlyingArgument.pos
     val code = x.unseal.underlyingArgument.show
     '{
-      println(${posStr(reflect)(pos)})
-      println(${code.toExpr})
+      println(${posStr(qctx)(pos)})
+      println(${Expr(code)})
     }
   }
 
-  def impl2[T](x: quoted.Type[T])(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect._
+  def impl2[T](x: quoted.Type[T])(given qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty.{_, given}
     val pos = x.unseal.pos
     val code = x.unseal.show
     '{
-      println(${posStr(reflect)(pos)})
-      println(${code.toExpr})
+      println(${posStr(qctx)(pos)})
+      println(${Expr(code)})
     }
   }
 
-  def posStr(relfection: Reflection)(pos: relfection.Position): Expr[String] = {
-    import relfection._
-    s"${pos.sourceFile.jpath.getFileName.toString}:[${pos.start}..${pos.end}]".toExpr
+  def posStr(qctx: QuoteContext)(pos: qctx.tasty.Position): Expr[String] = {
+    given QuoteContext = qctx
+    import qctx.tasty.{_, given}
+    Expr(s"${pos.sourceFile.jpath.getFileName.toString}:[${pos.start}..${pos.end}]")
   }
 }

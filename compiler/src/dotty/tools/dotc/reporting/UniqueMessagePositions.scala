@@ -20,12 +20,11 @@ trait UniqueMessagePositions extends Reporter {
     super.isHidden(m) || {
       m.pos.exists && !ctx.settings.YshowSuppressedErrors.value && {
         var shouldHide = false
-        for (pos <- m.pos.start to m.pos.end) {
+        for (pos <- m.pos.start to m.pos.end)
           positions get (ctx.source, pos) match {
             case Some(level) if level >= m.level => shouldHide = true
             case _ => positions((ctx.source, pos)) = m.level
           }
-        }
         shouldHide
       }
     }

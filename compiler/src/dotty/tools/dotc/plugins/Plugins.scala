@@ -58,8 +58,7 @@ trait Plugins {
     // remove any with conflicting names or subcomponent names
     def pick(
       plugins: List[Plugin],
-      plugNames: Set[String]): List[Plugin] =
-    {
+      plugNames: Set[String]): List[Plugin] = {
       if (plugins.isEmpty) return Nil // early return
 
       val plug :: tail      = plugins
@@ -89,19 +88,19 @@ trait Plugins {
     for {
       opt <- ctx.settings.pluginOptions.value
       if !(plugs exists (opt startsWith _.name + ":"))
-    } ctx.error("bad option: -P:" + opt)
+    }
+    ctx.error("bad option: -P:" + opt)
 
     plugs
   }
 
   private var _plugins: List[Plugin] = _
   def plugins(implicit ctx: Context): List[Plugin] =
-  if (_plugins == null) {
-    _plugins = loadPlugins
-    _plugins
-  }
-  else _plugins
-
+    if (_plugins == null) {
+      _plugins = loadPlugins
+      _plugins
+    }
+    else _plugins
 
   /** A description of all the plugins that are loaded */
   def pluginDescriptions: String =

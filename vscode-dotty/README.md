@@ -20,4 +20,4 @@ sbt launchIDE
 
 ## More information
 
-See http://dotty.epfl.ch/docs/usage/ide-support.html
+See https://dotty.epfl.ch/docs/usage/ide-support.html

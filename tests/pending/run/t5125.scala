@@ -12,7 +12,7 @@ object O2 {
   def g(): String => Int = s => s.hashCode
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def check(c: Class[_]): Unit = {
     val methodName = "f"
     val methods = c.getDeclaredMethods.filter(_.getName == methodName)

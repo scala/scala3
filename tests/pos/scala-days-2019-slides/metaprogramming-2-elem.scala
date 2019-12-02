@@ -7,8 +7,8 @@ object ElemExample {
   }
 
 
-  the[Elem[String]       =:=  Char]
-  the[Elem[Array[Int]]   =:=  Int]
-  the[Elem[List[Float]]  =:=  Float]
-  the[Elem[Nil.type]     =:=  Nothing]
+  summon[Elem[String]       =:=  Char]
+  summon[Elem[Array[Int]]   =:=  Int]
+  summon[Elem[List[Float]]  =:=  Float]
+  summon[Elem[Nil.type]     =:=  Nothing]
 }

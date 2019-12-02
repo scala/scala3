@@ -1,28 +1,25 @@
-package scala.runtime.quoted
+package scala.runtime.quoted // TODO move to scala.internal.quoted
 
-import scala.internal.quoted.{LiftedExpr, TastyExpr, TastyType}
-import scala.quoted.{Expr, Type}
+import scala.quoted.{Expr, QuoteContext, Type}
 
 /** Provides methods to unpickle `Expr` and `Type` trees. */
 object Unpickler {
 
-  /** Representation of pickled trees. For now a List[String],
-   *  but it should be changed to some kind of TASTY bundle.
-   */
-  type Pickled = List[String]
+  type PickledQuote = List[String]
+  type PickledExprArgs = Seq[Seq[Any] => (((given QuoteContext) => Expr[Any]) | Type[_])]
+  type PickledTypeArgs = Seq[Seq[Any] => Type[_]]
 
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleExpr[T](repr: Pickled, args: Seq[Any]): Expr[T] = new TastyExpr[T](repr, args)
-
-  /** Lift the `value` to an `Expr` tree.
-   *  Values can only be of type Boolean, Byte, Short, Char, Int, Long, Float, Double, Unit, String, Null or Class.
-   */
-  def liftedExpr[T](value: T): Expr[T] = new LiftedExpr[T](value)
+  def unpickleExpr[T](repr: PickledQuote, args: PickledExprArgs): (given QuoteContext) => Expr[T] =
+    summon[QuoteContext].tasty.internal.unpickleExpr(repr, args).asInstanceOf[Expr[T]]
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleType[T](repr: Pickled, args: Seq[Any]): Type[T] = new TastyType[T](repr, args)
+  def unpickleType[T](repr: PickledQuote, args: PickledTypeArgs): (given QuoteContext) => Type[T] =
+    summon[QuoteContext].tasty.internal.unpickleType(repr, args).asInstanceOf[Type[T]]
+
+
 }

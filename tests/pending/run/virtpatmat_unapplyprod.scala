@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   case class Foo(x: Int, y: String)
 
   Foo(2, "3") match {

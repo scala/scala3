@@ -44,7 +44,7 @@ object DoubleOk extends DoubleTrouble[String]({
   InnerTrouble
 })
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   B
   C.D
   val e = new E {}; e.F

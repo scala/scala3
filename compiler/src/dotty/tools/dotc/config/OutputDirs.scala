@@ -12,12 +12,12 @@ import io._
  */
 class OutputDirs {
   /** Pairs of source directory - destination directory. */
-  private[this] var outputDirs: List[(AbstractFile, AbstractFile)] = Nil
+  private var outputDirs: List[(AbstractFile, AbstractFile)] = Nil
 
   /** If this is not None, the output location where all
    *  classes should go.
    */
-  private[this] var singleOutDir: Option[AbstractFile] = None
+  private var singleOutDir: Option[AbstractFile] = None
 
   /** Add a destination directory for sources found under srcdir.
    *  Both directories should exits.
@@ -49,9 +49,8 @@ class OutputDirs {
   /** Set the single output directory. From now on, all files will
    *  be dumped in there, regardless of previous calls to 'add'.
    */
-  def setSingleOutput(dir: AbstractFile): Unit = {
+  def setSingleOutput(dir: AbstractFile): Unit =
     singleOutDir = Some(dir)
-  }
 
   def add(src: AbstractFile, dst: AbstractFile): Unit = {
     singleOutDir = None

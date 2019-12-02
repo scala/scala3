@@ -2,23 +2,22 @@
 21 |    export scanUnit.scanIt          // error: no eligible member
    |                    ^^^^^^
    |                    no eligible member scanIt at this.scanUnit
--- Error: tests/neg/exports.scala:22:21 --------------------------------------------------------------------------------
+-- Error: tests/neg/exports.scala:22:29 --------------------------------------------------------------------------------
 22 |    export scanUnit.{scanAll => foo} // error: no eligible member
-   |                     ^^^^^^^
+   |                     ^^^^^^^^^^^^^^
    |                     no eligible member scanAll at this.scanUnit
    |                     this.scanUnit.scanAll cannot be exported because it is not accessible
+-- Error: tests/neg/exports.scala:23:27 --------------------------------------------------------------------------------
+23 |    export printUnit.{stat => _, _} // error: double definition // error: double definition
+   |                      ^^^^^^^^^
+   |                      no eligible member stat at this.printUnit
 -- Error: tests/neg/exports.scala:25:21 --------------------------------------------------------------------------------
 25 |    export printUnit.bitmap         // error: no eligible member
-   |                     ^^^^^^
-   |                     no eligible member bitmap at this.printUnit
-   |                     this.printUnit.bitmap cannot be exported because it is a delegate
--- Error: tests/neg/exports.scala:26:30 --------------------------------------------------------------------------------
-26 |    export delegate printUnit.status // error: no eligible member
-   |                              ^^^^^^
-   |                              no eligible member status at this.printUnit
-   |                              this.printUnit.status cannot be exported because it is not a delegate
+   |                     ^
+   |                     non-private method bitmap in class Copier refers to private value printUnit
+   |                     in its type signature => Copier.this.printUnit.bitmap.type
 -- [E120] Duplicate Symbol Error: tests/neg/exports.scala:23:33 --------------------------------------------------------
-23 |    export printUnit.{stat => _, _} // error: double definition
+23 |    export printUnit.{stat => _, _} // error: double definition // error: double definition
    |                                 ^
    |                                 Double definition:
    |                                 def status: => List[String] in class Copier at line 28 and
@@ -31,19 +30,26 @@
    |                    final def status: => List[String] in class Copier at line 23 and
    |                    final def status: => List[String] in class Copier at line 24
    |                    have the same type after erasure.
--- Error: tests/neg/exports.scala:35:15 --------------------------------------------------------------------------------
-35 |  export this.{concat => ++}   // error: no eligible member
-   |               ^^^^^^
-   |               no eligible member concat at this
-   |               this.concat cannot be exported because it is already a member of trait IterableOps
--- Error: tests/neg/exports.scala:41:13 --------------------------------------------------------------------------------
-41 |  export foo.foo // error: no eligible member
-   |             ^^^
-   |             no eligible member foo at this.foo
-   |             this.foo.foo cannot be exported because it is already a member of class Foo
--- [E046] Cyclic Error: tests/neg/exports.scala:45:11 ------------------------------------------------------------------
-45 |  val bar: Bar = new Bar // error: cyclic reference
-   |           ^
-   |           Cyclic reference involving value bar
-
-longer explanation available when compiling with `-explain`
+-- [E120] Duplicate Symbol Error: tests/neg/exports.scala:26:21 --------------------------------------------------------
+26 |    export printUnit.status         // error: double definition
+   |                     ^
+   |                     Double definition:
+   |                     final def status: => List[String] in class Copier at line 24 and
+   |                     final def status: => List[String] in class Copier at line 26
+   |                     have the same type after erasure.
+-- Error: tests/neg/exports.scala:35:24 --------------------------------------------------------------------------------
+35 |    export this.{concat => ++}   // error: no eligible member
+   |                 ^^^^^^^^^^^^
+   |                 no eligible member concat at this
+   |                 this.concat cannot be exported because it is already a member of trait IterableOps
+-- Error: tests/neg/exports.scala:41:15 --------------------------------------------------------------------------------
+41 |    export foo.foo // error: no eligible member
+   |               ^^^
+   |               no eligible member foo at this.foo
+   |               this.foo.foo cannot be exported because it is already a member of class Foo
+-- [E120] Duplicate Symbol Error: tests/neg/exports.scala:46:15 --------------------------------------------------------
+46 |    export bar._  // error: double definition
+   |               ^
+   |               Double definition:
+   |               val bar: Bar in class Baz at line 45 and
+   |               final def bar: => => Bar(Baz.this.bar.baz.bar)(Baz.this.bar.bar) in class Baz at line 46

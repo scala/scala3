@@ -6,7 +6,7 @@ class C
 class D
 
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def checkId(cls: Class[_]): Unit = {
     val id = cls.getDeclaredField("serialVersionUID").get(null)
     assert(id == 42, (cls, id))  

@@ -1,7 +1,7 @@
 /* spew a few lines
  * filter: Over the moon
  */
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   Console println "The quick brown fox jumped"
   Console println "Over the moon"
   Console println "And ran away with the vixen."

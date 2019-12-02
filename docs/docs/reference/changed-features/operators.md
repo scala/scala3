@@ -3,7 +3,8 @@ layout: doc-page
 title: Rules for Operators
 ---
 
-There are two annotations that regulate operators: `infix` and `alpha`.
+The rules for infix operators have changed. There are two annotations that regulate operators: `infix` and `alpha`.
+Furthermore, a syntax change allows infix operators to be written on the left in a multi-line expression.
 
 ## The @alpha Annotation
 
@@ -108,22 +109,68 @@ The purpose of the `@infix` annotation is to achieve consistency across a code b
 
  3. `@infix` annotations can be given to method definitions. The first non-receiver parameter list of an `@infix` method must define exactly one parameter. Examples:
 
-      ```scala
-      @infix def op(x: S): R                  // ok
-      @infix def op[T](x: T)(y: S): R         // ok
-      @infix def op[T](x: T, y: S): R         // error: two parameters
+    ```scala
+    @infix def op(x: S): R                  // ok
+    @infix def op[T](x: T)(y: S): R         // ok
+    @infix def op[T](x: T, y: S): R         // error: two parameters
 
-      @infix def (x: A) op (y: B): R          // ok
-      @infix def (x: A) op (y1: B, y2: B): R  // error: two parameters
-      ```
+    @infix def (x: A) op (y: B): R          // ok
+    @infix def (x: A) op (y1: B, y2: B): R  // error: two parameters
+    ```
 
  4. @infix annotations can also be given to type, trait or class definitions that have exactly two type parameters. An infix type like
 
-      ```scala
-      @infix type op[X, Y]
-      ```
+    ```scala
+    @infix type op[X, Y]
+    ```
 
     can be applied using infix syntax, i.e. `A op B`.
 
  5. To smooth migration to Scala 3.0, alphanumeric operations will only be deprecated from Scala 3.1 onwards,
 or if the `-strict` option is given in Dotty/Scala 3.
+
+## Syntax Change
+
+Infix operators can now appear at the start of lines in a multi-line expression. Examples:
+```scala
+val str = "hello"
+  ++ " world"
+  ++ "!"
+
+def condition =
+     x > 0
+  || xs.exists(_ > 0)
+  || xs.isEmpty
+```
+Previously, these expressions would have been rejected, since the compiler's semicolon inference
+would have treated the continuations `++ " world"` or `|| xs.isEmpty` as separate statements.
+
+To make this syntax work, the rules are modified to not infer semicolons in front of leading infix operators.
+A _leading infix operator_ is
+ - a symbolic identifier such as `+`, or `approx_==`, or an identifier in backticks,
+ - that starts a new line,
+ - that precedes a token on the same line that can start an expression,
+ - and that is immediately followed by at least one space character `' '`.
+
+Example:
+
+```scala
+    freezing
+  | boiling
+```
+This is recognized as a single infix operation. Compare with:
+```scala
+    freezing
+  !boiling
+```
+This is seen as two statements, `freezing` and `!boiling`. The difference is that only the operator in the first example
+is followed by a space.
+
+Another example:
+```scala
+  println("hello")
+  ???
+  ??? match { case 0 => 1 }
+```
+This code is recognized as three different statements. `???` is syntactically a symbolic identifier, but
+neither of its occurrences is followed by a space and a token that can start an expression.

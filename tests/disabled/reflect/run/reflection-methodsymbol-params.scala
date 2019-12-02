@@ -12,7 +12,7 @@ class C {
   def y4[T](x: Int)(y: Int): Int = ???
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   println(typeOf[C].member(TermName("x1")).asMethod.paramLists)
   println(typeOf[C].member(TermName("x2")).asMethod.paramLists)
   println(typeOf[C].member(TermName("x3")).asMethod.paramLists)

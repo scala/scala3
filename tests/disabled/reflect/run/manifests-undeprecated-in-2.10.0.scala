@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def m1a: scala.reflect.Manifest[Int] = scala.reflect.Manifest.Int
   def m2a: scala.reflect.OptManifest[Int] = ???
   def m3a = scala.reflect.NoManifest

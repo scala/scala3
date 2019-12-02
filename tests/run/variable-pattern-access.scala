@@ -3,9 +3,9 @@ class A {
 }
 object Test {
   def printFields(cls: Class[_]) =
-    println(cls.getDeclaredFields.map(_.toString).sorted.deep.mkString("\n"))
+    println(cls.getDeclaredFields.map(_.toString).sorted.toList.mkString("\n"))
   def printMethods(cls: Class[_]) =
-    println(cls.getDeclaredMethods.map(_.toString).sorted.deep.mkString("\n"))
+    println(cls.getDeclaredMethods.map(_.toString).sorted.toList.mkString("\n"))
 
   def main(args: Array[String]): Unit = {
     println("# Fields of A:")

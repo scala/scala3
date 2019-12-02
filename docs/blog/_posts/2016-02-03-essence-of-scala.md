@@ -24,34 +24,34 @@ has been machine-checked for correctness.
 A calculus is a kind of mini-language that is small enough to be
 studied formally. Translated to Scala notation, the language covered
 by DOT is described by the following abstract grammar:
+```
+Value       v  =  (x: T) => t            Function
+                  new { x: T => ds }     Object
 
-    Value       v  =  (x: T) => t            Function
-                      new { x: T => ds }     Object
+Definition  d  =  def a = t              Method definition
+                  type A = T             Type
 
-    Definition  d  =  def a = t              Method definition
-                      type A = T             Type
+Term        t  =  v                      Value
+                  x                      Variable
+                  t1(t2)                 Application
+                  t.a                    Selection
+                  { val x = t1; t2 }     Local definition
 
-    Term        t  =  v                      Value
-                      x                      Variable
-                      t1(t2)                 Application
-                      t.a                    Selection
-                      { val x = t1; t2 }     Local definition
-
-    Type        T  =  Any                    Top type
-                      Nothing                Bottom type
-                      x.A                    Selection
-                      (x: T1) => T2          Function
-                      { def a: T }           Method declaration
-                      { type T >: T1 <: T2 } Type declaration
-                      T1 & T2                Intersection
-                      { x => T }             Recursion
-
+Type        T  =  Any                    Top type
+                  Nothing                Bottom type
+                  x.A                    Selection
+                  (x: T1) => T2          Function
+                  { def a: T }           Method declaration
+                  { type T >: T1 <: T2 } Type declaration
+                  T1 & T2                Intersection
+                  { x => T }             Recursion
+```
 The grammar uses several kinds of names:
-
-    x      for (immutable) variables
-    a      for (parameterless) methods
-    A      for types
-
+```
+x      for (immutable) variables
+a      for (parameterless) methods
+A      for types
+```
 The full calculus adds to this syntax formal _typing rules_ that
 assign types `T` to terms `t` and formal _evaluation rules_ that
 describe how a program is evaluated. The following _type soundness_
@@ -67,12 +67,12 @@ because it uncovered some technical challenges that had not been
 studied in depth before. In DOT - as well as in many programming languages -
 you can have conflicting definitions. For instance you might have an abstract
 type declaration in a base class with two conflicting aliases in subclasses:
-
-     trait Base { type A }
-     trait Sub1 extends Base { type A = String }
-     trait Sub2 extends Base { type A = Int }
-     trait Bad extends Sub1 with Sub2
-
+```scala
+trait Base { type A }
+trait Sub1 extends Base { type A = String }
+trait Sub2 extends Base { type A = Int }
+trait Bad extends Sub1 with Sub2
+```
 Now, if you combine `Sub1` and `Sub2` in trait `Bad` you get a conflict,
 since the type `A` is supposed to be equal to both `String` and `Int`. If you do
 not detect the conflict and assume the equalities at face value you
@@ -108,10 +108,10 @@ project are important.
     Nominal typing means that a type is distinguished from others
     simply by having a different name.
     For instance, given two trait definitions
-
-          trait A extends AnyRef { def f: Int }
-          trait B extends AnyRef { def f: Int }
-
+    ```scala
+    trait A extends AnyRef { def f: Int }
+    trait B extends AnyRef { def f: Int }
+    ```
     we consider `A` and `B` to be different types, even though both
     traits have the same parents and both define the same members.
     The opposite of
@@ -143,4 +143,3 @@ project are important.
     either to increase our confidence that they are indeed sound, or
     to show that they are unsound. In my next blog I will
     present some of the issues we have discovered through that exercise.
-

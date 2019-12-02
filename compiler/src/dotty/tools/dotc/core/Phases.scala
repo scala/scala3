@@ -31,13 +31,13 @@ trait Phases {
     }
 
   /** Execute `op` at given phase */
-  def atPhase[T](phase: Phase)(op: Context => T): T =
+  def atPhase[T](phase: Phase)(op: (given Context) => T): T =
     atPhase(phase.id)(op)
 
-  def atNextPhase[T](op: Context => T): T = atPhase(phase.next)(op)
+  def atNextPhase[T](op: (given Context) => T): T = atPhase(phase.next)(op)
 
-  def atPhaseNotLaterThan[T](limit: Phase)(op: Context => T): T =
-    if (!limit.exists || phase <= limit) op(this) else atPhase(limit)(op)
+  def atPhaseNotLaterThan[T](limit: Phase)(op: (given Context) => T): T =
+    if (!limit.exists || phase <= limit) op(given this) else atPhase(limit)(op)
 
   def isAfterTyper: Boolean = base.isAfterTyper(phase)
 }
@@ -107,7 +107,7 @@ object Phases {
           val filteredPhaseBlock = filteredPhases(i)
           val phaseToAdd =
             if (filteredPhaseBlock.length > 1) {
-              for (phase <- filteredPhaseBlock) {
+              for (phase <- filteredPhaseBlock)
                 phase match {
                   case p: MiniPhase =>
                     val unmetRequirements = p.runsAfterGroupsOf &~ prevPhases
@@ -117,11 +117,11 @@ object Phases {
                   case _ =>
                     assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
                 }
-              }
               val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
               prevPhases ++= filteredPhaseBlock.map(_.phaseName)
               superPhase
-            } else { // block of a single phase, no squashing
+            }
+            else { // block of a single phase, no squashing
               val phase = filteredPhaseBlock.head
               prevPhases += phase.phaseName
               phase
@@ -169,8 +169,8 @@ object Phases {
         assert(unmetPrecedeRequirements.isEmpty,
           s"phase ${p} has unmet requirement: ${unmetPrecedeRequirements.mkString(", ")} should precede this phase")
         phasesAfter += p.phaseName
-
       }
+
       var i = 0
 
       while (i < phasess.length) {
@@ -206,33 +206,32 @@ object Phases {
         nextDenotTransformerId(i) = lastTransformerId
       }
 
-      if (squash) {
+      if (squash)
         this.squashedPhases = (NoPhase :: phasess).toArray
-      } else {
+      else
         this.squashedPhases = this.phases
-      }
 
-      config.println(s"Phases = ${phases.deep}")
-      config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.deep}")
+      config.println(s"Phases = ${phases.toList}")
+      config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
     }
 
-    private[this] var myTyperPhase: Phase = _
-    private[this] var myPostTyperPhase: Phase = _
-    private[this] var mySbtExtractDependenciesPhase: Phase = _
-    private[this] var myPicklerPhase: Phase = _
-    private[this] var myReifyQuotesPhase: Phase = _
-    private[this] var myCollectNullableFieldsPhase: Phase = _
-    private[this] var myRefChecksPhase: Phase = _
-    private[this] var myPatmatPhase: Phase = _
-    private[this] var myElimRepeatedPhase: Phase = _
-    private[this] var myExtensionMethodsPhase: Phase = _
-    private[this] var myExplicitOuterPhase: Phase = _
-    private[this] var myGettersPhase: Phase = _
-    private[this] var myErasurePhase: Phase = _
-    private[this] var myElimErasedValueTypePhase: Phase = _
-    private[this] var myLambdaLiftPhase: Phase = _
-    private[this] var myFlattenPhase: Phase = _
-    private[this] var myGenBCodePhase: Phase = _
+    private var myTyperPhase: Phase = _
+    private var myPostTyperPhase: Phase = _
+    private var mySbtExtractDependenciesPhase: Phase = _
+    private var myPicklerPhase: Phase = _
+    private var myReifyQuotesPhase: Phase = _
+    private var myCollectNullableFieldsPhase: Phase = _
+    private var myRefChecksPhase: Phase = _
+    private var myPatmatPhase: Phase = _
+    private var myElimRepeatedPhase: Phase = _
+    private var myExtensionMethodsPhase: Phase = _
+    private var myExplicitOuterPhase: Phase = _
+    private var myGettersPhase: Phase = _
+    private var myErasurePhase: Phase = _
+    private var myElimErasedValueTypePhase: Phase = _
+    private var myLambdaLiftPhase: Phase = _
+    private var myFlattenPhase: Phase = _
+    private var myGenBCodePhase: Phase = _
 
     final def typerPhase: Phase = myTyperPhase
     final def postTyperPhase: Phase = myPostTyperPhase
@@ -253,7 +252,7 @@ object Phases {
     final def genBCodePhase: Phase = myGenBCodePhase
 
     private def setSpecificPhases() = {
-      def phaseOfClass(pclass: Class[_]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
+      def phaseOfClass(pclass: Class[?]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
 
       myTyperPhase = phaseOfClass(classOf[FrontEnd])
       myPostTyperPhase = phaseOfClass(classOf[PostTyper])
@@ -348,15 +347,17 @@ object Phases {
 
     def initContext(ctx: FreshContext): Unit = ()
 
-    private[this] var myPeriod: Period = Periods.InvalidPeriod
-    private[this] var myBase: ContextBase = null
-    private[this] var myErasedTypes = false
-    private[this] var myFlatClasses = false
-    private[this] var myRefChecked = false
+    private var myPeriod: Period = Periods.InvalidPeriod
+    private var myBase: ContextBase = null
+    private var myErasedTypes = false
+    private var myFlatClasses = false
+    private var myRefChecked = false
+    private var myLambdaLifted = false
+    private var myPatternTranslated = false
 
-    private[this] var mySameMembersStartId = NoPhaseId
-    private[this] var mySameParentsStartId = NoPhaseId
-    private[this] var mySameBaseTypesStartId = NoPhaseId
+    private var mySameMembersStartId = NoPhaseId
+    private var mySameParentsStartId = NoPhaseId
+    private var mySameBaseTypesStartId = NoPhaseId
 
     /** The sequence position of this phase in the given context where 0
      * is reserved for NoPhase and the first real phase is at position 1.
@@ -371,6 +372,8 @@ object Phases {
     final def erasedTypes: Boolean = myErasedTypes   // Phase is after erasure
     final def flatClasses: Boolean = myFlatClasses   // Phase is after flatten
     final def refChecked: Boolean = myRefChecked     // Phase is after RefChecks
+    final def lambdaLifted: Boolean = myLambdaLifted // Phase is after LambdaLift
+    final def patternTranslated: Boolean = myPatternTranslated // Phase is after PatternMatcher
 
     final def sameMembersStartId: Int = mySameMembersStartId
       // id of first phase where all symbols are guaranteed to have the same members as in this phase
@@ -385,9 +388,11 @@ object Phases {
       assert(start <= Periods.MaxPossiblePhaseId, s"Too many phases, Period bits overflow")
       myBase = base
       myPeriod = Period(NoRunId, start, end)
-      myErasedTypes  = prev.getClass == classOf[Erasure]   || prev.erasedTypes
-      myFlatClasses  = prev.getClass == classOf[Flatten]   || prev.flatClasses
-      myRefChecked   = prev.getClass == classOf[RefChecks] || prev.refChecked
+      myErasedTypes  = prev.getClass == classOf[Erasure]    || prev.erasedTypes
+      myFlatClasses  = prev.getClass == classOf[Flatten]    || prev.flatClasses
+      myRefChecked   = prev.getClass == classOf[RefChecks]  || prev.refChecked
+      myLambdaLifted = prev.getClass == classOf[LambdaLift] || prev.lambdaLifted
+      myPatternTranslated = prev.getClass == classOf[PatternMatcher] || prev.patternTranslated
       mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
       mySameParentsStartId = if (changesParents) id else prev.sameParentsStartId
       mySameBaseTypesStartId = if (changesBaseTypes) id else prev.sameBaseTypesStartId
@@ -415,7 +420,7 @@ object Phases {
   /** Replace all instances of `oldPhaseClass` in `current` phases
    *  by the result of `newPhases` applied to the old phase.
    */
-  def replace(oldPhaseClass: Class[_ <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
+  def replace(oldPhaseClass: Class[? <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
     current.map(_.flatMap(phase =>
       if (oldPhaseClass.isInstance(phase)) newPhases(phase) else phase :: Nil))
 }

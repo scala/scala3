@@ -12,7 +12,7 @@ trait WrappedProperties extends PropertiesTrait {
   def wrap[T](body: => T): Option[T]
 
   protected def propCategory: String     = "wrapped"
-  protected def pickJarBasedOn: Class[_] = this.getClass
+  protected def pickJarBasedOn: Class[?] = this.getClass
 
   override def propIsSet(name: String): Boolean              = wrap(super.propIsSet(name)) exists (x => x)
   override def propOrElse(name: String, alt: String): String = wrap(super.propOrElse(name, alt)) getOrElse alt

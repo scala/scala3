@@ -115,7 +115,7 @@ final class ProperGadtConstraint private(
       pt => defn.AnyType
     )
 
-    val tvars = (params, poly1.paramRefs).zipped.map { (sym, paramRef) =>
+    val tvars = params.lazyZip(poly1.paramRefs).map { (sym, paramRef) =>
       val tv = new TypeVar(paramRef, creatorState = null)
       mapping = mapping.updated(sym, tv)
       reverseMapping = reverseMapping.updated(tv.origin, sym)
@@ -123,9 +123,8 @@ final class ProperGadtConstraint private(
     }
 
     // The replaced symbols are picked up here.
-    addToConstraint(poly1, tvars).reporting({ _ =>
-      i"added to constraint: $params%, %\n$debugBoundsDescription"
-    }, gadts)
+    addToConstraint(poly1, tvars)
+      .reporting(i"added to constraint: $params%, %\n$debugBoundsDescription", gadts)
   }
 
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = {
@@ -159,7 +158,7 @@ final class ProperGadtConstraint private(
           val oldUpperBound = bounds(symTvar.origin)
           // If we have bounds:
           //     F >: [t] => List[t] <: [t] => Any
-          // and we want to record that: 
+          // and we want to record that:
           //     F <: [+A] => List[A]
           // we need to adapt the variance and instead record that:
           //     F <: [A] => List[A]
@@ -177,10 +176,10 @@ final class ProperGadtConstraint private(
           if (isUpper) addUpperBound(symTvar.origin, bound1)
           else addLowerBound(symTvar.origin, bound1)
       }
-    ).reporting({ res =>
+    ).reporting({
       val descr = if (isUpper) "upper" else "lower"
       val op = if (isUpper) "<:" else ">:"
-      i"adding $descr bound $sym $op $bound = $res"
+      i"adding $descr bound $sym $op $bound = $result"
     }, gadts)
   }
 
@@ -195,7 +194,7 @@ final class ProperGadtConstraint private(
           .ensuring(containsNoInternalTypes(_))
     }
 
-  override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
+  override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds =
     mapping(sym) match {
       case null => null
       case tv =>
@@ -206,10 +205,9 @@ final class ProperGadtConstraint private(
             case tb => tb
           }
         retrieveBounds
-          //.reporting({ res => i"gadt bounds $sym: $res" }, gadts)
+          //.reporting(i"gadt bounds $sym: $result", gadts)
           //.ensuring(containsNoInternalTypes(_))
     }
-  }
 
   override def contains(sym: Symbol)(implicit ctx: Context): Boolean = mapping(sym) ne null
 
@@ -252,27 +250,27 @@ final class ProperGadtConstraint private(
      }
 
    override def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type =
-     (nonParamBounds(param).lo /: constraint.minLower(param)) {
+     constraint.minLower(param).foldLeft(nonParamBounds(param).lo) {
        (t, u) => t | externalize(u)
      }
 
    override def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type =
-     (nonParamBounds(param).hi /: constraint.minUpper(param)) {
+     constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) {
        (t, u) => t & externalize(u)
      }
 
   // ---- Private ----------------------------------------------------------
 
-  private[this] def externalize(param: TypeParamRef)(implicit ctx: Context): Type =
+  private def externalize(param: TypeParamRef)(implicit ctx: Context): Type =
     reverseMapping(param) match {
       case sym: Symbol => sym.typeRef
       case null => param
     }
 
-  private[this] def tvarOrError(sym: Symbol)(implicit ctx: Context): TypeVar =
+  private def tvarOrError(sym: Symbol)(implicit ctx: Context): TypeVar =
     mapping(sym).ensuring(_ ne null, i"not a constrainable symbol: $sym")
 
-  private[this] def containsNoInternalTypes(
+  private def containsNoInternalTypes(
     tp: Type,
     acc: TypeAccumulator[Boolean] = null
   )(implicit ctx: Context): Boolean = tp match {
@@ -282,7 +280,7 @@ final class ProperGadtConstraint private(
       (if (acc ne null) acc else new ContainsNoInternalTypesAccumulator()).foldOver(true, tp)
   }
 
-  private[this] class ContainsNoInternalTypesAccumulator(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+  private class ContainsNoInternalTypesAccumulator(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     override def apply(x: Boolean, tp: Type): Boolean = x && containsNoInternalTypes(tp)
   }
 
@@ -319,9 +317,8 @@ final class ProperGadtConstraint private(
   override def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type = unsupported("EmptyGadtConstraint.approximation")
 
   override def fresh = new ProperGadtConstraint
-  override def restore(other: GadtConstraint): Unit = {
+  override def restore(other: GadtConstraint): Unit =
     if (!other.isEmpty) sys.error("cannot restore a non-empty GADTMap")
-  }
 
   override def debugBoundsDescription(implicit ctx: Context): String = "EmptyGadtConstraint"
 

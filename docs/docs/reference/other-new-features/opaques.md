@@ -20,7 +20,7 @@ object Logarithms {
   }
 
   // Extension methods define opaque types' public APIs
-  delegate LogarithmOps {
+  given logarithmOps: {
     def (x: Logarithm) toDouble: Double = math.exp(x)
     def (x: Logarithm) + (y: Logarithm): Logarithm = Logarithm(math.exp(x) + math.exp(y))
     def (x: Logarithm) * (y: Logarithm): Logarithm = Logarithm(x + y)
@@ -39,25 +39,25 @@ Outside its scope, `Logarithm` is treated as a new abstract type. So the
 following operations would be valid because they use functionality implemented in the `Logarithm` object.
 
 ```scala
-  import Logarithms._
-  import Predef.{any2stringadd => _, _}
+import Logarithms._
+import Predef.{any2stringadd => _, _}
 
-  val l = Logarithm(1.0)
-  val l2 = Logarithm(2.0)
-  val l3 = l * l2
-  val l4 = l + l2
+val l = Logarithm(1.0)
+val l2 = Logarithm(2.0)
+val l3 = l * l2
+val l4 = l + l2
 ```
 
 But the following operations would lead to type errors:
 
 ```scala
-  val d: Double = l       // error: found: Logarithm, required: Double
-  val l2: Logarithm = 1.0 // error: found: Double, required: Logarithm
-  l * 2                   // error: found: Int(2), required: Logarithm
-  l / l2                  // error: `/` is not a member fo Logarithm
+val d: Double = l       // error: found: Logarithm, required: Double
+val l2: Logarithm = 1.0 // error: found: Double, required: Logarithm
+l * 2                   // error: found: Int(2), required: Logarithm
+l / l2                  // error: `/` is not a member fo Logarithm
 ```
 
-Aside: the `any2stringadd => _` import suppression is necessary since otherwise the universal `+` operation in `Predef` would take precedence over the `+` extension method in `LogarithmOps`. We plan to resolve this wart by eliminating `any2stringadd`.
+Aside: the `any2stringadd => _` import suppression is necessary since otherwise the universal `+` operation in `Predef` would take precedence over the `+` extension method in `logarithmOps`. We plan to resolve this wart by eliminating `any2stringadd`.
 
 ### Bounds For Opaque Type Aliases
 

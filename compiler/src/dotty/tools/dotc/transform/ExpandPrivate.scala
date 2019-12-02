@@ -39,26 +39,23 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
 
   override def changesMembers: Boolean = true // the phase introduces new members with mangled names
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
     tree match {
       case t: DefDef =>
         val sym = t.symbol
-        def hasWeakerAccess(other: Symbol) = {
+        def hasWeakerAccess(other: Symbol) =
           // public > protected > /* default */ > private
           if (sym.is(Private)) other.is(Private)
-          else if (sym.is(Protected)) other.is(Protected | Private)
+          else if (sym.is(Protected)) other.isOneOf(Protected | Private)
           else true // sym is public
-        }
         val fail = sym.allOverriddenSymbols.findSymbol(x => !hasWeakerAccess(x))
-        if (fail.exists) {
+        if (fail.exists)
           assert(false, i"${sym.showFullName}: ${sym.info} has weaker access than superclass method ${fail.showFullName}: ${fail.info}")
-        }
       case _ =>
     }
-  }
 
   private def isVCPrivateParamAccessor(d: SymDenotation)(implicit ctx: Context) =
-    d.isTerm && d.is(PrivateParamAccessor) && isDerivedValueClass(d.owner)
+    d.isTerm && d.isAllOf(PrivateParamAccessor) && isDerivedValueClass(d.owner)
 
   /** Make private terms accessed from different classes non-private.
    *  Note: this happens also for accesses between class and linked module class.
@@ -105,7 +102,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
     val sym = tree.symbol
     tree.rhs match {
       case Apply(sel @ Select(_: Super, _), _)
-      if sym.is(PrivateParamAccessor) && sel.symbol.is(ParamAccessor) && sym.name == sel.symbol.name =>
+      if sym.isAllOf(PrivateParamAccessor) && sel.symbol.is(ParamAccessor) && sym.name == sel.symbol.name =>
         sym.ensureNotPrivate.installAfter(thisPhase)
       case _ =>
         if (isVCPrivateParamAccessor(sym))

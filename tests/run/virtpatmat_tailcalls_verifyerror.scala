@@ -1,5 +1,5 @@
 // shouldn't result in a verify error when run...
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   @annotation.tailrec
   final def test(meh: Boolean): Boolean = {
     Some("a") match {

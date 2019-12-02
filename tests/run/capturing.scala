@@ -4,6 +4,6 @@ class MT(sf: MT => String) {
 }
 object Test extends App {
   def printFields(obj: Any) =
-    println(obj.getClass.getDeclaredFields.map(_.toString).sorted.deep.mkString("\n"))
+    println(obj.getClass.getDeclaredFields.map(_.toString).sorted.toList.mkString("\n"))
   printFields(new MT(_ => ""))
 }

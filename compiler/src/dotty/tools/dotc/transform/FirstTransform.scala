@@ -47,7 +47,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
 
   override protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isClass
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
     tree match {
       case Select(qual, name) if !name.is(OuterSelectName) && tree.symbol.exists =>
         assert(
@@ -59,7 +59,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
         assert(false, i"illegal tree: $tree")
       case _ =>
     }
-  }
 
   /** Reorder statements so that module classes always come after their companion classes */
   private def reorderAndComplete(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
@@ -71,14 +70,15 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
      */
     def reorder(stats: List[Tree], revPrefix: List[Tree]): List[Tree] = stats match {
       case (stat: TypeDef) :: stats1 if stat.symbol.isClass =>
-        if (stat.symbol is Flags.Module) {
+        if (stat.symbol.is(Flags.Module)) {
           def pushOnTop(xs: List[Tree], ys: List[Tree]): List[Tree] =
-            (ys /: xs)((ys, x) => x :: ys)
+            xs.foldLeft(ys)((ys, x) => x :: ys)
           moduleClassDefs += (stat.name -> stat)
           singleClassDefs -= stat.name.stripModuleClassSuffix
           val stats1r = reorder(stats1, Nil)
           pushOnTop(revPrefix, if (moduleClassDefs contains stat.name) stat :: stats1r else stats1r)
-        } else {
+        }
+        else
           reorder(
             stats1,
             moduleClassDefs remove stat.name.moduleClassName match {
@@ -89,7 +89,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
                 stat :: revPrefix
             }
           )
-        }
       case stat :: stats1 => reorder(stats1, stat :: revPrefix)
       case Nil => revPrefix.reverse
     }
@@ -98,19 +97,18 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   /** eliminate self in Template */
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Tree = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context): Tree =
     cpy.Template(impl)(self = EmptyValDef)
-  }
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context): Tree = {
     val meth = ddef.symbol.asTerm
     if (meth.hasAnnotation(defn.NativeAnnot)) {
       meth.resetFlag(Deferred)
       polyDefDef(meth,
-        _ => _ => ref(defn.Sys_errorR).withSpan(ddef.span)
+        _ => _ => ref(defn.Sys_error.termRef).withSpan(ddef.span)
           .appliedTo(Literal(Constant(s"native method stub"))))
-
     }
+
     else ddef
   }
 
@@ -134,7 +132,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   private def toTypeTree(tree: Tree)(implicit ctx: Context) = {
     val binders = collectBinders.apply(Nil, tree)
     val result: Tree = TypeTree(tree.tpe).withSpan(tree.span)
-    (result /: binders)(Annotated(_, _))
+    binders.foldLeft(result)(Annotated(_, _))
   }
 
   override def transformOther(tree: Tree)(implicit ctx: Context): Tree = tree match {
@@ -162,8 +160,9 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     constToLiteral(tree)
 
   override def transformIf(tree: If)(implicit ctx: Context): Tree =
-    tree.cond match {
-      case Literal(Constant(c: Boolean)) => if (c) tree.thenp else tree.elsep
+    tree.cond.tpe match {
+      case ConstantType(Constant(c: Boolean)) if isPureExpr(tree.cond) =>
+        if (c) tree.thenp else tree.elsep
       case _ => tree
     }
 

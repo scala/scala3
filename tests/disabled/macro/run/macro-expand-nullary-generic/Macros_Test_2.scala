@@ -5,7 +5,7 @@ object Macros {
   def bar2[T](x: Int)(): Unit = macro Impls.barEmpty[T]
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   Macros.foo1[Int]
   Macros.foo2[Int]
   Macros.foo2[Int]()

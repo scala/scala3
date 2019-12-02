@@ -21,7 +21,7 @@ trait Substituters { this: Context =>
           .mapOver(tp)
     }
 
-  final def subst1(tp: Type, from: Symbol, to: Type, theMap: Subst1Map): Type = {
+  final def subst1(tp: Type, from: Symbol, to: Type, theMap: Subst1Map): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -34,9 +34,8 @@ trait Substituters { this: Context =>
         (if (theMap != null) theMap else new Subst1Map(from, to))
           .mapOver(tp)
     }
-  }
 
-  final def subst2(tp: Type, from1: Symbol, to1: Type, from2: Symbol, to2: Type, theMap: Subst2Map): Type = {
+  final def subst2(tp: Type, from1: Symbol, to1: Type, from2: Symbol, to2: Type, theMap: Subst2Map): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -50,9 +49,8 @@ trait Substituters { this: Context =>
         (if (theMap != null) theMap else new Subst2Map(from1, to1, from2, to2))
           .mapOver(tp)
     }
-  }
 
-  final def subst(tp: Type, from: List[Symbol], to: List[Type], theMap: SubstMap): Type = {
+  final def subst(tp: Type, from: List[Symbol], to: List[Type], theMap: SubstMap): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -71,7 +69,6 @@ trait Substituters { this: Context =>
         (if (theMap != null) theMap else new SubstMap(from, to))
           .mapOver(tp)
     }
-  }
 
   final def substSym(tp: Type, from: List[Symbol], to: List[Symbol], theMap: SubstSymMap): Type =
     tp match {

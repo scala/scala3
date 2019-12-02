@@ -8,7 +8,7 @@ class A extends O {
   val impl = new I {}
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val code = reify {
     val v: A#I = (new A).impl
     v

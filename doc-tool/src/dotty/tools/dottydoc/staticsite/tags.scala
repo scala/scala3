@@ -71,10 +71,9 @@ object tags {
     private def renderReference(ref: Reference): String = ref match {
       case TypeReference(_, tpeLink, paramLinks) => {
         if (paramLinks.nonEmpty) {
-          s"""|${renderLink(baseurl, tpeLink)}
-              |<span class="no-left no-right">[</span>
-              |${ paramLinks.map(renderReference).mkString("""<span class="">, </span>""") }
-              |<span class="no-left">]</span>""".stripMargin
+          val link = renderLink(baseurl, tpeLink);
+          val typeParamsLinks = paramLinks.map(renderReference).mkString("[", ",", "]");
+          s"""$link<span class="type-params">$typeParamsLinks</span>"""
         }
         else renderLink(baseurl, tpeLink)
       }
@@ -158,25 +157,35 @@ object tags {
     * `Title`.
     *
     * ```html
-    * {% renderTitle title, parent %}
+    * {% renderTitle title, page.url %}
     * ```
-    *
-    * The rendering currently works on depths up to 2. This means that each
-    * title can have a subsection with its own titles.
     */
   case class RenderTitle(params: Map[String, AnyRef])(implicit ctx: Context)
   extends Tag("renderTitle") with ParamConverter {
-    private def renderTitle(t: Title, parent: String): String = {
+    private def isParent(t: Title, htmlPath: String): Boolean = {
+      t.url match {
+        case Some(url) => url == htmlPath
+        case None => t.subsection.exists(isParent(_, htmlPath))
+      }
+    }
+    private def replaceSuffix(url: String, suffixes: Iterable[String]): String = {
+      suffixes.find(url.endsWith(_)).map(url.replace(_, ".html")).getOrElse(url)
+    }
+    private def renderTitle(t: Title, pageUrl: String): String = {
+      val htmlPath = replaceSuffix(pageUrl, Seq("-spec.md", "-details.md", "-new.md", ".md"))
+      val marker = if (isParent(t, htmlPath)) "class=\"toggled\"" else ""
       if (!t.url.isDefined && t.subsection.nonEmpty) {
-        s"""|<a class="toggle-children" onclick='clickToc(this, "$parent");'>${t.title}</a>
-            |<ul id="${ if(parent == t.title.toLowerCase.split(" ").mkString("-")) "active-toc-entry" else "" }">
-            |    ${ t.subsection.map(renderTitle(_, parent)).mkString("<li>","\n</li>\n<li>", "</li>") }
-            |</ul>
+        s"""|<li class="section">
+            |  <a onclick='toggleSection(this);'>${t.title}</a>
+            |  <ul $marker>
+            |    ${ t.subsection.map(renderTitle(_, htmlPath)).mkString("\n") }
+            |  </ul>
+            |</li>
             |""".stripMargin
       }
       else if (t.url.isDefined) {
         val url = t.url.get
-        s"""<a href="$baseurl/$url">${t.title}</a>"""
+        s"""<li class="leaf"><a href="$baseurl/$url" $marker>${t.title}</a></li>"""
       }
       else {
         ctx.docbase.error(
@@ -187,13 +196,13 @@ object tags {
     }
 
     override def render(ctx: TemplateContext, nodes: LNode*): AnyRef =
-      (nodes(0).render(ctx), nodes(1).render(ctx)) match {
-        case (map: JMap[String, AnyRef] @unchecked, parent: String) =>
-          Title(map).map(renderTitle(_, parent)).getOrElse(null)
+      ((nodes(0).render(ctx), nodes(1).render(ctx)) match {
+        case (map: JMap[String, AnyRef] @unchecked, url: String) =>
+          Title(map).map(renderTitle(_, url))
         case (map: JMap[String, AnyRef] @unchecked, _) =>
-          Title(map).map(renderTitle(_, "./")).getOrElse(null) // file is in top dir
-        case _ => null
-      }
+          Title(map).map(renderTitle(_, "./")) // file is in top dir
+        case _ => None
+      }).orNull
   }
 
   /** Allows the extraction of docstrings from the given path. E.g:

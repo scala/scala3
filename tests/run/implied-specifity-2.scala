@@ -1,60 +1,68 @@
 class Low
 object Low {
-  delegate low for Low
+  given low : Low
 }
 class Medium extends Low
 object Medium {
-  delegate medium for Medium
+  given medium : Medium
 }
 class High extends Medium
 object High {
-  delegate high for High
+  given high : High
 }
 
 class Foo[T](val i: Int)
 object Foo {
-  def apply[T] given (fooT: Foo[T]): Int = fooT.i
+  def apply[T](given fooT: Foo[T]): Int = fooT.i
 
-  delegate foo[T]    for Foo[T](0)        given Low
-  delegate foobar[T] for Foo[Bar[T]](1)   given Low
-  delegate foobarbaz for Foo[Bar[Baz]](2) given Low
+  given foo[T](given Low)    : Foo[T](0)
+  given foobar[T](given Low) : Foo[Bar[T]](1)
+  given foobarbaz(given Low) : Foo[Bar[Baz]](2)
 }
 class Bar[T]
 object Bar {
-  delegate foobar[T] for Foo[Bar[T]](3)   given Medium
-  delegate foobarbaz for Foo[Bar[Baz]](4) given Medium
+  given foobar[T](given Medium): Foo[Bar[T]](3)
+  given foobarbaz(given Medium): Foo[Bar[Baz]](4)
 }
 class Baz
 object Baz {
-  delegate baz for Foo[Bar[Baz]](5) given High
+  given baz(given High): Foo[Bar[Baz]](5)
 }
 
 class Arg
-delegate for Arg
+
+given Arg
 
 class Bam(val str: String)
-delegate lo for Bam("lo") given Low
-delegate hi for Bam("hi") given High given Arg
+
+given lo(given Low): Bam("lo")
+
+given hi(given High)(given Arg): Bam("hi")
 
 class Bam2(val str: String)
-delegate lo2 for Bam2("lo") given Low
-delegate mid2 for Bam2("mid") given High given Arg
-delegate hi2 for Bam2("hi")
+
+given lo2(given Low) : Bam2("lo")
+
+given mid2(given High)(given Arg) : Bam2("mid")
+
+given hi2 : Bam2("hi")
 
 class Arg2
 class Red(val str: String)
-delegate normal for Red("normal") given Arg2
-delegate reduced for Red("reduced") given (ev: Arg2 | Low)
+
+given normal(given Arg2) : Red("normal")
+
+given reduced(given ev: Arg2 | Low) : Red("reduced")
 
 object Test extends App {
   assert(Foo[Int] == 0)
   assert(Foo[Bar[Int]] == 3)
   assert(Foo[Bar[Baz]] == 5)
-  assert(the[Bam].str == "hi")
-  assert(the[Bam2].str == "hi")
-  assert(the[Red].str == "reduced")
+  assert(summon[Bam].str == "hi")
+  assert(summon[Bam2].str == "hi")
+  assert(summon[Red].str == "reduced")
 
-  { delegate for Arg2
-    assert(the[Red].str == "normal")
+  { given Arg2
+    assert(summon[Red].str == "normal")
   }
 }

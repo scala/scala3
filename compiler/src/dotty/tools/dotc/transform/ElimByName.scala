@@ -42,7 +42,7 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
   private def applyIfFunction(tree: Tree, ftree: Tree)(implicit ctx: Context) =
     if (isByNameRef(ftree)) {
       val tree0 = transformFollowing(tree)
-      ctx.atPhase(next) { implicit ctx => tree0.select(defn.Function0_apply).appliedToNone }
+      ctx.atPhase(next) { tree0.select(defn.Function0_apply).appliedToNone }
     }
     else tree
 
@@ -61,7 +61,7 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
   }
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
-    ctx.atPhase(next) { implicit ctx =>
+    ctx.atPhase(next) {
       if (exprBecomesFunction(tree.symbol))
         cpy.ValDef(tree)(tpt = tree.tpt.withType(tree.symbol.info))
       else tree

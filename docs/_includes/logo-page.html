@@ -1,81 +1,43 @@
-<div class="page red exactly-one-page">
-    <div id="header">
-        <nav class="nav nav-pills">
-            <li class="nav-item">
-                <a class="nav-link" href="#getting-started">
-                    Try it now
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{{ site.baseurl }}/blog/index.html">
-                    Blog
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{{ site.baseurl }}/docs/index.html">
-                    Docs
-                </a>
-            </li>
-            <!--
-            <li class="nav-item">
-                <a class="nav-link" href="#build-status">
-                    Community Projects
-                </a>
-            </li>
-            -->
-            <li class="nav-item">
-                <a class="nav-link" href="https://github.com/lampepfl/dotty">
-                    <img id="github-logo" src="{{ site.baseurl }}/images/github-logo.svg" />
-                </a>
-            </li>
-        </nav>
-    </div>
-    <div id="mobile-header">
-        <nav class="navbar navbar-light">
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsed-header" aria-controls="collapsed-header" aria-expanded="false" aria-label="Toggle navigation">
-                &#9776;
+<section class="page bg-red bg-dark">
+    <header>
+        <nav class="navbar navbar-expand-md navbar-dark">
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
+                <i class="fas fa-bars"></i>
             </button>
-            <div class="collapse" id="collapsed-header">
-                <div class="bg-inverse p-a-1">
-                    <ul>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#getting-started">
-                                Try it now
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ site.baseurl }}/blog/index.html">
-                                Blog
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ site.baseurl }}/docs/index.html">
-                                Docs
-                            </a>
-                        </li>
-                        <!--
-                        <li class="nav-item">
-                            <a class="nav-link" href="#build-status">
-                                Community Projects
-                            </a>
-                        </li>
-                        -->
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://github.com/lampepfl/dotty">
-                                <img id="github-logo" src="{{ site.baseurl }}/images/github-logo.svg" />
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <ul class="navbar-nav ml-auto mr-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#getting-started">
+                            Try it now
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ site.baseurl }}/blog/index.html">
+                            Blog
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ site.baseurl }}/docs/index.html">
+                            Docs
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://github.com/lampepfl/dotty">
+                            <i class="fab fa-github"></i>
+                        </a>
+                    </li>
+                </ul>
             </div>
         </nav>
-    </div>
-    <div class="scala-logo-container">
-        <p><img src="{{ site.baseurl }}/images/scala-logo.svg" alt="image" /></p>
-        <div class="centered-subtitle">
-            <h1 id="dotty">Dotty</h1>
-            <p>A next generation compiler for Scala</p>
+    </header>
+    <div class="container">
+        <div class="scala-logo-container">
+            <img src="{{ site.baseurl }}/images/dotty-logo-white.svg" alt="logo" />
+            <div class="subtitle text-center">
+                <h1 id="dotty" class="above-byline">Dotty</h1>
+                <p>A next-generation compiler for Scala</p>
+                <p>(scroll down for more info)</p>
+            </div>
         </div>
     </div>
-</div>
-
+</section>

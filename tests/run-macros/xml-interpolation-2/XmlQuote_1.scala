@@ -1,8 +1,7 @@
 
 import scala.quoted._
-import scala.quoted.autolift._
+import scala.quoted.autolift.given
 
-import scala.tasty.Reflection
 
 import scala.language.implicitConversions
 
@@ -15,9 +14,8 @@ object XmlQuote {
   }
   implicit inline def SCOps(ctx: => StringContext): SCOps = new SCOps(ctx)
 
-  def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
-          (implicit reflect: Reflection): Expr[Xml] = {
-    import reflect._
+  def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(given qctx: QuoteContext): Expr[Xml] = {
+    import qctx.tasty.{_, given}
 
     // for debugging purpose
     def pp(tree: Tree): Unit = {
@@ -44,19 +42,24 @@ object XmlQuote {
         ctx1 match {
           case Apply(fun, List(Typed(Repeated(values, _), _))) if isStringContextApply(fun) =>
             values.iterator.map {
-              case Literal(Constant.String(value)) => value
-              case _ => QuoteError("Expected statically known String")
+              case Literal(Constant(value: String)) => value
+              case _ =>
+                qctx.error("Expected statically known String")
+                return '{???}
             }.toList
-          case _ => QuoteError("Expected statically known StringContext")
+          case _ =>
+            qctx.error("Expected statically known StringContext")
+            return '{???}
         }
       case _ =>
-        QuoteError("Expected statically known SCOps")
+        qctx.error("Expected statically known SCOps")
+        return '{???}
     }
 
     // [a0, ...]: Any*
     val args2: Expr[List[Any]] = args.unseal.underlyingArgument match {
       case Typed(Repeated(args0, _), _) => // statically known args, make list directly
-        args0.map(_.seal).toExprOfList
+        Expr.ofList(args0.map(_.seal))
       case _ =>
         '{$args.toList}
 

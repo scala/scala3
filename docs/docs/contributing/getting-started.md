@@ -7,7 +7,7 @@ title: Getting Started
 
 Requirements
 ------------
-Make sure that you are using Java 8 or newer. You can determine which version of the JDK is the
+Make sure that you are using macOS or Linux (or WSL on Windows) with Java 8 or newer. You can determine which version of the JDK is the
 default by typing `java -version` in a Terminal window.
 
 Compiling and Running

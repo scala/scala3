@@ -1,0 +1,4 @@
+-- Error: tests/neg/3559.scala:3:9 -------------------------------------------------------------------------------------
+3 |    this(b)           // error: forward reference not allowed from self constructor invocation
+  |         ^
+  |         forward reference not allowed from self constructor invocation

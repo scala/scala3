@@ -153,7 +153,7 @@ class MixedUnitLazy extends UnitLazy with UnitLazyT {
   }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   def test(name: String, v: A): Unit = {
     println(name + " test:")

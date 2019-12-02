@@ -5,11 +5,14 @@ import util.SourceFile
 import ast.{tpd, untpd}
 import tpd.{Tree, TreeTraverser}
 import typer.PrepareInlineable.InlineAccessors
+import typer.Nullables
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.SymUtils._
 import util.{NoSource, SourceFile}
+import util.Spans.Span
+import core.Decorators._
 
 class CompilationUnit protected (val source: SourceFile) {
 
@@ -31,9 +34,31 @@ class CompilationUnit protected (val source: SourceFile) {
 
   /** A structure containing a temporary map for generating inline accessors */
   val inlineAccessors: InlineAccessors = new InlineAccessors
+
+  var suspended: Boolean = false
+
+  def suspend()(given ctx: Context): Nothing =
+    if !suspended then
+      if (ctx.settings.XprintSuspension.value)
+        ctx.echo(i"suspended: $this")
+      suspended = true
+      ctx.run.suspendedUnits += this
+    throw CompilationUnit.SuspendException()
+
+  private var myAssignmentSpans: Map[Int, List[Span]] = null
+
+  /** A map from (name-) offsets of all local variables in this compilation unit
+   *  that can be tracked for being not null to the list of spans of assignments
+   *  to these variables.
+   */
+  def assignmentSpans(given Context): Map[Int, List[Span]] =
+    if myAssignmentSpans == null then myAssignmentSpans = Nullables.assignmentSpans
+    myAssignmentSpans
 }
 
 object CompilationUnit {
+
+  class SuspendException extends Exception
 
   /** Make a compilation unit for top class `clsd` with the contents of the `unpickled` tree */
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =

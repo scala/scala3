@@ -62,7 +62,8 @@ class ParsedComment(val comment: Comment) {
       boundss <- groupedSections.get(tag)
       texts = boundss.map { case (start, end) => clean(content.slice(start, end)) }
       formatted <- formatter(texts)
-    } {
+    }
+    {
       buf.append(formatted)
       buf.append(System.lineSeparator)
     }
@@ -101,9 +102,11 @@ object ParsedComment {
    */
   def docOf(symbol: Symbol)(implicit ctx: Context): Option[ParsedComment] = {
     val documentedSymbol = if (symbol.isPrimaryConstructor) symbol.owner else symbol
-    for { docCtx <- ctx.docCtx
-          comment <- docCtx.docstring(documentedSymbol)
-    } yield new ParsedComment(comment)
+    for {
+      docCtx <- ctx.docCtx
+      comment <- docCtx.docstring(documentedSymbol)
+    }
+    yield new ParsedComment(comment)
   }
 
   @scala.annotation.internal.sharable
@@ -172,15 +175,13 @@ object ParsedComment {
    * @param snippet  The code snippet
    * @return `snippet`, wrapped in a code fence.
    */
-  private def toCodeFence(language: String)(ctx: Context, snippet: String): String = {
-    if (colorEnabled(ctx)) {
+  private def toCodeFence(language: String)(ctx: Context, snippet: String): String =
+    if (colorEnabled(ctx))
       SyntaxHighlighting.highlight(snippet)(ctx)
-    } else {
+    else
       s"""```$language
          |$snippet
          |```""".stripMargin
-    }
-  }
 
   /**
    * Format the elements of documentation associated with a given tag using `fn`, and starts the
@@ -212,9 +213,8 @@ object ParsedComment {
     ctx.settings.color.value != "never"
 
   /** Show `str` in bold */
-  private def bold(str: String)(implicit ctx: Context): String = {
+  private def bold(str: String)(implicit ctx: Context): String =
     if (colorEnabled) s"$BOLD$str$RESET"
     else s"**$str**"
-  }
-
 }
+

@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds.{LazyBitMapName, LazyLocalInitName, LazyLocalName}
+import dotty.tools.dotc.core.NameKinds.{LazyBitMapName, LazyLocalInitName, LazyLocalName, ExpandedName}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
@@ -26,7 +26,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   /** this map contains mutable state of transformation: OffsetDefs to be appended to companion object definitions,
     * and number of bits currently used */
   class OffsetInfo(var defs: List[Tree], var ord:Int)
-  private[this] val appendOffsetDefs = mutable.Map.empty[Symbol, OffsetInfo]
+  private val appendOffsetDefs = mutable.Map.empty[Symbol, OffsetInfo]
 
   override def phaseName: String = LazyVals.name
 
@@ -42,7 +42,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   val containerFlagsMask: FlagSet = Method | Lazy | Accessor | Module
 
   /** A map of lazy values to the fields they should null after initialization. */
-  private[this] var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = _
+  private var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = _
   private def nullableFor(sym: Symbol)(implicit ctx: Context) = {
     // optimisation: value only used once, we can remove the value from the map
     val nullables = lazyValNullables.remove(sym)
@@ -61,32 +61,40 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
    transformLazyVal(tree)
 
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree = {
+  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
     transformLazyVal(tree)
-  }
 
   def transformLazyVal(tree: ValOrDefDef)(implicit ctx: Context): Tree = {
     val sym = tree.symbol
-    if (!(sym is Lazy) ||
+    if (!sym.is(Lazy) ||
         sym.owner.is(Trait) || // val is accessor, lazy field will be implemented in subclass
         (sym.isStatic && sym.is(Module, butNot = Method))) // static module vals are implemented in the JVM by lazy loading
       tree
     else {
       val isField = sym.owner.isClass
-      if (isField) {
-        if (sym.is(SyntheticModule))
+      if (isField)
+        if sym.isAllOf(SyntheticModule)
+           && sym.allOverriddenSymbols.isEmpty
+           && !sym.name.is(ExpandedName) then
+          // I am not sure what the conditions for this optimization should be.
+          // It was applied for all synthetic objects, but this is clearly false, as t704 demonstrates.
+          // It seems we have to at least exclude synthetic objects that derive from mixins.
+          // This is done by demanding that the object does not override anything.
+          // Figuring out whether a symbol implements a trait module is not so simple.
+          // For non-private trait members we can check whether there is an overridden symbol.
+          // For private trait members this does not work, since `ensureNotPrivate` in phase Mixins
+          // does change the name but does not update the owner's scope, so `allOverriddenSymbols` does
+          // not work in that case. However, we can check whether the name is an ExpandedName instead.
           transformSyntheticModule(tree)
-        else if (sym.isThreadUnsafe) {
-          if (sym.is(Module)) {
+        else if (sym.isThreadUnsafe || ctx.settings.scalajs.value)
+          if (sym.is(Module) && !ctx.settings.scalajs.value) {
             ctx.error(em"@threadUnsafe is only supported on lazy vals", sym.sourcePos)
             transformMemberDefThreadSafe(tree)
           }
           else
             transformMemberDefThreadUnsafe(tree)
-        }
         else
           transformMemberDefThreadSafe(tree)
-      }
       else transformLocalDef(tree)
     }
   }
@@ -103,8 +111,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         data.defs.foreach(_.symbol.addAnnotation(Annotation(defn.ScalaStaticAnnot)))
         cpy.Template(template)(body = addInFront(data.defs, template.body))
     }
-
   }
+
 
   private def addInFront(prefix: List[Tree], stats: List[Tree]) = stats match {
     case first :: rest if isSuperConstrCall(first) => first :: prefix ::: rest
@@ -253,10 +261,9 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     ).enteredAfter(this)
 
     val containerTree = ValDef(containerSymbol, defaultValue(tpe))
-    if (x.tpe.isNotNull && tpe <:< defn.ObjectType) {
+    if (x.tpe.isNotNull && tpe <:< defn.ObjectType)
       // can use 'null' value instead of flag
       Thicket(containerTree, mkDefThreadUnsafeNonNullable(x.symbol, containerSymbol, x.rhs))
-    }
     else {
       val flagName = LazyBitMapName.fresh(x.name.asTermName)
       val flagSymbol = ctx.newSymbol(x.symbol.owner, flagName,  containerFlags | Private, defn.BooleanType).enteredAfter(this)
@@ -336,7 +343,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     }
 
     val retryCase = {
-      val caseSymbol = ctx.newSymbol(methodSymbol, nme.DEFAULT_EXCEPTION_NAME, Synthetic, defn.ThrowableType)
+      val caseSymbol = ctx.newSymbol(methodSymbol, nme.DEFAULT_EXCEPTION_NAME, Synthetic | Case, defn.ThrowableType)
       val triggerRetry = setFlagState.appliedTo(thiz, offset, initState, fieldId)
       CaseDef(
         Bind(caseSymbol, ref(caseSymbol)),
@@ -377,7 +384,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     var flag: Tree = EmptyTree
     var ord = 0
 
-    def offsetName(id: Int) = (StdNames.nme.LAZY_FIELD_OFFSET + (if (x.symbol.owner.is(Module)) "_m_" else "") + id.toString).toTermName
+    def offsetName(id: Int) = s"${StdNames.nme.LAZY_FIELD_OFFSET}${if (x.symbol.owner.is(Module)) "_m_" else ""}$id".toTermName
 
     // compute or create appropriate offsetSymbol, bitmap and bits used by current ValDef
     appendOffsetDefs.get(claz) match {
@@ -387,14 +394,14 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         ord = info.ord % flagsPerLong
         val id = info.ord / flagsPerLong
         val offsetById = offsetName(id)
-        if (ord != 0) { // there are unused bits in already existing flag
+        if (ord != 0) // there are unused bits in already existing flag
           offsetSymbol = claz.info.decl(offsetById)
-            .suchThat(sym => (sym is Synthetic) && sym.isTerm)
+            .suchThat(sym => sym.is(Synthetic) && sym.isTerm)
              .symbol.asTerm
-        } else { // need to create a new flag
+        else { // need to create a new flag
           offsetSymbol = ctx.newSymbol(claz, offsetById, Synthetic, defn.LongType).enteredAfter(this)
           offsetSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot))
-          val flagName = (StdNames.nme.BITMAP_PREFIX + id.toString).toTermName
+          val flagName = s"${StdNames.nme.BITMAP_PREFIX}$id".toTermName
           val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
           flag = ValDef(flagSymbol, Literal(Constant(0L)))
           val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thizClass, Literal(Constant(flagName.toString))))
@@ -404,7 +411,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       case None =>
         offsetSymbol = ctx.newSymbol(claz, offsetName(0), Synthetic, defn.LongType).enteredAfter(this)
         offsetSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot))
-        val flagName = (StdNames.nme.BITMAP_PREFIX + "0").toTermName
+        val flagName = s"${StdNames.nme.BITMAP_PREFIX}0".toTermName
         val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
         flag = ValDef(flagSymbol, Literal(Constant(0L)))
         val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thizClass, Literal(Constant(flagName.toString))))
@@ -453,6 +460,3 @@ object LazyVals {
     val retry: TermName       = "retry".toTermName
   }
 }
-
-
-

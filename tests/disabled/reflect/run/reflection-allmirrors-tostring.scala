@@ -18,7 +18,7 @@ class C {
 }
 object M
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val cm = scala.reflect.runtime.currentMirror
 //  println(cm)
 

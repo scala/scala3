@@ -19,14 +19,14 @@ object Settings {
   val BooleanTag: ClassTag[Boolean]      = ClassTag.Boolean
   val IntTag: ClassTag[Int]              = ClassTag.Int
   val StringTag: ClassTag[String]        = ClassTag(classOf[String])
-  val ListTag: ClassTag[List[_]]         = ClassTag(classOf[List[_]])
+  val ListTag: ClassTag[List[?]]         = ClassTag(classOf[List[?]])
   val VersionTag: ClassTag[ScalaVersion] = ClassTag(classOf[ScalaVersion])
-  val OptionTag: ClassTag[Option[_]]     = ClassTag(classOf[Option[_]])
+  val OptionTag: ClassTag[Option[?]]     = ClassTag(classOf[Option[?]])
   val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
 
   class SettingsState(initialValues: Seq[Any]) {
-    private[this] var values = ArrayBuffer(initialValues: _*)
-    private[this] var _wasRead: Boolean = false
+    private var values = ArrayBuffer(initialValues: _*)
+    private var _wasRead: Boolean = false
 
     override def toString: String = s"SettingsState(values: ${values.toList})"
 
@@ -37,7 +37,7 @@ object Settings {
 
     def update(idx: Int, x: Any): SettingsState =
       if (_wasRead)
-        new SettingsState(values).update(idx, x)
+        new SettingsState(values.toSeq).update(idx, x)
       else {
         values(idx) = x
         this
@@ -65,10 +65,10 @@ object Settings {
     choices: Seq[T] = Nil,
     prefix: String = "",
     aliases: List[String] = Nil,
-    depends: List[(Setting[_], Any)] = Nil,
-    propertyClass: Option[Class[_]] = None)(private[Settings] val idx: Int) {
+    depends: List[(Setting[?], Any)] = Nil,
+    propertyClass: Option[Class[?]] = None)(private[Settings] val idx: Int) {
 
-    private[this] var changed: Boolean = false
+    private var changed: Boolean = false
 
     def withAbbreviation(abbrv: String): Setting[T] =
       copy(aliases = aliases :+ abbrv)(idx)
@@ -94,8 +94,8 @@ object Settings {
     def legalChoices: String =
       if (choices.isEmpty) ""
       else choices match {
-        case r: Range => r.head + ".." + r.last
-        case xs: List[_] => xs.mkString(", ")
+        case r: Range => s"${r.head}..${r.last}"
+        case xs: List[?] => xs.mkString(", ")
       }
 
     def isLegal(arg: Any): Boolean =
@@ -110,20 +110,19 @@ object Settings {
             case x: Int => r.head <= x && x <= r.last
             case _ => false
           }
-        case xs: List[_] =>
+        case xs: List[?] =>
           xs contains arg
       }
 
     def tryToSet(state: ArgsSummary): ArgsSummary = {
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state
-      def update(value: Any, args: List[String]) = {
-        if (changed) {
+      def update(value: Any, args: List[String]) =
+        if (changed)
           ArgsSummary(updateIn(sstate, value), args, errors, warnings :+ s"Flag $name set repeatedly")
-        } else {
+        else {
           changed = true
           ArgsSummary(updateIn(sstate, value), args, errors, warnings)
         }
-      }
       def fail(msg: String, args: List[String]) =
         ArgsSummary(sstate, args, errors :+ msg, warnings)
       def missingArg =
@@ -161,7 +160,8 @@ object Settings {
               case _ =>
                 update(x, args2)
             }
-          } catch {
+          }
+          catch {
             case _: NumberFormatException =>
               fail(s"$arg2 is not an integer argument for $name", args2)
           }
@@ -193,22 +193,22 @@ object Settings {
 
   class SettingGroup {
 
-    private[this] val _allSettings = new ArrayBuffer[Setting[_]]
-    def allSettings: Seq[Setting[_]] = _allSettings
+    private val _allSettings = new ArrayBuffer[Setting[?]]
+    def allSettings: Seq[Setting[?]] = _allSettings.toSeq
 
     def defaultState: SettingsState = new SettingsState(allSettings map (_.default))
 
-    def userSetSettings(state: SettingsState): Seq[Setting[_]] =
+    def userSetSettings(state: SettingsState): Seq[Setting[?]] =
       allSettings filterNot (_.isDefaultIn(state))
 
     def toConciseString(state: SettingsState): String =
       userSetSettings(state).mkString("(", " ", ")")
 
     private def checkDependencies(state: ArgsSummary): ArgsSummary =
-      (state /: userSetSettings(state.sstate))(checkDependenciesOfSetting)
+      userSetSettings(state.sstate).foldLeft(state)(checkDependenciesOfSetting)
 
-    private def checkDependenciesOfSetting(state: ArgsSummary, setting: Setting[_]) =
-      (state /: setting.depends) { (s, dep) =>
+    private def checkDependenciesOfSetting(state: ArgsSummary, setting: Setting[?]) =
+      setting.depends.foldLeft(state) { (s, dep) =>
         val (depSetting, reqValue) = dep
         if (depSetting.valueIn(state.sstate) == reqValue) s
         else s.fail(s"incomplete option ${setting.name} (requires ${depSetting.name})")
@@ -237,7 +237,7 @@ object Settings {
         case "--" :: args =>
           checkDependencies(stateWithArgs(skipped ++ args))
         case x :: _ if x startsWith "-" =>
-          @tailrec def loop(settings: List[Setting[_]]): ArgsSummary = settings match {
+          @tailrec def loop(settings: List[Setting[?]]): ArgsSummary = settings match {
             case setting :: settings1 =>
               val state1 = setting.tryToSet(state)
               if (state1 ne state) processArguments(state1, processAll, skipped)

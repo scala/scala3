@@ -1,44 +1,44 @@
-Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Int")
 
-Type.SymRef(IsValDefSymbol(<Test$._$x>), NoPrefix())
+TermRef(NoPrefix(), "x")
 
-TypeBounds(Type.SymRef(IsClassDefSymbol(<scala.Nothing>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))), Type.SymRef(IsClassDefSymbol(<scala.Any>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))
+TypeBounds(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Nothing"), TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Any"))
 
-Type.SymRef(IsClassDefSymbol(<scala.Nothing>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Nothing")
 
-Type.SymRef(IsClassDefSymbol(<scala.Any>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Any")
 
-Type.SymRef(IsTypeDefSymbol(<Test$._$_$T>), NoPrefix())
+TypeRef(NoPrefix(), "T")
 
-Type.SymRef(IsTypeDefSymbol(<Test$._$_$T>), NoPrefix())
+TypeRef(NoPrefix(), "T")
 
-TypeBounds(Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix())))), Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix())))))
+TypeBounds(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int"), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int"))
 
-Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
 
-Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
 
-Type.SymRef(IsTypeDefSymbol(<Test$._$_$T>), NoPrefix())
+TypeRef(NoPrefix(), "T")
 
-Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Type.SymRef(IsClassDefSymbol(<java.lang.Object>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<java.lang>), NoPrefix())))
+TypeRef(ThisType(TypeRef(NoPrefix(), "lang")), "Object")
 
-TypeBounds(Type.SymRef(IsClassDefSymbol(<scala.Nothing>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))), Type.SymRef(IsClassDefSymbol(<scala.Any>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))
+TypeBounds(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Nothing"), TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Any"))
 
-Type.SymRef(IsClassDefSymbol(<scala.Nothing>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Nothing")
 
-Type.SymRef(IsClassDefSymbol(<scala.Any>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Any")
 
-Type.Refinement(Type.SymRef(IsClassDefSymbol(<Test$._$Foo>), NoPrefix()), X, TypeBounds(Type.SymRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.SymRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))), Type.SymRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.SymRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))))
+Refinement(TypeRef(NoPrefix(), "Foo"), X, TypeBounds(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String"), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String")))
 
-Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Type.SymRef(IsClassDefSymbol(<Test$._$Foo>), NoPrefix())
+TypeRef(NoPrefix(), "Foo")
 
-Type.SymRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.SymRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String")
 
-Type.SymRef(IsClassDefSymbol(<Test$._$_$$anon>), NoPrefix())
+TypeRef(NoPrefix(), "$anon")
 
-Type.Refinement(Type.SymRef(IsClassDefSymbol(<Test$._$Foo>), NoPrefix()), X, TypeBounds(Type.SymRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.SymRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))), Type.SymRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.SymRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))))
+Refinement(TypeRef(NoPrefix(), "Foo"), X, TypeBounds(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String"), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String")))
 

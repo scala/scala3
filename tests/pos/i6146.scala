@@ -1,5 +1,5 @@
 trait BS[T, S <: BS[T, S]]
- trait IS extends BS[Int, IS]
+trait IS extends BS[Int, IS]
 
 sealed trait BSElem[T, S <: BS[_, S]]
   // old error: Type argument S does not conform to upper bound BS[Any, LazyRef(S)]

@@ -2,7 +2,7 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     (
-      erased (x: Int) => {
+      (erased x: Int) => {
        println("lambda")
        42
      }

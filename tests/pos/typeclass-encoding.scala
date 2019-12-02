@@ -19,7 +19,7 @@
       }
 
       def sum[T: Monoid](xs: List[T]): T =
-        (inst[T, Monoid].unit /: xs)(_ `add` _)
+        xs.foldLeft(inst[T, Monoid].unit)(_ `add` _)
 
 */
 object runtime {
@@ -85,7 +85,7 @@ object semiGroups {
   }
 
   def sum[T](xs: List[T])(implicit $ev: Implementation[T] { type Implemented = Monoid } ) = {
-    (inst[T, Monoid].unit /: xs)((x, y) => inject(x) `add` y)
-    (inst[T, Monoid].unit /: xs)((x, y) => x `add` y)  // fails in scalac and previous dotc.
+    xs.foldLeft(inst[T, Monoid].unit)((x, y) => inject(x) `add` y)
+    xs.foldLeft(inst[T, Monoid].unit)((x, y) => x `add` y)  // fails in scalac and previous dotc.
   }
 }

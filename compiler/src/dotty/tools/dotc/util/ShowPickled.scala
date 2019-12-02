@@ -101,12 +101,13 @@ object ShowPickled {
     var idx = index
     var result = 0L
     var b = 0L
-    do {
+    while ({
       b = data(idx)
       idx += 1
       result = (result << 7) + (b & 0x7f)
-    } while((b & 0x80) != 0L)
-
+      (b & 0x80) != 0L
+    })
+    ()
     result.toInt
   }
 
@@ -144,7 +145,7 @@ object ShowPickled {
         val accessBoundary = (
           for (idx <- privateWithin) yield {
             val s = entryList nameAt idx
-            idx + "(" + s + ")"
+            s"$idx($s)"
           }
         )
         val flagString = PickleBuffer.unpickleScalaFlags(pflags, isType).toString
@@ -169,12 +170,12 @@ object ShowPickled {
      */
     def printEntry(i: Int): Unit = {
       buf.readIndex = index(i)
-      p(i + "," + buf.readIndex + ": ")
+      p(s"$i,${buf.readIndex}: ")
       val tag = buf.readByte()
       out.print(tag2string(tag))
       val len = buf.readNat()
       val end = len + buf.readIndex
-      p(" " + len + ":")
+      p(s" $len:")
       tag match {
         case TERMname =>
           out.print(" ")
@@ -248,15 +249,15 @@ object ShowPickled {
         case _ =>
       }
       out.println()
-      if (buf.readIndex != end) {
+      if (buf.readIndex != end)
         out.println("BAD ENTRY END: computed = %d, actual = %d, bytes = %s".format(
           end, buf.readIndex, buf.bytes.slice(index(i), (end max buf.readIndex)).mkString(", ")
         ))
-      }
     }
 
     for (i <- 0 until index.length) printEntry(i)
   }
+}
 
 /*
  *
@@ -282,4 +283,3 @@ object ShowPickled {
       }
     }
   }*/
-}

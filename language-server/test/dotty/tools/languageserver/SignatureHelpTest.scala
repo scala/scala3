@@ -19,9 +19,10 @@ class SignatureHelpTest {
 
   @Test def fromScala2: Unit = {
     val applySig =
-      S("apply[A]", Nil, List(List(P("xs", "A*"))), Some("List[A]"))
+      // TODO: Ideally this should say `List[A]`, not `CC[A]`
+      S("apply[A]", Nil, List(List(P("elems", "A*"))), Some("CC[A]"))
     val mapSig =
-      S("map[B, That]", Nil, List(List(P("f", "A => B"))), Some("That"))
+      S("map[B]", Nil, List(List(P("f", "A => B"))), Some("List[B]"))
     code"""object O {
              List($m1)
              List(1, 2, 3).map($m2)

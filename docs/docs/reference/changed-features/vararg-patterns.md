@@ -36,5 +36,5 @@ The change to the grammar is:
 
 ## Compatibility considerations
 
-Under the `-language:Scala2` option, Dotty will accept both the old and the new syntax.
+Under the `-language:Scala2Compat` option, Dotty will accept both the old and the new syntax.
 A migration warning will be emitted when the old syntax is encountered.

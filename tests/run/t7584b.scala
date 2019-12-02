@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def fold[A, B](f: (A, => B) => B) = (b: B) => f(null.asInstanceOf[A], b)
   def f[A, B](x: A, y: B): B = y
   def bip[A, B] = fold[A, B]((x, y) => f(x, y))

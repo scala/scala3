@@ -9,6 +9,6 @@ case class B() extends A {
   def toString(sb: StringBuilder): StringBuilder = sys.error("")
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   Console.println(B)
 }

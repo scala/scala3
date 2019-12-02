@@ -50,6 +50,7 @@ classpathArgs () {
   # echo "dotty-compiler: $DOTTY_COMP"
   # echo "dotty-interface: $DOTTY_INTF"
   # echo "dotty-library: $DOTTY_LIB"
+  # echo "tasty-core: $TASTY_CORE"
   # echo "scala-asm: $SCALA_ASM"
   # echo "scala-lib: $SCALA_LIB"
   # echo "sbt-intface: $SBT_INTF"
@@ -61,6 +62,8 @@ classpathArgs () {
   toolchain+="$SBT_INTF$PSEP"
   toolchain+="$DOTTY_INTF$PSEP"
   toolchain+="$DOTTY_COMP$PSEP"
+  toolchain+="$TASTY_CORE$PSEP"
+  toolchain+="$DOTTY_STAGING$PSEP"
 
   # jine
   toolchain+="$JLINE_READER$PSEP"
@@ -87,7 +90,7 @@ case "$1" in
          -run) PROG_NAME="$ReplMain" && shift ;;
       -colors) colors=true && shift ;;
    -no-colors) unset colors && shift ;;
-  -with-compiler) jvm_cp_args="$PSEP$DOTTY_COMP" && shift ;;
+  -with-compiler) jvm_cp_args="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE" && shift ;;
 
           # break out -D and -J options and add them to java_args so
           # they reach the JVM in time to do some good. The -D options

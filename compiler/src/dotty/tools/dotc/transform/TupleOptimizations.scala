@@ -23,7 +23,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
 
   def phaseName: String = "genericTuples"
 
-  override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
+  override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree =
     if (!tree.symbol.exists || tree.symbol.owner != defn.DynamicTupleModuleClass) tree
     else if (tree.symbol == defn.DynamicTuple_dynamicCons) transformTupleCons(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicTail) transformTupleTail(tree)
@@ -32,7 +32,6 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     else if (tree.symbol == defn.DynamicTuple_dynamicApply) transformTupleApply(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicToArray) transformTupleToArray(tree)
     else tree
-  }
 
   private def transformTupleCons(tree: tpd.Apply)(implicit ctx: Context): Tree = {
     val head :: tail :: Nil = tree.args
@@ -40,14 +39,14 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
       case Some(tpes) =>
         // Generate a the tuple directly with TupleN+1.apply
         val size = tpes.size
-        if (size <= 5) {
+        if (size <= 5)
           // val t = tail
           // TupleN+1(head, t._1, ..., t._n)
           evalOnce(Typed(tail, TypeTree(defn.tupleType(tpes.tail)))) { tup =>
             val elements = head :: tupleSelectors(tup, size - 1)
             knownTupleFromElements(tpes, elements)
           }
-        } else {
+        else {
           // val it = Iterator.single(head) ++ tail.asInstanceOf[Product].productIterator
           // TupleN+1(it.next(), ..., it.next())
           val fullIterator = ref(defn.DynamicTuple_consIterator).appliedToArgs(head :: tail :: Nil)
@@ -69,31 +68,29 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         // Generate a the tuple directly with TupleN-1.apply
         val size = tpes.size
         assert(size > 0)
-        if (size == 1) {
+        if (size == 1)
           // ()
           Literal(Constant(()))
-        }
-        else if (size <= 5) {
+        else if (size <= 5)
           // val t = tup.asInstanceOf[TupleN[...]]
           // TupleN-1(t._2, ..., t._n)
           evalOnce(Typed(tup, TypeTree(defn.tupleType(tpes)))) { tup =>
             val elements = tupleSelectors(tup, size).tail
             knownTupleFromElements(tpes.tail, elements)
           }
-        } else if (size <= MaxTupleArity + 1) {
+        else if (size <= MaxTupleArity + 1)
           // val it = this.asInstanceOf[Product].productIterator
           // it.next()
           // TupleN-1(it.next(), ..., it.next())
-          evalOnce(tup.asInstance(defn.ProductType).select(nme.productIterator)) { it =>
+          evalOnce(tup.asInstance(defn.ProductClass.typeRef).select(nme.productIterator)) { it =>
             Block(
               it.select(nme.next).ensureApplied :: Nil,
               knownTupleFromIterator(size - 1, it).asInstance(tree.tpe)
             )
           }
-        } else {
+        else
           // tup.asInstanceOf[TupleXXL].tailXXL
-          tup.asInstance(defn.TupleXXLType).select("tailXXL".toTermName)
-        }
+          tup.asInstance(defn.TupleXXLClass.typeRef).select("tailXXL".toTermName)
       case None =>
         // No optimization, keep:
         // DynamicTuple.dynamicTail(tup)
@@ -101,12 +98,11 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     }
   }
 
-  private def transformTupleSize(tree: tpd.Apply)(implicit ctx: Context): Tree = {
+  private def transformTupleSize(tree: tpd.Apply)(implicit ctx: Context): Tree =
     tree.tpe.tryNormalize match {
       case tp: ConstantType => Literal(tp.value)
       case _ => tree
     }
-  }
 
   private def transformTupleConcat(tree: tpd.Apply)(implicit ctx: Context): Tree = {
     val Apply(TypeApply(_, selfTp :: thatTp :: Nil), self :: that :: Nil) = tree
@@ -118,7 +114,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         val m = tpes2.size
         if (n == 0) that
         else if (m == 0) self
-        else if (n + m < 5) {
+        else if (n + m < 5)
           // val t = self
           // val u = that
           // TupleN+M(t._1,..., t._N, u._1, ..., u._M)
@@ -129,7 +125,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
               knownTupleFromElements(types, elements)
             }
           }
-        } else {
+        else {
           // val it = self.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator
           // TupleN+M(it.next(), ..., it.next())
           val fullIterator = ref(defn.DynamicTuple_concatIterator).appliedToArgs(tree.args)
@@ -154,13 +150,13 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         if (n < 0 || n >= size) {
           ctx.error("index out of bounds: " + n, nTree.underlyingArgument.sourcePos)
           tree
-        } else if (size <= MaxTupleArity) {
+        }
+        else if (size <= MaxTupleArity)
           // tup._n
           Typed(tup, TypeTree(defn.tupleType(tpes))).select(nme.selectorName(n))
-        } else {
+        else
           // tup.asInstanceOf[TupleXXL].productElement(n)
-          tup.asInstance(defn.TupleXXLType).select(nme.productElement).appliedTo(Literal(nTpe.value))
-        }
+          tup.asInstance(defn.TupleXXLClass.typeRef).select(nme.productElement).appliedTo(Literal(nTpe.value))
       case (None, nTpe: ConstantType) if nTpe.value.intValue < 0 =>
         ctx.error("index out of bounds: " + nTpe.value.intValue, nTree.sourcePos)
         tree
@@ -176,16 +172,15 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     defn.tupleTypes(tup.tpe.widen, MaxTupleArity) match {
       case Some(tpes) =>
         val size = tpes.size
-        if (size == 0) {
+        if (size == 0)
           // Array.emptyObjectArray
-          ref(defn.ArrayModule.companionModule).select("emptyObjectArray".toTermName).ensureApplied
-        } else if (size <= MaxTupleArity) {
+          ref(defn.ArrayModule).select("emptyObjectArray".toTermName).ensureApplied
+        else if (size <= MaxTupleArity)
           // DynamicTuple.productToArray(tup.asInstanceOf[Product])
-          ref(defn.DynamicTuple_productToArray).appliedTo(tup.asInstance(defn.ProductType))
-        } else {
+          ref(defn.DynamicTuple_productToArray).appliedTo(tup.asInstance(defn.ProductClass.typeRef))
+        else
           // tup.asInstanceOf[TupleXXL].elems.clone()
-          tup.asInstance(defn.TupleXXLType).select(nme.toArray)
-        }
+          tup.asInstance(defn.TupleXXLClass.typeRef).select(nme.toArray)
       case None =>
         // No optimization, keep:
         // DynamicTuple.dynamicToArray(tup)
@@ -201,11 +196,10 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     ref(tupleModule).select(nme.apply).appliedToTypes(tpes).appliedToArgs(elements)
   }
 
-  private def knownTupleFromIterator(size: Int, it: Tree)(implicit ctx: Context): Tree = {
-    if (size == 0) {
+  private def knownTupleFromIterator(size: Int, it: Tree)(implicit ctx: Context): Tree =
+    if (size == 0)
       // Unit for empty tuple
       Literal(Constant(())) // TODO should this code be here? Or assert(size > specializedSize)
-    }
     else if (size <= MaxTupleArity) {
       // TupleN(it.next(), ..., it.next())
 
@@ -215,14 +209,13 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
       val tpes = List.fill(size)(defn.AnyType)
       val elements = (0 until size).map(_ => it.select(nme.next)).toList
       knownTupleFromElements(tpes, elements)
-    } else {
+    }
+    else
       // No optimization, keep:
       // TupleXXL.fromIterator(it)
       ref(defn.TupleXXL_fromIterator).appliedTo(it)
-    }
-  }
 
   private def tupleSelectors(tup: Tree, size: Int)(implicit ctx: Context): List[Tree] =
     (0 until size).map(i => tup.select(nme.selectorName(i))).toList
-
 }
+

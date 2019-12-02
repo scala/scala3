@@ -147,7 +147,7 @@ class TailRec extends MiniPhase {
         val varsForRewrittenParamSyms = transformer.varsForRewrittenParamSyms
 
         val initialVarDefs = {
-          val initialParamVarDefs = (rewrittenParamSyms, varsForRewrittenParamSyms).zipped.map {
+          val initialParamVarDefs = rewrittenParamSyms.lazyZip(varsForRewrittenParamSyms).map {
             (param, local) => ValDef(local.asTerm, ref(param))
           }
           varForRewrittenThis match {
@@ -196,7 +196,7 @@ class TailRec extends MiniPhase {
     var failureReported: Boolean = false
 
     /** The `tailLabelN` label symbol, used to encode a `continue` from the infinite `while` loop. */
-    private[this] var myContinueLabel: Symbol = _
+    private var myContinueLabel: Symbol = _
     def continueLabel(implicit ctx: Context): Symbol = {
       if (myContinueLabel == null)
         myContinueLabel = ctx.newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType)
@@ -210,7 +210,7 @@ class TailRec extends MiniPhase {
     /** The replacement `var`s for the params in `rewrittenParamSyms`. */
     var varsForRewrittenParamSyms: List[Symbol] = Nil
 
-    private def getVarForRewrittenThis()(implicit ctx: Context): Symbol = {
+    private def getVarForRewrittenThis()(implicit ctx: Context): Symbol =
       varForRewrittenThis match {
         case Some(sym) => sym
         case none =>
@@ -221,9 +221,8 @@ class TailRec extends MiniPhase {
           varForRewrittenThis = Some(sym)
           sym
       }
-    }
 
-    private def getVarForRewrittenParam(param: Symbol)(implicit ctx: Context): Symbol = {
+    private def getVarForRewrittenParam(param: Symbol)(implicit ctx: Context): Symbol =
       rewrittenParamSyms.indexOf(param) match {
         case -1 =>
           val sym = ctx.newSymbol(method, TailLocalName.fresh(param.name.toTermName), Synthetic | Mutable, param.info)
@@ -232,15 +231,14 @@ class TailRec extends MiniPhase {
           sym
         case index => varsForRewrittenParamSyms(index)
       }
-    }
 
     /** Symbols of Labeled blocks that are in tail position. */
     private val tailPositionLabeledSyms = new mutable.HashSet[Symbol]()
 
-    private[this] var inTailPosition = true
+    private var inTailPosition = true
 
     /** Rewrite this tree to contain no tail recursive calls */
-    def transform(tree: Tree, tailPosition: Boolean)(implicit ctx: Context): Tree = {
+    def transform(tree: Tree, tailPosition: Boolean)(implicit ctx: Context): Tree =
       if (inTailPosition == tailPosition) transform(tree)
       else {
         val saved = inTailPosition
@@ -248,7 +246,6 @@ class TailRec extends MiniPhase {
         try transform(tree)
         finally inTailPosition = saved
       }
-    }
 
     def yesTailTransform(tree: Tree)(implicit ctx: Context): Tree =
       transform(tree, tailPosition = true)
@@ -301,7 +298,7 @@ class TailRec extends MiniPhase {
           method.matches(calledMethod) &&
           enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
 
-        if (isRecursiveCall) {
+        if (isRecursiveCall)
           if (inTailPosition) {
             tailrec.println("Rewriting tail recursive call:  " + tree.span)
             rewrote = true
@@ -312,17 +309,15 @@ class TailRec extends MiniPhase {
                 case arg: Ident => arg.symbol != param
                 case _ => true
               })
-            } yield {
-              (getVarForRewrittenParam(param), arg)
             }
+            yield
+              (getVarForRewrittenParam(param), arg)
 
-            val assignThisAndParamPairs = {
+            val assignThisAndParamPairs =
               if (prefix eq EmptyTree) assignParamPairs
-              else {
+              else
                 // TODO Opt: also avoid assigning `this` if the prefix is `this.`
                 (getVarForRewrittenThis(), noTailTransform(prefix)) :: assignParamPairs
-              }
-            }
 
             val assignments = assignThisAndParamPairs match {
               case (lhs, rhs) :: Nil =>
@@ -345,7 +340,6 @@ class TailRec extends MiniPhase {
             seq(assignments, Typed(Return(unitLiteral.withSpan(tree.span), continueLabel), tpt))
           }
           else fail("it is not in tail position")
-        }
         else if (isRecursiveSuperCall)
           fail("it targets a supertype")
         else
@@ -387,10 +381,9 @@ class TailRec extends MiniPhase {
 
         case tree: Try =>
           val expr = noTailTransform(tree.expr)
-          if (tree.finalizer eq EmptyTree) {
+          if (tree.finalizer eq EmptyTree)
             // SI-1672 Catches are in tail position when there is no finalizer
             cpy.Try(tree)(expr, transformSub(tree.cases), EmptyTree)
-          }
           else cpy.Try(tree)(
             expr,
             noTailTransforms(tree.cases),
@@ -418,10 +411,9 @@ class TailRec extends MiniPhase {
           if (inTailPosition)
             tailPositionLabeledSyms += bind.symbol
           try cpy.Labeled(tree)(bind, transform(expr))
-          finally {
+          finally
             if (inTailPosition)
               tailPositionLabeledSyms -= bind.symbol
-          }
 
         case Return(expr, from) =>
           val fromSym = from.symbol

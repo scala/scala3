@@ -49,22 +49,21 @@ object Texts {
           case Vertical(_) => throw new IllegalArgumentException("Unexpected Vertical.appendToLastLine")
         }
       case Fluid(relems) =>
-        (this /: relems.reverse)(_ appendToLastLine _)
+        relems.reverse.foldLeft(this)(_ appendToLastLine _)
       case Vertical(_) => throw new IllegalArgumentException("Unexpected Text.appendToLastLine(Vertical(...))")
     }
 
     private def appendIndented(that: Text)(width: Int): Text =
       Vertical(that.layout(width - indentMargin).indented :: this.relems)
 
-    private def append(width: Int)(that: Text): Text = {
+    private def append(width: Int)(that: Text): Text =
       if (this.isEmpty) that.layout(width)
       else if (that.isEmpty) this
       else if (that.isVertical) appendIndented(that)(width)
       else if (this.isVertical) Fluid(that.layout(width) :: this.relems)
       else if (that.remaining(width - lengthWithoutAnsi(lastLine)) >= 0) appendToLastLine(that)
-      else if (that.isSplittable) (this /: that.relems.reverse)(_.append(width)(_))
+      else if (that.isSplittable) that.relems.reverse.foldLeft(this)(_.append(width)(_))
       else appendIndented(that)(width)
-    }
 
     private def lengthWithoutAnsi(str: String): Int =
       str.replaceAll("\u001b\\[\\d+m", "").length
@@ -73,7 +72,7 @@ object Texts {
       case Str(s, _) =>
         this
       case Fluid(relems) =>
-        ((Str(""): Text) /: relems.reverse)(_.append(width)(_))
+        relems.reverse.foldLeft(Str(""): Text)(_.append(width)(_))
       case Vertical(relems) =>
         Vertical(relems map (_ layout width))
     }
@@ -125,7 +124,7 @@ object Texts {
 
     def maxLine: Int = this match {
       case Str(_, lines) => lines.end
-      case _ => (-1 /: relems)((acc, relem) => acc max relem.maxLine)
+      case _ => relems.foldLeft(-1)((acc, relem) => acc max relem.maxLine)
     }
 
     def mkString(width: Int, withLineNumbers: Boolean): String = {
@@ -158,14 +157,13 @@ object Texts {
     /** A concatenation of elements in `xs` and interspersed with
      *  separator strings `sep`.
      */
-    def apply(xs: Traversable[Text], sep: String = " "): Text = {
+    def apply(xs: Traversable[Text], sep: String = " "): Text =
       if (sep == "\n") lines(xs)
       else {
         val ys = xs filterNot (_.isEmpty)
         if (ys.isEmpty) Str("")
         else ys reduce (_ ~ sep ~ _)
       }
-    }
 
     /** The given texts `xs`, each on a separate line */
     def lines(xs: Traversable[Text]): Vertical = Vertical(xs.toList.reverse)

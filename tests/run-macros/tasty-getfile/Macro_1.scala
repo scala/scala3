@@ -1,15 +1,14 @@
 import scala.quoted._
-import scala.quoted.autolift._
+import scala.quoted.autolift.given
 
-import scala.tasty.Reflection
 
 object SourceFiles {
 
   implicit inline def getThisFile: String =
     ${getThisFileImpl}
 
-  private def getThisFileImpl(implicit reflect: Reflection): Expr[String] = {
-    import reflect._
+  private def getThisFileImpl(given qctx: QuoteContext): Expr[String] = {
+    import qctx.tasty.{_, given}
     rootContext.source.getFileName.toString
   }
 

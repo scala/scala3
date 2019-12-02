@@ -11,7 +11,7 @@ import io.AbstractFile
 class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader)
 extends ClassLoader(parent)
 {
-  override def findClass(name: String): Class[_] = {
+  override def findClass(name: String): Class[?] = {
     var file: AbstractFile = root
     val pathParts = name.split("[./]").toList
     for (dirPart <- pathParts.init) {
@@ -28,7 +28,7 @@ extends ClassLoader(parent)
     defineClass(name, bytes, 0, bytes.length)
   }
 
-  override def loadClass(name: String): Class[_] =
+  override def loadClass(name: String): Class[?] =
     try findClass(name)
     catch {
       case _: ClassNotFoundException => super.loadClass(name)

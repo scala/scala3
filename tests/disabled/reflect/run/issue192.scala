@@ -1,6 +1,6 @@
 import scala.language.reflectiveCalls
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   def f1(p: Any{def unary_+ : Int}) = +p
   def f2(p: Any{def unary_- : Int}) = -p

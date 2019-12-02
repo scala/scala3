@@ -19,6 +19,7 @@ import printing.Printer
 import io.AbstractFile
 import config.Config
 import util.common._
+import typer.ProtoTypes.NoViewsAllowed
 import collection.mutable.ListBuffer
 
 /** Denotations represent the meaning of symbols and named types.
@@ -28,7 +29,7 @@ import collection.mutable.ListBuffer
  *  "symbol" and "deref". Both methods are parameterized by the current context,
  *  and are effectively indexed by current period.
  *
- *  Lines ending in a horizontal line mean subtying (right is a subtype of left).
+ *  Lines ending in a horizontal line mean subtyping (right is a subtype of left).
  *
  *  NamedType
  *    |                                          Symbol---------ClassSymbol
@@ -113,11 +114,11 @@ object Denotations {
     /** Keep only those denotations in this group that have all of the flags in `required`,
      *  but none of the flags in `excluded`.
      */
-    def filterWithFlags(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): PreDenotation
+    def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): PreDenotation
 
-    private[this] var cachedPrefix: Type = _
-    private[this] var cachedAsSeenFrom: AsSeenFromResult = _
-    private[this] var validAsSeenFrom: Period = Nowhere
+    private var cachedPrefix: Type = _
+    private var cachedAsSeenFrom: AsSeenFromResult = _
+    private var validAsSeenFrom: Period = Nowhere
 
     type AsSeenFromResult <: PreDenotation
 
@@ -130,7 +131,8 @@ object Denotations {
           validAsSeenFrom = if (pre.isProvisional) Nowhere else ctx.period
         }
         cachedAsSeenFrom
-      } else computeAsSeenFrom(pre)
+      }
+      else computeAsSeenFrom(pre)
 
     protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): AsSeenFromResult
 
@@ -260,7 +262,7 @@ object Denotations {
      *  flags and no `excluded` flag, and produce a denotation that contains the type of the member
      *  as seen from given prefix `pre`.
      */
-    def findMember(name: Name, pre: Type, required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Denotation =
+    def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(implicit ctx: Context): Denotation =
       info.findMember(name, pre, required, excluded)
 
     /** If this denotation is overloaded, filter with given predicate.
@@ -305,7 +307,7 @@ object Denotations {
 
     def requiredMethod(pname: PreName)(implicit ctx: Context): TermSymbol = {
       val name = pname.toTermName
-      info.member(name).requiredSymbol("method", name, this)(_ is Method).asTerm
+      info.member(name).requiredSymbol("method", name, this)(_.is(Method)).asTerm
     }
     def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
       requiredMethod(name).termRef
@@ -313,7 +315,7 @@ object Denotations {
     def requiredMethod(pname: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
       val name = pname.toTermName
       info.member(name).requiredSymbol(i"method", name, this, argTypes) { x =>
-        (x is Method) && {
+        x.is(Method) && {
           x.info.paramInfoss match {
             case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
             case _ => false
@@ -346,12 +348,11 @@ object Denotations {
      */
     def matchingDenotation(site: Type, targetType: Type)(implicit ctx: Context): SingleDenotation = {
       def qualifies(sym: Symbol) = site.memberInfo(sym).matchesLoosely(targetType)
-      if (isOverloaded) {
+      if (isOverloaded)
         atSignature(targetType.signature, site, relaxed = true) match {
           case sd: SingleDenotation => sd.matchingDenotation(site, targetType)
           case md => md.suchThat(qualifies(_))
         }
-      }
       else if (exists && !qualifies(symbol)) NoDenotation
       else asSingleDenotation
     }
@@ -485,12 +486,12 @@ object Denotations {
                   // things, starting with the return type of this method.
                   if (preferSym(sym2, sym1)) info2
                   else if (preferSym(sym1, sym2)) info1
-                  else if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2Mode)
+                  else if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2CompatMode)
                     info1 // follow Scala2 linearization -
                   // compare with way merge is performed in SymDenotation#computeMembersNamed
                   else throw new MergeError(ex.sym1, ex.sym2, ex.tp1, ex.tp2, pre)
               }
-            new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor)
+            new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
           }
         }
       }
@@ -543,7 +544,7 @@ object Denotations {
                 lubSym(sym1.allOverriddenSymbols, NoSymbol)
               }
             new JointRefDenotation(
-                jointSym, infoJoin(info1, info2, sym1, sym2), denot1.validFor & denot2.validFor)
+                jointSym, infoJoin(info1, info2, sym1, sym2), denot1.validFor & denot2.validFor, pre)
           }
         }
         else NoDenotation
@@ -577,149 +578,156 @@ object Denotations {
 
   // ------ Info meets and joins ---------------------------------------------
 
-    /** Handle merge conflict by throwing a `MergeError` exception */
-    private def mergeConflict(sym1: Symbol, sym2: Symbol, tp1: Type, tp2: Type)(implicit ctx: Context): Type =
-      throw new MergeError(sym1, sym2, tp1, tp2, NoPrefix)
+  /** Handle merge conflict by throwing a `MergeError` exception */
+  private def mergeConflict(sym1: Symbol, sym2: Symbol, tp1: Type, tp2: Type)(implicit ctx: Context): Type =
+    throw new MergeError(sym1, sym2, tp1, tp2, NoPrefix)
 
-    /** Merge parameter names of lambda types. If names in corresponding positions match, keep them,
-     *  otherwise generate new synthetic names.
-     */
-    private def mergeParamNames(tp1: LambdaType, tp2: LambdaType): List[tp1.ThisName] =
-      (for ((name1, name2, idx) <- (tp1.paramNames, tp2.paramNames, tp1.paramNames.indices).zipped)
-       yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toList
+  /** Merge parameter names of lambda types. If names in corresponding positions match, keep them,
+    *  otherwise generate new synthetic names.
+    */
+  private def mergeParamNames(tp1: LambdaType, tp2: LambdaType): List[tp1.ThisName] =
+    (for ((name1, name2, idx) <- tp1.paramNames.lazyZip(tp2.paramNames).lazyZip(tp1.paramNames.indices))
+      yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toList
 
-    /** Normally, `tp1 & tp2`.
-     *  Special cases for matching methods and classes, with
-     *  the possibility of raising a merge error.
-     *  Special handling of ExprTypes, where mixed intersections widen the ExprType away.
-     */
-    def infoMeet(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol, safeIntersection: Boolean)(implicit ctx: Context): Type = {
-      if (tp1 eq tp2) tp1
-      else tp1 match {
-        case tp1: TypeBounds =>
-          tp2 match {
-            case tp2: TypeBounds => if (safeIntersection) tp1 safe_& tp2 else tp1 & tp2
-            case tp2: ClassInfo if tp1 contains tp2 => tp2
-            case _ => mergeConflict(sym1, sym2, tp1, tp2)
-          }
-        case tp1: ClassInfo =>
-          tp2 match {
-            case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
-            case tp2: TypeBounds if tp2 contains tp1 => tp1
-            case _ => mergeConflict(sym1, sym2, tp1, tp2)
-          }
-
-        // Two remedial strategies:
-        //
-        //  1. Prefer method types over poly types. This is necessary to handle
-        //     overloaded definitions like the following
-        //
-        //        def ++ [B >: A](xs: C[B]): D[B]
-        //        def ++ (xs: C[A]): D[A]
-        //
-        //     (Code like this is found in the collection strawman)
-        //
-        // 2. In the case of two method types or two polytypes with matching
-        //    parameters and implicit status, merge corresponding parameter
-        //    and result types.
-        case tp1: MethodType =>
-          tp2 match {
-            case tp2: PolyType =>
-              tp1
-            case tp2: MethodType
-            if ctx.typeComparer.matchingMethodParams(tp1, tp2) && (tp1.companion eq tp2.companion) =>
-              tp1.derivedLambdaType(
-                mergeParamNames(tp1, tp2),
-                tp1.paramInfos,
-                infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2, safeIntersection))
-            case _ =>
-              mergeConflict(sym1, sym2, tp1, tp2)
-          }
-        case tp1: PolyType =>
-          tp2 match {
-            case tp2: MethodType =>
-              tp2
-            case tp2: PolyType if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
-              tp1.derivedLambdaType(
-                mergeParamNames(tp1, tp2),
-                tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
-                  infoMeet(p1, p2.subst(tp2, tp1), sym1, sym2, safeIntersection).bounds
-                },
-                infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2, safeIntersection))
-            case _ =>
-              mergeConflict(sym1, sym2, tp1, tp2)
-          }
-        case ExprType(rtp1) =>
-          tp2 match {
-            case ExprType(rtp2) => ExprType(rtp1 & rtp2)
-            case _ => rtp1 & tp2
-          }
-        case _ =>
-          try tp1 & tp2.widenExpr
-          catch {
-            case ex: Throwable =>
-              println(i"error for meet: $tp1 &&& $tp2, ${tp1.getClass}, ${tp2.getClass}")
-              throw ex
-          }
-      }
-    }
-
-    /** Normally, `tp1 | tp2`.
-     *  Special cases for matching methods and classes, with
-     *  the possibility of raising a merge error.
-     *  Special handling of ExprTypes, where mixed unions widen the ExprType away.
-     */
-    def infoJoin(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Type = tp1 match {
+  /** Normally, `tp1 & tp2`.
+    *  Special cases for matching methods and classes, with
+    *  the possibility of raising a merge error.
+    *  Special handling of ExprTypes, where mixed intersections widen the ExprType away.
+    */
+  def infoMeet(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol, safeIntersection: Boolean)(implicit ctx: Context): Type =
+    if (tp1 eq tp2) tp1
+    else tp1 match {
       case tp1: TypeBounds =>
         tp2 match {
-          case tp2: TypeBounds => tp1 | tp2
-          case tp2: ClassInfo if tp1 contains tp2 => tp1
+          case tp2: TypeBounds => if (safeIntersection) tp1 safe_& tp2 else tp1 & tp2
+          case tp2: ClassInfo if tp1 contains tp2 => tp2
           case _ => mergeConflict(sym1, sym2, tp1, tp2)
         }
       case tp1: ClassInfo =>
         tp2 match {
-          case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
-          case tp2: TypeBounds if tp2 contains tp1 => tp2
+          case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
+          case tp2: TypeBounds if tp2 contains tp1 => tp1
           case _ => mergeConflict(sym1, sym2, tp1, tp2)
         }
+
+      // Two remedial strategies:
+      //
+      //  1. Prefer method types over poly types. This is necessary to handle
+      //     overloaded definitions like the following
+      //
+      //        def ++ [B >: A](xs: C[B]): D[B]
+      //        def ++ (xs: C[A]): D[A]
+      //
+      //     (Code like this is found in the collection strawman)
+      //
+      // 2. In the case of two method types or two polytypes with matching
+      //    parameters and implicit status, merge corresponding parameter
+      //    and result types.
       case tp1: MethodType =>
         tp2 match {
+          case tp2: PolyType =>
+            tp1
           case tp2: MethodType
           if ctx.typeComparer.matchingMethodParams(tp1, tp2) && (tp1.companion eq tp2.companion) =>
             tp1.derivedLambdaType(
               mergeParamNames(tp1, tp2),
               tp1.paramInfos,
-              infoJoin(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2))
+              infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2, safeIntersection))
           case _ =>
             mergeConflict(sym1, sym2, tp1, tp2)
         }
       case tp1: PolyType =>
         tp2 match {
-          case tp2: PolyType
-          if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
+          case tp2: MethodType =>
+            tp2
+          case tp2: PolyType if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
             tp1.derivedLambdaType(
               mergeParamNames(tp1, tp2),
               tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
-                infoJoin(p1, p2.subst(tp2, tp1), sym1, sym2).bounds
+                infoMeet(p1, p2.subst(tp2, tp1), sym1, sym2, safeIntersection).bounds
               },
-              infoJoin(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2))
+              infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2, safeIntersection))
           case _ =>
             mergeConflict(sym1, sym2, tp1, tp2)
         }
       case ExprType(rtp1) =>
         tp2 match {
-          case ExprType(rtp2) => ExprType(rtp1 | rtp2)
-          case _ => rtp1 | tp2
+          case ExprType(rtp2) => ExprType(rtp1 & rtp2)
+          case _ => infoMeet(rtp1, tp2, sym1, sym2, safeIntersection)
         }
       case _ =>
-        tp1 | tp2.widenExpr
+        tp2 match
+          case _: MethodType | _: PolyType =>
+            mergeConflict(sym1, sym2, tp1, tp2)
+          case _ =>
+            try tp1 & tp2.widenExpr
+            catch
+              case ex: Throwable =>
+                println(i"error for meet: $tp1 &&& $tp2, ${tp1.getClass}, ${tp2.getClass}")
+                throw ex
     }
+
+  /** Normally, `tp1 | tp2`.
+    *  Special cases for matching methods and classes, with
+    *  the possibility of raising a merge error.
+    *  Special handling of ExprTypes, where mixed unions widen the ExprType away.
+    */
+  def infoJoin(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Type = tp1 match {
+    case tp1: TypeBounds =>
+      tp2 match {
+        case tp2: TypeBounds => tp1 | tp2
+        case tp2: ClassInfo if tp1 contains tp2 => tp1
+        case _ => mergeConflict(sym1, sym2, tp1, tp2)
+      }
+    case tp1: ClassInfo =>
+      tp2 match {
+        case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
+        case tp2: TypeBounds if tp2 contains tp1 => tp2
+        case _ => mergeConflict(sym1, sym2, tp1, tp2)
+      }
+    case tp1: MethodType =>
+      tp2 match {
+        case tp2: MethodType
+        if ctx.typeComparer.matchingMethodParams(tp1, tp2) && (tp1.companion eq tp2.companion) =>
+          tp1.derivedLambdaType(
+            mergeParamNames(tp1, tp2),
+            tp1.paramInfos,
+            infoJoin(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2))
+        case _ =>
+          mergeConflict(sym1, sym2, tp1, tp2)
+      }
+    case tp1: PolyType =>
+      tp2 match {
+        case tp2: PolyType
+        if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
+          tp1.derivedLambdaType(
+            mergeParamNames(tp1, tp2),
+            tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
+              infoJoin(p1, p2.subst(tp2, tp1), sym1, sym2).bounds
+            },
+            infoJoin(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2))
+        case _ =>
+          mergeConflict(sym1, sym2, tp1, tp2)
+      }
+    case ExprType(rtp1) =>
+      tp2 match {
+        case ExprType(rtp2) => ExprType(rtp1 | rtp2)
+        case _ => rtp1 | tp2
+      }
+    case _ =>
+      tp1 | tp2.widenExpr
+  }
 
   /** A non-overloaded denotation */
   abstract class SingleDenotation(symbol: Symbol, initInfo: Type) extends Denotation(symbol, initInfo) {
-    protected def newLikeThis(symbol: Symbol, info: Type): SingleDenotation
+    protected def newLikeThis(symbol: Symbol, info: Type, pre: Type): SingleDenotation
 
     final def name(implicit ctx: Context): Name = symbol.name
+
+    /** If this is not a SymDenotation: The prefix under which the denotation was constructed.
+     *  NoPrefix for SymDenotations.
+     */
+    def prefix: Type = NoPrefix
 
     final def signature(implicit ctx: Context): Signature =
       if (isType) Signature.NotAMethod // don't force info if this is a type SymDenotation
@@ -734,9 +742,9 @@ object Denotations {
         case _ => Signature.NotAMethod
       }
 
-    def derivedSingleDenotation(symbol: Symbol, info: Type)(implicit ctx: Context): SingleDenotation =
-      if ((symbol eq this.symbol) && (info eq this.info)) this
-      else newLikeThis(symbol, info)
+    def derivedSingleDenotation(symbol: Symbol, info: Type, pre: Type = this.prefix)(implicit ctx: Context): SingleDenotation =
+      if ((symbol eq this.symbol) && (info eq this.info) && (pre eq this.prefix)) this
+      else newLikeThis(symbol, info, pre)
 
     def mapInfo(f: Type => Type)(implicit ctx: Context): SingleDenotation =
       derivedSingleDenotation(symbol, f(info))
@@ -757,14 +765,19 @@ object Denotations {
 
     def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): SingleDenotation = {
       val situated = if (site == NoPrefix) this else asSeenFrom(site)
-      val matches = sig.matchDegree(situated.signature) >=
-        (if (relaxed) Signature.ParamMatch else Signature.FullMatch)
+      val matches = sig.matchDegree(situated.signature).ordinal >=
+        (if (relaxed) Signature.ParamMatch else Signature.FullMatch).ordinal
       if (matches) this else NoDenotation
     }
 
+    def matchesImportBound(bound: Type)(implicit ctx: Context): Boolean =
+      if bound.isRef(defn.NothingClass) then false
+      else if bound.isRef(defn.AnyClass) then true
+      else NoViewsAllowed.normalizedCompatible(info, bound, keepConstraint = false)
+
     // ------ Transformations -----------------------------------------
 
-    private[this] var myValidFor: Period = Nowhere
+    private var myValidFor: Period = Nowhere
 
     def validFor: Period = myValidFor
     def validFor_=(p: Period): Unit = {
@@ -802,11 +815,12 @@ object Denotations {
     def history: List[SingleDenotation] = {
       val b = new ListBuffer[SingleDenotation]
       var current = initial
-      do {
+      while ({
         b += (current)
         current = current.nextInRun
-      }
-      while (current ne initial)
+        current ne initial
+      })
+      ()
       b.toList
     }
 
@@ -820,11 +834,13 @@ object Denotations {
         symbol.is(Permanent),              // Permanent symbols are valid in all runIds
         s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
       var d: SingleDenotation = this
-      do {
+      while ({
         d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
         d.invalidateInheritedInfo()
         d = d.nextInRun
-      } while (d ne this)
+        d ne this
+      })
+      ()
       this
     }
 
@@ -911,7 +927,8 @@ object Denotations {
             // in this case, next.validFor contains currentPeriod
             cur = next
             cur
-          } else {
+          }
+          else {
             //println(s"might need new denot for $cur, valid for ${cur.validFor} at $currentPeriod")
             // not found, cur points to highest existing variant
             val nextTransformerId = ctx.base.nextDenotTransformerId(cur.validFor.lastPhaseId)
@@ -921,9 +938,9 @@ object Denotations {
               var startPid = nextTransformerId + 1
               val transformer = ctx.base.denotTransformers(nextTransformerId)
               //println(s"transforming $this with $transformer")
-              try {
+              try
                 next = transformer.transform(cur)(ctx.withPhase(transformer))
-              } catch {
+              catch {
                 case ex: CyclicReference =>
                   println(s"error while transforming $this") // DEBUG
                   throw ex
@@ -945,7 +962,8 @@ object Denotations {
             }
             cur.current // multiple transformations could be required
           }
-        } else {
+        }
+        else {
           // currentPeriod < end of valid; in this case a version must exist
           // but to be defensive we check for infinite loop anyway
           var cnt = 0
@@ -987,8 +1005,8 @@ object Denotations {
           current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
           insertAfter(current)
         }
-      // printPeriods(this)
       }
+      // printPeriods(this)
     }
 
     /** Apply a transformation `f` to all denotations in this group that start at or after
@@ -1053,12 +1071,14 @@ object Denotations {
       var cur = this
       var cnt = 0
       var interval = validFor
-      do {
+      while ({
         cur = cur.nextInRun
         cnt += 1
         assert(cnt <= MaxPossiblePhaseId, demandOutsideDefinedMsg)
         interval |= cur.validFor
-      } while (cur ne this)
+        cur ne this
+      })
+      ()
       interval
     }
 
@@ -1075,12 +1095,14 @@ object Denotations {
       var sb = new StringBuilder()
       var cur = this
       var cnt = 0
-      do {
+      while ({
         sb.append(" " + cur.validFor)
         cur = cur.nextInRun
         cnt += 1
         if (cnt > MaxPossiblePhaseId) { sb.append(" ..."); cur = this }
-      } while (cur ne this)
+        cur ne this
+      })
+      ()
       sb.toString
     }
 
@@ -1096,7 +1118,7 @@ object Denotations {
        d == Signature.FullMatch &&
        !infoOrCompleter.isInstanceOf[PolyType] && !other.infoOrCompleter.isInstanceOf[PolyType]
        ||
-       d >= Signature.ParamMatch && info.matches(other.info))
+       d != Signature.NoMatch && info.matches(other.info))
     }
 
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): SingleDenotation =
@@ -1108,7 +1130,7 @@ object Denotations {
       if (p(this)) this else NoDenotation
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
       if (denots.exists && denots.matches(this)) NoDenotation else this
-    def filterWithFlags(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
+    def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
       if (required.isEmpty && excluded.isEmpty || compatibleWith(required, excluded)) this else NoDenotation
 
     type AsSeenFromResult = SingleDenotation
@@ -1118,22 +1140,65 @@ object Denotations {
         case thisd: SymDenotation => thisd.owner
         case _ => if (symbol.exists) symbol.owner else NoSymbol
       }
-      if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
-      else derivedSingleDenotation(symbol, symbol.info.asSeenFrom(pre, owner))
+
+      /** The derived denotation with the given `info` transformed with `asSeenFrom`.
+       *  The prefix of the derived denotation is the new prefix `pre` if the type is
+       *  opaque, or if the current prefix is already different from `NoPrefix`.
+       *  That leaves SymDenotations (which have NoPrefix as the prefix), which are left
+       *  as SymDenotations unless the type is opaque. The treatment of opaque types
+       *  is needed, without it i7159.scala fails in from-tasty. Without the treatment,
+       *  opaque type denotations in subclasses are kept as SymDenotations, which means
+       *  that the transform in `ElimOpaque` will return the symbol's opaque alias without
+       *  adding the needed asSeenFrom.
+       *
+       *  Logically, the right thing to do would be to extend the same treatment to all denotations
+       *  Currently this fails the bootstrap. There's also a concern that this generalization
+       *  would create more denotation objects, at a price in performance.
+       */
+      def derived(info: Type) =
+        derivedSingleDenotation(
+          symbol,
+          info.asSeenFrom(pre, owner),
+          if (symbol.is(Opaque) || this.prefix != NoPrefix) pre else this.prefix)
+
+      pre match {
+        case pre: ThisType if symbol.isOpaqueAlias && pre.cls == owner =>
+          // This code is necessary to compensate for a "window of vulnerability" with
+          // opaque types. The problematic sequence is as follows.
+          //  1. Type a selection  `m.this.T` where `T` is an opaque type alias in `m`
+          //     and this is the first access
+          //  2. `T` will normalize to an abstract type on completion.
+          //  3. At that time, the default logic in the second case is wrong: `T`'s new info
+          //     is now an abstract type and running it through an asSeenFrom gives nothing.
+          //  We fix this as follows:
+          //  1. Force opaque normalization as first step
+          //  2. Read the info from the enclosing object's refinement
+          symbol.normalizeOpaque()
+          def findRefined(tp: Type, name: Name): Type = tp match {
+            case RefinedType(parent, rname, rinfo) =>
+              if (rname == name) rinfo else findRefined(parent, name)
+            case _ =>
+              symbol.info
+          }
+          derived(findRefined(pre.underlying, symbol.name))
+        case _ =>
+          if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
+          else derived(symbol.info)
+      }
     }
 
     /** Does this denotation have all the `required` flags but none of the `excluded` flags?
      */
-    private def compatibleWith(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Boolean = {
+    private def compatibleWith(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): Boolean = {
       val symd: SymDenotation = this match {
         case symd: SymDenotation => symd
         case _ => symbol.denot
       }
-      symd.is(required) && !symd.is(excluded)
+      symd.isAllOf(required) && !symd.isOneOf(excluded)
     }
   }
 
-  abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type) extends SingleDenotation(symbol, initInfo) {
+  abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type, override val prefix: Type) extends SingleDenotation(symbol, initInfo) {
     def infoOrCompleter: Type = initInfo
     def isType: Boolean = infoOrCompleter.isInstanceOf[TypeType]
   }
@@ -1141,26 +1206,31 @@ object Denotations {
   class UniqueRefDenotation(
     symbol: Symbol,
     initInfo: Type,
-    initValidFor: Period) extends NonSymSingleDenotation(symbol, initInfo) {
+    initValidFor: Period,
+    prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = true
-    protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
+      new UniqueRefDenotation(s, i, validFor, pre)
   }
 
   class JointRefDenotation(
     symbol: Symbol,
     initInfo: Type,
-    initValidFor: Period) extends NonSymSingleDenotation(symbol, initInfo) {
+    initValidFor: Period,
+    prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = false
-    protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
+      new JointRefDenotation(s, i, validFor, pre)
   }
 
-  class ErrorDenotation(implicit ctx: Context) extends NonSymSingleDenotation(NoSymbol, NoType) {
+  class ErrorDenotation(implicit ctx: Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
     override def exists: Boolean = false
     override def hasUniqueSym: Boolean = false
     validFor = Period.allInRun(ctx.runId)
-    protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = this
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
+      this
   }
 
   /** An error denotation that provides more info about the missing reference.
@@ -1193,7 +1263,7 @@ object Denotations {
              |they are both defined in ${sym1.effectiveOwner} but have matching signatures
              |  ${denot1.info} and
              |  ${denot2.info}${super.addendum}"""
-        }
+      }
     else throw new MergeError(sym1, sym2, denot1.info, denot2.info, pre)
   }
 
@@ -1214,7 +1284,7 @@ object Denotations {
       derivedUnion(denot1 filterWithPredicate p, denot2 filterWithPredicate p)
     def filterDisjoint(denot: PreDenotation)(implicit ctx: Context): PreDenotation =
       derivedUnion(denot1 filterDisjoint denot, denot2 filterDisjoint denot)
-    def filterWithFlags(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): PreDenotation =
+    def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): PreDenotation =
       derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =
       if ((denot1 eq this.denot1) && (denot2 eq this.denot2)) this
@@ -1297,13 +1367,12 @@ object Denotations {
     def staticRef(path: Name, generateStubs: Boolean = true, isPackage: Boolean = false)(implicit ctx: Context): Denotation = {
       def select(prefix: Denotation, selector: Name): Denotation = {
         val owner = prefix.disambiguate(_.info.isParameterless)
-        def isPackageFromCoreLibMissing: Boolean = {
+        def isPackageFromCoreLibMissing: Boolean =
           owner.symbol == defn.RootClass &&
           (
             selector == nme.scala_ || // if the scala package is missing, the stdlib must be missing
             selector == nme.scalaShadowing // if the scalaShadowing package is missing, the dotty library must be missing
           )
-        }
         if (owner.exists) {
           val result = if (isPackage) owner.info.decl(selector) else owner.info.member(selector)
           if (result.exists) result
@@ -1347,7 +1416,7 @@ object Denotations {
      *  enter it.
      */
     def missingHook(owner: Symbol, name: Name)(implicit ctx: Context): Symbol =
-      if ((owner is Package) && name.isTermName)
+      if (owner.is(Package) && name.isTermName)
         ctx.newCompletePackageSymbol(owner, name.asTermName).entered
       else
         NoSymbol

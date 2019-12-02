@@ -86,9 +86,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
   class PostTyperTransformer extends Transformer {
 
-    private[this] var inJavaAnnot: Boolean = false
+    private var inJavaAnnot: Boolean = false
 
-    private[this] var noCheckNews: Set[New] = Set()
+    private var noCheckNews: Set[New] = Set()
 
     def withNoCheckNews[T](ts: List[New])(op: => T): T = {
       val saved = noCheckNews
@@ -100,7 +100,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     private def transformAnnot(annot: Tree)(implicit ctx: Context): Tree = {
       val saved = inJavaAnnot
-      inJavaAnnot = annot.symbol is JavaDefined
+      inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
       try transform(annot)
       finally inJavaAnnot = saved
@@ -212,10 +212,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
         case tree: TypeApply =>
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
-          if (fn.symbol != defn.ChildAnnot.primaryConstructor) {
+          if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
-          }
           fn match {
             case sel: Select =>
               val args1 = transform(args)
@@ -243,13 +242,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           processMemberDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
           val sym = tree.symbol
-          if (sym.isClass) {
+          if (sym.isClass)
+            VarianceChecker.check(tree)
             // Add SourceFile annotation to top-level classes
-            if (sym.owner.is(Package) &&
-              ctx.compilationUnit.source.exists &&
-              sym != defn.SourceFileAnnot)
+            if sym.owner.is(Package)
+               && ctx.compilationUnit.source.exists
+               && sym != defn.SourceFileAnnot
+            then
               sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
-          }
           processMemberDef(super.transform(tree))
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.posd)
@@ -282,22 +282,19 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: LambdaTypeTree =>
           VarianceChecker.checkLambda(tree)
           super.transform(tree)
-        case Import(_, expr, selectors) =>
+        case Import(expr, selectors) =>
           val exprTpe = expr.tpe
           val seen = mutable.Set.empty[Name]
-          def checkIdent(ident: untpd.Ident): Unit = {
-            val name = ident.name.asTermName
-            if (name != nme.WILDCARD && !exprTpe.member(name).exists && !exprTpe.member(name.toTypeName).exists)
-              ctx.error(NotAMember(exprTpe, name, "value"), ident.sourcePos)
-            if (seen(ident.name))
-              ctx.error(ImportRenamedTwice(ident), ident.sourcePos)
-            seen += ident.name
-          }
-          selectors.foreach {
-            case ident: untpd.Ident                 => checkIdent(ident)
-            case Thicket((ident: untpd.Ident) :: _) => checkIdent(ident)
-            case _                                  =>
-          }
+
+          def checkIdent(sel: untpd.ImportSelector): Unit =
+            if !exprTpe.member(sel.name).exists && !exprTpe.member(sel.name.toTypeName).exists then
+              ctx.error(NotAMember(exprTpe, sel.name, "value"), sel.imported.sourcePos)
+            if seen.contains(sel.name) then
+              ctx.error(ImportRenamedTwice(sel.imported), sel.imported.sourcePos)
+            seen += sel.name
+
+          for sel <- selectors do
+            if !sel.isWildcard then checkIdent(sel)
           super.transform(tree)
         case Typed(Ident(nme.WILDCARD), _) =>
           super.transform(tree)(ctx.addMode(Mode.Pattern))
@@ -305,9 +302,18 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             // conform to selector bounds. I.e. assume
             //     type Tree[T >: Null <: Type]
             // One is still allowed to write
-            //     case x: Tree[_]
+            //     case x: Tree[?]
             // (which translates to)
-            //     case x: (_: Tree[_])
+            //     case x: (_: Tree[?])
+        case m @ MatchTypeTree(bounds, selector, cases) =>
+          // Analog to the case above for match types
+          def tranformIgnoringBoundsCheck(x: CaseDef): CaseDef =
+            super.transform(x)(ctx.addMode(Mode.Pattern)).asInstanceOf[CaseDef]
+          cpy.MatchTypeTree(tree)(
+            super.transform(bounds),
+            super.transform(selector),
+            cases.mapConserve(tranformIgnoringBoundsCheck)
+          )
         case tree =>
           super.transform(tree)
       }

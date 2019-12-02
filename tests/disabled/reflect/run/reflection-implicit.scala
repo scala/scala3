@@ -8,7 +8,7 @@ class C {
   implicit class X(val x: Int)
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val decls = typeOf[C].typeSymbol.info.decls.sorted.toList.filter(sym => !sym.isTerm || (sym.isMethod && !sym.asMethod.isConstructor))
   println(decls map (_.isImplicit))
   val param = decls.find(_.name.toString == "d").get.asMethod.paramLists.last.head

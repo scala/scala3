@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   import scala.collection.JavaConverters._
 
   def ser(a: AnyRef) =

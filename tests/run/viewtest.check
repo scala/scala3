@@ -1,12 +1,12 @@
-SeqViewZ(...)
+View(<not computed>)
 ys defined
 mapping 1
 2
-SeqViewMS(...)
+SeqView(<not computed>)
 mapping 3
 4
-SeqViewM(...)
+SeqView(<not computed>)
 mapping 1
 mapping 2
 mapping 3
-List(2, 3, 4)
+Vector(2, 3, 4)

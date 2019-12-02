@@ -31,5 +31,5 @@ object i17 {
 trait i2 {
 private object i10 {
 if (!i17.i3(i4) i8 Boolean }
-' LegacyApp { case _ => 1 }
+' App { case _ => 1 }
 }

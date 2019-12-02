@@ -29,25 +29,27 @@ object Test {
   def test3: Unit = {
     var d = 2
     var i = 0
-    do {
+    while ({
       lazy val b = d + 1
       d = b
       i += 1
       println("test3: " + d)
-    } while (d < LIMIT && i < LIMIT)
+      d < LIMIT && i < LIMIT
+    }) ()
   }
 
   def test4: Unit = {
     var d = 2
     var i = 0
-    do {
+    while ({
       lazy val b = d + 1
       d = b
       i += 1
       println("test4: " + d)
       if (d >= LIMIT || i >= LIMIT)
         return
-    } while (true)
+      true
+    }) ()
   }
 
   def test5: Unit = {

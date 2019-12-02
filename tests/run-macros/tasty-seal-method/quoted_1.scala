@@ -1,25 +1,23 @@
 import scala.quoted._
 
-import scala.tasty._
-
 object Asserts {
 
   inline def zeroLastArgs(x: => Int): Int =
     ${ zeroLastArgsImpl('x) }
 
   /** Replaces last argument list by 0s */
-  def zeroLastArgsImpl(x: Expr[Int])(implicit reflect: Reflection): Expr[Int] = {
-    import reflect._
+  def zeroLastArgsImpl(x: Expr[Int])(given qctx: QuoteContext): Expr[Int] = {
+    import qctx.tasty.{_, given}
     // For simplicity assumes that all parameters are Int and parameter lists have no more than 3 elements
     x.unseal.underlyingArgument match {
       case Apply(fn, args) =>
         fn.tpe.widen match {
-          case Type.IsMethodType(_) =>
+          case _: MethodType =>
             args.size match {
-              case 0 => fn.seal.cast[() => Int].apply()
-              case 1 => fn.seal.cast[Int => Int].apply('{0})
-              case 2 => fn.seal.cast[(Int, Int) => Int].apply('{0}, '{0})
-              case 3 => fn.seal.cast[(Int, Int, Int) => Int].apply('{0}, '{0}, '{0})
+              case 0 => Expr.betaReduce(fn.etaExpand.seal.cast[() => Int])()
+              case 1 => Expr.betaReduce(fn.etaExpand.seal.cast[Int => Int])('{0})
+              case 2 => Expr.betaReduce(fn.etaExpand.seal.cast[(Int, Int) => Int])('{0}, '{0})
+              case 3 => Expr.betaReduce(fn.etaExpand.seal.cast[(Int, Int, Int) => Int])('{0}, '{0}, '{0})
             }
         }
       case _ => x
@@ -30,17 +28,17 @@ object Asserts {
     ${ zeroAllArgsImpl('x) }
 
   /** Replaces all argument list by 0s */
-  def zeroAllArgsImpl(x: Expr[Int])(implicit reflect: Reflection): Expr[Int] = {
-    import reflect._
+  def zeroAllArgsImpl(x: Expr[Int])(given qctx: QuoteContext): Expr[Int] = {
+    import qctx.tasty.{_, given}
     // For simplicity assumes that all parameters are Int and parameter lists have no more than 3 elements
     def rec(term: Term): Term = term match {
       case Apply(fn, args) =>
         val pre = rec(fn)
         args.size match {
-          case 0 => pre.seal.cast[() => Any].apply().unseal
-          case 1 => pre.seal.cast[Int => Any].apply('{0}).unseal
-          case 2 => pre.seal.cast[(Int, Int) => Any].apply('{0}, '{0}).unseal
-          case 3 => pre.seal.cast[(Int, Int, Int) => Any].apply('{0}, '{0}, '{0}).unseal
+          case 0 => Expr.betaReduce(pre.etaExpand.seal.cast[() => Any])().unseal
+          case 1 => Expr.betaReduce(pre.etaExpand.seal.cast[Int => Any])('{0}).unseal
+          case 2 => Expr.betaReduce(pre.etaExpand.seal.cast[(Int, Int) => Any])('{0}, '{0}).unseal
+          case 3 => Expr.betaReduce(pre.etaExpand.seal.cast[(Int, Int, Int) => Any])('{0}, '{0}, '{0}).unseal
         }
       case _ => term
     }

@@ -7,6 +7,7 @@ import Trees._
 import core._
 import Flags._
 import Symbols._
+import Flags._
 import Types._
 import Decorators._
 import NameKinds._
@@ -50,7 +51,7 @@ object PrepareInlineable {
        */
       def needsAccessor(sym: Symbol)(implicit ctx: Context): Boolean =
         sym.isTerm &&
-        (sym.is(AccessFlags) || sym.privateWithin.exists) &&
+        (sym.isOneOf(AccessFlags) || sym.privateWithin.exists) &&
         !sym.isContainedIn(inlineSym) &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod
@@ -212,7 +213,7 @@ object PrepareInlineable {
    *                     to have the inline method as owner.
    */
   def registerInlineInfo(
-      inlined: Symbol, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
+      inlined: Symbol, treeExpr: Context => Tree)(implicit ctx: Context): Unit =
     inlined.unforcedAnnotation(defn.BodyAnnot) match {
       case Some(ann: ConcreteBodyAnnotation) =>
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated =>
@@ -221,73 +222,59 @@ object PrepareInlineable {
           val inlineCtx = ctx
           inlined.updateAnnotation(LazyBodyAnnotation { _ =>
             implicit val ctx = inlineCtx
-            val rawBody = treeExpr(ctx)
-            val typedBody =
-              if (ctx.reporter.hasErrors) rawBody
-              else ctx.compilationUnit.inlineAccessors.makeInlineable(rawBody)
-            checkInlineMethod(inlined, typedBody)
-            val inlineableBody = typedBody
-            inlining.println(i"Body to inline for $inlined: $inlineableBody")
-            inlineableBody
+            val initialErrorCount = ctx.reporter.errorCount
+            var inlinedBody = treeExpr(ctx)
+            if (ctx.reporter.errorCount == initialErrorCount) {
+              inlinedBody = ctx.compilationUnit.inlineAccessors.makeInlineable(inlinedBody)
+              checkInlineMethod(inlined, inlinedBody)
+              if (ctx.reporter.errorCount != initialErrorCount)
+                inlinedBody = EmptyTree
+            }
+            inlining.println(i"Body to inline for $inlined: $inlinedBody")
+            inlinedBody
           })
         }
     }
-  }
 
   def checkInlineMethod(inlined: Symbol, body: Tree)(implicit ctx: Context): Unit = {
+    if (inlined.owner.isClass && inlined.owner.seesOpaques)
+      ctx.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.sourcePos)
     if (ctx.outer.inInlineMethod)
       ctx.error(ex"implementation restriction: nested inline methods are not supported", inlined.sourcePos)
     if (inlined.name.isUnapplyName && tupleArgs(body).isEmpty)
       ctx.warning(
         em"inline unapply method can be rewritten only if its right hand side is a tuple (e1, ..., eN)",
         body.sourcePos)
-  }
+    if (inlined.is(Macro) && !ctx.isAfterTyper) {
 
-  def checkInlineMacro(sym: Symbol, rhs: Tree, pos: SourcePosition)(implicit ctx: Context) = {
-    if (!ctx.isAfterTyper) {
-
-      /** InlineSplice is used to detect cases where the expansion
-       *  consists of a (possibly multiple & nested) block or a sole expression.
-       */
-      object InlineSplice {
-        def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
-          case Spliced(code) if Splicer.canBeSpliced(code) => Some(code)
-          case Block(List(stat), Literal(Constants.Constant(()))) => unapply(stat)
-          case Block(Nil, expr) => unapply(expr)
-          case Typed(expr, _) => unapply(expr)
-          case _ => None
-        }
+      def checkMacro(tree: Tree): Unit = tree match {
+        case Spliced(code) =>
+          if (code.symbol.flags.is(Inline))
+            ctx.error("Macro cannot be implemented with an `inline` method", code.sourcePos)
+          Splicer.checkValidMacroBody(code)
+          new PCPCheckAndHeal(freshStagingContext).transform(body) // Ignore output, only check PCP
+        case Block(List(stat), Literal(Constants.Constant(()))) => checkMacro(stat)
+        case Block(Nil, expr) => checkMacro(expr)
+        case Typed(expr, _) => checkMacro(expr)
+        case Block(DefDef(nme.ANON_FUN, _, _, _, _) :: Nil, Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
+          // TODO Support this pattern
+          ctx.error(
+            """Macros using a return type of the form `foo(): (given X) => Y` are not yet supported.
+              |
+              |Place the implicit as an argument (`foo()(given X): Y`) to overcome this limitation.
+              |""".stripMargin, tree.sourcePos)
+        case _ =>
+          ctx.error(
+            """Malformed macro.
+              |
+              |Expected the splice ${...} to be at the top of the RHS:
+              |  inline def foo(inline x: X, ..., y: Y): Int = ${impl(x, ... '{y}})
+              |
+              | * The contents of the splice must call a static method
+              | * All arguments must be quoted or inline
+            """.stripMargin, inlined.sourcePos)
       }
-
-      var isMacro = false
-      new TreeMapWithStages(freshStagingContext) {
-        override protected def transformSplice(body: tpd.Tree, splice: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
-          isMacro = true
-          splice
-        }
-        override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree =
-          if (isMacro) tree else super.transform(tree)
-      }.transform(rhs)
-
-      if (isMacro) {
-        sym.setFlag(Macro)
-        if (level == 0)
-          rhs match {
-            case InlineSplice(_) =>
-              new PCPCheckAndHeal(freshStagingContext).transform(rhs) // Ignore output, only check PCP
-            case _ =>
-              ctx.error(
-                """Malformed macro.
-                  |
-                  |Expected the splice ${...} to be at the top of the RHS:
-                  |  inline def foo(inline x: X, ..., y: Y): Int = ${impl(x, ... '{y}})
-                  |
-                  | * The contents of the splice must call a static method
-                  | * All arguments must be quoted or inline
-                """.stripMargin, pos)
-          }
-      }
+      checkMacro(body)
     }
   }
-
 }

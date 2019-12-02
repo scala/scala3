@@ -33,10 +33,11 @@ class CodeRename(override val marker: CodeMarker,
     withOverridden.foreach { includeOverridden =>
       var question: (ShowMessageRequestParams, CompletableFuture[MessageActionItem]) = null
       val startTime = System.currentTimeMillis()
-      do {
+      while {
         Thread.sleep(50)
         question = client.requests.get.headOption.orNull
-      } while (question == null && System.currentTimeMillis() - startTime < TIMEOUT_MS)
+        question == null && System.currentTimeMillis() - startTime < TIMEOUT_MS
+      } do ()
 
       if (question == null) fail("The server didn't ask about overridden symbols.")
 
@@ -47,8 +48,8 @@ class CodeRename(override val marker: CodeMarker,
 
     val results = query.get()
 
-    val changes = results.getChanges.asScala.mapValues(_.asScala.toSet.map(ch => (ch.getNewText, ch.getRange)))
-    val expectedChanges = expected.groupBy(_.file.uri).mapValues(_.map(range => (newName, range.toRange)))
+    val changes = results.getChanges.asScala.view.mapValues(_.asScala.toSet.map(ch => (ch.getNewText, ch.getRange))).toMap
+    val expectedChanges = expected.groupBy(_.file.uri).view.mapValues(_.map(range => (newName, range.toRange))).toMap
 
     assertNull(results.getDocumentChanges)
     assertEquals(expectedChanges, changes)

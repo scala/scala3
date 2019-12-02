@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   // A variation of SI-6011, which eluded the fix
   // in 2.10.0.
   //

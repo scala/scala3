@@ -1,5 +1,5 @@
 import scala.language.existentials
-object Test extends dotty.runtime.LegacyApp{
+object Test extends App{
   import scala.reflect.runtime.{currentMirror=>cm}
   import scala.tools.reflect._
   import scala.reflect.runtime.universe._

@@ -1,6 +1,5 @@
 import scala.quoted._
-import scala.tasty.Reflection
-import scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 import scala.language.implicitConversions
 
@@ -10,8 +9,8 @@ object FQuote {
     inline def ff(args: => Any*): String = ${impl('this, 'args)}
   }
 
-  /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(implicit reflect: Reflection): Expr[String] = {
-    import reflect._
+  /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(given qctx: QuoteContext): Expr[String] = {
+    import qctx.tasty.{_, given}
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {
       case x :: xs  =>
@@ -38,16 +37,17 @@ object FQuote {
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
              values.forall(isStringConstant) =>
-        values.collect { case Literal(Constant.String(value)) => value }
+        values.collect { case Literal(Constant(value: String)) => value }
       case tree =>
-        QuoteError(s"String literal expected, but ${tree.showExtractors} found")
+        qctx.error(s"String literal expected, but ${tree.showExtractors} found")
+        return '{???}
     }
 
     // [a0, ...]: Any*
     val Typed(Repeated(allArgs, _), _) = args.unseal.underlyingArgument
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
-      if (part.startsWith("%d") && !(arg.tpe <:< definitions.IntType)) {
+      if (part.startsWith("%d") && !(arg.tpe <:< defn.IntType)) {
         return '{s"`${${arg.show}}` is not of type Int"}
       }
 

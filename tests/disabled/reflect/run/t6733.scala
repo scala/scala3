@@ -30,6 +30,6 @@ trait Foo {
   protected[this] object Pro8
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   typeOf[Foo].decls.sorted.foreach(m => println(s"$m: isPrivateThis = ${m.isPrivateThis}, isProtectedThis = ${m.isProtectedThis}"))
 }

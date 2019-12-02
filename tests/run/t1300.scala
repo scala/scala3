@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp
+object Test extends App
 {
   val a1 = Array(0,1,2,3).toArray[Any]
 //  val a1 = x1.toArray[Any]

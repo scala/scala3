@@ -1,4 +1,5 @@
 import scala.annotation.implicitNotFound
+import scala.compiletime.summonFrom
 
 sealed trait State
 final class On extends State
@@ -7,20 +8,20 @@ final class Off extends State
 @implicitNotFound("State must be Off")
 class IsOff[S <: State]
 object IsOff {
-  delegate isOff for IsOff[Off] = new IsOff[Off]
+  given isOff : IsOff[Off] = new IsOff[Off]
 }
 
 @implicitNotFound("State must be On")
 class IsOn[S <: State]
 object IsOn {
-  delegate isOn for IsOn[On] = new IsOn[On]
+  given isOn : IsOn[On] = new IsOn[On]
 }
 
 class Machine[S <: State] {
-  inline def turnOn() given (s: IsOff[S]) <: Machine[On] = implicit match {
+  inline def turnOn()(given s: IsOff[S]) <: Machine[On] = summonFrom {
     case _: IsOff[Off]  => new Machine[On]
   }
-  inline def turnOff() given (s: IsOn[S]) <: Machine[Off] = implicit match {
+  inline def turnOff()(given s: IsOn[S]) <: Machine[Off] = summonFrom {
     case _: IsOn[On]    => new Machine[Off]
   }
 }

@@ -18,7 +18,7 @@ class TestCallback extends AnalysisCallback
   val classNames = scala.collection.mutable.Map.empty[File, Set[(String, String)]].withDefaultValue(Set.empty)
   val apis: scala.collection.mutable.Map[File, Seq[ClassLike]] = scala.collection.mutable.Map.empty
 
-  def usedNames = usedNamesAndScopes.mapValues(_.map(_.name))
+  def usedNames = usedNamesAndScopes.view.mapValues(_.map(_.name)).toMap
 
   override def startSource(source: File): Unit = {
     assert(!apis.contains(source), s"startSource can be called only once per source file: $source")
@@ -68,16 +68,16 @@ object TestCallback {
                                         localInheritance: Map[String, Set[String]])
   object ExtractedClassDependencies {
     def fromPairs(
-                   memberRefPairs: Seq[(String, String)],
-                   inheritancePairs: Seq[(String, String)],
-                   localInheritancePairs: Seq[(String, String)]
+                   memberRefPairs: collection.Seq[(String, String)],
+                   inheritancePairs: collection.Seq[(String, String)],
+                   localInheritancePairs: collection.Seq[(String, String)]
                  ): ExtractedClassDependencies = {
       ExtractedClassDependencies(pairsToMultiMap(memberRefPairs),
         pairsToMultiMap(inheritancePairs),
         pairsToMultiMap(localInheritancePairs))
     }
 
-    private def pairsToMultiMap[A, B](pairs: Seq[(A, B)]): Map[A, Set[B]] = {
+    private def pairsToMultiMap[A, B](pairs: collection.Seq[(A, B)]): Map[A, Set[B]] = {
       import scala.collection.mutable.{ HashMap, MultiMap }
       val emptyMultiMap = new HashMap[A, scala.collection.mutable.Set[B]] with MultiMap[A, B]
       val multiMap = pairs.foldLeft(emptyMultiMap) {
@@ -85,7 +85,7 @@ object TestCallback {
           acc.addBinding(key, value)
       }
       // convert all collections to immutable variants
-      multiMap.toMap.mapValues(_.toSet).withDefaultValue(Set.empty)
+      multiMap.toMap.view.mapValues(_.toSet).toMap.withDefaultValue(Set.empty)
     }
   }
 }

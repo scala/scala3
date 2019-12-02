@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def test(f: () => Int) = {
     val x = f()
     5

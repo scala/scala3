@@ -81,27 +81,23 @@ class VarianceChecker()(implicit ctx: Context) {
   import tpd._
 
   private object Validator extends TypeAccumulator[Option[VarianceError]] {
-    private[this] var base: Symbol = _
-
-    /** Is no variance checking needed within definition of `base`? */
-    def ignoreVarianceIn(base: Symbol): Boolean = (
-         base.isTerm
-      || base.is(Package)
-      || base.is(PrivateLocal)
-    )
+    private var base: Symbol = _
 
     /** The variance of a symbol occurrence of `tvar` seen at the level of the definition of `base`.
      *  The search proceeds from `base` to the owner of `tvar`.
      *  Initially the state is covariant, but it might change along the search.
      */
-    def relativeVariance(tvar: Symbol, base: Symbol, v: Variance = Covariant): Variance = /*trace(i"relative variance of $tvar wrt $base, so far: $v")*/ {
-      if (base == tvar.owner) v
-      else if ((base is Param) && base.owner.isTerm)
+    def relativeVariance(tvar: Symbol, base: Symbol, v: Variance = Covariant): Variance = /*trace(i"relative variance of $tvar wrt $base, so far: $v")*/
+      if base == tvar.owner then
+        v
+      else if base.is(Param) && base.owner.isTerm && !base.owner.isAllOf(PrivateLocal) then
         relativeVariance(tvar, paramOuter(base.owner), flip(v))
-      else if (ignoreVarianceIn(base.owner)) Bivariant
-      else if (base.isAliasType) relativeVariance(tvar, base.owner, Invariant)
-      else relativeVariance(tvar, base.owner, v)
-    }
+      else if base.owner.isTerm || base.owner.is(Package) || base.isAllOf(PrivateLocal) then
+        Bivariant
+      else if base.isAliasType then
+        relativeVariance(tvar, base.owner, Invariant)
+      else
+        relativeVariance(tvar, base.owner, v)
 
     /** The next level to take into account when determining the
      *  relative variance with a method parameter as base. The method
@@ -127,7 +123,7 @@ class VarianceChecker()(implicit ctx: Context) {
         ctx.log(s"relative variance: ${varianceString(relative)}")
         ctx.log(s"current variance: ${this.variance}")
         ctx.log(s"owner chain: ${base.ownersIterator.toList}")
-        if (tvar is required) None
+        if (tvar.isOneOf(required)) None
         else Some(VarianceError(tvar, required))
       }
     }
@@ -174,8 +170,8 @@ class VarianceChecker()(implicit ctx: Context) {
     def checkVariance(sym: Symbol, pos: SourcePosition) = Validator.validateDefinition(sym) match {
       case Some(VarianceError(tvar, required)) =>
         def msg = i"${varianceString(tvar.flags)} $tvar occurs in ${varianceString(required)} position in type ${sym.info} of $sym"
-        if (ctx.scala2Mode &&
-            (sym.owner.isConstructor || sym.ownersIterator.exists(_.is(ProtectedLocal)))) {
+        if (ctx.scala2CompatMode &&
+            (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal))))
           ctx.migrationWarning(
             s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg",
             pos)
@@ -183,7 +179,6 @@ class VarianceChecker()(implicit ctx: Context) {
             // Patch is disabled until two TODOs are solved:
             // TODO use an import or shorten if possible
             // TODO need to use a `:' if annotation is on term
-        }
         else ctx.error(msg, pos)
       case None =>
     }
@@ -191,11 +186,10 @@ class VarianceChecker()(implicit ctx: Context) {
     override def traverse(tree: Tree)(implicit ctx: Context) = {
       def sym = tree.symbol
       // No variance check for private/protected[this] methods/values.
-      def skip =
-        !sym.exists ||
-        sym.is(PrivateLocal) ||
-        sym.name.is(InlineAccessorName) || // TODO: should we exclude all synthetic members?
-        sym.is(TypeParam) && sym.owner.isClass // already taken care of in primary constructor of class
+      def skip = !sym.exists
+        || sym.name.is(InlineAccessorName) // TODO: should we exclude all synthetic members?
+        || sym.isAllOf(LocalParamAccessor) // local class parameters are construction only
+        || sym.is(TypeParam) && sym.owner.isClass // already taken care of in primary constructor of class
       try tree match {
         case defn: MemberDef if skip =>
           ctx.debuglog(s"Skipping variance check of ${sym.showDcl}")
@@ -214,7 +208,7 @@ class VarianceChecker()(implicit ctx: Context) {
         case _ =>
       }
       catch {
-        case ex: TypeError => ctx.error(ex.toMessage, tree.sourcePos.focus)
+        case ex: TypeError => ctx.error(ex, tree.sourcePos.focus)
       }
     }
   }

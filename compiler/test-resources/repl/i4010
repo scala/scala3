@@ -1,0 +1,6 @@
+scala> trait TmpT { type A; type B; type AorB = A | B ; def fromA(a: A): AorB = a; def fromB(b: B): AorB = b }
+// defined trait TmpT
+scala> object TmpO extends TmpT{ type A = 7; type B = 8 }
+// defined object TmpO
+scala> val x: TmpO.AorB = TmpO.fromA(7)
+val x: TmpO.AorB = 7

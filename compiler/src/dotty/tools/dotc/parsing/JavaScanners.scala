@@ -8,7 +8,7 @@ import Scanners._
 import util.SourceFile
 import JavaTokens._
 import scala.annotation.{ switch, tailrec }
-import scala.tasty.util.Chars._
+import scala.internal.Chars._
 
 object JavaScanners {
 
@@ -28,7 +28,7 @@ object JavaScanners {
 
     // Get next token ------------------------------------------------------------
 
-    def nextToken(): Unit = {
+    def nextToken(): Unit =
       if (next.token == EMPTY) {
         lastOffset = lastCharOffset
         fetchToken()
@@ -37,7 +37,6 @@ object JavaScanners {
         this copyFrom next
         next.token = EMPTY
       }
-    }
 
     def lookaheadToken: Int = {
       prev copyFrom this
@@ -80,9 +79,9 @@ object JavaScanners {
               if (ch == 'x' || ch == 'X') {
                 nextChar()
                 base = 16
-              } else {
-                base = 8
               }
+              else
+                base = 8
               getNumber()
 
             case '1' | '2' | '3' | '4' |
@@ -92,16 +91,15 @@ object JavaScanners {
 
             case '\"' =>
               nextChar()
-              while (ch != '\"' && (isUnicodeEscape || ch != CR && ch != LF && ch != SU)) {
+              while (ch != '\"' && (isUnicodeEscape || ch != CR && ch != LF && ch != SU))
                 getlitch()
-              }
               if (ch == '\"') {
                 token = STRINGLIT
                 setStrVal()
                 nextChar()
-              } else {
-                error("unclosed string literal")
               }
+              else
+                error("unclosed string literal")
 
             case '\'' =>
               nextChar()
@@ -110,9 +108,9 @@ object JavaScanners {
                 nextChar()
                 token = CHARLIT
                 setStrVal()
-              } else {
-                error("unclosed character literal")
               }
+              else
+                error("unclosed character literal")
 
             case '=' =>
               token = EQUALS
@@ -128,13 +126,15 @@ object JavaScanners {
               if (ch == '=') {
                 token = GTEQ
                 nextChar()
-              } else if (ch == '>') {
+              }
+              else if (ch == '>') {
                 token = GTGT
                 nextChar()
                 if (ch == '=') {
                   token = GTGTEQ
                   nextChar()
-                } else if (ch == '>') {
+                }
+                else if (ch == '>') {
                   token = GTGTGT
                   nextChar()
                   if (ch == '=') {
@@ -150,7 +150,8 @@ object JavaScanners {
               if (ch == '=') {
                 token = LTEQ
                 nextChar()
-              } else if (ch == '<') {
+              }
+              else if (ch == '<') {
                 token = LTLT
                 nextChar()
                 if (ch == '=') {
@@ -189,7 +190,8 @@ object JavaScanners {
               if (ch == '&') {
                 token = AMPAMP
                 nextChar()
-              } else if (ch == '=') {
+              }
+              else if (ch == '=') {
                 token = AMPEQ
                 nextChar()
               }
@@ -200,7 +202,8 @@ object JavaScanners {
               if (ch == '|') {
                 token = BARBAR
                 nextChar()
-              } else if (ch == '=') {
+              }
+              else if (ch == '=') {
                 token = BAREQ
                 nextChar()
               }
@@ -211,7 +214,8 @@ object JavaScanners {
               if (ch == '+') {
                 token = PLUSPLUS
                 nextChar()
-              } else if (ch == '=') {
+              }
+              else if (ch == '=') {
                 token = PLUSEQ
                 nextChar()
               }
@@ -222,7 +226,8 @@ object JavaScanners {
               if (ch == '-') {
                 token = MINUSMINUS
                 nextChar()
-              } else if (ch == '=') {
+              }
+              else if (ch == '=') {
                 token = MINUSEQ
                 nextChar()
               }
@@ -244,7 +249,8 @@ object JavaScanners {
                   token = SLASHEQ
                   nextChar()
                 }
-              } else fetchToken()
+              }
+              else fetchToken()
 
             case '^' =>
               token = HAT
@@ -268,12 +274,14 @@ object JavaScanners {
               if ('0' <= ch && ch <= '9') {
                 putChar('.');
                 getFraction()
-              } else if (ch == '.') {
+              }
+              else if (ch == '.') {
                 nextChar()
                 if (ch == '.') {
                   nextChar()
                   token = DOTDOTDOT
-                } else error("`.' character expected")
+                }
+                else error("`.' character expected")
               }
 
             case ';' =>
@@ -320,7 +328,8 @@ object JavaScanners {
                 putChar(ch)
                 nextChar()
                 getIdentRest()
-              } else {
+              }
+              else {
                 error("illegal character: " + ch.toInt)
                 nextChar()
               }
@@ -347,8 +356,8 @@ object JavaScanners {
 
     // Identifiers ---------------------------------------------------------------
 
-    private def getIdentRest(): Unit = {
-      while (true) {
+    private def getIdentRest(): Unit =
+      while (true)
         (ch: @switch) match {
           case 'A' | 'B' | 'C' | 'D' | 'E' |
                'F' | 'G' | 'H' | 'I' | 'J' |
@@ -379,13 +388,12 @@ object JavaScanners {
             if (Character.isUnicodeIdentifierPart(ch)) {
               putChar(ch)
               nextChar()
-            } else {
+            }
+            else {
               finishNamed()
               return
             }
         }
-      }
-    }
 
     // Literals -----------------------------------------------------------------
 
@@ -407,7 +415,8 @@ object JavaScanners {
             }
           }
           putChar(oct.asInstanceOf[Char])
-        } else {
+        }
+        else {
           ch match {
             case 'b' => putChar('\b')
             case 't' => putChar('\t')
@@ -423,7 +432,8 @@ object JavaScanners {
           }
           nextChar()
         }
-      } else {
+      }
+      else {
         putChar(ch)
         nextChar()
       }
@@ -440,9 +450,8 @@ object JavaScanners {
       if (ch == 'e' || ch == 'E') {
         val lookahead = lookaheadReader()
         lookahead.nextChar()
-        if (lookahead.ch == '+' || lookahead.ch == '-') {
+        if (lookahead.ch == '+' || lookahead.ch == '-')
           lookahead.nextChar()
-        }
         if ('0' <= lookahead.ch && lookahead.ch <= '9') {
           putChar(ch)
           nextChar()
@@ -461,12 +470,61 @@ object JavaScanners {
         putChar(ch)
         nextChar()
         token = DOUBLELIT
-      } else if (ch == 'f' || ch == 'F') {
+      }
+      else if (ch == 'f' || ch == 'F') {
         putChar(ch)
         nextChar()
         token = FLOATLIT
       }
       setStrVal()
+    }
+
+    /** convert name to long value
+     */
+    def intVal(negated: Boolean): Long =
+      if (token == CHARLIT && !negated)
+        if (strVal.length > 0) strVal.charAt(0).toLong else 0
+      else {
+        var value: Long = 0
+        val divider = if (base == 10) 1 else 2
+        val limit: Long =
+          if (token == LONGLIT) Long.MaxValue else Int.MaxValue
+        var i = 0
+        val len = strVal.length
+        while (i < len) {
+          val d = digit2int(strVal.charAt(i), base)
+          if (d < 0) {
+            error("malformed integer number")
+            return 0
+          }
+          if (value < 0 ||
+              limit / (base / divider) < value ||
+              limit - (d / divider) < value * (base / divider) &&
+              !(negated && limit == value * base - 1 + d)) {
+                error("integer number too large")
+                return 0
+              }
+          value = value * base + d
+          i += 1
+        }
+        if (negated) -value else value
+      }
+
+    /** convert name, base to double value
+     */
+    def floatVal(negated: Boolean): Double = {
+      val limit: Double =
+        if (token == DOUBLELIT) Double.MaxValue else Float.MaxValue
+      try {
+        val value: Double = java.lang.Double.valueOf(strVal.toString).doubleValue()
+        if (value > limit)
+          error("floating point number too large")
+        if (negated) -value else value
+      } catch {
+        case _: NumberFormatException =>
+          error("malformed floating point number")
+          0.0
+      }
     }
 
     /** read a number into name and set base
@@ -497,9 +555,8 @@ object JavaScanners {
       if (base <= 10 &&
         (ch == 'e' || ch == 'E' ||
           ch == 'f' || ch == 'F' ||
-          ch == 'd' || ch == 'D')) {
+          ch == 'd' || ch == 'D'))
         return getFraction()
-      }
       setStrVal()
       if (ch == 'l' || ch == 'L') {
         nextChar()
@@ -510,20 +567,13 @@ object JavaScanners {
     // Errors -----------------------------------------------------------------
 
     override def toString(): String = token match {
-      case IDENTIFIER =>
-        "id(" + name + ")"
-      case CHARLIT =>
-        "char(" + intVal + ")"
-      case INTLIT =>
-        "int(" + intVal + ")"
-      case LONGLIT =>
-        "long(" + intVal + ")"
-      case FLOATLIT =>
-        "float(" + floatVal + ")"
-      case DOUBLELIT =>
-        "double(" + doubleVal + ")"
-      case STRINGLIT =>
-        "string(" + name + ")"
+      case IDENTIFIER => s"id($name)"
+      case CHARLIT => s"char($strVal)"
+      case INTLIT => s"int($strVal, $base)"
+      case LONGLIT => s"long($strVal, $base)"
+      case FLOATLIT => s"float($strVal)"
+      case DOUBLELIT => s"double($strVal)"
+      case STRINGLIT => s"string($strVal)"
       case SEMI =>
         ";"
       case COMMA =>

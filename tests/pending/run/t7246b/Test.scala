@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   val so = new SubOuter
   val si = new so.SubInner

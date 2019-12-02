@@ -1,7 +1,7 @@
 import scala.reflect.runtime.universe._
 import definitions._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def test(sym: Symbol): Unit = {
     println(s"${showRaw(sym, printKinds = true)}: ${sym.isModule}, ${sym.isModuleClass}, ${sym.isPackage}, ${sym.isPackageClass}")
   }

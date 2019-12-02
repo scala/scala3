@@ -2,36 +2,36 @@ package unionTypes
 
 object t1 {
 
-type Hash = Int
+  type Hash = Int
 
-case class UserName(name: String)
-case class Password(hash: Hash)
+  case class UserName(name: String)
+  case class Password(hash: Hash)
 
-def help(id: UserName | Password) = {
-  val user = id match {
-    case UserName(name) => lookupName(name)
-    case Password(hash) => lookupPassword(hash)
+  def help(id: UserName | Password) = {
+    val user = id match {
+      case UserName(name) => lookupName(name)
+      case Password(hash) => lookupPassword(hash)
+    }
   }
-}
 
-def lookupName(name: String) = ???
-def lookupPassword(hash: Hash) = ???
+  def lookupName(name: String) = ???
+  def lookupPassword(hash: Hash) = ???
 
 }
 
 object t2 {
   import t1._
 
-trait Admin
-trait UserData
+  trait Admin
+  trait UserData
 
-trait L { def lookup(admin: Admin): Object }
+  trait L { def lookup(admin: Admin): Object }
 
-case class UserName(name: String) extends L {
-  def lookup(admin: Admin): UserData = ???
-}
-case class Password(hash: Hash) extends L {
-  def lookup(admin: Admin): UserData = ???
-}
+  case class UserName(name: String) extends L {
+    def lookup(admin: Admin): UserData = ???
+  }
+  case class Password(hash: Hash) extends L {
+    def lookup(admin: Admin): UserData = ???
+  }
 
 }

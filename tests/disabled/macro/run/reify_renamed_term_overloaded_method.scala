@@ -6,7 +6,7 @@ object O {
   def show(s: String) = s
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   import O.{show => s}
 
   val expr = reify {

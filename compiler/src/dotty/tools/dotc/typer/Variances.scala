@@ -11,11 +11,10 @@ object Variances {
   val Invariant: Variance = EmptyFlags
 
   /** Flip between covariant and contravariant */
-  def flip(v: Variance): Variance = {
+  def flip(v: Variance): Variance =
     if (v == Covariant) Contravariant
     else if (v == Contravariant) Covariant
     else v
-  }
 
   /** Map everything below Bivariant to Invariant */
   def cut(v: Variance): Variance =
@@ -28,7 +27,7 @@ object Variances {
 
   /** Compute variance of type parameter `tparam' in types of all symbols `sym'. */
   def varianceInSyms(syms: List[Symbol])(tparam: Symbol)(implicit ctx: Context): Variance =
-    (Bivariant /: syms) ((v, sym) => v & varianceInSym(sym)(tparam))
+    syms.foldLeft(Bivariant) ((v, sym) => v & varianceInSym(sym)(tparam))
 
   /** Compute variance of type parameter `tparam' in type of symbol `sym'. */
   def varianceInSym(sym: Symbol)(tparam: Symbol)(implicit ctx: Context): Variance =
@@ -37,7 +36,7 @@ object Variances {
 
   /** Compute variance of type parameter `tparam' in all types `tps'. */
   def varianceInTypes(tps: List[Type])(tparam: Symbol)(implicit ctx: Context): Variance =
-    (Bivariant /: tps) ((v, tp) => v & varianceInType(tp)(tparam))
+    tps.foldLeft(Bivariant) ((v, tp) => v & varianceInType(tp)(tparam))
 
   /** Compute variance of type parameter `tparam' in all type arguments
    *  <code>tps</code> which correspond to formal type parameters `tparams1'.
@@ -54,14 +53,12 @@ object Variances {
   }
 
   /** Compute variance of type parameter `tparam' in all type annotations `annots'. */
-  def varianceInAnnots(annots: List[Annotation])(tparam: Symbol)(implicit ctx: Context): Variance = {
-    (Bivariant /: annots) ((v, annot) => v & varianceInAnnot(annot)(tparam))
-  }
+  def varianceInAnnots(annots: List[Annotation])(tparam: Symbol)(implicit ctx: Context): Variance =
+    annots.foldLeft(Bivariant) ((v, annot) => v & varianceInAnnot(annot)(tparam))
 
   /** Compute variance of type parameter `tparam' in type annotation `annot'. */
-  def varianceInAnnot(annot: Annotation)(tparam: Symbol)(implicit ctx: Context): Variance = {
+  def varianceInAnnot(annot: Annotation)(tparam: Symbol)(implicit ctx: Context): Variance =
     varianceInType(annot.tree.tpe)(tparam)
-  }
 
   /** Compute variance of type parameter <code>tparam</code> in type <code>tp</code>. */
   def varianceInType(tp: Type)(tparam: Symbol)(implicit ctx: Context): Variance = tp match {

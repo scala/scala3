@@ -41,9 +41,9 @@ class TestServer(testFolder: Path, projects: List[Project]) {
      * @return A JSON object representing the configuration for this project.
      */
     def projectSetup(project: Project): String = {
-      def showSeq[T](lst: Seq[T]): String =
+      def showSeq[T](lst: collection.Seq[T]): String =
         lst
-          .map(elem => '"' + elem.toString.replace('\\', '/') + '"')
+          .map(elem => '"'.toString + elem.toString.replace('\\', '/') + '"'.toString)
           .mkString("[ ", ", ", " ]")
 
       if (project.sources.exists(_.isInstanceOf[TastyWithPositions])) {
@@ -117,7 +117,7 @@ class TestServer(testFolder: Path, projects: List[Project]) {
       project.dependsOn.flatMap { dep =>
         classDirectory(dep, wipe = false).toString +: dependencyClasspath(dep)
       }
-  }.distinct
+  }.distinct.toSeq
 
   private def sourceDirectory(project: Project, wipe: Boolean): Path = {
     val path = TestFile.sourceDir.resolve(project.name).toAbsolutePath

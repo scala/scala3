@@ -87,19 +87,19 @@ object Mas {
 
 object LisSeqArr {
   def run(): Unit = {
-    assert((1,2) == ((List(1,2,3): Any) match { case   List(x,y,_: _*) => (x,y)}))
-    assert((1,2) == ((List(1,2,3): Any) match { case    Seq(x,y,_: _*) => (x,y)}))
+    assert((1,2) == ((List(1,2,3): Any) match { case   List(x,y,_*) => (x,y)}))
+    assert((1,2) == ((List(1,2,3): Any) match { case    Seq(x,y,_*) => (x,y)}))
   }
 }
 
 object StreamFoo {
-  def sum(stream: Stream[Int]): Int =
-    stream match {
-      case Stream.Empty => 0
-      case Stream.cons(hd, tl) => hd + sum(tl)
+  def sum(lazyList: LazyList[Int]): Int =
+    lazyList match {
+      case ll if ll.isEmpty => 0
+      case LazyList.cons(hd, tl) => hd + sum(tl)
     }
   def run(): Unit = {
-    val str: Stream[Int] = List(1,2,3).toStream
+    val str: LazyList[Int] = List(1,2,3).to(LazyList)
     assert(6 == sum(str))
   }
 }

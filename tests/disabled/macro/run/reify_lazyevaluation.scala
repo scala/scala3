@@ -3,7 +3,7 @@ import scala.language.{ implicitConversions }
 import scala.reflect.runtime.universe._
 import scala.tools.reflect.Eval
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   reify {
     object lazyLib {
 

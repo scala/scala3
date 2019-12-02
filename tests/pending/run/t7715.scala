@@ -2,7 +2,7 @@
 import PartialFunction.cond
 import util._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   object I { def unapply(x: String): Option[Int] = Try(x.toInt).toOption }
   implicit class RX(val sc: StringContext) {

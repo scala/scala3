@@ -6,6 +6,6 @@ object Crash extends D(() => {
   (x: Int) => {() => { new { println(x.toString) } }}
 })
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   Crash
 }

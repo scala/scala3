@@ -1,0 +1,17 @@
+# Should compile OK without the plugin
+> app/compile
+
+# Publish plugin locally
+> plugin/publishLocal
+
+# Should NOT compile with just the plugin
+$ copy-file changes/plugin.sbt build.sbt
+> reload
+> clean
+-> app/compile
+
+# Should compile with the plugin and -Yretain-trees
+$ copy-file changes/retain.sbt build.sbt
+> reload
+> clean
+> app/compile

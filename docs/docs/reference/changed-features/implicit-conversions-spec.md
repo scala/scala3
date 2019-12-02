@@ -81,7 +81,7 @@ implicit val myConverter: Conversion[Int, String] = _.toString
 ```
 
 Note that implicit conversions are also  affected by the [changes to
-implicit resolution](implicit-resolution.html) between Scala 2 and
+implicit resolution](implicit-resolution.md) between Scala 2 and
 Scala 3.
 
 ## Motivation for the changes
@@ -111,12 +111,12 @@ to `Conversion`.
 
 For the migration of implicit conversions that are affected by the
 changes to implicit resolution, refer to the [Changes in Implicit
-Resolution](implicit-resolution.html) for more information.
+Resolution](implicit-resolution.md) for more information.
 
 ## Reference
 
 For more information about implicit resolution, see [Changes in
-Implicit Resolution](implicit-resolution.html).
+Implicit Resolution](implicit-resolution.md).
 Other details are available in
 [PR #2065](https://github.com/lampepfl/dotty/pull/2065)
 

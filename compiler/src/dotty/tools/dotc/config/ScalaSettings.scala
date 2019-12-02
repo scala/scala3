@@ -44,9 +44,15 @@ class ScalaSettings extends Settings.SettingGroup {
   val pageWidth: Setting[Int] = IntSetting("-pagewidth", "Set page width", 80) withAbbreviation "--page-width"
   val strict: Setting[Boolean] = BooleanSetting("-strict", "Use strict type rules, which means some formerly legal code does not typecheck anymore.") withAbbreviation "--strict"
   val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.") withAbbreviation "--language"
-  val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax") withAbbreviation "--rewrite"
+  val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2Compat rewrites sources to migrate to new syntax") withAbbreviation "--rewrite"
   val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.") withAbbreviation "--no-warnings"
   val fromTasty: Setting[Boolean] = BooleanSetting("-from-tasty", "Compile classes from tasty in classpath. The arguments are used as class names.") withAbbreviation "--from-tasty"
+
+  val newSyntax: Setting[Boolean] = BooleanSetting("-new-syntax", "Require `then` and `do` in control expressions")
+  val oldSyntax: Setting[Boolean] = BooleanSetting("-old-syntax", "Require `(...)` around conditions")
+  val indent: Setting[Boolean] = BooleanSetting("-indent", "allow significant indentation")
+  val noindent: Setting[Boolean] = BooleanSetting("-noindent", "require classical {...} syntax, indentation is not significant")
+  val YindentColons: Setting[Boolean] = BooleanSetting("-Yindent-colons", "allow colons at ends-of-lines to start indentation blocks")
 
   /** Decompiler settings */
   val printTasty: Setting[Boolean] = BooleanSetting("-print-tasty", "Prints the raw tasty.") withAbbreviation "--print-tasty"
@@ -70,9 +76,10 @@ class ScalaSettings extends Settings.SettingGroup {
   val XprintTypes: Setting[Boolean] = BooleanSetting("-Xprint-types", "Print tree types (debugging option).")
   val XprintDiff: Setting[Boolean] = BooleanSetting("-Xprint-diff", "Print changed parts of the tree since last print.")
   val XprintDiffDel: Setting[Boolean] = BooleanSetting("-Xprint-diff-del", "Print changed parts of the tree since last print including deleted parts.")
-  val XprintInline: Setting[Boolean] = BooleanSetting("-Xprint-inline", "Show  where inlined code comes from")
+  val XprintInline: Setting[Boolean] = BooleanSetting("-Xprint-inline", "Show where inlined code comes from")
+  val XprintSuspension: Setting[Boolean] = BooleanSetting("-Xprint-suspension", "Show when code is suspended until macros are compiled")
   val Xprompt: Setting[Boolean] = BooleanSetting("-Xprompt", "Display a prompt after each error (debugging option).")
-  val XmainClass: Setting[String] = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
+  val XshowPhases: Setting[Boolean] = BooleanSetting("-Xshow-phases", "Print all compiler phases")
   val XnoValueClasses: Setting[Boolean] = BooleanSetting("-Xno-value-classes", "Do not use value classes. Helps debugging.")
   val XreplLineWidth: Setting[Int] = IntSetting("-Xrepl-line-width", "Maximal number of columns per line for REPL output", 390)
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Xfatal-warnings", "Fail the compilation if there are any warnings.")
@@ -103,6 +110,8 @@ class ScalaSettings extends Settings.SettingGroup {
   val YdebugNames: Setting[Boolean] = BooleanSetting("-Ydebug-names", "Show internal representation of names")
   val YdebugPos: Setting[Boolean] = BooleanSetting("-Ydebug-pos", "Show full source positions including spans")
   val YdebugTreeWithId: Setting[Int] = IntSetting("-Ydebug-tree-with-id", "Print the stack trace when the tree with the given id is created", Int.MinValue)
+  val YdebugTypeError: Setting[Boolean] = BooleanSetting("-Ydebug-type-error", "Print the stack trace when a TypeError is caught", false)
+  val YdebugError: Setting[Boolean] = BooleanSetting("-Ydebug-error", "Print the stack trace when any error is caught", false)
   val YtermConflict: Setting[String] = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val Ylog: Setting[List[String]] = PhasesSetting("-Ylog", "Log operations during")
   val YemitTastyInClass: Setting[Boolean] = BooleanSetting("-Yemit-tasty-in-class", "Generate tasty in the .class file and add an empty *.hasTasty file.")
@@ -110,8 +119,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val YdisableFlatCpCaching: Setting[Boolean] = BooleanSetting("-YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
 
   val Yscala2Unpickler: Setting[String] = StringSetting("-Yscala2-unpickler", "", "Control where we may get Scala 2 symbols from. This is either \"always\", \"never\", or a classpath.", "always")
-  // TODO: Remove once we drop support for 2.12 standard library
-  val YnewCollections: Setting[Boolean] = BooleanSetting("-Ynew-collections", "Inform the compiler that we are using the 2.13 collection library (even if the 2.12 library is on the classpath).")
 
   val YnoImports: Setting[Boolean] = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
   val YnoInline: Setting[Boolean] = BooleanSetting("-Yno-inline", "Suppress inlining.")
@@ -124,7 +131,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val YtraceContextCreation: Setting[Boolean] = BooleanSetting("-Ytrace-context-creation", "Store stack trace of context creations.")
   val YshowSuppressedErrors: Setting[Boolean] = BooleanSetting("-Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally suppressed.")
   val YdetailedStats: Setting[Boolean] = BooleanSetting("-Ydetailed-stats", "show detailed internal compiler stats (needs Stats.enabled to be set to true).")
-  val Yheartbeat: Setting[Boolean] = BooleanSetting("-Yheartbeat", "show heartbeat stack trace of compiler operations (needs Stats.enabled to be set to true).")
   val YkindProjector: Setting[Boolean] = BooleanSetting("-Ykind-projector", "allow `*` as wildcard to be compatible with kind projector")
   val YprintPos: Setting[Boolean] = BooleanSetting("-Yprint-pos", "show tree positions.")
   val YprintPosSyms: Setting[Boolean] = BooleanSetting("-Yprint-pos-syms", "show symbol definitions positions.")
@@ -155,7 +161,8 @@ class ScalaSettings extends Settings.SettingGroup {
       //.withPostSetHook( _ => YprofileEnabled.value = true )
 
   // Extremely experimental language features
-  val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting("-Yno-kind-polymorphism", "Enable kind polymorphism (see http://dotty.epfl.ch/docs/reference/kind-polymorphism.html). Potentially unsound.")
+  val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting("-Yno-kind-polymorphism", "Enable kind polymorphism (see https://dotty.epfl.ch/docs/reference/kind-polymorphism.html). Potentially unsound.")
+  val YexplicitNulls: Setting[Boolean] = BooleanSetting("-Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
@@ -194,6 +201,13 @@ class ScalaSettings extends Settings.SettingGroup {
     "-project-url",
     "project repository homepage",
     "The source repository of your project",
+    ""
+  )
+
+  val projectLogo: Setting[String] = StringSetting(
+    "-project-logo",
+    "project logo filename",
+    "The file that contains the project's logo (in /images)",
     ""
   )
 

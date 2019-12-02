@@ -7,8 +7,8 @@ class Tag(val name: String, val buffer: Buffer[Tag] = ArrayBuffer()) {
 	    s"${" " * n}</$name>"
 	}
 
-	def apply[U](f: given Tag => U)(implicit tag: Tag = null): this.type = {
-		f given this
+	def apply[U](f: (given Tag) => U)(implicit tag: Tag = null): this.type = {
+		f(given this)
 		if(tag != null) tag.buffer += this
 		this
 	}

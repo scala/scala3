@@ -201,18 +201,18 @@ object Scopes {
     private[dotc] var lastEntry: ScopeEntry = initElems
 
     /** The size of the scope */
-    private[this] var _size = initSize
+    private var _size = initSize
 
     override final def size: Int = _size
     private def size_= (x: Int) = _size = x
 
     /** the hash table
      */
-    private[this] var hashTable: Array[ScopeEntry] = null
+    private var hashTable: Array[ScopeEntry] = null
 
     /** a cache for all elements, to be used by symbol iterator.
      */
-    private[this] var elemsCache: List[Symbol] = null
+    private var elemsCache: List[Symbol] = null
 
     /** The synthesizer to be used, or `null` if no synthesis is done on this scope */
     private var synthesize: SymbolSynthesizer = null
@@ -265,10 +265,9 @@ object Scopes {
 
     /** enter a symbol in this scope. */
     final def enter[T <: Symbol](sym: T)(implicit ctx: Context): T = {
-      if (sym.isType && ctx.phaseId <= ctx.typerPhase.id) {
+      if (sym.isType && ctx.phaseId <= ctx.typerPhase.id)
         assert(lookup(sym.name) == NoSymbol,
           s"duplicate ${sym.debugString}; previous was ${lookup(sym.name).debugString}") // !!! DEBUG
-      }
       newScopeEntry(sym)
       sym
     }
@@ -290,12 +289,13 @@ object Scopes {
         // checkConsistent() // DEBUG
       }
 
-    private def enterAllInHash(e: ScopeEntry, n: Int = 0)(implicit ctx: Context): Unit = {
-      if (e ne null) {
+    private def enterAllInHash(e: ScopeEntry, n: Int = 0)(implicit ctx: Context): Unit =
+      if (e ne null)
         if (n < MaxRecursions) {
           enterAllInHash(e.prev, n + 1)
           enterInHash(e)
-        } else {
+        }
+        else {
           var entries: List[ScopeEntry] = List()
           var ee = e
           while (ee ne null) {
@@ -304,14 +304,12 @@ object Scopes {
           }
           entries foreach enterInHash
         }
-      }
-    }
 
     /** Remove entry from this scope (which is required to be present) */
     final def unlink(e: ScopeEntry)(implicit ctx: Context): Unit = {
-      if (lastEntry == e) {
+      if (lastEntry == e)
         lastEntry = e.prev
-      } else {
+      else {
         var e1 = lastEntry
         while (e1.prev != e) e1 = e1.prev
         e1.prev = e.prev
@@ -362,14 +360,13 @@ object Scopes {
       var e: ScopeEntry = null
       if (hashTable ne null) {
         e = hashTable(name.hashCode & (hashTable.length - 1))
-        while ((e ne null) && e.name != name) {
+        while ((e ne null) && e.name != name)
           e = e.tail
-        }
-      } else {
+      }
+      else {
         e = lastEntry
-        while ((e ne null) && e.name != name) {
+        while ((e ne null) && e.name != name)
           e = e.prev
-        }
       }
       if ((e eq null) && (synthesize != null)) {
         val sym = synthesize(name)(ctx)
@@ -382,9 +379,9 @@ object Scopes {
     override final def lookupNextEntry(entry: ScopeEntry)(implicit ctx: Context): ScopeEntry = {
       var e = entry
       if (hashTable ne null)
-        do { e = e.tail } while ((e ne null) && e.name != entry.name)
+        while ({ e = e.tail ; (e ne null) && e.name != entry.name }) ()
       else
-        do { e = e.prev } while ((e ne null) && e.name != entry.name)
+        while ({ e = e.prev ; (e ne null) && e.name != entry.name }) ()
       e
     }
 
@@ -409,7 +406,7 @@ object Scopes {
       var irefs = new mutable.ListBuffer[TermRef]
       var e = lastEntry
       while (e ne null) {
-        if (e.sym is ImplicitOrImpliedOrGiven) {
+        if (e.sym.isOneOf(GivenOrImplicit)) {
           val d = e.sym.denot
           irefs += TermRef(NoPrefix, d.symbol.asTerm).withDenot(d)
         }

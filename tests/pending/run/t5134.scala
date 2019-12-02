@@ -1,6 +1,6 @@
 import language._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def b = new AnyRef {
     def a= ()
   }

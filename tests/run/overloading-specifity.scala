@@ -10,7 +10,8 @@ object Generic {
 
 object Test extends App {
   trait Context
-  delegate ctx for Context
+
+  given ctx: Context
 
   object b {
     def foo[T](implicit gen: Generic): Show[T] = new Show[T](1)

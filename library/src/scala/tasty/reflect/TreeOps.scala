@@ -5,272 +5,284 @@ trait TreeOps extends Core {
 
   // ----- Tree -----------------------------------------------------
 
-  implicit class TreeAPI(self: Tree) {
+  given TreeOps: (self: Tree) {
     /** Position in the source code */
-    def pos(implicit ctx: Context): Position = kernel.Tree_pos(self)
+    def pos(given ctx: Context): Position = internal.Tree_pos(self)
 
-    def symbol(implicit ctx: Context): Symbol = kernel.Tree_symbol(self)
+    def symbol(given ctx: Context): Symbol = internal.Tree_symbol(self)
   }
 
-  object IsPackageClause {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[PackageClause] =
-      kernel.matchPackageClause(tree)
-  }
+  given (given Context): IsInstanceOf[PackageClause] = internal.isInstanceOfPackageClause
+
+  object IsPackageClause
+    @deprecated("Use _: PackageClause", "")
+    def unapply(x: PackageClause): Some[PackageClause] = Some(x)
 
   object PackageClause {
-    def apply(pid: Ref, stats: List[Tree])(implicit ctx: Context): PackageClause =
-      kernel.PackageClause_apply(pid, stats)
-    def copy(original: PackageClause)(pid: Ref, stats: List[Tree])(implicit ctx: Context): PackageClause =
-      kernel.PackageClause_copy(original)(pid, stats)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Ref, List[Tree])] =
-      kernel.matchPackageClause(tree).map(x => (x.pid, x.stats))
+    def apply(pid: Ref, stats: List[Tree])(given ctx: Context): PackageClause =
+      internal.PackageClause_apply(pid, stats)
+    def copy(original: Tree)(pid: Ref, stats: List[Tree])(given ctx: Context): PackageClause =
+      internal.PackageClause_copy(original)(pid, stats)
+    def unapply(tree: PackageClause)(given ctx: Context): Some[(Ref, List[Tree])] =
+      Some((tree.pid, tree.stats))
   }
 
-  implicit class PackageClauseAPI(self: PackageClause) {
-    def pid(implicit ctx: Context): Ref = kernel.PackageClause_pid(self)
-    def stats(implicit ctx: Context): List[Tree] = kernel.PackageClause_stats(self)
+  given PackageClauseOps: (self: PackageClause) {
+    def pid(given ctx: Context): Ref = internal.PackageClause_pid(self)
+    def stats(given ctx: Context): List[Tree] = internal.PackageClause_stats(self)
   }
 
-  object IsImport {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Import] =
-      kernel.matchImport(tree)
-  }
+  given (given Context): IsInstanceOf[Import] = internal.isInstanceOfImport
+
+  object IsImport
+    @deprecated("Use _: Import", "")
+    def unapply(x: Import): Some[Import] = Some(x)
 
   object Import {
-    def apply(importImplied: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import =
-      kernel.Import_apply(importImplied, expr, selectors)
-    def copy(original: Import)(importImplied: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import =
-      kernel.Import_copy(original)(importImplied, expr, selectors)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Boolean, Term, List[ImportSelector])] =
-      kernel.matchImport(tree).map(x => (x.importImplied, x.expr, x.selectors))
+    def apply(expr: Term, selectors: List[ImportSelector])(given ctx: Context): Import =
+      internal.Import_apply(expr, selectors)
+    def copy(original: Tree)(expr: Term, selectors: List[ImportSelector])(given ctx: Context): Import =
+      internal.Import_copy(original)(expr, selectors)
+    def unapply(tree: Import)(given ctx: Context): Option[(Term, List[ImportSelector])] =
+      Some((tree.expr, tree.selectors))
   }
 
-  implicit class ImportAPI(self: Import)  {
-    def importImplied: Boolean = kernel.Import_implied(self)
-    def expr(implicit ctx: Context): Term = kernel.Import_expr(self)
-    def selectors(implicit ctx: Context): List[ImportSelector] =
-      kernel.Import_selectors(self)
+  given ImportOps: (self: Import)  {
+    def expr(given ctx: Context): Term = internal.Import_expr(self)
+    def selectors(given ctx: Context): List[ImportSelector] =
+      internal.Import_selectors(self)
   }
 
-  object IsStatement {
-    /** Matches any Statement and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Statement] = kernel.matchStatement(tree)
-  }
+  given (given Context): IsInstanceOf[Statement] = internal.isInstanceOfStatement
+
+  object IsStatement
+    @deprecated("Use _: Statement", "")
+    def unapply(x: Statement): Option[Statement] = Some(x)
 
   // ----- Definitions ----------------------------------------------
 
-  object IsDefinition {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Definition] = kernel.matchDefinition(tree)
-  }
+  given (given Context): IsInstanceOf[Definition] = internal.isInstanceOfDefinition
 
-  implicit class DefinitionAPI(self: Definition) {
-    def name(implicit ctx: Context): String = kernel.Definition_name(self)
+  object IsDefinition
+    @deprecated("Use _: Definition", "")
+    def unapply(x: Definition): Option[Definition] = Some(x)
+
+  given DefinitionOps: (self: Definition) {
+    def name(given ctx: Context): String = internal.Definition_name(self)
   }
 
   // ClassDef
 
-  object IsClassDef {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[ClassDef] = kernel.matchClassDef(tree)
-  }
+  given (given Context): IsInstanceOf[ClassDef] = internal.isInstanceOfClassDef
+
+  object IsClassDef
+    @deprecated("Use _: ClassDef", "")
+    def unapply(x: ClassDef): Some[ClassDef] = Some(x)
 
   object ClassDef {
-    // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
-    def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef =
-      kernel.ClassDef_copy(original)(name, constr, parents, derived, selfOpt, body)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
-      kernel.matchClassDef(tree).map(x => (x.name, x.constructor, x.parents, x.derived, x.self, x.body))
+    // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef
+    def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef =
+      internal.ClassDef_copy(original)(name, constr, parents, derived, selfOpt, body)
+    def unapply(cdef: ClassDef)(given ctx: Context): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
+      Some((cdef.name, cdef.constructor, cdef.parents, cdef.derived, cdef.self, cdef.body))
   }
 
-  implicit class ClassDefAPI(self: ClassDef) {
-    def constructor(implicit ctx: Context): DefDef = kernel.ClassDef_constructor(self)
-    def parents(implicit ctx: Context): List[Tree /* Term | TypeTree */] = kernel.ClassDef_parents(self)
-    def derived(implicit ctx: Context): List[TypeTree] = kernel.ClassDef_derived(self)
-    def self(implicit ctx: Context): Option[ValDef] = kernel.ClassDef_self(self)
-    def body(implicit ctx: Context): List[Statement] = kernel.ClassDef_body(self)
-    def symbol(implicit ctx: Context): ClassDefSymbol = kernel.ClassDef_symbol(self)
+  given ClassDefOps: (self: ClassDef) {
+    def constructor(given ctx: Context): DefDef = internal.ClassDef_constructor(self)
+    def parents(given ctx: Context): List[Tree /* Term | TypeTree */] = internal.ClassDef_parents(self)
+    def derived(given ctx: Context): List[TypeTree] = internal.ClassDef_derived(self)
+    def self(given ctx: Context): Option[ValDef] = internal.ClassDef_self(self)
+    def body(given ctx: Context): List[Statement] = internal.ClassDef_body(self)
   }
 
   // DefDef
 
-  object IsDefDef {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[DefDef] = kernel.matchDefDef(tree)
-  }
+  given (given Context): IsInstanceOf[DefDef] = internal.isInstanceOfDefDef
+
+  object IsDefDef
+    @deprecated("Use _: DefDef", "")
+    def unapply(x: DefDef): Some[DefDef] = Some(x)
 
   object DefDef {
-    def apply(symbol: DefDefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(implicit ctx: Context): DefDef =
-      kernel.DefDef_apply(symbol, rhsFn)
-    def copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): DefDef =
-      kernel.DefDef_copy(original)(name, typeParams, paramss, tpt, rhs)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
-      kernel.matchDefDef(tree).map(x => (x.name, x.typeParams, x.paramss, x.returnTpt, x.rhs))
+    def apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(given ctx: Context): DefDef =
+      internal.DefDef_apply(symbol, rhsFn)
+    def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(given ctx: Context): DefDef =
+      internal.DefDef_copy(original)(name, typeParams, paramss, tpt, rhs)
+    def unapply(ddef: DefDef)(given ctx: Context): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
+      Some((ddef.name, ddef.typeParams, ddef.paramss, ddef.returnTpt, ddef.rhs))
   }
 
-  implicit class DefDefAPI(self: DefDef) {
-    def typeParams(implicit ctx: Context): List[TypeDef] = kernel.DefDef_typeParams(self)
-    def paramss(implicit ctx: Context): List[List[ValDef]] = kernel.DefDef_paramss(self)
-    def returnTpt(implicit ctx: Context): TypeTree = kernel.DefDef_returnTpt(self) // TODO rename to tpt
-    def rhs(implicit ctx: Context): Option[Term] = kernel.DefDef_rhs(self)
-    def symbol(implicit ctx: Context): DefDefSymbol = kernel.DefDef_symbol(self)
+  given DefDefOps: (self: DefDef) {
+    def typeParams(given ctx: Context): List[TypeDef] = internal.DefDef_typeParams(self)
+    def paramss(given ctx: Context): List[List[ValDef]] = internal.DefDef_paramss(self)
+    def returnTpt(given ctx: Context): TypeTree = internal.DefDef_returnTpt(self) // TODO rename to tpt
+    def rhs(given ctx: Context): Option[Term] = internal.DefDef_rhs(self)
   }
 
   // ValDef
 
-  object IsValDef {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[ValDef] = kernel.matchValDef(tree)
-  }
+  given (given Context): IsInstanceOf[ValDef] = internal.isInstanceOfValDef
+
+  object IsValDef
+    @deprecated("Use _: ValDef", "")
+    def unapply(x: ValDef): Some[ValDef] = Some(x)
 
   object ValDef {
-    def apply(symbol: ValDefSymbol, rhs: Option[Term])(implicit ctx: Context): ValDef =
-      kernel.ValDef_apply(symbol, rhs)
-    def copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): ValDef =
-      kernel.ValDef_copy(original)(name, tpt, rhs)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])] =
-      kernel.matchValDef(tree).map(x => (x.name, x.tpt, x.rhs))
+    def apply(symbol: Symbol, rhs: Option[Term])(given ctx: Context): ValDef =
+      internal.ValDef_apply(symbol, rhs)
+    def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term])(given ctx: Context): ValDef =
+      internal.ValDef_copy(original)(name, tpt, rhs)
+    def unapply(vdef: ValDef)(given ctx: Context): Option[(String, TypeTree, Option[Term])] =
+      Some((vdef.name, vdef.tpt, vdef.rhs))
   }
 
-  implicit class ValDefAPI(self: ValDef) {
-    def tpt(implicit ctx: Context): TypeTree = kernel.ValDef_tpt(self)
-    def rhs(implicit ctx: Context): Option[Term] = kernel.ValDef_rhs(self)
-    def symbol(implicit ctx: Context): ValDefSymbol = kernel.ValDef_symbol(self)
+  given ValDefOps: (self: ValDef) {
+    def tpt(given ctx: Context): TypeTree = internal.ValDef_tpt(self)
+    def rhs(given ctx: Context): Option[Term] = internal.ValDef_rhs(self)
   }
 
   // TypeDef
 
-  object IsTypeDef {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeDef] = kernel.matchTypeDef(tree)
-  }
+  given (given Context): IsInstanceOf[TypeDef] = internal.isInstanceOfTypeDef
+
+  object IsTypeDef
+    @deprecated("Use _: TypeDef", "")
+    def unapply(x: TypeDef): Some[TypeDef] = Some(x)
 
   object TypeDef {
-    def apply(symbol: TypeDefSymbol)(implicit ctx: Context): TypeDef =
-      kernel.TypeDef_apply(symbol)
-    def copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeDef =
-      kernel.TypeDef_copy(original)(name, rhs)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)] =
-      kernel.matchTypeDef(tree).map(x => (x.name, x.rhs))
+    def apply(symbol: Symbol)(given ctx: Context): TypeDef =
+      internal.TypeDef_apply(symbol)
+    def copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeDef =
+      internal.TypeDef_copy(original)(name, rhs)
+    def unapply(tdef: TypeDef)(given ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)] =
+      Some((tdef.name, tdef.rhs))
   }
 
-  implicit class TypeDefAPI(self: TypeDef) {
-    def rhs(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.TypeDef_rhs(self)
-    def symbol(implicit ctx: Context): TypeDefSymbol = kernel.TypeDef_symbol(self)
+  given TypeDefOps: (self: TypeDef) {
+    def rhs(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeDef_rhs(self)
   }
 
   // PackageDef
 
-  object IsPackageDef {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[PackageDef] =
-      kernel.matchPackageDef(tree)
+  given (given Context): IsInstanceOf[PackageDef] = internal.isInstanceOfPackageDef
+
+  given PackageDefOps: (self: PackageDef) {
+    def owner(given ctx: Context): PackageDef = internal.PackageDef_owner(self)
+    def members(given ctx: Context): List[Statement] = internal.PackageDef_members(self)
   }
 
-  implicit class PackageDefAPI(self: PackageDef) {
-    def owner(implicit ctx: Context): PackageDef = kernel.PackageDef_owner(self)
-    def members(implicit ctx: Context): List[Statement] = kernel.PackageDef_members(self)
-    def symbol(implicit ctx: Context): PackageDefSymbol = kernel.PackageDef_symbol(self)
-  }
+  object IsPackageDef
+    @deprecated("Use _: PackageDef", "")
+    def unapply(x: PackageDef): Some[PackageDef] = Some(x)
 
   object PackageDef {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, PackageDef)] =
-      kernel.matchPackageDef(tree).map(x => (x.name, x.owner))
+    def unapply(tree: PackageDef)(given ctx: Context): Option[(String, PackageDef)] =
+      Some((tree.name, tree.owner))
   }
 
   // ----- Terms ----------------------------------------------------
 
-  implicit class TermAPI(self: Term) {
-    def tpe(implicit ctx: Context): Type = kernel.Term_tpe(self)
-    def pos(implicit ctx: Context): Position = kernel.Term_pos(self)
-    def underlyingArgument(implicit ctx: Context): Term = kernel.Term_underlyingArgument(self)
-    def underlying(implicit ctx: Context): Term = kernel.Term_underlying(self)
+  given TermOps: (self: Term) {
+    def tpe(given ctx: Context): Type = internal.Term_tpe(self)
+    def underlyingArgument(given ctx: Context): Term = internal.Term_underlyingArgument(self)
+    def underlying(given ctx: Context): Term = internal.Term_underlying(self)
+    def etaExpand(given ctx: Context): Term = internal.Term_etaExpand(self)
 
     /** A unary apply node with given argument: `tree(arg)` */
-    def appliedTo(arg: Term)(implicit ctx: Context): Term =
-      appliedToArgs(arg :: Nil)
+    def appliedTo(arg: Term)(given ctx: Context): Term =
+      self.appliedToArgs(arg :: Nil)
 
     /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
-    def appliedTo(arg: Term, args: Term*)(implicit ctx: Context): Term =
-      appliedToArgs(arg :: args.toList)
+    def appliedTo(arg: Term, args: Term*)(given ctx: Context): Term =
+      self.appliedToArgs(arg :: args.toList)
 
     /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))` */
-    def appliedToArgs(args: List[Term])(implicit ctx: Context): Apply =
+    def appliedToArgs(args: List[Term])(given ctx: Context): Apply =
       Apply(self, args)
 
     /** The current tree applied to given argument lists:
      *  `tree (argss(0)) ... (argss(argss.length -1))`
      */
-    def appliedToArgss(argss: List[List[Term]])(implicit ctx: Context): Term =
-      ((self: Term) /: argss)(Apply(_, _))
+    def appliedToArgss(argss: List[List[Term]])(given ctx: Context): Term =
+      argss.foldLeft(self: Term)(Apply(_, _))
 
     /** The current tree applied to (): `tree()` */
-    def appliedToNone(implicit ctx: Context): Apply = appliedToArgs(Nil)
+    def appliedToNone(given ctx: Context): Apply =
+      self.appliedToArgs(Nil)
 
     /** The current tree applied to given type argument: `tree[targ]` */
-    def appliedToType(targ: Type)(implicit ctx: Context): Term =
-      appliedToTypes(targ :: Nil)
+    def appliedToType(targ: Type)(given ctx: Context): Term =
+      self.appliedToTypes(targ :: Nil)
 
     /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
-    def appliedToTypes(targs: List[Type])(implicit ctx: Context): Term =
-      appliedToTypeTrees(targs map (Inferred(_)))
+    def appliedToTypes(targs: List[Type])(given ctx: Context): Term =
+      self.appliedToTypeTrees(targs map (Inferred(_)))
 
     /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
-    def appliedToTypeTrees(targs: List[TypeTree])(implicit ctx: Context): Term =
+    def appliedToTypeTrees(targs: List[TypeTree])(given ctx: Context): Term =
       if (targs.isEmpty) self else TypeApply(self, targs)
 
     /** A select node that selects the given symbol.
      */
-    def select(sym: Symbol)(implicit ctx: Context): Select = Select(self, sym)
+    def select(sym: Symbol)(given ctx: Context): Select = Select(self, sym)
   }
 
-  object IsTerm {
-    /** Matches any term */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
-      kernel.matchTerm(tree)
-  }
+  given (given Context): IsInstanceOf[Term] = internal.isInstanceOfTerm
 
-  object IsRef {
-    /** Matches any Ref and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Ref] = kernel.matchRef(tree)
-  }
+  object IsTerm
+    @deprecated("Use _: Term", "")
+    def unapply(x: Term): Some[Term] = Some(x)
+
+  given (given Context): IsInstanceOf[Ref] = internal.isInstanceOfRef
+
+  object IsRef
+    @deprecated("Use _: Ref", "")
+    def unapply(x: Ref): Some[Ref] = Some(x)
 
   object Ref {
 
     /** Create a reference tree */
-    def apply(sym: Symbol)(implicit ctx: Context): Ref =
-      kernel.Ref_apply(sym)
+    def apply(sym: Symbol)(given ctx: Context): Ref =
+      internal.Ref_apply(sym)
 
-    // TODO def copy(original: Tree)(name: String)(implicit ctx: Context): Ref
+    // TODO def copy(original: Tree)(name: String)(given ctx: Context): Ref
 
   }
 
-  object IsIdent {
-    /** Matches any Ident and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Ident] = kernel.matchIdent(tree)
-  }
+  given (given Context): IsInstanceOf[Ident] = internal.isInstanceOfIdent
 
-  implicit class IdentAPI(self: Ident) {
-    def name(implicit ctx: Context): String = kernel.Ident_name(self)
+  given IdentOps: (self: Ident) {
+    def name(given ctx: Context): String = internal.Ident_name(self)
   }
 
   /** Scala term identifier */
-  object Ident {
-    def apply(tmref: TermRef)(implicit ctx: Context): Term =
-      kernel.Ident_apply(tmref)
+  object IsIdent
+    @deprecated("Use _: Ident", "")
+    def unapply(x: Ident): Some[Ident] = Some(x)
 
-    def copy(original: Tree)(name: String)(implicit ctx: Context): Ident =
-      kernel.Ident_copy(original)(name)
+  object Ident {
+    def apply(tmref: TermRef)(given ctx: Context): Term =
+      internal.Ident_apply(tmref)
+
+    def copy(original: Tree)(name: String)(given ctx: Context): Ident =
+      internal.Ident_copy(original)(name)
 
     /** Matches a term identifier and returns its name */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[String] =
-      kernel.matchIdent(tree).map(_.name)
+    def unapply(tree: Ident)(given ctx: Context): Option[String] =
+      Some(tree.name)
   }
 
-  object IsSelect {
-    /** Matches any Select and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Select] = kernel.matchSelect(tree)
-  }
+  given (given Context): IsInstanceOf[Select] = internal.isInstanceOfSelect
 
   /** Scala term selection */
+  object IsSelect
+    @deprecated("Use _: Select", "")
+    def unapply(x: Select): Some[Select] = Some(x)
+
   object Select {
     /** Select a term member by symbol */
-    def apply(qualifier: Term, symbol: Symbol)(implicit ctx: Context): Select =
-      kernel.Select_apply(qualifier, symbol)
+    def apply(qualifier: Term, symbol: Symbol)(given ctx: Context): Select =
+      internal.Select_apply(qualifier, symbol)
 
     /** Select a field or a non-overloaded method by name
      *
@@ -278,871 +290,972 @@ trait TreeOps extends Core {
      *        method is overloaded. The method `overloaded` should be used
      *        in that case.
      */
-    def unique(qualifier: Term, name: String)(implicit ctx: Context): Select =
-      kernel.Select_unique(qualifier, name)
+    def unique(qualifier: Term, name: String)(given ctx: Context): Select =
+      internal.Select_unique(qualifier, name)
 
     // TODO rename, this returns an Apply and not a Select
     /** Call an overloaded method with the given type and term parameters */
-    def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(implicit ctx: Context): Apply =
-      kernel.Select_overloaded(qualifier, name, targs, args)
+    def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(given ctx: Context): Apply =
+      internal.Select_overloaded(qualifier, name, targs, args)
 
-    def copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Select =
-      kernel.Select_copy(original)(qualifier, name)
+    def copy(original: Tree)(qualifier: Term, name: String)(given ctx: Context): Select =
+      internal.Select_copy(original)(qualifier, name)
 
     /** Matches `<qualifier: Term>.<name: String>` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, String)] =
-      kernel.matchSelect(tree).map(x => (x.qualifier, x.name))
+    def unapply(x: Select)(given ctx: Context): Option[(Term, String)] =
+      Some((x.qualifier, x.name))
   }
 
-  implicit class SelectAPI(self: Select) {
-    def qualifier(implicit ctx: Context): Term = kernel.Select_qualifier(self)
-    def name(implicit ctx: Context): String = kernel.Select_name(self)
-    def signature(implicit ctx: Context): Option[Signature] = kernel.Select_signature(self)
+  given SelectOps: (self: Select) {
+    def qualifier(given ctx: Context): Term = internal.Select_qualifier(self)
+    def name(given ctx: Context): String = internal.Select_name(self)
+    def signature(given ctx: Context): Option[Signature] = internal.Select_signature(self)
   }
 
-  object IsLiteral {
-    /** Matches any Literal and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Literal] = kernel.matchLiteral(tree)
-  }
+  given (given Context): IsInstanceOf[Literal] =
+    internal.isInstanceOfLiteral
 
   /** Scala literal constant */
+  object IsLiteral
+    @deprecated("Use _: Literal", "")
+    def unapply(x: Literal): Some[Literal] = Some(x)
+
   object Literal {
 
     /** Create a literal constant */
-    def apply(constant: Constant)(implicit ctx: Context): Literal =
-      kernel.Literal_apply(constant)
+    def apply(constant: Constant)(given ctx: Context): Literal =
+      internal.Literal_apply(constant)
 
-    def copy(original: Tree)(constant: Constant)(implicit ctx: Context): Literal =
-      kernel.Literal_copy(original)(constant)
+    def copy(original: Tree)(constant: Constant)(given ctx: Context): Literal =
+      internal.Literal_copy(original)(constant)
 
     /** Matches a literal constant */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Constant] =
-      kernel.matchLiteral(tree).map(_.constant)
+    def unapply(x: Literal)(given ctx: Context): Option[Constant] =
+      Some(x.constant)
   }
 
-  implicit class LiteralAPI(self:  Literal) {
-    def constant(implicit ctx: Context): Constant = kernel.Literal_constant(self)
+  given LiteralOps: (self: Literal) {
+    def constant(given ctx: Context): Constant = internal.Literal_constant(self)
   }
 
-  object IsThis {
-    /** Matches any This and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[This] = kernel.matchThis(tree)
-  }
+  given (given Context): IsInstanceOf[This] = internal.isInstanceOfThis
 
   /** Scala `this` or `this[id]` */
+  object IsThis
+    @deprecated("Use _: This", "")
+    def unapply(x: This): Some[This] = Some(x)
+
   object This {
 
     /** Create a `this[<id: Id]>` */
-    def apply(cls: ClassDefSymbol)(implicit ctx: Context): This =
-      kernel.This_apply(cls)
+    def apply(cls: Symbol)(given ctx: Context): This =
+      internal.This_apply(cls)
 
-    def copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This =
-      kernel.This_copy(original)(qual)
+    def copy(original: Tree)(qual: Option[Id])(given ctx: Context): This =
+      internal.This_copy(original)(qual)
 
     /** Matches `this[<id: Option[Id]>` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Option[Id]] =
-      kernel.matchThis(tree).map(_.id)
+    def unapply(x: This)(given ctx: Context): Option[Option[Id]] = Some(x.id)
 
   }
 
-  implicit class ThisAPI(self:  This) {
-    def id(implicit ctx: Context): Option[Id] = kernel.This_id(self)
+  given ThisOps: (self: This) {
+    def id(given ctx: Context): Option[Id] = internal.This_id(self)
   }
 
-  object IsNew {
-    /** Matches any New and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[New] = kernel.matchNew(tree)
-  }
+  given (given Context): IsInstanceOf[New] = internal.isInstanceOfNew
 
   /** Scala `new` */
+  object IsNew
+    @deprecated("Use _: New", "")
+    def unapply(x: New): Some[New] = Some(x)
+
   object New {
 
     /** Create a `new <tpt: TypeTree>` */
-    def apply(tpt: TypeTree)(implicit ctx: Context): New =
-      kernel.New_apply(tpt)
+    def apply(tpt: TypeTree)(given ctx: Context): New =
+      internal.New_apply(tpt)
 
-    def copy(original: Tree)(tpt: TypeTree)(implicit ctx: Context): New =
-      kernel.New_copy(original)(tpt)
+    def copy(original: Tree)(tpt: TypeTree)(given ctx: Context): New =
+      internal.New_copy(original)(tpt)
 
     /** Matches a `new <tpt: TypeTree>` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeTree] =
-      kernel.matchNew(tree).map(_.tpt)
+    def unapply(x: New)(given ctx: Context): Option[TypeTree] = Some(x.tpt)
   }
 
-  implicit class NewAPI(self: New) {
-    def tpt(implicit ctx: Context): TypeTree = kernel.New_tpt(self)
+  given NewOps: (self: New) {
+    def tpt(given ctx: Context): TypeTree = internal.New_tpt(self)
   }
 
-  object IsNamedArg {
-    /** Matches any NamedArg and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[NamedArg] = kernel.matchNamedArg(tree)
-  }
+  given (given Context): IsInstanceOf[NamedArg] = internal.isInstanceOfNamedArg
 
   /** Scala named argument `x = y` in argument position */
+  object IsNamedArg
+    @deprecated("Use _: NamedArg", "")
+    def unapply(x: NamedArg): Some[NamedArg] = Some(x)
+
   object NamedArg {
 
     /** Create a named argument `<name: String> = <value: Term>` */
-    def apply(name: String, arg: Term)(implicit ctx: Context): NamedArg =
-      kernel.NamedArg_apply(name, arg)
+    def apply(name: String, arg: Term)(given ctx: Context): NamedArg =
+      internal.NamedArg_apply(name, arg)
 
-    def copy(original: NamedArg)(name: String, arg: Term)(implicit ctx: Context): NamedArg =
-      kernel.NamedArg_copy(original)(name, arg)
+    def copy(original: Tree)(name: String, arg: Term)(given ctx: Context): NamedArg =
+      internal.NamedArg_copy(original)(name, arg)
 
     /** Matches a named argument `<name: String> = <value: Term>` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, Term)] =
-      kernel.matchNamedArg(tree).map(x => (x.name, x.value))
+    def unapply(x: NamedArg)(given ctx: Context): Option[(String, Term)] =
+      Some((x.name, x.value))
 
   }
 
-  implicit class NamedArgAPI(self: NamedArg) {
-    def name(implicit ctx: Context): String = kernel.NamedArg_name(self)
-    def value(implicit ctx: Context): Term = kernel.NamedArg_value(self)
+  given NamedArgOps: (self: NamedArg) {
+    def name(given ctx: Context): String = internal.NamedArg_name(self)
+    def value(given ctx: Context): Term = internal.NamedArg_value(self)
   }
 
-  object IsApply {
-    /** Matches any Apply and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Apply] = kernel.matchApply(tree)
-  }
+  given (given Context): IsInstanceOf[Apply] = internal.isInstanceOfApply
 
   /** Scala parameter application */
+  object IsApply
+    @deprecated("Use _: Apply", "")
+    def unapply(x: Apply): Some[Apply] = Some(x)
+
   object Apply {
 
     /** Create a function application `<fun: Term>(<args: List[Term]>)` */
-    def apply(fun: Term, args: List[Term])(implicit ctx: Context): Apply =
-      kernel.Apply_apply(fun, args)
+    def apply(fun: Term, args: List[Term])(given ctx: Context): Apply =
+      internal.Apply_apply(fun, args)
 
-    def copy(original: Tree)(fun: Term, args: List[Term])(implicit ctx: Context): Apply =
-      kernel.Apply_copy(original)(fun, args)
+    def copy(original: Tree)(fun: Term, args: List[Term])(given ctx: Context): Apply =
+      internal.Apply_copy(original)(fun, args)
 
     /** Matches a function application `<fun: Term>(<args: List[Term]>)` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[Term])] =
-      kernel.matchApply(tree).map(x => (x.fun, x.args))
+    def unapply(x: Apply)(given ctx: Context): Option[(Term, List[Term])] =
+      Some((x.fun, x.args))
   }
 
-  implicit class ApplyAPI(self: Apply) {
-    def fun(implicit ctx: Context): Term = kernel.Apply_fun(self)
-    def args(implicit ctx: Context): List[Term] = kernel.Apply_args(self)
+  given ApplyOps: (self: Apply) {
+    def fun(given ctx: Context): Term = internal.Apply_fun(self)
+    def args(given ctx: Context): List[Term] = internal.Apply_args(self)
   }
 
-  object IsTypeApply {
-    /** Matches any TypeApply and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeApply] =
-      kernel.matchTypeApply(tree)
-  }
+  given (given Context): IsInstanceOf[TypeApply] = internal.isInstanceOfTypeApply
 
   /** Scala type parameter application */
+  object IsTypeApply
+    @deprecated("Use _: TypeApply", "")
+    def unapply(x: TypeApply): Some[TypeApply] = Some(x)
+
   object TypeApply {
 
     /** Create a function type application `<fun: Term>[<args: List[TypeTree]>]` */
-    def apply(fun: Term, args: List[TypeTree])(implicit ctx: Context): TypeApply =
-      kernel.TypeApply_apply(fun, args)
+    def apply(fun: Term, args: List[TypeTree])(given ctx: Context): TypeApply =
+      internal.TypeApply_apply(fun, args)
 
-    def copy(original: Tree)(fun: Term, args: List[TypeTree])(implicit ctx: Context): TypeApply =
-      kernel.TypeApply_copy(original)(fun, args)
+    def copy(original: Tree)(fun: Term, args: List[TypeTree])(given ctx: Context): TypeApply =
+      internal.TypeApply_copy(original)(fun, args)
 
     /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[TypeTree])] =
-      kernel.matchTypeApply(tree).map(x => (x.fun, x.args))
+    def unapply(x: TypeApply)(given ctx: Context): Option[(Term, List[TypeTree])] =
+      Some((x.fun, x.args))
 
   }
 
-  implicit class TypeApplyAPI(self: TypeApply) {
-    def fun(implicit ctx: Context): Term = kernel.TypeApply_fun(self)
-    def args(implicit ctx: Context): List[TypeTree] = kernel.TypeApply_args(self)
+  given TypeApplyOps: (self: TypeApply) {
+    def fun(given ctx: Context): Term = internal.TypeApply_fun(self)
+    def args(given ctx: Context): List[TypeTree] = internal.TypeApply_args(self)
   }
 
-  object IsSuper {
-    /** Matches any Super and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Super] = kernel.matchSuper(tree)
-  }
+  given (given Context): IsInstanceOf[Super] = internal.isInstanceOfSuper
 
   /** Scala `x.super` or `x.super[id]` */
+  object IsSuper
+    @deprecated("Use _: Super", "")
+    def unapply(x: Super): Some[Super] = Some(x)
+
   object Super {
 
     /** Creates a `<qualifier: Term>.super[<id: Option[Id]>` */
-    def apply(qual: Term, mix: Option[Id])(implicit ctx: Context): Super =
-      kernel.Super_apply(qual, mix)
+    def apply(qual: Term, mix: Option[Id])(given ctx: Context): Super =
+      internal.Super_apply(qual, mix)
 
-    def copy(original: Tree)(qual: Term, mix: Option[Id])(implicit ctx: Context): Super =
-      kernel.Super_copy(original)(qual, mix)
+    def copy(original: Tree)(qual: Term, mix: Option[Id])(given ctx: Context): Super =
+      internal.Super_copy(original)(qual, mix)
 
     /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[Id])] =
-      kernel.matchSuper(tree).map(x => (x.qualifier, x.id))
+    def unapply(x: Super)(given ctx: Context): Option[(Term, Option[Id])] =
+      Some((x.qualifier, x.id))
   }
 
-  implicit class SuperAPI(self: Super) {
-    def qualifier(implicit ctx: Context): Term = kernel.Super_qualifier(self)
-    def id(implicit ctx: Context): Option[Id] = kernel.Super_id(self)
+  given SuperOps: (self: Super) {
+    def qualifier(given ctx: Context): Term = internal.Super_qualifier(self)
+    def id(given ctx: Context): Option[Id] = internal.Super_id(self)
   }
 
-  object IsTyped {
-    /** Matches any Typed and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Typed] = kernel.matchTyped(tree)
-  }
+  given (given Context): IsInstanceOf[Typed] = internal.isInstanceOfTyped
 
   /** Scala ascription `x: T` */
+  object IsTyped
+    @deprecated("Use _: Typed", "")
+    def unapply(x: Typed): Some[Typed] = Some(x)
+
   object Typed {
 
     /** Create a type ascription `<x: Term>: <tpt: TypeTree>` */
-    def apply(expr: Term, tpt: TypeTree)(implicit ctx: Context): Typed =
-      kernel.Typed_apply(expr, tpt)
+    def apply(expr: Term, tpt: TypeTree)(given ctx: Context): Typed =
+      internal.Typed_apply(expr, tpt)
 
-    def copy(original: Tree)(expr: Term, tpt: TypeTree)(implicit ctx: Context): Typed =
-      kernel.Typed_copy(original)(expr, tpt)
+    def copy(original: Tree)(expr: Term, tpt: TypeTree)(given ctx: Context): Typed =
+      internal.Typed_copy(original)(expr, tpt)
 
     /** Matches `<expr: Term>: <tpt: TypeTree>` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, TypeTree)] =
-      kernel.matchTyped(tree).map(x => (x.expr, x.tpt))
+    def unapply(x: Typed)(given ctx: Context): Option[(Term, TypeTree)] =
+      Some((x.expr, x.tpt))
 
   }
 
-  implicit class TypedAPI(self: Typed) {
-    def expr(implicit ctx: Context): Term = kernel.Typed_expr(self)
-    def tpt(implicit ctx: Context): TypeTree = kernel.Typed_tpt(self)
+  given TypedOps: (self: Typed) {
+    def expr(given ctx: Context): Term = internal.Typed_expr(self)
+    def tpt(given ctx: Context): TypeTree = internal.Typed_tpt(self)
   }
 
-  object IsAssign {
-    /** Matches any Assign and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Assign] = kernel.matchAssign(tree)
-  }
+  given (given Context): IsInstanceOf[Assign] = internal.isInstanceOfAssign
 
   /** Scala assign `x = y` */
+  object IsAssign
+    @deprecated("Use _: Assign", "")
+    def unapply(x: Assign): Some[Assign] = Some(x)
+
   object Assign {
 
     /** Create an assignment `<lhs: Term> = <rhs: Term>` */
-    def apply(lhs: Term, rhs: Term)(implicit ctx: Context): Assign =
-      kernel.Assign_apply(lhs, rhs)
+    def apply(lhs: Term, rhs: Term)(given ctx: Context): Assign =
+      internal.Assign_apply(lhs, rhs)
 
-    def copy(original: Tree)(lhs: Term, rhs: Term)(implicit ctx: Context): Assign =
-      kernel.Assign_copy(original)(lhs, rhs)
+    def copy(original: Tree)(lhs: Term, rhs: Term)(given ctx: Context): Assign =
+      internal.Assign_copy(original)(lhs, rhs)
 
     /** Matches an assignment `<lhs: Term> = <rhs: Term>` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)] =
-      kernel.matchAssign(tree).map(x => (x.lhs, x.rhs))
+    def unapply(x: Assign)(given ctx: Context): Option[(Term, Term)] =
+      Some((x.lhs, x.rhs))
   }
 
-  implicit class AssignAPI(self: Assign) {
-    def lhs(implicit ctx: Context): Term = kernel.Assign_lhs(self)
-    def rhs(implicit ctx: Context): Term = kernel.Assign_rhs(self)
+  given AssignOps: (self: Assign) {
+    def lhs(given ctx: Context): Term = internal.Assign_lhs(self)
+    def rhs(given ctx: Context): Term = internal.Assign_rhs(self)
   }
 
-  object IsBlock {
-    /** Matches any Block and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Block] = kernel.matchBlock(tree)
-  }
+  given (given Context): IsInstanceOf[Block] = internal.isInstanceOfBlock
 
   /** Scala code block `{ stat0; ...; statN; expr }` term */
+  object IsBlock
+    @deprecated("Use _: Block", "")
+    def unapply(x: Block): Some[Block] = Some(x)
+
   object Block {
 
     /** Creates a block `{ <statements: List[Statement]>; <expr: Term> }` */
-    def apply(stats: List[Statement], expr: Term)(implicit ctx: Context): Block =
-      kernel.Block_apply(stats, expr)
+    def apply(stats: List[Statement], expr: Term)(given ctx: Context): Block =
+      internal.Block_apply(stats, expr)
 
-    def copy(original: Tree)(stats: List[Statement], expr: Term)(implicit ctx: Context): Block =
-      kernel.Block_copy(original)(stats, expr)
+    def copy(original: Tree)(stats: List[Statement], expr: Term)(given ctx: Context): Block =
+      internal.Block_copy(original)(stats, expr)
 
     /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Statement], Term)] =
-      kernel.matchBlock(tree).map(x => (x.statements, x.expr))
+    def unapply(x: Block)(given ctx: Context): Option[(List[Statement], Term)] =
+      Some((x.statements, x.expr))
   }
 
-  implicit class BlockAPI(self: Block) {
-    def statements(implicit ctx: Context): List[Statement] = kernel.Block_statements(self)
-    def expr(implicit ctx: Context): Term = kernel.Block_expr(self)
+  given BlockOps: (self: Block) {
+    def statements(given ctx: Context): List[Statement] = internal.Block_statements(self)
+    def expr(given ctx: Context): Term = internal.Block_expr(self)
   }
 
-  object IsLambda {
-    /** Matches any Lambda and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Lambda] = kernel.matchLambda(tree)
+  given (given Context): IsInstanceOf[Closure] = internal.isInstanceOfClosure
+
+  object IsClosure
+    @deprecated("Use _: Closure", "")
+    def unapply(x: Closure): Some[Closure] = Some(x)
+
+  object Closure {
+
+    def apply(meth: Term, tpt: Option[Type])(given ctx: Context): Closure =
+      internal.Closure_apply(meth, tpt)
+
+    def copy(original: Tree)(meth: Tree, tpt: Option[Type])(given ctx: Context): Closure =
+      internal.Closure_copy(original)(meth, tpt)
+
+    def unapply(x: Closure)(given ctx: Context): Option[(Term, Option[Type])] =
+      Some((x.meth, x.tpeOpt))
   }
 
+  given ClosureOps: (self: Closure) {
+    def meth(given ctx: Context): Term = internal.Closure_meth(self)
+    def tpeOpt(given ctx: Context): Option[Type] = internal.Closure_tpeOpt(self)
+  }
+
+  /** A lambda `(...) => ...` in the source code is represented as
+   *  a local method and a closure:
+   *
+   *  {
+   *    def m(...) = ...
+   *    closure(m)
+   *  }
+   *
+   *  @note Due to the encoding, in pattern matches the case for `Lambda`
+   *        should come before the case for `Block` to avoid mishandling
+   *        of `Lambda`.
+   */
   object Lambda {
+    def unapply(tree: Tree)(given ctx: Context): Option[(List[ValDef], Term)] = tree match {
+      case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
+      if ddef.symbol == meth.symbol =>
+        Some(params, body)
 
-    def apply(meth: Term, tpt: Option[TypeTree])(implicit ctx: Context): Lambda =
-      kernel.Lambda_apply(meth, tpt)
-
-    def copy(original: Tree)(meth: Tree, tpt: Option[TypeTree])(implicit ctx: Context): Lambda =
-      kernel.Lambda_copy(original)(meth, tpt)
-
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[TypeTree])] =
-      kernel.matchLambda(tree).map(x => (x.meth, x.tptOpt))
+      case _ => None
+    }
   }
 
-  implicit class LambdaAPI(self: Lambda) {
-    def meth(implicit ctx: Context): Term = kernel.Lambda_meth(self)
-    def tptOpt(implicit ctx: Context): Option[TypeTree] = kernel.Lambda_tptOpt(self)
-  }
+  given (given Context): IsInstanceOf[If] = internal.isInstanceOfIf
 
-  object IsIf {
-    /** Matches any If and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[If] = kernel.matchIf(tree)
-  }
+  object IsIf
+    @deprecated("Use _: If", "")
+    def unapply(x: If): Some[If] = Some(x)
 
   /** Scala `if`/`else` term */
   object If {
 
     /** Create an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
-    def apply(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): If =
-      kernel.If_apply(cond, thenp, elsep)
+    def apply(cond: Term, thenp: Term, elsep: Term)(given ctx: Context): If =
+      internal.If_apply(cond, thenp, elsep)
 
-    def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): If =
-      kernel.If_copy(original)(cond, thenp, elsep)
+    def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(given ctx: Context): If =
+      internal.If_copy(original)(cond, thenp, elsep)
 
     /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term, Term)] =
-      kernel.matchIf(tree).map(x => (x.cond, x.thenp, x.elsep))
+    def unapply(tree: If)(given ctx: Context): Option[(Term, Term, Term)] =
+      Some((tree.cond, tree.thenp, tree.elsep))
 
   }
 
-  implicit class IfAPI(self: If) {
-    def cond(implicit ctx: Context): Term = kernel.If_cond(self)
-    def thenp(implicit ctx: Context): Term = kernel.If_thenp(self)
-    def elsep(implicit ctx: Context): Term = kernel.If_elsep(self)
+  given IfOps: (self: If) {
+    def cond(given ctx: Context): Term = internal.If_cond(self)
+    def thenp(given ctx: Context): Term = internal.If_thenp(self)
+    def elsep(given ctx: Context): Term = internal.If_elsep(self)
   }
 
-  object IsMatch {
-    /** Matches any Match and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Match] = kernel.matchMatch(tree)
-  }
+  given (given Context): IsInstanceOf[Match] = internal.isInstanceOfMatch
 
   /** Scala `match` term */
+  object IsMatch
+    @deprecated("Use _: Match", "")
+    def unapply(x: Match): Some[Match] = Some(x)
+
   object Match {
 
     /** Creates a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
-    def apply(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match =
-      kernel.Match_apply(selector, cases)
+    def apply(selector: Term, cases: List[CaseDef])(given ctx: Context): Match =
+      internal.Match_apply(selector, cases)
 
-    def copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match =
-      kernel.Match_copy(original)(selector, cases)
+    def copy(original: Tree)(selector: Term, cases: List[CaseDef])(given ctx: Context): Match =
+      internal.Match_copy(original)(selector, cases)
 
     /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[CaseDef])] =
-      kernel.matchMatch(tree).map(x => (x.scrutinee, x.cases))
+    def unapply(x: Match)(given ctx: Context): Option[(Term, List[CaseDef])] =
+      Some((x.scrutinee, x.cases))
 
   }
 
-  implicit class MatchAPI(self: Match) {
-    def scrutinee(implicit ctx: Context): Term = kernel.Match_scrutinee(self)
-    def cases(implicit ctx: Context): List[CaseDef] = kernel.Match_cases(self)
+  given MatchOps: (self: Match) {
+    def scrutinee(given ctx: Context): Term = internal.Match_scrutinee(self)
+    def cases(given ctx: Context): List[CaseDef] = internal.Match_cases(self)
   }
 
-  object IsImplicitMatch {
-    /** Matches any ImpliedMatch and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[ImpliedMatch] = kernel.matchImplicitMatch(tree)
-  }
+  given (given Context): IsInstanceOf[GivenMatch] = internal.isInstanceOfGivenMatch
 
   /** Scala implicit `match` term */
-  object ImpliedMatch {
+  object IsGivenMatch
+    @deprecated("Use _: GivenMatch", "")
+    def unapply(x: GivenMatch): Some[GivenMatch] = Some(x)
 
-    /** Creates a pattern match `delegate match { <cases: List[CaseDef]> }` */
-    def apply(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch =
-      kernel.ImplicitMatch_apply(cases)
+  object GivenMatch {
 
-    def copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch =
-      kernel.ImplicitMatch_copy(original)(cases)
+    /** Creates a pattern match `given match { <cases: List[CaseDef]> }` */
+    def apply(cases: List[CaseDef])(given ctx: Context): GivenMatch =
+      internal.GivenMatch_apply(cases)
 
-    /** Matches a pattern match `delegate match { <cases: List[CaseDef]> }` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[List[CaseDef]] =
-      kernel.matchImplicitMatch(tree).map(_.cases)
+    def copy(original: Tree)(cases: List[CaseDef])(given ctx: Context): GivenMatch =
+      internal.GivenMatch_copy(original)(cases)
+
+    /** Matches a pattern match `given match { <cases: List[CaseDef]> }` */
+    def unapply(x: GivenMatch)(given ctx: Context): Option[List[CaseDef]] = Some(x.cases)
 
   }
 
-  implicit class ImplicitMatchAPI(self: ImpliedMatch) {
-    def cases(implicit ctx: Context): List[CaseDef] = kernel.ImplicitMatch_cases(self)
+  given GivenMatchOps: (self: GivenMatch) {
+    def cases(given ctx: Context): List[CaseDef] = internal.GivenMatch_cases(self)
   }
 
-  object IsTry {
-    /** Matches any Try and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Try] = kernel.matchTry(tree)
-  }
+  given (given Context): IsInstanceOf[Try] = internal.isInstanceOfTry
 
   /** Scala `try`/`catch`/`finally` term */
+  object IsTry
+    @deprecated("Use _: Try", "")
+    def unapply(x: Try): Some[Try] = Some(x)
+
   object Try {
 
     /** Create a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
-    def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Try =
-      kernel.Try_apply(expr, cases, finalizer)
+    def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(given ctx: Context): Try =
+      internal.Try_apply(expr, cases, finalizer)
 
-    def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Try =
-      kernel.Try_copy(original)(expr, cases, finalizer)
+    def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(given ctx: Context): Try =
+      internal.Try_copy(original)(expr, cases, finalizer)
 
     /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[CaseDef], Option[Term])] =
-      kernel.matchTry(tree).map(x => (x.body, x.cases, x.finalizer))
+    def unapply(x: Try)(given ctx: Context): Option[(Term, List[CaseDef], Option[Term])] =
+      Some((x.body, x.cases, x.finalizer))
 
   }
 
-  implicit class TryAPI(self: Try) {
-    def body(implicit ctx: Context): Term = kernel.Try_body(self)
-    def cases(implicit ctx: Context): List[CaseDef] = kernel.Try_cases(self)
-    def finalizer(implicit ctx: Context): Option[Term] = kernel.Try_finalizer(self)
+  given TryOps: (self: Try) {
+    def body(given ctx: Context): Term = internal.Try_body(self)
+    def cases(given ctx: Context): List[CaseDef] = internal.Try_cases(self)
+    def finalizer(given ctx: Context): Option[Term] = internal.Try_finalizer(self)
   }
 
-  object IsReturn {
-    /** Matches any Return and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Return] = kernel.matchReturn(tree)
-  }
+  given (given Context): IsInstanceOf[Return] = internal.isInstanceOfReturn
 
   /** Scala local `return` */
+  object IsReturn
+    @deprecated("Use _: Return", "")
+    def unapply(x: Return): Some[Return] = Some(x)
+
   object Return {
 
     /** Creates `return <expr: Term>` */
-    def apply(expr: Term)(implicit ctx: Context): Return =
-      kernel.Return_apply(expr)
+    def apply(expr: Term)(given ctx: Context): Return =
+      internal.Return_apply(expr)
 
-    def copy(original: Tree)(expr: Term)(implicit ctx: Context): Return =
-      kernel.Return_copy(original)(expr)
+    def copy(original: Tree)(expr: Term)(given ctx: Context): Return =
+      internal.Return_copy(original)(expr)
 
     /** Matches `return <expr: Term>` */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
-      kernel.matchReturn(tree).map(_.expr)
+    def unapply(x: Return)(given ctx: Context): Option[Term] = Some(x.expr)
 
   }
 
-  implicit class ReturnAPI(self: Return) {
-    def expr(implicit ctx: Context): Term = kernel.Return_expr(self)
+  given ReturnOps: (self: Return) {
+    def expr(given ctx: Context): Term = internal.Return_expr(self)
   }
 
-  object IsRepeated {
-    /** Matches any Repeated and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Repeated] = kernel.matchRepeated(tree)
-  }
+  given (given Context): IsInstanceOf[Repeated] = internal.isInstanceOfRepeated
+
+  object IsRepeated
+    @deprecated("Use _: Repeated", "")
+    def unapply(x: Repeated): Some[Repeated] = Some(x)
 
   object Repeated {
 
-    def apply(elems: List[Term], tpt: TypeTree)(implicit ctx: Context): Repeated =
-      kernel.Repeated_apply(elems, tpt)
+    def apply(elems: List[Term], tpt: TypeTree)(given ctx: Context): Repeated =
+      internal.Repeated_apply(elems, tpt)
 
-    def copy(original: Tree)(elems: List[Term], tpt: TypeTree)(implicit ctx: Context): Repeated =
-      kernel.Repeated_copy(original)(elems, tpt)
+    def copy(original: Tree)(elems: List[Term], tpt: TypeTree)(given ctx: Context): Repeated =
+      internal.Repeated_copy(original)(elems, tpt)
 
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Term], TypeTree)] =
-      kernel.matchRepeated(tree).map(x => (x.elems, x.elemtpt))
+    def unapply(x: Repeated)(given ctx: Context): Option[(List[Term], TypeTree)] =
+      Some((x.elems, x.elemtpt))
 
   }
 
-  implicit class RepeatedAPI(self: Repeated) {
-    def elems(implicit ctx: Context): List[Term] = kernel.Repeated_elems(self)
-    def elemtpt(implicit ctx: Context): TypeTree = kernel.Repeated_elemtpt(self)
+  given RepeatedOps: (self: Repeated) {
+    def elems(given ctx: Context): List[Term] = internal.Repeated_elems(self)
+    def elemtpt(given ctx: Context): TypeTree = internal.Repeated_elemtpt(self)
   }
 
-  object IsInlined {
-    /** Matches any Inlined and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Inlined] = kernel.matchInlined(tree)
-  }
+  given (given Context): IsInstanceOf[Inlined] = internal.isInstanceOfInlined
+
+  object IsInlined
+    @deprecated("Use _: Inlined", "")
+    def unapply(x: Inlined): Some[Inlined] = Some(x)
 
   object Inlined {
 
-    def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
-      kernel.Inlined_apply(call, bindings, expansion)
+    def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(given ctx: Context): Inlined =
+      internal.Inlined_apply(call, bindings, expansion)
 
-    def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
-      kernel.Inlined_copy(original)(call, bindings, expansion)
+    def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(given ctx: Context): Inlined =
+      internal.Inlined_copy(original)(call, bindings, expansion)
 
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
-      kernel.matchInlined(tree).map(x => (x.call, x.bindings, x.body))
+    def unapply(x: Inlined)(given ctx: Context): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
+      Some((x.call, x.bindings, x.body))
 
   }
 
-  implicit class InlinedAPI(self: Inlined) {
-    def call(implicit ctx: Context): Option[Tree /* Term | TypeTree */] = kernel.Inlined_call(self)
-    def bindings(implicit ctx: Context): List[Definition] = kernel.Inlined_bindings(self)
-    def body(implicit ctx: Context): Term = kernel.Inlined_body(self)
+  given InlinedOps: (self: Inlined) {
+    def call(given ctx: Context): Option[Tree /* Term | TypeTree */] = internal.Inlined_call(self)
+    def bindings(given ctx: Context): List[Definition] = internal.Inlined_bindings(self)
+    def body(given ctx: Context): Term = internal.Inlined_body(self)
   }
 
-  object IsSelectOuter {
-    /** Matches any SelectOuter and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[SelectOuter] = kernel.matchSelectOuter(tree)
-  }
+  given (given Context): IsInstanceOf[SelectOuter] = internal.isInstanceOfSelectOuter
+
+  object IsSelectOuter
+    @deprecated("Use _: SelectOuter", "")
+    def unapply(x: SelectOuter): Some[SelectOuter] = Some(x)
 
   object SelectOuter {
 
-    def apply(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter =
-      kernel.SelectOuter_apply(qualifier, name, levels)
+    def apply(qualifier: Term, name: String, levels: Int)(given ctx: Context): SelectOuter =
+      internal.SelectOuter_apply(qualifier, name, levels)
 
-    def copy(original: Tree)(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter =
-      kernel.SelectOuter_copy(original)(qualifier, name, levels)
+    def copy(original: Tree)(qualifier: Term, name: String, levels: Int)(given ctx: Context): SelectOuter =
+      internal.SelectOuter_copy(original)(qualifier, name, levels)
 
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
-      kernel.matchSelectOuter(tree).map(x => (x.qualifier, x.level, x.tpe))
+    def unapply(x: SelectOuter)(given ctx: Context): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
+      Some((x.qualifier, x.level, x.tpe))
 
   }
 
-  implicit class SelectOuterAPI(self: SelectOuter) {
-    def qualifier(implicit ctx: Context): Term = kernel.SelectOuter_qualifier(self)
-    def level(implicit ctx: Context): Int = kernel.SelectOuter_level(self)
-    def tpe(implicit ctx: Context): Type = kernel.SelectOuter_tpe(self)
+  given SelectOuterOps: (self: SelectOuter) {
+    def qualifier(given ctx: Context): Term = internal.SelectOuter_qualifier(self)
+    def level(given ctx: Context): Int = internal.SelectOuter_level(self)
   }
 
-  object IsWhile {
-    /** Matches any While and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[While] = kernel.matchWhile(tree)
-  }
+  given (given Context): IsInstanceOf[While] = internal.isInstanceOfWhile
+
+  object IsWhile
+    @deprecated("Use _: While", "")
+    def unapply(x: While): Some[While] = Some(x)
 
   object While {
 
     /** Creates a while loop `while (<cond>) <body>` and returns (<cond>, <body>) */
-    def apply(cond: Term, body: Term)(implicit ctx: Context): While =
-      kernel.While_apply(cond, body)
+    def apply(cond: Term, body: Term)(given ctx: Context): While =
+      internal.While_apply(cond, body)
 
-    def copy(original: Tree)(cond: Term, body: Term)(implicit ctx: Context): While =
-      kernel.While_copy(original)(cond, body)
+    def copy(original: Tree)(cond: Term, body: Term)(given ctx: Context): While =
+      internal.While_copy(original)(cond, body)
 
     /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)] =
-      kernel.matchWhile(tree).map(x => (x.cond, x.body))
+    def unapply(x: While)(given ctx: Context): Option[(Term, Term)] =
+      Some((x.cond, x.body))
 
   }
 
-  implicit class WhileAPI(self: While) {
-    def cond(implicit ctx: Context): Term = kernel.While_cond(self)
-    def body(implicit ctx: Context): Term = kernel.While_body(self)
+  given WhileOps: (self: While) {
+    def cond(given ctx: Context): Term = internal.While_cond(self)
+    def body(given ctx: Context): Term = internal.While_body(self)
   }
 
   // ----- TypeTrees ------------------------------------------------
 
-  implicit class TypeTreeAPI(self: TypeTree) {
-    /** Position in the source code */
-    def pos(implicit ctx: Context): Position = kernel.TypeTree_pos(self)
-
+  given TypeTreeOps: (self: TypeTree) {
     /** Type of this type tree */
-    def tpe(implicit ctx: Context): Type = kernel.TypeTree_tpe(self)
-
-    /** Symbol of this type tree */
-    def symbol(implicit ctx: Context): Symbol = kernel.TypeTree_symbol(self)
+    def tpe(given ctx: Context): Type = internal.TypeTree_tpe(self)
   }
 
-  object IsTypeTree {
-    def unapply(tpt: Tree)(implicit ctx: Context): Option[TypeTree] =
-      kernel.matchTypeTree(tpt)
-  }
+  given (given Context): IsInstanceOf[TypeTree] =
+    internal.isInstanceOfTypeTree
 
-  object IsInferred {
-    /** Matches any Inferred and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Inferred] =
-      kernel.matchInferred(tree)
-  }
+  object IsTypeTree
+    @deprecated("Use _: TypeTree", "")
+    def unapply(x: TypeTree): Option[TypeTree] = Some(x)
+
+  given (given Context): IsInstanceOf[Inferred] = internal.isInstanceOfInferred
 
   /** TypeTree containing an inferred type */
+  object IsInferred
+    @deprecated("Use _: Inferred", "")
+    def unapply(x: Inferred): Some[Inferred] = Some(x)
+
   object Inferred {
-    def apply(tpe: Type)(implicit ctx: Context): Inferred =
-      kernel.Inferred_apply(tpe)
+    def apply(tpe: Type)(given ctx: Context): Inferred =
+      internal.Inferred_apply(tpe)
     /** Matches a TypeTree containing an inferred type */
-    def unapply(tree: Tree)(implicit ctx: Context): Boolean =
-      kernel.matchInferred(tree).isDefined
+    def unapply(x: Inferred)(given ctx: Context): Boolean = true
   }
 
-  object IsTypeIdent {
-    /** Matches any TypeIdent and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeIdent] =
-      kernel.matchTypeIdent(tree)
+  given (given Context): IsInstanceOf[TypeIdent] = internal.isInstanceOfTypeIdent
+
+  given TypeIdentOps: (self: TypeIdent) {
+    def name(given ctx: Context): String = internal.TypeIdent_name(self)
   }
 
-  implicit class TypeIdentAPI(self: TypeIdent) {
-    def name(implicit ctx: Context): String = kernel.TypeIdent_name(self)
-  }
+  object IsTypeIdent
+    @deprecated("Use _: TypeIdent", "")
+    def unapply(x: TypeIdent): Some[TypeIdent] = Some(x)
 
   object TypeIdent {
-    // TODO def apply(name: String)(implicit ctx: Context): TypeIdent
-    def copy(original: TypeIdent)(name: String)(implicit ctx: Context): TypeIdent =
-      kernel.TypeIdent_copy(original)(name)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[String] =
-      kernel.matchTypeIdent(tree).map(_.name)
+    // TODO def apply(name: String)(given ctx: Context): TypeIdent
+    def copy(original: Tree)(name: String)(given ctx: Context): TypeIdent =
+      internal.TypeIdent_copy(original)(name)
+    def unapply(x: TypeIdent)(given ctx: Context): Option[String] = Some(x.name)
   }
 
-  object IsTypeSelect {
-    /** Matches any TypeSelect and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeSelect] =
-      kernel.matchTypeSelect(tree)
-  }
+  given (given Context): IsInstanceOf[TypeSelect] = internal.isInstanceOfTypeSelect
+
+  object IsTypeSelect
+    @deprecated("Use _: TypeSelect", "")
+    def unapply(x: TypeSelect): Some[TypeSelect] = Some(x)
 
   object TypeSelect {
-    def apply(qualifier: Term, name: String)(implicit ctx: Context): TypeSelect =
-      kernel.TypeSelect_apply(qualifier, name)
-    def copy(original: TypeSelect)(qualifier: Term, name: String)(implicit ctx: Context): TypeSelect =
-      kernel.TypeSelect_copy(original)(qualifier, name)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, String)] =
-      kernel.matchTypeSelect(tree).map(x => (x.qualifier, x.name))
+    def apply(qualifier: Term, name: String)(given ctx: Context): TypeSelect =
+      internal.TypeSelect_apply(qualifier, name)
+    def copy(original: Tree)(qualifier: Term, name: String)(given ctx: Context): TypeSelect =
+      internal.TypeSelect_copy(original)(qualifier, name)
+    def unapply(x: TypeSelect)(given ctx: Context): Option[(Term, String)] =
+      Some((x.qualifier, x.name))
   }
 
-  implicit class TypeSelectAPI(self: TypeSelect) {
-    def qualifier(implicit ctx: Context): Term = kernel.TypeSelect_qualifier(self)
-    def name(implicit ctx: Context): String = kernel.TypeSelect_name(self)
+  given TypeSelectOps: (self: TypeSelect) {
+    def qualifier(given ctx: Context): Term = internal.TypeSelect_qualifier(self)
+    def name(given ctx: Context): String = internal.TypeSelect_name(self)
   }
 
-  object IsProjection {
-    /** Matches any Projection and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Projection] =
-      kernel.matchProjection(tree)
-  }
+  given (given Context): IsInstanceOf[Projection] = internal.isInstanceOfProjection
+
+  object IsProjection
+    @deprecated("Use _: Projection", "")
+    def unapply(x: Projection): Some[Projection] = Some(x)
 
   object Projection {
-    // TODO def apply(qualifier: TypeTree, name: String)(implicit ctx: Context): Project
-    def copy(original: Projection)(qualifier: TypeTree, name: String)(implicit ctx: Context): Projection =
-      kernel.Projection_copy(original)(qualifier, name)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, String)] =
-      kernel.matchProjection(tree).map(x => (x.qualifier, x.name))
+    // TODO def apply(qualifier: TypeTree, name: String)(given ctx: Context): Project
+    def copy(original: Tree)(qualifier: TypeTree, name: String)(given ctx: Context): Projection =
+      internal.Projection_copy(original)(qualifier, name)
+    def unapply(x: Projection)(given ctx: Context): Option[(TypeTree, String)] =
+      Some((x.qualifier, x.name))
   }
 
-  implicit class ProjectionAPI(self: Projection) {
-    def qualifier(implicit ctx: Context): TypeTree = kernel.Projection_qualifier(self)
-    def name(implicit ctx: Context): String = kernel.Projection_name(self)
+  given ProjectionOps: (self: Projection) {
+    def qualifier(given ctx: Context): TypeTree = internal.Projection_qualifier(self)
+    def name(given ctx: Context): String = internal.Projection_name(self)
   }
 
-  object IsSingleton {
-    /** Matches any Singleton and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Singleton] =
-      kernel.matchSingleton(tree)
-  }
+  given (given Context): IsInstanceOf[Singleton] =
+    internal.isInstanceOfSingleton
+
+  object IsSingleton
+    @deprecated("Use _: Singleton", "")
+    def unapply(x: Singleton): Some[Singleton] = Some(x)
 
   object Singleton {
-    def apply(ref: Term)(implicit ctx: Context): Singleton =
-      kernel.Singleton_apply(ref)
-    def copy(original: Singleton)(ref: Term)(implicit ctx: Context): Singleton =
-      kernel.Singleton_copy(original)(ref)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
-      kernel.matchSingleton(tree).map(_.ref)
+    def apply(ref: Term)(given ctx: Context): Singleton =
+      internal.Singleton_apply(ref)
+    def copy(original: Tree)(ref: Term)(given ctx: Context): Singleton =
+      internal.Singleton_copy(original)(ref)
+    def unapply(x: Singleton)(given ctx: Context): Option[Term] =
+      Some(x.ref)
   }
 
-  implicit class SingletonAPI(self: Singleton) {
-    def ref(implicit ctx: Context): Term = kernel.Singleton_ref(self)
+  given SingletonOps: (self: Singleton) {
+    def ref(given ctx: Context): Term = internal.Singleton_ref(self)
   }
 
-  object IsRefined {
-    /** Matches any Refined and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Refined] =
-      kernel.matchRefined(tree)
-  }
+  given (given Context): IsInstanceOf[Refined] = internal.isInstanceOfRefined
+
+  object IsRefined
+    @deprecated("Use _: Refined", "")
+    def unapply(x: Refined): Some[Refined] = Some(x)
 
   object Refined {
-    // TODO def apply(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): Refined
-    def copy(original: Refined)(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): Refined =
-      kernel.Refined_copy(original)(tpt, refinements)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, List[Definition])] =
-      kernel.matchRefined(tree).map(x => (x.tpt, x.refinements))
+    // TODO def apply(tpt: TypeTree, refinements: List[Definition])(given ctx: Context): Refined
+    def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition])(given ctx: Context): Refined =
+      internal.Refined_copy(original)(tpt, refinements)
+    def unapply(x: Refined)(given ctx: Context): Option[(TypeTree, List[Definition])] =
+      Some((x.tpt, x.refinements))
   }
 
-  implicit class RefinedAPI(self: Refined) {
-    def tpt(implicit ctx: Context): TypeTree = kernel.Refined_tpt(self)
-    def refinements(implicit ctx: Context): List[Definition] = kernel.Refined_refinements(self)
+  given RefinedOps: (self: Refined) {
+    def tpt(given ctx: Context): TypeTree = internal.Refined_tpt(self)
+    def refinements(given ctx: Context): List[Definition] = internal.Refined_refinements(self)
   }
 
-  object IsApplied {
-    /** Matches any Applied and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Applied] =
-      kernel.matchApplied(tree)
-  }
+  given (given Context): IsInstanceOf[Applied] = internal.isInstanceOfApplied
+
+  object IsApplied
+    @deprecated("Use _: Applied", "")
+    def unapply(x: Applied): Some[Applied] = Some(x)
 
   object Applied {
-    def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(implicit ctx: Context): Applied =
-      kernel.Applied_apply(tpt, args)
-    def copy(original: Applied)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(implicit ctx: Context): Applied =
-      kernel.Applied_copy(original)(tpt, args)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
-      kernel.matchApplied(tree).map(x => (x.tpt, x.args))
+    def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(given ctx: Context): Applied =
+      internal.Applied_apply(tpt, args)
+    def copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(given ctx: Context): Applied =
+      internal.Applied_copy(original)(tpt, args)
+    def unapply(x: Applied)(given ctx: Context): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
+      Some((x.tpt, x.args))
   }
 
-  implicit class AppliedAPI(self: Applied) {
-    def tpt(implicit ctx: Context): TypeTree = kernel.Applied_tpt(self)
-    def args(implicit ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = kernel.Applied_args(self)
+  given AppliedOps: (self: Applied) {
+    def tpt(given ctx: Context): TypeTree = internal.Applied_tpt(self)
+    def args(given ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = internal.Applied_args(self)
   }
 
-  object IsAnnotated {
-    /** Matches any Annotated and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Annotated] =
-      kernel.matchAnnotated(tree)
-  }
+  given (given Context): IsInstanceOf[Annotated] =
+    internal.isInstanceOfAnnotated
+
+  object IsAnnotated
+    @deprecated("Use _: Annotated", "")
+    def unapply(x: Annotated): Some[Annotated] = Some(x)
 
   object Annotated {
-    def apply(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated =
-      kernel.Annotated_apply(arg, annotation)
-    def copy(original: Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated =
-      kernel.Annotated_copy(original)(arg, annotation)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, Term)] =
-      kernel.matchAnnotated(tree).map(x => (x.arg, x.annotation))
+    def apply(arg: TypeTree, annotation: Term)(given ctx: Context): Annotated =
+      internal.Annotated_apply(arg, annotation)
+    def copy(original: Tree)(arg: TypeTree, annotation: Term)(given ctx: Context): Annotated =
+      internal.Annotated_copy(original)(arg, annotation)
+    def unapply(x: Annotated)(given ctx: Context): Option[(TypeTree, Term)] =
+      Some((x.arg, x.annotation))
   }
 
-  implicit class AnnotatedAPI(self: Annotated) {
-    def arg(implicit ctx: Context): TypeTree = kernel.Annotated_arg(self)
-    def annotation(implicit ctx: Context): Term = kernel.Annotated_annotation(self)
+  given AnnotatedOps: (self: Annotated) {
+    def arg(given ctx: Context): TypeTree = internal.Annotated_arg(self)
+    def annotation(given ctx: Context): Term = internal.Annotated_annotation(self)
   }
 
-  object IsMatchTypeTree {
-    /** Matches any MatchTypeTree and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[MatchTypeTree] =
-      kernel.matchMatchTypeTree(tree)
-  }
+  given (given Context): IsInstanceOf[MatchTypeTree] =
+    internal.isInstanceOfMatchTypeTree
+
+  object IsMatchTypeTree
+    @deprecated("Use _: MatchTypeTree", "")
+    def unapply(x: MatchTypeTree): Some[MatchTypeTree] = Some(x)
 
   object MatchTypeTree {
-    def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchTypeTree =
-      kernel.MatchTypeTree_apply(bound, selector, cases)
-    def copy(original: MatchTypeTree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchTypeTree =
-      kernel.MatchTypeTree_copy(original)(bound, selector, cases)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
-      kernel.matchMatchTypeTree(tree).map(x => (x.bound, x.selector, x.cases))
+    def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(given ctx: Context): MatchTypeTree =
+      internal.MatchTypeTree_apply(bound, selector, cases)
+    def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(given ctx: Context): MatchTypeTree =
+      internal.MatchTypeTree_copy(original)(bound, selector, cases)
+    def unapply(x: MatchTypeTree)(given ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
+      Some((x.bound, x.selector, x.cases))
   }
 
-  implicit class MatchTypeTreeAPI(self: MatchTypeTree) {
-    def bound(implicit ctx: Context): Option[TypeTree] = kernel.MatchTypeTree_bound(self)
-    def selector(implicit ctx: Context): TypeTree = kernel.MatchTypeTree_selector(self)
-    def cases(implicit ctx: Context): List[TypeCaseDef] = kernel.MatchTypeTree_cases(self)
+  given MatchTypeTreeOps: (self: MatchTypeTree) {
+    def bound(given ctx: Context): Option[TypeTree] = internal.MatchTypeTree_bound(self)
+    def selector(given ctx: Context): TypeTree = internal.MatchTypeTree_selector(self)
+    def cases(given ctx: Context): List[TypeCaseDef] = internal.MatchTypeTree_cases(self)
   }
 
-  object IsByName {
-    /** Matches any ByName and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[ByName] =
-      kernel.matchByName(tree)
-  }
+  given (given Context): IsInstanceOf[ByName] =
+    internal.isInstanceOfByName
+
+  object IsByName
+    @deprecated("Use _: ByName", "")
+    def unapply(x: ByName): Some[ByName] = Some(x)
 
   object ByName {
-    def apply(result: TypeTree)(implicit ctx: Context): ByName =
-      kernel.ByName_apply(result)
-    def copy(original: ByName)(result: TypeTree)(implicit ctx: Context): ByName =
-      kernel.ByName_copy(original)(result)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeTree] =
-      kernel.matchByName(tree).map(_.result)
+    def apply(result: TypeTree)(given ctx: Context): ByName =
+      internal.ByName_apply(result)
+    def copy(original: Tree)(result: TypeTree)(given ctx: Context): ByName =
+      internal.ByName_copy(original)(result)
+    def unapply(x: ByName)(given ctx: Context): Option[TypeTree] =
+      Some(x.result)
   }
 
-  implicit class ByNameAPI(self: ByName) {
-    def result(implicit ctx: Context): TypeTree = kernel.ByName_result(self)
+  given ByNameOps: (self: ByName) {
+    def result(given ctx: Context): TypeTree = internal.ByName_result(self)
   }
 
-  object IsLambdaTypeTree {
-    /** Matches any LambdaTypeTree and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[LambdaTypeTree] =
-      kernel.matchLambdaTypeTree(tree)
-  }
+  given (given Context): IsInstanceOf[LambdaTypeTree] = internal.isInstanceOfLambdaTypeTree
+
+  object IsLambdaTypeTree
+    @deprecated("Use _: LambdaTypeTree", "")
+    def unapply(x: LambdaTypeTree): Some[LambdaTypeTree] = Some(x)
 
   object LambdaTypeTree {
-    def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): LambdaTypeTree =
-      kernel.Lambdaapply(tparams, body)
-    def copy(original: LambdaTypeTree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): LambdaTypeTree =
-      kernel.Lambdacopy(original)(tparams, body)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
-      kernel.matchLambdaTypeTree(tree).map(x => (x.tparams, x.body))
+    def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): LambdaTypeTree =
+      internal.Lambdaapply(tparams, body)
+    def copy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): LambdaTypeTree =
+      internal.Lambdacopy(original)(tparams, body)
+    def unapply(tree: LambdaTypeTree)(given ctx: Context): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
+      Some((tree.tparams, tree.body))
   }
 
-  implicit class LambdaTypeTreeAPI(self: LambdaTypeTree) {
-    def tparams(implicit ctx: Context): List[TypeDef] = kernel.Lambdatparams(self)
-    def body(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.Lambdabody(self)
+  given LambdaTypeTreeOps: (self: LambdaTypeTree) {
+    def tparams(given ctx: Context): List[TypeDef] = internal.Lambdatparams(self)
+    def body(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.Lambdabody(self)
   }
 
-  object IsTypeBind {
-    /** Matches any TypeBind and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeBind] =
-      kernel.matchTypeBind(tree)
-  }
+  given (given Context): IsInstanceOf[TypeBind] = internal.isInstanceOfTypeBind
+
+  object IsTypeBind
+    @deprecated("Use _: TypeBind", "")
+    def unapply(x: TypeBind): Some[TypeBind] = Some(x)
 
   object TypeBind {
-    // TODO def apply(name: String, tree: Tree)(implicit ctx: Context): TypeBind
-    def copy(original: TypeBind)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeBind =
-      kernel.TypeBind_copy(original)(name, tpt)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
-      kernel.matchTypeBind(tree).map(x => (x.name, x.body))
+    // TODO def apply(name: String, tree: Tree)(given ctx: Context): TypeBind
+    def copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeBind =
+      internal.TypeBind_copy(original)(name, tpt)
+    def unapply(x: TypeBind)(given ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
+      Some((x.name, x.body))
   }
 
-  implicit class TypeBindAPI(self: TypeBind) {
-    def name(implicit ctx: Context): String = kernel.TypeBind_name(self)
-    def body(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.TypeBind_body(self)
+  given TypeBindOps: (self: TypeBind) {
+    def name(given ctx: Context): String = internal.TypeBind_name(self)
+    def body(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeBind_body(self)
   }
 
-  object IsTypeBlock {
-    /** Matches any TypeBlock and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeBlock] =
-      kernel.matchTypeBlock(tree)
-  }
+  given (given Context): IsInstanceOf[TypeBlock] = internal.isInstanceOfTypeBlock
+
+  object IsTypeBlock
+    @deprecated("Use _: TypeBlock", "")
+    def unapply(x: TypeBlock): Some[TypeBlock] = Some(x)
 
   object TypeBlock {
-    def apply(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock =
-      kernel.TypeBlock_apply(aliases, tpt)
-    def copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock =
-      kernel.TypeBlock_copy(original)(aliases, tpt)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(List[TypeDef], TypeTree)] =
-      kernel.matchTypeBlock(tree).map(x => (x.aliases, x.tpt))
+    def apply(aliases: List[TypeDef], tpt: TypeTree)(given ctx: Context): TypeBlock =
+      internal.TypeBlock_apply(aliases, tpt)
+    def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree)(given ctx: Context): TypeBlock =
+      internal.TypeBlock_copy(original)(aliases, tpt)
+    def unapply(x: TypeBlock)(given ctx: Context): Option[(List[TypeDef], TypeTree)] =
+      Some((x.aliases, x.tpt))
   }
 
-  implicit class TypeBlockAPI(self: TypeBlock) {
-    def aliases(implicit ctx: Context): List[TypeDef] = kernel.TypeBlock_aliases(self)
-    def tpt(implicit ctx: Context): TypeTree = kernel.TypeBlock_tpt(self)
+  given TypeBlockOps: (self: TypeBlock) {
+    def aliases(given ctx: Context): List[TypeDef] = internal.TypeBlock_aliases(self)
+    def tpt(given ctx: Context): TypeTree = internal.TypeBlock_tpt(self)
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------
 
-  implicit class TypeBoundsTreeAPI(self: TypeBoundsTree) {
-    def tpe(implicit ctx: Context): TypeBounds = kernel.TypeBoundsTree_tpe(self)
-    def low(implicit ctx: Context): TypeTree = kernel.TypeBoundsTree_low(self)
-    def hi(implicit ctx: Context): TypeTree = kernel.TypeBoundsTree_hi(self)
+  given TypeBoundsTreeOps: (self: TypeBoundsTree) {
+    def tpe(given ctx: Context): TypeBounds = internal.TypeBoundsTree_tpe(self)
+    def low(given ctx: Context): TypeTree = internal.TypeBoundsTree_low(self)
+    def hi(given ctx: Context): TypeTree = internal.TypeBoundsTree_hi(self)
   }
 
-  object IsTypeBoundsTree {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeBoundsTree] =
-      kernel.matchTypeBoundsTree(tree)
-  }
+  given (given Context): IsInstanceOf[TypeBoundsTree] = internal.isInstanceOfTypeBoundsTree
+
+  object IsTypeBoundsTree
+    @deprecated("Use _: TypeBoundsTree", "")
+    def unapply(x: TypeBoundsTree): Some[TypeBoundsTree] = Some(x)
 
   object TypeBoundsTree {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] =
-      kernel.matchTypeBoundsTree(tree).map(x => (x.low, x.hi))
+    def unapply(x: TypeBoundsTree)(given ctx: Context): Option[(TypeTree, TypeTree)] =
+      Some((x.low, x.hi))
   }
 
-  implicit class WildcardTypeTreeAPI(self: WildcardTypeTree) {
-    def tpe(implicit ctx: Context): TypeOrBounds = kernel.WildcardTypeTree_tpe(self)
+  given WildcardTypeTreeOps: (self: WildcardTypeTree) {
+    def tpe(given ctx: Context): TypeOrBounds = internal.WildcardTypeTree_tpe(self)
   }
 
-  object IsWildcardTypeTree {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[WildcardTypeTree] =
-      kernel.matchWildcardTypeTree(tree)
-  }
+  given (given Context): IsInstanceOf[WildcardTypeTree] = internal.isInstanceOfWildcardTypeTree
 
   /** TypeBoundsTree containing wildcard type bounds */
+  object IsWildcardTypeTree
+    @deprecated("Use _: WildcardTypeTree", "")
+    def unapply(x: WildcardTypeTree): Some[WildcardTypeTree] = Some(x)
+
   object WildcardTypeTree {
     /** Matches a TypeBoundsTree containing wildcard type bounds */
-    def unapply(tree: Tree)(implicit ctx: Context): Boolean =
-      kernel.matchWildcardTypeTree(tree).isDefined
+    def unapply(x: WildcardTypeTree)(given ctx: Context): Boolean = true
   }
 
   // ----- CaseDefs ------------------------------------------------
 
-  implicit class CaseDefAPI(caseDef: CaseDef) {
-    def pattern(implicit ctx: Context): Pattern = kernel.CaseDef_pattern(caseDef)
-    def guard(implicit ctx: Context): Option[Term] = kernel.CaseDef_guard(caseDef)
-    def rhs(implicit ctx: Context): Term = kernel.CaseDef_rhs(caseDef)
+  given CaseDefOps: (caseDef: CaseDef) {
+    def pattern(given ctx: Context): Tree = internal.CaseDef_pattern(caseDef)
+    def guard(given ctx: Context): Option[Term] = internal.CaseDef_guard(caseDef)
+    def rhs(given ctx: Context): Term = internal.CaseDef_rhs(caseDef)
   }
 
-  object IsCaseDef {
-    def unapply(self: Tree)(implicit ctx: Context): Option[CaseDef] =
-      kernel.matchCaseDef(self)
-  }
+  given (given Context): IsInstanceOf[CaseDef] = internal.isInstanceOfCaseDef
+
+  object IsCaseDef
+    @deprecated("Use _: CaseDef", "")
+    def unapply(x: CaseDef): Some[CaseDef] = Some(x)
 
   object CaseDef {
-    def apply(pattern: Pattern, guard: Option[Term], rhs: Term)(implicit ctx: Context): CaseDef =
-      kernel.CaseDef_module_apply(pattern, guard, rhs)
+    def apply(pattern: Tree, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
+      internal.CaseDef_module_apply(pattern, guard, rhs)
 
-    def copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], rhs: Term)(implicit ctx: Context): CaseDef =
-      kernel.CaseDef_module_copy(original)(pattern, guard, rhs)
+    def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
+      internal.CaseDef_module_copy(original)(pattern, guard, rhs)
 
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Pattern, Option[Term], Term)] =
-      kernel.matchCaseDef(tree).map( x => (x.pattern, x.guard, x.rhs))
+    def unapply(x: CaseDef)(given ctx: Context): Option[(Tree, Option[Term], Term)] =
+      Some((x.pattern, x.guard, x.rhs))
   }
 
-  implicit class TypeCaseDefAPI(caseDef: TypeCaseDef) {
-    def pattern(implicit ctx: Context): TypeTree = kernel.TypeCaseDef_pattern(caseDef)
-    def rhs(implicit ctx: Context): TypeTree = kernel.TypeCaseDef_rhs(caseDef)
+  given TypeCaseDefOps: (caseDef: TypeCaseDef) {
+    def pattern(given ctx: Context): TypeTree = internal.TypeCaseDef_pattern(caseDef)
+    def rhs(given ctx: Context): TypeTree = internal.TypeCaseDef_rhs(caseDef)
   }
 
-  object IsTypeCaseDef {
-    def unapply(self: Tree)(implicit ctx: Context): Option[TypeCaseDef] =
-      kernel.matchTypeCaseDef(self)
-  }
+  given (given Context): IsInstanceOf[TypeCaseDef] =
+    internal.isInstanceOfTypeCaseDef
+
+  object IsTypeCaseDef
+    @deprecated("Use _: TypeCaseDef", "")
+    def unapply(x: TypeCaseDef): Some[TypeCaseDef] = Some(x)
 
   object TypeCaseDef {
-    def apply(pattern: TypeTree, rhs: TypeTree)(implicit ctx: Context): TypeCaseDef =
-      kernel.TypeCaseDef_module_apply(pattern, rhs)
+    def apply(pattern: TypeTree, rhs: TypeTree)(given ctx: Context): TypeCaseDef =
+      internal.TypeCaseDef_module_apply(pattern, rhs)
 
-    def copy(original: TypeCaseDef)(pattern: TypeTree, rhs: TypeTree)(implicit ctx: Context): TypeCaseDef =
-      kernel.TypeCaseDef_module_copy(original)(pattern, rhs)
+    def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree)(given ctx: Context): TypeCaseDef =
+      internal.TypeCaseDef_module_copy(original)(pattern, rhs)
 
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] =
-      kernel.matchTypeCaseDef(tree).map( x => (x.pattern, x.rhs))
+    def unapply(tree: TypeCaseDef)(given ctx: Context): Option[(TypeTree, TypeTree)] =
+      Some((tree.pattern, tree.rhs))
   }
+
+  // ----- Trees ------------------------------------------------
+
+  given (given Context): IsInstanceOf[Bind] = internal.isInstanceOfBind
+
+  object IsBind
+    @deprecated("Use _: Bind", "")
+    def unapply(x: Bind): Some[Bind] = Some(x)
+
+  object Bind {
+    // TODO def apply(name: String, pattern: Tree)(given ctx: Context): Bind
+    def copy(original: Tree)(name: String, pattern: Tree)(given ctx: Context): Bind =
+      internal.Tree_Bind_module_copy(original)(name, pattern)
+    def unapply(pattern: Bind)(given ctx: Context): Option[(String, Tree)] =
+      Some((pattern.name, pattern.pattern))
+  }
+
+  given BindOps: (bind: Bind) {
+    def name(given ctx: Context): String = internal.Tree_Bind_name(bind)
+    def pattern(given ctx: Context): Tree = internal.Tree_Bind_pattern(bind)
+  }
+
+  given (given Context): IsInstanceOf[Unapply] = internal.isInstanceOfUnapply
+
+  object IsUnapply
+    @deprecated("Use _: Unapply", "")
+    def unapply(x: Unapply): Some[Unapply] = Some(x)
+
+  object Unapply {
+    // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply
+    def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply =
+      internal.Tree_Unapply_module_copy(original)(fun, implicits, patterns)
+    def unapply(x: Unapply)(given ctx: Context): Option[(Term, List[Term], List[Tree])] =
+      Some((x.fun, x.implicits, x.patterns))
+  }
+
+  given UnapplyOps: (unapply: Unapply) {
+    def fun(given ctx: Context): Term = internal.Tree_Unapply_fun(unapply)
+    def implicits(given ctx: Context): List[Term] = internal.Tree_Unapply_implicits(unapply)
+    def patterns(given ctx: Context): List[Tree] = internal.Tree_Unapply_patterns(unapply)
+  }
+
+  given (given Context): IsInstanceOf[Alternatives] = internal.isInstanceOfAlternatives
+
+  object IsAlternatives
+    @deprecated("Use _: Alternatives", "")
+    def unapply(x: Alternatives): Some[Alternatives] = Some(x)
+
+  object Alternatives {
+    def apply(patterns: List[Tree])(given ctx: Context): Alternatives =
+      internal.Tree_Alternatives_module_apply(patterns)
+    def copy(original: Tree)(patterns: List[Tree])(given ctx: Context): Alternatives =
+      internal.Tree_Alternatives_module_copy(original)(patterns)
+    def unapply(x: Alternatives)(given ctx: Context): Option[List[Tree]] =
+      Some(x.patterns)
+  }
+
+  given AlternativesOps: (alternatives: Alternatives) {
+    def patterns(given ctx: Context): List[Tree] = internal.Tree_Alternatives_patterns(alternatives)
+  }
+
+
 }

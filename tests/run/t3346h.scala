@@ -1,6 +1,6 @@
 import scala.language.implicitConversions
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   trait Fundep[T, U] { def u(t: T): U }
   class C { def y = "x" }
   implicit val FundepStringC: Test.Fundep[String,Test.C] = new Fundep[String, C]{ def u(t: String) = new C }

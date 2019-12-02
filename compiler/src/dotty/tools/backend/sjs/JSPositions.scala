@@ -35,11 +35,11 @@ class JSPositions()(implicit ctx: Context) {
   implicit def implicitSourcePos2irPos(implicit sourcePos: SourcePosition): ir.Position =
     sourceAndSpan2irPos(sourcePos.source, sourcePos.span)
 
-  private[this] object span2irPosCache { // scalastyle:ignore
+  private object span2irPosCache { // scalastyle:ignore
     import dotty.tools.dotc.util._
 
-    private[this] var lastDotcSource: SourceFile = null
-    private[this] var lastIRSource: ir.Position.SourceFile = null
+    private var lastDotcSource: SourceFile = null
+    private var lastIRSource: ir.Position.SourceFile = null
 
     def toIRSource(dotcSource: SourceFile): ir.Position.SourceFile = {
       if (dotcSource != lastDotcSource) {
@@ -49,7 +49,7 @@ class JSPositions()(implicit ctx: Context) {
       lastIRSource
     }
 
-    private[this] def convert(dotcSource: SourceFile): ir.Position.SourceFile = {
+    private def convert(dotcSource: SourceFile): ir.Position.SourceFile = {
       dotcSource.file.file match {
         case null =>
           new java.net.URI(
@@ -66,7 +66,8 @@ class JSPositions()(implicit ctx: Context) {
             case ScalaJSOptions.URIMap(from, to) if matches(from) =>
               val relURI = from.relativize(srcURI)
               to.fold(relURI)(_.resolve(relURI))
-          } getOrElse*/ srcURI
+          } getOrElse*/
+          srcURI
       }
     }
   }

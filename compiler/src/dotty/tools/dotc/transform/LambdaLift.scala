@@ -59,10 +59,10 @@ object LambdaLift {
     val liftedDefs: mutable.HashMap[Symbol, mutable.ListBuffer[Tree]] = new HashMap
 
     /** A flag to indicate whether new free variables have been found */
-    private[this] var changedFreeVars: Boolean = _
+    private var changedFreeVars: Boolean = _
 
     /** A flag to indicate whether lifted owners have changed */
-    private[this] var changedLiftedOwner: Boolean = _
+    private var changedLiftedOwner: Boolean = _
 
     private val ord: Ordering[Symbol] = Ordering.by(_.id)
     private def newSymSet = TreeSet.empty[Symbol](ord)
@@ -99,7 +99,7 @@ object LambdaLift {
           ctx.log(i"narrow lifted $sym to $owner")
           changedLiftedOwner = true
           liftedOwner(sym) = owner
-        }
+      }
 
     /** Mark symbol `sym` as being free in `enclosure`, unless `sym` is defined
      *  in `enclosure` or there is an intermediate class properly containing `enclosure`
@@ -155,7 +155,7 @@ object LambdaLift {
           else if (enclosure.isConstructor) markFree(sym, enclosure.owner.enclosure)
           else markFree(sym, enclosure.enclosure)
         if (intermediate.exists) narrowLiftedOwner(enclosure, intermediate)
-        if (!intermediate.isRealClass || enclosure.isConstructor) {
+        if (!intermediate.isRealClass || enclosure.isConstructor)
           // Constructors and methods nested inside traits get the free variables
           // of the enclosing trait or class.
           // Conversely, local traits do not get free variables.
@@ -164,14 +164,14 @@ object LambdaLift {
               changedFreeVars = true
               ctx.log(i"$sym is free in $enclosure")
             }
-        }
         if (intermediate.isRealClass) intermediate
         else if (enclosure.isRealClass) enclosure
         else if (intermediate.isClass) intermediate
         else if (enclosure.isClass) enclosure
         else NoSymbol
       }
-    } catch {
+    }
+    catch {
       case ex: NoPath =>
         println(i"error lambda lifting ${ctx.compilationUnit}: $sym is not visible from $enclosure")
         throw ex
@@ -200,17 +200,15 @@ object LambdaLift {
 
         tree match {
           case tree: Ident =>
-            if (isLocal(sym)) {
+            if (isLocal(sym))
               if (sym is Method) markCalled(sym, enclosure)
               else if (sym.isTerm) markFree(sym, enclosure)
-            }
-            def captureImplicitThis(x: Type): Unit = {
+            def captureImplicitThis(x: Type): Unit =
               x match {
                 case tr@TermRef(x, _) if (!tr.termSymbol.isStatic) => captureImplicitThis(x)
                 case x: ThisType if (!x.tref.typeSymbol.isStaticOwner) => narrowTo(x.tref.typeSymbol.asClass)
                 case _ =>
               }
-            }
             captureImplicitThis(tree.tpe)
           case tree: Select =>
             if (sym.is(Method) && isLocal(sym)) markCalled(sym, enclosure)
@@ -243,7 +241,8 @@ object LambdaLift {
           case _ =>
         }
         traverseChildren(tree)
-      } catch { //debug
+      }
+      catch { //debug
         case ex: Exception =>
           println(i"$ex while traversing $tree")
           throw ex
@@ -252,24 +251,28 @@ object LambdaLift {
 
     /** Compute final free variables map `fvs by closing over caller dependencies. */
     private def computeFreeVars()(implicit ctx: Context): Unit =
-      do {
+      while ({
         changedFreeVars = false
         for {
           caller <- called.keys
           callee <- called(caller)
           fvs <- free get callee
           fv <- fvs
-        } markFree(fv, caller)
-      } while (changedFreeVars)
+        }
+        markFree(fv, caller)
+        changedFreeVars
+      })
+      ()
 
     /** Compute final liftedOwner map by closing over caller dependencies */
     private def computeLiftedOwners()(implicit ctx: Context): Unit =
-      do {
+      while ({
         changedLiftedOwner = false
         for {
           caller <- called.keys
           callee <- called(caller)
-        } {
+        }
+        {
           val normalizedCallee = callee.skipConstructor
           val calleeOwner = normalizedCallee.owner
           if (calleeOwner.isTerm) narrowLiftedOwner(caller, liftedOwner(normalizedCallee))
@@ -282,7 +285,9 @@ object LambdaLift {
               narrowLiftedOwner(caller, calleeOwner)
           }
         }
-      } while (changedLiftedOwner)
+        changedLiftedOwner
+      })
+      ()
 
     private def newName(sym: Symbol)(implicit ctx: Context): Name =
       if (sym.isAnonymousFunction && sym.owner.is(Method))
@@ -292,14 +297,15 @@ object LambdaLift {
       else sym.name.freshened
 
     private def generateProxies()(implicit ctx: Context): Unit =
-      for ((owner, freeValues) <- free.toIterator) {
+      for ((owner, freeValues) <- free.iterator) {
         val newFlags = Synthetic | (if (owner.isClass) ParamAccessor | Private else Param)
         ctx.debuglog(i"free var proxy: ${owner.showLocated}, ${freeValues.toList}%, %")
         proxyMap(owner) = {
           for (fv <- freeValues.toList) yield {
             val proxyName = newName(fv)
-            val proxy = ctx.newSymbol(owner, proxyName.asTermName, newFlags, fv.info, coord = fv.coord)
-            if (owner.isClass) proxy.enteredAfter(thisPhase)
+            val proxy =
+              ctx.newSymbol(owner, proxyName.asTermName, newFlags, fv.info, coord = fv.coord)
+                .enteredAfter(thisPhase)
             (fv, proxy)
           }
         }.toMap
@@ -318,7 +324,7 @@ object LambdaLift {
     private def liftLocals()(implicit ctx: Context): Unit = {
       for ((local, lOwner) <- liftedOwner) {
         val (newOwner, maybeStatic) =
-          if (lOwner is Package)  {
+          if (lOwner is Package) {
             val encClass = local.enclosingClass
             val topClass = local.topLevelClass
             val preferEncClass =
@@ -335,7 +341,7 @@ object LambdaLift {
           else (lOwner, EmptyFlags)
         // Drop Module because class is no longer a singleton in the lifted context.
         var initFlags = local.flags &~ Module | Private | Lifted | maybeStatic
-        if (local is Method) {
+        if (local is Method)
           if (newOwner is Trait)
             // Drop Final when a method is lifted into a trait.
             // According to the JVM specification, a method declared inside interface cannot have the final flag.
@@ -345,7 +351,6 @@ object LambdaLift {
           else
             // Add Final when a method is lifted into a class.
             initFlags = initFlags | Final
-        }
         local.copySymDenotation(
           owner = newOwner,
           name = newName(local),
@@ -358,7 +363,7 @@ object LambdaLift {
     }
 
     // initialization
-    ctx.atPhase(thisPhase) { implicit ctx =>
+    ctx.atPhase(thisPhase) {
       (new CollectDependencies).traverse(ctx.compilationUnit.tpdTree)
       computeFreeVars()
       computeLiftedOwners()
@@ -434,7 +439,7 @@ object LambdaLift {
           val classProxies = fvs.map(proxyOf(sym.owner, _))
           val constrProxies = fvs.map(proxyOf(sym, _))
           ctx.debuglog(i"copy params ${constrProxies.map(_.showLocated)}%, % to ${classProxies.map(_.showLocated)}%, %}")
-          seq((classProxies, constrProxies).zipped.map(proxyInit), rhs)
+          seq(classProxies.lazyZip(constrProxies).map(proxyInit), rhs)
         }
 
         tree match {

@@ -15,6 +15,6 @@ class A {
     }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
     new A().run
 }

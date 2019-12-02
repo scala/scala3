@@ -8,7 +8,7 @@ date: 2019-01-21
 
 Happy New Year to all with the first release of Dotty for 2019! ✨🎊🎉
 
-Today we are excited to release the version 0.12.0-RC1 of the Dotty compiler. 
+Today we are excited to release the version 0.12.0-RC1 of the Dotty compiler.
 This release serves as a technology preview that demonstrates new language features and the
 compiler supporting them.
 
@@ -72,27 +72,27 @@ List(1,2).combine(List(3,4)) // == List(1,2,3,4)
 This works because the `combine` extension methods of `IntSemigroup` and `ListSemigroup` are available
 from the relevant implicit scopes.
 
-Read the [full documentation](https://dotty.epfl.ch/docs/reference/other-new-features/extension-methods.html) about generic extension methods, higher-kinded extension methods, and more.
+Read the [full documentation](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html) about generic extension methods, higher-kinded extension methods, and more.
 
 ### TASTy Reflect goodies
 
-We implement a new decompiler for TASTy files and we also offer a new VS Code Extension. 
-The decompiler allows to view both decompiled scala source code and the pretty printed TASTy tree when opening a .tasty file. 
+We implement a new decompiler for TASTy files and we also offer a new VS Code Extension.
+The decompiler allows to view both decompiled scala source code and the pretty printed TASTy tree when opening a .tasty file.
 The feature is similar to opening .class files in IntelliJ.
 
 ![]({{ site.baseurl }}/images/dotty-ide/decompiler.png "Decompiler")
 
 The decompiler can be invoked with the corresponding flag: `dotc -decompile xyz.tasty`.
 
-On the programmatic side of TASTy we are rolling out changes according to our plan discussed at [Macros: The Plan for Scala 3](https://www.scala-lang.org/blog/2018/04/30/in-a-nutshell.html). 
-In this release, we make progress following the _Next Steps_ of the aforementioned blogpost by offering constructors that work directly with reflect trees. 
+On the programmatic side of TASTy we are rolling out changes according to our plan discussed at [Macros: The Plan for Scala 3](https://www.scala-lang.org/blog/2018/04/30/in-a-nutshell.html).
+In this release, we make progress following the _Next Steps_ of the aforementioned blogpost by offering constructors that work directly with reflect trees.
 Consequently, TASTy extractors meet their dual, TASTy constructors!
 We also connect the new lower-level reflection layer to the existing principled macro system based on quotes and splices offering, two new expression methods for `Expr[T]`:
 
 - `unseal` that unseals an `Expr[T]` (non traversable code) into a `Term` and
-- `seal` that seals back a `Term` into an `Expr[T]`. 
+- `seal` that seals back a `Term` into an `Expr[T]`.
 
-Read the [relevant documentation](https://dotty.epfl.ch/docs/reference/other-new-features/tasty-reflect.html) to learn how to go from quotes and splices to TASTys Reflect trees and back .
+Read the [relevant documentation](https://dotty.epfl.ch/docs/reference/metaprogramming/tasty-reflect.html) to learn how to go from quotes and splices to TASTys Reflect trees and back .
 
 ### Alignments with the Scala Improvement Process
 
@@ -100,8 +100,8 @@ In this version we improve the implementation of by-name implicits making it com
 
 ### Improvements to GADT support
 
-In this release, we're also rolling out the first batch of improvements to GADT support - namely, variable unification. 
-To keep it short, from knowing that `A <: B` and `B <: A`, we can now deduce that `A = B`, and from `A = B` and `B <: C` we deduce that `A <: C`. 
+In this release, we're also rolling out the first batch of improvements to GADT support - namely, variable unification.
+To keep it short, from knowing that `A <: B` and `B <: A`, we can now deduce that `A = B`, and from `A = B` and `B <: C` we deduce that `A <: C`.
 This kind of reasoning is necessary for many advanced GADT usages!
 
 ### And much more!

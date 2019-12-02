@@ -92,6 +92,7 @@ class Compiler {
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
+         new ArrayApply,             // Optimize `scala.Array.apply([....])` and `scala.Array.apply(..., [....])` into `[...]`
          new ElimPolyFunction,       // Rewrite PolyFunction subclasses to FunctionN subclasses
          new TailRec,                // Rewrite tail recursion to loops
          new Mixin,                  // Expand trait fields and trait initializers
@@ -117,7 +118,6 @@ class Compiler {
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
-         new CollectEntryPoints,     // Find classes with main methods
          new CollectSuperCalls) ::   // Find classes that are called with super
     Nil
 

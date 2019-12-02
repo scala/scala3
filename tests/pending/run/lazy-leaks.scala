@@ -2,7 +2,7 @@ class Lazy(f: => Int) {
      lazy val get: Int = f
 }
 
-object Test extends dotty.runtime.LegacyApp
+object Test extends App
 {
      val buffer = new scala.collection.mutable.ListBuffer[Lazy]
 

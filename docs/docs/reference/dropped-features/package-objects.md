@@ -5,25 +5,25 @@ title: "Dropped: Package Objects"
 
 Package objects
 ```scala
-    package object p {
-      val a = ...
-      def b = ...
-    }
+package object p {
+  val a = ...
+  def b = ...
+}
 ```
 will be dropped. They are still available in Scala 3.0, but will be deprecated and removed afterwards.
 
 Package objects are no longer needed since all kinds of definitions can now be written at the top-level. E.g.
 ```scala
-    package p
-    type Labelled[T] = (String, T)
-    val a: Labelled[Int] = ("count", 1)
-    def b = a._2
+package p
+type Labelled[T] = (String, T)
+val a: Labelled[Int] = ("count", 1)
+def b = a._2
 
-    case class C()
+case class C()
 
-    implicit object Cops {
-      def (x: C) pair (y: C) = (x, y)
-    }
+implicit object Cops {
+  def (x: C) pair (y: C) = (x, y)
+}
 ```
 There may be several source files in a package containing such toplevel definitions, and source files can freely mix toplevel value, method, and type definitions with classes and objects.
 

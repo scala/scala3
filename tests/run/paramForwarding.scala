@@ -43,7 +43,7 @@ class Y(override val theValue: Int) extends NonVal(theValue)
 
 object Test {
   def printFields(obj: Any) =
-    println(obj.getClass.getDeclaredFields.map(_.toString).sorted.deep.mkString("\n"))
+    println(obj.getClass.getDeclaredFields.map(_.toString).sorted.toList.mkString("\n"))
 
   def main(args: Array[String]): Unit = {
     val b10 = new B(10)

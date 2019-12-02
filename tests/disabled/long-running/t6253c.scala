@@ -1,6 +1,6 @@
 import scala.collection.immutable.HashSet
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   var hashCount = 0
 

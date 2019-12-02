@@ -21,7 +21,7 @@ class DiagnosticsTest {
           |  Nil.map(x => x).filter(x$m1 =>$m2)$m3
           |}""".withSource
       .diagnostics(m1,
-        (m2 to m2, "expression expected", Error, Some(IllegalStartSimpleExprID)),
+        (m2 to m2, "expression expected but ')' found", Error, Some(IllegalStartSimpleExprID)),
         (m1 to m1, """Found:    Null
                      |Required: Boolean""".stripMargin, Error, Some(TypeMismatchID))
       )

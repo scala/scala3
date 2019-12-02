@@ -27,7 +27,7 @@ class RenameLifted extends MiniPhase with SymTransformer {
    *    - if it is a lifted method
    */
   private def needsRefresh(sym: Symbol)(implicit ctx: Context): Boolean =
-    (sym.isClass || sym.is(Private | Method | JavaStatic)) && sym.name.is(UniqueName)
+    (sym.isClass || sym.isOneOf(Private | Method | JavaStatic)) && sym.name.is(UniqueName)
 
   /** Refreshes the number of the name based on the full name of the symbol */
   private def refreshedName(sym: Symbol)(implicit ctx: Context): Name = {

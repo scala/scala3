@@ -17,8 +17,10 @@ class LispTokenizer(s: String) extends Iterator[String] {
       val start = i
       if (isDelimiter(s charAt i)) i += 1
       else
-        do i = i + 1
-        while (!isDelimiter(s charAt i))
+        while {
+          i = i + 1
+          !isDelimiter(s charAt i)
+        } do ()
       s.substring(start, i)
     } else sys.error("premature end of string")
 }

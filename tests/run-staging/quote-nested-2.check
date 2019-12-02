@@ -1,0 +1,4 @@
+((qctx: scala.quoted.QuoteContext) => {
+  val a: scala.quoted.Expr[scala.Int] = '{4} given (qctx)
+  ((evidence$2: scala.quoted.QuoteContext) => a) given (qctx)
+})

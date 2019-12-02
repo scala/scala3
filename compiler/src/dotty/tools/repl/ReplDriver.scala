@@ -61,7 +61,7 @@ class ReplDriver(settings: Array[String],
   override def sourcesRequired: Boolean = false
 
   /** Create a fresh and initialized context with IDE mode enabled */
-  private[this] def initialCtx = {
+  private def initialCtx = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive | Mode.ReadComments)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     val ictx = setup(settings, rootCtx)._2
@@ -78,7 +78,7 @@ class ReplDriver(settings: Array[String],
    *  such, when the user enters `:reset` this method should be called to reset
    *  everything properly
    */
-  protected[this] def resetToInitial(): Unit = {
+  protected def resetToInitial(): Unit = {
     rootCtx = initialCtx
     if (rootCtx.settings.outputDir.isDefault(rootCtx))
       rootCtx = rootCtx.fresh
@@ -87,9 +87,9 @@ class ReplDriver(settings: Array[String],
     rendering = new Rendering(classLoader)
   }
 
-  private[this] var rootCtx: Context = _
-  private[this] var compiler: ReplCompiler = _
-  private[this] var rendering: Rendering = _
+  private var rootCtx: Context = _
+  private var compiler: ReplCompiler = _
+  private var rendering: Rendering = _
 
   // initialize the REPL session as part of the constructor so that once `run`
   // is called, we're in business
@@ -139,8 +139,19 @@ class ReplDriver(settings: Array[String],
   // TODO: i5069
   final def bind(name: String, value: Any)(implicit state: State): State = state
 
-  private def withRedirectedOutput(op: => State): State =
-    Console.withOut(out) { Console.withErr(out) { op } }
+  private def withRedirectedOutput(op: => State): State = {
+    val savedOut = System.out
+    val savedErr = System.err
+    try {
+      System.setOut(out)
+      System.setErr(out)
+      op
+    }
+    finally {
+      System.setOut(savedOut)
+      System.setErr(savedErr)
+    }
+  }
 
   private def newRun(state: State) = {
     val run = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state)
@@ -148,7 +159,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** Extract possible completions at the index of `cursor` in `expr` */
-  protected[this] final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
+  protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
     def makeCandidate(completion: Completion) = {
       val displ = completion.label
       new Candidate(
@@ -251,7 +262,7 @@ class ReplDriver(settings: Array[String],
       val info = symbol.info
       val defs =
         info.bounds.hi.finalResultType
-          .membersBasedOnFlags(required = allOf(Method), excluded = Accessor | ParamAccessor | Synthetic | Private)
+          .membersBasedOnFlags(required = Method, excluded = Accessor | ParamAccessor | Synthetic | Private)
           .filterNot { denot =>
             denot.symbol.owner == defn.AnyClass ||
             denot.symbol.owner == defn.ObjectClass ||
@@ -261,7 +272,7 @@ class ReplDriver(settings: Array[String],
 
       val vals =
         info.fields
-          .filterNot(_.symbol.is(ParamAccessor | Private | Synthetic | Module))
+          .filterNot(_.symbol.isOneOf(ParamAccessor | Private | Synthetic | Artifact | Module))
           .filter(_.symbol.name.is(SimpleNameKind))
           .sortBy(_.name)
 
@@ -291,8 +302,7 @@ class ReplDriver(settings: Array[String],
       }
 
 
-    ctx.atPhase(ctx.typerPhase.next) { implicit ctx =>
-
+    ctx.atPhase(ctx.typerPhase.next) {
       // Display members of wrapped module:
       tree.symbol.info.memberClasses
         .find(_.symbol.name == newestWrapper.moduleClassName)

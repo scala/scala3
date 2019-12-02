@@ -1,140 +1,213 @@
+---
+kind: pipeline
+name: default
+
+platform:
+  os: linux
+  arch: amd64
+
 clone:
-  git:
-    image: plugins/git
-    # We clone submodules ourselves
-    recursive: false
+  disable: true
 
-pipeline:
-  # We add a custom clone step to workaround a bug with GitHub (see #3415)
-  clone:
-    image: plugins/git
-    commands:
-      # if build is PR rebase on top of target branch
-      - if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
-          git config user.email "dotty.bot@epfl.ch";
-          git config user.name "Dotty CI";
-          git pull "$DRONE_REMOTE_URL" "$DRONE_BRANCH";
-        fi
+steps:
+- name: git
+  pull: default
+  image: plugins/git
 
-  # TESTS:
-  # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
-  test:
-    group: test
-    image: lampepfl/dotty:2019-04-22
-    commands:
-      - cp -R . /tmp/1/ && cd /tmp/1/
-      - ./project/scripts/sbt ";compile ;test"
-      - ./project/scripts/cmdTests
+- name: clone
+  pull: default
+  image: plugins/git
+  depends_on: [ git ]
+  commands:
+  - if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
+      git config user.email "dotty.bot@epfl.ch";
+      git config user.name "Dotty CI";
+      git pull "$DRONE_REMOTE_URL" "$DRONE_BRANCH";
+    fi
 
-  test_bootstrapped:
-    group: test
-    image: lampepfl/dotty:2019-04-22
-    commands:
-      - cp -R . /tmp/2/ && cd /tmp/2/
-      - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test; dotty-semanticdb/compile; dotty-semanticdb/test:compile;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test"
-      - ./project/scripts/bootstrapCmdTests
+- name: test
+  pull: default
+  image: lampepfl/dotty:2019-10-17
+  depends_on: [ clone ]
+  commands:
+  - cp -R . /tmp/1/ && cd /tmp/1/
+  - ./project/scripts/sbt ";compile ;test"
+  - ./project/scripts/cmdTests
 
-  community_build:
-    group: test
-    image: lampepfl/dotty:2019-04-22
-    commands:
-      - cp -R . /tmp/3/ && cd /tmp/3/
-      - git submodule update --init --recursive --jobs 7
-      - ./project/scripts/sbt community-build/test
+- name: test_bootstrapped
+  pull: default
+  image: lampepfl/dotty:2019-10-17
+  depends_on: [ clone ]
+  commands:
+  - cp -R . /tmp/2/ && cd /tmp/2/
+  - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test ;dotty-staging/test ;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test"
+  - ./project/scripts/bootstrapCmdTests
 
-  test_sbt:
-    group: test
-    image: lampepfl/dotty:2019-04-22
-    commands:
-      - cp -R . /tmp/4/ && cd /tmp/4/
-      - ./project/scripts/sbt sbt-dotty/scripted
-    when:
-      # sbt scripted tests are slow and only run on nightly or deployment
-      event: [ tag, deployment ]
+- name: community_build
+  pull: default
+  image: lampepfl/dotty:2019-10-17
+  depends_on: [ clone ]
+  commands:
+  - cp -R . /tmp/3/ && cd /tmp/3/
+  - git submodule sync
+  - git submodule update --init --recursive --jobs 7
+  - ./project/scripts/sbt community-build/test
 
-  test_scala212:
-    group: test
-    image: lampepfl/dotty:2019-04-22
-    commands:
-      - cp -R . /tmp/5/ && cd /tmp/5/
-      - ./project/scripts/sbt ";++2.12.8 ;compile ;test"
-    # when:
-    #   event: [ push, tag, deployment ]
+- name: test_sbt
+  pull: default
+  image: lampepfl/dotty:2019-10-17
+  depends_on: [ clone ]
+  commands:
+  - cp -R . /tmp/4/ && cd /tmp/4/
+  - ./project/scripts/sbt sbt-dotty/scripted
+  when:
+    event:
+    - tag
+    - promote
 
-  test_java11:
-    group: test
-    image: lampepfl/dotty:2019-04-22
-    commands:
-      - export PATH="/usr/lib/jvm/java-11-openjdk-amd64/bin:$PATH"
-      - cp -R . /tmp/6/ && cd /tmp/6/
-      - ./project/scripts/sbt ";compile ;test"
-    when:
-      event: [ push, tag, deployment ]
+- name: test_java11
+  pull: default
+  image: lampepfl/dotty:2019-10-17
+  depends_on: [ clone ]
+  commands:
+  - export PATH="/usr/lib/jvm/java-11-openjdk-amd64/bin:$PATH"
+  - cp -R . /tmp/6/ && cd /tmp/6/
+  - ./project/scripts/sbt ";compile ;test"
+  when:
+    event:
+    - tag
+    - promote
 
-  # DOCUMENTATION:
-  documentation:
-    image: lampepfl/dotty:2019-04-22
-    commands:
-      - ./project/scripts/genDocs
-    secrets: [ bot_token ]
-    when:
-      event: push
-      # We only generate the documentation for the master branch
-      branch: master
+- name: documentation
+  pull: default
+  image: lampepfl/dotty:2019-10-17
+  depends_on:
+  - test
+  - test_bootstrapped
+  - community_build
+  - test_java11
+  commands:
+  - ./project/scripts/genDocs
+  environment:
+    BOT_TOKEN:
+      from_secret: bot_token
+  when:
+    branch:
+    - master
+    event:
+    - push
 
-  # PUBLISHING:
-  # Publishing expect NIGHTLYBUILD or RELEASEBUILD to be set. See dottyVersion in Build.scala
-  publish_nightly:
-    image: lampepfl/dotty:2019-04-22
-    environment:
-      - NIGHTLYBUILD=yes
-    commands:
-      - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
-    secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
-    when:
-      event: deployment
-      environment: nightly
+- name: publish_nightly
+  pull: default
+  image: lampepfl/dotty:2019-10-17
+  depends_on:
+  - test
+  - test_bootstrapped
+  - community_build
+  - test_sbt
+  - test_java11
+  commands:
+  - ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+  environment:
+    NIGHTLYBUILD: yes
+    PGP_PW:
+      from_secret: pgp_pw
+    PGP_SECRET:
+      from_secret: pgp_secret
+    SONATYPE_PW:
+      from_secret: sonatype_pw
+    SONATYPE_USER:
+      from_secret: sonatype_user
+  when:
+    event:
+    - promote
+    target:
+    - nightly
 
-  publish_release:
-    image: lampepfl/dotty:2019-04-22
-    environment:
-      - RELEASEBUILD=yes
-    commands:
-      # Produces dotty-version.{tar.gz, zip}
-      - ./project/scripts/sbt dist-bootstrapped/packArchive
-      - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
-    secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
-    when:
-      event: tag
+- name: publish_release
+  pull: default
+  image: lampepfl/dotty:2019-10-17
+  depends_on:
+  - test
+  - test_bootstrapped
+  - community_build
+  - test_sbt
+  - test_java11
+  commands:
+  - ./project/scripts/sbt dist-bootstrapped/packArchive
+  - ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+  environment:
+    PGP_PW:
+      from_secret: pgp_pw
+    PGP_SECRET:
+      from_secret: pgp_secret
+    RELEASEBUILD: yes
+    SONATYPE_PW:
+      from_secret: sonatype_pw
+    SONATYPE_USER:
+      from_secret: sonatype_user
+  when:
+    event:
+    - tag
 
-  # Publish dotty-version.{tar.gz, zip} to GitHub Release
-  github_release:
-    image: plugins/github-release
-    secrets: [ github_token ]
+- name: github_release
+  pull: default
+  image: plugins/github-release
+  depends_on: [ publish_release ]
+  settings:
+    checksum:
+    - sha256
     draft: true
     files:
-      - dist-bootstrapped/target/dotty-*
-    checksum:
-      - sha256
-    when:
-      event: tag
+    - dist-bootstrapped/target/dotty-*
+  environment:
+    GITHUB_TOKEN:
+      from_secret: github_token
+  when:
+    event:
+    - tag
 
-  publish_sbt_release:
-    image: lampepfl/dotty:2019-04-22
-    environment:
-      - RELEASEBUILD=yes
-    commands:
-      - ./project/scripts/sbtPublish ";sbt-dotty/publishSigned ;sonatypeRelease"
-    secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
-    when:
-      event: deployment
-      environment: sbt_release
+- name: publish_sbt_release
+  pull: default
+  image: lampepfl/dotty:2019-10-17
+  depends_on:
+  - test
+  - test_bootstrapped
+  - community_build
+  - test_sbt
+  - test_java11
+  commands:
+  - ./project/scripts/sbtPublish ";project sbt-dotty ;publishSigned ;sonatypeBundleRelease"
+  environment:
+    PGP_PW:
+      from_secret: pgp_pw
+    PGP_SECRET:
+      from_secret: pgp_secret
+    RELEASEBUILD: yes
+    SONATYPE_PW:
+      from_secret: sonatype_pw
+    SONATYPE_USER:
+      from_secret: sonatype_user
+  when:
+    event:
+    - promote
+    target:
+    - sbt_release
 
-  # NOTIFICATIONS:
-  slack:
-    image: plugins/slack
+- name: slack
+  pull: default
+  image: plugins/slack
+  settings:
     channel: dotty
-    secrets: [ slack_webhook ]
-    when:
-      status: [ failure ]
-      event: [ push, tag, deployment ]
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: slack_webhook
+  when:
+    event:
+    - push
+    - tag
+    - promote
+    status:
+    - failure
+
+...

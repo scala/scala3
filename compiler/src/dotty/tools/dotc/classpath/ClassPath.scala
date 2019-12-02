@@ -6,8 +6,8 @@ package dotty.tools.dotc.classpath
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.ClassRepresentation
 
-case class ClassPathEntries(packages: Seq[PackageEntry], classesAndSources: Seq[ClassRepresentation]) {
-  def toTuple: (Seq[PackageEntry], Seq[ClassRepresentation]) = (packages, classesAndSources)
+case class ClassPathEntries(packages: scala.collection.Seq[PackageEntry], classesAndSources: scala.collection.Seq[ClassRepresentation]) {
+  def toTuple: (scala.collection.Seq[PackageEntry], scala.collection.Seq[ClassRepresentation]) = (packages, classesAndSources)
 }
 
 trait ClassFileEntry extends ClassRepresentation {

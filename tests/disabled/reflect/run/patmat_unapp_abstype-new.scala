@@ -70,7 +70,7 @@ object TestUnappDynamicSynth extends RealFoos with Intermed {
  }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   TestUnappStaticallyKnownSynthetic.test()
   TestUnappDynamicSynth.test()
 }

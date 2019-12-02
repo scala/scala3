@@ -1,0 +1,6 @@
+scala.Predef.classOf[scala.Float].getCanonicalName()
+scala.Predef.classOf[scala.Double].getCanonicalName()
+scala.Predef.classOf[scala.Unit].getCanonicalName()
+float
+double
+void

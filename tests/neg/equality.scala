@@ -119,14 +119,5 @@ object equality {
     s1 == Nil // error
     Nil == s2 // error
     s2 == Nil // error
-
-    import collection.parallel._
-    val p1 = ParSeq(1, 2, 3)
-    val p2 = ParSeq()
-    Nil == p1 // OK
-    p1 == Nil // OK
-    Nil == p2 // OK
-    p2 == Nil // Ok
-
   }
 }

@@ -38,7 +38,7 @@ class VirtualFile(val name: String, override val path: String) extends AbstractF
     this.content = content
   }
 
-  private[this] var content = Array.emptyByteArray
+  private var content = Array.emptyByteArray
 
   def absolute: AbstractFile = this
 
@@ -66,7 +66,7 @@ class VirtualFile(val name: String, override val path: String) extends AbstractF
   /** @inheritdoc */
   override def isVirtual: Boolean = true
 
-  // private[this] var _lastModified: Long = 0
+  // private var _lastModified: Long = 0
   // _lastModified
 
   /** Returns the time that this abstract file was last modified. */

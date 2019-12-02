@@ -288,7 +288,7 @@ trait T {
 class C2 extends T
 object O2 extends T
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def check(name: String, result: Boolean): Unit = {
     println("%-10s %s" format (name +":", if (result) "OK" else "FAILED"))
   }

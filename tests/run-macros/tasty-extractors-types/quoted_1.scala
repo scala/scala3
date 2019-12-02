@@ -1,14 +1,12 @@
 import scala.quoted._
-import scala.quoted.autolift._
-
-import scala.tasty._
+import scala.quoted.autolift.given
 
 object Macros {
 
   implicit inline def printType[T]: Unit = ${ impl('[T]) }
 
-  def impl[T](x: Type[T])(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect._
+  def impl[T](x: Type[T])(given qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty.{_, given}
 
     val tree = x.unseal
     '{

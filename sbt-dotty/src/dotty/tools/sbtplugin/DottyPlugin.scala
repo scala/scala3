@@ -28,7 +28,7 @@ object DottyPlugin extends AutoPlugin {
 
       val nightly = try {
         // get majorVersion from dotty.epfl.ch
-        val source0 = Source.fromURL("http://dotty.epfl.ch/versions/latest-nightly-base")
+        val source0 = Source.fromURL("https://dotty.epfl.ch/versions/latest-nightly-base")
         val majorVersionFromWebsite = source0.getLines().toSeq.head
         source0.close()
 
@@ -93,8 +93,23 @@ object DottyPlugin extends AutoPlugin {
         val name = moduleID.name
         if (name != "dotty" && name != "dotty-library" && name != "dotty-compiler")
           moduleID.crossVersion match {
-            case _: librarymanagement.Binary if scalaVersion.startsWith("0.") =>
-              moduleID.cross(CrossVersion.constant("2.12"))
+            case _: librarymanagement.Binary =>
+              val compatVersion =
+                CrossVersion.partialVersion(scalaVersion) match {
+                  case Some((3, _)) =>
+                    "2.13"
+                  case Some((0, minor)) =>
+                    if (minor > 18 || scalaVersion.startsWith("0.18.1"))
+                      "2.13"
+                    else
+                      "2.12"
+                  case _ =>
+                    ""
+                }
+              if (compatVersion.nonEmpty)
+                moduleID.cross(CrossVersion.constant(compatVersion))
+              else
+                moduleID
             case _ =>
               moduleID
           }
@@ -153,7 +168,7 @@ object DottyPlugin extends AutoPlugin {
   val Def = sbt.Def
   override def projectSettings: Seq[Setting[_]] = {
     Seq(
-      isDotty := scalaVersion.value.startsWith("0."),
+      isDotty := scalaVersion.value.startsWith("0.") || scalaVersion.value.startsWith("3."),
 
       scalaOrganization := {
         if (isDotty.value)

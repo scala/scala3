@@ -55,7 +55,11 @@ object ScriptParsers {
      *  by compilationUnit().
      */
     override def parse(): Tree = unsupported("parse")
+  }
+}
+
     /* TODO: reinstantiate
+
       val stmts = templateStatSeq(false)._2
       accept(EOF)
 
@@ -141,5 +145,3 @@ object ScriptParsers {
       // package <empty> { ... }
       makePackaging(0, emptyPkg, List(moduleDef))
     }*/
-  }
-}

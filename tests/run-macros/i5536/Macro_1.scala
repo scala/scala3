@@ -1,11 +1,10 @@
 import scala.quoted._
-import scala.tasty._
 
 object scalatest {
   inline def assert(condition: => Boolean): Unit = ${assertImpl('condition)}
 
-  def assertImpl(condition: Expr[Boolean])(implicit refl: Reflection): Expr[Unit] = {
-    import refl._
+  def assertImpl(condition: Expr[Boolean])(given qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty.{_, given}
     val tree = condition.unseal
     def exprStr: String = condition.show
 

@@ -9,7 +9,7 @@ source $(dirname $0)/cmdTestsCommon.inc.sh
 "$SBT" "dotty-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
 
 echo "testing scala.quoted.Expr.run from sbt dotr"
-"$SBT" ";dotty-compiler-bootstrapped/dotc tests/run-with-compiler/quote-run.scala; dotty-compiler-bootstrapped/dotr -with-compiler Test" > "$tmp"
+"$SBT" ";dotty-compiler-bootstrapped/dotc -with-compiler tests/run-staging/quote-run.scala; dotty-compiler-bootstrapped/dotr -with-compiler Test" > "$tmp"
 grep -qe "val a: scala.Int = 3" "$tmp"
 
 
@@ -22,6 +22,12 @@ clear_out "$OUT"
 ./bin/dotc "$SOURCE" -d "$OUT"
 ./bin/dotr -classpath "$OUT" "$MAIN" > "$tmp"
 test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
+
+# check that `dotc` and `dotr` works for staging
+clear_out "$OUT"
+./bin/dotc tests/run-staging/i4044f.scala -d "$OUT"
+./bin/dotr -with-compiler -classpath "$OUT" Test > "$tmp"
+./bin/dotd -project Staging -siteroot "$OUT" "tests/run-staging/i4044f.scala"
 
 # check that `dotc -from-tasty` compiles and `dotr` runs it
 echo "testing ./bin/dotc -from-tasty and dotr -classpath"

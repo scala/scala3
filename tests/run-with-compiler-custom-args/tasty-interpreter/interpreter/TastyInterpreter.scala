@@ -6,7 +6,7 @@ import scala.tasty.file.TastyConsumer
 class TastyInterpreter extends TastyConsumer {
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
-    import reflect._
+    import reflect.{_, given}
     object Traverser extends TreeTraverser {
 
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
@@ -14,7 +14,7 @@ class TastyInterpreter extends TastyConsumer {
         case DefDef("main", _, _, _, Some(rhs)) =>
           val interpreter = new jvm.Interpreter(reflect)
 
-          interpreter.eval(rhs) given Map.empty
+          interpreter.eval(rhs)(given Map.empty)
         // TODO: recurse only for PackageDef, ClassDef
         case tree =>
           super.traverseTree(tree)

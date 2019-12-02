@@ -1,7 +1,7 @@
 import java.io.File
 import scala.sys.process._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def prop(key: String) = {
     val value = System.getProperties.getProperty(key)
     assert(value != null, key)

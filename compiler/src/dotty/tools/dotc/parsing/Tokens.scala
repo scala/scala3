@@ -37,17 +37,19 @@ abstract class TokensCommon {
   /** literals */
   final val CHARLIT = 3;           enter(CHARLIT, "character literal")
   final val INTLIT = 4;            enter(INTLIT, "integer literal")
-  final val LONGLIT = 5;           enter(LONGLIT, "long literal")
-  final val FLOATLIT = 6;          enter(FLOATLIT, "float literal")
-  final val DOUBLELIT = 7;         enter(DOUBLELIT, "double literal")
-  final val STRINGLIT = 8;         enter(STRINGLIT, "string literal")
-  final val STRINGPART = 9;        enter(STRINGPART, "string literal", "string literal part")
-  //final val INTERPOLATIONID = 10;  enter(INTERPOLATIONID, "string interpolator")
-  //final val QUOTEID = 11;        enter(QUOTEID, "quoted identifier") // TODO: deprecate
+  final val DECILIT = 5;           enter(DECILIT, "number literal")  // with decimal point
+  final val EXPOLIT = 6;           enter(EXPOLIT, "number literal with exponent")
+  final val LONGLIT = 7;           enter(LONGLIT, "long literal")
+  final val FLOATLIT = 8;          enter(FLOATLIT, "float literal")
+  final val DOUBLELIT = 9;         enter(DOUBLELIT, "double literal")
+  final val STRINGLIT = 10;         enter(STRINGLIT, "string literal")
+  final val STRINGPART = 11;       enter(STRINGPART, "string literal", "string literal part")
+  //final val INTERPOLATIONID = 12;  enter(INTERPOLATIONID, "string interpolator")
+  //final val QUOTEID = 13;        enter(QUOTEID, "quoted identifier") // TODO: deprecate
 
   /** identifiers */
-  final val IDENTIFIER = 12;       enter(IDENTIFIER, "identifier")
-  //final val BACKQUOTED_IDENT = 13; enter(BACKQUOTED_IDENT, "identifier", "backquoted ident")
+  final val IDENTIFIER = 14;       enter(IDENTIFIER, "identifier")
+  //final val BACKQUOTED_IDENT = 15; enter(BACKQUOTED_IDENT, "identifier", "backquoted ident")
 
   /** alphabetic keywords */
   final val IF = 20;               enter(IF, "if")
@@ -125,9 +127,11 @@ abstract class TokensCommon {
   final val RBRACKET = 93;         enter(RBRACKET, "']'")
   final val LBRACE = 94;           enter(LBRACE, "'{'")
   final val RBRACE = 95;           enter(RBRACE, "'}'")
+  final val INDENT = 96;           enter(INDENT, "indent")
+  final val OUTDENT = 97;          enter(OUTDENT, "unindent")
 
   final val firstParen = LPAREN
-  final val lastParen = RBRACE
+  final val lastParen = OUTDENT
 
   def buildKeywordArray(keywords: TokenSet): (Int, Array[Int]) = {
     def start(tok: Token) = tokenString(tok).toTermName.asSimpleName.start
@@ -148,10 +152,10 @@ object Tokens extends TokensCommon {
   final val minToken = EMPTY
   final def maxToken: Int = XMLSTART
 
-  final val INTERPOLATIONID = 10;  enter(INTERPOLATIONID, "string interpolator")
-  final val QUOTEID = 11;          enter(QUOTEID, "quoted identifier") // TODO: deprecate
+  final val INTERPOLATIONID = 12;  enter(INTERPOLATIONID, "string interpolator")
+  final val QUOTEID = 13;          enter(QUOTEID, "quoted identifier") // TODO: deprecate
 
-  final val BACKQUOTED_IDENT = 13; enter(BACKQUOTED_IDENT, "identifier", "backquoted ident")
+  final val BACKQUOTED_IDENT = 15; enter(BACKQUOTED_IDENT, "identifier", "backquoted ident")
 
   final val identifierTokens: TokenSet = BitSet(IDENTIFIER, BACKQUOTED_IDENT)
 
@@ -178,14 +182,14 @@ object Tokens extends TokensCommon {
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
   final val ERASED = 63;           enter(ERASED, "erased")
-  final val IMPLIED = 64;          enter(IMPLIED, "delegate")
-  final val GIVEN = 65;            enter(GIVEN, "given")
-  final val EXPORT = 66;           enter(EXPORT, "export")
-  final val MACRO = 67;            enter(MACRO, "macro") // TODO: remove
+  final val GIVEN = 64;            enter(GIVEN, "given")
+  final val EXPORT = 65;           enter(EXPORT, "export")
+  final val MACRO = 66;            enter(MACRO, "macro") // TODO: remove
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
   final val NEWLINES = 79;         enter(NEWLINES, "end of statement", "new lines")
+  final val COLONEOL = 88;         enter(COLONEOL, ":", ": at eol")
 
   /** special keywords */
   final val USCORE = 73;           enter(USCORE, "_")
@@ -200,7 +204,7 @@ object Tokens extends TokensCommon {
   final val QUOTE = 86;            enter(QUOTE, "'")
 
   /** XML mode */
-  final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
+  final val XMLSTART = 98;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords: TokenSet = tokenRange(IF, MACRO)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, TLARROW)
@@ -209,23 +213,23 @@ object Tokens extends TokensCommon {
   final val allTokens: TokenSet = tokenRange(minToken, maxToken)
 
   final val simpleLiteralTokens: TokenSet =
-    tokenRange(CHARLIT, STRINGLIT) | BitSet(TRUE, FALSE, QUOTEID) // TODO: drop QUOTEID when symbol literals are gone
-  final val literalTokens: TokenSet = simpleLiteralTokens | BitSet(INTERPOLATIONID, NULL)
+    tokenRange(CHARLIT, STRINGLIT) | BitSet(TRUE, FALSE)
+  final val literalTokens: TokenSet = simpleLiteralTokens | BitSet(INTERPOLATIONID, QUOTEID, NULL)  // TODO: drop QUOTEID when symbol literals are gone
 
   final val atomicExprTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, QUOTEID, XMLSTART)
 
-  final val canStartExpressionTokens: TokenSet = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, QUOTE, IF, DO, WHILE, FOR, NEW, TRY, THROW, IMPLIED)
+  final val canStartExprTokens3: TokenSet = atomicExprTokens | BitSet(
+    LBRACE, LPAREN, LBRACKET, INDENT, QUOTE, IF, WHILE, FOR, NEW, TRY, THROW)
+
+  final val canStartExprTokens2: TokenSet = canStartExprTokens3 | BitSet(DO)
 
   final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)
 
-  final val canStartBindingTokens: TokenSet = identifierTokens | BitSet(USCORE, LPAREN)
-
   final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 
-  final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE, IMPLIED)
+  final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE, GIVEN)
 
   final val defIntroTokens: TokenSet = templateIntroTokens | dclIntroTokens
 
@@ -242,20 +246,45 @@ object Tokens extends TokensCommon {
 
   final val modifierFollowers = modifierTokens | defIntroTokens
 
-  final val paramIntroTokens: TokenSet = modifierTokens | identifierTokens | BitSet(AT, VAL, VAR, IMPLICIT)
-
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, EXPORT, PACKAGE)
 
-  final val canStartStatTokens: TokenSet = canStartExpressionTokens | mustStartStatTokens | BitSet(
+  final val canStartStatTokens2: TokenSet = canStartExprTokens2 | mustStartStatTokens | BitSet(
+    AT, CASE)
+  final val canStartStatTokens3: TokenSet = canStartExprTokens3 | mustStartStatTokens | BitSet(
     AT, CASE)
 
   final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(
-    TYPE, RPAREN, RBRACE, RBRACKET)
+    TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT)
 
-  final val numericLitTokens: TokenSet = BitSet(INTLIT, LONGLIT, FLOATLIT, DOUBLELIT)
+  /** Tokens that stop a lookahead scan search for a `<-`, `then`, or `do`.
+   *  Used for disambiguating between old and new syntax.
+   */
+  final val stopScanTokens: BitSet = mustStartStatTokens |
+    BitSet(IF, ELSE, WHILE, DO, FOR, YIELD, NEW, TRY, CATCH, FINALLY, THROW, RETURN, MATCH, SEMI, EOF)
 
-  final val scala3keywords = BitSet(ENUM, ERASED, GIVEN, IMPLIED)
+  final val numericLitTokens: TokenSet = BitSet(INTLIT, DECILIT, EXPOLIT, LONGLIT, FLOATLIT, DOUBLELIT)
 
-  final val softModifierNames = Set(nme.inline, nme.opaque)
+  final val statCtdTokens: BitSet = BitSet(THEN, ELSE, DO, CATCH, FINALLY, YIELD, MATCH)
+
+  final val closingRegionTokens = BitSet(RBRACE, CASE) | statCtdTokens
+
+  final val canStartIndentTokens: BitSet =
+    statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR, IF, WITH)
+      // `if` is excluded because it often comes after `else` which makes for awkward indentation rules  TODO: try to do without the exception
+
+  /** Faced with the choice between a type and a formal parameter, the following
+   *  tokens determine it's a formal parameter.
+   */
+  final val startParamTokens: BitSet = modifierTokens | BitSet(VAL, VAR, AT)
+
+  /** Faced with the choice of a type `(...)` or a parameter or given type list
+   *  in `(...)`, the following tokens after the opening `(` determine it's
+   *  a parameter or given type list.
+   */
+  final val startParamOrGivenTypeTokens: BitSet = startParamTokens | BitSet(GIVEN, ERASED)
+
+  final val scala3keywords = BitSet(ENUM, ERASED, GIVEN)
+
+  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open)
 }

@@ -5,7 +5,7 @@ trait Transvaal {
   def eval(tree: Expr[_]) = tree.eval
 }
 
-object Test extends dotty.runtime.LegacyApp with Transvaal {
+object Test extends App with Transvaal {
   // select a value from package
   eval(reify{println("foo")})
   eval(reify{println((new Object).toString == (new Object).toString)})

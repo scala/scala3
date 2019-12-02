@@ -2,16 +2,18 @@ package dotty.tools.dotc
 package core
 package tasty
 
+import dotty.tools.tasty.{TastyBuffer, TastyReader}
+import TastyBuffer.{Addr, NameRef}
+
 import Contexts._, Decorators._
 import Names.Name
 import TastyUnpickler._
-import TastyBuffer.{Addr, NameRef}
 import util.Spans.offsetToInt
 import printing.Highlighting._
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
-  private[this] val sb: StringBuilder = new StringBuilder
+  private val sb: StringBuilder = new StringBuilder
 
   val unpickler: TastyUnpickler = new TastyUnpickler(bytes)
   import unpickler.{nameAtRef, unpickle}
@@ -33,25 +35,25 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     sb.append("Trees:\n")
     unpickle(new TreeSectionUnpickler) match {
       case Some(s) => sb.append(s)
-      case _ => Unit
+      case _ =>
     }
     sb.append("\n\n")
     unpickle(new PositionSectionUnpickler) match {
       case Some(s) => sb.append(s)
-      case _ => Unit
+      case _ =>
     }
     sb.append("\n\n")
     unpickle(new CommentSectionUnpickler) match {
       case Some(s) => sb.append(s)
-      case _ => Unit
+      case _ =>
     }
     sb.result
   }
 
   class TreeSectionUnpickler extends SectionUnpickler[String](TreePickler.sectionName) {
-    import TastyFormat._
+    import dotty.tools.tasty.TastyFormat._
 
-    private[this] val sb: StringBuilder = new StringBuilder
+    private val sb: StringBuilder = new StringBuilder
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
       import reader._
@@ -127,7 +129,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
   class PositionSectionUnpickler extends SectionUnpickler[String]("Positions") {
 
-    private[this] val sb: StringBuilder = new StringBuilder
+    private val sb: StringBuilder = new StringBuilder
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
       sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
@@ -144,7 +146,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
   class CommentSectionUnpickler extends SectionUnpickler[String]("Comments") {
 
-    private[this] val sb: StringBuilder = new StringBuilder
+    private val sb: StringBuilder = new StringBuilder
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
       sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")

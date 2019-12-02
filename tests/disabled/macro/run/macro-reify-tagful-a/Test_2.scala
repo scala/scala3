@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val list: List[String] = Macros.foo("hello world")
   println(list)
 }

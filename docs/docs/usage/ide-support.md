@@ -35,7 +35,7 @@ Status
 - Go to definition (in the current project)
 - Find all references
 - Documentation on hover
-- [Worksheet mode](worksheet-mode.html)
+- [Worksheet mode](worksheet-mode.md)
 
 ## Partially working features:
 - Completion

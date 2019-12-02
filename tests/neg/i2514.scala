@@ -4,7 +4,7 @@ object Foo {
     //     ^^^^^^^^
     //     an identifier expected, but 'implicit' found
 
-    f given 2
+    f(given 2)
   }
 
   val f = (implicit x: Int) => x // error // error

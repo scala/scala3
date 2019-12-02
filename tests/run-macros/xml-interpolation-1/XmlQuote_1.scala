@@ -1,7 +1,6 @@
 import scala.quoted._
-import scala.quoted.autolift._
+import scala.quoted.autolift.given
 
-import scala.tasty.Reflection
 
 import scala.language.implicitConversions
 
@@ -14,11 +13,8 @@ object XmlQuote {
   }
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
-          (implicit reflect: Reflection): Expr[Xml] = {
-    import reflect._
-
-    def abort(msg: String): Nothing =
-      QuoteError(msg)
+          (given qctx: QuoteContext): Expr[Xml] = {
+    import qctx.tasty.{_, given}
 
     // for debugging purpose
     def pp(tree: Tree): Unit = {
@@ -51,9 +47,10 @@ object XmlQuote {
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
              values.forall(isStringConstant) =>
-        values.collect { case Literal(Constant.String(value)) => value }
+        values.collect { case Literal(Constant(value: String)) => value }
       case tree =>
-        abort(s"String literal expected, but ${tree.showExtractors} found")
+        qctx.error(s"String literal expected, but ${tree.showExtractors} found")
+        return '{ ??? }
     }
 
     // [a0, ...]: Any*

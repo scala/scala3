@@ -9,8 +9,8 @@ object PluggableTransformers {
   abstract class PluggableTransformer[T] extends TreeTransformer[T, Context] {
     type PluginOp[-N <: Tree[T]] = N => Tree[T]
 
-    private[this] var _ctx: Context = _
-    private[this] var _oldTree: Tree[T] = _
+    private var _ctx: Context = _
+    private var _oldTree: Tree[T] = _
 
     protected implicit def ctx: Context = _ctx
     protected def oldTree: Tree[T] = _oldTree
@@ -44,7 +44,7 @@ object PluggableTransformers {
 
     val EmptyPlugin = new Plugins
 
-    private[this] var _plugins: Plugins = EmptyPlugin
+    private var _plugins: Plugins = EmptyPlugin
 
     override def plugins: Plugins = _plugins
 
@@ -64,7 +64,7 @@ object PluggableTransformers {
       else finishIdent(ops(tree, old, c), old, c, ops.next)
 
     override def finishIdent(tree: Tree[T], old: Tree[T], c: Context, plugins: Plugins): Tree[T] = tree match {
-      case tree: Ident[_] => postIdent(tree, old, c, plugins.IdentOps)
+      case tree: Ident[?] => postIdent(tree, old, c, plugins.IdentOps)
       case _ => postProcess(tree, old, c, plugins)
     }
 
@@ -73,13 +73,13 @@ object PluggableTransformers {
       else finishSelect(ops(tree, old, c), old, c, ops.next)
 
     override def finishSelect(tree: Tree[T], old: Tree[T], c: Context, plugins: Plugins): Tree[T] = tree match {
-      case tree: Select[_] => postSelect(tree, old, c, plugins.SelectOps)
+      case tree: Select[?] => postSelect(tree, old, c, plugins.SelectOps)
       case _ => postProcess(tree, old, c, plugins)
     }
 
     protected def postProcess(tree: Tree[T], old: Tree[T], c: Context, plugins: Plugins): Tree[T] = tree match {
-      case tree: Ident[_] => finishIdent(tree, old, c, plugins)
-      case tree: Select[_] => finishSelect(tree, old, c, plugins)
+      case tree: Ident[?] => finishIdent(tree, old, c, plugins)
+      case tree: Select[?] => finishSelect(tree, old, c, plugins)
     }
   }
 }

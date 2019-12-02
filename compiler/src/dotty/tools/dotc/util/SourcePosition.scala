@@ -29,15 +29,15 @@ extends interfaces.SourcePosition with Showable {
     source.content.slice(source.startOfLine(start), source.nextLine(end))
 
   /** The lines of the position */
-  def lines: List[Int] = {
+  def lines: Range = {
     val startOffset = source.offsetToLine(start)
-    val endOffset = source.offsetToLine(end + 1)
-    if (startOffset >= endOffset) line :: Nil
-    else (startOffset until endOffset).toList
+    val endOffset = source.offsetToLine(end - 1) // -1 to drop a line if no chars in it form part of the position
+    if (startOffset >= endOffset) line to line
+    else startOffset to endOffset
   }
 
   def lineOffsets: List[Int] =
-    lines.map(source.lineToOffset(_))
+    lines.toList.map(source.lineToOffset(_))
 
   def beforeAndAfterPoint: (List[Int], List[Int]) =
     lineOffsets.partition(_ <= point)
@@ -60,6 +60,9 @@ extends interfaces.SourcePosition with Showable {
   def endPos  : SourcePosition = withSpan(span.endPos)
   def focus   : SourcePosition = withSpan(span.focus)
   def toSynthetic: SourcePosition = withSpan(span.toSynthetic)
+
+  def outermost: SourcePosition =
+    if outer == null || outer == NoSourcePosition then this else outer.outermost
 
   override def toString: String =
     s"${if (source.exists) source.file.toString else "(no source)"}:$span"

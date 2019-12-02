@@ -241,12 +241,12 @@ object JavaConverters {
     }.asJava
   }
 
-  implicit class JavaMap(val map: collection.Map[String, Package]) extends AnyVal {
+  implicit class JavaMap(val map: collection.immutable.Map[String, Package]) extends AnyVal {
     def toJavaList: LinkedList[AnyRef] =
-      convertToList(map.mapValues(_.asJava))
+      convertToList(map.transform((_, v) => v.asJava).toMap)
 
     def flattened: LinkedList[AnyRef] =
-      convertToList(map.mapValues(flattenEntity))
+      convertToList(map.transform((_, v) => flattenEntity(v)).toMap)
 
     private[this] def convertToList(ms: collection.Map[String, AnyRef]): LinkedList[AnyRef] =
       ms.toList.sortBy(_._1)

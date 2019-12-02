@@ -9,7 +9,7 @@ class A {
   def m = b.c
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   var a: A = new A // mutable
   val c /*: object _1.b.c forSome { val _1: A } */ = a.m // widening using existential
 

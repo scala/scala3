@@ -10,7 +10,7 @@ import java.util.jar.Attributes.{ Name => AttributeName }
 /** Loads `library.properties` from the jar. */
 object Properties extends PropertiesTrait {
   protected def propCategory: String = "compiler"
-  protected def pickJarBasedOn: Class[Option[_]] = classOf[Option[_]]
+  protected def pickJarBasedOn: Class[Option[?]] = classOf[Option[?]]
 
   /** Scala manifest attributes.
    */
@@ -19,7 +19,7 @@ object Properties extends PropertiesTrait {
 
 trait PropertiesTrait {
   protected def propCategory: String      // specializes the remainder of the values
-  protected def pickJarBasedOn: Class[_]  // props file comes from jar containing this
+  protected def pickJarBasedOn: Class[?]  // props file comes from jar containing this
 
   /** The name of the properties file */
   protected val propFilename: String = "/" + propCategory + ".properties"
@@ -36,10 +36,9 @@ trait PropertiesTrait {
 
   private def quietlyDispose(action: => Unit, disposal: => Unit) =
     try     { action }
-    finally {
+    finally
         try     { disposal }
         catch   { case _: IOException => }
-    }
 
   def propIsSet(name: String): Boolean                  = System.getProperty(name) != null
   def propIsSetTo(name: String, value: String): Boolean = propOrNull(name) == value
@@ -70,9 +69,9 @@ trait PropertiesTrait {
   val versionString: String = {
     val v = scalaPropOrElse("version.number", "(unknown)")
     "version " + scalaPropOrElse("version.number", "(unknown)") + {
-      if (v.contains("SNAPSHOT") || v.contains("NIGHTLY")) {
+      if (v.contains("SNAPSHOT") || v.contains("NIGHTLY"))
         "-git-" + scalaPropOrElse("git.hash", "(unknown)")
-      } else ""
+      else ""
     }
   }
 

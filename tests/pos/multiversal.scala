@@ -1,7 +1,7 @@
 object Test {
   import scala.Eql
 
-  delegate [X, Y] for Eql[List[X], List[Y]] given Eql[X, Y] = Eql.derived
+  given [X, Y](given Eql[X, Y]): Eql[List[X], List[Y]] = Eql.derived
 
   val b: Byte = 1
   val c: Char = 2

@@ -2,14 +2,14 @@
 case class One() derives Eql
 case class Two() derives Eql
 
-delegate for Eql[One, Two] = Eql.derived
+given Eql[One, Two] = Eql.derived
 
 enum Lst[T] derives Eql {
   case Cons(x: T, xs: Lst[T])
   case Nil()
 }
 
-case class Triple[S, T, U] derives Eql
+case class Triple[S, T, U]() derives Eql
 
 
 object Test extends App {

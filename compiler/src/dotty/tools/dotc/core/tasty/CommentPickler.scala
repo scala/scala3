@@ -3,12 +3,14 @@ package dotty.tools.dotc.core.tasty
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Comments.{Comment, CommentsContext, ContextDocstrings}
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.tasty.TastyBuffer.{Addr, NoAddr}
+
+import dotty.tools.tasty.TastyBuffer
+import TastyBuffer.{Addr, NoAddr}
 
 import java.nio.charset.Charset
 
 class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr)(implicit ctx: Context) {
-  private[this] val buf = new TastyBuffer(5000)
+  private val buf = new TastyBuffer(5000)
   pickler.newSection("Comments", buf)
 
   def pickleComment(root: tpd.Tree): Unit = {
@@ -39,5 +41,4 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr)(implic
           traverseChildren(tree)
       }
   }
-
 }

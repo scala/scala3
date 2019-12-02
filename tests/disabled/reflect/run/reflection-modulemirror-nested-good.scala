@@ -17,7 +17,7 @@ class Foo{
  }
 }
 
-object Test extends dotty.runtime.LegacyApp{
+object Test extends App{
   object R { override def toString = "R" }
   val foo = new Foo
   println(foo.foo)

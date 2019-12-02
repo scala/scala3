@@ -10,6 +10,8 @@ import classfile.ClassfileParser
 import Names.SimpleName
 import TreeUnpickler.UnpickleMode
 
+import dotty.tools.tasty.TastyReader
+
 object DottyUnpickler {
 
   /** Exception thrown if classfile is corrupted */
@@ -51,13 +53,12 @@ class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLe
   def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit =
     treeUnpickler.enter(roots)
 
-  protected def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler], commentUnpicklerOpt: Option[CommentUnpickler]): TreeSectionUnpickler = {
+  protected def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler], commentUnpicklerOpt: Option[CommentUnpickler]): TreeSectionUnpickler =
     new TreeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)
-  }
 
   protected def computeRootTrees(implicit ctx: Context): List[Tree] = treeUnpickler.unpickle(mode)
 
-  private[this] var ids: Array[String] = null
+  private var ids: Array[String] = null
 
   override def mightContain(id: String)(implicit ctx: Context): Boolean = {
     if (ids == null)

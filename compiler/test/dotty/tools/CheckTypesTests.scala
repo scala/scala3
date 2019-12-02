@@ -17,7 +17,7 @@ class CheckTypeTest extends DottyTest {
     val types = List(
       "A",
       "B",
-      "List[_]",
+      "List[?]",
       "List[Int]",
       "List[AnyRef]",
       "List[String]",
@@ -61,7 +61,7 @@ class CheckTypeTest extends DottyTest {
       case (List(sups, subs), context) =>
         implicit val ctx = context
 
-        (sups, subs).zipped.foreach { (sup, sub) => assertTrue(sub <:< sup) }
+        sups.lazyZip(subs).foreach { (sup, sub) => assertTrue(sub <:< sup) }
 
       case _ => fail
     }

@@ -18,8 +18,8 @@ import java.io.{ PrintWriter }
  */
 abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Product with Cloneable {
 
-  private[this] var myUniqueId: Int = _
-  private[this] var mySpan: Span = _
+  private var myUniqueId: Int = _
+  private var mySpan: Span = _
 
   /** A unique identifier. Among other things, used for determining the source file
    *  component of the position.
@@ -38,9 +38,8 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
   /** The span part of the item's position */
   def span: Span = mySpan
 
-  def span_=(span: Span): Unit = {
+  def span_=(span: Span): Unit =
     mySpan = span
-  }
 
   uniqueId = src.nextId
   span = envelope(src)
@@ -58,9 +57,8 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
     else {
       val newpd: this.type =
         if (mySpan.isSynthetic) {
-          if (!mySpan.exists && span.exists) {
+          if (!mySpan.exists && span.exists)
             envelope(source, span.startPos) // fill in children spans
-          }
           this
         }
         else cloneIn(source)
@@ -109,12 +107,11 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
         else if (span1.start == MaxOffset)
           // No positioned child was found
           NoSpan
-        else {
+        else
           ///println(s"revisit $uniqueId with $span1")
           // We have some children left whose span could not be assigned.
           // Go through it again with the known start position.
           includeChildren(span1.startPos, 0)
-        }
       span2.toSynthetic
   }
 
@@ -131,7 +128,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
         x.contains(that)
       case m: untpd.Modifiers =>
         m.mods.exists(isParent) || m.annotations.exists(isParent)
-      case xs: List[_] =>
+      case xs: List[?] =>
         xs.exists(isParent)
       case _ =>
         false
@@ -145,7 +142,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
           found = isParent(productElement(n))
         }
         found
-      }
+    }
   }
 
   /** A hook that can be overridden if overlap checking in `checkPos` should be
@@ -198,7 +195,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
       case m: untpd.Modifiers =>
         m.annotations.foreach(check)
         m.mods.foreach(check)
-      case xs: List[_] =>
+      case xs: List[?] =>
         xs.foreach(check)
       case _ =>
     }
@@ -211,16 +208,13 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
       case tree: DefDef if tree.mods.is(Extension) =>
         tree.vparamss match {
           case vparams1 :: vparams2 :: rest if !isLeftAssoc(tree.name) =>
+            check(tree.tparams)
             check(vparams2)
-            check(tree.tparams)
             check(vparams1)
-            check(rest)
-          case vparams1 :: rest =>
-            check(vparams1)
-            check(tree.tparams)
             check(rest)
           case _ =>
             check(tree.tparams)
+            check(tree.vparamss)
         }
         check(tree.tpt)
         check(tree.rhs)
@@ -232,7 +226,8 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
           n += 1
         }
     }
-  } catch {
+  }
+  catch {
     case ex: AssertionError =>
       println(i"error while checking $this")
       throw ex
@@ -242,7 +237,6 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
 object Positioned {
   @sharable private[Positioned] var debugId = Int.MinValue
 
-  def updateDebugPos(implicit ctx: Context): Unit = {
+  def updateDebugPos(implicit ctx: Context): Unit =
     debugId = ctx.settings.YdebugTreeWithId.value
-  }
 }

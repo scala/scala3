@@ -1,9 +1,6 @@
 trait DeliteDSL {
   abstract class <~<[-From, +To] extends (From => To)
-
   implicit def trivial[A]: A <~< A = new (A <~< A) {def apply(x: A) = x}
-  implicit def convert_<-<[A, B](x: A)(implicit ev: A <~< B): B = ev(x)
-
 
   trait Forcible[T]
   object Forcible {
@@ -11,18 +8,15 @@ trait DeliteDSL {
   }
 
   case class DeliteInt(x: Int) extends Forcible[Int]
+  implicit val forcibleInt: Int <~< Forcible[Int] = Forcible.factory(DeliteInt(_: Int))
 
-  implicit val forcibleInt: DeliteDSL.this.<~<[Int,DeliteDSL.this.Forcible[Int]] =
-    Forcible.factory((x: Int) => DeliteInt(x))
-
-  import scala.collection.Traversable
-  class DeliteCollection[T](val xs: Traversable[T]) {
+  class DeliteCollection[T](val xs: Iterable[T]) {
     // must use existential in bound of P, instead of T itself, because we cannot both have:
-        // Test.x below: DeliteCollection[T=Int] => P=DeliteInt <: Forcible[T=Int], as T=Int <~< P=DeliteInt
-        // Test.xAlready below: DeliteCollection[T=DeliteInt] => P=DeliteInt <: Forcible[T=DeliteInt], as T=DeliteInt <~< P=DeliteInt
+        // Test.x below: DeliteCollection[T=Int] -> P=DeliteInt <: Forcible[T=Int], as T=Int <~< P=DeliteInt
+        // Test.xAlready below: DeliteCollection[T=DeliteInt] -> P=DeliteInt <: Forcible[T=DeliteInt], as T=DeliteInt <~< P=DeliteInt
         // this would required DeliteInt <: Forcible[Int] with Forcible[DeliteInt]
 
-    def headProxy[P <: Forcible[_]](implicit w: T <~< P): P = xs.head
+    def headProxy[P <: Forcible[_]](implicit w: T <~< P): P = w(xs.head)
   }
   // If T is already a proxy (it is forcible), the compiler should use
   // forcibleIdentity to deduce that P=T.  If T is Int, the compiler

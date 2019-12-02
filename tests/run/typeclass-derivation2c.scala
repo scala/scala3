@@ -1,5 +1,6 @@
 import scala.collection.mutable
 import scala.annotation.tailrec
+import scala.compiletime.summonFrom
 
 // Simulation of an alternative typeclass derivation scheme proposed in #6153
 
@@ -54,7 +55,7 @@ object Deriving {
       type CaseLabel <: String
 
       /** The represented value */
-      inline def singletonValue = delegate match {
+      inline def singletonValue = summonFrom {
         case ev: ValueOf[T] => ev.value
       }
     }
@@ -212,7 +213,7 @@ trait Eq[T] {
 object Eq {
   import scala.compiletime.erasedValue
 
-  inline def tryEql[T](x: T, y: T) = delegate match {
+  inline def tryEql[T](x: T, y: T) = summonFrom {
     case eq: Eq[T] => eq.eql(x, y)
   }
 
@@ -267,7 +268,7 @@ object Pickler {
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = delegate match {
+  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = summonFrom {
     case pkl: Pickler[T] => pkl.pickle(buf, x)
   }
 
@@ -292,7 +293,7 @@ object Pickler {
       }
     else pickleCases[T](g, n + 1)(buf, x, ord)
 
-  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = delegate match {
+  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonFrom {
     case pkl: Pickler[T] => pkl.unpickle(buf)
   }
 
@@ -357,7 +358,7 @@ trait Show[T] {
 object Show {
   import scala.compiletime.{erasedValue, constValue}
 
-  inline def tryShow[T](x: T): String = delegate match {
+  inline def tryShow[T](x: T): String = summonFrom {
     case s: Show[T] => s.show(x)
   }
 

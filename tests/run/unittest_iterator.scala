@@ -9,11 +9,11 @@ object Test {
   }
 
   def main(args: Array[String]): Unit = {
-    val itSum = it.toStream.sum
+    val itSum = it.to(LazyList).sum
     for (i <- it) {
       // sum of the groups == sum of the original
-      val thisSum = ((it grouped i) map (_.sum)).toStream.sum
-      assert(thisSum == itSum, thisSum + " != " + itSum)
+      val thisSum = ((it grouped i) map (_.sum)).to(LazyList).sum
+      assert(thisSum == itSum, s"$thisSum != $itSum" )
     }
 
     // grouped

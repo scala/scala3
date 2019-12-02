@@ -28,27 +28,25 @@ class Flatten extends MiniPhase with SymTransformer {
   override def initContext(ctx: FreshContext): Unit =
     LiftedDefs = ctx.addLocation[mutable.ListBuffer[Tree]](null)
 
-  def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation = {
-    if (ref.isClass && !ref.is(Package) && !ref.owner.is(Package)) {
+  def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation =
+    if (ref.isClass && !ref.is(Package) && !ref.owner.is(Package))
       ref.copySymDenotation(
         name = ref.flatName,
         owner = ref.enclosingPackageClass)
-    }
     else ref
-  }
 
   override def prepareForPackageDef(tree: PackageDef)(implicit ctx: Context): FreshContext =
     ctx.fresh.updateStore(LiftedDefs, new mutable.ListBuffer[Tree])
 
   private def liftIfNested(tree: Tree)(implicit ctx: Context) =
-    if (ctx.owner is Package) tree
+    if (ctx.owner.is(Package)) tree
     else {
       transformFollowing(tree).foreachInThicket(liftedDefs += _)
       EmptyTree
     }
 
   override def transformStats(stats: List[Tree])(implicit ctx: Context): List[Tree] =
-    if (ctx.owner is Package) {
+    if (ctx.owner.is(Package)) {
       val liftedStats = stats ++ liftedDefs
       liftedDefs.clear()
       liftedStats

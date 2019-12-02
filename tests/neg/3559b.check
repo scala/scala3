@@ -1,0 +1,4 @@
+-- Error: tests/neg/3559b.scala:3:9 ------------------------------------------------------------------------------------
+3 |    this(b)           // error
+  |         ^
+  |         b is not accessible from constructor arguments

@@ -6,7 +6,7 @@ abstract class AbsFun[@specialized T, @specialized U] {
   def sum(xs: List[T]): Int
 
   def prod(xs: List[T], mul: (Int, T) => Int): Int =
-    (1 /: xs)(mul)
+    xs.foldLeft(1)(mul)
 
   // concrete function, not specialized
   def bar(m: String): String = m
@@ -19,7 +19,7 @@ class Square extends AbsFun[Int, Int] {
   def apply(x: Int): Int = x * x
 
   def sum(xs: List[Int]): Int =
-    (0 /: xs) (_ + _)
+    xs.foldLeft(0) (_ + _)
 
   def abs(m: Int): Int =
     sum(List(1, 2, 3))

@@ -17,14 +17,14 @@ guidelines on how to design a sound type system for full Scala.
 As was argued in the previous blog post, the danger a path-dependent type
 system like Scala's faces is inconsistent bounds or aliases. For
 instance, you might have a type alias
-
-      type T = String
-
+```scala
+type T = String
+```
 in scope in some part of the program, but in another part the same
 type member `T` is known as
-
-      type T = Int
-
+```scala
+type T = Int
+```
 If you connect the two parts, you end up allowing assigning a `String`
 to an `Int` and vice versa, which is unsound - it will crash at
 runtime with a `ClassCastException`. The problem is that there
@@ -51,17 +51,17 @@ a type selection might _not_ be a value that's constructed with a
 categories:
 
  1. The prefix value might be lazy, and never instantiated to anything, as in:
-
-        lazy val p: S = p
-        ... p.T ...
-
+    ```scala
+    lazy val p: S = p
+    ... p.T ...
+    ```
     Note that trying to access the lazy value `p` would result in an infinite loop. But using `p` in a type does not force its evaluation, so we might never evaluate `p`. Since `p` is not initialized with a `new`, bad bounds for `T` would go undetected.
 
  2. The prefix value might be initialized to `null`, as in
-
-        val p: S = null
-        ... p.T ...
-
+    ```scala
+    val p: S = null
+    ... p.T ...
+    ```
     The problem here is similar to the first one. `p` is not initialized
     with a `new` so we know nothing about the bounds of `T`.
 
@@ -73,16 +73,20 @@ at the discussion for issues [#50](https://github.com/lampepfl/dotty/issues/50)
 and [#1050](https://github.com/lampepfl/dotty/issues/1050) in the
 [Dotty](https://github.com/lampepfl/dotty/issues/1050) repository
 on GitHub. All issues work fundamentally in the same way: Construct a type `S`
-which has a type member `T` with bad bounds, say
+which has a type member `T` with bad bounds, say:
 
-    Any <: T <: Nothing
+```scala
+Any <: T <: Nothing
+```
 
 Then, use the left subtyping to turn an expression of type `Any` into
 an expression of type `T` and use the right subtyping to turn that
 expression into an expression of type `Nothing`:
 
-    def f(x: Any): p.T = x
-    def g(x: p.T): Nothing = x
+```scala
+def f(x: Any): p.T = x
+def g(x: p.T): Nothing = x
+```
 
 Taken together, `g(f(x))` will convert every expression into an
 expression of type `Nothing`. Since `Nothing` is a subtype of every
@@ -140,7 +144,7 @@ arithmetic.
 To ease the transition, we will continue for a while to allow unrestricted type
 projections under a flag, even though they are potentially
 unsound. In the current Dotty compiler, that flag is a language import
-`-language:Scala2`, but it could be something different for other
+`-language:Scala2Compat`, but it could be something different for other
 compilers, e.g. `-unsafe`.  Maybe we can find rules that are less
 restrictive than the ones we have now, and are still sound.  But one
 aspect should be non-negotiable: Any fundamental deviations from the
@@ -150,10 +154,3 @@ should make sure not to back-slide. And if the experience of the past
 10 years has taught us one thing, it is that the meta theory of type
 systems has many more surprises in store than one might think. That's
 why mechanical proofs are essential.
-
-
-
-
-
-
-

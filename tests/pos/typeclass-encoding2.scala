@@ -37,7 +37,7 @@
     }
 
     def sum[T: Monoid](xs: List[T]): T =
-      (Monod.impl[T].unit /: xs)(_ `add` _)
+      xs.foldLeft(Monod.impl[T].unit)(_ `add` _)
 */
 object runtime {
 
@@ -131,7 +131,7 @@ object semiGroups {
   implicit def NatOps: Nat.type = Nat
 
   def sum[T](xs: List[T])(implicit ev: Monoid.Impl[T]) =
-    (Monoid.impl[T].unit /: xs)((x, y) => x `add` y)
+    xs.foldLeft(Monoid.impl[T].unit)((x, y) => x `add` y)
 
   sum(List(1, 2, 3))
   sum(List("hello ", "world!"))
@@ -230,7 +230,7 @@ object ord {
 
   def inf[T](xs: List[T])(implicit ev: Ord.Impl[T]): T = {
     val smallest = Ord.impl[T].minimum
-    (smallest /: xs)(min)
+    xs.foldLeft(smallest)(min)
   }
 
   inf(List[Int]())

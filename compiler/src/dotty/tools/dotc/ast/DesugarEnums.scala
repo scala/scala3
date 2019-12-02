@@ -21,7 +21,7 @@ object DesugarEnums {
   }
 
   /** Attachment containing the number of enum cases and the smallest kind that was seen so far. */
-  val EnumCaseCount: Property.Key[(Int, DesugarEnums.CaseKind.Value)] = new Property.Key
+  val EnumCaseCount: Property.Key[(Int, DesugarEnums.CaseKind.Value)] = Property.Key()
 
   /** The enumeration class that belongs to an enum case. This works no matter
    *  whether the case is still in the enum class or it has been transferred to the
@@ -95,10 +95,11 @@ object DesugarEnums {
   private def enumScaffolding(implicit ctx: Context): List[Tree] = {
     val valuesDef =
       DefDef(nme.values, Nil, Nil, TypeTree(), Select(valuesDot(nme.values), nme.toArray))
+        .withFlags(Synthetic)
     val privateValuesDef =
       ValDef(nme.DOLLAR_VALUES, TypeTree(),
-        New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
-        .withFlags(Private)
+        New(TypeTree(defn.EnumValuesClass.typeRef.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
+        .withFlags(Private | Synthetic)
 
     val valuesOfExnMessage = Apply(
       Select(Literal(Constant("key not found: ")), "concat".toTermName),
@@ -114,6 +115,7 @@ object DesugarEnums {
     )
     val valueOfDef = DefDef(nme.valueOf, Nil, List(param(nme.nameDollar, defn.StringType) :: Nil),
       TypeTree(), valuesOfBody)
+        .withFlags(Synthetic)
 
     valuesDef ::
     privateValuesDef ::
@@ -175,7 +177,7 @@ object DesugarEnums {
     parentTypes.head match {
       case parent: RefTree if parent.name == enumClass.name =>
         // need a widen method to compute correct type parameters for enum base class
-        val widenParamType = (appliedEnumRef /: parentTypes.tail)(makeAndType)
+        val widenParamType = parentTypes.tail.foldLeft(appliedEnumRef)(makeAndType)
         val widenParam = makeSyntheticParameter(tpt = widenParamType)
         val widenDef = DefDef(
           name = s"${cdef.name}$$to$$${enumClass.name}".toTermName,

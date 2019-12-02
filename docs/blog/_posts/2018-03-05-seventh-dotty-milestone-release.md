@@ -18,7 +18,7 @@ You can learn more about Dotty on our [website](http://dotty.epfl.ch).
 
 <!--more-->
 
-This is our seventh scheduled release according to our [6-week release schedule](http://dotty.epfl.ch/docs/usage/version-numbers.html).
+This is our seventh scheduled release according to our [6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
 The [previous technology preview](https://github.com/lampepfl/dotty/releases/tag/0.6.0-RC1) focussed
 on bug fixes and stability work.
 
@@ -70,8 +70,8 @@ object Option {
 ```
 
 
-For more information about [Enumerations](http://dotty.epfl.ch/docs/reference/enums/enums.html)
-and how to use them to model [Algebraic Data Types](http://dotty.epfl.ch/docs/reference/enums/adts.html),
+For more information about [Enumerations](https://dotty.epfl.ch/docs/reference/enums/enums.html)
+and how to use them to model [Algebraic Data Types](https://dotty.epfl.ch/docs/reference/enums/adts.html),
 visit the respective sections in our documentation.
 
 
@@ -99,7 +99,7 @@ The implicit evidence `ev` is only used to constrain the type parameter `X` of `
 can safely cast from `X` to `List[_]`. The usage of the `erased` modifier ensures that the evidence
 is not used and can be safely removed at compilation time.
 
-For more information, visit the [Erased Terms](http://dotty.epfl.ch/docs/reference/metaprogramming/erased-terms.html)
+For more information, visit the [Erased Terms](https://dotty.epfl.ch/docs/reference/metaprogramming/erased-terms.html)
 section of our documentation.
 
 **Note**: Erased terms replace _phantom types_: they have similar semantics, but with the added
@@ -114,7 +114,7 @@ local and imported definitions. Members completions take possible implicit conve
 
 We also improved the `find references` functionality. It is more robust and much faster!
 
-Try it out in [Visual Studio Code](http://dotty.epfl.ch/docs/usage/ide-support.html)!
+Try it out in [Visual Studio Code](https://dotty.epfl.ch/docs/usage/ide-support.html)!
 
 ### Better and safer types in pattern matching (improved GADT support)
 
@@ -204,7 +204,7 @@ using Dotty with sbt, see the
 
 ### IDE support
 It is very easy to start using the Dotty IDE in any Dotty project by following
-the [IDE guide](http://dotty.epfl.ch/docs/usage/ide-support.html).
+the [IDE guide](https://dotty.epfl.ch/docs/usage/ide-support.html).
 
 
 ### Standalone installation
@@ -254,7 +254,7 @@ According to `git shortlog -sn --no-merges 0.6.0..0.7.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](http://dotty.epfl.ch/docs/contributing/getting-started.html),
+Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
 and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry-points into hacking on the compiler.
 

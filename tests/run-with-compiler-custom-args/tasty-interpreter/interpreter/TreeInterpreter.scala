@@ -4,7 +4,7 @@ import scala.tasty.interpreter.jvm.JVMReflection
 import scala.tasty.Reflection
 
 abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
-  import reflect._
+  import reflect.{_, given}
 
   final val LOG = false
 
@@ -13,23 +13,25 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   /** Representation of objects and values in the interpreter */
   type AbstractAny
 
-  type Result = given Env => AbstractAny
+  type Result = (given Env) => AbstractAny
 
   def localValue(sym: Symbol)(implicit env: Env): LocalValue = env(sym)
 
-  def withLocalValue[T](sym: Symbol, value: LocalValue)(in: given Env => T)(implicit env: Env): T =
-    in given env.updated(sym, value)
+  def withLocalValue[T](sym: Symbol, value: LocalValue)(in: (given Env) => T)(implicit env: Env): T =
+    in(given env.updated(sym, value))
 
-  def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: given Env => T)(implicit env: Env): T =
-    in given (env ++ syms.zip(values))
+  def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: (given Env) => T)(implicit env: Env): T =
+    in(given env ++ syms.zip(values))
 
-  def interpretCall(inst: AbstractAny, sym: DefDefSymbol, args: List[AbstractAny]): Result = {
+  def interpretCall(inst: AbstractAny, sym: Symbol, args: List[AbstractAny]): Result = {
     // TODO
     // withLocalValue(`this`, inst) {
-      val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
-      withLocalValues(syms, args.map(LocalValue.valFrom(_))) {
-        eval(sym.tree.rhs.get)
-      }
+      sym.tree match
+        case ddef: DefDef =>
+          val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
+          withLocalValues(syms, args.map(LocalValue.valFrom(_))) {
+            eval(ddef.rhs.get)
+          }
     // }
   }
 
@@ -41,11 +43,12 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
       case _ =>
     }
     val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
-    val IsDefDefSymbol(sym) = fn.symbol
-    val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
-    withLocalValues(syms, evaluatedArgs) {
-      eval(sym.tree.rhs.get)
-    }
+    fn.symbol.tree match
+      case ddef: DefDef =>
+        val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
+        withLocalValues(syms, evaluatedArgs) {
+          eval(ddef.rhs.get)
+        }
   }
 
   def interpretValGet(fn: Term): Result =
@@ -65,7 +68,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def interpretBlock(stats: List[Statement], expr: Term): Result = {
     val newEnv = stats.foldLeft(implicitly[Env])((accEnv, stat) => stat match {
       case ValDef(name, tpt, Some(rhs)) =>
-        def evalRhs = eval(rhs) given accEnv
+        def evalRhs = eval(rhs)(given accEnv)
         val evalRef: LocalValue =
           if (stat.symbol.flags.is(Flags.Lazy)) LocalValue.lazyValFrom(evalRhs)
           else if (stat.symbol.flags.is(Flags.Mutable)) LocalValue.varFrom(evalRhs)
@@ -76,10 +79,10 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
         // TODO: record the environment for closure purposes
         accEnv
       case stat =>
-        eval(stat) given accEnv
+        eval(stat)(given accEnv)
         accEnv
     })
-    eval(expr) given newEnv
+    eval(expr)(given newEnv)
   }
 
   def interpretUnit(): AbstractAny
@@ -133,12 +136,12 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
             def rhs = eval(argss.head.head)
             log("interpretPrivitiveDiv", tree)(interpretPrivitiveDiv(lhs, rhs))
           case _ =>
-            fn.symbol match {
-              case IsDefDefSymbol(sym) => log("interpretCall", tree)(interpretCall(fn, argss))
-              case _ =>
-                assert(argss.isEmpty)
-                log("interpretValGet", tree)(interpretValGet(fn))
-
+            val sym = fn.symbol
+            if (sym.isDefDef) {
+              log("interpretCall", tree)(interpretCall(fn, argss))
+            } else {
+              assert(argss.isEmpty)
+              log("interpretValGet", tree)(interpretValGet(fn))
             }
         }
 
@@ -193,21 +196,21 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     isIntegralPrimitive(tpe) || isFractionalPrimitive(tpe)
 
   private def isIntegralPrimitive(tpe: Type): Boolean = {
-    tpe <:< definitions.ByteType ||
-    tpe <:< definitions.CharType ||
-    tpe <:< definitions.ShortType ||
-    tpe <:< definitions.IntType ||
-    tpe <:< definitions.LongType
+    tpe <:< defn.ByteType ||
+    tpe <:< defn.CharType ||
+    tpe <:< defn.ShortType ||
+    tpe <:< defn.IntType ||
+    tpe <:< defn.LongType
   }
 
   private def isFractionalPrimitive(tpe: Type): Boolean =
-    tpe <:< definitions.FloatType || tpe <:< definitions.DoubleType
+    tpe <:< defn.FloatType || tpe <:< defn.DoubleType
 
 
   private object Call {
     def unapply(arg: Tree): Option[(Term, List[TypeTree], List[List[Term]])] = arg match {
-      case IsSelect(fn) => Some((fn, Nil, Nil))
-      case IsIdent(fn) => Some((fn, Nil, Nil))
+      case fn: Select => Some((fn, Nil, Nil))
+      case fn: Ident => Some((fn, Nil, Nil))
       case Apply(Call(fn, targs, args1), args2) => Some((fn, targs, args1 :+ args2))
       case TypeApply(Call(fn, _, _), targs) => Some((fn, targs, Nil))
       case _ => None

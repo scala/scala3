@@ -213,7 +213,7 @@ more than one type parameter. For instance, here is a trait with contravariant
 and covariant type parameters:
 
 ```scala
-trait Lambda$NP[type -$hkArg$0, +$hkArg1] { type +Apply } extends Lambda$IP with Lambda$NI
+trait Lambda$NP[type -$hkArg$0, +$hkArg$1] { type +Apply } extends Lambda$IP with Lambda$NI
 ```
 
 Aside: the `+` prefix in front of `Apply` indicates that `Apply` is a covariant
@@ -225,9 +225,9 @@ subtypes of traits which don't. The supertraits of `Lambda$NP` would themselves
 be written as follows.
 
 ```scala
-trait Lambda$IP[type $hkArg$0, +$hkArg1] { type +Apply } extends Lambda$II
-trait Lambda$NI[type -$hkArg$0, $hkArg1] { type +Apply } extends Lambda$II
-trait Lambda$II[type $hkArg$0, $hkArg1] { type +Apply }
+trait Lambda$IP[type $hkArg$0, +$hkArg$1] { type +Apply } extends Lambda$II
+trait Lambda$NI[type -$hkArg$0, $hkArg$1] { type +Apply } extends Lambda$II
+trait Lambda$II[type $hkArg$0, $hkArg$1] { type +Apply }
 ```
 
 `Lambda` traits are special in that they influence how type applications are
@@ -313,7 +313,7 @@ The type parameters of `Rep` are the type parameters of its upper bound, so
 More generally, a higher-kinded type declaration
 
 ```scala
-type T[v1 X1 >: S1 <: U1, ..., vn XN >: S1 <: UN] >: SR <: UR
+type T[v1 X1 >: S1 <: U1, ..., vn XN >: SN <: UN] >: SR <: UR
 ```
 
 is encoded as

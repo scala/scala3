@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   override def toString = "Test"
 
   assert(s"$this" == "Test")
@@ -7,4 +7,5 @@ object Test extends dotty.runtime.LegacyApp {
   assert(s"$this.##" == "Test.##")
   assert(s"$this.toString" == "Test.toString")
   assert(s"$this=THIS" == "Test=THIS")
+  assert(raw"$"" == "\"")
 }

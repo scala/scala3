@@ -28,7 +28,12 @@ class InterfaceEntryPointTest {
     if (Files.notExists(out))
       Files.createDirectory(out)
 
-    val args = sources ++ List("-d", out.toString, "-usejavacp")
+    val args = sources ++ List(
+      "-d",
+      out.toString,
+      "-classpath", "", // Avoid the default "."
+      "-usejavacp"
+    )
 
     val mainClass = Class.forName("dotty.tools.dotc.Main")
     val process = mainClass.getMethod("process",

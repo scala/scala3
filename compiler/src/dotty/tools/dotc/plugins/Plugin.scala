@@ -28,6 +28,7 @@ sealed trait Plugin {
    *
    *  Research plugin receives a phase plan and return a new phase plan, while
    *  non-research plugin returns a list of phases to be inserted.
+   *
    */
   def isResearch: Boolean = isInstanceOf[ResearchPlugin]
 
@@ -38,6 +39,7 @@ sealed trait Plugin {
   val optionsHelp: Option[String] = None
 }
 
+/** A standard plugin can be inserted into the normal compilation pipeline */
 trait StandardPlugin extends Plugin {
   /** Non-research plugins should override this method to return the phases
    *
@@ -47,6 +49,10 @@ trait StandardPlugin extends Plugin {
   def init(options: List[String]): List[PluginPhase]
 }
 
+/** A research plugin may customize the compilation pipeline freely
+ *
+ *  @note Research plugins are only supported by nightly or snapshot build of the compiler.
+ */
 trait ResearchPlugin extends Plugin {
   /** Research plugins should override this method to return the new phase plan
    *
@@ -71,15 +77,15 @@ object Plugin {
     new java.net.URLClassLoader(urls.toArray, compilerLoader)
   }
 
-  type AnyClass = Class[_]
+  type AnyClass = Class[?]
 
   /** Use a class loader to load the plugin class.
    */
   def load(classname: String, loader: ClassLoader): Try[AnyClass] = {
     import scala.util.control.NonFatal
-    try {
+    try
       Success[AnyClass](loader loadClass classname)
-    } catch {
+    catch {
       case NonFatal(e) =>
         Failure(new PluginLoadException(classname, s"Error: unable to load class $classname: ${e.getMessage}"))
       case e: NoClassDefFoundError =>
@@ -97,8 +103,7 @@ object Plugin {
   def loadAllFrom(
     paths: List[List[Path]],
     dirs: List[Path],
-    ignoring: List[String]): List[Try[Plugin]] =
-  {
+    ignoring: List[String]): List[Try[Plugin]] = {
 
     def fromFile(inputStream: InputStream, path: Path): String = {
       val props = new Properties

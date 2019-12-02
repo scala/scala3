@@ -1,5 +1,5 @@
 // see the comments for macroExpand.onDelayed for an explanation of what's tested here
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   case class Foo(i: Int, s: String, b: Boolean)
   def foo[C, L](c: C)(implicit iso: Iso[C, L]): L = iso.to(c)
 

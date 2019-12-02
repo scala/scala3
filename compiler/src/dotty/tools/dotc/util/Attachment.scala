@@ -13,7 +13,7 @@ object Attachment {
    *  Clients should inherit from Container instead.
    */
   trait LinkSource {
-    private[Attachment] var next: Link[_]
+    private[Attachment] var next: Link[?]
 
     /** Optionally get attachment corresponding to `key` */
     final def getAttachment[V](key: Key[V]): Option[V] = {
@@ -21,6 +21,14 @@ object Attachment {
       if (nx == null) None
       else if (nx.key eq key) Some(nx.value.asInstanceOf[V])
       else nx.getAttachment[V](key)
+    }
+
+    /** Does an attachment corresponding to `key` exist? */
+    final def hasAttachment[V](key: Key[V]): Boolean = {
+      val nx = next
+      if (nx == null) false
+      else if (nx.key eq key) true
+      else nx.hasAttachment[V](key)
     }
 
     /** The attachment corresponding to `key`.
@@ -76,7 +84,7 @@ object Attachment {
     }
 
     /** The list of all keys and values attached to this container. */
-    final def allAttachments: List[(Key[_], Any)] = {
+    final def allAttachments: List[(Key[?], Any)] = {
       val nx = next
       if (nx == null) Nil else (nx.key, nx.value) :: nx.allAttachments
     }
@@ -84,18 +92,18 @@ object Attachment {
 
   /** A private, concrete implementation class linking attachments.
    */
-  private[Attachment] class Link[+V](val key: Key[V], val value: V, var next: Link[_])
+  private[Attachment] class Link[+V](val key: Key[V], val value: V, var next: Link[?])
       extends LinkSource
 
   /** A trait for objects that can contain attachments */
   trait Container extends LinkSource {
-    private[Attachment] var next: Link[_] = null
+    private[Attachment] var next: Link[?] = null
 
     /** Copy the sticky attachments from `container` to this container. */
     final def withAttachmentsFrom(container: Container): this.type = {
-      var current: Link[_] = container.next
+      var current: Link[?] = container.next
       while (current != null) {
-        if (current.key.isInstanceOf[StickyKey[_]]) pushAttachment(current.key, current.value)
+        if (current.key.isInstanceOf[StickyKey[?]]) pushAttachment(current.key, current.value)
         current = current.next
       }
       this
@@ -107,7 +115,7 @@ object Attachment {
     }
 
     final def pushAttachment[V](key: Key[V], value: V): Unit = {
-      assert(!getAttachment(key).isDefined, s"duplicate attachment for key $key")
+      assert(!hasAttachment(key), s"duplicate attachment for key $key")
       next = new Link(key, value, next)
     }
 

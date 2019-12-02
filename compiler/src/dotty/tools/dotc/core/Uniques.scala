@@ -14,11 +14,12 @@ import util.HashSet
 object Uniques {
 
   private def recordCaching(tp: Type): Unit = recordCaching(tp.hash, tp.getClass)
-  private def recordCaching(h: Int, clazz: Class[_]): Unit =
+  private def recordCaching(h: Int, clazz: Class[?]): Unit =
     if (h == NotCached) {
       record("uncached-types")
       record(s"uncached: $clazz")
-    } else {
+    }
+    else {
       record("cached-types")
       record(s"cached: $clazz")
     }
@@ -31,8 +32,10 @@ object Uniques {
       val result = ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
       if (ctx.uniques.size > size) record(s"fresh unique ${tp.getClass}")
       result
-    } else ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
-  } /* !!! DEBUG
+    }
+    else ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
+  }
+  /* !!! DEBUG
   ensuring (
     result => tp.toString == result.toString || {
       println(s"cache mismatch; tp = $tp, cached = $result")

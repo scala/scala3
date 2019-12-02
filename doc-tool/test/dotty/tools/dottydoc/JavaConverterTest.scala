@@ -63,7 +63,7 @@ class JavaConverterTest {
       def members = df :: Nil
       def traitParams = List(paramList)
       def companionPath = "path" :: "to" :: "companion" :: Nil
-      def companionPath_=(xs: List[String]) = Unit
+      def companionPath_=(xs: List[String]) = {}
     }
     assertSerializedCorrectly(trt, trt.asJava)
     val cls = new Class {
@@ -78,7 +78,7 @@ class JavaConverterTest {
       def superTypes = new NoLink("title", "query") :: Nil
       def members = Nil
       def companionPath = "path" :: "to" :: "companion" :: Nil
-      def companionPath_=(xs: List[String]) = Unit
+      def companionPath_=(xs: List[String]) = {}
       def constructors = List(List(paramList))
     }
     assertSerializedCorrectly(cls, cls.asJava)
@@ -95,7 +95,7 @@ class JavaConverterTest {
       def superTypes = new NoLink("title", "query") :: Nil
       def members = Nil
       def companionPath = "path" :: "to" :: "companion" :: Nil
-      def companionPath_=(xs: List[String]) = Unit
+      def companionPath_=(xs: List[String]) = {}
     }
     assertSerializedCorrectly(caseClass, caseClass.asJava)
     val obj = new EObject {
@@ -110,7 +110,7 @@ class JavaConverterTest {
       def superTypes = new NoLink("title", "query") :: Nil
       def members = df :: Nil
       def companionPath = "path" :: "to" :: "companion" :: Nil
-      def companionPath_=(xs: List[String]) = Unit
+      def companionPath_=(xs: List[String]) = {}
     }
     assertSerializedCorrectly(obj, obj.asJava)
     val typeAlias = new TypeAlias {

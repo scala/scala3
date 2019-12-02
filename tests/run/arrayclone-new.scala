@@ -1,6 +1,6 @@
 import scala.reflect.ClassTag
 
-object Test extends dotty.runtime.LegacyApp{
+object Test extends App{
   BooleanArrayClone;
   ByteArrayClone;
   ShortArrayClone;

@@ -56,10 +56,9 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
         info = staticInfo(mold.info)
       )
     }
-    for (sym <- mixin.info.decls) {
+    for (sym <- mixin.info.decls)
       if (needsMixinForwarder(sym) || sym.isConstructor || sym.isGetter && sym.is(Lazy) || sym.is(Method, butNot = Deferred))
         newImpl(sym.asTerm).enteredAfter(thisPhase)
-    }
     // The trait is now fully augmented so the flag isn't needed anymore.
     mixin.resetFlag(Scala2xPartiallyAugmented)
   }
@@ -75,7 +74,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
     def currentClass = ctx.owner.enclosingClass.asClass
     app match {
       case Apply(sel @ Select(Super(_, _), _), args)
-      if sel.symbol.owner.is(Scala2x) && currentClass.mixins.contains(sel.symbol.owner) =>
+      if sel.symbol.owner.is(Scala2x) && currentClass.mixins.contains(sel.symbol.owner) && !ctx.settings.scalajs.value =>
         val impl = implMethod(sel.symbol)
         if (impl.exists) Apply(ref(impl), This(currentClass) :: args).withSpan(app.span)
         else app // could have been an abstract method in a trait linked to from a super constructor
@@ -88,7 +87,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
   private def implMethod(meth: Symbol)(implicit ctx: Context): Symbol = {
     val implName = ImplMethName(meth.name.asTermName)
     val cls = meth.owner
-    if (cls.is(Scala2xTrait))
+    if (cls.isAllOf(Scala2xTrait))
       if (meth.isConstructor)
         cls.info.decl(nme.TRAIT_CONSTRUCTOR).symbol
       else
@@ -98,5 +97,5 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
     else throw new AssertionError(i"no impl method for $meth")
   }
 
-  private val Scala2xTrait = allOf(Scala2x, Trait)
+  private val Scala2xTrait = Scala2x | Trait
 }

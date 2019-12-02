@@ -16,7 +16,7 @@ import scala.annotation.internal.sharable
  */
 abstract class Printer {
 
-  private[this] var prec: Precedence = GlobalPrec
+  private var prec: Precedence = GlobalPrec
 
   /** The current precedence level.
    *  When pretty-printing arguments of operator `op`, `currentPrecedence` must equal `op`'s precedence level,

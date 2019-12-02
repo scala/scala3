@@ -1,97 +1,95 @@
 import scala.quoted._
-import scala.quoted.autolift._
-
-import scala.tasty._
+import scala.quoted.autolift.given
 
 object Macros {
 
   inline def testDefinitions(): Unit = ${testDefinitionsImpl}
 
-  def testDefinitionsImpl(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect._
+  def testDefinitionsImpl(given qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty.{_, given}
 
     val buff = List.newBuilder[String]
     def printout(x: => String): Unit = {
 
-      buff += (try x catch { case ex => ex.getClass + ": " + ex.getMessage})
+      buff += (try x catch { case ex => ex.getClass.toString + ": " + ex.getMessage})
     }
 
-    printout(definitions.RootPackage.name)
-    printout(definitions.ScalaPackage.name)
+    printout(defn.RootPackage.name)
+    printout(defn.ScalaPackage.name)
 
-    printout(definitions.AnyClass.name)
-    printout(definitions.AnyValClass.name)
-    printout(definitions.ObjectClass.name)
-    printout(definitions.AnyRefClass.name)
+    printout(defn.AnyClass.name)
+    printout(defn.AnyValClass.name)
+    printout(defn.ObjectClass.name)
+    printout(defn.AnyRefClass.name)
 
-    printout(definitions.NullClass.name)
-    printout(definitions.NothingClass.name)
+    printout(defn.NullClass.name)
+    printout(defn.NothingClass.name)
 
-    printout(definitions.UnitClass.name)
-    printout(definitions.ByteClass.name)
-    printout(definitions.ShortClass.name)
-    printout(definitions.CharClass.name)
-    printout(definitions.IntClass.name)
-    printout(definitions.LongClass.name)
-    printout(definitions.FloatClass.name)
-    printout(definitions.DoubleClass.name)
-    printout(definitions.BooleanClass.name)
+    printout(defn.UnitClass.name)
+    printout(defn.ByteClass.name)
+    printout(defn.ShortClass.name)
+    printout(defn.CharClass.name)
+    printout(defn.IntClass.name)
+    printout(defn.LongClass.name)
+    printout(defn.FloatClass.name)
+    printout(defn.DoubleClass.name)
+    printout(defn.BooleanClass.name)
 
-    printout(definitions.StringClass.name)
-    printout(definitions.ClassClass.name)
-    printout(definitions.ArrayClass.name)
-    printout(definitions.PredefModule.name)
+    printout(defn.StringClass.name)
+    printout(defn.ClassClass.name)
+    printout(defn.ArrayClass.name)
+    printout(defn.PredefModule.name)
 
-    printout(definitions.JavaLangPackage.name)
+    printout(defn.JavaLangPackage.name)
 
-    printout(definitions.ArrayModule.name)
+    printout(defn.ArrayModule.name)
 
-    printout(definitions.Array_apply.name)
-    printout(definitions.Array_clone.name)
-    printout(definitions.Array_length.name)
-    printout(definitions.Array_update.name)
+    printout(defn.Array_apply.name)
+    printout(defn.Array_clone.name)
+    printout(defn.Array_length.name)
+    printout(defn.Array_update.name)
 
-    printout(definitions.RepeatedParamClass.name)
+    printout(defn.RepeatedParamClass.name)
 
-    printout(definitions.OptionClass.name)
-    printout(definitions.NoneModule.name)
-    printout(definitions.SomeModule.name)
+    printout(defn.OptionClass.name)
+    printout(defn.NoneModule.name)
+    printout(defn.SomeModule.name)
 
-    printout(definitions.ProductClass.name)
-
-    for (i <- 0 to 25)
-      printout(definitions.FunctionClass(i).name)
+    printout(defn.ProductClass.name)
 
     for (i <- 0 to 25)
-      printout(definitions.FunctionClass(i, isImplicit = true).name)
+      printout(defn.FunctionClass(i).name)
+
+    for (i <- 0 to 25)
+      printout(defn.FunctionClass(i, isImplicit = true).name)
 
     for (i <- 1 to 25)
-      printout(definitions.FunctionClass(i, isErased = true).name)
+      printout(defn.FunctionClass(i, isErased = true).name)
 
     for (i <- 1 to 25)
-      printout(definitions.FunctionClass(i, isImplicit = true, isErased = true).name)
+      printout(defn.FunctionClass(i, isImplicit = true, isErased = true).name)
 
     for (i <- 2 to 22)
-      printout(definitions.TupleClass(i).name)
+      printout(defn.TupleClass(i).name)
 
-    printout(definitions.ScalaPrimitiveValueClasses.map(_.name).toString)
-    printout(definitions.ScalaNumericValueClasses.map(_.name).toString)
+    printout(defn.ScalaPrimitiveValueClasses.map(_.name).toString)
+    printout(defn.ScalaNumericValueClasses.map(_.name).toString)
 
-    printout(definitions.UnitType.showExtractors)
-    printout(definitions.ByteType.showExtractors)
-    printout(definitions.CharType.showExtractors)
-    printout(definitions.IntType.showExtractors)
-    printout(definitions.LongType.showExtractors)
-    printout(definitions.FloatType.showExtractors)
-    printout(definitions.DoubleType.showExtractors)
-    printout(definitions.BooleanType.showExtractors)
-    printout(definitions.AnyType.showExtractors)
-    printout(definitions.AnyValType.showExtractors)
-    printout(definitions.AnyRefType.showExtractors)
-    printout(definitions.ObjectType.showExtractors)
-    printout(definitions.NothingType.showExtractors)
-    printout(definitions.NullType.showExtractors)
-    printout(definitions.StringType.showExtractors)
+    printout(defn.UnitType.showExtractors)
+    printout(defn.ByteType.showExtractors)
+    printout(defn.CharType.showExtractors)
+    printout(defn.IntType.showExtractors)
+    printout(defn.LongType.showExtractors)
+    printout(defn.FloatType.showExtractors)
+    printout(defn.DoubleType.showExtractors)
+    printout(defn.BooleanType.showExtractors)
+    printout(defn.AnyType.showExtractors)
+    printout(defn.AnyValType.showExtractors)
+    printout(defn.AnyRefType.showExtractors)
+    printout(defn.ObjectType.showExtractors)
+    printout(defn.NothingType.showExtractors)
+    printout(defn.NullType.showExtractors)
+    printout(defn.StringType.showExtractors)
 
 
     '{println(${buff.result().mkString("\n")})}

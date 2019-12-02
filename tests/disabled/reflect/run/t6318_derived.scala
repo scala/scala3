@@ -1,6 +1,6 @@
 import scala.reflect.{ClassTag, classTag}
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def test[T: ClassTag](x: T): Unit = {
     println(classTag[T].runtimeClass.isAssignableFrom(x.getClass))
     println(classTag[T].unapply(x))

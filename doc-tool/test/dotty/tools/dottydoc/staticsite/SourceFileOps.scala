@@ -13,7 +13,7 @@ trait SourceFileOps {
   import scala.collection.JavaConverters._
   val site = new Site(
     new java.io.File("doc-tool/resources/"),
-    "test-site", "v0.1", "http://github.com/lampepfl/dotty", Map.empty
+    "test-site", "v0.1", Some("http://github.com/lampepfl/dotty"), None, Map.empty
   )
 
   def stringToSource(path: String, sourceCode: String): SourceFile = {

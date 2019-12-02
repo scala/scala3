@@ -43,12 +43,11 @@ object Debug {
       source.substring(fromSourcesOut.toString.length + 1, source.length - x.extension.length - 1).replace('/', '.')
     }.toList
 
-    val fromTastyArgs = {
+    val fromTastyArgs =
       "-from-tasty" ::
       "-d" :: fromTastyOut.toString ::
       insertClasspathInArgs(args.filterNot(_.endsWith(".scala")).toList, fromSourcesOut.toString) :::
       classes
-    }
 
     println("Compiling TASTY from .class sources")
     val compilation2 = dotc.Main.process(fromTastyArgs.toArray)

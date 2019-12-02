@@ -2,6 +2,7 @@
 
 
 
+
 import collection.mutable.UnrolledBuffer
 
 
@@ -57,7 +58,8 @@ object Test {
     assert(u2.size == 0)
     assertCorrect(u1)
 
-    u1 concat UnrolledBuffer()
+    // Dotty FIXME: type argument should not be needed
+    u1 concat UnrolledBuffer[Int]()
     assertCorrect(u1)
 
     val u3 = u1 map { x => x }

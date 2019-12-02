@@ -18,11 +18,10 @@ object ProtectedAccessors {
   val name: String = "protectedAccessors"
 
   /** Is the current context's owner inside the access boundary established by `sym`? */
-  def insideBoundaryOf(sym: Symbol)(implicit ctx: Context): Boolean = {
-    if (sym.is(JavaDefined)) {
+  def insideBoundaryOf(sym: Symbol)(implicit ctx: Context): Boolean =
+    if (sym.is(JavaDefined))
       sym.is(JavaStatic) ||  // Java's static protected definitions are treated as public
       ctx.owner.enclosingPackageClass == sym.enclosingPackageClass
-    }
     else {
       // For Scala-defined symbols we currently allow private and protected accesses
       // from inner packages, and compensate by widening accessibility of such symbols to public.
@@ -30,7 +29,6 @@ object ProtectedAccessors {
       val boundary = sym.accessBoundary(sym.enclosingPackageClass)
       ctx.owner.isContainedIn(boundary) || ctx.owner.isContainedIn(boundary.linkedClass)
     }
-  }
 
   /** Do we need a protected accessor if the current context's owner
    *  is not in a subclass or subtrait of `sym`?
@@ -40,8 +38,8 @@ object ProtectedAccessors {
     !sym.owner.is(Trait) && // trait methods need to be handled specially, are currently always public
     !insideBoundaryOf(sym)
 
-   /** Do we need a protected accessor for accessing sym from the current context's owner? */
-   def needsAccessor(sym: Symbol)(implicit ctx: Context): Boolean =
+  /** Do we need a protected accessor for accessing sym from the current context's owner? */
+  def needsAccessor(sym: Symbol)(implicit ctx: Context): Boolean =
     needsAccessorIfNotInSubclass(sym) &&
     !ctx.owner.enclosingClass.derivesFrom(sym.owner)
 }

@@ -68,11 +68,11 @@ object CompilerCommand {
     val settings = ctx.settings
 
     /** Creates a help message for a subset of options based on cond */
-    def availableOptionsMsg(cond: Setting[_] => Boolean): String = {
+    def availableOptionsMsg(cond: Setting[?] => Boolean): String = {
       val ss                  = (ctx.settings.allSettings filter cond).toList sortBy (_.name)
       val width               = (ss map (_.name.length)).max
       def format(s: String)   = ("%-" + width + "s") format s
-      def helpStr(s: Setting[_]) = {
+      def helpStr(s: Setting[?]) = {
         def defaultValue = s.default match {
           case _: Int | _: String => s.default.toString
           case _ =>
@@ -80,19 +80,18 @@ object CompilerCommand {
             // For example 'false' for the version command.
             ""
         }
-        def formatSetting(name: String, value: String) = {
+        def formatSetting(name: String, value: String) =
           if (value.nonEmpty)
           // the format here is helping to make empty padding and put the additional information exactly under the description.
             s"\n${format("")} $name: $value."
           else
             ""
-        }
         s"${format(s.name)} ${s.description}${formatSetting("Default", defaultValue)}${formatSetting("Choices", s.legalChoices)}"
       }
       ss map helpStr mkString "\n"
     }
 
-    def createUsageMsg(label: String, shouldExplain: Boolean, cond: Setting[_] => Boolean): String = {
+    def createUsageMsg(label: String, shouldExplain: Boolean, cond: Setting[?] => Boolean): String = {
       val prefix = List(
         Some(shortUsage),
         Some(explainAdvanced) filter (_ => shouldExplain),
@@ -102,9 +101,9 @@ object CompilerCommand {
       prefix + "\n" + availableOptionsMsg(cond)
     }
 
-    def isStandard(s: Setting[_]): Boolean = !isAdvanced(s) && !isPrivate(s)
-    def isAdvanced(s: Setting[_]): Boolean = s.name startsWith "-X"
-    def isPrivate(s: Setting[_]) : Boolean = s.name startsWith "-Y"
+    def isStandard(s: Setting[?]): Boolean = !isAdvanced(s) && !isPrivate(s)
+    def isAdvanced(s: Setting[?]): Boolean = s.name.startsWith("-X") && s.name != "-X"
+    def isPrivate(s: Setting[?]) : Boolean = s.name.startsWith("-Y") && s.name != "-Y"
 
     /** Messages explaining usage and options */
     def usageMessage    = createUsageMsg("where possible standard", shouldExplain = false, isStandard)
@@ -113,7 +112,14 @@ object CompilerCommand {
 
     def shouldStopWithInfo = {
       import settings._
-      Set(help, Xhelp, Yhelp, showPlugins) exists (_.value)
+      Set(help, Xhelp, Yhelp, showPlugins, XshowPhases) exists (_.value)
+    }
+
+    def phasesMessage: String = {
+      (new Compiler()).phases.map {
+        case List(single) => single.phaseName
+        case more => more.map(_.phaseName).mkString("{", ", ", "}")
+      }.mkString("\n")
     }
 
     def infoMessage: String = {
@@ -122,6 +128,7 @@ object CompilerCommand {
       else if (Xhelp.value) xusageMessage
       else if (Yhelp.value) yusageMessage
       else if (showPlugins.value) ctx.pluginDescriptions
+      else if (XshowPhases.value) phasesMessage
       else ""
     }
 
@@ -140,7 +147,8 @@ object CompilerCommand {
     else if (shouldStopWithInfo) {
       ctx.echo(infoMessage)
       Nil
-    } else {
+    }
+    else {
       if (sourcesRequired && summary.arguments.isEmpty) ctx.echo(usageMessage)
       summary.arguments
     }

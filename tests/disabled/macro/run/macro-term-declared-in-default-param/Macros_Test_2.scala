@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def foo(bar: String = { def foo: String = macro Impls.foo; foo }) = println(bar)
 
   foo()

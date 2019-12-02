@@ -6,7 +6,7 @@ import scala.reflect.api.Mirror
 class C
 object C
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   object test1 {
     val m = cm
     type T = Int

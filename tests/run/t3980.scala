@@ -5,15 +5,15 @@ object A {
     x
   }
   def run2: Unit = {
-	lazy val y: Int = 2
-	println(y)
-	println(y)
+  lazy val y: Int = 2
+  println(y)
+  println(y)
   }
 }
 
 object Test {
   def main(args: Array[String]) = {
-	A.run1
-	A.run2
+  A.run1
+  A.run2
   }
 }

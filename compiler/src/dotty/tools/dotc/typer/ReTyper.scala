@@ -59,7 +59,7 @@ class ReTyper extends Typer with ReChecking {
         tree.expr.withType(tpt1.tpe)
       case _ => typed(tree.expr)
     }
-   untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
+    untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
   }
 
   override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree =
@@ -88,9 +88,8 @@ class ReTyper extends Typer with ReChecking {
     untpd.cpy.UnApply(tree)(fun1, implicits1, patterns1).withType(tree.tpe)
   }
 
-  override def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = {
+  override def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree =
     typedApply(tree, selType)
-  }
 
   override def localDummy(cls: ClassSymbol, impl: untpd.Template)(implicit ctx: Context): Symbol = impl.symbol
 
@@ -131,7 +130,6 @@ class ReTyper extends Typer with ReChecking {
 
   override def inlineExpansion(mdef: DefDef)(implicit ctx: Context): Tree = mdef
 
-  override def checkVariance(tree: Tree)(implicit ctx: Context): Unit = ()
   override def inferView(from: Tree, to: Type)(implicit ctx: Context): Implicits.SearchResult =
     Implicits.NoMatchingImplicitsFailure
   override def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit = ()

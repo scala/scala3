@@ -156,13 +156,11 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   /* various configuration options used by backend */
   def emitAsmp: Option[String]
   def dumpClasses: Option[String]
-  def mainClass: Option[String]
   def noForwarders: Boolean
   def debuglevel: Int
   def settings_debug: Boolean
   def targetPlatform: String
   def sourceFileFor(cu: CompilationUnit): String
-  def setMainClass(name: String): Unit
   def informProgress(msg: String): Unit
   def hasLabelDefs: Boolean // whether this compiler uses LabelDefs (i.e., scalac)
 
@@ -508,7 +506,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def isNonBottomSubClass(sym: Symbol): Boolean
     def hasAnnotation(sym: Symbol): Boolean
     def shouldEmitForwarders: Boolean
-    def isJavaEntryPoint: Boolean
     def isJavaDefaultMethod: Boolean
     def isClassConstructor: Boolean
     def isSerializable: Boolean
@@ -602,7 +599,11 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def params: List[Symbol]
     def resultType: Type
     def memberInfo(s: Symbol): Type
-    def membersBasedOnFlags(excludedFlags: Flags, requiredFlags: Flags): List[Symbol]
+
+    /** The members of this type that have all of `required` flags but none of `excluded` flags set.
+     *  The members are sorted by name and signature to guarantee a stable ordering.
+     */
+    def sortedMembersBasedOnFlags(required: Flags, excluded: Flags): List[Symbol]
     def members: List[Symbol]
     def decls: List[Symbol]
     def underlying: Type

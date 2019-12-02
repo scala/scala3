@@ -3,7 +3,7 @@ import scala.reflect.runtime.{universe => ru}
 import scala.reflect.runtime.{currentMirror => cm}
 import scala.tools.reflect.{ToolBox, mkSilentFrontEnd}
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val toolbox = cm.mkToolBox(options = "-deprecation", frontEnd = mkSilentFrontEnd())
   toolbox.eval(reify{
     object Utils {

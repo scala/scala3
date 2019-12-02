@@ -4,6 +4,6 @@ class Ticket1909 (x: Int) {
     bar()
   })
 }
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   new Ticket1909()
 }

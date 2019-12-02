@@ -2,7 +2,7 @@ import scala.reflect.runtime.universe._
 import scala.reflect.ClassTag
 import internal._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def typeTagIsManifest[T: TypeTag : ClassTag] = {
     println(manifest[T])
   }

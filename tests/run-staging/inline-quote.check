@@ -1,0 +1,4 @@
+{
+  scala.Predef.println("foo")
+  45
+}

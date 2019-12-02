@@ -1,1 +1,1 @@
-Set(List(List(C), Stream(D, ?)))
+Set(List(List(C), LazyList(D, ?)))

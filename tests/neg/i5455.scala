@@ -11,10 +11,9 @@ object Library {
     def toInt(n: Nat): Int = n
 
   }
-  delegate NatOps {
-    def (x: Nat) * (y: Nat): Nat = x * y
-    def (x: Nat) toInt: Int = x
-  }
+  given extension (x: Nat)
+    def * (y: Nat): Nat = x * y
+    def toInt: Int = x
 }
 
 object User extends App {

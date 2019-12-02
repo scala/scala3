@@ -161,7 +161,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
     }
 
     def emitValDefs: List[ValDef] = {
-      (lhs, rhs).zipped.map((symbol, tree) => ValDef(symbol.asTerm, tree.ensureConforms(symbol.info)))
+      lhs.lazyZip(rhs).map((symbol, tree) => ValDef(symbol.asTerm, tree.ensureConforms(symbol.info)))
     }
   }
   object NoRebindings extends Rebindings(Nil, Nil)
@@ -570,7 +570,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
 
       def emitVars = storedBinders.nonEmpty
 
-      lazy val storedSubsted = (subPatBinders, subPatRefs).zipped.partition{ case (sym, _) => storedBinders(sym) }
+      lazy val storedSubsted = subPatBinders.lazyZip(subPatRefs).partition{ case (sym, _) => storedBinders(sym) }
 
       def stored = storedSubsted._1
 
@@ -607,7 +607,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
             // only store binders actually used
             val (subPatBindersStored, subPatRefsStored) = stored.filter{case (b, _) => usedBinders(b)}.unzip
 
-            Block((subPatBindersStored.toList, subPatRefsStored.toList).zipped.map((bind, ref) => {
+            Block(subPatBindersStored.toList.lazyZip(subPatRefsStored.toList).map((bind, ref) => {
               // required in case original pattern had a more precise type
               // eg case s@"foo" =>  would be otherwise translated to s with type String instead of String("foo")
               def refTpeWiden = ref.tpe.widen
@@ -1387,7 +1387,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
       // (it will later result in a type test when `tp` is not a subtype of `b.info`)
       // TODO: can we simplify this, together with the Bound case?
       def subPatBinders = subBoundTrees map (_.binder)
-      lazy val subBoundTrees = (args, subPatTypes).zipped map newBoundTree
+      lazy val subBoundTrees = args.lazyZip(subPatTypes) map newBoundTree
 
       // never store these in local variables (for PreserveSubPatBinders)
       lazy val ignoredSubPatBinders: Set[Symbol] = subPatBinders zip args collect { case (b, PatternBoundToUnderscore()) => b } toSet
@@ -1699,7 +1699,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
       private def typedAsSequence(pat: Pattern) = TypedPat(pat, extractor.sequenceType)
       private def productPats = patterns.fixed take prodArity
       private def elementPats = patterns.fixed drop prodArity
-      private def products    = (productPats, productTypes).zipped map TypedPat
+      private def products    = productPats.lazyZip(productTypes) map TypedPat
       private def elements    = elementPats map typedAsElement
       private def stars       = patterns.starPatterns map typedAsSequence
 

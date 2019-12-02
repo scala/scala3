@@ -18,7 +18,12 @@ if [ ! "$NIGHTLYBUILD" = "yes" ] && [ ! "$RELEASEBUILD" = "yes" ]; then
     exit 1
 fi
 
-# Write down PGP secret key to the location expected by sbt-pgp
+# Setup gpg (disabled, we use bouncycastle instead)
+# export GPG_TTY="$(tty)"
+# echo "$PGP_SECRET" | gpg --batch --import
+
+# Setup bouncycastle instead of gpg to do signing, because gpg explodes when
+# doing too many signing requests in parallel (https://github.com/sbt/sbt-pgp/issues/168)
 mkdir -p "$HOME/.sbt/gpg"
 echo "$PGP_SECRET" > "$HOME/.sbt/gpg/secring.asc"
 

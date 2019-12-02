@@ -3,18 +3,18 @@ package reflect
 
 trait IdOps extends Core {
 
-  implicit class IdAPI(id: Id) {
+  given IsOps: (id: Id) {
 
     /** Position in the source code */
-    def pos(implicit ctx: Context): Position = kernel.Id_pos(id)
+    def pos(given ctx: Context): Position = internal.Id_pos(id)
 
     /** Name of the identifier */
-    def name(implicit ctx: Context): String = kernel.Id_name(id)
+    def name(given ctx: Context): String = internal.Id_name(id)
 
   }
 
   object Id {
-    def unapply(id: Id)(implicit ctx: Context): Option[String] = Some(id.name)
+    def unapply(id: Id)(given ctx: Context): Option[String] = Some(id.name)
   }
 
 }

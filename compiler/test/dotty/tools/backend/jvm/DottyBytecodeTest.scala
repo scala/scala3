@@ -85,8 +85,8 @@ trait DottyBytecodeTest {
       val width = isa.map(_.toString.length).max
       val lineWidth = len.toString.length
       (1 to len) foreach { line =>
-        val isaPadded = isa.map(_.toString) orElse Stream.continually("")
-        val isbPadded = isb.map(_.toString) orElse Stream.continually("")
+        val isaPadded = isa.map(_.toString) orElse LazyList.continually("")
+        val isbPadded = isb.map(_.toString) orElse LazyList.continually("")
         val a = isaPadded(line-1)
         val b = isbPadded(line-1)
 
@@ -157,7 +157,7 @@ trait DottyBytecodeTest {
       (false, s"Different member counts in $name1 and $name2")
     } else {
       val msg     = new StringBuilder
-      val success = (ms1, ms2).zipped forall { (m1, m2) =>
+      val success = ms1.lazyZip(ms2) forall { (m1, m2) =>
         val c1 = f(m1)
         val c2 = f(m2).replaceAllLiterally(name2, name1)
         if (c1 == c2)

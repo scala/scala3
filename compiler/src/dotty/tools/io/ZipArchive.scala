@@ -111,13 +111,13 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
 }
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
-  private[this] def openZipFile(): ZipFile = try {
+  private def openZipFile(): ZipFile = try {
     new ZipFile(file)
   } catch {
     case ioe: IOException => throw new IOException("Error accessing " + file.getPath, ioe)
   }
 
-  private[this] class LazyEntry(
+  private class LazyEntry(
     name: String,
     time: Long,
     size: Int
@@ -138,7 +138,7 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
   // on Windows, and leaks memory on all OS (typically by stopping
   // classloaders from being garbage collected). But is slightly
   // faster than LazyEntry.
-  private[this] class LeakyEntry(
+  private class LeakyEntry(
     zipFile: ZipFile,
     zipEntry: ZipEntry
   ) extends Entry(zipEntry.getName) {

@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   trait MyPF[@specialized(Int) -A] extends (A => Unit) {
     def isDefinedAt(x: A): Boolean
@@ -11,7 +11,7 @@ object Test extends dotty.runtime.LegacyApp {
   trait MySmartPF[@specialized(Int) -A] extends MyPF[A] {
     def apply(x: A): Unit = {
       println("MySmartPF.apply entered...")
-      applyOrElse(x, { default: Any => throw new MatchError(default) })
+      applyOrElse(x, { (default: Any) => throw new MatchError(default) })
     }
   }
 

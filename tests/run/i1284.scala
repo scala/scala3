@@ -3,6 +3,6 @@ case object B
 
 object Test {
   def main(args: Array[String]): Unit = {
-    assert(Array(A, B).deep.toString == "Array(A, B)")
+    assert(Array(A, B).toList.toString == "List(A, B)")
   }
 }

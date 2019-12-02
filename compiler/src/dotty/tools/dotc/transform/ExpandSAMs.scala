@@ -46,7 +46,7 @@ class ExpandSAMs extends MiniPhase {
           tree
         case tpe =>
           val tpe1 = checkRefinements(tpe, fn)
-          val Seq(samDenot) = tpe1.abstractTermMembers.filter(!_.symbol.isSuperAccessor)
+          val Seq(samDenot) = tpe1.possibleSamMethods
           cpy.Block(tree)(stats,
               AnonClass(tpe1 :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
       }
@@ -107,8 +107,10 @@ class ExpandSAMs extends MiniPhase {
     anon.rhs match {
       case PartialFunctionRHS(pf) =>
         val anonSym = anon.symbol
-
-        val parents = List(defn.AbstractPartialFunctionType.appliedTo(tpe.argInfos), defn.SerializableType)
+        val anonTpe = anon.tpe.widen
+        val parents = List(
+          defn.AbstractPartialFunctionClass.typeRef.appliedTo(anonTpe.firstParamTypes.head, anonTpe.resultType),
+          defn.SerializableType)
         val pfSym = ctx.newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, coord = tree.span)
 
         def overrideSym(sym: Symbol) = sym.copy(
@@ -122,13 +124,13 @@ class ExpandSAMs extends MiniPhase {
         def translateMatch(tree: Match, pfParam: Symbol, cases: List[CaseDef], defaultValue: Tree)(implicit ctx: Context) = {
           val selector = tree.selector
           val selectorTpe = selector.tpe.widen
-          val defaultSym = ctx.newSymbol(pfParam.owner, nme.WILDCARD, Synthetic, selectorTpe)
+          val defaultSym = ctx.newSymbol(pfParam.owner, nme.WILDCARD, Synthetic | Case, selectorTpe)
           val defaultCase =
             CaseDef(
               Bind(defaultSym, Underscore(selectorTpe)),
               EmptyTree,
               defaultValue)
-          val unchecked = selector.annotated(New(ref(defn.UncheckedAnnotType)))
+          val unchecked = selector.annotated(New(ref(defn.UncheckedAnnot.typeRef)))
           cpy.Match(tree)(unchecked, cases :+ defaultCase)
             .subst(param.symbol :: Nil, pfParam :: Nil)
               // Needed because  a partial function can be written as:
@@ -174,5 +176,5 @@ class ExpandSAMs extends MiniPhase {
     case tpe =>
       tpe
   }
-
 }
+

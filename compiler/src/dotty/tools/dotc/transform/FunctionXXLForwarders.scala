@@ -29,7 +29,7 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
 
   override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
 
-    def forwarderRhs(receiver: Tree, xsTree: Tree): Tree =  {
+    def forwarderRhs(receiver: Tree, xsTree: Tree): Tree = { 
       val argsApply = ref(xsTree.symbol).select(nme.apply)
       var idx = -1
       val argss = receiver.tpe.widenDealias.paramInfoss.map(_.map { param =>
@@ -45,7 +45,8 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
         if tree.symbol.is(Method) && tree.symbol.name == nme.apply &&
            tree.symbol.signature.paramsSig.size > MaxImplementedFunctionArity &&
            tree.symbol.allOverriddenSymbols.exists(sym => defn.isXXLFunctionClass(sym.owner))
-      } yield {
+      }
+      yield {
         val xsType = defn.ArrayType.appliedTo(List(defn.ObjectType))
         val methType = MethodType(List(nme.args))(_ => List(xsType), _ => defn.ObjectType)
         val meth = ctx.newSymbol(tree.symbol.owner, nme.apply, Synthetic | Method, methType)
@@ -54,5 +55,5 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
 
     cpy.Template(impl)(body = forwarders ::: impl.body)
   }
-
 }
+

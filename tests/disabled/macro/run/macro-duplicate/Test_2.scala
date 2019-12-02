@@ -1,6 +1,6 @@
 import scala.concurrent._
 import ExecutionContext.Implicits.global
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   Macros.foo
 }

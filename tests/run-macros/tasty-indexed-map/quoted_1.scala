@@ -1,8 +1,6 @@
 
 import scala.quoted._
-import scala.quoted.autolift._
-
-import scala.tasty._
+import scala.quoted.autolift.given
 
 class MyMap[Keys](private val underlying: Array[Int]) extends AnyVal {
   def get[K <: String](implicit i: Index[K, Keys]): Int = underlying(i.index)
@@ -27,15 +25,15 @@ object Index {
 
   implicit inline def succ[K, H, T](implicit prev: => Index[K, T]): Index[K, (H, T)] = ${succImpl[K, H, T]}
 
-  def succImpl[K, H, T](implicit reflect: Reflection, k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
-    import reflect._
+  def succImpl[K, H, T](implicit qctx: QuoteContext, k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
+    import qctx.tasty.{_, given}
 
     def name(tp: TypeOrBounds): String = tp match {
-      case Type.ConstantType(Constant.String(str)) => str
+      case ConstantType(Constant(str: String)) => str
     }
 
     def names(tp: TypeOrBounds): List[String] = tp match {
-      case Type.AppliedType(_, x1 :: x2 :: Nil) => name(x1) :: names(x2)
+      case AppliedType(_, x1 :: x2 :: Nil) => name(x1) :: names(x2)
       case _ => Nil
     }
 

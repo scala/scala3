@@ -46,12 +46,12 @@ class CollectNullableFields extends MiniPhase {
   /** Running after `ElimByName` to see by names as nullable types. */
   override def runsAfter: Set[String] = Set(ElimByName.name)
 
-  private[this] sealed trait FieldInfo
-  private[this] case object NotNullable extends FieldInfo
-  private[this] case class Nullable(by: Symbol) extends FieldInfo
+  private sealed trait FieldInfo
+  private case object NotNullable extends FieldInfo
+  private case class Nullable(by: Symbol) extends FieldInfo
 
   /** Whether or not a field is nullable */
-  private[this] var nullability: IdentityHashMap[Symbol, FieldInfo] = _
+  private var nullability: IdentityHashMap[Symbol, FieldInfo] = _
 
   override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context = {
     if (nullability == null) nullability = new IdentityHashMap
@@ -64,7 +64,7 @@ class CollectNullableFields extends MiniPhase {
       sym.isField &&
       !sym.is(Lazy) &&
       !sym.owner.is(Trait) &&
-      sym.initial.is(PrivateLocal) &&
+      sym.initial.isAllOf(PrivateLocal) &&
       sym.info.widenDealias.typeSymbol.isNullableClass
 
     if (isNullablePrivateField)

@@ -4,6 +4,8 @@ import dotty.tools.dotc.core.tasty._
 import dotty.tools.dotc.core.tasty.TastyUnpickler.NameTable
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 
+import dotty.tools.tasty.TastyReader
+
 object QuoteUnpickler {
   class QuotedTreeSectionUnpickler(posUnpickler: Option[PositionUnpickler], splices: Seq[Any])
     extends DottyUnpickler.TreeSectionUnpickler(posUnpickler, None) {

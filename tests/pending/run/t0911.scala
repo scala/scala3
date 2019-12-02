@@ -7,6 +7,6 @@ val baz = "bar"
 // END copied early initializers
 };
 
-object Test extends dotty.runtime.LegacyApp{
+object Test extends App{
   (new IP).bar();
 }

@@ -82,7 +82,7 @@ class TryCatchPatterns extends MiniPhase {
   }
 
   private def mkFallbackPatterMatchCase(patternMatchCases: List[CaseDef], span: Span)(
-      implicit ctx: Context): Option[CaseDef] = {
+      implicit ctx: Context): Option[CaseDef] =
     if (patternMatchCases.isEmpty) None
     else {
       val exName = ExceptionBinderName.fresh()
@@ -96,6 +96,5 @@ class TryCatchPatterns extends MiniPhase {
           transformFollowing(Match(sel, patternMatchCases ::: rethrow :: Nil)))
       )
     }
-  }
-
 }
+

@@ -8,7 +8,9 @@ import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.{Context, ContextBase}
 import core.{MacroClassLoader, Mode, TypeError}
 import dotty.tools.dotc.ast.Positioned
+import dotty.tools.io.File
 import reporting._
+import core.Decorators._
 
 import scala.util.control.NonFatal
 import fromtasty.{TASTYCompiler, TastyFileUtil}
@@ -29,23 +31,33 @@ class Driver {
 
   protected def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
     if (fileNames.nonEmpty)
-      try {
+      try
         val run = compiler.newRun
         run.compile(fileNames)
-        run.printSummary()
-      }
-      catch {
+
+        def finish(run: Run): Unit =
+          run.printSummary()
+          if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
+            val suspendedUnits = run.suspendedUnits.toList
+            if (ctx.settings.XprintSuspension.value)
+              ctx.echo(i"compiling suspended $suspendedUnits%, %")
+            val run1 = compiler.newRun
+            for unit <- suspendedUnits do unit.suspended = false
+            run1.compileUnits(suspendedUnits)
+            finish(run1)
+
+        finish(run)
+      catch
         case ex: FatalError  =>
           ctx.error(ex.getMessage) // signals that we should fail compilation.
-          ctx.reporter
         case ex: TypeError =>
           println(s"${ex.toMessage} while compiling ${fileNames.mkString(", ")}")
           throw ex
         case ex: Throwable =>
           println(s"$ex while compiling ${fileNames.mkString(", ")}")
           throw ex
-      }
-    else ctx.reporter
+    ctx.reporter
+  end doCompile
 
   protected def initCtx: Context = (new ContextBase).initialCtx
 
@@ -58,31 +70,36 @@ class Driver {
     MacroClassLoader.init(ctx)
     Positioned.updateDebugPos(ctx)
 
-    if (!ctx.settings.YdropComments.value(ctx) || ctx.mode.is(Mode.ReadComments)) {
+    if (!ctx.settings.YdropComments.value(ctx) || ctx.mode.is(Mode.ReadComments))
       ctx.setProperty(ContextDoc, new ContextDocstrings)
-    }
 
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     fromTastySetup(fileNames, ctx)
   }
 
   /** Setup extra classpath and figure out class names for tasty file inputs */
-  protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) = {
+  protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) =
     if (ctx0.settings.fromTasty.value(ctx0)) {
       // Resolve classpath and class names of tasty files
-      val (classPaths, classNames) = fileNames0.map { name =>
+      val (classPaths, classNames) = fileNames0.flatMap { name =>
         val path = Paths.get(name)
-        if (!name.endsWith(".tasty")) ("", name)
-        else if (Files.exists(path)) {
+        if (name.endsWith(".jar"))
+          new dotty.tools.io.Jar(File(name)).toList.collect {
+            case e if e.getName.endsWith(".tasty") =>
+              (name, e.getName.stripSuffix(".tasty").replace("/", "."))
+          }
+        else if (!name.endsWith(".tasty"))
+          ("", name) :: Nil
+        else if (Files.exists(path))
           TastyFileUtil.getClassName(path) match {
-            case Some(res) => res
+            case Some(res) => res:: Nil
             case _ =>
               ctx0.error(s"Could not load classname from $name.")
-              ("", name)
+              ("", name) :: Nil
           }
-        } else {
+        else {
           ctx0.error(s"File $name does not exist.")
-          ("", name)
+          ("", name) :: Nil
         }
       }.unzip
       val ctx1 = ctx0.fresh
@@ -90,8 +107,8 @@ class Driver {
       val fullClassPath = (classPaths1 :+ ctx1.settings.classpath.value(ctx1)).mkString(java.io.File.pathSeparator)
       ctx1.setSetting(ctx1.settings.classpath, fullClassPath)
       (classNames, ctx1)
-    } else (fileNames0, ctx0)
-  }
+    }
+    else (fileNames0, ctx0)
 
   /** Entry point to the compiler that can be conveniently used with Java reflection.
    *
@@ -103,7 +120,7 @@ class Driver {
    *  The trade-off is that you can only pass a SimpleReporter to this method
    *  and not a normal Reporter which is more powerful.
    *
-   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/test/test/InterfaceEntryPointTest.scala]]
+   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/compiler/test/dotty/tools/dotc/InterfaceEntryPointTest.scala]]
    *
    *  @param args       Arguments to pass to the compiler.
    *  @param simple     Used to log errors, warnings, and info messages.
@@ -120,7 +137,7 @@ class Driver {
 
   /** Principal entry point to the compiler.
    *
-   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/test/test/OtherEntryPointsTest.scala]]
+   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/compiler/test/dotty/tools/dotc/EntryPointsTest.scala.disabled]]
    *  in method `runCompiler`
    *
    *  @param args       Arguments to pass to the compiler.
@@ -159,7 +176,7 @@ class Driver {
    *  the other overloads cannot be overridden, instead you
    *  should override this one which they call internally.
    *
-   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/test/test/OtherEntryPointsTest.scala]]
+   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/compiler/test/dotty/tools/dotc/EntryPointsTest.scala.disabled]]
    *  in method `runCompilerWithContext`
    *
    *  @param args       Arguments to pass to the compiler.

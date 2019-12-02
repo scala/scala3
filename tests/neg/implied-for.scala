@@ -3,17 +3,17 @@ class B extends T
 class C extends T
 
 object A {
-  delegate b for B
-  delegate c for C
+  given b : B
+  given c : C
 }
 
 object Test extends App {
   import A._
-  import delegate A.{for B}
+  import A.{given B}
 
   val x: B = b // OK
   println(c) // error: not found
 
-  the[C] // error
+  summon[C] // error
 
 }

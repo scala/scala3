@@ -1,6 +1,6 @@
 package dotty.tools.languageserver.worksheet
 
-import dotty.tools.dotc.ast.tpd.{DefTree, Template, Tree, TypeDef}
+import dotty.tools.dotc.ast.tpd.{Import, DefTree, NameTree, Template, Tree, TypeDef}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.SourceTree
 import dotty.tools.dotc.util.Spans.Span
@@ -45,6 +45,7 @@ object Worksheet {
                   case _ =>
                     None
                 }
+              case _: Import | _: NameTree => Nil
             }
           }
           queries.foreach { (line, code) =>

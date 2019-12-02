@@ -43,14 +43,14 @@ sidebar:
           subsection:
             - title: Overview
               url: docs/reference/contextual/motivation.html
-            - title: Delegates
-              url: docs/reference/contextual/instance-defs.html
+            - title: Given Instances
+              url: docs/reference/contextual/delegates.html
             - title: Given Clauses
-              url: docs/reference/contextual/inferable-params.html
+              url: docs/reference/contextual/given-clauses.html
             - title: Context Bounds
               url: docs/reference/contextual/context-bounds.html
-            - title: Delegate Imports
-              url: docs/reference/contextual/import-implied.html
+            - title: Given Imports
+              url: docs/reference/contextual/import-delegate.html
             - title: Extension Methods
               url: docs/reference/contextual/extension-methods.html
             - title: Implementing Typeclasses
@@ -60,11 +60,11 @@ sidebar:
             - title: Multiversal Equality
               url: docs/reference/contextual/multiversal-equality.html
             - title: Implicit Function Types
-              url: docs/reference/contextual/query-types.html
+              url: docs/reference/contextual/implicit-function-types.html
             - title: Implicit Conversions
               url: docs/reference/contextual/conversions.html
             - title: Implicit By-Name Parameters
-              url: docs/reference/contextual/inferable-by-name-parameters.html
+              url: docs/reference/contextual/implicit-by-name-parameters.html
             - title: Relationship with Scala 2 Implicits
               url: docs/reference/contextual/relationship-implicits.html
         - title: Metaprogramming
@@ -93,6 +93,8 @@ sidebar:
               url: docs/reference/other-new-features/export.html
             - title: Opaque Type Aliases
               url: docs/reference/other-new-features/opaques.html
+            - title: Open Classes
+              url: docs/reference/other-new-features/open-classes.html
             - title: Parameter Untupling
               url: docs/reference/other-new-features/parameter-untupling.html
             - title: Kind Polymorphism
@@ -101,8 +103,14 @@ sidebar:
               url: docs/reference/other-new-features/tupled-function.html
             - title: threadUnsafe Annotation
               url: docs/reference/other-new-features/threadUnsafe-annotation.html
+            - title: New Control Syntax
+              url: docs/reference/other-new-features/control-syntax.html
+            - title: Optional Braces
+              url: docs/reference/other-new-features/indentation.html
         - title: Other Changed Features
           subsection:
+            - title: Numeric Literals
+              url: docs/reference/changed-features/numeric-literals.html
             - title: Structural Types
               url: docs/reference/changed-features/structural-types.html
             - title: Operators
@@ -119,6 +127,8 @@ sidebar:
               url: docs/reference/changed-features/implicit-conversions.html
             - title: Overload Resolution
               url: docs/reference/changed-features/overload-resolution.html
+            - title: Match Expressions
+              url: docs/reference/changed-features/match-syntax.html
             - title: Vararg Patterns
               url: docs/reference/changed-features/vararg-patterns.html
             - title: Pattern Bindings
@@ -131,6 +141,8 @@ sidebar:
               url: docs/reference/changed-features/compiler-plugins.html
             - title: Lazy Vals initialization
               url: docs/reference/changed-features/lazy-vals-init.html
+            - title: Main Functions
+              url: docs/reference/changed-features/main-functions.html
         - title: Dropped Features
           subsection:
             - title: DelayedInit
@@ -141,6 +153,8 @@ sidebar:
               url: docs/reference/dropped-features/existential-types.html
             - title: Type Projection
               url: docs/reference/dropped-features/type-projection.html
+            - title: Do-While
+              url: docs/reference/dropped-features/do-while.html
             - title: Procedure Syntax
               url: docs/reference/dropped-features/procedure-syntax.html
             - title: Package Objects
@@ -161,20 +175,32 @@ sidebar:
               url: docs/reference/dropped-features/weak-conformance.html
             - title: Nonlocal Returns
               url: docs/reference/dropped-features/nonlocal-returns.html
+            - title: "[this] Qualifier"
+              url: docs/reference/dropped-features/this-qualifier.html
     - title: Contributing
       subsection:
+        - title: Contribute Knowledge
+          url: docs/contributing/contribute-knowledge.html
         - title: Getting Started
           url: docs/contributing/getting-started.html
         - title: Workflow
           url: docs/contributing/workflow.html
-        - title: Eclipse
-          url: docs/contributing/eclipse.html
-        - title: IntelliJ IDEA
-          url: docs/contributing/intellij-idea.html
         - title: Testing
           url: docs/contributing/testing.html
-        - title: Release Model
-          url: docs/contributing/release.html
+        - title: Debugging
+          url: docs/contributing/debugging.html
+        - title: IDEs and Tools
+          subsection:
+            - title: Mill
+              url: docs/contributing/tools/mill.html
+            - title: Scalafix
+              url: docs/contributing/tools/scalafix.html
+        - title: Procedures
+          subsection:
+            - title: Release Model
+              url: docs/contributing/procedures/release.html
+            - title: Modifying the Test Framework
+              url: docs/contributing/procedures/vulpix.html
     - title: Internals
       subsection:
         - title: Backend

@@ -6,7 +6,7 @@ x.hashCode: 1072693248
 x == y: true
 a == b: true
 testing native arrays
-Array(1.0m, 2.0m)
+List(1.0m, 2.0m)
 1.0m
 >>>1.0m<<< 1.0m
 >>>2.0m<<< 2.0m

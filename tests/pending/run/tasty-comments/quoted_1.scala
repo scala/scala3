@@ -1,15 +1,14 @@
 import scala.quoted._
-import scala.quoted.autolift._
+import scala.quoted.autolift.given
 
-import scala.tasty._
 
 object Macros {
 
   inline def printComment[T](t: => T): Unit =
     ${ impl('t) }
 
-  def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect._
+  def impl[T](x: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty.{_, given}
 
     val tree = x.unseal
     tree.symbol.comment.map(_.raw) match {

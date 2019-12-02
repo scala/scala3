@@ -1,6 +1,6 @@
 import language.dynamics
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val x = new X(3)
   val y = x(9)
   class X(i: Int) extends Dynamic {

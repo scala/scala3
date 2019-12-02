@@ -1,0 +1,83 @@
+integer: 5
+string: l
+5, 6, hello
+5
+6
+Bob is  1 years old
+Bob will be  2 years old
+1+1 = 2
+Bob is 12 years old
+Bob will be 13 years old
+12+1 = 13
+Bob is 123 years old
+Bob will be 124 years old
+123+1 = 124
+Best price: 10.00
+10.00% discount included
+Best price: 13.35
+13.35% discount included
+Bob is 1 years old!
+Bob is 1 years old!
+Bob is  1 years old!
+Bob is 1%2d years old!
+===============
+Bob is 12 years old!
+Bob is 12 years old!
+Bob is 12 years old!
+Bob is 12%2d years old!
+===============
+Bob is 123 years old!
+Bob is 123 years old!
+Bob is 123 years old!
+Bob is 123%2d years old!
+The boolean is false false
+The boolean is true true
+a
+The string is null null null
+The string is   
+The string is string1 string1 string1
+The string is null
+The string is 
+The string is string2
+The unicode character is c
+The decimal integer is 2,  2, 2+1 = 3
+The octal integer is 2
+The octal integer is 10
+The hexadecimal integer is 2
+The hexadecimal integer is 20
+The scientific notation is 2.000000e+00
+The scientific notation is 5.430000e-01
+The decimal floating point is 1234.567749, 1234.57,        1234.568
+The decimal floating point is 10
+The float value is 0.000100000
+The float value is 1.00000e-05
+The float value is -0x1.4f8b58p-17
+The float value is 0x0.0p0
+The float value is NaN
+The float value is Infinity
+The float value is -Infinity
+10
+10
+10
+10
+20
+56
+000
+000000000
+am
+19
+1982
+82
+243
+08
+31
+31
+10:20
+10:20:56
+10:20:56 AM
+08/31/82
+1982-08-31
+the percentage is 100 %
+we have a line separator now 
+and now, we are on the next line
+a b b

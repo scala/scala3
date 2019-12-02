@@ -11,7 +11,7 @@ import printing.SyntaxHighlighting
 import diagnostic.{ErrorMessageID, Message, MessageContainer}
 import diagnostic.messages._
 import util.SourcePosition
-import scala.tasty.util.Chars.{ LF, CR, FF, SU }
+import scala.internal.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
 
 import scala.collection.mutable
@@ -32,10 +32,10 @@ trait MessageRendering {
     * @return a list of strings with inline locations
     */
   def outer(pos: SourcePosition, prefix: String)(implicit ctx: Context): List[String] =
-    if (pos.outer.exists) {
+    if (pos.outer.exists)
        i"$prefix| This location is in code that was inlined at ${pos.outer}" ::
        outer(pos.outer, prefix)
-    } else Nil
+    else Nil
 
   /** Get the sourcelines before and after the position, as well as the offset
     * for rendering line numbers
@@ -104,7 +104,7 @@ trait MessageRendering {
     }
 
     msg.linesIterator
-      .map { line => " " * (offset - 1) + "|" + padding + line}
+      .map { line => " " * (offset - 1) + "|" + (if line.isEmpty then "" else padding + line) }
       .mkString(EOL)
   }
 
@@ -119,7 +119,7 @@ trait MessageRendering {
         else s"${pos.source.file.toString}: offset ${pos.start} (missing source file)"
       val errId =
         if (message.errorId ne ErrorMessageID.NoExplanationID) {
-          val errorNumber = message.errorId.errorNumber()
+          val errorNumber = message.errorId.errorNumber
           s"[E${"0" * (3 - errorNumber.toString.length) + errorNumber}] "
         } else ""
       val kind =
@@ -145,7 +145,7 @@ trait MessageRendering {
 
   /** The whole message rendered from `msg` */
   def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): String = {
-    val sb = mutable.StringBuilder.newBuilder
+    val sb = mutable.StringBuilder()
     val posString = posStr(pos, diagnosticLevel, msg)
     if (posString.nonEmpty) sb.append(posString).append(EOL)
     if (pos.exists && pos.source.file.exists) {
@@ -153,7 +153,8 @@ trait MessageRendering {
       val marker = columnMarker(pos, offset, diagnosticLevel)
       val err = errorMsg(pos, msg.msg, offset)
       sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString(EOL))
-    } else sb.append(msg.msg)
+    }
+    else sb.append(msg.msg)
     sb.toString
   }
 

@@ -56,4 +56,24 @@ object filters {
       case _ => null
     }
   }
+
+  /** Escapes characters forbidden in CSS selectors
+   *
+   * ```html
+   * {{ scalaSignature | escapeCSS }}
+   * ```
+   *
+   */
+  final class EscapeCSS extends Filter("escapeCSS") {
+    private def isValid(c: Char): Boolean =
+      (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_' || c == '-')
+
+    override def apply(value: Any, params: AnyRef*): AnyRef = value match {
+      case str: String => str.map(c => {
+        if (c == ',') '_' // make commas and parentheses different
+        else if (isValid(c)) c else '-'
+      })
+      case _ => null
+    }
+  }
 }

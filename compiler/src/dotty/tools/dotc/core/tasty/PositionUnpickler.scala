@@ -3,10 +3,12 @@ package dotc
 package core
 package tasty
 
+import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyReader}
+import TastyFormat.SOURCE
+import TastyBuffer.{Addr, NameRef}
+
 import util.Spans._
 import collection.{mutable, Map}
-import TastyBuffer.{Addr, NameRef}
-import TastyFormat.SOURCE
 import Names.TermName
 
 /** Unpickler for tree positions */
@@ -17,7 +19,7 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
   private var mySourcePaths: mutable.HashMap[Addr, String] = _
   private var isDefined = false
 
-  def ensureDefined(): Unit =
+  def ensureDefined(): Unit = {
     if (!isDefined) {
       mySpans = new mutable.HashMap[Addr, Span]
       mySourcePaths = new mutable.HashMap[Addr, String]
@@ -42,10 +44,11 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
           mySpans(Addr(curIndex)) =
             if (hasPoint) Span(curStart, curEnd, curStart + readInt())
             else Span(curStart, curEnd)
-          }
+        }
       }
       isDefined = true
     }
+  }
 
   private[tasty] def spans: Map[Addr, Span] = {
     ensureDefined()
@@ -60,4 +63,3 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
   def spanAt(addr: Addr): Span = spans.getOrElse(addr, NoSpan)
   def sourcePathAt(addr: Addr): String = sourcePaths.getOrElse(addr, "")
 }
-

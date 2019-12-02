@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   println(new C().blackbox)
   println(new C().refinedBlackbox)
   println(new C().whitebox)

@@ -81,19 +81,20 @@ trait DottyTest extends ContextEscapeDetection {
       (tree, context) =>
         implicit val ctx = context
         val findValDef: (List[tpd.ValDef], tpd.Tree) => List[tpd.ValDef] =
-          (acc , tree) =>  { tree match {
-          case t: tpd.ValDef if t.name.startsWith(dummyName) => t :: acc
-          case _ => acc
-        }
-      }
-      val d = new tpd.DeepFolder[List[tpd.ValDef]](findValDef).foldOver(Nil, tree)
-      val tpes = d.map(_.tpe.widen).reverse
-      val tpess = typeStringss.foldLeft[(List[Type], List[List[Type]])]((tpes, Nil)) {
-        case ((rest, result), typeStrings) =>
-          val (prefix, suffix) = rest.splitAt(typeStrings.length)
-          (suffix, prefix :: result)
-      }._2.reverse
-      assertion(tpess, context)
+          (acc , tree) =>  {
+            tree match {
+              case t: tpd.ValDef if t.name.startsWith(dummyName) => t :: acc
+              case _ => acc
+            }
+          }
+        val d = new tpd.DeepFolder[List[tpd.ValDef]](findValDef).foldOver(Nil, tree)
+        val tpes = d.map(_.tpe.widen).reverse
+        val tpess = typeStringss.foldLeft[(List[Type], List[List[Type]])]((tpes, Nil)) {
+          case ((rest, result), typeStrings) =>
+            val (prefix, suffix) = rest.splitAt(typeStrings.length)
+            (suffix, prefix :: result)
+        }._2.reverse
+        assertion(tpess, context)
     }
   }
 

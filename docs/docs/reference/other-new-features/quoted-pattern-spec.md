@@ -18,18 +18,18 @@ def foo(x: Expr[Int]) given tasty.Reflect: Expr[Int] = x match {
 ```
 In the example above we have `$a` which provides a `Bind[Int]`, `$x` which provides an `Expr[Int]` and `${Bind(`a`)}` which probides an `Expr[Int]` that is pattern matched against `Bind(`a`)` to check that it is a reference to `a`.
 
-Quoted patterns are transformed during typer to a call of `scala.internal.quoted.Matcher.unapply` which splits the quoted code into the patterns and a reifiable quote that will be used as witnesses at runtime.
+Quoted patterns are transformed during typer to a call of `scala.internal.quoted.Expr.unapply` which splits the quoted code into the patterns and a reifiable quote that will be used as witnesses at runtime.
 
 ```scala
 def foo(x: Expr[Int]) given tasty.Reflect: Expr[Int] = x match {
-  case scala.internal.quoted.Matcher.unapply[Tuple3[Bind[Int], Expr[Int], Expr[Int]]](Tuple3(a, x, Bind(`a`), y))('{ @patternBindHole val a: Int = patternHole[Int]; patternHole[Int] + 1 }) =>
+  case scala.internal.quoted.Expr.unapply[Tuple3[Bind[Int], Expr[Int], Expr[Int]]](Tuple3(a, x, Bind(`a`), y))('{ @patternBindHole val a: Int = patternHole[Int]; patternHole[Int] + 1 }) =>
 }
 ```
 
 
 ## Runtime semantics
 
-At runtime to a `quoted.Expr` can be matched to another using `scala.internal.quoted.Matcher.unapply`.
+At runtime to a `quoted.Expr` can be matched to another using `scala.internal.quoted.Expr.unapply`.
 
 ```scala
 def unapply[Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], reflection: Reflection): Option[Tup]
@@ -47,14 +47,14 @@ def notMatched = None
 def matched = Some(()) // aka Some(Tuple0())
 def matched[T](x: T) = Some(Tuple1(x))
 def (x: Matching) && (y: Matching) = if (x == None || y == None) None else Some(x.get ++ y.get)
-def fold[T](m: Mattching*) given Env: Matching = m.fold(matched)(_ && _)
+def fold[T](m: Mattching*)(given Env): Matching = m.fold(matched)(_ && _)
 
-// `a =#= b` stands for `a` matches `b` 
-def (scrutinee: Tree) =#= pattern: Tree) given Env: Matching // described by cases in the tables below
+// `a =#= b` stands for `a` matches `b`
+def (scrutinee: Tree) =#= pattern: Tree)(given Env): Matching // described by cases in the tables below
 
-def envWith(equiv: (Symbol, Symbol)*) given Env: Env // Adds to the current environment the fact that s1 from the scrutinee is equivalent to s2 in the pattern
+def envWith(equiv: (Symbol, Symbol)*)(given Env): Env // Adds to the current environment the fact that s1 from the scrutinee is equivalent to s2 in the pattern
 
-def equivalent(s1: Symbol, s2: Symbol) given Env: Env
+def equivalent(s1: Symbol, s2: Symbol)(given Env): Env
 ```
 
 The implementation of `=#=`

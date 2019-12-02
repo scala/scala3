@@ -88,6 +88,10 @@ object Test extends App {
     new Show[Int] {
       def show(t: Int): String = t.toString
     }
-  val s = [T] => (t: T) => given (st: Show[T]) => st.show(t)
+  val s = [T] => (t: T) => (given st: Show[T]) => st.show(t)
   assert(s(23) == "23")
+
+  // Parens handling
+  val tt1: [T] => (T => T) = [T] =>  (x: T) => x
+  val tt2: [T] =>  T => T =  [T] => ((x: T) => x)
 }

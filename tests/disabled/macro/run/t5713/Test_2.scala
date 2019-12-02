@@ -1,5 +1,5 @@
 import m._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   Logger.error("err")
 }

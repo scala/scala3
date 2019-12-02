@@ -3,7 +3,7 @@ package a {
   class C2(v1: String) extends a.C1(v1) { def foo = v1 }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   new a.C2("x")
 
   val c2Fields = classOf[a.C2].getDeclaredFields

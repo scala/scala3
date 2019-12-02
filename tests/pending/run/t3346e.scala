@@ -53,7 +53,7 @@ object MyEnhancements {
   implicit def toFM2[A, Repr <% TraversableLike[A, Repr]](a: Repr): FilterMapFixed[A,Repr] = new FilterMapFixed(a)
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   import MyEnhancements._
 

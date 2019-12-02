@@ -4,6 +4,7 @@ title: Contexts
 ---
 
 The `Context` contains the state of the compiler, for example
+
   * `settings`
   * `freshNames` (`FreshNameCreator`)
   * `period` (run and phase id)

@@ -2,7 +2,7 @@ import scala.reflect.runtime.universe._
 import scala.reflect.runtime.{currentMirror => cm}
 import scala.tools.reflect._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   var i = 0
   val action = reify { i += 1; println(i) }.tree
 

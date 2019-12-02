@@ -51,7 +51,7 @@ class C {
   class T
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   new Crash
 }
 

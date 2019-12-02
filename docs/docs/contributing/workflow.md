@@ -3,9 +3,8 @@ layout: doc-page
 title: Workflow
 ---
 
-Check [Getting Started](getting-started.md) for instructions on how to obtain the source code of dotty and 
-[Eclipse](eclipse.md) or [IntelliJ-IDEA](intellij-idea.md).
-This document details common workflow patterns when working with Dotty before using the debugging tools.
+Check [Getting Started](getting-started.md) for instructions on how to obtain the source code of dotty.
+This document details common workflow patterns when working with Dotty.
 
 ## Compiling files with dotc ##
 
@@ -26,7 +25,7 @@ Here are some useful debugging `<OPTIONS>`:
 
 * `-Xprint:PHASE1,PHASE2,...` or `-Xprint:all`: prints the `AST` after each
   specified phase. Phase names can be found by examining the
-  `dotty.tools.dotc.transform.*` classes for their `phaseName` field e.g., `-Xprint:erasure`. 
+  `dotty.tools.dotc.transform.*` classes for their `phaseName` field e.g., `-Xprint:erasure`.
   You can discover all phases in the `dotty.tools.dotc.Compiler` class
 * `-Ylog:PHASE1,PHASE2,...` or `-Ylog:all`: enables `ctx.log("")` logging for
   the specified phase.
@@ -34,7 +33,7 @@ Here are some useful debugging `<OPTIONS>`:
   particular checks that types do not change. Some phases currently can't be
   `Ycheck`ed, therefore in the tests we run:
   `-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef`.
-* the last frontier of debugging (before actual debugging) is the range of logging capabilities that 
+* the last frontier of debugging (before actual debugging) is the range of logging capabilities that
 can be enabled through the `dotty.tools.dotc.config.Printers` object. Change any of the desired printer from `noPrinter` to
 `default` and this will give you the full logging capability of the compiler.
 
@@ -44,7 +43,7 @@ There is no power mode for the REPL yet, but you can inspect types with the
 type stealer:
 
 ```bash
-$ sbt 
+$ sbt
 > repl
 scala> import dotty.tools.DottyTypeStealer._; import dotty.tools.dotc.core._; import Contexts._,Types._
 ```
@@ -64,3 +63,15 @@ u: dotty.tools.dotc.core.Types.Type = TypeBounds(TypeRef(ThisType(TypeRef(NoPref
 Many objects in the dotc compiler implement a `Showable` trait (e.g. `Tree`,
 `Symbol`, `Type`). These objects may be prettyprinted using the `.show`
 method
+
+## SBT Commands Cheat Sheet ##
+The basics of working with Dotty codebase are documented [here](https://dotty.epfl.ch/docs/contributing/getting-started.html) and [here](https://dotty.epfl.ch/docs/contributing/workflow.html). Below is a cheat sheet of some frequently used commands (to be used from SBT console – `sbt`).
+
+
+|                        Command                       |                                                          Description                                                          |
+|------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| `dotc ../issues/Playground.scala`                    | Compile the given file – path relative to the Dotty directory. Output the compiled class files to the Dotty directory itself. |
+| `dotr Playground`                                    | Run the compiled class `Playground`. Dotty directory is on classpath by default.                                              |
+| `repl`                                               | Start REPL                                                                                                                    |
+| `testOnly dotty.tools.dotc.CompilationTests -- *pos` | Run test (method) `pos` from `CompilationTests` suite.                                                                        |
+| `testCompilation sample`                             | In all test suites, run test files containing the word `sample` in their title.                                               |

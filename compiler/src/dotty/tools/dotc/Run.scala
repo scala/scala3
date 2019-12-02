@@ -39,7 +39,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *                 for type checking.
    *    imports      For each element of RootImports, an import context
    */
-  protected[this] def rootContext(implicit ctx: Context): Context = {
+  protected def rootContext(implicit ctx: Context): Context = {
     ctx.initialize()(ctx)
     ctx.base.setPhasePlan(comp.phases)
     val rootScope = new MutableScope
@@ -54,55 +54,59 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       .setTyperState(new TyperState(ctx.typerState))
       .setFreshNames(new FreshNameCreator.Default)
     ctx.initialize()(start) // re-initialize the base context with start
-    def addImport(ctx: Context, refFn: () => TermRef) =
-      ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
-    (start.setRun(this) /: defn.RootImportFns)(addImport)
+    def addImport(ctx: Context, rootRef: ImportInfo.RootRef) =
+      ctx.fresh.setImportInfo(ImportInfo.rootImport(rootRef)(ctx))
+    defn.RootImportFns.foldLeft(start.setRun(this))(addImport)
   }
 
-  private[this] var compiling = false
+  private var compiling = false
 
-  private[this] var myCtx = rootContext(ictx)
+  private var myCtx = rootContext(ictx)
 
   /** The context created for this run */
   def runContext: Context = myCtx
 
-  protected[this] implicit def ctx: Context = myCtx
+  protected implicit def ctx: Context = myCtx
   assert(ctx.runId <= Periods.MaxPossibleRunId)
 
-  private[this] var myUnits: List[CompilationUnit] = _
-  private[this] var myUnitsCached: List[CompilationUnit] = _
-  private[this] var myFiles: Set[AbstractFile] = _
+  private var myUnits: List[CompilationUnit] = _
+  private var myUnitsCached: List[CompilationUnit] = _
+  private var myFiles: Set[AbstractFile] = _
 
   /** The compilation units currently being compiled, this may return different
     *  results over time.
     */
   def units: List[CompilationUnit] = myUnits
 
+  var suspendedUnits: mutable.ListBuffer[CompilationUnit] = mutable.ListBuffer()
+
   private def units_=(us: List[CompilationUnit]): Unit =
     myUnits = us
 
-  /** The files currently being compiled, this may return different results over time.
-    *  These files do not have to be source files since it's possible to compile
-    *  from TASTY.
-    */
+  /** The files currently being compiled (active or suspended).
+   *  This may return different results over time.
+   *  These files do not have to be source files since it's possible to compile
+   *  from TASTY.
+   */
   def files: Set[AbstractFile] = {
     if (myUnits ne myUnitsCached) {
       myUnitsCached = myUnits
-      myFiles = myUnits.map(_.source.file).toSet
+      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).toSet
     }
     myFiles
   }
 
   /** The source files of all late entered symbols, as a set */
-  private[this] var lateFiles = mutable.Set[AbstractFile]()
+  private var lateFiles = mutable.Set[AbstractFile]()
 
   /** Actions that need to be performed at the end of the current compilation run */
-  private[this] var finalizeActions = mutable.ListBuffer[() => Unit]()
+  private var finalizeActions = mutable.ListBuffer[() => Unit]()
 
   def compile(fileNames: List[String]): Unit = try {
     val sources = fileNames.map(ctx.getSource(_))
     compileSources(sources)
-  } catch {
+  }
+  catch {
     case NonFatal(ex) =>
       ctx.echo(i"exception occurred while compiling $units%, %")
       throw ex
@@ -157,12 +161,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             val profileBefore = profiler.beforePhase(phase)
             units = phase.runOn(units)
             profiler.afterPhase(phase, profileBefore)
-            if (ctx.settings.Xprint.value.containsPhase(phase)) {
-              for (unit <- units) {
+            if (ctx.settings.Xprint.value.containsPhase(phase))
+              for (unit <- units)
                 lastPrintedTree =
                   printTree(lastPrintedTree)(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
-              }
-            }
             ctx.informTime(s"$phase ", start)
             Stats.record(s"total trees at end of $phase", ast.Trees.ntrees)
             for (unit <- units)
@@ -248,11 +250,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   }
 
   /** Print summary; return # of errors encountered */
-  def printSummary(): Reporter = {
+  def printSummary(): Unit = {
     printMaxConstraint()
     val r = ctx.reporter
     r.printSummary
-    r
   }
 
   override def reset(): Unit = {

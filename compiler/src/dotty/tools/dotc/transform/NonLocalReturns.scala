@@ -26,9 +26,11 @@ class NonLocalReturns extends MiniPhase {
     if (tree.tpe <:< pt) tree
     else Erasure.Boxing.adaptToType(tree, pt)
 
+  private def nonLocalReturnControl(given Context) = defn.NonLocalReturnControlClass.typeRef
+
   /** The type of a non-local return expression with given argument type */
   private def nonLocalReturnExceptionType(argtype: Type)(implicit ctx: Context) =
-    defn.NonLocalReturnControlType.appliedTo(argtype)
+    nonLocalReturnControl.appliedTo(argtype)
 
   /** A hashmap from method symbols to non-local return keys */
   private val nonLocalReturnKeys = newMutableSymbolMap[TermSymbol]
@@ -49,7 +51,7 @@ class NonLocalReturns extends MiniPhase {
   private def nonLocalReturnThrow(expr: Tree, meth: Symbol)(implicit ctx: Context) =
     Throw(
       New(
-        defn.NonLocalReturnControlType,
+        nonLocalReturnControl,
         ref(nonLocalReturnKey(meth)) :: expr.ensureConforms(defn.ObjectType) :: Nil))
 
   /** Transform (body, key) to:
@@ -67,8 +69,7 @@ class NonLocalReturns extends MiniPhase {
    */
   private def nonLocalReturnTry(body: Tree, key: TermSymbol, meth: Symbol)(implicit ctx: Context) = {
     val keyDef = ValDef(key, New(defn.ObjectType, Nil))
-    val nonLocalReturnControl = defn.NonLocalReturnControlType
-    val ex = ctx.newSymbol(meth, nme.ex, EmptyFlags, nonLocalReturnControl, coord = body.span)
+    val ex = ctx.newSymbol(meth, nme.ex, Case, nonLocalReturnControl, coord = body.span)
     val pat = BindTyped(ex, nonLocalReturnControl)
     val rhs = If(
         ref(ex).select(nme.key).appliedToNone.select(nme.eq).appliedTo(ref(key)),
@@ -87,8 +88,9 @@ class NonLocalReturns extends MiniPhase {
 
   override def transformReturn(tree: Return)(implicit ctx: Context): Tree =
     if (isNonLocalReturn(tree)) {
-      if (!ctx.scala2Mode)
+      if (!ctx.scala2CompatMode)
         ctx.strictWarning("Non local returns are deprecated; use scala.util.control.NonLocalReturns instead", tree.sourcePos)
       nonLocalReturnThrow(tree.expr, tree.from.symbol).withSpan(tree.span)
-    } else tree
+    }
+    else tree
 }

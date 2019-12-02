@@ -2,7 +2,7 @@ import scala.reflect.runtime.universe._
 import scala.tools.reflect.Eval
 import internal._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   locally {
     val x = 2
     def y = 3

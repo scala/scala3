@@ -12,6 +12,6 @@ object B extends A {
   def foo(d: String)(d2: d.type): D forSome { type D <: Derived; type S <: Derived } = {d2.isEmpty; null} // Bridge method required here!
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   B.bar
 }

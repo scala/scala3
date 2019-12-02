@@ -15,12 +15,12 @@ class CollectTopLevelImports extends Phase {
 
   def phaseName: String = "collectTopLevelImports"
 
-  private[this] var myImports: List[Import] = _
+  private var myImports: List[Import] = _
   def imports: List[Import] = myImports
 
   def run(implicit ctx: Context): Unit = {
     def topLevelImports(tree: Tree) = {
-      val PackageDef(_, _ :: TypeDef(_, rhs: Template) :: Nil) = tree
+      val PackageDef(_, _ :: TypeDef(_, rhs: Template) :: _) = tree
       rhs.body.collect { case tree: Import => tree }
     }
 

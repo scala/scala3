@@ -7,7 +7,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     try {
       try {
-          Console.println("hi!")
+        Console.println("hi!")
         sys.error("xx")
       }
       finally Console.println("ho!")

@@ -14,7 +14,7 @@ class Z extends D {
   override def foo(x: Boolean): Unit = println("fooZBoolean")
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   val dd: D = new D()
   dd.foo("42")

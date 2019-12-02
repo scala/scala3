@@ -131,14 +131,6 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: BackendInterface]](val bTypes: B
   lazy val srFloatRef   : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.FloatRef])
   lazy val srDoubleRef  : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.DoubleRef])
 
-  // scala.FunctionX and scala.runtim.AbstractFunctionX
-  lazy val FunctionReference         : Vector[ClassBType]   = (0 to MaxFunctionArity).map(i => classBTypeFromSymbol(FunctionClass(i)))(collection.breakOut)
-  lazy val AbstractFunctionReference : Vector[ClassBType]   = (0 to MaxFunctionArity).map(i => classBTypeFromSymbol(AbstractFunctionClass(i)))(collection.breakOut)
-  lazy val AbstractFunctionArityMap  : Map[ClassBType, Int] = AbstractFunctionReference.zipWithIndex.toMap
-
-  lazy val PartialFunctionReference         : ClassBType = classBTypeFromSymbol(PartialFunctionClass)
-  lazy val AbstractPartialFunctionReference : ClassBType = classBTypeFromSymbol(AbstractPartialFunctionClass)
-
   lazy val BoxesRunTime: ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime])
 
   /**
@@ -211,7 +203,7 @@ final class CoreBTypesProxy[BTFS <: BTypesFromSymbols[_ <: BackendInterface]](va
   import bTypes._
   import bTypes.int._
 
-  private[this] var _coreBTypes: CoreBTypes[bTypes.type] = _
+  private var _coreBTypes: CoreBTypes[bTypes.type] = _
   def setBTypes(coreBTypes: CoreBTypes[BTFS]): Unit = {
     _coreBTypes = coreBTypes.asInstanceOf[CoreBTypes[bTypes.type]]
   }
@@ -262,13 +254,6 @@ final class CoreBTypesProxy[BTFS <: BTypesFromSymbols[_ <: BackendInterface]](va
   def srLongRef    : ClassBType = _coreBTypes.srLongRef
   def srFloatRef   : ClassBType = _coreBTypes.srFloatRef
   def srDoubleRef  : ClassBType = _coreBTypes.srDoubleRef
-
-  def FunctionReference         : Vector[ClassBType]   = _coreBTypes.FunctionReference
-  def AbstractFunctionReference : Vector[ClassBType]   = _coreBTypes.AbstractFunctionReference
-  def AbstractFunctionArityMap  : Map[ClassBType, Int] = _coreBTypes.AbstractFunctionArityMap
-
-  def PartialFunctionReference         : ClassBType = _coreBTypes.PartialFunctionReference
-  def AbstractPartialFunctionReference : ClassBType = _coreBTypes.AbstractPartialFunctionReference
 
   def BoxesRunTime: ClassBType = _coreBTypes.BoxesRunTime
 

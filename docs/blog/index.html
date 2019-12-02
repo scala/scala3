@@ -1,53 +1,32 @@
 ---
 layout: main
-extraCSS:
-    - css/toolbar.css
-    - css/sidebar.css
 title: Blog
 ---
+<main class="container">
+    <h1>{{ page.title }}</h1>
 
-{% include "toolbar" %}
-
-<div id="content-wrapper">
-    {% assign sidebarTop = "75px" %}
-    {% include "sidebar" %}
-
-    <div id="content-body" class="doc-page-body">
-        <div id="post-title">
-            <h1 id="main-title">{{ page.title }}</h1>
-            {% if page.subTitle %}
-            <h2 id="sub-title">{{ page.subTitle }}</h2>
-            {% endif %}
-        </div>
-
-        <div id="blog-post-container">
-            <ul class="post-list">
-                {% for post in site.posts %}
-                <li>
-                    <div>
-                        <a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a>
-                    </div>
-                    <div class="date">
-                        {{ post.date | date: '%B %d, %Y' }}
-                    </div>
-                    <div class="excerpt">
-                        {{ post.excerpt }}
-                    </div>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-
-        {% if page.author %}
-        <div id="post-footer">
-            {% if page.authorImg %}
-            <img id="author-image" src="{{ site.baseurl }}/{{ page.authorImg }}">
-            {% endif %}
-            <span id="post-author">
-                {% if page.authorImg == null %}- {% endif %}{{ page.author }}
-            </span>
-        </div>
-        {% endif %}
-
-    </div><!-- end content-body -->
-</div><!-- end content-wrapper -->
+    <ul class="post-list">
+        {% for post in site.posts %}
+            <li>
+                <h2>
+                    <a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a>
+                </h2>
+                <div class="byline">
+                    <time class="date">
+                        <i class="far fa-calendar-alt"></i>
+                        {{ post.date | date: "%Y-%m-%d" }}
+                    </time>
+                    {% if post.author %}
+                        <span class="author">
+                            <i class="fas fa-pen-nib"></i>
+                            {{ post.author }}
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="excerpt">
+                    {{ post.excerpt }}
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+</main>

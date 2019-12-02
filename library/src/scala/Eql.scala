@@ -16,7 +16,7 @@ object Eql {
   object derived extends Eql[Any, Any]
 
   /** A fall-back instance to compare values of any types.
-   *  Even though this method is not declared a delegate, the compiler will
+   *  Even though this method is not declared as given, the compiler will
    *  synthesize implicit arguments as solutions to `Eql[T, U]` queries if
    *  the rules of multiversal equality require it.
    */

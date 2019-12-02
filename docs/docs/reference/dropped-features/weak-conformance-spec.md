@@ -32,15 +32,17 @@ assigning a type to a constant expression. The new rule is:
     if `c.toByte.toInt != c`. For an `Int -> Short` conversion, it occurs
     if `c.toShort.toInt != c`.
 
-__Examples:__
+### Examples
 
-    inline val b = 33
-    def f(): Int = b + 1
-    Array(b, 33, 5.5)      : Array[Double] // b is an inline val
-    Array(f(), 33, 5.5)    : Array[AnyVal] // f() is not a constant
-    Array(5, 11L)          : Array[Long]
-    Array(5, 11L, 5.5)     : Array[AnyVal] // Long and Double found
-    Array(1.0f, 2)         : Array[Float]
-    Array(1.0f, 1234567890): Array[AnyVal] // loss of precision
-    Array(b, 33, 'a')      : Array[Char]
-    Array(5.toByte, 11)    : Array[Byte]
+```scala
+inline val b = 33
+def f(): Int = b + 1
+Array(b, 33, 5.5)      : Array[Double] // b is an inline val
+Array(f(), 33, 5.5)    : Array[AnyVal] // f() is not a constant
+Array(5, 11L)          : Array[Long]
+Array(5, 11L, 5.5)     : Array[AnyVal] // Long and Double found
+Array(1.0f, 2)         : Array[Float]
+Array(1.0f, 1234567890): Array[AnyVal] // loss of precision
+Array(b, 33, 'a')      : Array[Char]
+Array(5.toByte, 11)    : Array[Byte]
+```

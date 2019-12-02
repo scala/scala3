@@ -24,7 +24,7 @@ and will from here on be referred to as "template files" or "templates".
 
 A simple "hello world" site could look something like this:
 
-```none
+```
 ├── docs
 │   └── getting-started.md
 └── index.html
@@ -32,7 +32,7 @@ A simple "hello world" site could look something like this:
 
 This will give you a site with the following endpoints:
 
-```none
+```
 _site/index.html
 _site/docs/getting-started.html
 ```
@@ -79,7 +79,7 @@ the `index.html` file.
 
 Layouts must be placed in a `_layouts` directory in the site root:
 
-```none
+```
 ├── _layouts
 │   └── main.html
 ├── docs
@@ -97,7 +97,7 @@ the form `year-month-day-title.{md,html}`.
 
 An example of this would be:
 
-```none
+```
 ├── blog
 │   └── _posts
 │       └── 2016-12-05-implicit-function-types.md
@@ -109,7 +109,7 @@ To be rendered as templates, each blog post should have front-matter and a
 
 The posts are also available in the variable `site.posts` throughout the site.
 The fields of these objects are the same as in
-[BlogPost](dotty.tools.dottydoc.staticsite.BlogPost).
+`[BlogPost](dotty.tools.dottydoc.staticsite.BlogPost)`.
 
 Includes
 ========
@@ -130,7 +130,7 @@ includes may override these.
 
 An example structure with an include file "sidebar.html":
 
-```none
+```
 ├── _includes
 │   └── sidebar.html
 ├── blog
@@ -167,7 +167,7 @@ depth limit is 2 - we'd love to see this change, contributions welcome!
 The items which have the `subsection` key, may not have a `url` key in the
 current scheme. A site root example with this could be:
 
-```none
+```
 ├── blog
 │   └── _posts
 │       └── 2016-12-05-implicit-function-types.md
@@ -247,7 +247,7 @@ api-page.html
 -------------
 The last two layouts are special, in that they are treated specially by
 Dottydoc. The input to the API page is a documented
-[Entity](dotty.tools.dottydoc.model.Entity). As such, this page can be changed
+`[Entity](dotty.tools.dottydoc.model.Entity)`. As such, this page can be changed
 to alter the way Dottydoc renders API documentation.
 
 blog-page.html

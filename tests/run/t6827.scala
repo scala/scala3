@@ -4,21 +4,14 @@ object Test extends App {
 
   def tryit(label: String, start: Int, len: Int): Unit = {
     val status = try {
-      val it = ns.toIterator
+      val it = ns.iterator
       it.copyToArray(arr, start, len)
       "ok"
     } catch {
       case e: ArrayIndexOutOfBoundsException =>
-        // Special-case printing this exception because the toString changed in Java 11
-        val java11toString = """java.lang.ArrayIndexOutOfBoundsException: Index (-?\d+).*""".r
-
-        e.toString match {
-          case java11toString(index) =>
-            s"java.lang.ArrayIndexOutOfBoundsException: $index"
-          case str =>
-            str
-        }
-      case e: Exception => e.toString
+        "OOB"
+      case e: Exception =>
+        e.toString
     }
     println("%s: %s" format (label, status))
   }
@@ -40,15 +33,15 @@ object Test extends App {
   tryit("invalid read -1", 30, -1)
 
   // okay, see scala/bug#7128
-  "...".toIterator.copyToArray(new Array[Char](0), 0, 0)
+  "...".iterator.copyToArray(new Array[Char](0), 0, 0)
 
 
   // Bonus test from @som-snytt to check for overflow in
   // index calculations.
-  def testOverflow(start: Int, len: Int, expected: List[Char]) = {
+  def testOverflow(start: Int, len: Int, expected: List[Char]): Unit = {
     def copyFromIterator = {
       val arr = Array.fill[Char](3)('-')
-      "abc".toIterator.copyToArray(arr, start, len)
+      "abc".iterator.copyToArray(arr, start, len)
       arr.toList
     }
     def copyFromArray = {

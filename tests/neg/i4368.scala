@@ -149,13 +149,13 @@ object Test9 {
 object i4369 {
   trait X { self =>
     type R <: Z
-    type Z >: X { type R = self.R; type Z = self.R }
+    type Z >: X { type R = self.R; type Z = self.R } // error: cyclic // error: cyclic // error: cyclic
   }
-  class Foo extends X { type R = Foo; type Z = Foo } // error: too deep
+  class Foo extends X { type R = Foo; type Z = Foo }
 }
 object i4370 {
-  class Foo { type R = A } // error: cyclic
-  type A = List[Foo#R]
+  class Foo { type R = A }
+  type A = List[Foo#R] // error: cyclic
 }
 object i4371 {
   class Foo { type A = Boo#B } // error: cyclic

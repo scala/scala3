@@ -14,7 +14,7 @@ class Crash { // if you change this to a `trait` it keeps failing, though if it 
   implicit object ElementOrdering extends ElementOrdering
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   (new T {}).Default
   (new Crash).ElementOrdering
 }

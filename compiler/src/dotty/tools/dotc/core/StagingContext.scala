@@ -21,5 +21,5 @@ object StagingContext {
   /** Context with a decremented quotation level. */
   def spliceContext(implicit ctx: Context): Context =
     ctx.fresh.setProperty(QuotationLevel, level - 1)
-
 }
+

@@ -1,0 +1,4 @@
+scala> enum SingleCase { case TheCase }
+// defined class SingleCase
+scala> SingleCase.TheCase
+val res0: SingleCase = TheCase
