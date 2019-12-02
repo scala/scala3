@@ -812,8 +812,8 @@ trait Implicits { self: Typer =>
             cmpWithBoxed(cls1, cls2)
         else if (cls2.isPrimitiveValueClass)
           cmpWithBoxed(cls2, cls1)
-        else if (cls1 == defn.NullClass)
-          cls1 == cls2
+        else if (cls1 == defn.NullClass && cls1 == cls2)
+          true
         else if (!ctx.explicitNulls)
           // If explicit nulls is enabled, we want to disallow comparison between Object and Null.
           // If a nullable value has a non-nullable type, we can still cast it to nullable type
