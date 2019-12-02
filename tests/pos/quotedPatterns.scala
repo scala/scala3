@@ -32,9 +32,7 @@ object Test {
       val a: quoted.matching.Sym[[T] =>> T => Int] = ff
       z
     case '{ poly[$t]($x); 4 } => ???
-    case '{ poly[${Foo(t)}]($x); 4 } => ???
     case '{ type $X; poly[`$X`]($x); 4 } => ???
-    case '{ type $t; poly[${Foo(x: quoted.Type[`$t`])}]($x); 4 } => ???
     case '{ type $T; val x: `$T` = $a; val y: `$T` = x;  1 } => ???
     case '{ type $t <: AnyRef; val x: `$t` = $a; val y: `$t` = x;  1 } => ???
     case _ => '{1}
