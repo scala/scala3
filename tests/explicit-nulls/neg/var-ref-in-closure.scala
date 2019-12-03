@@ -41,7 +41,7 @@ object VarRef {
 
 
   locally {
-    var x: String|Null = "???"
+    var x: String|Null = ???
     lazy val y = {
       if (x != null) {
         val a: String = x // error: x exists in closure, no longer tackable
@@ -51,7 +51,7 @@ object VarRef {
   }
 
   locally {
-    var x: String|Null = "???"
+    var x: String|Null = ???
     def y = {
       if (x != null) {
         val a: String = x // error: x exists in closure, no longer tackable
@@ -61,7 +61,7 @@ object VarRef {
   }
 
   lazy val lazyblock = {
-    var x: String|Null = "???"
+    var x: String|Null = ???
     lazy val y = {
       if (x != null) {
         // The enclosingMethods of x definition and x reference hare are same
@@ -70,5 +70,71 @@ object VarRef {
       x
     }
   }
-}
 
+  abstract class F {
+    def get(): String | Null
+  }
+
+  locally {
+    var x: String|Null = ???
+    val y: F = new F {
+      def get() = {
+        if (x != null) x = null
+        x
+      }
+    }
+    if (x != null) {
+      val a: String = x // error: x exists in closure, no longer tackable
+    }
+  }
+
+  locally {
+    var x: String|Null = ???
+    val y: F = new F {
+      def get() = {
+        if (x != null) {
+          val a: String = x // error: x exists in closure, no longer tackable
+        }
+        x
+      }
+    }
+  }
+
+  def f(x: => String | Null): F = new F {
+    def get() = x
+  }
+
+  locally {
+    var x: String|Null = ???
+    val y: F = f {
+      if (x != null) {
+        x = null
+      }
+      x
+    }
+    if (x != null) {
+      val a: String = x // error: x exists in closure, no longer tackable
+    }
+  }
+
+  // TODO: not working now
+  // locally {
+  //   var x: String|Null = ???
+  //   val y: F = f {
+  //     if (x != null) {
+  //       val a: String = x // err: x exists in closure, no longer tackable
+  //     }
+  //     x
+  //   }
+  // }
+
+  locally {
+    var x: String|Null = ???
+    val y: String => String|Null = s => {
+      if (x != null) {
+        val a: String = x // error: x exists in closure, no longer tackable
+      }
+      x
+    }
+  }
+}

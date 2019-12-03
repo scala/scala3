@@ -111,6 +111,7 @@ object Nullables with
          sym.is(Mutable)
          && sym.owner.isTerm
          && (if sym.owner != curCtx.owner then
+              // TODO: need to check by-name parameters
               !curCtx.owner.is(Flags.Lazy) // not at the rhs of lazy ValDef
               && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod // not in different DefDef
             else true)

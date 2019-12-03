@@ -6,7 +6,6 @@ def f = {
     val xsx: Int = xs.x
     // Currently, we can't track a path with a mutable variable prefix,
     // even though the variable is trackable, like (xs.next != null).
-    // TODO: support this in the future?
     val xscpy: C = xs
     if (xscpy.next != null) {
       val _: Int = xscpy.next.x
