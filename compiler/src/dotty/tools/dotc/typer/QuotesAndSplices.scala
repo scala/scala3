@@ -107,9 +107,9 @@ trait QuotesAndSplices {
           if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
         val name = tree.expr match {
           case Ident(name) => ("$" + name).toTypeName
-          case Typed(Ident(name), _) => ("$" + name).toTypeName
-          case Bind(name, _) => ("$" + name).toTypeName
-          case _ => NameKinds.UniqueName.fresh("$".toTypeName)
+          case expr =>
+            ctx.error("expected a name binding", expr.sourcePos)
+            "$error".toTypeName
         }
         val typeSym = ctx.newSymbol(spliceOwner(ctx), name, EmptyFlags, TypeBounds.empty, NoSymbol, tree.expr.span)
         typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.expr.span)))
@@ -233,7 +233,6 @@ trait QuotesAndSplices {
           tdef.symbol.addAnnotation(Annotation(New(ref(defn.InternalQuoted_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
         val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
-        assert(tdef.name.startsWith("$"))
         val bindName = tdef.name.toString.stripPrefix("$").toTermName
         val sym = ctx0.newPatternBoundSymbol(bindName, bindingTypeTpe, tdef.span, flags = ImplicitTerm)
         buff += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingTypeTpe)).withSpan(tdef.span)
