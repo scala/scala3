@@ -31,7 +31,7 @@ object SymbolLoaders {
       owner: Symbol, member: Symbol,
       completer: SymbolLoader, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
     val comesFromScan =
-      completer.isInstanceOf[SourcefileLoader] && ctx.settings.scansource.value
+      completer.isInstanceOf[SourcefileLoader]
     assert(comesFromScan || scope.lookup(member.name) == NoSymbol,
            s"${owner.fullName}.${member.name} already has a symbol")
     owner.asClass.enter(member, scope)
@@ -103,69 +103,60 @@ object SymbolLoaders {
       scope = scope)
   }
 
-  /** If setting -scansource is set:
-   *    Enter all toplevel classes and objects in file `src` into package `owner`, provided
-   *    they are in the right package. Issue a warning if a class or object is in the wrong
-   *    package, i.e. if the file path differs from the declared package clause.
-   *  If -scansource is not set:
-   *    Enter class and module with given `name` into scope of `owner`.
+  /** Enter all toplevel classes and objects in file `src` into package `owner`, provided
+   *  they are in the right package. Issue a warning if a class or object is in the wrong
+   *  package, i.e. if the file path differs from the declared package clause.
    *
    *  All entered symbols are given a source completer of `src` as info.
    */
   def enterToplevelsFromSource(
       owner: Symbol, name: PreName, src: AbstractFile,
-      scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
+      scope: Scope = EmptyScope)(implicit ctx: Context): Unit =
+    if src.exists && !src.isDirectory
+      val completer = new SourcefileLoader(src)
+      val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
 
-    val completer = new SourcefileLoader(src)
-    if (ctx.settings.scansource.value && ctx.run != null) {
-      if (src.exists && !src.isDirectory) {
-        val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
-
-        def addPrefix(pid: RefTree, path: List[TermName]): List[TermName] = pid match {
-          case Ident(name: TermName) => name :: path
-          case Select(qual: RefTree, name: TermName) => name :: addPrefix(qual, path)
-          case _ => path
-        }
-
-        def enterScanned(unit: CompilationUnit)(implicit ctx: Context) = {
-
-          def checkPathMatches(path: List[TermName], what: String, tree: MemberDef): Boolean = {
-            val ok = filePath == path
-            if (!ok)
-              ctx.warning(i"""$what ${tree.name} is in the wrong directory.
-                              |It was declared to be in package ${path.reverse.mkString(".")}
-                              |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
-                          tree.sourcePos)
-            ok
-          }
-
-          def traverse(tree: Tree, path: List[TermName]): Unit = tree match {
-            case PackageDef(pid, body) =>
-              val path1 = addPrefix(pid, path)
-              for (stat <- body) traverse(stat, path1)
-            case tree: TypeDef if tree.isClassDef =>
-              if (checkPathMatches(path, "class", tree))
-                enterClassAndModule(owner, tree.name, completer, scope = scope)
-                  // It might be a case class or implicit class,
-                  // so enter class and module to be on the safe side
-            case tree: ModuleDef =>
-              if (checkPathMatches(path, "object", tree))
-                enterModule(owner, tree.name, completer, scope = scope)
-            case _ =>
-          }
-
-          traverse(
-            if (unit.isJava) new OutlineJavaParser(unit.source).parse()
-            else new OutlineParser(unit.source).parse(),
-            Nil)
-        }
-
-        val unit = CompilationUnit(ctx.getSource(src.path))
-        enterScanned(unit)(ctx.run.runContext.fresh.setCompilationUnit(unit))
+      def addPrefix(pid: RefTree, path: List[TermName]): List[TermName] = pid match {
+        case Ident(name: TermName) => name :: path
+        case Select(qual: RefTree, name: TermName) => name :: addPrefix(qual, path)
+        case _ => path
       }
-    }
-    else enterClassAndModule(owner, name, completer, scope = scope)
-  }
+
+      def enterScanned(unit: CompilationUnit)(implicit ctx: Context) = {
+
+        def checkPathMatches(path: List[TermName], what: String, tree: MemberDef): Boolean = {
+          val ok = filePath == path
+          if (!ok)
+            ctx.warning(i"""$what ${tree.name} is in the wrong directory.
+                           |It was declared to be in package ${path.reverse.mkString(".")}
+                           |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
+              tree.sourcePos)
+          ok
+        }
+
+        def traverse(tree: Tree, path: List[TermName]): Unit = tree match {
+          case PackageDef(pid, body) =>
+            val path1 = addPrefix(pid, path)
+            for (stat <- body) traverse(stat, path1)
+          case tree: TypeDef if tree.isClassDef =>
+            if (checkPathMatches(path, "class", tree))
+              // It might be a case class or implicit class,
+              // so enter class and module to be on the safe side
+              enterClassAndModule(owner, tree.name, completer, scope = scope)
+          case tree: ModuleDef =>
+            if (checkPathMatches(path, "object", tree))
+              enterModule(owner, tree.name, completer, scope = scope)
+          case _ =>
+        }
+
+        traverse(
+          if (unit.isJava) new OutlineJavaParser(unit.source).parse()
+          else new OutlineParser(unit.source).parse(),
+          Nil)
+      }
+
+      val unit = CompilationUnit(ctx.getSource(src.path))
+      enterScanned(unit)(ctx.run.runContext.fresh.setCompilationUnit(unit))
 
   /** The package objects of scala and scala.reflect should always
    *  be loaded in binary if classfiles are available, even if sourcefiles
