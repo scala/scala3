@@ -18,6 +18,7 @@ import ast.Trees._
 import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
 import reporting.trace
+import ast.desugar.{ packageObjectName, hasTopLevelDef }
 
 object SymbolLoaders {
   import ast.untpd._
@@ -124,7 +125,7 @@ object SymbolLoaders {
 
       def enterScanned(unit: CompilationUnit)(implicit ctx: Context) = {
 
-        def checkPathMatches(path: List[TermName], what: String, tree: MemberDef): Boolean = {
+        def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
           val ok = filePath == path
           if (!ok)
             ctx.warning(i"""$what ${tree.name} is in the wrong directory.
@@ -135,8 +136,10 @@ object SymbolLoaders {
         }
 
         def traverse(tree: Tree, path: List[TermName]): Unit = tree match {
-          case PackageDef(pid, body) =>
+          case tree @ PackageDef(pid, body) =>
             val path1 = addPrefix(pid, path)
+            if hasTopLevelDef(tree) && checkPathMatches(path1, "package", pid)
+              enterModule(owner, packageObjectName(unit.source), completer, scope = scope)
             for (stat <- body) traverse(stat, path1)
           case tree: TypeDef if tree.isClassDef =>
             if (checkPathMatches(path, "class", tree))
