@@ -489,10 +489,19 @@ class DottyLanguageServer extends LanguageServer
 
     val uriTrees = driver.openedTrees(uri)
 
-    val defs = Interactive.namedTrees(uriTrees, Include.empty)
+    val excludeLocalsFromSyntheticSymbols = (n: NameTree) => {
+      val owner = n.symbol.owner
+      n.symbol.is(Case) || {
+        !owner.is(Synthetic) &&
+        !owner.isPrimaryConstructor
+      }
+    }
+
+    val defs = Interactive.namedTrees(uriTrees, Include.local, excludeLocalsFromSyntheticSymbols)
+
     (for {
-      d <- defs if !isWorksheetWrapper(d)
-      info <- symbolInfo(d.tree.symbol, d.namePos)
+      d <- defs if (!isWorksheetWrapper(d) && !isTopLevelWrapper(d))
+      info <- symbolInfo(d.tree.symbol, d.pos)
     } yield JEither.forLeft(info)).asJava
   }
 
@@ -808,6 +817,14 @@ object DottyLanguageServer {
       symbol.owner == ctx.definitions.EmptyPackageClass
   }
 
+  /**
+   * Is this symbol the wrapper object for top level definitions?
+   */
+  def isTopLevelWrapper(sourceTree: SourceTree)(implicit ctx: Context): Boolean = {
+    val symbol = sourceTree.tree.symbol
+    symbol.isPackageObject
+  }
+
   /** Create an lsp4j.CompletionItem from a completion result */
   def completionItem(completion: Completion)(implicit ctx: Context): lsp4j.CompletionItem = {
     def completionItemKind(sym: Symbol)(implicit ctx: Context): lsp4j.CompletionItemKind = {
@@ -883,24 +900,36 @@ object DottyLanguageServer {
         SK.Constructor
       else if (sym.is(Module))
         SK.Module
+      else if (sym.isAllOf(EnumCase) || sym.isAllOf(EnumValue))
+        SK.EnumMember
+      else if (sym.is(Enum))
+        SK.Enum
+      else if (sym.is(Trait))
+        SK.Interface
       else if (sym.isClass)
         SK.Class
       else if (sym.is(Mutable))
         SK.Variable
       else if (sym.is(Method))
         SK.Method
+      else if (sym.is(TypeParam) || sym.isAbstractOrAliasType)
+        SK.TypeParameter
       else
         SK.Field
     }
+    def containerName(sym: Symbol): String = {
+      if (sym.owner.exists && !sym.owner.isEmptyPackage) {
+        if (sym.owner.isPackageObject && sym.owner.owner.exists) {
+          sym.owner.owner.name.stripModuleClassSuffix.show
+        } else
+          sym.owner.name.stripModuleClassSuffix.show
+      } else
+        null
+    }
 
     val name = sym.name.stripModuleClassSuffix.show
-    val containerName =
-      if (sym.owner.exists && !sym.owner.isEmptyPackage)
-        sym.owner.name.show
-      else
-        null
 
-    location(pos).map(l => new lsp4j.SymbolInformation(name, symbolKind(sym), l, containerName))
+    location(pos).map(l => new lsp4j.SymbolInformation(name, symbolKind(sym), l, containerName(sym)))
   }
 
   /** Convert `signature` to a `SignatureInformation` */
