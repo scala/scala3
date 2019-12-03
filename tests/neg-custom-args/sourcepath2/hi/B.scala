@@ -1,0 +1,2 @@
+package hi
+class B

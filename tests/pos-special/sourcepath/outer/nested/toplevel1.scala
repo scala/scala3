@@ -1,4 +1,4 @@
-package completeFromSource
+package outer
 package nested
 
 val one: Int = 1

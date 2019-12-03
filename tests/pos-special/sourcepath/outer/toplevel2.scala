@@ -1,4 +1,4 @@
-package completeFromSource
+package outer
 import nested._
 
 object toplevel2 {

@@ -1,4 +1,4 @@
-package completeFromSource.nested;
+package outer.nested;
 
 public class D {
     public D(int i) {
