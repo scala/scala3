@@ -24,7 +24,7 @@ object Test extends App {
     given polyListOps: [T, U](xs: List[T]) extended with {
       def zipp(ys: List[U]): List[(T, U)] = xs.zip(ys)
     }
-    given extension (xs: List[Int]) {
+    given (xs: List[Int]) extended with {
       def prod = (1 /: xs)(_ * _)
     }
   }

@@ -3546,15 +3546,13 @@ object Parsers {
           (EmptyValDef, Nil)
       Template(constr, parents, derived, self, stats)
 
-    def templateBody(): (ValDef, List[Tree]) = {
+    def templateBody(): (ValDef, List[Tree]) =
       val r = inDefScopeBraces { templateStatSeq() }
-      if (in.token == WITH) {
+      if in.token == WITH then
         syntaxError(EarlyDefinitionsNotSupported())
         in.nextToken()
         template(emptyConstructor)
-      }
       r
-    }
 
 /* -------- STATSEQS ------------------------------------------- */
 

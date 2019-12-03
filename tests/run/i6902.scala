@@ -1,6 +1,6 @@
 object Test {
-  given extension[A](a: A) { def <<< : A = a }
-  given extension (b: Int) { def <<<< : Int = b }
+  given [A](a: A) extended with { def <<< : A = a }
+  given (b: Int) extended with { def <<<< : Int = b }
 
   def main(args: Array[String]): Unit = {
     1.<<<

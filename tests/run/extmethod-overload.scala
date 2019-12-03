@@ -97,7 +97,7 @@ object Test extends App {
     def (x: Int) yy (y: Int) = x + y
   }
 
-  given extension (x: Int) {
+  given (x: Int) extended with {
     def yy (y: Int) = x - y
   }
 

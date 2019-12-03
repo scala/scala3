@@ -23,7 +23,7 @@ object Test extends App {
   val names = List("hi", "hello", "world")
   assert(names.longestStrings == List("hello", "world"))
 
-  given extension [T](xs: Seq[T]) with
+  given [T](xs: Seq[T]) extended with
     def second = xs.tail.head
 
   assert(names.longestStrings.second == "world")

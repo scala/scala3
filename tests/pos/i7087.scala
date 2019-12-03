@@ -6,7 +6,7 @@ type F[T] = T match {
   case G[a] => String
 }
 
-given extension [T](tup: T) {
+given [T](tup: T) extended with {
   def g(given Foo: F[T]) = ???
 }
 
