@@ -21,16 +21,6 @@ object ConstFold {
   /** If tree is a constant operation, replace with result. */
   def apply[T <: Tree](tree: T)(implicit ctx: Context): T = finish(tree) {
     tree match {
-      // TODO: fix it later
-      // case CompareNull(operand, testEqual)
-      // if ctx.explicitNulls && !operand.typeOpt.isNullableUnion =>
-      //   println(tree.show)
-      //   Constant(!testEqual)
-      // case CompareNull(TrackedRef(ref), testEqual)
-      // if ctx.settings.YexplicitNulls.value && ctx.notNullInfos.impliesNotNull(ref) =>
-      //   //throw new NullPointerException()
-      //   // TODO maybe drop once we have general Nullability?
-      //   Constant(!testEqual)
       case Apply(Select(xt, op), yt :: Nil) =>
         xt.tpe.widenTermRefExpr.normalized match
           case ConstantType(x) =>

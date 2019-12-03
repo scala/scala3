@@ -63,19 +63,4 @@ package object compiletime {
    *      }
    */
   type S[N <: Int] <: Int
-
-  /** Strip the Null type from `x`
-   *
-   *  ```
-   *  val x: String|Null = ???
-   *  val _: String = $notNull[String, x.type & String](x)
-   *
-   *  var y: String|Null = ???
-   *  val _: String = $notNull[String, String](x)
-   *  ```
-   *
-   *  Since `$notNull` is erased later, if `x.type` is a stable path,
-   *  the type of `$notNull(x)` is also a stable path.
-   */
-  inline def $notNull[A, B](x: => A | Null): B =  x.asInstanceOf
 }
