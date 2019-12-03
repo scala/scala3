@@ -3362,16 +3362,6 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
-    /** Check that `vparamss` represents a legal collective parameter list for a given extension
-     */
-    def checkExtensionParams(start: Offset, vparamss: List[List[ValDef]]): Unit = vparamss match
-      case (vparam :: Nil) :: vparamss1 if !vparam.mods.is(Given) =>
-        vparamss1.foreach(_.foreach(vparam =>
-          if !vparam.mods.is(Given) then
-            syntaxError(em"follow-on parameter in extension clause must be `given`", vparam.span)))
-      case _ =>
-        syntaxError(em"extension clause must start with a single regular parameter", start)
-
     def checkExtensionMethod(tparams: List[Tree], stat: Tree): Unit = stat match {
       case stat: DefDef =>
         if stat.mods.is(Extension) then
@@ -3385,22 +3375,23 @@ object Parsers {
 
     /** GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
      *                   |  [GivenSig ‘:’] ConstrApps [[‘with’] TemplateBody]
-     *                   |  [id ‘:’] ‘extension’ ExtParamClause {GivenParamClause} ExtMethods
+     *                   |  [id ‘:’] ExtParamClause {GivenParamClause} ‘extended’ ‘with’ ExtMethods
      *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
-     *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause {GivenParamClause}
+     *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause
      *  ExtMethods     ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
      */
     def givenDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
       val hasGivenSig = followingIsGivenSig()
-      val (name, isExtension) =
+      val nameStart = in.offset
+      val (name, isOldExtension) =
         if isIdent && hasGivenSig then
           (ident(), in.token == COLON && in.lookaheadIn(nme.extension))
         else
           (EmptyTermName, isIdent(nme.extension))
 
       val gdef = in.endMarkerScope(if name.isEmpty then GIVEN else name) {
-        if isExtension then
+        if isOldExtension then
           if (in.token == COLON) in.nextToken()
           assert(ident() == nme.extension)
           val tparams = typeParamClauseOpt(ParamOwner.Def)
@@ -3412,65 +3403,61 @@ object Parsers {
           templ.body.foreach(checkExtensionMethod(tparams, _))
           ModuleDef(name, templ)
         else
-          var tparams: List[TypeDef] = Nil
-          var vparamss: List[List[ValDef]] = Nil
-          var hasExtensionParams = false
-
-          def parseParams(isExtension: Boolean): Unit =
-            if isExtension && (in.token == LBRACKET || in.token == LPAREN) then
-              hasExtensionParams = true
-              if tparams.nonEmpty || vparamss.nonEmpty then
-                syntaxError(i"cannot have parameters before and after `:` in extension")
-            if in.token == LBRACKET then
-              tparams = typeParamClause(ParamOwner.Def)
-            if in.token == LPAREN && followingIsParamOrGivenType() then
-              val paramsStart = in.offset
-              vparamss = paramClauses(givenOnly = !isExtension)
-              if isExtension then
-                checkExtensionParams(paramsStart, vparamss)
-
-          parseParams(isExtension = false)
-          val parents =
-            if in.token == COLON then
-              in.nextToken()
-              if in.token == LBRACKET
-                 || in.token == LPAREN && followingIsParamOrGivenType()
-              then
-                parseParams(isExtension = true)
-                Nil
-              else
-                constrApps(commaOK = true, templateCanFollow = true)
-            else if in.token == SUBTYPE then
-              if !mods.is(Inline) then
-                syntaxError("`<:' is only allowed for given with `inline' modifier")
-              in.nextToken()
-              TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
-            else if name.isEmpty && !hasExtensionParams then
-              constrApps(commaOK = true, templateCanFollow = true)
+          val hasLabel = !name.isEmpty && in.token == COLON
+          if hasLabel then in.nextToken()
+          val tparams = typeParamClauseOpt(ParamOwner.Def)
+          val paramsStart = in.offset
+          val vparamss =
+            if in.token == LPAREN && followingIsParamOrGivenType()
+            then paramClauses()
             else Nil
-
-          if in.token == EQUALS && parents.length == 1 && parents.head.isType then
-            in.nextToken()
-            mods1 |= Final
-            DefDef(name, tparams, vparamss, parents.head, subExpr())
-          else
-            parents match
-              case TypeBoundsTree(_, _) :: _ => syntaxError("`=' expected")
+          val isExtension = isIdent(nme.extended)
+          def checkAllGivens(vparamss: List[List[ValDef]], what: String) =
+            vparamss.foreach(_.foreach(vparam =>
+              if !vparam.mods.is(Given) then syntaxError(em"$what must be `given`", vparam.span)))
+          if isExtension then
+            if !name.isEmpty && !hasLabel then
+              syntaxError(em"name $name of extension clause must be followed by `:`", nameStart)
+            vparamss match
+              case (vparam :: Nil) :: vparamss1 if !vparam.mods.is(Given) =>
+                checkAllGivens(vparamss1, "follow-on parameter in extension clause")
               case _ =>
-            possibleTemplateStart()
-            if hasExtensionParams then
-              in.observeIndented()
+                syntaxError("extension clause must start with a single regular parameter", paramsStart)
+            in.nextToken()
+            accept(WITH)
+            val (self, stats) = templateBody()
+            stats.foreach(checkExtensionMethod(tparams, _))
+            ModuleDef(name, Template(makeConstructor(tparams, vparamss), Nil, Nil, self, stats))
+          else
+            checkAllGivens(vparamss, "parameter of given instance")
+            val parents =
+              if hasLabel then
+                constrApps(commaOK = true, templateCanFollow = true)
+              else if in.token == SUBTYPE then
+                if !mods.is(Inline) then
+                  syntaxError("`<:' is only allowed for given with `inline' modifier")
+                in.nextToken()
+                TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
+              else
+                if !(name.isEmpty && tparams.isEmpty && vparamss.isEmpty) then
+                  accept(COLON)
+                constrApps(commaOK = true, templateCanFollow = true)
+            if in.token == EQUALS && parents.length == 1 && parents.head.isType then
+              in.nextToken()
+              mods1 |= Final
+              DefDef(name, tparams, vparamss, parents.head, subExpr())
             else
-              tparams = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
-              vparamss = vparamss.map(_.map(vparam =>
+              parents match
+                case TypeBoundsTree(_, _) :: _ => syntaxError("`=' expected")
+                case _ =>
+              possibleTemplateStart()
+              val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
+              val vparamss1 = vparamss.map(_.map(vparam =>
                 vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
-            val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, Nil)
-            if hasExtensionParams then
-              templ.body.foreach(checkExtensionMethod(tparams, _))
-              ModuleDef(name, templ)
-            else if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
-            else TypeDef(name.toTypeName, templ)
-      }
+              val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
+              if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
+              else TypeDef(name.toTypeName, templ)
+        }
       finalizeDef(gdef, mods1, start)
     }
 
@@ -3547,8 +3534,8 @@ object Parsers {
           checkNextNotIndented()
           Template(constr, Nil, Nil, EmptyValDef, Nil)
 
-    /** TemplateBody ::= [nl | `with'] `{' TemplateStatSeq `}'
-     *  EnumBody     ::=  [nl | ‘with’] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+    /** TemplateBody ::=  [nl] `{' TemplateStatSeq `}'
+     *  EnumBody     ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
      */
     def templateBodyOpt(constr: DefDef, parents: List[Tree], derived: List[Tree]): Template =
       val (self, stats) =

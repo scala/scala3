@@ -16,12 +16,12 @@ object Test extends App {
   test(given TC())
 
   object A {
-    given listOps: extension [T](xs: List[T]) {
+    given listOps: [T](xs: List[T]) extended with {
       def second: T = xs.tail.head
       def third: T = xs.tail.tail.head
       def concat(ys: List[T]) = xs ++ ys
     }
-    given polyListOps: extension [T, U](xs: List[T]) {
+    given polyListOps: [T, U](xs: List[T]) extended with {
       def zipp(ys: List[U]): List[(T, U)] = xs.zip(ys)
     }
     given extension (xs: List[Int]) {
