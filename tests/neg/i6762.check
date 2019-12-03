@@ -1,5 +1,0 @@
--- [E007] Type Mismatch Error: tests/neg/i6762.scala:5:72 --------------------------------------------------------------
-5 |def f(word: String)(given QuoteContext): Expr[Foo[G[String]]] = '{Foo(${word.toExpr})} // error
-  |                                                                        ^^^^
-  |                                                                        Found:    quoted.Expr[String]
-  |                                                                        Required: quoted.Expr[G[String]]
