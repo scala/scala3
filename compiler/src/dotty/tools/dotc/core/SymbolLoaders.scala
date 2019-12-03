@@ -156,7 +156,7 @@ object SymbolLoaders {
       }
 
       val unit = CompilationUnit(ctx.getSource(src.path))
-      enterScanned(unit)(ctx.run.runContext.fresh.setCompilationUnit(unit))
+      enterScanned(unit)(ctx.fresh.setCompilationUnit(unit))
 
   /** The package objects of scala and scala.reflect should always
    *  be loaded in binary if classfiles are available, even if sourcefiles
