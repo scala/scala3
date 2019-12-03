@@ -39,7 +39,7 @@ object Instances extends Common with
         if (fst != 0) fst else xs1.compareTo(ys1)
   end listOrd
 
-  given stringOps: (xs: Seq[String])
+  given stringOps: extension (xs: Seq[String]) with
     def longestStrings: Seq[String] =
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)

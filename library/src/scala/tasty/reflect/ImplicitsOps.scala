@@ -11,7 +11,7 @@ trait ImplicitsOps extends Core {
     @deprecated("Use _: ImplicitSearchSuccess", "")
     def unapply(isr: ImplicitSearchSuccess)(given ctx: Context): Option[ImplicitSearchSuccess] = Some(isr)
 
-  given SuccessOps: (self: ImplicitSearchSuccess) {
+  given successOps: extension (self: ImplicitSearchSuccess) {
     def tree(given ctx: Context): Term = internal.ImplicitSearchSuccess_tree(self)
   }
 
@@ -21,7 +21,7 @@ trait ImplicitsOps extends Core {
     @deprecated("Use _: ImplicitSearchFailure", "")
     def unapply(isr: ImplicitSearchFailure)(given ctx: Context): Option[ImplicitSearchFailure] = Some(isr)
 
-  given FailureOps: (self: ImplicitSearchFailure) {
+  given failureOps: extension (self: ImplicitSearchFailure) {
     def explanation(given ctx: Context): String = internal.ImplicitSearchFailure_explanation(self)
   }
 
