@@ -8,8 +8,15 @@ trait TypeOrBoundsOps extends Core {
   def typeOf[T: scala.quoted.Type]: Type
 
   given TypeOps: (self: Type) {
-    def =:=(that: Type)(given ctx: Context): Boolean = internal.`Type_=:=`(self)(that)
-    def <:<(that: Type)(given ctx: Context): Boolean = internal.`Type_<:<`(self)(that)
+
+    /** Is `self` type the same as `that` type?
+     *  This is the case iff `self <:< that` and `that <:< self`.
+     */
+    def =:=(that: Type)(given ctx: Context): Boolean = internal.Type_isTypeEq(self)(that)
+
+    /** Is this type a subtype of that type? */
+    def <:<(that: Type)(given ctx: Context): Boolean = internal.Type_isSubType(self)(that)
+
     def widen(given ctx: Context): Type = internal.Type_widen(self)
 
     /** Follow aliases and dereferences LazyRefs, annotated types and instantiated

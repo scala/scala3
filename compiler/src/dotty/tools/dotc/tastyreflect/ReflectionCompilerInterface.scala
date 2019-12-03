@@ -1137,9 +1137,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     }
     else ctx.getClassIfDefined(clazz.getCanonicalName).typeRef
 
-  def `Type_=:=`(self: Type)(that: Type)(given Context): Boolean = self =:= that
+  def Type_isTypeEq(self: Type)(that: Type)(given Context): Boolean = self =:= that
 
-  def `Type_<:<`(self: Type)(that: Type)(given Context): Boolean = self <:< that
+  def Type_isSubType(self: Type)(that: Type)(given Context): Boolean = self <:< that
 
   /** Widen from singleton type to its underlying non-singleton
     *  base type by applying one or more `underlying` dereferences,
