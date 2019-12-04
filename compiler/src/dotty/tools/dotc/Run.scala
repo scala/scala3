@@ -242,7 +242,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   def compileFromStrings(sourceCodes: String*): Unit = {
     val sourceFiles = sourceCodes.map {sourceCode =>
-      val virtualFile = new VirtualFile("compileFromString-${java.util.UUID.randomUUID().toString}")
+      val virtualFile = new VirtualFile(s"compileFromString-${java.util.UUID.randomUUID().toString}")
       val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8")) // buffering is still advised by javadoc
       writer.write(sourceCode)
       writer.close()
