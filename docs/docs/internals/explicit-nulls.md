@@ -138,3 +138,5 @@ def f = {
   }
 }
 ```
+Notice that in the example above `(l.type & Node).next.type & Node` is still a stable path, so
+we can use it in the type and track it for flow typing.

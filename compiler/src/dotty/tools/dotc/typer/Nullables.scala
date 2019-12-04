@@ -106,36 +106,43 @@ object Nullables with
    *  to a local mutable variable where all assignments to the variable are _reachable_
    *  (in the sense of how it is defined in assignmentSpans).
    *
-   *  A mutable vriable is trackable with following restrictions:
-   *  1. All the assignment must be reachable by the definition.
-   *  2. We only analyze the comparisons and use the facts in the same closure as
-   *    the definition.
+   *  When dealing with local mutable variables, there are two questions:
    *
-   *  ```scala
-   *  var x: String|Null = ???
-   *  def y = {
-   *    x = null
-   *  }
-   *  if (x != null) {
-   *    // y can be called here
-   *    val a: String = x // error: x is captured and mutated by the closure, not tackable
-   *  }
-   *  ```
-   *
-   *  ```scala
-   *  var x: String|Null = ???
-   *  def y = {
-   *    if (x != null) {
-   *      // not safe to use the fact (x != null) here
-   *      // since y can be executed at the same time as the outer block
-   *      val _: String = x
+   *  1. Whether to track a local mutable variable during flow typing.
+   *    We track a local mutable variable iff the variable is not assigned in a closure.
+   *    For example, in the following code `x` is assigned to by the closure `y`, so we do not
+   *    do flow typing on `x`.
+   *    ```scala
+   *    var x: String|Null = ???
+   *    def y = {
+   *      x = null
    *    }
-   *  }
-   *  if (x != null) {
-   *    val a: String = x // ok to use the fact here
-   *    x = null
-   *  }
-   *  ```
+   *    if (x != null) {
+   *      // y can be called here, which break the fact
+   *      val a: String = x // error: x is captured and mutated by the closure, not tackable
+   *    }
+   *    ```
+   *
+   *  2. Whether to generate and use flow typing on a specific _use_ of a local mutable variable.
+   *    We only want to do flow typing on a use that belongs to the same method as the definition
+   *    of the local variable.
+   *    For example, in the following code, even `x` is not assigned to by a closure, but we can only
+   *    use flow typing in one of the occurrences (because the other occurrence happens within a nested
+   *    closure).
+   *    ```scala
+   *    var x: String|Null = ???
+   *    def y = {
+   *      if (x != null) {
+   *        // not safe to use the fact (x != null) here
+   *        // since y can be executed at the same time as the outer block
+   *        val _: String = x
+   *      }
+   *    }
+   *    if (x != null) {
+   *      val a: String = x // ok to use the fact here
+   *      x = null
+   *    }
+   *    ```
    *
    *  See more examples in `tests/explicit-nulls/neg/var-ref-in-closure.scala`.
    */
