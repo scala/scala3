@@ -1220,6 +1220,29 @@ object desugar {
     else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
   }
 
+  private def isTopLevelDef(stat: Tree)(given Context): Boolean = stat match
+    case _: ValDef | _: PatDef | _: DefDef | _: Export => true
+    case stat: ModuleDef =>
+      stat.mods.isOneOf(GivenOrImplicit)
+    case stat: TypeDef =>
+      !stat.isClassDef || stat.mods.isOneOf(GivenOrImplicit)
+    case _ =>
+      false
+
+  /** Does this package contains at least one top-level definition
+   *  that will require a wrapping object ?
+   */
+  def hasTopLevelDef(pdef: PackageDef)(given Context): Boolean =
+    pdef.stats.exists(isTopLevelDef)
+
+  /** Assuming `src` contains top-level definition, returns the name that should
+   *  be using for the package object that will wrap them.
+   */
+  def packageObjectName(src: SourceFile): TermName =
+    val fileName = src.file.name
+    val sourceName = fileName.take(fileName.lastIndexOf('.'))
+    (sourceName ++ str.TOPLEVEL_SUFFIX).toTermName
+
   /** Group all definitions that can't be at the toplevel in
    *  an object named `<source>$package` where `<source>` is the name of the source file.
    *  Definitions that can't be at the toplevel are:
@@ -1231,26 +1254,22 @@ object desugar {
    *     (i.e. objects having the same name as a wrapped type)
    */
   def packageDef(pdef: PackageDef)(implicit ctx: Context): PackageDef = {
-    def isWrappedType(stat: TypeDef): Boolean =
-      !stat.isClassDef || stat.mods.isOneOf(GivenOrImplicit)
     val wrappedTypeNames = pdef.stats.collect {
-      case stat: TypeDef if isWrappedType(stat) => stat.name
+      case stat: TypeDef if isTopLevelDef(stat) => stat.name
     }
-    def needsObject(stat: Tree) = stat match {
-      case _: ValDef | _: PatDef | _: DefDef | _: Export => true
-      case stat: ModuleDef =>
-        stat.mods.isOneOf(GivenOrImplicit) ||
-        wrappedTypeNames.contains(stat.name.stripModuleClassSuffix.toTypeName)
-      case stat: TypeDef => isWrappedType(stat)
-      case _ => false
-    }
-    val (nestedStats, topStats) = pdef.stats.partition(needsObject)
+    def inPackageObject(stat: Tree) =
+      isTopLevelDef(stat) || {
+        stat match
+          case stat: ModuleDef =>
+            wrappedTypeNames.contains(stat.name.stripModuleClassSuffix.toTypeName)
+          case _ =>
+            false
+      }
+    val (nestedStats, topStats) = pdef.stats.partition(inPackageObject)
     if (nestedStats.isEmpty) pdef
     else {
-      var fileName = ctx.source.file.name
-      val sourceName = fileName.take(fileName.lastIndexOf('.'))
-      val groupName = (sourceName ++ str.TOPLEVEL_SUFFIX).toTermName.asSimpleName
-      val grouped = ModuleDef(groupName, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
+      val name = packageObjectName(ctx.source)
+      val grouped = ModuleDef(name, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
       cpy.PackageDef(pdef)(pdef.pid, topStats :+ grouped)
     }
   }

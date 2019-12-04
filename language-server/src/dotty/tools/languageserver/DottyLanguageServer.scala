@@ -87,8 +87,7 @@ class DottyLanguageServer extends LanguageServer
           config.compilerArguments.toList
             .update("-d", config.classDirectory.getAbsolutePath)
             .update("-classpath", (config.classDirectory +: config.dependencyClasspath).mkString(File.pathSeparator))
-            .update("-sourcepath", config.sourceDirectories.mkString(File.pathSeparator)) :+
-          "-scansource"
+            .update("-sourcepath", config.sourceDirectories.mkString(File.pathSeparator))
         myDrivers(config) = new InteractiveDriver(settings)
       }
     myDrivers

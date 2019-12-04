@@ -1,4 +1,4 @@
-package completeFromSource
+package outer
 
 class Test extends nested.A(22) {
 

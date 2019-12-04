@@ -1,4 +1,4 @@
-package completeFromSource.nested
+package outer.nested
 
 class Test4 {
 

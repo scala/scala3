@@ -1,4 +1,4 @@
-package completeFromSource.nested
+package outer.nested
 
 
 case class B(x: Int) extends A(x)
