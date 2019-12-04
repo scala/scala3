@@ -105,17 +105,50 @@ object Nullables with
    *  This is the case if the reference is a path to an immutable val, or if it refers
    *  to a local mutable variable where all assignments to the variable are _reachable_
    *  (in the sense of how it is defined in assignmentSpans).
+   *
+   *  A mutable vriable is trackable with following restrictions:
+   *  1. All the assignment must be reachable by the definition.
+   *  2. We only analyze the comparisons and use the facts in the same closure as
+   *    the definition.
+   *
+   *  ```scala
+   *  var x: String|Null = ???
+   *  def y = {
+   *    x = null
+   *  }
+   *  if (x != null) {
+   *    // y can be called here
+   *    val a: String = x // error: x is captured and mutated by the closure, not tackable
+   *  }
+   *  ```
+   *
+   *  ```scala
+   *  var x: String|Null = ???
+   *  def y = {
+   *    if (x != null) {
+   *      // not safe to use the fact (x != null) here
+   *      // since y can be executed at the same time as the outer block
+   *      val _: String = x
+   *    }
+   *  }
+   *  if (x != null) {
+   *    val a: String = x // ok to use the fact here
+   *    x = null
+   *  }
+   *  ```
+   *
+   *  See more examples in `tests/explicit-nulls/neg/var-ref-in-closure.scala`.
    */
   def isTracked(ref: TermRef)(given Context) =
     ref.isStable
     || { val sym = ref.symbol
          sym.is(Mutable)
          && sym.owner.isTerm
-         && (if sym.owner != curCtx.owner then
-              // TODO: need to check by-name parameters
-              !curCtx.owner.is(Flags.Lazy) // not at the rhs of lazy ValDef
-              && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod // not in different DefDef
-            else true)
+         && ( sym.owner == curCtx.owner
+          || !curCtx.owner.is(Flags.Lazy) // not at the rhs of lazy ValDef
+            && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod // not in different methods
+            // TODO: need to check by-name paramter
+          )
          && sym.span.exists
          && curCtx.compilationUnit != null // could be null under -Ytest-pickler
          && curCtx.compilationUnit.assignmentSpans.contains(sym.span.start)

@@ -90,7 +90,7 @@ are methods of the `Type` class, so call them with `this` as a receiver:
 
 - `isNullableUnion` determines whether `this` is a nullable union.
 - `isJavaNullableUnion` determines whether `this` is syntactically a union of the form
-  `T|JavaNull`
+  `T|JavaNull`.
 - `stripNull` syntactically strips all `Null` types in the union:
   e.g. `String|Null => String`.
 - `stripAllJavaNull` is like `stripNull` but only removes `JavaNull` from the union.
@@ -98,12 +98,43 @@ are methods of the `Type` class, so call them with `this` as a receiver:
 
 ## Flow Typing
 
-`NotNullInfo`s are collected as we typing each statements, see `Nullables.scala` for more
-details about how we compute `NotNullInfo`s.
+As typing happens, we accumulate a set of `NotNullInfo`s in the `Context` (see
+`Contexts.scala`). A `NotNullInfo` contains the set of `TermRef`s that are known to
+be non-null at the current program point.  See `Nullables.scala` for how `NotNullInfo`s
+are computed.
 
-When we type an identity or a select tree (in `typedIdent` and `typedSelect`), we will
-call `toNotNullTermRef` on the tree before reture the result. If the tree `x` has nullable
-type `T|Null` and it is known to be not null according to the `NotNullInfo` and it is not
-on the lhs of assignment, then we cast it to `x.type & T` using `defn.Any_typeCast`. The
-reason to have a `TermRef(x)` in the `AndType` is that we can track the new result as well and
-use it as a path.
+During type-checking, when we type an identity or a select tree (in `typedIdent` and
+`typedSelect`), we will call `toNotNullTermRef` on the tree before return the typed tree.
+If the tree `x` has nullable type `T|Null` and it is known to be not null according to
+the `NotNullInfo` and it is not on the lhs of assignment, then we cast it to `x.type & T`
+using `defn.Any_typeCast`.
+
+The reason for casting to `x.type & T`, as opposed to just `T`, is that it allows us to
+support flow typing for paths of length greater than one.
+
+```scala
+abstract class Node {
+  val x: String
+  val next: Node | Null
+}
+
+def f = {
+  val l: Node|Null = ???
+  if (l != null && l.next != null) {
+    val third: l.next.next.type = l.next.next
+  }
+}
+```
+
+After typing, `f` becomes:
+
+```scala
+def f = {
+  val l: Node|Null = ???
+  if (l != null && l.$asInstanceOf$[l.type & Node].next != null) {
+    val third:
+      l.$asInstanceOf$[l.type & Node].next.$asInstanceOf$[(l.type & Node).next.type & Node].next.type =
+      l.$asInstanceOf$[l.type & Node].next.$asInstanceOf$[(l.type & Node).next.type & Node].next
+  }
+}
+```

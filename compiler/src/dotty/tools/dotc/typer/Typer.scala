@@ -348,6 +348,8 @@ class Typer extends Namer
     findRefRecur(NoType, BindingPrec.NothingBound, NoContext)
   }
 
+  // If `tree`'s type is a `TermRef` identified by flow typing to be non-null, then
+  // cast away `tree`s nullability. Otherwise, `tree` remains unchanged.
   def toNotNullTermRef(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match
     case ref @ OrNull(tpnn) : TermRef
     if pt != AssignProto && // Ensure it is not the lhs of Assign
