@@ -133,8 +133,7 @@ trait Reporting { this: Context =>
   def error(msg: => Message, pos: SourcePosition = NoSourcePosition, sticky: Boolean = false): Unit = {
     val fullPos = addInlineds(pos)
     reporter.report(if (sticky) new StickyError(msg, fullPos) else new Error(msg, fullPos))
-    if (ctx.settings.YdebugError.value)
-      Thread.dumpStack()
+    if ctx.settings.YdebugError.value then Thread.dumpStack()
   }
 
   def error(ex: TypeError, pos: SourcePosition): Unit = {

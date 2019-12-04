@@ -2,7 +2,7 @@ object Test extends App {
 
   class TC
 
-  given stringListOps(given TC): {
+  given stringListOps(given TC): Object {
     type T = List[String]
     def (x: T) foo (y: T) = (x ++ y, summon[TC])
     def (x: T) bar (y: Int) = (x(0)(y), summon[TC])
@@ -16,13 +16,15 @@ object Test extends App {
   test(given TC())
 
   object A {
-    given listOps: [T](xs: List[T]) {
+    given listOps: [T](xs: List[T]) extended with {
       def second: T = xs.tail.head
       def third: T = xs.tail.tail.head
       def concat(ys: List[T]) = xs ++ ys
-      def zipp[U](ys: List[U]): List[(T, U)] = xs.zip(ys)
     }
-    given extension (xs: List[Int]) {
+    given polyListOps: [T, U](xs: List[T]) extended with {
+      def zipp(ys: List[U]): List[(T, U)] = xs.zip(ys)
+    }
+    given (xs: List[Int]) extended with {
       def prod = (1 /: xs)(_ * _)
     }
   }
