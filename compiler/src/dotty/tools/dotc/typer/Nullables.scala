@@ -10,6 +10,7 @@ import util.Property
 import Names.Name
 import util.Spans.Span
 import Flags.Mutable
+import NullOpsDecorator._
 import collection.mutable
 
 /** Operations for implementing a flow analysis for nullability */
@@ -258,15 +259,13 @@ object Nullables with
   given assignOps: (tree: Assign)
     def computeAssignNullable()(given Context): tree.type = tree.lhs match
       case TrackedRef(ref) =>
-        def withoutRef: tree.type = tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
-        tree.rhs.typeOpt match
-          // If the type of rhs is `T|Null`, then the nullability of the lhs variable is no longer
-          // trackable. We don't need to check whether the type `T` is correct here, as typer will
-          // check it.
-          case OrNull(_) => withoutRef
-          // If the type of rhs is Null, we discard its NotNullInfo.
-          case tp if tp.isNullType => withoutRef
-          case _ => tree
+        val rhstp = tree.rhs.typeOpt
+        if (rhstp.isNullType || rhstp.isNullableUnion)
+          // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
+          // lhs variable is no longer trackable. We don't need to check whether the type `T`
+          // is correct here, as typer will check it.
+          tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
+        else tree
       case _ => tree
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)
