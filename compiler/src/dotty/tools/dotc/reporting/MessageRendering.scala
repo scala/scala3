@@ -33,7 +33,7 @@ trait MessageRendering {
     */
   def outer(pos: SourcePosition, prefix: String)(implicit ctx: Context): List[String] =
     if (pos.outer.exists)
-       i"$prefix| This location is in code that was inlined at $pos" ::
+       i"$prefix| This location contains code that was inlined from $pos" ::
        outer(pos.outer, prefix)
     else Nil
 

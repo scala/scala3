@@ -6,4 +6,4 @@
   |            2
   |          } : Int(2)
   |           patterns :  case 1
-  | This location is in code that was inlined at inline-error-pos.scala:3
+  | This location contains code that was inlined from inline-error-pos.scala:3

@@ -6,4 +6,4 @@
   |    "f"
   |  } : String("f")
   |   patterns :  case _:Int
-  | This location is in code that was inlined at cannot-reduce-inline-match.scala:3
+  | This location contains code that was inlined from cannot-reduce-inline-match.scala:3
