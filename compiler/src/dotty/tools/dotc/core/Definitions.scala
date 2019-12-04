@@ -645,8 +645,6 @@ class Definitions {
     @tu lazy val QuotedExprModule_unitExpr: Symbol = QuotedExprModule.requiredMethod(nme.unitExpr)
 
   @tu lazy val QuoteContextClass: ClassSymbol = ctx.requiredClass("scala.quoted.QuoteContext")
-  @tu lazy val QuoteContextModule: Symbol = QuoteContextClass.companionModule
-    @tu lazy val QuoteContext_macroContext: Symbol = QuoteContextModule.requiredMethod("macroContext")
 
   @tu lazy val LiftableModule: Symbol = ctx.requiredModule("scala.quoted.Liftable")
     @tu lazy val LiftableModule_BooleanIsLiftable: Symbol = LiftableModule.requiredMethod("BooleanIsLiftable")
