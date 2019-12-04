@@ -1015,7 +1015,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           false
       }
 
-    /** Compare `tp` of form `S[arg]` with `other`, via ">:>` if fromBelow is true, "<:<" otherwise.
+    /** Compare `tp` of form `S[arg]` with `other`, via ">:>" if fromBelow is true, "<:<" otherwise.
      *  If `arg` is a Nat constant `n`, proceed with comparing `n + 1` and `other`.
      *  Otherwise, if `other` is a Nat constant `n`, proceed with comparing `arg` and `n - 1`.
      */
@@ -1037,11 +1037,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       case _ => false
     }
 
+    /** Compare `tp` of form `tycon[...args]`, where `tycon` is a scala.compiletime type,
+     *  with `other` via ">:>" if fromBelow is true, "<:<" otherwise.
+     *  Delegates to compareS if `tycon` is scala.compiletime.S. Otherwise, constant folds if possible.
+     */
     def compareCompiletimeAppliedType(tp: AppliedType, other: Type, fromBelow: Boolean): Boolean = {
       if (defn.isCompiletime_S(tp.tycon.typeSymbol)) compareS(tp, other, fromBelow)
       else {
         val reduced = tp.tryCompiletimeConstantFold.getOrElse(tp.superType)
-        recur(reduced, other)
+        if (fromBelow) recur(other, reduced) else recur(reduced, other)
       }
     }
 

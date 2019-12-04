@@ -5,6 +5,8 @@ object Test {
   summon[1763 =:= 41 * 43]
   summon[2 + 2 =:= 3] // error
   summon[29 * 31 =:= 900] // error
+  summon[Any <:< Int + 1] // error
+  summon[Int + 1 <:< Any]
 
   val a: Int + Int = 3
   val c: 1 + Int = 2
