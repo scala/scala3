@@ -489,9 +489,12 @@ class DottyLanguageServer extends LanguageServer
 
     val uriTrees = driver.openedTrees(uri)
 
+    // Excludes locals from synthetic symbols (with the exception of enums members)
+    // and erroroneous trees.
     val excludeLocalsFromSyntheticSymbols = (n: NameTree) => {
       val owner = n.symbol.owner
       n.symbol.is(Case) || {
+        n.name != StdNames.nme.ERROR &&
         !owner.is(Synthetic) &&
         !owner.isPrimaryConstructor
       }
@@ -918,11 +921,9 @@ object DottyLanguageServer {
         SK.Field
     }
     def containerName(sym: Symbol): String = {
-      if (sym.owner.exists && !sym.owner.isEmptyPackage) {
-        if (sym.owner.isPackageObject && sym.owner.owner.exists) {
-          sym.owner.owner.name.stripModuleClassSuffix.show
-        } else
-          sym.owner.name.stripModuleClassSuffix.show
+      val owner = if (sym.owner.exists && sym.owner.isPackageObject) sym.owner.owner else sym.owner
+      if (owner.exists && !owner.isEmptyPackage) {
+          owner.name.stripModuleClassSuffix.show
       } else
         null
     }
