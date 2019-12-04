@@ -1086,7 +1086,7 @@ object desugar {
         if (tupleOptimizable) rhs
         else Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
       vars match {
-        case Nil =>
+        case Nil if !mods.is(Lazy) =>
           matchExpr
         case (named, tpt) :: Nil =>
           derivedValDef(original, named, tpt, matchExpr, mods)
