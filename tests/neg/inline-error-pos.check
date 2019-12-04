@@ -1,4 +1,4 @@
--- Error: tests/neg/inline-error-pos.scala:3:11 ------------------------------------------------------------------------
+-- Error: tests/neg/inline-error-pos.scala:8:13 ------------------------------------------------------------------------
 8 |  val b = foo(2) // error
   |          ^^^^^^
   |          cannot reduce inline match with

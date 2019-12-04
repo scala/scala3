@@ -1,4 +1,4 @@
--- Error: tests/neg/cannot-reduce-inline-match.scala:3:13 --------------------------------------------------------------
+-- Error: tests/neg/cannot-reduce-inline-match.scala:9:5 ---------------------------------------------------------------
 9 |  foo("f") // error
   |  ^^^^^^^^
   |  cannot reduce inline match with

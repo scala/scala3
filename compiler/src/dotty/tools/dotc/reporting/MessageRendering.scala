@@ -114,9 +114,9 @@ trait MessageRendering {
     */
   def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String =
     if (pos.exists) hl(diagnosticLevel)({
+      val pos1 = pos.nonInlined
       val file =
-        if (pos.source.file.exists) s"${pos.source.file.toString}:${pos.line + 1}:${pos.column}"
-        else s"${pos.source.file.toString}: offset ${pos.start} (missing source file)"
+        s"${pos1.source.file.toString}:${pos1.line + 1}:${pos1.column}"
       val errId =
         if (message.errorId ne ErrorMessageID.NoExplanationID) {
           val errorNumber = message.errorId.errorNumber
