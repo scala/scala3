@@ -214,7 +214,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           assert(ctx.inInlineMethod)
           None
         }
-        else {
+        else if (levelOf(sym).getOrElse(0) < level) {
           val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
           val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
           tag.tpe match {
@@ -232,6 +232,8 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
                             |
                             | The access would be accepted with an implict $reqType""")
           }
+        } else {
+          None
         }
       case _ =>
         levelError(sym, tp, pos, "")

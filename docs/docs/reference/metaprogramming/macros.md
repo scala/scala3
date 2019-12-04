@@ -161,14 +161,15 @@ different directions here for `f` and `x`.  The reference to `f` is
 legal because it is quoted, then spliced, whereas the reference to `x`
 is legal because it is spliced, then quoted.
 
-### Types and the PCP
+### Lifting Types
 
-In principle, The phase consistency principle applies to types as well
-as for expressions. This might seem too restrictive. Indeed, the
-definition of `reflect` above is not phase correct since there is a
+Types are not directly affected by the phase consistency principle.
+It is possible to use types defined at any level in any other level.
+But, if a type is used in a subsequent stage it will need to be lifted to a `Type`.
+The resulting value of `Type` will be subject to PCP.
+Indeed, the definition of `reflect` above uses `T` in the next stage, there is a
 quote but no splice between the parameter binding of `T` and its
-usage. But the code can be made phase correct by adding a binding
-of a `Type[T]` tag:
+usage. But the code can be rewritten by adding a binding of a `Type[T]` tag:
 ```scala
 def reflect[T, U](f: Expr[T] => Expr[U])(given t: Type[T]): Expr[T => U] =
   '{ (x: $t) => ${ f('x) } }
@@ -177,8 +178,8 @@ In this version of `reflect`, the type of `x` is now the result of
 splicing the `Type` value `t`. This operation _is_ splice correct -- there
 is one quote and one splice between the use of `t` and its definition.
 
-To avoid clutter, the Scala implementation tries to convert any phase-incorrect
-reference to a type `T` to a type-splice, by rewriting `T` to `${ summon[Type[T]] }`.
+To avoid clutter, the Scala implementation tries to convert any type
+reference to a type `T` in subsequent phases to a type-splice, by rewriting `T` to `${ summon[Type[T]] }`.
 For instance, the user-level definition of `reflect`:
 
 ```scala
