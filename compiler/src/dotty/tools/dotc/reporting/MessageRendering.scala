@@ -33,7 +33,7 @@ trait MessageRendering {
     */
   def outer(pos: SourcePosition, prefix: String)(implicit ctx: Context): List[String] =
     if (pos.outer.exists)
-       i"$prefix| This location is in code that was inlined at ${pos.outer}" ::
+       i"$prefix| This location is in code that was inlined at $pos" ::
        outer(pos.outer, prefix)
     else Nil
 
@@ -149,9 +149,10 @@ trait MessageRendering {
     val posString = posStr(pos, diagnosticLevel, msg)
     if (posString.nonEmpty) sb.append(posString).append(EOL)
     if (pos.exists && pos.source.file.exists) {
-      val (srcBefore, srcAfter, offset) = sourceLines(pos, diagnosticLevel)
-      val marker = columnMarker(pos, offset, diagnosticLevel)
-      val err = errorMsg(pos, msg.msg, offset)
+      val pos1 = pos.nonInlined
+      val (srcBefore, srcAfter, offset) = sourceLines(pos1, diagnosticLevel)
+      val marker = columnMarker(pos1, offset, diagnosticLevel)
+      val err = errorMsg(pos1, msg.msg, offset)
       sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString(EOL))
     }
     else sb.append(msg.msg)

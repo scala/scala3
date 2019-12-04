@@ -1,11 +1,11 @@
 object Test {
   inline def foo[T](x: T) =
-    inline x match { // error
+    inline x match {
       case _: Int =>
     }
 
   foo(4)
 
-  foo("f")
+  foo("f") // error
 
 }

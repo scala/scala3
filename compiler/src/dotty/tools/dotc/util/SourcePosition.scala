@@ -64,6 +64,17 @@ extends interfaces.SourcePosition with Showable {
   def outermost: SourcePosition =
     if outer == null || outer == NoSourcePosition then this else outer.outermost
 
+  /** Inner most position that is contained within the `outermost` position.
+   *  Most precise position that that comes from the call site.
+   */
+  def nonInlined: SourcePosition = {
+    val om = outermost
+    def rec(self: SourcePosition): SourcePosition =
+      if outermost.contains(self) then self else rec(self.outer)
+    rec(this)
+  }
+
+
   override def toString: String =
     s"${if (source.exists) source.file.toString else "(no source)"}:$span"
 
