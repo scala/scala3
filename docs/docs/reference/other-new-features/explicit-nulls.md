@@ -192,7 +192,6 @@ Specifically, we patch
       final char CHAR = 'a';
 
       final String NAME_GENERATED = getNewName();
-      final int VALUE = 0 * 2;
     }
     ```
     ==>
@@ -203,7 +202,6 @@ Specifically, we patch
       val CHAR: Char('a') = 'a'
 
       val NAME_GENERATED: String | Null = ???
-      val VALUE: Int = ???
     }
     ```
 
@@ -289,7 +287,155 @@ val s2 = if (ret != null) {
 
 ## Flow Typing
 
-TODO
+We added a simple form of flow-sensitive type inference. The idea is that if `p` is a
+stable path or a trackable variable, then we can know that `p` is non-null if it's compared
+with the `null`. This information can then be propagated to the `then` and `else` branches
+of an if-statement (among other places).
+
+Example:
+
+```scala
+val s: String|Null = ???
+if (s != null) {
+  // s: String
+}
+// s: String|Null
+
+assert(x != null)
+// s: String
+```
+
+A similar inference can be made for the `else` case if the test is `p == null`
+
+```scala
+if (s == null) {
+  // s: String|Null
+} else {
+  // s: String
+}
+```
+
+`==` and `!=` is considered a comparison for the purposes of the flow inference.
+
+### Logical Operators
+
+We also support logical operators (`&&`, `||`, and `!`):
+
+```scala
+val s: String|Null = ???
+val s2: String|Null = ???
+if (s != null && s2 != null) {
+  // s: String
+  // s2: String
+}
+
+if (s == null || s2 == null) {
+  // s: String|Null
+  // s2: String|Null
+} else {
+  // s: String
+  // s2: String
+}
+```
+
+### Inside Conditions
+
+We also support type specialization _within_ the condition, taking into account that `&&` and `||` are short-circuiting:
+
+```scala
+val s: String|Null = ???
+
+if (s != null && s.length > 0) { // s: String in `s.length > 0`
+  // s: String
+}
+
+if (s == null || s.length > 0) // s: String in `s.length > 0` {
+  // s: String|Null
+} else {
+  // s: String|Null
+}
+```
+
+### Match Case
+
+The non-null cases can be detected in match statements.
+
+```scala
+val s: String|Null = ???
+
+s match {
+  case _: String => // s: String
+  case _ =>
+}
+```
+
+### Mutable Variable
+
+A mutable vriable is trackable with following restrictions:
+
+1. All the assignment must in the same closure as the definition (more strictly,
+  reachable by the definition).
+2. We only analyze the comparisons and use the facts in the same closure as
+  the definition.
+
+```scala
+class C(val x: Int, val next: C|Null)
+
+var xs: C|Null = C(1, C(2, null))
+// xs is trackable, since all assignments are in the same mathod
+while (xs != null) {
+  // xs: C
+  val xsx: Int = xs.x
+  val xscpy: C = xs
+  xs = xscpy // since xscpy is non-null, xs still has type C after this line
+  // xs: C
+  xs = xs.next // after this assignment, xs can be null again
+  // xs: C | Null
+}
+```
+
+```scala
+var x: String|Null = ???
+def y = {
+  x = null
+}
+if (x != null) {
+  // y can be called here
+  val a: String = x // error: x is captured and mutated by the closure, not tackable
+}
+```
+
+```scala
+var x: String|Null = ???
+def y = {
+  if (x != null) {
+    // not safe to use the fact (x != null) here
+    // since y can be executed at the same time as the outer block
+    val _: String = x
+  }
+}
+if (x != null) {
+  val a: String = x // ok to use the fact here
+  x = null
+}
+```
+
+Currently, we are unable to track `x.a` if `x` is mutable.
+
+### Unsupported Idioms
+
+We don't support:
+
+- flow facts not related to nullability (`if (x == 0) { // x: 0.type not inferred }`)
+- tracking aliasing between non-nullable paths
+  ```scala
+  val s: String|Null = ???
+  val s2: String|Null = ???
+  if (s != null && s == s2) {
+    // s:  String inferred
+    // s2: String not inferred
+  }
+  ```
 
 ## Binary Compatibility
 
@@ -297,4 +443,4 @@ Our strategy for binary compatibility with Scala binaries that predate explicit 
 and new libraries compiled without `-Yexplicit-nulls` is to leave the types unchanged
 and be compatible but unsound.
 
-[More details](../../internals/intersection-types-spec.md)
+[More details](../../internals/explicit-nulls.md)
