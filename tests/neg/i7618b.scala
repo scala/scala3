@@ -12,7 +12,7 @@ enum Exp {
 object Compiler {
   import Exp._
 
-  inline def compile(e: Exp, env: Map[String, Expr[Int]])(given ctx: QuoteContext): Expr[Int] = inline e match { // error
+  inline def compile(e: Exp, env: Map[String, Expr[Int]])(given ctx: QuoteContext): Expr[Int] = inline e match {
     case Num(n) =>
       Expr(n)
     case Plus(e1, e2) =>
@@ -31,6 +31,6 @@ object Example {
     val exp = Plus(Plus(Num(2), Var("x")), Num(4))
     val letExp = Let("x", Num(3), exp)
 
-    Compiler.compile(letExp, Map.empty)(given (??? : QuoteContext))
+    Compiler.compile(letExp, Map.empty)(given (??? : QuoteContext)) // error
   }
 }
