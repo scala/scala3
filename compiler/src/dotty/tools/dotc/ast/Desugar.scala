@@ -806,6 +806,26 @@ object desugar {
 
   /** Expand
    *
+   *    package object name { body }
+   *
+   *  to:
+   *
+   *    package name {
+   *      object `package` { body }
+   *    }
+   */
+  def packageModuleDef(mdef: ModuleDef)(implicit ctx: Context): Tree =
+    val impl = mdef.impl
+    val mods = mdef.mods
+    val moduleName = normalizeName(mdef, impl).asTermName
+    if (mods.is(Package))
+      PackageDef(Ident(moduleName),
+        cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package) :: Nil)
+    else
+      mdef
+
+  /** Expand
+   *
    *    object name extends parents { self => body }
    *
    *  to:
@@ -854,7 +874,7 @@ object desugar {
       ctx.warning(em"${hl("final")} modifier is redundant for objects", flagSourcePos(Final))
 
     if (mods.is(Package))
-      PackageDef(Ident(moduleName), cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package) :: Nil)
+      packageModuleDef(mdef)
     else if (isEnumCase) {
       typeParamIsReferenced(enumClass.typeParams, Nil, Nil, impl.parents)
         // used to check there are no illegal references to enum's type parameters in parents

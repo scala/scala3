@@ -139,6 +139,8 @@ object SymbolLoaders {
         def simpleDesugar(tree: Tree): Tree = tree match
           case tree: PackageDef =>
             desugar.packageDef(tree)
+          case tree: ModuleDef =>
+            desugar.packageModuleDef(tree)
           case _ =>
             tree
 
