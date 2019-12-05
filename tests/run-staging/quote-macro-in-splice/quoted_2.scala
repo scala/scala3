@@ -8,14 +8,11 @@ object Test {
     val x = '{
       val y = 1
       ${
-        // FIXME remove context when $ will provide one
-        // Currently we would accidentally capture the one from withQuoteContext
-        inline def a(z: Int): Int = ${ impl('z)(given QuoteContext.macroContext) }
+        inline def a(z: Int): Int = ${ impl('z) }
         val b = Expr(a(7))
         '{ y + $b }
       }
     }
     println(x.show)
   }
-
 }
