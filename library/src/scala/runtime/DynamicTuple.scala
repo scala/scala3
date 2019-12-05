@@ -177,6 +177,7 @@ object DynamicTuple {
       }
   }).asInstanceOf[T]
 
+  // Cons for Tuple1 to Tuple22
   def specialCaseCons[H, This <: Tuple](x: H, self: This): H *: This = {
     val res = (self: Any) match {
       case self: Unit =>
@@ -239,6 +240,7 @@ object DynamicTuple {
     res.asInstanceOf[H *: This]
   }
 
+  // Cons for TupleXXL
   def xxlCons[H, This <: Tuple](x: H, xxl: TupleXXL): H *: This = {
     val arr = new Array[Object](xxl.productArity + 1)
     System.arraycopy(xxl.elems, 0, arr, 1, xxl.productArity)
@@ -254,7 +256,7 @@ object DynamicTuple {
   def dynamicConcat[This <: Tuple, That <: Tuple](self: This, that: That): Concat[This, That] = {
     type Result = Concat[This, That]
 
-    // If either of the tuple is empty, we can leave early
+    // If one of the tuples is empty, we can leave early
     (self: Any) match {
       case self: Unit => return that.asInstanceOf[Result]
       case _ =>
@@ -267,6 +269,7 @@ object DynamicTuple {
 
     val arr = new Array[Object](self.size + that.size)
 
+    // Copies the tuple to an array, at the given offset
     inline def copyToArray[T <: Tuple](tuple: T, array: Array[Object], offset: Int): Unit = (tuple: Any) match {
       case xxl: TupleXXL =>
         System.arraycopy(xxl.elems, 0, array, offset, tuple.size)
@@ -275,6 +278,7 @@ object DynamicTuple {
           .copyToArray(array, offset, tuple.size)
     }
 
+    // In the general case, we copy the two tuples to an array, and convert it back to a tuple
     copyToArray(self, arr, 0)
     copyToArray(that, arr, self.size)
     dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]])
@@ -285,6 +289,7 @@ object DynamicTuple {
     case self: Product => self.productArity.asInstanceOf[Size[This]]
   }
 
+  // Tail for Tuple1 to Tuple22
   def specialCaseTail[This <: NonEmptyTuple] (self: This): Tail[This] = {
     val res = (self: Any) match {
       case self: Tuple1[_] =>
@@ -335,6 +340,7 @@ object DynamicTuple {
     res.asInstanceOf[Tail[This]]
   }
 
+  // Tail for TupleXXL
   def xxlTail[This <: NonEmptyTuple](xxl: TupleXXL): Tail[This] = {
     if (xxl.productArity == 23) {
       val elems = xxl.elems
@@ -388,6 +394,7 @@ object DynamicTuple {
     ).asInstanceOf[Zip[This, T2]]
   }
 
+  // Map for Tuple1 to Tuple22
   def specialCaseMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): Map[This, F] = {
     type Result = Map[This, F]
     val res = (self: Any) match {
