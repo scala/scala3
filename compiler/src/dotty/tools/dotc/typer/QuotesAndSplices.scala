@@ -190,11 +190,13 @@ trait QuotesAndSplices {
             patBuf += pat1
           }
         case Select(pat, _) if tree.symbol == defn.QuotedType_splice =>
-          val sym = tree.tpe.dealias.typeSymbol.asType
-          val tdef = TypeDef(sym).withSpan(sym.span)
-          freshTypeBindingsBuff += transformTypeBindingTypeDef(tdef, freshTypePatBuf)
-          TypeTree(tree.tpe.dealias).withSpan(tree.span)
-
+          val sym = tree.tpe.dealias.typeSymbol
+          if sym.exists then
+            val tdef = TypeDef(sym.asType).withSpan(sym.span)
+            freshTypeBindingsBuff += transformTypeBindingTypeDef(tdef, freshTypePatBuf)
+            TypeTree(tree.tpe.dealias).withSpan(tree.span)
+          else
+            tree
         case ddef: ValOrDefDef =>
           if (ddef.symbol.hasAnnotation(defn.InternalQuoted_patternBindHoleAnnot)) {
             val bindingType = ddef.symbol.info match {
