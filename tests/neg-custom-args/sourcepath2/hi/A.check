@@ -1,0 +1,6 @@
+-- Error: tests/neg-custom-args/sourcepath2/hi/A.scala:3:6 -------------------------------------------------------------
+3 |class Hello { // error
+  |      ^
+  |      class Hello is in the wrong directory.
+  |      It was declared to be in package <empty>
+  |      But it is found in directory     hi

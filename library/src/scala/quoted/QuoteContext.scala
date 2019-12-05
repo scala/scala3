@@ -47,7 +47,3 @@ class QuoteContext(val tasty: scala.tasty.Reflection) {
   }
 
 }
-
-object QuoteContext {
-  def macroContext: QuoteContext = throw new Exception("Not in inline macro.")
-}

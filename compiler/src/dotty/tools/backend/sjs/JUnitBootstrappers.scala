@@ -224,12 +224,26 @@ class JUnitBootstrappers extends MiniPhase {
       val metadata = for (test <- tests) yield {
         val name = Literal(Constant(test.name.toString))
         val ignored = Literal(Constant(test.hasAnnotation(junitdefn.IgnoreAnnotClass)))
-        // TODO Handle @Test annotations with arguments
-        // val reifiedAnnot = New(mydefn.TestAnnotType, test.getAnnotation(mydefn.TestAnnotClass).get.arguments)
         val testAnnot = test.getAnnotation(junitdefn.TestAnnotClass).get
-        if (testAnnot.arguments.nonEmpty)
-          ctx.error("@Test annotations with arguments are not yet supported in Scala.js for dotty", testAnnot.tree.sourcePos)
-        val reifiedAnnot = resolveConstructor(junitdefn.TestAnnotType, Nil)
+
+        val mappedArguments = testAnnot.arguments.flatMap{
+          // Since classOf[...] in annotations would not be transformed, grab the resulting class constant here
+          case NamedArg(expectedName: SimpleName, TypeApply(Ident(nme.classOf), fstArg :: _))
+            if expectedName.toString == "expected" => Some(clsOf(fstArg.tpe))
+          // The only other valid argument to @Test annotations is timeout
+          case NamedArg(timeoutName: TermName, timeoutLiteral: Literal)
+            if timeoutName.toString == "timeout" => Some(timeoutLiteral)
+          case other => {
+            val shownName = other match {
+              case NamedArg(name, _) => name.show(ctx)
+              case other => other.show(ctx)
+            }
+            ctx.error(s"$shownName is an unsupported argument for the JUnit @Test annotation in this position", other.sourcePos)
+            None
+          }
+        }
+
+        val reifiedAnnot = resolveConstructor(junitdefn.TestAnnotType, mappedArguments)
         New(junitdefn.TestMetadataType, List(name, ignored, reifiedAnnot))
       }
       JavaSeqLiteral(metadata, TypeTree(junitdefn.TestMetadataType))

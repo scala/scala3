@@ -679,11 +679,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     def getMissingExpectedErrors(errorMap: HashMap[String, Integer], reporterErrors: Iterator[MessageContainer]) = !reporterErrors.forall { error =>
-      val key = if (error.pos.exists) {
+      val pos1 = error.pos.nonInlined
+      val key = if (pos1.exists) {
         def toRelative(path: String): String =  // For some reason, absolute paths leak from the compiler itself...
           path.split("/").dropWhile(_ != "tests").mkString("/")
-        val fileName = toRelative(error.pos.source.file.toString)
-        s"$fileName:${error.pos.line}"
+        val fileName = toRelative(pos1.source.file.toString)
+        s"$fileName:${pos1.line}"
 
       } else "nopos"
 
@@ -695,7 +696,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         true
       }
       else {
-        echo(s"Error reported in ${error.pos.source}, but no annotation found")
+        echo(s"Error reported in ${pos1.source}, but no annotation found")
         false
       }
     }

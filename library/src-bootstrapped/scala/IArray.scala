@@ -4,11 +4,11 @@ import reflect.ClassTag
 /** An immutable array. An `IArray[T]` has the same representation as an `Array[T]`,
  *  but it cannot be updated. Unlike regular arrays, immutable arrays are covariant.
  */
-object opaques {
+object opaques
   opaque type IArray[+T] = Array[_ <: T]
 
   /** Defines extension methods for immutable arrays */
-  given arrayOps: {
+  given arrayOps: Object with
 
     /** The selection operation on an immutable array.
       *
@@ -38,8 +38,8 @@ object opaques {
     def (arr: IArray[Double]) length: Int = arr.asInstanceOf[Array[Double]].length
     def (arr: IArray[Object]) length: Int = arr.asInstanceOf[Array[Object]].length
     def [T](arr: IArray[T]) length: Int = arr.asInstanceOf[Array[T]].length
-  }
-}
+end opaques
+
 type IArray[+T] = opaques.IArray[T]
 
 object IArray {

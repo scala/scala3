@@ -3,7 +3,7 @@ package reflect
 
 trait ConstantOps extends Core {
 
-  given ConstantOps: (const: Constant) {
+  given ConstantOps: extension (const: Constant) {
     def value: Any = internal.Constant_value(const)
   }
 

@@ -2,7 +2,7 @@ package scala.tasty.reflect
 
 trait PositionOps extends Core {
 
-  given PositionOps: (pos: Position) {
+  given positionOps: extension (pos: Position) {
 
     /** The start offset in the source file */
     def start: Int = internal.Position_start(pos)
@@ -33,7 +33,7 @@ trait PositionOps extends Core {
 
   }
 
-  given SourceFileOps: (sourceFile: SourceFile) {
+  given sourceFileOps: extension (sourceFile: SourceFile) {
 
     /** Path to this source file */
     def jpath: java.nio.file.Path = internal.SourceFile_jpath(sourceFile)

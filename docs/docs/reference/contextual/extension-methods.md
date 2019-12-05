@@ -126,19 +126,19 @@ List(1, 2, 3).second[Int]
 `given` extensions are given instances that define extension methods and nothing else. Examples:
 
 ```scala
-given stringOps: extension (xs: Seq[String]) {
+given stringOps: (xs: Seq[String]) extended with {
   def longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
 
-given listOps: extension [T](xs: List[T]) {
+given listOps: [T](xs: List[T]) extended with {
   def second = xs.tail.head
   def third: T = xs.tail.tail.head
 }
 
-given extension [T](xs: List[T])(given Ordering[T]) {
+given [T](xs: List[T])(given Ordering[T]) extended with {
   def largest(n: Int) = xs.sorted.takeRight(n)
 }
 ```

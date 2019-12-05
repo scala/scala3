@@ -29,7 +29,6 @@ object Macros {
       case '{ power2(power2($a, $x), $y)} => '{ power2($a, $x * $y ) }
       case _ => expr
     }
-    println(res.show)
     res
   }
 }

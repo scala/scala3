@@ -86,15 +86,15 @@ private[quoted] object Matcher {
       case _ => notMatched
     }
 
-    private given treeListOps: {
+    private given treeListOps: extension (scrutinees: List[Tree]) with
 
       /** Check that all trees match with =?= and concatenate the results with && */
-      def (scrutinees: List[Tree]) =?= (patterns: List[Tree])(given Context, Env): Matching =
+      def =?= (patterns: List[Tree])(given Context, Env): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
 
-    }
+    end treeListOps
 
-    private given treeOps: {
+    private given treeOps: extension (scrutinee0: Tree) with
 
       /** Check that the trees match and return the contents from the pattern holes.
        *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
@@ -104,7 +104,7 @@ private[quoted] object Matcher {
        *  @param `summon[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
        *  @return `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
        */
-      def (scrutinee0: Tree) =?= (pattern0: Tree)(given Context, Env): Matching = {
+      def =?= (pattern0: Tree)(given Context, Env): Matching = {
 
         /** Normalize the tree */
         def normalize(tree: Tree): Tree = tree match {
@@ -275,7 +275,7 @@ private[quoted] object Matcher {
             notMatched
         }
       }
-    }
+    end treeOps
 
     private def treeOptMatches(scrutinee: Option[Tree], pattern: Option[Tree])(given Context, Env): Matching = {
       (scrutinee, pattern) match {

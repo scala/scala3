@@ -11,7 +11,7 @@ object Library {
     def toInt(n: Nat): Int = n
 
   }
-  given extension (x: Nat)
+  given (x: Nat) extended with
     def * (y: Nat): Nat = x * y
     def toInt: Int = x
 }
