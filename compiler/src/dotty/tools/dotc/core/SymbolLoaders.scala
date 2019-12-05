@@ -18,7 +18,7 @@ import ast.Trees._
 import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
 import reporting.trace
-import ast.desugar.{ packageObjectName, hasTopLevelDef }
+import ast.desugar
 
 object SymbolLoaders {
   import ast.untpd._
@@ -135,11 +135,16 @@ object SymbolLoaders {
           ok
         }
 
-        def traverse(tree: Tree, path: List[TermName]): Unit = tree match {
+        /** Run the subset of desugaring necessary to record the correct symbols */
+        def simpleDesugar(tree: Tree): Tree = tree match
+          case tree: PackageDef =>
+            desugar.packageDef(tree)
+          case _ =>
+            tree
+
+        def traverse(tree: Tree, path: List[TermName]): Unit = simpleDesugar(tree) match {
           case tree @ PackageDef(pid, body) =>
             val path1 = addPrefix(pid, path)
-            if hasTopLevelDef(tree) && checkPathMatches(path1, "package", pid)
-              enterModule(owner, packageObjectName(unit.source), completer, scope = scope)
             for (stat <- body) traverse(stat, path1)
           case tree: TypeDef if tree.isClassDef =>
             if (checkPathMatches(path, "class", tree))

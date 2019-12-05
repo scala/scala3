@@ -1229,12 +1229,6 @@ object desugar {
     case _ =>
       false
 
-  /** Does this package contains at least one top-level definition
-   *  that will require a wrapping object ?
-   */
-  def hasTopLevelDef(pdef: PackageDef)(given Context): Boolean =
-    pdef.stats.exists(isTopLevelDef)
-
   /** Assuming `src` contains top-level definition, returns the name that should
    *  be using for the package object that will wrap them.
    */
