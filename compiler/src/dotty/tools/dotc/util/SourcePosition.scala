@@ -70,7 +70,7 @@ extends interfaces.SourcePosition with Showable {
   def nonInlined: SourcePosition = {
     val om = outermost
     def rec(self: SourcePosition): SourcePosition =
-      if outermost.contains(self) then self else rec(self.outer)
+      if om.contains(self) then self else rec(self.outer)
     rec(this)
   }
 
@@ -86,4 +86,3 @@ extends interfaces.SourcePosition with Showable {
   override def toString: String = "?"
   override def withOuter(outer: SourcePosition): SourcePosition = outer
 }
-
