@@ -3,7 +3,7 @@ object `implicit-match-ambiguous-bind` {
   implicit val ibox: Box[Int] = Box(0)
   implicit val sbox: Box[String] = Box("")
   inline def unbox = compiletime.summonFrom {
-    case b: Box[t] => b.value // error
+    case b: Box[t] => b.value
   }
-  val unboxed = unbox
+  val unboxed = unbox // error
 }

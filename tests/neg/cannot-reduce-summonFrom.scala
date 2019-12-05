@@ -1,7 +1,7 @@
 object Test {
 
   inline def bar() =
-    compiletime.summonFrom {  // error
+    compiletime.summonFrom {
       case _: Int =>
     }
 
@@ -10,5 +10,5 @@ object Test {
     bar()
   }
 
-  bar()
+  bar() // error
 }

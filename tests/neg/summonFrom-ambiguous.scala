@@ -5,8 +5,8 @@ object Test {
   implicit val a2: A = new A
 
   inline def f: Any = compiletime.summonFrom {
-    case _: A => ???  // error: ambiguous implicits
+    case _: A => ???
   }
 
-  f
+  f // error: ambiguous implicits
 }

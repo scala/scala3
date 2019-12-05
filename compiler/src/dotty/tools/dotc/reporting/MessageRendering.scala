@@ -33,7 +33,7 @@ trait MessageRendering {
     */
   def outer(pos: SourcePosition, prefix: String)(implicit ctx: Context): List[String] =
     if (pos.outer.exists)
-       i"$prefix| This location is in code that was inlined at ${pos.outer}" ::
+       i"$prefix| This location contains code that was inlined from $pos" ::
        outer(pos.outer, prefix)
     else Nil
 
@@ -114,9 +114,9 @@ trait MessageRendering {
     */
   def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String =
     if (pos.exists) hl(diagnosticLevel)({
+      val pos1 = pos.nonInlined
       val file =
-        if (pos.source.file.exists) s"${pos.source.file.toString}:${pos.line + 1}:${pos.column}"
-        else s"${pos.source.file.toString}: offset ${pos.start} (missing source file)"
+        s"${pos1.source.file.toString}:${pos1.line + 1}:${pos1.column}"
       val errId =
         if (message.errorId ne ErrorMessageID.NoExplanationID) {
           val errorNumber = message.errorId.errorNumber
@@ -149,9 +149,10 @@ trait MessageRendering {
     val posString = posStr(pos, diagnosticLevel, msg)
     if (posString.nonEmpty) sb.append(posString).append(EOL)
     if (pos.exists && pos.source.file.exists) {
-      val (srcBefore, srcAfter, offset) = sourceLines(pos, diagnosticLevel)
-      val marker = columnMarker(pos, offset, diagnosticLevel)
-      val err = errorMsg(pos, msg.msg, offset)
+      val pos1 = pos.nonInlined
+      val (srcBefore, srcAfter, offset) = sourceLines(pos1, diagnosticLevel)
+      val marker = columnMarker(pos1, offset, diagnosticLevel)
+      val err = errorMsg(pos1, msg.msg, offset)
       sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString(EOL))
     }
     else sb.append(msg.msg)
