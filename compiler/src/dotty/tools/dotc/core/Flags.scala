@@ -22,16 +22,16 @@ object Flags {
 
   type Flag = opaques.Flag
 
-  given /*FlagOps*/ {
+  given extension (x: FlagSet) with
 
-    def (x: FlagSet) bits: Long = opaques.toBits(x)
+    def bits: Long = opaques.toBits(x)
 
     /** The union of the given flag sets.
      *  Combining two FlagSets with `|` will give a FlagSet
      *  that has the intersection of the applicability to terms/types
      *  of the two flag sets. It is checked that the intersection is not empty.
      */
-    def (x: FlagSet) | (y: FlagSet): FlagSet =
+    def | (y: FlagSet): FlagSet =
       if (x.bits == 0) y
       else if (y.bits == 0) x
       else {
@@ -42,22 +42,22 @@ object Flags {
       }
 
     /** The intersection of the given flag sets */
-    def (x: FlagSet) & (y: FlagSet): FlagSet = FlagSet(x.bits & y.bits)
+    def & (y: FlagSet): FlagSet = FlagSet(x.bits & y.bits)
 
     /** The intersection of a flag set with the complement of another flag set */
-    def (x: FlagSet) &~ (y: FlagSet): FlagSet = {
+    def &~ (y: FlagSet): FlagSet = {
       val tbits = x.bits & KINDFLAGS
       if ((tbits & y.bits) == 0) x
       else FlagSet(tbits | ((x.bits & ~y.bits) & ~KINDFLAGS))
     }
 
-    def (x: FlagSet) ^ (y: FlagSet) =
+    def ^ (y: FlagSet) =
       FlagSet((x.bits | y.bits) & KINDFLAGS | (x.bits ^ y.bits) & ~KINDFLAGS)
 
     /** Does the given flag set contain the given flag?
      *  This means that both the kind flags and the carrier bits have non-empty intersection.
      */
-    def (x: FlagSet) is (flag: Flag): Boolean = {
+    def is (flag: Flag): Boolean = {
       val fs = x.bits & flag.bits
       (fs & KINDFLAGS) != 0 && (fs & ~KINDFLAGS) != 0
     }
@@ -65,12 +65,12 @@ object Flags {
     /** Does the given flag set contain the given flag
      *  and at the same time contain none of the flags in the `butNot` set?
      */
-    def (x: FlagSet) is (flag: Flag, butNot: FlagSet): Boolean = x.is(flag) && !x.isOneOf(butNot)
+    def is (flag: Flag, butNot: FlagSet): Boolean = x.is(flag) && !x.isOneOf(butNot)
 
     /** Does the given flag set have a non-empty intersection with another flag set?
      *  This means that both the kind flags and the carrier bits have non-empty intersection.
      */
-    def (x: FlagSet) isOneOf (flags: FlagSet): Boolean = {
+    def isOneOf (flags: FlagSet): Boolean = {
       val fs = x.bits & flags.bits
       (fs & KINDFLAGS) != 0 && (fs & ~KINDFLAGS) != 0
     }
@@ -78,12 +78,12 @@ object Flags {
     /** Does the given flag set have a non-empty intersection with another flag set,
      *  and at the same time contain none of the flags in the `butNot` set?
      */
-    def (x: FlagSet) isOneOf (flags: FlagSet, butNot: FlagSet): Boolean = x.isOneOf(flags) && !x.isOneOf(butNot)
+    def isOneOf (flags: FlagSet, butNot: FlagSet): Boolean = x.isOneOf(flags) && !x.isOneOf(butNot)
 
     /** Does a given flag set have all of the flags of another flag set?
      *  Pre: The intersection of the term/type flags of both sets must be non-empty.
      */
-    def (x: FlagSet) isAllOf (flags: FlagSet): Boolean = {
+    def isAllOf (flags: FlagSet): Boolean = {
       val fs = x.bits & flags.bits
       ((fs & KINDFLAGS) != 0 || flags.bits == 0) &&
       (fs >>> TYPESHIFT) == (flags.bits >>> TYPESHIFT)
@@ -93,36 +93,36 @@ object Flags {
      *  and at the same time contain none of the flags in the `butNot` set?
      *  Pre: The intersection of the term/type flags of both sets must be non-empty.
      */
-    def (x: FlagSet) isAllOf (flags: FlagSet, butNot: FlagSet): Boolean = x.isAllOf(flags) && !x.isOneOf(butNot)
+    def isAllOf (flags: FlagSet, butNot: FlagSet): Boolean = x.isAllOf(flags) && !x.isOneOf(butNot)
 
-    def (x: FlagSet) isEmpty: Boolean = (x.bits & ~KINDFLAGS) == 0
+    def isEmpty: Boolean = (x.bits & ~KINDFLAGS) == 0
 
     /** Is a given flag set a subset of another flag set? */
-    def (x: FlagSet) <= (y: FlagSet): Boolean = (x.bits & y.bits) == x.bits
+    def <= (y: FlagSet): Boolean = (x.bits & y.bits) == x.bits
 
     /** Does the given flag set apply to terms? */
-    def (x: FlagSet) isTermFlags: Boolean = (x.bits & TERMS) != 0
+    def isTermFlags: Boolean = (x.bits & TERMS) != 0
 
     /** Does the given flag set apply to terms? */
-    def (x: FlagSet) isTypeFlags: Boolean = (x.bits & TYPES) != 0
+    def isTypeFlags: Boolean = (x.bits & TYPES) != 0
 
     /** The given flag set with all flags transposed to be type flags */
-    def (x: FlagSet) toTypeFlags: FlagSet = if (x.bits == 0) x else FlagSet(x.bits & ~KINDFLAGS | TYPES)
+    def toTypeFlags: FlagSet = if (x.bits == 0) x else FlagSet(x.bits & ~KINDFLAGS | TYPES)
 
     /** The given flag set with all flags transposed to be term flags */
-    def (x: FlagSet) toTermFlags: FlagSet = if (x.bits == 0) x else FlagSet(x.bits & ~KINDFLAGS | TERMS)
+    def toTermFlags: FlagSet = if (x.bits == 0) x else FlagSet(x.bits & ~KINDFLAGS | TERMS)
 
     /** The given flag set with all flags transposed to be common flags */
-    def (x: FlagSet) toCommonFlags: FlagSet = if (x.bits == 0) x else FlagSet(x.bits | KINDFLAGS)
+    def toCommonFlags: FlagSet = if (x.bits == 0) x else FlagSet(x.bits | KINDFLAGS)
 
     /** The number of non-kind flags in the given flag set */
-    def (x: FlagSet) numFlags: Int = java.lang.Long.bitCount(x.bits & ~KINDFLAGS)
+    def numFlags: Int = java.lang.Long.bitCount(x.bits & ~KINDFLAGS)
 
     /** The lowest non-kind bit set in the given flag set */
-    def (x: FlagSet) firstBit: Int = java.lang.Long.numberOfTrailingZeros(x.bits & ~KINDFLAGS)
+    def firstBit: Int = java.lang.Long.numberOfTrailingZeros(x.bits & ~KINDFLAGS)
 
     /** The  list of non-empty names of flags with given index idx that are set in the given flag set */
-    private def (x: FlagSet) flagString(idx: Int): List[String] =
+    private def flagString(idx: Int): List[String] =
       if ((x.bits & (1L << idx)) == 0) Nil
       else {
         def halfString(kind: Int) =
@@ -134,7 +134,7 @@ object Flags {
       }
 
     /** The list of non-empty names of flags that are set in teh given flag set */
-    def (x: FlagSet) flagStrings(privateWithin: String): Seq[String] = {
+    def flagStrings(privateWithin: String): Seq[String] = {
       var rawStrings = (2 to MaxFlag).flatMap(x.flagString(_)) // DOTTY problem: cannot drop with (_)
       if (!privateWithin.isEmpty && !x.is(Protected))
       	rawStrings = rawStrings :+ "private"
@@ -149,8 +149,8 @@ object Flags {
     }
 
     /** The string representation of the given flag set */
-    def (x: FlagSet) flagsString: String = x.flagStrings("").mkString(" ")
-  }
+    def flagsString: String = x.flagStrings("").mkString(" ")
+  end given
 
   def termFlagSet(x: Long) = FlagSet(TERMS | x)
 

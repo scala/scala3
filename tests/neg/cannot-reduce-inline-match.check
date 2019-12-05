@@ -1,11 +1,9 @@
--- Error: tests/neg/cannot-reduce-inline-match.scala:3:13 --------------------------------------------------------------
-3 |    inline x match { // error
-  |           ^
-  |           cannot reduce inline match with
-  |            scrutinee:  {
-  |             "f"
-  |           } : String("f")
-  |            patterns :  case _:Int
-  | This location is in code that was inlined at cannot-reduce-inline-match.scala:9
-4 |      case _: Int =>
-5 |    }
+-- Error: tests/neg/cannot-reduce-inline-match.scala:9:5 ---------------------------------------------------------------
+9 |  foo("f") // error
+  |  ^^^^^^^^
+  |  cannot reduce inline match with
+  |   scrutinee:  {
+  |    "f"
+  |  } : String("f")
+  |   patterns :  case _:Int
+  | This location contains code that was inlined from cannot-reduce-inline-match.scala:3

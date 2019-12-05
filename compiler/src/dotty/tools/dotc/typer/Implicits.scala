@@ -732,11 +732,6 @@ trait Implicits { self: Typer =>
     }
   }
 
-  lazy val synthesizedQuoteContext: SpecialHandler =
-    (formal, span) => implicit ctx =>
-      if (ctx.inMacro || enclosingInlineds.nonEmpty) ref(defn.QuoteContext_macroContext)
-      else EmptyTree
-
   lazy val synthesizedTupleFunction: SpecialHandler =
     (formal, span) => implicit ctx => formal match {
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
@@ -1092,7 +1087,6 @@ trait Implicits { self: Typer =>
       mySpecialHandlers = List(
         defn.ClassTagClass        -> synthesizedClassTag,
         defn.QuotedTypeClass      -> synthesizedTypeTag,
-        defn.QuoteContextClass    -> synthesizedQuoteContext,
         defn.EqlClass             -> synthesizedEq,
         defn.TupledFunctionClass  -> synthesizedTupleFunction,
         defn.ValueOfClass         -> synthesizedValueOf,
@@ -1474,7 +1468,6 @@ trait Implicits { self: Typer =>
         case alt1: SearchSuccess =>
           var diff = compareCandidate(alt1, alt2.ref, alt2.level)
           assert(diff <= 0)   // diff > 0 candidates should already have been eliminated in `rank`
-
           if diff == 0 then
             // Fall back: if both results are extension method applications,
             // compare the extension methods instead of their wrappers.

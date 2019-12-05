@@ -19,6 +19,7 @@ val `tasty-core-bootstrapped` = Build.`tasty-core-bootstrapped`
 val `tasty-core-scala2` = Build.`tasty-core-scala2`
 val `dotty-tastydoc` = Build.`dotty-tastydoc`
 val `dotty-tastydoc-input` = Build.`dotty-tastydoc-input`
+val `dotty-bench-run` = Build.`dotty-bench-run`
 val `scala-library` = Build.`scala-library`
 val `scala-compiler` = Build.`scala-compiler`
 val `scala-reflect` = Build.`scala-reflect`

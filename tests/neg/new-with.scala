@@ -1,0 +1,1 @@
+val x = new with { } // error

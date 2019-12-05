@@ -98,9 +98,6 @@ object Splicer {
         case Literal(Constant(value)) =>
           // OK
 
-        case _ if tree.symbol == defn.QuoteContext_macroContext =>
-          // OK
-
         case Call(fn, args)
             if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) ||
                fn.symbol.is(Module) || fn.symbol.isStatic ||
@@ -191,9 +188,6 @@ object Splicer {
       case Literal(Constant(value)) =>
         interpretLiteral(value)
 
-      case _ if tree.symbol == defn.QuoteContext_macroContext =>
-        interpretQuoteContext()
-
       // TODO disallow interpreted method calls as arguments
       case Call(fn, args) =>
         if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package))
@@ -262,9 +256,6 @@ object Splicer {
 
     private def interpretVarargs(args: List[Object])(implicit env: Env): Object =
       args.toSeq
-
-    private def interpretQuoteContext()(implicit env: Env): Object =
-      QuoteContext()
 
     private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol)(implicit env: Env): List[Object] => Object = {
       val (inst, clazz) =

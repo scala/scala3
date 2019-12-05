@@ -50,7 +50,7 @@ cp tests/neg/i6371/B_2.scala $OUT/B.scala
 "$SBT" "dotc $OUT/A.scala -d $OUT1"
 rm $OUT/A.scala
 "$SBT" "dotc -classpath $OUT1 -d $OUT1 $OUT/B.scala" > "$tmp" 2>&1 || echo "ok"
-grep -qe "A.scala: offset 63 (missing source file)" "$tmp"
+grep -qe "B.scala:2:7" "$tmp"
 
 
 ## Disabled because of flakeyness, should be changed to not depend on sbt

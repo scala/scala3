@@ -29,7 +29,7 @@ Particular criticisms are:
 
  3. The syntax of implicit definitions is too minimal. It consists of a single modifier, `implicit`, that can be attached to a large number of language constructs. A problem with this for newcomers is that it conveys mechanism instead of intent. For instance, a typeclass instance is an implicit object or val if unconditional and an implicit def with implicit parameters referring to some class if conditional. This describes precisely what the implicit definitions translate to -- just drop the `implicit` modifier, and that's it! But the cues that define intent are rather indirect and can be easily misread, as demonstrated by the definitions of `i1` and `i2` above.
 
- 4. The syntax of implicit parameters also has shortcomings. It starts with the position of `implicit` as a pseudo-modifier that applies to a whole parameter section instead of a single parameter. This represents an irregular case with respect to the rest of Scala's syntax. Furthermore, while implicit _parameters_ are designated specifically, arguments are not. Passing an argument to an implicit parameter looks like a regular application `f(arg)`. This is problematic because it means there can be confusion regarding what parameter gets instantiated in a call. For instance, in
+ 4. The syntax of implicit parameters also has shortcomings. While implicit _parameters_ are designated specifically, arguments are not. Passing an argument to an implicit parameter looks like a regular application `f(arg)`. This is problematic because it means there can be confusion regarding what parameter gets instantiated in a call. For instance, in
     ```scala
     def currentMap(implicit ctx: Context): Map[String, Int]
     ```
