@@ -83,9 +83,14 @@ object CompilationUnit {
     unit1
   }
 
-  def apply(source: SourceFile)(implicit ctx: Context): CompilationUnit = {
+  /** Create a compilation unit corresponding to `source`.
+   *  If `mustExist` is true, this will fail if `source` does not exist.
+   */
+  def apply(source: SourceFile, mustExist: Boolean = true)(implicit ctx: Context): CompilationUnit = {
     val src =
-      if (source.file.isDirectory) {
+      if (!mustExist)
+        source
+      else if (source.file.isDirectory) {
         ctx.error(s"expected file, received directory '${source.file.path}'")
         NoSource
       }
