@@ -10,6 +10,7 @@ import util.Property
 import Names.Name
 import util.Spans.Span
 import Flags.Mutable
+import NullOpsDecorator._
 import collection.mutable
 
 /** Operations for implementing a flow analysis for nullability */
@@ -104,13 +105,57 @@ object Nullables with
    *  This is the case if the reference is a path to an immutable val, or if it refers
    *  to a local mutable variable where all assignments to the variable are _reachable_
    *  (in the sense of how it is defined in assignmentSpans).
+   *
+   *  When dealing with local mutable variables, there are two questions:
+   *
+   *  1. Whether to track a local mutable variable during flow typing.
+   *    We track a local mutable variable iff the variable is not assigned in a closure.
+   *    For example, in the following code `x` is assigned to by the closure `y`, so we do not
+   *    do flow typing on `x`.
+   *    ```scala
+   *    var x: String|Null = ???
+   *    def y = {
+   *      x = null
+   *    }
+   *    if (x != null) {
+   *      // y can be called here, which break the fact
+   *      val a: String = x // error: x is captured and mutated by the closure, not tackable
+   *    }
+   *    ```
+   *
+   *  2. Whether to generate and use flow typing on a specific _use_ of a local mutable variable.
+   *    We only want to do flow typing on a use that belongs to the same method as the definition
+   *    of the local variable.
+   *    For example, in the following code, even `x` is not assigned to by a closure, but we can only
+   *    use flow typing in one of the occurrences (because the other occurrence happens within a nested
+   *    closure).
+   *    ```scala
+   *    var x: String|Null = ???
+   *    def y = {
+   *      if (x != null) {
+   *        // not safe to use the fact (x != null) here
+   *        // since y can be executed at the same time as the outer block
+   *        val _: String = x
+   *      }
+   *    }
+   *    if (x != null) {
+   *      val a: String = x // ok to use the fact here
+   *      x = null
+   *    }
+   *    ```
+   *
+   *  See more examples in `tests/explicit-nulls/neg/var-ref-in-closure.scala`.
    */
   def isTracked(ref: TermRef)(given Context) =
     ref.isStable
     || { val sym = ref.symbol
          sym.is(Mutable)
          && sym.owner.isTerm
-         && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod
+         && ( sym.owner == curCtx.owner
+          || !curCtx.owner.is(Flags.Lazy) // not at the rhs of lazy ValDef
+            && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod // not in different methods
+            // TODO: need to check by-name paramter
+          )
          && sym.span.exists
          && curCtx.compilationUnit != null // could be null under -Ytest-pickler
          && curCtx.compilationUnit.assignmentSpans.contains(sym.span.start)
@@ -254,7 +299,13 @@ object Nullables with
   given assignOps: (tree: Assign)
     def computeAssignNullable()(given Context): tree.type = tree.lhs match
       case TrackedRef(ref) =>
-        tree.withNotNullInfo(NotNullInfo(Set(), Set(ref))) // TODO: refine with nullability type info
+        val rhstp = tree.rhs.typeOpt
+        if (rhstp.isNullType || (curCtx.explicitNulls && rhstp.isNullableUnion))
+          // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
+          // lhs variable is no longer trackable. We don't need to check whether the type `T`
+          // is correct here, as typer will check it.
+          tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
+        else tree
       case _ => tree
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)

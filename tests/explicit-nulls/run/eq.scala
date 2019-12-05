@@ -18,7 +18,6 @@ object Test {
     assert(z.asInstanceOf[Any] != null)
 
     assert(x != null)
-    assert(null != x)
     assert(y == null)
     assert(null == y)
     assert(null == null)

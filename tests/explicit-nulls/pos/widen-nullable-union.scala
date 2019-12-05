@@ -35,7 +35,7 @@ class Test {
   }
 
   locally {
-    val x: (A | Null) & (Null | B) = ???
+    val x: (A | Null) & (B | Null) = ???
     val y = x
     val _: (A & B) | Null = y
   }
