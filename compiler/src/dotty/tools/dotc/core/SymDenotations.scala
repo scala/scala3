@@ -625,6 +625,10 @@ object SymDenotations {
     def isPackageObject(implicit ctx: Context): Boolean =
       name.isPackageObjectName && owner.is(Package) && this.is(Module)
 
+    /** Is this symbol a toplevel definition in a package object? */
+    def isWrappedToplevelDef(given Context): Boolean =
+      !isConstructor && owner.isPackageObject
+
     /** Is this symbol an abstract type? */
     final def isAbstractType(implicit ctx: Context): Boolean = this.is(DeferredType)
 
@@ -1527,6 +1531,14 @@ object SymDenotations {
       myBaseTypeCachePeriod = Nowhere
     }
 
+    def invalidateMemberCaches(sym: Symbol)(given Context): Unit =
+      if myMemberCache != null then myMemberCache.invalidate(sym.name)
+      if !sym.flagsUNSAFE.is(Private) then
+        invalidateMemberNamesCache()
+        if sym.isWrappedToplevelDef then
+          val outerCache = sym.owner.owner.asClass.classDenot.myMemberCache
+          if outerCache != null then outerCache.invalidate(sym.name)
+
     override def copyCaches(from: SymDenotation, phase: Phase)(implicit ctx: Context): this.type = {
       from match {
         case from: ClassDenotation =>
@@ -1726,11 +1738,9 @@ object SymDenotations {
     }
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
-    def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
+    def enterNoReplace(sym: Symbol, scope: MutableScope)(given Context): Unit =
       scope.enter(sym)
-      if (myMemberCache != null) myMemberCache.invalidate(sym.name)
-      if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
-    }
+      invalidateMemberCaches(sym)
 
     /** Replace symbol `prev` (if defined in current class) by symbol `replacement`.
      *  If `prev` is not defined in current class, do nothing.
@@ -2123,6 +2133,7 @@ object SymDenotations {
           if (pcls.isCompleting) recur(pobjs1, acc)
           else {
             val pmembers = pcls.computeNPMembersNamed(name).filterWithPredicate { d =>
+              // Drop members of `Any` and `Object`
               val owner = d.symbol.maybeOwner
               (owner ne defn.AnyClass) && (owner ne defn.ObjectClass)
             }
@@ -2140,7 +2151,7 @@ object SymDenotations {
         val compiledNow = d.filterWithPredicate(d =>
           d.symbol.isDefinedInCurrentRun || d.symbol.associatedFile == null
             // if a symbol does not have an associated file, assume it is defined
-            // in the current run anyway. This typically happens for pickling and
+            // in the current run anyway. This is true for packages, and also can happen for pickling and
             // from-tasty tests that generate a fresh symbol and then re-use it in the next run.
           )
         if compiledNow.exists then compiledNow
