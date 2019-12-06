@@ -918,7 +918,7 @@ object Types {
         case tp @ MethodType(Nil) => tp.resultType
         case _ => tp
       }
-      this.isInstanceOf[ClassInfo] && !checkClassInfo
+      !checkClassInfo && this.isInstanceOf[ClassInfo]
       || (this.widenExpr frozen_<:< that.widenExpr)
       || matchLoosely && {
            val this1 = widenNullary(this)
