@@ -81,8 +81,8 @@ trait MarkupConversion[T](packages: Map[String, EmulatedPackageRepresentation]) 
     see                     = filterEmpty(parsed.see).map(markupToMarkdown),
     result                  = single("@result", parsed.result).map(markupToMarkdown),
     throws                  = linkedExceptions(parsed.throws),
-    valueParams             = filterEmpty(parsed.valueParams).mapValues(markupToMarkdown).toMap,
-    typeParams              = filterEmpty(parsed.typeParams).mapValues(markupToMarkdown).toMap,
+    valueParams             = filterEmpty(parsed.valueParams).view.mapValues(markupToMarkdown).toMap,
+    typeParams              = filterEmpty(parsed.typeParams).view.mapValues(markupToMarkdown).toMap,
     version                 = single("@version", parsed.version).map(markupToMarkdown),
     since                   = single("@since", parsed.since).map(markupToMarkdown),
     todo                    = filterEmpty(parsed.todo).map(markupToMarkdown),
@@ -91,9 +91,9 @@ trait MarkupConversion[T](packages: Map[String, EmulatedPackageRepresentation]) 
     example                 = filterEmpty(parsed.example).map(markupToMarkdown),
     constructor             = single("@constructor", parsed.constructor).map(markupToMarkdown),
     group                   = single("@group", parsed.group).map(markupToMarkdown),
-    groupDesc               = filterEmpty(parsed.groupDesc).mapValues(markupToMarkdown).toMap,
-    groupNames              = filterEmpty(parsed.groupNames).mapValues(markupToMarkdown).toMap,
-    groupPrio               = filterEmpty(parsed.groupPrio).mapValues(markupToMarkdown).toMap,
+    groupDesc               = filterEmpty(parsed.groupDesc).view.mapValues(markupToMarkdown).toMap,
+    groupNames              = filterEmpty(parsed.groupNames).view.mapValues(markupToMarkdown).toMap,
+    groupPrio               = filterEmpty(parsed.groupPrio).view.mapValues(markupToMarkdown).toMap,
     hideImplicitConversions = filterEmpty(parsed.hideImplicitConversions).map(markupToMarkdown)
   )
 }
@@ -124,16 +124,16 @@ extends MarkupConversion[MarkdownNode](packages) {
       .map(stringToMarkup)
 
   def filterEmpty(xs: Map[String, String]) =
-    xs.mapValues(_.trim).toMap
+    xs.view.mapValues(_.trim).toMap
       .filterNot { case (_, v) => v.isEmpty }
-      .mapValues(stringToMarkup).toMap
+      .view.mapValues(stringToMarkup).toMap
 }
 
 case class WikiComment(ent: Representation, parsed: ParsedComment, packages: Map[String, EmulatedPackageRepresentation])
 extends MarkupConversion[Body](packages) {
 
   def filterEmpty(xs: Map[String,String]) =
-    xs.mapValues(_.toWiki(ent, packages)).toMap
+    xs.view.mapValues(_.toWiki(ent, packages)).toMap
       .filterNot { case (_, v) => v.blocks.isEmpty }
 
   def filterEmpty(xs: List[String]) =
@@ -151,7 +151,7 @@ extends MarkupConversion[Body](packages) {
   }
 
   def linkedExceptions(m: Map[String, String]) = {
-    m.mapValues(_.toWiki(ent, packages)).toMap.map { case (targetStr, body) =>
+    m.view.mapValues(_.toWiki(ent, packages)).toMap.map { case (targetStr, body) =>
       val link = lookup(Some(ent), packages, targetStr)
       val newBody = body match {
         case Body(List(Paragraph(Chain(content)))) =>
