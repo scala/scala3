@@ -1224,8 +1224,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     /* Emit code to compare the two top-most stack values using the 'op' operator. */
-    private def genCJUMP(success: asm.Label, failure: asm.Label, op: TestOp, tk: BType, targetIfNoJump: asm.Label): Unit = {
-      if (targetIfNoJump == success) genCJUMP(failure, success, op.negate(), tk, targetIfNoJump)
+    private def genCJUMP(success: asm.Label, failure: asm.Label, op: TestOp, tk: BType, targetIfNoJump: asm.Label, negated: Boolean = false): Unit = {
+      if (targetIfNoJump == success) genCJUMP(failure, success, op.negate(), tk, targetIfNoJump, negated = !negated)
       else {
         if (tk.isIntSizedType) { // BOOL, BYTE, CHAR, SHORT, or INT
           bc.emitIF_ICMP(op, success)
@@ -1233,14 +1233,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           bc.emitIF_ACMP(op, success)
         } else {
           import Primitives._
+          def useCmpG = if (negated) op == GT || op == GE else op == LT || op == LE
           (tk: @unchecked) match {
             case LONG   => emit(asm.Opcodes.LCMP)
-            case FLOAT  =>
-              if (op == LT || op == LE) emit(asm.Opcodes.FCMPL)
-              else emit(asm.Opcodes.FCMPG)
-            case DOUBLE =>
-              if (op == LT || op == LE) emit(asm.Opcodes.DCMPL)
-              else emit(asm.Opcodes.DCMPG)
+            case FLOAT  => emit(if (useCmpG) asm.Opcodes.FCMPG else asm.Opcodes.FCMPL)
+            case DOUBLE => emit(if (useCmpG) asm.Opcodes.DCMPG else asm.Opcodes.DCMPL)
           }
           bc.emitIF(op, success)
         }
@@ -1249,9 +1246,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     /* Emits code to compare (and consume) stack-top and zero using the 'op' operator */
-    private def genCZJUMP(success: asm.Label, failure: asm.Label, op: TestOp, tk: BType, targetIfNoJump: asm.Label): Unit = {
+    private def genCZJUMP(success: asm.Label, failure: asm.Label, op: TestOp, tk: BType, targetIfNoJump: asm.Label, negated: Boolean = false): Unit = {
       import Primitives._
-      if (targetIfNoJump == success) genCZJUMP(failure, success, op.negate(), tk, targetIfNoJump)
+      if (targetIfNoJump == success) genCZJUMP(failure, success, op.negate(), tk, targetIfNoJump, negated = !negated)
       else {
         if (tk.isIntSizedType) { // BOOL, BYTE, CHAR, SHORT, or INT
           bc.emitIF(op, success)
@@ -1261,18 +1258,17 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             case NE => bc emitIFNONNULL success
           }
         } else {
+          def useCmpG = if (negated) op == GT || op == GE else op == LT || op == LE
           (tk: @unchecked) match {
             case LONG   =>
               emit(asm.Opcodes.LCONST_0)
               emit(asm.Opcodes.LCMP)
             case FLOAT  =>
               emit(asm.Opcodes.FCONST_0)
-              if (op == LT || op == LE) emit(asm.Opcodes.FCMPL)
-              else emit(asm.Opcodes.FCMPG)
+              emit(if (useCmpG) asm.Opcodes.FCMPG else asm.Opcodes.FCMPL)
             case DOUBLE =>
               emit(asm.Opcodes.DCONST_0)
-              if (op == LT || op == LE) emit(asm.Opcodes.DCMPL)
-              else emit(asm.Opcodes.DCMPG)
+              emit(if (useCmpG) asm.Opcodes.DCMPG else asm.Opcodes.DCMPL)
           }
           bc.emitIF(op, success)
         }
@@ -1287,8 +1283,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
        case ScalaPrimitivesOps.NE => Primitives.NE
        case ScalaPrimitivesOps.LT => Primitives.LT
        case ScalaPrimitivesOps.LE => Primitives.LE
-       case ScalaPrimitivesOps.GE => Primitives.GE
        case ScalaPrimitivesOps.GT => Primitives.GT
+       case ScalaPrimitivesOps.GE => Primitives.GE
      }
 
     /*
