@@ -70,11 +70,33 @@ trait TastyTypeConverter {
             }
           case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue. " + tp)
         }
-      case TypeRef(qual, typeName) =>
+      case tp @ TypeRef(qual, typeName) =>
         convertTypeOrBoundsToReference(reflect)(qual) match {
           case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true)
           case EmptyReference => TypeReference(typeName, "", Nil, true)
-          case _ => throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
+          case _ if tp.typeSymbol.exists =>
+            tp.typeSymbol match {
+              // NOTE: Only TypeRefs can reference ClassDefSymbols
+              case sym if sym.isClassDef => //Need to be split because these types have their own file
+                convertTypeOrBoundsToReference(reflect)(qual) match {
+                  case TypeReference(label, link, xs, _) => TypeReference(sym.name, link + "/" + label, xs, true)
+                  case EmptyReference if sym.name == "<root>" | sym.name == "_root_" => EmptyReference
+                  case EmptyReference => TypeReference(sym.name, "", Nil, true)
+                  case _ => throw Exception("Match error in SymRef/TypeOrBounds/ClassDef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
+                }
+
+              // NOTE: This branch handles packages, which are now TypeRefs
+              case sym if sym.isTerm || sym.isTypeDef =>
+                convertTypeOrBoundsToReference(reflect)(qual) match {
+                  case TypeReference(label, link, xs, _) => TypeReference(sym.name, link + "/" + label, xs)
+                  case EmptyReference if sym.name == "<root>" | sym.name == "_root_" => EmptyReference
+                  case EmptyReference => TypeReference(sym.name, "", Nil)
+                  case _ => throw Exception("Match error in SymRef/TypeOrBounds/Other. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
+                }
+              case sym => throw Exception("Match error in SymRef. This should not happen, please open an issue. " + sym)
+            }
+          case _ =>
+            throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
         }
       case TermRef(qual, typeName) =>
         convertTypeOrBoundsToReference(reflect)(qual) match {
@@ -85,27 +107,9 @@ trait TastyTypeConverter {
 
       // NOTE: old SymRefs are now either TypeRefs or TermRefs - the logic here needs to be moved into above branches
       // NOTE: _.symbol on *Ref returns its symbol
-      case SymRef(symbol, typeOrBounds) => symbol match {
-        // NOTE: Only TypeRefs can reference ClassDefSymbols
-        case reflect.IsClassDefSymbol(_) => //Need to be split because these types have their own file
-          convertTypeOrBoundsToReference(reflect)(typeOrBounds) match {
-            case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs, true)
-            case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
-            case EmptyReference => TypeReference(symbol.name, "", Nil, true)
-            case _ => throw Exception("Match error in SymRef/TypeOrBounds/ClassDef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
-          }
-
-        // NOTE: This branch handles packages, which are now TypeRefs
-        case reflect.IsTermSymbol(_) | reflect.IsTypeDefSymbol(_) =>
-          convertTypeOrBoundsToReference(reflect)(typeOrBounds) match {
-            case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs)
-            case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
-            case EmptyReference => TypeReference(symbol.name, "", Nil)
-            case _ => throw Exception("Match error in SymRef/TypeOrBounds/Other. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
-          }
-        case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue. " + symbol)
-      }
-      case _ => throw Exception("No match for type in conversion to Reference. This should not happen, please open an issue. " + tp)
+      // case SymRef(symbol, typeOrBounds) => symbol match {
+      // }
+      // case _ => throw Exception("No match for type in conversion to Reference. This should not happen, please open an issue. " + tp)
     }
 
     inner(tp)
