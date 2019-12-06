@@ -9,5 +9,5 @@ object X2 {
   def bar = "hi"
 }
 
-class X3
+class X4
 

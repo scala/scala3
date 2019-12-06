@@ -1875,10 +1875,10 @@ class Typer extends Namer
     assignType(cpy.Import(imp)(expr1, selectors1), sym)
   }
 
-  def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = {
+  def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree =
     val pid1 = typedExpr(tree.pid, AnySelectionProto)(ctx.addMode(Mode.InPackageClauseName))
     val pkg = pid1.symbol
-    pid1 match {
+    pid1 match
       case pid1: RefTree if pkg.is(Package) =>
         val packageCtx = ctx.packageContext(tree, pkg)
         var stats1 = typedStats(tree.stats, pkg.moduleClass)(packageCtx)._1
@@ -1890,8 +1890,7 @@ class Typer extends Namer
         errorTree(tree,
           if pkg.exists then PackageNameAlreadyDefined(pkg)
           else i"package ${tree.pid.name} does not exist")
-    }
-  }
+  end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = {
     val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
