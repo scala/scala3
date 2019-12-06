@@ -1,7 +1,7 @@
 package dotty.tastydoc
 package comment
 
-import scala.collection._
+import scala.collection.{Seq => _, _}
 import representations._
 
 /** A body of text. A comment has a single body, which is composed of

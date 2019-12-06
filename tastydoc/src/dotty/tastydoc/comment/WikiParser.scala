@@ -90,7 +90,7 @@ private[comment] final class WikiParser(
         line = listLine(indent, style)
       }
       val constructor = listStyles(style)
-      constructor(lines)
+      constructor(lines.toList)
     }
 
     val indent = countWhitespace

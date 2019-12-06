@@ -11,7 +11,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     import reflect.{given, _}
 
     val pathArray = symbol.show.split("\\.") // NOTE: this should print w/o colors, inspect afterwards
-    pathArray.view(0, pathArray.length - 1).toList
+    pathArray.iterator.slice(0, pathArray.length - 1).toList
   }
 
   def extractModifiers(reflect: Reflection)(flags: reflect.Flags, privateWithin: Option[reflect.Type], protectedWithin: Option[reflect.Type]) : (List[String], Option[Reference], Option[Reference]) = {
