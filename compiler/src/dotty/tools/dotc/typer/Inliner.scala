@@ -1296,7 +1296,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     else normalizedSplice.withSpan(span)
   }
 
-  /** Return the set of symbols that are refered at level -1 by the tree and defined in the current run.
+  /** Return the set of symbols that are referred at level -1 by the tree and defined in the current run.
    *  This corresponds to the symbols that will need to be interpreted.
    */
   private def macroDependencies(tree: Tree)(implicit ctx: Context) =

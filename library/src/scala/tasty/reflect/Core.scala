@@ -312,7 +312,7 @@ trait Core {
       /** Type of a reference to a type symbol */
       type TypeRef = internal.TypeRef
 
-      /** Type of a `super` refernce */
+      /** Type of a `super` reference */
       type SuperType = internal.SuperType
 
       /** A type with a type refinement `T { type U }` */

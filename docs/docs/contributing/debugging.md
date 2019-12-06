@@ -49,7 +49,7 @@ Then:
 dotc ../issues/Playground.scala
 ```
 
-The techniques discussed below can be tried out in place of `println("Hello Debug")` in that location. They are of course applicable thoughout the codebase.
+The techniques discussed below can be tried out in place of `println("Hello Debug")` in that location. They are of course applicable throughout the codebase.
 
 ## Show for human readable output
 Many objects in the compiler have a `show` method available on them via implicit rich wrapper:

@@ -328,7 +328,7 @@ class ReifyQuotes extends MacroTransform {
           }
         )
       }
-      /* Lambdas are generated outside the quote that is beeing reified (i.e. in outer.owner).
+      /* Lambdas are generated outside the quote that is being reified (i.e. in outer.owner).
        * In case the case that level == -1 the code is not in a quote, it is in an inline method,
        * hence we should take that as owner directly.
        */

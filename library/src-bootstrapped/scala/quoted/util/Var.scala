@@ -15,7 +15,7 @@ sealed trait Var[T] {
 
 object Var {
   /** Create a variable initialized with `init` and used in `body`.
-   *  `body` recieves a `Var[T]` argument which exposes `get` and `update`.
+   *  `body` receives a `Var[T]` argument which exposes `get` and `update`.
    *
    *  Var('{7}) {
    *    x => '{

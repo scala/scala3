@@ -76,7 +76,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     override def getCurrentCUnit(): CompilationUnit = { cunit }
 
-    /* ---------------- helper utils for generating classes and fiels ---------------- */
+    /* ---------------- helper utils for generating classes and fields ---------------- */
 
     def genPlainClass(cd: ClassDef) = cd match {
       case ClassDef(_, _, _, impl) =>

@@ -270,7 +270,7 @@ trait QuotesAndSplices {
    *  will also transform it into a call to `scala.internal.quoted.Expr.unapply`.
    *
    *  Code directly inside the quote is typed as an expression using Mode.QuotedPattern. Splices
-   *  within the quotes become patterns again and typed acordingly.
+   *  within the quotes become patterns again and typed accordingly.
    *
    *  ```
    *  case '{ ($ls: List[$t]) } =>
