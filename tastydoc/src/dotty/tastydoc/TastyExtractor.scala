@@ -75,9 +75,9 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     }
 
     (body.flatMap {
-        case IsDefDef(_) => None //No definitions, they are appended with symbol.methods below
-        case IsValDef(_) => None //No val/var, they are appended with symbol.fields below
-        case IsInlined(_) => None //Inlined aren't desirable members
+        case _: DefDef => None //No definitions, they are appended with symbol.methods below
+        case _: ValDef => None //No val/var, they are appended with symbol.fields below
+        case _: Inlined => None //Inlined aren't desirable members
         case x => Some(x)
       }.filter(x => filterSymbol(x.symbol)).map(convertToRepresentation(reflect)(_, parentRepresentation)) ++
     symbol.methods.filter(x => filterSymbol(x)).map{x => convertToRepresentation(reflect)(x.tree, parentRepresentation)} ++
@@ -102,8 +102,8 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     import reflect.{given, _}
 
     val parentsReferences = parents.map{
-      case reflect.IsTypeTree(c) => convertTypeToReference(reflect)(c.tpe)
-      case reflect.IsTerm(c) => convertTypeToReference(reflect)(c.tpe)
+      case c: TypeTree => convertTypeToReference(reflect)(c.tpe)
+      case c: Term => convertTypeToReference(reflect)(c.tpe)
       case _ => throw Exception("Unhandeld case in parents. Please open an issue.")
     }
 

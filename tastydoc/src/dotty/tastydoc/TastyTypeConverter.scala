@@ -16,8 +16,8 @@ trait TastyTypeConverter {
     }
 
     typeOrBounds match {
-      case reflect.IsType(tpe) => convertTypeToReference(reflect)(tpe)
-      case reflect.IsTypeBounds(reflect.TypeBounds(low, hi)) =>
+      case tpe: Type => convertTypeToReference(reflect)(tpe)
+      case TypeBounds(low, hi) =>
         val lowRef = convertTypeToReference(reflect)(low)
         val hiRef = convertTypeToReference(reflect)(hi)
         if(hiRef == lowRef){
@@ -43,7 +43,7 @@ trait TastyTypeConverter {
       case TypeLambda(paramNames, paramTypes, resType) => ConstantReference(tp.show) //TOFIX
       case Refinement(parent, name, info) =>
         val tuple = convertTypeOrBoundsToReference(reflect)(info) match {
-          case r if (info match {case reflect.IsTypeBounds(info) => true case _ => false}) => ("type", name, r)
+          case r if (info match {case info: TypeBounds => true case _ => false}) => ("type", name, r)
           case r@TypeReference(_, _, _, _) => ("val", name, r)
           case ByNameReference(rChild) => ("def", name, rChild)
           case r => throw new Exception("Match error in info of Refinement. This should not happend, please open an issue. " + r)

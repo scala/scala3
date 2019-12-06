@@ -115,7 +115,7 @@ object representations extends TastyExtractor {
     override val constructors =
       (convertToRepresentation(reflect)(internal.constructor, Some(this)) ::
       (internal.body.flatMap{_ match {
-        case reflect.IsDefDef(d@reflect.DefDef(_)) => if(d.name == "<init>") Some(d) else None
+        case d: reflect.DefDef => if(d.name == "<init>") Some(d) else None
         case _ => None
         }
       }.map(convertToRepresentation(reflect)(_, Some(this)))
@@ -183,8 +183,8 @@ object representations extends TastyExtractor {
     override val typeParams = Nil
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
     val alias: Option[Reference] = internal.rhs match{
-      case reflect.IsTypeBoundsTree(t) => Some(convertTypeOrBoundsToReference(reflect)(t.tpe))
-      case reflect.IsTypeTree(t) => Some(convertTypeOrBoundsToReference(reflect)(t.tpe.asInstanceOf[reflect.TypeOrBounds]))
+      case t: TypeBoundsTree => Some(convertTypeOrBoundsToReference(reflect)(t.tpe))
+      case t: TypeTree => Some(convertTypeOrBoundsToReference(reflect)(t.tpe.asInstanceOf[reflect.TypeOrBounds]))
       case _ => None
     }
     override def isAbstract: Boolean = !alias.isDefined
@@ -195,7 +195,7 @@ object representations extends TastyExtractor {
     import reflect.{given, _}
 
     tree match {
-      case reflect.IsPackageClause(t@reflect.PackageClause(_)) =>
+      case t: reflect.PackageClause =>
         val noColorPid = t.pid.symbol.show
         val emulatedPackage = mutablePackagesMap.get(noColorPid) match {
           case Some(x) => x
@@ -209,15 +209,15 @@ object representations extends TastyExtractor {
         emulatedPackage.packagesMembers = r :: emulatedPackage.packagesMembers
         r
 
-      case reflect.IsImport(t@reflect.Import(_)) => new ImportRepresentation(reflect, t, parentRepresentation)
+      case t: reflect.Import => new ImportRepresentation(reflect, t, parentRepresentation)
 
-      case reflect.IsClassDef(t@reflect.ClassDef(_)) => new ClassRepresentation(reflect, t, parentRepresentation)
+      case t: reflect.ClassDef => new ClassRepresentation(reflect, t, parentRepresentation)
 
-      case reflect.IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t, parentRepresentation)
+      case t: reflect.DefDef => new DefRepresentation(reflect, t, parentRepresentation)
 
-      case reflect.IsValDef(t@reflect.ValDef(_)) => new ValRepresentation(reflect, t, parentRepresentation)
+      case t: reflect.ValDef => new ValRepresentation(reflect, t, parentRepresentation)
 
-      case reflect.IsTypeDef(t@reflect.TypeDef(_)) => new TypeRepresentation(reflect, t, parentRepresentation)
+      case t: reflect.TypeDef => new TypeRepresentation(reflect, t, parentRepresentation)
 
       case _ => throw new Exception("Tree match error in conversion to representation. Please open an issue. " + tree)
   }}
