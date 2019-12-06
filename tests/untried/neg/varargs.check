@@ -7,4 +7,4 @@ varargs.scala:19: error: A method without repeated parameters cannot be annotate
 varargs.scala:21: error: A method with a varargs annotation produces a forwarder method with the same signature (a: Int, b: Array[String])Int as an existing method.
   @varargs def v2(a: Int, b: String*) = 0
                ^
-three errors found
+3 errors found
