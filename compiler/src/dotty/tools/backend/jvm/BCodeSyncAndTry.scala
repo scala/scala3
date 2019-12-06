@@ -310,7 +310,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
        * ------
        */
 
-      // a note on terminology: this is not "postHandlers", despite appearences.
+      // a note on terminology: this is not "postHandlers", despite appearances.
       // "postHandlers" as in the source-code view. And from that perspective, both (3.A) and (3.B) are invisible implementation artifacts.
       if (hasFinally) withFreshCleanupScope {
         nopIfNeeded(startTryBody)

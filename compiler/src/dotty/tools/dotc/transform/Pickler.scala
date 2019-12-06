@@ -24,7 +24,7 @@ class Pickler extends Phase {
 
   override def phaseName: String = Pickler.name
 
-  // No need to repickle trees comming from TASTY
+  // No need to repickle trees coming from TASTY
   override def isRunnable(implicit ctx: Context): Boolean =
     super.isRunnable && !ctx.settings.fromTasty.value
 

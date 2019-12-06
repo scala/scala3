@@ -137,7 +137,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   protected def approxState: ApproxState = approx
 
   /** The original left-hand type of the comparison. Gets reset
-   *  everytime we compare components of the previous pair of types.
+   *  every time we compare components of the previous pair of types.
    *  This type is used for capture conversion in `isSubArgs`.
    */
   private [this] var leftRoot: Type = _

@@ -40,7 +40,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       myClassLoader = new AbstractFileClassLoader(ctx.settings.outputDir.value, parent)
       myReplStringOf = {
         // We need to use the ScalaRunTime class coming from the scala-library
-        // on the user classpath, and not the one avilable in the current
+        // on the user classpath, and not the one available in the current
         // classloader, so we use reflection instead of simply calling
         // `ScalaRunTime.replStringOf`.
         val scalaRuntime = Class.forName("scala.runtime.ScalaRunTime", true, myClassLoader)

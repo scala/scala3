@@ -133,7 +133,7 @@ object Flags {
         strs filter (_.nonEmpty)
       }
 
-    /** The list of non-empty names of flags that are set in teh given flag set */
+    /** The list of non-empty names of flags that are set in the given flag set */
     def flagStrings(privateWithin: String): Seq[String] = {
       var rawStrings = (2 to MaxFlag).flatMap(x.flagString(_)) // DOTTY problem: cannot drop with (_)
       if (!privateWithin.isEmpty && !x.is(Protected))

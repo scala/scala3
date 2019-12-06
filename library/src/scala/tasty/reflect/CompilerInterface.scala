@@ -886,7 +886,7 @@ trait CompilerInterface {
   def TypeRef_qualifier(self: TypeRef)(given ctx: Context): TypeOrBounds
   def TypeRef_name(self: TypeRef)(given Context): String
 
-  /** Type of a `super` refernce */
+  /** Type of a `super` reference */
   type SuperType <: Type
 
   def isInstanceOfSuperType(given ctx: Context): IsInstanceOf[SuperType]
