@@ -2178,8 +2178,8 @@ object SymDenotations {
       recur(packageObjs, super.memberNames(keepOnly))
     }
 
-    /** If another symbol with the same name is entered, unlink it,
-     *  and, if symbol is a package object, invalidate the packageObj cache.
+    /** If another symbol with the same name is entered, unlink it.
+     *  If symbol is a package object, invalidate the packageObj cache.
      *  @return  `sym` is not already entered
      */
     override def proceedWithEnter(sym: Symbol, mscope: MutableScope)(implicit ctx: Context): Boolean = {
@@ -2187,8 +2187,8 @@ object SymDenotations {
       if (entry != null) {
         if (entry.sym == sym) return false
         mscope.unlink(entry)
-        if (sym.name.isPackageObjectName) packageObjsRunId = NoRunId
       }
+      if (sym.name.isPackageObjectName) packageObjsRunId = NoRunId
       true
     }
 
