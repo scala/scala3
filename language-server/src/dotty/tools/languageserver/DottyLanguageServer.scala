@@ -489,18 +489,16 @@ class DottyLanguageServer extends LanguageServer
 
     val uriTrees = driver.openedTrees(uri)
 
-    // Excludes locals from synthetic symbols (with the exception of enums members)
-    // and erroroneous trees.
-    val excludeLocalsFromSyntheticSymbols = (n: NameTree) => {
+    // Excludes type and term params from synthetic symbols
+    val excludeParamsFromSyntheticSymbols = (n: NameTree) => {
       val owner = n.symbol.owner
-      n.symbol.is(Case) || {
-        n.name != StdNames.nme.ERROR &&
+      !n.symbol.is(Param) || {
         !owner.is(Synthetic) &&
         !owner.isPrimaryConstructor
       }
     }
 
-    val defs = Interactive.namedTrees(uriTrees, Include.local, excludeLocalsFromSyntheticSymbols)
+    val defs = Interactive.namedTrees(uriTrees, Include.local, excludeParamsFromSyntheticSymbols)
 
     (for {
       d <- defs if (!isWorksheetWrapper(d) && !isTopLevelWrapper(d))

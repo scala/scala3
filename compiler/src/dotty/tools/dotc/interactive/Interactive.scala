@@ -185,6 +185,7 @@ object Interactive {
         private def handle(utree: untpd.NameTree): Unit = {
           val tree = utree.asInstanceOf[tpd.NameTree]
           if (tree.symbol.exists
+               && tree.name != StdNames.nme.ERROR
                && !tree.symbol.is(Synthetic)
                && !tree.symbol.isPrimaryConstructor
                && tree.span.exists
