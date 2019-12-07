@@ -315,8 +315,8 @@ class Namer { typer: Typer =>
         conflictsDetected = true
 
       def checkNoConflictWith(preExisting: Symbol) =
-        if (preExisting.isDefinedInCurrentRun || preExisting.is(Package))
-           && (!preExisting.is(Private) || preExisting.owner.is(Package))
+        if (preExisting.isDefinedInCurrentRun || preExisting.lastKnownDenotation.is(Package))
+           && (!preExisting.lastKnownDenotation.is(Private) || preExisting.owner.is(Package))
         then conflict(preExisting)
 
       def checkNoConflictIn(owner: Symbol) =
