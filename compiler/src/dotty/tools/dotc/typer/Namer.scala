@@ -302,6 +302,12 @@ class Namer { typer: Typer =>
 
     typr.println(i"creating symbol for $tree in ${ctx.mode}")
 
+    /** Check that a new definition with given name and privacy status
+     *  in current context would not conflict with existing currently
+     *  compiled definitions.
+     *  The logic here is very subtle and fragile due to the fact that
+     *  we are not allowed to force anything.
+     */
     def checkNoConflict(name: Name, isPrivate: Boolean): Name =
       val owner = ctx.owner
       var conflictsDetected = false
@@ -314,24 +320,21 @@ class Namer { typer: Typer =>
         ctx.error(i"$name is already defined as $conflicting$where", tree.sourcePos)
         conflictsDetected = true
 
-      def checkNoConflictWith(preExisting: Symbol) =
+      def checkNoConflictIn(owner: Symbol) =
+        val preExisting = owner.unforcedDecls.lookup(name)
         if (preExisting.isDefinedInCurrentRun || preExisting.lastKnownDenotation.is(Package))
            && (!preExisting.lastKnownDenotation.is(Private) || preExisting.owner.is(Package))
         then conflict(preExisting)
 
-      def checkNoConflictIn(owner: Symbol) =
-        checkNoConflictWith( owner.unforcedDecls.lookup(name))
-
       def pkgObjs(pkg: Symbol) =
         pkg.denot.asInstanceOf[PackageClassDenotation].packageObjs.map(_.symbol)
 
-      def preExisting = ctx.effectiveScope.lookup(name)
       if owner.is(PackageClass) then
-        checkNoConflictWith(preExisting)
-        return name
+        checkNoConflictIn(owner)
         for pkgObj <- pkgObjs(owner) do
           checkNoConflictIn(pkgObj)
       else
+        def preExisting = ctx.effectiveScope.lookup(name)
         if (!owner.isClass || name.isTypeName) && preExisting.exists then
           conflict(preExisting)
         else if owner.isPackageObject && !isPrivate && name != nme.CONSTRUCTOR then
