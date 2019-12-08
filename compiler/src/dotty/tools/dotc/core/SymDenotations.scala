@@ -2174,18 +2174,18 @@ object SymDenotations {
             if youngest.size > 1 then
               throw TypeError(i"""${ambiguousFilesMsg(youngest.tail.head)}
                                  |One of these files should be removed from the classpath.""")
-            def sameContainer(f: AbstractFile): Boolean =
-              try f.container == chosen.container catch case NonFatal(ex) => true
 
             // Warn if one of the older files comes from a different container.
             // In that case picking the youngest file is not necessarily what we want,
             // since the older file might have been loaded from a jar earlier in the
             // classpath.
+            def sameContainer(f: AbstractFile): Boolean =
+              try f.container == chosen.container catch case NonFatal(ex) => true
             if !ambiguityWarningIssued then
               for conflicting <- assocFiles.find(!sameContainer(_)) do
-                ctx.warning(i"""${ambiguousFilesMsg(youngest.tail.head)}
+                ctx.warning(i"""${ambiguousFilesMsg(conflicting)}
                                |Keeping only the definition in $chosen""")
-              ambiguityWarningIssued = true
+                ambiguityWarningIssued = true
             multi.filterWithPredicate(_.symbol.associatedFile == chosen)
       end dropStale
 
