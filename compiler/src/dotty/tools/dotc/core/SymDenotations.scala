@@ -2147,8 +2147,8 @@ object SymDenotations {
             case d => d
       }
 
-      def dropStale(d: DenotUnion): PreDenotation =
-        val compiledNow = d.filterWithPredicate(d =>
+      def dropStale(multi: DenotUnion): PreDenotation =
+        val compiledNow = multi.filterWithPredicate(d =>
           d.symbol.isDefinedInCurrentRun || d.symbol.associatedFile == null
             // if a symbol does not have an associated file, assume it is defined
             // in the current run anyway. This is true for packages, and also can happen for pickling and
@@ -2156,8 +2156,21 @@ object SymDenotations {
           )
         if compiledNow.exists then compiledNow
         else
-          val youngest = d.aggregate(_.symbol.associatedFile.lastModified, _ max _)
-          d.filterWithPredicate(_.symbol.associatedFile.lastModified == youngest)
+          val assocFiles = multi.aggregate(d => Set(d.symbol.associatedFile), _ union _)
+          if assocFiles.size == 1 then
+            multi // they are all overloaded variants from the same file
+          else
+            // pick the variant(s) from the youngest class file
+            val lastModDate = assocFiles.map(_.lastModified).max
+            val youngest = assocFiles.filter(_.lastModified == lastModDate)
+            if youngest.size > 1 then
+              throw TypeError(em"""Toplevel definition $name is defined in
+                                  |  ${youngest.head}
+                                  |and also in
+                                  |  ${youngest.tail.head}
+                                  |One of these files should be removed from the classpath.""")
+            multi.filterWithPredicate(_.symbol.associatedFile == youngest.head)
+      end dropStale
 
       if (symbol `eq` defn.ScalaPackageClass) {
         val denots = super.computeNPMembersNamed(name)

@@ -1,2 +1,2 @@
 @main def Test() =
-  assert(foo(1) == "new")
+  assert(foo234(1) == "new")
