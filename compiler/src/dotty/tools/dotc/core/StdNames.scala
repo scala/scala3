@@ -226,6 +226,7 @@ object StdNames {
     final val Plus: N      = "+"
     final val S: N         = "S"
     final val Times: N     = "*"
+    final val ToString: N  = "ToString"
     final val Xor: N       = "^"
 
     final val ClassfileAnnotation: N = "ClassfileAnnotation"

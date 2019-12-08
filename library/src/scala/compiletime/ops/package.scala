@@ -21,6 +21,7 @@ package object ops {
   type Negate[X <: Int] <: Int
   type Min[X <: Int, Y <: Int] <: Int
   type Max[X <: Int, Y <: Int] <: Int
+  type ToString[X <: Int] <: String
 
   type ![X <: Boolean] <: Boolean
   @infix type ^[X <: Boolean, Y <: Boolean] <: Boolean

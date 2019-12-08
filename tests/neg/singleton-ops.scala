@@ -92,4 +92,9 @@ object Test {
   val t65: ![false] = true
   val t66: ![true] = true // error
   val t67: ![false] = false // error
+
+  val t68: ToString[213] = "213"
+  val t69: ToString[-1] = "-1"
+  val t70: ToString[0] = "-0" // error
+  val t71: ToString[200] = "100" // error
 }

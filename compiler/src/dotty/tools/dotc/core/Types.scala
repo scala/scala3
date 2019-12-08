@@ -3636,6 +3636,7 @@ object Types {
             case tpnme.Abs => constantFold1(intValue, _.abs)
             case tpnme.Negate => constantFold1(intValue, x => -x)
             case tpnme.Not => constantFold1(boolValue, x => !x)
+            case tpnme.ToString => constantFold1(intValue, _.toString)
             case _ => None
           } else if (args.length == 2) tycon.symbol.name match {
             case tpnme.Equals => constantFold2(constValue, _ == _)

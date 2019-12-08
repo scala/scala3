@@ -905,7 +905,7 @@ class Definitions {
         tpnme.Equals, tpnme.NotEquals,
         tpnme.Plus, tpnme.Minus, tpnme.Times, tpnme.Div, tpnme.Mod,
         tpnme.Lt, tpnme.Gt, tpnme.Ge, tpnme.Le,
-        tpnme.Abs, tpnme.Negate, tpnme.Min, tpnme.Max,
+        tpnme.Abs, tpnme.Negate, tpnme.Min, tpnme.Max, tpnme.ToString,
         tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or
       ).contains(sym.name)
 
