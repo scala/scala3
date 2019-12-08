@@ -16,6 +16,7 @@ import annotation.tailrec
 import util.SimpleIdentityMap
 import util.Stats
 import java.util.WeakHashMap
+import scala.util.control.NonFatal
 import config.Config
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages.BadSymbolicReference
@@ -2081,6 +2082,7 @@ object SymDenotations {
 
     private var packageObjsCache: List[ClassDenotation] = _
     private var packageObjsRunId: RunId = NoRunId
+    private var ambiguityWarningIssued: Boolean = false
 
     /** The package objects in this class */
     def packageObjs(implicit ctx: Context): List[ClassDenotation] = {
@@ -2163,13 +2165,28 @@ object SymDenotations {
             // pick the variant(s) from the youngest class file
             val lastModDate = assocFiles.map(_.lastModified).max
             val youngest = assocFiles.filter(_.lastModified == lastModDate)
+            val chosen = youngest.head
+            def ambiguousFilesMsg(f: AbstractFile) =
+              em"""Toplevel definition $name is defined in
+                  |  $chosen
+                  |and also in
+                  |  $f"""
             if youngest.size > 1 then
-              throw TypeError(em"""Toplevel definition $name is defined in
-                                  |  ${youngest.head}
-                                  |and also in
-                                  |  ${youngest.tail.head}
-                                  |One of these files should be removed from the classpath.""")
-            multi.filterWithPredicate(_.symbol.associatedFile == youngest.head)
+              throw TypeError(i"""${ambiguousFilesMsg(youngest.tail.head)}
+                                 |One of these files should be removed from the classpath.""")
+            def sameContainer(f: AbstractFile): Boolean =
+              try f.container == chosen.container catch case NonFatal(ex) => true
+
+            // Warn if one of the older files comes from a different container.
+            // In that case picking the youngest file is not necessarily what we want,
+            // since the older file might have been loaded from a jar earlier in the
+            // classpath.
+            if !ambiguityWarningIssued then
+              for conflicting <- assocFiles.find(!sameContainer(_)) do
+                ctx.warning(i"""${ambiguousFilesMsg(youngest.tail.head)}
+                               |Keeping only the definition in $chosen""")
+              ambiguityWarningIssued = true
+            multi.filterWithPredicate(_.symbol.associatedFile == chosen)
       end dropStale
 
       if (symbol `eq` defn.ScalaPackageClass) {
