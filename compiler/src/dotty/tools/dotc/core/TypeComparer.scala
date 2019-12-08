@@ -1043,10 +1043,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
      */
     def compareCompiletimeAppliedType(tp: AppliedType, other: Type, fromBelow: Boolean): Boolean = {
       if (defn.isCompiletime_S(tp.tycon.typeSymbol)) compareS(tp, other, fromBelow)
-      else {
-        val reduced = tp.tryCompiletimeConstantFold.getOrElse(tp.superType)
-        if (fromBelow) recur(other, reduced) else recur(reduced, other)
-      }
+      else tp.tryCompiletimeConstantFold.exists(folded => if (fromBelow) recur(other, folded) else recur(folded, other))
     }
 
     /** Like tp1 <:< tp2, but returns false immediately if we know that
