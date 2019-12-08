@@ -3643,8 +3643,14 @@ object Types {
             case tpnme.Plus => constantFold2(intValue, _ + _)
             case tpnme.Minus => constantFold2(intValue, _ - _)
             case tpnme.Times => constantFold2(intValue, _ * _)
-            case tpnme.Div => constantFold2(intValue, _ / _)
-            case tpnme.Mod => constantFold2(intValue, _ % _)
+            case tpnme.Div => constantFold2(intValue, {
+              case (_, 0) => throw new TypeError("Division by 0")
+              case (a, b) => a / b
+            })
+            case tpnme.Mod => constantFold2(intValue, {
+              case (_, 0) => throw new TypeError("Modulo by 0")
+              case (a, b) => a % b
+            })
             case tpnme.Lt => constantFold2(intValue, _ < _)
             case tpnme.Gt => constantFold2(intValue, _ > _)
             case tpnme.Ge => constantFold2(intValue, _ >= _)

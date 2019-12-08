@@ -25,14 +25,14 @@ object Test {
   val t7: -2 * -2 = 4
 
   val t8: 10 / 2 = 5
-  val t9: 11 / 2 = 5 // Integer division
+  val t9: 11 / -2 = -5 // Integer division
   val t10: 2 / 4 = 2 // error
-  val t11: -1 / -1 = 1
+  val t11: -1 / 0 = 1 // error
 
   val t12: 10 % 3 = 1
   val t13: 12 % 2 = 1 // error
   val t14: 1 % -3 = 1
-  val t15: -3 % -2 = 0 // error
+  val t15: -3 % 0 = 0 // error
 
   val t16: 1 < 0 = false
   val t17: 0 < 1 = true
