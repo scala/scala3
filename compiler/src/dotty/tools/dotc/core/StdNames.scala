@@ -211,6 +211,7 @@ object StdNames {
     final val Abs: N       = "Abs"
     final val And: N       = "&&"
     final val Div: N       = "/"
+    final val Error: N     = "Error"
     final val Equals: N    = "=="
     final val Ge: N        = ">="
     final val Gt: N        = ">"

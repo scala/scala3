@@ -958,7 +958,7 @@ class Definitions {
     tpnme.Abs, tpnme.Negate, tpnme.Min, tpnme.Max, tpnme.ToString,
   )
   private val compiletimePackageBooleanTypes: Set[Name] = Set(tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or)
-  private val compiletimePackageStringTypes: Set[Name] = Set(tpnme.Plus)
+  private val compiletimePackageStringTypes: Set[Name] = Set(tpnme.Error, tpnme.Plus)
 
   final def isCompiletimeAppliedType(sym: Symbol)(implicit ctx: Context): Boolean = {
     def isOpsPackageObjectAppliedType: Boolean =

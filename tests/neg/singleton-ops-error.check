@@ -1,0 +1,12 @@
+-- Error: tests/neg/singleton-ops-error.scala:18:33 --------------------------------------------------------------------
+18 |  val t1: Positive = Positive[-1](-1) // error
+   |                                 ^
+   |                                 The provided value (-1) isn't positive
+-- Error: tests/neg/singleton-ops-error.scala:20:23 --------------------------------------------------------------------
+20 |  val t3 = Positive[-1](-1) // error
+   |                       ^
+   |                       The provided value (-1) isn't positive
+-- Error: tests/neg/singleton-ops-error.scala:22:11 --------------------------------------------------------------------
+22 |  val err: Error["My error message"] = ??? // error
+   |           ^
+   |           My error message

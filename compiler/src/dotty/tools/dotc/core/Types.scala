@@ -3715,7 +3715,8 @@ object Types {
               case tpnme.Max if nArgs == 2 => constantFold2(intValue, _ max _)
               case _ => None
             } else if (owner == defn.CompiletimeOpsPackageObjectString.moduleClass) name match {
-              case tpnme.Plus if nArgs == 2 => constantFold2(stringValue, _ + _)
+              case tpnme.Error if nArgs == 1 => constantFold1(stringValue, msg => throw new TypeError(msg))
+              case tpnme.Plus  if nArgs == 2 => constantFold2(stringValue, _ + _)
               case _ => None
             } else if (owner == defn.CompiletimeOpsPackageObjectBoolean.moduleClass) name match {
               case tpnme.Not if nArgs == 1 => constantFold1(boolValue, x => !x)

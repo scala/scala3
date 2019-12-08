@@ -24,6 +24,23 @@ package object ops {
   }
 
   object string {
+    /** Throws a compiletime error when evaluated by the compiler. For example:
+     *
+     *  ```scala
+     *  val x: Error["My error message"] = ??? // error: My error message
+     *  ```
+     *  or
+     *  ```scala
+     *  import scala.compiletime.ops.int.>=
+     *  type Positive[X <: Int] = (X >= 0) match {
+     *    case true => X
+     *    case false => Error["Expected a positive integer"]
+     *  }
+     *  val x: Positive[-1] = -1 // error: Expected a positive integer
+     *  ```
+     */
+    type Error[Msg <: String] <: Nothing
+
     /** Concatenation of two `String` singleton types.
      *  ```scala
      *  val hello: "hello " + "world" = "hello world"
