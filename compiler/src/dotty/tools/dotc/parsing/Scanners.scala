@@ -155,8 +155,9 @@ object Scanners {
       || ctx.settings.oldSyntax.value
       || isScala2CompatMode
     val indentSyntax =
-      (if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value)
-      || rewriteNoIndent
+      ((if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value)
+       || rewriteNoIndent)
+      && !isInstanceOf[LookaheadScanner]
     val colonSyntax =
       ctx.settings.YindentColons.value
       || rewriteNoIndent
@@ -881,8 +882,7 @@ object Scanners {
 
 // Lookahead ---------------------------------------------------------------
 
-    class LookaheadScanner(indent: Boolean = false) extends Scanner(source, offset) {
-      override val indentSyntax = indent
+    class LookaheadScanner() extends Scanner(source, offset) {
       override def skipEndMarker(width: IndentWidth) = ()
       override protected def printState() = {
         print("la:")
