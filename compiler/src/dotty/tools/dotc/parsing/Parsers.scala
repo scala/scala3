@@ -3483,12 +3483,11 @@ object Parsers {
       val t = constrApp()
       val ts =
         if in.token == WITH then
-          val lookahead = in.LookaheadScanner(indent = true)
-          lookahead.nextToken()
-          if templateCanFollow && (lookahead.token == LBRACE || lookahead.token == INDENT) then
+          in.nextToken()
+          newLineOptWhenFollowedBy(LBRACE)
+          if templateCanFollow && (in.token == LBRACE || in.token == INDENT) then
             Nil
           else
-            in.nextToken()
             checkNotWithAtEOL()
             constrApps(commaOK, templateCanFollow)
         else if commaOK && in.token == COMMA then
