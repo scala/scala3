@@ -983,8 +983,14 @@ object Parsers {
         }
         else
           val t = reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
-          if !isType && in.token == MATCH then recur(matchClause(t))
+          if !isType && in.token == MATCH then recurAtMinPrec(matchClause(t))
           else t
+
+      def recurAtMinPrec(top: Tree): Tree =
+        if isIdent && isOperator && precedence(in.name) == minInfixPrec
+           || in.token == MATCH
+        then recur(top)
+        else top
 
       recur(first)
     }
@@ -2758,8 +2764,8 @@ object Parsers {
     /** OLD: GivenTypes   ::=  AnnotType {‘,’ AnnotType}
      *  NEW: GivenTypes   ::=  Type {‘,’ Type}
      */
-    def givenTypes(newStyle: Boolean, nparams: Int, ofClass: Boolean): List[ValDef] =
-      val tps = commaSeparated(() => if newStyle then typ() else annotType())
+    def givenTypes(nparams: Int, ofClass: Boolean): List[ValDef] =
+      val tps = commaSeparated(typ)
       var counter = nparams
       def nextIdx = { counter += 1; counter }
       val paramFlags = if ofClass then Private | Local | ParamAccessor else Param
@@ -2862,7 +2868,7 @@ object Parsers {
                 || startParamTokens.contains(in.token)
                 || isIdent && (in.name == nme.inline || in.lookaheadIn(BitSet(COLON)))
               if isParams then commaSeparated(() => param())
-              else givenTypes(true, nparams, ofClass)
+              else givenTypes(nparams, ofClass)
           checkVarArgsRules(clause)
           clause
       }
