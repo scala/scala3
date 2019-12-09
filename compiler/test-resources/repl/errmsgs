@@ -3,22 +3,22 @@ scala> class Inv[T](x: T)
 scala> val x: List[String] = List(1)
 1 | val x: List[String] = List(1)
   |                            ^
-  |                            Found:    Int(1)
+  |                            Found:    (1 : Int)
   |                            Required: String
 scala> val y: List[List[String]] = List(List(1))
 1 | val y: List[List[String]] = List(List(1))
   |                                       ^
-  |                                       Found:    Int(1)
+  |                                       Found:    (1 : Int)
   |                                       Required: String
 scala> val z: (List[String], List[Int]) = (List(1), List("a"))
 1 | val z: (List[String], List[Int]) = (List(1), List("a"))
   |                                          ^
-  |                                          Found:    Int(1)
+  |                                          Found:    (1 : Int)
   |                                          Required: String
 1 | val z: (List[String], List[Int]) = (List(1), List("a"))
   |                                                   ^^^
-  |                                                   Found:    String("a")
-  |                                                   Required: Int
+  |                                                  Found:    ("a" : String)
+  |                                                  Required: Int
 scala> val a: Inv[String] = new Inv(new Inv(1))
 1 | val a: Inv[String] = new Inv(new Inv(1))
   |                              ^^^^^^^^^^
@@ -27,19 +27,19 @@ scala> val a: Inv[String] = new Inv(new Inv(1))
 scala> val b: Inv[String] = new Inv(1)
 1 | val b: Inv[String] = new Inv(1)
   |                              ^
-  |                              Found:    Int(1)
+  |                              Found:    (1 : Int)
   |                              Required: String
 scala> abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
 1 | abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
   |                                                                                  ^
-  |Found:    C.this.T(C.this.x)
+  |Found:    (C.this.x : C.this.T)
   |Required: T²
   |
   |where:    T  is a type in class C
   |          T² is a type in the initializer of value s which is an alias of String
 1 | abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
   |                                                                                                                                    ^
-  |Found:    T(y)
+  |Found:    (y : T)
   |Required: T²
   |
   |where:    T  is a type in the initializer of value s which is an alias of String
@@ -51,7 +51,7 @@ scala> class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
 scala> val x: List[Int] = "foo" :: List(1)
 1 | val x: List[Int] = "foo" :: List(1)
   |                    ^^^^^
-  |                    Found:    String("foo")
+  |                    Found:    ("foo" : String)
   |                    Required: Int
 scala> while (((  foo ))) {}
 1 | while (((  foo ))) {}
