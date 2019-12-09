@@ -666,7 +666,8 @@ trait Applications extends Compatibility {
    * argument trees.
    */
   class ApplicableToTreesDirectly(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context) extends ApplicableToTrees(methRef, targs, args, resultType)(ctx) {
-    override def argOK(arg: TypedArg, formal: Type): Boolean = argType(arg, formal) <:< formal.widenExpr
+    override def argOK(arg: TypedArg, formal: Type): Boolean =
+      argType(arg, formal) relaxed_<:< formal.widenExpr
   }
 
   /** Subclass of Application for applicability tests with value argument types. */
