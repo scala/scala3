@@ -21,15 +21,17 @@ object Test extends App {
   }
 
   locally {
+    // Arrays behave differently from lists since they have overloaded constructors, and weak
+    // conformance does apply for selecting one. See Issue #7630.
     def f(): Int = b + 1
-    val x1 = Array(b, 33, 5.5)      ; x1: Array[Double] // b is an inline val
-    val x2 = Array(f(), 33, 5.5)    ; x2: Array[AnyVal] // f() is not a constant
+    val x1 = Array(b, 33, 5.5)      ; x1: Array[Double]
+    val x2 = Array(f(), 33, 5.5)    ; x2: Array[Double]
     val x3 = Array(5, 11L)          ; x3: Array[Long]
-    val x4 = Array(5, 11L, 5.5)     ; x4: Array[AnyVal] // Long and Double found
+    val x4 = Array(5, 11L, 5.5)     ; x4: Array[Double]
     val x5 = Array(1.0f, 2)         ; x5: Array[Float]
-    val x6 = Array(1.0f, 1234567890); x6: Array[AnyVal] // loss of precision
-    val x7 = Array(b, 33, 'a')      ; x7: Array[Char]
-    val x8 = Array(5.toByte, 11)    ; x8: Array[Byte]
+    val x6 = Array(1.0f, 1234567890); x6: Array[Float]
+    val x7 = Array(b, 33, 'a')      ; x7: Array[Int]
+    val x8 = Array(5.toByte, 11)    ; x8: Array[Int]
 
     val x9: Array[AnyVal] = Array(1.0f, 0)
     assert(x9(0).getClass == classOf[java.lang.Float])
