@@ -12,7 +12,7 @@ class DiagnosticsTest {
           |  val x: Int = $m1"foo"$m2
           |}""".withSource
       .diagnostics(m1,
-        (m1 to m2, """Found:    String("foo")
+        (m1 to m2, """Found:    ("foo" : String)
                      |Required: Int""".stripMargin, Error, Some(TypeMismatchID))
       )
 
