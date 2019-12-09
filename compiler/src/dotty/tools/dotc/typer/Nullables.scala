@@ -9,7 +9,7 @@ import StdNames.nme
 import util.Property
 import Names.Name
 import util.Spans.Span
-import Flags.Mutable
+import Flags._
 import NullOpsDecorator._
 import collection.mutable
 
@@ -151,11 +151,7 @@ object Nullables with
     || { val sym = ref.symbol
          sym.is(Mutable)
          && sym.owner.isTerm
-         && ( sym.owner == curCtx.owner
-          || !curCtx.owner.is(Flags.Lazy) // not at the rhs of lazy ValDef
-            && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod // not in different methods
-            // TODO: need to check by-name paramter
-          )
+         && !ref.usedOutOfOrder // todo: remove
          && sym.span.exists
          && curCtx.compilationUnit != null // could be null under -Ytest-pickler
          && curCtx.compilationUnit.assignmentSpans.contains(sym.span.start)
@@ -205,6 +201,24 @@ object Nullables with
             && !info.retracted.exists(infos.impliesNotNull(_))
       then infos
       else info :: infos
+
+  given refOps: extension (ref: TermRef) with
+
+    def usedOutOfOrder(given Context) =
+      val refSym = ref.symbol
+      val refOwner = refSym.owner
+
+      def enclosedInClosure(s: Symbol): Boolean =
+        s != NoSymbol
+        && s != refOwner
+        && (s.isOneOf(Lazy | Method) // not at the rhs of lazy ValDef or in a method (or lambda)
+          || s.isClass // not in a class
+          // TODO: need to check by-name paramter
+          || enclosedInClosure(s.owner))
+
+      refSym.is(Mutable)
+      && refSym.owner.isTerm
+      && enclosedInClosure(curCtx.owner)
 
   given treeOps: extension (tree: Tree) with
 

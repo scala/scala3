@@ -15,6 +15,18 @@ object VarRef {
 
   locally {
     var x: String|Null = ???
+    var y = {
+      if (x != null) {
+        val _: String = x // ok: y doesn't create closure
+      }
+    }
+    if (x != null) {
+      val a: String = x // ok
+    }
+  }
+
+  locally {
+    var x: String|Null = ???
     lazy val y = {
       if (x != null) {
         x = null
