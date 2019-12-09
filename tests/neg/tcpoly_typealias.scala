@@ -34,7 +34,7 @@ trait BOk4 extends A3 {
  // does type alias signature (not considering RHS) correspond to abstract type member in super class
  // does RHS correspond to the type alias sig
 trait BInv extends A{
-  type m[x] = FooCov[x] // error: invariant x in alias def
+  type m[x] = FooCov[x] // was an error: invariant x in alias def, now ok, since `FooCov` is covariant
 }
 
 trait BCon extends A{
