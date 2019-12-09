@@ -579,10 +579,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             val saved = comparedTypeLambdas
             comparedTypeLambdas += tp1
             comparedTypeLambdas += tp2
-            try
-              variancesConform(tp1.typeParams, tp2.typeParams) &&
-              boundsOK &&
-              isSubType(tp1.resType, tp2.resType.subst(tp2, tp1))
+            val variancesOK =
+              variancesConform(tp1.typeParams, tp2.typeParams)
+              || { // if tp1 is of the form [X] =>> C[X] where `C` is co- or contra-variant
+                   // assume the variance of `C` for `tp1` instead. Fixes #7648.
+                tp1 match
+                  case EtaExpansion(tycon1) => variancesConform(tycon1.typeParams, tp2.typeParams)
+                  case _ => false
+              }
+            try variancesOK && boundsOK && isSubType(tp1.resType, tp2.resType.subst(tp2, tp1))
             finally comparedTypeLambdas = saved
           case _ =>
             val tparams1 = tp1.typeParams
