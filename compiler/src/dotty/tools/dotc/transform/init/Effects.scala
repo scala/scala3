@@ -2,11 +2,10 @@ package dotty.tools.dotc
 package transform
 package init
 
-import dotty.tools.dotc.ast.tpd._
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Contexts._
-import scala.language.implicitConversions
+import ast.tpd._
+import core.Types._
+import core.Symbols._
+import core.Contexts._
 
 import Potentials._
 
