@@ -512,7 +512,7 @@ object Scanners {
                 insert(OUTDENT, offset)
                 skipEndMarker(nextWidth)
               case r: InBraces if !closingRegionTokens.contains(token) =>
-                ctx.warning("Line is indented too far to the left, or a `}' is missing",
+                ctx.warning("Line is indented too far to the left, or a `}` is missing",
                   source.atSpan(Span(offset)))
               case _ =>
 
@@ -1095,7 +1095,7 @@ object Scanners {
           finishNamed(target = next)
         }
         else
-          error("invalid string interpolation: `$$', `$\"`, `$'ident or `$'BlockExpr expected")
+          error("invalid string interpolation: `$$`, `$\"`, `$`ident or `$`BlockExpr expected")
       }
       else {
         val isUnclosedLiteral = !isUnicodeEscape && (ch == SU || (!multiLine && (ch == CR || ch == LF)))
