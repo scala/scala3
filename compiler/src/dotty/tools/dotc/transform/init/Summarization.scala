@@ -186,77 +186,26 @@ object Summarization {
     else summary
   }
 
-  /** Constructors need special treatment to distinguish assignment from initialization
-   *
-   *  This is possible thanks to the convention in Dotty that assignment will be method
-   *  calls, while field initialization will be assignments at the phase genBCode.
-   */
-  def analyzeConstructor(ctor: Symbol, tree: Tree)(implicit ctx: Context): Summary =
-  trace("summarizing constructor" + tree.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
-    val block = tree.asInstanceOf[Block]
-    val effsAll = (block.expr :: block.stats).foldLeft(Effects.empty) { case (acc, stat) =>
-      stat match {
-        case Assign(lhs, rhs) =>
-          // no leaking for initialization
-          val (_, effs) = analyze(rhs)
-          acc ++ effs
-
-        case tree =>
-          val (_, effs) = analyze(tree)
-          acc ++ effs
-      }
-    }
-    val pots =
-      if (ctor.isPrimaryConstructor) Potentials.empty
-      else analyze(block.stats(0))._1
-
-    (pots, effsAll)
+  def analyzeMethod(sym: Symbol)(implicit ctx: Context): Summary = {
+    val ddef = sym.defTree.asInstanceOf[DefDef]
+    analyze(ddef.rhs)(ctx.withOwner(sym))
   }
 
-  def getRhs(symbol: Symbol)(implicit ctx: Context): Tree = {
-    def notFound() = {
-      traceIndented("Not tree found for " + symbol, init)
-      EmptyTree
+  def analyzeField(sym: Symbol)(implicit ctx: Context): Summary = {
+    val vdef = sym.defTree.asInstanceOf[ValDef]
+    analyze(vdef.rhs)(ctx.withOwner(sym))
+  }
+
+  /** Summarize secondary constructors or class body */
+  def analyzeConstructor(ctor: Symbol)(implicit ctx: Context): Summary =
+  trace("summarizing constructor " + ctor.owner.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
+    if (ctor.isPrimaryConstructor) {
+      val tpl = ctor.owner.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+      analyze(Block(tpl.body, unitLiteral))
     }
-
-    if (symbol.isAllOf(Flags.Lazy | Flags.Method, butNot = Flags.Lifted)) {
-      if (symbol.defTree.isEmpty) {
-        notFound()
-        return symbol.defTree
-      }
-
-      var rhs: Tree = symbol.defTree.asInstanceOf[DefDef].rhs
-      symbol.defTree.foreachSubTree {
-        case vdef: ValDef if vdef.symbol.is(Flags.Synthetic) && vdef.name.toString == "result" =>
-          rhs = vdef.rhs
-        case _ =>
-      }
-
-      rhs
+    else {
+      val ddef = ctor.defTree.asInstanceOf[DefDef]
+      analyze(ddef.rhs)(ctx.withOwner(ctor))
     }
-    else if (symbol.is(Flags.Method))
-      // give up if cross project boundary
-      if (symbol.defTree.isEmpty) notFound()
-      else symbol.defTree.asInstanceOf[DefDef].rhs
-    else if (symbol.isAllOf(Flags.Module | Flags.StableRealizable, butNot = Flags.Method))
-      // static fields
-      EmptyTree
-    else // rhs for fields are `assign` in ctor of its definition class
-      symbol.owner.defTree match {
-        case TypeDef(_, Template(ctor, _, _, _)) =>
-          ctor.rhs match {
-            case Block(stats, expr) =>
-              stats.collectFirst {
-                case Assign(sel @ Select(_: This, _), rhs) if sel.symbol == symbol => rhs
-                case Assign(ident, rhs) if ident.symbol == symbol => rhs
-              } match {
-                case Some(init) => init
-                case None =>
-                  notFound()
-              }
-            case _ =>
-              notFound()
-          }
-      }
   }
 }
