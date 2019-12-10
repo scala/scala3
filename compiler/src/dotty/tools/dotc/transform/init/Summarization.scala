@@ -152,6 +152,9 @@ object Summarization {
         // possible in try/catch/finally, see tests/crash/i6914.scala
         Summary.empty
 
+      case _: TypeDef | _ : DefDef =>
+        Summary.empty
+
       case _ =>
         throw new Exception("unexpected tree: " + expr.show)
     }
