@@ -29,14 +29,13 @@ case class Env(ctx: Context, summaryCache: Map[Symbol, Summary]) {
   def summaryOf(symbol: Symbol): Summary =
     if (summaryCache.contains(symbol)) summaryCache(symbol)
     else trace("summary for " + symbol.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
-      val tree: tpd.Tree = ??? // getRhs(symbol)
       val summary =
-        if (tree.isEmpty)
-          Summary.empty
-        else if (symbol.isConstructor)
-          ??? // analyzeConstructor(symbol, tree)(this.withCtx(ctx.withOwner(symbol)))
-        else
-          ??? // analyze(tree)(this.withCtx(ctx.withOwner(symbol)))
+        if (symbol.isConstructor)
+          Summarization.analyzeConstructor(symbol)
+        else if (symbol.is(Flags.Method))
+          Summarization.analyzeMethod(symbol)
+        else // field
+          Summarization.analyzeField(symbol)
 
       summaryCache(symbol) = summary
       summary
