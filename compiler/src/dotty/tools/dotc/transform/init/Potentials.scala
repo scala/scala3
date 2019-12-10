@@ -3,11 +3,10 @@ package transform
 package init
 
 import ast.tpd._
-import core.Types._
-import core.Symbols._
-import core.Contexts._
+import core._
+import Types._, Symbols._, Contexts._
 
-import Effects._
+import Effects._, Summary._
 
 object Potentials {
   type Potentials = Set[Potential]
@@ -37,7 +36,7 @@ object Potentials {
     def show(implicit ctx: Context): String = "Warm[" + cls.show + "]"
   }
 
-  case class FieldValue(potential: Potential, field: Symbol)(val source: Tree) extends Potential {
+  case class FieldReturn(potential: Potential, field: Symbol)(val source: Tree) extends Potential {
     def size: Int = potential.size
     def show(implicit ctx: Context): String = potential.show + "." + field.name.show
   }
@@ -60,4 +59,21 @@ object Potentials {
     def show(implicit ctx: Context): String =
       "Fun[pots = " + potentials.map(_.show).mkString(";") + ", effs = " + effects.map(_.show).mkString(";") + "]"
   }
+
+  // ---------      operations on potentials       ---------
+
+  def (ps: Potentials) select (symbol: Symbol, source: Tree, virtual: Boolean = true, bindings: Map[Symbol, Potentials] = Map.empty)(implicit ctx: Context): Summary =
+    ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
+      if (pot.size > 3)
+        (pots, effs + Leak(pot)(source))
+      else if (symbol.is(Flags.Method))
+          (
+            pots + MethodReturn(pot, symbol, virtual)(source),
+            effs + MethodCall(pot, symbol, virtual)(source)
+          )
+      else
+        (pots + FieldReturn(pot, symbol)(source), effs + FieldAccess(pot, symbol)(source))
+    }
+
+  def (ps: Potentials) leak(source: Tree): Effects = ps.map(Leak(_)(source))
 }
