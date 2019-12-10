@@ -142,9 +142,11 @@ object Summarization {
         analyze(expansion)
 
       case tree @ ValDef(name, tpt, _) =>
-        assert(!tree.symbol.owner.isClass, "unexpected ValDef")
-        val (pots, effs) = analyze(tree.rhs)
-        (Potentials.empty, pots.leak(expr) ++ effs)
+        if (tree.symbol.is(Flags.Lazy)) Summary.empty
+        else {
+          val (pots, effs) = analyze(tree.rhs)
+          (Potentials.empty, pots.leak(expr) ++ effs)
+        }
 
       case Thicket(List()) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
