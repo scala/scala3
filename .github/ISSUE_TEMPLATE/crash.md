@@ -2,7 +2,7 @@
 name: "\U0001F4A5 Crash report"
 about: Report a Dotty Compiler compiler crash
 title: ''
-labels: itype:bug
+labels: itype:bug, itype:crash
 assignees: ''
 
 ---
