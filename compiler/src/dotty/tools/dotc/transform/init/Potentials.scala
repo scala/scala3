@@ -27,6 +27,11 @@ object Potentials {
     def show(implicit ctx: Context): String = cls.name.show + ".this"
   }
 
+  case class SuperRef(cls: ClassSymbol, supercls: ClassSymbol)(val source: Tree) extends Potential {
+    val size: Int = 1
+    def show(implicit ctx: Context): String = cls.name.show + ".super[" + supercls.name.show + "]"
+  }
+
   case class Warm(cls: ClassSymbol, outers: Map[ClassSymbol, Potentials])(val source: Tree) extends Potential {
     def size: Int = 1
     def show(implicit ctx: Context): String = "Warm[" + cls.show + "]"
