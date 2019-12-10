@@ -287,7 +287,7 @@ object TastyFormat {
   object NameTags extends NameTags
 
   /**Should be kept in sync with [[NameTags]]. Converts constants to a String representing their identifier,
-   * or NotANameTag(\d+) if unrecognised.
+   * or NotANameTag(tag) if unrecognised.
    *
    * For debugging purposes when unpickling names in a TASTy file.
    */
