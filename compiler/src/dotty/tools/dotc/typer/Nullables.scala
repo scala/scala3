@@ -104,7 +104,9 @@ object Nullables with
   /** Is given reference tracked for nullability?
    *  This is the case if the reference is a path to an immutable val, or if it refers
    *  to a local mutable variable where all assignments to the variable are _reachable_
-   *  (in the sense of how it is defined in assignmentSpans).
+   *  (in the sense of how it is defined in assignmentSpans). We use this function to decide
+   *  whether we need to compute the NotNullInfo and add it to the context. This requires the
+   *  use of a mutable variable is not out of order.
    *
    *  When dealing with local mutable variables, there are two questions:
    *
@@ -149,9 +151,7 @@ object Nullables with
   def isTracked(ref: TermRef)(given Context) =
     ref.isStable
     || { val sym = ref.symbol
-         sym.is(Mutable)
-         && sym.owner.isTerm
-         && !ref.usedOutOfOrder // todo: remove
+         !ref.usedOutOfOrder
          && sym.span.exists
          && curCtx.compilationUnit != null // could be null under -Ytest-pickler
          && curCtx.compilationUnit.assignmentSpans.contains(sym.span.start)
@@ -204,7 +204,8 @@ object Nullables with
 
   given refOps: extension (ref: TermRef) with
 
-    def usedOutOfOrder(given Context) =
+    /* Is the use of a mutable variable out of order */
+    def usedOutOfOrder(given Context): Boolean =
       val refSym = ref.symbol
       val refOwner = refSym.owner
 

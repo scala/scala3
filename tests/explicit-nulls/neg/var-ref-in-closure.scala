@@ -149,4 +149,24 @@ object VarRef {
       x
     }
   }
+
+  locally {
+    val x: String|Null = ???
+    if (x != null) {
+      def f = {
+        val y: String = x // ok, x is a value definition
+        y
+      }
+    }
+  }
+
+  locally {
+    var x: String|Null = ???
+    if (x != null) {
+      def f = {
+        val y: String = x // error: the use of x is out of order
+        y
+      }
+    }
+  }
 }
