@@ -70,7 +70,7 @@ object Potentials {
 
   def (ps: Potentials) select (symbol: Symbol, source: Tree, virtual: Boolean = true, bindings: Map[Symbol, Potentials] = Map.empty)(implicit ctx: Context): Summary =
     ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
-      if (pot.size > 3)
+      if (pot.size > 1)
         (pots, effs + Leak(pot)(source))
       else if (symbol.is(Flags.Method))
           (

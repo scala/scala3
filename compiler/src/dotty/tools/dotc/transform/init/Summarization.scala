@@ -141,11 +141,11 @@ object Summarization {
         // TODO: bindings
         analyze(expansion)
 
-      case tree @ ValDef(name, tpt, _) =>
-        if (tree.symbol.is(Flags.Lazy)) Summary.empty
+      case vdef : ValDef =>
+        if (vdef.symbol.is(Flags.Lazy)) Summary.empty
         else {
-          val (pots, effs) = analyze(tree.rhs)
-          (Potentials.empty, pots.leak(expr) ++ effs)
+          val (pots, effs) = analyze(vdef.rhs)
+          (Potentials.empty, pots.leak(vdef) ++ effs)
         }
 
       case Thicket(List()) =>
