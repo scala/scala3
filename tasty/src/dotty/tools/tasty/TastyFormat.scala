@@ -254,7 +254,7 @@ object TastyFormat {
   val MajorVersion: Int = 18
   val MinorVersion: Int = 0
 
-  /** Tags used to serialize names */
+  /** Tags used to serialize names, should update [[nameTagToString]] if a new constant is added */
   class NameTags {
     final val UTF8 = 1               // A simple name in UTF8 encoding.
 
@@ -286,6 +286,11 @@ object TastyFormat {
   }
   object NameTags extends NameTags
 
+  /**Should be kept in sync with [[NameTags]]. Converts constants to a String representing their identifier,
+   * or NotANameTag(\d+) if unrecognised.
+   *
+   * For debugging purposes when unpickling names in a TASTy file.
+   */
   def nameTagToString(tag: Int) = {
     import NameTags._
     tag match {
@@ -300,6 +305,7 @@ object TastyFormat {
       case INLINEACCESSOR => "INLINEACCESSOR"
       case OBJECTCLASS => "OBJECTCLASS"
       case SIGNED => "SIGNED"
+      case id => s"NotANameTag($id)"
     }
   }
 
