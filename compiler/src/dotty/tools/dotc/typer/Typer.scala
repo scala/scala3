@@ -587,7 +587,7 @@ class Typer extends Namer
           case _ =>
         }
         val x = tpnme.ANON_CLASS
-        val clsDef = TypeDef(x, templ1).withFlags(Final)
+        val clsDef = TypeDef(x, templ1).withFlags(Final | Synthetic)
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
         var tpt1 = typedType(tree.tpt)
