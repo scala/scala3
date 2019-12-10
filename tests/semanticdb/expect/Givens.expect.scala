@@ -3,11 +3,11 @@ package b
 
 object Givens/*<-a::b::Givens.*/
 
-  given :[A](any: A)
-    de/*<-a::b::Givens.given_sayHello_of_A.*//*<-a::b::Givens.given_sayHello_of_A.sayHello().[A]*//*<-a::b::Givens.given_sayHello_of_A.sayHello().(any)*//*->a::b::Givens.given_sayHello_of_A.sayHello().[A]*/f sayHello/*<-a::b::Givens.given_sayHello_of_A.sayHello().*/ = s"/*->scala::StringContext.apply().*/Hello, I am $any/*->a::b::Givens.given_sayHello_of_A.sayHello().(any)*//*->scala::StringContext#s().*/"
+  given extension [A](any: /*<-a::b::Givens.given_sayHello_of_A.*//*<-a::b::Givens.given_sayHello_of_A.sayHello().[A]*//*<-a::b::Givens.given_sayHello_of_A.sayHello().(any)*/A/*->a::b::Givens.given_sayHello_of_A.sayHello().[A]*/)
+    def sayHello/*<-a::b::Givens.given_sayHello_of_A.sayHello().*/ = s"/*->scala::StringContext.apply().*/Hello, I am $any/*->a::b::Givens.given_sayHello_of_A.sayHello().(any)*//*->scala::StringContext#s().*/"
 
-  given :[B](any: B)
-    def /*<-a::b::Givens.given_sayGoodbye_of_B.*//*<-a::b::Givens.given_sayGoodbye_of_B.sayGoodbye().[B]*//*<-a::b::Givens.given_sayGoodbye_of_B.saySoLong().[B]*//*<-a::b::Givens.given_sayGoodbye_of_B.sayGoodbye().(any)*//*<-a::b::Givens.given_sayGoodbye_of_B.saySoLong().(any)*//*->a::b::Givens.given_sayGoodbye_of_B.sayGoodbye().[B]*//*->a::b::Givens.given_sayGoodbye_of_B.saySoLong().[B]*/sayGoodbye/*<-a::b::Givens.given_sayGoodbye_of_B.sayGoodbye().*/ = s"/*->scala::StringContext.apply().*/Goodbye, from $any/*->a::b::Givens.given_sayGoodbye_of_B.sayGoodbye().(any)*//*->scala::StringContext#s().*/"
+  given extension [B](any: B)/*<-a::b::Givens.given_sayGoodbye_of_B.*//*<-a::b::Givens.given_sayGoodbye_of_B.sayGoodbye().[B]*//*<-a::b::Givens.given_sayGoodbye_of_B.saySoLong().[B]*//*<-a::b::Givens.given_sayGoodbye_of_B.sayGoodbye().(any)*//*<-a::b::Givens.given_sayGoodbye_of_B.saySoLong().(any)*//*->a::b::Givens.given_sayGoodbye_of_B.sayGoodbye().[B]*//*->a::b::Givens.given_sayGoodbye_of_B.saySoLong().[B]*/
+    def sayGoodbye/*<-a::b::Givens.given_sayGoodbye_of_B.sayGoodbye().*/ = s"/*->scala::StringContext.apply().*/Goodbye, from $any/*->a::b::Givens.given_sayGoodbye_of_B.sayGoodbye().(any)*//*->scala::StringContext#s().*/"
     def saySoLong/*<-a::b::Givens.given_sayGoodbye_of_B.saySoLong().*/ = s"/*->scala::StringContext.apply().*/So Long, from $any/*->a::b::Givens.given_sayGoodbye_of_B.saySoLong().(any)*//*->scala::StringContext#s().*/"
 
   val hello1/*<-a::b::Givens.hello1.*/ = /*->a::b::Givens.given_sayHello_of_A.sayHello().*/1.sayHello

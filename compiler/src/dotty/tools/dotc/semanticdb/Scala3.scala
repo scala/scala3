@@ -67,7 +67,7 @@ object Scala3 with
 
   end Symbols
 
-  given NameOps: (name: Name) with
+  given NameOps: extension (name: Name) with
 
     def isWildcard = name match
       case nme.WILDCARD | WILDCARDTypeName => true
@@ -89,7 +89,7 @@ object Scala3 with
 
   end NameOps
 
-  given SymbolOps: (sym: Symbol) with
+  given SymbolOps: extension (sym: Symbol) with
 
     def ifExists(given Context): Option[Symbol] = if sym.exists then Some(sym) else None
 
@@ -146,7 +146,7 @@ object Scala3 with
     case '/' | '.' | '#' | ']' | ')' => true
     case _                           => false
 
-  given StringOps: (symbol: String) with
+  given StringOps: extension (symbol: String) with
 
     def isSymbol: Boolean = !symbol.isEmpty
     def isRootPackage: Boolean = RootPackage == symbol
@@ -171,7 +171,7 @@ object Scala3 with
 
   end StringOps
 
-  given InfoOps: (info: SymbolInformation) with
+  given InfoOps: extension (info: SymbolInformation) with
 
     def isAbstract: Boolean = (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
     def isFinal: Boolean = (info.properties & SymbolInformation.Property.FINAL.value) != 0
@@ -207,7 +207,7 @@ object Scala3 with
 
   end InfoOps
 
-  given RangeOps: (range: Range) with
+  given RangeOps: extension (range: Range) with
     def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
   end RangeOps
 

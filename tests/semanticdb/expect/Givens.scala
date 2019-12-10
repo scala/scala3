@@ -3,10 +3,10 @@ package b
 
 object Givens
 
-  given :[A](any: A)
+  given extension [A](any: A)
     def sayHello = s"Hello, I am $any"
 
-  given :[B](any: B)
+  given extension [B](any: B)
     def sayGoodbye = s"Goodbye, from $any"
     def saySoLong = s"So Long, from $any"
 

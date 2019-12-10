@@ -1311,21 +1311,21 @@ Occurrences:
 [0:8..0:9): a <- a/
 [1:8..1:9): b <- a/b/
 [3:7..3:13): Givens <- a/b/Givens.
-[5:8..6:6): <- a/b/Givens.given_sayHello_of_A.
-[5:10..5:11): A <- a/b/Givens.given_sayHello_of_A.sayHello().[A]
-[5:13..5:16): any <- a/b/Givens.given_sayHello_of_A.sayHello().(any)
-[5:18..5:19): A -> a/b/Givens.given_sayHello_of_A.sayHello().[A]
+[5:8..5:27): extension [A](any:  <- a/b/Givens.given_sayHello_of_A.
+[5:19..5:20): A <- a/b/Givens.given_sayHello_of_A.sayHello().[A]
+[5:22..5:25): any <- a/b/Givens.given_sayHello_of_A.sayHello().(any)
+[5:27..5:28): A -> a/b/Givens.given_sayHello_of_A.sayHello().[A]
 [6:8..6:16): sayHello <- a/b/Givens.given_sayHello_of_A.sayHello().
 [6:21..6:21): -> scala/StringContext.apply().
 [6:34..6:37): any -> a/b/Givens.given_sayHello_of_A.sayHello().(any)
 [6:37..6:37): -> scala/StringContext#s().
-[8:8..9:8): <- a/b/Givens.given_sayGoodbye_of_B.
-[8:10..8:11): B <- a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().[B]
-[8:10..8:11): B <- a/b/Givens.given_sayGoodbye_of_B.saySoLong().[B]
-[8:13..8:16): any <- a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().(any)
-[8:13..8:16): any <- a/b/Givens.given_sayGoodbye_of_B.saySoLong().(any)
-[8:18..8:19): B -> a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().[B]
-[8:18..8:19): B -> a/b/Givens.given_sayGoodbye_of_B.saySoLong().[B]
+[8:8..8:29): extension [B](any: B) <- a/b/Givens.given_sayGoodbye_of_B.
+[8:19..8:20): B <- a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().[B]
+[8:19..8:20): B <- a/b/Givens.given_sayGoodbye_of_B.saySoLong().[B]
+[8:22..8:25): any <- a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().(any)
+[8:22..8:25): any <- a/b/Givens.given_sayGoodbye_of_B.saySoLong().(any)
+[8:27..8:28): B -> a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().[B]
+[8:27..8:28): B -> a/b/Givens.given_sayGoodbye_of_B.saySoLong().[B]
 [9:8..9:18): sayGoodbye <- a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().
 [9:23..9:23): -> scala/StringContext.apply().
 [9:38..9:41): any -> a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().(any)
@@ -1792,7 +1792,7 @@ Uri => MethodUsages.scala
 Text => empty
 Language => Scala
 Symbols => 3 entries
-Occurrences => 74 entries
+Occurrences => 76 entries
 
 Symbols:
 example/MethodUsages# => class MethodUsages
@@ -1839,7 +1839,9 @@ Occurrences:
 [13:25..13:25): -> example/Methods#List#`<init>`().
 [13:26..13:26): -> scala/math/Ordering.Int.
 [14:2..14:3): m -> example/MethodUsages#m.
-[14:3..14:11): .`m8().` -> example/Methods#`m8().`().
+[14:4..14:11): `m8().` -> example/Methods#`m8().`().
+[15:2..15:3): m -> example/MethodUsages#m.
+[15:4..15:6): m9 -> example/Methods#m9().
 [16:2..16:3): m -> example/MethodUsages#m.
 [16:4..16:7): m10 -> example/Methods#m10().
 [17:2..17:3): m -> example/MethodUsages#m.
@@ -2025,10 +2027,10 @@ Occurrences:
 [17:40..17:44): List -> example/Methods#List#
 [17:45..17:46): U -> example/Methods#m7().[U]
 [17:51..17:54): ??? -> scala/Predef.`???`().
-[18:7..18:17): m8().`() = <- example/Methods#`m8().`().
+[18:7..18:12): m8(). <- example/Methods#`m8().`().
 [18:18..18:21): ??? -> scala/Predef.`???`().
 [19:2..19:2): <- example/Methods#`m9().`#`<init>`().
-[19:9..20:3): <- example/Methods#`m9().`#
+[19:9..19:14): m9(). <- example/Methods#`m9().`#
 [20:6..20:8): m9 <- example/Methods#m9().
 [20:9..20:10): x <- example/Methods#m9().(x)
 [20:12..20:19): `m9().` -> example/Methods#`m9().`#

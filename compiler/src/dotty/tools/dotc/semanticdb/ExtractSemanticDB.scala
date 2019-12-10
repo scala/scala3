@@ -511,9 +511,10 @@ class ExtractSemanticDB extends Phase with
         else limit
       Span(start max limit, end)
 
-    private given spanOps: (span: Span) with
+    private given extension (span: Span) with
       def hasLength: Boolean = span.start != span.end
       def zeroLength: Boolean = span.start == span.end
+    end given
 
     /**Consume head while not an import statement.
      * Returns the rest of the list after the first import, or else the empty list

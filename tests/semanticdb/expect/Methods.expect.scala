@@ -16,9 +16,9 @@ class Methods/*<-example::Methods#*/[T/*<-example::Methods#[T]*/] {
   def m6/*<-example::Methods#m6(+1).*/(x/*<-example::Methods#m6(+1).(x)*/: List/*->example::Methods#List#*/[T/*->example::Methods#[T]*/]) = ???/*->scala::Predef.`???`().*/
   def m6/*<-example::Methods#m6(+2).*/(x/*<-example::Methods#m6(+2).(x)*/: scala.List/*->scala::package.List#*/[T/*->example::Methods#[T]*/]) = ???/*->scala::Predef.`???`().*/
   def m7/*<-example::Methods#m7().*/[U/*<-example::Methods#m7().[U]*/: Ordering/*->scala::math::Ordering#*//*->example::Methods#m7().[U]*/](c/*<-example::Methods#m7().(c)*/: Methods/*->example::Methods#*/[T/*->example::Methods#[T]*/], l/*<-example::Methods#m7().(l)*/: List/*->example::Methods#List#*/[U/*->example::Methods#m7().[U]*/]) = ???/*->scala::Predef.`???`().*/
-  def `m8().`() =/*<-example::Methods#`m8().`().*/ ???/*->scala::Predef.`???`().*/
-  class `m9().`
-  d/*<-example::Methods#`m9().`#*/ef m9/*<-example::Methods#m9().*/(x/*<-example::Methods#m9().(x)*/: `m9().`/*->example::Methods#`m9().`#*/) = ???/*->scala::Predef.`???`().*/
+  def `m8()./*<-example::Methods#`m8().`().*/`() = ???/*->scala::Predef.`???`().*/
+  class `m9()./*<-example::Methods#`m9().`#*/`
+  def m9/*<-example::Methods#m9().*/(x/*<-example::Methods#m9().(x)*/: `m9().`/*->example::Methods#`m9().`#*/) = ???/*->scala::Predef.`???`().*/
   def m10/*<-example::Methods#m10().*/(x/*<-example::Methods#m10().(x)*/: AList/*->example::Methods#AList#*/[T/*->example::Methods#[T]*/]) = ???/*->scala::Predef.`???`().*/
   def m11/*<-example::Methods#m11().*/(x/*<-example::Methods#m11().(x)*/: Predef/*->scala::Predef.*/.type) = ???/*->scala::Predef.`???`().*/
   def m11/*<-example::Methods#m11(+1).*/(x/*<-example::Methods#m11(+1).(x)*/: Example/*->example::Example.*/.type) = ???/*->scala::Predef.`???`().*/
