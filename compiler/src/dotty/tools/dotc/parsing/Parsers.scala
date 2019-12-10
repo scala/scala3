@@ -619,7 +619,7 @@ object Parsers {
           if in.isNewLine && !(nextIndentWidth < startIndentWidth) then
             warning(
               if startIndentWidth <= nextIndentWidth then
-                i"""Line is indented too far to the right, or a `{' is missing before:
+                i"""Line is indented too far to the right, or a `{` is missing before:
                    |
                    |$t"""
               else
@@ -638,7 +638,7 @@ object Parsers {
       case r: IndentSignificantRegion if in.isNewLine =>
         val nextIndentWidth = in.indentWidth(in.next.offset)
         if r.indentWidth < nextIndentWidth then
-          warning(i"Line is indented too far to the right, or a `{' is missing", in.next.offset)
+          warning(i"Line is indented too far to the right, or a `{` is missing", in.next.offset)
       case _ =>
 
 /* -------- REWRITES ----------------------------------------------------------- */
@@ -1277,7 +1277,7 @@ object Parsers {
       if in.token == WITH then
         in.nextToken()
         if in.token != LBRACE && in.token != INDENT then
-          syntaxError(i"indented definitions or `{' expected")
+          syntaxError(i"indented definitions or `{` expected")
       else
         if silentTemplateIndent && !isNew then in.observeIndented()
         newLineOptWhenFollowedBy(LBRACE)
@@ -1797,8 +1797,8 @@ object Parsers {
         }
       case DO =>
         in.errorOrMigrationWarning(
-          i"""`do <body> while <cond>' is no longer supported,
-             |use `while ({<body> ; <cond>}) ()' instead.
+          i"""`do <body> while <cond>` is no longer supported,
+             |use `while ({<body> ; <cond>}) ()` instead.
              |${rewriteNotice("-language:Scala2Compat")}
            """)
         val start = in.skipToken()
@@ -2484,7 +2484,7 @@ object Parsers {
         infixPattern() match {
           case pt @ Ident(tpnme.WILDCARD_STAR) =>
             if (ctx.settings.strict.value)
-              in.errorOrMigrationWarning("The syntax `x @ _*' is no longer supported; use `x : _*' instead", Span(startOffset(p)))
+              in.errorOrMigrationWarning("The syntax `x @ _*` is no longer supported; use `x : _*` instead", Span(startOffset(p)))
             atSpan(startOffset(p), offset) { Typed(p, pt) }
           case pt =>
             atSpan(startOffset(p), 0) { Bind(name, pt) }
@@ -2492,7 +2492,7 @@ object Parsers {
       case p @ Ident(tpnme.WILDCARD_STAR) =>
         // compatibility for Scala2 `_*` syntax
         if (ctx.settings.strict.value)
-          in.errorOrMigrationWarning("The syntax `_*' is no longer supported; use `x : _*' instead", Span(startOffset(p)))
+          in.errorOrMigrationWarning("The syntax `_*` is no longer supported; use `x : _*` instead", Span(startOffset(p)))
         atSpan(startOffset(p)) { Typed(Ident(nme.WILDCARD), p) }
       case p =>
         p
@@ -2815,7 +2815,7 @@ object Parsers {
               addMod(mods, mod)
             else
               if (!(mods.flags &~ (ParamAccessor | Inline | impliedMods.flags)).isEmpty)
-                syntaxError("`val' or `var' expected")
+                syntaxError("`val` or `var` expected")
               if (firstClause && ofCaseClass) mods
               else mods | PrivateLocal
         }
@@ -3100,7 +3100,7 @@ object Parsers {
         val toInsert =
           if (in.token == LBRACE) s"$resultTypeStr ="
           else ": Unit "  // trailing space ensures that `def f()def g()` works.
-        in.testScala2CompatMode(s"Procedure syntax no longer supported; `$toInsert' should be inserted here") && {
+        in.testScala2CompatMode(s"Procedure syntax no longer supported; `$toInsert` should be inserted here") && {
           patch(source, Span(in.lastOffset), toInsert)
           true
         }
@@ -3441,7 +3441,7 @@ object Parsers {
                 constrApps(commaOK = true, templateCanFollow = true)
               else if in.token == SUBTYPE then
                 if !mods.is(Inline) then
-                  syntaxError("`<:' is only allowed for given with `inline' modifier")
+                  syntaxError("`<:` is only allowed for given with `inline` modifier")
                 in.nextToken()
                 TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
               else
@@ -3454,7 +3454,7 @@ object Parsers {
               DefDef(name, tparams, vparamss, parents.head, subExpr())
             else
               parents match
-                case TypeBoundsTree(_, _) :: _ => syntaxError("`=' expected")
+                case TypeBoundsTree(_, _) :: _ => syntaxError("`=` expected")
                 case _ =>
               possibleTemplateStart()
               val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
@@ -3504,7 +3504,7 @@ object Parsers {
         if (in.token == EXTENDS) {
           in.nextToken()
           if (in.token == LBRACE || in.token == COLONEOL) {
-            in.errorOrMigrationWarning("`extends' must be followed by at least one parent")
+            in.errorOrMigrationWarning("`extends` must be followed by at least one parent")
             Nil
           }
           else constrApps(commaOK = true, templateCanFollow = true)
@@ -3692,7 +3692,7 @@ object Parsers {
         else if (!isStatSep)
           syntaxErrorOrIncomplete(
             "illegal start of declaration" +
-            (if (inFunReturnType) " (possible cause: missing `=' in front of current method body)"
+            (if (inFunReturnType) " (possible cause: missing `=` in front of current method body)"
              else ""))
         acceptStatSepUnlessAtEnd()
       }

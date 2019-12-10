@@ -597,7 +597,7 @@ class Namer { typer: Typer =>
               body = fromTempl.body ++ modTempl.body))
           if (fromTempl.derived.nonEmpty) {
             if (modTempl.derived.nonEmpty)
-              ctx.error(em"a class and its companion cannot both have `derives' clauses", mdef.sourcePos)
+              ctx.error(em"a class and its companion cannot both have `derives` clauses", mdef.sourcePos)
             res.putAttachment(desugar.DerivingCompanion, fromTempl.sourcePos.startPos)
           }
           res

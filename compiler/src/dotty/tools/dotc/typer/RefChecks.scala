@@ -351,7 +351,7 @@ object RefChecks {
         // Also excluded under Scala2 mode are overrides of default methods of Java traits.
         if (autoOverride(member) ||
             other.owner.isAllOf(JavaInterface) &&
-            ctx.testScala2CompatMode("`override' modifier required when a Java 8 default method is re-implemented", member.sourcePos))
+            ctx.testScala2CompatMode("`override` modifier required when a Java 8 default method is re-implemented", member.sourcePos))
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))
           () // OK, don't complain about type aliases which are equal
@@ -362,9 +362,9 @@ object RefChecks {
               + infoStringWithLocation(other) + "  and\n  " + infoStringWithLocation(member)
               + "\n(Note: this can be resolved by declaring an override in " + clazz + ".)")
         else
-          overrideError("needs `override' modifier")
+          overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
-        overrideError("needs `abstract override' modifiers")
+        overrideError("needs `abstract override` modifiers")
       else if (member.is(Override) && other.is(Accessor) &&
         other.accessedFieldOrGetter.is(Mutable, butNot = Lazy)) {
         // !?! this is not covered by the spec. We need to resolve this either by changing the spec or removing the test here.
@@ -652,7 +652,7 @@ object RefChecks {
             val mbrType = mbr.info.asSeenFrom(self, mbr.owner)
             if (!mbrType.overrides(mbrd.info, matchLoosely = true))
               ctx.errorOrMigrationWarning(
-                em"""${mbr.showLocated} is not a legal implementation of `$name' in $clazz
+                em"""${mbr.showLocated} is not a legal implementation of `$name` in $clazz
                     |  its type             $mbrType
                     |  does not conform to  ${mbrd.info}""",
                 (if (mbr.owner == clazz) mbr else clazz).sourcePos)
@@ -1097,7 +1097,7 @@ class RefChecks extends MiniPhase { thisPhase =>
 
       def nonSensibleWarning(what: String, alwaysEqual: Boolean) = {
         val msg = alwaysEqual == (name == nme.EQ || name == nme.eq)
-        unit.warning(pos, s"comparing $what using `${name.decode}' will always yield $msg")
+        unit.warning(pos, s"comparing $what using `${name.decode}` will always yield $msg")
         isNonSensible = true
       }
       def nonSensible(pre: String, alwaysEqual: Boolean) =
@@ -1557,7 +1557,7 @@ class RefChecks extends MiniPhase { thisPhase =>
             tree
 
           case treeInfo.WildcardStarArg(_) if !isRepeatedParamArg(tree) =>
-            unit.error(tree.pos, "no `: _*' annotation allowed here\n" +
+            unit.error(tree.pos, "no `: _*` annotation allowed here\n" +
               "(such annotations are only allowed in arguments to *-parameters)")
             tree
 
