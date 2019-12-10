@@ -119,7 +119,6 @@ class B { val c: Int }
 object a { val b = new B }
 export a._
 export b._
-}
 ```
 Is the `export b._` clause legal? If yes, what does it export? Is it equivalent to `export a.b._`? What about if we swap the last two clauses?
 ```
