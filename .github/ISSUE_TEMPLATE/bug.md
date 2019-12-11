@@ -15,5 +15,3 @@ println("hello, world")
 
 
 ## expectation
-
-
