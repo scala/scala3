@@ -101,51 +101,31 @@ object Nullables with
       case _ => None
   end TrackedRef
 
-  /** Is given reference tracked for nullability?
-   *  This is the case if the reference is a path to an immutable val, or if it refers
-   *  to a local mutable variable where all assignments to the variable are _reachable_
-   *  (in the sense of how it is defined in assignmentSpans). We use this function to decide
-   *  whether we need to compute the NotNullInfo and add it to the context. This requires the
-   *  use of a mutable variable is not out of order.
+  /** Is the given reference tracked for nullability?
    *
-   *  When dealing with local mutable variables, there are two questions:
+   *  This is the case if one of the following holds:
+   *  1) The reference is a path to an immutable `val`.
+   *  2) The reference is to a mutable variable, in which case all assignments to it must be
+   *    reachable (in the sense of how it is defined in assignmentSpans) _and_ the variable
+   *    must not be used "out of order" (in the sense specified by `usedOutOfOrder`).
    *
-   *  1. Whether to track a local mutable variable during flow typing.
-   *    We track a local mutable variable iff the variable is not assigned in a closure.
-   *    For example, in the following code `x` is assigned to by the closure `y`, so we do not
-   *    do flow typing on `x`.
-   *    ```scala
-   *    var x: String|Null = ???
-   *    def y = {
-   *      x = null
-   *    }
-   *    if (x != null) {
-   *      // y can be called here, which break the fact
-   *      val a: String = x // error: x is captured and mutated by the closure, not trackable
-   *    }
-   *    ```
+   *  Whether to track a local mutable variable during flow typing?
+   *  We track a local mutable variable iff the variable is not assigned in a closure.
+   *  For example, in the following code `x` is assigned to by the closure `y`, so we do not
+   *  do flow typing on `x`.
    *
-   *  2. Whether to generate and use flow typing on a specific _use_ of a local mutable variable.
-   *    We only want to do flow typing on a use that belongs to the same method as the definition
-   *    of the local variable.
-   *    For example, in the following code, even `x` is not assigned to by a closure, but we can only
-   *    use flow typing in one of the occurrences (because the other occurrence happens within a nested
-   *    closure).
-   *    ```scala
-   *    var x: String|Null = ???
-   *    def y = {
-   *      if (x != null) {
-   *        // not safe to use the fact (x != null) here
-   *        // since y can be executed at the same time as the outer block
-   *        val _: String = x
-   *      }
-   *    }
-   *    if (x != null) {
-   *      val a: String = x // ok to use the fact here
-   *      x = null
-   *    }
-   *    ```
+   *  ```scala
+   *  var x: String|Null = ???
+   *  def y = {
+   *    x = null
+   *  }
+   *  if (x != null) {
+   *    // y can be called here, which break the fact
+   *    val a: String = x // error: x is captured and mutated by the closure, not trackable
+   *  }
+   *  ```
    *
+   *  Check `usedOutOfOrder` to see the explaination and example of "out of order".
    *  See more examples in `tests/explicit-nulls/neg/var-ref-in-closure.scala`.
    */
   def isTracked(ref: TermRef)(given Context) =
@@ -204,22 +184,57 @@ object Nullables with
 
   given refOps: extension (ref: TermRef) with
 
-    /* Is the use of a mutable variable out of order */
+    /** Is the use of a mutable variable out of order
+     *
+     *  Whether to generate and use flow typing on a specific _use_ of a local mutable variable?
+     *  We only want to do flow typing on a use that belongs to the same method as the definition
+     *  of the local variable.
+     *  For example, in the following code, even `x` is not assigned to by a closure, but we can only
+     *  use flow typing in one of the occurrences (because the other occurrence happens within a nested
+     *  closure).
+     *  ```scala
+     *  var x: String|Null = ???
+     *  def y = {
+     *    if (x != null) {
+     *      // not safe to use the fact (x != null) here
+     *      // since y can be executed at the same time as the outer block
+     *      val _: String = x
+     *    }
+     *  }
+     *  if (x != null) {
+     *    val a: String = x // ok to use the fact here
+     *    x = null
+     *  }
+     *  ```
+     *
+     *  Another example:
+     *  ```scala
+     *  var x: String|Null = ???
+     *  if (x != null) {
+     *    def f: String = {
+     *      val y: String = x // error: the use of x is out of order
+     *      y
+     *    }
+     *    x = null
+     *    val y: String = f // danger
+     *  }
+     *  ```
+     */
     def usedOutOfOrder(given Context): Boolean =
       val refSym = ref.symbol
       val refOwner = refSym.owner
 
-      def enclosedInClosure(s: Symbol): Boolean =
+      @tailrec def usedWithinClosure(s: Symbol): Boolean =
         s != NoSymbol
         && s != refOwner
         && (s.isOneOf(Lazy | Method) // not at the rhs of lazy ValDef or in a method (or lambda)
           || s.isClass // not in a class
           // TODO: need to check by-name paramter
-          || enclosedInClosure(s.owner))
+          || usedWithinClosure(s.owner))
 
-      refSym.is(Mutable)
-      && refSym.owner.isTerm
-      && enclosedInClosure(curCtx.owner)
+      refSym.is(Mutable) // if it is immutable, we don't need to check the rest conditions
+      && refOwner.isTerm
+      && usedWithinClosure(curCtx.owner)
 
   given treeOps: extension (tree: Tree) with
 

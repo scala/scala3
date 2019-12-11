@@ -358,8 +358,10 @@ class Typer extends Namer
   def toNotNullTermRef(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match
     case ref @ OrNull(tpnn) : TermRef
     if pt != AssignProto && // Ensure it is not the lhs of Assign
-    !ref.usedOutOfOrder &&
-    ctx.notNullInfos.impliesNotNull(ref) =>
+    ctx.notNullInfos.impliesNotNull(ref) &&
+    // If a reference is in the context, it is already trackable at the point we add it.
+    // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
+    !ref.usedOutOfOrder =>
       tree.select(defn.Any_typeCast).appliedToType(AndType(ref, tpnn))
     case _ =>
       tree
