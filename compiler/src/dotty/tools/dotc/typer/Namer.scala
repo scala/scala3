@@ -302,21 +302,48 @@ class Namer { typer: Typer =>
 
     typr.println(i"creating symbol for $tree in ${ctx.mode}")
 
-    def checkNoConflict(name: Name): Name = {
-      def errorName(msg: => String) = {
-        ctx.error(msg, tree.sourcePos)
-        name.freshened
-      }
-      def preExisting = ctx.effectiveScope.lookup(name)
-      if (ctx.owner.is(PackageClass))
-        if (preExisting.isDefinedInCurrentRun)
-          errorName(s"${preExisting.showLocated} has already been compiled once during this run")
-        else name
+    /** Check that a new definition with given name and privacy status
+     *  in current context would not conflict with existing currently
+     *  compiled definitions.
+     *  The logic here is very subtle and fragile due to the fact that
+     *  we are not allowed to force anything.
+     */
+    def checkNoConflict(name: Name, isPrivate: Boolean): Name =
+      val owner = ctx.owner
+      var conflictsDetected = false
+
+      def conflict(conflicting: Symbol) =
+        val where: String =
+          if conflicting.owner == owner then ""
+          else if conflicting.owner.isPackageObject then i" in ${conflicting.associatedFile}"
+          else i" in ${conflicting.owner}"
+        ctx.error(i"$name is already defined as $conflicting$where", tree.sourcePos)
+        conflictsDetected = true
+
+      def checkNoConflictIn(owner: Symbol) =
+        val preExisting = owner.unforcedDecls.lookup(name)
+        if (preExisting.isDefinedInCurrentRun || preExisting.lastKnownDenotation.is(Package))
+           && (!preExisting.lastKnownDenotation.is(Private) || preExisting.owner.is(Package))
+        then conflict(preExisting)
+
+      def pkgObjs(pkg: Symbol) =
+        pkg.denot.asInstanceOf[PackageClassDenotation].packageObjs.map(_.symbol)
+
+      if owner.is(PackageClass) then
+        checkNoConflictIn(owner)
+        for pkgObj <- pkgObjs(owner) do
+          checkNoConflictIn(pkgObj)
       else
-        if ((!ctx.owner.isClass || name.isTypeName) && preExisting.exists)
-          errorName(i"$name is already defined as $preExisting")
-        else name
-    }
+        def preExisting = ctx.effectiveScope.lookup(name)
+        if (!owner.isClass || name.isTypeName) && preExisting.exists then
+          conflict(preExisting)
+        else if owner.isPackageObject && !isPrivate && name != nme.CONSTRUCTOR then
+          checkNoConflictIn(owner.owner)
+          for pkgObj <- pkgObjs(owner.owner) if pkgObj != owner do
+            checkNoConflictIn(pkgObj)
+
+      if conflictsDetected then name.freshened else name
+    end checkNoConflict
 
     /** Create new symbol or redefine existing symbol under lateCompile. */
     def createOrRefine[S <: Symbol](
@@ -348,8 +375,8 @@ class Namer { typer: Typer =>
 
     tree match {
       case tree: TypeDef if tree.isClassDef =>
-        val name = checkNoConflict(tree.name).asTypeName
         val flags = checkFlags(tree.mods.flags &~ GivenOrImplicit)
+        val name = checkNoConflict(tree.name, flags.is(Private)).asTypeName
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
@@ -357,8 +384,8 @@ class Namer { typer: Typer =>
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
-        val name = checkNoConflict(tree.name)
         var flags = checkFlags(tree.mods.flags)
+        val name = checkNoConflict(tree.name, flags.is(Private))
         tree match
           case tree: ValOrDefDef =>
             if tree.unforcedRhs == EmptyTree

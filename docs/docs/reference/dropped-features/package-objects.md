@@ -42,3 +42,6 @@ in a source file `src.scala`, it could be invoked from the command line using a 
 "program name" is mangled it is recommended to always put `main` methods in explicitly named objects.
 
 **Note 3:** The notion of `private` is independent of whether a definition is wrapped or not. A `private` toplevel definition is always visible from everywhere in the enclosing package.
+
+**Note 4:** If several toplevel definitions are overloaded variants with the same name,
+they must all come from the same source file.

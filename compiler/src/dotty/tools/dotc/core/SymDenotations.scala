@@ -16,6 +16,7 @@ import annotation.tailrec
 import util.SimpleIdentityMap
 import util.Stats
 import java.util.WeakHashMap
+import scala.util.control.NonFatal
 import config.Config
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages.BadSymbolicReference
@@ -624,6 +625,10 @@ object SymDenotations {
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean =
       name.isPackageObjectName && owner.is(Package) && this.is(Module)
+
+    /** Is this symbol a toplevel definition in a package object? */
+    def isWrappedToplevelDef(given Context): Boolean =
+      !isConstructor && owner.isPackageObject
 
     /** Is this symbol an abstract type? */
     final def isAbstractType(implicit ctx: Context): Boolean = this.is(DeferredType)
@@ -1527,6 +1532,14 @@ object SymDenotations {
       myBaseTypeCachePeriod = Nowhere
     }
 
+    def invalidateMemberCaches(sym: Symbol)(given Context): Unit =
+      if myMemberCache != null then myMemberCache.invalidate(sym.name)
+      if !sym.flagsUNSAFE.is(Private) then
+        invalidateMemberNamesCache()
+        if sym.isWrappedToplevelDef then
+          val outerCache = sym.owner.owner.asClass.classDenot.myMemberCache
+          if outerCache != null then outerCache.invalidate(sym.name)
+
     override def copyCaches(from: SymDenotation, phase: Phase)(implicit ctx: Context): this.type = {
       from match {
         case from: ClassDenotation =>
@@ -1726,11 +1739,9 @@ object SymDenotations {
     }
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
-    def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
+    def enterNoReplace(sym: Symbol, scope: MutableScope)(given Context): Unit =
       scope.enter(sym)
-      if (myMemberCache != null) myMemberCache.invalidate(sym.name)
-      if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
-    }
+      invalidateMemberCaches(sym)
 
     /** Replace symbol `prev` (if defined in current class) by symbol `replacement`.
      *  If `prev` is not defined in current class, do nothing.
@@ -2071,6 +2082,7 @@ object SymDenotations {
 
     private var packageObjsCache: List[ClassDenotation] = _
     private var packageObjsRunId: RunId = NoRunId
+    private var ambiguityWarningIssued: Boolean = false
 
     /** The package objects in this class */
     def packageObjs(implicit ctx: Context): List[ClassDenotation] = {
@@ -2122,9 +2134,8 @@ object SymDenotations {
         case pcls :: pobjs1 =>
           if (pcls.isCompleting) recur(pobjs1, acc)
           else {
-            // A package object inherits members from `Any` and `Object` which
-            // should not be accessible from the package prefix.
             val pmembers = pcls.computeNPMembersNamed(name).filterWithPredicate { d =>
+              // Drop members of `Any` and `Object`
               val owner = d.symbol.maybeOwner
               (owner ne defn.AnyClass) && (owner ne defn.ObjectClass)
             }
@@ -2132,9 +2143,52 @@ object SymDenotations {
           }
         case nil =>
           val directMembers = super.computeNPMembersNamed(name)
-          if (acc.exists) acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent()))
-          else directMembers
+          if !acc.exists then directMembers
+          else acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent())) match
+            case d: DenotUnion => dropStale(d)
+            case d => d
       }
+
+      def dropStale(multi: DenotUnion): PreDenotation =
+        val compiledNow = multi.filterWithPredicate(d =>
+          d.symbol.isDefinedInCurrentRun || d.symbol.associatedFile == null
+            // if a symbol does not have an associated file, assume it is defined
+            // in the current run anyway. This is true for packages, and also can happen for pickling and
+            // from-tasty tests that generate a fresh symbol and then re-use it in the next run.
+          )
+        if compiledNow.exists then compiledNow
+        else
+          val assocFiles = multi.aggregate(d => Set(d.symbol.associatedFile), _ union _)
+          if assocFiles.size == 1 then
+            multi // they are all overloaded variants from the same file
+          else
+            // pick the variant(s) from the youngest class file
+            val lastModDate = assocFiles.map(_.lastModified).max
+            val youngest = assocFiles.filter(_.lastModified == lastModDate)
+            val chosen = youngest.head
+            def ambiguousFilesMsg(f: AbstractFile) =
+              em"""Toplevel definition $name is defined in
+                  |  $chosen
+                  |and also in
+                  |  $f"""
+            if youngest.size > 1 then
+              throw TypeError(i"""${ambiguousFilesMsg(youngest.tail.head)}
+                                 |One of these files should be removed from the classpath.""")
+
+            // Warn if one of the older files comes from a different container.
+            // In that case picking the youngest file is not necessarily what we want,
+            // since the older file might have been loaded from a jar earlier in the
+            // classpath.
+            def sameContainer(f: AbstractFile): Boolean =
+              try f.container == chosen.container catch case NonFatal(ex) => true
+            if !ambiguityWarningIssued then
+              for conflicting <- assocFiles.find(!sameContainer(_)) do
+                ctx.warning(i"""${ambiguousFilesMsg(conflicting)}
+                               |Keeping only the definition in $chosen""")
+                ambiguityWarningIssued = true
+            multi.filterWithPredicate(_.symbol.associatedFile == chosen)
+      end dropStale
+
       if (symbol `eq` defn.ScalaPackageClass) {
         val denots = super.computeNPMembersNamed(name)
         if (denots.exists) denots
@@ -2154,8 +2208,8 @@ object SymDenotations {
       recur(packageObjs, super.memberNames(keepOnly))
     }
 
-    /** If another symbol with the same name is entered, unlink it,
-     *  and, if symbol is a package object, invalidate the packageObj cache.
+    /** If another symbol with the same name is entered, unlink it.
+     *  If symbol is a package object, invalidate the packageObj cache.
      *  @return  `sym` is not already entered
      */
     override def proceedWithEnter(sym: Symbol, mscope: MutableScope)(implicit ctx: Context): Boolean = {
@@ -2163,8 +2217,8 @@ object SymDenotations {
       if (entry != null) {
         if (entry.sym == sym) return false
         mscope.unlink(entry)
-        if (sym.name.isPackageObjectName) packageObjsRunId = NoRunId
       }
+      if (sym.name.isPackageObjectName) packageObjsRunId = NoRunId
       true
     }
 
