@@ -138,8 +138,8 @@ object Summarization {
         (Potentials.empty, effsAll)
 
       case Inlined(call, bindings, expansion) =>
-        // TODO: bindings
-        analyze(expansion)
+        val effs = bindings.foldLeft(Effects.empty) { (acc, mdef) => acc ++ analyze(mdef)._2 }
+        analyze(expansion).withEffs(effs)
 
       case vdef : ValDef =>
         if (vdef.symbol.is(Flags.Lazy)) Summary.empty
