@@ -459,7 +459,7 @@ object desugar {
         ListOfNil
       }
       else if (isCaseClass && originalVparamss.head.exists(_.mods.isOneOf(GivenOrImplicit))) {
-        ctx.error("Case classes should have a non-implicit parameter list", namePos)
+        ctx.error(CaseClassMissingNonImplicitParamList(cdef), namePos)
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam(_, keepAnnotations = false))

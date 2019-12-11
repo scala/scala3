@@ -1710,4 +1710,32 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         val ErasedTypesCanOnlyBeFunctionTypes() :: Nil = messages
         assertEquals("Types with erased keyword can only be function types `erased (...) => ...`", messages.head.msg)
       }
+
+  @Test def caseClassMissingParamListSuccessful =
+    checkMessagesAfter(FrontEnd.name) ("case class Test()")
+      .expectNoErrors
+
+  @Test def caseClassMissingParamListFailed =
+    checkMessagesAfter(FrontEnd.name) ("case class Test")
+      .expect {
+        (ictx, messages) =>
+          implicit val ctx: Context = ictx
+          assertMessageCount(1, messages)
+          val CaseClassMissingParamList(tpe) :: Nil = messages
+          assertEquals("A case class must have at least one parameter list", messages.head.msg)
+      }
+
+  @Test def caseClassMissingNonImplicitParamListSuccessful =
+    checkMessagesAfter(FrontEnd.name) ("case class Test()(given foo: String)")
+      .expectNoErrors
+
+  @Test def caseClassMissingNonImplicitParamListFailed =
+    checkMessagesAfter(FrontEnd.name) ("case class Test(given foo: String)")
+      .expect {
+        (ictx, messages) =>
+          implicit val ctx: Context = ictx
+          assertMessageCount(1, messages)
+          val CaseClassMissingNonImplicitParamList(tpe) :: Nil = messages
+          assertEquals("A case class must have at least one non-implicit parameter list", messages.head.msg)
+      }
 }
