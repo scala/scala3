@@ -107,24 +107,43 @@ object Checking {
         effs.foreach { check(_) }
       }
 
+    def checkCtor(ctor: Symbol, tp: Type, source: Tree)(implicit ctx: Context): Unit = {
+      val cls = ctor.owner
+      val classDef = cls.defTree
+      if (!classDef.isEmpty) {
+        val outer = tp.typeConstructor match {
+          case tref: TypeRef => Summarization.analyze(tref.prefix, source)
+        }
+        if (ctor.isPrimaryConstructor) checkClassBody(classDef, outer)
+        else checkSecondaryConstructor(ctor, outer)
+      }
+      else if (!cls.is(Flags.EffectivelyOpenFlags))
+        ctx.warning("Inheriting non-open class may cause initialization errors", ref.sourcePos)
+    }
+
     tpl.parents.foreach {
-      case Block(stats, parent) =>
+      case tree @ Block(stats, parent) =>
         val (ctor, _, argss) = decomposeCall(parent)
         checkStats(stats)
         checkStats(argss.flatten)
+        checkCtor(ctor.symbol, parent.tpe, tree)
 
-      case Apply(Block(stats, parent), args) =>
+      case tree @ Apply(Block(stats, parent), args) =>
         val (ctor, _, argss) = decomposeCall(parent)
         checkStats(stats)
         checkStats(args)
         checkStats(argss.flatten)
+        checkCtor(ctor.symbol, tree.tpe, tree)
 
       case parent : Apply =>
         val (ctor, _, argss) = decomposeCall(parent)
         checkStats(argss.flatten)
+        checkCtor(ctor.symbol, parent.tpe, parent)
 
-      case ref @ (_ : Ident | _ : Select) =>
-
+      case ref =>
+        val cls = ref.symbol.asClass
+        if (!state.parentInited.contains(cls))
+          checkCtor(cls.primaryConstructor, ref.tpe, ref)
     }
 
     // check class body
