@@ -156,12 +156,17 @@ object Parsers {
     def skipBraces(): Unit = {
       accept(if (in.token == INDENT) INDENT else LBRACE)
       var openBraces = 1
-      while (in.token != EOF && openBraces > 0)
-        skipBracesHook() getOrElse {
-          if (in.token == LBRACE || in.token == INDENT) openBraces += 1
-          else if (in.token == RBRACE || in.token == OUTDENT) openBraces -= 1
-          in.nextToken()
-        }
+      val savedCheckEndMarker = in.checkEndMarker
+      try
+        in.checkEndMarker = false
+        while (in.token != EOF && openBraces > 0)
+          skipBracesHook() getOrElse {
+            if (in.token == LBRACE || in.token == INDENT) openBraces += 1
+            else if (in.token == RBRACE || in.token == OUTDENT) openBraces -= 1
+            in.nextToken()
+          }
+      finally
+        in.checkEndMarker = savedCheckEndMarker
     }
   }
 
