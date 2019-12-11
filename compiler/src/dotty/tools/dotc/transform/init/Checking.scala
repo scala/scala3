@@ -86,10 +86,12 @@ object Checking {
 
         case vdef : ValDef =>
           val (pots, effs) = Summarization.analyze(vdef.rhs)(ctx.withOwner(vdef.symbol))
-          theEnv.cachePotentialsFor(vdef.symbol, pots)
-          traceIndented(vdef.symbol.show + " initialized")
-          effs.foreach { check(_) }
-          state.inited += vdef.symbol
+          theEnv.cacheFor(vdef.symbol, (pots, effs))
+          if (!vdef.symbol.is(Flags.Lazy)) {
+            traceIndented(vdef.symbol.show + " initialized")
+            effs.foreach { check(_) }
+            state.inited += vdef.symbol
+          }
 
         case tree =>
           val (_, effs) = Summarization.analyze(tree)

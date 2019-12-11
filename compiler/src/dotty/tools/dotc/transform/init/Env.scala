@@ -21,8 +21,8 @@ case class Env(ctx: Context, summaryCache: Map[Symbol, Summary]) {
 
   def withCtx(newCtx: Context): Env = this.copy(ctx = newCtx)
 
-  def cachePotentialsFor(symbol: Symbol, pots: Potentials): Unit = {
-    summaryCache(symbol) = (pots, Effects.empty)
+  def cacheFor(symbol: Symbol, summary: Summary): Unit = {
+    summaryCache(symbol) = summary
   }
 
   /** Summary of a method or field */
