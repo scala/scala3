@@ -2396,4 +2396,16 @@ object messages {
       val msg: String = i"illegal cyclic type reference: ${where} ${hl(lastChecked.show)} of $sym refers back to the type itself"
       val explanation: String = ""
     }
+
+  case class CaseClassMissingNonImplicitParamList(cdef: untpd.TypeDef)(implicit ctx: Context)
+    extends Message(CaseClassMissingNonImplicitParamListId) {
+    val kind: String = "Syntax"
+    val msg: String =
+      em"""|A ${hl("case class")} must have at least one non-implicit parameter list"""
+
+    val explanation: String =
+      em"""|${cdef.name} must have at least one non-implicit parameter list,
+           | if you're aiming to have a case class parametrized only by implicit ones, you should
+           | add an explicit ${hl("()")} as a parameter list to ${cdef.name}.""".stripMargin
+  }
 }
