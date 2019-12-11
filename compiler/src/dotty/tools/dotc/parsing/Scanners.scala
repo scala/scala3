@@ -54,6 +54,9 @@ object Scanners {
     /** the base of a number */
     var base: Int = 0
 
+    /** Set to false to disable end marker alignment checks, used for outline parsing. */
+    var checkEndMarker: Boolean = true
+
     def copyFrom(td: TokenData): Unit = {
       this.token = td.token
       this.offset = td.offset
@@ -331,10 +334,12 @@ object Scanners {
     def endMarkerScope[T](tag: EndMarkerTag)(op: => T): T =
       val saved = openEndMarkers
       openEndMarkers = (tag, currentRegion.indentWidth) :: openEndMarkers
-      try op finally openEndMarkers = saved
+      try op
+      finally openEndMarkers = saved
 
     /** If this token and the next constitute an end marker, skip them and check they
-     *  align with an opening construct with the same end marker tag.
+     *  align with an opening construct with the same end marker tag,
+     *  unless `checkEndMarker` is false.
      */
     protected def skipEndMarker(width: IndentWidth): Unit =
       if next.token == IDENTIFIER && next.name == nme.end then
@@ -348,8 +353,9 @@ object Scanners {
                 openEndMarkers = rest
                 checkAligned()
             case _ =>
-              lexical.println(i"misaligned end marker $tag, $width, $openEndMarkers")
-              errorButContinue("misaligned end marker", start)
+              if checkEndMarker
+                lexical.println(i"misaligned end marker $tag, $width, $openEndMarkers")
+                errorButContinue("misaligned end marker", start)
 
           val skipTo = lookahead.charOffset
           lookahead.nextToken()
