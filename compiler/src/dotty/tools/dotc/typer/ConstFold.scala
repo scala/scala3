@@ -11,7 +11,6 @@ import Constants._
 import Names._
 import StdNames._
 import Contexts._
-import NullOpsDecorator._
 
 object ConstFold {
 

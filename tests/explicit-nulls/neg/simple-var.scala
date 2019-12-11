@@ -1,36 +1,45 @@
 // Test simple var track
 
-def nullable[T](x: T): T|Null = x
+class SimpleVar {
 
-def f = {
-  var x: String|Null = ???
-  if (x != null) {
-    val a: String = x
-    x = ""
-    val b: String = x
+  def nullable[T](x: T): T|Null = x
+
+  locally {
+    var x: String|Null = ???
+    x = "" // x is assigned to a non-null value
+    val l: Int = x.length  // ok, we know x is not null
   }
 
-  assert(x != null)
-  val a: String = x
-  x = nullable(x)
-  val b: String = x // error: x might be null
-}
+  locally {
+    var x: String|Null = ???
+    if (x != null) {
+      val a: String = x
+      x = ""
+      val b: String = x
+    }
 
-def g = {
-  var x: String|Null = ???
-  if (x != null) {
+    assert(x != null)
     val a: String = x
-    x = null
-    val b: String = x // error: x is null
+    x = nullable(x)
+    val b: String = x // error: x might be null
   }
-}
 
-def h = {
-  var x: String|Null = ???
-  if (x != null) {
-    val a: String = x
-    val b: String | String = a
-    x = b
-    val _: String = x // ok
+  locally {
+    var x: String|Null = ???
+    if (x != null) {
+      val a: String = x
+      x = null
+      val b: String = x // error: x is null
+    }
+  }
+
+  locally {
+    var x: String|Null = ???
+    if (x != null) {
+      val a: String = x
+      val b: String | String = a
+      x = b
+      val _: String = x // ok
+    }
   }
 }

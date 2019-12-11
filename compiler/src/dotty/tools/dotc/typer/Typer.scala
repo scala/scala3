@@ -348,8 +348,13 @@ class Typer extends Namer
     findRefRecur(NoType, BindingPrec.NothingBound, NoContext)
   }
 
-  // If `tree`'s type is a `TermRef` identified by flow typing to be non-null, then
-  // cast away `tree`s nullability. Otherwise, `tree` remains unchanged.
+  /** If `tree`'s type is a `TermRef` identified by flow typing to be non-null, then
+   *  cast away `tree`s nullability. Otherwise, `tree` remains unchanged.
+   *
+   *  Example:
+   *  If x is a trackable reference and we know x is not null at this point,
+   *  (x: T | Null) => x.$asInstanceOf$[x.type & T]
+   */
   def toNotNullTermRef(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match
     case ref @ OrNull(tpnn) : TermRef
     if pt != AssignProto && // Ensure it is not the lhs of Assign
@@ -2223,30 +2228,8 @@ class Typer extends Namer
           case Some(xtree) =>
             traverse(xtree :: rest)
           case none =>
-            def defCtx = ctx.withNotNullInfos(initialNotNullInfos)
-            val newCtx = if (ctx.owner.isTerm) {
-              // Keep preceding not null facts in the current context only if `mdef`
-              // cannot be executed out-of-sequence.
-              // We have to check the Completer of symbol befor typedValDef,
-              // otherwise the symbol is already completed using creation context.
-              mdef.getAttachment(SymOfTree).map(s => (s, s.infoOrCompleter)) match {
-                case Some((sym, completer: Namer#Completer)) =>
-                  if (completer.creationContext.notNullInfos ne ctx.notNullInfos)
-                    // The RHS of a val def should know about not null facts established
-                    // in preceding statements (unless the DefTree is completed ahead of time,
-                    // then it is impossible).
-                    sym.info = Completer(completer.original)(
-                      given completer.creationContext.withNotNullInfos(ctx.notNullInfos))
-                  ctx // all preceding statements will have been executed in this case
-                case _ =>
-                  // If it has been completed, then it must be because there is a forward reference
-                  // to the definition in the program. Hence, we don't Keep preceding not null facts
-                  // in the current context.
-                  defCtx
-              }
-            }
-            else defCtx
-
+            val newCtx = if (ctx.owner.isTerm && adaptCreationContext(mdef)) ctx
+              else ctx.withNotNullInfos(initialNotNullInfos)
             typed(mdef)(given newCtx) match {
               case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf += inlineExpansion(mdef1)
@@ -2296,6 +2279,34 @@ class Typer extends Namer
     if (ctx.owner == exprOwner) checkNoAlphaConflict(stats1)
     (stats1, finalCtx)
   }
+
+  /** Tries to adapt NotNullInfos from creation context to the DefTree,
+   *  returns whether the adaption is successed. The adaption only success if the
+   *  DefTree has a symbol and it has not been completed (is not forward referenced).
+   */
+  def adaptCreationContext(mdef: untpd.DefTree)(implicit ctx: Context): Boolean =
+    // Keep preceding not null facts in the current context only if `mdef`
+    // cannot be executed out-of-sequence.
+    // We have to check the Completer of symbol befor typedValDef,
+    // otherwise the symbol is already completed using creation context.
+    mdef.getAttachment(SymOfTree) match {
+      case Some(sym) => sym.infoOrCompleter match {
+        case completer: Namer#Completer =>
+          if (completer.creationContext.notNullInfos ne ctx.notNullInfos)
+            // The RHS of a val def should know about not null facts established
+            // in preceding statements (unless the DefTree is completed ahead of time,
+            // then it is impossible).
+            sym.info = Completer(completer.original)(
+              given completer.creationContext.withNotNullInfos(ctx.notNullInfos))
+          true
+        case _ =>
+          // If it has been completed, then it must be because there is a forward reference
+          // to the definition in the program. Hence, we don't Keep preceding not null facts
+          // in the current context.
+          false
+      }
+      case _ => false
+    }
 
   /** Given an inline method `mdef`, the method rewritten so that its body
    *  uses accessors to access non-public members.

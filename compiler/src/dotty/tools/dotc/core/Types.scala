@@ -605,20 +605,7 @@ object Types {
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
-          tp match {
-            case OrJavaNull(tp1) =>
-              // Selecting `name` from a type `T|JavaNull` is like selecting `name` from `T`.
-              // This can throw at runtime, but we trade soundness for usability.
-              // We need to strip `JavaNull` from both the type and the prefix so that
-              // `pre <: tp` continues to hold.
-              tp1.findMember(name, pre.stripJavaNull, required, excluded)
-            case _ =>
-              // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
-              // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
-              // lots of places. The present strategy is instead of widen `tp` using `join` to be a
-              // supertype of `pre`.
-              go(tp.join)
-          }
+          goOr(tp)
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
         case err: ErrorType =>
@@ -723,6 +710,21 @@ object Types {
 
       def goAnd(l: Type, r: Type) =
         go(l) & (go(r), pre, safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+
+      def goOr(tp: OrType) = tp match {
+        case OrJavaNull(tp1) =>
+          // Selecting `name` from a type `T|JavaNull` is like selecting `name` from `T`.
+          // This can throw at runtime, but we trade soundness for usability.
+          // We need to strip `JavaNull` from both the type and the prefix so that
+          // `pre <: tp` continues to hold.
+          tp1.findMember(name, pre.stripJavaNull, required, excluded)
+        case _ =>
+          // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
+          // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
+          // lots of places. The present strategy is instead of widen `tp` using `join` to be a
+          // supertype of `pre`.
+          go(tp.join)
+      }
 
       val recCount = ctx.base.findMemberCount
       if (recCount >= Config.LogPendingFindMemberThreshold)
@@ -2950,11 +2952,11 @@ object Types {
     def apply(tp: Type)(given Context) =
       OrType(tp, defn.NullType)
     def unapply(tp: Type)(given ctx: Context): Option[Type] =
-    if (ctx.explicitNulls) {
-      val tp1 = tp.stripNull
-      if tp1 ne tp then Some(tp1) else None
-    }
-    else None
+      if (ctx.explicitNulls) {
+        val tp1 = tp.stripNull()
+        if tp1 ne tp then Some(tp1) else None
+      }
+      else None
   }
 
   /** An extractor object to pattern match against a Java-nullable union.

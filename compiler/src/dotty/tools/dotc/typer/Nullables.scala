@@ -121,7 +121,7 @@ object Nullables with
    *    }
    *    if (x != null) {
    *      // y can be called here, which break the fact
-   *      val a: String = x // error: x is captured and mutated by the closure, not tackable
+   *      val a: String = x // error: x is captured and mutated by the closure, not trackable
    *    }
    *    ```
    *
@@ -320,7 +320,9 @@ object Nullables with
           // lhs variable is no longer trackable. We don't need to check whether the type `T`
           // is correct here, as typer will check it.
           tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
-        else tree
+        else
+          // otherwise, we know the variable will have a non-null value
+          tree.withNotNullInfo(NotNullInfo(Set(ref), Set()))
       case _ => tree
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)

@@ -387,10 +387,7 @@ trait Symbols { this: Context =>
    *  run or present on classpath.
    */
   def getClassesIfDefined(paths: List[PreName]): List[ClassSymbol] =
-    paths.foldLeft(List.empty){ case (acc, path) => getClassIfDefined(path) match {
-      case cls: ClassSymbol => cls :: acc
-      case _ => acc
-    }}
+    paths.map(getClassIfDefined).filter(_.exists).map(_.asInstanceOf[ClassSymbol])
 
   /** Get ClassSymbol if package is either defined in current compilation run
    *  or present on classpath.

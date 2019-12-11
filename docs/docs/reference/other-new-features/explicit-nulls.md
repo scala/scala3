@@ -403,7 +403,7 @@ When dealing with local mutable variables, there are two questions:
  }
  if (x != null) {
    // y can be called here, which break the fact
-   val a: String = x // error: x is captured and mutated by the closure, not tackable
+   val a: String = x // error: x is captured and mutated by the closure, not trackable
  }
  ```
 
