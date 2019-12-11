@@ -12,6 +12,7 @@ import Symbols._
 import Constants.Constant
 import Types._
 import util.NoSourcePosition
+import config.Printers.init
 
 import Effects._, Potentials._, Summary._, Util._
 
@@ -69,18 +70,18 @@ object Checking {
    *  However, summarization can be done lazily on-demand to improve
    *  performance.
    */
-  def checkClassBody(cdef: TypeDef, outer: Potentials)(implicit state: State): Unit = traceOp("checking " + cdef.symbol.show) {
+  def checkClassBody(cdef: TypeDef, outer: Potentials)(implicit state: State): Unit = traceOp("checking " + cdef.symbol.show, init) {
     val tpl = cdef.rhs.asInstanceOf[Template]
 
     // mark current class as initialized
     state.parentInited += cdef.symbol.asClass -> outer
 
-    def checkClassBodyStat(tree: Tree)(implicit ctx: Context): Unit = traceOp("checking " + tree.show) {
+    def checkClassBodyStat(tree: Tree)(implicit ctx: Context): Unit = traceOp("checking " + tree.show, init) {
       tree match {
         case Apply(sel @ Select(_: This, _), _) if sel.symbol.isConstructor =>
           // ctor call inside 2nd ctor
           val tree = sel.symbol.defTree
-          traceOp("check ctor: " + sel.symbol.show) {
+          traceOp("check ctor: " + sel.symbol.show, init) {
             if (!tree.isEmpty) doCheck(tree.asInstanceOf[DefDef].rhs)(ctx.withOwner(tree.symbol))
           }
 
@@ -152,11 +153,11 @@ object Checking {
     tpl.body.foreach { checkClassBodyStat(_) }
   }
 
-  def checkSecondaryConstructor(ctor: Symbol, outer: Potentials)(implicit state: State): Unit = traceOp("checking " + ctor.show) {
+  def checkSecondaryConstructor(ctor: Symbol, outer: Potentials)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
     val Block(ctorCall :: stats, expr) = ctor.defTree
     val ctorCallSym = ctorCall.symbol
 
-    traceOp("check ctor: " + sel.symbol.show) {
+    traceOp("check ctor: " + sel.symbol.show, init) {
       if (ctorCallSym.isPrimaryConstructor)
         checkClassBody(ctorCallSym.owner.defTree.asInstanceOf[TypeDef], outer)
       else
@@ -176,7 +177,7 @@ object Checking {
     else sym.matchingMember(thisClass.typeRef)
 
   private def check(eff: Effect)(implicit state: State): Unit =
-    if (!state.visited.contains(eff)) traceOp("checking effect " + eff.show) {
+    if (!state.visited.contains(eff)) traceOp("checking effect " + eff.show, init) {
       eff match {
         case Leak(pot) =>
           pot match {
