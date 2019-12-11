@@ -69,7 +69,16 @@ object Summarization {
         Summary.empty
 
       case New(tpt) =>
-        ???
+        tpt.tpe.typeConstructor match {
+          case tref: TypeRef =>
+            val cls = tref.classSymbol
+            if (tref.prefix == NoPrefix) Warm(cls, Map.empty)
+            else {
+              val (pots, effs) = analyze(tref.prefix, expr)
+              if (pots.isEmpty) Summary.empty.withEffs(effs)
+              else Warm(cls, Map.empty)
+            }
+        }
 
       case Typed(expr, tpt) =>
         analyze(expr)
