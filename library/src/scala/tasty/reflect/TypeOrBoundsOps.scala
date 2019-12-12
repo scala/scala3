@@ -29,7 +29,7 @@ trait TypeOrBoundsOps extends Core {
     def widen(given ctx: Context): Type = internal.Type_widen(self)
 
     /** Widen from TermRef to its underlying non-termref
-     *  base type, while also skipping Expr types.
+     *  base type, while also skipping `=>T` types.
      */
     def widenTermRefExpr(given ctx: Context): Type = internal.Type_widenTermRefExpr(self)
 

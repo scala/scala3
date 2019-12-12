@@ -16,6 +16,13 @@ private[quoted] object Matcher {
     import qctx.tasty.{_, given}
     import Matching._
 
+    /** A map relating equivalent symbols from the scrutinee and the pattern
+     *  For example in
+     *  ```
+     *  '{val a = 4; a * a} match case '{ val x = 4; x * x }
+     *  ```
+     *  when matching `a * a` with `x * x` the enviroment will contain `Map(a -> x)`.
+     */
     private type Env = Map[Symbol, Symbol]
 
     inline private def withEnv[T](env: Env)(body: => (given Env) => T): T = body(given env)
@@ -139,7 +146,7 @@ private[quoted] object Matcher {
             matched(scrutinee.seal)
 
           // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
-          case (ClosedTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
+          case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
               if patternHole.symbol == internal.Definitions_InternalQuoted_patternHole &&
                  scrutinee.tpe <:< tpt.tpe =>
             matched(scrutinee.seal)
@@ -301,18 +308,20 @@ private[quoted] object Matcher {
       }
     end treeOps
 
-    private object ClosedTerm {
+    private object ClosedPatternTerm {
+      /** Matches a term that does not contain free variables defined in the pattern (i.e. not defined in `Env`) */
       def unapply(term: Term)(given Context, Env): Option[term.type] =
-        if freeVars(term).isEmpty then Some(term) else None
+        if freePatternVars(term).isEmpty then Some(term) else None
 
-      def freeVars(tree: Tree)(given qctx: Context, env: Env): Set[Symbol] =
+      /** Return all free variables of the term defined in the pattern (i.e. defined in `Env`) */
+      def freePatternVars(term: Term)(given qctx: Context, env: Env): Set[Symbol] =
         val accumulator = new TreeAccumulator[Set[Symbol]] {
           def foldTree(x: Set[Symbol], tree: Tree)(given ctx: Context): Set[Symbol] =
             tree match
               case tree: Ident if env.contains(tree.symbol) => foldOverTree(x + tree.symbol, tree)
               case _ => foldOverTree(x, tree)
         }
-        accumulator.foldTree(Set.empty, tree)
+        accumulator.foldTree(Set.empty, term)
     }
 
     private object IdentArgs {
