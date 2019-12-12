@@ -66,7 +66,7 @@ object Potentials {
       "Fun[pots = " + potentials.map(_.show).mkString(";") + ", effs = " + effects.map(_.show).mkString(";") + "]"
   }
 
-  // ---------      operations on potentials       ---------
+  // ------------------ operations on potentials ------------------
 
   def (ps: Potentials) select (symbol: Symbol, source: Tree, virtual: Boolean = true, bindings: Map[Symbol, Potentials] = Map.empty)(implicit ctx: Context): Summary =
     ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
