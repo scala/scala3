@@ -17,7 +17,21 @@ trait TypeOrBoundsOps extends Core {
     /** Is this type a subtype of that type? */
     def <:<(that: Type)(given ctx: Context): Boolean = internal.Type_isSubType(self)(that)
 
+    /** Widen from singleton type to its underlying non-singleton
+     *  base type by applying one or more `underlying` dereferences,
+     *  Also go from => T to T.
+     *  Identity for all other types. Example:
+     *
+     *  class Outer { class C ; val x: C }
+     *  def o: Outer
+     *  <o.x.type>.widen = o.C
+     */
     def widen(given ctx: Context): Type = internal.Type_widen(self)
+
+    /** Widen from TermRef to its underlying non-termref
+     *  base type, while also skipping `=>T` types.
+     */
+    def widenTermRefExpr(given ctx: Context): Type = internal.Type_widenTermRefExpr(self)
 
     /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
@@ -325,6 +339,9 @@ trait TypeOrBoundsOps extends Core {
     def unapply(x: MethodType)(given ctx: Context): Option[MethodType] = Some(x)
 
   object MethodType {
+    def apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType =
+      internal.MethodType_apply(paramNames)(paramInfosExp, resultTypeExp)
+
     def unapply(x: MethodType)(given ctx: Context): Option[(List[String], List[Type], Type)] =
       Some((x.paramNames, x.paramTypes, x.resType))
   }

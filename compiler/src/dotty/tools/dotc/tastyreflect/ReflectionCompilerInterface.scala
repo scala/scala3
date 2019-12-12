@@ -580,6 +580,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type])(given Context): Closure =
     tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
 
+  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(implicit ctx: Context): Block =
+    tpd.Lambda(tpe, rhsFn)
+
   type If = tpd.If
 
   def isInstanceOfIf(given ctx: Context): IsInstanceOf[If] = new {
@@ -1141,16 +1144,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Type_isSubType(self: Type)(that: Type)(given Context): Boolean = self <:< that
 
-  /** Widen from singleton type to its underlying non-singleton
-    *  base type by applying one or more `underlying` dereferences,
-    *  Also go from => T to T.
-    *  Identity for all other types. Example:
-    *
-    *  class Outer { class C ; val x: C }
-    *  def o: Outer
-    *  <o.x.type>.widen = o.C
-    */
   def Type_widen(self: Type)(given Context): Type = self.widen
+
+  def Type_widenTermRefExpr(self: Type)(given Context): Type = self.widenTermRefExpr
 
   def Type_dealias(self: Type)(given Context): Type = self.dealias
 
@@ -1397,6 +1393,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case tpe: Types.MethodType => Some(tpe)
       case _ => None
   }
+
+  def MethodType_apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType =
+    Types.MethodType(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
 
   def MethodType_isErased(self: MethodType): Boolean = self.isErasedMethod
   def MethodType_isImplicit(self: MethodType): Boolean = self.isImplicitMethod

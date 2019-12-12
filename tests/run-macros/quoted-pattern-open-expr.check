@@ -1,0 +1,10 @@
+Matched closed
+(6: scala.Int)
+Matched open
+((y: scala.Int) => y.*(y))
+Matched open
+((y: scala.Function1[scala.Int, scala.Int]) => y.apply(3))
+Matched open
+((g: scala.Function1[scala.Int, scala.Int], x: scala.Int) => 5)
+Matched open
+((g: scala.Function1[scala.Int, scala.Int], x: scala.Int) => x)

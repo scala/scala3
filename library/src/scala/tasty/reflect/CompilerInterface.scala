@@ -443,6 +443,8 @@ trait CompilerInterface {
   def Closure_apply(meth: Term, tpe: Option[Type])(given ctx: Context): Closure
   def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type])(given ctx: Context): Closure
 
+  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(implicit ctx: Context): Block
+
   /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
   type If <: Term
 
@@ -810,6 +812,11 @@ trait CompilerInterface {
     */
   def Type_widen(self: Type)(given ctx: Context): Type
 
+  /** Widen from TermRef to its underlying non-termref
+   *  base type, while also skipping Expr types.
+   */
+  def Type_widenTermRefExpr(self: Type)(given ctx: Context): Type
+
   /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
    *  TypeVars until type is no longer alias type, annotated type, LazyRef,
    *  or instantiated type variable.
@@ -991,6 +998,8 @@ trait CompilerInterface {
   type MethodType <: LambdaType[Type]
 
   def isInstanceOfMethodType(given ctx: Context): IsInstanceOf[MethodType]
+
+  def MethodType_apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType
 
   def MethodType_isErased(self: MethodType): Boolean
   def MethodType_isImplicit(self: MethodType): Boolean
