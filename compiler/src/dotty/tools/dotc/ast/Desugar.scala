@@ -1772,7 +1772,7 @@ object desugar {
       case Block(Nil, expr) =>
         collect(expr)
       case Quote(expr) =>
-        new TreeTraverser {
+        new UntypedTreeTraverser {
           def traverse(tree: untpd.Tree)(implicit ctx: Context): Unit = tree match {
             case Splice(expr) => collect(expr)
             case TypSplice(expr) =>
