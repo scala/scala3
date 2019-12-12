@@ -618,7 +618,7 @@ In case all files are suspended due to cyclic dependencies the compilation will 
 
 It is possible to deconstruct or extract values out of `Expr` using pattern matching.
 
-#### scala.quoted .matching
+#### scala.quoted.matching
 
 In `scala.quoted.matching` contains object that can help extract values from `Expr`.
 
@@ -661,19 +661,19 @@ optimize {
 
 ```scala
 def sum(args: =>Int*): Int = args.sum
-def optimize(arg: Int): Int = ${ optimizeExpr('arg) }
-def optimizeExpr(body: Expr[Int])(given QuoteContext): Expr[Int] = body match {
+inline def optimize(arg: Int): Int = ${ optimizeExpr('arg) }
+private def optimizeExpr(body: Expr[Int])(given QuoteContext): Expr[Int] = body match {
   // Match a call to sum without any arguments
   case '{ sum() } => Expr(0)
   // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
   case '{ sum($n) } => n
   // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
-  case '{ sum($args: _*) } => sumExpr(args)
+  case '{ sum(${ExprSeq(args)}: _*) } => sumExpr(args)
   case body => body
 }
-def sumExpr(args: Expr[Seq[Int]])(given QuoteContext): Expr[Int] = args.underlyingArgument match {
+private def sumExpr(args1: Seq[Expr[Int]])(given QuoteContext): Expr[Int] = {
     def flatSumArgs(arg: Expr[Int]): Seq[Expr[Int]] = arg match {
-      case '{ sum($subArgs: _*) } => subArgs.flatMap(listflatSumArgsSum)
+      case '{ sum(${ExprSeq(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
       case arg => Seq(arg)
     }
     val args2 = args1.flatMap(flatSumArgs)
