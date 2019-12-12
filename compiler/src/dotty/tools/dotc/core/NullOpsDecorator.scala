@@ -2,7 +2,7 @@ package dotty.tools.dotc.core
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols.defn
-import dotty.tools.dotc.core.Types.{AndType, ClassInfo, ConstantType, OrType, Type, TypeBounds, TypeMap, TypeProxy}
+import dotty.tools.dotc.core.Types._
 
 /** Defines operations on nullable types. */
 object NullOpsDecorator {
@@ -18,8 +18,8 @@ object NullOpsDecorator {
     }
 
     /** Syntactically strips the nullability from this type.
-     *  If the normalized form (as per `normNullableUnion`) of this type is `T1 | ... | Tn-1 | Tn`,
-     *  and `Tn` references to `Null` (or `JavaNull`), then return `T1 | ... | Tn-1`.
+     *  If the type is `T1 | ... | Tn`, and `Ti` references to `Null` (or `JavaNull`),
+     *  then return `T1 | ... | Ti-1 | Ti+1 | ... | Tn`.
      *  If this type isn't (syntactically) nullable, then returns the type unchanged.
      *
      *  @param onlyJavaNull whether we only remove `JavaNull`, the default value is false
@@ -40,7 +40,7 @@ object NullOpsDecorator {
           else tp.derivedOrType(llhs, rrhs)
         case tp @ AndType(tp1, tp2) =>
           // We cannot `tp.derivedAndType(strip(tp1), strip(tp2))` directly,
-          // since `normNullableUnion((A | Null) & B)` would produce the wrong
+          // since `stripNull((A | Null) & B)` would produce the wrong
           // result `(A & B) | Null`.
           val tp1s = strip(tp1)
           val tp2s = strip(tp2)
@@ -59,8 +59,8 @@ object NullOpsDecorator {
     def stripJavaNull(implicit ctx: Context): Type = self.stripNull(true)
 
     /** Collapses all `JavaNull` unions within this type, and not just the outermost ones (as `stripJavaNull` does).
-     *  e.g. (Array[String|Null]|Null).stripNull => Array[String|Null]
-     *       (Array[String|Null]|Null).stripInnerNulls => Array[String]
+     *  e.g. (Array[String|JavaNull]|JavaNull).stripJavaNull => Array[String|JavaNull]
+     *       (Array[String|JavaNull]|JavaNull).stripAllJavaNull => Array[String]
      *  If no `JavaNull` unions are found within the type, then returns the input type unchanged.
      */
     def stripAllJavaNull(implicit ctx: Context): Type = {
