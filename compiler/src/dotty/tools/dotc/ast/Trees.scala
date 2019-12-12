@@ -621,6 +621,8 @@ object Trees {
   case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Inlined[T]
+    override def isTerm = expansion.isTerm
+    override def isType = expansion.isType
   }
 
   /** A type tree that represents an existing or inferred type */

@@ -1070,7 +1070,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             transform(rhs)
           case _ => tree
         }
-      case Inlined(_, _, arg) => transform(arg)
+      case Inlined(_, Nil, arg) => transform(arg)
       case Block(Nil, arg) => transform(arg)
       case NamedArg(_, arg) => transform(arg)
       case tree => super.transform(tree)
