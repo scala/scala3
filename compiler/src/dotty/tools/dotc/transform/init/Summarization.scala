@@ -72,6 +72,7 @@ object Summarization {
         tpt.tpe.typeConstructor match {
           case tref: TypeRef =>
             val cls = tref.classSymbol
+            // local class may capture, thus we need to track it
             if (tref.prefix == NoPrefix) Warm(cls, Map.empty)
             else {
               val (pots, effs) = analyze(tref.prefix, expr)
