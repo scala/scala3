@@ -523,7 +523,13 @@ object SymDenotations {
         case Some(ann) =>
           ann.arguments match {
             case Literal(Constant(str: String)) :: Nil =>
-              if (isType) str.toTypeName else str.toTermName
+              if (isType)
+                if (is(ModuleClass))
+                  str.toTypeName.moduleClassName
+                else
+                  str.toTypeName
+              else
+                str.toTermName
             case _ => name
           }
         case _ => name
