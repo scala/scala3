@@ -35,9 +35,9 @@ object Potentials {
    *  reference to objects under initialization.
    *
    *  @param cls The concrete class of the object
-   *  @param outers The potentials for the immdiate outer `this`. One entry for each class in the inheritance hierarchy.
+   *  @param outer The potentials for the immdiate outer `this`
    */
-  case class Warm(cls: ClassSymbol, outers: Map[ClassSymbol, Potentials])(val source: Tree) extends Potential {
+  case class Warm(cls: ClassSymbol, outer: Potentials)(val source: Tree) extends Potential {
     def size: Int = 1
     def show(implicit ctx: Context): String = "Warm[" + cls.show + "]"
   }

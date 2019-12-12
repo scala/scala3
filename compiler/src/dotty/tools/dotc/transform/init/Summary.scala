@@ -2,14 +2,41 @@ package dotty.tools.dotc
 package transform
 package init
 
+import scala.collection.mutable
+
 import core._
 import Contexts.Context
+import reporting.trace
+import config.Printers.init
 
 import Potentials._, Effects._
 
 object Summary {
   type Summary = (Potentials, Effects)
   val empty: Summary = (Potentials.empty, Effects.empty)
+
+  case class ClassSummary(
+    outer: Potentials,
+    cls: ClassSymbol,
+    parents: List[Potentials]
+  ) {
+    private val summaryCache: mutable.Map[ClassSymbol, ClassSummary] = mutable.Map.empty
+
+    def summaryOf(member: Symbol): Summary =
+      if (summaryCache.contains(member)) summaryCache(clmembers)
+      else trace("summary for " + member.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
+        val summary =
+          if (symbol.isConstructor)
+            Summarization.analyzeConstructor(symbol) // TODO: asSeenFrom
+          else if (symbol.is(Flags.Method))
+            Summarization.analyzeMethod(symbol)      // TODO: asSeenFrom
+          else // field
+            Summarization.analyzeField(symbol)       // TODO: asSeenFrom
+
+        summaryCache(symbol) = summary
+        summary
+      }
+  }
 
   def show(summary: Summary)(implicit ctx: Context): String = {
     val pots = Potentials.show(summary._1)
