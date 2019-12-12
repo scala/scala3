@@ -275,7 +275,8 @@ object DynamicTuple {
         xxl.elems.asInstanceOf[Array[Object]].take(actualN)
       case _ =>
         val arr = new Array[Object](actualN)
-        itToArray(self.asInstanceOf[Product].productIterator, actualN, arr, 0)
+        self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+          .copyToArray(arr, 0, actualN)
         arr
     }
     dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
@@ -294,7 +295,8 @@ object DynamicTuple {
       case _ =>
         val rem = size - actualN
         val arr = new Array[Object](rem)
-        itToArray(self.asInstanceOf[Product].productIterator.drop(actualN), rem, arr, 0)
+        self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+          .drop(actualN).copyToArray(arr, 0, rem)
         arr
     }
     dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
@@ -313,9 +315,9 @@ object DynamicTuple {
       case _ =>
         val arr1 = new Array[Object](actualN)
         val arr2 = new Array[Object](size - actualN)
-        val it = self.asInstanceOf[Product].productIterator
-        itToArray(it, actualN, arr1, 0)
-        itToArray(it, size - actualN, arr2, 0)
+        val it = self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+        it.copyToArray(arr1, 0, actualN)
+        it.copyToArray(arr2, 0, size - actualN)
         (arr1, arr2)
     }
     (
