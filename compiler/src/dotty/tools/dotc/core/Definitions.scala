@@ -822,16 +822,22 @@ class Definitions {
   // create Symbols for the ones that are present, so they can be checked during nullification.
   @tu lazy val NotNullAnnots: List[ClassSymbol] = ctx.getClassesIfDefined(
     "javax.annotation.Nonnull" ::
-    "edu.umd.cs.findbugs.annotations.NonNull" ::
+    "javax.validation.constraints.NotNull" ::
     "androidx.annotation.NonNull" ::
     "android.support.annotation.NonNull" ::
     "android.annotation.NonNull" ::
     "com.android.annotations.NonNull" ::
     "org.eclipse.jdt.annotation.NonNull" ::
+    "edu.umd.cs.findbugs.annotations.NonNull" ::
     "org.checkerframework.checker.nullness.qual.NonNull" ::
     "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
     "org.jetbrains.annotations.NotNull" ::
+    "org.springframework.lang.NonNull" ::
+    "org.springframework.lang.NonNullApi" ::
+    "org.springframework.lang.NonNullFields" ::
     "lombok.NonNull" ::
+    "reactor.util.annotation.NonNull" ::
+    "reactor.util.annotation.NonNullApi" ::
     "io.reactivex.annotations.NonNull" :: Nil map PreNamedString)
 
   // convenient one-parameter method types
