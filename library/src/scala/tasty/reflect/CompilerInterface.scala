@@ -559,6 +559,8 @@ trait CompilerInterface {
 
   def Inferred_apply(tpe: Type)(given ctx: Context): Inferred
 
+  def TypeRef_apply(sym: Symbol)(given ctx: Context): TypeTree
+
   /** Type tree representing a reference to definition with a given name */
   type TypeIdent <: TypeTree
 

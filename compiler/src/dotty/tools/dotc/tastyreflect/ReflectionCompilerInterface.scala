@@ -272,6 +272,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => term
   }
 
+  def TypeRef_apply(sym: Symbol)(given Context): TypeTree = {
+    assert(sym.isType)
+    withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.TypeTree])
+  }
+
   type Ref = tpd.RefTree
 
   def isInstanceOfRef(given ctx: Context): IsInstanceOf[Ref] = new {
@@ -281,8 +286,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case _ => None
   }
 
-  def Ref_apply(sym: Symbol)(given Context): Ref =
+  def Ref_apply(sym: Symbol)(given Context): Ref = {
+    assert(sym.isTerm)
     withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.RefTree])
+  }
 
   type Ident = tpd.Ident
 

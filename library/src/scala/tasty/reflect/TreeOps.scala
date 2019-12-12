@@ -892,7 +892,8 @@ trait TreeOps extends Core {
     def unapply(x: TypeIdent): Some[TypeIdent] = Some(x)
 
   object TypeIdent {
-    // TODO def apply(name: String)(given ctx: Context): TypeIdent
+    def apply(sym: Symbol)(given ctx: Context): TypeTree =
+      internal.TypeRef_apply(sym)
     def copy(original: Tree)(name: String)(given ctx: Context): TypeIdent =
       internal.TypeIdent_copy(original)(name)
     def unapply(x: TypeIdent)(given ctx: Context): Option[String] = Some(x.name)
