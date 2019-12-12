@@ -689,6 +689,47 @@ private def sumExpr(args1: Seq[Expr[Int]])(given QuoteContext): Expr[Int] = {
 }
 ```
 
+#### Recovering precise types using patterns
+
+Sometimes it is necessary to get a more precise type for an expression. This can be achived using the following pattern match.
+
+```scala
+def f(exp: Expr[Any]) =
+  expr match
+    case '{ $x: $t } =>
+      // There there exists some local `type T` for which we have `x: Expr[T]` and a `given t: Type[T]`
+```
+
+This might be used to then prerorm an implicit search as in:
+
+
+```scala
+inline def (sc: StringContext) showMe(args: =>Any*): String = ${ showMeExpr('sc, 'args) }
+
+private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(given qctx: QuoteContext): Expr[String] = {
+  argsExpr match {
+    case ExprSeq(argExprs) =>
+      val argShowedExprs = argExprs.map {
+        case '{ $arg: $tp } =>
+          val showTp = '[Show[$tp]]
+          summonExpr(given showTp), summon[QuoteContext]) match {
+            case Some(showExpr) => '{ $showExpr.show($arg) }
+            case None => qctx.error(s"could not find implicit for ${showTp.show}", arg); '{???}
+          }
+      }
+      val newArgsExpr = Expr.ofSeq(argShowedExprs)
+      '{ $sc.s($newArgsExpr: _*) }
+    case _ =>
+      // `new StringContext(...).showMeExpr(args: _*)` not an explicit `showMeExpr"..."`
+      qctx.error(s"Args must be explicit", argsExpr)
+      '{???}
+  }
+}
+
+trait Show[-T] {
+  def show(x: T): String
+}
+```
 
 ### More details
 [More details](./macros-spec.md)
