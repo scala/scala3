@@ -15,34 +15,41 @@ object Summary {
   type Summary = (Potentials, Effects)
   val empty: Summary = (Potentials.empty, Effects.empty)
 
-  case class ClassSummary(
-    outer: Potentials,
-    cls: ClassSymbol,
-    parentOuter: Map[ClassSymbol, Potentials]
-  ) {
-    private val summaryCache: mutable.Map[ClassSymbol, ClassSummary] = mutable.Map.empty
+  case class ClassSummary(currentClass: ClassSymbol, parentOuter: Map[ClassSymbol, Potentials]) {
+    private val summaryCache: mutable.Map[Symbol, Summary] = mutable.Map.empty
 
     def summaryOf(member: Symbol)(implicit ctx: Context): Summary =
       if (summaryCache.contains(member)) summaryCache(clmembers)
       else trace("summary for " + member.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
         val summary =
           if (symbol.isConstructor)
-            Summarization.analyzeConstructor(symbol) // TODO: asSeenFrom
+            Summarization.analyzeConstructor(symbol)
           else if (symbol.is(Flags.Method))
-            Summarization.analyzeMethod(symbol)      // TODO: asSeenFrom
+            Summarization.analyzeMethod(symbol)
           else // field
-            Summarization.analyzeField(symbol)       // TODO: asSeenFrom
+            Summarization.analyzeField(symbol)
 
         summaryCache(symbol) = summary
         summary
       }
 
     def effectsOf(member: Symbol)(implicit ctx: Context): Effects = summaryOf(symbol)._2
-
     def potentialsOf(member: Symbol)(implicit ctx: Context): Potentials = summaryOf(symbol)._1
+  }
+
+  case class ObjectPart(
+    thisValue: Warm | ThisRef,                  // the potential for `this`, it can be Warm or ThisRef
+    currentClass: ClassSymbol,                  // current class
+    currentOuter: Potentials,                   // the immediate outer for current class, empty for local and top-level classes
+    parentOuter: Map[ClassSymbol, Potentials]   // outers for direct parents
+  ) {
+    private val summaryCache: mutable.Map[Symbol, Summary] = mutable.Map.empty
+
+    /** Summary of a member field or method, with `this` and outers substituted */
+    def summaryOf(member: Symbol)(implicit ctx: Context): Summary = ???
 
     def show(implicit ctx: Context): String =
-      "ClassSummary(" + cls.name.show + ", outer = " + Potentials.show(outer) +
+      "ClassSummary(" + currentClass.name.show + ", outer = " + Potentials.show(outer) +
         "parents = {" + parentOuter.map { (k, v) => k.show + "->" + "[" Potentials.show(v) + "]" } + "}"
   }
 

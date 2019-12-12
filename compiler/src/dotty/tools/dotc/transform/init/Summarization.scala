@@ -152,6 +152,7 @@ object Summarization {
         analyze(expansion).withEffs(effs)
 
       case vdef : ValDef =>
+        // Local lazy vals be hot too?
         if (vdef.symbol.is(Flags.Lazy)) Summary.empty
         else {
           val (pots, effs) = analyze(vdef.rhs)
@@ -223,4 +224,29 @@ object Summarization {
       analyze(ddef.rhs)(ctx.withOwner(ctor))
     }
   }
+
+  def classSummary(cls: ClassSymbol)(implicit ctx: Context): ClassSummary =
+    if (cls.defTree.isEmpty)
+      cls.info match {
+        case cinfo: ClassInfo =>
+          val parentOuter = cinfo.classParents.map {
+            case parentTp: TypeRef =>
+              val source = TypeTree(parentTp).withSourcePos(cls.sourcePos)
+              parentTp.classSymbol -> analyze(parentTp.prefix, source)
+          }
+
+          ClassSummary(Potentials.empty, cls, parentOuter)
+      }
+    else {
+      val tpl = cls.defTree.asInstanceOf[TypeDef]
+      val parents = tpl.rhs.asInstanceOf[Template].parents
+
+      val parentOuter = parents.map { parent =>
+        val tref = parent.tpe.typeConstructor.asInstanceOf[TypeRef]
+        parent.classSymbol -> analyze(tref.prefix, parent)
+      }
+
+      ClassSummary(Potentials.empty, cls, parentOuter)
+    }
+
 }
