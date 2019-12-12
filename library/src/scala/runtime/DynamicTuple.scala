@@ -466,23 +466,6 @@ object DynamicTuple {
     res.asInstanceOf[Result]
   }
 
-  // def dynamicMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): Map[This, F] = {
-  //   type Result = Map[This, F]
-  //   (self: Any) match {
-  //     case xxl: TupleXXL =>
-  //       TupleXXL.fromIArray(
-  //         xxl.elems.asInstanceOf[Array[Object]].map(f[Object]).asInstanceOf[IArray[Object]]
-  //       ).asInstanceOf[Result]
-  //     case _ =>
-  //       specialCaseMap(self, f)
-  //   }
-  // }
-
-  // def dynamicMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): Map[This, F] = {
-  //   type Result = Map[This, F]
-  //   dynamicFromIArray[Result](dynamicToIArray(self).asInstanceOf[Array[Object]].map(f[Object]).asInstanceOf[IArray[Object]])
-  // }
-
   def dynamicMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): Map[This, F] = (self: Any) match {
     case self: Unit => ().asInstanceOf[Map[This, F]]
     case _ =>
