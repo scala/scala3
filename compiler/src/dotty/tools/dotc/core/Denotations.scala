@@ -116,6 +116,9 @@ object Denotations {
      */
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): PreDenotation
 
+    /** Map `f` over all single denotations and aggregate the results with `g`. */
+    def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T
+
     private var cachedPrefix: Type = _
     private var cachedAsSeenFrom: AsSeenFromResult = _
     private var validAsSeenFrom: Period = Nowhere
@@ -459,7 +462,7 @@ object Denotations {
         /** Sym preference provided types also override */
         def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
           preferSym(sym1, sym2) &&
-          info1.overrides(info2, sym1.matchNullaryLoosely || sym2.matchNullaryLoosely)
+          info1.overrides(info2, sym1.matchNullaryLoosely || sym2.matchNullaryLoosely, checkClassInfo = false)
 
         def handleDoubleDef =
           if (preferSym(sym1, sym2)) denot1
@@ -600,13 +603,13 @@ object Denotations {
       case tp1: TypeBounds =>
         tp2 match {
           case tp2: TypeBounds => if (safeIntersection) tp1 safe_& tp2 else tp1 & tp2
-          case tp2: ClassInfo if tp1 contains tp2 => tp2
+          case tp2: ClassInfo => tp2
           case _ => mergeConflict(sym1, sym2, tp1, tp2)
         }
       case tp1: ClassInfo =>
         tp2 match {
           case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
-          case tp2: TypeBounds if tp2 contains tp1 => tp1
+          case tp2: TypeBounds => tp1
           case _ => mergeConflict(sym1, sym2, tp1, tp2)
         }
 
@@ -1132,6 +1135,7 @@ object Denotations {
       if (denots.exists && denots.matches(this)) NoDenotation else this
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
       if (required.isEmpty && excluded.isEmpty || compatibleWith(required, excluded)) this else NoDenotation
+    def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T = f(this)
 
     type AsSeenFromResult = SingleDenotation
     protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = {
@@ -1286,6 +1290,8 @@ object Denotations {
       derivedUnion(denot1 filterDisjoint denot, denot2 filterDisjoint denot)
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): PreDenotation =
       derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
+    def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T =
+      g(denot1.aggregate(f, g), denot2.aggregate(f, g))
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =
       if ((denot1 eq this.denot1) && (denot2 eq this.denot2)) this
       else denot1 union denot2

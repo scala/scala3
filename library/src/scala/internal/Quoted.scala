@@ -35,7 +35,7 @@ object Quoted {
    *
    *  During quote reification a quote `'{ ... F[$t] ... }` will be transformed into
    *  `'{ @quoteTypeTag type T$1 = $t ... F[T$1] ... }` to have a tree for `$t`.
-   *  This artifact is removed durring quote unpickling.
+   *  This artifact is removed during quote unpickling.
    *
    *  See ReifyQuotes.scala and PickledQuotes.scala
    */

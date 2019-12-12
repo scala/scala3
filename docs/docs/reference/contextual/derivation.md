@@ -211,7 +211,7 @@ types refined as revealed by the match.
 
 In the sum case, `eqSum`, we use the runtime `ordinal` values of the arguments to `eqv` to first check if the two
 values are of the same subtype of the ADT (3) and then, if they are, to further test for equality based on the `Eq`
-instance for the appropriate ADT subtype using the auxilliary method `check` (4).
+instance for the appropriate ADT subtype using the auxiliary method `check` (4).
 
 ```scala
 def eqSum[T](s: Mirror.SumOf[T], elems: List[Eq[_]]): Eq[T] =

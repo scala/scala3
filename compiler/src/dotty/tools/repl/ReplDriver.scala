@@ -205,7 +205,9 @@ class ReplDriver(settings: Array[String],
       case _ => // new line, empty tree
         state
     }
-    out.println()
+    implicit val ctx: Context = newState.context
+    if (!ctx.settings.XreplDisableDisplay.value)
+      out.println()
     newState
   }
 
@@ -238,7 +240,11 @@ class ReplDriver(settings: Array[String],
 
             val warnings = newState.context.reporter.removeBufferedMessages(newState.context)
             displayErrors(warnings)(newState) // display warnings
-            displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
+            implicit val ctx = newState.context
+            if (!ctx.settings.XreplDisableDisplay.value)
+              displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
+            else
+              newStateWithImports
         }
       )
   }

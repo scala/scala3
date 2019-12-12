@@ -67,7 +67,7 @@ public class ContextEscapeDetector extends RunListener {
 
     private static synchronized void forceGCHeuristic2() {
         try {
-            Object[] arr = new Object[1024]; // upto 8 GB
+            Object[] arr = new Object[1024]; // up to 8 GB
             WeakReference<Object> ref = new WeakReference<>(arr);
             o = arr; // make sure array isn't optimized away
 

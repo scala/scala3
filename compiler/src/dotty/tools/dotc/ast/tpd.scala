@@ -509,7 +509,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Thicket(valdef, clsdef)
   }
 
-  /** A `_' with given type */
+  /** A `_` with given type */
   def Underscore(tp: Type)(implicit ctx: Context): Ident = untpd.Ident(nme.WILDCARD).withType(tp)
 
   def defaultValue(tpe: Type)(implicit ctx: Context): Tree = {
@@ -959,7 +959,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       receiver.select(defn.Object_ne).appliedTo(nullLiteral).withSpan(tree.span)
     }
 
-    /** If inititializer tree is `_', the default value of its type,
+    /** If inititializer tree is `_`, the default value of its type,
      *  otherwise the tree itself.
      */
     def wildcardToDefault(implicit ctx: Context): Tree =

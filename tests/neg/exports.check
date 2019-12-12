@@ -52,4 +52,4 @@
    |               ^
    |               Double definition:
    |               val bar: Bar in class Baz at line 45 and
-   |               final def bar: => => Bar(Baz.this.bar.baz.bar)(Baz.this.bar.bar) in class Baz at line 46
+   |               final def bar: => (Baz.this.bar.bar : => (Baz.this.bar.baz.bar : Bar)) in class Baz at line 46

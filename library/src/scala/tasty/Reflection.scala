@@ -25,6 +25,6 @@ class Reflection(private[scala] val internal: CompilerInterface)
     with TypeOrBoundsOps { self =>
 
   def typeOf[T: scala.quoted.Type]: Type =
-    implicitly[scala.quoted.Type[T]].unseal.tpe
+    summon[scala.quoted.Type[T]].unseal.tpe
 
 }

@@ -189,10 +189,10 @@ class WorksheetTest {
   }
 
   @Test def worksheetDocumentSymbol(): Unit = {
-    ws"""class ${m1}Foo${m2} {
-           def ${m3}bar${m4} = 123
-         }""".withSource
-      .documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Class, WorksheetWrapper.moduleClassName.toString),
+    ws"""${m1}class Foo {
+      ${m3}def bar = 123${m4}
+         }${m2}""".withSource
+      .documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Class, WorksheetWrapper.moduleClassName.stripModuleClassSuffix.toString),
                           (m3 to m4).symInfo("bar", SymbolKind.Method, "Foo"))
   }
 
@@ -202,7 +202,7 @@ class WorksheetTest {
              def ${m3}bar${m4} = 123
            }""",
       code"""class ${m5}Baz${m6}"""
-    ).symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Class, WorksheetWrapper.moduleClassName.toString))
+    ).symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Class, WorksheetWrapper.moduleClassName.stripModuleClassSuffix.toString))
      .symbol("bar", (m3 to m4).symInfo("bar", SymbolKind.Method, "Foo"))
      .symbol("Baz", (m5 to m6).symInfo("Baz", SymbolKind.Class))
   }

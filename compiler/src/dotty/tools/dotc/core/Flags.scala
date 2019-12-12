@@ -133,7 +133,7 @@ object Flags {
         strs filter (_.nonEmpty)
       }
 
-    /** The list of non-empty names of flags that are set in teh given flag set */
+    /** The list of non-empty names of flags that are set in the given flag set */
     def flagStrings(privateWithin: String): Seq[String] = {
       var rawStrings = (2 to MaxFlag).flatMap(x.flagString(_)) // DOTTY problem: cannot drop with (_)
       if (!privateWithin.isEmpty && !x.is(Protected))
@@ -506,7 +506,7 @@ object Flags {
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
   /** Flags retained in export forwarders */
-  val RetainedExportFlags = Given | Implicit | Extension
+  val RetainedExportFlags = Given | Implicit | Extension | Inline
 
   /** Flags that apply only to classes */
   val ClassOnlyFlags = Sealed | Open | Abstract.toTypeFlags

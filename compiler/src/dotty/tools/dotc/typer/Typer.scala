@@ -348,12 +348,20 @@ class Typer extends Namer
     findRefRecur(NoType, BindingPrec.NothingBound, NoContext)
   }
 
-  // If `tree`'s type is a `TermRef` identified by flow typing to be non-null, then
-  // cast away `tree`s nullability. Otherwise, `tree` remains unchanged.
+  /** If `tree`'s type is a `TermRef` identified by flow typing to be non-null, then
+   *  cast away `tree`s nullability. Otherwise, `tree` remains unchanged.
+   *
+   *  Example:
+   *  If x is a trackable reference and we know x is not null at this point,
+   *  (x: T | Null) => x.$asInstanceOf$[x.type & T]
+   */
   def toNotNullTermRef(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match
     case ref @ OrNull(tpnn) : TermRef
     if pt != AssignProto && // Ensure it is not the lhs of Assign
-    ctx.notNullInfos.impliesNotNull(ref) =>
+    ctx.notNullInfos.impliesNotNull(ref) &&
+    // If a reference is in the context, it is already trackable at the point we add it.
+    // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
+    !ref.usedOutOfOrder =>
       tree.select(defn.Any_typeCast).appliedToType(AndType(ref, tpnn))
     case _ =>
       tree
@@ -603,7 +611,7 @@ class Typer extends Namer
           case _ =>
         }
         val x = tpnme.ANON_CLASS
-        val clsDef = TypeDef(x, templ1).withFlags(Final)
+        val clsDef = TypeDef(x, templ1).withFlags(Final | Synthetic)
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
         var tpt1 = typedType(tree.tpt)
@@ -1405,8 +1413,10 @@ class Typer extends Namer
         def typedArg(arg: untpd.Tree, tparam: ParamInfo) = {
           def tparamBounds = tparam.paramInfoAsSeenFrom(tpt1.tpe.appliedTo(tparams.map(_ => TypeBounds.empty)))
           val (desugaredArg, argPt) =
-            if (ctx.mode is Mode.Pattern)
+            if ctx.mode.is(Mode.Pattern) then
               (if (untpd.isVarPattern(arg)) desugar.patternVar(arg) else arg, tparamBounds)
+            else if ctx.mode.is(Mode.QuotedPattern) then
+              (arg, tparamBounds)
             else
               (arg, WildcardType)
           if (tpt1.symbol.isClass)
@@ -1647,6 +1657,10 @@ class Typer extends Namer
       PrepareInlineable.registerInlineInfo(sym, _ => rhs1)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor) {
+      val ename = sym.erasedName
+      if (ename != sym.name)
+        ctx.error(em"@alpha annotation ${'"'}$ename${'"'} may not be used on a constructor", ddef.sourcePos)
+
       for (param <- tparams1 ::: vparamss1.flatten)
         checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
 
@@ -1881,12 +1895,11 @@ class Typer extends Namer
     assignType(cpy.Import(imp)(expr1, selectors1), sym)
   }
 
-  def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = {
+  def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree =
     val pid1 = typedExpr(tree.pid, AnySelectionProto)(ctx.addMode(Mode.InPackageClauseName))
     val pkg = pid1.symbol
-    pid1 match {
-      case pid1: RefTree if pkg.exists =>
-        if (!pkg.is(Package)) ctx.error(PackageNameAlreadyDefined(pkg), tree.sourcePos)
+    pid1 match
+      case pid1: RefTree if pkg.is(Package) =>
         val packageCtx = ctx.packageContext(tree, pkg)
         var stats1 = typedStats(tree.stats, pkg.moduleClass)(packageCtx)._1
         if (!ctx.isAfterTyper)
@@ -1894,9 +1907,10 @@ class Typer extends Namer
         cpy.PackageDef(tree)(pid1, stats1).withType(pkg.termRef)
       case _ =>
         // Package will not exist if a duplicate type has already been entered, see `tests/neg/1708.scala`
-        errorTree(tree, i"package ${tree.pid.name} does not exist")
-    }
-  }
+        errorTree(tree,
+          if pkg.exists then PackageNameAlreadyDefined(pkg)
+          else i"package ${tree.pid.name} does not exist")
+  end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = {
     val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
@@ -2183,7 +2197,7 @@ class Typer extends Namer
 
   /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */
   def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree =
-    trace(i"typing $tree", typr, show = true) {
+    trace(i"typing $tree, pt = $pt", typr, show = true) {
       record(s"typed $getClass")
       record("typed total")
       assertPositioned(tree)
@@ -2222,30 +2236,8 @@ class Typer extends Namer
           case Some(xtree) =>
             traverse(xtree :: rest)
           case none =>
-            def defCtx = ctx.withNotNullInfos(initialNotNullInfos)
-            val newCtx = if (ctx.owner.isTerm) {
-              // Keep preceding not null facts in the current context only if `mdef`
-              // cannot be executed out-of-sequence.
-              // We have to check the Completer of symbol befor typedValDef,
-              // otherwise the symbol is already completed using creation context.
-              mdef.getAttachment(SymOfTree).map(s => (s, s.infoOrCompleter)) match {
-                case Some((sym, completer: Namer#Completer)) =>
-                  if (completer.creationContext.notNullInfos ne ctx.notNullInfos)
-                    // The RHS of a val def should know about not null facts established
-                    // in preceding statements (unless the DefTree is completed ahead of time,
-                    // then it is impossible).
-                    sym.info = Completer(completer.original)(
-                      given completer.creationContext.withNotNullInfos(ctx.notNullInfos))
-                  ctx // all preceding statements will have been executed in this case
-                case _ =>
-                  // If it has been completed, then it must be because there is a forward reference
-                  // to the definition in the program. Hence, we don't Keep preceding not null facts
-                  // in the current context.
-                  defCtx
-              }
-            }
-            else defCtx
-
+            val newCtx = if (ctx.owner.isTerm && adaptCreationContext(mdef)) ctx
+              else ctx.withNotNullInfos(initialNotNullInfos)
             typed(mdef)(given newCtx) match {
               case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf += inlineExpansion(mdef1)
@@ -2295,6 +2287,34 @@ class Typer extends Namer
     if (ctx.owner == exprOwner) checkNoAlphaConflict(stats1)
     (stats1, finalCtx)
   }
+
+  /** Tries to adapt NotNullInfos from creation context to the DefTree,
+   *  returns whether the adaption is successed. The adaption only success if the
+   *  DefTree has a symbol and it has not been completed (is not forward referenced).
+   */
+  def adaptCreationContext(mdef: untpd.DefTree)(implicit ctx: Context): Boolean =
+    // Keep preceding not null facts in the current context only if `mdef`
+    // cannot be executed out-of-sequence.
+    // We have to check the Completer of symbol befor typedValDef,
+    // otherwise the symbol is already completed using creation context.
+    mdef.getAttachment(SymOfTree) match {
+      case Some(sym) => sym.infoOrCompleter match {
+        case completer: Namer#Completer =>
+          if (completer.creationContext.notNullInfos ne ctx.notNullInfos)
+            // The RHS of a val def should know about not null facts established
+            // in preceding statements (unless the DefTree is completed ahead of time,
+            // then it is impossible).
+            sym.info = Completer(completer.original)(
+              given completer.creationContext.withNotNullInfos(ctx.notNullInfos))
+          true
+        case _ =>
+          // If it has been completed, then it must be because there is a forward reference
+          // to the definition in the program. Hence, we don't Keep preceding not null facts
+          // in the current context.
+          false
+      }
+      case _ => false
+    }
 
   /** Given an inline method `mdef`, the method rewritten so that its body
    *  uses accessors to access non-public members.
@@ -3053,7 +3073,7 @@ class Typer extends Namer
               tree.tpe.EtaExpand(tp.typeParamSymbols)
           tree.withType(tp1)
         }
-      if ((ctx.mode is Mode.Pattern) || tree1.tpe <:< pt) tree1
+      if (ctx.mode.is(Mode.Pattern) || ctx.mode.is(Mode.QuotedPattern) || tree1.tpe <:< pt) tree1
       else err.typeMismatch(tree1, pt)
     }
 

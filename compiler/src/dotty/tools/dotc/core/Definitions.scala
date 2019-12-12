@@ -459,12 +459,12 @@ class Definitions {
     @tu lazy val Boolean_|| : Symbol = BooleanClass.requiredMethod(nme.ZOR)
     @tu lazy val Boolean_== : Symbol =
       BooleanClass.info.member(nme.EQ).suchThat(_.info.firstParamTypes match {
-        case List(pt) => (pt isRef BooleanClass)
+        case List(pt) => pt.isRef(BooleanClass)
         case _ => false
       }).symbol
     @tu lazy val Boolean_!= : Symbol =
       BooleanClass.info.member(nme.NE).suchThat(_.info.firstParamTypes match {
-        case List(pt) => (pt isRef BooleanClass)
+        case List(pt) => pt.isRef(BooleanClass)
         case _ => false
       }).symbol
 
@@ -527,7 +527,7 @@ class Definitions {
   @tu lazy val StringModule: Symbol = StringClass.linkedClass
     @tu lazy val String_+ : TermSymbol = enterMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
     @tu lazy val String_valueOf_Object: Symbol = StringModule.info.member(nme.valueOf).suchThat(_.info.firstParamTypes match {
-      case List(pt) => (pt isRef AnyClass) || (pt isRef ObjectClass)
+      case List(pt) => pt.isRef(AnyClass) || pt.isRef(ObjectClass)
       case _ => false
     }).symbol
 
@@ -539,15 +539,15 @@ class Definitions {
   @tu lazy val ClassCastExceptionClass: ClassSymbol   = ctx.requiredClass("java.lang.ClassCastException")
     @tu lazy val ClassCastExceptionClass_stringConstructor: TermSymbol  = ClassCastExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
       case List(pt) =>
-        val pt1 = if (ctx.explicitNulls) pt.stripNull else pt
-        pt1 isRef StringClass
+        val pt1 = if (ctx.explicitNulls) pt.stripNull() else pt
+        pt1.isRef(StringClass)
       case _ => false
     }).symbol.asTerm
   @tu lazy val ArithmeticExceptionClass: ClassSymbol  = ctx.requiredClass("java.lang.ArithmeticException")
     @tu lazy val ArithmeticExceptionClass_stringConstructor: TermSymbol  = ArithmeticExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
       case List(pt) =>
-        val pt1 = if (ctx.explicitNulls) pt.stripNull else pt
-        pt1 isRef StringClass
+        val pt1 = if (ctx.explicitNulls) pt.stripNull() else pt
+        pt1.isRef(StringClass)
       case _ => false
     }).symbol.asTerm
 
@@ -822,16 +822,22 @@ class Definitions {
   // create Symbols for the ones that are present, so they can be checked during nullification.
   @tu lazy val NotNullAnnots: List[ClassSymbol] = ctx.getClassesIfDefined(
     "javax.annotation.Nonnull" ::
-    "edu.umd.cs.findbugs.annotations.NonNull" ::
+    "javax.validation.constraints.NotNull" ::
     "androidx.annotation.NonNull" ::
     "android.support.annotation.NonNull" ::
     "android.annotation.NonNull" ::
     "com.android.annotations.NonNull" ::
     "org.eclipse.jdt.annotation.NonNull" ::
+    "edu.umd.cs.findbugs.annotations.NonNull" ::
     "org.checkerframework.checker.nullness.qual.NonNull" ::
     "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
     "org.jetbrains.annotations.NotNull" ::
+    "org.springframework.lang.NonNull" ::
+    "org.springframework.lang.NonNullApi" ::
+    "org.springframework.lang.NonNullFields" ::
     "lombok.NonNull" ::
+    "reactor.util.annotation.NonNull" ::
+    "reactor.util.annotation.NonNullApi" ::
     "io.reactivex.annotations.NonNull" :: Nil map PreNamedString)
 
   // convenient one-parameter method types
@@ -886,7 +892,7 @@ class Definitions {
       if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayType.appliedTo(elem :: Nil)
     def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
-      case AppliedType(at, arg :: Nil) if at isRef ArrayType.symbol => Some(arg)
+      case AppliedType(at, arg :: Nil) if at.isRef(ArrayType.symbol) => Some(arg)
       case _ => None
     }
   }

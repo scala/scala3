@@ -5,5 +5,5 @@ val res0: Foo[Int] = Foo(1)
 scala> val x: Foo[String] = res0
 1 | val x: Foo[String] = res0
   |                      ^^^^
-  |                      Found:    Foo[Int](res0)
+  |                      Found:    (res0 : Foo[Int])
   |                      Required: Foo[String]

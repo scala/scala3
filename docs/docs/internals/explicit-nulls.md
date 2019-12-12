@@ -85,16 +85,15 @@ Within `Types.scala`, we defined some extractors to work with nullable unions:
 These extractor will call utility methods in `NullOpsDecorator.scala`. All of these
 are methods of the `Type` class, so call them with `this` as a receiver:
 
-- `normNullableUnion` normalizes unions so that the `Null` type (or aliases to `Null`)
-  appears to the right of all other types.
-
+- `stripNull` syntactically strips all `Null` types in the union:
+  e.g. `String|Null => String`.
+- `stripJavaNull` is like `stripNull` but only removes `JavaNull` from the union.
+  This is needed when we want to "revert" the Java nullification function.
+- `stripAllJavaNull` collapses all `JavaNull` unions within this type, and not just the outermost
+  ones (as `stripJavaNull` does).
 - `isNullableUnion` determines whether `this` is a nullable union.
 - `isJavaNullableUnion` determines whether `this` is syntactically a union of the form
   `T|JavaNull`.
-- `stripNull` syntactically strips all `Null` types in the union:
-  e.g. `String|Null => String`.
-- `stripAllJavaNull` is like `stripNull` but only removes `JavaNull` from the union.
-  This is needed when we want to "revert" the Java nullification function.
 
 ## Flow Typing
 

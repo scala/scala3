@@ -281,7 +281,7 @@ object JavaScanners {
                   nextChar()
                   token = DOTDOTDOT
                 }
-                else error("`.' character expected")
+                else error("`.` character expected")
               }
 
             case ';' =>

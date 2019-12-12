@@ -128,7 +128,7 @@ trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
     def isTypeParam(given ctx: Context): Boolean =
       internal.Symbol_isTypeParam(self)
 
-    /** Signature of this defintion */
+    /** Signature of this definition */
     def signature(given ctx: Context): Signature =
       internal.Symbol_signature(self)
 

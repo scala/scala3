@@ -23,7 +23,7 @@ object Logarithms {
   given logarithmOps: (x: Logarithm) extended with {
     def toDouble: Double = math.exp(x)
     def + (y: Logarithm): Logarithm = Logarithm(math.exp(x) + math.exp(y))
-    def * (y: Logarithm): Logarithm = Logarithm(x + y)
+    def * (y: Logarithm): Logarithm = x + y
   }
 }
 ```
@@ -69,7 +69,7 @@ object Access {
   opaque type PermissionChoice = Int
   opaque type Permission <: Permissions & PermissionChoice = Int
 
-  def (x: Permissions) & (y: Permissions): Permissions = x & y
+  def (x: Permissions) & (y: Permissions): Permissions = x | y
   def (x: PermissionChoice) | (y: PermissionChoice): PermissionChoice = x | y
   def (x: Permissions) is (y: Permissions) = (x & y) == y
   def (x: Permissions) isOneOf (y: PermissionChoice) = (x & y) != 0
@@ -77,7 +77,7 @@ object Access {
   val NoPermission: Permission = 0
   val ReadOnly: Permission = 1
   val WriteOnly: Permission = 2
-  val ReadWrite: Permissions = ReadOnly & WriteOnly
+  val ReadWrite: Permissions = ReadOnly | WriteOnly
   val ReadOrWrite: PermissionChoice = ReadOnly | WriteOnly
 }
 ```

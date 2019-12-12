@@ -7,7 +7,7 @@ import scala.tasty.Reflection
 class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpreter[R](reflect0) {
   import reflect.{_, given}
 
-  // All references are represented by themselfs and values are boxed
+  // All references are represented by themselves and values are boxed
   type AbstractAny = Any
 
   val jvmReflection = new JVMReflection(reflect)

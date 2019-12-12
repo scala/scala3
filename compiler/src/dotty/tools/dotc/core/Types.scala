@@ -605,20 +605,7 @@ object Types {
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
-          tp match {
-            case OrJavaNull(tp1) =>
-              // Selecting `name` from a type `T|JavaNull` is like selecting `name` from `T`.
-              // This can throw at runtime, but we trade soundness for usability.
-              // We need to strip `JavaNull` from both the type and the prefix so that
-              // `pre <: tp` continues to hold.
-              tp1.findMember(name, pre.stripJavaNull, required, excluded)
-            case _ =>
-              // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
-              // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
-              // lots of places. The present strategy is instead of widen `tp` using `join` to be a
-              // supertype of `pre`.
-              go(tp.join)
-          }
+          goOr(tp)
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
         case err: ErrorType =>
@@ -723,6 +710,21 @@ object Types {
 
       def goAnd(l: Type, r: Type) =
         go(l) & (go(r), pre, safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+
+      def goOr(tp: OrType) = tp match {
+        case OrJavaNull(tp1) =>
+          // Selecting `name` from a type `T|JavaNull` is like selecting `name` from `T`.
+          // This can throw at runtime, but we trade soundness for usability.
+          // We need to strip `JavaNull` from both the type and the prefix so that
+          // `pre <: tp` continues to hold.
+          tp1.findMember(name, pre.stripJavaNull, required, excluded)
+        case _ =>
+          // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
+          // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
+          // lots of places. The present strategy is instead of widen `tp` using `join` to be a
+          // supertype of `pre`.
+          go(tp.join)
+      }
 
       val recCount = ctx.base.findMemberCount
       if (recCount >= Config.LogPendingFindMemberThreshold)
@@ -925,21 +927,21 @@ object Types {
 
     /** Is this type a legal type for member `sym1` that overrides another
      *  member `sym2` of type `that`? This is the same as `<:<`, except that
-     *  if `matchLoosely` evaluates to true the types `=> T` and `()T` are seen
-     *  as overriding each other.
+     *  @param matchLoosely   if true the types `=> T` and `()T` are seen as overriding each other.
+     *  @param checkClassInfo if true we check that ClassInfos are within bounds of abstract types
      */
-    final def overrides(that: Type, matchLoosely: => Boolean)(implicit ctx: Context): Boolean = {
+    final def overrides(that: Type, matchLoosely: => Boolean, checkClassInfo: Boolean = true)(implicit ctx: Context): Boolean = {
       def widenNullary(tp: Type) = tp match {
         case tp @ MethodType(Nil) => tp.resultType
         case _ => tp
       }
-      ((this.widenExpr frozen_<:< that.widenExpr) ||
-        matchLoosely && {
-          val this1 = widenNullary(this)
-          val that1 = widenNullary(that)
-          ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(that1, matchLoosely = false)
-        }
-      )
+      !checkClassInfo && this.isInstanceOf[ClassInfo]
+      || (this.widenExpr frozen_<:< that.widenExpr)
+      || matchLoosely && {
+           val this1 = widenNullary(this)
+           val that1 = widenNullary(that)
+           ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(that1, false, checkClassInfo)
+         }
     }
 
     /** Is this type close enough to that type so that members
@@ -2950,11 +2952,11 @@ object Types {
     def apply(tp: Type)(given Context) =
       OrType(tp, defn.NullType)
     def unapply(tp: Type)(given ctx: Context): Option[Type] =
-    if (ctx.explicitNulls) {
-      val tp1 = tp.stripNull
-      if tp1 ne tp then Some(tp1) else None
-    }
-    else None
+      if (ctx.explicitNulls) {
+        val tp1 = tp.stripNull()
+        if tp1 ne tp then Some(tp1) else None
+      }
+      else None
   }
 
   /** An extractor object to pattern match against a Java-nullable union.

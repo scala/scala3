@@ -552,6 +552,7 @@ class TreePickler(pickler: TastyPickler) {
           if (refinements.isEmpty) pickleTree(parent)
           else {
             val refineCls = refinements.head.symbol.owner.asClass
+            registerDef(refineCls)
             pickledTypes.put(refineCls.typeRef, currentAddr)
             writeByte(REFINEDtpt)
             refinements.foreach(preRegister)

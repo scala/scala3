@@ -12,7 +12,7 @@ object Test {
   def g(given Context) = ()
   ctx.givenIn(g)
 
-/* The last three statements shoudl generate the following code:
+/* The last three statements should generate the following code:
 
     def ctx: Test.Context = new Test.Context()
     def g(implicit x$1: Test.Context): Unit = ()

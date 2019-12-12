@@ -114,43 +114,37 @@ object JavaNullInterop {
         case _ => true
       })
 
-    override def apply(tp: Type): Type = {
-      // Fast version of Type::toJavaNullableUnion that doesn't check whether the type
-      // is already a union.
-      def toJavaNullableUnion(tpe: Type): Type = OrType(tpe, defn.JavaNullAliasType)
-
-      tp match {
-        case tp: TypeRef if needsNull(tp) => toJavaNullableUnion(tp)
-        case appTp @ AppliedType(tycon, targs) =>
-          val oldOutermostNullable = outermostLevelAlreadyNullable
-          // We don't make the outmost levels of type arguements nullable if tycon is Java-defined.
-          // This is because Java classes are _all_ nullified, so both `java.util.List[String]` and
-          // `java.util.List[String|Null]` contain nullable elements.
-          outermostLevelAlreadyNullable = tp.classSymbol.is(JavaDefined)
-          val targs2 = targs map this
-          outermostLevelAlreadyNullable = oldOutermostNullable
-          val appTp2 = derivedAppliedType(appTp, tycon, targs2)
-          if (needsNull(tycon)) toJavaNullableUnion(appTp2) else appTp2
-        case ptp: PolyType =>
-          derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
-        case mtp: MethodType =>
-          val oldOutermostNullable = outermostLevelAlreadyNullable
-          outermostLevelAlreadyNullable = false
-          val paramInfos2 = mtp.paramInfos map this
-          outermostLevelAlreadyNullable = oldOutermostNullable
-          derivedLambdaType(mtp)(paramInfos2, this(mtp.resType))
-        case tp: TypeAlias => mapOver(tp)
-        case tp: AndType =>
-          // nullify(A & B) = (nullify(A) & nullify(B)) | JavaNull, but take care not to add
-          // duplicate `JavaNull`s at the outermost level inside `A` and `B`.
-          outermostLevelAlreadyNullable = true
-          toJavaNullableUnion(derivedAndType(tp, this(tp.tp1), this(tp.tp2)))
-        case tp: TypeParamRef if needsNull(tp) => toJavaNullableUnion(tp)
-        // In all other cases, return the type unchanged.
-        // In particular, if the type is a ConstantType, then we don't nullify it because it is the
-        // type of a final non-nullable field.
-        case _ => tp
-      }
+    override def apply(tp: Type): Type = tp match {
+      case tp: TypeRef if needsNull(tp) => OrJavaNull(tp)
+      case appTp @ AppliedType(tycon, targs) =>
+        val oldOutermostNullable = outermostLevelAlreadyNullable
+        // We don't make the outmost levels of type arguements nullable if tycon is Java-defined.
+        // This is because Java classes are _all_ nullified, so both `java.util.List[String]` and
+        // `java.util.List[String|Null]` contain nullable elements.
+        outermostLevelAlreadyNullable = tp.classSymbol.is(JavaDefined)
+        val targs2 = targs map this
+        outermostLevelAlreadyNullable = oldOutermostNullable
+        val appTp2 = derivedAppliedType(appTp, tycon, targs2)
+        if (needsNull(tycon)) OrJavaNull(appTp2) else appTp2
+      case ptp: PolyType =>
+        derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
+      case mtp: MethodType =>
+        val oldOutermostNullable = outermostLevelAlreadyNullable
+        outermostLevelAlreadyNullable = false
+        val paramInfos2 = mtp.paramInfos map this
+        outermostLevelAlreadyNullable = oldOutermostNullable
+        derivedLambdaType(mtp)(paramInfos2, this(mtp.resType))
+      case tp: TypeAlias => mapOver(tp)
+      case tp: AndType =>
+        // nullify(A & B) = (nullify(A) & nullify(B)) | JavaNull, but take care not to add
+        // duplicate `JavaNull`s at the outermost level inside `A` and `B`.
+        outermostLevelAlreadyNullable = true
+        OrJavaNull(derivedAndType(tp, this(tp.tp1), this(tp.tp2)))
+      case tp: TypeParamRef if needsNull(tp) => OrJavaNull(tp)
+      // In all other cases, return the type unchanged.
+      // In particular, if the type is a ConstantType, then we don't nullify it because it is the
+      // type of a final non-nullable field.
+      case _ => tp
     }
   }
 }

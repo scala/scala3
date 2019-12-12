@@ -470,7 +470,7 @@ class ClassfileParser(
         classTParams = tparams
         val parents = new ListBuffer[Type]()
         while (index < end)
-          parents += sig2type(tparams, skiptvs = false)  // here the variance doesnt'matter
+          parents += sig2type(tparams, skiptvs = false)  // here the variance doesn't matter
         TempClassInfoType(parents.toList, instanceScope, owner)
       }
     if (ownTypeParams.isEmpty) tpe else TempPolyType(ownTypeParams, tpe)

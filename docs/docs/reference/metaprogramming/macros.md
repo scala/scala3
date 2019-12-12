@@ -311,7 +311,7 @@ def showExpr[T](expr: Expr[T]): Expr[String] = {
 That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts
 the result back to an `Expr[String]` using `Expr.apply`.
 
-**Note**: Lifting `String` to `Expr[String]` using `Expr(code)` can be ommited by importing an implicit
+**Note**: Lifting `String` to `Expr[String]` using `Expr(code)` can be omitted by importing an implicit
 conversion with `import scala.quoted.autolift.given`. The programmer is able to
 declutter slightly the code at the cost of readable _phase distinction_ between
 stages.
@@ -569,13 +569,13 @@ sum
 ### Find implicits within a macro
 
 Similarly to the `summonFrom` construct, it is possible to make implicit search available
-in a quote context. For this we simply provide `scala.quoted.matching.searchImplicitExpr:
+in a quote context. For this we simply provide `scala.quoted.matching.summonExpr:
 
 ```scala
 inline def setFor[T]: Set[T] = ${ setForExpr[T] }
 
 def setForExpr[T: Type](given QuoteContext): Expr[Set[T]] = {
-  searchImplicitExpr[Ordering[T]] match {
+  summonExpr[Ordering[T]] match {
     case Some(ord) => '{ new TreeSet[T]()($ord) }
     case _ => '{ new HashSet[T] }
   }
@@ -614,4 +614,81 @@ compilation of the suspended files using the output of the previous (partial) co
 In case all files are suspended due to cyclic dependencies the compilation will fail with an error.
 
 
+### Pattern matching on quoted expressions
+
+It is possible to deconstruct or extract values out of `Expr` using pattern matching.
+
+#### scala.quoted.matching
+
+In `scala.quoted.matching` contains object that can help extract values from `Expr`.
+
+* `scala.quoted.matching.Const`: matches an expression a literal value and returns the value.
+* `scala.quoted.matching.ExprSeq`: matches an explicit sequence of expresions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
+* `scala.quoted.matching.ConstSeq`:  matches an explicit sequence of literal values and returns them.
+
+These could be used in the following way to optimize any call to `sum` that has statically known values.
+```scala
+inline def sum(args: =>Int*): Int = ${ sumExpr('args) }
+private def sumExpr(argsExpr: Expr[Seq[Int]])(given QuoteContext): Expr[Int] = argsExpr.underlyingArgument match {
+  case ConstSeq(args) => // args is of type Seq[Int]
+    Expr(args.sum) // precompute result of sum
+  case ExprSeq(argExprs) => // argExprs is of type Seq[Expr[Int]]
+    val staticSum: Int = argExprs.map {
+      case Const(arg) => arg
+      case _ => 0
+    }.sum
+    val dynamicSum: Seq[Expr[Int]] = argExprs.filter {
+      case Const(_) => false
+      case arg => true
+    }
+    dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
+  case _ =>
+    '{ $argsExpr.sum }
+}
+```
+
+#### Quoted patterns
+
+Quoted pattens allow to deconstruct complex code that contains a precise structure, types or methods.
+Patterns `'{ ... }` can be placed in any location where Scala expects a pattern.
+
+For example
+```scala
+optimize {
+  sum(sum(1, a, 2), 3, b)
+} // should be optimized to 6 + a + b
+```
+
+```scala
+def sum(args: =>Int*): Int = args.sum
+inline def optimize(arg: Int): Int = ${ optimizeExpr('arg) }
+private def optimizeExpr(body: Expr[Int])(given QuoteContext): Expr[Int] = body match {
+  // Match a call to sum without any arguments
+  case '{ sum() } => Expr(0)
+  // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
+  case '{ sum($n) } => n
+  // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
+  case '{ sum(${ExprSeq(args)}: _*) } => sumExpr(args)
+  case body => body
+}
+private def sumExpr(args1: Seq[Expr[Int]])(given QuoteContext): Expr[Int] = {
+    def flatSumArgs(arg: Expr[Int]): Seq[Expr[Int]] = arg match {
+      case '{ sum(${ExprSeq(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
+      case arg => Seq(arg)
+    }
+    val args2 = args1.flatMap(flatSumArgs)
+    val staticSum: Int = args2.map {
+      case Const(arg) => arg
+      case _ => 0
+    }.sum
+    val dynamicSum: Seq[Expr[Int]] = args2.filter {
+      case Const(_) => false
+      case arg => true
+    }
+    dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
+}
+```
+
+
+### More details
 [More details](./macros-spec.md)

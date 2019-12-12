@@ -5,4 +5,3 @@ object Test {
     println(e.eval("42"))
   }
 }
-
