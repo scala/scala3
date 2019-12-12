@@ -182,6 +182,13 @@ object Nullables with
       then infos
       else info :: infos
 
+    /** Retract all references to mutable variables */
+    def retractMutables(given Context) =
+      val mutables = infos.foldLeft(Set[TermRef]())((ms, info) =>
+        ms.union(info.asserted.filter(_.symbol.is(Mutable))))
+      infos.extendWith(NotNullInfo(Set(), mutables))
+  end notNullInfoOps
+
   given refOps: extension (ref: TermRef) with
 
     /** Is the use of a mutable variable out of order

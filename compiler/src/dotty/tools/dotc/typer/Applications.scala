@@ -794,7 +794,7 @@ trait Applications extends Compatibility {
   /** Subclass of Application for type checking an Apply node with untyped arguments. */
   class ApplyToUntyped(app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto, resultType: Type)(implicit ctx: Context)
   extends TypedApply(app, fun, methRef, proto.args, resultType) {
-    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal.widenExpr)
+    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
     def typeOfArg(arg: untpd.Tree): Type = proto.typeOfArg(arg)
   }
@@ -868,7 +868,8 @@ trait Applications extends Compatibility {
               else
                 new ApplyToUntyped(tree, fun1, funRef, proto, pt)(
                   given fun1.nullableInArgContext(given argCtx(tree)))
-            convertNewGenericArray(app.result).computeNullable()
+            convertNewGenericArray(
+              postProcessByNameArgs(funRef, app.result).computeNullable())
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }
@@ -1030,7 +1031,7 @@ trait Applications extends Compatibility {
    *  It is performed during typer as creation of generic arrays needs a classTag.
    *  we rely on implicit search to find one.
    */
-  def convertNewGenericArray(tree:  Tree)(implicit ctx: Context):  Tree = tree match {
+  def convertNewGenericArray(tree: Tree)(implicit ctx: Context):  Tree = tree match {
     case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
       fullyDefinedType(tree.tpe, "array", tree.span)
 
@@ -1045,6 +1046,56 @@ trait Applications extends Compatibility {
     case _ =>
       tree
   }
+
+  /** Post process all arguments to by-name parameters by removing any not-null
+   *  info that was used when typing them. Concretely:
+   *  If an argument corresponds to a call-by-name parameter, drop all
+   *  embedded not-null assertions of the form `x.$asInstanceOf[x.type & T]`
+   *  where `x` is a reference to a mutable variable. If the argument still typechecks
+   *  with the removed assertions and is still compatible with the formal parameter,
+   *  keep it. Otherwise issue an error that the call-by-name argument was typed using
+   *  flow assumptions about mutable variables and suggest that it is enclosed
+   *  in a `byName(...)` call instead.
+   */
+  private def postProcessByNameArgs(fn: TermRef, app: Tree)(given ctx: Context): Tree =
+    fn.widen match
+      case mt: MethodType if mt.paramInfos.exists.isInstanceOf[ExprType] =>
+        app match
+          case Apply(fn, args) =>
+            val dropNotNull = new TreeMap with
+              override def transform(t: Tree)(given Context) = t match
+                case AssertNotNull(t0) if t0.symbol.is(Mutable) => transform(t0)
+                case t: ValDef if !t.symbol.is(Lazy) => super.transform(t)
+                case t: MemberDef => t // stop here since embedded references are out of order anyway
+                case t => super.transform(t)
+
+            def postProcess(formal: Type, arg: Tree): Tree =
+              val arg1 = dropNotNull.transform(arg)
+              if (arg1 ne arg) && !(arg1.tpe <:< formal) then
+                ctx.error(em"""This argument was typed using flow assumptions about mutable variables
+                              |but it is passed to a by-name parameter where such flow assumptions are unsound.
+                              |Wrapping the argument in `byName(...)` fixes the problem by disabling the flow assumptions.
+                              |
+                              |`byName` needs to be imported from the `scala.compiletime` package.""",
+                          arg.sourcePos)
+                arg
+              else
+                arg1
+
+            def recur(formals: List[Type], args: List[Tree]): List[Tree] = (formals, args) match
+              case (formal :: formalsRest, arg :: argsRest) =>
+                val arg1 = postProcess(formal.widenExpr.repeatedToSingle, arg)
+                val argsRest1 = recur(
+                  if formal.isRepeatedParam then formals else formalsRest,
+                  argsRest)
+                if (arg1 eq arg) && (argsRest1 eq argsRest) then args
+                else arg1 :: argsRest1
+              case _ => args
+
+            tpd.cpy.Apply(app)(fn, recur(mt.paramInfos, args))
+          case _ => app
+      case _ => app
+  end postProcessByNameArgs
 
   def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = {
     record("typedUnApply")

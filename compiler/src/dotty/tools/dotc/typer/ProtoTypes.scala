@@ -322,9 +322,15 @@ object ProtoTypes {
      *  used to avoid repeated typings of trees when backtracking.
      */
     def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
+      val wideFormal = formal.widenExpr
+      val argCtx =
+        if wideFormal eq formal then ctx
+        else ctx.withNotNullInfos(ctx.notNullInfos.retractMutables)
       val locked = ctx.typerState.ownedVars
-      val targ = cacheTypedArg(arg, typer.typedUnadapted(_, formal, locked), force = true)
-      typer.adapt(targ, formal, locked)
+      val targ = cacheTypedArg(arg,
+        typer.typedUnadapted(_, wideFormal, locked)(given argCtx),
+        force = true)
+      typer.adapt(targ, wideFormal, locked)
     }
 
     /** The type of the argument `arg`, or `NoType` if `arg` has not been typed before

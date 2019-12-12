@@ -63,4 +63,7 @@ package object compiletime {
    *      }
    */
   type S[N <: Int] <: Int
+
+  /** Assertion that an argument is by-name. Used for nullability checking. */
+  def byName[T](x: => T): T = x
 }
