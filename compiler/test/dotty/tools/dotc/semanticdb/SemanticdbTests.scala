@@ -38,9 +38,9 @@ class SemanticdbTests with
 
   def runExpectTest(updateExpectFiles: Boolean): Unit =
     val target = generateSemanticdb()
-    val errors = mutable.ArrayBuffer.empty[(Path, String)]
+    val errors = mutable.ArrayBuffer.empty[Path]
     given metacSb: StringBuilder = StringBuilder(5000)
-    inputFiles().sorted.foreach { source =>
+    for source <- inputFiles().sorted do
       val filename = source.getFileName.toString
       val relpath = expectSrc.relativize(source)
       val semanticdbPath = target
@@ -59,20 +59,31 @@ class SemanticdbTests with
         val expected = new String(Files.readAllBytes(expectPath), StandardCharsets.UTF_8)
         val expectName = expectPath.getFileName
         val relExpect = rootSrc.relativize(expectPath)
-        collectFailingDiff(expected, obtained, s"a/$relExpect", s"b/$relExpect")(errors += expectName -> _)
-    }
-    if updateExpectFiles
+        collectFailingDiff(expected, obtained, s"a/$relExpect", s"b/$relExpect") {
+          Files.write(expectPath.resolveSibling("" + expectName + ".out"), obtained.getBytes(StandardCharsets.UTF_8))
+          errors += expectPath
+        }
+    if updateExpectFiles then
       Files.write(metacExpectFile, metacSb.toString.getBytes)
       println("updated: " + metacExpectFile)
     else
       val expected = new String(Files.readAllBytes(metacExpectFile), StandardCharsets.UTF_8)
       val expectName = metacExpectFile.getFileName
       val relExpect = rootSrc.relativize(metacExpectFile)
-      collectFailingDiff(expected, metacSb.toString, s"a/$relExpect", s"b/$relExpect")(errors += expectName -> _)
-    errors.foreach { (source, diff) =>
+      val obtained = metacSb.toString
+      def writeOut =
+      collectFailingDiff(expected, obtained, s"a/$relExpect", s"b/$relExpect") {
+        Files.write(metacExpectFile.resolveSibling("" + expectName + ".out"), obtained.getBytes(StandardCharsets.UTF_8));
+        errors += metacExpectFile
+      }
+    errors.foreach { expect =>
       def red(msg: String) = Console.RED + msg + Console.RESET
       def blue(msg: String) = Console.BLUE + msg + Console.RESET
-      println(s"[${red("error")}] check file ${blue(source.toString)} does not match generated:\n${red(diff)}")
+      println(s"""[${red("error")}] check file ${blue(expect.toString)} does not match generated.
+      |If you meant to make a change, replace the expect file by:
+      |  mv ${expect.resolveSibling("" + expect.getFileName + ".out")} $expect
+      |Or else update all expect files with
+      |  sbt 'dotty-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
     }
     Files.walk(target).sorted(Comparator.reverseOrder).forEach(Files.delete)
     if errors.nonEmpty

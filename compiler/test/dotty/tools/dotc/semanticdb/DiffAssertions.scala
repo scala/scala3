@@ -3,10 +3,10 @@ package dotty.tools.dotc.semanticdb
 import scala.collection.JavaConverters._
 
 object DiffAssertions {
-  def collectFailingDiff(obtained: String, expected: String, obtainedPath: String, expectedPath: String)(onFail: String => Unit): Unit =
+  def collectFailingDiff(obtained: String, expected: String, obtainedPath: String, expectedPath: String)(onFail: => Unit): Unit =
     val diff = compareContents(obtained, expected, obtainedPath, expectedPath)
     if diff.nonEmpty then
-      onFail(diff)
+      onFail
 
   private def stripTrailingWhitespace(str: String): String = str.replaceAll(" \n", "∙\n")
 
