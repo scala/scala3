@@ -73,11 +73,11 @@ object Summarization {
           case tref: TypeRef =>
             val cls = tref.classSymbol
             // local class may capture, thus we need to track it
-            if (tref.prefix == NoPrefix) Warm(cls, Map.empty)
+            if (tref.prefix == NoPrefix) Warm(cls, Potentials.empty)
             else {
               val (pots, effs) = analyze(tref.prefix, expr)
               if (pots.isEmpty) Summary.empty.withEffs(effs)
-              else Warm(cls, Map.empty)
+              else Warm(cls, pots)
             }
         }
 

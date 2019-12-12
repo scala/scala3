@@ -24,20 +24,9 @@ case class Env(ctx: Context, summaryCache: mutable.Map[ClassSymbol, ClassSummary
   /** Summary of a method or field */
   def summaryOf(cls: ClassSymbol): ClassSummary =
     if (summaryCache.contains(cls)) summaryCache(cls)
-    else trace("summary for " + cls.show, init, s => Summary.show(s.asInstanceOf[ClassSummary])) {
-      val summary =
-        if (symbol.isConstructor)
-          Summarization.analyzeConstructor(symbol)
-        else if (symbol.is(Flags.Method))
-          Summarization.analyzeMethod(symbol)
-        else // field
-          Summarization.analyzeField(symbol)
-
+    else trace("summary for " + cls.show, init, s => s.asInstanceOf[ClassSummary].show) {
+      val summary = Summarization.classSummary(cls)
       summaryCache(symbol) = summary
       summary
     }
-
-  def effectsOf(symbol: Symbol): Effects = summaryOf(symbol)._2
-
-  def potentialsOf(symbol: Symbol): Potentials = summaryOf(symbol)._1
 }

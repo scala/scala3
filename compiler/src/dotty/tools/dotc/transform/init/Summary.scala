@@ -18,11 +18,11 @@ object Summary {
   case class ClassSummary(
     outer: Potentials,
     cls: ClassSymbol,
-    parents: List[Potentials]
+    parentOuter: Map[ClassSymbol, Potentials]
   ) {
     private val summaryCache: mutable.Map[ClassSymbol, ClassSummary] = mutable.Map.empty
 
-    def summaryOf(member: Symbol): Summary =
+    def summaryOf(member: Symbol)(implicit ctx: Context): Summary =
       if (summaryCache.contains(member)) summaryCache(clmembers)
       else trace("summary for " + member.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
         val summary =
@@ -36,6 +36,14 @@ object Summary {
         summaryCache(symbol) = summary
         summary
       }
+
+    def effectsOf(member: Symbol)(implicit ctx: Context): Effects = summaryOf(symbol)._2
+
+    def potentialsOf(member: Symbol)(implicit ctx: Context): Potentials = summaryOf(symbol)._1
+
+    def show(implicit ctx: Context): String =
+      "ClassSummary(" + cls.name.show + ", outer = " + Potentials.show(outer) +
+        "parents = {" + parentOuter.map { (k, v) => k.show + "->" + "[" Potentials.show(v) + "]" } + "}"
   }
 
   def show(summary: Summary)(implicit ctx: Context): String = {
