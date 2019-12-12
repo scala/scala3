@@ -107,7 +107,7 @@ steps:
   - test_sbt
   - test_java11
   commands:
-  - ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+  - ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease ;project tasty-core-scala2; publishSigned ;sonatypeBundleRelease"
   environment:
     NIGHTLYBUILD: yes
     PGP_PW:
@@ -135,7 +135,7 @@ steps:
   - test_java11
   commands:
   - ./project/scripts/sbt dist-bootstrapped/packArchive
-  - ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+  - ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease ;project tasty-core-scala2; publishSigned ;sonatypeBundleRelease"
   environment:
     PGP_PW:
       from_secret: pgp_pw
