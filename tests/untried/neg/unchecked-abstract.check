@@ -24,4 +24,4 @@ unchecked-abstract.scala:37: warning: abstract type T in type Invariant[M.this.T
                                        ^
 error: No warnings can be incurred under -Xfatal-warnings.
 8 warnings found
-one error found
+1 error found

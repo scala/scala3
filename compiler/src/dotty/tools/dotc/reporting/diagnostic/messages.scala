@@ -1908,10 +1908,15 @@ object messages {
   }
 
   case class PackageNameAlreadyDefined(pkg: Symbol)(implicit ctx: Context) extends Message(PackageNameAlreadyDefinedID) {
-    val msg: String = em"${pkg} is already defined, cannot be a ${hl("package")}"
+    val (where, or) =
+      if pkg.associatedFile == null then ("", "")
+      else (s" in ${pkg.associatedFile}", " or delete the containing class file")
+    val msg: String = em"""${pkg.name} is the name of $pkg$where.
+                          |It cannot be used at the same time as the name of a package."""
     val kind: String = "Naming"
     val explanation: String =
-      em"An ${hl("object")} cannot have the same name as an existing ${hl("package")}. Rename either one of them."
+      em"""An ${hl("object")} or other toplevel definition cannot have the same name as an existing ${hl("package")}.
+          |Rename either one of them$or."""
   }
 
   case class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: List[Type])(implicit ctx: Context)

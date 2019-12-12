@@ -8,5 +8,5 @@ case-collision2.scala:11: warning: Class foo.HyRaX$ differs only in case from fo
 object HyRaX
        ^
 error: No warnings can be incurred under -Xfatal-warnings.
-three warnings found
-one error found
+3 warnings found
+1 error found

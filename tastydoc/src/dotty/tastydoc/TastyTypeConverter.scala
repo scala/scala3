@@ -46,7 +46,7 @@ trait TastyTypeConverter {
           case r if (info match {case reflect.IsTypeBounds(info) => true case _ => false}) => ("type", name, r)
           case r@TypeReference(_, _, _, _) => ("val", name, r)
           case ByNameReference(rChild) => ("def", name, rChild)
-          case r => throw new Exception("Match error in info of Refinement. This should not happend, please open an issue. " + r)
+          case r => throw new Exception("Match error in info of Refinement. This should not happen, please open an issue. " + r)
         }
         convertTypeToReference(reflect)(parent) match {
           case RefinedReference(p, ls) =>

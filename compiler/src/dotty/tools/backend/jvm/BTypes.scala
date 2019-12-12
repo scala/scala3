@@ -362,7 +362,7 @@ abstract class BTypes {
    *
    *  - Initializer block (JLS 8.6 / 8.7): block of statements in a java class
    *    - static initializer: executed before constructor body
-   *    - instance initializer: exectued when class is initialized (instance creation, static
+   *    - instance initializer: executed when class is initialized (instance creation, static
    *      field access, ...)
    *
    *  - A static nested class can be defined as

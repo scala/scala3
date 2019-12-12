@@ -332,7 +332,7 @@ Pattern: {
   val x: scala.Int = 45
   x.+(scala.internal.Quoted.patternHole[scala.Int])
 }
-Result: Some(List(Expr(a)))
+Result: None
 
 Scrutinee: {
   lazy val a: scala.Int = 45
@@ -622,7 +622,7 @@ Pattern: {
   def a: scala.Int = scala.internal.Quoted.patternHole[scala.Int]
   a.+(scala.internal.Quoted.patternHole[scala.Int])
 }
-Result: Some(List(Expr(a), Expr(a)))
+Result: None
 
 Scrutinee: {
   lazy val a: scala.Int = a

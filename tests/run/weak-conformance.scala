@@ -1,3 +1,4 @@
+import collection.mutable.ArrayBuffer
 object Test extends App {
   inline val b = 33
 
@@ -22,14 +23,35 @@ object Test extends App {
 
   locally {
     def f(): Int = b + 1
-    val x1 = Array(b, 33, 5.5)      ; x1: Array[Double] // b is an inline val
-    val x2 = Array(f(), 33, 5.5)    ; x2: Array[AnyVal] // f() is not a constant
+    val x1 = ArrayBuffer(b, 33, 5.5)      ; x1: ArrayBuffer[Double] // b is an inline val
+    val x2 = ArrayBuffer(f(), 33, 5.5)    ; x2: ArrayBuffer[AnyVal] // f() is not a constant
+    val x3 = ArrayBuffer(5, 11L)          ; x3: ArrayBuffer[Long]
+    val x4 = ArrayBuffer(5, 11L, 5.5)     ; x4: ArrayBuffer[AnyVal] // Long and Double found
+    val x5 = ArrayBuffer(1.0f, 2)         ; x5: ArrayBuffer[Float]
+    val x6 = ArrayBuffer(1.0f, 1234567890); x6: ArrayBuffer[AnyVal] // loss of precision
+    val x7 = ArrayBuffer(b, 33, 'a')      ; x7: ArrayBuffer[Char]
+    val x8 = ArrayBuffer(5.toByte, 11)    ; x8: ArrayBuffer[Byte]
+
+    val x9: ArrayBuffer[AnyVal] = ArrayBuffer(1.0f, 0)
+    assert(x9(0).getClass == classOf[java.lang.Float])
+    assert(x9(1).getClass == classOf[java.lang.Integer]) // expected type fully defined since ArrayBuffer is nonvariant
+    val x10 = ArrayBuffer[Any](1.0f, 0)
+    assert(x10(0).getClass == classOf[java.lang.Float])
+    assert(x10(1).getClass == classOf[java.lang.Integer])
+  }
+
+  locally {
+    // Arrays behave differently from lists since they have overloaded constructors, and weak
+    // conformance does apply for selecting one. See Issue #7630.
+    def f(): Int = b + 1
+    val x1 = Array(b, 33, 5.5)      ; x1: Array[Double]
+    val x2 = Array(f(), 33, 5.5)    ; x2: Array[Double]
     val x3 = Array(5, 11L)          ; x3: Array[Long]
-    val x4 = Array(5, 11L, 5.5)     ; x4: Array[AnyVal] // Long and Double found
+    val x4 = Array(5, 11L, 5.5)     ; x4: Array[Double]
     val x5 = Array(1.0f, 2)         ; x5: Array[Float]
-    val x6 = Array(1.0f, 1234567890); x6: Array[AnyVal] // loss of precision
-    val x7 = Array(b, 33, 'a')      ; x7: Array[Char]
-    val x8 = Array(5.toByte, 11)    ; x8: Array[Byte]
+    val x6 = Array(1.0f, 1234567890); x6: Array[Float]
+    val x7 = Array(b, 33, 'a')      ; x7: Array[Int]
+    val x8 = Array(5.toByte, 11)    ; x8: Array[Int]
 
     val x9: Array[AnyVal] = Array(1.0f, 0)
     assert(x9(0).getClass == classOf[java.lang.Float])

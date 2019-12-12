@@ -1,7 +1,7 @@
 import scala.reflect.runtime.universe._
 
 trait Overloads {
-  // makes sure noone erases to Any or AnyRef
+  // makes sure no one erases to Any or AnyRef
   def test(x: AnyRef) = "AnyRef"
   def test(x: Annotation) = "Annotation"
   def test(x: Constant) = "Constant"

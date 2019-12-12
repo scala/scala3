@@ -4,7 +4,7 @@ object Test extends App {
   assert((new x("abc")).s == "abc")
 
   assert(y("abc") == 3)
-  assert(y.foo == 3)
+  assert(yy.foo == 3)
 
   val x2: X2 = "abc"
   assert(X2.bar == "hi")

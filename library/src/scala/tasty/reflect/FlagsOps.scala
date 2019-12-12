@@ -56,7 +56,7 @@ trait FlagsOps extends Core {
     /** Is this symbol `inline` */
     def Inline: Flags = internal.Flags_Inline
 
-    /** Is this symbol markes as a macro. An inline method containing toplevel splices */
+    /** Is this symbol marked as a macro. An inline method containing toplevel splices */
     def Macro: Flags = internal.Flags_Macro
 
     /** Is this symbol marked as static. Mapped to static Java member */

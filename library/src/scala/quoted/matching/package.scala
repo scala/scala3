@@ -10,7 +10,7 @@ package object matching {
    *  @param tpe quoted type of the implicit parameter
    *  @param qctx current context
    */
-  def searchImplicitExpr[T](given tpe: Type[T], qctx: QuoteContext): Option[Expr[T]] = {
+  def summonExpr[T](given tpe: Type[T], qctx: QuoteContext): Option[Expr[T]] = {
     import qctx.tasty.{_, given}
     searchImplicit(tpe.unseal.tpe) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[Expr[T]])

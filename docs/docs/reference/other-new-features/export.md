@@ -70,7 +70,7 @@ It is a compile-time error if a simple or renaming selector does not identify an
 members.
 
 Type members are aliased by type definitions, and term members are aliased by method definitions. Export aliases copy the type and value parameters of the members they refer to.
-Export aliases are always `final`. Aliases of given instances are again defined as givens (and aliases of old-style implicits are `implicit`). There are no other modifiers that can be given to an alias. This has the following consequences for overriding:
+Export aliases are always `final`. Aliases of given instances are again defined as givens (and aliases of old-style implicits are `implicit`). Aliases of inline methods or values are again defined `inline`. There are no other modifiers that can be given to an alias. This has the following consequences for overriding:
 
  - Export aliases cannot be overridden, since they are final.
  - Export aliases cannot override concrete members in base classes, since they are
@@ -119,7 +119,6 @@ class B { val c: Int }
 object a { val b = new B }
 export a._
 export b._
-}
 ```
 Is the `export b._` clause legal? If yes, what does it export? Is it equivalent to `export a.b._`? What about if we swap the last two clauses?
 ```

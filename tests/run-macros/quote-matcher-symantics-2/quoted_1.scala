@@ -11,7 +11,7 @@ object Macros {
 
   private def impl[T: Type](sym: Symantics[T], a: Expr[DSL])(given qctx: QuoteContext): Expr[T] = {
 
-    def lift(e: Expr[DSL])(implicit env: Map[Sym[DSL], Expr[T]]): Expr[T] = e match {
+    def lift(e: Expr[DSL])(implicit env: Map[Int, Expr[T]]): Expr[T] = e match {
 
       case '{ LitDSL(${Const(c)}) } => sym.value(c)
 
@@ -21,23 +21,31 @@ object Macros {
 
       case '{ ($f: DSL => DSL)($x: DSL) } => sym.app(liftFun(f), lift(x))
 
-      case '{ val $x: DSL = $value; $body: DSL } => lift(body)(env + (x -> lift(value)))
+      case '{ val x: DSL = $value; ($bodyFn: DSL => DSL)(x) } =>
+        Expr.open(bodyFn) { (body1, close) =>
+          val (i, nEnvVar) = freshEnvVar()
+          lift(close(body1)(nEnvVar))(env + (i -> lift(value)))
+        }
 
-      case Sym(b) if env.contains(b) => env(b)
+      case '{ envVar(${Const(i)}) } => env(i)
 
       case _ =>
         import qctx.tasty.{_, given}
-        error("Expected explicit DSL", e.unseal.pos)
+        error("Expected explicit DSL " + e.show, e.unseal.pos)
         ???
     }
 
-    def liftFun(e: Expr[DSL => DSL])(implicit env: Map[Sym[DSL], Expr[T]]): Expr[T => T] = e match {
-      case '{ ($x: DSL) => ($body: DSL) } =>
-        sym.lam((y: Expr[T]) => lift(body)(env + (x -> y)))
-
+    def liftFun(e: Expr[DSL => DSL])(implicit env: Map[Int, Expr[T]]): Expr[T => T] = e match {
+      case '{ (x: DSL) => ($bodyFn: DSL => DSL)(x) } =>
+        sym.lam((y: Expr[T]) =>
+          Expr.open(bodyFn) { (body1, close) =>
+            val (i, nEnvVar) = freshEnvVar()
+            lift(close(body1)(nEnvVar))(env + (i -> y))
+          }
+        )
       case _ =>
         import qctx.tasty.{_, given}
-        error("Expected explicit DSL => DSL", e.unseal.pos)
+        error("Expected explicit DSL => DSL "  + e.show, e.unseal.pos)
         ???
     }
 
@@ -45,6 +53,13 @@ object Macros {
   }
 
 }
+
+def freshEnvVar()(given QuoteContext): (Int, Expr[DSL]) = {
+  v += 1
+  (v, '{envVar(${Expr(v)})})
+}
+var v = 0
+def envVar(i: Int): DSL = ???
 
 //
 // DSL in which the user write the code

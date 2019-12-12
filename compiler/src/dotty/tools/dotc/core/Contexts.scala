@@ -471,7 +471,10 @@ object Contexts {
         else {
           val newCtx = fresh.setSource(source)
           if (newCtx.compilationUnit == null)
-            newCtx.setCompilationUnit(CompilationUnit(source))
+            // `source` might correspond to a file not necessarily
+            // in the current project (e.g. when inlining library code),
+            // so set `mustExist` to false.
+            newCtx.setCompilationUnit(CompilationUnit(source, mustExist = false))
           sourceCtx = sourceCtx.updated(source, newCtx)
           newCtx
         }
