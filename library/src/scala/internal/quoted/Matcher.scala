@@ -152,7 +152,8 @@ private[quoted] object Matcher {
             matched(scrutinee.seal)
 
           // Matches an open term and wraps it into a lambda that provides the free variables
-          case (scrutinee, pattern @ Apply(Select(TypeApply(Ident("patternHole"), List(Inferred())), "apply"), args0 @ IdentArgs(args))) =>
+          case (scrutinee, pattern @ Apply(Select(TypeApply(patternHole, List(Inferred())), "apply"), args0 @ IdentArgs(args)))
+              if patternHole.symbol == internal.Definitions_InternalQuoted_patternHole =>
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
               val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
               new TreeMap {
