@@ -214,12 +214,11 @@ object Checking {
           pot match {
             case ThisRef(cls) =>
               if (
-                !isPackage &&
+                cls eq state.thisClass &&
                 !state.fieldsInited.contains(field) &&
-                !field.hasAnnotation(defn.ScalaStaticAnnot) &&
                 !field.is(Flags.Lazy)
               ) {
-                traceIndented("initialized: " + state.fieldsInited)
+                traceIndented("initialized: " + state.fieldsInited, init)
 
                 // should issue error, use warning so that it will continue compile subprojects
                 theCtx.warning(
