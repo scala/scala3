@@ -62,7 +62,7 @@ object representations extends TastyExtractor {
 
   /** This contains all the PackageRepresentation representing a single package
    */
-  class EmulatedPackageRepresentation(val name: String, val path: List[String]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members {
+  class EmulatedPackageRepresentation(val name: String, val path: List[String])(given mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members {
     override val parentRepresentation = None
     override val annotations = Nil
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = None
@@ -82,32 +82,32 @@ object representations extends TastyExtractor {
     }
   }
 
-  class PackageRepresentation(reflect: Reflection, internal: reflect.PackageClause, override val parentRepresentation: Option[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members {
-    import reflect._
+  class PackageRepresentation(reflect: Reflection, internal: reflect.PackageClause, override val parentRepresentation: Option[Representation])(given mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members {
+    import reflect.{given, _}
 
-    override val (name, path) = extractPackageNameAndPath(internal.pid.show(implicitly[reflect.Context].withoutColors))
+    override val (name, path) = extractPackageNameAndPath(internal.pid.show)
     override val members = internal.stats.map(convertToRepresentation(reflect)(_, Some(this)))
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
 
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 
-  class ImportRepresentation(reflect: Reflection, internal: reflect.Import, override val parentRepresentation: Option[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation {
-    import reflect._
+  class ImportRepresentation(reflect: Reflection, internal: reflect.Import, override val parentRepresentation: Option[Representation])(given mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation {
+    import reflect.{given, _}
 
     override val name = if (internal.selectors.size > 1){
         internal.selectors.map(_.toString).mkString("{", ", ", "}")
       } else {
         internal.selectors.head.toString
       }
-    override val path = internal.expr.symbol.show(implicitly[reflect.Context].withoutColors).split("\\.").toList
+    override val path = internal.expr.symbol.show.split("\\.").toList
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
 
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 
-  class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef, override val parentRepresentation: Option[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams {
-    import reflect._
+  class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef, override val parentRepresentation: Option[Representation])(given mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams {
+    import reflect.{given, _}
 
     override val path = extractPath(reflect)(internal.symbol)
     override val parents = extractParents(reflect)(internal.parents)
@@ -115,7 +115,7 @@ object representations extends TastyExtractor {
     override val constructors =
       (convertToRepresentation(reflect)(internal.constructor, Some(this)) ::
       (internal.body.flatMap{_ match {
-        case reflect.IsDefDef(d@reflect.DefDef(_)) => if(d.name == "<init>") Some(d) else None
+        case d: reflect.DefDef => if(d.name == "<init>") Some(d) else None
         case _ => None
         }
       }.map(convertToRepresentation(reflect)(_, Some(this)))
@@ -124,7 +124,7 @@ object representations extends TastyExtractor {
         case _ => None
         }
       }
-    override val typeParams = internal.constructor.typeParams.map(x => x.show(implicitly[reflect.Context].withoutColors).stripPrefix("type "))
+    override val typeParams = internal.constructor.typeParams.map(x => x.show.stripPrefix("type "))
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
     var knownSubclasses: List[Reference] = Nil
 
@@ -132,19 +132,23 @@ object representations extends TastyExtractor {
 
     override val name = internal.name
 
-    override val companion = extractCompanion(reflect)(internal.symbol.companionModule, internal.symbol.companionClass, !isObject)
+    override val companion = extractCompanion(reflect)(
+      Some(internal.symbol.companionModule).filter(_.exists), // TODO: refactor later, there is now a NoSymbol
+      Some(internal.symbol.companionClass).filter(_.exists), // TODO: refactor later, there is now a NoSymbol
+      !isObject
+    )
     override val members: List[Representation with Modifiers] = extractClassMembers(reflect)(internal.body, internal.symbol, Some(this))
 
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 
-  class DefRepresentation(reflect: Reflection, internal: reflect.DefDef, override val parentRepresentation: Option[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue {
-    import reflect._
+  class DefRepresentation(reflect: Reflection, internal: reflect.DefDef, override val parentRepresentation: Option[Representation])(given mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue {
+    import reflect.{given, _}
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
-    override val typeParams = internal.typeParams.map(x => x.show(implicitly[reflect.Context].withoutColors).stripPrefix("type "))
+    override val typeParams = internal.typeParams.map(x => x.show.stripPrefix("type "))
 
     override val paramLists = internal.paramss.map{p =>
       new ParamList {
@@ -157,8 +161,8 @@ object representations extends TastyExtractor {
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 
-  class ValRepresentation(reflect: Reflection, internal: reflect.ValDef, override val parentRepresentation: Option[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with ReturnValue {
-    import reflect._
+  class ValRepresentation(reflect: Reflection, internal: reflect.ValDef, override val parentRepresentation: Option[Representation])(given mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with ReturnValue {
+    import reflect.{given, _}
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
@@ -170,8 +174,8 @@ object representations extends TastyExtractor {
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 
-  class TypeRepresentation(reflect: Reflection, internal: reflect.TypeDef, override val parentRepresentation: Option[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams {
-    import reflect._
+  class TypeRepresentation(reflect: Reflection, internal: reflect.TypeDef, override val parentRepresentation: Option[Representation])(given mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams {
+    import reflect.{given, _}
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
@@ -179,20 +183,20 @@ object representations extends TastyExtractor {
     override val typeParams = Nil
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
     val alias: Option[Reference] = internal.rhs match{
-      case reflect.IsTypeBoundsTree(t) => Some(convertTypeOrBoundsToReference(reflect)(t.tpe))
-      case reflect.IsTypeTree(t) => Some(convertTypeOrBoundsToReference(reflect)(t.tpe.asInstanceOf[reflect.TypeOrBounds]))
+      case t: TypeBoundsTree => Some(convertTypeOrBoundsToReference(reflect)(t.tpe))
+      case t: TypeTree => Some(convertTypeOrBoundsToReference(reflect)(t.tpe.asInstanceOf[reflect.TypeOrBounds]))
       case _ => None
     }
     override def isAbstract: Boolean = !alias.isDefined
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 
-  def convertToRepresentation(reflect: Reflection)(tree: reflect.Tree, parentRepresentation: Option[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]): Representation = {
-    import reflect._
+  def convertToRepresentation(reflect: Reflection)(tree: reflect.Tree, parentRepresentation: Option[Representation])(given mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]): Representation = {
+    import reflect.{given, _}
 
     tree match {
-      case reflect.IsPackageClause(t@reflect.PackageClause(_)) =>
-        val noColorPid = t.pid.symbol.show(implicitly[reflect.Context].withoutColors)
+      case t: reflect.PackageClause =>
+        val noColorPid = t.pid.symbol.show
         val emulatedPackage = mutablePackagesMap.get(noColorPid) match {
           case Some(x) => x
           case None =>
@@ -205,15 +209,15 @@ object representations extends TastyExtractor {
         emulatedPackage.packagesMembers = r :: emulatedPackage.packagesMembers
         r
 
-      case reflect.IsImport(t@reflect.Import(_)) => new ImportRepresentation(reflect, t, parentRepresentation)
+      case t: reflect.Import => new ImportRepresentation(reflect, t, parentRepresentation)
 
-      case reflect.IsClassDef(t@reflect.ClassDef(_)) => new ClassRepresentation(reflect, t, parentRepresentation)
+      case t: reflect.ClassDef => new ClassRepresentation(reflect, t, parentRepresentation)
 
-      case reflect.IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t, parentRepresentation)
+      case t: reflect.DefDef => new DefRepresentation(reflect, t, parentRepresentation)
 
-      case reflect.IsValDef(t@reflect.ValDef(_)) => new ValRepresentation(reflect, t, parentRepresentation)
+      case t: reflect.ValDef => new ValRepresentation(reflect, t, parentRepresentation)
 
-      case reflect.IsTypeDef(t@reflect.TypeDef(_)) => new TypeRepresentation(reflect, t, parentRepresentation)
+      case t: reflect.TypeDef => new TypeRepresentation(reflect, t, parentRepresentation)
 
       case _ => throw new Exception("Tree match error in conversion to representation. Please open an issue. " + tree)
   }}
