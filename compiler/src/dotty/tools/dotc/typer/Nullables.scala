@@ -224,17 +224,17 @@ object Nullables with
       val refSym = ref.symbol
       val refOwner = refSym.owner
 
-      @tailrec def usedWithinClosure(s: Symbol): Boolean =
+      @tailrec def recur(s: Symbol): Boolean =
         s != NoSymbol
         && s != refOwner
         && (s.isOneOf(Lazy | Method) // not at the rhs of lazy ValDef or in a method (or lambda)
           || s.isClass // not in a class
           // TODO: need to check by-name paramter
-          || usedWithinClosure(s.owner))
+          || recur(s.owner))
 
       refSym.is(Mutable) // if it is immutable, we don't need to check the rest conditions
       && refOwner.isTerm
-      && usedWithinClosure(curCtx.owner)
+      && recur(curCtx.owner)
 
   given treeOps: extension (tree: Tree) with
 
@@ -330,14 +330,17 @@ object Nullables with
     def computeAssignNullable()(given Context): tree.type = tree.lhs match
       case TrackedRef(ref) =>
         val rhstp = tree.rhs.typeOpt
-        if (rhstp.isNullType || (curCtx.explicitNulls && rhstp.isNullableUnion))
-          // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
-          // lhs variable is no longer trackable. We don't need to check whether the type `T`
-          // is correct here, as typer will check it.
-          tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
-        else
-          // otherwise, we know the variable will have a non-null value
-          tree.withNotNullInfo(NotNullInfo(Set(ref), Set()))
+        if curCtx.explicitNulls && ref.isNullableUnion then
+          if rhstp.isNullType || rhstp.isNullableUnion then
+            // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
+            // lhs variable is no longer trackable. We don't need to check whether the type `T`
+            // is correct here, as typer will check it.
+            tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
+          else
+            // If the initial type is nullable and the assigned value is non-null,
+            // we add it to the NotNull.
+            tree.withNotNullInfo(NotNullInfo(Set(ref), Set()))
+        else tree
       case _ => tree
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)

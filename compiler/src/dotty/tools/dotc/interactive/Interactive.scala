@@ -67,7 +67,7 @@ object Interactive {
 
   /** Does this tree define a symbol ? */
   def isDefinition(tree: Tree): Boolean =
-    tree.isInstanceOf[DefTree with NameTree]
+    tree.isInstanceOf[NamedDefTree]
 
   /** The type of the closest enclosing tree with a type containing position `pos`. */
   def enclosingType(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Type = {

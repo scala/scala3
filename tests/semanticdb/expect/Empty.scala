@@ -1,0 +1,7 @@
+class A {
+  def b: B = ???
+}
+
+class B {
+  def a: A = ???
+}

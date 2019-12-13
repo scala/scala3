@@ -128,9 +128,9 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
       (if(c.authors.nonEmpty) Md.bold(Md.italics("authors")) + " " + c.authors.mkString(", ") + "\n" else "") +
       (if(c.see.nonEmpty) Md.bold(Md.italics("see")) + " "  + c.see.mkString(", ") + "\n" else "") +
       (if(c.result.isDefined) Md.bold(Md.italics("return")) + " "  + c.result.get + "\n" else "") +
-      (if(c.throws.nonEmpty) c.throws.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
-      (if(c.valueParams.nonEmpty) c.valueParams.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
-      (if(c.typeParams.nonEmpty) c.typeParams.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
+      (if(c.throws.nonEmpty) c.throws.map { case (x, y) => Md.bold(Md.italics(x)) + " " + y }.mkString("\n") else "") +
+      (if(c.valueParams.nonEmpty) c.valueParams.map { case (x, y) => Md.bold(Md.italics(x)) + " " + y }.mkString("\n") + "\n" else "") +
+      (if(c.typeParams.nonEmpty) c.typeParams.map { case (x, y) => Md.bold(Md.italics(x)) + " " + y }.mkString("\n") + "\n" else "") +
       (if(c.version.isDefined) Md.bold(Md.italics("version")) + " "  + c.version.get + "\n" else "") +
       (if(c.since.isDefined) Md.bold(Md.italics("since")) + " "  + c.since.get + "\n" else "") +
       (if(c.todo.nonEmpty) Md.bold(Md.italics("TODO")) + " " + c.todo.mkString(", ") + "\n" else "") +
@@ -139,9 +139,9 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
       (if(c.example.nonEmpty) Md.bold(Md.italics("Example")) + " " + c.example.mkString("\n") + "\n" else "") +
       (if(c.constructor.isDefined) Md.bold(Md.italics("Constructor")) + " "  + c.constructor.get + "\n" else "") +
       (if(c.group.isDefined) Md.bold(Md.italics("Group")) + " "  + c.group.get + "\n" else "") +
-      (if(c.groupDesc.nonEmpty) c.groupDesc.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
-      (if(c.groupNames.nonEmpty) c.groupNames.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
-      (if(c.groupPrio.nonEmpty) c.groupPrio.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
+      (if(c.groupDesc.nonEmpty) c.groupDesc.map { case (x, y) => Md.bold(Md.italics(x)) + " " + y }.mkString("\n") else "") +
+      (if(c.groupNames.nonEmpty) c.groupNames.map { case (x, y) => Md.bold(Md.italics(x)) + " " + y }.mkString("\n") + "\n" else "") +
+      (if(c.groupPrio.nonEmpty) c.groupPrio.map { case (x, y) => Md.bold(Md.italics(x)) + " " + y }.mkString("\n") + "\n" else "") +
       (if(c.hideImplicitConversions.nonEmpty) Md.bold(Md.italics("Hide Implicit Conversions")) + " " + c.hideImplicitConversions.mkString(", ") + "\n" else "")
     case None => ""
   }

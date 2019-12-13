@@ -2289,7 +2289,7 @@ class Typer extends Namer
   }
 
   /** Tries to adapt NotNullInfos from creation context to the DefTree,
-   *  returns whether the adaption is successed. The adaption only success if the
+   *  returns whether the adaption took place. An adaption only takes place if the
    *  DefTree has a symbol and it has not been completed (is not forward referenced).
    */
   def adaptCreationContext(mdef: untpd.DefTree)(implicit ctx: Context): Boolean =

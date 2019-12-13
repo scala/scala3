@@ -2526,16 +2526,16 @@ object Parsers {
           case t => simplePatternRest(t)
         }
       case USCORE =>
-        val wildIndent = wildcardIdent()
+        val wildIdent = wildcardIdent()
 
         // compatibility for Scala2 `x @ _*` and `_*` syntax
         // `x: _*' is parsed in `ascription'
         if (isIdent(nme.raw.STAR)) {
           in.nextToken()
-          if (in.token != RPAREN) syntaxError(SeqWildcardPatternPos(), wildIndent.span)
-          atSpan(wildIndent.span) { Ident(tpnme.WILDCARD_STAR) }
+          if (in.token != RPAREN) syntaxError(SeqWildcardPatternPos(), wildIdent.span)
+          atSpan(wildIdent.span) { Ident(tpnme.WILDCARD_STAR) }
         }
-        else wildIndent
+        else wildIdent
       case LPAREN =>
         atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
       case QUOTE =>

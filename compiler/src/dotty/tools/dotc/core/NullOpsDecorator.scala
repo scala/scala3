@@ -51,8 +51,8 @@ object NullOpsDecorator {
       }
 
       val self1 = self.widenDealias
-      val striped = strip(self1)
-      if (striped ne self1) striped else self
+      val stripped = strip(self1)
+      if (stripped ne self1) stripped else self
     }
 
     /** Like `stripNull`, but removes only the `JavaNull`s. */
@@ -73,14 +73,14 @@ object NullOpsDecorator {
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
     def isNullableUnion(implicit ctx: Context): Boolean = {
-      val striped = self.stripNull()
-      striped ne self
+      val stripped = self.stripNull()
+      stripped ne self
     }
 
     /** Is self (after widening and dealiasing) a type of the form `T | JavaNull`? */
     def isJavaNullableUnion(implicit ctx: Context): Boolean = {
-      val striped = self.stripNull(true)
-      striped ne self
+      val stripped = self.stripNull(true)
+      stripped ne self
     }
   }
 }
