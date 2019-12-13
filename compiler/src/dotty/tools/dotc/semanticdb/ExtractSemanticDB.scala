@@ -53,7 +53,7 @@ class ExtractSemanticDB extends Phase with
     /** The index of a local symbol */
     private val locals = mutable.HashMap[Symbol, Int]()
 
-    /** The bodies of synthetic localså */
+    /** The bodies of synthetic locals */
     private val localBodies = mutable.HashMap[Symbol, Tree]()
 
     /** The local symbol(s) starting at given offset */

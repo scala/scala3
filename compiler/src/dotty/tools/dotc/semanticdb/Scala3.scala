@@ -142,7 +142,7 @@ object Scala3 with
 
   end LocalSymbol
 
-  private inline def (char: Char) `is/.#])` = (char: @switch) match
+  private inline def (char: Char) isGlobalTerminal = (char: @switch) match
     case '/' | '.' | '#' | ']' | ')' => true
     case _                           => false
 
@@ -152,8 +152,8 @@ object Scala3 with
     def isRootPackage: Boolean = RootPackage == symbol
     def isEmptyPackage: Boolean = EmptyPackage == symbol
 
-    def isGlobal: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last.`is/.#])`
-    def isLocal: Boolean = !symbol.isEmpty && !symbol.isMulti && !symbol.last.`is/.#])`
+    def isGlobal: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last.isGlobalTerminal
+    def isLocal: Boolean = !symbol.isEmpty && !symbol.isMulti && !symbol.last.isGlobalTerminal
     def isMulti: Boolean = symbol startsWith ";"
 
     def isConstructor: Boolean = ctor matches symbol
