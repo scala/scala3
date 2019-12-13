@@ -1,9 +1,16 @@
 import scala.quoted._
 
 object Macro {
-
   case class Record(elems: (String, Any)*) extends Selectable {
     def selectDynamic(name: String): Any = elems.find(_._1 == name).get._2
+    def toTuple = {
+      //todo: unnecessary transformation?
+      Tuple.fromArray(elems.toArray)
+    }
+  }
+
+  object Record {
+    def fromTuple(t: Tuple): Record = Record(t.toArray.toSeq.map(e => e.asInstanceOf[(String, Any)]): _*)
   }
 
   inline def toHMap(s: Selectable) <: Tuple = ${ toHMapImpl('s)}
@@ -28,41 +35,37 @@ object Macro {
       }
     }
 
-    // val list = println(rec(repr))
-
     val ret = rec(repr).reverse.map(e => tupleElem(e._1, e._2))
 
     Expr.ofTuple(ret)
   }
 
-  inline def toSelectable[T](s: Tuple)<: T = ${ toSelectableImpl('s, '[T])}
+  // note: T is not used ATM
+  inline def toSelectable[T](s: Tuple) <: Any = ${ toSelectableImpl('s, '[T])}
 
-  def toSelectableImpl[T](s: Expr[Tuple], tpe: Type[T])(given qctx:QuoteContext): Expr[T] = {
+  def toSelectableImpl[T](s: Expr[Tuple], tpe: Type[T])(given qctx:QuoteContext): Expr[Any] = {
     import qctx.tasty.{given, _}
 
     val repr = s.unseal.tpe.widenTermRefExpr.dealias
 
-    println(repr.show)
-    println(repr.showExtractors)
-
-    // new Record((res2._1._1, res2._1._2), (res2._2._1, res2._2._2)).asInstanceOf[Record {val name: String; val age: Int} ]
-
     def rec(tpe: Type): List[(String, Type)] = {
       tpe match {
-        // todo: check number based on prefix
+        // todo:
+        //  check number based on prefix
+        //  capture the TupleXX variants in recursion
         case AppliedType(_, args) => args.map{
           case AppliedType(_, ConstantType(Constant(name: String)) :: (info: Type) :: Nil) => (name, info)
         }
       }
     }
+
     val r = rec(repr)
-    println(r)
 
-    println(tpe.unseal.symbol)
-    println(TypeIdent(tpe.unseal.symbol))
+    val refinementType = r.foldLeft('[Record].unseal.tpe)((acc, e) => Refinement(acc, e._1, e._2)).seal
 
-    println('{new Record()}.unseal.showExtractors)
-
-    '{ ??? }
+    refinementType match {
+      case '[$qType] =>
+        '{ Record.fromTuple(${s}).asInstanceOf[${qType}] }
+    }
   }
 }

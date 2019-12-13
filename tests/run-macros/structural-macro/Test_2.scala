@@ -13,9 +13,10 @@ object Test {
     val res: (("name", String), ("age", Int)) = toHMap(person)
 
     println(res)
+    println()
 
-    // val res2: Person = toSelectable[Record](res)
+    val res2: Person = toSelectable(res)
 
-    // new Record((res2._1._1, res2._1._2), (res2._2._1, res2._2._2)).asInstanceOf[Record {val name: String; val age: Int} ]
+    println(res2)
   }
 }
