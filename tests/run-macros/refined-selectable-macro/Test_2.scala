@@ -10,7 +10,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     val person: Person = Record("name" -> "Emma", "age" -> 42).asInstanceOf[Person]
 
-    val res: (("name", String), ("age", Int)) = toHMap(person)
+    val res: (("name", String), ("age", Int)) = toTuple(person)
 
     println(res)
     println()

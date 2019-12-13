@@ -13,9 +13,9 @@ object Macro {
     def fromTuple(t: Tuple): Record = Record(t.toArray.toSeq.map(e => e.asInstanceOf[(String, Any)]): _*)
   }
 
-  inline def toHMap(s: Selectable) <: Tuple = ${ toHMapImpl('s)}
+  inline def toTuple(s: Selectable) <: Tuple = ${ toTupleImpl('s)}
 
-  def toHMapImpl(s: Expr[Selectable])(given qctx:QuoteContext): Expr[Tuple] = {
+  def toTupleImpl(s: Expr[Selectable])(given qctx:QuoteContext): Expr[Tuple] = {
     import qctx.tasty.{given, _}
 
     val repr = s.unseal.tpe.widenTermRefExpr.dealias
