@@ -57,7 +57,7 @@ object Potentials {
     }
   }
 
-  case class Cold(cls: ClassSymbol, definite: Boolean)(val source: Tree) extends Potential {
+  case class Cold(cls: ClassSymbol)(val source: Tree) extends Potential {
     def size: Int = 1
     def show(implicit ctx: Context): String = "Cold[" + cls.show + "]"
   }
@@ -85,8 +85,8 @@ object Potentials {
 
   def (ps: Potentials) leak(source: Tree): Effects = ps.map(Leak(_)(source))
 
-  def (pot: Potential) asSeenFrom(thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potential = ???
+  def (pot: Potential) asSeenFrom(thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potentials = ???
 
-  def (pots: Potentials) asSeenFrom(thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potential =
+  def (pots: Potentials) asSeenFrom(thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potentials =
     pots.flatMap(_.asSeenFrom(thisValue, currentClass, outer))
 }
