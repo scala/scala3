@@ -67,6 +67,8 @@ class JSCodeGen()(implicit ctx: Context) {
 
   // Some state --------------------------------------------------------------
 
+  private val generatedClasses = mutable.ListBuffer.empty[js.ClassDef]
+
   private val currentClassSym = new ScopedVar[Symbol]
   private val currentMethodSym = new ScopedVar[Symbol]
   private val localNames = new ScopedVar[LocalNameGenerator]
@@ -104,7 +106,11 @@ class JSCodeGen()(implicit ctx: Context) {
   // Compilation unit --------------------------------------------------------
 
   def run(): Unit = {
-    genCompilationUnit(ctx.compilationUnit)
+    try {
+      genCompilationUnit(ctx.compilationUnit)
+    } finally {
+      generatedClasses.clear()
+    }
   }
 
   /** Generates the Scala.js IR for a compilation unit
@@ -136,8 +142,6 @@ class JSCodeGen()(implicit ctx: Context) {
       }
     }
     val allTypeDefs = collectTypeDefs(cunit.tpdTree)
-
-    val generatedClasses = mutable.ListBuffer.empty[js.ClassDef]
 
     // TODO Record anonymous JS function classes
 
@@ -215,6 +219,7 @@ class JSCodeGen()(implicit ctx: Context) {
     }*/
 
     val classIdent = encodeClassNameIdent(sym)
+    val originalName = originalNameOfClass(sym)
     val isHijacked = false //isHijackedBoxedClass(sym)
 
     // Optimizer hints
@@ -308,14 +313,51 @@ class JSCodeGen()(implicit ctx: Context) {
 
       val staticInitializerStats = reflectInit.toList
       if (staticInitializerStats.nonEmpty)
-        Some(genStaticInitializerWithStats(js.Block(staticInitializerStats)))
+        List(genStaticInitializerWithStats(js.Block(staticInitializerStats)))
       else
-        None
+        Nil
+    }
+
+    val allMemberDefsExceptStaticForwarders =
+      generatedMembers ::: exports ::: optStaticInitializer
+
+    // Add static forwarders
+    val allMemberDefs = if (!isCandidateForForwarders(sym)) {
+      allMemberDefsExceptStaticForwarders
+    } else {
+      if (isStaticModule(sym)) {
+        /* If the module class has no linked class, we must create one to
+         * hold the static forwarders. Otherwise, this is going to be handled
+         * when generating the companion class.
+         */
+        if (!sym.linkedClass.exists) {
+          val forwarders = genStaticForwardersFromModuleClass(Nil, sym)
+          if (forwarders.nonEmpty) {
+            val forwardersClassDef = js.ClassDef(
+                js.ClassIdent(ClassName(classIdent.name.nameString.stripSuffix("$"))),
+                originalName,
+                ClassKind.Class,
+                None,
+                Some(js.ClassIdent(ir.Names.ObjectClass)),
+                Nil,
+                None,
+                None,
+                forwarders,
+                Nil
+            )(js.OptimizerHints.empty)
+            generatedClasses += forwardersClassDef
+          }
+        }
+        allMemberDefsExceptStaticForwarders
+      } else {
+        val forwarders = genStaticForwardersForClassOrInterface(
+            allMemberDefsExceptStaticForwarders, sym)
+        allMemberDefsExceptStaticForwarders ::: forwarders
+      }
     }
 
     // Hashed definitions of the class
-    val hashedDefs =
-      ir.Hashers.hashMemberDefs(generatedMembers ++ exports ++ optStaticInitializer)
+    val hashedDefs = ir.Hashers.hashMemberDefs(allMemberDefs)
 
     // The complete class definition
     val kind =
@@ -325,7 +367,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
     val classDefinition = js.ClassDef(
         classIdent,
-        originalNameOfClass(sym),
+        originalName,
         kind,
         None,
         Some(encodeClassNameIdent(sym.superClass)),
@@ -386,7 +428,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genInterface(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
-    implicit val pos: Position = sym.span
+    implicit val pos: SourcePosition = sym.sourcePos
 
     val classIdent = encodeClassNameIdent(sym)
 
@@ -407,9 +449,13 @@ class JSCodeGen()(implicit ctx: Context) {
 
     val superInterfaces = genClassInterfaces(sym)
 
+    val genMethodsList = generatedMethods.toList
+    val allMemberDefs =
+      if (!isCandidateForForwarders(sym)) genMethodsList
+      else genMethodsList ::: genStaticForwardersForClassOrInterface(genMethodsList, sym)
+
     // Hashed definitions of the interface
-    val hashedDefs =
-      ir.Hashers.hashMemberDefs(generatedMethods.toList)
+    val hashedDefs = ir.Hashers.hashMemberDefs(allMemberDefs)
 
     js.ClassDef(
         classIdent,
@@ -433,6 +479,118 @@ class JSCodeGen()(implicit ctx: Context) {
     } yield {
       encodeClassNameIdent(intf)
     }
+  }
+
+  // Static forwarders -------------------------------------------------------
+
+  /* This mimics the logic in BCodeHelpers.addForwarders and the code that
+   * calls it, except that we never have collisions with existing methods in
+   * the companion class. This is because in the IR, only methods with the
+   * same `MethodName` (including signature) and that are also
+   * `PublicStatic` would collide. There should never be an actual collision
+   * because the only `PublicStatic` methods that are otherwise generated are
+   * the bodies of SAMs, which have mangled names. If that assumption is
+   * broken, an error message is emitted asking the user to report a bug.
+   *
+   * It is important that we always emit forwarders, because some Java APIs
+   * actually have a public static method and a public instance method with
+   * the same name. For example the class `Integer` has a
+   * `def hashCode(): Int` and a `static def hashCode(Int): Int`. The JVM
+   * back-end considers them as colliding because they have the same name,
+   * but we must not.
+   */
+
+  /** Is the given Scala class, interface or module class a candidate for
+   *  static forwarders?
+   */
+  def isCandidateForForwarders(sym: Symbol): Boolean = {
+    // it must be a top level class
+    sym.isStatic
+  }
+
+  /** Gen the static forwarders to the members of a class or interface for
+   *  methods of its companion object.
+   *
+   *  This is only done if there exists a companion object and it is not a JS
+   *  type.
+   *
+   *  Precondition: `isCandidateForForwarders(sym)` is true
+   */
+  def genStaticForwardersForClassOrInterface(
+      existingMembers: List[js.MemberDef], sym: Symbol)(
+      implicit pos: SourcePosition): List[js.MemberDef] = {
+    val module = sym.companionModule
+    if (!module.exists) {
+      Nil
+    } else {
+      val moduleClass = module.moduleClass
+      if (!isJSType(moduleClass))
+        genStaticForwardersFromModuleClass(existingMembers, moduleClass)
+      else
+        Nil
+    }
+  }
+
+  /** Gen the static forwarders for the methods of a module class.
+   *
+   *  Precondition: `isCandidateForForwarders(moduleClass)` is true
+   */
+  def genStaticForwardersFromModuleClass(existingMembers: List[js.MemberDef],
+      moduleClass: Symbol)(
+      implicit pos: SourcePosition): List[js.MemberDef] = {
+
+    assert(moduleClass.is(ModuleClass), moduleClass)
+
+    val existingPublicStaticMethodNames = existingMembers.collect {
+      case js.MethodDef(flags, name, _, _, _, _)
+          if flags.namespace == js.MemberNamespace.PublicStatic =>
+        name.name
+    }.toSet
+
+    val members = {
+      import dotty.tools.backend.jvm.DottyBackendInterface.ExcludedForwarderFlags
+      moduleClass.info.membersBasedOnFlags(required = Flags.Method,
+          excluded = ExcludedForwarderFlags).map(_.symbol)
+    }
+
+    def isExcluded(m: Symbol): Boolean = {
+      def hasAccessBoundary = m.accessBoundary(defn.RootClass) ne defn.RootClass
+      m.is(Deferred) || m.isConstructor || hasAccessBoundary || (m.owner eq defn.ObjectClass)
+    }
+
+    val forwarders = for {
+      m <- members
+      if !isExcluded(m)
+    } yield {
+      withNewLocalNameScope {
+        val flags = js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic)
+        val methodIdent = encodeMethodSym(m)
+        val originalName = originalNameOfMethod(m)
+        val jsParams = for {
+          (paramName, paramInfo) <- m.info.paramNamess.flatten.zip(m.info.paramInfoss.flatten)
+        } yield {
+          js.ParamDef(freshLocalIdent(paramName), NoOriginalName,
+              toIRType(paramInfo), mutable = false, rest = false)
+        }
+        val resultType = toIRType(m.info.resultType)
+
+        if (existingPublicStaticMethodNames.contains(methodIdent.name)) {
+          ctx.error(
+              "Unexpected situation: found existing public static method " +
+              s"${methodIdent.name.nameString} in the companion class of " +
+              s"${moduleClass.fullName}; cannot generate a static forwarder " +
+              "the method of the same name in the object." +
+              "Please report this as a bug in the Scala.js support in dotty.",
+              pos)
+        }
+
+        js.MethodDef(flags, methodIdent, originalName, jsParams, resultType, Some {
+          genApplyMethod(genLoadModule(moduleClass), m, jsParams.map(_.ref))
+        })(OptimizerHints.empty, None)
+      }
+    }
+
+    forwarders.toList
   }
 
   // Generate the fields of a class ------------------------------------------
@@ -1305,14 +1463,12 @@ class JSCodeGen()(implicit ctx: Context) {
       args: List[js.Tree])(implicit pos: SourcePosition): js.Tree = {
 
     val className = encodeClassName(clazz)
-    val moduleClass = clazz.companionModule.moduleClass
-
     val initName = encodeMethodSym(ctor).name
     val newName = MethodName(newSimpleMethodName, initName.paramTypeRefs,
         jstpe.ClassRef(className))
     val newMethodIdent = js.MethodIdent(newName)
 
-    js.Apply(js.ApplyFlags.empty, genLoadModule(moduleClass), newMethodIdent, args)(
+    js.ApplyStatic(js.ApplyFlags.empty, className, newMethodIdent, args)(
         jstpe.ClassType(className))
   }
 
@@ -1678,7 +1834,7 @@ class JSCodeGen()(implicit ctx: Context) {
         } else externalEquals
         // scalastyle:on line.size.limit
       }
-      genModuleApplyMethod(equalsMethod, List(lsrc, rsrc))
+      genApplyStatic(equalsMethod, List(lsrc, rsrc))
     } else {
       // if (lsrc eq null) rsrc eq null else lsrc.equals(rsrc)
       if (lsym == defn.StringClass) {
@@ -2727,9 +2883,9 @@ class JSCodeGen()(implicit ctx: Context) {
     } else if (sym == defn.BoxedUnit_TYPE) {
       js.ClassOf(jstpe.VoidRef)
     } else {
-      val inst = genLoadModule(sym.owner)
+      val className = encodeClassName(sym.owner)
       val method = encodeStaticMemberSym(sym)
-      js.Apply(js.ApplyFlags.empty, inst, method, Nil)(toIRType(sym.info))
+      js.ApplyStatic(js.ApplyFlags.empty, className, method, Nil)(toIRType(sym.info))
     }
   }
 
@@ -2909,7 +3065,7 @@ class JSCodeGen()(implicit ctx: Context) {
   }
 
   private def isMethodStaticInIR(sym: Symbol): Boolean =
-    sym.is(JavaStatic, butNot = JavaDefined)
+    sym.is(JavaStatic)
 
   /** Generate a Class[_] value (e.g. coming from classOf[T]) */
   private def genClassConstant(tpe: Type)(implicit pos: Position): js.Tree =
