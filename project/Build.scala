@@ -502,7 +502,6 @@ object Build {
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "7.0.0-scala-1", // used by the backend
         Dependencies.`compiler-interface`,
-        "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0", // for SemanticdbTests
         "org.jline" % "jline-reader" % "3.9.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.9.0",
         "org.jline" % "jline-terminal-jna" % "3.9.0" // needed for Windows

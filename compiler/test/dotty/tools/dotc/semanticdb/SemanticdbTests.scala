@@ -17,7 +17,6 @@ import org.junit.experimental.categories.Category
 
 import dotty.BootstrappedOnlyTests
 import dotty.tools.dotc.Main
-import dotty.tools.dotc.semanticdb.DiffAssertions._
 import dotty.tools.dotc.semanticdb.Scala3.given
 import dotty.tools.dotc.util.SourceFile
 
@@ -48,10 +47,9 @@ class SemanticdbTests with
         val expected = new String(Files.readAllBytes(expectPath), StandardCharsets.UTF_8)
         val expectName = expectPath.getFileName
         val relExpect = rootSrc.relativize(expectPath)
-        collectFailingDiff(expected, obtained, s"a/$relExpect", s"b/$relExpect") {
+        if expected.trim != obtained.trim then
           Files.write(expectPath.resolveSibling("" + expectName + ".out"), obtained.getBytes(StandardCharsets.UTF_8))
           errors += expectPath
-        }
     for source <- inputFiles().sorted do
       val filename = source.getFileName.toString
       val relpath = expectSrc.relativize(source)
