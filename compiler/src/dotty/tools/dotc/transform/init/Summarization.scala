@@ -71,13 +71,13 @@ object Summarization {
       case New(tpt) =>
         tpt.tpe.typeConstructor match {
           case tref: TypeRef =>
-            val cls = tref.classSymbol
+            val cls = tref.classSymbol.asClass
             // local class may capture, thus we need to track it
-            if (tref.prefix == NoPrefix) Warm(cls, Potentials.empty)
+            if (tref.prefix == NoPrefix) Summary.empty + Warm(cls, Potentials.empty)(expr)
             else {
               val (pots, effs) = analyze(tref.prefix, expr)
               if (pots.isEmpty) Summary.empty.withEffs(effs)
-              else Warm(cls, pots)
+              else Summary.empty + Warm(cls, pots)(expr)
             }
         }
 
@@ -229,24 +229,27 @@ object Summarization {
     if (cls.defTree.isEmpty)
       cls.info match {
         case cinfo: ClassInfo =>
-          val parentOuter = cinfo.classParents.map {
+          val parentOuter: List[(ClassSymbol, Potentials)] = cinfo.classParents.map {
             case parentTp: TypeRef =>
-              val source = TypeTree(parentTp).withSourcePos(cls.sourcePos)
-              parentTp.classSymbol -> analyze(parentTp.prefix, source)
-          }
+              val source = {
+                implicit val ctx2: Context = ctx.withSource(cls.source)
+                TypeTree(parentTp).withSpan(cls.span)
+              }
+              parentTp.classSymbol.asClass -> analyze(parentTp.prefix, source)._1
+          })
 
-          ClassSummary(Potentials.empty, cls, parentOuter)
+          ClassSummary(cls, parentOuter.toMap)
       }
     else {
       val tpl = cls.defTree.asInstanceOf[TypeDef]
       val parents = tpl.rhs.asInstanceOf[Template].parents
 
-      val parentOuter = parents.map { parent =>
+      val parentOuter: List[(ClassSymbol, Potentials)] = parents.map { parent =>
         val tref = parent.tpe.typeConstructor.asInstanceOf[TypeRef]
-        parent.classSymbol -> analyze(tref.prefix, parent)
+        parent.symbol.asClass -> analyze(tref.prefix, parent)._1
       }
 
-      ClassSummary(Potentials.empty, cls, parentOuter)
+      ClassSummary(cls, parentOuter.toMap)
     }
 
 }

@@ -78,13 +78,6 @@ object Checking {
 
     def checkClassBodyStat(tree: Tree)(implicit ctx: Context): Unit = traceOp("checking " + tree.show, init) {
       tree match {
-        case Apply(sel @ Select(_: This, _), _) if sel.symbol.isConstructor =>
-          // ctor call inside 2nd ctor
-          val tree = sel.symbol.defTree
-          traceOp("check ctor: " + sel.symbol.show, init) {
-            if (!tree.isEmpty) doCheck(tree.asInstanceOf[DefDef].rhs)(ctx.withOwner(tree.symbol))
-          }
-
         case vdef : ValDef =>
           val (pots, effs) = Summarization.analyze(vdef.rhs)(ctx.withOwner(vdef.symbol))
           theEnv.cacheFor(vdef.symbol, (pots, effs))

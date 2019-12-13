@@ -6,6 +6,7 @@ import scala.collection.mutable
 
 import core._
 import Contexts.Context
+import Symbols._
 import reporting.trace
 import config.Printers.init
 
@@ -15,28 +16,40 @@ object Summary {
   type Summary = (Potentials, Effects)
   val empty: Summary = (Potentials.empty, Effects.empty)
 
+  /** Summary of class.
+   *
+   *  It makes ObjectPart construction easier with already established raw outer for parents.
+   */
   case class ClassSummary(currentClass: ClassSymbol, parentOuter: Map[ClassSymbol, Potentials]) {
     private val summaryCache: mutable.Map[Symbol, Summary] = mutable.Map.empty
 
     def summaryOf(member: Symbol)(implicit ctx: Context): Summary =
-      if (summaryCache.contains(member)) summaryCache(clmembers)
+      if (summaryCache.contains(member)) summaryCache(member)
       else trace("summary for " + member.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
         val summary =
-          if (symbol.isConstructor)
-            Summarization.analyzeConstructor(symbol)
-          else if (symbol.is(Flags.Method))
-            Summarization.analyzeMethod(symbol)
+          if (member.isConstructor)
+            Summarization.analyzeConstructor(member)
+          else if (member.is(Flags.Method))
+            Summarization.analyzeMethod(member)
           else // field
-            Summarization.analyzeField(symbol)
+            Summarization.analyzeField(member)
 
-        summaryCache(symbol) = summary
+        summaryCache(member) = summary
         summary
       }
 
-    def effectsOf(member: Symbol)(implicit ctx: Context): Effects = summaryOf(symbol)._2
-    def potentialsOf(member: Symbol)(implicit ctx: Context): Potentials = summaryOf(symbol)._1
+    def effectsOf(member: Symbol)(implicit ctx: Context): Effects = summaryOf(member)._2
+    def potentialsOf(member: Symbol)(implicit ctx: Context): Potentials = summaryOf(member)._1
+
+    def show(implicit ctx: Context): String =
+      "ObjectPart(" + currentClass.name.show +
+        "parents = {" + parentOuter.map { case (k, v) => k.show + "->" + "[" Potentials.show(v) + "]" } + "}"
   }
 
+  /** Part of object.
+   *
+   *  It makes prefix and outer substitution easier in effect checking.
+   */
   case class ObjectPart(
     thisValue: Warm | ThisRef,                  // the potential for `this`, it can be Warm or ThisRef
     currentClass: ClassSymbol,                  // current class
@@ -49,8 +62,8 @@ object Summary {
     def summaryOf(member: Symbol)(implicit ctx: Context): Summary = ???
 
     def show(implicit ctx: Context): String =
-      "ClassSummary(" + currentClass.name.show + ", outer = " + Potentials.show(outer) +
-        "parents = {" + parentOuter.map { (k, v) => k.show + "->" + "[" Potentials.show(v) + "]" } + "}"
+      "ObjectPart(this = " + thisValue.show + ","  + currentClass.name.show + ", outer = " + Potentials.show(currentOuter) +
+        "parents = {" + parentOuter.map { case (k, v) => k.show + "->" + "[" + Potentials.show(v) + "]" } + "}"
   }
 
   def show(summary: Summary)(implicit ctx: Context): String = {

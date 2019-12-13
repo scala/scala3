@@ -26,7 +26,7 @@ case class Env(ctx: Context, summaryCache: mutable.Map[ClassSymbol, ClassSummary
     if (summaryCache.contains(cls)) summaryCache(cls)
     else trace("summary for " + cls.show, init, s => s.asInstanceOf[ClassSummary].show) {
       val summary = Summarization.classSummary(cls)
-      summaryCache(symbol) = summary
+      summaryCache(cls) = summary
       summary
     }
 }
