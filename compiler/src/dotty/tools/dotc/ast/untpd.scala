@@ -111,6 +111,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class Export(expr: Tree, selectors: List[ImportSelector])(implicit @constructorOnly src: SourceFile) extends Tree
 
   case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
+    // TODO: Make bound a typed tree?
 
     /** It's a `given` selector */
     val isGiven: Boolean = imported.name.isEmpty

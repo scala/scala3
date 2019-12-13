@@ -1,0 +1,3567 @@
+expect/Access.scala
+-------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Access.scala
+Text => empty
+Language => Scala
+Symbols => 9 entries
+Occurrences => 19 entries
+
+Symbols:
+example/Access# => class Access
+example/Access#`<init>`(). => primary ctor <init>
+example/Access#m1(). => method m1
+example/Access#m2(). => method m2
+example/Access#m3(). => method m3
+example/Access#m4(). => method m4
+example/Access#m5(). => method m5
+example/Access#m6(). => method m6
+example/Access#m7(). => method m7
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:12): Access <- example/Access#
+[3:2..3:2): <- example/Access#`<init>`().
+[3:14..3:16): m1 <- example/Access#m1().
+[3:19..3:22): ??? -> scala/Predef.`???`().
+[4:20..4:22): m2 <- example/Access#m2().
+[4:25..4:28): ??? -> scala/Predef.`???`().
+[5:10..5:16): Access -> example/Access#
+[5:22..5:24): m3 <- example/Access#m3().
+[5:27..5:30): ??? -> scala/Predef.`???`().
+[6:16..6:18): m4 <- example/Access#m4().
+[6:21..6:24): ??? -> scala/Predef.`???`().
+[7:22..7:24): m5 <- example/Access#m5().
+[7:27..7:30): ??? -> scala/Predef.`???`().
+[8:12..8:19): example -> example/
+[8:25..8:27): m6 <- example/Access#m6().
+[8:30..8:33): ??? -> scala/Predef.`???`().
+[9:6..9:8): m7 <- example/Access#m7().
+[9:11..9:14): ??? -> scala/Predef.`???`().
+
+expect/Advanced.scala
+---------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Advanced.scala
+Text => empty
+Language => Scala
+Symbols => 34 entries
+Occurrences => 92 entries
+
+Symbols:
+advanced/C# => class C
+advanced/C#[T] => typeparam T
+advanced/C#`<init>`(). => primary ctor <init>
+advanced/C#t(). => method t
+advanced/Structural# => class Structural
+advanced/Structural#`<init>`(). => primary ctor <init>
+advanced/Structural#s1(). => method s1
+advanced/Structural#s2(). => method s2
+advanced/Structural#s3(). => method s3
+advanced/Test. => final object Test
+advanced/Test.e. => val method e
+advanced/Test.e1. => val method e1
+advanced/Test.e1x. => val method e1x
+advanced/Test.s. => val method s
+advanced/Test.s1. => val method s1
+advanced/Test.s1x. => val method s1x
+advanced/Test.s2. => val method s2
+advanced/Test.s2x. => val method s2x
+advanced/Test.s3. => val method s3
+advanced/Test.s3x. => val method s3x
+advanced/Wildcards# => class Wildcards
+advanced/Wildcards#`<init>`(). => primary ctor <init>
+advanced/Wildcards#e1(). => method e1
+local0 => abstract val method x
+local1 => abstract val method x
+local2 => final class $anon
+local3 => val method x
+local4 => abstract method m
+local5 => param x
+local6 => final class $anon
+local7 => method m
+local8 => param x
+local9 => val local e3
+local10 => val local e3x
+
+Occurrences:
+[0:8..0:16): advanced <- advanced/
+[2:7..2:12): scala -> scala/
+[2:13..2:21): language -> scalaShadowing/language.
+[2:22..2:33): higherKinds -> scalaShadowing/language.higherKinds.
+[3:7..3:12): scala -> scala/
+[3:13..3:21): language -> scalaShadowing/language.
+[3:22..3:37): reflectiveCalls -> scalaShadowing/language.reflectiveCalls.
+[5:7..5:12): scala -> scala/
+[5:13..5:20): reflect -> scala/reflect/
+[5:21..5:31): Selectable -> scala/reflect/Selectable.
+[5:32..5:52): reflectiveSelectable -> scala/reflect/Selectable.reflectiveSelectable().
+[7:6..7:7): C <- advanced/C#
+[7:7..7:10): <- advanced/C#`<init>`().
+[7:8..7:9): T <- advanced/C#[T]
+[8:6..8:7): t <- advanced/C#t().
+[8:9..8:10): T -> advanced/C#[T]
+[8:13..8:16): ??? -> scala/Predef.`???`().
+[11:6..11:16): Structural <- advanced/Structural#
+[12:2..12:2): <- advanced/Structural#`<init>`().
+[12:6..12:8): s1 <- advanced/Structural#s1().
+[12:16..12:17): x <- local0
+[12:19..12:22): Int -> scala/Int#
+[12:27..12:30): ??? -> scala/Predef.`???`().
+[13:6..13:8): s2 <- advanced/Structural#s2().
+[13:16..13:17): x <- local1
+[13:19..13:22): Int -> scala/Int#
+[13:37..13:38): x <- local3
+[13:40..13:43): Int -> scala/Int#
+[13:46..13:49): ??? -> scala/Predef.`???`().
+[14:6..14:8): s3 <- advanced/Structural#s3().
+[14:16..14:17): m <- local4
+[14:18..14:19): x <- local5
+[14:21..14:24): Int -> scala/Int#
+[14:27..14:30): Int -> scala/Int#
+[14:45..14:46): m <- local7
+[14:47..14:48): x <- local8
+[14:50..14:53): Int -> scala/Int#
+[14:56..14:59): Int -> scala/Int#
+[14:62..14:65): ??? -> scala/Predef.`???`().
+[17:6..17:15): Wildcards <- advanced/Wildcards#
+[18:2..18:2): <- advanced/Wildcards#`<init>`().
+[18:6..18:8): e1 <- advanced/Wildcards#e1().
+[18:10..18:14): List -> scala/package.List#
+[18:20..18:23): ??? -> scala/Predef.`???`().
+[21:7..21:11): Test <- advanced/Test.
+[22:6..22:7): s <- advanced/Test.s.
+[22:14..22:24): Structural -> advanced/Structural#
+[22:24..22:24): -> advanced/Structural#`<init>`().
+[23:6..23:8): s1 <- advanced/Test.s1.
+[23:11..23:12): s -> advanced/Test.s.
+[23:13..23:15): s1 -> advanced/Structural#s1().
+[24:6..24:9): s1x <- advanced/Test.s1x.
+[24:12..24:12): -> scala/reflect/Selectable.reflectiveSelectable().
+[24:12..24:13): s -> advanced/Test.s.
+[24:14..24:16): s1 -> advanced/Structural#s1().
+[24:16..24:16): -> scala/Selectable#selectDynamic().
+[25:6..25:8): s2 <- advanced/Test.s2.
+[25:11..25:12): s -> advanced/Test.s.
+[25:13..25:15): s2 -> advanced/Structural#s2().
+[26:6..26:9): s2x <- advanced/Test.s2x.
+[26:12..26:12): -> scala/reflect/Selectable.reflectiveSelectable().
+[26:12..26:13): s -> advanced/Test.s.
+[26:14..26:16): s2 -> advanced/Structural#s2().
+[26:16..26:16): -> scala/Selectable#selectDynamic().
+[27:6..27:8): s3 <- advanced/Test.s3.
+[27:11..27:12): s -> advanced/Test.s.
+[27:13..27:15): s3 -> advanced/Structural#s3().
+[28:6..28:9): s3x <- advanced/Test.s3x.
+[28:12..28:12): -> scala/reflect/Selectable.reflectiveSelectable().
+[28:12..28:13): s -> advanced/Test.s.
+[28:14..28:16): s3 -> advanced/Structural#s3().
+[28:16..28:16): -> scala/Selectable#applyDynamic().
+[28:18..28:18): -> scala/reflect/ClassTag.apply().
+[28:18..28:18): -> java/lang/Integer#TYPE.
+[28:19..28:22): ??? -> scala/Predef.`???`().
+[30:6..30:7): e <- advanced/Test.e.
+[30:14..30:23): Wildcards -> advanced/Wildcards#
+[30:23..30:23): -> advanced/Wildcards#`<init>`().
+[31:6..31:8): e1 <- advanced/Test.e1.
+[31:11..31:12): e -> advanced/Test.e.
+[31:13..31:15): e1 -> advanced/Wildcards#e1().
+[32:6..32:9): e1x <- advanced/Test.e1x.
+[32:12..32:13): e -> advanced/Test.e.
+[32:14..32:16): e1 -> advanced/Wildcards#e1().
+[32:17..32:21): head -> scala/collection/IterableOps#head().
+[35:5..35:8): ??? -> scala/Predef.`???`().
+[35:11..35:14): Any -> scala/Any#
+[36:11..36:13): e3 <- local9
+[36:15..36:19): List -> scala/package.List#
+[37:12..37:15): e3x <- local10
+[37:18..37:20): e3 -> local9
+[37:21..37:25): head -> scala/collection/IterableOps#head().
+
+expect/Annotations.scala
+------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Annotations.scala
+Text => empty
+Language => Scala
+Symbols => 22 entries
+Occurrences => 52 entries
+
+Symbols:
+annot/Alias. => final object Alias
+annot/Alias.A# => type A
+annot/Annotations# => class Annotations
+annot/Annotations#S# => type S
+annot/Annotations#[T] => typeparam T
+annot/Annotations#`<init>`(). => primary ctor <init>
+annot/Annotations#`<init>`().(x) => param x
+annot/Annotations#field. => val method field
+annot/Annotations#method(). => method method
+annot/Annotations#x. => val method x
+annot/B# => class B
+annot/B#`<init>`(). => primary ctor <init>
+annot/B#`<init>`().(x) => param x
+annot/B#`<init>`(+1). => ctor <init>
+annot/B#x. => val method x
+annot/M. => final object M
+annot/M.m(). => method m
+annot/M.m().[TT] => typeparam TT
+annot/T# => trait T
+annot/T#`<init>`(). => primary ctor <init>
+local0 => selfparam self
+local1 => val local local
+
+Occurrences:
+[0:8..0:13): annot <- annot/
+[2:7..2:10): com -> com/
+[2:11..2:17): javacp -> com/javacp/
+[2:18..2:23): annot -> com/javacp/annot/
+[3:7..3:12): scala -> scala/
+[3:13..3:23): annotation -> scala/annotation/
+[3:24..3:28): meta -> scala/annotation/meta/
+[4:7..4:12): scala -> scala/
+[4:13..4:21): language -> scalaShadowing/language.
+[4:22..4:34): experimental -> scalaShadowing/language.experimental.
+[4:35..4:41): macros -> scalaShadowing/language.experimental.macros.
+[6:1..6:16): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
+[7:6..7:17): Annotations <- annot/Annotations#
+[7:17..7:72): <- annot/Annotations#`<init>`().
+[7:19..7:42): TypeParameterAnnotation -> com/javacp/annot/TypeParameterAnnotation#
+[7:43..7:44): T <- annot/Annotations#[T]
+[7:47..7:66): ParameterAnnotation -> com/javacp/annot/ParameterAnnotation#
+[7:67..7:68): x <- annot/Annotations#x.
+[7:70..7:71): T -> annot/Annotations#[T]
+[7:75..7:79): self <- local0
+[7:81..7:87): AnyRef -> scala/AnyRef#
+[8:3..8:18): FieldAnnotation -> com/javacp/annot/FieldAnnotation#
+[9:6..9:11): field <- annot/Annotations#field.
+[11:3..11:19): MethodAnnotation -> com/javacp/annot/MethodAnnotation#
+[12:6..12:12): method <- annot/Annotations#method().
+[13:5..13:20): LocalAnnotation -> com/javacp/annot/LocalAnnotation#
+[14:8..14:13): local <- local1
+[15:4..15:9): local -> local1
+[17:3..17:17): TypeAnnotation -> com/javacp/annot/TypeAnnotation#
+[18:7..18:8): S <- annot/Annotations#S#
+[21:6..21:7): B <- annot/B#
+[21:7..21:40): <- annot/B#`<init>`().
+[21:9..21:30): ConstructorAnnotation -> com/javacp/annot/ConstructorAnnotation#
+[21:33..21:34): x <- annot/B#x.
+[21:36..21:39): Int -> scala/Int#
+[22:3..22:24): ConstructorAnnotation -> com/javacp/annot/ConstructorAnnotation#
+[23:6..23:12): <- annot/B#`<init>`(+1).
+[23:20..23:20): -> annot/B#`<init>`().
+[26:1..26:17): ObjectAnnotation -> com/javacp/annot/ObjectAnnotation#
+[27:7..27:8): M <- annot/M.
+[28:3..28:18): MacroAnnotation -> com/javacp/annot/MacroAnnotation#
+[29:6..29:7): m <- annot/M.m().
+[29:8..29:10): TT <- annot/M.m().[TT]
+[29:13..29:16): Int -> scala/Int#
+[29:16..29:16): -> scala/Predef.`???`().
+[32:0..32:0): <- annot/T#`<init>`().
+[32:1..32:16): TraitAnnotation -> com/javacp/annot/TraitAnnotation#
+[33:6..33:7): T <- annot/T#
+[35:7..35:12): Alias <- annot/Alias.
+[36:7..36:8): A <- annot/Alias.A#
+[36:11..36:26): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
+[36:28..36:33): param -> scala/annotation/meta/param#
+
+expect/Anonymous.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Anonymous.scala
+Text => empty
+Language => Scala
+Symbols => 13 entries
+Occurrences => 32 entries
+
+Symbols:
+example/Anonymous# => class Anonymous
+example/Anonymous#Foo# => trait Foo
+example/Anonymous#Foo#`<init>`(). => primary ctor <init>
+example/Anonymous#`<init>`(). => primary ctor <init>
+example/Anonymous#foo. => val method foo
+example/Anonymous#locally(). => method locally
+example/Anonymous#locally().(x) => param x
+example/Anonymous#locally().[A] => typeparam A
+example/Anonymous#m1(). => method m1
+example/Anonymous#m1().[T] => typeparam T
+example/Anonymous#m2(). => method m2
+local0 => val local x
+local1 => final class $anon
+
+Occurrences:
+[0:8..0:15): example <- example/
+[1:7..1:12): scala -> scala/
+[1:13..1:21): language -> scalaShadowing/language.
+[1:22..1:33): higherKinds -> scalaShadowing/language.higherKinds.
+[3:6..3:15): Anonymous <- example/Anonymous#
+[4:2..4:2): <- example/Anonymous#`<init>`().
+[4:8..4:17): Anonymous -> example/Anonymous#
+[6:6..6:13): locally <- example/Anonymous#locally().
+[6:14..6:15): A <- example/Anonymous#locally().[A]
+[6:17..6:18): x <- example/Anonymous#locally().(x)
+[6:20..6:21): A -> example/Anonymous#locally().[A]
+[6:24..6:25): A -> example/Anonymous#locally().[A]
+[6:28..6:29): x -> example/Anonymous#locally().(x)
+[8:6..8:8): m1 <- example/Anonymous#m1().
+[8:9..8:10): T <- example/Anonymous#m1().[T]
+[8:17..8:20): ??? -> scala/Predef.`???`().
+[9:6..9:8): m2 <- example/Anonymous#m2().
+[9:10..9:13): Map -> scala/Predef.Map#
+[9:17..9:21): List -> scala/package.List#
+[9:28..9:31): ??? -> scala/Predef.`???`().
+[10:2..10:9): locally -> example/Anonymous#locally().
+[11:4..11:7): ??? -> scala/Predef.`???`().
+[11:24..11:28): List -> scala/package.List#
+[13:2..13:9): locally -> example/Anonymous#locally().
+[14:8..14:9): x <- local0
+[14:11..14:14): Int -> scala/Int#
+[14:18..14:21): Int -> scala/Int#
+[14:29..14:32): ??? -> scala/Predef.`???`().
+[17:2..17:2): <- example/Anonymous#Foo#`<init>`().
+[17:8..17:11): Foo <- example/Anonymous#Foo#
+[18:6..18:9): foo <- example/Anonymous#foo.
+[18:16..18:19): Foo -> example/Anonymous#Foo#
+
+expect/Classes.scala
+--------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Classes.scala
+Text => empty
+Language => Scala
+Symbols => 75 entries
+Occurrences => 58 entries
+
+Symbols:
+classes/C1# => final class C1
+classes/C1#`<init>`(). => primary ctor <init>
+classes/C1#`<init>`().(x1) => val param x1
+classes/C1#x1. => val method x1
+classes/C1. => final object C1
+classes/C2# => final class C2
+classes/C2#`<init>`(). => primary ctor <init>
+classes/C2#`<init>`().(x2) => val param x2
+classes/C2#x2. => val method x2
+classes/C2. => final object C2
+classes/C3# => case class C3
+classes/C3#_1(). => method _1
+classes/C3#`<init>`(). => primary ctor <init>
+classes/C3#`<init>`().(x) => val param x
+classes/C3#copy$default$1(). => method copy$default$1
+classes/C3#copy(). => method copy
+classes/C3#copy().(x) => param x
+classes/C3#x. => val method x
+classes/C3. => final object C3
+classes/C3.apply(). => method apply
+classes/C3.apply().(x) => param x
+classes/C3.unapply(). => method unapply
+classes/C3.unapply().(x$1) => param x$1
+classes/C4# => case class C4
+classes/C4#_1(). => method _1
+classes/C4#`<init>`(). => primary ctor <init>
+classes/C4#`<init>`().(x) => val param x
+classes/C4#copy$default$1(). => method copy$default$1
+classes/C4#copy(). => method copy
+classes/C4#copy().(x) => param x
+classes/C4#x. => val method x
+classes/C4. => final object C4
+classes/C4.apply(). => method apply
+classes/C4.apply().(x) => param x
+classes/C4.unapply(). => method unapply
+classes/C4.unapply().(x$1) => param x$1
+classes/C6# => case class C6
+classes/C6#_1(). => method _1
+classes/C6#`<init>`(). => primary ctor <init>
+classes/C6#`<init>`().(x) => param x
+classes/C6#copy$default$1(). => method copy$default$1
+classes/C6#copy(). => method copy
+classes/C6#copy().(x) => param x
+classes/C6#x. => val method x
+classes/C6. => final object C6
+classes/C6.apply(). => method apply
+classes/C6.apply().(x) => param x
+classes/C6.unapply(). => method unapply
+classes/C6.unapply().(x$1) => param x$1
+classes/C7# => class C7
+classes/C7#`<init>`(). => primary ctor <init>
+classes/C7#`<init>`().(x) => param x
+classes/C7#x. => val method x
+classes/C8# => class C8
+classes/C8#`<init>`(). => primary ctor <init>
+classes/C8#`<init>`().(x) => param x
+classes/C8#x. => val method x
+classes/C9# => class C9
+classes/C9#`<init>`(). => primary ctor <init>
+classes/C9#`<init>`().(x) => param x
+classes/C9#x(). => var method x
+classes/M. => final object M
+classes/M.C5# => class C5
+classes/M.C5#`<init>`(). => primary ctor <init>
+classes/M.C5#`<init>`().(x) => param x
+classes/M.C5#x. => val method x
+classes/M.C5(). => final implicit method C5
+classes/M.C5().(x) => param x
+classes/N. => final object N
+classes/N.anonClass. => val method anonClass
+classes/N.anonFun. => val method anonFun
+local0 => final class $anon
+local1 => val method local
+local2 => param i
+local3 => val local local
+
+Occurrences:
+[0:8..0:15): classes <- classes/
+[2:6..2:8): C1 <- classes/C1#
+[2:8..2:21): <- classes/C1#`<init>`().
+[2:13..2:15): x1 <- classes/C1#x1.
+[2:17..2:20): Int -> scala/Int#
+[2:30..2:36): AnyVal -> scala/AnyVal#
+[2:36..2:36): -> scala/AnyVal#`<init>`().
+[4:6..4:8): C2 <- classes/C2#
+[4:8..4:21): <- classes/C2#`<init>`().
+[4:13..4:15): x2 <- classes/C2#x2.
+[4:17..4:20): Int -> scala/Int#
+[4:30..4:36): AnyVal -> scala/AnyVal#
+[4:36..4:36): -> scala/AnyVal#`<init>`().
+[5:7..5:9): C2 <- classes/C2.
+[7:11..7:13): C3 <- classes/C3#
+[7:13..7:21): <- classes/C3#`<init>`().
+[7:14..7:15): x <- classes/C3#x.
+[7:17..7:20): Int -> scala/Int#
+[9:11..9:13): C4 <- classes/C4#
+[9:13..9:21): <- classes/C4#`<init>`().
+[9:14..9:15): x <- classes/C4#x.
+[9:17..9:20): Int -> scala/Int#
+[10:7..10:9): C4 <- classes/C4.
+[12:7..12:8): M <- classes/M.
+[13:17..13:19): C5 <- classes/M.C5#
+[13:19..13:27): <- classes/M.C5#`<init>`().
+[13:20..13:21): x <- classes/M.C5#x.
+[13:23..13:26): Int -> scala/Int#
+[16:11..16:13): C6 <- classes/C6#
+[16:13..16:33): <- classes/C6#`<init>`().
+[16:26..16:27): x <- classes/C6#x.
+[16:29..16:32): Int -> scala/Int#
+[18:6..18:8): C7 <- classes/C7#
+[18:8..18:16): <- classes/C7#`<init>`().
+[18:9..18:10): x <- classes/C7#x.
+[18:12..18:15): Int -> scala/Int#
+[20:6..20:8): C8 <- classes/C8#
+[20:8..20:34): <- classes/C8#`<init>`().
+[20:27..20:28): x <- classes/C8#x.
+[20:30..20:33): Int -> scala/Int#
+[22:6..22:8): C9 <- classes/C9#
+[22:8..22:34): <- classes/C9#`<init>`().
+[22:27..22:28): x <- classes/C9#x().
+[22:30..22:33): Int -> scala/Int#
+[24:7..24:8): N <- classes/N.
+[25:6..25:15): anonClass <- classes/N.anonClass.
+[25:22..25:24): C7 -> classes/C7#
+[25:24..25:24): -> classes/C7#`<init>`().
+[26:8..26:13): local <- local1
+[26:16..26:19): ??? -> scala/Predef.`???`().
+[28:6..28:13): anonFun <- classes/N.anonFun.
+[28:16..28:20): List -> scala/package.List.
+[28:20..28:20): -> scala/collection/IterableFactory#apply().
+[28:24..28:27): map -> scala/collection/immutable/List#map().
+[28:30..28:31): i <- local2
+[29:8..29:13): local <- local3
+[30:4..30:9): local -> local3
+[30:10..30:11): + -> scala/Int#`+`(+4).
+
+expect/Definitions.scala
+------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Definitions.scala
+Text => empty
+Language => Scala
+Symbols => 10 entries
+Occurrences => 9 entries
+
+Symbols:
+a/Definitions. => final object Definitions
+a/Definitions.D# => class D
+a/Definitions.D#`<init>`(). => primary ctor <init>
+a/Definitions.E# => trait E
+a/Definitions.E#`<init>`(). => primary ctor <init>
+a/Definitions.`b_=`(). => var method b_=
+a/Definitions.`b_=`().(x$1) => param x$1
+a/Definitions.a. => val method a
+a/Definitions.b(). => var method b
+a/Definitions.c(). => method c
+
+Occurrences:
+[0:8..0:9): a <- a/
+[1:7..1:18): Definitions <- a/Definitions.
+[2:6..2:7): a <- a/Definitions.a.
+[3:6..3:7): b <- a/Definitions.b().
+[4:6..4:7): c <- a/Definitions.c().
+[5:2..5:2): <- a/Definitions.D#`<init>`().
+[5:8..5:9): D <- a/Definitions.D#
+[6:2..6:2): <- a/Definitions.E#`<init>`().
+[6:8..6:9): E <- a/Definitions.E#
+
+expect/Empty.scala
+------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Empty.scala
+Text => empty
+Language => Scala
+Symbols => 6 entries
+Occurrences => 10 entries
+
+Symbols:
+_empty_/A# => class A
+_empty_/A#`<init>`(). => primary ctor <init>
+_empty_/A#b(). => method b
+_empty_/B# => class B
+_empty_/B#`<init>`(). => primary ctor <init>
+_empty_/B#a(). => method a
+
+Occurrences:
+[0:6..0:7): A <- _empty_/A#
+[1:2..1:2): <- _empty_/A#`<init>`().
+[1:6..1:7): b <- _empty_/A#b().
+[1:9..1:10): B -> _empty_/B#
+[1:13..1:16): ??? -> scala/Predef.`???`().
+[4:6..4:7): B <- _empty_/B#
+[5:2..5:2): <- _empty_/B#`<init>`().
+[5:6..5:7): a <- _empty_/B#a().
+[5:9..5:10): A -> _empty_/A#
+[5:13..5:16): ??? -> scala/Predef.`???`().
+
+expect/EmptyObject.scala
+------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => EmptyObject.scala
+Text => empty
+Language => Scala
+Symbols => 1 entries
+Occurrences => 2 entries
+
+Symbols:
+example/EmptyObject. => final object EmptyObject
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:18): EmptyObject <- example/EmptyObject.
+
+expect/Enums.scala
+------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Enums.scala
+Text => empty
+Language => Scala
+Symbols => 157 entries
+Occurrences => 187 entries
+
+Symbols:
+_empty_/Enums. => final object Enums
+_empty_/Enums.Coin# => abstract sealed enum class Coin
+_empty_/Enums.Coin#`<init>`(). => primary ctor <init>
+_empty_/Enums.Coin#`<init>`().(value) => param value
+_empty_/Enums.Coin#value. => val method value
+_empty_/Enums.Coin. => final object Coin
+_empty_/Enums.Coin.$values. => val method $values
+_empty_/Enums.Coin.Dime. => case val static enum method Dime
+_empty_/Enums.Coin.Dollar. => case val static enum method Dollar
+_empty_/Enums.Coin.Nickel. => case val static enum method Nickel
+_empty_/Enums.Coin.Penny. => case val static enum method Penny
+_empty_/Enums.Coin.Quarter. => case val static enum method Quarter
+_empty_/Enums.Coin.valueOf(). => method valueOf
+_empty_/Enums.Coin.valueOf().($name) => param $name
+_empty_/Enums.Coin.values(). => method values
+_empty_/Enums.Colour# => abstract sealed enum class Colour
+_empty_/Enums.Colour#`<init>`(). => primary ctor <init>
+_empty_/Enums.Colour. => final object Colour
+_empty_/Enums.Colour.$new(). => method $new
+_empty_/Enums.Colour.$new().($name) => param $name
+_empty_/Enums.Colour.$new().(_$ordinal) => param _$ordinal
+_empty_/Enums.Colour.$values. => val method $values
+_empty_/Enums.Colour.Blue. => case val static enum method Blue
+_empty_/Enums.Colour.Green. => case val static enum method Green
+_empty_/Enums.Colour.Red. => case val static enum method Red
+_empty_/Enums.Colour.valueOf(). => method valueOf
+_empty_/Enums.Colour.valueOf().($name) => param $name
+_empty_/Enums.Colour.values(). => method values
+_empty_/Enums.Directions# => abstract sealed enum class Directions
+_empty_/Enums.Directions#`<init>`(). => primary ctor <init>
+_empty_/Enums.Directions. => final object Directions
+_empty_/Enums.Directions.$new(). => method $new
+_empty_/Enums.Directions.$new().($name) => param $name
+_empty_/Enums.Directions.$new().(_$ordinal) => param _$ordinal
+_empty_/Enums.Directions.$values. => val method $values
+_empty_/Enums.Directions.East. => case val static enum method East
+_empty_/Enums.Directions.North. => case val static enum method North
+_empty_/Enums.Directions.South. => case val static enum method South
+_empty_/Enums.Directions.West. => case val static enum method West
+_empty_/Enums.Directions.valueOf(). => method valueOf
+_empty_/Enums.Directions.valueOf().($name) => param $name
+_empty_/Enums.Directions.values(). => method values
+_empty_/Enums.Maybe# => abstract sealed enum class Maybe
+_empty_/Enums.Maybe#[A] => covariant typeparam A
+_empty_/Enums.Maybe#`<init>`(). => primary ctor <init>
+_empty_/Enums.Maybe. => final object Maybe
+_empty_/Enums.Maybe.Just# => final case enum class Just
+_empty_/Enums.Maybe.Just#$ordinal(). => method $ordinal
+_empty_/Enums.Maybe.Just#[A] => typeparam A
+_empty_/Enums.Maybe.Just#_1(). => method _1
+_empty_/Enums.Maybe.Just#`<init>`(). => primary ctor <init>
+_empty_/Enums.Maybe.Just#`<init>`().(value) => val param value
+_empty_/Enums.Maybe.Just#copy$default$1(). => method copy$default$1
+_empty_/Enums.Maybe.Just#copy$default$1().[A] => typeparam A
+_empty_/Enums.Maybe.Just#copy(). => method copy
+_empty_/Enums.Maybe.Just#copy().(value) => param value
+_empty_/Enums.Maybe.Just#copy().[A] => typeparam A
+_empty_/Enums.Maybe.Just#value. => val method value
+_empty_/Enums.Maybe.Just. => final object Just
+_empty_/Enums.Maybe.Just.apply(). => method apply
+_empty_/Enums.Maybe.Just.apply().(value) => param value
+_empty_/Enums.Maybe.Just.apply().[A] => typeparam A
+_empty_/Enums.Maybe.Just.unapply(). => method unapply
+_empty_/Enums.Maybe.Just.unapply().(x$1) => param x$1
+_empty_/Enums.Maybe.Just.unapply().[A] => typeparam A
+_empty_/Enums.Maybe.None. => case val static enum method None
+_empty_/Enums.Planet# => abstract sealed enum class Planet
+_empty_/Enums.Planet#G. => final val method G
+_empty_/Enums.Planet#`<init>`(). => primary ctor <init>
+_empty_/Enums.Planet#`<init>`().(mass) => param mass
+_empty_/Enums.Planet#`<init>`().(radius) => param radius
+_empty_/Enums.Planet#mass. => val method mass
+_empty_/Enums.Planet#radius. => val method radius
+_empty_/Enums.Planet#surfaceGravity(). => method surfaceGravity
+_empty_/Enums.Planet#surfaceWeight(). => method surfaceWeight
+_empty_/Enums.Planet#surfaceWeight().(otherMass) => param otherMass
+_empty_/Enums.Planet. => final object Planet
+_empty_/Enums.Planet.$values. => val method $values
+_empty_/Enums.Planet.Earth. => case val static enum method Earth
+_empty_/Enums.Planet.Jupiter. => case val static enum method Jupiter
+_empty_/Enums.Planet.Mars. => case val static enum method Mars
+_empty_/Enums.Planet.Mercury. => case val static enum method Mercury
+_empty_/Enums.Planet.Neptune. => case val static enum method Neptune
+_empty_/Enums.Planet.Saturn. => case val static enum method Saturn
+_empty_/Enums.Planet.Uranus. => case val static enum method Uranus
+_empty_/Enums.Planet.Venus. => case val static enum method Venus
+_empty_/Enums.Planet.valueOf(). => method valueOf
+_empty_/Enums.Planet.valueOf().($name) => param $name
+_empty_/Enums.Planet.values(). => method values
+_empty_/Enums.Suits# => abstract sealed enum class Suits
+_empty_/Enums.Suits#`<init>`(). => primary ctor <init>
+_empty_/Enums.Suits. => final object Suits
+_empty_/Enums.Suits.$new(). => method $new
+_empty_/Enums.Suits.$new().($name) => param $name
+_empty_/Enums.Suits.$new().(_$ordinal) => param _$ordinal
+_empty_/Enums.Suits.$values. => val method $values
+_empty_/Enums.Suits.Clubs. => case val static enum method Clubs
+_empty_/Enums.Suits.Diamonds. => case val static enum method Diamonds
+_empty_/Enums.Suits.Hearts. => case val static enum method Hearts
+_empty_/Enums.Suits.Spades. => case val static enum method Spades
+_empty_/Enums.Suits.derived$Eql(). => implicit method derived$Eql
+_empty_/Enums.Suits.isBlack(). => method isBlack
+_empty_/Enums.Suits.isBlack().(suit) => param suit
+_empty_/Enums.Suits.isRed(). => method isRed
+_empty_/Enums.Suits.isRed().(suit) => param suit
+_empty_/Enums.Suits.valueOf(). => method valueOf
+_empty_/Enums.Suits.valueOf().($name) => param $name
+_empty_/Enums.Suits.values(). => method values
+_empty_/Enums.Tag# => abstract sealed enum class Tag
+_empty_/Enums.Tag#[A] => typeparam A
+_empty_/Enums.Tag#`<init>`(). => primary ctor <init>
+_empty_/Enums.Tag. => final object Tag
+_empty_/Enums.Tag.BooleanTag. => case val static enum method BooleanTag
+_empty_/Enums.Tag.IntTag. => case val static enum method IntTag
+_empty_/Enums.WeekDays# => abstract sealed enum class WeekDays
+_empty_/Enums.WeekDays#`<init>`(). => primary ctor <init>
+_empty_/Enums.WeekDays. => final object WeekDays
+_empty_/Enums.WeekDays.$new(). => method $new
+_empty_/Enums.WeekDays.$new().($name) => param $name
+_empty_/Enums.WeekDays.$new().(_$ordinal) => param _$ordinal
+_empty_/Enums.WeekDays.$values. => val method $values
+_empty_/Enums.WeekDays.Friday. => case val static enum method Friday
+_empty_/Enums.WeekDays.Monday. => case val static enum method Monday
+_empty_/Enums.WeekDays.Saturday. => case val static enum method Saturday
+_empty_/Enums.WeekDays.Sunday. => case val static enum method Sunday
+_empty_/Enums.WeekDays.Thursday. => case val static enum method Thursday
+_empty_/Enums.WeekDays.Tuesday. => case val static enum method Tuesday
+_empty_/Enums.WeekDays.Wednesday. => case val static enum method Wednesday
+_empty_/Enums.WeekDays.valueOf(). => method valueOf
+_empty_/Enums.WeekDays.valueOf().($name) => param $name
+_empty_/Enums.WeekDays.values(). => method values
+_empty_/Enums.`<:<`# => abstract sealed enum class <:<
+_empty_/Enums.`<:<`#[A] => contravariant typeparam A
+_empty_/Enums.`<:<`#[B] => typeparam B
+_empty_/Enums.`<:<`#`<init>`(). => primary ctor <init>
+_empty_/Enums.`<:<`. => final object <:<
+_empty_/Enums.`<:<`.Refl# => final case enum class Refl
+_empty_/Enums.`<:<`.Refl#$ordinal(). => method $ordinal
+_empty_/Enums.`<:<`.Refl#[C] => typeparam C
+_empty_/Enums.`<:<`.Refl#`<init>`(). => primary ctor <init>
+_empty_/Enums.`<:<`.Refl#copy(). => method copy
+_empty_/Enums.`<:<`.Refl#copy().[C] => typeparam C
+_empty_/Enums.`<:<`.Refl. => final object Refl
+_empty_/Enums.`<:<`.Refl.apply(). => method apply
+_empty_/Enums.`<:<`.Refl.apply().[C] => typeparam C
+_empty_/Enums.`<:<`.Refl.unapply(). => method unapply
+_empty_/Enums.`<:<`.Refl.unapply().(x$1) => param x$1
+_empty_/Enums.`<:<`.Refl.unapply().[C] => typeparam C
+_empty_/Enums.`<:<`.given_T(). => final implicit method given_T
+_empty_/Enums.`<:<`.given_T().[T] => typeparam T
+_empty_/Enums.some1. => val method some1
+_empty_/Enums.unwrap(). => method unwrap
+_empty_/Enums.unwrap().(ev) => implicit param ev
+_empty_/Enums.unwrap().(opt) => param opt
+_empty_/Enums.unwrap().[A] => typeparam A
+_empty_/Enums.unwrap().[B] => typeparam B
+local0 => param x
+
+Occurrences:
+[0:7..0:12): Enums <- _empty_/Enums.
+[1:9..1:12): <:< -> _empty_/Enums.`<:<`.
+[3:7..3:13): Colour <- _empty_/Enums.Colour#
+[4:4..4:4): <- _empty_/Enums.Colour#`<init>`().
+[4:11..4:17): Colour -> _empty_/Enums.Colour.
+[4:18..4:21): Red -> _empty_/Enums.Colour.Red.
+[5:9..5:12): Red <- _empty_/Enums.Colour.Red.
+[5:14..5:19): Green <- _empty_/Enums.Colour.Green.
+[5:21..5:25): Blue <- _empty_/Enums.Colour.Blue.
+[7:7..7:17): Directions <- _empty_/Enums.Directions#
+[8:4..8:4): <- _empty_/Enums.Directions#`<init>`().
+[8:9..8:14): North <- _empty_/Enums.Directions.North.
+[8:16..8:20): East <- _empty_/Enums.Directions.East.
+[8:22..8:27): South <- _empty_/Enums.Directions.South.
+[8:29..8:33): West <- _empty_/Enums.Directions.West.
+[10:7..10:12): Suits <- _empty_/Enums.Suits#
+[10:21..10:21): <- _empty_/Enums.Suits#`<init>`().
+[10:21..10:21): -> scala/Eql.derived.
+[11:9..11:15): Hearts <- _empty_/Enums.Suits.Hearts.
+[11:17..11:23): Spades <- _empty_/Enums.Suits.Spades.
+[11:25..11:30): Clubs <- _empty_/Enums.Suits.Clubs.
+[11:32..11:40): Diamonds <- _empty_/Enums.Suits.Diamonds.
+[13:9..13:14): Suits <- _empty_/Enums.Suits.
+[14:8..14:13): (suit <- _empty_/Enums.Suits.isRed().
+[14:9..14:13): suit <- _empty_/Enums.Suits.isRed().(suit)
+[14:15..14:20): Suits -> _empty_/Enums.Suits#
+[14:29..14:36): Boolean -> scala/Boolean#
+[15:6..15:10): suit -> _empty_/Enums.Suits.isRed().(suit)
+[15:11..15:13): == -> scala/Any#`==`().
+[15:14..15:20): Hearts -> _empty_/Enums.Suits.Hearts.
+[15:21..15:23): || -> scala/Boolean#`||`().
+[15:24..15:28): suit -> _empty_/Enums.Suits.isRed().(suit)
+[15:29..15:31): == -> scala/Any#`==`().
+[15:32..15:40): Diamonds -> _empty_/Enums.Suits.Diamonds.
+[17:8..17:15): (suit:  <- _empty_/Enums.Suits.isBlack().
+[17:9..17:13): suit <- _empty_/Enums.Suits.isBlack().(suit)
+[17:15..17:20): Suits -> _empty_/Enums.Suits#
+[17:31..17:38): Boolean -> scala/Boolean#
+[17:41..17:45): suit -> _empty_/Enums.Suits.isBlack().(suit)
+[18:11..18:17): Spades -> _empty_/Enums.Suits.Spades.
+[18:20..18:28): Diamonds -> _empty_/Enums.Suits.Diamonds.
+[21:7..21:15): WeekDays <- _empty_/Enums.WeekDays#
+[22:4..22:4): <- _empty_/Enums.WeekDays#`<init>`().
+[22:9..22:15): Monday <- _empty_/Enums.WeekDays.Monday.
+[23:9..23:16): Tuesday <- _empty_/Enums.WeekDays.Tuesday.
+[24:9..24:18): Wednesday <- _empty_/Enums.WeekDays.Wednesday.
+[25:9..25:17): Thursday <- _empty_/Enums.WeekDays.Thursday.
+[26:9..26:15): Friday <- _empty_/Enums.WeekDays.Friday.
+[27:9..27:17): Saturday <- _empty_/Enums.WeekDays.Saturday.
+[28:9..28:15): Sunday <- _empty_/Enums.WeekDays.Sunday.
+[30:7..30:11): Coin <- _empty_/Enums.Coin#
+[30:11..30:23): <- _empty_/Enums.Coin#`<init>`().
+[30:12..30:17): value <- _empty_/Enums.Coin#value.
+[30:19..30:22): Int -> scala/Int#
+[31:9..31:14): Penny <- _empty_/Enums.Coin.Penny.
+[31:26..31:30): Coin -> _empty_/Enums.Coin#
+[31:30..31:30): -> _empty_/Enums.Coin#`<init>`().
+[32:9..32:15): Nickel <- _empty_/Enums.Coin.Nickel.
+[32:26..32:30): Coin -> _empty_/Enums.Coin#
+[32:30..32:30): -> _empty_/Enums.Coin#`<init>`().
+[33:9..33:13): Dime <- _empty_/Enums.Coin.Dime.
+[33:26..33:30): Coin -> _empty_/Enums.Coin#
+[33:30..33:30): -> _empty_/Enums.Coin#`<init>`().
+[34:9..34:16): Quarter <- _empty_/Enums.Coin.Quarter.
+[34:26..34:30): Coin -> _empty_/Enums.Coin#
+[34:30..34:30): -> _empty_/Enums.Coin#`<init>`().
+[35:9..35:15): Dollar <- _empty_/Enums.Coin.Dollar.
+[35:26..35:30): Coin -> _empty_/Enums.Coin#
+[35:30..35:30): -> _empty_/Enums.Coin#`<init>`().
+[37:7..37:12): Maybe <- _empty_/Enums.Maybe#
+[37:12..37:16): <- _empty_/Enums.Maybe#`<init>`().
+[37:14..37:15): A <- _empty_/Enums.Maybe#[A]
+[38:9..38:13): Just <- _empty_/Enums.Maybe.Just#
+[38:13..38:23): <- _empty_/Enums.Maybe.Just#`<init>`().
+[38:14..38:19): value <- _empty_/Enums.Maybe.Just#value.
+[38:21..38:22): A -> _empty_/Enums.Maybe.Just#[A]
+[39:4..39:4): -> _empty_/Enums.Maybe#`<init>`().
+[39:9..39:13): None <- _empty_/Enums.Maybe.None.
+[41:7..41:10): Tag <- _empty_/Enums.Tag#
+[41:10..41:13): <- _empty_/Enums.Tag#`<init>`().
+[41:11..41:12): A <- _empty_/Enums.Tag#[A]
+[42:9..42:15): IntTag <- _empty_/Enums.Tag.IntTag.
+[42:24..42:27): Tag -> _empty_/Enums.Tag#
+[42:28..42:31): Int -> scala/Int#
+[42:32..42:32): -> _empty_/Enums.Tag#`<init>`().
+[43:9..43:19): BooleanTag <- _empty_/Enums.Tag.BooleanTag.
+[43:28..43:31): Tag -> _empty_/Enums.Tag#
+[43:32..43:39): Boolean -> scala/Boolean#
+[43:40..43:40): -> _empty_/Enums.Tag#`<init>`().
+[45:7..45:10): <:< <- _empty_/Enums.`<:<`#
+[45:10..45:17): <- _empty_/Enums.`<:<`#`<init>`().
+[45:12..45:13): A <- _empty_/Enums.`<:<`#[A]
+[45:15..45:16): B <- _empty_/Enums.`<:<`#[B]
+[46:9..46:13): Refl <- _empty_/Enums.`<:<`.Refl#
+[46:13..46:18): <- _empty_/Enums.`<:<`.Refl#`<init>`().
+[46:14..46:15): C <- _empty_/Enums.`<:<`.Refl#[C]
+[46:28..46:29): C -> _empty_/Enums.`<:<`.Refl#[C]
+[46:30..46:33): <:< -> _empty_/Enums.`<:<`#
+[46:34..46:35): C -> _empty_/Enums.`<:<`.Refl#[C]
+[46:35..46:35): -> _empty_/Enums.`<:<`#`<init>`().
+[48:9..48:12): <:< <- _empty_/Enums.`<:<`.
+[49:10..49:17): [T]: (T <- _empty_/Enums.`<:<`.given_T().
+[49:11..49:12): T <- _empty_/Enums.`<:<`.given_T().[T]
+[49:16..49:17): T -> _empty_/Enums.`<:<`.given_T().[T]
+[49:18..49:21): <:< -> _empty_/Enums.`<:<`#
+[49:22..49:23): T -> _empty_/Enums.`<:<`.given_T().[T]
+[49:27..49:31): Refl -> _empty_/Enums.`<:<`.Refl.
+[49:31..49:31): -> _empty_/Enums.`<:<`.Refl.apply().
+[51:6..51:12): [A, B] <- _empty_/Enums.unwrap().
+[51:7..51:8): A <- _empty_/Enums.unwrap().[A]
+[51:10..51:11): B <- _empty_/Enums.unwrap().[B]
+[51:13..51:16): opt <- _empty_/Enums.unwrap().(opt)
+[51:18..51:24): Option -> scala/Option#
+[51:25..51:26): A -> _empty_/Enums.unwrap().[A]
+[51:42..51:44): ev <- _empty_/Enums.unwrap().(ev)
+[51:46..51:47): A -> _empty_/Enums.unwrap().[A]
+[51:48..51:51): <:< -> _empty_/Enums.`<:<`#
+[51:52..51:58): Option -> scala/Option#
+[51:59..51:60): B -> _empty_/Enums.unwrap().[B]
+[51:64..51:70): Option -> scala/Option#
+[51:71..51:72): B -> _empty_/Enums.unwrap().[B]
+[51:76..51:78): ev -> _empty_/Enums.unwrap().(ev)
+[52:9..52:13): Refl -> _empty_/Enums.`<:<`.Refl.
+[52:13..52:13): -> _empty_/Enums.`<:<`.Refl.unapply().
+[52:19..52:22): opt -> _empty_/Enums.unwrap().(opt)
+[52:23..52:30): flatMap -> scala/Option#flatMap().
+[52:31..52:39): identity -> scala/Predef.identity().
+[52:31..52:31): -> local0
+[52:40..52:46): Option -> scala/Option#
+[52:47..52:48): B -> _empty_/Enums.unwrap().[B]
+[54:6..54:11): some1 <- _empty_/Enums.some1.
+[54:14..54:14): -> _empty_/Enums.unwrap().
+[54:14..54:18): Some -> scala/Some.
+[54:18..54:18): -> scala/Some.apply().
+[54:19..54:23): Some -> scala/Some.
+[54:23..54:23): -> scala/Some.apply().
+[54:27..54:27): -> _empty_/Enums.`<:<`.given_T().
+[56:7..56:13): Planet <- _empty_/Enums.Planet#
+[56:13..56:43): <- _empty_/Enums.Planet#`<init>`().
+[56:14..56:18): mass <- _empty_/Enums.Planet#mass.
+[56:20..56:26): Double -> scala/Double#
+[56:28..56:34): radius <- _empty_/Enums.Planet#radius.
+[56:36..56:42): Double -> scala/Double#
+[56:52..56:56): java -> java/
+[56:57..56:61): lang -> java/lang/
+[56:62..56:66): Enum -> java/lang/Enum#
+[56:67..56:73): Planet -> _empty_/Enums.Planet#
+[56:74..56:74): -> java/lang/Enum#`<init>`().
+[57:22..57:23): G <- _empty_/Enums.Planet#G.
+[58:8..58:22): surfaceGravity <- _empty_/Enums.Planet#surfaceGravity().
+[58:25..58:26): G -> _empty_/Enums.Planet#G.
+[58:27..58:28): * -> scala/Double#`*`(+6).
+[58:29..58:33): mass -> _empty_/Enums.Planet#mass.
+[58:34..58:35): / -> scala/Double#`/`(+6).
+[58:37..58:43): radius -> _empty_/Enums.Planet#radius.
+[58:44..58:45): * -> scala/Double#`*`(+6).
+[58:46..58:52): radius -> _empty_/Enums.Planet#radius.
+[59:8..59:21): surfaceWeight <- _empty_/Enums.Planet#surfaceWeight().
+[59:22..59:31): otherMass <- _empty_/Enums.Planet#surfaceWeight().(otherMass)
+[59:33..59:39): Double -> scala/Double#
+[59:43..59:52): otherMass -> _empty_/Enums.Planet#surfaceWeight().(otherMass)
+[59:53..59:54): * -> scala/Double#`*`(+6).
+[59:55..59:69): surfaceGravity -> _empty_/Enums.Planet#surfaceGravity().
+[61:9..61:16): Mercury <- _empty_/Enums.Planet.Mercury.
+[61:25..61:31): Planet -> _empty_/Enums.Planet#
+[61:31..61:31): -> _empty_/Enums.Planet#`<init>`().
+[62:9..62:14): Venus <- _empty_/Enums.Planet.Venus.
+[62:25..62:31): Planet -> _empty_/Enums.Planet#
+[62:31..62:31): -> _empty_/Enums.Planet#`<init>`().
+[63:9..63:14): Earth <- _empty_/Enums.Planet.Earth.
+[63:25..63:31): Planet -> _empty_/Enums.Planet#
+[63:31..63:31): -> _empty_/Enums.Planet#`<init>`().
+[64:9..64:13): Mars <- _empty_/Enums.Planet.Mars.
+[64:25..64:31): Planet -> _empty_/Enums.Planet#
+[64:31..64:31): -> _empty_/Enums.Planet#`<init>`().
+[65:9..65:16): Jupiter <- _empty_/Enums.Planet.Jupiter.
+[65:25..65:31): Planet -> _empty_/Enums.Planet#
+[65:31..65:31): -> _empty_/Enums.Planet#`<init>`().
+[66:9..66:15): Saturn <- _empty_/Enums.Planet.Saturn.
+[66:25..66:31): Planet -> _empty_/Enums.Planet#
+[66:31..66:31): -> _empty_/Enums.Planet#`<init>`().
+[67:9..67:15): Uranus <- _empty_/Enums.Planet.Uranus.
+[67:25..67:31): Planet -> _empty_/Enums.Planet#
+[67:31..67:31): -> _empty_/Enums.Planet#`<init>`().
+[68:9..68:16): Neptune <- _empty_/Enums.Planet.Neptune.
+[68:25..68:31): Planet -> _empty_/Enums.Planet#
+[68:31..68:31): -> _empty_/Enums.Planet#`<init>`().
+
+expect/EtaExpansion.scala
+-------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => EtaExpansion.scala
+Text => empty
+Language => Scala
+Symbols => 3 entries
+Occurrences => 12 entries
+
+Symbols:
+example/EtaExpansion# => class EtaExpansion
+example/EtaExpansion#`<init>`(). => primary ctor <init>
+local0 => param x
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:18): EtaExpansion <- example/EtaExpansion#
+[3:2..3:2): <- example/EtaExpansion#`<init>`().
+[3:2..3:6): Some -> scala/Some.
+[3:6..3:6): -> scala/Some.apply().
+[3:10..3:13): map -> scala/Option#map().
+[3:14..3:22): identity -> scala/Predef.identity().
+[3:14..3:14): -> local0
+[4:2..4:6): List -> scala/package.List.
+[4:6..4:6): -> scala/collection/IterableFactory#apply().
+[4:10..4:18): foldLeft -> scala/collection/LinearSeqOps#foldLeft().
+[4:25..4:26): + -> java/lang/String#`+`().
+
+expect/Example.scala
+--------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Example.scala
+Text => empty
+Language => Scala
+Symbols => 5 entries
+Occurrences => 26 entries
+
+Symbols:
+example/Example. => final object Example
+example/Example.main(). => method main
+example/Example.main().(args) => param args
+example/Example.x. => val method x
+local0 => selfparam self
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:12): scala -> scala/
+[2:13..2:23): concurrent -> scala/concurrent/
+[2:24..2:30): Future -> scala/concurrent/Future.
+[2:24..2:30): Future -> scala/concurrent/Future#
+[4:7..4:14): Example <- example/Example.
+[4:17..4:21): self <- local0
+[5:6..5:11): scala -> scala/
+[5:12..5:22): collection -> scala/collection/
+[5:23..5:30): mutable -> scala/collection/mutable/
+[5:31..5:36): Stack -> scala/collection/mutable/Stack#
+[5:37..5:40): Int -> scala/Int#
+[5:41..5:41): -> scala/collection/mutable/Stack#`<init>`(+1).
+[6:6..6:10): main <- example/Example.main().
+[6:11..6:15): args <- example/Example.main().(args)
+[6:17..6:22): Array -> scala/Array#
+[6:23..6:29): String -> scala/Predef.String#
+[6:33..6:37): Unit -> scala/Unit#
+[7:4..7:11): println -> scala/Predef.println(+1).
+[9:6..9:7): x <- example/Example.x.
+[9:10..9:15): scala -> scala/
+[9:16..9:23): reflect -> scala/reflect/
+[9:24..9:32): classTag -> scala/reflect/package.classTag().
+[9:33..9:36): Int -> scala/Int#
+[9:37..9:37): -> scala/reflect/ClassTag.apply().
+[9:37..9:37): -> java/lang/Integer#TYPE.
+
+expect/Flags.scala
+------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Flags.scala
+Text => empty
+Language => Scala
+Symbols => 50 entries
+Occurrences => 82 entries
+
+Symbols:
+flags/p/package. => final package object p
+flags/p/package.AA# => class AA
+flags/p/package.AA#`<init>`(). => primary ctor <init>
+flags/p/package.AA#`<init>`().(x) => param x
+flags/p/package.AA#`<init>`().(y) => val param y
+flags/p/package.AA#`<init>`().(z) => var param z
+flags/p/package.AA#`z_=`(). => var method z_=
+flags/p/package.AA#`z_=`().(x$1) => param x$1
+flags/p/package.AA#x. => val method x
+flags/p/package.AA#y. => val method y
+flags/p/package.AA#z(). => var method z
+flags/p/package.C# => abstract class C
+flags/p/package.C#[T] => covariant typeparam T
+flags/p/package.C#[U] => contravariant typeparam U
+flags/p/package.C#[V] => typeparam V
+flags/p/package.C#`<init>`(). => primary ctor <init>
+flags/p/package.C#`<init>`().(x) => param x
+flags/p/package.C#`<init>`().(y) => param y
+flags/p/package.C#`<init>`().(z) => param z
+flags/p/package.C#`<init>`(+1). => ctor <init>
+flags/p/package.C#`<init>`(+2). => ctor <init>
+flags/p/package.C#`<init>`(+2).(t) => param t
+flags/p/package.C#w(). => abstract method w
+flags/p/package.C#x. => val method x
+flags/p/package.C#y. => val method y
+flags/p/package.C#z. => val method z
+flags/p/package.S# => class S
+flags/p/package.S#[T] => typeparam T
+flags/p/package.S#`<init>`(). => primary ctor <init>
+flags/p/package.T1# => type T1
+flags/p/package.T2# => type T2
+flags/p/package.T2#[T] => typeparam T
+flags/p/package.U# => type U
+flags/p/package.V# => type V
+flags/p/package.X. => final case object X
+flags/p/package.Y# => final class Y
+flags/p/package.Y#`<init>`(). => primary ctor <init>
+flags/p/package.Z# => sealed trait Z
+flags/p/package.Z#`<init>`(). => primary ctor <init>
+flags/p/package.`y_=`(). => var method y_=
+flags/p/package.`y_=`().(x$1) => param x$1
+flags/p/package.m(). => method m
+flags/p/package.m().[TT] => typeparam TT
+flags/p/package.x. => lazy val method x
+flags/p/package.xs1. => val method xs1
+flags/p/package.y(). => implicit var method y
+flags/p/package.z(). => method z
+flags/p/package.z().(pp) => param pp
+local0 => val local xs2
+local1 => case val method t
+
+Occurrences:
+[0:8..0:13): flags <- flags/
+[2:7..2:12): scala -> scala/
+[2:13..2:21): language -> scalaShadowing/language.
+[2:22..2:34): experimental -> scalaShadowing/language.experimental.
+[2:35..2:41): macros -> scalaShadowing/language.experimental.macros.
+[4:15..5:3): <- flags/p/package.
+[5:2..5:3): p -> flags/p/
+[5:19..5:20): x <- flags/p/package.x.
+[6:25..6:26): y <- flags/p/package.y().
+[6:28..6:31): Int -> scala/Int#
+[7:6..7:7): z <- flags/p/package.z().
+[7:8..7:10): pp <- flags/p/package.z().(pp)
+[7:12..7:15): Int -> scala/Int#
+[8:6..8:7): m <- flags/p/package.m().
+[8:8..8:10): TT <- flags/p/package.m().[TT]
+[8:13..8:16): Int -> scala/Int#
+[8:16..8:16): -> scala/Predef.`???`().
+[9:17..9:18): C <- flags/p/package.C#
+[9:18..9:47): <- flags/p/package.C#`<init>`().
+[9:20..9:21): T <- flags/p/package.C#[T]
+[9:24..9:25): U <- flags/p/package.C#[U]
+[9:27..9:28): V <- flags/p/package.C#[V]
+[9:30..9:31): x <- flags/p/package.C#x.
+[9:33..9:34): T -> flags/p/package.C#[T]
+[9:36..9:37): y <- flags/p/package.C#y.
+[9:39..9:40): U -> flags/p/package.C#[U]
+[9:42..9:43): z <- flags/p/package.C#z.
+[9:45..9:46): V -> flags/p/package.C#[V]
+[10:8..10:14): <- flags/p/package.C#`<init>`(+1).
+[10:22..10:22): -> flags/p/package.C#`<init>`().
+[10:22..10:25): ??? -> scala/Predef.`???`().
+[10:27..10:30): ??? -> scala/Predef.`???`().
+[10:32..10:35): ??? -> scala/Predef.`???`().
+[11:8..11:14): <- flags/p/package.C#`<init>`(+2).
+[11:13..11:14): t <- flags/p/package.C#`<init>`(+2).(t)
+[11:16..11:17): T -> flags/p/package.C#[T]
+[11:26..11:26): -> flags/p/package.C#`<init>`().
+[11:26..11:27): t -> flags/p/package.C#`<init>`(+2).(t)
+[11:29..11:32): ??? -> scala/Predef.`???`().
+[11:34..11:37): ??? -> scala/Predef.`???`().
+[12:8..12:9): w <- flags/p/package.C#w().
+[12:11..12:14): Int -> scala/Int#
+[14:7..14:9): T1 <- flags/p/package.T1#
+[14:12..14:15): Int -> scala/Int#
+[15:7..15:9): T2 <- flags/p/package.T2#
+[15:10..15:11): T <- flags/p/package.T2#[T]
+[15:15..15:16): S -> flags/p/package.S#
+[15:17..15:18): T -> flags/p/package.T2#[T]
+[16:7..16:8): U <- flags/p/package.U#
+[16:12..16:15): Int -> scala/Int#
+[17:7..17:8): V <- flags/p/package.V#
+[17:12..17:15): Int -> scala/Int#
+[18:14..18:15): X <- flags/p/package.X.
+[19:2..19:2): <- flags/p/package.Y#`<init>`().
+[19:14..19:15): Y <- flags/p/package.Y#
+[20:2..20:2): <- flags/p/package.Z#`<init>`().
+[20:15..20:16): Z <- flags/p/package.Z#
+[21:8..21:10): AA <- flags/p/package.AA#
+[21:10..21:42): <- flags/p/package.AA#`<init>`().
+[21:11..21:12): x <- flags/p/package.AA#x.
+[21:14..21:17): Int -> scala/Int#
+[21:23..21:24): y <- flags/p/package.AA#y.
+[21:26..21:29): Int -> scala/Int#
+[21:35..21:36): z <- flags/p/package.AA#z().
+[21:38..21:41): Int -> scala/Int#
+[22:8..22:9): S <- flags/p/package.S#
+[22:9..22:25): <- flags/p/package.S#`<init>`().
+[22:11..22:22): specialized -> scala/specialized#
+[22:23..22:24): T <- flags/p/package.S#[T]
+[23:6..23:10): List -> scala/package.List.
+[23:10..23:10): -> scala/collection/SeqFactory#unapplySeq().
+[23:11..23:14): xs1 <- flags/p/package.xs1.
+[23:18..23:21): ??? -> scala/Predef.`???`().
+[24:2..24:5): ??? -> scala/Predef.`???`().
+[24:19..24:23): List -> scala/package.List.
+[24:23..24:23): -> scala/collection/SeqFactory#unapplySeq().
+[24:24..24:27): xs2 <- local0
+[24:32..24:35): ??? -> scala/Predef.`???`().
+[25:2..25:5): ??? -> scala/Predef.`???`().
+[25:22..25:26): List -> scala/package.List#
+[25:27..25:28): t <- local1
+[25:33..25:36): ??? -> scala/Predef.`???`().
+
+expect/ForComprehension.scala
+-----------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => ForComprehension.scala
+Text => empty
+Language => Scala
+Symbols => 13 entries
+Occurrences => 88 entries
+
+Symbols:
+example/ForComprehension# => class ForComprehension
+example/ForComprehension#`<init>`(). => primary ctor <init>
+local0 => param a
+local1 => param b
+local2 => val local c
+local3 => param x$1
+local4 => param a
+local5 => param b
+local6 => param x$1
+local7 => val local c
+local8 => val local d
+local9 => val local e
+local10 => param f
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:22): ForComprehension <- example/ForComprehension#
+[3:2..3:2): <- example/ForComprehension#`<init>`().
+[4:4..4:5): a <- local0
+[4:9..4:13): List -> scala/package.List.
+[4:13..4:13): -> scala/collection/IterableFactory#apply().
+[4:16..4:16): -> scala/collection/immutable/List#flatMap().
+[5:4..5:5): b <- local1
+[5:4..5:4): -> scala/Tuple2.apply().
+[5:4..5:5): b -> local1
+[5:4..5:4): -> local3
+[5:4..5:4): -> scala/Tuple2.unapply().
+[5:9..5:13): List -> scala/package.List.
+[5:13..5:13): -> scala/collection/IterableFactory#apply().
+[5:16..5:16): -> scala/collection/IterableOps#withFilter().
+[6:7..6:8): b -> local1
+[6:9..6:10): > -> scala/Int#`>`(+3).
+[6:12..6:12): -> scala/collection/WithFilter#map().
+[7:4..7:5): c <- local2
+[7:4..7:5): c -> local2
+[7:8..7:9): a -> local0
+[7:10..7:11): + -> scala/Int#`+`(+4).
+[7:12..7:13): b -> local1
+[7:13..7:13): -> scala/collection/immutable/List#map().
+[8:11..8:11): -> scala/Tuple3.apply().
+[8:11..8:12): a -> local0
+[8:14..8:15): b -> local1
+[8:17..8:18): c -> local2
+[10:4..10:5): a <- local4
+[10:9..10:13): List -> scala/package.List.
+[10:13..10:13): -> scala/collection/IterableFactory#apply().
+[10:16..10:16): -> scala/collection/immutable/List#flatMap().
+[11:4..11:5): b <- local5
+[11:9..11:13): List -> scala/package.List.
+[11:13..11:13): -> scala/collection/IterableFactory#apply().
+[11:14..11:15): a -> local4
+[11:16..11:16): -> scala/collection/IterableOps#withFilter().
+[13:6..13:6): -> scala/Tuple2.apply().
+[13:6..13:7): a -> local4
+[14:6..14:7): b -> local5
+[15:6..15:8): == -> scala/Any#`==`().
+[15:10..15:10): -> scala/Tuple2.apply().
+[15:15..15:15): -> scala/collection/WithFilter#flatMap().
+[16:4..16:4): -> local6
+[16:4..16:4): -> scala/Tuple2.unapply().
+[17:6..17:6): -> scala/Tuple2.unapply().
+[17:6..17:7): c <- local7
+[18:6..18:7): d <- local8
+[19:9..19:13): List -> scala/package.List.
+[19:13..19:13): -> scala/collection/IterableFactory#apply().
+[19:15..19:15): -> scala/Tuple2.apply().
+[19:15..19:16): a -> local4
+[19:18..19:19): b -> local5
+[19:21..19:21): -> scala/collection/WithFilter#withFilter().
+[19:21..19:21): -> scala/collection/IterableOps#withFilter().
+[21:6..21:6): -> scala/Tuple4.apply().
+[21:6..21:7): a -> local4
+[22:6..22:7): b -> local5
+[23:6..23:7): c -> local7
+[24:6..24:7): d -> local8
+[25:6..25:8): == -> scala/Any#`==`().
+[25:10..25:10): -> scala/Tuple4.apply().
+[25:21..25:21): -> scala/collection/WithFilter#map().
+[26:4..26:5): e <- local9
+[26:4..26:4): -> scala/Tuple2.apply().
+[26:4..26:5): e -> local9
+[27:6..27:6): -> scala/Tuple4.apply().
+[27:6..27:7): a -> local4
+[28:6..28:7): b -> local5
+[29:6..29:7): c -> local7
+[30:6..30:7): d -> local8
+[31:5..31:5): -> scala/collection/IterableOps#withFilter().
+[32:7..32:8): e -> local9
+[32:9..32:11): == -> scala/Any#`==`().
+[32:13..32:13): -> scala/Tuple4.apply().
+[32:24..32:24): -> scala/collection/WithFilter#flatMap().
+[33:4..33:5): f <- local10
+[33:9..33:13): List -> scala/package.List.
+[33:13..33:13): -> scala/collection/IterableFactory#apply().
+[33:14..33:15): e -> local9
+[33:16..33:16): -> scala/collection/immutable/List#map().
+[36:6..36:6): -> scala/Tuple6.apply().
+[36:6..36:7): a -> local4
+[37:6..37:7): b -> local5
+[38:6..38:7): c -> local7
+[39:6..39:7): d -> local8
+[40:6..40:7): e -> local9
+[41:6..41:7): f -> local10
+
+expect/Givens.scala
+-------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Givens.scala
+Text => empty
+Language => Scala
+Symbols => 31 entries
+Occurrences => 72 entries
+
+Symbols:
+a/b/Givens. => final object Givens
+a/b/Givens.Monoid# => trait Monoid
+a/b/Givens.Monoid#[A] => typeparam A
+a/b/Givens.Monoid#`<init>`(). => primary ctor <init>
+a/b/Givens.Monoid#combine(). => abstract method combine
+a/b/Givens.Monoid#combine().(x) => param x
+a/b/Givens.Monoid#combine().(y) => param y
+a/b/Givens.Monoid#empty(). => abstract method empty
+a/b/Givens.foo(). => method foo
+a/b/Givens.foo().(A) => implicit param A
+a/b/Givens.foo().[A] => typeparam A
+a/b/Givens.given_Monoid_String. => final implicit object given_Monoid_String
+a/b/Givens.given_Monoid_String.combine(). => method combine
+a/b/Givens.given_Monoid_String.combine().(x) => param x
+a/b/Givens.given_Monoid_String.combine().(y) => param y
+a/b/Givens.given_Monoid_String.empty(). => method empty
+a/b/Givens.given_sayGoodbye_of_B. => final implicit object given_sayGoodbye_of_B
+a/b/Givens.given_sayGoodbye_of_B.sayGoodbye(). => method sayGoodbye
+a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().(any) => param any
+a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().[B] => typeparam B
+a/b/Givens.given_sayGoodbye_of_B.saySoLong(). => method saySoLong
+a/b/Givens.given_sayGoodbye_of_B.saySoLong().(any) => param any
+a/b/Givens.given_sayGoodbye_of_B.saySoLong().[B] => typeparam B
+a/b/Givens.given_sayHello_of_A. => final implicit object given_sayHello_of_A
+a/b/Givens.given_sayHello_of_A.sayHello(). => method sayHello
+a/b/Givens.given_sayHello_of_A.sayHello().(any) => param any
+a/b/Givens.given_sayHello_of_A.sayHello().[A] => typeparam A
+a/b/Givens.goodbye1. => val method goodbye1
+a/b/Givens.hello1. => val method hello1
+a/b/Givens.int2String(). => final implicit macro int2String
+a/b/Givens.soLong1. => val method soLong1
+
+Occurrences:
+[0:8..0:9): a <- a/
+[1:8..1:9): b <- a/b/
+[3:7..3:13): Givens <- a/b/Givens.
+[5:8..5:27): extension [A](any:  <- a/b/Givens.given_sayHello_of_A.
+[5:19..5:20): A <- a/b/Givens.given_sayHello_of_A.sayHello().[A]
+[5:22..5:25): any <- a/b/Givens.given_sayHello_of_A.sayHello().(any)
+[5:27..5:28): A -> a/b/Givens.given_sayHello_of_A.sayHello().[A]
+[6:8..6:16): sayHello <- a/b/Givens.given_sayHello_of_A.sayHello().
+[6:21..6:21): -> scala/StringContext.apply().
+[6:34..6:37): any -> a/b/Givens.given_sayHello_of_A.sayHello().(any)
+[6:37..6:37): -> scala/StringContext#s().
+[8:8..8:29): extension [B](any: B) <- a/b/Givens.given_sayGoodbye_of_B.
+[8:19..8:20): B <- a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().[B]
+[8:19..8:20): B <- a/b/Givens.given_sayGoodbye_of_B.saySoLong().[B]
+[8:22..8:25): any <- a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().(any)
+[8:22..8:25): any <- a/b/Givens.given_sayGoodbye_of_B.saySoLong().(any)
+[8:27..8:28): B -> a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().[B]
+[8:27..8:28): B -> a/b/Givens.given_sayGoodbye_of_B.saySoLong().[B]
+[9:8..9:18): sayGoodbye <- a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().
+[9:23..9:23): -> scala/StringContext.apply().
+[9:38..9:41): any -> a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().(any)
+[9:41..9:41): -> scala/StringContext#s().
+[10:8..10:17): saySoLong <- a/b/Givens.given_sayGoodbye_of_B.saySoLong().
+[10:22..10:22): -> scala/StringContext.apply().
+[10:37..10:40): any -> a/b/Givens.given_sayGoodbye_of_B.saySoLong().(any)
+[10:40..10:40): -> scala/StringContext#s().
+[12:6..12:12): hello1 <- a/b/Givens.hello1.
+[12:15..12:15): -> a/b/Givens.given_sayHello_of_A.sayHello().
+[13:6..13:14): goodbye1 <- a/b/Givens.goodbye1.
+[13:17..13:17): -> a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().
+[14:6..14:13): soLong1 <- a/b/Givens.soLong1.
+[14:16..14:16): -> a/b/Givens.given_sayGoodbye_of_B.saySoLong().
+[16:8..16:14): Monoid <- a/b/Givens.Monoid#
+[16:14..16:17): <- a/b/Givens.Monoid#`<init>`().
+[16:15..16:16): A <- a/b/Givens.Monoid#[A]
+[17:8..17:13): empty <- a/b/Givens.Monoid#empty().
+[17:15..17:16): A -> a/b/Givens.Monoid#[A]
+[18:8..18:15): (x: A)  <- a/b/Givens.Monoid#combine().
+[18:9..18:10): x <- a/b/Givens.Monoid#combine().(x)
+[18:12..18:13): A -> a/b/Givens.Monoid#[A]
+[18:24..18:25): y <- a/b/Givens.Monoid#combine().(y)
+[18:27..18:28): A -> a/b/Givens.Monoid#[A]
+[18:31..18:32): A -> a/b/Givens.Monoid#[A]
+[20:8..21:4): <- a/b/Givens.given_Monoid_String.
+[20:8..20:14): Monoid -> a/b/Givens.Monoid#
+[20:15..20:21): String -> scala/Predef.String#
+[21:8..21:13): empty <- a/b/Givens.given_Monoid_String.empty().
+[22:8..22:15): (x: Str <- a/b/Givens.given_Monoid_String.combine().
+[22:9..22:10): x <- a/b/Givens.given_Monoid_String.combine().(x)
+[22:12..22:18): String -> scala/Predef.String#
+[22:29..22:30): y <- a/b/Givens.given_Monoid_String.combine().(y)
+[22:32..22:38): String -> scala/Predef.String#
+[22:42..22:43): x -> a/b/Givens.given_Monoid_String.combine().(x)
+[22:44..22:45): + -> java/lang/String#`+`().
+[22:46..22:47): y -> a/b/Givens.given_Monoid_String.combine().(y)
+[24:15..24:25): int2String <- a/b/Givens.int2String().
+[24:27..24:37): Conversion -> scala/Conversion#
+[24:38..24:41): Int -> scala/Int#
+[24:43..24:49): String -> scala/Predef.String#
+[24:55..24:63): toString -> scala/Any#toString().
+[26:6..26:9): foo <- a/b/Givens.foo().
+[26:10..26:11): A <- a/b/Givens.foo().[A]
+[26:19..26:20): A <- a/b/Givens.foo().(A)
+[26:22..26:28): Monoid -> a/b/Givens.Monoid#
+[26:29..26:30): A -> a/b/Givens.foo().[A]
+[26:34..26:35): A -> a/b/Givens.foo().[A]
+[26:38..26:39): A -> a/b/Givens.foo().(A)
+[26:40..26:47): combine -> a/b/Givens.Monoid#combine().
+[26:48..26:49): A -> a/b/Givens.foo().(A)
+[26:50..26:55): empty -> a/b/Givens.Monoid#empty().
+[26:57..26:58): A -> a/b/Givens.foo().(A)
+[26:59..26:64): empty -> a/b/Givens.Monoid#empty().
+
+expect/ImplicitConversion.scala
+-------------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => ImplicitConversion.scala
+Text => empty
+Language => Scala
+Symbols => 23 entries
+Occurrences => 62 entries
+
+Symbols:
+example/ImplicitConversion# => class ImplicitConversion
+example/ImplicitConversion#`<init>`(). => primary ctor <init>
+example/ImplicitConversion#a. => val method a
+example/ImplicitConversion#b. => val method b
+example/ImplicitConversion#char. => val method char
+example/ImplicitConversion#message. => val method message
+example/ImplicitConversion#number. => val method number
+example/ImplicitConversion#string2Number(). => implicit method string2Number
+example/ImplicitConversion#string2Number().(string) => param string
+example/ImplicitConversion#tuple. => val method tuple
+example/ImplicitConversion#x. => val method x
+example/ImplicitConversion. => final object ImplicitConversion
+example/ImplicitConversion.newAny2stringadd# => final class newAny2stringadd
+example/ImplicitConversion.newAny2stringadd#[A] => typeparam A
+example/ImplicitConversion.newAny2stringadd#`+`(). => method +
+example/ImplicitConversion.newAny2stringadd#`+`().(other) => param other
+example/ImplicitConversion.newAny2stringadd#`<init>`(). => primary ctor <init>
+example/ImplicitConversion.newAny2stringadd#`<init>`().(self) => param self
+example/ImplicitConversion.newAny2stringadd#self. => val method self
+example/ImplicitConversion.newAny2stringadd(). => final implicit method newAny2stringadd
+example/ImplicitConversion.newAny2stringadd().(self) => param self
+example/ImplicitConversion.newAny2stringadd().[A] => typeparam A
+example/ImplicitConversion.newAny2stringadd. => final object newAny2stringadd
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:12): scala -> scala/
+[2:13..2:21): language -> scalaShadowing/language.
+[2:22..2:41): implicitConversions -> scalaShadowing/language.implicitConversions.
+[4:6..4:24): ImplicitConversion <- example/ImplicitConversion#
+[5:2..5:2): <- example/ImplicitConversion#`<init>`().
+[5:9..5:27): ImplicitConversion -> example/ImplicitConversion.
+[6:15..6:28): string2Number <- example/ImplicitConversion#string2Number().
+[7:6..7:12): string <- example/ImplicitConversion#string2Number().(string)
+[7:14..7:20): String -> scala/Predef.String#
+[8:5..8:8): Int -> scala/Int#
+[9:6..9:13): message <- example/ImplicitConversion#message.
+[10:6..10:12): number <- example/ImplicitConversion#number.
+[11:6..11:11): tuple <- example/ImplicitConversion#tuple.
+[11:15..11:15): -> scala/Tuple2.apply().
+[12:6..12:10): char <- example/ImplicitConversion#char.
+[12:12..12:16): Char -> scala/Char#
+[15:2..15:2): -> scala/Predef.augmentString().
+[15:2..15:9): message -> example/ImplicitConversion#message.
+[16:5..16:16): stripSuffix -> scala/collection/StringOps#stripSuffix().
+[17:2..17:2): -> example/ImplicitConversion.newAny2stringadd().
+[17:2..17:7): tuple -> example/ImplicitConversion#tuple.
+[17:8..17:9): + -> example/ImplicitConversion.newAny2stringadd#`+`().
+[20:6..20:7): x <- example/ImplicitConversion#x.
+[20:9..20:12): Int -> scala/Int#
+[20:15..20:15): -> example/ImplicitConversion#string2Number().
+[20:15..20:22): message -> example/ImplicitConversion#message.
+[23:4..23:4): -> scala/StringContext.apply().
+[23:11..23:18): message -> example/ImplicitConversion#message.
+[23:20..23:26): number -> example/ImplicitConversion#number.
+[23:26..23:26): -> scala/StringContext#s().
+[24:2..24:2): -> scala/Predef.augmentString().
+[24:6..24:6): -> scala/StringContext.apply().
+[25:7..25:14): message -> example/ImplicitConversion#message.
+[26:7..26:13): number -> example/ImplicitConversion#number.
+[26:13..26:13): -> scala/StringContext#s().
+[26:17..26:28): stripMargin -> scala/collection/StringOps#stripMargin(+1).
+[28:6..28:7): a <- example/ImplicitConversion#a.
+[28:9..28:12): Int -> scala/Int#
+[28:15..28:15): -> scala/Char.char2int().
+[28:15..28:19): char -> example/ImplicitConversion#char.
+[29:6..29:7): b <- example/ImplicitConversion#b.
+[29:9..29:13): Long -> scala/Long#
+[29:16..29:16): -> scala/Char.char2long().
+[29:16..29:20): char -> example/ImplicitConversion#char.
+[32:7..32:25): ImplicitConversion <- example/ImplicitConversion.
+[33:23..33:39): newAny2stringadd <- example/ImplicitConversion.newAny2stringadd#
+[33:39..33:63): <- example/ImplicitConversion.newAny2stringadd#`<init>`().
+[33:40..33:41): A <- example/ImplicitConversion.newAny2stringadd#[A]
+[33:55..33:59): self <- example/ImplicitConversion.newAny2stringadd#self.
+[33:61..33:62): A -> example/ImplicitConversion.newAny2stringadd#[A]
+[33:72..33:78): AnyVal -> scala/AnyVal#
+[33:78..33:78): -> scala/AnyVal#`<init>`().
+[34:8..34:9): + <- example/ImplicitConversion.newAny2stringadd#`+`().
+[34:10..34:15): other <- example/ImplicitConversion.newAny2stringadd#`+`().(other)
+[34:17..34:23): String -> scala/Predef.String#
+[34:26..34:32): String -> scala/Predef.String#
+[34:35..34:41): String -> java/lang/String#
+[34:42..34:49): valueOf -> java/lang/String#valueOf().
+[34:50..34:54): self -> example/ImplicitConversion.newAny2stringadd#self.
+[34:56..34:57): + -> java/lang/String#`+`().
+[34:58..34:63): other -> example/ImplicitConversion.newAny2stringadd#`+`().(other)
+
+expect/Imports.scala
+--------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Imports.scala
+Text => empty
+Language => Scala
+Symbols => 0 entries
+Occurrences => 4 entries
+
+Symbols:
+
+Occurrences:
+[0:7..0:12): scala -> scala/
+[0:13..0:17): util -> scala/util/
+[0:18..0:25): control -> scala/util/control/
+[0:26..0:34): NonFatal -> scala/util/control/NonFatal.
+
+expect/InstrumentTyper.scala
+----------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => InstrumentTyper.scala
+Text => empty
+Language => Scala
+Symbols => 8 entries
+Occurrences => 55 entries
+
+Symbols:
+example/InstrumentTyper# => class InstrumentTyper
+example/InstrumentTyper#AnnotatedType# => type AnnotatedType
+example/InstrumentTyper#`<init>`(). => primary ctor <init>
+example/InstrumentTyper#all(). => method all
+example/InstrumentTyper#clazzOf. => final val method clazzOf
+example/InstrumentTyper#singletonType(). => method singletonType
+example/InstrumentTyper#singletonType().(x) => param x
+local0 => selfparam self
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:12): scala -> scala/
+[2:13..2:23): annotation -> scala/annotation/
+[2:24..2:28): meta -> scala/annotation/meta/
+[2:29..2:34): param -> scala/annotation/meta/param.
+[3:7..3:12): scala -> scala/
+[3:13..3:21): language -> scalaShadowing/language.
+[3:22..3:34): existentials -> scalaShadowing/language.existentials.
+[4:7..4:12): scala -> scala/
+[4:13..4:21): language -> scalaShadowing/language.
+[4:22..4:33): higherKinds -> scalaShadowing/language.higherKinds.
+[5:7..5:12): types -> types/
+[5:13..5:17): Test -> types/Test.
+[7:6..7:21): InstrumentTyper <- example/InstrumentTyper#
+[7:24..7:24): <- example/InstrumentTyper#`<init>`().
+[7:24..7:28): self <- local0
+[7:30..7:36): AnyRef -> scala/AnyRef#
+[8:6..8:9): all <- example/InstrumentTyper#all().
+[8:12..8:16): List -> scala/package.List.
+[8:16..8:16): -> scala/collection/IterableFactory#apply().
+[9:4..9:11): Literal -> types/Test.Literal.
+[9:12..9:15): int -> types/Test.Literal.int.
+[10:4..10:11): Literal -> types/Test.Literal.
+[10:12..10:16): long -> types/Test.Literal.long.
+[11:4..11:11): Literal -> types/Test.Literal.
+[11:12..11:17): float -> types/Test.Literal.float.
+[12:4..12:11): Literal -> types/Test.Literal.
+[12:12..12:18): double -> types/Test.Literal.double.
+[13:4..13:11): Literal -> types/Test.Literal.
+[13:12..13:15): nil -> types/Test.Literal.nil.
+[14:4..14:11): Literal -> types/Test.Literal.
+[14:12..14:16): char -> types/Test.Literal.char.
+[15:4..15:11): Literal -> types/Test.Literal.
+[15:12..15:18): string -> types/Test.Literal.string.
+[16:4..16:11): Literal -> types/Test.Literal.
+[16:12..16:16): bool -> types/Test.Literal.bool.
+[17:4..17:11): Literal -> types/Test.Literal.
+[17:12..17:16): unit -> types/Test.Literal.unit.
+[18:4..18:11): Literal -> types/Test.Literal.
+[18:12..18:20): javaEnum -> types/Test.Literal.javaEnum.
+[19:4..19:11): Literal -> types/Test.Literal.
+[19:12..19:19): clazzOf -> types/Test.Literal.clazzOf.
+[20:4..20:8): List -> scala/package.List.
+[20:8..20:8): -> scala/collection/IterableFactory#apply().
+[22:7..22:20): AnnotatedType <- example/InstrumentTyper#AnnotatedType#
+[22:23..22:26): Int -> scala/Int#
+[22:28..22:33): param -> scala/annotation/meta/param#
+[23:6..23:19): singletonType <- example/InstrumentTyper#singletonType().
+[23:20..23:21): x <- example/InstrumentTyper#singletonType().(x)
+[23:23..23:29): Predef -> scala/Predef.
+[23:38..23:41): ??? -> scala/Predef.`???`().
+[24:12..24:19): clazzOf <- example/InstrumentTyper#clazzOf.
+[24:22..24:29): classOf -> scala/Predef.classOf().
+[24:30..24:36): Option -> scala/Option#
+[24:37..24:40): Int -> scala/Int#
+
+expect/Issue1749.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Issue1749.scala
+Text => empty
+Language => Scala
+Symbols => 7 entries
+Occurrences => 30 entries
+
+Symbols:
+example/Issue1749# => class Issue1749
+example/Issue1749#`<init>`(). => primary ctor <init>
+example/Issue1749#x1. => val method x1
+example/Issue1749#x2. => val method x2
+example/Issue1854# => class Issue1854
+example/Issue1854#`<init>`(). => primary ctor <init>
+example/Issue1854#map. => val method map
+
+Occurrences:
+[1:8..1:15): example <- example/
+[3:7..3:12): scala -> scala/
+[3:13..3:17): math -> scala/math/
+[3:18..3:25): Ordered -> scala/math/Ordered.
+[3:26..3:43): orderingToOrdered -> scala/math/Ordered.orderingToOrdered().
+[5:6..5:15): Issue1749 <- example/Issue1749#
+[6:2..6:2): <- example/Issue1749#`<init>`().
+[6:6..6:8): x1 <- example/Issue1749#x1.
+[7:6..7:8): x2 <- example/Issue1749#x2.
+[8:2..8:2): -> scala/math/Ordered.orderingToOrdered().
+[8:3..8:3): -> scala/Tuple2.apply().
+[8:3..8:5): x1 -> example/Issue1749#x1.
+[8:7..8:9): x1 -> example/Issue1749#x1.
+[8:10..8:10): -> scala/math/Ordering.Tuple2().
+[8:10..8:10): -> scala/math/Ordering.Int.
+[9:5..9:12): compare -> scala/math/Ordered#compare().
+[9:14..9:14): -> scala/Tuple2.apply().
+[9:14..9:16): x2 -> example/Issue1749#x2.
+[9:18..9:20): x2 -> example/Issue1749#x2.
+[12:6..12:15): Issue1854 <- example/Issue1854#
+[13:2..13:2): <- example/Issue1854#`<init>`().
+[13:6..13:9): map <- example/Issue1854#map.
+[13:12..13:22): collection -> scala/collection/
+[13:23..13:30): mutable -> scala/collection/mutable/
+[13:31..13:34): Map -> scala/collection/mutable/Map.
+[13:35..13:40): empty -> scala/collection/MapFactory.Delegate#empty().
+[13:41..13:47): String -> scala/Predef.String#
+[13:49..13:55): String -> scala/Predef.String#
+[14:2..14:5): map -> example/Issue1854#map.
+[14:5..14:5): -> scala/collection/mutable/MapOps#update().
+
+expect/Local.scala
+------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Local.scala
+Text => empty
+Language => Scala
+Symbols => 6 entries
+Occurrences => 11 entries
+
+Symbols:
+example/Local# => class Local
+example/Local#`<init>`(). => primary ctor <init>
+example/Local#a(). => method a
+local0 => local id
+local1 => typeparam A
+local2 => param a
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:11): Local <- example/Local#
+[3:2..3:2): <- example/Local#`<init>`().
+[3:6..3:7): a <- example/Local#a().
+[4:8..4:10): id <- local0
+[4:11..4:12): A <- local1
+[4:14..4:15): a <- local2
+[4:17..4:18): A -> local1
+[4:21..4:22): A -> local1
+[4:25..4:26): a -> local2
+[5:4..5:6): id -> local0
+
+expect/Locals.scala
+-------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Locals.scala
+Text => empty
+Language => Scala
+Symbols => 3 entries
+Occurrences => 7 entries
+
+Symbols:
+local0 => val local x
+locals/Test. => final object Test
+locals/Test.xs. => val method xs
+
+Occurrences:
+[0:8..0:14): locals <- locals/
+[2:7..2:11): Test <- locals/Test.
+[3:6..3:8): xs <- locals/Test.xs.
+[4:8..4:9): x <- local0
+[5:4..5:8): List -> scala/package.List.
+[5:8..5:8): -> scala/collection/IterableFactory#apply().
+[5:9..5:10): x -> local0
+
+expect/MetacJava.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => MetacJava.scala
+Text => empty
+Language => Scala
+Symbols => 10 entries
+Occurrences => 72 entries
+
+Symbols:
+example/MetacJava# => class MetacJava
+example/MetacJava#`<init>`(). => primary ctor <init>
+example/MetacJava#coin. => val method coin
+example/MetacJava#entry. => val method entry
+example/MetacJava#inner. => val method inner
+example/MetacJava#interface. => val method interface
+example/MetacJava#nonStatic. => val method nonStatic
+example/MetacJava#overload1. => val method overload1
+example/MetacJava#overload2. => val method overload2
+example/MetacJava#staticInner. => val method staticInner
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:10): com -> com/
+[2:11..2:17): javacp -> com/javacp/
+[4:6..4:15): MetacJava <- example/MetacJava#
+[5:2..5:2): <- example/MetacJava#`<init>`().
+[5:2..5:8): javacp -> com/javacp/
+[5:9..5:18): MetacJava -> com/javacp/MetacJava#
+[5:19..5:30): StaticInner -> com/javacp/MetacJava#StaticInner#
+[5:31..5:39): isStatic -> com/javacp/MetacJava#StaticInner#isStatic().
+[6:6..6:12): javacp -> com/javacp/
+[6:13..6:22): MetacJava -> com/javacp/MetacJava#
+[6:23..6:34): StaticInner -> com/javacp/MetacJava#StaticInner#
+[6:34..6:34): -> com/javacp/MetacJava#StaticInner#`<init>`().
+[6:37..6:48): isNotStatic -> com/javacp/MetacJava#StaticInner#isNotStatic().
+[7:6..7:11): inner <- example/MetacJava#inner.
+[7:18..7:24): javacp -> com/javacp/
+[7:25..7:34): MetacJava -> com/javacp/MetacJava#
+[7:34..7:34): -> com/javacp/MetacJava#`<init>`().
+[8:6..8:15): overload1 <- example/MetacJava#overload1.
+[8:22..8:27): inner -> example/MetacJava#inner.
+[8:28..8:37): Overload1 -> com/javacp/MetacJava#Overload1#
+[8:37..8:37): -> com/javacp/MetacJava#Overload1#`<init>`().
+[9:6..9:15): overload2 <- example/MetacJava#overload2.
+[9:22..9:27): inner -> example/MetacJava#inner.
+[9:28..9:37): Overload2 -> com/javacp/MetacJava#Overload2#
+[9:37..9:37): -> com/javacp/MetacJava#Overload2#`<init>`().
+[10:2..10:7): inner -> example/MetacJava#inner.
+[10:8..10:16): overload -> com/javacp/MetacJava#overload().
+[10:21..10:30): overload1 -> example/MetacJava#overload1.
+[10:31..10:32): A -> com/javacp/MetacJava#Overload1#A#
+[10:32..10:32): -> com/javacp/MetacJava#Overload1#A#`<init>`().
+[11:2..11:7): inner -> example/MetacJava#inner.
+[11:8..11:16): overload -> com/javacp/MetacJava#overload(+1).
+[11:21..11:30): overload2 -> example/MetacJava#overload2.
+[11:31..11:32): A -> com/javacp/MetacJava#Overload2#A#
+[11:32..11:32): -> com/javacp/MetacJava#Overload2#A#`<init>`().
+[12:6..12:17): staticInner <- example/MetacJava#staticInner.
+[12:24..12:30): javacp -> com/javacp/
+[12:31..12:40): MetacJava -> com/javacp/MetacJava#
+[12:41..12:52): StaticInner -> com/javacp/MetacJava#StaticInner#
+[12:52..12:52): -> com/javacp/MetacJava#StaticInner#`<init>`().
+[13:6..13:15): nonStatic <- example/MetacJava#nonStatic.
+[13:22..13:33): staticInner -> example/MetacJava#staticInner.
+[13:34..13:43): NonStatic -> com/javacp/MetacJava#StaticInner#NonStatic#
+[13:43..13:43): -> com/javacp/MetacJava#StaticInner#NonStatic#`<init>`().
+[14:2..14:11): nonStatic -> example/MetacJava#nonStatic.
+[14:12..14:18): method -> com/javacp/MetacJava#StaticInner#NonStatic#method().
+[14:19..14:28): nonStatic -> example/MetacJava#nonStatic.
+[15:2..15:8): javacp -> com/javacp/
+[15:9..15:18): MetacJava -> com/javacp/MetacJava#
+[15:19..15:27): overload -> com/javacp/MetacJava#overload(+2).
+[15:32..15:38): javacp -> com/javacp/
+[15:39..15:48): MetacJava -> com/javacp/MetacJava#
+[15:49..15:58): Overload3 -> com/javacp/MetacJava#Overload3#
+[15:59..15:60): A -> com/javacp/MetacJava#Overload3#A#
+[15:60..15:60): -> com/javacp/MetacJava#Overload3#A#`<init>`().
+[16:6..16:15): interface <- example/MetacJava#interface.
+[16:17..16:23): javacp -> com/javacp/
+[16:24..16:33): Interface -> com/javacp/Interface#
+[17:6..17:10): coin <- example/MetacJava#coin.
+[17:12..17:18): javacp -> com/javacp/
+[17:19..17:23): Coin -> com/javacp/Coin#
+[17:26..17:32): javacp -> com/javacp/
+[17:33..17:37): Coin -> com/javacp/Coin#
+[17:38..17:43): PENNY -> com/javacp/Coin#PENNY.
+[18:6..18:11): entry <- example/MetacJava#entry.
+[18:13..18:17): java -> java/
+[18:18..18:22): util -> java/util/
+[18:23..18:26): Map -> java/util/Map#
+[18:27..18:32): Entry -> java/util/Map#Entry#
+[18:33..18:36): Int -> scala/Int#
+[18:38..18:41): Int -> scala/Int#
+
+expect/MethodUsages.scala
+-------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => MethodUsages.scala
+Text => empty
+Language => Scala
+Symbols => 3 entries
+Occurrences => 76 entries
+
+Symbols:
+example/MethodUsages# => class MethodUsages
+example/MethodUsages#`<init>`(). => primary ctor <init>
+example/MethodUsages#m. => val method m
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:18): MethodUsages <- example/MethodUsages#
+[3:2..3:2): <- example/MethodUsages#`<init>`().
+[3:6..3:7): m <- example/MethodUsages#m.
+[3:14..3:21): Methods -> example/Methods#
+[3:22..3:25): Int -> scala/Int#
+[3:26..3:26): -> example/Methods#`<init>`().
+[4:2..4:3): m -> example/MethodUsages#m.
+[4:4..4:6): m1 -> example/Methods#m1().
+[5:2..5:3): m -> example/MethodUsages#m.
+[5:4..5:6): m2 -> example/Methods#m2().
+[6:2..6:3): m -> example/MethodUsages#m.
+[6:4..6:6): m3 -> example/Methods#m3().
+[7:2..7:3): m -> example/MethodUsages#m.
+[7:4..7:6): m4 -> example/Methods#m4().
+[8:2..8:3): m -> example/MethodUsages#m.
+[8:4..8:6): m5 -> example/Methods#m5().
+[9:2..9:3): m -> example/MethodUsages#m.
+[9:4..9:6): m5 -> example/Methods#m5(+1).
+[10:2..10:3): m -> example/MethodUsages#m.
+[10:4..10:6): m6 -> example/Methods#m6().
+[11:2..11:3): m -> example/MethodUsages#m.
+[11:4..11:6): m6 -> example/Methods#m6(+1).
+[11:11..11:12): m -> example/MethodUsages#m.
+[11:13..11:17): List -> example/Methods#List#
+[11:18..11:21): Int -> scala/Int#
+[11:22..11:22): -> example/Methods#List#`<init>`().
+[12:2..12:3): m -> example/MethodUsages#m.
+[12:4..12:6): m6 -> example/Methods#m6(+2).
+[12:7..12:10): Nil -> scala/package.Nil.
+[13:2..13:3): m -> example/MethodUsages#m.
+[13:4..13:6): m7 -> example/Methods#m7().
+[13:7..13:8): m -> example/MethodUsages#m.
+[13:14..13:15): m -> example/MethodUsages#m.
+[13:16..13:20): List -> example/Methods#List#
+[13:21..13:24): Int -> scala/Int#
+[13:25..13:25): -> example/Methods#List#`<init>`().
+[13:26..13:26): -> scala/math/Ordering.Int.
+[14:2..14:3): m -> example/MethodUsages#m.
+[14:4..14:11): `m8().` -> example/Methods#`m8().`().
+[15:2..15:3): m -> example/MethodUsages#m.
+[15:4..15:6): m9 -> example/Methods#m9().
+[16:2..16:3): m -> example/MethodUsages#m.
+[16:4..16:7): m10 -> example/Methods#m10().
+[17:2..17:3): m -> example/MethodUsages#m.
+[17:4..17:7): m11 -> example/Methods#m11().
+[17:8..17:14): Predef -> scala/Predef.
+[18:2..18:3): m -> example/MethodUsages#m.
+[18:4..18:7): m11 -> example/Methods#m11(+1).
+[18:8..18:15): Example -> example/Example.
+[19:2..19:3): m -> example/MethodUsages#m.
+[19:4..19:8): m12a -> example/Methods#m12a().
+[20:2..20:3): m -> example/MethodUsages#m.
+[20:4..20:8): m12b -> example/Methods#m12b().
+[21:2..21:3): m -> example/MethodUsages#m.
+[21:4..21:7): m13 -> example/Methods#m13().
+[22:2..22:3): m -> example/MethodUsages#m.
+[22:4..22:7): m15 -> example/Methods#m15().
+[23:2..23:3): m -> example/MethodUsages#m.
+[23:4..23:7): m16 -> example/Methods#m16().
+[24:2..24:3): m -> example/MethodUsages#m.
+[24:4..24:7): m16 -> example/Methods#m16().
+[25:2..25:3): m -> example/MethodUsages#m.
+[25:4..25:7): m17 -> example/Methods#m17.
+[25:8..25:9): m -> example/Methods#m17.m().
+[26:2..26:3): m -> example/MethodUsages#m.
+[26:4..26:7): m17 -> example/Methods#m17().
+[27:2..27:3): m -> example/MethodUsages#m.
+[27:4..27:7): m17 -> example/Methods#m17(+1).
+[28:2..28:3): m -> example/MethodUsages#m.
+[28:4..28:7): m18 -> example/Methods#m18.
+[28:8..28:9): m -> example/Methods#m17.m().
+[29:2..29:3): m -> example/MethodUsages#m.
+[29:4..29:7): m18 -> example/Methods#m18().
+[30:2..30:3): m -> example/MethodUsages#m.
+[30:4..30:7): m18 -> example/Methods#m18(+1).
+
+expect/Methods.scala
+--------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Methods.scala
+Text => empty
+Language => Scala
+Symbols => 70 entries
+Occurrences => 139 entries
+
+Symbols:
+example/Methods# => class Methods
+example/Methods#AList# => type AList
+example/Methods#AList#[T] => typeparam T
+example/Methods#List# => class List
+example/Methods#List#[T] => typeparam T
+example/Methods#List#`<init>`(). => primary ctor <init>
+example/Methods#[T] => typeparam T
+example/Methods#`<init>`(). => primary ctor <init>
+example/Methods#`m8().`(). => method m8().
+example/Methods#`m9().`# => class m9().
+example/Methods#`m9().`#`<init>`(). => primary ctor <init>
+example/Methods#m1(). => method m1
+example/Methods#m2(). => method m2
+example/Methods#m3(). => method m3
+example/Methods#m3().(x) => param x
+example/Methods#m4(). => method m4
+example/Methods#m4().(x) => param x
+example/Methods#m4().(y) => param y
+example/Methods#m5(). => method m5
+example/Methods#m5().(x) => param x
+example/Methods#m5(+1). => method m5
+example/Methods#m5(+1).(x) => param x
+example/Methods#m6(). => method m6
+example/Methods#m6().(x) => param x
+example/Methods#m6(+1). => method m6
+example/Methods#m6(+1).(x) => param x
+example/Methods#m6(+2). => method m6
+example/Methods#m6(+2).(x) => param x
+example/Methods#m7(). => method m7
+example/Methods#m7().(c) => param c
+example/Methods#m7().(l) => param l
+example/Methods#m7().[U] => typeparam U
+example/Methods#m9(). => method m9
+example/Methods#m9().(x) => param x
+example/Methods#m10(). => method m10
+example/Methods#m10().(x) => param x
+example/Methods#m11(). => method m11
+example/Methods#m11().(x) => param x
+example/Methods#m11(+1). => method m11
+example/Methods#m11(+1).(x) => param x
+example/Methods#m12a(). => method m12a
+example/Methods#m12a().(x) => param x
+example/Methods#m12b(). => method m12b
+example/Methods#m12b().(x) => param x
+example/Methods#m13(). => method m13
+example/Methods#m13().(x) => param x
+example/Methods#m15(). => method m15
+example/Methods#m15().(x) => param x
+example/Methods#m16(). => method m16
+example/Methods#m16().(x) => param x
+example/Methods#m17(). => method m17
+example/Methods#m17().(a) => param a
+example/Methods#m17(+1). => method m17
+example/Methods#m17(+1).(b) => param b
+example/Methods#m17. => final object m17
+example/Methods#m17.m(). => method m
+example/Methods#m18(). => method m18
+example/Methods#m18().(a) => param a
+example/Methods#m18(+1). => method m18
+example/Methods#m18(+1).(b) => param b
+example/Methods#m18. => val method m18
+example/Methods#m19$default$2(). => method m19$default$2
+example/Methods#m19$default$3(). => method m19$default$3
+example/Methods#m19$default$3().(x) => param x
+example/Methods#m19$default$3().(y) => param y
+example/Methods#m19(). => method m19
+example/Methods#m19().(x) => param x
+example/Methods#m19().(y) => param y
+example/Methods#m19().(z) => param z
+local0 => abstract val method x
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:12): scala -> scala/
+[2:13..2:17): math -> scala/math/
+[2:18..2:26): Ordering -> scala/math/Ordering.
+[2:18..2:26): Ordering -> scala/math/Ordering#
+[3:7..3:12): scala -> scala/
+[3:13..3:21): language -> scalaShadowing/language.
+[3:22..3:34): existentials -> scalaShadowing/language.existentials.
+[5:6..5:13): Methods <- example/Methods#
+[5:13..5:16): <- example/Methods#`<init>`().
+[5:14..5:15): T <- example/Methods#[T]
+[6:8..6:12): List <- example/Methods#List#
+[6:12..6:15): <- example/Methods#List#`<init>`().
+[6:13..6:14): T <- example/Methods#List#[T]
+[7:7..7:12): AList <- example/Methods#AList#
+[7:13..7:14): T <- example/Methods#AList#[T]
+[7:18..7:22): List -> example/Methods#List#
+[7:23..7:24): T -> example/Methods#AList#[T]
+[8:6..8:8): m1 <- example/Methods#m1().
+[8:11..8:14): ??? -> scala/Predef.`???`().
+[9:6..9:8): m2 <- example/Methods#m2().
+[9:13..9:16): ??? -> scala/Predef.`???`().
+[10:6..10:8): m3 <- example/Methods#m3().
+[10:9..10:10): x <- example/Methods#m3().(x)
+[10:12..10:15): Int -> scala/Int#
+[10:19..10:22): ??? -> scala/Predef.`???`().
+[11:6..11:8): m4 <- example/Methods#m4().
+[11:9..11:10): x <- example/Methods#m4().(x)
+[11:12..11:15): Int -> scala/Int#
+[11:17..11:18): y <- example/Methods#m4().(y)
+[11:20..11:23): Int -> scala/Int#
+[11:27..11:30): ??? -> scala/Predef.`???`().
+[12:6..12:8): m5 <- example/Methods#m5().
+[12:9..12:10): x <- example/Methods#m5().(x)
+[12:12..12:18): String -> scala/Predef.String#
+[12:22..12:25): ??? -> scala/Predef.`???`().
+[13:6..13:8): m5 <- example/Methods#m5(+1).
+[13:9..13:10): x <- example/Methods#m5(+1).(x)
+[13:12..13:15): Int -> scala/Int#
+[13:19..13:22): ??? -> scala/Predef.`???`().
+[14:6..14:8): m6 <- example/Methods#m6().
+[14:9..14:10): x <- example/Methods#m6().(x)
+[14:12..14:15): Int -> scala/Int#
+[14:19..14:22): ??? -> scala/Predef.`???`().
+[15:6..15:8): m6 <- example/Methods#m6(+1).
+[15:9..15:10): x <- example/Methods#m6(+1).(x)
+[15:12..15:16): List -> example/Methods#List#
+[15:17..15:18): T -> example/Methods#[T]
+[15:23..15:26): ??? -> scala/Predef.`???`().
+[16:6..16:8): m6 <- example/Methods#m6(+2).
+[16:9..16:10): x <- example/Methods#m6(+2).(x)
+[16:12..16:17): scala -> scala/
+[16:18..16:22): List -> scala/package.List#
+[16:23..16:24): T -> example/Methods#[T]
+[16:29..16:32): ??? -> scala/Predef.`???`().
+[17:6..17:8): m7 <- example/Methods#m7().
+[17:9..17:10): U <- example/Methods#m7().[U]
+[17:12..17:20): Ordering -> scala/math/Ordering#
+[17:20..17:20): -> example/Methods#m7().[U]
+[17:22..17:23): c <- example/Methods#m7().(c)
+[17:25..17:32): Methods -> example/Methods#
+[17:33..17:34): T -> example/Methods#[T]
+[17:37..17:38): l <- example/Methods#m7().(l)
+[17:40..17:44): List -> example/Methods#List#
+[17:45..17:46): U -> example/Methods#m7().[U]
+[17:51..17:54): ??? -> scala/Predef.`???`().
+[18:7..18:12): m8(). <- example/Methods#`m8().`().
+[18:18..18:21): ??? -> scala/Predef.`???`().
+[19:2..19:2): <- example/Methods#`m9().`#`<init>`().
+[19:9..19:14): m9(). <- example/Methods#`m9().`#
+[20:6..20:8): m9 <- example/Methods#m9().
+[20:9..20:10): x <- example/Methods#m9().(x)
+[20:12..20:19): `m9().` -> example/Methods#`m9().`#
+[20:23..20:26): ??? -> scala/Predef.`???`().
+[21:6..21:9): m10 <- example/Methods#m10().
+[21:10..21:11): x <- example/Methods#m10().(x)
+[21:13..21:18): AList -> example/Methods#AList#
+[21:19..21:20): T -> example/Methods#[T]
+[21:25..21:28): ??? -> scala/Predef.`???`().
+[22:6..22:9): m11 <- example/Methods#m11().
+[22:10..22:11): x <- example/Methods#m11().(x)
+[22:13..22:19): Predef -> scala/Predef.
+[22:28..22:31): ??? -> scala/Predef.`???`().
+[23:6..23:9): m11 <- example/Methods#m11(+1).
+[23:10..23:11): x <- example/Methods#m11(+1).(x)
+[23:13..23:20): Example -> example/Example.
+[23:29..23:32): ??? -> scala/Predef.`???`().
+[24:6..24:10): m12a <- example/Methods#m12a().
+[24:11..24:12): x <- example/Methods#m12a().(x)
+[24:20..24:23): ??? -> scala/Predef.`???`().
+[25:6..25:10): m12b <- example/Methods#m12b().
+[25:11..25:12): x <- example/Methods#m12b().(x)
+[25:20..25:21): x <- local0
+[25:23..25:26): Int -> scala/Int#
+[25:32..25:35): ??? -> scala/Predef.`???`().
+[26:6..26:9): m13 <- example/Methods#m13().
+[26:10..26:11): x <- example/Methods#m13().(x)
+[26:13..26:16): Int -> scala/Int#
+[26:18..26:27): unchecked -> scala/unchecked#
+[26:31..26:34): ??? -> scala/Predef.`???`().
+[27:6..27:9): m15 <- example/Methods#m15().
+[27:10..27:11): x <- example/Methods#m15().(x)
+[27:16..27:19): Int -> scala/Int#
+[27:23..27:26): ??? -> scala/Predef.`???`().
+[28:6..28:9): m16 <- example/Methods#m16().
+[28:10..28:11): x <- example/Methods#m16().(x)
+[28:13..28:16): Int -> scala/Int#
+[28:21..28:24): ??? -> scala/Predef.`???`().
+[29:9..29:12): m17 <- example/Methods#m17.
+[29:19..29:20): m <- example/Methods#m17.m().
+[29:25..29:28): ??? -> scala/Predef.`???`().
+[30:6..30:9): m17 <- example/Methods#m17().
+[30:10..30:11): a <- example/Methods#m17().(a)
+[30:13..30:16): Int -> scala/Int#
+[30:20..30:23): ??? -> scala/Predef.`???`().
+[31:6..31:9): m17 <- example/Methods#m17(+1).
+[31:10..31:11): b <- example/Methods#m17(+1).(b)
+[31:13..31:19): String -> scala/Predef.String#
+[31:23..31:26): ??? -> scala/Predef.`???`().
+[32:6..32:9): m18 <- example/Methods#m18.
+[32:12..32:15): m17 -> example/Methods#m17.
+[33:6..33:9): m18 <- example/Methods#m18().
+[33:10..33:11): a <- example/Methods#m18().(a)
+[33:13..33:16): Int -> scala/Int#
+[33:20..33:23): ??? -> scala/Predef.`???`().
+[34:6..34:9): m18 <- example/Methods#m18(+1).
+[34:10..34:11): b <- example/Methods#m18(+1).(b)
+[34:13..34:19): String -> scala/Predef.String#
+[34:23..34:26): ??? -> scala/Predef.`???`().
+[35:6..35:9): m19 <- example/Methods#m19().
+[35:10..35:11): x <- example/Methods#m19().(x)
+[35:10..35:11): x <- example/Methods#m19$default$3().(x)
+[35:13..35:16): Int -> scala/Int#
+[35:18..35:19): y <- example/Methods#m19().(y)
+[35:18..35:19): y <- example/Methods#m19$default$3().(y)
+[35:21..35:24): Int -> scala/Int#
+[35:30..35:31): z <- example/Methods#m19().(z)
+[35:33..35:36): Int -> scala/Int#
+[35:44..35:47): ??? -> scala/Predef.`???`().
+
+expect/NamedApplyBlock.scala
+----------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => NamedApplyBlock.scala
+Text => empty
+Language => Scala
+Symbols => 45 entries
+Occurrences => 46 entries
+
+Symbols:
+example/NamedApplyBlockCaseClassConstruction. => final object NamedApplyBlockCaseClassConstruction
+example/NamedApplyBlockCaseClassConstruction.Msg# => case class Msg
+example/NamedApplyBlockCaseClassConstruction.Msg#_1(). => method _1
+example/NamedApplyBlockCaseClassConstruction.Msg#_2(). => method _2
+example/NamedApplyBlockCaseClassConstruction.Msg#_3(). => method _3
+example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`(). => primary ctor <init>
+example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(body) => val param body
+example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(head) => val param head
+example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(tail) => val param tail
+example/NamedApplyBlockCaseClassConstruction.Msg#body. => val method body
+example/NamedApplyBlockCaseClassConstruction.Msg#copy$default$1(). => method copy$default$1
+example/NamedApplyBlockCaseClassConstruction.Msg#copy$default$2(). => method copy$default$2
+example/NamedApplyBlockCaseClassConstruction.Msg#copy$default$3(). => method copy$default$3
+example/NamedApplyBlockCaseClassConstruction.Msg#copy(). => method copy
+example/NamedApplyBlockCaseClassConstruction.Msg#copy().(body) => param body
+example/NamedApplyBlockCaseClassConstruction.Msg#copy().(head) => param head
+example/NamedApplyBlockCaseClassConstruction.Msg#copy().(tail) => param tail
+example/NamedApplyBlockCaseClassConstruction.Msg#head. => val method head
+example/NamedApplyBlockCaseClassConstruction.Msg#tail. => val method tail
+example/NamedApplyBlockCaseClassConstruction.Msg. => final object Msg
+example/NamedApplyBlockCaseClassConstruction.Msg.$lessinit$greater$default$2(). => method $lessinit$greater$default$2
+example/NamedApplyBlockCaseClassConstruction.Msg.apply(). => method apply
+example/NamedApplyBlockCaseClassConstruction.Msg.apply().(body) => param body
+example/NamedApplyBlockCaseClassConstruction.Msg.apply().(head) => param head
+example/NamedApplyBlockCaseClassConstruction.Msg.apply().(tail) => param tail
+example/NamedApplyBlockCaseClassConstruction.Msg.unapply(). => method unapply
+example/NamedApplyBlockCaseClassConstruction.Msg.unapply().(x$1) => param x$1
+example/NamedApplyBlockCaseClassConstruction.bodyText. => val method bodyText
+example/NamedApplyBlockCaseClassConstruction.msg. => val method msg
+example/NamedApplyBlockMethods. => final object NamedApplyBlockMethods
+example/NamedApplyBlockMethods.baseCase(). => method baseCase
+example/NamedApplyBlockMethods.foo$default$1(). => method foo$default$1
+example/NamedApplyBlockMethods.foo$default$2(). => method foo$default$2
+example/NamedApplyBlockMethods.foo$default$3(). => method foo$default$3
+example/NamedApplyBlockMethods.foo(). => method foo
+example/NamedApplyBlockMethods.foo().(a) => param a
+example/NamedApplyBlockMethods.foo().(b) => param b
+example/NamedApplyBlockMethods.foo().(c) => param c
+example/NamedApplyBlockMethods.local. => val method local
+example/NamedApplyBlockMethods.recursive(). => method recursive
+local0 => val local b$1
+local1 => val local c$1
+local2 => val local b$3
+local3 => val local b$2
+local4 => val local head$1
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:29): NamedApplyBlockMethods <- example/NamedApplyBlockMethods.
+[3:6..3:11): local <- example/NamedApplyBlockMethods.local.
+[4:6..4:9): foo <- example/NamedApplyBlockMethods.foo().
+[4:10..4:11): a <- example/NamedApplyBlockMethods.foo().(a)
+[4:13..4:16): Int -> scala/Int#
+[4:22..4:23): b <- example/NamedApplyBlockMethods.foo().(b)
+[4:25..4:28): Int -> scala/Int#
+[4:34..4:35): c <- example/NamedApplyBlockMethods.foo().(c)
+[4:37..4:40): Int -> scala/Int#
+[4:47..4:50): Int -> scala/Int#
+[4:53..4:54): a -> example/NamedApplyBlockMethods.foo().(a)
+[4:55..4:56): + -> scala/Int#`+`(+4).
+[4:57..4:58): b -> example/NamedApplyBlockMethods.foo().(b)
+[4:59..4:60): + -> scala/Int#`+`(+4).
+[4:61..4:62): c -> example/NamedApplyBlockMethods.foo().(c)
+[5:6..5:14): baseCase <- example/NamedApplyBlockMethods.baseCase().
+[5:17..5:20): foo -> example/NamedApplyBlockMethods.foo().
+[5:17..5:17): -> local0
+[5:21..5:26): local -> example/NamedApplyBlockMethods.local.
+[5:28..5:29): c -> example/NamedApplyBlockMethods.foo().(c)
+[6:6..6:15): recursive <- example/NamedApplyBlockMethods.recursive().
+[6:18..6:21): foo -> example/NamedApplyBlockMethods.foo().
+[6:18..6:18): -> local2
+[6:22..6:27): local -> example/NamedApplyBlockMethods.local.
+[6:29..6:30): c -> example/NamedApplyBlockMethods.foo().(c)
+[6:33..6:36): foo -> example/NamedApplyBlockMethods.foo().
+[6:33..6:33): -> local3
+[6:37..6:42): local -> example/NamedApplyBlockMethods.local.
+[6:44..6:45): c -> example/NamedApplyBlockMethods.foo().(c)
+[9:7..9:43): NamedApplyBlockCaseClassConstruction <- example/NamedApplyBlockCaseClassConstruction.
+[10:13..10:16): Msg <- example/NamedApplyBlockCaseClassConstruction.Msg#
+[10:16..10:70): <- example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().
+[10:17..10:21): body <- example/NamedApplyBlockCaseClassConstruction.Msg#body.
+[10:23..10:29): String -> scala/Predef.String#
+[10:31..10:35): head <- example/NamedApplyBlockCaseClassConstruction.Msg#head.
+[10:37..10:43): String -> scala/Predef.String#
+[10:57..10:61): tail <- example/NamedApplyBlockCaseClassConstruction.Msg#tail.
+[10:63..10:69): String -> scala/Predef.String#
+[11:6..11:14): bodyText <- example/NamedApplyBlockCaseClassConstruction.bodyText.
+[12:6..12:9): msg <- example/NamedApplyBlockCaseClassConstruction.msg.
+[12:12..12:15): Msg -> example/NamedApplyBlockCaseClassConstruction.Msg.
+[12:12..12:12): -> local4
+[12:15..12:15): -> example/NamedApplyBlockCaseClassConstruction.Msg.apply().
+[12:16..12:24): bodyText -> example/NamedApplyBlockCaseClassConstruction.bodyText.
+[12:26..12:30): tail -> example/NamedApplyBlockCaseClassConstruction.Msg.apply().(tail)
+
+expect/NamedArguments.scala
+---------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => NamedArguments.scala
+Text => empty
+Language => Scala
+Symbols => 15 entries
+Occurrences => 13 entries
+
+Symbols:
+example/NamedArguments# => class NamedArguments
+example/NamedArguments#User# => case class User
+example/NamedArguments#User#_1(). => method _1
+example/NamedArguments#User#`<init>`(). => primary ctor <init>
+example/NamedArguments#User#`<init>`().(name) => val param name
+example/NamedArguments#User#copy$default$1(). => method copy$default$1
+example/NamedArguments#User#copy(). => method copy
+example/NamedArguments#User#copy().(name) => param name
+example/NamedArguments#User#name. => val method name
+example/NamedArguments#User. => final object User
+example/NamedArguments#User.apply(). => method apply
+example/NamedArguments#User.apply().(name) => param name
+example/NamedArguments#User.unapply(). => method unapply
+example/NamedArguments#User.unapply().(x$1) => param x$1
+example/NamedArguments#`<init>`(). => primary ctor <init>
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:20): NamedArguments <- example/NamedArguments#
+[3:2..3:2): <- example/NamedArguments#`<init>`().
+[3:13..3:17): User <- example/NamedArguments#User#
+[3:17..3:31): <- example/NamedArguments#User#`<init>`().
+[3:18..3:22): name <- example/NamedArguments#User#name.
+[3:24..3:30): String -> scala/Predef.String#
+[4:2..4:6): User -> example/NamedArguments#User.
+[4:6..4:6): -> example/NamedArguments#User.apply().
+[4:7..4:11): name -> example/NamedArguments#User.apply().(name)
+[5:2..5:6): User -> example/NamedArguments#User.
+[5:7..5:12): apply -> example/NamedArguments#User.apply().
+[5:13..5:17): name -> example/NamedArguments#User.apply().(name)
+
+expect/NewModifiers.scala
+-------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => NewModifiers.scala
+Text => empty
+Language => Scala
+Symbols => 3 entries
+Occurrences => 4 entries
+
+Symbols:
+_empty_/NewModifiers. => final object NewModifiers
+_empty_/NewModifiers.A# => type A
+_empty_/NewModifiers.foo. => val method foo
+
+Occurrences:
+[0:7..0:19): NewModifiers <- _empty_/NewModifiers.
+[1:13..1:16): foo <- _empty_/NewModifiers.foo.
+[2:14..2:15): A <- _empty_/NewModifiers.A#
+[2:18..2:21): Int -> scala/Int#
+
+expect/Objects.scala
+--------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Objects.scala
+Text => empty
+Language => Scala
+Symbols => 2 entries
+Occurrences => 3 entries
+
+Symbols:
+objects/X. => final object X
+objects/X.Y. => final object Y
+
+Occurrences:
+[0:8..0:15): objects <- objects/
+[2:7..2:8): X <- objects/X.
+[3:9..3:10): Y <- objects/X.Y.
+
+expect/Overrides.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Overrides.scala
+Text => empty
+Language => Scala
+Symbols => 6 entries
+Occurrences => 10 entries
+
+Symbols:
+example/A# => trait A
+example/A#`<init>`(). => primary ctor <init>
+example/A#foo(). => abstract method foo
+example/B# => class B
+example/B#`<init>`(). => primary ctor <init>
+example/B#foo(). => method foo
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:7): A <- example/A#
+[2:10..2:10): <- example/A#`<init>`().
+[2:14..2:17): foo <- example/A#foo().
+[2:19..2:22): Int -> scala/Int#
+[3:6..3:7): B <- example/B#
+[3:7..3:9): <- example/B#`<init>`().
+[3:18..3:19): A -> example/A#
+[3:26..3:29): foo <- example/B#foo().
+[3:31..3:34): Int -> scala/Int#
+
+expect/Prefixes.scala
+---------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Prefixes.scala
+Text => empty
+Language => Scala
+Symbols => 19 entries
+Occurrences => 49 entries
+
+Symbols:
+prefixes/C# => class C
+prefixes/C#N. => final object N
+prefixes/C#N.U# => type U
+prefixes/C#T# => type T
+prefixes/C#`<init>`(). => primary ctor <init>
+prefixes/C#k1(). => method k1
+prefixes/C#m1(). => method m1
+prefixes/M. => final object M
+prefixes/M.T# => type T
+prefixes/M.n1(). => method n1
+prefixes/O. => final object O
+prefixes/O.o1(). => method o1
+prefixes/Test. => final object Test
+prefixes/Test.c. => val method c
+prefixes/Test.k2(). => method k2
+prefixes/Test.k3(). => method k3
+prefixes/Test.m2(). => method m2
+prefixes/Test.n2(). => method n2
+prefixes/Test.n3(). => method n3
+
+Occurrences:
+[0:8..0:16): prefixes <- prefixes/
+[2:6..2:7): C <- prefixes/C#
+[3:2..3:2): <- prefixes/C#`<init>`().
+[3:7..3:8): T <- prefixes/C#T#
+[4:6..4:8): m1 <- prefixes/C#m1().
+[4:10..4:11): T -> prefixes/C#T#
+[4:14..4:17): ??? -> scala/Predef.`???`().
+[6:9..6:10): N <- prefixes/C#N.
+[7:9..7:10): U <- prefixes/C#N.U#
+[9:6..9:8): k1 <- prefixes/C#k1().
+[9:10..9:11): N -> prefixes/C#N.
+[9:12..9:13): U -> prefixes/C#N.U#
+[9:16..9:19): ??? -> scala/Predef.`???`().
+[12:7..12:8): M <- prefixes/M.
+[13:7..13:8): T <- prefixes/M.T#
+[14:6..14:8): n1 <- prefixes/M.n1().
+[14:10..14:11): T -> prefixes/M.T#
+[14:14..14:17): ??? -> scala/Predef.`???`().
+[17:7..17:8): O <- prefixes/O.
+[17:17..17:18): C -> prefixes/C#
+[17:18..17:18): -> prefixes/C#`<init>`().
+[18:6..18:8): o1 <- prefixes/O.o1().
+[18:10..18:11): T -> prefixes/C#T#
+[18:14..18:17): ??? -> scala/Predef.`???`().
+[21:7..21:11): Test <- prefixes/Test.
+[22:6..22:7): c <- prefixes/Test.c.
+[22:9..22:10): C -> prefixes/C#
+[22:13..22:16): ??? -> scala/Predef.`???`().
+[23:6..23:8): m2 <- prefixes/Test.m2().
+[23:10..23:11): c -> prefixes/Test.c.
+[23:12..23:13): T -> prefixes/C#T#
+[23:16..23:19): ??? -> scala/Predef.`???`().
+[24:6..24:8): k2 <- prefixes/Test.k2().
+[24:10..24:11): c -> prefixes/Test.c.
+[24:12..24:13): N -> prefixes/C#N.
+[24:14..24:15): U -> prefixes/C#N.U#
+[24:18..24:21): ??? -> scala/Predef.`???`().
+[25:9..25:10): c -> prefixes/Test.c.
+[25:11..25:12): N -> prefixes/C#N.
+[26:6..26:8): k3 <- prefixes/Test.k3().
+[26:14..26:17): ??? -> scala/Predef.`???`().
+[28:6..28:8): n2 <- prefixes/Test.n2().
+[28:10..28:11): M -> prefixes/M.
+[28:12..28:13): T -> prefixes/M.T#
+[28:16..28:19): ??? -> scala/Predef.`???`().
+[30:9..30:10): M -> prefixes/M.
+[31:6..31:8): n3 <- prefixes/Test.n3().
+[31:10..31:11): T -> prefixes/M.T#
+[31:14..31:17): ??? -> scala/Predef.`???`().
+
+expect/Selfs.scala
+------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Selfs.scala
+Text => empty
+Language => Scala
+Symbols => 13 entries
+Occurrences => 26 entries
+
+Symbols:
+local0 => selfparam self
+local1 => selfparam self
+local2 => selfparam self
+selfs/B# => class B
+selfs/B#`<init>`(). => primary ctor <init>
+selfs/C1# => class C1
+selfs/C1#`<init>`(). => primary ctor <init>
+selfs/C2# => class C2
+selfs/C2#`<init>`(). => primary ctor <init>
+selfs/C3# => class C3
+selfs/C3#`<init>`(). => primary ctor <init>
+selfs/C6# => class C6
+selfs/C6#`<init>`(). => primary ctor <init>
+
+Occurrences:
+[0:8..0:13): selfs <- selfs/
+[2:0..2:0): <- selfs/B#`<init>`().
+[2:6..2:7): B <- selfs/B#
+[4:6..4:8): C1 <- selfs/C1#
+[4:17..4:17): <- selfs/C1#`<init>`().
+[4:17..4:18): B -> selfs/B#
+[4:18..4:18): -> selfs/B#`<init>`().
+[4:21..4:25): self <- local0
+[7:6..7:8): C2 <- selfs/C2#
+[7:17..7:17): <- selfs/C2#`<init>`().
+[7:17..7:18): B -> selfs/B#
+[7:18..7:18): -> selfs/B#`<init>`().
+[7:21..7:25): self <- local1
+[7:27..7:28): B -> selfs/B#
+[10:6..10:8): C3 <- selfs/C3#
+[10:17..10:17): <- selfs/C3#`<init>`().
+[10:17..10:18): B -> selfs/B#
+[10:18..10:18): -> selfs/B#`<init>`().
+[10:21..10:25): self <- local2
+[10:27..10:28): B -> selfs/B#
+[10:34..10:36): C1 -> selfs/C1#
+[13:6..13:8): C6 <- selfs/C6#
+[13:17..13:17): <- selfs/C6#`<init>`().
+[13:17..13:18): B -> selfs/B#
+[13:18..13:18): -> selfs/B#`<init>`().
+[13:27..13:28): B -> selfs/B#
+
+expect/Synthetic.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Synthetic.scala
+Text => empty
+Language => Scala
+Symbols => 37 entries
+Occurrences => 163 entries
+
+Symbols:
+example/Synthetic# => class Synthetic
+example/Synthetic#F# => class F
+example/Synthetic#F#`<init>`(). => primary ctor <init>
+example/Synthetic#J# => class J
+example/Synthetic#J#[T] => typeparam T
+example/Synthetic#J#`<init>`(). => primary ctor <init>
+example/Synthetic#J#arr. => val method arr
+example/Synthetic#Name. => val method Name
+example/Synthetic#`<init>`(). => primary ctor <init>
+example/Synthetic#a1. => val method a1
+example/Synthetic#a2. => val method a2
+example/Synthetic#as. => val method as
+example/Synthetic#f. => val method f
+example/Synthetic#lst. => val method lst
+example/Synthetic#name. => val method name
+example/Synthetic#ordering. => implicit val method ordering
+example/Synthetic#s. => final object s
+example/Synthetic#s.Bar# => case class Bar
+example/Synthetic#s.Bar#`<init>`(). => primary ctor <init>
+example/Synthetic#s.Bar#copy(). => method copy
+example/Synthetic#s.Bar. => final object Bar
+example/Synthetic#s.Bar.apply(). => method apply
+example/Synthetic#s.Bar.unapply(). => method unapply
+example/Synthetic#s.Bar.unapply().(x$1) => param x$1
+example/Synthetic#s.apply(). => method apply
+example/Synthetic#x. => val method x
+example/Synthetic#xs. => val method xs
+local0 => param x
+local1 => param y
+local2 => param i
+local3 => param j
+local4 => param i
+local5 => param j
+local6 => param a
+local7 => param b
+local8 => param a
+local9 => param b
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:12): scala -> scala/
+[2:13..2:21): language -> scalaShadowing/language.
+[2:22..2:41): implicitConversions -> scalaShadowing/language.implicitConversions.
+[4:6..4:15): Synthetic <- example/Synthetic#
+[5:2..5:2): <- example/Synthetic#`<init>`().
+[5:2..5:6): List -> scala/package.List.
+[5:6..5:6): -> scala/collection/IterableFactory#apply().
+[5:10..5:13): map -> scala/collection/immutable/List#map().
+[5:16..5:17): + -> scala/Int#`+`(+4).
+[6:2..6:2): -> scala/Predef.intArrayOps().
+[6:2..6:7): Array -> scala/Array.
+[6:8..6:13): empty -> scala/Array.empty().
+[6:14..6:17): Int -> scala/Int#
+[6:18..6:18): -> scala/reflect/ClassTag.apply().
+[6:18..6:18): -> java/lang/Integer#TYPE.
+[6:19..6:29): headOption -> scala/collection/ArrayOps#headOption().
+[7:2..7:2): -> scala/Predef.augmentString().
+[7:9..7:20): stripPrefix -> scala/collection/StringOps#stripPrefix().
+[10:6..10:10): Name <- example/Synthetic#Name.
+[10:13..10:13): -> scala/Predef.augmentString().
+[10:25..10:26): r -> scala/collection/StringOps#r().
+[11:6..11:7): x <- example/Synthetic#x.
+[11:8..11:11): #:: -> scala/package.`#::`.
+[11:11..11:11): -> scala/package.`#::`.unapply().
+[11:12..11:14): xs <- example/Synthetic#xs.
+[11:17..11:25): LazyList -> scala/package.LazyList.
+[11:25..11:25): -> scala/collection/IterableFactory#apply().
+[12:6..12:10): Name -> example/Synthetic#Name.
+[12:10..12:10): -> scala/util/matching/Regex#unapplySeq().
+[12:11..12:15): name <- example/Synthetic#name.
+[13:8..13:8): -> scala/collection/immutable/LazyList.toDeferrer().
+[13:14..13:14): -> scala/collection/immutable/LazyList.toDeferrer().
+[13:14..13:22): LazyList -> scala/package.LazyList.
+[13:23..13:28): empty -> scala/collection/immutable/LazyList.empty().
+[13:28..13:28): -> scala/collection/immutable/LazyList.Deferrer#`#::`().
+[15:6..15:8): a1 <- example/Synthetic#a1.
+[15:9..15:12): #:: -> scala/package.`#::`.
+[15:12..15:12): -> scala/package.`#::`.unapply().
+[15:13..15:15): a2 <- example/Synthetic#a2.
+[15:16..15:19): #:: -> scala/package.`#::`.
+[15:19..15:19): -> scala/package.`#::`.unapply().
+[15:20..15:22): as <- example/Synthetic#as.
+[15:25..15:33): LazyList -> scala/package.LazyList.
+[15:33..15:33): -> scala/collection/IterableFactory#apply().
+[17:6..17:9): lst <- example/Synthetic#lst.
+[17:18..17:18): -> scala/collection/immutable/LazyList.toDeferrer().
+[17:24..17:24): -> scala/collection/immutable/LazyList.toDeferrer().
+[17:24..17:32): LazyList -> scala/package.LazyList.
+[17:33..17:38): empty -> scala/collection/immutable/LazyList.empty().
+[17:38..17:38): -> scala/collection/immutable/LazyList.Deferrer#`#::`().
+[19:7..19:8): x <- local0
+[19:12..19:12): -> scala/LowPriorityImplicits#intWrapper().
+[19:14..19:16): to -> scala/runtime/RichInt#to().
+[19:19..19:19): -> scala/collection/immutable/Range#foreach().
+[19:21..19:22): y <- local1
+[19:26..19:26): -> scala/LowPriorityImplicits#intWrapper().
+[19:28..19:33): until -> scala/runtime/RichInt#until().
+[19:36..19:36): -> scala/collection/immutable/Range#foreach().
+[19:38..19:45): println -> scala/Predef.println(+1).
+[19:46..19:46): -> scala/Predef.ArrowAssoc().
+[19:46..19:47): x -> local0
+[19:48..19:50): -> -> scala/Predef.ArrowAssoc#`->`().
+[19:51..19:52): x -> local0
+[20:7..20:8): i <- local2
+[20:12..20:12): -> scala/LowPriorityImplicits#intWrapper().
+[20:14..20:16): to -> scala/runtime/RichInt#to().
+[20:19..20:19): -> scala/collection/StrictOptimizedIterableOps#flatMap().
+[20:21..20:22): j <- local3
+[20:26..20:26): -> scala/LowPriorityImplicits#intWrapper().
+[20:28..20:33): until -> scala/runtime/RichInt#until().
+[20:36..20:36): -> scala/collection/immutable/Range#map().
+[20:45..20:45): -> scala/Tuple2.apply().
+[20:45..20:46): i -> local2
+[20:48..20:49): j -> local3
+[21:7..21:8): i <- local4
+[21:12..21:12): -> scala/LowPriorityImplicits#intWrapper().
+[21:14..21:16): to -> scala/runtime/RichInt#to().
+[21:19..21:19): -> scala/collection/StrictOptimizedIterableOps#flatMap().
+[21:21..21:22): j <- local5
+[21:26..21:26): -> scala/LowPriorityImplicits#intWrapper().
+[21:28..21:33): until -> scala/runtime/RichInt#until().
+[21:36..21:36): -> scala/collection/IterableOps#withFilter().
+[21:40..21:41): i -> local4
+[21:42..21:43): % -> scala/Int#`%`(+3).
+[21:46..21:48): == -> scala/Int#`==`(+3).
+[21:50..21:50): -> scala/collection/WithFilter#map().
+[21:59..21:59): -> scala/Tuple2.apply().
+[21:59..21:60): i -> local4
+[21:62..21:63): j -> local5
+[23:9..23:10): s <- example/Synthetic#s.
+[24:8..24:13): apply <- example/Synthetic#s.apply().
+[25:5..25:5): -> example/Synthetic#s.apply().
+[26:6..26:11): apply -> example/Synthetic#s.apply().
+[27:15..27:18): Bar <- example/Synthetic#s.Bar#
+[27:18..27:20): <- example/Synthetic#s.Bar#`<init>`().
+[28:4..28:7): Bar -> example/Synthetic#s.Bar.
+[28:7..28:7): -> example/Synthetic#s.Bar.apply().
+[29:9..29:21): asInstanceOf -> scala/Any#asInstanceOf().
+[29:22..29:25): Int -> scala/Int#
+[29:29..29:32): Int -> scala/Int#
+[29:33..29:33): -> scala/Function1#apply().
+[32:8..32:9): J <- example/Synthetic#J#
+[32:9..32:22): <- example/Synthetic#J#`<init>`().
+[32:10..32:11): T <- example/Synthetic#J#[T]
+[32:13..32:21): Manifest -> scala/Predef.Manifest#
+[32:21..32:21): -> example/Synthetic#J#[T]
+[32:29..32:32): arr <- example/Synthetic#J#arr.
+[32:35..32:40): Array -> scala/Array.
+[32:41..32:46): empty -> scala/Array.empty().
+[32:47..32:48): T -> example/Synthetic#J#[T]
+[34:2..34:2): <- example/Synthetic#F#`<init>`().
+[34:8..34:9): F <- example/Synthetic#F#
+[35:15..35:23): ordering <- example/Synthetic#ordering.
+[35:25..35:33): Ordering -> scala/package.Ordering#
+[35:34..35:35): F -> example/Synthetic#F#
+[35:39..35:42): ??? -> scala/Predef.`???`().
+[36:6..36:7): f <- example/Synthetic#f.
+[36:9..36:16): Ordered -> scala/package.Ordered#
+[36:17..36:18): F -> example/Synthetic#F#
+[36:22..36:22): -> scala/math/Ordered.orderingToOrdered().
+[36:26..36:27): F -> example/Synthetic#F#
+[36:27..36:27): -> example/Synthetic#F#`<init>`().
+[36:27..36:27): -> example/Synthetic#ordering.
+[38:9..38:14): scala -> scala/
+[38:15..38:25): concurrent -> scala/concurrent/
+[38:26..38:42): ExecutionContext -> scala/concurrent/ExecutionContext.
+[38:43..38:52): Implicits -> scala/concurrent/ExecutionContext.Implicits.
+[38:53..38:59): global -> scala/concurrent/ExecutionContext.Implicits.global().
+[40:4..40:5): a <- local6
+[40:9..40:14): scala -> scala/
+[40:15..40:25): concurrent -> scala/concurrent/
+[40:26..40:32): Future -> scala/concurrent/Future.
+[40:33..40:43): successful -> scala/concurrent/Future.successful().
+[40:46..40:46): -> scala/concurrent/Future#foreach().
+[41:4..41:5): b <- local7
+[41:9..41:14): scala -> scala/
+[41:15..41:25): concurrent -> scala/concurrent/
+[41:26..41:32): Future -> scala/concurrent/Future.
+[41:33..41:43): successful -> scala/concurrent/Future.successful().
+[41:46..41:46): -> scala/concurrent/Future#foreach().
+[42:4..42:11): println -> scala/Predef.println(+1).
+[42:12..42:13): a -> local6
+[42:14..42:14): -> scala/concurrent/ExecutionContext.Implicits.global().
+[44:4..44:5): a <- local8
+[44:9..44:14): scala -> scala/
+[44:15..44:25): concurrent -> scala/concurrent/
+[44:26..44:32): Future -> scala/concurrent/Future.
+[44:33..44:43): successful -> scala/concurrent/Future.successful().
+[44:46..44:46): -> scala/concurrent/Future#flatMap().
+[45:4..45:5): b <- local9
+[45:9..45:14): scala -> scala/
+[45:15..45:25): concurrent -> scala/concurrent/
+[45:26..45:32): Future -> scala/concurrent/Future.
+[45:33..45:43): successful -> scala/concurrent/Future.successful().
+[45:46..45:46): -> scala/concurrent/Future#withFilter().
+[46:7..46:8): a -> local8
+[46:9..46:10): < -> scala/Int#`<`(+3).
+[46:11..46:12): b -> local9
+[46:12..46:12): -> scala/concurrent/Future#map().
+[46:12..46:12): -> scala/concurrent/ExecutionContext.Implicits.global().
+[47:10..47:11): a -> local8
+[47:11..47:11): -> scala/concurrent/ExecutionContext.Implicits.global().
+
+expect/Traits.scala
+-------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Traits.scala
+Text => empty
+Language => Scala
+Symbols => 13 entries
+Occurrences => 16 entries
+
+Symbols:
+local0 => final class $anon
+local1 => selfparam self
+traits/C# => class C
+traits/C#`<init>`(). => primary ctor <init>
+traits/T# => trait T
+traits/T#`<init>`(). => primary ctor <init>
+traits/T#x(). => method x
+traits/U# => sealed trait U
+traits/U#`<init>`(). => primary ctor <init>
+traits/U. => final object U
+traits/U.u(). => method u
+traits/V# => trait V
+traits/V#`<init>`(). => primary ctor <init>
+
+Occurrences:
+[0:8..0:14): traits <- traits/
+[2:6..2:7): T <- traits/T#
+[3:2..3:2): <- traits/T#`<init>`().
+[3:6..3:7): x <- traits/T#x().
+[6:0..6:0): <- traits/U#`<init>`().
+[6:13..6:14): U <- traits/U#
+[7:7..7:8): U <- traits/U.
+[8:6..8:7): u <- traits/U.u().
+[8:9..8:10): U -> traits/U#
+[8:17..8:18): U -> traits/U#
+[11:0..11:0): <- traits/C#`<init>`().
+[11:6..11:7): C <- traits/C#
+[12:6..12:7): V <- traits/V#
+[12:10..12:10): <- traits/V#`<init>`().
+[12:10..12:14): self <- local1
+[12:16..12:17): C -> traits/C#
+
+expect/Types.scala
+------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Types.scala
+Text => empty
+Language => Scala
+Symbols => 125 entries
+Occurrences => 242 entries
+
+Symbols:
+local0 => abstract method k
+local1 => abstract method k
+local2 => final class $anon
+local3 => method k
+local4 => final class $anon
+local5 => final class $anon
+local6 => method k
+local7 => type L
+local8 => typeparam T
+types/B# => class B
+types/B#`<init>`(). => primary ctor <init>
+types/C# => class C
+types/C#`<init>`(). => primary ctor <init>
+types/P# => class P
+types/P#C# => class C
+types/P#C#`<init>`(). => primary ctor <init>
+types/P#X# => class X
+types/P#X#`<init>`(). => primary ctor <init>
+types/P#`<init>`(). => primary ctor <init>
+types/P#x. => val method x
+types/T# => class T
+types/T#C# => class C
+types/T#C#`<init>`(). => primary ctor <init>
+types/T#X# => class X
+types/T#X#`<init>`(). => primary ctor <init>
+types/T#`<init>`(). => primary ctor <init>
+types/T#x. => val method x
+types/Test. => final object Test
+types/Test.C# => class C
+types/Test.C#ByNameType. => final object ByNameType
+types/Test.C#ByNameType.m1(). => method m1
+types/Test.C#ByNameType.m1().(x) => param x
+types/Test.C#ClassInfoType1. => final object ClassInfoType1
+types/Test.C#ClassInfoType2# => class ClassInfoType2
+types/Test.C#ClassInfoType2#`<init>`(). => primary ctor <init>
+types/Test.C#ClassInfoType2#x(). => method x
+types/Test.C#ClassInfoType3# => trait ClassInfoType3
+types/Test.C#ClassInfoType3#[T] => typeparam T
+types/Test.C#ClassInfoType3#`<init>`(). => primary ctor <init>
+types/Test.C#Either. => val method Either
+types/Test.C#MethodType. => final object MethodType
+types/Test.C#MethodType.m3(). => method m3
+types/Test.C#MethodType.m4(). => method m4
+types/Test.C#MethodType.m5(). => method m5
+types/Test.C#MethodType.m5().(x) => param x
+types/Test.C#MethodType.m6(). => method m6
+types/Test.C#MethodType.m6().(x) => param x
+types/Test.C#MethodType.m6().[T] => typeparam T
+types/Test.C#MethodType.x1(). => method x1
+types/Test.C#MethodType.x2(). => method x2
+types/Test.C#RepeatedType# => case class RepeatedType
+types/Test.C#RepeatedType#_1(). => method _1
+types/Test.C#RepeatedType#`<init>`(). => primary ctor <init>
+types/Test.C#RepeatedType#`<init>`().(s) => val param s
+types/Test.C#RepeatedType#m1(). => method m1
+types/Test.C#RepeatedType#m1().(x) => param x
+types/Test.C#RepeatedType#s. => val method s
+types/Test.C#RepeatedType. => final object RepeatedType
+types/Test.C#RepeatedType.apply(). => method apply
+types/Test.C#RepeatedType.apply().(s) => param s
+types/Test.C#RepeatedType.unapplySeq(). => method unapplySeq
+types/Test.C#RepeatedType.unapplySeq().(x$1) => param x$1
+types/Test.C#TypeType. => final object TypeType
+types/Test.C#TypeType.T1# => type T1
+types/Test.C#TypeType.T4# => type T4
+types/Test.C#TypeType.T5# => type T5
+types/Test.C#TypeType.T5#[U] => typeparam U
+types/Test.C#TypeType.m2(). => method m2
+types/Test.C#TypeType.m2().[T2] => typeparam T2
+types/Test.C#TypeType.m3(). => method m3
+types/Test.C#TypeType.m3().[M3] => typeparam M3
+types/Test.C#`<init>`(). => primary ctor <init>
+types/Test.C#annType1. => val method annType1
+types/Test.C#annType2. => val method annType2
+types/Test.C#compoundType1. => val method compoundType1
+types/Test.C#compoundType2. => val method compoundType2
+types/Test.C#compoundType3. => val method compoundType3
+types/Test.C#compoundType4. => val method compoundType4
+types/Test.C#compoundType5. => val method compoundType5
+types/Test.C#compoundType6. => val method compoundType6
+types/Test.C#existentialType2. => val method existentialType2
+types/Test.C#existentialType3. => val method existentialType3
+types/Test.C#existentialType4. => val method existentialType4
+types/Test.C#p. => val method p
+types/Test.C#singleType1. => val method singleType1
+types/Test.C#singleType2. => val method singleType2
+types/Test.C#superType1. => val method superType1
+types/Test.C#superType2. => val method superType2
+types/Test.C#superType3. => val method superType3
+types/Test.C#thisType1. => val method thisType1
+types/Test.C#thisType2. => val method thisType2
+types/Test.C#typeLambda1(). => method typeLambda1
+types/Test.C#typeLambda1().[M] => typeparam M
+types/Test.C#typeRef1. => val method typeRef1
+types/Test.C#typeRef2. => val method typeRef2
+types/Test.C#typeRef3. => val method typeRef3
+types/Test.C#typeRef4. => val method typeRef4
+types/Test.C#x. => val method x
+types/Test.Literal. => final object Literal
+types/Test.Literal.bool. => final val method bool
+types/Test.Literal.char. => final val method char
+types/Test.Literal.clazzOf. => final val method clazzOf
+types/Test.Literal.double. => final val method double
+types/Test.Literal.float. => final val method float
+types/Test.Literal.int. => final val method int
+types/Test.Literal.javaEnum. => final val method javaEnum
+types/Test.Literal.long. => final val method long
+types/Test.Literal.nil. => final val method nil
+types/Test.Literal.string. => final val method string
+types/Test.Literal.unit. => final val method unit
+types/Test.M# => class M
+types/Test.M#`<init>`(). => primary ctor <init>
+types/Test.M#m(). => method m
+types/Test.N# => trait N
+types/Test.N#`<init>`(). => primary ctor <init>
+types/Test.N#n(). => method n
+types/ann# => class ann
+types/ann#[T] => typeparam T
+types/ann#`<init>`(). => primary ctor <init>
+types/ann#`<init>`().(x) => param x
+types/ann#x. => val method x
+types/ann1# => class ann1
+types/ann1#`<init>`(). => primary ctor <init>
+types/ann2# => class ann2
+types/ann2#`<init>`(). => primary ctor <init>
+
+Occurrences:
+[0:8..0:13): types <- types/
+[2:7..2:12): scala -> scala/
+[2:13..2:21): language -> scalaShadowing/language.
+[2:22..2:34): existentials -> scalaShadowing/language.existentials.
+[3:7..3:12): scala -> scala/
+[3:13..3:21): language -> scalaShadowing/language.
+[3:22..3:33): higherKinds -> scalaShadowing/language.higherKinds.
+[5:6..5:9): ann <- types/ann#
+[5:9..5:18): <- types/ann#`<init>`().
+[5:10..5:11): T <- types/ann#[T]
+[5:13..5:14): x <- types/ann#x.
+[5:16..5:17): T -> types/ann#[T]
+[5:27..5:32): scala -> scala/
+[5:33..5:43): annotation -> scala/annotation/
+[5:44..5:60): StaticAnnotation -> scala/annotation/StaticAnnotation#
+[6:6..6:10): ann1 <- types/ann1#
+[6:19..6:19): <- types/ann1#`<init>`().
+[6:19..6:24): scala -> scala/
+[6:25..6:35): annotation -> scala/annotation/
+[6:36..6:52): StaticAnnotation -> scala/annotation/StaticAnnotation#
+[7:6..7:10): ann2 <- types/ann2#
+[7:19..7:19): <- types/ann2#`<init>`().
+[7:19..7:24): scala -> scala/
+[7:25..7:35): annotation -> scala/annotation/
+[7:36..7:52): StaticAnnotation -> scala/annotation/StaticAnnotation#
+[9:0..9:0): <- types/B#`<init>`().
+[9:6..9:7): B <- types/B#
+[11:0..11:0): <- types/C#`<init>`().
+[11:6..11:7): C <- types/C#
+[13:6..13:7): P <- types/P#
+[14:2..14:2): <- types/P#`<init>`().
+[14:2..14:2): <- types/P#C#`<init>`().
+[14:8..14:9): C <- types/P#C#
+[15:2..15:2): <- types/P#X#`<init>`().
+[15:8..15:9): X <- types/P#X#
+[16:6..16:7): x <- types/P#x.
+[16:14..16:15): X -> types/P#X#
+[16:15..16:15): -> types/P#X#`<init>`().
+[19:6..19:7): T <- types/T#
+[20:2..20:2): <- types/T#`<init>`().
+[20:2..20:2): <- types/T#C#`<init>`().
+[20:8..20:9): C <- types/T#C#
+[21:2..21:2): <- types/T#X#`<init>`().
+[21:8..21:9): X <- types/T#X#
+[22:6..22:7): x <- types/T#x.
+[22:14..22:15): X -> types/T#X#
+[22:15..22:15): -> types/T#X#`<init>`().
+[25:7..25:11): Test <- types/Test.
+[26:8..26:9): M <- types/Test.M#
+[27:4..27:4): <- types/Test.M#`<init>`().
+[27:8..27:9): m <- types/Test.M#m().
+[27:11..27:14): Int -> scala/Int#
+[27:17..27:20): ??? -> scala/Predef.`???`().
+[30:8..30:9): N <- types/Test.N#
+[31:4..31:4): <- types/Test.N#`<init>`().
+[31:8..31:9): n <- types/Test.N#n().
+[31:11..31:14): Int -> scala/Int#
+[31:17..31:20): ??? -> scala/Predef.`???`().
+[34:8..34:9): C <- types/Test.C#
+[34:18..34:18): <- types/Test.C#`<init>`().
+[34:18..34:19): M -> types/Test.M#
+[34:19..34:19): -> types/Test.M#`<init>`().
+[35:8..35:9): p <- types/Test.C#p.
+[35:16..35:17): P -> types/P#
+[35:17..35:17): -> types/P#`<init>`().
+[36:8..36:9): x <- types/Test.C#x.
+[36:12..36:13): p -> types/Test.C#p.
+[36:14..36:15): x -> types/P#x.
+[38:8..38:16): typeRef1 <- types/Test.C#typeRef1.
+[38:18..38:19): C -> types/Test.C#
+[38:22..38:25): ??? -> scala/Predef.`???`().
+[39:8..39:16): typeRef2 <- types/Test.C#typeRef2.
+[39:18..39:19): p -> types/Test.C#p.
+[39:20..39:21): C -> types/P#C#
+[39:24..39:27): ??? -> scala/Predef.`???`().
+[40:8..40:16): typeRef3 <- types/Test.C#typeRef3.
+[40:18..40:19): T -> types/T#
+[40:20..40:21): C -> types/T#C#
+[40:24..40:27): ??? -> scala/Predef.`???`().
+[41:8..41:16): typeRef4 <- types/Test.C#typeRef4.
+[41:18..41:22): List -> scala/package.List#
+[41:23..41:26): Int -> scala/Int#
+[41:30..41:33): ??? -> scala/Predef.`???`().
+[43:8..43:19): singleType1 <- types/Test.C#singleType1.
+[43:21..43:22): x -> types/Test.C#x.
+[43:30..43:33): ??? -> scala/Predef.`???`().
+[44:8..44:19): singleType2 <- types/Test.C#singleType2.
+[44:21..44:22): p -> types/Test.C#p.
+[44:23..44:24): x -> types/P#x.
+[44:32..44:35): ??? -> scala/Predef.`???`().
+[45:8..45:14): Either <- types/Test.C#Either.
+[45:17..45:22): scala -> scala/
+[45:23..45:27): util -> scala/util/
+[45:28..45:34): Either -> scala/util/Either.
+[47:8..47:17): thisType1 <- types/Test.C#thisType1.
+[47:31..47:34): ??? -> scala/Predef.`???`().
+[48:8..48:17): thisType2 <- types/Test.C#thisType2.
+[48:33..48:36): ??? -> scala/Predef.`???`().
+[50:8..50:18): superType1 <- types/Test.C#superType1.
+[50:27..50:28): m -> types/Test.M#m().
+[51:8..51:18): superType2 <- types/Test.C#superType2.
+[51:30..51:31): m -> types/Test.M#m().
+[52:8..52:18): superType3 <- types/Test.C#superType3.
+[52:32..52:33): m -> types/Test.M#m().
+[54:8..54:21): compoundType1 <- types/Test.C#compoundType1.
+[54:29..54:30): k <- local0
+[54:32..54:35): Int -> scala/Int#
+[54:40..54:43): ??? -> scala/Predef.`???`().
+[55:8..55:21): compoundType2 <- types/Test.C#compoundType2.
+[55:23..55:24): M -> types/Test.M#
+[55:30..55:31): N -> types/Test.N#
+[55:34..55:37): ??? -> scala/Predef.`???`().
+[56:8..56:21): compoundType3 <- types/Test.C#compoundType3.
+[56:23..56:24): M -> types/Test.M#
+[56:30..56:31): N -> types/Test.N#
+[56:38..56:39): k <- local1
+[56:41..56:44): Int -> scala/Int#
+[56:49..56:52): ??? -> scala/Predef.`???`().
+[57:8..57:21): compoundType4 <- types/Test.C#compoundType4.
+[57:34..57:35): k <- local3
+[57:37..57:40): Int -> scala/Int#
+[57:43..57:46): ??? -> scala/Predef.`???`().
+[58:8..58:21): compoundType5 <- types/Test.C#compoundType5.
+[58:28..58:29): M -> types/Test.M#
+[58:29..58:29): -> types/Test.M#`<init>`().
+[58:35..58:36): N -> types/Test.N#
+[59:8..59:21): compoundType6 <- types/Test.C#compoundType6.
+[59:28..59:29): M -> types/Test.M#
+[59:29..59:29): -> types/Test.M#`<init>`().
+[59:35..59:36): N -> types/Test.N#
+[59:43..59:44): k <- local6
+[59:46..59:49): Int -> scala/Int#
+[59:52..59:55): ??? -> scala/Predef.`???`().
+[61:8..61:16): annType1 <- types/Test.C#annType1.
+[61:18..61:19): T -> types/T#
+[61:31..61:34): ??? -> scala/Predef.`???`().
+[62:8..62:16): annType2 <- types/Test.C#annType2.
+[62:18..62:19): T -> types/T#
+[62:21..62:25): ann1 -> types/ann1#
+[62:27..62:31): ann2 -> types/ann2#
+[62:34..62:37): ??? -> scala/Predef.`???`().
+[64:8..64:24): existentialType2 <- types/Test.C#existentialType2.
+[64:26..64:30): List -> scala/package.List#
+[64:36..64:39): ??? -> scala/Predef.`???`().
+[65:8..65:24): existentialType3 <- types/Test.C#existentialType3.
+[65:27..65:32): Class -> java/lang/Class#
+[65:33..65:40): forName -> java/lang/Class#forName().
+[66:8..66:24): existentialType4 <- types/Test.C#existentialType4.
+[66:27..66:32): Class -> java/lang/Class#
+[66:33..66:40): forName -> java/lang/Class#forName().
+[68:8..68:19): typeLambda1 <- types/Test.C#typeLambda1().
+[68:20..68:21): M <- types/Test.C#typeLambda1().[M]
+[68:28..68:31): ??? -> scala/Predef.`???`().
+[69:4..69:15): typeLambda1 -> types/Test.C#typeLambda1().
+[69:24..69:25): L <- local7
+[69:26..69:27): T <- local8
+[69:31..69:35): List -> scala/package.List#
+[69:36..69:37): T -> local8
+[71:11..71:25): ClassInfoType1 <- types/Test.C#ClassInfoType1.
+[72:10..72:24): ClassInfoType2 <- types/Test.C#ClassInfoType2#
+[72:33..72:33): <- types/Test.C#ClassInfoType2#`<init>`().
+[72:33..72:34): B -> types/B#
+[72:34..72:34): -> types/B#`<init>`().
+[72:41..72:42): x <- types/Test.C#ClassInfoType2#x().
+[73:10..73:24): ClassInfoType3 <- types/Test.C#ClassInfoType3#
+[73:24..73:27): <- types/Test.C#ClassInfoType3#`<init>`().
+[73:25..73:26): T <- types/Test.C#ClassInfoType3#[T]
+[75:11..75:21): MethodType <- types/Test.C#MethodType.
+[76:10..76:12): x1 <- types/Test.C#MethodType.x1().
+[76:14..76:17): Int -> scala/Int#
+[76:20..76:23): ??? -> scala/Predef.`???`().
+[77:10..77:12): x2 <- types/Test.C#MethodType.x2().
+[77:14..77:17): Int -> scala/Int#
+[77:20..77:23): ??? -> scala/Predef.`???`().
+[78:10..78:12): m3 <- types/Test.C#MethodType.m3().
+[78:14..78:17): Int -> scala/Int#
+[78:20..78:23): ??? -> scala/Predef.`???`().
+[79:10..79:12): m4 <- types/Test.C#MethodType.m4().
+[79:16..79:19): Int -> scala/Int#
+[79:22..79:25): ??? -> scala/Predef.`???`().
+[80:10..80:12): m5 <- types/Test.C#MethodType.m5().
+[80:13..80:14): x <- types/Test.C#MethodType.m5().(x)
+[80:16..80:19): Int -> scala/Int#
+[80:22..80:25): Int -> scala/Int#
+[80:28..80:31): ??? -> scala/Predef.`???`().
+[81:10..81:12): m6 <- types/Test.C#MethodType.m6().
+[81:13..81:14): T <- types/Test.C#MethodType.m6().[T]
+[81:16..81:17): x <- types/Test.C#MethodType.m6().(x)
+[81:19..81:20): T -> types/Test.C#MethodType.m6().[T]
+[81:23..81:24): T -> types/Test.C#MethodType.m6().[T]
+[81:27..81:30): ??? -> scala/Predef.`???`().
+[84:11..84:21): ByNameType <- types/Test.C#ByNameType.
+[85:10..85:12): m1 <- types/Test.C#ByNameType.m1().
+[85:13..85:14): x <- types/Test.C#ByNameType.m1().(x)
+[85:19..85:22): Int -> scala/Int#
+[85:25..85:28): Int -> scala/Int#
+[85:31..85:34): ??? -> scala/Predef.`???`().
+[88:15..88:27): RepeatedType <- types/Test.C#RepeatedType#
+[88:27..88:39): <- types/Test.C#RepeatedType#`<init>`().
+[88:28..88:29): s <- types/Test.C#RepeatedType#s.
+[88:31..88:37): String -> scala/Predef.String#
+[89:10..89:12): m1 <- types/Test.C#RepeatedType#m1().
+[89:13..89:14): x <- types/Test.C#RepeatedType#m1().(x)
+[89:16..89:19): Int -> scala/Int#
+[89:23..89:26): Int -> scala/Int#
+[89:29..89:30): s -> types/Test.C#RepeatedType#s.
+[89:31..89:37): length -> scala/collection/SeqOps#length().
+[92:11..92:19): TypeType <- types/Test.C#TypeType.
+[93:11..93:13): T1 <- types/Test.C#TypeType.T1#
+[94:10..94:12): m2 <- types/Test.C#TypeType.m2().
+[94:13..94:15): T2 <- types/Test.C#TypeType.m2().[T2]
+[94:19..94:20): C -> types/Test.C#
+[94:24..94:25): C -> types/Test.C#
+[94:29..94:32): ??? -> scala/Predef.`???`().
+[95:10..95:12): m3 <- types/Test.C#TypeType.m3().
+[95:13..95:15): M3 <- types/Test.C#TypeType.m3().[M3]
+[95:22..95:25): ??? -> scala/Predef.`???`().
+[96:11..96:13): T4 <- types/Test.C#TypeType.T4#
+[96:16..96:17): C -> types/Test.C#
+[97:11..97:13): T5 <- types/Test.C#TypeType.T5#
+[97:14..97:15): U <- types/Test.C#TypeType.T5#[U]
+[97:19..97:20): U -> types/Test.C#TypeType.T5#[U]
+[101:9..101:16): Literal <- types/Test.Literal.
+[102:14..102:17): int <- types/Test.Literal.int.
+[103:14..103:18): long <- types/Test.Literal.long.
+[104:14..104:19): float <- types/Test.Literal.float.
+[105:14..105:20): double <- types/Test.Literal.double.
+[106:14..106:17): nil <- types/Test.Literal.nil.
+[107:14..107:18): char <- types/Test.Literal.char.
+[108:14..108:20): string <- types/Test.Literal.string.
+[109:14..109:18): bool <- types/Test.Literal.bool.
+[110:14..110:18): unit <- types/Test.Literal.unit.
+[111:14..111:22): javaEnum <- types/Test.Literal.javaEnum.
+[111:25..111:29): java -> java/
+[111:30..111:33): nio -> java/nio/
+[111:34..111:38): file -> java/nio/file/
+[111:39..111:49): LinkOption -> java/nio/file/LinkOption#
+[111:50..111:64): NOFOLLOW_LINKS -> java/nio/file/LinkOption#NOFOLLOW_LINKS.
+[112:14..112:21): clazzOf <- types/Test.Literal.clazzOf.
+[112:24..112:31): classOf -> scala/Predef.classOf().
+[112:32..112:38): Option -> scala/Option#
+[112:39..112:42): Int -> scala/Int#
+
+expect/ValPattern.scala
+-----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => ValPattern.scala
+Text => empty
+Language => Scala
+Symbols => 22 entries
+Occurrences => 63 entries
+
+Symbols:
+example/ValPattern# => class ValPattern
+example/ValPattern#`<init>`(). => primary ctor <init>
+example/ValPattern#`leftVar_=`(). => var method leftVar_=
+example/ValPattern#`leftVar_=`().(x$1) => param x$1
+example/ValPattern#`number1Var_=`(). => var method number1Var_=
+example/ValPattern#`number1Var_=`().(x$1) => param x$1
+example/ValPattern#`rightVar_=`(). => var method rightVar_=
+example/ValPattern#`rightVar_=`().(x$1) => param x$1
+example/ValPattern#app(). => method app
+example/ValPattern#left. => val method left
+example/ValPattern#leftVar(). => var method leftVar
+example/ValPattern#number1. => val method number1
+example/ValPattern#number1Var(). => var method number1Var
+example/ValPattern#q1. => val method q1
+example/ValPattern#right. => val method right
+example/ValPattern#rightVar(). => var method rightVar
+local0 => val local left
+local1 => val local right
+local2 => val local number1
+local3 => var local leftVar
+local4 => var local rightVar
+local5 => var local number1Var
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:16): ValPattern <- example/ValPattern#
+[4:2..4:2): <- example/ValPattern#`<init>`().
+[4:7..4:11): left <- example/ValPattern#left.
+[4:13..4:18): right <- example/ValPattern#right.
+[4:23..4:23): -> scala/Tuple2.apply().
+[5:6..5:10): Some -> scala/Some.
+[5:10..5:10): -> scala/Some.unapply().
+[5:11..5:18): number1 <- example/ValPattern#number1.
+[6:4..6:8): Some -> scala/Some.
+[6:8..6:8): -> scala/Some.apply().
+[8:6..8:10): List -> scala/package.List.
+[8:10..8:10): -> scala/collection/SeqFactory#unapplySeq().
+[8:11..8:15): Some -> scala/Some.
+[8:15..8:15): -> scala/Some.unapply().
+[8:16..8:18): q1 <- example/ValPattern#q1.
+[8:21..8:25): None -> scala/None.
+[8:27..8:31): None -> scala/None.
+[8:38..8:42): None -> scala/None.
+[8:46..8:49): ??? -> scala/Predef.`???`().
+[10:7..10:14): leftVar <- example/ValPattern#leftVar().
+[10:16..10:24): rightVar <- example/ValPattern#rightVar().
+[10:29..10:29): -> scala/Tuple2.apply().
+[11:6..11:10): Some -> scala/Some.
+[11:10..11:10): -> scala/Some.unapply().
+[11:11..11:21): number1Var <- example/ValPattern#number1Var().
+[12:4..12:8): Some -> scala/Some.
+[12:8..12:8): -> scala/Some.apply().
+[14:6..14:9): app <- example/ValPattern#app().
+[14:13..14:17): Unit -> scala/Unit#
+[15:4..15:11): println -> scala/Predef.println(+1).
+[17:8..17:8): -> scala/Tuple6.apply().
+[17:8..17:15): number1 -> example/ValPattern#number1.
+[18:8..18:12): left -> example/ValPattern#left.
+[19:8..19:13): right -> example/ValPattern#right.
+[20:8..20:18): number1Var -> example/ValPattern#number1Var().
+[21:8..21:15): leftVar -> example/ValPattern#leftVar().
+[22:8..22:16): rightVar -> example/ValPattern#rightVar().
+[25:4..25:11): locally -> dotty/DottyPredef.locally().
+[26:11..26:15): left <- local0
+[26:17..26:22): right <- local1
+[26:27..26:27): -> scala/Tuple2.apply().
+[27:10..27:14): Some -> scala/Some.
+[27:14..27:14): -> scala/Some.unapply().
+[27:15..27:22): number1 <- local2
+[28:8..28:12): Some -> scala/Some.
+[28:12..28:12): -> scala/Some.apply().
+[30:11..30:18): leftVar <- local3
+[30:20..30:28): rightVar <- local4
+[30:33..30:33): -> scala/Tuple2.apply().
+[31:10..31:14): Some -> scala/Some.
+[31:14..31:14): -> scala/Some.unapply().
+[31:15..31:25): number1Var <- local5
+[32:8..32:12): Some -> scala/Some.
+[32:12..32:12): -> scala/Some.apply().
+[33:6..33:13): println -> scala/Predef.println(+1).
+[35:10..35:10): -> scala/Tuple6.apply().
+[35:10..35:17): number1 -> local2
+[36:10..36:14): left -> local0
+[37:10..37:15): right -> local1
+[38:10..38:20): number1Var -> local5
+[39:10..39:17): leftVar -> local3
+[40:10..40:18): rightVar -> local4
+
+expect/Vals.scala
+-----------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Vals.scala
+Text => empty
+Language => Scala
+Symbols => 42 entries
+Occurrences => 129 entries
+
+Symbols:
+example/ValUsages. => final object ValUsages
+example/ValUsages.v. => val method v
+example/Vals# => abstract class Vals
+example/Vals#_explicitSetter(). => var method _explicitSetter
+example/Vals#`<init>`(). => primary ctor <init>
+example/Vals#`<init>`().(p) => param p
+example/Vals#`<init>`().(xp) => val param xp
+example/Vals#`<init>`().(yp) => var param yp
+example/Vals#`explicitSetter_=`(). => method explicitSetter_=
+example/Vals#`explicitSetter_=`().(x) => param x
+example/Vals#`yam_=`(). => var method yam_=
+example/Vals#`yam_=`().(x$1) => param x$1
+example/Vals#`yfm_=`(). => final var method yfm_=
+example/Vals#`yfm_=`().(x$1) => param x$1
+example/Vals#`yim_=`(). => var method yim_=
+example/Vals#`yim_=`().(x$1) => param x$1
+example/Vals#`ym_=`(). => var method ym_=
+example/Vals#`ym_=`().(x$1) => param x$1
+example/Vals#`yp_=`(). => var method yp_=
+example/Vals#`yp_=`().(x$1) => param x$1
+example/Vals#explicitSetter(). => method explicitSetter
+example/Vals#m(). => method m
+example/Vals#p. => val method p
+example/Vals#xam. => abstract val method xam
+example/Vals#xfm. => final val method xfm
+example/Vals#xim. => implicit val method xim
+example/Vals#xlm. => val method xlm
+example/Vals#xm. => val method xm
+example/Vals#xp. => val method xp
+example/Vals#xzlm. => lazy val method xzlm
+example/Vals#xzm. => lazy val method xzm
+example/Vals#yam(). => abstract var method yam
+example/Vals#yfm(). => final var method yfm
+example/Vals#yim(). => implicit var method yim
+example/Vals#ylm(). => var method ylm
+example/Vals#ym(). => var method ym
+example/Vals#yp(). => var method yp
+local0 => val local xl
+local1 => lazy val local xzl
+local2 => implicit val local xil
+local3 => var local yl
+local4 => implicit var local yil
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:15..2:19): Vals <- example/Vals#
+[2:19..2:53): <- example/Vals#`<init>`().
+[2:20..2:21): p <- example/Vals#p.
+[2:23..2:26): Int -> scala/Int#
+[2:32..2:34): xp <- example/Vals#xp.
+[2:36..2:39): Int -> scala/Int#
+[2:45..2:47): yp <- example/Vals#yp().
+[2:49..2:52): Int -> scala/Int#
+[3:6..3:8): xm <- example/Vals#xm.
+[3:10..3:13): Int -> scala/Int#
+[3:16..3:19): ??? -> scala/Predef.`???`().
+[4:6..4:9): xam <- example/Vals#xam.
+[4:11..4:14): Int -> scala/Int#
+[5:20..5:23): xlm <- example/Vals#xlm.
+[5:25..5:28): Int -> scala/Int#
+[5:31..5:34): ??? -> scala/Predef.`???`().
+[6:11..6:14): xzm <- example/Vals#xzm.
+[6:16..6:19): Int -> scala/Int#
+[6:22..6:25): ??? -> scala/Predef.`???`().
+[7:25..7:29): xzlm <- example/Vals#xzlm.
+[7:31..7:34): Int -> scala/Int#
+[7:37..7:40): ??? -> scala/Predef.`???`().
+[8:12..8:15): xfm <- example/Vals#xfm.
+[8:17..8:20): Int -> scala/Int#
+[8:23..8:26): ??? -> scala/Predef.`???`().
+[9:15..9:18): xim <- example/Vals#xim.
+[9:20..9:23): Int -> scala/Int#
+[9:26..9:29): ??? -> scala/Predef.`???`().
+[10:6..10:8): ym <- example/Vals#ym().
+[10:10..10:13): Int -> scala/Int#
+[10:16..10:19): ??? -> scala/Predef.`???`().
+[11:6..11:9): yam <- example/Vals#yam().
+[11:11..11:14): Int -> scala/Int#
+[12:20..12:23): ylm <- example/Vals#ylm().
+[12:25..12:28): Int -> scala/Int#
+[12:31..12:34): ??? -> scala/Predef.`???`().
+[13:20..13:35): _explicitSetter <- example/Vals#_explicitSetter().
+[13:37..13:40): Int -> scala/Int#
+[14:6..14:20): explicitSetter <- example/Vals#explicitSetter().
+[14:23..14:38): _explicitSetter -> example/Vals#_explicitSetter().
+[15:6..15:22): explicitSetter_= <- example/Vals#`explicitSetter_=`().
+[15:23..15:24): x <- example/Vals#`explicitSetter_=`().(x)
+[15:26..15:29): Int -> scala/Int#
+[15:32..15:36): Unit -> scala/Unit#
+[15:39..15:54): _explicitSetter -> example/Vals#_explicitSetter().
+[15:57..15:58): x -> example/Vals#`explicitSetter_=`().(x)
+[19:12..19:15): yfm <- example/Vals#yfm().
+[19:17..19:20): Int -> scala/Int#
+[19:23..19:26): ??? -> scala/Predef.`???`().
+[20:15..20:18): yim <- example/Vals#yim().
+[20:20..20:23): Int -> scala/Int#
+[20:26..20:29): ??? -> scala/Predef.`???`().
+[21:6..21:7): m <- example/Vals#m().
+[22:8..22:10): xl <- local0
+[22:12..22:15): Int -> scala/Int#
+[22:18..22:21): ??? -> scala/Predef.`???`().
+[23:13..23:16): xzl <- local1
+[23:18..23:21): Int -> scala/Int#
+[23:24..23:27): ??? -> scala/Predef.`???`().
+[26:17..26:20): xil <- local2
+[26:22..26:25): Int -> scala/Int#
+[26:28..26:31): ??? -> scala/Predef.`???`().
+[27:8..27:10): yl <- local3
+[27:12..27:15): Int -> scala/Int#
+[27:18..27:21): ??? -> scala/Predef.`???`().
+[32:17..32:20): yil <- local4
+[32:22..32:25): Int -> scala/Int#
+[32:28..32:31): ??? -> scala/Predef.`???`().
+[33:4..33:6): yl -> local3
+[33:9..33:11): xl -> local0
+[33:12..33:13): + -> scala/Int#`+`(+4).
+[33:14..33:16): yl -> local3
+[34:4..34:11): println -> scala/Predef.println(+1).
+[34:12..34:15): xzl -> local1
+[35:4..35:7): yil -> local4
+[35:10..35:13): xil -> local2
+[35:14..35:15): + -> scala/Int#`+`(+4).
+[35:16..35:19): yil -> local4
+[37:2..37:9): println -> scala/Predef.println(+1).
+[37:10..37:14): xzlm -> example/Vals#xzlm.
+[38:2..38:5): ylm -> example/Vals#ylm().
+[38:8..38:11): xlm -> example/Vals#xlm.
+[38:12..38:13): + -> scala/Int#`+`(+4).
+[38:14..38:17): ylm -> example/Vals#ylm().
+[41:7..41:16): ValUsages <- example/ValUsages.
+[42:6..42:7): v <- example/ValUsages.v.
+[42:9..42:13): Vals -> example/Vals#
+[42:16..42:19): ??? -> scala/Predef.`???`().
+[43:2..43:3): v -> example/ValUsages.v.
+[43:4..43:6): yp -> example/Vals#`yp_=`().
+[43:9..43:10): v -> example/ValUsages.v.
+[43:11..43:13): xp -> example/Vals#xp.
+[43:14..43:15): + -> scala/Int#`+`(+4).
+[43:16..43:17): v -> example/ValUsages.v.
+[43:18..43:20): yp -> example/Vals#yp().
+[44:2..44:3): v -> example/ValUsages.v.
+[44:4..44:6): ym -> example/Vals#`ym_=`().
+[44:9..44:10): v -> example/ValUsages.v.
+[44:11..44:13): xm -> example/Vals#xm.
+[44:14..44:15): + -> scala/Int#`+`(+4).
+[44:16..44:17): v -> example/ValUsages.v.
+[44:18..44:20): ym -> example/Vals#ym().
+[45:2..45:3): v -> example/ValUsages.v.
+[45:4..45:7): yam -> example/Vals#`yam_=`().
+[45:10..45:11): v -> example/ValUsages.v.
+[45:12..45:15): xam -> example/Vals#xam.
+[45:16..45:17): + -> scala/Int#`+`(+4).
+[45:18..45:19): v -> example/ValUsages.v.
+[45:20..45:23): yam -> example/Vals#yam().
+[46:2..46:9): println -> scala/Predef.println(+1).
+[46:10..46:11): v -> example/ValUsages.v.
+[46:12..46:15): xzm -> example/Vals#xzm.
+[47:2..47:3): v -> example/ValUsages.v.
+[47:4..47:7): yfm -> example/Vals#`yfm_=`().
+[47:10..47:11): v -> example/ValUsages.v.
+[47:12..47:15): xfm -> example/Vals#xfm.
+[47:16..47:17): + -> scala/Int#`+`(+4).
+[47:18..47:19): v -> example/ValUsages.v.
+[47:20..47:23): yfm -> example/Vals#yfm().
+[48:2..48:3): v -> example/ValUsages.v.
+[48:4..48:7): yim -> example/Vals#`yim_=`().
+[48:10..48:11): v -> example/ValUsages.v.
+[48:12..48:15): xim -> example/Vals#xim.
+[48:16..48:17): + -> scala/Int#`+`(+4).
+[48:18..48:19): v -> example/ValUsages.v.
+[48:20..48:23): yim -> example/Vals#yim().
+[49:2..49:3): v -> example/ValUsages.v.
+[49:3..49:18): .explicitSetter -> example/Vals#`explicitSetter_=`().
+
+expect/Vararg.scala
+-------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Vararg.scala
+Text => empty
+Language => Scala
+Symbols => 6 entries
+Occurrences => 11 entries
+
+Symbols:
+example/Vararg# => class Vararg
+example/Vararg#`<init>`(). => primary ctor <init>
+example/Vararg#add1(). => method add1
+example/Vararg#add1().(a) => param a
+example/Vararg#add2(). => method add2
+example/Vararg#add2().(a) => param a
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:12): Vararg <- example/Vararg#
+[3:2..3:2): <- example/Vararg#`<init>`().
+[3:6..3:10): add1 <- example/Vararg#add1().
+[3:11..3:12): a <- example/Vararg#add1().(a)
+[3:14..3:17): Int -> scala/Int#
+[4:6..4:10): add2 <- example/Vararg#add2().
+[4:11..4:12): a <- example/Vararg#add2().(a)
+[4:14..4:17): Seq -> scala/package.Seq#
+[4:18..4:21): Int -> scala/Int#
+[4:26..4:30): Unit -> scala/Unit#
+
+expect/filename with spaces.scala
+---------------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => filename with spaces.scala
+Text => empty
+Language => Scala
+Symbols => 2 entries
+Occurrences => 3 entries
+
+Symbols:
+example/FilenameWithSpaces# => class FilenameWithSpaces
+example/FilenameWithSpaces#`<init>`(). => primary ctor <init>
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:0..2:0): <- example/FilenameWithSpaces#`<init>`().
+[2:6..2:24): FilenameWithSpaces <- example/FilenameWithSpaces#
+
+expect/local-file.scala
+-----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => local-file.scala
+Text => empty
+Language => Scala
+Symbols => 3 entries
+Occurrences => 7 entries
+
+Symbols:
+example/`local-file`# => class local-file
+example/`local-file`#`<init>`(). => primary ctor <init>
+local0 => val local local
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:17): local-file <- example/`local-file`#
+[3:2..3:2): <- example/`local-file`#`<init>`().
+[3:2..3:9): locally -> dotty/DottyPredef.locally().
+[4:8..4:13): local <- local0
+[5:4..5:9): local -> local0
+[5:10..5:11): + -> scala/Int#`+`(+4).
+
+expect/semanticdb-extract.scala
+-------------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => semanticdb-extract.scala
+Text => empty
+Language => Scala
+Symbols => 17 entries
+Occurrences => 22 entries
+
+Symbols:
+_empty_/AnObject. => final object AnObject
+_empty_/AnObject.Foo# => case class Foo
+_empty_/AnObject.Foo#_1(). => method _1
+_empty_/AnObject.Foo#`<init>`(). => primary ctor <init>
+_empty_/AnObject.Foo#`<init>`().(x) => val param x
+_empty_/AnObject.Foo#copy$default$1(). => method copy$default$1
+_empty_/AnObject.Foo#copy(). => method copy
+_empty_/AnObject.Foo#copy().(x) => param x
+_empty_/AnObject.Foo#x. => val method x
+_empty_/AnObject.Foo. => final object Foo
+_empty_/AnObject.Foo.apply(). => method apply
+_empty_/AnObject.Foo.apply().(x) => param x
+_empty_/AnObject.Foo.unapply(). => method unapply
+_empty_/AnObject.Foo.unapply().(x$1) => param x$1
+_empty_/AnObject.foo(). => method foo
+_empty_/AnObject.foo().(x) => param x
+_empty_/AnObject.foo(+1). => method foo
+
+Occurrences:
+[0:7..0:15): AnObject <- _empty_/AnObject.
+[2:6..2:9): foo <- _empty_/AnObject.foo().
+[2:10..2:11): x <- _empty_/AnObject.foo().(x)
+[2:13..2:16): Int -> scala/Int#
+[3:6..3:9): foo <- _empty_/AnObject.foo(+1).
+[3:13..3:17): Unit -> scala/Unit#
+[5:2..5:5): foo -> _empty_/AnObject.foo().
+[6:2..6:5): foo -> _empty_/AnObject.foo(+1).
+[8:5..8:14): substring -> java/lang/String#substring().
+[9:5..9:14): substring -> java/lang/String#substring(+1).
+[11:2..11:6): List -> scala/package.List.
+[11:6..11:6): -> scala/collection/IterableFactory#apply().
+[12:2..12:6): List -> scala/package.List.
+[12:7..12:12): apply -> scala/collection/IterableFactory#apply().
+[13:2..13:6): List -> scala/package.List.
+[13:7..13:14): `apply` -> scala/collection/IterableFactory#apply().
+[14:2..14:9): println -> scala/Predef.println(+1).
+[14:12..14:13): + -> scala/Int#`+`(+4).
+[16:13..16:16): Foo <- _empty_/AnObject.Foo#
+[16:16..16:24): <- _empty_/AnObject.Foo#`<init>`().
+[16:17..16:18): x <- _empty_/AnObject.Foo#x.
+[16:20..16:23): Int -> scala/Int#
+
+expect/toplevel.scala
+---------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => toplevel.scala
+Text => empty
+Language => Scala
+Symbols => 11 entries
+Occurrences => 24 entries
+
+Symbols:
+_empty_/toplevel$package. => final package object _empty_
+_empty_/toplevel$package.a. => val method a
+_empty_/toplevel$package.combine(). => method combine
+_empty_/toplevel$package.combine().(x) => param x
+_empty_/toplevel$package.combine().(y) => param y
+_empty_/toplevel$package.combine(+1). => method combine
+_empty_/toplevel$package.combine(+1).(x) => param x
+_empty_/toplevel$package.combine(+1).(y) => param y
+_empty_/toplevel$package.combine(+1).(z) => param z
+_empty_/toplevel$package.combine(+2). => method combine
+_empty_/toplevel$package.foo(). => method foo
+
+Occurrences:
+[0:0..0:16): inline val a = " <- _empty_/toplevel$package.
+[0:11..0:12): a <- _empty_/toplevel$package.a.
+[1:4..1:11): (x: Int <- _empty_/toplevel$package.combine().
+[1:5..1:6): x <- _empty_/toplevel$package.combine().(x)
+[1:8..1:11): Int -> scala/Int#
+[1:22..1:23): y <- _empty_/toplevel$package.combine().(y)
+[1:25..1:28): Int -> scala/Int#
+[1:32..1:33): x -> _empty_/toplevel$package.combine().(x)
+[1:34..1:35): + -> scala/Int#`+`(+4).
+[1:36..1:37): y -> _empty_/toplevel$package.combine().(y)
+[2:4..2:11): combine <- _empty_/toplevel$package.combine(+1).
+[2:12..2:13): x <- _empty_/toplevel$package.combine(+1).(x)
+[2:15..2:18): Int -> scala/Int#
+[2:20..2:21): y <- _empty_/toplevel$package.combine(+1).(y)
+[2:23..2:26): Int -> scala/Int#
+[2:28..2:29): z <- _empty_/toplevel$package.combine(+1).(z)
+[2:31..2:34): Int -> scala/Int#
+[2:38..2:39): x -> _empty_/toplevel$package.combine(+1).(x)
+[2:40..2:41): + -> scala/Int#`+`(+4).
+[2:42..2:43): y -> _empty_/toplevel$package.combine(+1).(y)
+[2:44..2:45): + -> scala/Int#`+`(+4).
+[2:46..2:47): z -> _empty_/toplevel$package.combine(+1).(z)
+[3:4..3:11): combine <- _empty_/toplevel$package.combine(+2).
+[4:4..4:7): foo <- _empty_/toplevel$package.foo().

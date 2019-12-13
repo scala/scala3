@@ -332,12 +332,34 @@ object Trees {
     def namedType: NamedType = tpe.asInstanceOf[NamedType]
   }
 
+  abstract class NamedDefTree[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NameTree[T] with DefTree[T] {
+    type ThisTree[-T >: Untyped] <: NamedDefTree[T]
+
+    /** The position of the name defined by this definition.
+     *  This is a point position if the definition is synthetic, or a range position
+     *  if the definition comes from source.
+     *  It might also be that the definition does not have a position (for instance when synthesized by
+     *  a calling chain from `viewExists`), in that case the return position is NoSpan.
+     *  Overridden in Bind
+     */
+    def nameSpan: Span =
+      if (span.exists) {
+        val point = span.point
+        if (rawMods.is(Synthetic) || name.toTermName == nme.ERROR) Span(point)
+        else {
+          val realName = name.stripModuleClassSuffix.lastPart.toString
+          Span(point, point + realName.length, point)
+        }
+      }
+      else span
+  }
+
   /** Tree defines a new symbol and carries modifiers.
    *  The position of a MemberDef contains only the defined identifier or pattern.
    *  The envelope of a MemberDef contains the whole definition and has its point
    *  on the opening keyword (or the next token after that if keyword is missing).
    */
-  abstract class MemberDef[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NameTree[T] with DefTree[T] {
+  abstract class MemberDef[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NamedDefTree[T] {
     type ThisTree[-T >: Untyped] <: MemberDef[T]
 
     def rawComment: Option[Comment] = getAttachment(DocComment)
@@ -346,37 +368,6 @@ object Trees {
       comment.map(putAttachment(DocComment, _))
       this
     }
-
-    /** The position of the name defined by this definition.
-     *  This is a point position if the definition is synthetic, or a range position
-     *  if the definition comes from source.
-     *  It might also be that the definition does not have a position (for instance when synthesized by
-     *  a calling chain from `viewExists`), in that case the return position is NoSpan.
-     */
-    def nameSpan: Span =
-      if (span.exists) {
-        val point = span.point
-        if (rawMods.is(Synthetic) || name.toTermName == nme.ERROR) Span(point)
-        else {
-          val realName = name.stripModuleClassSuffix.lastPart.toString
-          val nameStart =
-            if (point != span.start) point
-            else {
-              // Point might be too far away from start to be recorded. In this case we fall back to scanning
-              // forwards from the start offset for the name.
-              // Note: This might be inaccurate since scanning might hit accidentally the same
-              // name (e.g. in a comment) before finding the real definition.
-              // To make this behavior more robust we'd have to change the trees for definitions to contain
-              // a fully positioned Ident in place of a name.
-              val contents = if source.exists then source.content() else Array.empty[Char]
-              val idx = contents.indexOfSlice(realName, point)
-              if (idx >= 0) idx
-              else point // use `point` anyway. This is important if no source exists so scanning fails
-            }
-          Span(point, point + realName.length, point)
-        }
-      }
-      else span
   }
 
   /** A ValDef or DefDef tree */
@@ -707,10 +698,13 @@ object Trees {
 
   /** name @ body */
   case class Bind[-T >: Untyped] private[ast] (name: Name, body: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends NameTree[T] with DefTree[T] with PatternTree[T] {
+    extends NamedDefTree[T] with PatternTree[T] {
     type ThisTree[-T >: Untyped] = Bind[T]
     override def isType: Boolean = name.isTypeName
     override def isTerm: Boolean = name.isTermName
+
+    override def nameSpan: Span =
+      if span.exists then Span(span.start, span.start + name.toString.length) else span
   }
 
   /** tree_1 | ... | tree_n */
@@ -940,6 +934,7 @@ object Trees {
     type NameTree = Trees.NameTree[T]
     type RefTree = Trees.RefTree[T]
     type DefTree = Trees.DefTree[T]
+    type NamedDefTree = Trees.NamedDefTree[T]
     type MemberDef = Trees.MemberDef[T]
     type ValOrDefDef = Trees.ValOrDefDef[T]
     type LazyTree = Trees.LazyTree[T]
@@ -1441,13 +1436,13 @@ object Trees {
               this(x, trees)
             case UnApply(fun, implicits, patterns) =>
               this(this(this(x, fun), implicits), patterns)
-            case tree @ ValDef(name, tpt, _) =>
+            case tree @ ValDef(_, tpt, _) =>
               implicit val ctx = localCtx
               this(this(x, tpt), tree.rhs)
-            case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
+            case tree @ DefDef(_, tparams, vparamss, tpt, _) =>
               implicit val ctx = localCtx
               this(this(vparamss.foldLeft(this(x, tparams))(apply), tpt), tree.rhs)
-            case TypeDef(name, rhs) =>
+            case TypeDef(_, rhs) =>
               implicit val ctx = localCtx
               this(x, rhs)
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
