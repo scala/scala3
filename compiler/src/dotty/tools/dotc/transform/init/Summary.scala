@@ -43,7 +43,7 @@ object Summary {
 
     def show(implicit ctx: Context): String =
       "ObjectPart(" + currentClass.name.show +
-        "parents = {" + parentOuter.map { case (k, v) => k.show + "->" + "[" Potentials.show(v) + "]" } + "}"
+        "parents = {" + parentOuter.map { case (k, v) => k.show + "->" + "[" + Potentials.show(v) + "]" } + "}"
   }
 
   /** Part of object.

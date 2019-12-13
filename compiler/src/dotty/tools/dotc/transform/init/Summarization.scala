@@ -232,11 +232,11 @@ object Summarization {
           val parentOuter: List[(ClassSymbol, Potentials)] = cinfo.classParents.map {
             case parentTp: TypeRef =>
               val source = {
-                implicit val ctx2: Context = ctx.withSource(cls.source)
+                implicit val ctx2: Context = ctx.withSource(cls.source(ctx))
                 TypeTree(parentTp).withSpan(cls.span)
               }
               parentTp.classSymbol.asClass -> analyze(parentTp.prefix, source)._1
-          })
+          }
 
           ClassSummary(cls, parentOuter.toMap)
       }
