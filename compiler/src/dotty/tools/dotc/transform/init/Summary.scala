@@ -23,7 +23,7 @@ object Summary {
   case class ClassSummary(currentClass: ClassSymbol, parentOuter: Map[ClassSymbol, Potentials]) {
     private val summaryCache: mutable.Map[Symbol, Summary] = mutable.Map.empty
 
-    def cacheFor(member: Symbol, summary: Summary): Unit = {
+    def cacheFor(member: Symbol, summary: Summary)(implicit ctx: Context): Unit = {
       assert(member.owner == currentClass, "owner = " + member.owner.show + ", current = " + currentClass.show)
       summaryCache(member) = summary
     }

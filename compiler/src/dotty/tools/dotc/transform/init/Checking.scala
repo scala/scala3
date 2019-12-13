@@ -12,6 +12,7 @@ import Symbols._
 import Constants.Constant
 import Types._
 import util.NoSourcePosition
+import reporting.trace
 import config.Printers.init
 
 import Effects._, Potentials._, Summary._, Util._
@@ -113,14 +114,13 @@ object Checking {
       val cls = ctor.owner
       val classDef = cls.defTree
       if (!classDef.isEmpty) {
-        val (pots, effs) = tp.typeConstructor match {
-          case tref: TypeRef => Summarization.analyze(tref.prefix, source)
-        }
-
         // TODO: no need to check, can only be empty
-        checkEffects(effs)
+        // val (pots, effs) = tp.typeConstructor match {
+        //   case tref: TypeRef => Summarization.analyze(tref.prefix, source)
+        // }
+        // checkEffects(effs)
 
-        if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef], pots)
+        if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef])
         else checkSecondaryConstructor(ctor)
       }
       else if (!cls.isOneOf(Flags.EffectivelyOpenFlags))
@@ -161,7 +161,7 @@ object Checking {
     val cls = ctor.owner
 
     traceOp("check ctor: " + ctor.show, init) {
-      if (ctorCallSym.isPrimaryConstructor)
+      if (ctor.isPrimaryConstructor)
         checkClassBody(cls.defTree.asInstanceOf[TypeDef])
       else
         checkSecondaryConstructor(ctor)
@@ -215,7 +215,7 @@ object Checking {
         case FieldAccess(pot, field) =>
           pot match {
             case ThisRef(cls) =>
-              assert(tp == state.thisClass, "unexpected potential " + pot.show)
+              assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
               if (!state.fieldsInited.contains(field) && !field.is(Flags.Lazy)) {
                 traceIndented("initialized: " + state.fieldsInited, init)
@@ -227,8 +227,7 @@ object Checking {
                   eff.source.sourcePos
                 )
               }
-
-              if (field.is(Flags.Lazy)) {
+              else if (field.is(Flags.Lazy)) {
                 // TODO: get effects, rebase and check
               }
 
@@ -261,7 +260,7 @@ object Checking {
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
               if (sym.isInternal) { // tests/init/override17.scala
-                val cls = sym.owner
+                val cls = sym.owner.asClass
                 val effs = theEnv.summaryOf(cls).effectsOf(sym)
                 val rebased = effs.asSeenFrom(pot, cls, Potentials.empty)
                 val state2 = state.withVisited(eff)
@@ -277,7 +276,7 @@ object Checking {
 
             case warm @ Warm(cls, outer) =>
               if (sym.isInternal) {
-                val cls = sym.owner
+                val cls = sym.owner.asClass
                 val effs = theEnv.summaryOf(cls).effectsOf(sym)
                 val rebased = effs.asSeenFrom(pot, cls, warm.outerFor(cls))
                 val state2 = state.withVisited(eff)
@@ -325,7 +324,7 @@ object Checking {
             assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
             if (sym.isInternal) { // tests/init/override17.scala
-              val cls = sym.owner
+              val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
               pots.asSeenFrom(pot1, cls, Potentials.empty)
             }
@@ -343,13 +342,13 @@ object Checking {
 
           case warm : Warm =>
             if (sym.isInternal) {
-              val cls = sym.owner
+              val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
               pots.asSeenFrom(pot1, cls, warm.outerFor(cls))
             }
             else Potentials.empty // warning already issued in call effect
 
-          case Cold(cls, _) =>
+          case _: Cold =>
             Potentials.empty // error already reported, ignore
 
           case _ =>
@@ -361,32 +360,27 @@ object Checking {
       case FieldReturn(pot1, sym) =>
         pot1 match {
           case ThisRef(cls) =>
-            // access to top-level objects
-            val isPackage = cls.is(Flags.Package)
-            if (!isPackage) assert(
-              state.currentClass.derivesFrom(cls),
-              "current class: " + state.currentClass.show + ", symbol = " + cls
-            )
-            if (isPackage) Set.empty
-            else theEnv.potentialsOf(sym).map(devar(_, _ => None)).collect {
-              case Some(pot) => pot
-            }
+            assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
-          case Fun(pots, effs) =>
+            if (sym.isInternal) { // tests/init/override17.scala
+              val cls = sym.owner.asClass
+              val pots = theEnv.summaryOf(cls).potentialsOf(sym)
+              pots.asSeenFrom(pot1, cls, Potentials.empty)
+            }
+            else Potentials.empty + Cold(sym.info.classSymbol.asClass)(pot.source)
+
+          case _: Fun =>
             throw new Exception("Unexpected code reached")
 
-          case Warm(cls) =>
-            def toCold(sym: Symbol): Potential = Cold(sym.info.classSymbol.asClass, definite = false)(pot.source)
-            val pots = theEnv.potentialsOf(sym).map(devar(_, sym => Some(toCold(sym)))).collect {
-              case Some(pot) => pot
+          case warm: Warm =>
+            if (sym.isInternal) {
+              val cls = sym.owner.asClass
+              val pots = theEnv.summaryOf(cls).potentialsOf(sym)
+              pots.asSeenFrom(pot1, cls, warm.outerFor(cls))
             }
-            pots.flatMap { pot2 => substitute(pot2, Map.empty, Some(cls -> pot1)) }
+            else Potentials.empty + Cold(sym.info.classSymbol.asClass)(pot.source)
 
-          case Dependent(cls, bindings) =>
-            val pots = theEnv.potentialsOf(sym)
-            pots.flatMap { pot2 => substitute(pot2, bindings, Some(cls -> pot1)) }
-
-          case Cold(cls, _) =>
+          case _: Cold =>
             Potentials.empty // error already reported, ignore
 
           case _ =>
