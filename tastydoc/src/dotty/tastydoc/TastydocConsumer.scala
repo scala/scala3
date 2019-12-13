@@ -14,6 +14,6 @@ class TastydocConsumer(mutablePackagesMap: scala.collection.mutable.HashMap[Stri
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
 
-    representations.convertToRepresentation(reflect)(root, None) given (mutablePackagesMap)
+    representations.convertToRepresentation(reflect)(root, None)(given mutablePackagesMap)
   }
 }

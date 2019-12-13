@@ -18,7 +18,7 @@ trait CommentCleaner {
     val javadoclessComment = JavadocTags.replaceAllIn(safeComment, { javadocReplacement(_) })
     val markedTagComment =
       SafeTags.replaceAllIn(javadoclessComment, { mtch =>
-        Matcher.quoteReplacement(safeTagMarker + mtch.matched + safeTagMarker)
+        Matcher.quoteReplacement(s"$safeTagMarker${mtch.matched}$safeTagMarker")
       })
     markedTagComment.linesIterator.toList map (cleanLine)
   }
