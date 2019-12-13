@@ -271,7 +271,6 @@ object Build {
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
     unmanagedSourceDirectories in Compile += baseDirectory.value / "src-bootstrapped",
-    unmanagedSourceDirectories in Test += baseDirectory.value / "test-bootstrapped",
 
     version := dottyVersion,
     scalaVersion := dottyNonBootstrappedVersion,

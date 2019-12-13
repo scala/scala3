@@ -11,6 +11,8 @@ import scala.util.control.NonFatal
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
+import javax.tools.ToolProvider
+
 import org.junit.Assert._
 import org.junit.Test
 import org.junit.experimental.categories.Category
@@ -25,11 +27,12 @@ import dotty.tools.dotc.util.SourceFile
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class SemanticdbTests with
+  val javaFile = FileSystems.getDefault.getPathMatcher("glob:**.java")
   val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   val expectFile = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
-  // val semanticdbFile = FileSystems.getDefault.getPathMatcher("glob:**.scala.semanticdb")
   val rootSrc = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test"))
   val expectSrc = rootSrc.resolve("expect")
+  val javaRoot = rootSrc.resolve("javacp")
   val metacExpectFile = rootSrc.resolve("metac.expect")
 
   @Category(Array(classOf[dotty.SlowTests]))
@@ -87,8 +90,20 @@ class SemanticdbTests with
     require(files.nonEmpty, s"No input files! $expectSrc")
     files.toList
 
+  def javaFiles(): List[Path] =
+    val ls = Files.walk(javaRoot)
+    val files =
+      try ls.filter(p => javaFile.matches(p)).collect(Collectors.toList).asScala
+      finally ls.close()
+    require(files.nonEmpty, s"No input files! $expectSrc")
+    files.toList
+
   def generateSemanticdb(): Path =
     val target = Files.createTempDirectory("semanticdb")
+    val javaArgs = Array("-d", target.toString) ++ javaFiles().map(_.toString)
+    val javac = ToolProvider.getSystemJavaCompiler
+    val exitJava = javac.run(null, null, null, javaArgs:_*)
+    assert(exitJava == 0, "java compiler has errors")
     val args = Array(
       "-Ysemanticdb",
       "-d", target.toString,
@@ -97,7 +112,8 @@ class SemanticdbTests with
       // "-Ydebug-flags",
       // "-Xprint:extractSemanticDB",
       "-sourceroot", expectSrc.toString,
-      "-usejavacp",
+      "-classpath", target.toString,
+      "-usejavacp"
     ) ++ inputFiles().map(_.toString)
     val exit = Main.process(args)
     assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)
