@@ -18,7 +18,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val javaextdirs: Setting[String] = PathSetting("-javaextdirs", "Override java extdirs classpath.", Defaults.javaExtDirs) withAbbreviation "--java-extension-directories"
   val sourcepath: Setting[String] = PathSetting("-sourcepath", "Specify location(s) of source files.", Defaults.scalaSourcePath) withAbbreviation "--source-path"
   val sourceroot: Setting[String] = PathSetting("-sourceroot", "Specify workspace root directory", ".")
-  val targetroot: Setting[String] = PathSetting("-targetroot", "Specify output directory", "")
+  val semanticdbTarget: Setting[String] = PathSetting("-semanticdb-target", "Specify an alternative output directory for SemanticDB files", "")
 
   val classpath: Setting[String] = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp" withAbbreviation "--class-path"
   val outputDir: Setting[AbstractFile] = OutputSetting("-d", "directory|jar", "destination for generated classfiles.",

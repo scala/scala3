@@ -582,14 +582,14 @@ object ExtractSemanticDB with
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
     val sourcePath = absolutePath(source.file.jpath)
     val sourceRoot = absolutePath(Paths.get(ctx.settings.sourceroot.value))
-    val targetRoot =
-      val targetRootSetting = ctx.settings.targetroot.value
+    val semanticdbTarget =
+      val semanticdbTargetSetting = ctx.settings.semanticdbTarget.value
       absolutePath(
-        if targetRootSetting.isEmpty then ctx.settings.outputDir.value.jpath
-        else Paths.get(targetRootSetting)
+        if semanticdbTargetSetting.isEmpty then ctx.settings.outputDir.value.jpath
+        else Paths.get(semanticdbTargetSetting)
       )
     val relPath = sourceRoot.relativize(sourcePath)
-    val outpath = targetRoot
+    val outpath = semanticdbTarget
       .resolve("META-INF")
       .resolve("semanticdb")
       .resolve(relPath)
