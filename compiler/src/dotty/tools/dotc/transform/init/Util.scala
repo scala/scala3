@@ -2,7 +2,9 @@ package dotty.tools.dotc
 package transform
 package init
 
-import core.Contexts._
+import core._
+import Contexts.Context
+import Symbols._
 import config.Printers.Printer
 
 
@@ -15,4 +17,7 @@ object Util {
     op
     traceIndented(s"<== ${msg}", printer)
   }
+
+  def (symbol: Symbol) isInternal(implicit ctx: Context): Boolean =
+    !symbol.defTree.isEmpty
 }
