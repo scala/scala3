@@ -137,7 +137,7 @@ class JSCodeGen()(implicit ctx: Context) {
     }
     val allTypeDefs = collectTypeDefs(cunit.tpdTree)
 
-    val generatedClasses = mutable.ListBuffer.empty[(Symbol, js.ClassDef)]
+    val generatedClasses = mutable.ListBuffer.empty[js.ClassDef]
 
     // TODO Record anonymous JS function classes
 
@@ -167,20 +167,17 @@ class JSCodeGen()(implicit ctx: Context) {
             genScalaClass(td)
           }
 
-          generatedClasses += ((sym, tree))
+          generatedClasses += tree
         }
       }
     }
 
-    val clDefs = generatedClasses.map(_._2).toList
-
-    for ((sym, tree) <- generatedClasses)
-      genIRFile(cunit, sym, tree)
+    for (tree <- generatedClasses)
+      genIRFile(cunit, tree)
   }
 
-  private def genIRFile(cunit: CompilationUnit, sym: Symbol,
-      tree: ir.Trees.ClassDef): Unit = {
-    val outfile = getFileFor(cunit, sym, ".sjsir")
+  private def genIRFile(cunit: CompilationUnit, tree: ir.Trees.ClassDef): Unit = {
+    val outfile = getFileFor(cunit, tree.name.name, ".sjsir")
     val output = outfile.bufferedOutput
     try {
       ir.Serializers.serialize(output, tree)
@@ -189,21 +186,13 @@ class JSCodeGen()(implicit ctx: Context) {
     }
   }
 
-  private def getFileFor(cunit: CompilationUnit, sym: Symbol,
+  private def getFileFor(cunit: CompilationUnit, className: ClassName,
       suffix: String): dotty.tools.io.AbstractFile = {
-    import dotty.tools.io._
-
-    val outputDirectory: AbstractFile =
-      ctx.settings.outputDir.value
-
-    val pathParts = sym.fullName.toString.split("[./]")
+    val outputDirectory = ctx.settings.outputDir.value
+    val pathParts = className.nameString.split('.')
     val dir = pathParts.init.foldLeft(outputDirectory)(_.subdirectoryNamed(_))
-
-    var filename = pathParts.last
-    if (sym.is(ModuleClass))
-      filename = filename + nme.MODULE_SUFFIX.toString
-
-    dir fileNamed (filename + suffix)
+    val filename = pathParts.last
+    dir.fileNamed(filename + suffix)
   }
 
   // Generate a class --------------------------------------------------------
