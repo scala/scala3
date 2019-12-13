@@ -70,7 +70,7 @@ object Checking {
    *  However, summarization can be done lazily on-demand to improve
    *  performance.
    */
-  def checkClassBody(cdef: TypeDef, outer: Potentials)(implicit state: State): Unit = traceOp("checking " + cdef.symbol.show, init) {
+  def checkClassBody(cdef: TypeDef)(implicit state: State): Unit = traceOp("checking " + cdef.symbol.show, init) {
     val cls = cdef.symbol.asClass
     val tpl = cdef.rhs.asInstanceOf[Template]
 
@@ -84,7 +84,7 @@ object Checking {
           theEnv.summaryOf(cls).cacheFor(vdef.symbol, (pots, effs))
           if (!vdef.symbol.is(Flags.Lazy)) {
             traceIndented(vdef.symbol.show + " initialized", init)
-            effs.foreach { check(_) }
+            checkEffects(effs)
             state.fieldsInited += vdef.symbol
           }
 
@@ -94,6 +94,9 @@ object Checking {
       }
     }
 
+    def checkEffects(effs: Effects): Unit =
+      effs.asSeenFrom(ThisRef(state.thisClass)(null), cls, Potentials.empty).foreach { check(_) }
+
     // check parent calls : follows linearization ordering
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html#class-linearization
@@ -101,7 +104,7 @@ object Checking {
     def checkStats(stats: List[Tree])(implicit ctx: Context): Unit =
       stats.foreach { stat =>
         val (_, effs) = Summarization.analyze(stat)
-        effs.foreach { check(_) }
+        checkEffects(effs)
       }
 
     def checkCtor(ctor: Symbol, tp: Type, source: Tree)(implicit ctx: Context): Unit = {
@@ -113,10 +116,10 @@ object Checking {
         }
 
         // TODO: no need to check, can only be empty
-        effs.foreach { check(_) }
+        checkEffects(effs)
 
         if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef], pots)
-        else checkSecondaryConstructor(ctor, outer)
+        else checkSecondaryConstructor(ctor)
       }
       else if (!cls.isOneOf(Flags.EffectivelyOpenFlags))
         ctx.warning("Inheriting non-open class may cause initialization errors", source.sourcePos)
@@ -151,19 +154,20 @@ object Checking {
     tpl.body.foreach { checkClassBodyStat(_) }
   }
 
-  def checkSecondaryConstructor(ctor: Symbol, outer: Potentials)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
+  def checkSecondaryConstructor(ctor: Symbol)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
     val Block(ctorCall :: stats, expr) = ctor.defTree
-    val ctorCallSym = ctorCall.symbol
+    val cls = ctor.owner
 
     traceOp("check ctor: " + ctor.show, init) {
       if (ctorCallSym.isPrimaryConstructor)
-        checkClassBody(ctorCallSym.owner.defTree.asInstanceOf[TypeDef], outer)
+        checkClassBody(cls.defTree.asInstanceOf[TypeDef])
       else
-        checkSecondaryConstructor(ctorCallSym, outer)
+        checkSecondaryConstructor(ctor)
     }
 
     (stats :+ expr).foreach { stat =>
       val (_, effs) = Summarization.analyze(stat)(theCtx.withOwner(ctor))
+      effs.asSeenFrom(ThisRef(state.thisClass)(null), cls, Potentials.empty).foreach { check(_) }
       effs.foreach { check(_)(state) }
     }
   }

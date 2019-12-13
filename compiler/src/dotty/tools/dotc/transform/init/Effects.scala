@@ -41,4 +41,11 @@ object Effects {
       potential.show + "." + method.name.show + "!" + modifier
     }
   }
+
+  // ------------------ operations on effects ------------------
+
+  def (eff: Effect) asSeenFrom(thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potential = ???
+
+  def (effs: Effects) asSeenFrom(thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potential =
+    effs.flatMap(_.asSeenFrom(thisValue, currentClass, outer))
 }
