@@ -233,7 +233,7 @@ object Checking {
 
             case Cold(cls, _) =>
               theCtx.warning(
-                "Access field " + eff.source.show + " on a cold value" +
+                "Access field " + eff.source.show + " on a known value under initialization" +
                 ". Calling trace:\n" + state.trace,
                 eff.source.sourcePos
               )
@@ -250,19 +250,17 @@ object Checking {
         case MethodCall(pot, sym, virtual) =>
           pot match {
             case ThisRef(cls) =>
-              assert(
-                state.currentClass.derivesFrom(cls),
-                state.currentClass.show + " not derived from " + cls.show
-              ) // in current class hierachy
-              // overriding resolution
-              val targetSym = if (virtual) resolveVirtual(state.currentClass, sym) else sym
-              if (targetSym.exists) { // tests/init/override17.scala
-                val effs = theEnv.effectsOf(targetSym)
-                val state2 = state.withVisited(eff)
-                effs.foreach { check(_)(state2) }
-              }
-              else {
-                traceIndented("!!!sym does not exist: " + pot.show)
+              if (cls eq state.thisClass) {
+                // overriding resolution
+                val targetSym = if (virtual) resolveVirtual(state.currentClass, sym) else sym
+                if (targetSym.exists) { // tests/init/override17.scala
+                  val effs = theEnv.effectsOf(targetSym)
+                  val state2 = state.withVisited(eff)
+                  effs.foreach { check(_)(state2) }
+                }
+                else {
+                  traceIndented("!!!sym does not exist: " + pot.show)
+                }
               }
 
             case Warm(cls) =>
