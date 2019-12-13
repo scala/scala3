@@ -50,7 +50,7 @@ Uri => Advanced.scala
 Text => empty
 Language => Scala
 Symbols => 34 entries
-Occurrences => 94 entries
+Occurrences => 92 entries
 
 Symbols:
 advanced/C# => class C
@@ -115,7 +115,6 @@ Occurrences:
 [13:6..13:8): s2 <- advanced/Structural#s2().
 [13:16..13:17): x <- local1
 [13:19..13:22): Int -> scala/Int#
-[13:27..13:27): <- local2
 [13:37..13:38): x <- local3
 [13:40..13:43): Int -> scala/Int#
 [13:46..13:49): ??? -> scala/Predef.`???`().
@@ -124,7 +123,6 @@ Occurrences:
 [14:18..14:19): x <- local5
 [14:21..14:24): Int -> scala/Int#
 [14:27..14:30): Int -> scala/Int#
-[14:35..14:35): <- local6
 [14:45..14:46): m <- local7
 [14:47..14:48): x <- local8
 [14:50..14:53): Int -> scala/Int#
@@ -193,7 +191,7 @@ Uri => Annotations.scala
 Text => empty
 Language => Scala
 Symbols => 22 entries
-Occurrences => 51 entries
+Occurrences => 52 entries
 
 Symbols:
 annot/Alias. => final object Alias
@@ -271,6 +269,7 @@ Occurrences:
 [35:7..35:12): Alias <- annot/Alias.
 [36:7..36:8): A <- annot/Alias.A#
 [36:11..36:26): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
+[36:28..36:33): param -> scala/annotation/meta/param#
 
 expect/Anonymous.scala
 ----------------------
@@ -281,7 +280,7 @@ Uri => Anonymous.scala
 Text => empty
 Language => Scala
 Symbols => 13 entries
-Occurrences => 33 entries
+Occurrences => 32 entries
 
 Symbols:
 example/Anonymous# => class Anonymous
@@ -330,7 +329,6 @@ Occurrences:
 [17:2..17:2): <- example/Anonymous#Foo#`<init>`().
 [17:8..17:11): Foo <- example/Anonymous#Foo#
 [18:6..18:9): foo <- example/Anonymous#foo.
-[18:12..18:12): <- local1
 [18:16..18:19): Foo -> example/Anonymous#Foo#
 
 expect/Classes.scala
@@ -342,7 +340,7 @@ Uri => Classes.scala
 Text => empty
 Language => Scala
 Symbols => 75 entries
-Occurrences => 59 entries
+Occurrences => 58 entries
 
 Symbols:
 classes/C1# => final class C1
@@ -468,7 +466,6 @@ Occurrences:
 [22:30..22:33): Int -> scala/Int#
 [24:7..24:8): N <- classes/N.
 [25:6..25:15): anonClass <- classes/N.anonClass.
-[25:18..25:18): <- local0
 [25:22..25:24): C7 -> classes/C7#
 [25:24..25:24): -> classes/C7#`<init>`().
 [26:8..26:13): local <- local1
@@ -1509,7 +1506,7 @@ Uri => InstrumentTyper.scala
 Text => empty
 Language => Scala
 Symbols => 8 entries
-Occurrences => 54 entries
+Occurrences => 55 entries
 
 Symbols:
 example/InstrumentTyper# => class InstrumentTyper
@@ -1568,6 +1565,7 @@ Occurrences:
 [20:8..20:8): -> scala/collection/IterableFactory#apply().
 [22:7..22:20): AnnotatedType <- example/InstrumentTyper#AnnotatedType#
 [22:23..22:26): Int -> scala/Int#
+[22:28..22:33): param -> scala/annotation/meta/param#
 [23:6..23:19): singletonType <- example/InstrumentTyper#singletonType().
 [23:20..23:21): x <- example/InstrumentTyper#singletonType().(x)
 [23:23..23:29): Predef -> scala/Predef.
@@ -1886,7 +1884,7 @@ Uri => Methods.scala
 Text => empty
 Language => Scala
 Symbols => 70 entries
-Occurrences => 138 entries
+Occurrences => 139 entries
 
 Symbols:
 example/Methods# => class Methods
@@ -2059,6 +2057,7 @@ Occurrences:
 [26:6..26:9): m13 <- example/Methods#m13().
 [26:10..26:11): x <- example/Methods#m13().(x)
 [26:13..26:16): Int -> scala/Int#
+[26:18..26:27): unchecked -> scala/unchecked#
 [26:31..26:34): ??? -> scala/Predef.`???`().
 [27:6..27:9): m15 <- example/Methods#m15().
 [27:10..27:11): x <- example/Methods#m15().(x)
@@ -2683,7 +2682,7 @@ Uri => Traits.scala
 Text => empty
 Language => Scala
 Symbols => 13 entries
-Occurrences => 17 entries
+Occurrences => 16 entries
 
 Symbols:
 local0 => final class $anon
@@ -2710,7 +2709,6 @@ Occurrences:
 [7:7..7:8): U <- traits/U.
 [8:6..8:7): u <- traits/U.u().
 [8:9..8:10): U -> traits/U#
-[8:13..8:13): <- local0
 [8:17..8:18): U -> traits/U#
 [11:0..11:0): <- traits/C#`<init>`().
 [11:6..11:7): C <- traits/C#
@@ -2728,7 +2726,7 @@ Uri => Types.scala
 Text => empty
 Language => Scala
 Symbols => 125 entries
-Occurrences => 243 entries
+Occurrences => 242 entries
 
 Symbols:
 local0 => abstract method k
@@ -2977,17 +2975,14 @@ Occurrences:
 [56:41..56:44): Int -> scala/Int#
 [56:49..56:52): ??? -> scala/Predef.`???`().
 [57:8..57:21): compoundType4 <- types/Test.C#compoundType4.
-[57:24..57:24): <- local2
 [57:34..57:35): k <- local3
 [57:37..57:40): Int -> scala/Int#
 [57:43..57:46): ??? -> scala/Predef.`???`().
 [58:8..58:21): compoundType5 <- types/Test.C#compoundType5.
-[58:24..58:24): <- local4
 [58:28..58:29): M -> types/Test.M#
 [58:29..58:29): -> types/Test.M#`<init>`().
 [58:35..58:36): N -> types/Test.N#
 [59:8..59:21): compoundType6 <- types/Test.C#compoundType6.
-[59:24..59:24): <- local5
 [59:28..59:29): M -> types/Test.M#
 [59:29..59:29): -> types/Test.M#`<init>`().
 [59:35..59:36): N -> types/Test.N#
@@ -2999,6 +2994,8 @@ Occurrences:
 [61:31..61:34): ??? -> scala/Predef.`???`().
 [62:8..62:16): annType2 <- types/Test.C#annType2.
 [62:18..62:19): T -> types/T#
+[62:21..62:25): ann1 -> types/ann1#
+[62:27..62:31): ann2 -> types/ann2#
 [62:34..62:37): ??? -> scala/Predef.`???`().
 [64:8..64:24): existentialType2 <- types/Test.C#existentialType2.
 [64:26..64:30): List -> scala/package.List#

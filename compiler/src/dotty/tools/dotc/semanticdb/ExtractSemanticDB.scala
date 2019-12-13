@@ -229,8 +229,6 @@ class ExtractSemanticDB extends Phase with
             traverseChildren(tree)
         case tree: Inlined =>
           traverse(tree.call)
-        case tree: Annotated => // skip the annotation (see `@param` in https://github.com/scalameta/scalameta/blob/633824474e99bbfefe12ad0cc73da1fe064b3e9b/tests/jvm/src/test/resources/example/Annotations.scala#L37)
-          traverse(tree.arg)
         case _ =>
           traverseChildren(tree)
 

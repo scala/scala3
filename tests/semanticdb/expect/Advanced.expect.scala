@@ -11,8 +11,8 @@ class C/*<-advanced::C#*/[T/*<-advanced::C#[T]*/] {
 
 class Structural/*<-advanced::Structural#*/ {
   def s1/*<-advanced::Structural#s1().*/: { val x/*<-local0*/: Int/*->scala::Int#*/ } = ???/*->scala::Predef.`???`().*/
-  def s2/*<-advanced::Structural#s2().*/: { val x/*<-local1*/: Int/*->scala::Int#*/ } = /*<-local2*/new { val x/*<-local3*/: Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/ }
-  def s3/*<-advanced::Structural#s3().*/: { def m/*<-local4*/(x/*<-local5*/: Int/*->scala::Int#*/): Int/*->scala::Int#*/ } = /*<-local6*/new { def m/*<-local7*/(x/*<-local8*/: Int/*->scala::Int#*/): Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/ }
+  def s2/*<-advanced::Structural#s2().*/: { val x/*<-local1*/: Int/*->scala::Int#*/ } = new { val x/*<-local3*/: Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/ }
+  def s3/*<-advanced::Structural#s3().*/: { def m/*<-local4*/(x/*<-local5*/: Int/*->scala::Int#*/): Int/*->scala::Int#*/ } = new { def m/*<-local7*/(x/*<-local8*/: Int/*->scala::Int#*/): Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/ }
 }
 
 class Wildcards/*<-advanced::Wildcards#*/ {

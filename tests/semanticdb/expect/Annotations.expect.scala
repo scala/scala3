@@ -34,5 +34,5 @@ object M/*<-annot::M.*/ {
 trait T/*<-annot::T#*/
 
 object Alias/*<-annot::Alias.*/ {
-  type A/*<-annot::Alias.A#*/ = ClassAnnotation/*->com::javacp::annot::ClassAnnotation#*/ @param
+  type A/*<-annot::Alias.A#*/ = ClassAnnotation/*->com::javacp::annot::ClassAnnotation#*/ @param/*->scala::annotation::meta::param#*/
 }

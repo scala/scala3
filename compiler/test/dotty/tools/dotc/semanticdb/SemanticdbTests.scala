@@ -39,7 +39,7 @@ class SemanticdbTests with
   def runExpectTest(updateExpectFiles: Boolean): Unit =
     val target = generateSemanticdb()
     val errors = mutable.ArrayBuffer.empty[Path]
-    given metacSb: StringBuilder = StringBuilder(5000)
+    val metacSb: StringBuilder = StringBuilder(5000)
     for source <- inputFiles().sorted do
       val filename = source.getFileName.toString
       val relpath = expectSrc.relativize(source)
@@ -71,9 +71,8 @@ class SemanticdbTests with
       val expectName = metacExpectFile.getFileName
       val relExpect = rootSrc.relativize(metacExpectFile)
       val obtained = metacSb.toString
-      def writeOut =
       collectFailingDiff(expected, obtained, s"a/$relExpect", s"b/$relExpect") {
-        Files.write(metacExpectFile.resolveSibling("" + expectName + ".out"), obtained.getBytes(StandardCharsets.UTF_8));
+        Files.write(metacExpectFile.resolveSibling("" + expectName + ".out"), obtained.getBytes(StandardCharsets.UTF_8))
         errors += metacExpectFile
       }
     errors.foreach { expect =>
