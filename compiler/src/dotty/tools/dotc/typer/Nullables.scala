@@ -224,17 +224,17 @@ object Nullables with
       val refSym = ref.symbol
       val refOwner = refSym.owner
 
-      @tailrec def usedWithinClosure(s: Symbol): Boolean =
+      @tailrec def recur(s: Symbol): Boolean =
         s != NoSymbol
         && s != refOwner
         && (s.isOneOf(Lazy | Method) // not at the rhs of lazy ValDef or in a method (or lambda)
           || s.isClass // not in a class
           // TODO: need to check by-name paramter
-          || usedWithinClosure(s.owner))
+          || recur(s.owner))
 
       refSym.is(Mutable) // if it is immutable, we don't need to check the rest conditions
       && refOwner.isTerm
-      && usedWithinClosure(curCtx.owner)
+      && recur(curCtx.owner)
 
   given treeOps: extension (tree: Tree) with
 
@@ -335,9 +335,11 @@ object Nullables with
           // lhs variable is no longer trackable. We don't need to check whether the type `T`
           // is correct here, as typer will check it.
           tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
-        else
-          // otherwise, we know the variable will have a non-null value
+        else if (curCtx.explicitNulls && ref.isNullableUnion)
+          // If the initial type is nullable and the assigned value is non-null,
+          // we add it to the NotNull
           tree.withNotNullInfo(NotNullInfo(Set(ref), Set()))
+        else tree
       case _ => tree
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)
