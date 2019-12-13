@@ -144,6 +144,10 @@ trait StandardDefinitions extends Core {
     def TupleClass(arity: Int): Symbol =
       internal.Definitions_TupleClass(arity)
 
+    /** Returns `true` if `sym` is a `Tuple1`, `Tuple2`, ... `Tuple22` */
+    def isTupleClass(sym: Symbol): Boolean =
+      internal.Definitions_isTupleClass(sym)
+
     /** Contains Scala primitive value classes:
       *   - Byte
       *   - Short

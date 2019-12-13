@@ -1870,6 +1870,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Definitions_FunctionClass(arity: Int, isImplicit: Boolean, isErased: Boolean): Symbol =
     defn.FunctionClass(arity, isImplicit, isErased).asClass
   def Definitions_TupleClass(arity: Int): Symbol = defn.TupleType(arity).classSymbol.asClass
+  def Definitions_isTupleClass(sym: Symbol): Boolean = defn.isTupleClass(sym)
 
   def Definitions_InternalQuoted_patternHole: Symbol = defn.InternalQuoted_patternHole
   def Definitions_InternalQuoted_patternBindHoleAnnot: Symbol = defn.InternalQuoted_patternBindHoleAnnot

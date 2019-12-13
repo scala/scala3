@@ -1398,6 +1398,7 @@ trait CompilerInterface {
   def Definitions_FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol
 
   def Definitions_TupleClass(arity: Int): Symbol
+  def Definitions_isTupleClass(sym: Symbol): Boolean
 
   /** Symbol of scala.internal.Quoted.patternHole */
   def Definitions_InternalQuoted_patternHole: Symbol
