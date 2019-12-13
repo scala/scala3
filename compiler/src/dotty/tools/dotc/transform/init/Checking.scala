@@ -192,20 +192,12 @@ object Checking {
                 eff.source.sourcePos
               )
 
-            case Warm(cls) =>
+            case Warm(cls, outer) =>
               theCtx.warning(
                 "Leaking of warm value " + eff.source.show +
                 ". Calling trace:\n" + state.trace,
                 eff.source.sourcePos
               )
-
-            case Dependent(cls, bindings) =>
-              val state2 = state.withVisited(eff)
-              bindings.values.flatten.flatMap(pot =>
-                substitute(pot, bindings, None)
-              ).foreach { pot =>
-                check(Leak(pot)(eff.source))(state2)
-              }
 
             case Fun(pots, effs) =>
               val state2 = state.withVisited(eff)
@@ -221,13 +213,6 @@ object Checking {
         case FieldAccess(pot, field) =>
           pot match {
             case ThisRef(cls) =>
-              // access to top-level objects
-              val isPackage = cls.is(Flags.Package)
-              if (!isPackage) assert(
-                state.currentClass.derivesFrom(cls),
-                state.currentClass.show + " not derived from " + cls.show
-              ) // in current class hierachy
-
               if (
                 !isPackage &&
                 !state.fieldsInited.contains(field) &&
@@ -245,9 +230,6 @@ object Checking {
               }
 
             case Warm(cls) =>
-              // all fields of warm values are initialized
-
-            case Dependent(cls, bindings) =>
               // all fields of warm values are initialized
 
             case Cold(cls, _) =>
