@@ -40,6 +40,18 @@ class SemanticdbTests with
     val target = generateSemanticdb()
     val errors = mutable.ArrayBuffer.empty[Path]
     val metacSb: StringBuilder = StringBuilder(5000)
+    def collectErrorOrUpdate(expectPath: Path, obtained: String) =
+      if updateExpectFiles
+        Files.write(expectPath, obtained.getBytes(StandardCharsets.UTF_8))
+        println("updated: " + expectPath)
+      else
+        val expected = new String(Files.readAllBytes(expectPath), StandardCharsets.UTF_8)
+        val expectName = expectPath.getFileName
+        val relExpect = rootSrc.relativize(expectPath)
+        collectFailingDiff(expected, obtained, s"a/$relExpect", s"b/$relExpect") {
+          Files.write(expectPath.resolveSibling("" + expectName + ".out"), obtained.getBytes(StandardCharsets.UTF_8))
+          errors += expectPath
+        }
     for source <- inputFiles().sorted do
       val filename = source.getFileName.toString
       val relpath = expectSrc.relativize(source)
@@ -52,30 +64,9 @@ class SemanticdbTests with
       val doc = Tools.loadTextDocument(source, relpath, semanticdbPath)
       Tools.metac(doc, rootSrc.relativize(source))(given metacSb)
       val obtained = trimTrailingWhitespace(SemanticdbTests.printTextDocument(doc))
-      if updateExpectFiles
-        Files.write(expectPath, obtained.getBytes(StandardCharsets.UTF_8))
-        println("updated: " + expectPath)
-      else
-        val expected = new String(Files.readAllBytes(expectPath), StandardCharsets.UTF_8)
-        val expectName = expectPath.getFileName
-        val relExpect = rootSrc.relativize(expectPath)
-        collectFailingDiff(expected, obtained, s"a/$relExpect", s"b/$relExpect") {
-          Files.write(expectPath.resolveSibling("" + expectName + ".out"), obtained.getBytes(StandardCharsets.UTF_8))
-          errors += expectPath
-        }
-    if updateExpectFiles then
-      Files.write(metacExpectFile, metacSb.toString.getBytes)
-      println("updated: " + metacExpectFile)
-    else
-      val expected = new String(Files.readAllBytes(metacExpectFile), StandardCharsets.UTF_8)
-      val expectName = metacExpectFile.getFileName
-      val relExpect = rootSrc.relativize(metacExpectFile)
-      val obtained = metacSb.toString
-      collectFailingDiff(expected, obtained, s"a/$relExpect", s"b/$relExpect") {
-        Files.write(metacExpectFile.resolveSibling("" + expectName + ".out"), obtained.getBytes(StandardCharsets.UTF_8))
-        errors += metacExpectFile
-      }
-    errors.foreach { expect =>
+      collectErrorOrUpdate(expectPath, obtained)
+    collectErrorOrUpdate(metacExpectFile, metacSb.toString)
+    for expect <- errors do
       def red(msg: String) = Console.RED + msg + Console.RESET
       def blue(msg: String) = Console.BLUE + msg + Console.RESET
       println(s"""[${red("error")}] check file ${blue(expect.toString)} does not match generated.
@@ -83,7 +74,6 @@ class SemanticdbTests with
       |  mv ${expect.resolveSibling("" + expect.getFileName + ".out")} $expect
       |Or else update all expect files with
       |  sbt 'dotty-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
-    }
     Files.walk(target).sorted(Comparator.reverseOrder).forEach(Files.delete)
     if errors.nonEmpty
       fail(s"${errors.size} errors in expect test.")
