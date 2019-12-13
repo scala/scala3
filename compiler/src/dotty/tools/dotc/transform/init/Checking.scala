@@ -96,7 +96,7 @@ object Checking {
     }
 
     def checkEffects(effs: Effects): Unit = {
-      val rebased = effs.asSeenFrom(ThisRef(state.thisClass)(null), cls, Potentials.empty)
+      val rebased = Effects.asSeenFrom(effs, ThisRef(state.thisClass)(null), cls, Potentials.empty)
       rebased.foreach { check(_) }
     }
 
@@ -158,7 +158,7 @@ object Checking {
 
   def checkSecondaryConstructor(ctor: Symbol)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
     val Block(ctorCall :: stats, expr) = ctor.defTree
-    val cls = ctor.owner
+    val cls = ctor.owner.asClass
 
     traceOp("check ctor: " + ctor.show, init) {
       if (ctor.isPrimaryConstructor)
@@ -169,7 +169,7 @@ object Checking {
 
     (stats :+ expr).foreach { stat =>
       val (_, effs) = Summarization.analyze(stat)(theCtx.withOwner(ctor))
-      val rebased = effs.asSeenFrom(ThisRef(state.thisClass)(null), cls, Potentials.empty)
+      val rebased = Effects.asSeenFrom(effs, ThisRef(state.thisClass)(null), cls, Potentials.empty)
       rebased.foreach { check(_) }
     }
   }
@@ -262,7 +262,7 @@ object Checking {
               if (sym.isInternal) { // tests/init/override17.scala
                 val cls = sym.owner.asClass
                 val effs = theEnv.summaryOf(cls).effectsOf(sym)
-                val rebased = effs.asSeenFrom(pot, cls, Potentials.empty)
+                val rebased = Effects.asSeenFrom(effs, pot, cls, Potentials.empty)
                 val state2 = state.withVisited(eff)
                 rebased.foreach { check(_)(state2) }
               }
@@ -278,7 +278,7 @@ object Checking {
               if (sym.isInternal) {
                 val cls = sym.owner.asClass
                 val effs = theEnv.summaryOf(cls).effectsOf(sym)
-                val rebased = effs.asSeenFrom(pot, cls, warm.outerFor(cls))
+                val rebased = Effects.asSeenFrom(effs, pot, cls, warm.outerFor(cls))
                 val state2 = state.withVisited(eff)
                 rebased.foreach { check(_)(state2) }
               }
@@ -326,7 +326,7 @@ object Checking {
             if (sym.isInternal) { // tests/init/override17.scala
               val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              pots.asSeenFrom(pot1, cls, Potentials.empty)
+              Potentials.asSeenFrom(pots, pot1, cls, Potentials.empty)
             }
             else Potentials.empty // warning already issued in call effect
 
@@ -344,7 +344,7 @@ object Checking {
             if (sym.isInternal) {
               val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              pots.asSeenFrom(pot1, cls, warm.outerFor(cls))
+              Potentials.asSeenFrom(pots, pot1, cls, warm.outerFor(cls))
             }
             else Potentials.empty // warning already issued in call effect
 
@@ -365,7 +365,7 @@ object Checking {
             if (sym.isInternal) { // tests/init/override17.scala
               val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              pots.asSeenFrom(pot1, cls, Potentials.empty)
+              Potentials.asSeenFrom(pots, pot1, cls, Potentials.empty)
             }
             else Potentials.empty + Cold(sym.info.classSymbol.asClass)(pot.source)
 
@@ -376,7 +376,7 @@ object Checking {
             if (sym.isInternal) {
               val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              pots.asSeenFrom(pot1, cls, warm.outerFor(cls))
+              Potentials.asSeenFrom(pots, pot1, cls, warm.outerFor(cls))
             }
             else Potentials.empty + Cold(sym.info.classSymbol.asClass)(pot.source)
 
