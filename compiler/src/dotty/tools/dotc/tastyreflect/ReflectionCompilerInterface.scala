@@ -250,9 +250,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     def runtimeClass: Class[?] = classOf[Term]
     override def unapply(x: Any): Option[Term] = x match
       case _ if isInstanceOfUnapply.unapply(x).isDefined => None
-      case _: PatternTree => None
+      case _: tpd.PatternTree => None
       case x: tpd.SeqLiteral => Some(x)
-      case x: Tree if x.isTerm => Some(x)
+      case x: tpd.Tree if x.isTerm => Some(x)
       case _ => None
   }
 
