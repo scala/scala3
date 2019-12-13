@@ -908,6 +908,8 @@ trait CompilerInterface {
 
   def isInstanceOfRefinement(given ctx: Context): IsInstanceOf[Refinement]
 
+  def Refinement_apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(given ctx: Context): Refinement
+
   def Refinement_parent(self: Refinement)(given ctx: Context): Type
   def Refinement_name(self: Refinement)(given ctx: Context): String
   def Refinement_info(self: Refinement)(given ctx: Context): TypeOrBounds
