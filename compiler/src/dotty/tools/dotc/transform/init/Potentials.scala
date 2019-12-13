@@ -57,9 +57,9 @@ object Potentials {
     }
   }
 
-  case class Cold(cls: ClassSymbol)(val source: Tree) extends Potential {
+  case class Cold()(val source: Tree) extends Potential {
     def size: Int = 1
-    def show(implicit ctx: Context): String = "Cold[" + cls.show + "]"
+    def show(implicit ctx: Context): String = "Cold"
   }
 
   case class Fun(potentials: Potentials, effects: Effects)(val source: Tree) extends Potential {
