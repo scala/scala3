@@ -23,6 +23,11 @@ object Summary {
   case class ClassSummary(currentClass: ClassSymbol, parentOuter: Map[ClassSymbol, Potentials]) {
     private val summaryCache: mutable.Map[Symbol, Summary] = mutable.Map.empty
 
+    def cacheFor(member: Symbol, summary: Summary): Unit = {
+      assert(member.owner == currentClass, "owner = " + member.owner.show + ", current = " + currentClass.show)
+      summaryCache(member) = summary
+    }
+
     def summaryOf(member: Symbol)(implicit ctx: Context): Summary =
       if (summaryCache.contains(member)) summaryCache(member)
       else trace("summary for " + member.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
