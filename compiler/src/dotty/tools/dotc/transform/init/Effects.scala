@@ -44,8 +44,8 @@ object Effects {
 
   // ------------------ operations on effects ------------------
 
-  def (eff: Effect) asSeenFrom(thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects = ???
+  def asSeenFrom(eff: Effect, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects = ???
 
-  def (effs: Effects) asSeenFrom(thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
-    effs.flatMap(_.asSeenFrom(thisValue, currentClass, outer))
+  def asSeenFrom(effs: Effects, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
+    effs.flatMap(asSeenFrom(_, thisValue, currentClass, outer))
 }
