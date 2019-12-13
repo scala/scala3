@@ -90,12 +90,14 @@ object Checking {
 
         case tree =>
           val (_, effs) = Summarization.analyze(tree)
-          effs.foreach { check(_)(state) }
+          checkEffects(effs)
       }
     }
 
-    def checkEffects(effs: Effects): Unit =
-      effs.asSeenFrom(ThisRef(state.thisClass)(null), cls, Potentials.empty).foreach { check(_) }
+    def checkEffects(effs: Effects): Unit = {
+      val rebased = effs.asSeenFrom(ThisRef(state.thisClass)(null), cls, Potentials.empty)
+      rebased.foreach { check(_) }
+    }
 
     // check parent calls : follows linearization ordering
     // see spec 5.1 about "Template Evaluation".
@@ -167,23 +169,19 @@ object Checking {
 
     (stats :+ expr).foreach { stat =>
       val (_, effs) = Summarization.analyze(stat)(theCtx.withOwner(ctor))
-      effs.asSeenFrom(ThisRef(state.thisClass)(null), cls, Potentials.empty).foreach { check(_) }
-      effs.foreach { check(_)(state) }
+      val rebased = effs.asSeenFrom(ThisRef(state.thisClass)(null), cls, Potentials.empty)
+      rebased.foreach { check(_) }
     }
   }
-
-
-  /** Resolve possible overriding of the term symbol `sym` relative to `thisClass` */
-  private def resolveVirtual(thisClass: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol =
-    if (sym.isEffectivelyFinal) sym
-    else sym.matchingMember(thisClass.typeRef)
 
   private def check(eff: Effect)(implicit state: State): Unit =
     if (!state.visited.contains(eff)) traceOp("checking effect " + eff.show, init) {
       eff match {
         case Leak(pot) =>
           pot match {
-            case ThisRef(tp) =>
+            case ThisRef(cls) =>
+              assert(cls == state.thisClass, "unexpected potential " + pot.show)
+
               theCtx.warning(
                 "Leaking of this. Calling trace:\n" + state.trace,
                 eff.source.sourcePos
@@ -217,11 +215,9 @@ object Checking {
         case FieldAccess(pot, field) =>
           pot match {
             case ThisRef(cls) =>
-              if (
-                cls eq state.thisClass &&
-                !state.fieldsInited.contains(field) &&
-                !field.is(Flags.Lazy)
-              ) {
+              assert(tp == state.thisClass, "unexpected potential " + pot.show)
+
+              if (!state.fieldsInited.contains(field) && !field.is(Flags.Lazy)) {
                 traceIndented("initialized: " + state.fieldsInited, init)
 
                 // should issue error, use warning so that it will continue compile subprojects
@@ -232,8 +228,16 @@ object Checking {
                 )
               }
 
-            case Warm(cls) =>
+              if (field.is(Flags.Lazy)) {
+                // TODO: get effects, rebase and check
+              }
+
+            case Warm(cls, outer) =>
               // all fields of warm values are initialized
+
+              if (field.is(Flags.Lazy)) {
+                // TODO: get effects, rebase and check
+              }
 
             case Cold(cls, _) =>
               theCtx.warning(
@@ -254,38 +258,38 @@ object Checking {
         case MethodCall(pot, sym, virtual) =>
           pot match {
             case ThisRef(cls) =>
-              if (cls eq state.thisClass) {
-                // overriding resolution
-                val targetSym = if (virtual) resolveVirtual(state.currentClass, sym) else sym
-                if (targetSym.exists) { // tests/init/override17.scala
-                  val effs = theEnv.effectsOf(targetSym)
-                  val state2 = state.withVisited(eff)
-                  effs.foreach { check(_)(state2) }
-                }
-                else {
-                  traceIndented("!!!sym does not exist: " + pot.show)
-                }
-              }
+              assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
-            case Warm(cls) =>
-              // overriding resolution
-              val targetSym = if (virtual) resolveVirtual(cls, sym) else sym
-              val effs = theEnv.effectsOf(targetSym)
-              val state2 = state.withVisited(eff)
-              effs.foreach { eff =>
-                val effs = substitute(eff, Map.empty, Some(cls -> pot))
-                effs.foreach { eff2 => check(eff2)(state2) }
+              if (sym.isInternal) { // tests/init/override17.scala
+                val cls = sym.owner
+                val effs = theEnv.summaryOf(cls).effectsOf(sym)
+                val rebased = effs.asSeenFrom(pot, cls, Potentials.empty)
+                val state2 = state.withVisited(eff)
+                rebased.foreach { check(_)(state2) }
               }
+              else
+                theCtx.warning(
+                  "Calling the external method " + sym.show +
+                  " may cause initialization errors" +
+                  ". Calling trace:\n" + state.trace,
+                  eff.source.sourcePos
+                )
 
-            case Dependent(cls, bindings) =>
-              // overriding resolution
-              val targetSym = if (virtual) resolveVirtual(cls, sym) else sym
-              val effs = theEnv.effectsOf(targetSym)
-              val state2 = state.withVisited(eff)
-              effs.foreach { eff =>
-                val effs = substitute(eff, bindings, Some(cls -> pot))
-                effs.foreach { eff2 => check(eff2)(state2) }
+            case warm @ Warm(cls, outer) =>
+              if (sym.isInternal) {
+                val cls = sym.owner
+                val effs = theEnv.summaryOf(cls).effectsOf(sym)
+                val rebased = effs.asSeenFrom(pot, cls, warm.outerFor(cls))
+                val state2 = state.withVisited(eff)
+                rebased.foreach { check(_)(state2) }
               }
+              else
+                theCtx.warning(
+                  "Calling the external method " + sym.show +
+                  " on uninitialized objects may cause initialization errors" +
+                  ". Calling trace:\n" + state.trace,
+                  eff.source.sourcePos
+                )
 
             case Cold(cls, _) =>
               theCtx.warning(
@@ -310,96 +314,22 @@ object Checking {
                 check(MethodCall(pot, sym, virtual)(eff.source))(state2)
               }
           }
-
-        case DependentCall(pot, sym, bindings) =>
-          assert(sym.isConstructor, "only dependent call of contructor supported")
-          val state2 = state.withVisited(eff)
-          pot match {
-            // `Cold(cls).init(args)`: encoding of new expressions
-            case Cold(cls, _) =>
-              val effs = theEnv.effectsOf(sym)
-              if (sym.isPrimaryConstructor) {
-                val bindings2 = Summarization.dependentParamBindings(sym, bindings)
-                val potDep = Dependent(cls, bindings2)(eff.source)
-                effs.foreach { eff =>
-                  val effs = substitute(eff, bindings, Some(cls -> potDep))
-                  effs.foreach { eff2 => check(eff2)(state2) }
-                }
-              }
-              else {
-                val effs = theEnv.effectsOf(sym)
-                val potDeps = expand(DependentReturn(pot, sym, bindings)(eff.source))
-                assert(potDeps.size == 1, "expect size = 1, found " + potDeps.size)
-                effs.foreach { eff =>
-                  val effs = substitute(eff, bindings, Some(cls -> potDeps.head))
-                  effs.foreach { eff2 => check(eff2)(state2) }
-                }
-              }
-
-            case ThisRef(cls) =>
-              assert(
-                state.currentClass.derivesFrom(cls),
-                state.currentClass.show + " not derived from " + cls.show
-              ) // in current class hierachy
-              if (sym.exists) { // tests/init/override17.scala
-                val effs = theEnv.effectsOf(sym)
-                val state2 = state.withVisited(eff)
-                effs.foreach { eff =>
-                  val effs = substitute(eff, bindings, None)
-                  effs.foreach { eff2 => check(eff2)(state2) }
-                }
-              }
-              else {
-                traceIndented("!!!sym does not exist: " + pot.show)
-              }
-
-            case Warm(cls) =>
-              val effs = theEnv.effectsOf(sym)
-              val state2 = state.withVisited(eff)
-              effs.foreach { eff =>
-                val effs = substitute(eff, bindings, Some(cls -> pot))
-                effs.foreach { eff2 => check(eff2)(state2) }
-              }
-
-            case Dependent(cls, bindings1) =>
-              val effs = theEnv.effectsOf(sym)
-              val state2 = state.withVisited(eff)
-              effs.foreach { eff =>
-                val effs = substitute(eff, bindings, Some(cls -> pot))
-                effs.foreach { eff2 => check(eff2)(state2) }
-              }
-
-            case Fun(pots, effs) =>
-              throw new Exception("Why I'm reached? " + pot.show)
-
-            case pot =>
-              val state2 = state.withVisited(eff)
-              val pots = expand(pot)
-              pots.foreach { pot =>
-                check(DependentCall(pot, sym, bindings)(eff.source))(state2)
-              }
-
-          }
       }
     }
 
   private def expand(pot: Potential)(implicit state: State): Potentials =
-    trace("expand " + pot.show, pots => Potentials.show(pots.asInstanceOf[Potentials])) { pot match {
+    trace("expand " + pot.show, init, pots => Potentials.show(pots.asInstanceOf[Potentials])) { pot match {
       case MethodReturn(pot1, sym, virtual) =>
         pot1 match {
           case ThisRef(cls) =>
-            assert(
-              state.currentClass.derivesFrom(cls),
-              "current class: " + state.currentClass.show + ", tp.symbol = " + cls
-            )
-            val targetSym = if (virtual) resolveVirtual(state.currentClass, sym) else sym
-            if (targetSym.exists) {
-              theEnv.potentialsOf(targetSym)
+            assert(cls == state.thisClass, "unexpected potential " + pot.show)
+
+            if (sym.isInternal) { // tests/init/override17.scala
+              val cls = sym.owner
+              val pots = theEnv.summaryOf(cls).potentialsOf(sym)
+              pots.asSeenFrom(pot1, cls, Potentials.empty)
             }
-            else {
-              traceIndented("!!!sym does not exist: " + pot.show)
-              Set.empty
-            }
+            else Potentials.empty // warning already issued in call effect
 
           case Fun(pots, effs) =>
             val name = sym.name.toString
@@ -411,15 +341,13 @@ object Checking {
             }
             else Potentials.empty
 
-          case Warm(cls) =>
-            val targetSym = if (virtual) resolveVirtual(cls, sym) else sym
-            val pots = theEnv.potentialsOf(targetSym)
-            pots.flatMap { pot2 => substitute(pot2, Map.empty, Some(cls -> pot1)) }
-
-          case Dependent(cls, bindings) =>
-            val targetSym = if (virtual) resolveVirtual(cls, sym) else sym
-            val pots = theEnv.potentialsOf(targetSym)
-            pots.flatMap { pot2 => substitute(pot2, bindings, Some(cls -> pot1)) }
+          case warm : Warm =>
+            if (sym.isInternal) {
+              val cls = sym.owner
+              val pots = theEnv.summaryOf(cls).potentialsOf(sym)
+              pots.asSeenFrom(pot1, cls, warm.outerFor(cls))
+            }
+            else Potentials.empty // warning already issued in call effect
 
           case Cold(cls, _) =>
             Potentials.empty // error already reported, ignore
@@ -467,61 +395,7 @@ object Checking {
             pots
         }
 
-      case DependentReturn(pot1, sym, bindings) =>
-        pot1 match {
-          case ThisRef(cls) =>
-            // access to top-level objects
-            val isPackage = cls.is(Flags.Package)
-            if (!isPackage) assert(
-              state.currentClass.derivesFrom(cls),
-              "current class: " + state.currentClass.show + ", symbol = " + cls
-            )
-            if (isPackage) Set.empty
-            else {
-              val pots = theEnv.potentialsOf(sym)
-              pots.flatMap { pot2 => substitute(pot2, bindings, Some(cls -> pot1)) }
-            }
-
-          case Fun(pots, effs) =>
-            throw new Exception("Unexpected code reached")
-
-          case Warm(cls) =>
-            val pots = theEnv.potentialsOf(sym)
-            pots.flatMap { pot2 => substitute(pot2, bindings, Some(cls -> pot1)) }
-
-          case Dependent(cls, bindings1) =>
-            val pots = theEnv.potentialsOf(sym)
-            pots.flatMap { pot2 => substitute(pot2, bindings, Some(cls -> pot1)) }
-
-          case Cold(cls, _) =>
-            if (sym.isPrimaryConstructor) {
-              val bindings2 = Summarization.dependentParamBindings(sym, bindings)
-              Potentials.empty + Dependent(cls, bindings2)(pot.source)
-            }
-            else if (sym.isConstructor) {
-              val pots = theEnv.potentialsOf(sym)
-              assert(pots.size == 1, "pots = " + Potentials.show(pots))
-              substitute(pots.head, bindings, None)
-            }
-            else {
-              Potentials.empty // error already reported, ignore
-            }
-
-          case _ =>
-            val (pots, effs) = expand(pot1).select(sym, pot.source, bindings = bindings)
-            effs.foreach(check(_))
-            pots
-        }
-
-      case Var(sym) =>
-        assert(sym.owner.isPrimaryConstructor, "sym = " + sym.show)
-        assert(
-          state.currentClass.derivesFrom(sym.owner.owner),
-          "current = " + state.currentClass.show + ", owner = " + sym.owner.owner.show
-        )
-        Potentials.empty
-
-      case _: ThisRef | _: Fun | _: Warm | _: Cold | _: Dependent =>
+      case _: ThisRef | _: Fun | _: Warm | _: Cold =>
         Set(pot)
     }
   }

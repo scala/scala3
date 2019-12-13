@@ -40,6 +40,8 @@ object Potentials {
   case class Warm(cls: ClassSymbol, outer: Potentials)(val source: Tree) extends Potential {
     def size: Int = 1
     def show(implicit ctx: Context): String = "Warm[" + cls.show + "]"
+
+    def outerFor(cls: ClassSymbol)(implicit ctx: Context): Potentials = ???
   }
 
   case class FieldReturn(potential: Potential, field: Symbol)(val source: Tree) extends Potential {
@@ -68,7 +70,7 @@ object Potentials {
 
   // ------------------ operations on potentials ------------------
 
-  def (ps: Potentials) select (symbol: Symbol, source: Tree, virtual: Boolean = true, bindings: Map[Symbol, Potentials] = Map.empty)(implicit ctx: Context): Summary =
+  def (ps: Potentials) select (symbol: Symbol, source: Tree, virtual: Boolean = true)(implicit ctx: Context): Summary =
     ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
       if (pot.size > 1)
         (pots, effs + Leak(pot)(source))
