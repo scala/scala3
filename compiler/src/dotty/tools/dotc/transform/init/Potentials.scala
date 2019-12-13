@@ -82,4 +82,9 @@ object Potentials {
     }
 
   def (ps: Potentials) leak(source: Tree): Effects = ps.map(Leak(_)(source))
+
+  def (pot: Potential) asSeenFrom(thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potential = ???
+
+  def (pots: Potentials) asSeenFrom(thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potential =
+    pots.flatMap(_.asSeenFrom(thisValue, currentClass, outer))
 }
