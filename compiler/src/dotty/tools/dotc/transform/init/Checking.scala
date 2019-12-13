@@ -29,11 +29,11 @@ object Checking {
    *
    */
   case class State(
-    visited: mutable.Set[Effect],
-    path: Vector[Tree],
-    currentClass: ClassSymbol,
-    inited: mutable.Set[Symbol],
-    parentInited: mutable.Map[ClassSymbol, Potentials],
+    visited: mutable.Set[Effect],              // effects that have been expanded
+    path: Vector[Tree],                        // the path that leads to the current effect
+    thisClass: ClassSymbol,                    // the concrete class of `this`
+    fieldsInited: mutable.Set[Symbol],
+    parentsInited: mutable.Set[ClassSymbol],
     env: Env
   ) {
     def withVisited(eff: Effect)(implicit ctx: Context): State = {
@@ -71,20 +71,21 @@ object Checking {
    *  performance.
    */
   def checkClassBody(cdef: TypeDef, outer: Potentials)(implicit state: State): Unit = traceOp("checking " + cdef.symbol.show, init) {
+    val cls = cdef.symbol.asClass
     val tpl = cdef.rhs.asInstanceOf[Template]
 
-    // mark current class as initialized
-    state.parentInited += cdef.symbol.asClass -> outer
+    // mark current class as initialized, required for linearization
+    state.parentsInited += cls
 
     def checkClassBodyStat(tree: Tree)(implicit ctx: Context): Unit = traceOp("checking " + tree.show, init) {
       tree match {
         case vdef : ValDef =>
           val (pots, effs) = Summarization.analyze(vdef.rhs)(ctx.withOwner(vdef.symbol))
-          theEnv.cacheFor(vdef.symbol, (pots, effs))
+          theEnv.summaryOf(cls).cacheFor(vdef.symbol, (pots, effs))
           if (!vdef.symbol.is(Flags.Lazy)) {
-            traceIndented(vdef.symbol.show + " initialized")
+            traceIndented(vdef.symbol.show + " initialized", init)
             effs.foreach { check(_) }
-            state.inited += vdef.symbol
+            state.fieldsInited += vdef.symbol
           }
 
         case tree =>
@@ -107,14 +108,18 @@ object Checking {
       val cls = ctor.owner
       val classDef = cls.defTree
       if (!classDef.isEmpty) {
-        val outer = tp.typeConstructor match {
+        val (pots, effs) = tp.typeConstructor match {
           case tref: TypeRef => Summarization.analyze(tref.prefix, source)
         }
-        if (ctor.isPrimaryConstructor) checkClassBody(classDef, outer)
+
+        // TODO: no need to check, can only be empty
+        effs.foreach { check(_) }
+
+        if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef], pots)
         else checkSecondaryConstructor(ctor, outer)
       }
-      else if (!cls.is(Flags.EffectivelyOpenFlags))
-        ctx.warning("Inheriting non-open class may cause initialization errors", ref.sourcePos)
+      else if (!cls.isOneOf(Flags.EffectivelyOpenFlags))
+        ctx.warning("Inheriting non-open class may cause initialization errors", source.sourcePos)
     }
 
     tpl.parents.foreach {
@@ -138,7 +143,7 @@ object Checking {
 
       case ref =>
         val cls = ref.symbol.asClass
-        if (!state.parentInited.contains(cls))
+        if (!state.parentsInited.contains(cls))
           checkCtor(cls.primaryConstructor, ref.tpe, ref)
     }
 
@@ -150,15 +155,15 @@ object Checking {
     val Block(ctorCall :: stats, expr) = ctor.defTree
     val ctorCallSym = ctorCall.symbol
 
-    traceOp("check ctor: " + sel.symbol.show, init) {
+    traceOp("check ctor: " + ctor.show, init) {
       if (ctorCallSym.isPrimaryConstructor)
         checkClassBody(ctorCallSym.owner.defTree.asInstanceOf[TypeDef], outer)
       else
         checkSecondaryConstructor(ctorCallSym, outer)
     }
 
-    (stats :+ expr).foreach {
-      val (_, effs) = Summarization.analyze(tree)(ctx.withOwner(ctor))
+    (stats :+ expr).foreach { stat =>
+      val (_, effs) = Summarization.analyze(stat)(theCtx.withOwner(ctor))
       effs.foreach { check(_)(state) }
     }
   }
@@ -225,11 +230,11 @@ object Checking {
 
               if (
                 !isPackage &&
-                !state.inited.contains(field) &&
+                !state.fieldsInited.contains(field) &&
                 !field.hasAnnotation(defn.ScalaStaticAnnot) &&
                 !field.is(Flags.Lazy)
               ) {
-                traceIndented("initialized: " + state.inited)
+                traceIndented("initialized: " + state.fieldsInited)
 
                 // should issue error, use warning so that it will continue compile subprojects
                 theCtx.warning(
