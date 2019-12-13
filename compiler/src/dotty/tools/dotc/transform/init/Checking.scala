@@ -187,7 +187,7 @@ object Checking {
                 eff.source.sourcePos
               )
 
-            case Cold(cls, _) =>
+            case _: Cold =>
               theCtx.warning(
                 "Leaking of cold value " + eff.source.show +
                 ". Calling trace:\n" + state.trace,
@@ -238,7 +238,7 @@ object Checking {
                 // TODO: get effects, rebase and check
               }
 
-            case Cold(cls, _) =>
+            case _: Cold =>
               theCtx.warning(
                 "Access field " + eff.source.show + " on a known value under initialization" +
                 ". Calling trace:\n" + state.trace,
@@ -290,7 +290,7 @@ object Checking {
                   eff.source.sourcePos
                 )
 
-            case Cold(cls, _) =>
+            case _: Cold =>
               theCtx.warning(
                 "Call method " + eff.source.show + " on a cold value" +
                 ". Calling trace:\n" + state.trace,
@@ -367,7 +367,7 @@ object Checking {
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
               Potentials.asSeenFrom(pots, pot1, cls, Potentials.empty)
             }
-            else Potentials.empty + Cold(sym.info.classSymbol.asClass)(pot.source)
+            else Potentials.empty + Cold()(pot.source)
 
           case _: Fun =>
             throw new Exception("Unexpected code reached")
@@ -378,7 +378,7 @@ object Checking {
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
               Potentials.asSeenFrom(pots, pot1, cls, warm.outerFor(cls))
             }
-            else Potentials.empty + Cold(sym.info.classSymbol.asClass)(pot.source)
+            else Potentials.empty + Cold()(pot.source)
 
           case _: Cold =>
             Potentials.empty // error already reported, ignore
@@ -391,6 +391,9 @@ object Checking {
 
       case _: ThisRef | _: Fun | _: Warm | _: Cold =>
         Set(pot)
+
+      case _: SuperRef =>
+        throw new Exception("Unexpected SuperRef")
     }
   }
 }
