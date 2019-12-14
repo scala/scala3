@@ -213,11 +213,13 @@ object Checking {
           }
 
         case FieldAccess(pot, field) =>
+          assert(!field.is(Flags.Lazy))
+
           pot match {
             case ThisRef(cls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
-              if (!state.fieldsInited.contains(field) && !field.is(Flags.Lazy)) {
+              if (!state.fieldsInited.contains(field)) {
                 traceIndented("initialized: " + state.fieldsInited, init)
 
                 // should issue error, use warning so that it will continue compile subprojects
@@ -227,16 +229,9 @@ object Checking {
                   eff.source.sourcePos
                 )
               }
-              else if (field.is(Flags.Lazy)) {
-                // TODO: get effects, rebase and check
-              }
 
             case Warm(cls, outer) =>
               // all fields of warm values are initialized
-
-              if (field.is(Flags.Lazy)) {
-                // TODO: get effects, rebase and check
-              }
 
             case _: Cold =>
               theCtx.warning(
