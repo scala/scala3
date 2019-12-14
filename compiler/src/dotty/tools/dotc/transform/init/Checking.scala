@@ -256,13 +256,13 @@ object Checking {
 
         case MethodCall(pot, sym, virtual) =>
           pot match {
-            case ThisRef(cls) =>
+            case thisRef @ ThisRef(cls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
               if (sym.isInternal) { // tests/init/override17.scala
                 val cls = sym.owner.asClass
                 val effs = theEnv.summaryOf(cls).effectsOf(sym)
-                val rebased = Effects.asSeenFrom(effs, pot, cls, Potentials.empty)
+                val rebased = Effects.asSeenFrom(effs, thisRef, cls, Potentials.empty)
                 val state2 = state.withVisited(eff)
                 rebased.foreach { check(_)(state2) }
               }
@@ -279,7 +279,7 @@ object Checking {
                 val cls = sym.owner.asClass
                 val effs = theEnv.summaryOf(cls).effectsOf(sym)
                 val outer = Potentials.empty + Outer(warm, cls)(warm.source)
-                val rebased = Effects.asSeenFrom(effs, pot, cls, outer)
+                val rebased = Effects.asSeenFrom(effs, warm, cls, outer)
                 val state2 = state.withVisited(eff)
                 rebased.foreach { check(_)(state2) }
               }
@@ -321,13 +321,13 @@ object Checking {
     trace("expand " + pot.show, init, pots => Potentials.show(pots.asInstanceOf[Potentials])) { pot match {
       case MethodReturn(pot1, sym, virtual) =>
         pot1 match {
-          case ThisRef(cls) =>
+          case thisRef @ ThisRef(cls) =>
             assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
             if (sym.isInternal) { // tests/init/override17.scala
               val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              Potentials.asSeenFrom(pots, pot1, cls, Potentials.empty)
+              Potentials.asSeenFrom(pots, thisRef, cls, Potentials.empty)
             }
             else Potentials.empty // warning already issued in call effect
 
@@ -346,7 +346,7 @@ object Checking {
               val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
               val outer = Potentials.empty + Outer(warm, cls)(warm.source)
-              Potentials.asSeenFrom(pots, pot1, cls, outer)
+              Potentials.asSeenFrom(pots, warm, cls, outer)
             }
             else Potentials.empty // warning already issued in call effect
 
@@ -361,13 +361,13 @@ object Checking {
 
       case FieldReturn(pot1, sym) =>
         pot1 match {
-          case ThisRef(cls) =>
+          case thisRef @ ThisRef(cls) =>
             assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
             if (sym.isInternal) { // tests/init/override17.scala
               val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              Potentials.asSeenFrom(pots, pot1, cls, Potentials.empty)
+              Potentials.asSeenFrom(pots, thisRef, cls, Potentials.empty)
             }
             else Potentials.empty + Cold()(pot.source)
 
@@ -379,7 +379,7 @@ object Checking {
               val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
               val outer = Potentials.empty + (Outer(warm, cls)(warm.source))
-              Potentials.asSeenFrom(pots, pot1, cls, outer)
+              Potentials.asSeenFrom(pots, warm, cls, outer)
             }
             else Potentials.empty + Cold()(pot.source)
 
