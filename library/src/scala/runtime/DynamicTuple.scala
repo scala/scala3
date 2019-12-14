@@ -269,16 +269,21 @@ object DynamicTuple {
     val actualN = Math.min(n, self.size)
 
     type Result = Take[This, N]
+
     val arr = (self: Any) match {
-      case () => Array.empty[Object]
       case xxl: TupleXXL =>
         xxl.elems.asInstanceOf[Array[Object]].take(actualN)
       case _ =>
-        val arr = new Array[Object](actualN)
-        self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
-          .copyToArray(arr, 0, actualN)
-        arr
+        if (actualN == 0)
+          Array.emptyObjectArray
+        else {
+          val arr = new Array[Object](actualN)
+          self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+            .copyToArray(arr, 0, actualN)
+          arr
+        }
     }
+
     dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
   }
 
@@ -288,17 +293,23 @@ object DynamicTuple {
     val actualN = Math.min(n, size)
 
     type Result = Drop[This, N]
+
     val arr = (self: Any) match {
-      case () => Array.empty[Object]
       case xxl: TupleXXL =>
         xxl.elems.asInstanceOf[Array[Object]].drop(actualN)
       case _ =>
         val rem = size - actualN
-        val arr = new Array[Object](rem)
-        self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
-          .drop(actualN).copyToArray(arr, 0, rem)
-        arr
+
+        if (rem == 0)
+          Array.emptyObjectArray
+        else {
+          val arr = new Array[Object](rem)
+          self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+            .drop(actualN).copyToArray(arr, 0, rem)
+          arr
+        }
     }
+
     dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
   }
 
@@ -308,6 +319,7 @@ object DynamicTuple {
     val actualN = Math.min(n, size)
 
     type Result = Split[This, N]
+
     val (arr1, arr2) = (self: Any) match {
       case () => (Array.empty[Object], Array.empty[Object])
       case xxl: TupleXXL =>
@@ -320,6 +332,7 @@ object DynamicTuple {
         it.copyToArray(arr2, 0, size - actualN)
         (arr1, arr2)
     }
+
     (
       dynamicFromIArray(arr1.asInstanceOf[IArray[Object]]),
       dynamicFromIArray(arr2.asInstanceOf[IArray[Object]])
