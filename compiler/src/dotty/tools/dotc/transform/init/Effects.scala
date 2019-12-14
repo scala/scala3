@@ -46,7 +46,21 @@ object Effects {
 
   def (eff: Effect) toEffs: Effects = Effects.empty + eff
 
-  def asSeenFrom(eff: Effect, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects = ???
+  def asSeenFrom(eff: Effect, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
+    eff match {
+      case Leak(pot) =>
+        Potentials.asSeenFrom(pot, thisValue, currentClass, outer).leak(eff.source)
+
+      case FieldAccess(pot, field) =>
+        Potentials.asSeenFrom(pot, thisValue, currentClass, outer).map { pot =>
+          FieldAccess(pot, field)(eff.source)
+        }
+
+      case MethodCall(pot, sym, virtual) =>
+        Potentials.asSeenFrom(pot, thisValue, currentClass, outer).map { pot =>
+          MethodCall(pot, sym, virtual)(eff.source)
+        }
+    }
 
   def asSeenFrom(effs: Effects, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
     effs.flatMap(asSeenFrom(_, thisValue, currentClass, outer))
