@@ -862,7 +862,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
-  /** Extractor for not-null assertions */
+  /** Extractor for not-null assertions.
+   *  A not-null assertion for reference `x` has the form `x.$asInstanceOf$[x.type & T]`.
+   */
   object AssertNotNull with
     def apply(tree: tpd.Tree, tpnn: Type)(given Context): tpd.Tree =
       tree.select(defn.Any_typeCast).appliedToType(AndType(tree.tpe, tpnn))
