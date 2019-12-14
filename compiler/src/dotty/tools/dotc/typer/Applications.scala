@@ -22,10 +22,10 @@ import NameKinds.DefaultGetterName
 import ProtoTypes._
 import Inferencing._
 import transform.TypeUtils._
-import Nullables.given
+import Nullables.{postProcessByNameArgs, given}
 
 import collection.mutable
-import config.Printers.{overload, typr, unapp, nullables}
+import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
 import reporting.diagnostic.Message
@@ -1046,73 +1046,6 @@ trait Applications extends Compatibility {
     case _ =>
       tree
   }
-
-  /** Post process all arguments to by-name parameters by removing any not-null
-   *  info that was used when typing them. Concretely:
-   *  If an argument corresponds to a call-by-name parameter, drop all
-   *  embedded not-null assertions of the form `x.$asInstanceOf[x.type & T]`
-   *  where `x` is a reference to a mutable variable. If the argument still typechecks
-   *  with the removed assertions and is still compatible with the formal parameter,
-   *  keep it. Otherwise issue an error that the call-by-name argument was typed using
-   *  flow assumptions about mutable variables and suggest that it is enclosed
-   *  in a `byName(...)` call instead.
-   */
-  private def postProcessByNameArgs(fn: TermRef, app: Tree)(given ctx: Context): Tree =
-    fn.widen match
-      case mt: MethodType if mt.paramInfos.exists(_.isInstanceOf[ExprType]) =>
-        app match
-          case Apply(fn, args) =>
-            val dropNotNull = new TreeMap with
-              override def transform(t: Tree)(given Context) = t match
-                case AssertNotNull(t0) if t0.symbol.is(Mutable) =>
-                  nullables.println(i"dropping $t")
-                  transform(t0)
-                case t: ValDef if !t.symbol.is(Lazy) => super.transform(t)
-                case t: MemberDef =>
-                  // stop here since embedded references to mutable variables would be
-                  // out of order, so they would not asserted ot be not-null anyway.
-                  // @see Nullables.usedOutOfOrder
-                  t
-                case _ => super.transform(t)
-
-            object retyper extends ReTyper with
-              override def typedUnadapted(t: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree = t match
-                case t: ValDef if !t.symbol.is(Lazy) => super.typedUnadapted(t, pt, locked)
-                case t: MemberDef => promote(t)
-                case _ => super.typedUnadapted(t, pt, locked)
-
-            def postProcess(formal: Type, arg: Tree): Tree =
-              val arg1 = dropNotNull.transform(arg)
-              if arg1 eq arg then arg
-              else
-                val nestedCtx = ctx.fresh.setNewTyperState()
-                val arg2 = retyper.typed(arg1, formal)(given nestedCtx)
-                if nestedCtx.reporter.hasErrors || !(arg2.tpe <:< formal) then
-                  ctx.error(em"""This argument was typed using flow assumptions about mutable variables
-                                |but it is passed to a by-name parameter where such flow assumptions are unsound.
-                                |Wrapping the argument in `byName(...)` fixes the problem by disabling the flow assumptions.
-                                |
-                                |`byName` needs to be imported from the `scala.compiletime` package.""",
-                            arg.sourcePos)
-                  arg
-                else
-                  nestedCtx.typerState.commit()
-                  arg2
-
-            def recur(formals: List[Type], args: List[Tree]): List[Tree] = (formals, args) match
-              case (formal :: formalsRest, arg :: argsRest) =>
-                val arg1 = postProcess(formal.widenExpr.repeatedToSingle, arg)
-                val argsRest1 = recur(
-                  if formal.isRepeatedParam then formals else formalsRest,
-                  argsRest)
-                if (arg1 eq arg) && (argsRest1 eq argsRest) then args
-                else arg1 :: argsRest1
-              case _ => args
-
-            tpd.cpy.Apply(app)(fn, recur(mt.paramInfos, args))
-          case _ => app
-      case _ => app
-  end postProcessByNameArgs
 
   def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = {
     record("typedUnApply")
