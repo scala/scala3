@@ -62,6 +62,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/pos-special/notNull.scala", defaultOptions.and("-Yexplicit-nulls")),
       compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings")),
       compileFile("tests/pos-special/i7575.scala", defaultOptions.and("-language:dynamics")),
+      compileFile("tests/pos-special/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
     ).checkCompile()
   }
 
@@ -151,6 +152,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/extmethods-tparams.scala", defaultOptions.and("-deprecation", "-Xfatal-warnings")),
       compileDir("tests/neg-custom-args/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings")),
       compileFile("tests/neg/i7575.scala", defaultOptions.and("-language:_")),
+      compileFile("tests/neg-custom-args/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
     ).checkExpectedErrors()
   }
 

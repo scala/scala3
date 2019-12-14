@@ -1,0 +1,12 @@
+-- Error: tests/neg-custom-args/kind-projector.scala:7:23 --------------------------------------------------------------
+7 |class Bar3 extends Foo[λ[List[x] => Int]] // error
+  |                       ^^^^^^^^^^^^^^^^^
+  |                       λ requires a single argument of the form X => ... or (X, Y) => ...
+-- Error: tests/neg-custom-args/kind-projector.scala:5:23 --------------------------------------------------------------
+5 |class Bar1 extends Foo[Either[*, *]] // error
+  |                       ^^^^^^^^^^^^
+  |                       Type argument Either has not the same kind as its bound  <: [_$1] => Any
+-- Error: tests/neg-custom-args/kind-projector.scala:6:22 --------------------------------------------------------------
+6 |class Bar2 extends Foo[*] // error
+  |                      ^
+  |                      Type argument _$4 has not the same kind as its bound  <: [_$1] => Any

@@ -630,6 +630,7 @@ object StdNames {
       final val BAR  : N  = "|"
       final val DOLLAR: N = "$"
       final val GE: N     = ">="
+      final val LAMBDA: N = "λ"
       final val LE: N     = "<="
       final val MINUS: N  = "-"
       final val NE: N     = "!="
