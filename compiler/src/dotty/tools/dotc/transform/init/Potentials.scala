@@ -2,6 +2,8 @@ package dotty.tools.dotc
 package transform
 package init
 
+import scala.collection.mutable
+
 import ast.tpd._
 import core._
 import Types._, Symbols._, Contexts._
@@ -38,10 +40,35 @@ object Potentials {
    *  @param outer The potentials for the immdiate outer `this`
    */
   case class Warm(cls: ClassSymbol, outer: Potentials)(val source: Tree) extends Potential {
+    assert(outer.size <= 1, "outer size > 1, outer = " + outer)
+
     def size: Int = 1
     def show(implicit ctx: Context): String = "Warm[" + cls.show + "]"
 
-    def outerFor(cls: ClassSymbol)(implicit ctx: Context): Potentials = ???
+    private val outerCache: mutable.Map[ClassSymbol, Potentials] = mutable.Map.empty
+    def outerFor(cls: ClassSymbol)(implicit env: Env): Potentials =
+      if (outerCache.contains(cls)) outerCache(cls)
+      else if (cls `eq` this.cls) outer
+      else {
+        val bottomClsSummary = env.summaryOf(this.cls)
+        val objPart = ObjectPart(this, this.cls, outer, bottomClsSummary.parentOuter)
+        val pots = objPart.outerFor(cls)
+        outerCache(cls) = pots
+        pots
+      }
+  }
+
+  /** The Outer potential for `classSymbol` of the object `pot`
+   *
+   *  It's only used internally for expansion of potentials.
+   *
+   *  Note: Usage of `Type.baseType(cls)` may simplify the code.
+   *        Current implementation avoids using complex type machinary,
+   *        and may be potentially faster.
+   */
+  case class Outer(pot: Potential, classSymbol: ClassSymbol)(val source: Tree) extends Potential {
+    def size: Int = 1
+    def show(implicit ctx: Context): String = "Outer[" + pot.show + ", " + classSymbol.show + "]"
   }
 
   case class FieldReturn(potential: Potential, field: Symbol)(val source: Tree) extends Potential {
