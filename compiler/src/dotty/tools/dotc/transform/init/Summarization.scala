@@ -43,7 +43,8 @@ object Summarization {
 
       case supert: Super =>
         val SuperType(thisTp, superTp) = supert.tpe.asInstanceOf[SuperType]
-        val pot = SuperRef(thisTp.classSymbol.asClass, superTp.classSymbol.asClass)(supert)
+        val thisRef = ThisRef(thisTp.classSymbol.asClass)(supert)
+        val pot = SuperRef(thisRef, superTp.classSymbol.asClass)(supert)
         Summary.empty + pot
 
       case Select(qualifier, name) =>
@@ -73,11 +74,18 @@ object Summarization {
           case tref: TypeRef =>
             val cls = tref.classSymbol.asClass
             // local class may capture, thus we need to track it
-            if (tref.prefix == NoPrefix) Summary.empty + Warm(cls, Potentials.empty)(expr)
+            if (tref.prefix == NoPrefix) {
+              val enclosingCls = cls.enclosingClass.asClass
+              val thisRef = ThisRef(enclosingCls)(expr)
+              Summary.empty + Warm(cls, thisRef)(expr)
+            }
             else {
               val (pots, effs) = analyze(tref.prefix, expr)
               if (pots.isEmpty) Summary.empty.withEffs(effs)
-              else Summary.empty + Warm(cls, pots)(expr)
+              else {
+                assert(pots.size == 1)
+                Summary.empty + Warm(cls, pots.head)(expr)
+              }
             }
         }
 
@@ -194,7 +202,8 @@ object Summarization {
         val cls = thisTp.widen.classSymbol.asClass
         Summary.empty + ThisRef(cls)(source)
       case SuperType(thisTp, superTp) =>
-        val pot = SuperRef(thisTp.classSymbol.asClass, superTp.classSymbol.asClass)(source)
+        val thisRef = ThisRef(thisTp.classSymbol.asClass)(source)
+        val pot = SuperRef(thisRef, superTp.classSymbol.asClass)(source)
         Summary.empty + pot
       }
 

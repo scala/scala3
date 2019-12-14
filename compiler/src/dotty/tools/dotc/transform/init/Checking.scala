@@ -278,8 +278,8 @@ object Checking {
               if (sym.isInternal) {
                 val cls = sym.owner.asClass
                 val effs = theEnv.summaryOf(cls).effectsOf(sym)
-                val outer = Potentials.empty + Outer(warm, cls)(warm.source)
-                val rebased = Effects.asSeenFrom(effs, warm, cls, outer)
+                val outer = Outer(warm, cls)(warm.source)
+                val rebased = Effects.asSeenFrom(effs, warm, cls, outer.toPots)
                 val state2 = state.withVisited(eff)
                 rebased.foreach { check(_)(state2) }
               }
@@ -345,8 +345,8 @@ object Checking {
             if (sym.isInternal) {
               val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              val outer = Potentials.empty + Outer(warm, cls)(warm.source)
-              Potentials.asSeenFrom(pots, warm, cls, outer)
+              val outer = Outer(warm, cls)(warm.source)
+              Potentials.asSeenFrom(pots, warm, cls, outer.toPots)
             }
             else Potentials.empty // warning already issued in call effect
 
@@ -369,7 +369,7 @@ object Checking {
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
               Potentials.asSeenFrom(pots, thisRef, cls, Potentials.empty)
             }
-            else Potentials.empty + Cold()(pot.source)
+            else Cold()(pot.source).toPots
 
           case _: Fun =>
             throw new Exception("Unexpected code reached")
@@ -378,10 +378,10 @@ object Checking {
             if (sym.isInternal) {
               val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              val outer = Potentials.empty + (Outer(warm, cls)(warm.source))
-              Potentials.asSeenFrom(pots, warm, cls, outer)
+              val outer = Outer(warm, cls)(warm.source)
+              Potentials.asSeenFrom(pots, warm, cls, outer.toPots)
             }
-            else Potentials.empty + Cold()(pot.source)
+            else Cold()(pot.source).toPots
 
           case _: Cold =>
             Potentials.empty // error already reported, ignore

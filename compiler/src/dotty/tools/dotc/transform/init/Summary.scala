@@ -71,8 +71,7 @@ object Summary {
       else parentOuter.find((k, v) => k.derivesFrom(cls)) match {
         case Some((parentCls, pots)) =>
           val bottomClsSummary = env.summaryOf(parentCls)
-          val outerOuter: Potentials = currentOuter.map{ pot => Outer(pot, currentClass)(pot.source) }
-          val rebased: Potentials = currentOuter.flatMap { pot => Potentials.asSeenFrom(pots, pot, currentClass, outerOuter) }
+          val rebased: Potentials = Potentials.asSeenFrom(pots, thisValue, currentClass, currentOuter)
           val objPart = ObjectPart(thisValue, parentCls, rebased, bottomClsSummary.parentOuter)
           objPart.outerFor(cls)
         case None => ??? // impossible
