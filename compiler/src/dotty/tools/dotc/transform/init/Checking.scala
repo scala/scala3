@@ -168,6 +168,25 @@ object Checking {
     }
   }
 
+  private def nonInitError(eff: Effect)(implicit state: State) = {
+    traceIndented("initialized: " + state.fieldsInited, init)
+
+    // should issue error, use warning so that it will continue compile subprojects
+    theCtx.warning(
+      "Access non-initialized field " + eff.source.show +
+      ". Calling trace:\n" + state.trace,
+      eff.source.sourcePos
+    )
+  }
+
+  private def externalCallError(sym: Symbol, source: Tree)(implicit state: State) =
+    theCtx.warning(
+      "Calling the external method " + sym.show +
+      " may cause initialization errors" +
+      ". Calling trace:\n" + state.trace,
+      source.sourcePos
+    )
+
   private def check(eff: Effect)(implicit state: State): Unit =
     if (!state.visited.contains(eff)) traceOp("checking effect " + eff.show, init) {
       eff match {
@@ -213,16 +232,14 @@ object Checking {
             case ThisRef(cls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
-              if (!state.fieldsInited.contains(field)) {
-                traceIndented("initialized: " + state.fieldsInited, init)
+              val target = resolve(cls, field)
+              if (!state.fieldsInited.contains(target)) nonInitError(eff)
 
-                // should issue error, use warning so that it will continue compile subprojects
-                theCtx.warning(
-                  "Access non-initialized field " + eff.source.show +
-                  ". Calling trace:\n" + state.trace,
-                  eff.source.sourcePos
-                )
-              }
+            case SuperRef(ThisRef(cls), supercls) =>
+              assert(cls == state.thisClass, "unexpected potential " + pot.show)
+
+              val target = resolveSuper(cls, supercls, field)
+              if (!state.fieldsInited.contains(target)) nonInitError(eff)
 
             case Warm(cls, outer) =>
               // all fields of warm values are initialized
@@ -248,37 +265,34 @@ object Checking {
             case thisRef @ ThisRef(cls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
-              if (sym.isInternal) { // tests/init/override17.scala
-                val cls = sym.owner.asClass
-                val effs = theEnv.summaryOf(cls).effectsOf(sym)
-                val rebased = Effects.asSeenFrom(effs, thisRef, cls, Potentials.empty)
+              val target = resolve(cls, sym)
+              if (target.isInternal) { // tests/init/override17.scala
+                val effs = thisRef.effectsOf(target)
                 val state2 = state.withVisited(eff)
-                rebased.foreach { check(_)(state2) }
+                effs.foreach { check(_)(state2) }
               }
-              else
-                theCtx.warning(
-                  "Calling the external method " + sym.show +
-                  " may cause initialization errors" +
-                  ". Calling trace:\n" + state.trace,
-                  eff.source.sourcePos
-                )
+              else externalCallError(target, eff.source)
+
+            case SuperRef(thisRef @ ThisRef(cls), supercls) =>
+              assert(cls == state.thisClass, "unexpected potential " + pot.show)
+
+              val target = resolveSuper(cls, supercls, sym)
+              if (target.isInternal) {
+                val effs = thisRef.effectsOf(target)
+                val state2 = state.withVisited(eff)
+                effs.foreach { check(_)(state2) }
+              }
+              else externalCallError(target, eff.source)
 
             case warm @ Warm(cls, outer) =>
-              if (sym.isInternal) {
-                val cls = sym.owner.asClass
-                val effs = theEnv.summaryOf(cls).effectsOf(sym)
-                val outer = Outer(warm, cls)(warm.source)
-                val rebased = Effects.asSeenFrom(effs, warm, cls, outer.toPots)
+              val target = resolve(cls, sym)
+
+              if (target.isInternal) {
+                val effs = warm.effectsOf(target)
                 val state2 = state.withVisited(eff)
-                rebased.foreach { check(_)(state2) }
+                effs.foreach { check(_)(state2) }
               }
-              else
-                theCtx.warning(
-                  "Calling the external method " + sym.show +
-                  " on uninitialized objects may cause initialization errors" +
-                  ". Calling trace:\n" + state.trace,
-                  eff.source.sourcePos
-                )
+              else externalCallError(target, eff.source)
 
             case _: Cold =>
               theCtx.warning(
@@ -313,12 +327,17 @@ object Checking {
           case thisRef @ ThisRef(cls) =>
             assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
-            if (sym.isInternal) { // tests/init/override17.scala
-              val cls = sym.owner.asClass
-              val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              Potentials.asSeenFrom(pots, thisRef, cls, Potentials.empty)
-            }
+            val target = resolve(cls, sym)
+            if (target.isInternal) thisRef.potentialsOf(target)
             else Potentials.empty // warning already issued in call effect
+
+          case SuperRef(thisRef @ ThisRef(cls), supercls) =>
+            assert(cls == state.thisClass, "unexpected potential " + pot.show)
+
+            val target = resolveSuper(cls, supercls, sym)
+            if (target.isInternal) thisRef.potentialsOf(target)
+            else Potentials.empty // warning already issued in call effect
+
 
           case Fun(pots, effs) =>
             val name = sym.name.toString
@@ -331,12 +350,8 @@ object Checking {
             else Potentials.empty
 
           case warm : Warm =>
-            if (sym.isInternal) {
-              val cls = sym.owner.asClass
-              val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              val outer = Outer(warm, cls)(warm.source)
-              Potentials.asSeenFrom(pots, warm, cls, outer.toPots)
-            }
+            val target = resolve(warm.classSymbol, sym)
+            if (target.isInternal) warm.potentialsOf(target)
             else Potentials.empty // warning already issued in call effect
 
           case _: Cold =>
@@ -353,23 +368,23 @@ object Checking {
           case thisRef @ ThisRef(cls) =>
             assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
-            if (sym.isInternal) { // tests/init/override17.scala
-              val cls = sym.owner.asClass
-              val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              Potentials.asSeenFrom(pots, thisRef, cls, Potentials.empty)
-            }
+            val target = resolve(cls, sym)
+            if (sym.isInternal) thisRef.potentialsOf(target)
+            else Cold()(pot.source).toPots
+
+          case SuperRef(thisRef @ ThisRef(cls), supercls) =>
+            assert(cls == state.thisClass, "unexpected potential " + pot.show)
+
+            val target = resolveSuper(cls, supercls, sym)
+            if (target.isInternal) thisRef.potentialsOf(target)
             else Cold()(pot.source).toPots
 
           case _: Fun =>
             throw new Exception("Unexpected code reached")
 
           case warm: Warm =>
-            if (sym.isInternal) {
-              val cls = sym.owner.asClass
-              val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              val outer = Outer(warm, cls)(warm.source)
-              Potentials.asSeenFrom(pots, warm, cls, outer.toPots)
-            }
+            val target = resolve(warm.classSymbol, sym)
+            if (target.isInternal) warm.potentialsOf(target)
             else Cold()(pot.source).toPots
 
           case _: Cold =>
