@@ -44,6 +44,8 @@ object Effects {
 
   // ------------------ operations on effects ------------------
 
+  def (eff: Effect) toEffs: Effects = Effects.empty + eff
+
   def asSeenFrom(eff: Effect, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects = ???
 
   def asSeenFrom(effs: Effects, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =

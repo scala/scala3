@@ -32,30 +32,30 @@ object Potentials {
     def show(implicit ctx: Context): String = classSymbol.name.show + ".this"
   }
 
-  case class SuperRef(root: RootPotential, supercls: ClassSymbol)(val source: Tree) extends Potential {
+  case class SuperRef(pot: Potential, supercls: ClassSymbol)(val source: Tree) extends Potential {
     val size: Int = 1
-    def show(implicit ctx: Context): String = root.show + ".super[" + supercls.name.show + "]"
+    def show(implicit ctx: Context): String = pot.show + ".super[" + supercls.name.show + "]"
   }
 
   /** A warm potential represents an object of which all fields are initialized, but it may contain
    *  reference to objects under initialization.
    *
    *  @param classSymbol  The concrete class of the object
-   *  @param outer        The potentials for the immdiate outer `this`
+   *  @param outer        The potential for `this` of the enclosing class
    */
-  case class Warm(classSymbol: ClassSymbol, outer: Potentials)(val source: Tree) extends RootPotential {
+  case class Warm(classSymbol: ClassSymbol, outer: Potential)(val source: Tree) extends RootPotential {
     assert(outer.size <= 1, "outer size > 1, outer = " + outer)
 
     def size: Int = 1
-    def show(implicit ctx: Context): String = "Warm[" + cls.show + "]"
+    def show(implicit ctx: Context): String = "Warm[" + classSymbol.show + "]"
 
     private val outerCache: mutable.Map[ClassSymbol, Potentials] = mutable.Map.empty
     def outerFor(cls: ClassSymbol)(implicit env: Env): Potentials =
       if (outerCache.contains(cls)) outerCache(cls)
-      else if (cls `eq` classSymbol) outer
+      else if (cls `eq` classSymbol) outer.toPots
       else {
         val bottomClsSummary = env.summaryOf(classSymbol)
-        val objPart = ObjectPart(this, classSymbol, outer, bottomClsSummary.parentOuter)
+        val objPart = ObjectPart(this, classSymbol, outer.toPots, bottomClsSummary.parentOuter)
         val pots = objPart.outerFor(cls)
         outerCache(cls) = pots
         pots
@@ -101,6 +101,8 @@ object Potentials {
 
   // ------------------ operations on potentials ------------------
 
+  def (pot: Potential) toPots: Potentials = Potentials.empty + pot
+
   def (ps: Potentials) select (symbol: Symbol, source: Tree, virtual: Boolean = true)(implicit ctx: Context): Summary =
     ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
       if (pot.size > 1)
@@ -131,14 +133,21 @@ object Potentials {
         pots map { Outer(_, cls)(pot.source) }
 
       case ThisRef(cls) =>
-        if (cls `eq` currentClass) Potentials.empty + thisValue
-        else if (cls `eq` currentClass.owner) outer
-        else ???
+        if (cls `eq` currentClass)
+          thisValue.toPots
+        else if (cls.is(Flags.Package))
+          Potentials.empty
+        else {
+          val outerCls = currentClass.enclosingClass.asClass
+          outer.flatMap { out =>
+            asSeenFrom(pot, out, outerCls, Outer(out, outerCls)(out.source).toPots)
+          }
+        }
 
       case Fun(pots, effs) =>
-        val pots1 = asSeenFrom(pots, thisValue, currentClass, outer)
+        val pots1 = Potentials.asSeenFrom(pots, thisValue, currentClass, outer)
         val effs1 = Effects.asSeenFrom(effs, thisValue, currentClass, outer)
-        Fun(pots1, effs1)(pot.source)
+        Fun(pots1, effs1)(pot.source).toPots
 
       case Warm(cls, outer2) =>
         // widening to terminate
@@ -148,16 +157,16 @@ object Potentials {
         }
 
         val outer3 = asSeenFrom(outer2, thisValue2, currentClass, outer)
-        Warm(cls, outer3)(pot.source)
+        outer3.map { Warm(cls, _)(pot.source) }
 
       case _: Cold =>
-        Potentials.empty + pot
+        pot.toPots
 
-      case SuperRef(root, supercls) =>
-        val pots = asSeenFrom(root, thisValue, currentClass, outer)
+      case SuperRef(pot, supercls) =>
+        val pots = asSeenFrom(pot, thisValue, currentClass, outer)
         pots.map { SuperRef(_, supercls)(pot.source) }
     }
 
-  def asSeenFrom(pots: Potentials, thisValue: RootPotential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potentials =
+  def asSeenFrom(pots: Potentials, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potentials =
     pots.flatMap(asSeenFrom(_, thisValue, currentClass, outer))
 }
