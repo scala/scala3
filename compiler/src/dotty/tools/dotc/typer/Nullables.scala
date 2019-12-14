@@ -9,7 +9,8 @@ import StdNames.nme
 import util.Property
 import Names.Name
 import util.Spans.Span
-import Flags.Mutable
+import Flags._
+import NullOpsDecorator._
 import collection.mutable
 
 /** Operations for implementing a flow analysis for nullability */
@@ -100,17 +101,37 @@ object Nullables with
       case _ => None
   end TrackedRef
 
-  /** Is given reference tracked for nullability?
-   *  This is the case if the reference is a path to an immutable val, or if it refers
-   *  to a local mutable variable where all assignments to the variable are _reachable_
-   *  (in the sense of how it is defined in assignmentSpans).
+  /** Is the given reference tracked for nullability?
+   *
+   *  This is the case if one of the following holds:
+   *  1) The reference is a path to an immutable `val`.
+   *  2) The reference is to a mutable variable, in which case all assignments to it must be
+   *    reachable (in the sense of how it is defined in assignmentSpans) _and_ the variable
+   *    must not be used "out of order" (in the sense specified by `usedOutOfOrder`).
+   *
+   *  Whether to track a local mutable variable during flow typing?
+   *  We track a local mutable variable iff the variable is not assigned in a closure.
+   *  For example, in the following code `x` is assigned to by the closure `y`, so we do not
+   *  do flow typing on `x`.
+   *
+   *  ```scala
+   *  var x: String|Null = ???
+   *  def y = {
+   *    x = null
+   *  }
+   *  if (x != null) {
+   *    // y can be called here, which break the fact
+   *    val a: String = x // error: x is captured and mutated by the closure, not trackable
+   *  }
+   *  ```
+   *
+   *  Check `usedOutOfOrder` to see the explaination and example of "out of order".
+   *  See more examples in `tests/explicit-nulls/neg/var-ref-in-closure.scala`.
    */
   def isTracked(ref: TermRef)(given Context) =
     ref.isStable
     || { val sym = ref.symbol
-         sym.is(Mutable)
-         && sym.owner.isTerm
-         && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod
+         !ref.usedOutOfOrder
          && sym.span.exists
          && curCtx.compilationUnit != null // could be null under -Ytest-pickler
          && curCtx.compilationUnit.assignmentSpans.contains(sym.span.start)
@@ -160,6 +181,60 @@ object Nullables with
             && !info.retracted.exists(infos.impliesNotNull(_))
       then infos
       else info :: infos
+
+  given refOps: extension (ref: TermRef) with
+
+    /** Is the use of a mutable variable out of order
+     *
+     *  Whether to generate and use flow typing on a specific _use_ of a local mutable variable?
+     *  We only want to do flow typing on a use that belongs to the same method as the definition
+     *  of the local variable.
+     *  For example, in the following code, even `x` is not assigned to by a closure, but we can only
+     *  use flow typing in one of the occurrences (because the other occurrence happens within a nested
+     *  closure).
+     *  ```scala
+     *  var x: String|Null = ???
+     *  def y = {
+     *    if (x != null) {
+     *      // not safe to use the fact (x != null) here
+     *      // since y can be executed at the same time as the outer block
+     *      val _: String = x
+     *    }
+     *  }
+     *  if (x != null) {
+     *    val a: String = x // ok to use the fact here
+     *    x = null
+     *  }
+     *  ```
+     *
+     *  Another example:
+     *  ```scala
+     *  var x: String|Null = ???
+     *  if (x != null) {
+     *    def f: String = {
+     *      val y: String = x // error: the use of x is out of order
+     *      y
+     *    }
+     *    x = null
+     *    val y: String = f // danger
+     *  }
+     *  ```
+     */
+    def usedOutOfOrder(given Context): Boolean =
+      val refSym = ref.symbol
+      val refOwner = refSym.owner
+
+      @tailrec def recur(s: Symbol): Boolean =
+        s != NoSymbol
+        && s != refOwner
+        && (s.isOneOf(Lazy | Method) // not at the rhs of lazy ValDef or in a method (or lambda)
+          || s.isClass // not in a class
+          // TODO: need to check by-name paramter
+          || recur(s.owner))
+
+      refSym.is(Mutable) // if it is immutable, we don't need to check the rest conditions
+      && refOwner.isTerm
+      && recur(curCtx.owner)
 
   given treeOps: extension (tree: Tree) with
 
@@ -254,7 +329,18 @@ object Nullables with
   given assignOps: extension (tree: Assign) with
     def computeAssignNullable()(given Context): tree.type = tree.lhs match
       case TrackedRef(ref) =>
-        tree.withNotNullInfo(NotNullInfo(Set(), Set(ref))) // TODO: refine with nullability type info
+        val rhstp = tree.rhs.typeOpt
+        if curCtx.explicitNulls && ref.isNullableUnion then
+          if rhstp.isNullType || rhstp.isNullableUnion then
+            // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
+            // lhs variable is no longer trackable. We don't need to check whether the type `T`
+            // is correct here, as typer will check it.
+            tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
+          else
+            // If the initial type is nullable and the assigned value is non-null,
+            // we add it to the NotNull.
+            tree.withNotNullInfo(NotNullInfo(Set(ref), Set()))
+        else tree
       case _ => tree
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)

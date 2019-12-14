@@ -383,6 +383,12 @@ trait Symbols { this: Context =>
       .requiredSymbol("class", name, generateStubs = false)(_.isClass)
   }
 
+  /** Get a List of ClassSymbols which are either defined in current compilation
+   *  run or present on classpath.
+   */
+  def getClassesIfDefined(paths: List[PreName]): List[ClassSymbol] =
+    paths.map(getClassIfDefined).filter(_.exists).map(_.asInstanceOf[ClassSymbol])
+
   /** Get ClassSymbol if package is either defined in current compilation run
    *  or present on classpath.
    *  Returns NoSymbol otherwise. */

@@ -425,6 +425,9 @@ object Contexts {
     def useColors: Boolean =
       base.settings.color.value == "always"
 
+    /** Is the explicit nulls option set? */
+    def explicitNulls: Boolean = base.settings.YexplicitNulls.value
+
     protected def init(outer: Context, origin: Context): this.type = {
       util.Stats.record("Context.fresh")
       _outer = outer

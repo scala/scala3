@@ -288,6 +288,8 @@ class ClassfileParser(
         if (denot.is(Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
           denot.info = arrayToRepeated(denot.info)
 
+        if (ctx.explicitNulls) denot.info = JavaNullInterop.nullifyMember(denot.symbol, denot.info, isEnum)
+
         // seal java enums
         if (isEnum) {
           val enumClass = sym.owner.linkedClass

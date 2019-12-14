@@ -197,6 +197,7 @@ object StdNames {
     final val Nothing: N             = "Nothing"
     final val NotNull: N             = "NotNull"
     final val Null: N                = "Null"
+    final val JavaNull: N            = "JavaNull"
     final val Object: N              = "Object"
     final val Product: N             = "Product"
     final val PartialFunction: N     = "PartialFunction"

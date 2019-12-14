@@ -18,6 +18,7 @@ import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
+import NullOpsDecorator.NullOps
 
 final class AbsentContext
 object AbsentContext {
@@ -1611,9 +1612,24 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         formals2 match {
           case formal2 :: rest2 =>
             val formal2a = if (tp2.isParamDependent) formal2.subst(tp2, tp1) else formal2
+            // The next two definitions handle the special case mentioned above, where
+            // the Java argument has type 'Any', and the Scala argument has type 'Object' or
+            // 'Object|Null', depending on whether explicit nulls are enabled.
+            def formal1IsObject =
+              if (ctx.explicitNulls) formal1 match {
+                case OrNull(formal1b) => formal1b.isRef(ObjectClass)
+                case _ => false
+              }
+              else formal1.isRef(ObjectClass)
+            def formal2IsObject =
+              if (ctx.explicitNulls) formal2 match {
+                case OrNull(formal2b) => formal2b.isRef(ObjectClass)
+                case _ => false
+              }
+              else formal2.isRef(ObjectClass)
             (isSameTypeWhenFrozen(formal1, formal2a)
-            || tp1.isJavaMethod && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
-            || tp2.isJavaMethod && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
+            || tp1.isJavaMethod && formal2IsObject && (formal1 isRef AnyClass)
+            || tp2.isJavaMethod && formal1IsObject && (formal2 isRef AnyClass)) &&
             loop(rest1, rest2)
           case nil =>
             false

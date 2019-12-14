@@ -57,7 +57,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40")),
       compileFile("tests/pos-special/indent-colons.scala", defaultOptions.and("-Yindent-colons")),
       compileFile("tests/pos-special/i7296.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
-      compileFile("tests/pos-special/nullable.scala", defaultOptions.and("-Yexplicit-nulls")),
+      compileFile("tests/pos-special/notNull.scala", defaultOptions.and("-Yexplicit-nulls")),
       compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings")),
       compileFile("tests/pos-special/i7575.scala", defaultOptions.and("-language:dynamics")),
     ).checkCompile()
@@ -257,6 +257,28 @@ class CompilationTests extends ParallelTesting {
 
     tests.foreach(_.delete())
   }
+
+  // Explicit nulls tests
+  @Test def explicitNullsNeg: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("explicitNullsNeg")
+    aggregateTests(
+      compileFilesInDir("tests/explicit-nulls/neg", explicitNullsOptions),
+      compileFilesInDir("tests/explicit-nulls/neg-patmat", explicitNullsOptions and "-Xfatal-warnings")
+    )
+  }.checkExpectedErrors()
+
+  @Test def explicitNullsPos: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("explicitNullsPos")
+    aggregateTests(
+      compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
+      compileFilesInDir("tests/explicit-nulls/pos-separate", explicitNullsOptions)
+    )
+  }.checkCompile()
+
+  @Test def explicitNullsRun: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("explicitNullsRun")
+    compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions)
+  }.checkRuns()
 }
 
 object CompilationTests {

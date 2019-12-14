@@ -67,4 +67,7 @@ object TestConfiguration {
   val scala2CompatMode = defaultOptions and "-language:Scala2Compat"
   val explicitUTF8 = defaultOptions and ("-encoding", "UTF8")
   val explicitUTF16 = defaultOptions and ("-encoding", "UTF16")
+
+  /** Enables explicit nulls */
+  val explicitNullsOptions = defaultOptions and "-Yexplicit-nulls"
 }

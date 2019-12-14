@@ -41,6 +41,7 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import reporting.trace
 import Nullables.{NotNullInfo, given}
+import NullOpsDecorator._
 
 object Typer {
 
@@ -347,6 +348,24 @@ class Typer extends Namer
     findRefRecur(NoType, BindingPrec.NothingBound, NoContext)
   }
 
+  /** If `tree`'s type is a `TermRef` identified by flow typing to be non-null, then
+   *  cast away `tree`s nullability. Otherwise, `tree` remains unchanged.
+   *
+   *  Example:
+   *  If x is a trackable reference and we know x is not null at this point,
+   *  (x: T | Null) => x.$asInstanceOf$[x.type & T]
+   */
+  def toNotNullTermRef(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match
+    case ref @ OrNull(tpnn) : TermRef
+    if pt != AssignProto && // Ensure it is not the lhs of Assign
+    ctx.notNullInfos.impliesNotNull(ref) &&
+    // If a reference is in the context, it is already trackable at the point we add it.
+    // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
+    !ref.usedOutOfOrder =>
+      tree.select(defn.Any_typeCast).appliedToType(AndType(ref, tpnn))
+    case _ =>
+      tree
+
   /** Attribute an identifier consisting of a simple name or wildcard
    *
    *  @param tree      The tree representing the identifier.
@@ -417,7 +436,9 @@ class Typer extends Namer
         tree.withType(ownType)
     }
 
-    checkStableIdentPattern(tree1, pt)
+    val tree2 = toNotNullTermRef(tree1, pt)
+
+    checkStableIdentPattern(tree2, pt)
   }
 
   /** Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
@@ -442,8 +463,11 @@ class Typer extends Namer
     case qual =>
       if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos)
       val select = assignType(cpy.Select(tree)(qual, tree.name), qual)
-      if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
-      else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
+
+      val select1 = toNotNullTermRef(select, pt)
+
+      if (select1.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select1, pt))
+      else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select1
       else typedDynamicSelect(tree, Nil, pt)
   }
 
@@ -1556,16 +1580,6 @@ class Typer extends Namer
     typed(annot, defn.AnnotationClass.typeRef)
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): Tree = {
-    sym.infoOrCompleter match
-      case completer: Namer#Completer
-      if completer.creationContext.notNullInfos ne ctx.notNullInfos =>
-        // The RHS of a val def should know about not null facts established
-        // in preceding statements (unless the ValDef is completed ahead of time,
-        // then it is impossible).
-        vdef.symbol.info = Completer(completer.original)(
-          given completer.creationContext.withNotNullInfos(ctx.notNullInfos))
-      case _ =>
-
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
@@ -2222,14 +2236,9 @@ class Typer extends Namer
           case Some(xtree) =>
             traverse(xtree :: rest)
           case none =>
-            val defCtx = mdef match
-              // Keep preceding not null facts in the current context only if `mdef`
-              // cannot be executed out-of-sequence.
-              case _: ValDef if !mdef.mods.is(Lazy) && ctx.owner.isTerm =>
-                ctx // all preceding statements will have been executed in this case
-              case _ =>
-                ctx.withNotNullInfos(initialNotNullInfos)
-            typed(mdef)(given defCtx) match {
+            val newCtx = if (ctx.owner.isTerm && adaptCreationContext(mdef)) ctx
+              else ctx.withNotNullInfos(initialNotNullInfos)
+            typed(mdef)(given newCtx) match {
               case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf += inlineExpansion(mdef1)
                   // replace body with expansion, because it will be used as inlined body
@@ -2278,6 +2287,34 @@ class Typer extends Namer
     if (ctx.owner == exprOwner) checkNoAlphaConflict(stats1)
     (stats1, finalCtx)
   }
+
+  /** Tries to adapt NotNullInfos from creation context to the DefTree,
+   *  returns whether the adaption took place. An adaption only takes place if the
+   *  DefTree has a symbol and it has not been completed (is not forward referenced).
+   */
+  def adaptCreationContext(mdef: untpd.DefTree)(implicit ctx: Context): Boolean =
+    // Keep preceding not null facts in the current context only if `mdef`
+    // cannot be executed out-of-sequence.
+    // We have to check the Completer of symbol befor typedValDef,
+    // otherwise the symbol is already completed using creation context.
+    mdef.getAttachment(SymOfTree) match {
+      case Some(sym) => sym.infoOrCompleter match {
+        case completer: Namer#Completer =>
+          if (completer.creationContext.notNullInfos ne ctx.notNullInfos)
+            // The RHS of a val def should know about not null facts established
+            // in preceding statements (unless the DefTree is completed ahead of time,
+            // then it is impossible).
+            sym.info = Completer(completer.original)(
+              given completer.creationContext.withNotNullInfos(ctx.notNullInfos))
+          true
+        case _ =>
+          // If it has been completed, then it must be because there is a forward reference
+          // to the definition in the program. Hence, we don't Keep preceding not null facts
+          // in the current context.
+          false
+      }
+      case _ => false
+    }
 
   /** Given an inline method `mdef`, the method rewritten so that its body
    *  uses accessors to access non-public members.

@@ -38,4 +38,17 @@ object DottyPredef {
   }
 
   inline def summon[T](given x: T): x.type = x
+
+  // Extension methods for working with explicit nulls
+
+  /** Strips away the nullability from a value.
+   *  e.g.
+   *    val s1: String|Null = "hello"
+   *    val s: String = s1.nn
+   *
+   *  Note that `.nn` performs a checked cast, so if invoked on a null value it'll throw an NPE.
+   */
+  def[T] (x: T|Null) nn: x.type & T =
+    if (x == null) throw new NullPointerException("tried to cast away nullability, but value is null")
+    else x.asInstanceOf[x.type & T]
 }

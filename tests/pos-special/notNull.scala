@@ -1,4 +1,3 @@
-trait Null extends Any
 object Test with
   def notNull[A](x: A | Null): x.type & A =
     assert(x != null)

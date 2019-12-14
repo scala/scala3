@@ -17,6 +17,7 @@ import DenotTransformers._
 import NameOps._
 import NameKinds.OuterSelectName
 import StdNames._
+import NullOpsDecorator._
 
 object FirstTransform {
   val name: String = "firstTransform"
@@ -50,10 +51,25 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
     tree match {
       case Select(qual, name) if !name.is(OuterSelectName) && tree.symbol.exists =>
+        val qualTpe = if (ctx.explicitNulls) {
+          // `JavaNull` is already special-cased in the Typer, but needs to be handled here as well.
+          // We need `stripAllJavaNull` and not `stripJavaNull` because of the following case:
+          //
+          //   val s: (String|JavaNull)&(String|JavaNull) = "hello"
+          //   val l = s.length
+          //
+          // The invariant below is that the type of `s`, which isn't a top-level JavaNull union,
+          // must derive from the type of the owner of `length`, which is `String`. Because we don't
+          // know which `JavaNull`s were used to find the `length` member, we conservatively remove
+          // all of them.
+          qual.tpe.stripAllJavaNull
+        } else {
+          qual.tpe
+        }
         assert(
-          qual.tpe.derivesFrom(tree.symbol.owner) ||
-            tree.symbol.is(JavaStatic) && qual.tpe.derivesFrom(tree.symbol.enclosingClass),
-          i"non member selection of ${tree.symbol.showLocated} from ${qual.tpe} in $tree")
+          qualTpe.derivesFrom(tree.symbol.owner) ||
+            tree.symbol.is(JavaStatic) && qualTpe.derivesFrom(tree.symbol.enclosingClass),
+          i"non member selection of ${tree.symbol.showLocated} from ${qualTpe} in $tree")
       case _: TypeTree =>
       case _: Import | _: NamedArg | _: TypTree =>
         assert(false, i"illegal tree: $tree")

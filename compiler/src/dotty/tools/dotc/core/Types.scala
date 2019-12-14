@@ -7,6 +7,7 @@ import Symbols._
 import Flags._
 import Names._
 import StdNames._, NameOps._
+import NullOpsDecorator._
 import NameKinds.SkolemName
 import Scopes._
 import Constants._
@@ -16,6 +17,7 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
+import CheckRealizable._
 import util.Stats._
 import util.SimpleIdentitySet
 import reporting.diagnostic.Message
@@ -162,6 +164,9 @@ object Types {
       case tp: RefinedOrRecType => tp.parent.isStable
       case tp: ExprType => tp.resultType.isStable
       case tp: AnnotatedType => tp.parent.isStable
+      case tp: AndType =>
+        tp.tp1.isStable && (realizability(tp.tp2) eq Realizable) ||
+        tp.tp2.isStable && (realizability(tp.tp1) eq Realizable)
       case _ => false
     }
 
@@ -600,11 +605,7 @@ object Types {
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
-          // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
-          // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
-          // lots of places. The present strategy is instead of widen `tp` using `join` to be a
-          // supertype of `pre`.
-          go(tp.join)
+          goOr(tp)
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
         case err: ErrorType =>
@@ -709,6 +710,21 @@ object Types {
 
       def goAnd(l: Type, r: Type) =
         go(l) & (go(r), pre, safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+
+      def goOr(tp: OrType) = tp match {
+        case OrJavaNull(tp1) =>
+          // Selecting `name` from a type `T|JavaNull` is like selecting `name` from `T`.
+          // This can throw at runtime, but we trade soundness for usability.
+          // We need to strip `JavaNull` from both the type and the prefix so that
+          // `pre <: tp` continues to hold.
+          tp1.findMember(name, pre.stripJavaNull, required, excluded)
+        case _ =>
+          // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
+          // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
+          // lots of places. The present strategy is instead of widen `tp` using `join` to be a
+          // supertype of `pre`.
+          go(tp.join)
+      }
 
       val recCount = ctx.base.findMemberCount
       if (recCount >= Config.LogPendingFindMemberThreshold)
@@ -1089,16 +1105,28 @@ object Types {
   	 *
      *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
      *  instead of `ArrayBuffer[? >: Int | A <: Int & A]`
+     *
+     *  Exception (if `-YexplicitNulls` is set): if this type is a nullable union (i.e. of the form `T | Null`),
+     *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
     def widenUnion(implicit ctx: Context): Type = widen match {
-      case tp @ OrType(tp1, tp2) =>
-        if tp1.isNull || tp2.isNull then tp
-        else ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
+      case tp @ OrNull(tp1): OrType =>
+        // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
+        val tp1Widen = tp1.widenUnionWithoutNull
+        if (tp1Widen.isRef(defn.AnyClass)) tp1Widen
+        else tp.derivedOrType(tp1Widen, defn.NullType)
+      case tp =>
+        tp.widenUnionWithoutNull
+    }
+
+    def widenUnionWithoutNull(implicit ctx: Context): Type = widen match {
+      case tp @ OrType(lhs, rhs) =>
+        ctx.typeComparer.lub(lhs.widenUnionWithoutNull, rhs.widenUnionWithoutNull, canConstrain = true) match {
           case union: OrType => union.join
           case res => res
         }
       case tp @ AndType(tp1, tp2) =>
-        tp derived_& (tp1.widenUnion, tp2.widenUnion)
+        tp derived_& (tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull)
       case tp: RefinedType =>
         tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
       case tp: RecType =>
@@ -1424,9 +1452,7 @@ object Types {
     }
 
     /** Is this (an alias of) the `scala.Null` type? */
-    final def isNull(given Context) =
-      isRef(defn.NullClass)
-      || classSymbol.name == tpnme.Null // !!! temporary kludge for being able to test without the explicit nulls PR
+    final def isNullType(given Context) = isRef(defn.NullClass)
 
     /** The resultType of a LambdaType, or ExprType, the type itself for others */
     def resultType(implicit ctx: Context): Type = this
@@ -2915,23 +2941,41 @@ object Types {
       else apply(tp1, tp2)
   }
 
-  /** An extractor for `T | Null` or `Null | T`, returning the `T` */
-  object OrNull with
-    private def stripNull(tp: Type)(given Context): Type = tp match
-      case tp @ OrType(tp1, tp2) =>
-        if tp1.isNull then tp2
-        else if tp2.isNull then tp1
-        else tp.derivedOrType(stripNull(tp1), stripNull(tp2))
-      case tp @ AndType(tp1, tp2) =>
-        tp.derivedAndType(stripNull(tp1), stripNull(tp2))
-      case _ =>
-        tp
+  /** An extractor object to pattern match against a nullable union.
+   *  e.g.
+   *
+   *  (tp: Type) match
+   *    case OrNull(tp1) => // tp had the form `tp1 | Null`
+   *    case _ => // tp was not a nullable union
+   */
+  object OrNull {
     def apply(tp: Type)(given Context) =
       OrType(tp, defn.NullType)
-    def unapply(tp: Type)(given Context): Option[Type] =
-      val tp1 = stripNull(tp)
-      if tp1 ne tp then Some(tp1) else None
-  end OrNull
+    def unapply(tp: Type)(given ctx: Context): Option[Type] =
+      if (ctx.explicitNulls) {
+        val tp1 = tp.stripNull()
+        if tp1 ne tp then Some(tp1) else None
+      }
+      else None
+  }
+
+  /** An extractor object to pattern match against a Java-nullable union.
+   *  e.g.
+   *
+   *  (tp: Type) match
+   *    case OrJavaNull(tp1) => // tp had the form `tp1 | JavaNull`
+   *    case _ => // tp was not a Java-nullable union
+   */
+  object OrJavaNull {
+    def apply(tp: Type)(given Context) =
+      OrType(tp, defn.JavaNullAliasType)
+    def unapply(tp: Type)(given ctx: Context): Option[Type] =
+      if (ctx.explicitNulls) {
+        val tp1 = tp.stripJavaNull
+        if tp1 ne tp then Some(tp1) else None
+      }
+      else None
+  }
 
   // ----- ExprType and LambdaTypes -----------------------------------
 
