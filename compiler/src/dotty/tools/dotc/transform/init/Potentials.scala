@@ -26,6 +26,25 @@ object Potentials {
   case class ThisRef(classSymbol: ClassSymbol)(val source: Tree) extends Potential {
     val size: Int = 1
     def show(implicit ctx: Context): String = classSymbol.name.show + ".this"
+
+    /** Effects of a method call or a lazy val access
+     *
+     *  It assumes all the outer `this` are fully initialized.
+     */
+    def effectsOf(sym: Symbol)(implicit env: Env): Effects = {
+      val cls = sym.owner.asClass
+      val effs = env.summaryOf(cls).effectsOf(sym)
+      Effects.asSeenFrom(effs, this, cls, Potentials.empty)
+    }
+
+    /** Potentials of a field, a method call or a lazy val access
+     *
+     */
+    def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = {
+      val cls = sym.owner.asClass
+      val pots = env.summaryOf(cls).potentialsOf(sym)
+      Potentials.asSeenFrom(pots, this, cls, Potentials.empty)
+    }
   }
 
   case class SuperRef(pot: Potential, supercls: ClassSymbol)(val source: Tree) extends Potential {
@@ -44,6 +63,28 @@ object Potentials {
 
     def size: Int = 1
     def show(implicit ctx: Context): String = "Warm[" + classSymbol.show + "]"
+
+    /** Effects of a method call or a lazy val access
+     *
+     *  The method performs prefix and outer substitution
+     */
+    def effectsOf(sym: Symbol)(implicit env: Env): Effects = {
+      val cls = sym.owner.asClass
+      val effs = env.summaryOf(cls).effectsOf(sym)
+      val outer = Outer(this, cls)(this.source)
+      Effects.asSeenFrom(effs, this, cls, outer.toPots)
+    }
+
+    /** Potentials of a field, a method call or a lazy val access
+     *
+     *  The method performs prefix and outer substitution
+     */
+    def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = {
+      val cls = sym.owner.asClass
+      val pots = env.summaryOf(cls).potentialsOf(sym)
+      val outer = Outer(this, cls)(this.source)
+      Potentials.asSeenFrom(pots, this, cls, outer.toPots)
+    }
 
     private val outerCache: mutable.Map[ClassSymbol, Potentials] = mutable.Map.empty
     def outerFor(cls: ClassSymbol)(implicit env: Env): Potentials =

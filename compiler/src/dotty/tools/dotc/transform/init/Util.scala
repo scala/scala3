@@ -20,4 +20,8 @@ object Util {
 
   def (symbol: Symbol) isInternal(implicit ctx: Context): Boolean =
     !symbol.defTree.isEmpty
+
+  def resolve(cls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol = ???
+
+  def resolveSuper(cls: ClassSymbol, superCls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol = ???
 }
