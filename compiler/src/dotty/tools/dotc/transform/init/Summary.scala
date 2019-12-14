@@ -63,9 +63,6 @@ object Summary {
   ) {
     private val summaryCache: mutable.Map[Symbol, Summary] = mutable.Map.empty
 
-    /** Summary of a member field or method, with `this` and outers substituted */
-    def summaryOf(member: Symbol)(implicit ctx: Context): Summary = ???
-
     def outerFor(cls: ClassSymbol)(implicit env: Env): Potentials =
       if (cls `eq` currentClass) currentOuter
       else parentOuter.find((k, v) => k.derivesFrom(cls)) match {
