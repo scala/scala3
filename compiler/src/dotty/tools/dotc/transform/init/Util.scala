@@ -21,7 +21,10 @@ object Util {
   def (symbol: Symbol) isInternal(implicit ctx: Context): Boolean =
     !symbol.defTree.isEmpty
 
-  def resolve(cls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol = ???
+  def resolve(cls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol =
+    if (sym.isEffectivelyFinal) sym
+    else sym.matchingMember(cls.typeRef)
 
-  def resolveSuper(cls: ClassSymbol, superCls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol = ???
+  def resolveSuper(cls: ClassSymbol, superCls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol =
+    sym.superSymbolIn(cls)
 }

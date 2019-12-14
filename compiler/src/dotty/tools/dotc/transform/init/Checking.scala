@@ -102,7 +102,7 @@ object Checking {
 
     // check parent calls : follows linearization ordering
     // see spec 5.1 about "Template Evaluation".
-    // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html#class-linearization
+    // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
 
     def checkStats(stats: List[Tree])(implicit ctx: Context): Unit =
       stats.foreach { stat =>
