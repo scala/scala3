@@ -34,12 +34,9 @@ object Effects {
       potential.show + "." + field.name.show + "!"
   }
 
-  case class MethodCall(potential: Potential, method: Symbol, virtual: Boolean)(val source: Tree) extends Effect {
+  case class MethodCall(potential: Potential, method: Symbol)(val source: Tree) extends Effect {
     def size: Int = potential.size
-    def show(implicit ctx: Context): String = {
-      val modifier = if (virtual) "" else "(static)"
-      potential.show + "." + method.name.show + "!" + modifier
-    }
+    def show(implicit ctx: Context): String = potential.show + "." + method.name.show + "!"
   }
 
   // ------------------ operations on effects ------------------
@@ -56,9 +53,9 @@ object Effects {
           FieldAccess(pot, field)(eff.source)
         }
 
-      case MethodCall(pot, sym, virtual) =>
+      case MethodCall(pot, sym) =>
         Potentials.asSeenFrom(pot, thisValue, currentClass, outer).map { pot =>
-          MethodCall(pot, sym, virtual)(eff.source)
+          MethodCall(pot, sym)(eff.source)
         }
     }
 

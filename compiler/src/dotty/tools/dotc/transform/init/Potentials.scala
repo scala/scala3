@@ -80,12 +80,9 @@ object Potentials {
     def show(implicit ctx: Context): String = potential.show + "." + field.name.show
   }
 
-  case class MethodReturn(potential: Potential, symbol: Symbol, virtual: Boolean)(val source: Tree) extends Potential {
+  case class MethodReturn(potential: Potential, symbol: Symbol)(val source: Tree) extends Potential {
     def size: Int = potential.size + 1
-    def show(implicit ctx: Context): String = {
-      val modifier = if (virtual) "" else "(static)"
-      potential.show + "." + symbol.name.show + modifier
-    }
+    def show(implicit ctx: Context): String = potential.show + "." + symbol.name.show
   }
 
   case class Cold()(val source: Tree) extends Potential {
@@ -103,14 +100,14 @@ object Potentials {
 
   def (pot: Potential) toPots: Potentials = Potentials.empty + pot
 
-  def (ps: Potentials) select (symbol: Symbol, source: Tree, virtual: Boolean = true)(implicit ctx: Context): Summary =
+  def (ps: Potentials) select (symbol: Symbol, source: Tree)(implicit ctx: Context): Summary =
     ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
       if (pot.size > 1)
         (pots, effs + Leak(pot)(source))
       else if (symbol.isOneOf(Flags.Method | Flags.Lazy))
           (
-            pots + MethodReturn(pot, symbol, virtual)(source),
-            effs + MethodCall(pot, symbol, virtual)(source)
+            pots + MethodReturn(pot, symbol)(source),
+            effs + MethodCall(pot, symbol)(source)
           )
       else
         (pots + FieldReturn(pot, symbol)(source), effs + FieldAccess(pot, symbol)(source))
@@ -120,9 +117,9 @@ object Potentials {
 
   def asSeenFrom(pot: Potential, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potentials =
     pot match {
-      case MethodReturn(pot1, sym, virtual) =>
+      case MethodReturn(pot1, sym) =>
         val pots = asSeenFrom(pot1, thisValue, currentClass, outer)
-        pots.map { MethodReturn(_, sym, virtual)(pot.source) }
+        pots.map { MethodReturn(_, sym)(pot.source) }
 
       case FieldReturn(pot1, sym) =>
         val pots = asSeenFrom(pot1, thisValue, currentClass, outer)

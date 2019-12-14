@@ -114,12 +114,6 @@ object Checking {
       val cls = ctor.owner
       val classDef = cls.defTree
       if (!classDef.isEmpty) {
-        // TODO: no need to check, can only be empty
-        // val (pots, effs) = tp.typeConstructor match {
-        //   case tref: TypeRef => Summarization.analyze(tref.prefix, source)
-        // }
-        // checkEffects(effs)
-
         if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef])
         else checkSecondaryConstructor(ctor)
       }
@@ -249,7 +243,7 @@ object Checking {
               pots.foreach { pot => check(FieldAccess(pot, field)(eff.source))(state2) }
           }
 
-        case MethodCall(pot, sym, virtual) =>
+        case MethodCall(pot, sym) =>
           pot match {
             case thisRef @ ThisRef(cls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
@@ -306,7 +300,7 @@ object Checking {
               val state2 = state.withVisited(eff)
               val pots = expand(pot)
               pots.foreach { pot =>
-                check(MethodCall(pot, sym, virtual)(eff.source))(state2)
+                check(MethodCall(pot, sym)(eff.source))(state2)
               }
           }
       }
@@ -314,7 +308,7 @@ object Checking {
 
   private def expand(pot: Potential)(implicit state: State): Potentials =
     trace("expand " + pot.show, init, pots => Potentials.show(pots.asInstanceOf[Potentials])) { pot match {
-      case MethodReturn(pot1, sym, virtual) =>
+      case MethodReturn(pot1, sym) =>
         pot1 match {
           case thisRef @ ThisRef(cls) =>
             assert(cls == state.thisClass, "unexpected potential " + pot.show)
@@ -349,7 +343,7 @@ object Checking {
             Potentials.empty // error already reported, ignore
 
           case _ =>
-            val (pots, effs) = expand(pot1).select(sym, pot.source, virtual)
+            val (pots, effs) = expand(pot1).select(sym, pot.source)
             effs.foreach(check(_))
             pots
         }
