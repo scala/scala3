@@ -278,7 +278,8 @@ object Checking {
               if (sym.isInternal) {
                 val cls = sym.owner.asClass
                 val effs = theEnv.summaryOf(cls).effectsOf(sym)
-                val rebased = Effects.asSeenFrom(effs, pot, cls, warm.outerFor(cls))
+                val outer = Potentials.empty + Outer(warm, cls)(warm.source)
+                val rebased = Effects.asSeenFrom(effs, pot, cls, outer)
                 val state2 = state.withVisited(eff)
                 rebased.foreach { check(_)(state2) }
               }
@@ -344,7 +345,8 @@ object Checking {
             if (sym.isInternal) {
               val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              Potentials.asSeenFrom(pots, pot1, cls, warm.outerFor(cls))
+              val outer = Potentials.empty + Outer(warm, cls)(warm.source)
+              Potentials.asSeenFrom(pots, pot1, cls, outer)
             }
             else Potentials.empty // warning already issued in call effect
 
@@ -376,7 +378,8 @@ object Checking {
             if (sym.isInternal) {
               val cls = sym.owner.asClass
               val pots = theEnv.summaryOf(cls).potentialsOf(sym)
-              Potentials.asSeenFrom(pots, pot1, cls, warm.outerFor(cls))
+              val outer = Potentials.empty + (Outer(warm, cls)(warm.source))
+              Potentials.asSeenFrom(pots, pot1, cls, outer)
             }
             else Potentials.empty + Cold()(pot.source)
 
@@ -387,6 +390,26 @@ object Checking {
             val (pots, effs) = expand(pot1).select(sym, pot.source)
             effs.foreach(check(_))
             pots
+        }
+
+      case Outer(pot1, cls) =>
+        pot1 match {
+          case ThisRef(cls) =>
+            assert(cls == state.thisClass, "unexpected potential " + pot.show)
+
+            Potentials.empty
+
+          case _: Fun =>
+            throw new Exception("Unexpected code reached")
+
+          case warm: Warm =>
+            warm.outerFor(cls)
+
+          case _: Cold =>
+            throw new Exception("Unexpected code reached")
+
+          case _ =>
+            expand(pot1).map { Outer(_, cls)(pot.source) }
         }
 
       case _: ThisRef | _: Fun | _: Warm | _: Cold =>

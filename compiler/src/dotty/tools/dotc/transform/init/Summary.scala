@@ -56,7 +56,7 @@ object Summary {
    *  It makes prefix and outer substitution easier in effect checking.
    */
   case class ObjectPart(
-    thisValue: Warm | ThisRef,                  // the potential for `this`, it can be Warm or ThisRef
+    thisValue: Warm,                            // the potential for `this`, it can be Warm or ThisRef
     currentClass: ClassSymbol,                  // current class
     currentOuter: Potentials,                   // the immediate outer for current class, empty for local and top-level classes
     parentOuter: Map[ClassSymbol, Potentials]   // outers for direct parents
@@ -65,6 +65,18 @@ object Summary {
 
     /** Summary of a member field or method, with `this` and outers substituted */
     def summaryOf(member: Symbol)(implicit ctx: Context): Summary = ???
+
+    def outerFor(cls: ClassSymbol)(implicit env: Env): Potentials =
+      if (cls `eq` currentClass) currentOuter
+      else parentOuter.find((k, v) => k.derivesFrom(cls)) match {
+        case Some((parentCls, pots)) =>
+          val bottomClsSummary = env.summaryOf(parentCls)
+          val outerOuter: Potentials = currentOuter.map{ pot => Outer(pot, currentClass)(pot.source) }
+          val rebased: Potentials = currentOuter.flatMap { pot => Potentials.asSeenFrom(pots, pot, currentClass, outerOuter) }
+          val objPart = ObjectPart(thisValue, parentCls, rebased, bottomClsSummary.parentOuter)
+          objPart.outerFor(cls)
+        case None => ??? // impossible
+      }
 
     def show(implicit ctx: Context): String =
       "ObjectPart(this = " + thisValue.show + ","  + currentClass.name.show + ", outer = " + Potentials.show(currentOuter) +
