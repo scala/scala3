@@ -23,11 +23,7 @@ object Potentials {
     def source: Tree
   }
 
-  sealed trait RootPotential extends Potential {
-    def classSymbol: ClassSymbol
-  }
-
-  case class ThisRef(classSymbol: ClassSymbol)(val source: Tree) extends RootPotential {
+  case class ThisRef(classSymbol: ClassSymbol)(val source: Tree) extends Potential {
     val size: Int = 1
     def show(implicit ctx: Context): String = classSymbol.name.show + ".this"
   }
@@ -43,7 +39,7 @@ object Potentials {
    *  @param classSymbol  The concrete class of the object
    *  @param outer        The potential for `this` of the enclosing class
    */
-  case class Warm(classSymbol: ClassSymbol, outer: Potential)(val source: Tree) extends RootPotential {
+  case class Warm(classSymbol: ClassSymbol, outer: Potential)(val source: Tree) extends Potential {
     assert(outer.size <= 1, "outer size > 1, outer = " + outer)
 
     def size: Int = 1
