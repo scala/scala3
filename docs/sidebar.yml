@@ -107,6 +107,8 @@ sidebar:
               url: docs/reference/other-new-features/control-syntax.html
             - title: Optional Braces
               url: docs/reference/other-new-features/indentation.html
+            - title: Explicit Nulls
+              url: docs/reference/other-new-features/explicit-nulls.html
         - title: Other Changed Features
           subsection:
             - title: Numeric Literals
