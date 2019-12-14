@@ -22,7 +22,7 @@ import NameKinds.DefaultGetterName
 import ProtoTypes._
 import Inferencing._
 import transform.TypeUtils._
-import Nullables.given
+import Nullables.{postProcessByNameArgs, given}
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
@@ -794,7 +794,7 @@ trait Applications extends Compatibility {
   /** Subclass of Application for type checking an Apply node with untyped arguments. */
   class ApplyToUntyped(app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto, resultType: Type)(implicit ctx: Context)
   extends TypedApply(app, fun, methRef, proto.args, resultType) {
-    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal.widenExpr)
+    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
     def typeOfArg(arg: untpd.Tree): Type = proto.typeOfArg(arg)
   }
@@ -868,7 +868,8 @@ trait Applications extends Compatibility {
               else
                 new ApplyToUntyped(tree, fun1, funRef, proto, pt)(
                   given fun1.nullableInArgContext(given argCtx(tree)))
-            convertNewGenericArray(app.result).computeNullable()
+            convertNewGenericArray(
+              postProcessByNameArgs(funRef, app.result).computeNullable())
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }
@@ -1030,7 +1031,7 @@ trait Applications extends Compatibility {
    *  It is performed during typer as creation of generic arrays needs a classTag.
    *  we rely on implicit search to find one.
    */
-  def convertNewGenericArray(tree:  Tree)(implicit ctx: Context):  Tree = tree match {
+  def convertNewGenericArray(tree: Tree)(implicit ctx: Context):  Tree = tree match {
     case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
       fullyDefinedType(tree.tpe, "array", tree.span)
 

@@ -30,6 +30,7 @@ object Printers {
   val lexical: Printer = noPrinter
   val inlining: Printer = noPrinter
   val interactiv: Printer = noPrinter
+  val nullables: Printer = noPrinter
   val overload: Printer = noPrinter
   val patmatch: Printer = noPrinter
   val pickling: Printer = noPrinter
