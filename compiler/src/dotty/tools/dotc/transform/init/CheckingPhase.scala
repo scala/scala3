@@ -20,6 +20,9 @@ class Checker extends MiniPhase {
 
   override val runsAfter = Set(SetDefTree.name)
 
+  override def isEnabled(implicit ctx: Context): Boolean =
+    super.isEnabled && ctx.settings.YcheckInit.value
+
   override def transformTypeDef(tree: TypeDef)(implicit ctx: Context): tpd.Tree = {
     if (!tree.isClassDef) return tree
     val cls = tree.symbol.asClass
