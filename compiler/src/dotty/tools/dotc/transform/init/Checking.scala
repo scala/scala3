@@ -37,7 +37,7 @@ object Checking {
     parentsInited: mutable.Set[ClassSymbol],
     env: Env
   ) {
-    def withVisited(eff: Effect)(implicit ctx: Context): State = {
+    def withVisited(eff: Effect): State = {
       visited += eff
       copy(path = this.path :+ eff.source)
     }
@@ -49,7 +49,7 @@ object Checking {
       this.path.foreach { tree =>
         indentCount += 1
         val pos = tree.sourcePos
-        val line = "[ " + pos.source.file.toString + ":" + (pos.line + 1) + " ]"
+        val line = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
         if (last != line)
           sb.append(
             if (pos.source.exists)
@@ -84,8 +84,8 @@ object Checking {
           val (pots, effs) = Summarization.analyze(vdef.rhs)(ctx.withOwner(vdef.symbol))
           theEnv.summaryOf(cls).cacheFor(vdef.symbol, (pots, effs))
           if (!vdef.symbol.is(Flags.Lazy)) {
-            traceIndented(vdef.symbol.show + " initialized", init)
             checkEffects(effs)
+            traceIndented(vdef.symbol.show + " initialized", init)
             state.fieldsInited += vdef.symbol
           }
 
@@ -168,14 +168,14 @@ object Checking {
     }
   }
 
-  private def nonInitError(eff: Effect)(implicit state: State) = {
+  private def nonInitError(field: Symbol)(implicit state: State) = {
     traceIndented("initialized: " + state.fieldsInited, init)
 
     // should issue error, use warning so that it will continue compile subprojects
     theCtx.warning(
-      "Access non-initialized field " + eff.source.show +
+      "Access non-initialized field " + field.show +
       ". Calling trace:\n" + state.trace,
-      eff.source.sourcePos
+      field.sourcePos
     )
   }
 
@@ -189,6 +189,8 @@ object Checking {
 
   private def check(eff: Effect)(implicit state: State): Unit =
     if (!state.visited.contains(eff)) traceOp("checking effect " + eff.show, init) {
+      implicit val state2: State = state.withVisited(eff)
+
       eff match {
         case Leak(pot) =>
           pot match {
@@ -215,14 +217,12 @@ object Checking {
               )
 
             case Fun(pots, effs) =>
-              val state2 = state.withVisited(eff)
-              effs.foreach { check(_)(state2) }
-              pots.foreach { pot => check(Leak(pot)(eff.source))(state2) }
+              effs.foreach { check(_) }
+              pots.foreach { pot => check(Leak(pot)(eff.source)) }
 
             case pot =>
-              val state2 = state.withVisited(eff)
               val pots = expand(pot)
-              pots.foreach { pot => check(Leak(pot)(eff.source))(state2) }
+              pots.foreach { pot => check(Leak(pot)(eff.source)) }
           }
 
         case FieldAccess(pot, field) =>
@@ -233,13 +233,13 @@ object Checking {
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
               val target = resolve(cls, field)
-              if (!state.fieldsInited.contains(target)) nonInitError(eff)
+              if (!state.fieldsInited.contains(target)) nonInitError(target)
 
             case SuperRef(ThisRef(cls), supercls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
               val target = resolveSuper(cls, supercls, field)
-              if (!state.fieldsInited.contains(target)) nonInitError(eff)
+              if (!state.fieldsInited.contains(target)) nonInitError(target)
 
             case Warm(cls, outer) =>
               // all fields of warm values are initialized
@@ -255,9 +255,8 @@ object Checking {
               throw new Exception("Unexpected effect " + eff.show)
 
             case pot =>
-              val state2 = state.withVisited(eff)
               val pots = expand(pot)
-              pots.foreach { pot => check(FieldAccess(pot, field)(eff.source))(state2) }
+              pots.foreach { pot => check(FieldAccess(pot, field)(eff.source)) }
           }
 
         case MethodCall(pot, sym) =>
@@ -268,8 +267,7 @@ object Checking {
               val target = resolve(cls, sym)
               if (target.isInternal) { // tests/init/override17.scala
                 val effs = thisRef.effectsOf(target)
-                val state2 = state.withVisited(eff)
-                effs.foreach { check(_)(state2) }
+                effs.foreach { check(_) }
               }
               else externalCallError(target, eff.source)
 
@@ -279,8 +277,7 @@ object Checking {
               val target = resolveSuper(cls, supercls, sym)
               if (target.isInternal) {
                 val effs = thisRef.effectsOf(target)
-                val state2 = state.withVisited(eff)
-                effs.foreach { check(_)(state2) }
+                effs.foreach { check(_) }
               }
               else externalCallError(target, eff.source)
 
@@ -289,8 +286,7 @@ object Checking {
 
               if (target.isInternal) {
                 val effs = warm.effectsOf(target)
-                val state2 = state.withVisited(eff)
-                effs.foreach { check(_)(state2) }
+                effs.foreach { check(_) }
               }
               else externalCallError(target, eff.source)
 
@@ -304,17 +300,15 @@ object Checking {
             case Fun(pots, effs) =>
               // TODO: assertion might be false, due to SAM
               if (sym.name.toString == "apply") {
-                val state2 = state.withVisited(eff)
-                effs.foreach { check(_)(state2) }
-                pots.foreach { pot => check(Leak(pot)(eff.source))(state2) }
+                effs.foreach { check(_) }
+                pots.foreach { pot => check(Leak(pot)(eff.source)) }
               }
               // curried, tupled, toString are harmless
 
             case pot =>
-              val state2 = state.withVisited(eff)
               val pots = expand(pot)
               pots.foreach { pot =>
-                check(MethodCall(pot, sym)(eff.source))(state2)
+                check(MethodCall(pot, sym)(eff.source))
               }
           }
       }
