@@ -222,6 +222,7 @@ object Summarization {
 
   def analyzeMethod(sym: Symbol)(implicit env: Env): Summary = {
     val ddef = sym.defTree.asInstanceOf[DefDef]
+    traceIndented(sym.show + " = " + ddef.show, init)
     analyze(ddef.rhs)(env.withOwner(sym))
   }
 
@@ -253,7 +254,11 @@ object Summarization {
                 implicit val ctx2: Context = theCtx.withSource(cls.source(theCtx))
                 TypeTree(parentTp).withSpan(cls.span)
               }
-              parentTp.classSymbol.asClass -> analyze(parentTp.prefix, source)._1
+              val parentCls = parentTp.classSymbol.asClass
+              if (parentTp.prefix != NoPrefix)
+                parentCls -> analyze(parentTp.prefix, source)._1
+              else
+                parentCls -> analyze(cls.enclosingClass.thisType, source)._1
           }
 
           ClassSummary(cls, parentOuter.toMap)
@@ -264,7 +269,12 @@ object Summarization {
 
       val parentOuter: List[(ClassSymbol, Potentials)] = parents.map { parent =>
         val tref = parent.tpe.typeConstructor.asInstanceOf[TypeRef]
-        tref.classSymbol.asClass -> analyze(tref.prefix, parent)._1
+        val parentCls = tref.classSymbol.asClass
+        if (tref.prefix != NoPrefix)
+          parentCls ->analyze(tref.prefix, parent)._1
+        else
+          parentCls -> analyze(cls.enclosingClass.thisType, parent)._1
+
       }
 
       ClassSummary(cls, parentOuter.toMap)
