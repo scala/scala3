@@ -1,0 +1,7 @@
+-- Error: /Users/fliu/Documents/scala-init-checker/tests/crash/fors.scala:7:7 ------------------------------------------
+7 |object Test extends App {
+  |       ^
+  |       Leaking of this. Calling trace:
+  |        -> object Test extends App {	[ /Users/fliu/Documents/scala-init-checker/tests/crash/fors.scala:7 ]
+one error found
+there were 22 deprecation warning(s); re-run with -deprecation for details

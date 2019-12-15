@@ -1,0 +1,6 @@
+-- Error: /Users/fliu/Documents/scala-init-checker/tests/crash/i5606.scala:1:7 -----------------------------------------
+1 |object Test extends App {
+  |       ^
+  |       Leaking of this. Calling trace:
+  |        -> object Test extends App {	[ /Users/fliu/Documents/scala-init-checker/tests/crash/i5606.scala:1 ]
+one error found

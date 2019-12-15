@@ -1,0 +1,6 @@
+-- Error: /Users/fliu/Documents/scala-init-checker/tests/crash/explicitOuter.scala:52:7 --------------------------------
+52 |object Test extends App {
+   |       ^
+   |   Leaking of this. Calling trace:
+   |    -> object Test extends App {	[ /Users/fliu/Documents/scala-init-checker/tests/crash/explicitOuter.scala:52 ]
+one error found

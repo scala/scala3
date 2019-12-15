@@ -1,0 +1,5 @@
+-- Error: /Users/fliu/Documents/scala-init-checker/tests/freedom/outer.scala:3:17 --------------------------------------
+3 |    val b: Int = a * 10   // always treat outer as initialized, thus allow `A.this.a`
+  |                 ^
+  |                 [initialization] calling method A$B$$$outer on this
+one error found

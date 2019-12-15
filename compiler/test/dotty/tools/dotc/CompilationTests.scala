@@ -294,6 +294,23 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsRun")
     compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions)
   }.checkRuns()
+
+  // initialization tests
+  @Test def checkInitNeg: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("checkInit")
+    val options = defaultOptions.and("-Ycheck-init", "-Xfatal-warnings")
+    aggregateTests(
+      compileFilesInDir("tests/init/neg/parent-child", options),
+      compileFilesInDir("tests/init/neg/inner-outer", options),
+      compileFilesInDir("tests/init/neg/soundness", options),
+      compileFilesInDir("tests/init/neg/features", options),
+      compileFilesInDir("tests/init/neg/misc", options),
+      compileFilesInDir("tests/init/neg/functions", options),
+      compileFilesInDir("tests/init/neg/hybrid", options),
+      compileFilesInDir("tests/init/neg/crash", options),
+    )
+  }.checkExpectedErrors()
+
 }
 
 object CompilationTests {
