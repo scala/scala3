@@ -142,6 +142,8 @@ object Potentials {
     ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
       if (pot.size > 1)
         (pots, effs + Leak(pot)(source))
+      else if (symbol.isConstructor)
+        (pots, effs + MethodCall(pot, symbol)(source))
       else if (symbol.isOneOf(Flags.Method | Flags.Lazy))
           (
             pots + MethodReturn(pot, symbol)(source),
