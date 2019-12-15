@@ -3,6 +3,8 @@ package transform
 package init
 
 import ast.tpd._
+import reporting.trace
+import config.Printers.init
 import core.Types._
 import core.Symbols._
 import core.Contexts._
@@ -44,7 +46,7 @@ object Effects {
   def (eff: Effect) toEffs: Effects = Effects.empty + eff
 
   def asSeenFrom(eff: Effect, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
-    eff match {
+    trace(eff.show + " asSeenFrom " + thisValue.show + ", outer = " + Potentials.show(outer), init, effs => show(effs.asInstanceOf[Effects])) { eff match {
       case Leak(pot) =>
         Potentials.asSeenFrom(pot, thisValue, currentClass, outer).leak(eff.source)
 
@@ -57,7 +59,7 @@ object Effects {
         Potentials.asSeenFrom(pot, thisValue, currentClass, outer).map { pot =>
           MethodCall(pot, sym)(eff.source)
         }
-    }
+    } }
 
   def asSeenFrom(effs: Effects, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
     effs.flatMap(asSeenFrom(_, thisValue, currentClass, outer))

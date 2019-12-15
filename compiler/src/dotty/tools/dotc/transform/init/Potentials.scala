@@ -5,6 +5,9 @@ package init
 import scala.collection.mutable
 
 import ast.tpd._
+import reporting.trace
+import config.Printers.init
+
 import core._
 import Types._, Symbols._, Contexts._
 
@@ -153,7 +156,7 @@ object Potentials {
   def (ps: Potentials) leak(source: Tree): Effects = ps.map(Leak(_)(source))
 
   def asSeenFrom(pot: Potential, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potentials =
-    pot match {
+    trace(pot.show + " asSeenFrom " + thisValue.show + ", outer = " + show(outer), init, pots => show(pots.asInstanceOf[Potentials])) { pot match {
       case MethodReturn(pot1, sym) =>
         val pots = asSeenFrom(pot1, thisValue, currentClass, outer)
         pots.map { MethodReturn(_, sym)(pot.source) }
@@ -199,7 +202,7 @@ object Potentials {
       case SuperRef(pot, supercls) =>
         val pots = asSeenFrom(pot, thisValue, currentClass, outer)
         pots.map { SuperRef(_, supercls)(pot.source) }
-    }
+    } }
 
   def asSeenFrom(pots: Potentials, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potentials =
     pots.flatMap(asSeenFrom(_, thisValue, currentClass, outer))

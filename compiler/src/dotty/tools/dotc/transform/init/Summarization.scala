@@ -45,8 +45,17 @@ object Summarization {
         }
 
       case _: This =>
-        val cls = expr.tpe.widen.classSymbol.asClass
-        Summary.empty + ThisRef(cls)(expr)
+        // With self type, the type can be `A & B`.
+        def classes(tp: Type): Set[ClassSymbol] = tp.widen match {
+          case AndType(tp1, tp2)  =>
+            classes(tp1) ++ classes(tp2)
+
+          case tp =>
+            Set(tp.classSymbol.asClass)
+        }
+
+        val pots: Potentials = classes(expr.tpe).map{ ThisRef(_)(expr) }
+        (pots, Effects.empty)
 
       case Apply(fun, args) =>
         val summary = analyze(fun)
