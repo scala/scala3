@@ -718,7 +718,7 @@ trait Checking {
       val conv =
         if (sym.isOneOf(GivenOrImplicit) || sym.info.isErroneous) sym
         else {
-          assert(sym.name == nme.apply)
+          assert(sym.name == nme.apply || ctx.reporter.errorsReported)
           sym.owner
         }
       val conversionOK =
