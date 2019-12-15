@@ -114,7 +114,7 @@ object Potentials {
   }
 
   case class FieldReturn(potential: Potential, field: Symbol)(val source: Tree) extends Potential {
-    def size: Int = potential.size
+    def size: Int = potential.size + 1
     def show(implicit ctx: Context): String = potential.show + "." + field.name.show
   }
 
