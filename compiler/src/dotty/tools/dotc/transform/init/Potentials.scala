@@ -62,10 +62,8 @@ object Potentials {
    *  @param outer        The potential for `this` of the enclosing class
    */
   case class Warm(classSymbol: ClassSymbol, outer: Potential)(val source: Tree) extends Potential {
-    assert(outer.size <= 1, "outer size > 1, outer = " + outer)
-
     def size: Int = 1
-    def show(implicit ctx: Context): String = "Warm[" + classSymbol.show + "]"
+    def show(implicit ctx: Context): String = "Warm[" + classSymbol.show + ", outer = " + outer.show + "]"
 
     /** Effects of a method call or a lazy val access
      *
@@ -156,7 +154,7 @@ object Potentials {
   def (ps: Potentials) leak(source: Tree): Effects = ps.map(Leak(_)(source))
 
   def asSeenFrom(pot: Potential, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potentials =
-    trace(pot.show + " asSeenFrom " + thisValue.show + ", outer = " + show(outer), init, pots => show(pots.asInstanceOf[Potentials])) { pot match {
+    trace(pot.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show + ", outer = " + show(outer), init, pots => show(pots.asInstanceOf[Potentials])) { pot match {
       case MethodReturn(pot1, sym) =>
         val pots = asSeenFrom(pot1, thisValue, currentClass, outer)
         pots.map { MethodReturn(_, sym)(pot.source) }
@@ -175,7 +173,7 @@ object Potentials {
         else if (cls.is(Flags.Package))
           Potentials.empty
         else {
-          val outerCls = currentClass.enclosingClass.asClass
+          val outerCls = currentClass.owner.enclosingClass.asClass
           outer.flatMap { out =>
             asSeenFrom(pot, out, outerCls, Outer(out, outerCls)(out.source).toPots)
           }
