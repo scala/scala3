@@ -311,6 +311,12 @@ class CompilationTests extends ParallelTesting {
     )
   }.checkExpectedErrors()
 
+  @Test def checkInitPos: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("checkInit")
+    val options = defaultOptions.and("-Ycheck-init", "-Xfatal-warnings")
+    compileFilesInDir("tests/init/pos", options)
+  }.checkCompile()
+
 }
 
 object CompilationTests {
