@@ -104,14 +104,6 @@ object Checking {
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
 
-    def checkParentArgs(stats: List[Tree])(implicit ctx: Context): Unit =
-      stats.foreach { stat =>
-        val (_, effs) = Summarization.analyze(stat)
-        // access to class parameters are final instead of virtual, thus use `cls` instead of `state.thisClass`
-        val rebased = Effects.asSeenFrom(effs, ThisRef(cls)(null), cls, Potentials.empty)
-        rebased.foreach { check(_) }
-      }
-
     def checkCtor(ctor: Symbol, tp: Type, source: Tree)(implicit ctx: Context): Unit = {
       val cls = ctor.owner
       val classDef = cls.defTree
@@ -131,22 +123,16 @@ object Checking {
     }
 
     tpl.parents.foreach {
-      case tree @ Block(stats, parent) =>
-        val (ctor, _, argss) = decomposeCall(parent)
-        // checkParentArgs(stats)
-        // checkParentArgs(argss.flatten)
+      case tree @ Block(_, parent) =>
+        val (ctor, _, _) = decomposeCall(parent)
         checkCtor(ctor.symbol, parent.tpe, tree)
 
-      case tree @ Apply(Block(stats, parent), args) =>
-        val (ctor, _, argss) = decomposeCall(parent)
-        // checkParentArgs(stats)
-        // checkParentArgs(args)
-        // checkParentArgs(argss.flatten)
+      case tree @ Apply(Block(_, parent), _) =>
+        val (ctor, _, _) = decomposeCall(parent)
         checkCtor(ctor.symbol, tree.tpe, tree)
 
       case parent : Apply =>
         val (ctor, _, argss) = decomposeCall(parent)
-        // checkParentArgs(argss.flatten)
         checkCtor(ctor.symbol, parent.tpe, parent)
 
       case ref =>
@@ -304,7 +290,7 @@ object Checking {
                 val effs = warm.effectsOf(target)
                 effs.foreach { check(_) }
               }
-              else externalCallError(target, eff.source)
+              else if (!sym.isConstructor) externalCallError(target, eff.source)
 
             case _: Cold =>
               theCtx.warning(
