@@ -1359,7 +1359,8 @@ object Scanners {
 
   case class InBraces(var width: IndentWidth | Null, outer: Region)
   extends IndentSignificantRegion {
-    override def indentWidth = width
+    override def indentWidth =
+      if width == null then IndentWidth.Zero else width
   }
 
   /** A class describing an indentation region.
