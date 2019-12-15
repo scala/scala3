@@ -13,8 +13,8 @@ class SetDefTree extends MiniPhase {
   override val phaseName: String = SetDefTree.name
   override val runsAfter = Set(Pickler.name)
 
-    // don't allow plugins to change tasty
-    // research plugins can still change the phase plan at will
+  override def isEnabled(implicit ctx: Context): Boolean =
+    super.isEnabled && ctx.settings.YcheckInit.value
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     val ctx2 = ctx.fresh.setSetting(ctx.settings.YretainTrees, true)
