@@ -236,8 +236,42 @@ object Summarization {
   def analyzeConstructor(ctor: Symbol)(implicit env: Env): Summary =
   trace("summarizing constructor " + ctor.owner.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
     if (ctor.isPrimaryConstructor) {
+      val cls = ctor.owner.asClass
       val tpl = ctor.owner.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-      analyze(Block(tpl.body, unitLiteral))
+      val effs = analyze(Block(tpl.body, unitLiteral))._2
+
+      def parentArgEffs(stats: List[Tree]): Effects =
+        stats.foldLeft(Effects.empty) { (acc, stat) =>
+          val (_, effs) = Summarization.analyze(stat)
+          acc ++ effs
+        }
+
+      val effsAll = tpl.parents.foldLeft(effs) { (effs, parent) =>
+        effs ++ (parent match {
+          case tree @ Block(stats, parent) =>
+            val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
+            parentArgEffs(qual :: stats ++ argss.flatten) +
+              MethodCall(ThisRef(cls)(tree), ctor.symbol)(tree)
+
+          case tree @ Apply(Block(stats, parent), args) =>
+            val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
+            parentArgEffs(qual :: stats ++ args ++ argss.flatten) +
+              MethodCall(ThisRef(cls)(tree), ctor.symbol)(tree)
+
+          case parent : Apply =>
+            val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
+            parentArgEffs(qual :: argss.flatten) +
+              MethodCall(ThisRef(cls)(parent), ctor.symbol)(parent)
+
+          case ref =>
+            val tref: TypeRef = ref.tpe.typeConstructor.asInstanceOf
+            val ctor = tref.classSymbol.asClass.primaryConstructor
+            Summarization.analyze(tref.prefix, ref)._2 +
+              MethodCall(ThisRef(cls)(ref), ctor)(ref)
+        })
+      }
+
+      (Potentials.empty, effsAll)
     }
     else {
       val ddef = ctor.defTree.asInstanceOf[DefDef]

@@ -22,7 +22,7 @@ object Util {
     !symbol.defTree.isEmpty
 
   def resolve(cls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol =
-    if (sym.isEffectivelyFinal) sym
+    if (sym.isEffectivelyFinal || sym.isConstructor) sym
     else sym.matchingMember(cls.typeRef)
 
   def resolveSuper(cls: ClassSymbol, superCls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol =
