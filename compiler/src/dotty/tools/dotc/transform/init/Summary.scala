@@ -10,7 +10,7 @@ import Symbols._
 import reporting.trace
 import config.Printers.init
 
-import Potentials._, Effects._
+import Potentials._, Effects._, Util._
 
 object Summary {
   type Summary = (Potentials, Effects)
@@ -24,6 +24,7 @@ object Summary {
     private val summaryCache: mutable.Map[Symbol, Summary] = mutable.Map.empty
 
     def cacheFor(member: Symbol, summary: Summary)(implicit ctx: Context): Unit = {
+      traceIndented("cache for " + member.show + ", summary = " + Summary.show(summary), init)
       assert(member.owner == currentClass, "owner = " + member.owner.show + ", current = " + currentClass.show)
       summaryCache(member) = summary
     }
