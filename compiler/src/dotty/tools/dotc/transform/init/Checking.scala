@@ -148,7 +148,7 @@ object Checking {
         checkCtor(ctor.symbol, parent.tpe, parent)
 
       case ref =>
-        val cls = ref.symbol.asClass
+        val cls = ref.tpe.classSymbol.asClass
         if (!state.parentsInited.contains(cls))
           checkCtor(cls.primaryConstructor, ref.tpe, ref)
     }
