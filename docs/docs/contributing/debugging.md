@@ -91,16 +91,16 @@ assertPositioned(tree.reporting(s"Tree is: $result"))
 `def (a: A) reporting(f: given WrappedResult[T] => String, p: Printer = Printers.default): A` is defined on all types. The function `f` can be written without the argument since the argument is `given`. The `result` variable is a part of the `WrapperResult` – a tiny framework powering the `reporting` function. Basically, whenever you are using `reporting` on an object `A`, you can use the `result: A` variable from this function and it will be equal to the object you are calling `reporting` on.
 
 ## Printing out trees after phases
-To print out the trees you are compiling after Frontend (scanner, parser, namer, typer) phase:
+To print out the trees you are compiling after the FrontEnd (scanner, parser, namer, typer) phases:
 
 ```shell
-dotc -Xprint:frontend ../issues/Playground.scala
+dotc -Xprint:typer ../issues/Playground.scala
 ```
 
 To print out the trees after Frontend and CollectSuperCalls phases:
 
 ```shell
-dotc -Xprint:frontend,collectSuperCalls ../issues/Playground.scala
+dotc -Xprint:typer,collectSuperCalls ../issues/Playground.scala
 ```
 
 To print out the trees after all phases:
@@ -176,7 +176,7 @@ And is to be used as:
 dotc -Yprint-pos  ../issues/Playground.scala
 ```
 
-If used, all the trees output with `show` or via `-Xprint:frontend` will also have positions attached to them, e.g.:
+If used, all the trees output with `show` or via `-Xprint:typer` will also have positions attached to them, e.g.:
 
 ```scala
 package <empty>@<Playground.scala:1> {
@@ -204,7 +204,7 @@ package <empty>@<Playground.scala:1> {
 Every [Positioned](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Positioned.scala) (a parent class of `Tree`) object has a `uniqueId` field. It is an integer that is unique for that tree and doesn't change from compile run to compile run. You can output these IDs from any printer (such as the ones used by `.show` and `-Xprint`) via `-Yshow-tree-ids` flag, e.g.:
 
 ```shell
-dotc -Xprint:frontend -Yshow-tree-ids  ../issues/Playground.scala
+dotc -Xprint:typer -Yshow-tree-ids  ../issues/Playground.scala
 ```
 
 Gives:
@@ -363,4 +363,4 @@ trace.force(i"typing $tree", typr, show = true) { // ...
 ```
 
 ### Reporter
-Defined in [Reporter.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/Reporter.scala). Enables calls such as `ctx.log`, `ctx.error` etc. To enable, run dotc with `-Ylog:frontend` option.
+Defined in [Reporter.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/Reporter.scala). Enables calls such as `ctx.log`, `ctx.error` etc. To enable, run dotc with `-Ylog:typer` option.
