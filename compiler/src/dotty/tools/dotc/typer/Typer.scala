@@ -1104,10 +1104,9 @@ class Typer extends Namer
                 TypeTree(targetTpe)
               case _ =>
                 if (mt.isParamDependent)
-                  throw new java.lang.Error(
+                  errorTree(tree,
                     i"""internal error: cannot turn method type $mt into closure
-                     |because it has internal parameter dependencies,
-                     |position = ${tree.span}, raw type = ${mt.toString}""") // !!! DEBUG. Eventually, convert to an error?
+                     |because it has internal parameter dependencies""")
                 else if ((tree.tpt `eq` untpd.ContextualEmptyTree) && mt.paramNames.isEmpty)
                   // Note implicitness of function in target type since there are no method parameters that indicate it.
                   TypeTree(defn.FunctionOf(Nil, mt.resType, isContextual = true, isErased = false))
