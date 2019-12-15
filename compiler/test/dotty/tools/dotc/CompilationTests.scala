@@ -300,10 +300,7 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("checkInit")
     val options = defaultOptions.and("-Ycheck-init", "-Xfatal-warnings")
     aggregateTests(
-      compileFilesInDir("tests/init/neg/parent-child", options),
-      compileFilesInDir("tests/init/neg/inner-outer", options),
-      compileFilesInDir("tests/init/neg/soundness", options),
-      compileFilesInDir("tests/init/neg/features", options),
+      compileFilesInDir("tests/init/neg/", options),
       compileFilesInDir("tests/init/neg/misc", options),
       compileFilesInDir("tests/init/neg/functions", options),
       compileFilesInDir("tests/init/neg/hybrid", options),
