@@ -34,7 +34,7 @@ object Potentials {
      *
      *  It assumes all the outer `this` are fully initialized.
      */
-    def effectsOf(sym: Symbol)(implicit env: Env): Effects = {
+    def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
       val effs = env.summaryOf(cls).effectsOf(sym)
       Effects.asSeenFrom(effs, this, cls, Potentials.empty)
@@ -43,7 +43,7 @@ object Potentials {
     /** Potentials of a field, a method call or a lazy val access
      *
      */
-    def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = {
+    def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = trace("potentials of " + sym.show, init, r => Potentials.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
       val pots = env.summaryOf(cls).potentialsOf(sym)
       Potentials.asSeenFrom(pots, this, cls, Potentials.empty)
@@ -69,7 +69,7 @@ object Potentials {
      *
      *  The method performs prefix and outer substitution
      */
-    def effectsOf(sym: Symbol)(implicit env: Env): Effects = {
+    def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
       val effs = env.summaryOf(cls).effectsOf(sym)
       val outer = Outer(this, cls)(this.source)
@@ -80,7 +80,7 @@ object Potentials {
      *
      *  The method performs prefix and outer substitution
      */
-    def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = {
+    def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = trace("potentials of " + sym.show, init, r => Potentials.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
       val pots = env.summaryOf(cls).potentialsOf(sym)
       val outer = Outer(this, cls)(this.source)
@@ -143,7 +143,7 @@ object Potentials {
       if (pot.size > 1)
         (pots, effs + Leak(pot)(source))
       else if (symbol.isConstructor)
-        (pots, effs + MethodCall(pot, symbol)(source))
+        (pots + pot, effs + MethodCall(pot, symbol)(source))
       else if (symbol.isOneOf(Flags.Method | Flags.Lazy))
           (
             pots + MethodReturn(pot, symbol)(source),
