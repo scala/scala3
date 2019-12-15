@@ -61,7 +61,7 @@ class DocstringTests extends DocstringTest {
       |class Class2(val x: String)
       """.stripMargin
 
-    checkCompile("frontend", source) { (_, ctx) =>
+    checkCompile("typer", source) { (_, ctx) =>
       ctx.compilationUnit.untpdTree match {
         case PackageDef(_, Seq(c1 @ TypeDef(_,_), c2 @ TypeDef(_,_))) => {
           checkDocString(c1.rawComment.map(_.raw), "/** Class1 docstring */")

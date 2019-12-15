@@ -23,7 +23,7 @@ class CreateCompanionObjectsTest extends DottyTest {
   type PostTyperTransformer = TreeTransformer // FIXME do without
 
   @Test
-  def shouldCreateNonExistingObjectsInPackage = checkCompile("frontend", "class A{} ") {
+  def shouldCreateNonExistingObjectsInPackage = checkCompile("typer", "class A{} ") {
     (tree, context) =>
       implicit val ctx = context
 
@@ -49,7 +49,7 @@ class CreateCompanionObjectsTest extends DottyTest {
   }
 
   @Test
-  def shouldCreateNonExistingObjectsInBlock = checkCompile("frontend", "class D {def p = {class A{}; 1}} ") {
+  def shouldCreateNonExistingObjectsInBlock = checkCompile("typer", "class D {def p = {class A{}; 1}} ") {
     (tree, context) =>
       implicit val ctx = context
       val transformer = new PostTyperTransformer {
@@ -74,7 +74,7 @@ class CreateCompanionObjectsTest extends DottyTest {
   }
 
   @Test
-  def shouldCreateNonExistingObjectsInTemplate = checkCompile("frontend", "class D {class A{}; } ") {
+  def shouldCreateNonExistingObjectsInTemplate = checkCompile("typer", "class D {class A{}; } ") {
     (tree, context) =>
       implicit val ctx = context
       val transformer = new PostTyperTransformer {
@@ -98,7 +98,7 @@ class CreateCompanionObjectsTest extends DottyTest {
   }
 
   @Test
-  def shouldCreateOnlyIfAskedFor = checkCompile("frontend", "class DONT {class CREATE{}; } ") {
+  def shouldCreateOnlyIfAskedFor = checkCompile("typer", "class DONT {class CREATE{}; } ") {
     (tree, context) =>
       implicit val ctx = context
       val transformer = new PostTyperTransformer {
