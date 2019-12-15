@@ -27,7 +27,7 @@ When explicit nulls are enabled, the type hierarchy changes so that `Null` is su
 `Any`, as opposed to every reference type.
 
 This is the new type hierarchy:
-![](../../images/explicit-nulls/explicit-nulls-type-hierarchy.png "Type Hierarchy for Explicit Nulls")
+![](../../../images/explicit-nulls/explicit-nulls-type-hierarchy.png "Type Hierarchy for Explicit Nulls")
 
 After erasure, `Null` remains a subtype of all reference types (as forced by the JVM).
 
