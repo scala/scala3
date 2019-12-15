@@ -274,7 +274,9 @@ object Checking {
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
               val target = resolve(cls, sym)
-              if (target.isInternal) { // tests/init/override17.scala
+              if (!target.is(Flags.Method))
+                check(FieldAccess(pot, target)(eff.source))
+              else if (target.isInternal) {
                 val effs = thisRef.effectsOf(target)
                 effs.foreach { check(_) }
               }
@@ -284,6 +286,8 @@ object Checking {
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
               val target = resolveSuper(cls, supercls, sym)
+              if (!target.is(Flags.Method))
+                check(FieldAccess(pot, target)(eff.source))
               if (target.isInternal) {
                 val effs = thisRef.effectsOf(target)
                 effs.foreach { check(_) }
