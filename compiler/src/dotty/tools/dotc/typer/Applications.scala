@@ -1638,11 +1638,6 @@ trait Applications extends Compatibility {
     val candidates = pt match {
       case pt @ FunProto(args, resultType) =>
         val numArgs = args.length
-        val normArgs = args.mapConserve {
-          case Block(Nil, expr) => expr
-          case x => x
-        }
-
         def sizeFits(alt: TermRef): Boolean = alt.widen.stripPoly match {
           case tp: MethodType =>
             val ptypes = tp.paramInfos
@@ -1661,6 +1656,27 @@ trait Applications extends Compatibility {
           alts.filter(sizeFits(_))
 
         def narrowByShapes(alts: List[TermRef]): List[TermRef] =
+        
+          /** Normalization steps before shape-checking arguments:
+           *
+           *                 { expr }   -->   expr
+           *    (x1, ..., xn) => expr   -->   ((x1, ..., xn)) => expr
+           *       if n > 1, no alternative takes `n` parameters,
+           *       and at least one alternative takes 1 parameter.
+           */
+          def normArg(arg: untpd.Tree): untpd.Tree = arg match
+            case Block(Nil, expr) => normArg(expr)
+            case x @ untpd.Function(args, body) =>
+              val numArgs = args.length
+              def paramCount(ref: TermRef) = ref.widen.firstParamTypes.length
+              if numArgs > 1
+                 && !alts.exists(paramCount(_) == numArgs)
+                 && alts.exists(paramCount(_) == 1)
+              then untpd.Function(untpd.Tuple(args) :: Nil, body)
+              else arg
+            case _ => arg
+
+          val normArgs = args.mapConserve(normArg)
           if (normArgs exists untpd.isFunctionWithUnknownParamType)
             if (hasNamedArg(args)) narrowByTrees(alts, args map treeShape, resultType)
             else narrowByTypes(alts, normArgs map typeShape, resultType)
