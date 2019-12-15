@@ -150,13 +150,18 @@ object desugar {
    *    def x: Int = expr
    *    def x_=($1: <TypeTree()>): Unit = ()
    *
-   *  Generate the setter only for non-private class members and all trait members.
+   *  Generate the setter only for
+   *    - non-private class members
+   *    - all trait members
+   *    - all package object members
    */
   def valDef(vdef0: ValDef)(implicit ctx: Context): Tree = {
     val vdef @ ValDef(name, tpt, rhs) = transformQuotedPatternName(vdef0)
     val mods = vdef.mods
     val setterNeeded =
-      mods.is(Mutable) && ctx.owner.isClass && (!mods.is(Private) || ctx.owner.is(Trait))
+      mods.is(Mutable)
+      && ctx.owner.isClass
+      && (!mods.is(Private) || ctx.owner.is(Trait) || ctx.owner.isPackageObject)
     if (setterNeeded) {
       // TODO: copy of vdef as getter needed?
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
