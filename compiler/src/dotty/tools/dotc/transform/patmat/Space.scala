@@ -314,7 +314,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1).
     if (!ctx.explicitNulls && (tp1.isNullType || tp2.isNullType)) {
       // Since projections of types don't include null, intersection with null is empty.
-      return Empty
+      Empty
     }
     else {
       val res = ctx.typeComparer.provablyDisjoint(tp1, tp2)
