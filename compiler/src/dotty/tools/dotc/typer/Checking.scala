@@ -716,7 +716,7 @@ trait Checking {
   def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit =
     if (sym.exists) {
       val conv =
-        if (sym.isOneOf(GivenOrImplicit)) sym
+        if (sym.isOneOf(GivenOrImplicit) || sym.info.isErroneous) sym
         else {
           assert(sym.name == nme.apply)
           sym.owner
