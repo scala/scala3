@@ -104,10 +104,12 @@ object Checking {
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
 
-    def checkStats(stats: List[Tree])(implicit ctx: Context): Unit =
+    def checkParentArgs(stats: List[Tree])(implicit ctx: Context): Unit =
       stats.foreach { stat =>
         val (_, effs) = Summarization.analyze(stat)
-        checkEffects(effs)
+        // access to class parameters are final instead of virtual, thus use `cls` instead of `state.thisClass`
+        val rebased = Effects.asSeenFrom(effs, ThisRef(cls)(null), cls, Potentials.empty)
+        rebased.foreach { check(_) }
       }
 
     def checkCtor(ctor: Symbol, tp: Type, source: Tree)(implicit ctx: Context): Unit = {
@@ -131,20 +133,20 @@ object Checking {
     tpl.parents.foreach {
       case tree @ Block(stats, parent) =>
         val (ctor, _, argss) = decomposeCall(parent)
-        checkStats(stats)
-        checkStats(argss.flatten)
+        // checkParentArgs(stats)
+        // checkParentArgs(argss.flatten)
         checkCtor(ctor.symbol, parent.tpe, tree)
 
       case tree @ Apply(Block(stats, parent), args) =>
         val (ctor, _, argss) = decomposeCall(parent)
-        checkStats(stats)
-        checkStats(args)
-        checkStats(argss.flatten)
+        // checkParentArgs(stats)
+        // checkParentArgs(args)
+        // checkParentArgs(argss.flatten)
         checkCtor(ctor.symbol, tree.tpe, tree)
 
       case parent : Apply =>
         val (ctor, _, argss) = decomposeCall(parent)
-        checkStats(argss.flatten)
+        // checkParentArgs(argss.flatten)
         checkCtor(ctor.symbol, parent.tpe, parent)
 
       case ref =>
