@@ -255,7 +255,7 @@ object Summarization {
 
       val parentOuter: List[(ClassSymbol, Potentials)] = parents.map { parent =>
         val tref = parent.tpe.typeConstructor.asInstanceOf[TypeRef]
-        parent.symbol.asClass -> analyze(tref.prefix, parent)._1
+        tref.classSymbol.asClass -> analyze(tref.prefix, parent)._1
       }
 
       ClassSummary(cls, parentOuter.toMap)
