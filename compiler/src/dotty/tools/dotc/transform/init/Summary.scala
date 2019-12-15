@@ -47,8 +47,8 @@ object Summary {
     def potentialsOf(member: Symbol)(implicit env: Env): Potentials = summaryOf(member)._1
 
     def show(implicit ctx: Context): String =
-      "ObjectPart(" + currentClass.name.show +
-        "parents = {" + parentOuter.map { case (k, v) => k.show + "->" + "[" + Potentials.show(v) + "]" } + "}"
+      "ClassSummary(" + currentClass.name.show +
+        ", parents = {" + parentOuter.map { case (k, v) => k.show + "->" + "[" + Potentials.show(v) + "]" } + "}"
   }
 
   /** Part of object.
