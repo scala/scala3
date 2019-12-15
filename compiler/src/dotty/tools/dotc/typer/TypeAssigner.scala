@@ -570,7 +570,7 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: List[Tree])(implicit ctx: Context): AppliedTypeTree = {
-    assert(!hasNamedArg(args))
+    assert(!hasNamedArg(args) || ctx.reporter.errorsReported, tree)
     val tparams = tycon.tpe.typeParams
     val ownType =
       if (sameLength(tparams, args))
