@@ -107,7 +107,8 @@ object Summarization {
         (Potentials.empty, pots.leak(expr) ++ effs)
 
       case closureDef(ddef) =>     // must be before `Block`
-        analyze(ddef.rhs)
+        val (pots, effs) = analyze(ddef.rhs)
+        Summary.empty + Fun(pots, effs)(expr)
 
       case Block(stats, expr) =>
         val effs = stats.foldLeft(Effects.empty) { (acc, stat) => acc ++ analyze(stat)._2 }
@@ -167,12 +168,12 @@ object Summarization {
         analyze(expansion).withEffs(effs)
 
       case vdef : ValDef =>
-        // Local lazy vals be hot too?
-        if (vdef.symbol.is(Flags.Lazy)) Summary.empty
-        else {
-          val (pots, effs) = analyze(vdef.rhs)
+        val (pots, effs) = analyze(vdef.rhs)
+
+        if (vdef.symbol.owner.isClass)
+          (Potentials.empty, if (vdef.symbol.is(Flags.Lazy)) Effects.empty else effs)
+        else
           (Potentials.empty, pots.leak(vdef) ++ effs)
-        }
 
       case Thicket(List()) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
