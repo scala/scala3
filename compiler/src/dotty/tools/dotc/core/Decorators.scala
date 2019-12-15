@@ -114,6 +114,22 @@ object Decorators {
         else x1 :: xs1
       }
 
+    /** Like `xs.lazyZip(xs.indices).map(f)`, but returns list `xs` itself
+     *  - instead of a copy - if function `f` maps all elements of
+     *  `xs` to themselves.
+     */
+    def mapWithIndexConserve[U](f: (T, Int) => T): List[T] =
+      def recur(xs: List[T], idx: Int): List[T] =
+        if xs.isEmpty then Nil
+        else
+          val x1 = f(xs.head, idx)
+          val xs1 = recur(xs.tail, idx + 1)
+          if (x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef])
+             && (xs1 eq xs.tail)
+          then xs
+          else x1 :: xs1
+      recur(xs, 0)
+
     final def hasSameLengthAs[U](ys: List[U]): Boolean = {
       @tailrec def loop(xs: List[T], ys: List[U]): Boolean =
         if (xs.isEmpty) ys.isEmpty
