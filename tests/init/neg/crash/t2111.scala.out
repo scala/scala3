@@ -1,0 +1,6 @@
+-- Error: /Users/fliu/Documents/scala-init-checker/tests/crash/t2111.scala:2:7 -----------------------------------------
+2 |object Test extends App {
+  |       ^
+  |       Leaking of this. Calling trace:
+  |        -> object Test extends App {	[ /Users/fliu/Documents/scala-init-checker/tests/crash/t2111.scala:2 ]
+one error found
