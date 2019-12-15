@@ -121,6 +121,13 @@ object Checking {
         ctx.warning("Inheriting non-open class may cause initialization errors", source.sourcePos)
     }
 
+    cls.paramAccessors.foreach { acc =>
+      if (!acc.is(Flags.Method)) {
+        traceIndented(acc.show + " initialized", init)
+        state.fieldsInited += acc
+      }
+    }
+
     tpl.parents.foreach {
       case tree @ Block(stats, parent) =>
         val (ctor, _, argss) = decomposeCall(parent)
