@@ -91,7 +91,7 @@ object Summarization {
               if (pots.isEmpty) Summary.empty.withEffs(effs)
               else {
                 assert(pots.size == 1)
-                Summary.empty + Warm(cls, pots.head)(expr)
+                (Warm(cls, pots.head)(expr).toPots, effs)
               }
             }
         }
@@ -137,7 +137,8 @@ object Summarization {
 
       case Return(expr, from) =>
         // TODO: return potential to the method
-        analyze(expr)
+        val (pots, effs) = analyze(expr)
+        (Potentials.empty, effs)
 
       case WhileDo(cond, body) =>
         // for lazy fields, the translation may result im `while (<empty>)`

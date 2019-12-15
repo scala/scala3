@@ -140,7 +140,7 @@ object Potentials {
 
   def (ps: Potentials) select (symbol: Symbol, source: Tree)(implicit ctx: Context): Summary =
     ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
-      if (pot.size > 1)
+      if (pot.size > 2)
         (pots, effs + Leak(pot)(source))
       else if (symbol.isConstructor)
         (pots + pot, effs + MethodCall(pot, symbol)(source))
