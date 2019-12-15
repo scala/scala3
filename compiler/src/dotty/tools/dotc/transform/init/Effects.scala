@@ -46,7 +46,7 @@ object Effects {
   def (eff: Effect) toEffs: Effects = Effects.empty + eff
 
   def asSeenFrom(eff: Effect, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
-    trace(eff.show + " asSeenFrom " + thisValue.show + ", outer = " + Potentials.show(outer), init, effs => show(effs.asInstanceOf[Effects])) { eff match {
+    trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show + ", outer = " + Potentials.show(outer), init, effs => show(effs.asInstanceOf[Effects])) { eff match {
       case Leak(pot) =>
         Potentials.asSeenFrom(pot, thisValue, currentClass, outer).leak(eff.source)
 

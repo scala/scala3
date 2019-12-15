@@ -235,23 +235,26 @@ object Checking {
           }
 
         case FieldAccess(pot, field) =>
-          assert(!field.is(Flags.Lazy))
 
           pot match {
             case ThisRef(cls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
               val target = resolve(cls, field)
-              if (!state.fieldsInited.contains(target)) nonInitError(target)
+              if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
+              else if (!state.fieldsInited.contains(target)) nonInitError(target)
 
             case SuperRef(ThisRef(cls), supercls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
               val target = resolveSuper(cls, supercls, field)
-              if (!state.fieldsInited.contains(target)) nonInitError(target)
+              if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
+              else if (!state.fieldsInited.contains(target)) nonInitError(target)
 
             case Warm(cls, outer) =>
               // all fields of warm values are initialized
+              val target = resolve(cls, field)
+              if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
 
             case _: Cold =>
               theCtx.warning(
