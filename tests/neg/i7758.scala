@@ -1,1 +1,1 @@
-def f: Int = implicitly: Int
+def f: Int = implicitly: Int // error
