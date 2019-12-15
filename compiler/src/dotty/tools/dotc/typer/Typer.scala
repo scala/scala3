@@ -1811,8 +1811,8 @@ class Typer extends Namer
       checkDerivedValueClass(cls, body1)
 
       val effectiveOwner = cls.owner.skipWeakOwner
-      if !cls.isRefinementClass && effectiveOwner.is(Trait) && !effectiveOwner.derivesFrom(defn.ObjectClass)
-        ctx.error(i"class $cls cannot be defined in universal $effectiveOwner", cdef.sourcePos)
+      if cls.is(CaseClass) && effectiveOwner.is(Trait) && !effectiveOwner.derivesFrom(defn.ObjectClass)
+        ctx.error(i"case $cls cannot be defined in universal $effectiveOwner", cdef.sourcePos)
 
       // Temporarily set the typed class def as root tree so that we have at least some
       // information in the IDE in case we never reach `SetRootTree`.
