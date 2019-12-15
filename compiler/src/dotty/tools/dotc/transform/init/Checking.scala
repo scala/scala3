@@ -81,7 +81,7 @@ object Checking {
     def checkClassBodyStat(tree: Tree)(implicit ctx: Context): Unit = traceOp("checking " + tree.show, init) {
       tree match {
         case vdef : ValDef =>
-          val (pots, effs) = Summarization.analyze(vdef.rhs)(ctx.withOwner(vdef.symbol))
+          val (pots, effs) = Summarization.analyze(vdef.rhs)(theEnv.withOwner(vdef.symbol))
           theEnv.summaryOf(cls).cacheFor(vdef.symbol, (pots, effs))
           if (!vdef.symbol.is(Flags.Lazy)) {
             checkEffects(effs)
@@ -169,7 +169,7 @@ object Checking {
     }
 
     (stats :+ expr).foreach { stat =>
-      val (_, effs) = Summarization.analyze(stat)(theCtx.withOwner(ctor))
+      val (_, effs) = Summarization.analyze(stat)(theEnv.withOwner(ctor))
       val rebased = Effects.asSeenFrom(effs, ThisRef(state.thisClass)(null), cls, Potentials.empty)
       rebased.foreach { check(_) }
     }

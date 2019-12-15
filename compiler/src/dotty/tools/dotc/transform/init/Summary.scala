@@ -28,7 +28,7 @@ object Summary {
       summaryCache(member) = summary
     }
 
-    def summaryOf(member: Symbol)(implicit ctx: Context): Summary =
+    def summaryOf(member: Symbol)(implicit env: Env): Summary =
       if (summaryCache.contains(member)) summaryCache(member)
       else trace("summary for " + member.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
         val summary =
@@ -43,8 +43,8 @@ object Summary {
         summary
       }
 
-    def effectsOf(member: Symbol)(implicit ctx: Context): Effects = summaryOf(member)._2
-    def potentialsOf(member: Symbol)(implicit ctx: Context): Potentials = summaryOf(member)._1
+    def effectsOf(member: Symbol)(implicit env: Env): Effects = summaryOf(member)._2
+    def potentialsOf(member: Symbol)(implicit env: Env): Potentials = summaryOf(member)._1
 
     def show(implicit ctx: Context): String =
       "ObjectPart(" + currentClass.name.show +

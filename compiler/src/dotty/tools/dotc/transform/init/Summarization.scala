@@ -15,17 +15,6 @@ import reporting.trace
 import Effects._, Potentials._, Summary._, Util._
 
 object Summarization {
-  private val ignoredMethods = Set(
-    // "dotty.runtime.LazyVals$.setFlag",
-    // "dotty.runtime.LazyVals$.get",
-    // "dotty.runtime.LazyVals$.CAS",
-    // "dotty.runtime.LazyVals$.wait4Notification",
-    "scala.runtime.EnumValues.register",
-    "java.lang.Object.isInstanceOf",
-    "java.lang.Object.getClass",
-    "java.lang.Object.eq",
-    "java.lang.Object.ne"
-  )
 
   /** Summarization of potentials and effects for an expression
    *
@@ -34,7 +23,7 @@ object Summarization {
    *   1. potentials for expression of primitive value types can be
    *      safely abandoned, as they are always fully initialized.
    */
-  def analyze(expr: Tree)(implicit ctx: Context): Summary =
+  def analyze(expr: Tree)(implicit env: Env): Summary =
   trace("summarizing " + expr.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
     val summary: Summary = expr match {
       case Ident(name) =>
@@ -49,8 +38,11 @@ object Summarization {
 
       case Select(qualifier, name) =>
         val (pots, effs) = analyze(qualifier)
-        val (pots2, effs2) = pots.select(expr.symbol, expr)
-        (pots2, effs ++ effs2)
+        if (env.ignoredMethods.contains(expr.symbol)) (Potentials.empty, effs)
+        else {
+          val (pots2, effs2) = pots.select(expr.symbol, expr)
+          (pots2, effs ++ effs2)
+        }
 
       case _: This =>
         val cls = expr.tpe.widen.classSymbol.asClass
@@ -58,10 +50,16 @@ object Summarization {
 
       case Apply(fun, args) =>
         val summary = analyze(fun)
-        args.foldLeft(summary) { (sum, arg) =>
+        val ignoredCall = env.ignoredMethods.contains(expr.symbol)
+
+        val res = args.foldLeft(summary) { (sum, arg) =>
           val (pots1, effs1) = analyze(arg)
-          sum.withEffs(pots1.leak(arg) ++ effs1)
+          if (ignoredCall) sum.withEffs(effs1)
+          else sum.withEffs(pots1.leak(arg) ++ effs1)
         }
+
+        if (ignoredCall) (Potentials.empty, res._2)
+        else res
 
       case TypeApply(fun, args) =>
         analyze(fun)
@@ -178,51 +176,53 @@ object Summarization {
         throw new Exception("unexpected tree: " + expr.show)
     }
 
-    if (isDefiniteHot(expr.tpe)) (Potentials.empty, summary._2)
+    if (env.isAlwaysInitialized(expr.tpe)) (Potentials.empty, summary._2)
     else summary
   }
 
-  private def isDefiniteHot(tp: Type)(implicit ctx: Context): Boolean = {
-    val sym = tp.widen.finalResultType.typeSymbol
-    sym.isPrimitiveValueClass || sym == defn.StringClass
-  }
-
-  def analyze(tp: Type, source: Tree)(implicit ctx: Context): Summary =
+  def analyze(tp: Type, source: Tree)(implicit env: Env): Summary =
   trace("summarizing " + tp.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
     val summary: Summary = tp match {
       case tmref: TermRef if tmref.prefix == NoPrefix =>
         Summary.empty
+
       case tmref: TermRef =>
         val (pots, effs) = analyze(tmref.prefix, source)
-        val (pots2, effs2) = pots.select(tmref.symbol, source)
-        (pots2, effs ++ effs2)
+        if (env.ignoredMethods.contains(tmref.symbol)) (Potentials.empty, effs)
+        else {
+          val (pots2, effs2) = pots.select(tmref.symbol, source)
+          (pots2, effs ++ effs2)
+        }
+
       case ThisType(tref: TypeRef) if tref.classSymbol.is(Flags.Package) =>
         Summary.empty
+
       case thisTp: ThisType =>
         val cls = thisTp.widen.classSymbol.asClass
         Summary.empty + ThisRef(cls)(source)
+
       case SuperType(thisTp, superTp) =>
         val thisRef = ThisRef(thisTp.classSymbol.asClass)(source)
         val pot = SuperRef(thisRef, superTp.classSymbol.asClass)(source)
         Summary.empty + pot
       }
 
-    if (isDefiniteHot(tp)) (Potentials.empty, summary._2)
+    if (env.isAlwaysInitialized(tp)) (Potentials.empty, summary._2)
     else summary
   }
 
-  def analyzeMethod(sym: Symbol)(implicit ctx: Context): Summary = {
+  def analyzeMethod(sym: Symbol)(implicit env: Env): Summary = {
     val ddef = sym.defTree.asInstanceOf[DefDef]
-    analyze(ddef.rhs)(ctx.withOwner(sym))
+    analyze(ddef.rhs)(env.withOwner(sym))
   }
 
-  def analyzeField(sym: Symbol)(implicit ctx: Context): Summary = {
+  def analyzeField(sym: Symbol)(implicit env: Env): Summary = {
     val vdef = sym.defTree.asInstanceOf[ValDef]
-    analyze(vdef.rhs)(ctx.withOwner(sym))
+    analyze(vdef.rhs)(env.withOwner(sym))
   }
 
   /** Summarize secondary constructors or class body */
-  def analyzeConstructor(ctor: Symbol)(implicit ctx: Context): Summary =
+  def analyzeConstructor(ctor: Symbol)(implicit env: Env): Summary =
   trace("summarizing constructor " + ctor.owner.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
     if (ctor.isPrimaryConstructor) {
       val tpl = ctor.owner.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
@@ -230,18 +230,18 @@ object Summarization {
     }
     else {
       val ddef = ctor.defTree.asInstanceOf[DefDef]
-      analyze(ddef.rhs)(ctx.withOwner(ctor))
+      analyze(ddef.rhs)(env.withOwner(ctor))
     }
   }
 
-  def classSummary(cls: ClassSymbol)(implicit ctx: Context): ClassSummary =
+  def classSummary(cls: ClassSymbol)(implicit env: Env): ClassSummary =
     if (cls.defTree.isEmpty)
       cls.info match {
         case cinfo: ClassInfo =>
           val parentOuter: List[(ClassSymbol, Potentials)] = cinfo.classParents.map {
             case parentTp: TypeRef =>
               val source = {
-                implicit val ctx2: Context = ctx.withSource(cls.source(ctx))
+                implicit val ctx2: Context = theCtx.withSource(cls.source(theCtx))
                 TypeTree(parentTp).withSpan(cls.span)
               }
               parentTp.classSymbol.asClass -> analyze(parentTp.prefix, source)._1
