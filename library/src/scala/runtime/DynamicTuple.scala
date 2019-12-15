@@ -25,15 +25,15 @@ object DynamicTuple {
   }
 
   def dynamicToArray(self: Tuple): Array[Object] = (self: Any) match {
-    case self: Unit => Array.emptyObjectArray
     case self: TupleXXL => self.toArray
     case self: Product => productToArray(self)
+    case self: Unit => Array.emptyObjectArray
   }
 
   def dynamicToIArray(self: Tuple): IArray[Object] = (self: Any) match {
-    case self: Unit => Array.emptyObjectArray.asInstanceOf[IArray[Object]] // TODO use IArray.emptyObjectIArray
     case self: TupleXXL => self.elems
     case self: Product => productToArray(self).asInstanceOf[IArray[Object]]
+    case self: Unit => Array.emptyObjectArray.asInstanceOf[IArray[Object]]
   }
 
   def productToArray(self: Product): Array[Object] = {
