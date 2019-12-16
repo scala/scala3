@@ -203,6 +203,9 @@ object Summarization {
   def analyze(tp: Type, source: Tree)(implicit env: Env): Summary =
   trace("summarizing " + tp.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
     val summary: Summary = tp match {
+      case _: ConstantType =>
+        Summary.empty
+
       case tmref: TermRef if tmref.prefix == NoPrefix =>
         Summary.empty
 
