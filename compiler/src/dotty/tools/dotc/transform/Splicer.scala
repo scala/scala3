@@ -17,7 +17,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.{NameKinds, TypeErasure}
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.tastyreflect.ReflectionImpl
+import dotty.tools.dotc.tastyreflect.{ReflectionImpl, TastyTreeExpr, TreeType}
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.SourcePosition
@@ -246,10 +246,10 @@ object Splicer {
     }
 
     private def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.internal.quoted.TastyTreeExpr(Inlined(EmptyTree, Nil, tree).withSpan(tree.span), QuoteContext.scopeId)
+      new TastyTreeExpr(Inlined(EmptyTree, Nil, tree).withSpan(tree.span), QuoteContext.scopeId)
 
     private def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.internal.quoted.TreeType(tree, QuoteContext.scopeId)
+      new TreeType(tree, QuoteContext.scopeId)
 
     private def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]

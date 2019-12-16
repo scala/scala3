@@ -1,4 +1,4 @@
-package scala.internal.quoted
+package dotty.tools.dotc.tastyreflect
 
 /** An Type backed by a tree */
 final class TreeType[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quoted.Type[Any] {

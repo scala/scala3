@@ -4,7 +4,7 @@ import scala.quoted.show.SyntaxHighlight
 
 /** Quoted type (or kind) `T`
  *
- *  Restriction: only the QuoteContext implementation is allowed to extend this trait.
+ *  Restriction: only the QuoteContext.tasty.internal implementation is allowed to extend this trait.
  *  Any other implementation will result in an undefined behavior.
  */
 trait Type[T <: AnyKind] {

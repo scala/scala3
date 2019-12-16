@@ -1,15 +1,13 @@
-package scala.internal.quoted
-
-import scala.quoted.Expr
+package dotty.tools.dotc.tastyreflect
 
 /** An Expr backed by a tree. Only the current compiler trees are allowed.
-  *
-  *  These expressions are used for arguments of macros. They contain and actual tree
-  *  from the program that is being expanded by the macro.
-  *
-  *  May contain references to code defined outside this TastyTreeExpr instance.
-  */
-final class TastyTreeExpr[Tree](val tree: Tree, val scopeId: Int) extends Expr[Any] {
+ *
+ *  These expressions are used for arguments of macros. They contain and actual tree
+ *  from the program that is being expanded by the macro.
+ *
+ *  May contain references to code defined outside this TastyTreeExpr instance.
+ */
+final class TastyTreeExpr[Tree](val tree: Tree, val scopeId: Int) extends scala.quoted.Expr[Any] {
   override def equals(that: Any): Boolean = that match {
     case that: TastyTreeExpr[_] =>
       // TastyTreeExpr are wrappers around trees, therfore they are equals if their trees are equal.
