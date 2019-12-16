@@ -17,7 +17,7 @@ object assignments {
 
   var c = new C
   c.x =c.x + 1
-  c.x *= 2
+  c.x = c.x * 2
 
   val cc = c
   import cc._
