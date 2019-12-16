@@ -302,7 +302,6 @@ class CompilationTests extends ParallelTesting {
     aggregateTests(
       compileFilesInDir("tests/init/neg/", options),
       compileFilesInDir("tests/init/neg/misc", options),
-      compileFilesInDir("tests/init/neg/functions", options),
       compileFilesInDir("tests/init/neg/hybrid", options),
       compileFilesInDir("tests/init/neg/crash", options),
     )
