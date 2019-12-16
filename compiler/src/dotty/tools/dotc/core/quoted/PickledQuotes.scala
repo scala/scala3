@@ -38,14 +38,14 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = {
-    val expr1 = expr.asInstanceOf[TastyTreeExpr[Tree]]
+    val expr1 = expr.asInstanceOf[TastyTreeExpr]
     QuoteContext.checkScopeId(expr1.scopeId)
     healOwner(expr1.tree)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(tpe: quoted.Type[?])(implicit ctx: Context): Tree = {
-    val tpe1 = tpe.asInstanceOf[TreeType[Tree]]
+    val tpe1 = tpe.asInstanceOf[TreeType]
     QuoteContext.checkScopeId(tpe1.scopeId)
     healOwner(tpe1.typeTree)
   }
