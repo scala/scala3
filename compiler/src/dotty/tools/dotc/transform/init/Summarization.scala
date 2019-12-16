@@ -32,7 +32,7 @@ object Summarization {
 
       case supert: Super =>
         val SuperType(thisTp, superTp) = supert.tpe.asInstanceOf[SuperType]
-        val thisRef = ThisRef(thisTp.classSymbol.asClass)(supert)
+        val thisRef = ThisRef(thisTp.widen.classSymbol.asClass)(supert)
         val pot = SuperRef(thisRef, superTp.classSymbol.asClass)(supert)
         Summary.empty + pot
 
