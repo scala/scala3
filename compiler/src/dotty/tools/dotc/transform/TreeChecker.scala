@@ -77,8 +77,11 @@ class TreeChecker extends Phase with SymTransformer {
       testDuplicate(sym, seenClasses, "class")
     }
 
-    val isDeferredAndPrivate = sym.is(Method) && sym.is(Deferred) && sym.is(Private)
-    assert(!isDeferredAndPrivate, i"$sym is both Deferred and Private")
+    val badDeferredAndPrivate =
+      sym.is(Method) && sym.is(Deferred) && sym.is(Private)
+      && !sym.hasAnnotation(defn.NativeAnnot)
+      && !sym.is(Erased)
+    assert(!badDeferredAndPrivate, i"$sym is both Deferred and Private")
 
     checkCompanion(symd)
 
