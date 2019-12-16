@@ -97,4 +97,9 @@ object Test {
   val t69: ToString[-1] = "-1"
   val t70: ToString[0] = "-0" // error
   val t71: ToString[200] = "100" // error
+
+  val t72: "hello " + "world" = "hello world"
+  val t73: "hello " + 2 = "hello 2"
+  val t74: 2 + " hello" = "2 hello"
+  val t75: "hello" + "world" = "hi" // error
 }

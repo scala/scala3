@@ -3619,6 +3619,11 @@ object Types {
           case _ => None
         }
 
+        def stringValue(tp: Type): Option[String] = tp match {
+          case ConstantType(Constant(n: String)) => Some(n)
+          case _ => None
+        }
+
         def natValue(tp: Type): Option[Int] = intValue(tp).filter(n => n >= 0 && n < Int.MaxValue)
 
         def constantFold1[T](extractor: Type => Option[T], op: T => Any): Option[Type] =
@@ -3641,7 +3646,10 @@ object Types {
           } else if (args.length == 2) tycon.symbol.name match {
             case tpnme.Equals => constantFold2(constValue, _ == _)
             case tpnme.NotEquals => constantFold2(constValue, _ != _)
-            case tpnme.Plus => constantFold2(intValue, _ + _)
+            case tpnme.Plus if tycon.symbol.owner == defn.CompiletimeOpsPackageObjectInt.moduleClass =>
+              constantFold2(intValue, _ + _)
+            case tpnme.Plus if tycon.symbol.owner == defn.CompiletimeOpsPackageObjectString.moduleClass =>
+              constantFold2(stringValue, _ + _)
             case tpnme.Minus => constantFold2(intValue, _ - _)
             case tpnme.Times => constantFold2(intValue, _ * _)
             case tpnme.Div => constantFold2(intValue, {

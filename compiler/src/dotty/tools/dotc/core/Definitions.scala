@@ -903,15 +903,19 @@ class Definitions {
 
   private val compiletimePackageTypes: Set[Name] = Set(
     tpnme.Equals, tpnme.NotEquals,
-    tpnme.Plus, tpnme.Minus, tpnme.Times, tpnme.Div, tpnme.Mod,
+    tpnme.Minus, tpnme.Times, tpnme.Div, tpnme.Mod,
     tpnme.Lt, tpnme.Gt, tpnme.Ge, tpnme.Le,
     tpnme.Abs, tpnme.Negate, tpnme.Min, tpnme.Max, tpnme.ToString,
     tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or
   )
+  private val compiletimePackageIntTypes: Set[Name] = Set(tpnme.Plus)
+  private val compiletimePackageStringTypes: Set[Name] = Set(tpnme.Plus)
 
   final def isCompiletimeAppliedType(sym: Symbol)(implicit ctx: Context): Boolean = {
     def isOpsPackageObjectAppliedType: Boolean =
-      sym.owner == CompiletimeOpsPackageObject.moduleClass && compiletimePackageTypes.contains(sym.name)
+      sym.owner == CompiletimeOpsPackageObject.moduleClass && compiletimePackageTypes.contains(sym.name) ||
+      sym.owner == CompiletimeOpsPackageObjectInt.moduleClass && compiletimePackageIntTypes.contains(sym.name) ||
+      sym.owner == CompiletimeOpsPackageObjectString.moduleClass && compiletimePackageStringTypes.contains(sym.name)
 
     sym.isType && (isCompiletime_S(sym) || isOpsPackageObjectAppliedType)
   }
