@@ -19,6 +19,7 @@ import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
 import reporting.trace
 import ast.desugar
+import collection.mutable.ListBuffer
 
 object SymbolLoaders {
   import ast.untpd._
@@ -105,8 +106,8 @@ object SymbolLoaders {
   }
 
   /** Enter all toplevel classes and objects in file `src` into package `owner`, provided
-   *  they are in the right package. Issue a warning if a class or object is in the wrong
-   *  package, i.e. if the file path differs from the declared package clause.
+   *  they are in the right directory. Issue a warning if a class or object is in the wrong
+   *  directory, i.e. if the file path is not a prefix of the declared package clause.
    *
    *  All entered symbols are given a source completer of `src` as info.
    */
@@ -115,22 +116,25 @@ object SymbolLoaders {
       scope: Scope = EmptyScope)(implicit ctx: Context): Unit =
     if src.exists && !src.isDirectory
       val completer = new SourcefileLoader(src)
-      val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
-
-      def addPrefix(pid: RefTree, path: List[TermName]): List[TermName] = pid match {
-        case Ident(name: TermName) => name :: path
-        case Select(qual: RefTree, name: TermName) => name :: addPrefix(qual, path)
-        case _ => path
-      }
+      val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList.reverse
 
       def enterScanned(unit: CompilationUnit)(implicit ctx: Context) = {
+        val path = ListBuffer[TermName]()
 
-        def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
-          val ok = filePath == path
+        def addSuffix(pid: RefTree): Unit = pid match
+          case Ident(name: TermName) =>
+            path += name
+          case Select(qual: RefTree, name: TermName) =>
+            addSuffix(qual)
+            path += name
+          case _ =>
+
+        def checkPathMatches(what: String, tree: NameTree): Boolean = {
+          val ok = path.startsWith(filePath)
           if (!ok)
             ctx.warning(i"""$what ${tree.name} is in the wrong directory.
-                           |It was declared to be in package ${path.reverse.mkString(".")}
-                           |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
+                           |It was declared to be in package ${path.mkString(".")}
+                           |But it is found in directory     ${filePath.mkString(File.separator)}""",
               tree.sourcePos.focus)
           ok
         }
@@ -144,25 +148,26 @@ object SymbolLoaders {
           case _ =>
             tree
 
-        def traverse(tree: Tree, path: List[TermName]): Unit = simpleDesugar(tree) match {
+        def traverse(tree: Tree): Unit = simpleDesugar(tree) match {
           case tree @ PackageDef(pid, body) =>
-            val path1 = addPrefix(pid, path)
-            for (stat <- body) traverse(stat, path1)
+            val size = path.size
+            addSuffix(pid)
+            for stat <- body do traverse(stat)
+            path.takeInPlace(size)
           case tree: TypeDef if tree.isClassDef =>
-            if (checkPathMatches(path, "class", tree))
+            if (checkPathMatches("class", tree))
               // It might be a case class or implicit class,
               // so enter class and module to be on the safe side
               enterClassAndModule(owner, tree.name, completer, scope = scope)
           case tree: ModuleDef =>
-            if (checkPathMatches(path, "object", tree))
+            if (checkPathMatches("object", tree))
               enterModule(owner, tree.name, completer, scope = scope)
           case _ =>
         }
 
         traverse(
           if (unit.isJava) new OutlineJavaParser(unit.source).parse()
-          else new OutlineParser(unit.source).parse(),
-          Nil)
+          else new OutlineParser(unit.source).parse())
       }
 
       val unit = CompilationUnit(ctx.getSource(src.path))
