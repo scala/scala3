@@ -19,6 +19,8 @@ object Test {
     val age: Int
   }
 
+  type Person2 = Person
+
   def main(args: Array[String]): Unit = {
     val person: Person = Record("name" -> "Emma", "age" -> 42).asInstanceOf[Person]
 
@@ -66,5 +68,9 @@ object Test {
       val age: Int
       val name: String
     }
+
+    val p3: Person2 = person
+
+    p3.toTuple : (("name", String), ("age", Int))
   }
 }

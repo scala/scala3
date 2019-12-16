@@ -1266,9 +1266,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   }
 
   def Refinement_apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(given ctx: Context): Refinement = {
-    // fixme: support type refinements (type vs term)
-    //    examine info maybe (TypeOrBounds are used for refinements)
-    //    check aliasing of refinement
     val name1 =
       info match
         case _: TypeBounds => name.toTypeName
