@@ -264,7 +264,7 @@ object Checking {
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
               val target = resolve(cls, sym)
-              if (!target.is(Flags.Method))
+              if (!target.isOneOf(Flags.Method | Flags.Lazy))
                 check(FieldAccess(pot, target)(eff.source))
               else if (target.isInternal) {
                 val effs = thisRef.effectsOf(target)
