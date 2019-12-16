@@ -25,8 +25,9 @@ case class Env(ctx: Context, summaryCache: mutable.Map[ClassSymbol, ClassSummary
     // ctx.requiredMethod("scala.runtime.EnumValues.register"),
     defn.Any_getClass,
     defn.Any_isInstanceOf,
-    defn.Any_==,
-    defn.Any_!=
+    defn.Object_eq,
+    defn.Object_ne,
+    defn.Object_synchronized
   )
 
   def withCtx(newCtx: Context): Env = this.copy(ctx = newCtx)
