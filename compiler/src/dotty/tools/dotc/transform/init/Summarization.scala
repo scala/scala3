@@ -183,7 +183,13 @@ object Summarization {
         // possible in try/catch/finally, see tests/crash/i6914.scala
         Summary.empty
 
-      case _: TypeDef | _ : DefDef =>
+      case ddef : DefDef =>
+        val (pots, effs) = analyze(ddef.rhs)
+
+        if (ddef.symbol.owner.isClass) Summary.empty
+        else (Potentials.empty, pots.leak(ddef) ++ effs)
+
+      case _: TypeDef =>
         Summary.empty
 
       case _ =>
