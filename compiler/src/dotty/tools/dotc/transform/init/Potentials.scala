@@ -172,7 +172,7 @@ object Potentials {
       case ThisRef(cls) =>
         if (cls `eq` currentClass)
           thisValue.toPots
-        else if (cls.is(Flags.Package))
+        else if (currentClass.is(Flags.Package))
           Potentials.empty
         else {
           val outerCls = currentClass.owner.enclosingClass.asClass
