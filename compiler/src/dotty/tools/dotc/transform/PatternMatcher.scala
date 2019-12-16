@@ -32,14 +32,20 @@ class PatternMatcher extends MiniPhase {
   override def transformMatch(tree: Match)(implicit ctx: Context): Tree =
     if (tree.isInstanceOf[InlineMatch]) tree
     else {
-      val translated = new Translator(tree.tpe, this).translateMatch(tree)
+      // Widen termrefs with underlying `=> T` types. Otherwise ElimByName will produce
+      // inconsistent types. See i7743.scala.
+      // Question: Does this need to be done more systematically, not just for pattern matches?
+      val matchType = tree.tpe.widenSingleton match
+        case ExprType(rt) => rt
+        case rt => tree.tpe
+      val translated = new Translator(matchType, this).translateMatch(tree)
 
       // check exhaustivity and unreachability
       val engine = new patmat.SpaceEngine
       engine.checkExhaustivity(tree)
       engine.checkRedundancy(tree)
 
-      translated.ensureConforms(tree.tpe)
+      translated.ensureConforms(matchType)
     }
 }
 
