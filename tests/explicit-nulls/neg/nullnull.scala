@@ -11,7 +11,7 @@ class Foo {
   }
 
   def foo2: Unit = {
-    val x: JavaNull | String | Null = ???
+    val x: UncheckedNull | String | Null = ???
     if (x == null) return ()
     val y = x.length // ok: x: String is inferred
   }

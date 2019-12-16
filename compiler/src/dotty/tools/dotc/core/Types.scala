@@ -712,12 +712,12 @@ object Types {
         go(l) & (go(r), pre, safeIntersection = ctx.base.pendingMemberSearches.contains(name))
 
       def goOr(tp: OrType) = tp match {
-        case OrJavaNull(tp1) =>
-          // Selecting `name` from a type `T|JavaNull` is like selecting `name` from `T`.
+        case OrUncheckedNull(tp1) =>
+          // Selecting `name` from a type `T|UncheckedNull` is like selecting `name` from `T`.
           // This can throw at runtime, but we trade soundness for usability.
-          // We need to strip `JavaNull` from both the type and the prefix so that
+          // We need to strip `UncheckedNull` from both the type and the prefix so that
           // `pre <: tp` continues to hold.
-          tp1.findMember(name, pre.stripJavaNull, required, excluded)
+          tp1.findMember(name, pre.stripUncheckedNull, required, excluded)
         case _ =>
           // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
           // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
@@ -2963,15 +2963,15 @@ object Types {
    *  e.g.
    *
    *  (tp: Type) match
-   *    case OrJavaNull(tp1) => // tp had the form `tp1 | JavaNull`
+   *    case OrUncheckedNull(tp1) => // tp had the form `tp1 | UncheckedNull`
    *    case _ => // tp was not a Java-nullable union
    */
-  object OrJavaNull {
+  object OrUncheckedNull {
     def apply(tp: Type)(given Context) =
-      OrType(tp, defn.JavaNullAliasType)
+      OrType(tp, defn.UncheckedNullAliasType)
     def unapply(tp: Type)(given ctx: Context): Option[Type] =
       if (ctx.explicitNulls) {
-        val tp1 = tp.stripJavaNull
+        val tp1 = tp.stripUncheckedNull
         if tp1 ne tp then Some(tp1) else None
       }
       else None

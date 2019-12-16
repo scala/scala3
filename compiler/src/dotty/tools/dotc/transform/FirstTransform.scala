@@ -52,17 +52,17 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     tree match {
       case Select(qual, name) if !name.is(OuterSelectName) && tree.symbol.exists =>
         val qualTpe = if (ctx.explicitNulls) {
-          // `JavaNull` is already special-cased in the Typer, but needs to be handled here as well.
-          // We need `stripAllJavaNull` and not `stripJavaNull` because of the following case:
+          // `UncheckedNull` is already special-cased in the Typer, but needs to be handled here as well.
+          // We need `stripAllUncheckedNull` and not `stripUncheckedNull` because of the following case:
           //
-          //   val s: (String|JavaNull)&(String|JavaNull) = "hello"
+          //   val s: (String|UncheckedNull)&(String|UncheckedNull) = "hello"
           //   val l = s.length
           //
-          // The invariant below is that the type of `s`, which isn't a top-level JavaNull union,
+          // The invariant below is that the type of `s`, which isn't a top-level UncheckedNull union,
           // must derive from the type of the owner of `length`, which is `String`. Because we don't
-          // know which `JavaNull`s were used to find the `length` member, we conservatively remove
+          // know which `UncheckedNull`s were used to find the `length` member, we conservatively remove
           // all of them.
-          qual.tpe.stripAllJavaNull
+          qual.tpe.stripAllUncheckedNull
         } else {
           qual.tpe
         }

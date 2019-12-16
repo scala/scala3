@@ -10,7 +10,7 @@ with union types: e.g. `val x: String|Null = null`.
 The implementation of the feature in dotty can be conceptually divided in several parts:
   1. changes to the type hierarchy so that `Null` is only a subtype of `Any`
   2. a "translation layer" for Java interop that exposes the nullability in Java APIs
-  3. a "magic" `JavaNull` type (an alias for `Null`) that is recognized by the compiler and
+  3. a "magic" `UncheckedNull` type (an alias for `Null`) that is recognized by the compiler and
      allows unsound member selections (trading soundness for usability)
 
 ## Feature Flag
@@ -30,10 +30,10 @@ We change the type hierarchy so that `Null` is only a subtype of `Any` by:
 
 The problem we're trying to solve here is: if we see a Java method `String foo(String)`,
 what should that method look like to Scala?
-  - since we should be able to pass `null` into Java methods, the argument type should be `String|JavaNull`
-  - since Java methods might return `null`, the return type should be `String|JavaNull`
+  - since we should be able to pass `null` into Java methods, the argument type should be `String|UncheckedNull`
+  - since Java methods might return `null`, the return type should be `String|UncheckedNull`
 
-`JavaNull` here is a type alias for `Null` with "magic" properties (see below).
+`UncheckedNull` here is a type alias for `Null` with "magic" properties (see below).
 
 At a high-level:
   - we track the loading of Java fields and methods as they're loaded by the compiler
@@ -49,31 +49,31 @@ produces what the type of the symbol should be in the explicit nulls world.
 
 1. If the symbol is a Enum value definition or a `TYPE_` field, we don't nullify the type
 2. If it is `toString()` method or the constructor, or it has a `@NotNull` annotation,
-  we nullify the type, without a `JavaNull` at the outmost level.
+  we nullify the type, without a `UncheckedNull` at the outmost level.
 3. Otherwise, we nullify the type in regular way.
 
 See `JavaNullMap` in `JavaNullInterop.scala` for more details about how we nullify different types.
 
-## JavaNull
+## UncheckedNull
 
-`JavaNull` is just an alias for `Null`, but with magic power. `JavaNull`'s magic (anti-)power is that
+`UncheckedNull` is just an alias for `Null`, but with magic power. `UncheckedNull`'s magic (anti-)power is that
 it's unsound.
 
 ```scala
-val s: String|JavaNull = "hello"
+val s: String|UncheckedNull = "hello"
 s.length // allowed, but might throw NPE
 ```
 
-`JavaNull` is defined as `JavaNullAlias` in `Definitions.scala`.
+`UncheckedNull` is defined as `UncheckedNullAlias` in `Definitions.scala`.
 The logic to allow member selections is defined in `findMember` in `Types.scala`:
   - if we're finding a member in a type union
-  - and the union contains `JavaNull` on the r.h.s. after normalization (see below)
+  - and the union contains `UncheckedNull` on the r.h.s. after normalization (see below)
   - then we can continue with `findMember` on the l.h.s of the union (as opposed to failing)
 
 ## Working with Nullable Unions
 
 Within `Types.scala`, we defined some extractors to work with nullable unions:
-`OrNull` and `OrJavaNull`.
+`OrNull` and `OrUncheckedNull`.
 
 ```scala
 (tp: Type) match {
@@ -87,13 +87,13 @@ are methods of the `Type` class, so call them with `this` as a receiver:
 
 - `stripNull` syntactically strips all `Null` types in the union:
   e.g. `String|Null => String`.
-- `stripJavaNull` is like `stripNull` but only removes `JavaNull` from the union.
+- `stripUncheckedNull` is like `stripNull` but only removes `UncheckedNull` from the union.
   This is needed when we want to "revert" the Java nullification function.
-- `stripAllJavaNull` collapses all `JavaNull` unions within this type, and not just the outermost
-  ones (as `stripJavaNull` does).
+- `stripAllUncheckedNull` collapses all `UncheckedNull` unions within this type, and not just the outermost
+  ones (as `stripUncheckedNull` does).
 - `isNullableUnion` determines whether `this` is a nullable union.
-- `isJavaNullableUnion` determines whether `this` is syntactically a union of the form
-  `T|JavaNull`.
+- `isUncheckedNullableUnion` determines whether `this` is syntactically a union of the form
+  `T|UncheckedNull`.
 
 ## Flow Typing
 
