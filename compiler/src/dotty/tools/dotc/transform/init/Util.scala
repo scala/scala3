@@ -7,6 +7,7 @@ import Contexts.Context
 import Symbols._
 import config.Printers.Printer
 
+import annotation.tailrec
 
 object Util {
   def traceIndented(msg: String, printer: Printer)(implicit ctx: Context): Unit =
@@ -25,6 +26,16 @@ object Util {
     if (sym.isEffectivelyFinal || sym.isConstructor) sym
     else sym.matchingMember(cls.typeRef)
 
-  def resolveSuper(cls: ClassSymbol, superCls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol =
-    sym.superSymbolIn(cls)
+  def resolveSuper(cls: ClassSymbol, superCls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol = {
+    // println(s"bases of $cls: " + cls.info.baseClasses)
+    @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
+      case bc :: bcs1 =>
+        val cand = sym.matchingDecl(bcs.head, cls.thisType)
+          .suchThat(alt => !alt.is(Flags.Deferred)).symbol
+        if (cand.exists) cand else loop(bcs.tail)
+      case _ =>
+        NoSymbol
+    }
+    loop(cls.info.baseClasses.dropWhile(sym.owner != _))
+  }
 }
