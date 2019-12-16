@@ -2,14 +2,14 @@ trait A {
   def g: Int
 }
 
-class X(_y: Y) {
-  class B extends A {
-    def g = _y.n
-  }
-}
-
 class Y {
-  val x = new X(this)
+  class X {
+    class B extends A {
+      def g = n
+    }
+  }
+
+  val x = new X
 
   class C extends x.B {
     g
