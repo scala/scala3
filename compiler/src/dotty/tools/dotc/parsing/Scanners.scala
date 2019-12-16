@@ -1359,7 +1359,9 @@ object Scanners {
 
   case class InBraces(var width: IndentWidth | Null, outer: Region)
   extends IndentSignificantRegion {
-    override def indentWidth =
+    // The indent width starts out as `null` when the opening brace is encountered
+    // It is then adjusted when the next token on a new line is encountered.
+    override def indentWidth: IndentWidth =
       if width == null then IndentWidth.Zero else width
   }
 
