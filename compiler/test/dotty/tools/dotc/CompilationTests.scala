@@ -301,9 +301,15 @@ class CompilationTests extends ParallelTesting {
     val options = defaultOptions.and("-Ycheck-init", "-Xfatal-warnings")
     aggregateTests(
       compileFilesInDir("tests/init/neg/", options),
-      compileFilesInDir("tests/init/neg/crash", options),
+      compileFilesInDir("tests/init/crash", options),
     )
   }.checkExpectedErrors()
+
+  @Test def checkInitCrash: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("checkInit")
+    val options = defaultOptions.and("-Ycheck-init")
+    compileFilesInDir("tests/init/crash", options)
+  }.checkCompile()
 
   @Test def checkInitPos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInit")
