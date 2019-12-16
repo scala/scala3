@@ -1269,10 +1269,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     // fixme: support type refinements (type vs term)
     //    examine info maybe (TypeOrBounds are used for refinements)
     //    check aliasing of refinement
-     val name1 =
-       info match
-         case _: TypeBounds => name.toTypeName
-         case _ => name.toTermName
+    val name1 =
+      info match
+        case _: TypeBounds => name.toTypeName
+        case _ => name.toTermName
     Types.RefinedType(parent, name1, info)
   }
 
