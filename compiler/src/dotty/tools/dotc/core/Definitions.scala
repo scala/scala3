@@ -355,20 +355,20 @@ class Definitions {
   @tu lazy val RuntimeNullModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Null")
 
   /** An alias for null values that originate in Java code.
-   *  This type gets special treatment in the Typer. Specifically, `JavaNull` can be selected through:
+   *  This type gets special treatment in the Typer. Specifically, `UncheckedNull` can be selected through:
    *  e.g.
    *  ```
    *  // x: String|Null
    *  x.length // error: `Null` has no `length` field
-   *  // x2: String|JavaNull
+   *  // x2: String|UncheckedNull
    *  x2.length // allowed by the Typer, but unsound (might throw NPE)
    *  ```
    */
-  lazy val JavaNullAlias: TypeSymbol = {
+  lazy val UncheckedNullAlias: TypeSymbol = {
     assert(ctx.explicitNulls)
-    enterAliasType(tpnme.JavaNull, NullType)
+    enterAliasType(tpnme.UncheckedNull, NullType)
   }
-  def JavaNullAliasType: TypeRef = JavaNullAlias.typeRef
+  def UncheckedNullAliasType: TypeRef = UncheckedNullAlias.typeRef
 
   @tu lazy val ImplicitScrutineeTypeSym =
     newSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
@@ -1371,7 +1371,7 @@ class Definitions {
       NothingClass,
       SingletonClass)
 
-    if (ctx.explicitNulls) synth :+ JavaNullAlias else synth
+    if (ctx.explicitNulls) synth :+ UncheckedNullAlias else synth
   }
 
   @tu lazy val syntheticCoreClasses: List[Symbol] = syntheticScalaClasses ++ List(

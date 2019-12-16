@@ -100,7 +100,7 @@ Specifically, we patch
 * the type of fields
 * the argument type and return type of methods
 
-`JavaNull` is an alias for `Null` with magic properties (see below). We illustrate the rules with following examples:
+`UncheckedNull` is an alias for `Null` with magic properties (see below). We illustrate the rules with following examples:
 
   * The first two rules are easy: we nullify reference types but not value types.
 
@@ -113,7 +113,7 @@ Specifically, we patch
     ==>
     ```scala
     class C {
-      val s: String|JavaNull
+      val s: String|UncheckedNull
       val x: Int
     }
     ```
@@ -125,7 +125,7 @@ Specifically, we patch
     ```
     ==>
     ```scala
-    class C[T] { def foo(): T|JavaNull }
+    class C[T] { def foo(): T|UncheckedNull }
     ```
 
     Notice this is rule is sometimes too conservative, as witnessed by
@@ -145,21 +145,21 @@ Specifically, we patch
     ```
     ==>
     ```scala
-    class Box[T] { def get(): T|JavaNull }
-    class BoxFactory[T] { def makeBox(): Box[T]|JavaNull }
+    class Box[T] { def get(): T|UncheckedNull }
+    class BoxFactory[T] { def makeBox(): Box[T]|UncheckedNull }
     ```
 
     Suppose we have a `BoxFactory[String]`. Notice that calling `makeBox()` on it returns a
-    `Box[String]|JavaNull`, not a `Box[String|JavaNull]|JavaNull`. This seems at first
+    `Box[String]|UncheckedNull`, not a `Box[String|UncheckedNull]|UncheckedNull`. This seems at first
     glance unsound ("What if the box itself has `null` inside?"), but is sound because calling
-    `get()` on a `Box[String]` returns a `String|JavaNull`.
+    `get()` on a `Box[String]` returns a `String|UncheckedNull`.
 
     Notice that we need to patch _all_ Java-defined classes that transitively appear in the
     argument or return type of a field or method accessible from the Scala code being compiled.
     Absent crazy reflection magic, we think that all such Java classes _must_ be visible to
     the Typer in the first place, so they will be patched.
 
-  * We will append `JavaNull` to the type arguments if the generic class is defined in Scala.
+  * We will append `UncheckedNull` to the type arguments if the generic class is defined in Scala.
 
     ```java
     class BoxFactory<T> {
@@ -170,17 +170,17 @@ Specifically, we patch
     ==>
     ```scala
     class BoxFactory[T] {
-      def makeBox(): Box[T | JavaNull] | JavaNull
-      def makeCrazyBoxes(): List[Box[List[T] | JavaNull]] | JavaNull
+      def makeBox(): Box[T | UncheckedNull] | UncheckedNull
+      def makeCrazyBoxes(): List[Box[List[T] | UncheckedNull]] | UncheckedNull
     }
     ```
 
-    In this case, since `Box` is Scala-defined, and we will get `Box[T|JavaNull]|JavaNull`.
+    In this case, since `Box` is Scala-defined, and we will get `Box[T|UncheckedNull]|UncheckedNull`.
     This is needed because our nullability function is only applied (modularly) to the Java
     classes, but not to the Scala ones, so we need a way to tell `Box` that it contains a
     nullable value.
 
-    The `List` is Java-defined, so we don't append `JavaNull` to its type argument. But we
+    The `List` is Java-defined, so we don't append `UncheckedNull` to its type argument. But we
     still need to nullify its inside.
 
   * We don't nullify _simple_ literal constant (`final`) fields, since they are known to be non-null
@@ -205,7 +205,7 @@ Specifically, we patch
     }
     ```
 
-  * We don't append `JavaNull` to a field and the return type of a method which is annotated with a
+  * We don't append `UncheckedNull` to a field and the return type of a method which is annotated with a
     `NotNull` annotation.
 
     ```java
@@ -219,8 +219,8 @@ Specifically, we patch
     ```scala
     class C {
       val name: String
-      def getNames(prefix: String | JavaNull): List[String] // we still need to nullify the paramter types
-      def getBoxedName(): Box[String | JavaNull] // we don't append `JavaNull` to the outmost level, but we still need to nullify inside
+      def getNames(prefix: String | UncheckedNull): List[String] // we still need to nullify the paramter types
+      def getBoxedName(): Box[String | UncheckedNull] // we don't append `UncheckedNull` to the outmost level, but we still need to nullify inside
     }
     ```
 
@@ -248,15 +248,15 @@ Specifically, we patch
       "io.reactivex.annotations.NonNull" :: Nil map PreNamedString)
     ```
 
-### JavaNull
+### UncheckedNull
 
 To enable method chaining on Java-returned values, we have the special type alias for `Null`:
 
 ```scala
-type JavaNull = Null
+type UncheckedNull = Null
 ```
 
-`JavaNull` behaves just like `Null`, except it allows (unsound) member selections:
+`UncheckedNull` behaves just like `Null`, except it allows (unsound) member selections:
 
 ```scala
 // Assume someJavaMethod()'s original Java signature is
@@ -264,12 +264,12 @@ type JavaNull = Null
 val s2: String = someJavaMethod().trim().substring(2).toLowerCase() // unsound
 ```
 
-Here, all of `trim`, `substring` and `toLowerCase` return a `String|JavaNull`.
-The Typer notices the `JavaNull` and allows the member selection to go through.
+Here, all of `trim`, `substring` and `toLowerCase` return a `String|UncheckedNull`.
+The Typer notices the `UncheckedNull` and allows the member selection to go through.
 However, if `someJavaMethod` were to return `null`, then the first member selection
 would throw a `NPE`.
 
-Without `JavaNull`, the chaining becomes too cumbersome
+Without `UncheckedNull`, the chaining becomes too cumbersome
 
 ```scala
 val ret = someJavaMethod()

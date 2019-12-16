@@ -11,22 +11,22 @@ import NullOpsDecorator._
  *  as Scala types, which are explicitly nullable.
  *
  *  The transformation is (conceptually) a function `n` that adheres to the following rules:
- *    (1) n(T)              = T|JavaNull              if T is a reference type
+ *    (1) n(T)              = T|UncheckedNull              if T is a reference type
  *    (2) n(T)              = T                       if T is a value type
- *    (3) n(C[T])           = C[T]|JavaNull           if C is Java-defined
- *    (4) n(C[T])           = C[n(T)]|JavaNull        if C is Scala-defined
- *    (5) n(A|B)            = n(A)|n(B)|JavaNull
+ *    (3) n(C[T])           = C[T]|UncheckedNull           if C is Java-defined
+ *    (4) n(C[T])           = C[n(T)]|UncheckedNull        if C is Scala-defined
+ *    (5) n(A|B)            = n(A)|n(B)|UncheckedNull
  *    (6) n(A&B)            = n(A) & n(B)
  *    (7) n((A1, ..., Am)R) = (n(A1), ..., n(Am))n(R) for a method with arguments (A1, ..., Am) and return type R
  *    (8) n(T)              = T                       otherwise
  *
  *   Treatment of generics (rules 3 and 4):
- *     - if `C` is Java-defined, then `n(C[T]) = C[T]|JavaNull`. That is, we don't recurse
- *       on the type argument, and only add JavaNull on the outside. This is because
+ *     - if `C` is Java-defined, then `n(C[T]) = C[T]|UncheckedNull`. That is, we don't recurse
+ *       on the type argument, and only add UncheckedNull on the outside. This is because
  *       `C` itself will be nullified, and in particular so will be usages of `C`'s type argument within C's body.
  *       e.g. calling `get` on a `java.util.List[String]` already returns `String|Null` and not `String`, so
  *       we don't need to write `java.util.List[String|Null]`.
- *     - if `C` is Scala-defined, however, then we want `n(C[T]) = C[n(T)]|JavaNull`. This is because
+ *     - if `C` is Scala-defined, however, then we want `n(C[T]) = C[n(T)]|UncheckedNull`. This is because
  *       `C` won't be nullified, so we need to indicate that its type argument is nullable.
  *
  *   Notice that since the transformation is only applied to types attached to Java symbols, it doesn't need
@@ -43,9 +43,9 @@ object JavaNullInterop {
    *
    *  After calling `nullifyMember`, Scala will see the method as
    *
-   *  def foo(arg: String|JavaNull): String|JavaNull
+   *  def foo(arg: String|UncheckedNull): String|UncheckedNull
    *
-   *  This nullability function uses `JavaNull` instead of vanilla `Null`, for usability.
+   *  This nullability function uses `UncheckedNull` instead of vanilla `Null`, for usability.
    *  This means that we can select on the return of `foo`:
    *
    *  val len = foo("hello").length
@@ -81,20 +81,20 @@ object JavaNullInterop {
   private def nullifyExceptReturnType(tp: Type)(implicit ctx: Context): Type =
     new JavaNullMap(true)(ctx)(tp)
 
-  /** Nullifies a Java type by adding `| JavaNull` in the relevant places. */
+  /** Nullifies a Java type by adding `| UncheckedNull` in the relevant places. */
   private def nullifyType(tp: Type)(implicit ctx: Context): Type =
     new JavaNullMap(false)(ctx)(tp)
 
-  /** A type map that implements the nullification function on types. Given a Java-sourced type, this adds `| JavaNull`
+  /** A type map that implements the nullification function on types. Given a Java-sourced type, this adds `| UncheckedNull`
    *  in the right places to make the nulls explicit in Scala.
    *
    *  @param outermostLevelAlreadyNullable whether this type is already nullable at the outermost level.
-   *                                       For example, `Array[String]|JavaNull` is already nullable at the
-   *                                       outermost level, but `Array[String|JavaNull]` isn't.
+   *                                       For example, `Array[String]|UncheckedNull` is already nullable at the
+   *                                       outermost level, but `Array[String|UncheckedNull]` isn't.
    *                                       If this parameter is set to true, then the types of fields, and the return
    *                                       types of methods will not be nullified.
    *                                       This is useful for e.g. constructors, and also so that `A & B` is nullified
-   *                                       to `(A & B) | JavaNull`, instead of `(A|JavaNull & B|JavaNull) | JavaNull`.
+   *                                       to `(A & B) | UncheckedNull`, instead of `(A|UncheckedNull & B|UncheckedNull) | UncheckedNull`.
    */
   private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean)(implicit ctx: Context) extends TypeMap {
     /** Should we nullify `tp` at the outermost level? */
@@ -107,7 +107,7 @@ object JavaNullInterop {
           !tp.isRef(defn.AnyClass) &&
           // We don't nullify Java varargs at the top level.
           // Example: if `setNames` is a Java method with signature `void setNames(String... names)`,
-          // then its Scala signature will be `def setNames(names: (String|JavaNull)*): Unit`.
+          // then its Scala signature will be `def setNames(names: (String|UncheckedNull)*): Unit`.
           // This is because `setNames(null)` passes as argument a single-element array containing the value `null`,
           // and not a `null` array.
           !tp.isRef(defn.RepeatedParamClass)
@@ -115,7 +115,7 @@ object JavaNullInterop {
       })
 
     override def apply(tp: Type): Type = tp match {
-      case tp: TypeRef if needsNull(tp) => OrJavaNull(tp)
+      case tp: TypeRef if needsNull(tp) => OrUncheckedNull(tp)
       case appTp @ AppliedType(tycon, targs) =>
         val oldOutermostNullable = outermostLevelAlreadyNullable
         // We don't make the outmost levels of type arguements nullable if tycon is Java-defined.
@@ -125,7 +125,7 @@ object JavaNullInterop {
         val targs2 = targs map this
         outermostLevelAlreadyNullable = oldOutermostNullable
         val appTp2 = derivedAppliedType(appTp, tycon, targs2)
-        if (needsNull(tycon)) OrJavaNull(appTp2) else appTp2
+        if (needsNull(tycon)) OrUncheckedNull(appTp2) else appTp2
       case ptp: PolyType =>
         derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
       case mtp: MethodType =>
@@ -136,11 +136,11 @@ object JavaNullInterop {
         derivedLambdaType(mtp)(paramInfos2, this(mtp.resType))
       case tp: TypeAlias => mapOver(tp)
       case tp: AndType =>
-        // nullify(A & B) = (nullify(A) & nullify(B)) | JavaNull, but take care not to add
-        // duplicate `JavaNull`s at the outermost level inside `A` and `B`.
+        // nullify(A & B) = (nullify(A) & nullify(B)) | UncheckedNull, but take care not to add
+        // duplicate `UncheckedNull`s at the outermost level inside `A` and `B`.
         outermostLevelAlreadyNullable = true
-        OrJavaNull(derivedAndType(tp, this(tp.tp1), this(tp.tp2)))
-      case tp: TypeParamRef if needsNull(tp) => OrJavaNull(tp)
+        OrUncheckedNull(derivedAndType(tp, this(tp.tp1), this(tp.tp2)))
+      case tp: TypeParamRef if needsNull(tp) => OrUncheckedNull(tp)
       // In all other cases, return the type unchanged.
       // In particular, if the type is a ConstantType, then we don't nullify it because it is the
       // type of a final non-nullable field.

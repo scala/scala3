@@ -8,27 +8,27 @@ import dotty.tools.dotc.core.Types._
 object NullOpsDecorator {
 
   implicit class NullOps(val self: Type) {
-    /** Is this type exactly `JavaNull` (no vars, aliases, refinements etc allowed)? */
-    def isJavaNullType(implicit ctx: Context): Boolean = {
+    /** Is this type exactly `UncheckedNull` (no vars, aliases, refinements etc allowed)? */
+    def isUncheckedNullType(implicit ctx: Context): Boolean = {
       assert(ctx.explicitNulls)
-      // We can't do `self == defn.JavaNull` because when trees are unpickled new references
-      // to `JavaNull` could be created that are different from `defn.JavaNull`.
+      // We can't do `self == defn.UncheckedNull` because when trees are unpickled new references
+      // to `UncheckedNull` could be created that are different from `defn.UncheckedNull`.
       // Instead, we compare the symbol.
-      self.isDirectRef(defn.JavaNullAlias)
+      self.isDirectRef(defn.UncheckedNullAlias)
     }
 
     /** Syntactically strips the nullability from this type.
-     *  If the type is `T1 | ... | Tn`, and `Ti` references to `Null` (or `JavaNull`),
+     *  If the type is `T1 | ... | Tn`, and `Ti` references to `Null` (or `UncheckedNull`),
      *  then return `T1 | ... | Ti-1 | Ti+1 | ... | Tn`.
      *  If this type isn't (syntactically) nullable, then returns the type unchanged.
      *
-     *  @param onlyJavaNull whether we only remove `JavaNull`, the default value is false
+     *  @param onlyUncheckedNull whether we only remove `UncheckedNull`, the default value is false
      */
-    def stripNull(onlyJavaNull: Boolean = false)(implicit ctx: Context): Type = {
+    def stripNull(onlyUncheckedNull: Boolean = false)(implicit ctx: Context): Type = {
       assert(ctx.explicitNulls)
 
       def isNull(tp: Type) =
-        if (onlyJavaNull) tp.isJavaNullType
+        if (onlyUncheckedNull) tp.isUncheckedNullType
         else tp.isNullType
 
       def strip(tp: Type): Type = tp match {
@@ -55,15 +55,15 @@ object NullOpsDecorator {
       if (stripped ne self1) stripped else self
     }
 
-    /** Like `stripNull`, but removes only the `JavaNull`s. */
-    def stripJavaNull(implicit ctx: Context): Type = self.stripNull(true)
+    /** Like `stripNull`, but removes only the `UncheckedNull`s. */
+    def stripUncheckedNull(implicit ctx: Context): Type = self.stripNull(true)
 
-    /** Collapses all `JavaNull` unions within this type, and not just the outermost ones (as `stripJavaNull` does).
-     *  e.g. (Array[String|JavaNull]|JavaNull).stripJavaNull => Array[String|JavaNull]
-     *       (Array[String|JavaNull]|JavaNull).stripAllJavaNull => Array[String]
-     *  If no `JavaNull` unions are found within the type, then returns the input type unchanged.
+    /** Collapses all `UncheckedNull` unions within this type, and not just the outermost ones (as `stripUncheckedNull` does).
+     *  e.g. (Array[String|UncheckedNull]|UncheckedNull).stripUncheckedNull => Array[String|UncheckedNull]
+     *       (Array[String|UncheckedNull]|UncheckedNull).stripAllUncheckedNull => Array[String]
+     *  If no `UncheckedNull` unions are found within the type, then returns the input type unchanged.
      */
-    def stripAllJavaNull(implicit ctx: Context): Type = {
+    def stripAllUncheckedNull(implicit ctx: Context): Type = {
       object RemoveNulls extends TypeMap {
         override def apply(tp: Type): Type = mapOver(tp.stripNull(true))
       }
@@ -77,8 +77,8 @@ object NullOpsDecorator {
       stripped ne self
     }
 
-    /** Is self (after widening and dealiasing) a type of the form `T | JavaNull`? */
-    def isJavaNullableUnion(implicit ctx: Context): Boolean = {
+    /** Is self (after widening and dealiasing) a type of the form `T | UncheckedNull`? */
+    def isUncheckedNullableUnion(implicit ctx: Context): Boolean = {
       val stripped = self.stripNull(true)
       stripped ne self
     }

@@ -1,5 +1,5 @@
 
-// Test that JavaNull can be assigned to Null.
+// Test that UncheckedNull can be assigned to Null.
 class Foo {
   import java.util.ArrayList
   val l = new ArrayList[String]()

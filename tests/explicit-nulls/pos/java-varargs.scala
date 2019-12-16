@@ -9,7 +9,7 @@ class S {
   // is a varargs: https://docs.oracle.com/javase/8/docs/api/java/nio/file/Paths.html
   // static Path get(String first, String... more)
   // The Scala compiler converts this signature into
-  // def get(first: String|JavaNUll, more: (String|JavaNull)*)
+  // def get(first: String|JavaNUll, more: (String|UncheckedNull)*)
 
   // Test that we can avoid providing the varargs argument altogether.
   Paths.get("out").toAbsolutePath
