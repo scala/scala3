@@ -1,0 +1,1 @@
+class A[F[_], X <: F[Int]](x: X) extends AnyVal

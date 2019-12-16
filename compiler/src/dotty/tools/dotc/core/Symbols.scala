@@ -282,14 +282,15 @@ trait Symbols { this: Context =>
     val tparamBuf = new mutable.ListBuffer[TypeSymbol]
     val trefBuf = new mutable.ListBuffer[TypeRef]
     for (name <- names) {
-      val tparam = newNakedSymbol[TypeName](owner.coord)
+      val tparam = newSymbol(
+        owner, name, flags | owner.typeParamCreationFlags, NoType, coord = owner.coord)
       tparamBuf += tparam
       trefBuf += TypeRef(owner.thisType, tparam)
     }
     val tparams = tparamBuf.toList
     val bounds = boundsFn(trefBuf.toList)
-    for ((name, tparam, bound) <- names.lazyZip(tparams).lazyZip(bounds))
-      tparam.denot = SymDenotation(tparam, owner, name, flags | owner.typeParamCreationFlags, bound)
+    for (tparam, bound) <- tparams.lazyZip(bounds) do
+      tparam.info = bound
     tparams
   }
 
