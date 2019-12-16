@@ -241,12 +241,22 @@ trait TreeOps extends Core {
 
   object Ref {
 
-    /** Create a reference tree */
+    /** Create a reference tree from a symbol
+      *
+      *  If `sym` refers to a class member `foo` in class `C`,
+      *  returns a tree representing `C.this.foo`.
+      *
+      *  If `sym` refers to a local definition `foo`, returns
+      *  a tree representing `foo`.
+      *
+      *  @note In both cases, the constructed tree should only
+      *  be spliced into the places where such accesses make sense.
+      *  For example, it is incorrect to have `C.this.foo` outside
+      *  the class body of `C`, or have `foo` outside the lexical
+      *  scope for the definition of `foo`.
+      */
     def apply(sym: Symbol)(given ctx: Context): Ref =
       internal.Ref_apply(sym)
-
-    // TODO def copy(original: Tree)(name: String)(given ctx: Context): Ref
-
   }
 
   given (given Context): IsInstanceOf[Ident] = internal.isInstanceOfIdent
