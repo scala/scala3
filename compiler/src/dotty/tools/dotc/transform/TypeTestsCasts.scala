@@ -168,7 +168,8 @@ object TypeTestsCasts {
           cpy.TypeApply(tree)(expr1.select(sym).withSpan(expr.span), List(TypeTree(tp)))
 
         def effectiveClass(tp: Type): Symbol =
-          if (tp.isRef(defn.PairClass)) effectiveClass(erasure(tp))
+          if tp.isRef(defn.PairClass) then effectiveClass(erasure(tp))
+          else if tp.isRef(defn.AnyValClass) then defn.AnyClass
           else tp.classSymbol
 
         def foundCls = effectiveClass(expr.tpe.widen)
