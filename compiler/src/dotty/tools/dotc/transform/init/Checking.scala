@@ -146,10 +146,11 @@ object Checking {
   }
 
   def checkSecondaryConstructor(ctor: Symbol)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
-    val Block(ctorCall :: stats, expr) = ctor.defTree
+    val Block(ctorCall :: stats, expr) = ctor.defTree.asInstanceOf[DefDef].rhs
     val cls = ctor.owner.asClass
 
-    traceOp("check ctor: " + ctor.show, init) {
+    traceOp("check ctor: " + ctorCall.show, init) {
+      val ctor = ctorCall.symbol
       if (ctor.isPrimaryConstructor)
         checkClassBody(cls.defTree.asInstanceOf[TypeDef])
       else
