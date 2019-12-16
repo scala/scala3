@@ -206,7 +206,7 @@ object Checking {
 
             case Warm(cls, outer) =>
               theCtx.warning(
-                "Leaking of warm value " + eff.source.show +
+                "Leaking of value under initialization: " + pot.source.show +
                 ". Calling trace:\n" + state.trace,
                 eff.source.sourcePos
               )
