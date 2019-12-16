@@ -301,7 +301,6 @@ class CompilationTests extends ParallelTesting {
     val options = defaultOptions.and("-Ycheck-init", "-Xfatal-warnings")
     aggregateTests(
       compileFilesInDir("tests/init/neg/", options),
-      compileFilesInDir("tests/init/neg/misc", options),
       compileFilesInDir("tests/init/neg/crash", options),
     )
   }.checkExpectedErrors()
