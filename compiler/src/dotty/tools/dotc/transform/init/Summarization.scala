@@ -4,11 +4,13 @@ package init
 
 import core._
 import Contexts.Context
-import ast.tpd._
 import Decorators._
+import StdNames._
 import Symbols._
 import Constants.Constant
 import Types._
+
+import ast.tpd._
 import config.Printers.init
 import reporting.trace
 
@@ -26,6 +28,10 @@ object Summarization {
   def analyze(expr: Tree)(implicit env: Env): Summary =
   trace("summarizing " + expr.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
     val summary: Summary = expr match {
+      case Ident(nme.WILDCARD) =>
+        // TODO:  disallow `var x: T = _`
+        Summary.empty
+
       case Ident(name) =>
         assert(name.isTermName, "type trees should not reach here")
         analyze(expr.tpe, expr)
@@ -229,7 +235,10 @@ object Summarization {
         val thisRef = ThisRef(thisTp.classSymbol.asClass)(source)
         val pot = SuperRef(thisRef, superTp.classSymbol.asClass)(source)
         Summary.empty + pot
-      }
+
+      case _ =>
+        throw new Exception("unexpected type: " + tp.show)
+    }
 
     if (env.isAlwaysInitialized(tp)) (Potentials.empty, summary._2)
     else summary
