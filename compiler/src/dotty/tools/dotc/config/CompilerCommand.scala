@@ -23,7 +23,7 @@ object CompilerCommand {
     |  - (partial) phase names with an optional "+" suffix to include the next phase
     |  - the string "all"
     |  example: -Xprint:all prints all phases.
-    |  example: -Xprint:front,mixin prints the frontend and mixin phases.
+    |  example: -Xprint:typer,mixin prints the typer and mixin phases.
     |  example: -Ylog:erasure+ logs the erasure phase and the phase after the erasure phase.
     |           This is useful because during the tree transform of phase X, we often
     |           already are in phase X + 1.

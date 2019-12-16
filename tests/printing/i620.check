@@ -1,4 +1,4 @@
-result of tests/printing/i620.scala after frontend:
+result of tests/printing/i620.scala after typer:
 package O {
   package O.A {
     class D() extends Object() {

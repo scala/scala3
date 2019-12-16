@@ -25,7 +25,7 @@ class PrinterTests extends DottyTest {
       }
     """
 
-    checkCompile("frontend", source) { (tree, context) =>
+    checkCompile("typer", source) { (tree, context) =>
       implicit val ctx = context
       val bar = tree.find(tree => tree.symbol.name == termName("bar")).get
       assertEquals("package object foo", bar.symbol.owner.show)
@@ -42,7 +42,7 @@ class PrinterTests extends DottyTest {
       |}
     """.stripMargin
 
-    checkCompile("frontend", source) { (tree, context) =>
+    checkCompile("typer", source) { (tree, context) =>
       implicit val ctx = context
       val bar @ Trees.DefDef(_, _, _, _, _) = tree.find(tree => tree.symbol.name == termName("bar2")).get
       assertEquals("Int & (Boolean | String)", bar.tpt.show)

@@ -136,5 +136,5 @@ class FrontEnd extends Phase {
 }
 
 object FrontEnd {
-  val name: String = "frontend"
+  val name: String = "typer"
 }

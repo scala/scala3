@@ -1366,7 +1366,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       }
 
   @Test def unapplyInvalidReturnType =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter("typer") {
       """
         |class A(val i: Int)
         |
@@ -1386,7 +1386,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def unapplySeqInvalidReturnType =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter("typer") {
       """
         |class A(val i: Int)
         |

@@ -77,7 +77,7 @@ trait DottyTest extends ContextEscapeDetection {
     val dummyName = "x_x_x"
     val vals = typeStringss.flatten.zipWithIndex.map{case (s, x)=> s"val ${dummyName}$x: $s = ???"}.mkString("\n")
     val gatheredSource = s" ${source}\n object A$dummyName {$vals}"
-    checkCompile("frontend", gatheredSource) {
+    checkCompile("typer", gatheredSource) {
       (tree, context) =>
         implicit val ctx = context
         val findValDef: (List[tpd.ValDef], tpd.Tree) => List[tpd.ValDef] =

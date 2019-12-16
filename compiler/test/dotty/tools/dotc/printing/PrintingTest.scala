@@ -19,7 +19,7 @@ import org.junit.Test
 
 class PrintingTest {
   val testsDir = "tests/printing"
-  val options = List("-Xprint:frontend", "-color:never", "-classpath", TestConfiguration.basicClasspath)
+  val options = List("-Xprint:typer", "-color:never", "-classpath", TestConfiguration.basicClasspath)
 
   private def fileContent(filePath: String): List[String] =
     if (new File(filePath).exists)
