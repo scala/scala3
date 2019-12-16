@@ -77,23 +77,26 @@ object Summarization {
         Summary.empty
 
       case New(tpt) =>
-        tpt.tpe.typeConstructor match {
-          case tref: TypeRef =>
-            val cls = tref.classSymbol.asClass
-            // local class may capture, thus we need to track it
-            if (tref.prefix == NoPrefix) {
-              val enclosingCls = cls.enclosingClass.asClass
-              val thisRef = ThisRef(enclosingCls)(expr)
-              Summary.empty + Warm(cls, thisRef)(expr)
-            }
-            else {
-              val (pots, effs) = analyze(tref.prefix, expr)
-              if (pots.isEmpty) Summary.empty.withEffs(effs)
-              else {
-                assert(pots.size == 1)
-                (Warm(cls, pots.head)(expr).toPots, effs)
-              }
-            }
+        def typeRefOf(tp: Type): TypeRef = tp.typeConstructor match {
+          case tref: TypeRef => tref
+          case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
+        }
+
+        val tref = typeRefOf(tpt.tpe)
+        val cls = tref.classSymbol.asClass
+        // local class may capture, thus we need to track it
+        if (tref.prefix == NoPrefix) {
+          val enclosingCls = cls.enclosingClass.asClass
+          val thisRef = ThisRef(enclosingCls)(expr)
+          Summary.empty + Warm(cls, thisRef)(expr)
+        }
+        else {
+          val (pots, effs) = analyze(tref.prefix, expr)
+          if (pots.isEmpty) Summary.empty.withEffs(effs)
+          else {
+            assert(pots.size == 1)
+            (Warm(cls, pots.head)(expr).toPots, effs)
+          }
         }
 
       case Typed(expr, tpt) =>
