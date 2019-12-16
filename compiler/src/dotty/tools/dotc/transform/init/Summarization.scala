@@ -100,7 +100,8 @@ object Summarization {
         }
 
       case Typed(expr, tpt) =>
-        analyze(expr)
+        if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot)) Summary.empty
+        else analyze(expr)
 
       case NamedArg(name, arg) =>
         analyze(arg)
