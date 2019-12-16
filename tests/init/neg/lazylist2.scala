@@ -7,7 +7,7 @@ trait LazyList[+A] {
 }
 
 object LazyList {
-  inline implicit def toHelper[A](l: => LazyList[A]): Helper[A] = new Helper(l)
+  implicit def toHelper[A](l: => LazyList[A]): Helper[A] = new Helper(l)
   final class Helper[A](l: => LazyList[A]) {
     def #:: [B >: A](elem: => B): LazyList[B] = new LazyList[B] {
       override def isEmpty: Boolean = false
@@ -21,7 +21,7 @@ import LazyList._
 
 final class Test1 {
   lazy val a: LazyList[Int] = 5 #:: b
-  val b: LazyList[Int] = 10 #:: a
+  lazy val b: LazyList[Int] = 10 #:: a
 
   a.head // ok
   b.head // ok
@@ -33,11 +33,11 @@ final class Test1 {
 final class Test2 {
   lazy val a: LazyList[Int] = 5 #:: b
   lazy val b: LazyList[Int] = 10 #:: 30 #:: c
-  val c: LazyList[Int] = 20 #:: a
+  lazy val c: LazyList[Int] = 20 #:: a
 }
 
 final class Test3 {
-  val a: LazyList[Int] = n #:: a
+  val a: LazyList[Int] = n #:: (a: @unchecked)
   a.head
   val n: Int = 20    // error
 }

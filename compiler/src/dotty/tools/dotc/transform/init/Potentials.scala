@@ -140,6 +140,8 @@ object Potentials {
 
   def (ps: Potentials) select (symbol: Symbol, source: Tree)(implicit ctx: Context): Summary =
     ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
+      // max potential length
+      // TODO: it can be specified on a project basis via compiler options
       if (pot.size > 2)
         (pots, effs + Leak(pot)(source))
       else if (symbol.isConstructor)
