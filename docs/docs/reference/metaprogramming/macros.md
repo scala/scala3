@@ -697,10 +697,13 @@ Sometimes it is necessary to get a more precise type for an expression. This can
 def f(exp: Expr[Any]) =
   expr match
     case '{ $x: $t } =>
-      // There there exists some local `type T` for which we have `x: Expr[T]` and a `given t: Type[T]`
+      // If the pattern match succeeds, then there is some type `T` such that
+      // - `x` is bound to a variable of type `Expr[T]`
+      // - `t` is bound to a given instance of type `Type[T]`
+      // That is, we have `x: Expr[T]` and `given t: Type[T]`, for some (unknown) type `T`.
 ```
 
-This might be used to then prerorm an implicit search as in:
+This might be used to then perform an implicit search as in:
 
 
 ```scala
