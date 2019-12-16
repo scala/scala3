@@ -278,7 +278,7 @@ object Checking {
               val target = resolveSuper(cls, supercls, sym)
               if (!target.is(Flags.Method))
                 check(FieldAccess(pot, target)(eff.source))
-              if (target.isInternal) {
+              else if (target.isInternal) {
                 val effs = thisRef.effectsOf(target)
                 effs.foreach { check(_) }
               }
