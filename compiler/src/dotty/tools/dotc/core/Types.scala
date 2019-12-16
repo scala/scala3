@@ -3596,13 +3596,13 @@ object Types {
             NoType
         }
 
-        tryCompiletimeConstantFold.getOrElse(tryMatchAlias)
+        tryCompiletimeConstantFold.orElse(tryMatchAlias)
 
       case _ =>
         NoType
     }
 
-    def tryCompiletimeConstantFold(implicit ctx: Context): Option[Type] = tycon match {
+    def tryCompiletimeConstantFold(implicit ctx: Context): Type = tycon match {
       case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
         def constValue(tp: Type): Option[Any] = tp match {
           case ConstantType(Constant(n)) => Some(n)
@@ -3631,7 +3631,7 @@ object Types {
           } yield ConstantType(Constant(op(a, b)))
 
         trace(i"compiletime constant fold $this", typr, show = true) {
-          if (args.length == 1) tycon.symbol.name match {
+          val constantType = if (args.length == 1) tycon.symbol.name match {
             case tpnme.S => constantFold1(natValue, _ + 1)
             case tpnme.Abs => constantFold1(intValue, _.abs)
             case tpnme.Negate => constantFold1(intValue, x => -x)
@@ -3663,9 +3663,11 @@ object Types {
             case tpnme.Xor => constantFold2(boolValue, _ ^ _)
             case _ => None
           } else None
+
+          constantType.getOrElse(NoType)
         }
 
-      case _ => None
+      case _ => NoType
     }
 
     def lowerBound(implicit ctx: Context): Type = tycon.stripTypeVar match {
