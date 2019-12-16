@@ -416,8 +416,8 @@ object Checking {
       case _: ThisRef | _: Fun | _: Warm | _: Cold =>
         Set(pot)
 
-      case _: SuperRef =>
-        throw new Exception("Unexpected SuperRef")
+      case SuperRef(pot1, supercls) =>
+        expand(pot1).map { SuperRef(_, supercls)(pot.source) }
     }
   }
 }
