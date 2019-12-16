@@ -3,11 +3,14 @@ package transform
 package init
 
 import core._
-import ast.Trees._
-import ast.tpd
 import Contexts.Context
 import Types._
 import Symbols._
+import Decorators._
+
+import ast.Trees._
+import ast.tpd
+
 import reporting.trace
 import config.Printers.init
 
@@ -22,7 +25,7 @@ case class Env(ctx: Context, summaryCache: mutable.Map[ClassSymbol, ClassSummary
 
   // Methods that should be ignored in the checking
   lazy val ignoredMethods: Set[Symbol] = Set(
-    // ctx.requiredMethod("scala.runtime.EnumValues.register"),
+    ctx.requiredClass("scala.runtime.EnumValues").requiredMethod("register"),
     defn.Any_getClass,
     defn.Any_isInstanceOf,
     defn.Object_eq,
