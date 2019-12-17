@@ -191,10 +191,10 @@ object opaques
     def [T](arr: IArray[T]) takeWhile(p: T => Boolean): IArray[T] =
       arr.asInstanceOf[Array[T]].takeWhile(p).asInstanceOf
 
-    // def [T, U: ClassTag, V: ClassTag](arr: IArray[T]) unzip(given T => (U, V)): (IArray[U], IArray[V]) =
-    //   arr.asInstanceOf[Array[T]].unzip match {
-    //     case (x, y) => (x.asInstanceOf[IArray[U]], y.asInstanceOf[IArray[V]])
-    //   }
+    def [U: ClassTag, V: ClassTag](arr: IArray[(U, V)]) unzip: (IArray[U], IArray[V]) =
+      arr.asInstanceOf[Array[(U, V)]].unzip match {
+        case (x, y) => (x.asInstanceOf[IArray[U]], y.asInstanceOf[IArray[V]])
+      }
 
     def [T, U: ClassTag](arr: IArray[T]) zip(that: IterableOnce[U]): IArray[(T, U)] =
       arr.asInstanceOf[Array[T]].zip(that).asInstanceOf
