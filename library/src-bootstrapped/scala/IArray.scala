@@ -42,49 +42,49 @@ object opaques
     /** All the methods on Array[T] that don't mutate in-place can be used with IArray[T].
      */
     def [T, U >: T: ClassTag](arr: IArray[T]) ++(that: IArray[U]): IArray[U] =
-      (arr.asInstanceOf[Array[T]] ++ that.asInstanceOf[Array[U]]).asInstanceOf
+      (arr.asInstanceOf[Array[T]] ++ that.asInstanceOf[Array[U]]).asInstanceOf[IArray[U]]
 
-    def [T](arr: IArray[T])contains(elem: T): Boolean =
+    def [T](arr: IArray[T]) contains(elem: T): Boolean =
       arr.asInstanceOf[Array[T]].contains(elem)
 
     def [T](arr: IArray[T]) count(p: T => Boolean): Int =
       arr.asInstanceOf[Array[T]].count(p)
 
     def [T](arr: IArray[T]) drop(n: Int): IArray[T] =
-      arr.asInstanceOf[Array[T]].drop(n).asInstanceOf
+      arr.asInstanceOf[Array[T]].drop(n).asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) dropRight(n: Int): IArray[T] =
-      arr.asInstanceOf[Array[T]].dropRight(n).asInstanceOf
+      arr.asInstanceOf[Array[T]].dropRight(n).asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) dropWhile(p: T => Boolean): IArray[T] =
-      arr.asInstanceOf[Array[T]].dropWhile(p).asInstanceOf
+      arr.asInstanceOf[Array[T]].dropWhile(p).asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) exists(p: T => Boolean): IArray[T] =
-      arr.asInstanceOf[Array[T]].exists(p).asInstanceOf
+      arr.asInstanceOf[Array[T]].exists(p).asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) filter(p: T => Boolean): IArray[T] =
-      arr.asInstanceOf[Array[T]].filter(p).asInstanceOf
+      arr.asInstanceOf[Array[T]].filter(p).asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) filterNot(p: T => Boolean): IArray[T] =
-      arr.asInstanceOf[Array[T]].filterNot(p).asInstanceOf
+      arr.asInstanceOf[Array[T]].filterNot(p).asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) find(p: T => Boolean): Option[T] =
-      arr.asInstanceOf[Array[T]].find(p).asInstanceOf
+      arr.asInstanceOf[Array[T]].find(p)
 
     def [T, U: ClassTag](arr: IArray[T]) flatMap(f: T => IterableOnce[U]): IArray[U] =
-      arr.asInstanceOf[Array[T]].flatMap(f).asInstanceOf
+      arr.asInstanceOf[Array[T]].flatMap(f).asInstanceOf[IArray[U]]
 
     def [T, U: ClassTag](arr: IArray[T]) flatten(given T => Iterable[U]): IArray[U] =
-      arr.asInstanceOf[Array[T]].flatten.asInstanceOf
+      arr.asInstanceOf[Array[T]].flatten.asInstanceOf[IArray[U]]
 
     def [T, U >: T: ClassTag](arr: IArray[T]) fold(z: U)(op: (U, U) => U): U =
-      arr.asInstanceOf[Array[T]].fold(z)(op).asInstanceOf
+      arr.asInstanceOf[Array[T]].fold(z)(op)
 
     def [T, U >: T: ClassTag](arr: IArray[T]) foldLeft(z: U)(op: (U, T) => U): U =
-      arr.asInstanceOf[Array[T]].foldLeft(z)(op).asInstanceOf
+      arr.asInstanceOf[Array[T]].foldLeft(z)(op)
 
     def [T, U >: T: ClassTag](arr: IArray[T]) foldRight(z: U)(op: (T, U) => U): U =
-      arr.asInstanceOf[Array[T]].foldRight(z)(op).asInstanceOf
+      arr.asInstanceOf[Array[T]].foldRight(z)(op)
 
     def [T](arr: IArray[T]) forall(p: T => Boolean): Boolean =
       arr.asInstanceOf[Array[T]].forall(p)
@@ -105,10 +105,10 @@ object opaques
       arr.asInstanceOf[Array[T]].indexWhere(p, from)
 
     def [T](arr: IArray[T]) indices: Range =
-      arr.asInstanceOf[Array[T]].indices.asInstanceOf
+      arr.asInstanceOf[Array[T]].indices
 
     def [T](arr: IArray[T]) init: IArray[T] =
-      arr.asInstanceOf[Array[T]].init.asInstanceOf
+      arr.asInstanceOf[Array[T]].init.asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) isEmpty: Boolean =
       arr.asInstanceOf[Array[T]].isEmpty
@@ -129,7 +129,7 @@ object opaques
       arr.asInstanceOf[Array[T]].lastIndexWhere(p, from)
 
     def [T, U: ClassTag](arr: IArray[T]) map(f: T => U): IArray[U] =
-      arr.asInstanceOf[Array[T]].map(f).asInstanceOf
+      arr.asInstanceOf[Array[T]].map(f).asInstanceOf[IArray[U]]
 
     def [T](arr: IArray[T]) nonEmpty: Boolean =
       arr.asInstanceOf[Array[T]].nonEmpty
@@ -140,31 +140,31 @@ object opaques
       }
 
     def [T](arr: IArray[T]) reverse: IArray[T] =
-      arr.asInstanceOf[Array[T]].reverse.asInstanceOf
+      arr.asInstanceOf[Array[T]].reverse.asInstanceOf[IArray[T]]
 
-    def [T, U >: T: ClassTag](arr: IArray[T]) scan(z: U)(op: (U, U) => U): Array[U] =
-      arr.asInstanceOf[Array[T]].scan(z)(op).asInstanceOf
+    def [T, U >: T: ClassTag](arr: IArray[T]) scan(z: U)(op: (U, U) => U): IArray[U] =
+      arr.asInstanceOf[Array[T]].scan(z)(op).asInstanceOf[IArray[U]]
 
-    def [T, U: ClassTag](arr: IArray[T]) scanLeft(z: U)(op: (U, T) => U): Array[U] =
-      arr.asInstanceOf[Array[T]].scanLeft(z)(op).asInstanceOf
+    def [T, U: ClassTag](arr: IArray[T]) scanLeft(z: U)(op: (U, T) => U): IArray[U] =
+      arr.asInstanceOf[Array[T]].scanLeft(z)(op).asInstanceOf[IArray[U]]
 
-    def [T, U: ClassTag](arr: IArray[T]) scanRight(z: U)(op: (T, U) => U): Array[U] =
-      arr.asInstanceOf[Array[T]].scanRight(z)(op).asInstanceOf
+    def [T, U: ClassTag](arr: IArray[T]) scanRight(z: U)(op: (T, U) => U): IArray[U] =
+      arr.asInstanceOf[Array[T]].scanRight(z)(op).asInstanceOf[IArray[U]]
 
     def [T](arr: IArray[T]) size: Int =
       arr.asInstanceOf[Array[T]].size
 
-    def [T](arr: IArray[T]) slice(from: Int, until: Int): Array[T] =
-      arr.asInstanceOf[Array[T]].slice(from, until).asInstanceOf
+    def [T](arr: IArray[T]) slice(from: Int, until: Int): IArray[T] =
+      arr.asInstanceOf[Array[T]].slice(from, until).asInstanceOf[IArray[T]]
 
     def [T, U: ClassTag](arr: IArray[T]) sortBy(f: T => U)(given math.Ordering[U]): IArray[T] =
-      arr.asInstanceOf[Array[T]].sortBy(f).asInstanceOf
+      arr.asInstanceOf[Array[T]].sortBy(f).asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) sortWith(f: (T, T) => Boolean): IArray[T] =
-      arr.asInstanceOf[Array[T]].sortWith(f).asInstanceOf
+      arr.asInstanceOf[Array[T]].sortWith(f).asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) sorted(given math.Ordering[T]): IArray[T] =
-      arr.asInstanceOf[Array[T]].sorted.asInstanceOf
+      arr.asInstanceOf[Array[T]].sorted.asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) span(p: T => Boolean): (IArray[T], IArray[T]) =
       arr.asInstanceOf[Array[T]].span(p) match {
@@ -180,16 +180,16 @@ object opaques
       arr.asInstanceOf[Array[T]].startsWith(that.asInstanceOf[Array[U]])
 
     def [T](arr: IArray[T]) tail: IArray[T] =
-      arr.asInstanceOf[Array[T]].tail.asInstanceOf
+      arr.asInstanceOf[Array[T]].tail.asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) take(n: Int): IArray[T] =
-      arr.asInstanceOf[Array[T]].take(n).asInstanceOf
+      arr.asInstanceOf[Array[T]].take(n).asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) takeRight(n: Int): IArray[T] =
-      arr.asInstanceOf[Array[T]].takeRight(n).asInstanceOf
+      arr.asInstanceOf[Array[T]].takeRight(n).asInstanceOf[IArray[T]]
 
     def [T](arr: IArray[T]) takeWhile(p: T => Boolean): IArray[T] =
-      arr.asInstanceOf[Array[T]].takeWhile(p).asInstanceOf
+      arr.asInstanceOf[Array[T]].takeWhile(p).asInstanceOf[IArray[T]]
 
     def [U: ClassTag, V: ClassTag](arr: IArray[(U, V)]) unzip: (IArray[U], IArray[V]) =
       arr.asInstanceOf[Array[(U, V)]].unzip match {
@@ -197,7 +197,7 @@ object opaques
       }
 
     def [T, U: ClassTag](arr: IArray[T]) zip(that: IterableOnce[U]): IArray[(T, U)] =
-      arr.asInstanceOf[Array[T]].zip(that).asInstanceOf
+      arr.asInstanceOf[Array[T]].zip(that).asInstanceOf[IArray[(T, U)]]
 end opaques
 
 type IArray[+T] = opaques.IArray[T]
