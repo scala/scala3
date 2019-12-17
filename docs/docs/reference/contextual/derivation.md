@@ -175,7 +175,7 @@ we need to implement a method `Eq.derived` on the companion object of `Eq` that 
 a `Mirror[T]`. Here is a possible implementation,
 
 ```scala
-inline given derived[T](given m: Mirror.Of[T]): Eq[T] = {
+inline given derived[T]: (m: Mirror.Of[T]) => Eq[T] = {
   val elemInstances = summonAll[m.MirroredElemTypes]           // (1)
   inline m match {                                             // (2)
     case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
@@ -281,7 +281,7 @@ object Eq {
         }
     }
 
-  inline given derived[T](given m: Mirror.Of[T]): Eq[T] = {
+  inline given derived[T]: (m: Mirror.Of[T]) => Eq[T] = {
     val elemInstances = summonAll[m.MirroredElemTypes]
     inline m match {
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)

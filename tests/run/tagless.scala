@@ -196,7 +196,7 @@ object Test extends App {
   // Added operation: negation pushdown
   enum NCtx { case Pos, Neg }
 
-  given [T](given e: Exp[T]): Exp[NCtx => T] {
+  given [T]: (e: Exp[T]) => Exp[NCtx => T] {
     import NCtx._
     def lit(i: Int) = {
       case Pos => e.lit(i)

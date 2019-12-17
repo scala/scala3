@@ -21,12 +21,12 @@ object Foo {
 }
 class Bar[T]
 object Bar {
-  given foobar[T](given Medium): Foo[Bar[T]](3)
-  given foobarbaz(given Medium): Foo[Bar[Baz]](4)
+  given foobar[T]: Medium => Foo[Bar[T]](3)
+  given foobarbaz: Medium => Foo[Bar[Baz]](4)
 }
 class Baz
 object Baz {
-  given baz(given High): Foo[Bar[Baz]](5)
+  given baz: High => Foo[Bar[Baz]](5)
 }
 
 class Arg

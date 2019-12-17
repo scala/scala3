@@ -47,7 +47,7 @@ object Eq {
         }
     }
 
-  inline given derived[T](given m: Mirror.Of[T]): Eq[T] = {
+  inline given derived[T]: (m: Mirror.Of[T]) => Eq[T] = {
     val elemInstances = summonAll[m.MirroredElemTypes]
     inline m match {
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)

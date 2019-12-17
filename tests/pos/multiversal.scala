@@ -1,7 +1,7 @@
 object Test {
   import scala.Eql
 
-  given [X, Y](given Eql[X, Y]): Eql[List[X], List[Y]] = Eql.derived
+  given [X, Y]: Eql[X, Y] => Eql[List[X], List[Y]] = Eql.derived
 
   val b: Byte = 1
   val c: Char = 2

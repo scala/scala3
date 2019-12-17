@@ -103,7 +103,7 @@ object Liftable {
       else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
   }
 
-  given iArrayIsLiftable[T: Type](given ltArray: Liftable[Array[T]]): Liftable[IArray[T]] {
+  given iArrayIsLiftable[T: Type]: (ltArray: Liftable[Array[T]]) => Liftable[IArray[T]] {
     def toExpr(iarray: IArray[T]): (given QuoteContext) => Expr[IArray[T]] =
       '{ ${ltArray.toExpr(iarray.asInstanceOf[Array[T]])}.asInstanceOf[IArray[T]] }
   }

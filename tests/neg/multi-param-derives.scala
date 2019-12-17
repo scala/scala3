@@ -5,7 +5,7 @@ object Test extends App {
     trait Show[T]
     object Show {
       given Show[Int] {}
-      given [T](given st: Show[T]): Show[Tuple1[T]] {}
+      given [T]: (st: Show[T]) => Show[Tuple1[T]] {}
       given t2[T, U](given st: Show[T], su: Show[U]) : Show[(T, U)] {}
       given t3[T, U, V](given st: Show[T], su: Show[U], sv: Show[V]) : Show[(T, U, V)] {}
 
