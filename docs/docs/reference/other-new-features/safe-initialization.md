@@ -230,7 +230,7 @@ Potentials (π) represent values that are possibly under initialization.
 - `π.m`: the potential of the field `f` in the potential `π`
 - `C.super[D]`: essentially the current object, used for virtual method resolution
 - `Cold`: an object with unknown initialization status
-- `Fun(Π, Φ)`: a function, when called produce effects Π and return potentials Φ.
+- `Fun(Π, Φ)`: a function, when called produce effects Φ and return potentials Π.
 
 Effects are triggered from potentials:
 
