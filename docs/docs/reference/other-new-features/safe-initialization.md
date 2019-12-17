@@ -93,11 +93,11 @@ The checker reports:
 
 We establish the following design goals:
 
-- __Safe__: checking always terminates, and is sound for common and reasonable usage (over-approximation)
-- __Fast__: instant feedback
+- __Sound__: checking always terminates, and is sound for common and reasonable usage (over-approximation)
 - __Expressive__: support common and reasonable initialization patterns
 - __Friendly__: simple rules, minimal syntactic overhead, informative error messages
 - __Modular__: modular checking, no analysis beyond project boundary
+- __Fast__: instant feedback
 - __Simple__: no changes to core type system, explainable by a simple theory
 
 By _reasonable usage_, we include the following use cases (but not restricted to them):
@@ -154,15 +154,16 @@ With the established principles and design goals, following rules are imposed:
    This is how monotonicity is enforced in the system. Note that in an
    initialization `val f: T = e`, the expression `e` may point to an object
    under initialization. This requires a distinction between mutation and
-   initialization in syntax in order to enforce different rules. The Scala
-   syntax makes it easy to distinguish initialization from mutation.
+   initialization in order to enforce different rules. Scala
+   has different syntax for them, it thus is not an issue.
 
 2. References to objects under initialization may not be passed as arguments to method calls or constructors.
 
    Escape of `this` in the constructor is commonly regarded as an
    anti-pattern, and it's rarely used in practice. This rule is simple
    for the programmer to reason about initialization and it simplifies
-   implementation.
+   implementation. The theory supports safe escape of `this` with the help of
+   annotations, we delay the extension until there is a strong need.
 
 3. Local definitions may only refer to transitively initialized objects.
 
