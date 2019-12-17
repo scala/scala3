@@ -1809,6 +1809,13 @@ class Typer extends Namer
       // check value class constraints
       checkDerivedValueClass(cls, body1)
 
+      val effectiveOwner = cls.owner.skipWeakOwner
+      if !cls.isRefinementClass
+         && !cls.isAllOf(PrivateLocal)
+         && effectiveOwner.is(Trait)
+         && !effectiveOwner.derivesFrom(defn.ObjectClass)
+        ctx.error(i"$cls cannot be defined in universal $effectiveOwner", cdef.sourcePos)
+
       // Temporarily set the typed class def as root tree so that we have at least some
       // information in the IDE in case we never reach `SetRootTree`.
       if (ctx.mode.is(Mode.Interactive) && ctx.settings.YretainTrees.value)
