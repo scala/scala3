@@ -218,7 +218,7 @@ The theory is based on type-and-effect systems [1]. We introduce two concepts,
 _effects_ and _potentials_:
 
 ```
-π = C.this | Warm[C, π] | π.f | π.m | C.super[D] | Cold | Fun(Π, Φ)
+π = C.this | Warm[C, π] | π.f | π.m | C.super[D] | Cold | Fun(Π, Φ) | Outer(C, π)
 ϕ = π↑ | π.f! | π.m!
 ```
 
@@ -231,6 +231,7 @@ Potentials (π) represent values that are possibly under initialization.
 - `C.super[D]`: essentially the current object, used for virtual method resolution
 - `Cold`: an object with unknown initialization status
 - `Fun(Π, Φ)`: a function, when called produce effects Φ and return potentials Π.
+- `Outer(C, π)`: the potential of `this` for the enclosing class of `C` when `C.this` is ` π`.
 
 Effects are triggered from potentials:
 
@@ -247,6 +248,9 @@ initialized.
 For an expression `e`, it may be summarized by the pair `(Π, Φ)`,
 which means evaluation of `e` may produce the effects Φ and return the
 potentials Π. Each field and method is associated with such a pair.
+We call such a pair _summary_. The expansion of proxy potentials and effects,
+such as `π.f`, `π.m` and `π.m!`, will take advantage of the summaries.
+Depending on the potential `π` for `this`, the summaries need to be rebased (`asSeenFrom`) before usage.
 
 The checking treats the templates of concrete classes as entry points.
 It maintains the set of initialized fields as initialization
