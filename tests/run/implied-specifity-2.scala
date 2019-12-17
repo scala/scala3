@@ -35,9 +35,9 @@ given Arg
 
 class Bam(val str: String)
 
-given lo(given Low): Bam("lo")
+given lo: Low => Bam("lo")
 
-given hi(given High)(given Arg): Bam("hi")
+given hi: High => Arg => Bam("hi")
 
 class Bam2(val str: String)
 
