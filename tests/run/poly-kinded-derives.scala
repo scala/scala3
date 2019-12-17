@@ -7,7 +7,7 @@ object Test extends App {
       given Show[Int] {}
       given [T]: (st: Show[T]) => Show[Tuple1[T]]
       given t2[T, U]: (st: Show[T], su: Show[U]) => Show[(T, U)]
-      given t3 [T, U, V]: (st: Show[T], su: Show[U], sv: Show[V]) => Show[(T, U, V)]
+      given t3 [T, U, V]: (Show[T], Show[U], Show[V]) => Show[(T, U, V)]
 
       def derived[T](given m: Mirror.Of[T], r: Show[m.MirroredElemTypes]): Show[T] = new Show[T] {}
     }
