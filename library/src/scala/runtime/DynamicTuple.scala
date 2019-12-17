@@ -1,10 +1,8 @@
 package scala.runtime
 
 import scala.Tuple.{ Concat, Size, Head, Tail, Elem, Zip, Map }
-import scala.reflect.ClassTag
 
 object DynamicTuple {
-
   inline val MaxSpecialized = 22
   inline private val XXL = MaxSpecialized + 1
 
