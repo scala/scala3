@@ -2,7 +2,7 @@
 //
 // e.g. addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.0.0-RC1")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.0.0-RC2")
 
 addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.6")
 

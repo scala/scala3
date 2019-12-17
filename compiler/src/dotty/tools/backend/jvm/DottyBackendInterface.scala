@@ -427,10 +427,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   val Flag_SYNTHETIC: Flags = Flags.Synthetic.bits
   val Flag_METHOD: Flags = Flags.Method.bits
-  val ExcludedForwarderFlags: Flags = {
-      Flags.Specialized | Flags.Lifted | Flags.Protected | Flags.JavaStatic |
-      Flags.Private | Flags.Macro
-  }.bits
+  val ExcludedForwarderFlags: Flags = DottyBackendInterface.ExcludedForwarderFlags.bits
 
   def isQualifierSafeToElide(qual: Tree): Boolean = tpd.isIdempotentExpr(qual)
 
@@ -1194,4 +1191,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   def currentUnit: CompilationUnit = ctx.compilationUnit
+}
+
+object DottyBackendInterface {
+  val ExcludedForwarderFlags: Flags.FlagSet = {
+    Flags.Specialized | Flags.Lifted | Flags.Protected | Flags.JavaStatic |
+    Flags.Private | Flags.Macro
+  }
 }

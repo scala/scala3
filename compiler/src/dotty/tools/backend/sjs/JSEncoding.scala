@@ -237,13 +237,17 @@ object JSEncoding {
     js.ClassIdent(encodeClassName(sym))
 
   def encodeClassName(sym: Symbol)(implicit ctx: Context): ClassName = {
-    if (sym == defn.BoxedUnitClass) {
+    val sym1 =
+      if (sym.isAllOf(ModuleClass | JavaDefined)) sym.linkedClass
+      else sym
+
+    if (sym1 == defn.BoxedUnitClass) {
       /* Rewire scala.runtime.BoxedUnit to java.lang.Void, as the IR expects.
        * BoxedUnit$ is a JVM artifact.
        */
       ir.Names.BoxedUnitClass
     } else {
-      ClassName(sym.fullName.mangledString)
+      ClassName(sym1.fullName.mangledString)
     }
   }
 
