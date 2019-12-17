@@ -358,7 +358,7 @@ class Namer { typer: Typer =>
       val effectiveOwner = owner.skipWeakOwner
       if (flags.is(Private) && effectiveOwner.is(Package)) {
         // If effective owner is a package p, widen private to private[p]
-        flags1 = flags1 &~ Private
+        flags1 = flags1 &~ PrivateLocal
         privateWithin = effectiveOwner
       }
 
