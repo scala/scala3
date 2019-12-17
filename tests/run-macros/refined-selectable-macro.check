@@ -3,3 +3,6 @@
 Record()
 Record(field1=1, field2=2, field3=3, field4=4, field5=5, field6=6, field7=7, field8=8, field9=9, field10=10, field11=11, field12=12, field13=13, field14=14, field15=15, field16=16, field17=17, field18=18, field19=19, field20=20, field21=21, field22=22, field23=23, field24=24, field25=25)
 Record(name=Emma, age=42)
+Error(Tuple type was not explicit expected `(S, T)` where S is a singleton string,Record.fromTuple((1, 2)),17,Typer)
+Error(Tuple type was not explicit expected `(S, T)` where S is a singleton string,Record.fromTuple(("field1" -> 1,"field2" -> 2,"field3" -> 3,"field4" -> 4,"field5" -> 5,"field6" -> 6,"field7" -> 7,"field8" -> 8,"field9" -> 9,"field10" -> 10,"field11" -> 11,"field12" -> 12,"field13" -> 13,"field14" -> 14,"field15" -> 15,"field16" -> 16,"field17" -> 17,"field18" -> 18,"field19" -> 19,"field20" -> 20,"field21" -> 21,"field22" -> 22,"field23" -> 23,"field24" -> 24,"field25" -> 25)),17,Typer)
+Error(Repeated record name: name,Record.fromTuple[(("name", String), ("name", Int))]("name" -> "aa", "name" -> 3),52,Typer)
