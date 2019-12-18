@@ -270,47 +270,44 @@ object DynamicTuple {
 
     type Result = Take[This, N]
 
-    val arr = (self: Any) match {
-      case xxl: TupleXXL =>
-        xxl.elems.asInstanceOf[Array[Object]].take(actualN)
-      case _ =>
-        if (actualN == 0)
-          Array.emptyObjectArray
-        else {
+    if (actualN == 0) ().asInstanceOf[Result]
+    else {
+      val arr = (self: Any) match {
+        case xxl: TupleXXL =>
+          xxl.elems.asInstanceOf[Array[Object]].take(actualN)
+        case _ =>
           val arr = new Array[Object](actualN)
           self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
             .copyToArray(arr, 0, actualN)
           arr
-        }
-    }
+      }
 
-    dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+      dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+    }
   }
 
   def dynamicDrop[This <: Tuple, N <: Int](self: This, n: N): Drop[This, N] = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
     val size = self.size
     val actualN = Math.min(n, size)
+    val rem = size - actualN
 
     type Result = Drop[This, N]
 
-    val arr = (self: Any) match {
-      case xxl: TupleXXL =>
-        xxl.elems.asInstanceOf[Array[Object]].drop(actualN)
-      case _ =>
-        val rem = size - actualN
-
-        if (rem == 0)
-          Array.emptyObjectArray
-        else {
+    if (rem == 0) ().asInstanceOf[Result]
+    else {
+      val arr = (self: Any) match {
+        case xxl: TupleXXL =>
+          xxl.elems.asInstanceOf[Array[Object]].drop(actualN)
+        case _ =>
           val arr = new Array[Object](rem)
           self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
             .drop(actualN).copyToArray(arr, 0, rem)
           arr
-        }
-    }
+      }
 
-    dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+      dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+    }
   }
 
   def dynamicSplitAt[This <: Tuple, N <: Int](self: This, n: N): Split[This, N] = {
