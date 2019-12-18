@@ -32,3 +32,6 @@ i7580.scala
 
 # Nullability
 nullable.scala
+
+# parameter untupling with overloaded functions (see comment in Applications.normArg)
+i7757.scala

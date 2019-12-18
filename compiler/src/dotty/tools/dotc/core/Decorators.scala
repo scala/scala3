@@ -118,15 +118,15 @@ object Decorators {
      *  - instead of a copy - if function `f` maps all elements of
      *  `xs` to themselves.
      */
-    def mapWithIndexConserve[U](f: (T, Int) => T): List[T] =
-      def recur(xs: List[T], idx: Int): List[T] =
+    def mapWithIndexConserve[U <: T](f: (T, Int) => U): List[U] =
+      def recur(xs: List[T], idx: Int): List[U] =
         if xs.isEmpty then Nil
         else
           val x1 = f(xs.head, idx)
           val xs1 = recur(xs.tail, idx + 1)
           if (x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef])
              && (xs1 eq xs.tail)
-          then xs
+          then xs.asInstanceOf[List[U]]
           else x1 :: xs1
       recur(xs, 0)
 

@@ -250,7 +250,7 @@ object ProtoTypes {
     override def resultType(implicit ctx: Context): Type = resType
 
     def isMatchedBy(tp: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean = {
-      val args = unforcedTypedArgs
+      val args = typedArgs()
       def isPoly(tree: Tree) = tree.tpe.widenSingleton.isInstanceOf[PolyType]
       // See remark in normalizedCompatible for why we can't keep the constraint
       // if one of the arguments has a PolyType.
@@ -301,15 +301,18 @@ object ProtoTypes {
      *  However, any constraint changes are also propagated to the currently passed
      *  context.
      *
+     *  @param norm   a normalization function that is applied to an untyped argument tree
+     *                before it is typed. The second Int parameter is the parameter index.
      */
-    def unforcedTypedArgs(implicit ctx: Context): List[Tree] =
+    def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree = sameTree)(implicit ctx: Context): List[Tree] =
       if (state.typedArgs.size == args.length) state.typedArgs
       else {
         val prevConstraint = this.ctx.typerState.constraint
 
         try {
           implicit val ctx = this.ctx
-          val args1 = args.mapconserve(cacheTypedArg(_, typer.typed(_), force = false))
+          val args1 = args.mapWithIndexConserve((arg, idx) =>
+            cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false))
           if (!args1.exists(arg => isUndefined(arg.tpe))) state.typedArgs = args1
           args1
         }
@@ -375,7 +378,7 @@ object ProtoTypes {
       derivedFunProto(args, tm(resultType), typer)
 
     def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T =
-      ta(ta.foldOver(x, unforcedTypedArgs.tpes), resultType)
+      ta(ta.foldOver(x, typedArgs().tpes), resultType)
 
     override def deepenProto(implicit ctx: Context): FunProto = derivedFunProto(args, resultType.deepenProto, typer)
 
@@ -389,7 +392,7 @@ object ProtoTypes {
    *  [](args): resultType, where args are known to be typed
    */
   class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, isGivenApply: Boolean)(implicit ctx: Context) extends FunProto(args, resultType)(typer, isGivenApply)(ctx) {
-    override def unforcedTypedArgs(implicit ctx: Context): List[tpd.Tree] = args
+    override def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree)(implicit ctx: Context): List[tpd.Tree] = args
     override def withContext(ctx: Context): FunProtoTyped = this
   }
 
@@ -682,4 +685,6 @@ object ProtoTypes {
       case _ => None
     }
   }
+
+  private val sameTree = (t: untpd.Tree, n: Int) => t
 }
