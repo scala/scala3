@@ -947,7 +947,7 @@ class Typer extends Namer
   }
 
   def typedFunctionValue(tree: untpd.Function, pt: Type)(implicit ctx: Context): Tree = {
-    val untpd.Function(params: List[untpd.ValDef] @unchecked, body) = tree
+    val untpd.Function(params: List[untpd.ValDef] @unchecked, _) = tree
 
     val isContextual = tree match {
       case tree: untpd.FunctionWithMods => tree.mods.is(Given)

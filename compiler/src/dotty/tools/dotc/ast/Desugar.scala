@@ -1321,33 +1321,39 @@ object desugar {
     Function(params, Match(makeSelector(selector, checkMode), cases))
   }
 
-  /** Map n-ary function `(p1, ..., pn) => body` where n != 1 to unary function as follows:
+  /** Map n-ary function `(x1: T1, ..., xn: Tn) => body` where n != 1 to unary function as follows:
    *
-   *    x$1 => {
-   *      def p1 = x$1._1
+   *    (x$1: (T1, ..., Tn)) => {
+   *      def x1: T1 = x$1._1
    *      ...
-   *      def pn = x$1._n
+   *      def xn: Tn = x$1._n
    *      body
    *    }
    *
    *  or if `isGenericTuple`
    *
-   *    x$1 => {
-   *      def p1 = x$1.apply(0)
+   *    (x$1: (T1, ... Tn) => {
+   *      def x1: T1 = x$1.apply(0)
    *      ...
-   *      def pn = x$1.apply(n-1)
+   *      def xn: Tn = x$1.apply(n-1)
    *      body
    *    }
+   *
+   *  If some of the Ti's are absent, omit the : (T1, ..., Tn) type ascription
+   *  in the selector.
    */
   def makeTupledFunction(params: List[ValDef], body: Tree, isGenericTuple: Boolean)(implicit ctx: Context): Tree = {
-    val param = makeSyntheticParameter()
+    val param = makeSyntheticParameter(
+      tpt =
+        if params.exists(_.tpt.isEmpty) then TypeTree()
+        else Tuple(params.map(_.tpt)))
     def selector(n: Int) =
       if (isGenericTuple) Apply(Select(refOfDef(param), nme.apply), Literal(Constant(n)))
       else Select(refOfDef(param), nme.selectorName(n))
     val vdefs =
       params.zipWithIndex.map {
         case (param, idx) =>
-          DefDef(param.name, Nil, Nil, TypeTree(), selector(idx)).withSpan(param.span)
+          DefDef(param.name, Nil, Nil, param.tpt, selector(idx)).withSpan(param.span)
       }
     Function(param :: Nil, Block(vdefs, body))
   }

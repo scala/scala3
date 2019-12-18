@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import ast.{Trees, tpd, untpd}
+import ast.{Trees, tpd, untpd, desugar}
 import util.Spans._
 import util.Stats.record
 import util.{SourcePosition, NoSourcePosition, SourceFile}
@@ -864,7 +864,7 @@ trait Applications extends Compatibility {
           case funRef: TermRef =>
             val app =
               if (proto.allArgTypesAreCurrent())
-                new ApplyToTyped(tree, fun1, funRef, proto.unforcedTypedArgs, pt)
+                new ApplyToTyped(tree, fun1, funRef, proto.typedArgs(), pt)
               else
                 new ApplyToUntyped(tree, fun1, funRef, proto, pt)(
                   given fun1.nullableInArgContext(given argCtx(tree)))
@@ -891,7 +891,7 @@ trait Applications extends Compatibility {
           }
 
       fun1.tpe match {
-        case err: ErrorType => cpy.Apply(tree)(fun1, proto.unforcedTypedArgs).withType(err)
+        case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs()).withType(err)
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
           if (originalProto.isDropped) fun1
@@ -1635,14 +1635,46 @@ trait Applications extends Compatibility {
     def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
       alts filter (isApplicableMethodRef(_, argTypes, resultType))
 
+    /** Normalization steps before checking arguments:
+     *
+     *                 { expr }   -->   expr
+     *    (x1, ..., xn) => expr   -->   ((x1, ..., xn)) => expr
+     *       if n != 1, no alternative has a corresponding formal parameter that
+     *       is an n-ary function, and at least one alternative has a corresponding
+     *       formal parameter that is a unary function.
+     */
+    def normArg(alts: List[TermRef], arg: untpd.Tree, idx: Int): untpd.Tree = arg match
+      case Block(Nil, expr) => normArg(alts, expr, idx)
+      case untpd.Function(args: List[untpd.ValDef] @unchecked, body) =>
+
+        // If ref refers to a method whose parameter at index `idx` is a function type,
+        // the arity of that function, otherise -1.
+        def paramCount(ref: TermRef) =
+          val formals = ref.widen.firstParamTypes
+          if formals.length > idx then
+            formals(idx) match
+              case defn.FunctionOf(args, _, _, _) => args.length
+              case _ => -1
+          else -1
+
+        val numArgs = args.length
+        if numArgs != 1
+           && !alts.exists(paramCount(_) == numArgs)
+           && alts.exists(paramCount(_) == 1)
+        then
+          desugar.makeTupledFunction(args, body, isGenericTuple = true)
+            // `isGenericTuple = true` is the safe choice here. It means the i'th tuple
+            // element is selected with `(i)` instead of `_i`, which gives the same code
+            // in the end, but the compilation time and the ascribed type are more involved.
+            // It also means that -Ytest-pickler -Xprint-types fails for sources exercising
+            // the idiom since after pickling the target is known, so _i is used directly.
+        else arg
+      case _ => arg
+    end normArg
+
     val candidates = pt match {
       case pt @ FunProto(args, resultType) =>
         val numArgs = args.length
-        val normArgs = args.mapConserve {
-          case Block(Nil, expr) => expr
-          case x => x
-        }
-
         def sizeFits(alt: TermRef): Boolean = alt.widen.stripPoly match {
           case tp: MethodType =>
             val ptypes = tp.paramInfos
@@ -1661,9 +1693,10 @@ trait Applications extends Compatibility {
           alts.filter(sizeFits(_))
 
         def narrowByShapes(alts: List[TermRef]): List[TermRef] =
-          if (normArgs exists untpd.isFunctionWithUnknownParamType)
-            if (hasNamedArg(args)) narrowByTrees(alts, args map treeShape, resultType)
-            else narrowByTypes(alts, normArgs map typeShape, resultType)
+          val normArgs = args.mapWithIndexConserve(normArg(alts, _, _))
+          if normArgs.exists(untpd.isFunctionWithUnknownParamType) then
+            if hasNamedArg(args) then narrowByTrees(alts, normArgs.map(treeShape), resultType)
+            else narrowByTypes(alts, normArgs.map(typeShape), resultType)
           else
             alts
 
@@ -1681,16 +1714,14 @@ trait Applications extends Compatibility {
 
         val alts1 = narrowBySize(alts)
         //ctx.log(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
-        if (isDetermined(alts1)) alts1
-        else {
+        if isDetermined(alts1) then alts1
+        else
           val alts2 = narrowByShapes(alts1)
           //ctx.log(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
-          if (isDetermined(alts2)) alts2
-          else {
+          if isDetermined(alts2) then alts2
+          else
             pretypeArgs(alts2, pt)
-            narrowByTrees(alts2, pt.unforcedTypedArgs, resultType)
-          }
-        }
+            narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
 
       case pt @ PolyProto(targs1, pt1) if targs.isEmpty =>
         val alts1 = alts.filter(pt.isMatchedBy(_))
@@ -1749,7 +1780,7 @@ trait Applications extends Compatibility {
     else pt match {
       case pt @ FunProto(_, resType: FunProto) =>
         // try to narrow further with snd argument list
-        val advanced = advanceCandidates(pt.unforcedTypedArgs.tpes)
+        val advanced = advanceCandidates(pt.typedArgs().tpes)
         resolveOverloaded(advanced.map(_._1), resType, Nil) // resolve with candidates where first params are stripped
           .map(advanced.toMap) // map surviving result(s) back to original candidates
       case _ =>
