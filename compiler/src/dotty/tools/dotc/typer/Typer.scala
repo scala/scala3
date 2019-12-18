@@ -2832,7 +2832,8 @@ class Typer extends Namer
         tree.tpe <:< wildApprox(pt)
         val errorCount = ctx.reporter.errorCount
         val inlined = Inliner.inlineCall(tree)
-        if (errorCount == ctx.reporter.errorCount) readaptSimplified(inlined) else inlined
+        if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
+        else inlined
       }
       else if (tree.symbol.isScala2Macro &&
                // raw and s are eliminated by the StringInterpolatorOpt phase
