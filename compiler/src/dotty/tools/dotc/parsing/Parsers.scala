@@ -3468,10 +3468,12 @@ object Parsers {
             stats.foreach(checkExtensionMethod(tparams, _))
             ModuleDef(name, Template(makeConstructor(tparams, vparamss), Nil, Nil, self, stats))
           else
+            def makeGiven(params: List[ValDef]): List[ValDef] =
+              params.map(param => param.withMods(param.mods | Given))
             def conditionalParents(): List[Tree] =
               accept(ARROW)
               if in.token == LPAREN && followingIsParam() then
-                vparamss = vparamss :+ paramClause(vparamss.flatten.length)
+                vparamss = vparamss :+ makeGiven(paramClause(vparamss.flatten.length))
                 conditionalParents()
               else
                 val constrs = constrApps(commaOK = true, templateCanFollow = true)
@@ -3493,7 +3495,7 @@ object Parsers {
                 in.nextToken()
                 TypeBoundsTree(EmptyTree, annotType()) :: Nil
               else if isConditional then
-                vparamss = vparamss.head.map(param => param.withMods(param.mods | Given)) :: Nil
+                vparamss = vparamss.map(makeGiven)
                 conditionalParents()
               else
                 if !hasLabel && !(name.isEmpty && tparams.isEmpty && vparamss.isEmpty) then
