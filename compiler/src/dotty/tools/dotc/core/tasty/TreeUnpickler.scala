@@ -38,7 +38,7 @@ import dotty.tools.dotc.quoted.QuoteContext
 import dotty.tools.tasty.TastyFormat._
 
 import scala.quoted
-import scala.internal.quoted.{TastyTreeExpr, TreeType}
+import dotty.tools.dotc.tastyreflect.{TastyTreeExpr, TreeType}
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
 

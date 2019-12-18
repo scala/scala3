@@ -35,10 +35,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   //
 
   def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): scala.quoted.Expr[?] =
-    new scala.internal.quoted.TastyTreeExpr(PickledQuotes.unpickleExpr(repr, args), compilerId)
+    new TastyTreeExpr(PickledQuotes.unpickleExpr(repr, args), compilerId)
 
   def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[?] =
-    new scala.internal.quoted.TreeType(PickledQuotes.unpickleType(repr, args), compilerId)
+    new TreeType(PickledQuotes.unpickleType(repr, args), compilerId)
 
   //
   // CONTEXT
@@ -1779,7 +1779,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   /** Convert `Term` to an `quoted.Expr[Any]`  */
   def QuotedExpr_seal(self: Term)(given ctx: Context): scala.quoted.Expr[Any] = self.tpe.widen match {
     case _: Types.MethodType | _: Types.PolyType => throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
-    case _ => new scala.internal.quoted.TastyTreeExpr(self, compilerId)
+    case _ => new TastyTreeExpr(self, compilerId)
   }
 
   /** Checked cast to a `quoted.Expr[U]` */
@@ -1799,7 +1799,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   /** Convert `Type` to an `quoted.Type[?]` */
   def QuotedType_seal(self: Type)(given ctx: Context): scala.quoted.Type[?] = {
     val dummySpan = ctx.owner.span // FIXME
-    new scala.internal.quoted.TreeType(tpd.TypeTree(self).withSpan(dummySpan), compilerId)
+    new TreeType(tpd.TypeTree(self).withSpan(dummySpan), compilerId)
   }
 
   //
@@ -1988,4 +1988,3 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   private def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()
 }
-
