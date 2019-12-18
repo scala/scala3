@@ -125,7 +125,7 @@ var x: T = _
 Monotonicity means that the initialization status of an object should
 not go backward: initialized fields continue to be initialized, a
 field points to an initialized object may not later point to an
-object under initialization. It means the following code will be rejected:
+object under initialization. As an example, the following code will be rejected:
 
 ``` scala
 trait Reporter { def report(msg: String): Unit }
@@ -231,26 +231,27 @@ We impose the following rules to enforce modularity:
 
 Theoretically, we may analyze across project boundaries based on tasty. However,
 from our experience with Dotty community projects, most subtle initialization
-patterns are restricted in the same project. We think it is good to first impose
-more strict rules. The feedback from the community is welcome.
+patterns are restricted in the same project. As the rules only report warnings
+instead of errors, we think it is good to first impose more strict rules, The
+feedback from the community is welcome.
 
 ## Theory
 
-The theory is based on type-and-effect systems [1]. We introduce two concepts,
+The theory is based on type-and-effect systems [2]. We introduce two concepts,
 _effects_ and _potentials_:
 
 ```
-π = C.this | Warm[C, π] | π.f | π.m | C.super[D] | Cold | Fun(Π, Φ) | Outer(C, π)
+π = C.this | Warm(C, π) | π.f | π.m | π.super[D] | Cold | Fun(Π, Φ) | Outer(C, π)
 ϕ = π↑ | π.f! | π.m!
 ```
 
 Potentials (π) represent values that are possibly under initialization.
 
 - `C.this`: current object
-- `Warm[C, π]`: an object of type `C` where all its fields are assigned, and the potential for `this` of its enclosing class is `π`.
+- `Warm(C, π)`: an object of type `C` where all its fields are assigned, and the potential for `this` of its enclosing class is `π`.
 - `π.f`: the potential of the field `f` in the potential `π`
 - `π.m`: the potential of the field `f` in the potential `π`
-- `C.super[D]`: essentially the current object, used for virtual method resolution
+- `π.super[D]`: essentially the object π, used for virtual method resolution
 - `Cold`: an object with unknown initialization status
 - `Fun(Π, Φ)`: a function, when called produce effects Φ and return potentials Π.
 - `Outer(C, π)`: the potential of `this` for the enclosing class of `C` when `C.this` is ` π`.
