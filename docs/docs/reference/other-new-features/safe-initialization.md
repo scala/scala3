@@ -109,8 +109,8 @@ By _reasonable usage_, we include the following use cases (but not restricted to
 
 ## Principles and Rules
 
-To achieve the goals, we uphold two fundamental principles:
-_stackability_ and _monotonicity_.
+To achieve the goals, we uphold three fundamental principles:
+_stackability_, _monotonicity_ and _scopability_.
 
 Stackability means that objects are initialized in stack order: if the
 object `b` is created during the initialization of object `a`, then
@@ -146,6 +146,28 @@ typestate_ to ensure soundness in the presence of aliasing
 [1]. Otherwise, either soundness will be compromised or we have to
 disallow the usage of already initialized fields.
 
+Scopability means that given any environment ρ (which are the value
+bindings for method parameters) for evaluating an expression `e`, the
+resulting value is either transitively initialized or it may only
+reach uninitialized objects that are reachable from ρ in the heap
+before the evaluation. Control effects such as exceptions break this
+property, as the following example shows:
+
+``` scala
+class MyException(val b: B) extends Exception("")
+class A {
+  val b = try { new B } catch { case myEx: MyException => myEx.b }
+  println(b.a)
+}
+class B {
+  throw new MyException(this)
+  val a: Int = 1
+}
+```
+
+In the code above, the control effect teleport the uninitialized value
+wrapped in an exception. In the implementation, we avoid the problem
+by ensuring that the values that are thrown must be transitively initialized.
 
 With the established principles and design goals, following rules are imposed:
 
