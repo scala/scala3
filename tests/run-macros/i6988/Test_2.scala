@@ -6,9 +6,9 @@ object Test {
     assert("p1" == firstArgName)
     assert("something" == firstArgValue)
   }
-  def debug given foo.FirstArg: Unit = {
-    firstArgName = the[foo.FirstArg].source
-    firstArgValue = the[foo.FirstArg].value
+  def debug(given foo.FirstArg): Unit = {
+    firstArgName = summon[foo.FirstArg].source
+    firstArgValue = summon[foo.FirstArg].value
   }
   class Foo(p1: String, p2: Long, p3: Boolean) {
     debug
