@@ -21,12 +21,12 @@ object Foo {
 }
 class Bar[T]
 object Bar {
-  given foobar[T](given Medium): Foo[Bar[T]](3)
-  given foobarbaz(given Medium): Foo[Bar[Baz]](4)
+  given foobar[T]: Medium => Foo[Bar[T]](3)
+  given foobarbaz: Medium => Foo[Bar[Baz]](4)
 }
 class Baz
 object Baz {
-  given baz(given High): Foo[Bar[Baz]](5)
+  given baz: High => Foo[Bar[Baz]](5)
 }
 
 class Arg
@@ -35,9 +35,9 @@ given Arg
 
 class Bam(val str: String)
 
-given lo(given Low): Bam("lo")
+given lo: Low => Bam("lo")
 
-given hi(given High)(given Arg): Bam("hi")
+given hi: High => Arg => Bam("hi")
 
 class Bam2(val str: String)
 

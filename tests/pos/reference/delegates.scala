@@ -29,7 +29,7 @@ object Instances extends Common with
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  given listOrd[T](given Ord[T]): Ord[List[T]] with
+  given listOrd[T]: Ord[T] => Ord[List[T]] with
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -114,7 +114,7 @@ object Instances extends Common with
         println(summon[D[Int]])
       }
       locally {
-        given (given Context): D[Int]
+        given Context => D[Int]
         println(summon[D[Int]])
       }
   end C
@@ -161,7 +161,7 @@ object AnonymousInstances extends Common with
   given [T](xs: List[T]) extended with
     def second = xs.tail.head
 
-  given [From, To](given c: Convertible[From, To]) : Convertible[List[From], List[To]] with
+  given [From, To]: (c: Convertible[From, To]) => Convertible[List[From], List[To]] with
     def (x: List[From]) convert: List[To] = x.map(c.convert)
 
   given Monoid[String] with

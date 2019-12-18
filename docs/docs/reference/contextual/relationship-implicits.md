@@ -21,7 +21,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
     ```
  2. Parameterized given instances are mapped to combinations of classes and implicit methods. E.g.,
     ```scala
-      given listOrd[T](given ord: Ord[T]): Ord[List[T]] { ... }
+      given listOrd[T]: (ord: Ord[T]) => Ord[List[T]] { ... }
     ```
     maps to
     ```scala
