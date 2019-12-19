@@ -10,8 +10,6 @@ class Concat {
   var sizes: String = _
   var tuple1: Tuple = _
   var tuple2: Tuple = _
-  var array1: Array[Object] = _
-  var array2: Array[Object] = _
 
   def tupleOfSize(n: Int): Tuple = {
     var t: Tuple = ()
@@ -26,17 +24,10 @@ class Concat {
     val size2 = sizes.split(' ')(1).toInt
     tuple1 = tupleOfSize(size1)
     tuple2 = tupleOfSize(size2)
-    array1 = Array.fill(size1)("elem")
-    array2 = Array.fill(size2)("elem")
   }
 
   @Benchmark
   def tupleConcat(): Tuple = {
     DynamicTuple.dynamicConcat(tuple1, tuple2)
-  }
-
-  @Benchmark
-  def arrayConcat(): Array[Object] = {
-    array1 ++ array2
   }
 }

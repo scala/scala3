@@ -4,7 +4,7 @@ import org.openjdk.jmh.annotations._
 import scala.runtime.DynamicTuple
 
 @State(Scope.Thread)
-class ArrayOps {
+class Conversions {
   @Param(Array("1"))
   var size: Int = _
   var tuple: Tuple = _
