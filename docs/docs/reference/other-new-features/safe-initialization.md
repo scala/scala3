@@ -33,7 +33,7 @@ The checker will report:
   |	    ^
   |    Access non-initialized field value localFile. Calling trace:
   |     -> val extension: String = name.substring(4)	[ AbstractFile.scala:3 ]
-  |      -> def name: String = localFile	[ AbstractFile.scala:8 ]
+  |      -> def name: String = localFile            	[ AbstractFile.scala:8 ]
 ```
 
 ### Inner-Outer Interaction
@@ -56,9 +56,9 @@ The checker will report:
 5 |  private var counter = 0  // error
   |              ^
   |             Access non-initialized field variable counter. Calling trace:
-  |              -> val theEmptyValDef = new EmptyValDef	[ trees.scala:4 ]
-  |               -> class EmptyValDef extends ValDef	[ trees.scala:3 ]
-  |                -> class ValDef { counter += 1 }	[ trees.scala:2 ]
+  |              -> val theEmptyValDef = new EmptyValDef    [ trees.scala:4 ]
+  |               -> class EmptyValDef extends ValDef       [ trees.scala:3 ]
+  |                -> class ValDef { counter += 1 }	     [ trees.scala:2 ]
 ```
 
 ### Functions
@@ -84,9 +84,9 @@ The checker reports:
 7 |  val b = "hello"           // error
   |      ^
   |Access non-initialized field value b. Calling trace:
-  | -> val a = f()	[ features-high-order.scala:6 ]
+  | -> val a = f()                              	[ features-high-order.scala:6 ]
   |   -> val f: () => String = () => this.message	[ features-high-order.scala:2 ]
-  |    -> def message: String = b	[ features-high-order.scala:8 ]
+  |    -> def message: String = b	                [ features-high-order.scala:8 ]
 ```
 
 ## Design Goals
@@ -114,13 +114,33 @@ _stackability_, _monotonicity_ and _scopability_.
 
 Stackability means that objects are initialized in stack order: if the
 object `b` is created during the initialization of object `a`, then
-`b` should become transitively initialized before or at the same time as `a`.
-Scala enforces this property in syntax, except for the language
-feature below:
+`b` should become transitively initialized before or at the same time
+as `a`.  Scala enforces this property in syntax by demanding that all
+fields are initialized at the end of the primary constructor, except
+for the language feature below:
 
 ``` scala
 var x: T = _
 ```
+
+Control effects such as exceptions may break this property, as the
+following example shows:
+
+``` scala
+class MyException(val b: B) extends Exception("")
+class A {
+  val b = try { new B } catch { case myEx: MyException => myEx.b }
+  println(b.a)
+}
+class B {
+  throw new MyException(this)
+  val a: Int = 1
+}
+```
+
+In the code above, the control effect teleport the uninitialized value
+wrapped in an exception. In the implementation, we avoid the problem
+by ensuring that the values that are thrown must be transitively initialized.
 
 Monotonicity means that the initialization status of an object should
 not go backward: initialized fields continue to be initialized, a
@@ -146,28 +166,16 @@ typestate_ to ensure soundness in the presence of aliasing
 [1]. Otherwise, either soundness will be compromised or we have to
 disallow the usage of already initialized fields.
 
-Scopability means that given any environment ρ (which are the value
-bindings for method parameters) for evaluating an expression `e`, the
-resulting value is either transitively initialized or it may only
-reach uninitialized objects that are reachable from ρ in the heap
-before the evaluation. Control effects such as exceptions break this
-property, as the following example shows:
-
-``` scala
-class MyException(val b: B) extends Exception("")
-class A {
-  val b = try { new B } catch { case myEx: MyException => myEx.b }
-  println(b.a)
-}
-class B {
-  throw new MyException(this)
-  val a: Int = 1
-}
-```
-
-In the code above, the control effect teleport the uninitialized value
-wrapped in an exception. In the implementation, we avoid the problem
-by ensuring that the values that are thrown must be transitively initialized.
+Scopability means that given any environment `ρ` (which are the value
+bindings for method parameters) and heap `σ` for evaluating an
+expression `e`, if the resulting value reaches an object `o`
+pre-existent in `σ`, then `o` is reachable from `ρ` in `σ`. Control
+effects like coroutines, delimited control, resumable exceptions may
+break the property, as they can transport a value upper in the stack
+(not in scope) to be reachable from the current scope.  Static fields
+can also serve as a teleport thus breaks this property.  In the
+implementation, we need to enforce that teleported values are
+transitively initialized.
 
 With the established principles and design goals, following rules are imposed:
 
