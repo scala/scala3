@@ -275,7 +275,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   // Make sure all type arguments to the call are fully determined,
   // but continue if that's not achievable (or else i7459.scala would crash).
   for arg <- callTypeArgs do
-    isFullyDefined(arg.tpe, ForceDegree.all)
+    isFullyDefined(arg.tpe, ForceDegree.noBottom)
 
   /** A map from parameter names of the inlineable method to references of the actual arguments.
    *  For a type argument this is the full argument type.
