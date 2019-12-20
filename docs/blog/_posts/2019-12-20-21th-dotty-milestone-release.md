@@ -6,13 +6,13 @@ authorImg: /images/aggelos.jpg
 date: 2019-12-20
 ---
 
-Greetings and we wish you Merry Christmas 🎄!
-
-We are excited to announce 0.21.0-RC1 of Dotty. In this version we add support
-for non-nullable reference types, supported by flow-sensitive analysis. We
-present new syntax for given extensions, matches and pattern matching over
-quotes. We are also happy to announce that SemanticDB generation
-is now supported within the compiler, this will eventually enable Metals to support Dotty!
+Greetings and we wish you Merry Christmas 🎄! We are excited to announce
+0.21.0-RC1 of Dotty. In this version we add support for non-nullable reference
+types, supported by flow-sensitive analysis. We present new syntax for given
+extensions, matches and pattern matching over quotes. We are also happy to
+announce that SemanticDB generation is now supported within the compiler, this
+will eventually enable Metals to support Dotty! And last but least ... we are
+happy to announce that we are now feature complete!
 
 # Feature Complete!
 
