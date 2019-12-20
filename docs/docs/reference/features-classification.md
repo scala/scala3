@@ -20,8 +20,7 @@ These new constructs directly model core features of DOT, higher-kinded types, a
  - [Union types](new-types/union-types.md),
  - [Type lambdas](new-types/type-lambdas.md),
  replacing encodings using structural types and type projection.
- - [Context Queries](contextual/implicit-function-types.md)
-  (_aka_ implicit function types) offering abstraction over given parameters.
+ - [Implicit Function Types](contextual/implicit-function-types.md) offering abstraction over given parameters.
 
 **Status: essential**
 
