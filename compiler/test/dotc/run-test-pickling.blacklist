@@ -6,6 +6,10 @@ t7374
 tuples1.scala
 tuples1a.scala
 tuples1b.scala
+tuple-ops.scala
+tuple-take.scala
+tuple-drop.scala
+tuple-zip.scala
 typeclass-derivation1.scala
 typeclass-derivation2.scala
 typeclass-derivation2a.scala
@@ -19,4 +23,3 @@ t10889
 macros-in-same-project1
 i5257.scala
 enum-java
-tuple-ops.scala

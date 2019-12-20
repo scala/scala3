@@ -1,6 +1,6 @@
 package scala.runtime
 
-import scala.Tuple.{ Concat, Size, Head, Tail, Elem, Zip, Map }
+import scala.Tuple.{ Concat, Size, Head, Tail, Elem, Zip, Map, Take, Drop, Split }
 
 object DynamicTuple {
   inline val MaxSpecialized = 22
@@ -380,7 +380,7 @@ object DynamicTuple {
     case _ => specialCaseTail(self)
   }
 
-  def dynamicApply[This <: NonEmptyTuple, N <: Int] (self: This, n: Int): Elem[This, N] = {
+  def dynamicApply[This <: NonEmptyTuple, N <: Int] (self: This, n: N): Elem[This, N] = {
     type Result = Elem[This, N]
     val res = (self: Any) match {
       case self: Unit => throw new IndexOutOfBoundsException(n.toString)
@@ -471,6 +471,78 @@ object DynamicTuple {
     case _ =>
       Tuple.fromArray(self.asInstanceOf[Product].productIterator.map(f(_)).toArray) // TODO use toIArray of Object to avoid double/triple array copy
         .asInstanceOf[Map[This, F]]
+  }
+
+  def dynamicTake[This <: Tuple, N <: Int](self: This, n: N): Take[This, N] = {
+    if (n < 0) throw new IndexOutOfBoundsException(n.toString)
+    val actualN = Math.min(n, self.size)
+
+    type Result = Take[This, N]
+
+    if (actualN == 0) ().asInstanceOf[Result]
+    else {
+      val arr = (self: Any) match {
+        case xxl: TupleXXL =>
+          xxl.elems.asInstanceOf[Array[Object]].take(actualN)
+        case _ =>
+          val arr = new Array[Object](actualN)
+          self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+            .copyToArray(arr, 0, actualN)
+          arr
+      }
+
+      dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+    }
+  }
+
+  def dynamicDrop[This <: Tuple, N <: Int](self: This, n: N): Drop[This, N] = {
+    if (n < 0) throw new IndexOutOfBoundsException(n.toString)
+    val size = self.size
+    val actualN = Math.min(n, size)
+    val rem = size - actualN
+
+    type Result = Drop[This, N]
+
+    if (rem == 0) ().asInstanceOf[Result]
+    else {
+      val arr = (self: Any) match {
+        case xxl: TupleXXL =>
+          xxl.elems.asInstanceOf[Array[Object]].drop(actualN)
+        case _ =>
+          val arr = new Array[Object](rem)
+          self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+            .drop(actualN).copyToArray(arr, 0, rem)
+          arr
+      }
+
+      dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+    }
+  }
+
+  def dynamicSplitAt[This <: Tuple, N <: Int](self: This, n: N): Split[This, N] = {
+    if (n < 0) throw new IndexOutOfBoundsException(n.toString)
+    val size = self.size
+    val actualN = Math.min(n, size)
+
+    type Result = Split[This, N]
+
+    val (arr1, arr2) = (self: Any) match {
+      case () => (Array.empty[Object], Array.empty[Object])
+      case xxl: TupleXXL =>
+        xxl.elems.asInstanceOf[Array[Object]].splitAt(actualN)
+      case _ =>
+        val arr1 = new Array[Object](actualN)
+        val arr2 = new Array[Object](size - actualN)
+        val it = self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+        it.copyToArray(arr1, 0, actualN)
+        it.copyToArray(arr2, 0, size - actualN)
+        (arr1, arr2)
+    }
+
+    (
+      dynamicFromIArray(arr1.asInstanceOf[IArray[Object]]),
+      dynamicFromIArray(arr2.asInstanceOf[IArray[Object]])
+    ).asInstanceOf[Result]
   }
 
   def consIterator(head: Any, tail: Tuple): Iterator[Any] =
