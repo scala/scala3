@@ -2,7 +2,7 @@
 layout: blog-page
 title: Announcing Dotty 0.21.0-RC1
 author: Aggelos Biboudis
-authorImg: /images/aggelos.png
+authorImg: /images/aggelos.jpg
 date: 2019-12-20
 ---
 
