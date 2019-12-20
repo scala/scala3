@@ -167,6 +167,9 @@ trait TypeOrBoundsOps extends Core {
     def unapply(x: Refinement)(given ctx: Context): Option[Refinement] = Some(x)
 
   object Refinement {
+    def apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(given ctx: Context): Refinement =
+      internal.Refinement_apply(parent, name, info)
+
     def unapply(x: Refinement)(given ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] =
       Some((x.parent, x.name, x.info))
   }
@@ -184,7 +187,7 @@ trait TypeOrBoundsOps extends Core {
     def unapply(x: AppliedType)(given ctx: Context): Option[AppliedType] = Some(x)
 
   object AppliedType {
-    def apply(tycon: Type, args: List[TypeOrBounds])(given ctx: Context) : AppliedType =
+    def apply(tycon: Type, args: List[TypeOrBounds])(given ctx: Context): AppliedType =
       internal.AppliedType_apply(tycon, args)
     def unapply(x: AppliedType)(given ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] =
       Some((x.tycon, x.args))

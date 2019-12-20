@@ -30,7 +30,7 @@ TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Nothing")
 
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Any")
 
-Refinement(TypeRef(NoPrefix(), "Foo"), X, TypeBounds(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String"), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String")))
+Refinement(TypeRef(NoPrefix(), "Foo"), "X", TypeBounds(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String"), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String")))
 
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
@@ -40,5 +40,5 @@ TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String")
 
 TypeRef(NoPrefix(), "$anon")
 
-Refinement(TypeRef(NoPrefix(), "Foo"), X, TypeBounds(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String"), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String")))
+Refinement(TypeRef(NoPrefix(), "Foo"), "X", TypeBounds(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String"), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String")))
 

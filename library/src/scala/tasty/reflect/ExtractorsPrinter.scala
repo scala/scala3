@@ -190,7 +190,7 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
       case TypeRef(qual, name) =>
         this += "TypeRef(" += qual += ", \"" += name += "\")"
       case Refinement(parent, name, info) =>
-        this += "Refinement(" += parent += ", " += name += ", " += info += ")"
+        this += "Refinement(" += parent += ", \"" += name += "\", " += info += ")"
       case AppliedType(tycon, args) =>
         this += "AppliedType(" += tycon += ", " ++= args += ")"
       case AnnotatedType(underlying, annot) =>

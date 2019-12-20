@@ -272,6 +272,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => term
   }
 
+  def TypeRef_apply(sym: Symbol)(given Context): TypeTree = {
+    assert(sym.isType)
+    withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.TypeTree])
+  }
+
   type Ref = tpd.RefTree
 
   def isInstanceOfRef(given ctx: Context): IsInstanceOf[Ref] = new {
@@ -281,8 +286,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case _ => None
   }
 
-  def Ref_apply(sym: Symbol)(given Context): Ref =
+  def Ref_apply(sym: Symbol)(given Context): Ref = {
+    assert(sym.isTerm)
     withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.RefTree])
+  }
 
   type Ident = tpd.Ident
 
@@ -1258,6 +1265,14 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case _ => None
   }
 
+  def Refinement_apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(given ctx: Context): Refinement = {
+    val name1 =
+      info match
+        case _: TypeBounds => name.toTypeName
+        case _ => name.toTermName
+    Types.RefinedType(parent, name1, info)
+  }
+
   def Refinement_parent(self: Refinement)(given Context): Type = self.parent
   def Refinement_name(self: Refinement)(given Context): String = self.refinedName.toString
   def Refinement_info(self: Refinement)(given Context): TypeOrBounds = self.refinedInfo
@@ -1856,6 +1871,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Definitions_FunctionClass(arity: Int, isImplicit: Boolean, isErased: Boolean): Symbol =
     defn.FunctionClass(arity, isImplicit, isErased).asClass
   def Definitions_TupleClass(arity: Int): Symbol = defn.TupleType(arity).classSymbol.asClass
+  def Definitions_isTupleClass(sym: Symbol): Boolean = defn.isTupleClass(sym)
 
   def Definitions_InternalQuoted_patternHole: Symbol = defn.InternalQuoted_patternHole
   def Definitions_InternalQuoted_patternBindHoleAnnot: Symbol = defn.InternalQuoted_patternBindHoleAnnot

@@ -559,6 +559,8 @@ trait CompilerInterface {
 
   def Inferred_apply(tpe: Type)(given ctx: Context): Inferred
 
+  def TypeRef_apply(sym: Symbol)(given ctx: Context): TypeTree
+
   /** Type tree representing a reference to definition with a given name */
   type TypeIdent <: TypeTree
 
@@ -905,6 +907,8 @@ trait CompilerInterface {
   type Refinement <: Type
 
   def isInstanceOfRefinement(given ctx: Context): IsInstanceOf[Refinement]
+
+  def Refinement_apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(given ctx: Context): Refinement
 
   def Refinement_parent(self: Refinement)(given ctx: Context): Type
   def Refinement_name(self: Refinement)(given ctx: Context): String
@@ -1394,6 +1398,7 @@ trait CompilerInterface {
   def Definitions_FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol
 
   def Definitions_TupleClass(arity: Int): Symbol
+  def Definitions_isTupleClass(sym: Symbol): Boolean
 
   /** Symbol of scala.internal.Quoted.patternHole */
   def Definitions_InternalQuoted_patternHole: Symbol
