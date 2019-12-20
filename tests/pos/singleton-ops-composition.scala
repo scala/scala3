@@ -1,4 +1,5 @@
-import scala.compiletime.ops._
+import scala.compiletime.ops.boolean._
+import scala.compiletime.ops.int._
 
 object Test {
   val t0: 1 + 2 * 3 = 7

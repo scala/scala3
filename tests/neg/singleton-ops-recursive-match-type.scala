@@ -1,4 +1,4 @@
-import scala.compiletime.ops._
+import scala.compiletime.ops.int._
 
 object Test {
   type GCD[A <: Int, B <: Int] <: Int = B match {

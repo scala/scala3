@@ -3636,41 +3636,49 @@ object Types {
           } yield ConstantType(Constant(op(a, b)))
 
         trace(i"compiletime constant fold $this", typr, show = true) {
-          val constantType = if (args.length == 1) tycon.symbol.name match {
-            case tpnme.S => constantFold1(natValue, _ + 1)
-            case tpnme.Abs => constantFold1(intValue, _.abs)
-            case tpnme.Negate => constantFold1(intValue, x => -x)
-            case tpnme.Not => constantFold1(boolValue, x => !x)
-            case tpnme.ToString => constantFold1(intValue, _.toString)
-            case _ => None
-          } else if (args.length == 2) tycon.symbol.name match {
-            case tpnme.Equals => constantFold2(constValue, _ == _)
-            case tpnme.NotEquals => constantFold2(constValue, _ != _)
-            case tpnme.Plus if tycon.symbol.owner == defn.CompiletimeOpsPackageObjectInt.moduleClass =>
-              constantFold2(intValue, _ + _)
-            case tpnme.Plus if tycon.symbol.owner == defn.CompiletimeOpsPackageObjectString.moduleClass =>
-              constantFold2(stringValue, _ + _)
-            case tpnme.Minus => constantFold2(intValue, _ - _)
-            case tpnme.Times => constantFold2(intValue, _ * _)
-            case tpnme.Div => constantFold2(intValue, {
-              case (_, 0) => throw new TypeError("Division by 0")
-              case (a, b) => a / b
-            })
-            case tpnme.Mod => constantFold2(intValue, {
-              case (_, 0) => throw new TypeError("Modulo by 0")
-              case (a, b) => a % b
-            })
-            case tpnme.Lt => constantFold2(intValue, _ < _)
-            case tpnme.Gt => constantFold2(intValue, _ > _)
-            case tpnme.Ge => constantFold2(intValue, _ >= _)
-            case tpnme.Le => constantFold2(intValue, _ <= _)
-            case tpnme.Min => constantFold2(intValue, _ min _)
-            case tpnme.Max => constantFold2(intValue, _ max _)
-            case tpnme.And => constantFold2(boolValue, _ && _)
-            case tpnme.Or => constantFold2(boolValue, _ || _)
-            case tpnme.Xor => constantFold2(boolValue, _ ^ _)
-            case _ => None
-          } else None
+          val name = tycon.symbol.name
+          val owner = tycon.symbol.owner
+          val nArgs = args.length
+          val constantType =
+            if (owner == defn.CompiletimePackageObject.moduleClass) name match {
+              case tpnme.S if nArgs == 1 => constantFold1(natValue, _ + 1)
+              case _ => None
+            } else if (owner == defn.CompiletimeOpsPackageObject.moduleClass) name match {
+              case tpnme.Equals    if nArgs == 2 => constantFold2(constValue, _ == _)
+              case tpnme.NotEquals if nArgs == 2 => constantFold2(constValue, _ != _)
+              case _ => None
+            } else if (owner == defn.CompiletimeOpsPackageObjectInt.moduleClass) name match {
+              case tpnme.Abs      if nArgs == 1 => constantFold1(intValue, _.abs)
+              case tpnme.Negate   if nArgs == 1 => constantFold1(intValue, x => -x)
+              case tpnme.ToString if nArgs == 1 => constantFold1(intValue, _.toString)
+              case tpnme.Plus     if nArgs == 2 => constantFold2(intValue, _ + _)
+              case tpnme.Minus    if nArgs == 2 => constantFold2(intValue, _ - _)
+              case tpnme.Times    if nArgs == 2 => constantFold2(intValue, _ * _)
+              case tpnme.Div if nArgs == 2 => constantFold2(intValue, {
+                case (_, 0) => throw new TypeError("Division by 0")
+                case (a, b) => a / b
+              })
+              case tpnme.Mod if nArgs == 2 => constantFold2(intValue, {
+                case (_, 0) => throw new TypeError("Modulo by 0")
+                case (a, b) => a % b
+              })
+              case tpnme.Lt  if nArgs == 2 => constantFold2(intValue, _ < _)
+              case tpnme.Gt  if nArgs == 2 => constantFold2(intValue, _ > _)
+              case tpnme.Ge  if nArgs == 2 => constantFold2(intValue, _ >= _)
+              case tpnme.Le  if nArgs == 2 => constantFold2(intValue, _ <= _)
+              case tpnme.Min if nArgs == 2 => constantFold2(intValue, _ min _)
+              case tpnme.Max if nArgs == 2 => constantFold2(intValue, _ max _)
+              case _ => None
+            } else if (owner == defn.CompiletimeOpsPackageObjectString.moduleClass) name match {
+              case tpnme.Plus if nArgs == 2 => constantFold2(stringValue, _ + _)
+              case _ => None
+            } else if (owner == defn.CompiletimeOpsPackageObjectBoolean.moduleClass) name match {
+              case tpnme.Not if nArgs == 1 => constantFold1(boolValue, x => !x)
+              case tpnme.And if nArgs == 2 => constantFold2(boolValue, _ && _)
+              case tpnme.Or  if nArgs == 2 => constantFold2(boolValue, _ || _)
+              case tpnme.Xor if nArgs == 2 => constantFold2(boolValue, _ ^ _)
+              case _ => None
+            } else None
 
           constantType.getOrElse(NoType)
         }
