@@ -122,11 +122,11 @@ object opaques
     def [T](arr: IArray[T]) lastOption: Option[T] =
       genericArrayOps(arr).lastOption
 
-    def [T](arr: IArray[T]) lastIndexOf(elem: T, from: Int = 0): Int =
-      genericArrayOps(arr.asInstanceOf[Array[T]]).lastIndexOf(elem, from)
+    def [T](arr: IArray[T]) lastIndexOf(elem: T, end: Int = arr.length - 1): Int =
+      genericArrayOps(arr.asInstanceOf[Array[T]]).lastIndexOf(elem, end)
 
-    def [T](arr: IArray[T]) lastIndexWhere(p: T => Boolean, from: Int = 0): Int =
-      genericArrayOps(arr).lastIndexWhere(p, from)
+    def [T](arr: IArray[T]) lastIndexWhere(p: T => Boolean, end: Int = arr.length - 1): Int =
+      genericArrayOps(arr).lastIndexWhere(p, end)
 
     def [T, U: ClassTag](arr: IArray[T]) map(f: T => U): IArray[U] =
       genericArrayOps(arr).map(f).asInstanceOf[IArray[U]]

@@ -70,9 +70,9 @@ object Test extends App {
 
   println(arr2.lastOption)
 
-  println(arr2.lastIndexOf(17)) // Might be a bug
+  println(arr2.lastIndexOf(17))
 
-  println(arr1.lastIndexWhere(_ < 5)) // Might be a bug
+  println(arr1.lastIndexWhere(_ < 5))
 
   assertDifferent(arr1.map(_ + 10), arr1)
 
