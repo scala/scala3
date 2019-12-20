@@ -11,7 +11,7 @@ Greetings and we wish you Merry Christmas 🎄! We are excited to announce
 types, supported by flow-sensitive analysis. We present new syntax for given
 extensions, matches and pattern matching over quotes. We are also happy to
 announce that SemanticDB generation is now supported within the compiler, this
-will eventually enable Metals to support Dotty! And last but least ... we are
+will eventually enable Metals to support Dotty! And last but not least ... we are
 happy to announce that we are now feature complete!
 
 # Feature Complete!
