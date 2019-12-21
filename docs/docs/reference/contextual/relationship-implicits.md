@@ -86,10 +86,10 @@ Explicit arguments to parameters of given clauses _must_ be written using `given
 mirroring the definition syntax. E.g, `max(2, 3)(given IntOrd`).
 Scala 2 uses normal applications `max(2, 3)(IntOrd)` instead. The Scala 2 syntax has some inherent ambiguities and restrictions which are overcome by the new syntax. For instance, multiple implicit parameter lists are not available in the old syntax, even though they can be simulated using auxiliary objects in the "Aux" pattern.
 
-The `the` method corresponds to `implicitly` in Scala 2.
+The `summon` method corresponds to `implicitly` in Scala 2.
 It is precisely the same as the `the` method in Shapeless.
-The difference between `the` (in both versions) and `implicitly` is
-that `the` can return a more precise type than the type that was
+The difference between `summon` (or `the`) and `implicitly` is
+that `summon` can return a more precise type than the type that was
 asked for.
 
 ### Context Bounds
@@ -108,7 +108,7 @@ def (c: Circle) circumference: Double = c.radius * math.Pi * 2
 ```
 could be simulated to some degree by
 ```scala
-implicit class CircleDeco(c: Circle) extends AnyVal {
+implicit class CircleDecorator(c: Circle) extends AnyVal {
   def circumference: Double = c.radius * math.Pi * 2
 }
 ```
@@ -162,12 +162,12 @@ given Position = pos
 
 An abstract implicit `val` or `def` in Scala 2 can be expressed in Dotty using a regular abstract definition and an alias given. E.g., Scala 2's
 ```scala
-implicit def symDeco: SymDeco
+implicit def symDecorator: SymDecorator
 ```
 can be expressed in Dotty as
 ```scala
-def symDeco: SymDeco
-given SymDeco = symDeco
+def symDecorator: SymDecorator
+given SymDecorator = symDecorator
 ```
 
 ## Implementation Status and Timeline

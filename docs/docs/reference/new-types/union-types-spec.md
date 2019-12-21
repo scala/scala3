@@ -38,14 +38,14 @@ case _: (A | B) => ...
   A & (B | C) =:= A & B | A & C
   ```
 
-From these rules it follows that the _least upper bound_ (lub) of a set of type
+From these rules it follows that the _least upper bound_ (lub) of a set of types
 is the union of these types. This replaces the
 [definition of least upper bound in the Scala 2 specification](https://www.scala-lang.org/files/archive/spec/2.12/03-types.html#least-upper-bounds-and-greatest-lower-bounds).
 
 ## Motivation
 
 The primary reason for introducing union types in Scala is that they allow us to
-guarantee that for every set of type, we can always form a finite lub. This is
+guarantee that for every set of types, we can always form a finite lub. This is
 both useful in practice (infinite lubs in Scala 2 were approximated in an ad-hoc
 way, resulting in imprecise and sometimes incredibly long types) and in theory
 (the type system of Scala 3 is based on the
