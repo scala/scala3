@@ -2176,9 +2176,9 @@ object Parsers {
       in.endMarkerScope(NEW) {
         val start = in.skipToken()
         def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
-        possibleBracesStart()
+        possibleTemplateStart()
         val parents =
-          if in.token == LBRACE then Nil
+          if in.isNestedStart then Nil
           else constrApps(commaOK = false, templateCanFollow = true)
         colonAtEOLOpt()
         possibleTemplateStart(isNew = true)
