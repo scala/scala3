@@ -18,9 +18,9 @@ def max[T](x: T, y: T)(given ord: Ord[T]): T =
 Here, `ord` is an _implicit parameter_ introduced with a `given` clause.
 The `max` method can be applied as follows:
 ```scala
-max(2, 3)(given IntOrd)
+max(2, 3)(given intOrd)
 ```
-The `(given IntOrd)` part passes `IntOrd` as an argument for the `ord` parameter. But the point of
+The `(given intOrd)` part passes `intOrd` as an argument for the `ord` parameter. But the point of
 implicit parameters is that this argument can also be left out (and it usually is). So the following
 applications are equally valid:
 ```scala
@@ -60,8 +60,8 @@ With this setup, the following calls are all well-formed, and they all normalize
 ```scala
 minimum(xs)
 maximum(xs)(given descending)
-maximum(xs)(given descending(given ListOrd))
-maximum(xs)(given descending(given ListOrd(given IntOrd)))
+maximum(xs)(given descending(given listOrd))
+maximum(xs)(given descending(given listOrd(given intOrd)))
 ```
 
 ## Multiple Given Clauses
@@ -92,9 +92,9 @@ But `f(global)(given sym, kind)` would give a type error.
 The method `summon` in `Predef` returns the given instance of a specific type. For example,
 the given instance for `Ord[List[Int]]` is produced by
 ```scala
-summon[Ord[List[Int]]]  // reduces to ListOrd given IntOrd
+summon[Ord[List[Int]]]  // reduces to listOrd given intOrd
 ```
-The `summon` method is simply defined as the (non-widening) identity function over a implicit parameter.
+The `summon` method is simply defined as the (non-widening) identity function over an implicit parameter.
 ```scala
 def summon[T](given x: T): x.type = x
 ```
