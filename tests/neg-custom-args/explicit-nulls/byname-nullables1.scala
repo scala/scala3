@@ -6,4 +6,6 @@ class C with
 
 def test() =
   var x: C | Null = C()
-  if x != null then f(x.fld != null) // error
+  if x != null then
+    f(x.fld != null) // error
+    require(x.fld != null, "error")    // ok

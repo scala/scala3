@@ -507,7 +507,10 @@ object Nullables with
 
             def recur(formals: List[Type], args: List[Tree]): List[Tree] = (formals, args) match
               case (formal :: formalsRest, arg :: argsRest) =>
-                val arg1 = postProcess(formal.widenExpr.repeatedToSingle, arg)
+                val arg1 =
+                  if formal.isInstanceOf[ExprType]
+                  then postProcess(formal.widenExpr.repeatedToSingle, arg)
+                  else arg
                 val argsRest1 = recur(
                   if formal.isRepeatedParam then formals else formalsRest,
                   argsRest)
