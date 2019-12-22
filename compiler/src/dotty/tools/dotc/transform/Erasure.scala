@@ -348,7 +348,7 @@ object Erasure {
         tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match {
           case Some(annot) =>
             def defaultMsg =
-              s"""Reference to ${tree.symbol.showLocated} should not have survived,
+              i"""Reference to ${tree.symbol.showLocated} should not have survived,
                  |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
             val message = annot.argumentConstant(0).fold(defaultMsg)(_.stringValue)
             ctx.error(message, tree.sourcePos)
@@ -750,8 +750,11 @@ object Erasure {
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree =
       trace(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
-        assert(ctx.phase == ctx.erasurePhase || ctx.phase == ctx.erasurePhase.next, ctx.phase)
-        if (tree.isEmpty) tree
+        if ctx.phase != ctx.erasurePhase && ctx.phase != ctx.erasurePhase.next then
+          // this can happen when reading annotations loaded during erasure,
+          // since these are loaded at phase typer.
+          adapt(tree, pt, locked)(given ctx.withPhase(ctx.erasurePhase.next))
+        else if (tree.isEmpty) tree
         else if (ctx.mode is Mode.Pattern) tree // TODO: replace with assertion once pattern matcher is active
         else adaptToType(tree, pt)
       }
