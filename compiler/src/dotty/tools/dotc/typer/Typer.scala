@@ -1231,7 +1231,10 @@ class Typer extends Namer
     def caseRest(implicit ctx: Context) = {
       val pat1 = checkSimpleKinded(typedType(cdef.pat)(ctx.addMode(Mode.Pattern)))
       val pat2 = indexPattern(cdef).transform(pat1)
-      val body1 = typedType(cdef.body, pt)
+      var body1 = typedType(cdef.body, pt)
+      if !body1.isType then
+        assert(ctx.reporter.errorsReported)
+        body1 = TypeTree(errorType("<error: not a type>", cdef.sourcePos))
       assignType(cpy.CaseDef(cdef)(pat2, EmptyTree, body1), pat2, body1)
     }
     caseRest(ctx.fresh.setFreshGADTBounds.setNewScope)
