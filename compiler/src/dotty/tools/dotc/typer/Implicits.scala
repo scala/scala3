@@ -855,7 +855,7 @@ trait Implicits { self: Typer =>
     (formal, span) => implicit ctx => {
       def success(t: Tree) = New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
 
-      formal.argTypes match {
+      formal.argInfos match {
         case arg :: Nil =>
           fullyDefinedType(arg.dealias, "ValueOf argument", span) match {
             case ConstantType(c: Constant) =>
