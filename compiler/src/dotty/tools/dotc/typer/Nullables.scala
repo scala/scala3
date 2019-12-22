@@ -464,7 +464,8 @@ object Nullables with
    */
   def postProcessByNameArgs(fn: TermRef, app: Tree)(given ctx: Context): Tree =
     fn.widen match
-      case mt: MethodType if mt.paramInfos.exists(_.isInstanceOf[ExprType]) =>
+      case mt: MethodType
+      if mt.paramInfos.exists(_.isInstanceOf[ExprType]) && !fn.symbol.is(Inline) =>
         app match
           case Apply(fn, args) =>
             val dropNotNull = new TreeMap with
@@ -487,10 +488,10 @@ object Nullables with
                 case _ => super.typedUnadapted(t, pt, locked)
 
             def postProcess(formal: Type, arg: Tree): Tree =
-              val arg1 = dropNotNull.transform(arg)
+              val nestedCtx = ctx.fresh.setNewTyperState()
+              val arg1 = dropNotNull.transform(arg)(given nestedCtx)
               if arg1 eq arg then arg
               else
-                val nestedCtx = ctx.fresh.setNewTyperState()
                 val arg2 = retyper.typed(arg1, formal)(given nestedCtx)
                 if nestedCtx.reporter.hasErrors || !(arg2.tpe <:< formal) then
                   ctx.error(em"""This argument was typed using flow assumptions about mutable variables
@@ -506,7 +507,10 @@ object Nullables with
 
             def recur(formals: List[Type], args: List[Tree]): List[Tree] = (formals, args) match
               case (formal :: formalsRest, arg :: argsRest) =>
-                val arg1 = postProcess(formal.widenExpr.repeatedToSingle, arg)
+                val arg1 =
+                  if formal.isInstanceOf[ExprType]
+                  then postProcess(formal.widenExpr.repeatedToSingle, arg)
+                  else arg
                 val argsRest1 = recur(
                   if formal.isRepeatedParam then formals else formalsRest,
                   argsRest)
