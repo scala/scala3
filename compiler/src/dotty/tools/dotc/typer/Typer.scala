@@ -1931,13 +1931,17 @@ class Typer extends Namer
     val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
-      val result = assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
-      result.tpe match {
-        case AnnotatedType(rhs, Annotation.WithBounds(bounds)) =>
-          if (!bounds.contains(rhs)) ctx.error(em"type $rhs outside bounds $bounds", tree.sourcePos)
-        case _ =>
-      }
-      result
+      if arg1.isType then
+        val result = assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
+        result.tpe match {
+          case AnnotatedType(rhs, Annotation.WithBounds(bounds)) =>
+            if (!bounds.contains(rhs)) ctx.error(em"type $rhs outside bounds $bounds", tree.sourcePos)
+          case _ =>
+        }
+        result
+      else
+        assert(ctx.reporter.errorsReported)
+        TypeTree(UnspecifiedErrorType)
     }
     else {
       val arg2 = arg1 match {
