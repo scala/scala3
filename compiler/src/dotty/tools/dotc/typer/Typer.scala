@@ -1549,7 +1549,13 @@ class Typer extends Namer
 
   def typedAlternative(tree: untpd.Alternative, pt: Type)(implicit ctx: Context): Alternative = {
     val nestedCtx = ctx.addMode(Mode.InPatternAlternative)
+    def ensureValueTypeOrWildcard(tree: Tree) =
+      if tree.tpe.isValueTypeOrWildcard then tree
+      else
+        assert(ctx.reporter.errorsReported)
+        tree.withType(defn.AnyType)
     val trees1 = tree.trees.mapconserve(typed(_, pt)(nestedCtx))
+      .map(ensureValueTypeOrWildcard)
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 
