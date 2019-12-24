@@ -108,12 +108,9 @@ object Inferencing {
         && ctx.typerState.constraint.contains(tvar)
         && {
           val direction = instDirection(tvar.origin)
-          def avoidBottom =
-            !force.allowBottom &&
-            defn.isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true))
           def preferMin =
-            force.minimizeAll && (!avoidBottom || !tvar.hasUpperBound)
-            || variance >= 0 && !avoidBottom
+            force.minimizeAll && (tvar.hasLowerBound || !tvar.hasUpperBound)
+            || variance >= 0 && (force.allowBottom || tvar.hasLowerBound)
           if (direction != 0) instantiate(tvar, direction < 0)
           else if (preferMin) instantiate(tvar, fromBelow = true)
           else toMaximize = true
