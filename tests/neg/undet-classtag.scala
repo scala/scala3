@@ -3,7 +3,7 @@ import scala.reflect.ClassTag
 object Test {
   def f[T: reflect.ClassTag](x: T) = ???
 
-  f(???)
+  f(???) // error: undetermined ClassTag
 }
 
 // SI 9754
@@ -22,6 +22,6 @@ object Program {
 
 // SI 5353
 object t5353 {
-  if (false) Array("qwe") else Array()
+  if (false) Array("qwe") else Array() // error: undetermined ClassTag
 }
 

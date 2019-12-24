@@ -111,7 +111,9 @@ object Inferencing {
           def avoidBottom =
             !force.allowBottom &&
             defn.isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true))
-          def preferMin = (force.minimizeAll || variance >= 0) && !avoidBottom
+          def preferMin =
+            force.minimizeAll && (!avoidBottom || !tvar.hasUpperBound)
+            || variance >= 0 && !avoidBottom
           if (direction != 0) instantiate(tvar, direction < 0)
           else if (preferMin) instantiate(tvar, fromBelow = true)
           else toMaximize = true

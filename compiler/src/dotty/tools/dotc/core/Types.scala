@@ -3930,6 +3930,10 @@ object Types {
     def hasLowerBound(implicit ctx: Context): Boolean =
       !ctx.typerState.constraint.entry(origin).loBound.isBottomType
 
+    /** For uninstantiated type variables: Is the upper bound different from Any? */
+    def hasUpperBound(implicit ctx: Context): Boolean =
+      !ctx.typerState.constraint.entry(origin).hiBound.isRef(defn.AnyClass)
+
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar
      */
