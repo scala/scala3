@@ -32,9 +32,6 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
   val phaseName: String = "liftTry"
 
-  // See tests/run/t2333.scala for an example where running after the group of LazyVals matters
-  override def runsAfterGroupsOf: Set[String] = Set(LazyVals.name)
-
   private var NeedLift: Store.Location[Boolean] = _
   private def needLift(implicit ctx: Context): Boolean = ctx.store(NeedLift)
 
@@ -48,9 +45,11 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     liftingCtx(true)
 
   override def prepareForValDef(tree: ValDef)(implicit ctx: Context): Context =
-    if (!tree.symbol.exists  ||
-        tree.symbol.isSelfSym ||
-        tree.symbol.owner == ctx.owner.enclosingMethod) ctx
+    if !tree.symbol.exists
+       || tree.symbol.isSelfSym
+       || tree.symbol.owner == ctx.owner.enclosingMethod
+          && !tree.symbol.is(Lazy) // lazy vals compile to defs, so there will be a new enclosing method
+    then ctx
     else liftingCtx(true)
 
   override def prepareForAssign(tree: Assign)(implicit ctx: Context): Context =
