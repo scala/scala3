@@ -1114,7 +1114,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         findEnclosingThis(tp.symbol.moduleClass, ctx.owner)
       case tp: TypeRef =>
         val pre1 = liftToThis(tp.prefix)
-        if (pre1 ne tp.prefix) tp.withPrefix(pre1) else tp
+        if ((pre1 ne tp.prefix) && pre1.exists) tp.withPrefix(pre1) else tp
       case tp: ThisType if tp.cls.is(Package) =>
         findEnclosingThis(tp.cls, ctx.owner)
       case tp: AppliedType =>
