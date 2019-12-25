@@ -1,6 +1,4 @@
--- [E083] Syntax Error: tests/neg/i6795-b.scala:1:11 -------------------------------------------------------------------
+-- Error: tests/neg/i6795-b.scala:1:11 ---------------------------------------------------------------------------------
 1 |sealed def y: Int = 1 // error
   |           ^
-  |           Modifier(s) `sealed` not allowed for method
-
-longer explanation available when compiling with `-explain`
+  |            values cannot be sealed

@@ -6,9 +6,11 @@ import core._
 import Types._, Contexts._, Constants._, Names._, Flags._
 import Symbols._, StdNames._, Trees._
 import util.{Property, SourceFile, NoSource}
+import util.Spans.Span
 import language.higherKinds
 import annotation.constructorOnly
 import annotation.internal.sharable
+import Decorators._
 
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
@@ -232,6 +234,26 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def withAddedMod(mod: Mod): Modifiers =
       if (mods.exists(_ eq mod)) this
       else withMods(mods :+ mod)
+
+    private def compatible(flags1: FlagSet, flags2: FlagSet): Boolean =
+      flags1.isEmpty || flags2.isEmpty
+      || flags1.isTermFlags && flags2.isTermFlags
+      || flags1.isTypeFlags && flags2.isTypeFlags
+
+    /** Add `flags` to thos modifier set, checking that there are no type/term conflicts.
+     *  If there are conflicts, issue an error and return the modifiers consisting of
+     *  the added flags only. The reason to do it this way is that the added flags usually
+     *  describe the core of a construct whereas the existing set are the modifiers
+     *  given in the source.
+     */
+    def withAddedFlags(flags: FlagSet, span: Span)(given ctx: Context): Modifiers =
+      if this.flags.isAllOf(flags) then this
+      else if compatible(this.flags, flags) then this | flags
+      else
+        println(i"BAD")
+        val what = if flags.isTermFlags then "values" else "types"
+        ctx.error(em"${(flags & ModifierFlags).flagsString} $what cannot be ${this.flags.flagsString}", ctx.source.atSpan(span))
+        Modifiers(flags)
 
     /** Modifiers with given list of Mods. It is checked that
      *  all modifiers are already accounted for in `flags` and `privateWithin`.

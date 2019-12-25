@@ -70,8 +70,8 @@ object DesugarEnums {
 
   /** Add implied flags to an enum class or an enum case */
   def addEnumFlags(cdef: TypeDef)(implicit ctx: Context): TypeDef =
-    if (cdef.mods.isEnumClass) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Abstract | Sealed))
-    else if (isEnumCase(cdef)) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Final))
+    if (cdef.mods.isEnumClass) cdef.withMods(cdef.mods.withAddedFlags(Abstract | Sealed, cdef.span))
+    else if (isEnumCase(cdef)) cdef.withMods(cdef.mods.withAddedFlags(Final, cdef.span))
     else cdef
 
   private def valuesDot(name: PreName)(implicit src: SourceFile) =

@@ -2631,23 +2631,8 @@ object Parsers {
       addMod(mods, mod)
     }
 
-    private def compatible(flags1: FlagSet, flags2: FlagSet): Boolean = (
-         flags1.isEmpty
-      || flags2.isEmpty
-      || flags1.isTermFlags && flags2.isTermFlags
-      || flags1.isTypeFlags && flags2.isTypeFlags
-    )
-
-    def addFlag(mods: Modifiers, flag: FlagSet): Modifiers = {
-      def getPrintableTypeFromFlagSet =
-        Map(Trait -> "trait", Method -> "method", Mutable -> "variable").get(flag)
-
-      if (compatible(mods.flags, flag)) mods | flag
-      else {
-        syntaxError(ModifiersNotAllowed(mods.flags, getPrintableTypeFromFlagSet))
-        Modifiers(flag)
-      }
-    }
+    def addFlag(mods: Modifiers, flag: FlagSet): Modifiers =
+      mods.withAddedFlags(flag, Span(in.offset))
 
     /** Always add the syntactic `mod`, but check and conditionally add semantic `mod.flags`
      */
