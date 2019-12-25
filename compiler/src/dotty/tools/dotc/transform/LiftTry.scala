@@ -30,7 +30,7 @@ import util.Store
 class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  val phaseName: String = "liftTry"
+  val phaseName: String = LiftTry.name
 
   private var NeedLift: Store.Location[Boolean] = _
   private def needLift(implicit ctx: Context): Boolean = ctx.store(NeedLift)
@@ -48,7 +48,11 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     if !tree.symbol.exists
        || tree.symbol.isSelfSym
        || tree.symbol.owner == ctx.owner.enclosingMethod
-          && !tree.symbol.is(Lazy) // lazy vals compile to defs, so there will be a new enclosing method
+          && !tree.symbol.is(Lazy)
+            // The current implementation wraps initializers of lazy vals in
+            // calls to an initialize method, which means that a `try` in the
+            // initializer needs to be lifted. Note that the new scheme proposed
+            // in #6979 would avoid this.
     then ctx
     else liftingCtx(true)
 
@@ -74,3 +78,5 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     }
     else tree
 }
+object LiftTry with
+  val name = "liftTry"
