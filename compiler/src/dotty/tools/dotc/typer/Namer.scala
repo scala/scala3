@@ -944,28 +944,27 @@ class Namer { typer: Typer =>
     private var nestedCtx: Context = null
     assert(!original.isClassDef)
 
-    override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = {
-      if (myTypeParams == null) {
+    override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
+      if myTypeParams == null then
         //println(i"completing type params of $sym in ${sym.owner}")
         nestedCtx = localContext(sym).setNewScope
-        myTypeParams = {
-          implicit val ctx = nestedCtx
-          def typeParamTrees(tdef: Tree): List[TypeDef] = tdef match {
-            case TypeDef(_, original) =>
-              original match {
-                case LambdaTypeTree(tparams, _) => tparams
-                case original: DerivedFromParamTree => typeParamTrees(original.watched)
-                case _ => Nil
-              }
-            case _ => Nil
-          }
-          val tparams = typeParamTrees(original)
-          completeParams(tparams)
-          tparams.map(symbolOfTree(_).asType)
-        }
-      }
+        given Context = nestedCtx
+
+        def typeParamTrees(tdef: Tree): List[TypeDef] = tdef match
+          case TypeDef(_, original) =>
+            original match
+              case LambdaTypeTree(tparams, _) => tparams
+              case original: DerivedFromParamTree => typeParamTrees(original.watched)
+              case _ => Nil
+          case _ => Nil
+
+        val tparams = typeParamTrees(original)
+        index(tparams)
+        myTypeParams = tparams.map(symbolOfTree(_).asType)
+        for param <- tparams do typedAheadExpr(param)
+      end if
       myTypeParams
-    }
+    end completerTypeParams
 
     override protected def typeSig(sym: Symbol): Type =
       typeDefSig(original, sym, completerTypeParams(sym)(ictx))(nestedCtx)
