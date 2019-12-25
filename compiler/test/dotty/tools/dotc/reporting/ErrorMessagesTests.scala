@@ -1005,24 +1005,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("method bar", symbol.show)
     }
 
-  @Test def modifiersNotAllowed =
-    verifyModifiersNotAllowed("lazy trait T", "lazy", Some("trait"))
-
-  @Test def modifiersOtherThanTraitMethodVariable =
-    verifyModifiersNotAllowed("sealed lazy class x", "sealed")
-
-  private def verifyModifiersNotAllowed(code: String, modifierAssertion: String,
-                                        typeAssertion: Option[String] = None) = {
-    checkMessagesAfter(RefChecks.name)(code)
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val ModifiersNotAllowed(flags, sort) :: Nil = messages
-        assertEquals(modifierAssertion, flags.flagsString)
-        assertEquals(typeAssertion, sort)
-      }
-  }
-
   @Test def wildcardOnTypeArgumentNotAllowedOnNew =
     checkMessagesAfter(RefChecks.name) {
       """
