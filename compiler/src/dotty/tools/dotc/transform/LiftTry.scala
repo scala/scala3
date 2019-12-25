@@ -30,10 +30,7 @@ import util.Store
 class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  val phaseName: String = "liftTry"
-
-  // See tests/run/t2333.scala for an example where running after the group of LazyVals matters
-  override def runsAfterGroupsOf: Set[String] = Set(LazyVals.name)
+  val phaseName: String = LiftTry.name
 
   private var NeedLift: Store.Location[Boolean] = _
   private def needLift(implicit ctx: Context): Boolean = ctx.store(NeedLift)
@@ -48,9 +45,15 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     liftingCtx(true)
 
   override def prepareForValDef(tree: ValDef)(implicit ctx: Context): Context =
-    if (!tree.symbol.exists  ||
-        tree.symbol.isSelfSym ||
-        tree.symbol.owner == ctx.owner.enclosingMethod) ctx
+    if !tree.symbol.exists
+       || tree.symbol.isSelfSym
+       || tree.symbol.owner == ctx.owner.enclosingMethod
+          && !tree.symbol.is(Lazy)
+            // The current implementation wraps initializers of lazy vals in
+            // calls to an initialize method, which means that a `try` in the
+            // initializer needs to be lifted. Note that the new scheme proposed
+            // in #6979 would avoid this.
+    then ctx
     else liftingCtx(true)
 
   override def prepareForAssign(tree: Assign)(implicit ctx: Context): Context =
@@ -75,3 +78,5 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     }
     else tree
 }
+object LiftTry with
+  val name = "liftTry"

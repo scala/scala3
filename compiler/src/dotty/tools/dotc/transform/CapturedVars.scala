@@ -23,6 +23,9 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   /** the following two members override abstract members in Transform */
   val phaseName: String = "capturedVars"
 
+  override def runsAfterGroupsOf: Set[String] = Set(LiftTry.name)
+    // lifting tries changes what variables are considered to be captured
+
   private[this] var Captured: Store.Location[collection.Set[Symbol]] = _
   private def captured(implicit ctx: Context) = ctx.store(Captured)
 

@@ -83,6 +83,7 @@ class Compiler {
          new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods
          new Getters,                // Replace non-private vals and vars with getter defs (fields are added later)
          new ElimByName,             // Expand by-name parameter references
+         new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections
          new AugmentScala2Traits,    // Augments Scala2 traits with additional members needed for mixin composition.
@@ -105,8 +106,7 @@ class Compiler {
                                         // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
          new FunctionalInterfaces,   // Rewrites closures to implement @specialized types of Functions.
          new Instrumentation,        // Count closure allocations under -Yinstrument-closures
-         new GetClass,               // Rewrites getClass calls on primitive types.
-         new LiftTry) ::             // Put try expressions that might execute on non-empty stacks into their own methods their implementations
+         new GetClass) ::            // Rewrites getClass calls on primitive types.
     List(new LinkScala2Impls,        // Redirect calls to trait methods defined by Scala 2.x, so that they now go to
          new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
                                         // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
