@@ -46,7 +46,7 @@ object Inferencing {
   /** Instantiate selected type variables `tvars` in type `tp` */
   def instantiateSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit =
     if (tvars.nonEmpty)
-      new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains, minimizeAll = true)).process(tp)
+      new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains, minimizeAll = true, allowBottom = false)).process(tp)
 
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
    *  one of the parameters in `tparams` or `vparamss`.
@@ -108,10 +108,9 @@ object Inferencing {
         && ctx.typerState.constraint.contains(tvar)
         && {
           val direction = instDirection(tvar.origin)
-          def avoidBottom =
-            !force.allowBottom &&
-            defn.isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true))
-          def preferMin = force.minimizeAll || variance >= 0 && !avoidBottom
+          def preferMin =
+            force.minimizeAll && (tvar.hasLowerBound || !tvar.hasUpperBound)
+            || variance >= 0 && (force.allowBottom || tvar.hasLowerBound)
           if (direction != 0) instantiate(tvar, direction < 0)
           else if (preferMin) instantiate(tvar, fromBelow = true)
           else toMaximize = true
