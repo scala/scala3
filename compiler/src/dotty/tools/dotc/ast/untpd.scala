@@ -250,7 +250,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       if this.flags.isAllOf(flags) then this
       else if compatible(this.flags, flags) then this | flags
       else
-        println(i"BAD")
         val what = if flags.isTermFlags then "values" else "types"
         ctx.error(em"${(flags & ModifierFlags).flagsString} $what cannot be ${this.flags.flagsString}", ctx.source.atSpan(span))
         Modifiers(flags)
