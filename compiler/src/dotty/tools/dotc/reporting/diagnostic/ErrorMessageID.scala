@@ -91,6 +91,7 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     ExpectedTopLevelDefID,
     AnonymousFunctionMissingParamTypeID,
     SuperCallsNotAllowedInlineableID,
+    UNUSED1,  // not used anymore, but left so that error numbers stay the same
     WildcardOnTypeArgumentNotAllowedOnNewID,
     FunctionTypeNeedsNonEmptyParameterListID,
     WrongNumberOfParametersID,
