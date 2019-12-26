@@ -288,7 +288,7 @@ object DesugarEnums {
       val toStringDef = toStringMethLit(name.toString)
       val impl1 = cpy.Template(impl)(body = List(ordinalDef, toStringDef) ++ registerCall)
         .withAttachment(ExtendsSingletonMirror, ())
-      val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | EnumValue)
+      val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
   }
@@ -304,7 +304,7 @@ object DesugarEnums {
     else {
       val (tag, scaffolding) = nextOrdinal(CaseKind.Simple)
       val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
-      val vdef = ValDef(name, enumClassRef, creator).withMods(mods | EnumValue)
+      val vdef = ValDef(name, enumClassRef, creator).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
 }
