@@ -125,7 +125,7 @@ object OverridingPairs {
         if (nextEntry ne null)
           try {
             overridden = nextEntry.sym
-            if (overriding.owner != overridden.owner && matches(overriding, overridden)) {
+            if (overriding.owner != overridden.owner && !matches(overriding, overridden)) {
               visited += overridden
               if (!hasCommonParentAsSubclass(overriding.owner, overridden.owner)) return
             }
