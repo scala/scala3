@@ -68,3 +68,6 @@
 [submodule "community-build/community-projects/upickle"]
 	path = community-build/community-projects/upickle
 	url = https://github.com/dotty-staging/upickle.git
+[submodule "community-build/community-projects/sconfig"]
+	path = community-build/community-projects/sconfig
+	url = https://github.com/ekrich/sconfig.git
