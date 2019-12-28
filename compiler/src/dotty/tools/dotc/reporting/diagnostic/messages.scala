@@ -345,8 +345,10 @@ object messages {
       // Get closest match in `site`
       val closest =
         decls
-        .map { case (n, sym) => (n, distance(n, name.show), sym) }
-        .collect { case (n, dist, sym) if dist <= maxDist => (n, dist, sym) }
+        .map { (n, sym) => (n, distance(n, name.show), sym) }
+        .collect {
+          case (n, dist, sym) if dist <= maxDist && dist < name.toString.length => (n, dist, sym)
+        }
         .groupBy(_._2).toList
         .sortBy(_._1)
         .headOption.map(_._2).getOrElse(Nil)
