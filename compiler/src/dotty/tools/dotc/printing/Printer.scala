@@ -4,7 +4,7 @@ package printing
 
 import core._
 import Texts._, ast.Trees._
-import Types.Type, Symbols.Symbol, Scopes.Scope, Constants.Constant,
+import Types.{Type, SingletonType}, Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation
 import typer.Implicits.SearchResult
 import util.SourcePosition
@@ -96,6 +96,9 @@ abstract class Printer {
    *  If hasMeaninglessName is true, uses the owner's name to disambiguate identity.
    */
   def toText(sym: Symbol): Text
+
+  /** Textual representation of singeton type reference */
+  def toTextRef(tp: SingletonType): Text
 
   /** Textual representation of symbol's declaration */
   def dclText(sym: Symbol): Text

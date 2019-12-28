@@ -1,0 +1,55 @@
+-- [E008] Member Not Found Error: tests/neg/missing-implicit.scala:5:25 ------------------------------------------------
+5 |  case x :: xs1 if limit > 0 => consume(xs1, limit - x) // error // error
+  |                   ^^^^^^^
+  |                   value > is not a member of T
+  |
+  |                   One of the following imports might fix the problem:
+  |
+  |                     import math.Ordering.Implicits.infixOrderingOps
+  |                     import math.Ordered.orderingToOrdered
+  |                            
+-- [E008] Member Not Found Error: tests/neg/missing-implicit.scala:5:51 ------------------------------------------------
+5 |  case x :: xs1 if limit > 0 => consume(xs1, limit - x) // error // error
+  |                                             ^^^^^^^
+  |                                             value - is not a member of T
+  |
+  |                                             One of the following imports might fix the problem:
+  |
+  |                                               import math.Fractional.Implicits.infixFractionalOps
+  |                                               import math.Numeric.Implicits.infixNumericOps
+  |                                               import math.Integral.Implicits.infixIntegralOps
+  |                                                      
+-- Error: tests/neg/missing-implicit.scala:10:24 -----------------------------------------------------------------------
+10 |val f = Future[Unit] { } // error
+   |                        ^
+   |                   Cannot find an implicit ExecutionContext. You might pass
+   |                   an (implicit ec: ExecutionContext) parameter to your method.
+   |
+   |                   The ExecutionContext is used to configure how and on which
+   |                   thread pools Futures will run, so the specific ExecutionContext
+   |                   that is selected is important.
+   |
+   |                   If your application does not define an ExecutionContext elsewhere,
+   |                   consider using Scala's global ExecutionContext by defining
+   |                   the following:
+   |
+   |                   implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
+   |
+   |                   The following import might fix the problem:
+   |
+   |                     import concurrent.ExecutionContext.Implicits.global
+   |                            
+-- [E007] Type Mismatch Error: tests/neg/missing-implicit.scala:12:25 --------------------------------------------------
+12 |val b: java.lang.Byte = (1: Byte) // error
+   |                         ^^^^^^^
+   |                         Found:    Byte
+   |                         Required: Byte²
+   |
+   |                         where:    Byte  is a class in package scala
+   |                                   Byte² is a class in package lang
+   |
+   |
+   |                         The following import might fix the problem:
+   |
+   |                           import Predef.byte2Byte
+   |                                  

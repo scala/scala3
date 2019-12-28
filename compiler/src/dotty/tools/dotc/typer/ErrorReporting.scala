@@ -150,7 +150,10 @@ object ErrorReporting {
       val expected1 = reported(expected)
       val (found2, expected2) =
         if (found1 frozen_<:< expected1) (found, expected) else (found1, expected1)
-      TypeMismatch(found2, expected2, whyNoMatchStr(found, expected), postScript)
+      val postScript1 =
+        if !postScript.isEmpty then postScript
+        else ctx.typer.implicitSuggestionsFor(ViewProto(found.widen, expected))
+      TypeMismatch(found2, expected2, whyNoMatchStr(found, expected), postScript1)
     }
 
     /** Format `raw` implicitNotFound or implicitAmbiguous argument, replacing

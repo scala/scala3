@@ -37,6 +37,7 @@ import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.trace
 import annotation.tailrec
+import scala.util.control.NonFatal
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -462,6 +463,66 @@ object Implicits {
     def explanation(implicit ctx: Context): String =
       em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
+
+  /** A helper class to find imports of givens that might fix a type error.
+   *
+   *   suggestions(p).search
+   *
+   *  returns a list of TermRefs that refer to implicits or givens
+   *  that satisfy predicate `p`.
+   *
+   *  The search algorithm looks for givens in the smallest set of objects
+   *  and packages that includes
+   *
+   *   - any object that is a defined in an enclosing scope,
+   *   - any object that is a member of an enclosing class,
+   *   - any enclosing package (including the root package),
+   *   - any object that is a member of a searched object or package,
+   *   - any object or package from which something is imported in an enclosing scope,
+   *   - any package that is nested in a searched package, provided
+   *     the package was accessed in some way previously.
+   */
+  class suggestions(qualifies: TermRef => Boolean) with
+    private val seen = mutable.Set[TermRef]()
+
+    private def lookInside(root: Symbol)(given ctx: Context): Boolean =
+      !root.name.lastPart.contains('$')
+      && root.is(ModuleVal, butNot = JavaDefined)
+      && (root.isCompleted || !root.is(Package))
+
+    private def rootsIn(ref: TermRef)(given ctx: Context): List[TermRef] =
+      if seen.contains(ref) then Nil
+      else
+        implicitsDetailed.println(i"search in ${ref.symbol.fullName}")
+        seen += ref
+        ref :: ref.fields
+          .filter(fld => lookInside(fld.symbol))
+          .map(fld => TermRef(ref, fld.symbol.asTerm))
+          .flatMap(rootsIn)
+          .toList
+
+    private def rootsOnPath(tp: Type)(given ctx: Context): List[TermRef] = tp match
+      case ref: TermRef => rootsIn(ref) ::: rootsOnPath(ref.prefix)
+      case _ => Nil
+
+    private def roots(given ctx: Context): List[TermRef] =
+      if ctx.owner.exists then
+        val defined =
+          if ctx.scope eq ctx.outer.scope then Nil
+          else ctx.scope
+            .filter(lookInside(_))
+            .flatMap(sym => rootsIn(sym.termRef))
+        val imported =
+          if ctx.importInfo eq ctx.outer.importInfo then Nil
+          else ctx.importInfo.sym.info match
+            case ImportType(expr) => rootsOnPath(expr.tpe)
+            case _ => Nil
+        defined ++ imported ++ roots(given ctx.outer)
+      else Nil
+
+    def search(given ctx: Context): List[TermRef] =
+      roots.flatMap(_.implicitMembers.filter(qualifies))
+  end suggestions
 }
 
 import Implicits._
@@ -682,6 +743,35 @@ trait Implicits { self: Typer =>
       }
     }
   }
+
+  /** An addendum to an error message where the error might be fixed
+   *  be some implicit value of type `pt` that is however not found.
+   *  The addendum suggests suggests implicit imports that might fix the problem.
+   */
+  override def implicitSuggestionsFor(pt: Type)(given ctx: Context): String =
+    val suggestedRefs =
+      try Implicits.suggestions(_ <:< pt).search(given ctx.fresh.setExploreTyperState())
+      catch case NonFatal(ex) => Nil
+    def refToRawString(ref: TermRef) = ctx.printer.toTextRef(ref).show
+    def refToString(ref: TermRef): String =
+      val raw = refToRawString(ref)
+      ref.prefix match
+        case prefix: TermRef if !raw.contains(".") => s"${refToRawString(prefix)}.$raw"
+        case _ => raw
+    def suggestStr(ref: TermRef) = i"  import ${refToString(ref)}"
+    if suggestedRefs.isEmpty then ""
+    else
+      val suggestions = suggestedRefs.map(suggestStr).distinct
+        // TermRefs might be different but generate the same strings
+      val fix =
+        if suggestions.tail.isEmpty then "The following import"
+        else "One of the following imports"
+      i"""
+         |
+         |$fix might fix the problem:
+         |
+         |$suggestions%\n%
+         """
 
   /** Handlers to synthesize implicits for special types */
   type SpecialHandler = (Type, Span) => Context => Tree
@@ -1215,32 +1305,37 @@ trait Implicits { self: Typer =>
             pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
             pt.widenExpr.argInfos))
 
-        def hiddenImplicitsAddendum: String = arg.tpe match {
-          case fail: SearchFailureType =>
+        def hiddenImplicitsAddendum: String =
 
-            def hiddenImplicitNote(s: SearchSuccess) =
-              em"\n\nNote: given instance ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
+          def hiddenImplicitNote(s: SearchSuccess) =
+            em"\n\nNote: given instance ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
 
-            def FindHiddenImplicitsCtx(ctx: Context): Context =
-              if (ctx == NoContext) ctx
-              else ctx.freshOver(FindHiddenImplicitsCtx(ctx.outer)).addMode(Mode.FindHiddenImplicits)
+          def FindHiddenImplicitsCtx(ctx: Context): Context =
+            if (ctx == NoContext) ctx
+            else ctx.freshOver(FindHiddenImplicitsCtx(ctx.outer)).addMode(Mode.FindHiddenImplicits)
 
-            if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
-              inferImplicit(fail.expectedType, fail.argument, arg.span)(
-                FindHiddenImplicitsCtx(ctx)) match {
-                case s: SearchSuccess => hiddenImplicitNote(s)
-                case f: SearchFailure =>
-                  f.reason match {
-                    case ambi: AmbiguousImplicits => hiddenImplicitNote(ambi.alt1)
-                    case r => ""
-                  }
-              }
-            else
-              // It's unsafe to search for parts of the expected type if they are not fully defined,
-              // since these come with nested contexts that are lost at this point. See #7249 for an
-              // example where searching for a nested type causes an infinite loop.
-              ""
-        }
+          val normalImports = arg.tpe match
+            case fail: SearchFailureType =>
+              if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
+                inferImplicit(fail.expectedType, fail.argument, arg.span)(
+                  FindHiddenImplicitsCtx(ctx)) match {
+                  case s: SearchSuccess => hiddenImplicitNote(s)
+                  case f: SearchFailure =>
+                    f.reason match {
+                      case ambi: AmbiguousImplicits => hiddenImplicitNote(ambi.alt1)
+                      case r => ""
+                    }
+                }
+              else
+                // It's unsafe to search for parts of the expected type if they are not fully defined,
+                // since these come with nested contexts that are lost at this point. See #7249 for an
+                // example where searching for a nested type causes an infinite loop.
+                ""
+
+          def suggestedImports = implicitSuggestionsFor(pt)
+          if normalImports.isEmpty then suggestedImports else normalImports
+        end hiddenImplicitsAddendum
+
         msg(userDefined.getOrElse(
           em"no implicit argument of type $pt was found${location("for")}"))() ++
         hiddenImplicitsAddendum

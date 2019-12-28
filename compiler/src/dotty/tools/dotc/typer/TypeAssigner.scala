@@ -11,6 +11,7 @@ import util.SourcePosition
 import config.Printers.typr
 import ast.Trees._
 import NameOps._
+import ProtoTypes._
 import collection.mutable
 import reporting.diagnostic.messages._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
@@ -266,7 +267,7 @@ trait TypeAssigner {
       errorType(ex"$qualType does not have a constructor", tree.sourcePos)
     else {
       val kind = if (name.isTypeName) "type" else "value"
-      val addendum =
+      def addendum =
         if (qualType.derivesFrom(defn.DynamicClass))
           "\npossible cause: maybe a wrong Dynamic method signature?"
         else qual1.getAttachment(Typer.HiddenSearchFailure) match {
@@ -281,11 +282,16 @@ trait TypeAssigner {
                  |Note that `$name` is treated as an infix operator in Scala 3.
                  |If you do not want that, insert a `;` or empty line in front
                  |or drop any spaces behind the operator."""
-            else ""
+            else
+              implicitSuggestionsFor(
+                ViewProto(qualType.widen,
+                  SelectionProto(name, WildcardType, NoViewsAllowed, privateOK = false)))
         }
       errorType(NotAMember(qualType, name, kind, addendum), tree.sourcePos)
     }
   }
+
+  def implicitSuggestionsFor(pt: Type)(given Context): String = ""
 
   /** The type of the selection in `tree`, where `qual1` is the typed qualifier part.
    *  The selection type is additionally checked for accessibility.
