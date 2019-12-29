@@ -108,16 +108,16 @@ inline def power(x: Double, n: Int): Double = {
     val y = power(x, n / 2)
     if (n % 2 == 0) y * y else y * y * x
   }
-
-  power(expr, 10)
-    // translates to
-    //
-    //    val x = expr
-    //    val y1 = x * x   // ^2
-    //    val y2 = y1 * y1 // ^4
-    //    val y3 = y2 * x  // ^5
-    //    y3 * y3          // ^10
 }
+
+power(expr, 10)
+// translates to
+//
+//    val x = expr
+//    val y1 = x * x   // ^2
+//    val y2 = y1 * y1 // ^4
+//    val y3 = y2 * x  // ^5
+//    y3 * y3          // ^10
 ```
 
 Parameters of inline methods can have an `inline` modifier as well. This means
