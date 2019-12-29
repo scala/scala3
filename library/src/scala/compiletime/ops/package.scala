@@ -3,23 +3,25 @@ package scala.compiletime
 import scala.annotation.infix
 
 package object ops {
-  /** Equality comparison of two singleton types.
-   *  ```scala
-   *  val eq1: 1 == 1 = true
-   *  val eq2: 1 == "1" = false
-   *  val eq3: "1" == "1" = true
-   *  ```
-   */
-  @infix type ==[X <: AnyVal, Y <: AnyVal] <: Boolean
+  object any {
+    /** Equality comparison of two singleton types.
+     * ```scala
+     * val eq1: 1 == 1 = true
+     * val eq2: 1 == "1" = false
+     * val eq3: "1" == "1" = true
+     * ```
+     */
+    @infix type ==[X <: AnyVal, Y <: AnyVal] <: Boolean
 
-  /** Inequality comparison of two singleton types.
-   *  ```scala
-   *  val eq1: 1 != 1 = false
-   *  val eq2: 1 != "1" = true
-   *  val eq3: "1" != "1" = false
-   *  ```
-   */
-  @infix type !=[X <: AnyVal, Y <: AnyVal] <: Boolean
+    /** Inequality comparison of two singleton types.
+     * ```scala
+     * val eq1: 1 != 1 = false
+     * val eq2: 1 != "1" = true
+     * val eq3: "1" != "1" = false
+     * ```
+     */
+    @infix type !=[X <: AnyVal, Y <: AnyVal] <: Boolean
+  }
 
   object string {
     /** Concatenation of two `String` singleton types.

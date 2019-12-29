@@ -3643,7 +3643,7 @@ object Types {
             if (owner == defn.CompiletimePackageObject.moduleClass) name match {
               case tpnme.S if nArgs == 1 => constantFold1(natValue, _ + 1)
               case _ => None
-            } else if (owner == defn.CompiletimeOpsPackageObject.moduleClass) name match {
+            } else if (owner == defn.CompiletimeOpsPackageObjectAny.moduleClass) name match {
               case tpnme.Equals    if nArgs == 2 => constantFold2(constValue, _ == _)
               case tpnme.NotEquals if nArgs == 2 => constantFold2(constValue, _ != _)
               case _ => None
