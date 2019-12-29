@@ -761,8 +761,9 @@ trait Implicits { self: Typer =>
     def suggestStr(ref: TermRef) = i"  import ${refToString(ref)}"
     if suggestedRefs.isEmpty then ""
     else
-      val suggestions = suggestedRefs.map(suggestStr).distinct
-        // TermRefs might be different but generate the same strings
+      val suggestions = suggestedRefs.map(suggestStr)
+        .distinct  // TermRefs might be different but generate the same strings
+        .sorted    // To get test stability. TODO: Find more useful sorting criteria
       val fix =
         if suggestions.tail.isEmpty then "The following import"
         else "One of the following imports"

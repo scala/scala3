@@ -5,8 +5,8 @@
   |
   |                   One of the following imports might fix the problem:
   |
-  |                     import math.Ordering.Implicits.infixOrderingOps
   |                     import math.Ordered.orderingToOrdered
+  |                     import math.Ordering.Implicits.infixOrderingOps
   |                            
 -- [E008] Member Not Found Error: tests/neg/missing-implicit.scala:5:51 ------------------------------------------------
 5 |  case x :: xs1 if limit > 0 => consume(xs1, limit - x) // error // error
@@ -16,8 +16,8 @@
   |                                             One of the following imports might fix the problem:
   |
   |                                               import math.Fractional.Implicits.infixFractionalOps
-  |                                               import math.Numeric.Implicits.infixNumericOps
   |                                               import math.Integral.Implicits.infixIntegralOps
+  |                                               import math.Numeric.Implicits.infixNumericOps
   |                                                      
 -- Error: tests/neg/missing-implicit.scala:10:24 -----------------------------------------------------------------------
 10 |val f = Future[Unit] { } // error
