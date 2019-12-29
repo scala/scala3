@@ -55,7 +55,7 @@ When `C` is covariant, `C[A & B] <: C[A] & C[B]` can be derived:
 ```
     A <: A                  B <: B
   ----------               ---------
-  A & B <: A               A & B < B
+  A & B <: A               A & B <: B
 ---------------         -----------------
 C[A & B] <: C[A]          C[A & B] <: C[B]
 ------------------------------------------
@@ -67,7 +67,7 @@ When `C` is contravariant, `C[A | B] <: C[A] & C[B]` can be derived:
 ```
     A <: A                        B <: B
   ----------                     ---------
-  A <: A | B                     B < A | B
+  A <: A | B                     B <: A | B
 -------------------           ----------------
 C[A | B] <: C[A]              C[A | B] <: C[B]
 --------------------------------------------------
@@ -90,11 +90,13 @@ glb(A, B)                 =    A                     if A extends B
 glb(A, B)                 =    B                     if B extends A
 glb(A, _)                 =    A                     if A is not a trait
 glb(_, B)                 =    B                     if B is not a trait
-glb(A, _)                 =    A
+glb(A, _)                 =    A                     // use first
 ```
 
 In the above, `|T|` means the erased type of `T`, `JArray` refers to
 the type of Java Array.
+
+See also: `TypeErasure#erasedGlb`
 
 ## Relationship with Compound Type (`with`)
 
