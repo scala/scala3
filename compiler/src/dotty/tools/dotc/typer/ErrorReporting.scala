@@ -151,7 +151,12 @@ object ErrorReporting {
       val (found2, expected2) =
         if (found1 frozen_<:< expected1) (found, expected) else (found1, expected1)
       val postScript1 =
-        if !postScript.isEmpty then postScript
+        if !postScript.isEmpty
+           || expected.isRef(defn.AnyClass)
+           || expected.isRef(defn.AnyValClass)
+           || expected.isRef(defn.ObjectClass)
+           || defn.isBottomType(found)
+        then postScript
         else ctx.typer.implicitSuggestionsFor(ViewProto(found.widen, expected))
       TypeMismatch(found2, expected2, whyNoMatchStr(found, expected), postScript1)
     }
