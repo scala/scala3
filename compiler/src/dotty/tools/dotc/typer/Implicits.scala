@@ -14,7 +14,7 @@ import Flags._
 import TypeErasure.{erasure, hasStableErasure}
 import Mode.ImplicitsEnabled
 import NameOps._
-import NameKinds.LazyImplicitName
+import NameKinds.{LazyImplicitName, FlatName}
 import Symbols._
 import Denotations._
 import Types._
@@ -486,18 +486,25 @@ object Implicits {
     private val seen = mutable.Set[TermRef]()
 
     private def lookInside(root: Symbol)(given ctx: Context): Boolean =
-      !root.name.lastPart.contains('$')
-      && root.is(ModuleVal, butNot = JavaDefined)
-      && (root.isCompleted || !root.is(Package))
+      if root.is(PackageVal) then root.isCompleted
+      else !root.name.is(FlatName)
+        && !root.name.lastPart.contains('$')
+        && root.is(ModuleVal, butNot = JavaDefined)
 
     private def rootsIn(ref: TermRef)(given ctx: Context): List[TermRef] =
       if seen.contains(ref) then Nil
       else
         implicitsDetailed.println(i"search in ${ref.symbol.fullName}")
         seen += ref
-        ref :: ref.fields
-          .filter(fld => lookInside(fld.symbol))
-          .map(fld => TermRef(ref, fld.symbol.asTerm))
+        val nested =
+          if ref.symbol.is(Package) then
+            ref.info.decls.filter(lookInside)
+          else
+            ref.symbol.ensureCompleted() // JavaDefined in reliably known only after completion
+            if ref.symbol.is(JavaDefined) then Nil
+            else ref.fields.map(_.symbol).filter(lookInside)
+        ref :: nested
+          .map(mbr => TermRef(ref, mbr.asTerm))
           .flatMap(rootsIn)
           .toList
 
@@ -521,7 +528,10 @@ object Implicits {
       else Nil
 
     def search(given ctx: Context): List[TermRef] =
-      roots.flatMap(_.implicitMembers.filter(qualifies))
+      roots
+        .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
+          // don't suggest things that are imported by default
+        .flatMap(_.implicitMembers.filter(qualifies))
   end suggestions
 }
 

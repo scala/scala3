@@ -40,16 +40,24 @@
    |                     import concurrent.ExecutionContext.Implicits.global
    |                            
 -- [E007] Type Mismatch Error: tests/neg/missing-implicit.scala:12:25 --------------------------------------------------
-12 |val b: java.lang.Byte = (1: Byte) // error
+12 |val b: java.lang.Byte = (1: Byte) // error, but no hint
    |                         ^^^^^^^
    |                         Found:    Byte
    |                         Required: Byte²
    |
    |                         where:    Byte  is a class in package scala
    |                                   Byte² is a class in package lang
+-- [E007] Type Mismatch Error: tests/neg/missing-implicit.scala:16:44 --------------------------------------------------
+16 |val d: scala.concurrent.duration.Duration = (10, DAYS) // error
+   |                                            ^^^^^^^^^^
+   |                                            Found:    (Int, java.util.concurrent.TimeUnit)
+   |                                            Required: concurrent².duration.Duration
+   |
+   |                                            where:    concurrent  is a package in package util
+   |                                                      concurrent² is a package in package scala
    |
    |
-   |                         The following import might fix the problem:
+   |                                            The following import might fix the problem:
    |
-   |                           import Predef.byte2Byte
-   |                                  
+   |                                              import concurrent.duration.pairIntToDuration
+   |                                                     
