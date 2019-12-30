@@ -2205,7 +2205,7 @@ object SymDenotations {
 
       if (symbol `eq` defn.ScalaPackageClass) {
         val denots = super.computeNPMembersNamed(name)
-        if (denots.exists) denots
+        if (denots.exists || name == nme.CONSTRUCTOR) denots
         else recur(packageObjs, NoDenotation)
       }
       else recur(packageObjs, NoDenotation)
