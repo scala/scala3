@@ -35,7 +35,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *  return immediately. Currently these early abort operatoons are
    *  `Typer.typed` and `Implicits.typedImplicit`.
    */
-  var isCancelled = false
+  @volatile var isCancelled = false
 
   /** Produces the following contexts, from outermost to innermost
    *

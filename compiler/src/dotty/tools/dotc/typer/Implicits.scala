@@ -31,7 +31,7 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import transform.SyntheticMembers._
 import Hashable._
-import util.{Property, SourceFile, NoSource}
+import util.{Property, SourceFile, NoSource, Scheduler}
 import config.Config
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
@@ -67,6 +67,9 @@ object Implicits {
     final val Conversion = 2
     final val Extension = 4
   }
+
+  val testOneImplicitTimeOut = 1000
+  val suggestImplicitTimeOut = 10000
 
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
@@ -528,10 +531,29 @@ object Implicits {
       else Nil
 
     def search(given ctx: Context): List[TermRef] =
-      roots
-        .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
+      val scheduler = new Scheduler()
+      val deadLine = System.currentTimeMillis() + suggestImplicitTimeOut
+
+      def test(ref: TermRef)(given Context): Boolean =
+        System.currentTimeMillis < deadLine
+        && {
+          scheduler.scheduleAfter(testOneImplicitTimeOut) {
+            println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
+            ctx.run.isCancelled = true
+          }
+          try qualifies(ref)
+          finally
+            scheduler.cancel()
+            ctx.run.isCancelled = false
+        }
+
+      try
+        roots
+          .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
           // don't suggest things that are imported by default
-        .flatMap(_.implicitMembers.filter(qualifies))
+          .flatMap(_.implicitMembers.filter(test))
+      finally scheduler.shutdown()
+    end search
   end suggestions
 }
 
