@@ -31,6 +31,12 @@ import scala.util.control.NonFatal
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
 
+  /** If this variable is set to `true`, some core typer operations will
+   *  return immediately. Currently these early abort operatoons are
+   *  `Typer.typed` and `Implicits.typedImplicit`.
+   */
+  var isCancelled = false
+
   /** Produces the following contexts, from outermost to innermost
    *
    *    bootStrap:   A context with next available runId and a scope consisting of

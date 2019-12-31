@@ -1484,6 +1484,7 @@ trait Implicits { self: Typer =>
 
     /** Try to typecheck an implicit reference */
     def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: Context): SearchResult = trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
+      if ctx.run.isCancelled then return NoMatchingImplicitsFailure
       record("typedImplicit")
       val ref = cand.ref
       val generated: Tree = tpd.ref(ref).withSpan(span.startPos)
