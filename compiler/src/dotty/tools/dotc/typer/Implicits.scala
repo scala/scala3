@@ -497,7 +497,7 @@ object Implicits {
     private def rootsIn(ref: TermRef)(given ctx: Context): List[TermRef] =
       if seen.contains(ref) then Nil
       else
-        implicitsDetailed.println(i"search in ${ref.symbol.fullName}")
+        implicitsDetailed.println(i"search for suggestions in ${ref.symbol.fullName}")
         seen += ref
         val nested =
           if ref.symbol.is(Package) then
@@ -538,7 +538,7 @@ object Implicits {
         System.currentTimeMillis < deadLine
         && {
           scheduler.scheduleAfter(testOneImplicitTimeOut) {
-            println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
+            implicitsDetailed.println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
             ctx.run.isCancelled = true
           }
           try qualifies(ref)
@@ -550,7 +550,7 @@ object Implicits {
       try
         roots
           .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
-          // don't suggest things that are imported by default
+            // don't suggest things that are imported by default
           .flatMap(_.implicitMembers.filter(test))
       finally scheduler.shutdown()
     end search
@@ -784,18 +784,14 @@ trait Implicits { self: Typer =>
     val suggestedRefs =
       try Implicits.suggestions(_ <:< pt).search(given ctx.fresh.setExploreTyperState())
       catch case NonFatal(ex) => Nil
-    def refToRawString(ref: TermRef) = ctx.printer.toTextRef(ref).show
-    def refToString(ref: TermRef): String =
-      val raw = refToRawString(ref)
-      ref.prefix match
-        case prefix: TermRef if !raw.contains(".") => s"${refToRawString(prefix)}.$raw"
-        case _ => raw
-    def suggestStr(ref: TermRef) = i"  import ${refToString(ref)}"
-    if suggestedRefs.isEmpty then ""
+    def importString(ref: TermRef): String =
+      s"  import ${ctx.printer.toTextRef(ref).show}"
+    val suggestions = suggestedRefs.map(importString)
+      .filter(_.contains('.'))
+      .distinct  // TermRefs might be different but generate the same strings
+      .sorted    // To get test stability. TODO: Find more useful sorting criteria
+    if suggestions.isEmpty then ""
     else
-      val suggestions = suggestedRefs.map(suggestStr)
-        .distinct  // TermRefs might be different but generate the same strings
-        .sorted    // To get test stability. TODO: Find more useful sorting criteria
       val fix =
         if suggestions.tail.isEmpty then "The following import"
         else "One of the following imports"
@@ -805,6 +801,7 @@ trait Implicits { self: Typer =>
          |
          |$suggestions%\n%
          """
+  end implicitSuggestionsFor
 
   /** Handlers to synthesize implicits for special types */
   type SpecialHandler = (Type, Span) => Context => Tree
