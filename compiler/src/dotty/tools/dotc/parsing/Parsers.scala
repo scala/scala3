@@ -2631,23 +2631,8 @@ object Parsers {
       addMod(mods, mod)
     }
 
-    private def compatible(flags1: FlagSet, flags2: FlagSet): Boolean = (
-         flags1.isEmpty
-      || flags2.isEmpty
-      || flags1.isTermFlags && flags2.isTermFlags
-      || flags1.isTypeFlags && flags2.isTypeFlags
-    )
-
-    def addFlag(mods: Modifiers, flag: FlagSet): Modifiers = {
-      def getPrintableTypeFromFlagSet =
-        Map(Trait -> "trait", Method -> "method", Mutable -> "variable").get(flag)
-
-      if (compatible(mods.flags, flag)) mods | flag
-      else {
-        syntaxError(ModifiersNotAllowed(mods.flags, getPrintableTypeFromFlagSet))
-        Modifiers(flag)
-      }
-    }
+    def addFlag(mods: Modifiers, flag: FlagSet): Modifiers =
+      mods.withAddedFlags(flag, Span(in.offset))
 
     /** Always add the syntactic `mod`, but check and conditionally add semantic `mod.flags`
      */
@@ -3345,22 +3330,29 @@ object Parsers {
       }
     }
 
+    private def checkAccessOnly(mods: Modifiers, where: String): Modifiers =
+      val mods1 = mods & (AccessFlags | Enum)
+      if mods1 ne mods then
+        syntaxError(s"Only access modifiers are allowed on enum $where")
+      mods1
+
     /**  EnumDef ::=  id ClassConstr InheritClauses [‘with’] EnumBody
      */
     def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
+      val mods1 = checkAccessOnly(mods, "definitions")
       val modulName = ident()
       in.endMarkerScope(modulName) {
         val clsName = modulName.toTypeName
         val constr = classConstr()
         val templ = template(constr, isEnum = true)
-        finalizeDef(TypeDef(clsName, templ), mods, start)
+        finalizeDef(TypeDef(clsName, templ), mods1, start)
       }
     }
 
     /** EnumCase = `case' (id ClassConstr [`extends' ConstrApps] | ids)
      */
     def enumCase(start: Offset, mods: Modifiers): DefTree = {
-      val mods1 = mods | EnumCase
+      val mods1 = checkAccessOnly(mods, "cases") | EnumCase
       accept(CASE)
 
       atSpan(start, nameStart) {

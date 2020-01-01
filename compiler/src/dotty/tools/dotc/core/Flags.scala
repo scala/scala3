@@ -339,7 +339,7 @@ object Flags {
   val (_, DefaultMethod @ _, _) = newFlags(38, "<defaultmethod>")
 
   /** Symbol is an enum class or enum case (if used with case) */
-  val (Enum @ _, _, _) = newFlags(40, "<enum>")
+  val (Enum @ _, _, _) = newFlags(40, "enum")
 
   /** An export forwarder */
   val (Exported @ _, _, _) = newFlags(41, "exported")

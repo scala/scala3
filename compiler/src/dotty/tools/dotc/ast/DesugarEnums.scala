@@ -70,8 +70,8 @@ object DesugarEnums {
 
   /** Add implied flags to an enum class or an enum case */
   def addEnumFlags(cdef: TypeDef)(implicit ctx: Context): TypeDef =
-    if (cdef.mods.isEnumClass) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Abstract | Sealed))
-    else if (isEnumCase(cdef)) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Final))
+    if (cdef.mods.isEnumClass) cdef.withMods(cdef.mods.withAddedFlags(Abstract | Sealed, cdef.span))
+    else if (isEnumCase(cdef)) cdef.withMods(cdef.mods.withAddedFlags(Final, cdef.span))
     else cdef
 
   private def valuesDot(name: PreName)(implicit src: SourceFile) =
@@ -288,7 +288,7 @@ object DesugarEnums {
       val toStringDef = toStringMethLit(name.toString)
       val impl1 = cpy.Template(impl)(body = List(ordinalDef, toStringDef) ++ registerCall)
         .withAttachment(ExtendsSingletonMirror, ())
-      val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | EnumValue)
+      val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
   }
@@ -304,7 +304,7 @@ object DesugarEnums {
     else {
       val (tag, scaffolding) = nextOrdinal(CaseKind.Simple)
       val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
-      val vdef = ValDef(name, enumClassRef, creator).withMods(mods | EnumValue)
+      val vdef = ValDef(name, enumClassRef, creator).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
 }
