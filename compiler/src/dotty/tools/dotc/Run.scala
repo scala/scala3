@@ -32,7 +32,7 @@ import scala.util.control.NonFatal
 class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
 
   /** If this variable is set to `true`, some core typer operations will
-   *  return immediately. Currently these early abort operatoons are
+   *  return immediately. Currently these early abort operations are
    *  `Typer.typed` and `Implicits.typedImplicit`.
    */
   @volatile var isCancelled = false

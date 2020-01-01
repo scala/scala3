@@ -1,4 +1,4 @@
-import Predef.{byte2Byte => _}
+import Predef.{byte2Byte => _, _}
 import math.Numeric
 
 def consume[T: Numeric](xs: List[T], limit: T): List[T] = xs match

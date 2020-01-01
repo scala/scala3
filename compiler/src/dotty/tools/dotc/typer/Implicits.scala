@@ -31,13 +31,14 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import transform.SyntheticMembers._
 import Hashable._
-import util.{Property, SourceFile, NoSource, Scheduler}
+import util.{Property, SourceFile, NoSource}
 import config.Config
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.trace
 import annotation.tailrec
 import scala.util.control.NonFatal
+import java.util.{Timer, TimerTask}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -68,7 +69,10 @@ object Implicits {
     final val Extension = 4
   }
 
-  val testOneImplicitTimeOut = 1000
+  /** Timeout to test a single implicit value as a suggestion, in ms */
+  val testOneImplicitTimeOut = 500
+
+  /** Global timeout to stop looking for further implicit suggestions, in ms */
   val suggestImplicitTimeOut = 10000
 
   /** A common base class of contextual implicits and of-type implicits which
@@ -531,19 +535,21 @@ object Implicits {
       else Nil
 
     def search(given ctx: Context): List[TermRef] =
-      val scheduler = new Scheduler()
+      val timer = new Timer()
       val deadLine = System.currentTimeMillis() + suggestImplicitTimeOut
 
       def test(ref: TermRef)(given Context): Boolean =
         System.currentTimeMillis < deadLine
         && {
-          scheduler.scheduleAfter(testOneImplicitTimeOut) {
-            implicitsDetailed.println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
-            ctx.run.isCancelled = true
+          val task = new TimerTask {
+            def run() =
+              implicitsDetailed.println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
+              ctx.run.isCancelled = true
           }
+          timer.schedule(task, testOneImplicitTimeOut)
           try qualifies(ref)
           finally
-            scheduler.cancel()
+            task.cancel()
             ctx.run.isCancelled = false
         }
 
@@ -552,7 +558,7 @@ object Implicits {
           .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
             // don't suggest things that are imported by default
           .flatMap(_.implicitMembers.filter(test))
-      finally scheduler.shutdown()
+      finally timer.cancel()
     end search
   end suggestions
 }
@@ -777,8 +783,9 @@ trait Implicits { self: Typer =>
   }
 
   /** An addendum to an error message where the error might be fixed
-   *  be some implicit value of type `pt` that is however not found.
-   *  The addendum suggests suggests implicit imports that might fix the problem.
+   *  by some implicit value of type `pt` that is however not found.
+   *  The addendum suggests given imports that might fix the problem.
+   *  If there's nothing to suggest, an empty string is returned.
    */
   override def implicitSuggestionsFor(pt: Type)(given ctx: Context): String =
     val suggestedRefs =
