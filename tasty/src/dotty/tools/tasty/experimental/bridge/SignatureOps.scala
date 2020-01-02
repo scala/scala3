@@ -14,11 +14,11 @@ trait SignatureOps extends Core with
 
     def unapply(signature: Signature): (List[ParamSig], TypeName) = internal.Signature_unapply(signature)
 
-    given ParamSigOps: (paramSig: ParamSig) with
+    given ParamSigOps: (paramSig: ParamSig) extended with
       def fold[A](onInt: Int => A, onTypeName: TypeName => A): A = internal.Signature_ParamSig_fold(paramSig)(onInt, onTypeName)
       def foldInt(onInt: IntToInt, onTypeName: ToInt[TypeName]): Int = internal.Signature_ParamSig_foldInt(paramSig)(onInt, onTypeName)
 
   end Signature
 
-  given SignatureOps: (signature: Signature) with
+  given SignatureOps: (signature: Signature) extended with
     def isNotAMethod: Boolean = internal.Signature_isNotAMethod(signature)

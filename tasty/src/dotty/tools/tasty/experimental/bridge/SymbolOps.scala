@@ -17,9 +17,8 @@ trait SymbolOps extends Core with
 
     def newMutableSymbolMap[T]: MutableSymbolMap[T] = internal.Symbols_newMutableSymbolMap[T]
 
-    given MutableSymbolMapOps: [T](map: Symbols.MutableSymbolMap[T]) with
+    given MutableSymbolMapOps: [T](map: Symbols.MutableSymbolMap[T]) extended with
       def get(sym: Symbol): Option[T] = internal.Symbols_MutableSymbolMap_get(map, sym)
-      def getOrElse[U >: T](sym: Symbol, default: => U): U = internal.Symbols_MutableSymbolMap_getOrElse(map, sym, default)
       def contains(sym: Symbol): Boolean = internal.Symbols_MutableSymbolMap_contains(map, sym)
       def update(sym: Symbol, value: T): Unit = internal.Symbols_MutableSymbolMap_update(map, sym, value)
       def -=(sym: Symbol): Unit = internal.Symbols_MutableSymbolMap_-=(map, sym)
@@ -28,9 +27,14 @@ trait SymbolOps extends Core with
       def keysIterator: Iterator[Symbol] = internal.Symbols_MutableSymbolMap_keysIterator(map)
     end MutableSymbolMapOps
 
+    given MutableSymbolMapOpsPlus: AnyRef with
+      def [T, U >: T](map: Symbols.MutableSymbolMap[T]) getOrElse(sym: Symbol, default: => U): U =
+        internal.Symbols_MutableSymbolMap_getOrElse(map, sym, default)
+    end MutableSymbolMapOpsPlus
+
   end Symbols
 
-  given SymbolOps: (sym: Symbol) with
+  given SymbolOps: (sym: Symbol) extended with
     def isPackage(given Context): Boolean = internal.Symbol_isPackage(sym)
     def isPrivate(given Context): Boolean = internal.Symbol_isPrivate(sym)
     def sourcePos(given Context): SourcePosition = internal.Symbol_sourcePos(sym)

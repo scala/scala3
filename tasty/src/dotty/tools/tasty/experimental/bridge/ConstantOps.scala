@@ -21,7 +21,7 @@ trait ConstantOps extends Core with
     final val EnumTag    = internal.Constants_EnumTag
   end Constants
 
-  given ConstantOps: (c: Constant) with
+  given ConstantOps: (c: Constant) extended with
     def tag: Int = internal.Constant_tag(c)
     def intValue: Int = internal.Constant_intValue(c)
     def booleanValue: Boolean = internal.Constant_booleanValue(c)

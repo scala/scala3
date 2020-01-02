@@ -195,14 +195,14 @@ trait TreeOps extends Core with
     object Ident with
       def unapply(tree: Ident): Some[Name] = internal.untpd_Ident_unapply(tree)
 
-    given ImportSelectorOps: (tree: ImportSelector) with
+    given ImportSelectorOps: (tree: ImportSelector) extended with
       def imported: Ident = internal.ImportSelector_imported(tree)
       def renamed: Tree = internal.ImportSelector_renamed(tree)
       def bound: Tree = internal.ImportSelector_bound(tree)
 
   end untpd
 
-  given untpdTreeOps: (tree: untpd.Tree) with
+  given untpdTreeOps: (tree: untpd.Tree) extended with
     def symbol(given Context): Symbol = internal.untpd_Tree_symbol(tree)
     def span: Span = internal.untpd_Tree_span(tree)
     def source: SourceFile = internal.untpd_Tree_source(tree)
@@ -210,29 +210,29 @@ trait TreeOps extends Core with
     def withType(tpe: Type)(given Context): tpd.Tree = internal.untpd_Tree_withType(tree, tpe)
     def isEmpty: Boolean = internal.untpd_Tree_isEmpty(tree)
 
-  given TreeOps: (tree: tpd.Tree) with
+  given TreeOps: (tree: tpd.Tree) extended with
     def isType: Boolean = internal.Tree_isType(tree)
     def tpe: Type = internal.Tree_tpe(tree)
 
-  given IfOps: (tree: tpd.If) with
+  given IfOps: (tree: tpd.If) extended with
     def isInline: Boolean = internal.If_isInline(tree)
 
-  given MatchOps: (tree: tpd.Match) with
+  given MatchOps: (tree: tpd.Match) extended with
     def isInline: Boolean = internal.Match_isInline(tree)
 
-  given ValOrDefDefOps: (tree: tpd.ValOrDefDef) with
+  given ValOrDefDefOps: (tree: tpd.ValOrDefDef) extended with
     def name: TermName = internal.ValOrDefDef_name(tree)
     def tpt: tpd.Tree = internal.ValOrDefDef_tpt(tree)
     def rhs(given Context): tpd.Tree = internal.ValOrDefDef_rhs(tree)
 
-  given DefDefOps: (tree: tpd.DefDef) with
+  given DefDefOps: (tree: tpd.DefDef) extended with
     def tparams: List[tpd.TypeDef] = internal.DefDef_tparams(tree)
     def vparamss: List[List[tpd.ValDef]] = internal.DefDef_vparamss(tree)
 
-  given TypeDefOps: (tree: tpd.TypeDef) with
+  given TypeDefOps: (tree: tpd.TypeDef) extended with
     def rhs: tpd.Tree = internal.TypeDef_rhs(tree)
 
-  given TemplateOps: (tree: tpd.Template) with
+  given TemplateOps: (tree: tpd.Template) extended with
     def decomposeBody(given Context): (List[tpd.Tree], List[tpd.Tree]) = internal.Template_decomposeBody(tree)
     def parents: List[tpd.Tree] = internal.Template_parents(tree)
     def self: tpd.ValDef = internal.Template_self(tree)

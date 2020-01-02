@@ -35,14 +35,14 @@ trait NameOps extends Core with
     def unapply(name: DerivedName): Option[(TermName, Int)] = internal.OuterSelectName_unapply(name)
 
 
-  given NameOps: (name: Name) with
+  given NameOps: (name: Name) extended with
     def toTermName: TermName = internal.Name_toTermName(name)
     def isEmpty: Boolean = internal.Name_isEmpty(name)
     def isTypeName: Boolean = internal.Name_isTypeName(name)
     def isTermName: Boolean = !name.isTypeName
 
-  given TermNameOps: (name: TermName) with
+  given TermNameOps: (name: TermName) extended with
     def tag: Int = internal.TermName_tag(name)
 
-  given SimpleNameOps: (name: SimpleName) with
+  given SimpleNameOps: (name: SimpleName) extended with
     def toUTF8: Array[Byte] = internal.SimpleName_toUTF8(name)

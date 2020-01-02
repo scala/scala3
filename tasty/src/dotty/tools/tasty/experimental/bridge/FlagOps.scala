@@ -43,7 +43,7 @@ trait FlagOps extends Core with
     val Open: Flag = internal.Flags_Open
   end Flags
 
-  given FlagSetOps: (flags: FlagSet)
+  given FlagSetOps: (flags: FlagSet) extended with
     def is(flag: Flag): Boolean = internal.FlagSet_is(flags, flag)
     def is(flag: Flag, butNot: FlagSet): Boolean = internal.FlagSet_is(flags, flag, butNot)
     def &~(flag: Flag): FlagSet = internal.FlagSet_&~(flags, flag)
