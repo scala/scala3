@@ -490,30 +490,55 @@ object Implicits {
    *     the package was accessed in some way previously.
    */
   class suggestions(qualifies: TermRef => Boolean) with
+    private type RootRef = TermRef | ThisType
+
+    private def symbolOf(ref: RootRef)(given Context) = ref match
+      case ref: TermRef => ref.symbol
+      case ref: ThisType => ref.cls
+
     private val seen = mutable.Set[TermRef]()
 
     private def lookInside(root: Symbol)(given ctx: Context): Boolean =
-      if root.is(PackageVal) then root.isCompleted
+      if root.is(Package) then root.isTerm && root.isCompleted
       else !root.name.is(FlatName)
         && !root.name.lastPart.contains('$')
         && root.is(ModuleVal, butNot = JavaDefined)
 
+    def nestedRoots(ref: RootRef)(given Context): List[Symbol] =
+      val seenNames = mutable.Set[Name]()
+      ref.widen.baseClasses.flatMap { bc =>
+        bc.info.decls.filter { dcl =>
+          lookInside(dcl)
+          && !seenNames.contains(dcl.name)
+          && { seenNames += dcl.name; true }
+        }
+      }
+
+    private def rootsStrictlyIn(ref: RootRef)(given ctx: Context): List[TermRef] =
+      val refSym = symbolOf(ref)
+      val nested =
+        if refSym == defn.EmptyPackageClass     // Don't search the empty package, either as enclosing package ...
+           || refSym == defn.EmptyPackageVal    // ... or as a member of _root_.
+           || refSym == defn.JavaPackageVal     // As an optimization, don't search java...
+           || refSym == defn.JavaLangPackageVal // ... or java.lang.
+        then Nil
+        else if refSym.is(Package) || refSym.isPackageObject then
+          refSym.info.decls.filter(lookInside)
+        else
+          if !refSym.is(Touched) then refSym.ensureCompleted() // JavaDefined is reliably known only after completion
+          if refSym.is(JavaDefined) then Nil
+          else nestedRoots(ref)
+      nested
+        .map(mbr => TermRef(ref, mbr.asTerm))
+        .flatMap(rootsIn)
+        .toList
+
     private def rootsIn(ref: TermRef)(given ctx: Context): List[TermRef] =
       if seen.contains(ref) then Nil
       else
-        implicitsDetailed.println(i"search for suggestions in ${ref.symbol.fullName}")
+        implicits.println(i"search for suggestions in ${ref.symbol.fullName}")
         seen += ref
-        val nested =
-          if ref.symbol.is(Package) then
-            ref.info.decls.filter(lookInside)
-          else
-            ref.symbol.ensureCompleted() // JavaDefined in reliably known only after completion
-            if ref.symbol.is(JavaDefined) then Nil
-            else ref.fields.map(_.symbol).filter(lookInside)
-        ref :: nested
-          .map(mbr => TermRef(ref, mbr.asTerm))
-          .flatMap(rootsIn)
-          .toList
+        ref :: rootsStrictlyIn(ref)
 
     private def rootsOnPath(tp: Type)(given ctx: Context): List[TermRef] = tp match
       case ref: TermRef => rootsIn(ref) ::: rootsOnPath(ref.prefix)
@@ -522,8 +547,15 @@ object Implicits {
     private def roots(given ctx: Context): List[TermRef] =
       if ctx.owner.exists then
         val defined =
-          if ctx.scope eq ctx.outer.scope then Nil
-          else ctx.scope
+          if ctx.owner.isClass then
+            if ctx.owner eq ctx.outer.owner then Nil
+            else ctx.owner.thisType match
+              case ref: TermRef => rootsStrictlyIn(ref)
+              case ref: ThisType => rootsStrictlyIn(ref)
+              case _ => Nil
+          else if ctx.scope eq ctx.outer.scope then Nil
+          else
+            ctx.scope
             .filter(lookInside(_))
             .flatMap(sym => rootsIn(sym.termRef))
         val imported =
@@ -543,7 +575,7 @@ object Implicits {
         && {
           val task = new TimerTask {
             def run() =
-              implicitsDetailed.println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
+              implicits.println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
               ctx.run.isCancelled = true
           }
           timer.schedule(task, testOneImplicitTimeOut)
@@ -558,6 +590,12 @@ object Implicits {
           .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
             // don't suggest things that are imported by default
           .flatMap(_.implicitMembers.filter(test))
+      catch
+        case ex: Throwable =>
+          if ctx.settings.Ydebug.value then
+          	println("caught exceptioon when searching for suggestions")
+          	ex.printStackTrace()
+          Nil
       finally timer.cancel()
     end search
   end suggestions
@@ -789,8 +827,7 @@ trait Implicits { self: Typer =>
    */
   override def implicitSuggestionsFor(pt: Type)(given ctx: Context): String =
     val suggestedRefs =
-      try Implicits.suggestions(_ <:< pt).search(given ctx.fresh.setExploreTyperState())
-      catch case NonFatal(ex) => Nil
+      Implicits.suggestions(_ <:< pt).search(given ctx.fresh.setExploreTyperState())
     def importString(ref: TermRef): String =
       s"  import ${ctx.printer.toTextRef(ref).show}"
     val suggestions = suggestedRefs.map(importString)
