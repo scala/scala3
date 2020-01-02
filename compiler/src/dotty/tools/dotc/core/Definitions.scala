@@ -210,7 +210,9 @@ class Definitions {
   }
   @tu lazy val ScalaPackageObject: Symbol = ctx.requiredModule("scala.package")
   @tu lazy val JavaPackageVal: TermSymbol = ctx.requiredPackage(nme.java)
+  @tu lazy val JavaPackageClass: ClassSymbol = JavaPackageVal.moduleClass.asClass
   @tu lazy val JavaLangPackageVal: TermSymbol = ctx.requiredPackage(jnme.JavaLang)
+  @tu lazy val JavaLangPackageClass: ClassSymbol = JavaLangPackageVal.moduleClass.asClass
 
   // fundamental modules
   @tu lazy val SysPackage : Symbol = ctx.requiredModule("scala.sys.package")
