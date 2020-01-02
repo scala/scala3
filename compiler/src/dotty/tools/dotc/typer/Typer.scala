@@ -173,6 +173,16 @@ class Typer extends Namer
           previous
         }
 
+      /** Recurse in outer context. If final result is same as `previous`, check that it
+       *  is new or shadowed. This order of checking is necessary since an
+       *  outer package-level definition might trump two conflicting inner
+       *  imports, so no error should be issued in that case. See i7876.scala.
+       */
+      def recurAndCheckNewOrShadowed(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(given Context): Type =
+        val found = findRefRecur(previous, prevPrec, prevCtx)
+        if found eq previous then checkNewOrShadowed(found, prevPrec)
+        else found
+
       def selection(imp: ImportInfo, name: Name, checkBounds: Boolean) =
         if imp.sym.isCompleting then
           ctx.warning(i"cyclic ${imp.sym}, ignored", posd.sourcePos)
@@ -322,11 +332,11 @@ class Typer extends Namer
             else if (isPossibleImport(NamedImport) && (curImport ne outer.importInfo)) {
               val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
-                findRefRecur(checkNewOrShadowed(namedImp, NamedImport), NamedImport, ctx)(outer)
+                recurAndCheckNewOrShadowed(namedImp, NamedImport, ctx)(given outer)
               else if (isPossibleImport(WildImport) && !curImport.sym.isCompleting) {
                 val wildImp = wildImportRef(curImport)
                 if (wildImp.exists)
-                  findRefRecur(checkNewOrShadowed(wildImp, WildImport), WildImport, ctx)(outer)
+                  recurAndCheckNewOrShadowed(wildImp, WildImport, ctx)(given outer)
                 else {
                   updateUnimported()
                   loop(ctx)(outer)
