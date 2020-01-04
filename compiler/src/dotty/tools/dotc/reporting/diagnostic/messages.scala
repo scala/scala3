@@ -347,7 +347,9 @@ object messages {
         decls
         .map { (n, sym) => (n, distance(n, name.show), sym) }
         .collect {
-          case (n, dist, sym) if dist <= maxDist && dist < name.toString.length => (n, dist, sym)
+          case (n, dist, sym)
+          if dist <= maxDist && dist < (name.toString.length min n.length) =>
+            (n, dist, sym)
         }
         .groupBy(_._2).toList
         .sortBy(_._1)
