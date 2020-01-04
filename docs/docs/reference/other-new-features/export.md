@@ -93,7 +93,7 @@ Export clauses can appear in classes or they can appear at the top-level. An exp
 
 It is a standard recommendation to prefer composition over inheritance. This is really an application of the principle of least power: Composition treats components as blackboxes whereas inheritance can affect the internal workings of components through overriding. Sometimes the close coupling implied by inheritance is the best solution for a problem, but where this is not necessary the looser coupling of composition is better.
 
-So far, object oriented languages including Scala made it much easer to use inheritance than composition. Inheritance only requires an `extends` clause whereas composition required a verbose elaboration of a sequence of forwarders. So in that sense, OO languages are pushing
+So far, object oriented languages including Scala made it much easier to use inheritance than composition. Inheritance only requires an `extends` clause whereas composition required a verbose elaboration of a sequence of forwarders. So in that sense, OO languages are pushing
 programmers to a solution that is often too powerful. Export clauses redress the balance. They make composition relationships as concise and easy to express as inheritance relationships. Export clauses also offer more flexibility than extends clauses since members can be renamed or omitted.
 
 Export clauses also fill a gap opened by the shift from package objects to toplevel definitions. One occasionally useful idiom that gets lost in this shift is a package object inheriting from some class. The idiom is often used in a facade like pattern, to make members
