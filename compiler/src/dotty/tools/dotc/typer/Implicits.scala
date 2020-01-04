@@ -695,15 +695,10 @@ trait Implicits { self: Typer =>
     }
   }
 
-  /** A helper class to find imports of givens that might fix a type error.
+  /** A list of TermRefs referring to the roots where suggestions for
+   *  imports of givens that might fix a type error are searched.
    *
-   *   suggestions(p).search
-   *
-   *  returns a list of TermRefs that refer to implicits or givens
-   *  that satisfy predicate `p`.
-   *
-   *  The search algorithm looks for givens in the smallest set of objects
-   *  and packages that includes
+   *  These roots are the smallest set of objects and packages that includes
    *
    *   - any object that is a defined in an enclosing scope,
    *   - any object that is a member of an enclosing class,
@@ -712,11 +707,23 @@ trait Implicits { self: Typer =>
    *   - any object or package from which something is imported in an enclosing scope,
    *   - any package that is nested in a searched package, provided
    *     the package was accessed in some way previously.
+   *
+   *  Excluded from the root set are:
+   *
+   *   - Objects that contain `$`s in their name. These have to
+   *     be omitted since they might be inner Java class files which
+   *     cannot be read by the ClassfileParser without crashing.
+   *   - Any members of static parts of Java classes.
+   *   - Any members of the empty package. These should be
+   *     skipped since the empty package often contains unrelated junk files
+   *     that should not be used for suggestions.
+   *   - Any members of the java or java.lang packages. These are
+   *     skipped as an optimization, since they won't contain implicits anyway.
    */
-  private class Suggestions(pt: Type) with
-    private val seen = mutable.Set[TermRef]()
+  private def suggestionRoots(given Context) =
+    val seen = mutable.Set[TermRef]()
 
-    private def lookInside(root: Symbol)(given Context): Boolean =
+    def lookInside(root: Symbol)(given Context): Boolean =
       if root.is(Package) then root.isTerm && root.isCompleted
       else !root.name.is(FlatName)
         && !root.name.lastPart.contains('$')
@@ -732,7 +739,7 @@ trait Implicits { self: Typer =>
         }
       }
 
-    private def rootsStrictlyIn(ref: Type)(given Context): List[TermRef] =
+    def rootsStrictlyIn(ref: Type)(given Context): List[TermRef] =
       val site = ref.widen
       val refSym = site.typeSymbol
       val nested =
@@ -751,18 +758,18 @@ trait Implicits { self: Typer =>
         .flatMap(rootsIn)
         .toList
 
-    private def rootsIn(ref: TermRef)(given Context): List[TermRef] =
+    def rootsIn(ref: TermRef)(given Context): List[TermRef] =
       if seen.contains(ref) then Nil
       else
         implicits.println(i"search for suggestions in ${ref.symbol.fullName}")
         seen += ref
         ref :: rootsStrictlyIn(ref)
 
-    private def rootsOnPath(tp: Type)(given Context): List[TermRef] = tp match
+    def rootsOnPath(tp: Type)(given Context): List[TermRef] = tp match
       case ref: TermRef => rootsIn(ref) ::: rootsOnPath(ref.prefix)
       case _ => Nil
 
-    private def roots(given ctx: Context): List[TermRef] =
+    def recur(given ctx: Context): List[TermRef] =
       if ctx.owner.exists then
         val defined =
           if ctx.owner.isClass then
@@ -778,76 +785,86 @@ trait Implicits { self: Typer =>
           else ctx.importInfo.sym.info match
             case ImportType(expr) => rootsOnPath(expr.tpe)
             case _ => Nil
-        defined ++ imported ++ roots(given ctx.outer)
+        defined ++ imported ++ recur(given ctx.outer)
       else Nil
 
-    def search(given ctx: Context): (List[TermRef], List[TermRef]) =
-      val timer = new Timer()
-      val deadLine = System.currentTimeMillis() + suggestImplicitTimeOut
+    recur
+  end suggestionRoots
 
-      /** Test whether the head of a given instance matches the expected type `pt`,
-       *  ignoring any dependent implicit arguments.
-       */
-      def shallowTest(ref: TermRef)(given Context): Boolean =
-        System.currentTimeMillis < deadLine
-        && (ref <:< pt)(given ctx.fresh.setExploreTyperState())
+  /** Given an expected type `pt`, return two lists of TermRefs:
+   *
+   *   1. The _fully matching_ given instances that can be completed
+   *      to a full synthesized given term that matches the expected type `pt`.
+   *
+   *   2. The _head matching_ given instances, that conform to the
+   *      expected type `pt`, ignoring any dependent implicit arguments.
+   */
+  private def importSuggestions(pt: Type)(given ctx: Context): (List[TermRef], List[TermRef]) =
+    val timer = new Timer()
+    val deadLine = System.currentTimeMillis() + suggestImplicitTimeOut
 
-      /** Test whether a full given term can be synthesized that matches
-       *  the expected type `pt`.
-       */
-      def deepTest(ref: TermRef)(given Context): Boolean =
-        System.currentTimeMillis < deadLine
-        && {
-          val task = new TimerTask with
-            def run() =
-              println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
-              ctx.run.isCancelled = true
-          val span = ctx.owner.sourcePos.span
-          val (expectedType, argument, kind) = pt match
-            case ViewProto(argType, resType) =>
-              (resType,
-               untpd.Ident(ref.name).withSpan(span).withType(argType),
-               if hasExtMethod(ref, resType) then Candidate.Extension
-               else Candidate.Conversion)
-            case _ =>
-              (pt, EmptyTree, Candidate.Value)
-          val candidate = Candidate(ref, kind, 0)
-          try
-            timer.schedule(task, testOneImplicitTimeOut)
-            typedImplicit(candidate, expectedType, argument, span)(
-              given ctx.fresh.setExploreTyperState()).isSuccess
-          finally
-            task.cancel()
-            ctx.run.isCancelled = false
-        }
-      end deepTest
+    /** Test whether the head of a given instance matches the expected type `pt`,
+     *  ignoring any dependent implicit arguments.
+     */
+    def shallowTest(ref: TermRef)(given Context): Boolean =
+      System.currentTimeMillis < deadLine
+      && (ref <:< pt)(given ctx.fresh.setExploreTyperState())
 
-      try
-        roots
-          .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
-            // don't suggest things that are imported by default
-          .flatMap(_.implicitMembers.filter(shallowTest))
-            // filter whether the head of the implicit can match
-          .partition(deepTest)
-            // partition into full matches and head matches
-      catch
-        case ex: Throwable =>
-          if ctx.settings.Ydebug.value then
-            println("caught exception when searching for suggestions")
-            ex.printStackTrace()
-          (Nil, Nil)
-      finally timer.cancel()
-    end search
-  end Suggestions
+    /** Test whether a full given term can be synthesized that matches
+     *  the expected type `pt`.
+     */
+    def deepTest(ref: TermRef)(given Context): Boolean =
+      System.currentTimeMillis < deadLine
+      && {
+        val task = new TimerTask with
+          def run() =
+            println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
+            ctx.run.isCancelled = true
+        val span = ctx.owner.sourcePos.span
+        val (expectedType, argument, kind) = pt match
+          case ViewProto(argType, resType) =>
+            (resType,
+             untpd.Ident(ref.name).withSpan(span).withType(argType),
+             if hasExtMethod(ref, resType) then Candidate.Extension
+             else Candidate.Conversion)
+          case _ =>
+            (pt, EmptyTree, Candidate.Value)
+        val candidate = Candidate(ref, kind, 0)
+        try
+          timer.schedule(task, testOneImplicitTimeOut)
+          typedImplicit(candidate, expectedType, argument, span)(
+            given ctx.fresh.setExploreTyperState()).isSuccess
+        finally
+          task.cancel()
+          ctx.run.isCancelled = false
+      }
+    end deepTest
+
+    try
+      suggestionRoots
+        .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
+          // don't suggest things that are imported by default
+        .flatMap(_.implicitMembers.filter(shallowTest))
+          // filter whether the head of the implicit can match
+        .partition(deepTest)
+          // partition into full matches and head matches
+    catch
+      case ex: Throwable =>
+        if ctx.settings.Ydebug.value then
+          println("caught exception when searching for suggestions")
+          ex.printStackTrace()
+        (Nil, Nil)
+    finally timer.cancel()
+  end importSuggestions
 
   /** An addendum to an error message where the error might be fixed
    *  by some implicit value of type `pt` that is however not found.
    *  The addendum suggests given imports that might fix the problem.
    *  If there's nothing to suggest, an empty string is returned.
    */
-  override def implicitSuggestionsFor(pt: Type)(given ctx: Context): String =
+  override def implicitSuggestionAddendum(pt: Type)(given ctx: Context): String =
     val (fullMatches, headMatches) =
-      Suggestions(pt).search(given ctx.fresh.setExploreTyperState())
+      importSuggestions(pt)(given ctx.fresh.setExploreTyperState())
     implicits.println(i"suggestions for $pt in ${ctx.owner} = ($fullMatches%, %, $headMatches%, %)")
     val (suggestedRefs, help) =
       if fullMatches.nonEmpty then (fullMatches, "fix")
@@ -874,7 +891,7 @@ trait Implicits { self: Typer =>
          |
          |$suggestions%\n%
          """
-  end implicitSuggestionsFor
+  end implicitSuggestionAddendum
 
   /** Handlers to synthesize implicits for special types */
   type SpecialHandler = (Type, Span) => Context => Tree
@@ -1435,7 +1452,7 @@ trait Implicits { self: Typer =>
                 // example where searching for a nested type causes an infinite loop.
                 ""
 
-          def suggestedImports = implicitSuggestionsFor(pt)
+          def suggestedImports = implicitSuggestionAddendum(pt)
           if normalImports.isEmpty then suggestedImports else normalImports
         end hiddenImplicitsAddendum
 
