@@ -8,7 +8,7 @@ scala> xml"
 scala> xml""
 1 | xml""
   |    ^
-  |value xml is not a member of StringContext - did you mean StringContext.s?
+  |value xml is not a member of StringContext
 scala> xml"""
 1 | xml"""
   |    ^
