@@ -75,6 +75,14 @@ object Implicits {
   /** Global timeout to stop looking for further implicit suggestions, in ms */
   val suggestImplicitTimeOut = 10000
 
+  /** If `expected` is a selection prototype, does `tp` have an extension
+   *  method with the selecting name? False otherwise.
+   */
+  def hasExtMethod(tp: Type, expected: Type)(given Context) = expected match
+    case SelectionProto(name, _, _, _) =>
+      tp.memberBasedOnFlags(name, required = ExtensionMethod).exists
+    case _ => false
+
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
    */
@@ -155,11 +163,7 @@ object Implicits {
               val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
               // An implementation of <:< counts as a view
               val isConforms = tpw.derivesFrom(defn.SubTypeClass)
-              val hasExtensions = resType match {
-                case SelectionProto(name, _, _, _) =>
-                  tpw.memberBasedOnFlags(name, required = ExtensionMethod).exists
-                case _ => false
-              }
+              val hasExtensions = hasExtMethod(tpw, resType)
               val conversionKind =
                 if (isFunctionInS2 || isImplicitConversion || isConforms) Candidate.Conversion
                 else Candidate.None
@@ -470,125 +474,6 @@ object Implicits {
     def explanation(implicit ctx: Context): String =
       em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
-
-  /** A helper class to find imports of givens that might fix a type error.
-   *
-   *   suggestions(p).search
-   *
-   *  returns a list of TermRefs that refer to implicits or givens
-   *  that satisfy predicate `p`.
-   *
-   *  The search algorithm looks for givens in the smallest set of objects
-   *  and packages that includes
-   *
-   *   - any object that is a defined in an enclosing scope,
-   *   - any object that is a member of an enclosing class,
-   *   - any enclosing package (including the root package),
-   *   - any object that is a member of a searched object or package,
-   *   - any object or package from which something is imported in an enclosing scope,
-   *   - any package that is nested in a searched package, provided
-   *     the package was accessed in some way previously.
-   */
-  class suggestions(qualifies: TermRef => Boolean) with
-    private val seen = mutable.Set[TermRef]()
-
-    private def lookInside(root: Symbol)(given Context): Boolean =
-      if root.is(Package) then root.isTerm && root.isCompleted
-      else !root.name.is(FlatName)
-        && !root.name.lastPart.contains('$')
-        && root.is(ModuleVal, butNot = JavaDefined)
-
-    def nestedRoots(site: Type)(given Context): List[Symbol] =
-      val seenNames = mutable.Set[Name]()
-      site.baseClasses.flatMap { bc =>
-        bc.info.decls.filter { dcl =>
-          lookInside(dcl)
-          && !seenNames.contains(dcl.name)
-          && { seenNames += dcl.name; true }
-        }
-      }
-
-    private def rootsStrictlyIn(ref: Type)(given Context): List[TermRef] =
-      val site = ref.widen
-      val refSym = site.typeSymbol
-      val nested =
-        if refSym.is(Package) then
-          if refSym == defn.EmptyPackageClass       // Don't search the empty package
-             || refSym == defn.JavaPackageClass     // As an optimization, don't search java...
-             || refSym == defn.JavaLangPackageClass // ... or java.lang.
-          then Nil
-          else refSym.info.decls.filter(lookInside)
-        else
-          if !refSym.is(Touched) then refSym.ensureCompleted() // JavaDefined is reliably known only after completion
-          if refSym.is(JavaDefined) then Nil
-          else nestedRoots(site)
-      nested
-        .map(mbr => TermRef(ref, mbr.asTerm))
-        .flatMap(rootsIn)
-        .toList
-
-    private def rootsIn(ref: TermRef)(given Context): List[TermRef] =
-      if seen.contains(ref) then Nil
-      else
-        implicits.println(i"search for suggestions in ${ref.symbol.fullName}")
-        seen += ref
-        ref :: rootsStrictlyIn(ref)
-
-    private def rootsOnPath(tp: Type)(given Context): List[TermRef] = tp match
-      case ref: TermRef => rootsIn(ref) ::: rootsOnPath(ref.prefix)
-      case _ => Nil
-
-    private def roots(given ctx: Context): List[TermRef] =
-      if ctx.owner.exists then
-        val defined =
-          if ctx.owner.isClass then
-            if ctx.owner eq ctx.outer.owner then Nil
-            else rootsStrictlyIn(ctx.owner.thisType)
-          else
-            if ctx.scope eq ctx.outer.scope then Nil
-            else ctx.scope
-              .filter(lookInside(_))
-              .flatMap(sym => rootsIn(sym.termRef))
-        val imported =
-          if ctx.importInfo eq ctx.outer.importInfo then Nil
-          else ctx.importInfo.sym.info match
-            case ImportType(expr) => rootsOnPath(expr.tpe)
-            case _ => Nil
-        defined ++ imported ++ roots(given ctx.outer)
-      else Nil
-
-    def search(given ctx: Context): List[TermRef] =
-      val timer = new Timer()
-      val deadLine = System.currentTimeMillis() + suggestImplicitTimeOut
-
-      def test(ref: TermRef)(given Context): Boolean =
-        System.currentTimeMillis < deadLine
-        && {
-          val task = new TimerTask with
-            def run() =
-              implicits.println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
-              ctx.run.isCancelled = true
-          timer.schedule(task, testOneImplicitTimeOut)
-          try qualifies(ref)
-          finally
-            task.cancel()
-            ctx.run.isCancelled = false
-        }
-
-      try
-        roots
-          .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
-            // don't suggest things that are imported by default
-          .flatMap(_.implicitMembers.filter(test))
-      catch
-        case ex: Throwable =>
-          if ctx.settings.Ydebug.value then
-          	println("caught exception when searching for suggestions")
-          	ex.printStackTrace()
-          Nil
-      finally timer.cancel()
-    end search
-  end suggestions
 }
 
 import Implicits._
@@ -810,20 +695,174 @@ trait Implicits { self: Typer =>
     }
   }
 
+  /** A helper class to find imports of givens that might fix a type error.
+   *
+   *   suggestions(p).search
+   *
+   *  returns a list of TermRefs that refer to implicits or givens
+   *  that satisfy predicate `p`.
+   *
+   *  The search algorithm looks for givens in the smallest set of objects
+   *  and packages that includes
+   *
+   *   - any object that is a defined in an enclosing scope,
+   *   - any object that is a member of an enclosing class,
+   *   - any enclosing package (including the root package),
+   *   - any object that is a member of a searched object or package,
+   *   - any object or package from which something is imported in an enclosing scope,
+   *   - any package that is nested in a searched package, provided
+   *     the package was accessed in some way previously.
+   */
+  private class Suggestions(pt: Type) with
+    private val seen = mutable.Set[TermRef]()
+
+    private def lookInside(root: Symbol)(given Context): Boolean =
+      if root.is(Package) then root.isTerm && root.isCompleted
+      else !root.name.is(FlatName)
+        && !root.name.lastPart.contains('$')
+        && root.is(ModuleVal, butNot = JavaDefined)
+
+    def nestedRoots(site: Type)(given Context): List[Symbol] =
+      val seenNames = mutable.Set[Name]()
+      site.baseClasses.flatMap { bc =>
+        bc.info.decls.filter { dcl =>
+          lookInside(dcl)
+          && !seenNames.contains(dcl.name)
+          && { seenNames += dcl.name; true }
+        }
+      }
+
+    private def rootsStrictlyIn(ref: Type)(given Context): List[TermRef] =
+      val site = ref.widen
+      val refSym = site.typeSymbol
+      val nested =
+        if refSym.is(Package) then
+          if refSym == defn.EmptyPackageClass       // Don't search the empty package
+              || refSym == defn.JavaPackageClass     // As an optimization, don't search java...
+              || refSym == defn.JavaLangPackageClass // ... or java.lang.
+          then Nil
+          else refSym.info.decls.filter(lookInside)
+        else
+          if !refSym.is(Touched) then refSym.ensureCompleted() // JavaDefined is reliably known only after completion
+          if refSym.is(JavaDefined) then Nil
+          else nestedRoots(site)
+      nested
+        .map(mbr => TermRef(ref, mbr.asTerm))
+        .flatMap(rootsIn)
+        .toList
+
+    private def rootsIn(ref: TermRef)(given Context): List[TermRef] =
+      if seen.contains(ref) then Nil
+      else
+        implicits.println(i"search for suggestions in ${ref.symbol.fullName}")
+        seen += ref
+        ref :: rootsStrictlyIn(ref)
+
+    private def rootsOnPath(tp: Type)(given Context): List[TermRef] = tp match
+      case ref: TermRef => rootsIn(ref) ::: rootsOnPath(ref.prefix)
+      case _ => Nil
+
+    private def roots(given ctx: Context): List[TermRef] =
+      if ctx.owner.exists then
+        val defined =
+          if ctx.owner.isClass then
+            if ctx.owner eq ctx.outer.owner then Nil
+            else rootsStrictlyIn(ctx.owner.thisType)
+          else
+            if ctx.scope eq ctx.outer.scope then Nil
+            else ctx.scope
+              .filter(lookInside(_))
+              .flatMap(sym => rootsIn(sym.termRef))
+        val imported =
+          if ctx.importInfo eq ctx.outer.importInfo then Nil
+          else ctx.importInfo.sym.info match
+            case ImportType(expr) => rootsOnPath(expr.tpe)
+            case _ => Nil
+        defined ++ imported ++ roots(given ctx.outer)
+      else Nil
+
+    def search(given ctx: Context): (List[TermRef], List[TermRef]) =
+      val timer = new Timer()
+      val deadLine = System.currentTimeMillis() + suggestImplicitTimeOut
+
+      /** Test whether the head of a given instance matches the expected type `pt`,
+       *  ignoring any dependent implicit arguments.
+       */
+      def shallowTest(ref: TermRef)(given Context): Boolean =
+        System.currentTimeMillis < deadLine
+        && (ref <:< pt)(given ctx.fresh.setExploreTyperState())
+
+      /** Test whether a full given term can be synthesized that matches
+       *  the expected type `pt`.
+       */
+      def deepTest(ref: TermRef)(given Context): Boolean =
+        System.currentTimeMillis < deadLine
+        && {
+          val task = new TimerTask with
+            def run() =
+              println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
+              ctx.run.isCancelled = true
+          val span = ctx.owner.sourcePos.span
+          val (expectedType, argument, kind) = pt match
+            case ViewProto(argType, resType) =>
+              (resType,
+               untpd.Ident(ref.name).withSpan(span).withType(argType),
+               if hasExtMethod(ref, resType) then Candidate.Extension
+               else Candidate.Conversion)
+            case _ =>
+              (pt, EmptyTree, Candidate.Value)
+          val candidate = Candidate(ref, kind, 0)
+          try
+            timer.schedule(task, testOneImplicitTimeOut)
+            typedImplicit(candidate, expectedType, argument, span)(
+              given ctx.fresh.setExploreTyperState()).isSuccess
+          finally
+            task.cancel()
+            ctx.run.isCancelled = false
+        }
+      end deepTest
+
+      try
+        roots
+          .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
+            // don't suggest things that are imported by default
+          .flatMap(_.implicitMembers.filter(shallowTest))
+            // filter whether the head of the implicit can match
+          .partition(deepTest)
+            // partition into full matches and head matches
+      catch
+        case ex: Throwable =>
+          if ctx.settings.Ydebug.value then
+            println("caught exception when searching for suggestions")
+            ex.printStackTrace()
+          (Nil, Nil)
+      finally timer.cancel()
+    end search
+  end Suggestions
+
   /** An addendum to an error message where the error might be fixed
    *  by some implicit value of type `pt` that is however not found.
    *  The addendum suggests given imports that might fix the problem.
    *  If there's nothing to suggest, an empty string is returned.
    */
   override def implicitSuggestionsFor(pt: Type)(given ctx: Context): String =
-    val suggestedRefs =
-      Implicits.suggestions(_ <:< pt).search(given ctx.fresh.setExploreTyperState())
+    val (fullMatches, headMatches) =
+      Suggestions(pt).search(given ctx.fresh.setExploreTyperState())
+    implicits.println(i"suggestions for $pt in ${ctx.owner} = ($fullMatches%, %, $headMatches%, %)")
+    val (suggestedRefs, help) =
+      if fullMatches.nonEmpty then (fullMatches, "fix")
+      else (headMatches, "make progress towards fixing")
     def importString(ref: TermRef): String =
       s"  import ${ctx.printer.toTextRef(ref).show}"
-    val suggestions = suggestedRefs.map(importString)
-      .filter(_.contains('.'))
+    val suggestions = suggestedRefs
+      .zip(suggestedRefs.map(importString))
+      .filter(_._2.contains('.'))
+      .sortWith { (rs1, rs2) =>  // sort by specificity first, alphabetically second
+          val diff = compare(rs1._1, rs2._1)
+          diff > 0 || diff == 0 && rs1._2 < rs2._2
+      }
+      .map(_._2)
       .distinct  // TermRefs might be different but generate the same strings
-      .sorted    // To get test stability. TODO: Find more useful sorting criteria
     if suggestions.isEmpty then ""
     else
       val fix =
@@ -831,7 +870,7 @@ trait Implicits { self: Typer =>
         else "One of the following imports"
       i"""
          |
-         |$fix might fix the problem:
+         |$fix might $help the problem:
          |
          |$suggestions%\n%
          """
@@ -1511,33 +1550,10 @@ trait Implicits { self: Typer =>
       ctx.searchHistory.emitDictionary(span, result)
     }
 
-  /** An implicit search; parameters as in `inferImplicit` */
-  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(implicit ctx: Context) {
-    assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
-        em"found: $argument: ${argument.tpe}, expected: $pt")
-
-    private def nestedContext() =
-      ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
-
-    private def implicitProto(resultType: Type, f: Type => Type) =
-      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
-        // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
-
-    private def isCoherent = pt.isRef(defn.EqlClass)
-
-    /** The expected type for the searched implicit */
-    @threadUnsafe lazy val fullProto: Type = implicitProto(pt, identity)
-
-    /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
-    val wildProto: Type = implicitProto(pt, wildApprox(_))
-
-    val isNot: Boolean = wildProto.classSymbol == defn.NotClass
-
-      //println(i"search implicits $pt / ${eligible.map(_.ref)}")
-
-    /** Try to typecheck an implicit reference */
-    def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: Context): SearchResult = trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
-      if ctx.run.isCancelled then return NoMatchingImplicitsFailure
+  /** Try to typecheck an implicit reference */
+  def typedImplicit(cand: Candidate, pt: Type, argument: Tree, span: Span)(implicit ctx: Context): SearchResult =  trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
+    if ctx.run.isCancelled then NoMatchingImplicitsFailure
+    else
       record("typedImplicit")
       val ref = cand.ref
       val generated: Tree = tpd.ref(ref).withSpan(span.startPos)
@@ -1591,6 +1607,30 @@ trait Implicits { self: Typer =>
       }
     }
 
+  /** An implicit search; parameters as in `inferImplicit` */
+  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(implicit ctx: Context) {
+    assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
+        em"found: $argument: ${argument.tpe}, expected: $pt")
+
+    private def nestedContext() =
+      ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
+
+    private def implicitProto(resultType: Type, f: Type => Type) =
+      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
+        // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
+
+    private def isCoherent = pt.isRef(defn.EqlClass)
+
+    /** The expected type for the searched implicit */
+    @threadUnsafe lazy val fullProto: Type = implicitProto(pt, identity)
+
+    /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
+    val wildProto: Type = implicitProto(pt, wildApprox(_))
+
+    val isNot: Boolean = wildProto.classSymbol == defn.NotClass
+
+      //println(i"search implicits $pt / ${eligible.map(_.ref)}")
+
     /** Try to type-check implicit reference, after checking that this is not
       * a diverging search
       */
@@ -1600,7 +1640,7 @@ trait Implicits { self: Typer =>
       else {
         val history = ctx.searchHistory.nest(cand, pt)
         val result =
-          typedImplicit(cand, contextual)(nestedContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history))
+          typedImplicit(cand, pt, argument, span)(nestedContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history))
         result match {
           case res: SearchSuccess =>
             ctx.searchHistory.defineBynameImplicit(pt.widenExpr, res)

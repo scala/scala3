@@ -11,11 +11,14 @@ object testObjectInstance with
 
   def ff(given xs: Zip[Option]) = ???
 
-  //import instances.zipOption
-
   ff // error
 
   List(1, 2, 3).traverse(x => Option(x)) // error
+
+  locally {
+    import instances.traverseList
+    List(1, 2, 3).traverse(x => Option(x)) // error
+  }
 
 def testLocalInstance =
   trait Zip[F[_]]
@@ -30,8 +33,11 @@ def testLocalInstance =
 
   def ff(given xs: Zip[Option]) = ???
 
-  //import instances.zipOption
-
   ff // error
 
   List(1, 2, 3).traverse(x => Option(x)) // error
+
+  locally {
+    import instances.traverseList
+    List(1, 2, 3).traverse(x => Option(x)) // error
+  }

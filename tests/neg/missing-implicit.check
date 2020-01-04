@@ -13,10 +13,8 @@
   |                                             ^^^^^^^
   |                                             value - is not a member of T
   |
-  |                                             One of the following imports might fix the problem:
+  |                                             The following import might fix the problem:
   |
-  |                                               import math.Fractional.Implicits.infixFractionalOps
-  |                                               import math.Integral.Implicits.infixIntegralOps
   |                                               import math.Numeric.Implicits.infixNumericOps
   |                                                      
 -- Error: tests/neg/missing-implicit.scala:10:24 -----------------------------------------------------------------------
@@ -46,14 +44,14 @@
    |                         Required: Byte²
    |
    |                         where:    Byte  is a class in package scala
-   |                                   Byte² is a class in package lang
+   |                                   Byte² is a class in package java.lang
 -- [E007] Type Mismatch Error: tests/neg/missing-implicit.scala:16:44 --------------------------------------------------
 16 |val d: scala.concurrent.duration.Duration = (10, DAYS) // error
    |                                            ^^^^^^^^^^
    |                                            Found:    (Int, java.util.concurrent.TimeUnit)
    |                                            Required: concurrent².duration.Duration
    |
-   |                                            where:    concurrent  is a package in package util
+   |                                            where:    concurrent  is a package in package java.util
    |                                                      concurrent² is a package in package scala
    |
    |
@@ -61,3 +59,14 @@
    |
    |                                              import concurrent.duration.pairIntToDuration
    |                                                     
+-- [E008] Member Not Found Error: tests/neg/missing-implicit.scala:18:48 -----------------------------------------------
+18 |val d2: scala.concurrent.duration.Duration = 10.days // error
+   |                                             ^^^^^^^
+   |                                             value days is not a member of Int
+   |
+   |                                             One of the following imports might fix the problem:
+   |
+   |                                               import concurrent.duration.DurationInt
+   |                                               import concurrent.duration.DurationLong
+   |                                               import concurrent.duration.DurationDouble
+   |                                                      

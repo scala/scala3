@@ -1,5 +1,5 @@
--- Error: tests/neg/missing-implicit1.scala:16:4 -----------------------------------------------------------------------
-16 |  ff // error
+-- Error: tests/neg/missing-implicit1.scala:14:4 -----------------------------------------------------------------------
+14 |  ff // error
    |    ^
    |no implicit argument of type testObjectInstance.Zip[Option] was found for parameter xs of method ff in object testObjectInstance
    |
@@ -7,17 +7,26 @@
    |
    |  import testObjectInstance.instances.zipOption
    |         
--- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:18:16 ----------------------------------------------
-18 |  List(1, 2, 3).traverse(x => Option(x)) // error
+-- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:16:16 ----------------------------------------------
+16 |  List(1, 2, 3).traverse(x => Option(x)) // error
    |  ^^^^^^^^^^^^^^^^^^^^^^
    |  value traverse is not a member of List[Int] - did you mean List[Int].reverse?
    |
-   |  The following import might fix the problem:
+   |  The following import might make progress towards fixing the problem:
    |
    |    import testObjectInstance.instances.traverseList
    |           
--- Error: tests/neg/missing-implicit1.scala:35:4 -----------------------------------------------------------------------
-35 |  ff // error
+-- Error: tests/neg/missing-implicit1.scala:20:42 ----------------------------------------------------------------------
+20 |    List(1, 2, 3).traverse(x => Option(x)) // error
+   |                                          ^
+   |no implicit argument of type testObjectInstance.Zip[Option] was found for parameter evidence$1 of method traverse in trait Traverse
+   |
+   |The following import might fix the problem:
+   |
+   |  import testObjectInstance.instances.zipOption
+   |         
+-- Error: tests/neg/missing-implicit1.scala:36:4 -----------------------------------------------------------------------
+36 |  ff // error
    |    ^
    |    no implicit argument of type Zip[Option] was found for parameter xs of method ff
    |
@@ -25,12 +34,21 @@
    |
    |      import instances.zipOption
    |             
--- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:37:16 ----------------------------------------------
-37 |  List(1, 2, 3).traverse(x => Option(x)) // error
+-- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:38:16 ----------------------------------------------
+38 |  List(1, 2, 3).traverse(x => Option(x)) // error
    |  ^^^^^^^^^^^^^^^^^^^^^^
    |  value traverse is not a member of List[Int] - did you mean List[Int].reverse?
    |
-   |  The following import might fix the problem:
+   |  The following import might make progress towards fixing the problem:
    |
    |    import instances.traverseList
    |           
+-- Error: tests/neg/missing-implicit1.scala:42:42 ----------------------------------------------------------------------
+42 |    List(1, 2, 3).traverse(x => Option(x)) // error
+   |                                          ^
+   |no implicit argument of type Zip[Option] was found for parameter evidence$2 of method traverse in trait Traverse
+   |
+   |The following import might fix the problem:
+   |
+   |  import instances.zipOption
+   |         
