@@ -1,4 +1,4 @@
 scala>  object Foo { val bar = new Object { def baz = 1 }; bar.baz }
 1 |  object Foo { val bar = new Object { def baz = 1 }; bar.baz }
   |                                                     ^^^^^^^
-  |                value baz is not a member of Object - did you mean bar.eq?
+  |                                       value baz is not a member of Object
