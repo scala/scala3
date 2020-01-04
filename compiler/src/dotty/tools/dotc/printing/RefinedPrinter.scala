@@ -900,6 +900,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def name =
       if (printDebug)
         nameString(sym)
+      else if sym.is(Package) then
+        fullNameString(sym)
       else if (sym.is(ModuleClass) && sym.isPackageObject && sym.name.stripModuleClassSuffix == tpnme.PACKAGE)
         nameString(sym.owner.name)
       else if (sym.is(ModuleClass))

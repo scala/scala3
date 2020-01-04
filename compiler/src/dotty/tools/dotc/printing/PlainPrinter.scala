@@ -438,6 +438,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     (kindString(sym) ~~ {
       if (sym.isAnonymousClass) toTextParents(sym.info.parents) ~~ "{...}"
       else if (hasMeaninglessName(sym) && !printDebug) simpleNameString(sym.owner) + idString(sym)
+      else if sym.is(Package) then fullNameString(sym)
       else nameString(sym)
     }).close
 
