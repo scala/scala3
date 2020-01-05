@@ -343,7 +343,7 @@ object messages {
       }
 
       // Get closest match in `site`
-      def closest =
+      def closest: List[String] =
         decls
         .map { (n, sym) => (n, distance(n, name.show), sym) }
         .collect {
@@ -356,21 +356,19 @@ object messages {
         .headOption.map(_._2).getOrElse(Nil)
         .map(incorrectChars).toList
         .sortBy(_._3)
-        .take(1).map { case (n, sym, _) => (n, sym) }
+        .map(_._1)
+          // [Martin] Note: I have no idea what this does. This shows the
+          // pitfalls of not naming things, functional or not.
 
       val finalAddendum =
         if addendum.nonEmpty then addendum
         else closest match {
-          case (n, _) :: Nil =>
+          case n :: _ =>
             val siteName = site match
               case site: NamedType => site.name.show
               case site => i"$site"
             s" - did you mean $siteName.$n?"
           case Nil => ""
-          case _ => assert(
-            false,
-            "Could not single out one distinct member to match on input with"
-          )
         }
 
       ex"$selected $name is not a member of ${site.widen}$finalAddendum"
