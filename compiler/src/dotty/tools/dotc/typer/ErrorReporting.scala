@@ -157,7 +157,7 @@ object ErrorReporting {
            || expected.isRef(defn.ObjectClass)
            || defn.isBottomType(found)
         then postScript
-        else ctx.typer.implicitSuggestionAddendum(ViewProto(found.widen, expected))
+        else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
       TypeMismatch(found2, expected2, whyNoMatchStr(found, expected), postScript1)
     }
 

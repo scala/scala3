@@ -283,7 +283,7 @@ trait TypeAssigner {
                  |If you do not want that, insert a `;` or empty line in front
                  |or drop any spaces behind the operator."""
             else
-              var add = implicitSuggestionAddendum(
+              var add = importSuggestionAddendum(
                 ViewProto(qualType.widen,
                   SelectionProto(name, WildcardType, NoViewsAllowed, privateOK = false)))
               if add.isEmpty then ""
@@ -293,7 +293,7 @@ trait TypeAssigner {
     }
   }
 
-  def implicitSuggestionAddendum(pt: Type)(given Context): String = ""
+  def importSuggestionAddendum(pt: Type)(given Context): String = ""
 
   /** The type of the selection in `tree`, where `qual1` is the typed qualifier part.
    *  The selection type is additionally checked for accessibility.

@@ -696,7 +696,8 @@ trait Implicits { self: Typer =>
   }
 
   /** A list of TermRefs referring to the roots where suggestions for
-   *  imports of givens that might fix a type error are searched.
+   *  imports of givens or extension methods that might fix a type error
+   *  are searched.
    *
    *  These roots are the smallest set of objects and packages that includes
    *
@@ -798,6 +799,11 @@ trait Implicits { self: Typer =>
    *
    *   2. The _head matching_ given instances, that conform to the
    *      expected type `pt`, ignoring any dependent implicit arguments.
+   *
+   *   If there are no fully matching given instances under (1), and `pt` is
+   *   a view prototype of a selection of the form `T ?=>? { name: ... }`,
+   *   return instead a list of all possible references to extension methods named
+   *   `name` that are applicable to `T`.
    */
   private def importSuggestions(pt: Type)(given ctx: Context): (List[TermRef], List[TermRef]) =
     val timer = new Timer()
@@ -806,14 +812,14 @@ trait Implicits { self: Typer =>
     /** Test whether the head of a given instance matches the expected type `pt`,
      *  ignoring any dependent implicit arguments.
      */
-    def shallowTest(ref: TermRef)(given Context): Boolean =
+    def shallowTest(ref: TermRef): Boolean =
       System.currentTimeMillis < deadLine
       && (ref <:< pt)(given ctx.fresh.setExploreTyperState())
 
     /** Test whether a full given term can be synthesized that matches
      *  the expected type `pt`.
      */
-    def deepTest(ref: TermRef)(given Context): Boolean =
+    def deepTest(ref: TermRef): Boolean =
       System.currentTimeMillis < deadLine
       && {
         val task = new TimerTask with
@@ -840,14 +846,37 @@ trait Implicits { self: Typer =>
       }
     end deepTest
 
+    /** Optionally, an extension method reference `site.name` that is
+     *  applicable to `argType`.
+     */
+    def extensionMethod(site: TermRef, name: TermName, argType: Type): Option[TermRef] =
+      site.member(name)
+        .alternatives
+        .map(mbr => TermRef(site, mbr.symbol))
+        .filter(ref =>
+          ref.symbol.is(Extension)
+          && isApplicableMethodRef(ref, argType :: Nil, WildcardType))
+        .headOption
+
     try
-      suggestionRoots
+      val roots = suggestionRoots
         .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
           // don't suggest things that are imported by default
+
+      def extensionImports = pt match
+        case ViewProto(argType, SelectionProto(name: TermName, _, _, _)) =>
+          roots.flatMap(extensionMethod(_, name, argType))
+        case _ =>
+          Nil
+
+      roots
         .flatMap(_.implicitMembers.filter(shallowTest))
           // filter whether the head of the implicit can match
         .partition(deepTest)
           // partition into full matches and head matches
+        match
+          case (Nil, partials) => (extensionImports, partials)
+          case givenImports => givenImports
     catch
       case ex: Throwable =>
         if ctx.settings.Ydebug.value then
@@ -862,7 +891,7 @@ trait Implicits { self: Typer =>
    *  The addendum suggests given imports that might fix the problem.
    *  If there's nothing to suggest, an empty string is returned.
    */
-  override def implicitSuggestionAddendum(pt: Type)(given ctx: Context): String =
+  override def importSuggestionAddendum(pt: Type)(given ctx: Context): String =
     val (fullMatches, headMatches) =
       importSuggestions(pt)(given ctx.fresh.setExploreTyperState())
     implicits.println(i"suggestions for $pt in ${ctx.owner} = ($fullMatches%, %, $headMatches%, %)")
@@ -873,12 +902,14 @@ trait Implicits { self: Typer =>
       s"  import ${ctx.printer.toTextRef(ref).show}"
     val suggestions = suggestedRefs
       .zip(suggestedRefs.map(importString))
-      .filter(_._2.contains('.'))
-      .sortWith { (rs1, rs2) =>  // sort by specificity first, alphabetically second
-          val diff = compare(rs1._1, rs2._1)
-          diff > 0 || diff == 0 && rs1._2 < rs2._2
+      .filter((ref, str) => str.contains('.'))
+      .sortWith { (x, y) =>
+          // sort by specificity first, alphabetically second
+          val ((ref1, str1), (ref2, str2)) = (x, y)
+          val diff = compare(ref1, ref2)
+          diff > 0 || diff == 0 && str1 < str2
       }
-      .map(_._2)
+      .map((ref, str) => str)
       .distinct  // TermRefs might be different but generate the same strings
     if suggestions.isEmpty then ""
     else
@@ -891,7 +922,7 @@ trait Implicits { self: Typer =>
          |
          |$suggestions%\n%
          """
-  end implicitSuggestionAddendum
+  end importSuggestionAddendum
 
   /** Handlers to synthesize implicits for special types */
   type SpecialHandler = (Type, Span) => Context => Tree
@@ -1452,7 +1483,7 @@ trait Implicits { self: Typer =>
                 // example where searching for a nested type causes an infinite loop.
                 ""
 
-          def suggestedImports = implicitSuggestionAddendum(pt)
+          def suggestedImports = importSuggestionAddendum(pt)
           if normalImports.isEmpty then suggestedImports else normalImports
         end hiddenImplicitsAddendum
 

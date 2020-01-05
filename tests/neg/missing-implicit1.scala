@@ -7,6 +7,9 @@ object testObjectInstance with
   object instances {
     given zipOption: Zip[Option] = ???
     given traverseList: Traverse[List] = ???
+    given listExtension: [T](xs: List[T]) extended with
+      def second: T = xs.tail.head
+    def [T](xs: List[T]) first: T = xs.head
   }
 
   def ff(given xs: Zip[Option]) = ???
@@ -19,6 +22,11 @@ object testObjectInstance with
     import instances.traverseList
     List(1, 2, 3).traverse(x => Option(x)) // error
   }
+
+  List(1, 2, 3).first // error
+  List(1, 2, 3).second // error
+  Array(1, 2, 3).first // error, no hint
+end testObjectInstance
 
 def testLocalInstance =
   trait Zip[F[_]]
@@ -41,3 +49,4 @@ def testLocalInstance =
     import instances.traverseList
     List(1, 2, 3).traverse(x => Option(x)) // error
   }
+end testLocalInstance
