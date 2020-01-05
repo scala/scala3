@@ -321,7 +321,7 @@ object messages {
       // that are of the same type/term kind as the missing member.
       def candidates: Set[String] =
         for
-          bc <- site.baseClasses.toSet
+          bc <- site.widen.baseClasses.toSet
           sym <- bc.info.decls.filter(sym =>
             sym.isType == name.isTypeName
             && !sym.isConstructor
@@ -329,15 +329,18 @@ object messages {
         yield sym.name.show
 
       // Calculate Levenshtein distance
-      def distance(n1: Iterable[?], n2: Iterable[?]) =
-        n1.foldLeft(List.range(0, n2.size)) { (prev, x) =>
-          (prev zip prev.tail zip n2).scanLeft(prev.head + 1) {
-            case (h, ((d, v), y)) => math.min(
-              math.min(h + 1, v + 1),
-              if (x == y) d else d + 1
-            )
-          }
-        }.last
+      def distance(s1: String, s2: String): Int =
+        val dist = Array.ofDim[Int](s2.length + 1, s1.length + 1)
+        for
+          j <- 0 to s2.length
+          i <- 0 to s1.length
+        do
+          dist(j)(i) =
+            if j == 0 then i
+            else if i == 0 then j
+            else if s2(j - 1) == s1(i - 1) then dist(j - 1)(i - 1)
+            else (dist(j - 1)(i) min dist(j)(i - 1) min dist(j - 1)(i - 1)) + 1
+        dist(s2.length)(s1.length)
 
       // A list of possible candidate strings with their Levenstein distances
       // to the name of the missing member
