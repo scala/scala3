@@ -1,12 +1,12 @@
 package test
 
-trait Show[-A]
+trait Show[-A] with
   def show(a: A): String
 
-object Macros
+object Macros with
   inline def (sc: StringContext) show(args: =>Any*): String = ???
 
-object Show
+object Show with
   def[A] (a: A) show(given S: Show[A]): String = S.show(a)
 
   export Macros.show
