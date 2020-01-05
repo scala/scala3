@@ -84,6 +84,7 @@ class Typer extends Namer
                with TypeAssigner
                with Applications
                with Implicits
+               with ImportSuggestions
                with Inferencing
                with Dynamic
                with Checking
