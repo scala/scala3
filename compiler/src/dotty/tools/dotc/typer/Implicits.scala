@@ -14,7 +14,7 @@ import Flags._
 import TypeErasure.{erasure, hasStableErasure}
 import Mode.ImplicitsEnabled
 import NameOps._
-import NameKinds.LazyImplicitName
+import NameKinds.{LazyImplicitName, EvidenceParamName}
 import Symbols._
 import Denotations._
 import Types._
@@ -66,6 +66,14 @@ object Implicits {
     final val Conversion = 2
     final val Extension = 4
   }
+
+  /** If `expected` is a selection prototype, does `tp` have an extension
+   *  method with the selecting name? False otherwise.
+   */
+  def hasExtMethod(tp: Type, expected: Type)(given Context) = expected match
+    case SelectionProto(name, _, _, _) =>
+      tp.memberBasedOnFlags(name, required = ExtensionMethod).exists
+    case _ => false
 
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
@@ -147,11 +155,7 @@ object Implicits {
               val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
               // An implementation of <:< counts as a view
               val isConforms = tpw.derivesFrom(defn.SubTypeClass)
-              val hasExtensions = resType match {
-                case SelectionProto(name, _, _, _) =>
-                  tpw.memberBasedOnFlags(name, required = ExtensionMethod).exists
-                case _ => false
-              }
+              val hasExtensions = hasExtMethod(tpw, resType)
               val conversionKind =
                 if (isFunctionInS2 || isImplicitConversion || isConforms) Candidate.Conversion
                 else Candidate.None
@@ -1215,32 +1219,37 @@ trait Implicits { self: Typer =>
             pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
             pt.widenExpr.argInfos))
 
-        def hiddenImplicitsAddendum: String = arg.tpe match {
-          case fail: SearchFailureType =>
+        def hiddenImplicitsAddendum: String =
 
-            def hiddenImplicitNote(s: SearchSuccess) =
-              em"\n\nNote: given instance ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
+          def hiddenImplicitNote(s: SearchSuccess) =
+            em"\n\nNote: given instance ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
 
-            def FindHiddenImplicitsCtx(ctx: Context): Context =
-              if (ctx == NoContext) ctx
-              else ctx.freshOver(FindHiddenImplicitsCtx(ctx.outer)).addMode(Mode.FindHiddenImplicits)
+          def FindHiddenImplicitsCtx(ctx: Context): Context =
+            if (ctx == NoContext) ctx
+            else ctx.freshOver(FindHiddenImplicitsCtx(ctx.outer)).addMode(Mode.FindHiddenImplicits)
 
-            if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
-              inferImplicit(fail.expectedType, fail.argument, arg.span)(
-                FindHiddenImplicitsCtx(ctx)) match {
-                case s: SearchSuccess => hiddenImplicitNote(s)
-                case f: SearchFailure =>
-                  f.reason match {
-                    case ambi: AmbiguousImplicits => hiddenImplicitNote(ambi.alt1)
-                    case r => ""
-                  }
-              }
-            else
-              // It's unsafe to search for parts of the expected type if they are not fully defined,
-              // since these come with nested contexts that are lost at this point. See #7249 for an
-              // example where searching for a nested type causes an infinite loop.
-              ""
-        }
+          val normalImports = arg.tpe match
+            case fail: SearchFailureType =>
+              if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
+                inferImplicit(fail.expectedType, fail.argument, arg.span)(
+                  FindHiddenImplicitsCtx(ctx)) match {
+                  case s: SearchSuccess => hiddenImplicitNote(s)
+                  case f: SearchFailure =>
+                    f.reason match {
+                      case ambi: AmbiguousImplicits => hiddenImplicitNote(ambi.alt1)
+                      case r => ""
+                    }
+                }
+              else
+                // It's unsafe to search for parts of the expected type if they are not fully defined,
+                // since these come with nested contexts that are lost at this point. See #7249 for an
+                // example where searching for a nested type causes an infinite loop.
+                ""
+
+          def suggestedImports = importSuggestionAddendum(pt)
+          if normalImports.isEmpty then suggestedImports else normalImports
+        end hiddenImplicitsAddendum
+
         msg(userDefined.getOrElse(
           em"no implicit argument of type $pt was found${location("for")}"))() ++
         hiddenImplicitsAddendum
@@ -1256,7 +1265,8 @@ trait Implicits { self: Typer =>
         def addendum = if (qt1 eq qt) "" else (i"\nwhich is an alias of: $qt1")
         em"parameter of ${qual.tpe.widen}$addendum"
       case _ =>
-        em"parameter ${paramName} of $methodStr"
+        em"${ if paramName.is(EvidenceParamName) then "an implicit parameter"
+              else s"parameter $paramName" } of $methodStr"
     }
 
   private def strictEquality(implicit ctx: Context): Boolean =
@@ -1352,32 +1362,10 @@ trait Implicits { self: Typer =>
       ctx.searchHistory.emitDictionary(span, result)
     }
 
-  /** An implicit search; parameters as in `inferImplicit` */
-  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(implicit ctx: Context) {
-    assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
-        em"found: $argument: ${argument.tpe}, expected: $pt")
-
-    private def nestedContext() =
-      ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
-
-    private def implicitProto(resultType: Type, f: Type => Type) =
-      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
-        // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
-
-    private def isCoherent = pt.isRef(defn.EqlClass)
-
-    /** The expected type for the searched implicit */
-    @threadUnsafe lazy val fullProto: Type = implicitProto(pt, identity)
-
-    /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
-    val wildProto: Type = implicitProto(pt, wildApprox(_))
-
-    val isNot: Boolean = wildProto.classSymbol == defn.NotClass
-
-      //println(i"search implicits $pt / ${eligible.map(_.ref)}")
-
-    /** Try to typecheck an implicit reference */
-    def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: Context): SearchResult = trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
+  /** Try to typecheck an implicit reference */
+  def typedImplicit(cand: Candidate, pt: Type, argument: Tree, span: Span)(implicit ctx: Context): SearchResult =  trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
+    if ctx.run.isCancelled then NoMatchingImplicitsFailure
+    else
       record("typedImplicit")
       val ref = cand.ref
       val generated: Tree = tpd.ref(ref).withSpan(span.startPos)
@@ -1431,6 +1419,30 @@ trait Implicits { self: Typer =>
       }
     }
 
+  /** An implicit search; parameters as in `inferImplicit` */
+  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(implicit ctx: Context) {
+    assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
+        em"found: $argument: ${argument.tpe}, expected: $pt")
+
+    private def nestedContext() =
+      ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
+
+    private def implicitProto(resultType: Type, f: Type => Type) =
+      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
+        // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
+
+    private def isCoherent = pt.isRef(defn.EqlClass)
+
+    /** The expected type for the searched implicit */
+    @threadUnsafe lazy val fullProto: Type = implicitProto(pt, identity)
+
+    /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
+    val wildProto: Type = implicitProto(pt, wildApprox(_))
+
+    val isNot: Boolean = wildProto.classSymbol == defn.NotClass
+
+      //println(i"search implicits $pt / ${eligible.map(_.ref)}")
+
     /** Try to type-check implicit reference, after checking that this is not
       * a diverging search
       */
@@ -1440,7 +1452,7 @@ trait Implicits { self: Typer =>
       else {
         val history = ctx.searchHistory.nest(cand, pt)
         val result =
-          typedImplicit(cand, contextual)(nestedContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history))
+          typedImplicit(cand, pt, argument, span)(nestedContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history))
         result match {
           case res: SearchSuccess =>
             ctx.searchHistory.defineBynameImplicit(pt.widenExpr, res)

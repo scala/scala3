@@ -153,7 +153,7 @@ object CyclicReference {
   def apply(denot: SymDenotation)(implicit ctx: Context): CyclicReference = {
     val ex = new CyclicReference(denot)
     if (!(ctx.mode is Mode.CheckCyclic)) {
-      cyclicErrors.println(ex.getMessage)
+      cyclicErrors.println(s"Cyclic reference involving $denot")
       for (elem <- ex.getStackTrace take 200)
         cyclicErrors.println(elem.toString)
     }

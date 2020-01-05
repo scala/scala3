@@ -1,0 +1,76 @@
+-- Error: tests/neg/missing-implicit1.scala:17:4 -----------------------------------------------------------------------
+17 |  ff // error
+   |    ^
+   |no implicit argument of type testObjectInstance.Zip[Option] was found for parameter xs of method ff in object testObjectInstance
+   |
+   |The following import might fix the problem:
+   |
+   |  import testObjectInstance.instances.zipOption
+   |         
+-- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:19:16 ----------------------------------------------
+19 |  List(1, 2, 3).traverse(x => Option(x)) // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^
+   |  value traverse is not a member of List[Int], but could be made available as an extension method.
+   |
+   |  The following import might make progress towards fixing the problem:
+   |
+   |    import testObjectInstance.instances.traverseList
+   |           
+-- Error: tests/neg/missing-implicit1.scala:23:42 ----------------------------------------------------------------------
+23 |    List(1, 2, 3).traverse(x => Option(x)) // error
+   |                                          ^
+   |no implicit argument of type testObjectInstance.Zip[Option] was found for an implicit parameter of method traverse in trait Traverse
+   |
+   |The following import might fix the problem:
+   |
+   |  import testObjectInstance.instances.zipOption
+   |         
+-- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:26:16 ----------------------------------------------
+26 |  List(1, 2, 3).first // error
+   |  ^^^^^^^^^^^^^^^^^^^
+   |  value first is not a member of List[Int], but could be made available as an extension method.
+   |
+   |  The following import might fix the problem:
+   |
+   |    import testObjectInstance.instances.first
+   |           
+-- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:27:16 ----------------------------------------------
+27 |  List(1, 2, 3).second // error
+   |  ^^^^^^^^^^^^^^^^^^^^
+   |  value second is not a member of List[Int], but could be made available as an extension method.
+   |
+   |  The following import might fix the problem:
+   |
+   |    import testObjectInstance.instances.listExtension
+   |           
+-- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:28:17 ----------------------------------------------
+28 |  Array(1, 2, 3).first // error, no hint
+   |  ^^^^^^^^^^^^^^^^^^^^
+   |  value first is not a member of Array[Int]
+-- Error: tests/neg/missing-implicit1.scala:44:4 -----------------------------------------------------------------------
+44 |  ff // error
+   |    ^
+   |    no implicit argument of type Zip[Option] was found for parameter xs of method ff
+   |
+   |    The following import might fix the problem:
+   |
+   |      import instances.zipOption
+   |             
+-- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:46:16 ----------------------------------------------
+46 |  List(1, 2, 3).traverse(x => Option(x)) // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^
+   |  value traverse is not a member of List[Int], but could be made available as an extension method.
+   |
+   |  The following import might make progress towards fixing the problem:
+   |
+   |    import instances.traverseList
+   |           
+-- Error: tests/neg/missing-implicit1.scala:50:42 ----------------------------------------------------------------------
+50 |    List(1, 2, 3).traverse(x => Option(x)) // error
+   |                                          ^
+   |no implicit argument of type Zip[Option] was found for an implicit parameter of method traverse in trait Traverse
+   |
+   |The following import might fix the problem:
+   |
+   |  import instances.zipOption
+   |         

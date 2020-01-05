@@ -1,0 +1,72 @@
+-- [E008] Member Not Found Error: tests/neg/missing-implicit.scala:5:25 ------------------------------------------------
+5 |  case x :: xs1 if limit > 0 => consume(xs1, limit - x) // error // error
+  |                   ^^^^^^^
+  |                   value > is not a member of T, but could be made available as an extension method.
+  |
+  |                   One of the following imports might fix the problem:
+  |
+  |                     import math.Ordered.orderingToOrdered
+  |                     import math.Ordering.Implicits.infixOrderingOps
+  |                            
+-- [E008] Member Not Found Error: tests/neg/missing-implicit.scala:5:51 ------------------------------------------------
+5 |  case x :: xs1 if limit > 0 => consume(xs1, limit - x) // error // error
+  |                                             ^^^^^^^
+  |                                 value - is not a member of T, but could be made available as an extension method.
+  |
+  |                                 The following import might fix the problem:
+  |
+  |                                   import math.Numeric.Implicits.infixNumericOps
+  |                                          
+-- Error: tests/neg/missing-implicit.scala:10:24 -----------------------------------------------------------------------
+10 |val f = Future[Unit] { } // error
+   |                        ^
+   |                   Cannot find an implicit ExecutionContext. You might pass
+   |                   an (implicit ec: ExecutionContext) parameter to your method.
+   |
+   |                   The ExecutionContext is used to configure how and on which
+   |                   thread pools Futures will run, so the specific ExecutionContext
+   |                   that is selected is important.
+   |
+   |                   If your application does not define an ExecutionContext elsewhere,
+   |                   consider using Scala's global ExecutionContext by defining
+   |                   the following:
+   |
+   |                   implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
+   |
+   |                   The following import might fix the problem:
+   |
+   |                     import concurrent.ExecutionContext.Implicits.global
+   |                            
+-- [E007] Type Mismatch Error: tests/neg/missing-implicit.scala:12:25 --------------------------------------------------
+12 |val b: java.lang.Byte = (1: Byte) // error, but no hint
+   |                         ^^^^^^^
+   |                         Found:    Byte
+   |                         Required: Byte²
+   |
+   |                         where:    Byte  is a class in package scala
+   |                                   Byte² is a class in package java.lang
+-- [E007] Type Mismatch Error: tests/neg/missing-implicit.scala:16:44 --------------------------------------------------
+16 |val d: scala.concurrent.duration.Duration = (10, DAYS) // error
+   |                                            ^^^^^^^^^^
+   |                                            Found:    (Int, java.util.concurrent.TimeUnit)
+   |                                            Required: concurrent².duration.Duration
+   |
+   |                                            where:    concurrent  is a package in package java.util
+   |                                                      concurrent² is a package in package scala
+   |
+   |
+   |                                            The following import might fix the problem:
+   |
+   |                                              import concurrent.duration.pairIntToDuration
+   |                                                     
+-- [E008] Member Not Found Error: tests/neg/missing-implicit.scala:18:48 -----------------------------------------------
+18 |val d2: scala.concurrent.duration.Duration = 10.days // error
+   |                                             ^^^^^^^
+   |                          value days is not a member of Int, but could be made available as an extension method.
+   |
+   |                          One of the following imports might fix the problem:
+   |
+   |                            import concurrent.duration.DurationInt
+   |                            import concurrent.duration.DurationLong
+   |                            import concurrent.duration.DurationDouble
+   |                                   

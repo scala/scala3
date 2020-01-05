@@ -84,6 +84,7 @@ class Typer extends Namer
                with TypeAssigner
                with Applications
                with Implicits
+               with ImportSuggestions
                with Inferencing
                with Dynamic
                with Checking
@@ -2210,7 +2211,9 @@ class Typer extends Namer
       if (tree.source != ctx.source && tree.source.exists)
         typed(tree, pt, locked)(ctx.withSource(tree.source))
       else
-        try adapt(typedUnadapted(tree, pt, locked), pt, locked)
+        try
+          if ctx.run.isCancelled then tree.withType(WildcardType)
+          else adapt(typedUnadapted(tree, pt, locked), pt, locked)
         catch {
           case ex: TypeError =>
             errorTree(tree, ex, tree.sourcePos.focus)

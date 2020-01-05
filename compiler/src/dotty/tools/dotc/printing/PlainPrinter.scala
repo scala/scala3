@@ -278,7 +278,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }
 
   /** The string representation of this type used as a prefix */
-  protected def toTextRef(tp: SingletonType): Text = controlled {
+  def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: TermRef =>
         toTextPrefix(tp.prefix) ~ selectionString(tp)
@@ -438,6 +438,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     (kindString(sym) ~~ {
       if (sym.isAnonymousClass) toTextParents(sym.info.parents) ~~ "{...}"
       else if (hasMeaninglessName(sym) && !printDebug) simpleNameString(sym.owner) + idString(sym)
+      else if sym.is(Package) then fullNameString(sym)
       else nameString(sym)
     }).close
 

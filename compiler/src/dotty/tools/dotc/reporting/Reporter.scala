@@ -15,6 +15,7 @@ import diagnostic.messages._
 import diagnostic._
 import ast.{tpd, Trees}
 import Message._
+import core.Decorators._
 
 import java.lang.System.currentTimeMillis
 import java.io.{ BufferedReader, PrintWriter }

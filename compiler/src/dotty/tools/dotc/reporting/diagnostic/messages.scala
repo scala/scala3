@@ -343,33 +343,35 @@ object messages {
       }
 
       // Get closest match in `site`
-      val closest =
+      def closest: List[String] =
         decls
-        .map { case (n, sym) => (n, distance(n, name.show), sym) }
-        .collect { case (n, dist, sym) if dist <= maxDist => (n, dist, sym) }
+        .map { (n, sym) => (n, distance(n, name.show), sym) }
+        .collect {
+          case (n, dist, sym)
+          if dist <= maxDist && dist < (name.toString.length min n.length) =>
+            (n, dist, sym)
+        }
         .groupBy(_._2).toList
         .sortBy(_._1)
         .headOption.map(_._2).getOrElse(Nil)
         .map(incorrectChars).toList
         .sortBy(_._3)
-        .take(1).map { case (n, sym, _) => (n, sym) }
+        .map(_._1)
+          // [Martin] Note: I have no idea what this does. This shows the
+          // pitfalls of not naming things, functional or not.
 
-      val siteName = site match {
-        case site: NamedType => site.name.show
-        case site => i"$site"
-      }
+      val finalAddendum =
+        if addendum.nonEmpty then addendum
+        else closest match {
+          case n :: _ =>
+            val siteName = site match
+              case site: NamedType => site.name.show
+              case site => i"$site"
+            s" - did you mean $siteName.$n?"
+          case Nil => ""
+        }
 
-      val closeMember = closest match {
-        case (n, sym) :: Nil =>
-          s" - did you mean $siteName.$n?"
-        case Nil => ""
-        case _ => assert(
-          false,
-          "Could not single out one distinct member to match on input with"
-        )
-      }
-
-      ex"$selected $name is not a member of ${site.widen}$closeMember$addendum"
+      ex"$selected $name is not a member of ${site.widen}$finalAddendum"
     }
 
     val explanation: String = ""

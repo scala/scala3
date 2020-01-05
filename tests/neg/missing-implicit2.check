@@ -1,0 +1,18 @@
+-- Error: tests/neg/missing-implicit2.scala:10:18 ----------------------------------------------------------------------
+10 |    f(given xFromY) // error
+   |                  ^
+   |                  no implicit argument of type Y was found for parameter y of method xFromY
+   |
+   |                  The following import might fix the problem:
+   |
+   |                    import test.instances.y
+   |                           
+-- Error: tests/neg/missing-implicit2.scala:16:5 -----------------------------------------------------------------------
+16 |    f // error
+   |     ^
+   |     no implicit argument of type X was found for parameter x of method f in object test
+   |
+   |     The following import might make progress towards fixing the problem:
+   |
+   |       import instances2.xFromY
+   |              
