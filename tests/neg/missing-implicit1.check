@@ -10,7 +10,7 @@
 -- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:16:16 ----------------------------------------------
 16 |  List(1, 2, 3).traverse(x => Option(x)) // error
    |  ^^^^^^^^^^^^^^^^^^^^^^
-   |  value traverse is not a member of List[Int] - did you mean List[Int].reverse?
+   |  value traverse is not a member of List[Int], but could be made available as an extension method.
    |
    |  The following import might make progress towards fixing the problem:
    |
@@ -37,7 +37,7 @@
 -- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:38:16 ----------------------------------------------
 38 |  List(1, 2, 3).traverse(x => Option(x)) // error
    |  ^^^^^^^^^^^^^^^^^^^^^^
-   |  value traverse is not a member of List[Int] - did you mean List[Int].reverse?
+   |  value traverse is not a member of List[Int], but could be made available as an extension method.
    |
    |  The following import might make progress towards fixing the problem:
    |

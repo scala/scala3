@@ -270,7 +270,7 @@ trait TypeAssigner {
       def addendum =
         if (qualType.derivesFrom(defn.DynamicClass))
           "\npossible cause: maybe a wrong Dynamic method signature?"
-        else qual1.getAttachment(Typer.HiddenSearchFailure) match {
+        else qual1.getAttachment(Typer.HiddenSearchFailure) match
           case Some(failure) if !failure.reason.isInstanceOf[Implicits.NoMatchingImplicits] =>
             i""".
               |An extension method was tried, but could not be fully constructed:
@@ -283,10 +283,12 @@ trait TypeAssigner {
                  |If you do not want that, insert a `;` or empty line in front
                  |or drop any spaces behind the operator."""
             else
-              implicitSuggestionAddendum(
+              var add = implicitSuggestionAddendum(
                 ViewProto(qualType.widen,
                   SelectionProto(name, WildcardType, NoViewsAllowed, privateOK = false)))
-        }
+              if add.isEmpty then ""
+              else ", but could be made available as an extension method." ++ add
+      end addendum
       errorType(NotAMember(qualType, name, kind, addendum), tree.sourcePos)
     }
   }
