@@ -146,7 +146,12 @@ trait ImportSuggestions with
      */
     def shallowTest(ref: TermRef): Boolean =
       System.currentTimeMillis < deadLine
-      && (ref <:< pt)(given ctx.fresh.setExploreTyperState())
+      && {
+        given Context = ctx.fresh.setExploreTyperState()
+        pt match
+          case pt: ViewProto => pt.isMatchedBy(ref)
+          case _ => normalize(ref, pt) <:< pt
+      }
 
     /** Test whether a full given term can be synthesized that matches
      *  the expected type `pt`.
