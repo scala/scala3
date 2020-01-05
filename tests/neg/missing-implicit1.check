@@ -19,7 +19,7 @@
 -- Error: tests/neg/missing-implicit1.scala:23:42 ----------------------------------------------------------------------
 23 |    List(1, 2, 3).traverse(x => Option(x)) // error
    |                                          ^
-   |no implicit argument of type testObjectInstance.Zip[Option] was found for parameter evidence$1 of method traverse in trait Traverse
+   |no implicit argument of type testObjectInstance.Zip[Option] was found for an implicit parameter of method traverse in trait Traverse
    |
    |The following import might fix the problem:
    |
@@ -68,7 +68,7 @@
 -- Error: tests/neg/missing-implicit1.scala:50:42 ----------------------------------------------------------------------
 50 |    List(1, 2, 3).traverse(x => Option(x)) // error
    |                                          ^
-   |no implicit argument of type Zip[Option] was found for parameter evidence$2 of method traverse in trait Traverse
+   |no implicit argument of type Zip[Option] was found for an implicit parameter of method traverse in trait Traverse
    |
    |The following import might fix the problem:
    |

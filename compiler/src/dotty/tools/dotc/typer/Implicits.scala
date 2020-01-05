@@ -14,7 +14,7 @@ import Flags._
 import TypeErasure.{erasure, hasStableErasure}
 import Mode.ImplicitsEnabled
 import NameOps._
-import NameKinds.LazyImplicitName
+import NameKinds.{LazyImplicitName, EvidenceParamName}
 import Symbols._
 import Denotations._
 import Types._
@@ -1265,7 +1265,8 @@ trait Implicits { self: Typer =>
         def addendum = if (qt1 eq qt) "" else (i"\nwhich is an alias of: $qt1")
         em"parameter of ${qual.tpe.widen}$addendum"
       case _ =>
-        em"parameter ${paramName} of $methodStr"
+        em"${ if paramName.is(EvidenceParamName) then "an implicit parameter"
+              else s"parameter $paramName" } of $methodStr"
     }
 
   private def strictEquality(implicit ctx: Context): Boolean =
