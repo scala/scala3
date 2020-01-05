@@ -343,7 +343,7 @@ object messages {
       }
 
       // Get closest match in `site`
-      val closest =
+      def closest =
         decls
         .map { (n, sym) => (n, distance(n, name.show), sym) }
         .collect {
@@ -358,22 +358,22 @@ object messages {
         .sortBy(_._3)
         .take(1).map { case (n, sym, _) => (n, sym) }
 
-      val siteName = site match {
-        case site: NamedType => site.name.show
-        case site => i"$site"
-      }
+      val finalAddendum =
+        if addendum.nonEmpty then addendum
+        else closest match {
+          case (n, _) :: Nil =>
+            val siteName = site match
+              case site: NamedType => site.name.show
+              case site => i"$site"
+            s" - did you mean $siteName.$n?"
+          case Nil => ""
+          case _ => assert(
+            false,
+            "Could not single out one distinct member to match on input with"
+          )
+        }
 
-      val closeMember = closest match {
-        case (n, sym) :: Nil =>
-          s" - did you mean $siteName.$n?"
-        case Nil => ""
-        case _ => assert(
-          false,
-          "Could not single out one distinct member to match on input with"
-        )
-      }
-
-      ex"$selected $name is not a member of ${site.widen}$closeMember$addendum"
+      ex"$selected $name is not a member of ${site.widen}$finalAddendum"
     }
 
     val explanation: String = ""
