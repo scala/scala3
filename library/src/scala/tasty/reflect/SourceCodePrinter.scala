@@ -1243,8 +1243,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       val annots = definition.symbol.annots.filter {
         case Annotation(annot, _) =>
           annot.tpe match {
-            case TypeRef(prefix: TermRef, _) if prefix.termSymbol == ctx.requiredPackage("scala.annotation.internal") => false
-            case TypeRef(prefix: TypeRef, _) if prefix.typeSymbol == ctx.requiredPackage("scala.annotation.internal") => false
+            case tpe @ TypeRef if tpe.typeSymbol.maybeOwner == ctx.requiredPackage("scala.annotation.internal") => false
             case TypeRef(Types.ScalaPackage(), "forceInline") => false
             case _ => true
           }
@@ -1444,16 +1443,14 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     object Sequence {
       def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
-        case AppliedType(TypeRef(prefix: TermRef, "Seq"), (tp: Type) :: Nil) if prefix.termSymbol == ctx.requiredPackage("scala.collection") => Some(tp)
-        case AppliedType(TypeRef(prefix: TypeRef, "Seq"), (tp: Type) :: Nil) if prefix.typeSymbol == ctx.requiredPackage("scala.collection") => Some(tp)
+        case AppliedType(seq, (tp: Type) :: Nil) if seq.typeSymbol == ctx.requiredClass("scala.collection.Seq") => Some(tp)
         case _ => None
       }
     }
 
     object RepeatedAnnotation {
       def unapply(tpe: Type)(given ctx: Context): Boolean = tpe match {
-        case TypeRef(prefix: TermRef, "Repeated") => prefix.termSymbol == ctx.requiredPackage("scala.annotation.internal")
-        case TypeRef(prefix: TypeRef, "Repeated") => prefix.typeSymbol == ctx.requiredPackage("scala.annotation.internal")
+        case tpe: TypeRef => tpe.typeSymbol == ctx.requiredClass("scala.annotation.internal.Repeated")
         case _ => false
       }
     }
