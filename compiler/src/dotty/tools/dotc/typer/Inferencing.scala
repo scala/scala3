@@ -112,7 +112,9 @@ object Inferencing {
             force.minimizeAll && (tvar.hasLowerBound || !tvar.hasUpperBound)
             || variance >= 0 && (force.allowBottom || tvar.hasLowerBound)
           if (direction != 0) instantiate(tvar, direction < 0)
-          else if (preferMin) instantiate(tvar, fromBelow = true)
+          else if (preferMin)
+            if force.minimizeAll && !tvar.hasLowerBound then () // do nothing
+            else instantiate(tvar, fromBelow = true)
           else toMaximize = tvar :: toMaximize
           foldOver(x, tvar)
         }
