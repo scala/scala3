@@ -1228,7 +1228,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     def printAnnotation(annot: Term)(given elideThis: Option[Symbol]): Buffer = {
       val Annotation(ref, args) = annot
-      if (annot.symbol.owner.fullName == "scala.internal.quoted.showName") this
+      if (annot.symbol.exists && annot.symbol.owner.fullName == "scala.internal.quoted.showName") this
       else {
         this += "@"
         printTypeTree(ref)
