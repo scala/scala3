@@ -3,11 +3,12 @@ layout: doc-page
 title: "Implementing Typeclasses"
 ---
 
-Given instances, extension methods and context bounds
-allow a concise and natural expression of _typeclasses_. Typeclasses are just traits
-with canonical implementations defined by given instances. Here are some examples of standard typeclasses:
+In Scala 3, _typeclasses_ are just traits whose implementation are defined by given instances. 
+Here are some examples of standard typeclasses:
 
 ### Semigroups and monoids:
+
+Here's the `Monoid` typeclass definition:
 
 ```scala
 trait SemiGroup[T] {
@@ -17,23 +18,63 @@ trait SemiGroup[T] {
 trait Monoid[T] extends SemiGroup[T] {
   def unit: T
 }
+```
 
-object Monoid {
-  def apply[T] with (m: Monoid[T]) = m
-}
+An implementation of this `Monoid` typeclass for the type `String` can be the following: 
 
+```scala
 given as Monoid[String] {
   def (x: String) combine (y: String): String = x.concat(y)
   def unit: String = ""
 }
+```
 
+Whereas for the type `Int` one could write the following:
+```scala
 given as Monoid[Int] {
   def (x: Int) combine (y: Int): Int = x + y
   def unit: Int = 0
 }
+```
 
-def sum[T: Monoid](xs: List[T]): T =
+This monoid can now be used as _context bound_ in the following `combineAll` method:
+
+```scala
+def combineAll[T: Monoid](xs: List[T]): T =
+    xs.foldLeft(summon[Monoid[T]].unit)(_ combine _)
+```
+
+To get rid of the `summon[...]` we can define a `Monoid` object as follows:
+
+```scala
+object Monoid {
+  def apply[T] with (m: Monoid[T]) = m
+}
+```
+
+Which would allow to re-write the `combineAll` method this way: 
+
+```scala
+def combineAll[T: Monoid](xs: List[T]): T =
     xs.foldLeft(Monoid[T].unit)(_ combine _)
+```
+
+We can also benefit from [extension methods](extension-methods-new.html) to make this `combineAll` function accessible as a method on the `List` type:
+
+
+```scala
+def [T: Monoid](xs: List[T]).combineAll: T =
+  xs.foldLeft(Monoid[T].unit)(_ combine _)  
+```
+
+Which allows one to write: 
+
+```scala
+assert("ab" == List("a", "b").combineAll)
+```
+or:
+```scala
+assert(3 == List(1, 2).combineAll)
 ```
 
 ### Functors and monads:
@@ -64,3 +105,6 @@ given readerMonad[Ctx] as Monad[[X] =>> Ctx => X] {
     ctx => x
 }
 ```
+
+
+The conjunction of given instances, extension methods and context bounds allow a concise and natural expression of _typeclasses_
