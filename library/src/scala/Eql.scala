@@ -9,7 +9,7 @@ sealed trait Eql[-L, -R]
 
 /** Companion object containing a few universally known `Eql` instances.
  *  Eql instances involving primitive types or the Null type are handled directly in
- *  the compiler (see Implicits.synthesizedEq), so they are not included here.
+ *  the compiler (see Implicits.synthesizedEql), so they are not included here.
  */
 object Eql {
   /** A universal `Eql` instance. */
