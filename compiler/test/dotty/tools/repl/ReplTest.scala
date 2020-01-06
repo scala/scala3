@@ -21,7 +21,9 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
       TestConfiguration.withStagingClasspath
     else
       TestConfiguration.basicClasspath,
-    "-color:never"),
+    "-color:never",
+    "-Yerased-terms",
+  ),
   new PrintStream(out)
 ) with MessageRendering {
   /** Get the stored output from `out`, resetting the buffer */

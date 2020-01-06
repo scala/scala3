@@ -47,6 +47,7 @@ class CompilationTests extends ParallelTesting {
       compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")),
       compileFilesInDir("tests/new", defaultOptions),
       compileFilesInDir("tests/pos-scala2", scala2CompatMode),
+      compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-Yerased-terms")),
       compileFilesInDir("tests/pos", defaultOptions),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
       compileFile(
@@ -114,6 +115,7 @@ class CompilationTests extends ParallelTesting {
       compileFilesInDir("tests/neg-no-kind-polymorphism", defaultOptions and "-Yno-kind-polymorphism"),
       compileFilesInDir("tests/neg-custom-args/deprecation", defaultOptions.and("-Xfatal-warnings", "-deprecation")),
       compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")),
+      compileFilesInDir("tests/neg-custom-args/erased", defaultOptions.and("-Yerased-terms")),
       compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings),
       compileFilesInDir("tests/neg-custom-args/explicit-nulls", defaultOptions.and("-Yexplicit-nulls")),
       compileDir("tests/neg-custom-args/impl-conv", defaultOptions.and("-Xfatal-warnings", "-feature")),
@@ -165,6 +167,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/run-custom-args/i5256.scala", allowDeepSubtypes),
       compileFile("tests/run-custom-args/fors.scala", defaultOptions and "-strict"),
       compileFile("tests/run-custom-args/no-useless-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
+      compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-Yerased-terms")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run", defaultOptions)
     ).checkRuns()
