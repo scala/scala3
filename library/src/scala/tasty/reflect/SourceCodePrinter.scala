@@ -150,7 +150,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         }
 
         val parents1 = parents.filter {
-          case Apply(Select(New(tpt), _), _) => !Types.JavaLangObject.unapply(tpt.tpe)
+          case Apply(Select(New(tpt), _), _) => tpt.tpe.typeSymbol != ctx.requiredClass("java.lang.Object")
           case TypeSelect(Select(Ident("_root_"), "scala"), "Product") => false
           case TypeSelect(Select(Ident("_root_"), "scala"), "Serializable") => false
           case _ => true
@@ -1014,7 +1014,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       case Annotated(tpt, annot) =>
         val Annotation(ref, args) = annot
         ref.tpe match {
-          case Types.RepeatedAnnotation() =>
+          case tpe: TypeRef if tpe.typeSymbol == ctx.requiredClass("scala.annotation.internal.Repeated") =>
             val Types.Sequence(tp) = tpt.tpe
             printType(tp)
             this += highlightTypeDef("*")
@@ -1434,24 +1434,10 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
   // TODO Provide some of these in scala.tasty.Reflection.scala and implement them using checks on symbols for performance
   private object Types {
 
-    object JavaLangObject {
-      def unapply(tpe: Type)(given ctx: Context): Boolean = tpe match {
-        case TypeRef(prefix: TermRef, "Object") => prefix.typeSymbol == ctx.requiredPackage("java.lang")
-        case _ => false
-      }
-    }
-
     object Sequence {
       def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
         case AppliedType(seq, (tp: Type) :: Nil) if seq.typeSymbol == ctx.requiredClass("scala.collection.Seq") => Some(tp)
         case _ => None
-      }
-    }
-
-    object RepeatedAnnotation {
-      def unapply(tpe: Type)(given ctx: Context): Boolean = tpe match {
-        case tpe: TypeRef => tpe.typeSymbol == ctx.requiredClass("scala.annotation.internal.Repeated")
-        case _ => false
       }
     }
 
