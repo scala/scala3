@@ -1164,8 +1164,11 @@ trait CompilerInterface {
    */
   type Symbol <: AnyRef
 
-  /** Owner of this symbol. The owner is the symbol in which this symbol is defined. */
+  /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
   def Symbol_owner(self: Symbol)(given ctx: Context): Symbol
+
+  /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Returns `NoSymbol` if this symbol does not have an owner. */
+  def Symbol_maybeOwner(self: Symbol)(given ctx: Context): Symbol
 
   /** Flags of this symbol */
   def Symbol_flags(self: Symbol)(given ctx: Context): Flags

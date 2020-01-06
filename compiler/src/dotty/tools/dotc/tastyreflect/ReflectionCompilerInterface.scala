@@ -1590,6 +1590,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   type Symbol = core.Symbols.Symbol
 
   def Symbol_owner(self: Symbol)(given Context): Symbol = self.owner
+  def Symbol_maybeOwner(self: Symbol)(given Context): Symbol = self.maybeOwner
 
   def Symbol_flags(self: Symbol)(given Context): Flags = self.flags
 
