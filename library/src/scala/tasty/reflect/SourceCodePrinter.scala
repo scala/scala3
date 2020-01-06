@@ -1115,7 +1115,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         tp match {
           case tp: TypeLambda =>
             printType(tpe.dealias)
-          case TypeRef(Types.ScalaPackage(), "<repeated>") =>
+          case tp: TypeRef if tp.typeSymbol == ctx.requiredClass("scala.<repeated>") =>
             this += "_*"
           case _ =>
             printType(tp)
@@ -1242,11 +1242,9 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     def printDefAnnotations(definition: Definition)(given elideThis: Option[Symbol]): Buffer = {
       val annots = definition.symbol.annots.filter {
         case Annotation(annot, _) =>
-          annot.tpe match {
-            case tpe @ TypeRef if tpe.typeSymbol.maybeOwner == ctx.requiredPackage("scala.annotation.internal") => false
-            case TypeRef(Types.ScalaPackage(), "forceInline") => false
-            case _ => true
-          }
+          val sym = annot.tpe.typeSymbol
+          sym != ctx.requiredClass("scala.forceInline") &&
+          sym.maybeOwner != ctx.requiredPackage("scala.annotation.internal")
         case x => throw new MatchError(x.showExtractors)
       }
       printAnnotations(annots)
@@ -1443,15 +1441,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     object Repeated {
       def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
-        case AppliedType(TypeRef(ScalaPackage(), "<repeated>"), (tp: Type) :: Nil) => Some(tp)
+        case AppliedType(rep, (tp: Type) :: Nil) if rep.typeSymbol == ctx.requiredClass("scala.<repeated>") => Some(tp)
         case _ => None
-      }
-    }
-
-    object ScalaPackage {
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Boolean = tpe match {
-        case tpe: Type => tpe.termSymbol == defn.ScalaPackage
-        case _ => false
       }
     }
 
