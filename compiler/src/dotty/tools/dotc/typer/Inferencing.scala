@@ -98,7 +98,7 @@ object Inferencing {
       inst
     }
 
-    private var toMaximize: Boolean = false
+    private var toMaximize: List[TypeVar] = Nil
 
     def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
       case _: WildcardType | _: ProtoType =>
@@ -113,29 +113,24 @@ object Inferencing {
             || variance >= 0 && (force.allowBottom || tvar.hasLowerBound)
           if (direction != 0) instantiate(tvar, direction < 0)
           else if (preferMin) instantiate(tvar, fromBelow = true)
-          else toMaximize = true
+          else toMaximize = tvar :: toMaximize
           foldOver(x, tvar)
         }
       case tp =>
         foldOver(x, tp)
     }
 
-    private class UpperInstantiator(implicit ctx: Context) extends TypeAccumulator[Unit] {
-      def apply(x: Unit, tp: Type): Unit = {
-        tp match {
-          case tvar: TypeVar if !tvar.isInstantiated =>
+    def process(tp: Type): Boolean =
+      // Maximize type vars in the order they were visited before */
+      def maximize(tvars: List[TypeVar]): Unit = tvars match
+        case tvar :: tvars1 =>
+          maximize(tvars1)
+          if !tvar.isInstantiated then
             instantiate(tvar, fromBelow = false)
-          case _ =>
-        }
-        foldOver(x, tp)
-      }
-    }
-
-    def process(tp: Type): Boolean = {
+        case nil =>
       val res = apply(true, tp)
-      if (res && toMaximize) new UpperInstantiator().apply((), tp)
+      if res then maximize(toMaximize)
       res
-    }
   }
 
   /** For all type parameters occurring in `tp`:
