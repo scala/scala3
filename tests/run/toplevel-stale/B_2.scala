@@ -36,3 +36,58 @@ val y3 = {
   val x7 = summon[Ordering[(Int, Int, Int, Int, Int, Int, Int)]]
   val x8 = summon[Ordering[(Int, Int, Int, Int, Int, Int, Int, Int)]]
 }
+
+val y4 = {
+  val x1 = summon[Ordering[Int]]
+  val x2 = summon[Ordering[(Int, Int)]]
+  val x3 = summon[Ordering[(Int, Int, Int)]]
+  val x4 = summon[Ordering[(Int, Int, Int, Int)]]
+  val x5 = summon[Ordering[(Int, Int, Int, Int, Int)]]
+  val x6 = summon[Ordering[(Int, Int, Int, Int, Int, Int)]]
+  val x7 = summon[Ordering[(Int, Int, Int, Int, Int, Int, Int)]]
+  val x8 = summon[Ordering[(Int, Int, Int, Int, Int, Int, Int, Int)]]
+}
+
+val y5 = {
+  val x1 = summon[Ordering[Int]]
+  val x2 = summon[Ordering[(Int, Int)]]
+  val x3 = summon[Ordering[(Int, Int, Int)]]
+  val x4 = summon[Ordering[(Int, Int, Int, Int)]]
+  val x5 = summon[Ordering[(Int, Int, Int, Int, Int)]]
+  val x6 = summon[Ordering[(Int, Int, Int, Int, Int, Int)]]
+  val x7 = summon[Ordering[(Int, Int, Int, Int, Int, Int, Int)]]
+  val x8 = summon[Ordering[(Int, Int, Int, Int, Int, Int, Int, Int)]]
+}
+
+val y6 = {
+  val x1 = summon[Ordering[Int]]
+  val x2 = summon[Ordering[(Int, Int)]]
+  val x3 = summon[Ordering[(Int, Int, Int)]]
+  val x4 = summon[Ordering[(Int, Int, Int, Int)]]
+  val x5 = summon[Ordering[(Int, Int, Int, Int, Int)]]
+  val x6 = summon[Ordering[(Int, Int, Int, Int, Int, Int)]]
+  val x7 = summon[Ordering[(Int, Int, Int, Int, Int, Int, Int)]]
+  val x8 = summon[Ordering[(Int, Int, Int, Int, Int, Int, Int, Int)]]
+}
+
+val y7 = {
+  val x1 = summon[Ordering[Int]]
+  val x2 = summon[Ordering[(Int, Int)]]
+  val x3 = summon[Ordering[(Int, Int, Int)]]
+  val x4 = summon[Ordering[(Int, Int, Int, Int)]]
+  val x5 = summon[Ordering[(Int, Int, Int, Int, Int)]]
+  val x6 = summon[Ordering[(Int, Int, Int, Int, Int, Int)]]
+  val x7 = summon[Ordering[(Int, Int, Int, Int, Int, Int, Int)]]
+  val x8 = summon[Ordering[(Int, Int, Int, Int, Int, Int, Int, Int)]]
+}
+
+val y8 = {
+  val x1 = summon[Ordering[Int]]
+  val x2 = summon[Ordering[(Int, Int)]]
+  val x3 = summon[Ordering[(Int, Int, Int)]]
+  val x4 = summon[Ordering[(Int, Int, Int, Int)]]
+  val x5 = summon[Ordering[(Int, Int, Int, Int, Int)]]
+  val x6 = summon[Ordering[(Int, Int, Int, Int, Int, Int)]]
+  val x7 = summon[Ordering[(Int, Int, Int, Int, Int, Int, Int)]]
+  val x8 = summon[Ordering[(Int, Int, Int, Int, Int, Int, Int, Int)]]
+}

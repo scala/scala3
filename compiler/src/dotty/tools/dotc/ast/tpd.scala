@@ -453,10 +453,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  kind for the given element type in `elemTpe`.
    */
   def wrapArray(tree: Tree, elemtp: Type)(implicit ctx: Context): Tree =
-    ref(defn.getWrapVarargsArrayModule)
+    val wrapper = ref(defn.getWrapVarargsArrayModule)
       .select(wrapArrayMethodName(elemtp))
       .appliedToTypes(if (elemtp.isPrimitiveValueType) Nil else elemtp :: Nil)
-      .appliedTo(tree)
+    val actualElem = wrapper.tpe.widen.firstParamTypes.head
+    wrapper.appliedTo(tree.ensureConforms(actualElem))
 
   // ------ Creating typed equivalents of trees that exist only in untyped form -------
 
