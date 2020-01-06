@@ -347,7 +347,7 @@ object messages {
       def closest: List[(Int, String)] = candidates
         .toList
         .map(n => (distance(n.show, missing), n))
-        .filter((d, n) => d <= maxDist && d < missing.length & d < n.length)
+        .filter((d, n) => d <= maxDist && d < missing.length && d < n.length)
         .sorted  // sort by distance first, alphabetically second
 
       val finalAddendum =
