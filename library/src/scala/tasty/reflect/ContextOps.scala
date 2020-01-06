@@ -19,7 +19,7 @@ trait ContextOps extends Core {
     /** Get module symbol if module is either defined in current compilation run or present on classpath. */
     def requiredModule(path: String): Symbol = internal.Context_requiredModule(self)(path)
 
-    /** Get method symbol if method is either defined in current compilation run or present on classpath. */
+    /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
     def requiredMethod(path: String): Symbol = internal.Context_requiredMethod(self)(path)
 
   }

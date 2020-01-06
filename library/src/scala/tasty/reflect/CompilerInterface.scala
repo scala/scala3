@@ -157,7 +157,7 @@ trait CompilerInterface {
   /** Get module symbol if module is either defined in current compilation run or present on classpath. */
   def Context_requiredModule(self: Context)(path: String): Symbol
 
-  /** Get method symbol if method is either defined in current compilation run or present on classpath. */
+  /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
   def Context_requiredMethod(self: Context)(path: String): Symbol
 
   //
