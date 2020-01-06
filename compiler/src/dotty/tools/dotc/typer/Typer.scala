@@ -1555,7 +1555,7 @@ class Typer extends Namer
         assert(ctx.reporter.errorsReported)
         tree.withType(defn.AnyType)
     val trees1 = tree.trees.mapconserve(typed(_, pt)(nestedCtx))
-      .map(ensureValueTypeOrWildcard)
+      .mapconserve(ensureValueTypeOrWildcard)
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 
