@@ -723,10 +723,7 @@ object desugar {
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum)
         companionDefs(anyRef, companionMembers)
       else if (isValueClass)
-        impl.constr.vparamss match {
-          case (_ :: Nil) :: _ => companionDefs(anyRef, Nil)
-          case _ => Nil // error will be emitted in typer
-        }
+        companionDefs(anyRef, Nil)
       else Nil
 
     enumCompanionRef match {

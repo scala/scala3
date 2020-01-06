@@ -1494,6 +1494,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     case tp: SingletonType if tp.isStable => tp
     case tp: ValueType => SkolemType(tp)
     case tp: TypeProxy => ensureStableSingleton(tp.underlying)
+    case tp => assert(ctx.reporter.errorsReported); SkolemType(tp)
   }
 
   /** Skip refinements in `tp2` which match corresponding refinements in `tp1`.

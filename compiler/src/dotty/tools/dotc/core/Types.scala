@@ -4603,7 +4603,7 @@ object Types {
 
         case tp: AppliedType =>
           def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match {
-            case arg :: otherArgs =>
+            case arg :: otherArgs if tparams.nonEmpty =>
               val arg1 = arg match {
                 case arg: TypeBounds => this(arg)
                 case arg => atVariance(variance * tparams.head.paramVariance)(this(arg))

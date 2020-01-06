@@ -1233,7 +1233,10 @@ class Typer extends Namer
     def caseRest(implicit ctx: Context) = {
       val pat1 = checkSimpleKinded(typedType(cdef.pat)(ctx.addMode(Mode.Pattern)))
       val pat2 = indexPattern(cdef).transform(pat1)
-      val body1 = typedType(cdef.body, pt)
+      var body1 = typedType(cdef.body, pt)
+      if !body1.isType then
+        assert(ctx.reporter.errorsReported)
+        body1 = TypeTree(errorType("<error: not a type>", cdef.sourcePos))
       assignType(cpy.CaseDef(cdef)(pat2, EmptyTree, body1), pat2, body1)
     }
     caseRest(ctx.fresh.setFreshGADTBounds.setNewScope)
@@ -1548,7 +1551,13 @@ class Typer extends Namer
 
   def typedAlternative(tree: untpd.Alternative, pt: Type)(implicit ctx: Context): Alternative = {
     val nestedCtx = ctx.addMode(Mode.InPatternAlternative)
+    def ensureValueTypeOrWildcard(tree: Tree) =
+      if tree.tpe.isValueTypeOrWildcard then tree
+      else
+        assert(ctx.reporter.errorsReported)
+        tree.withType(defn.AnyType)
     val trees1 = tree.trees.mapconserve(typed(_, pt)(nestedCtx))
+      .mapconserve(ensureValueTypeOrWildcard)
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 
@@ -1924,13 +1933,17 @@ class Typer extends Namer
     val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
-      val result = assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
-      result.tpe match {
-        case AnnotatedType(rhs, Annotation.WithBounds(bounds)) =>
-          if (!bounds.contains(rhs)) ctx.error(em"type $rhs outside bounds $bounds", tree.sourcePos)
-        case _ =>
-      }
-      result
+      if arg1.isType then
+        val result = assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
+        result.tpe match {
+          case AnnotatedType(rhs, Annotation.WithBounds(bounds)) =>
+            if (!bounds.contains(rhs)) ctx.error(em"type $rhs outside bounds $bounds", tree.sourcePos)
+          case _ =>
+        }
+        result
+      else
+        assert(ctx.reporter.errorsReported)
+        TypeTree(UnspecifiedErrorType)
     }
     else {
       val arg2 = arg1 match {
