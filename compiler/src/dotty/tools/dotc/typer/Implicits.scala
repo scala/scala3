@@ -861,7 +861,7 @@ trait Implicits { self: Typer =>
 
       formal.argTypes match {
         case arg :: Nil =>
-          fullyDefinedType(arg.dealias, "ValueOf argument", span) match {
+          fullyDefinedType(arg.dealias, "ValueOf argument", span).normalized match {
             case ConstantType(c: Constant) =>
               success(Literal(c))
             case TypeRef(_, sym) if sym == defn.UnitClass =>
