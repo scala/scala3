@@ -189,20 +189,20 @@ Pattern: fs()
 Result: Some(List())
 
 Scrutinee: fs()
-Pattern: fs((scala.internal.Quoted.patternHole[scala.Seq[scala.Int]]: scala.<repeated>[scala.Int]))
-Result: Some(List(Expr((: scala.<repeated>[scala.Int]))))
+Pattern: fs(scala.internal.Quoted.patternHole[scala.Seq[scala.Int]]: _*)
+Result: Some(List(Expr()))
 
-Scrutinee: fs((1, 2, 3: scala.<repeated>[scala.Int]))
-Pattern: fs((1, 2, 3: scala.<repeated>[scala.Int]))
+Scrutinee: fs(1, 2, 3)
+Pattern: fs(1, 2, 3)
 Result: Some(List())
 
-Scrutinee: fs((1, 2, 3: scala.<repeated>[scala.Int]))
-Pattern: fs((scala.internal.Quoted.patternHole[scala.Int], scala.internal.Quoted.patternHole[scala.Int], 3: scala.<repeated>[scala.Int]))
+Scrutinee: fs(1, 2, 3)
+Pattern: fs(scala.internal.Quoted.patternHole[scala.Int], scala.internal.Quoted.patternHole[scala.Int], 3)
 Result: Some(List(Expr(1), Expr(2)))
 
-Scrutinee: fs((1, 2, 3: scala.<repeated>[scala.Int]))
-Pattern: fs((scala.internal.Quoted.patternHole[scala.Seq[scala.Int]]: scala.<repeated>[scala.Int]))
-Result: Some(List(Expr((1, 2, 3: scala.<repeated>[scala.Int]))))
+Scrutinee: fs(1, 2, 3)
+Pattern: fs(scala.internal.Quoted.patternHole[scala.Seq[scala.Int]]: _*)
+Result: Some(List(Expr(1, 2, 3)))
 
 Scrutinee: f2(1, 2)
 Pattern: f2(1, 2)
@@ -240,17 +240,17 @@ Scrutinee: ((x: scala.Int) => "abc")
 Pattern: ((x: scala.Int @scala.internal.Quoted.patternBindHole) => scala.internal.Quoted.patternHole[scala.Predef.String])
 Result: Some(List(Sym(x), Expr("abc")))
 
-Scrutinee: scala.StringContext.apply(("abc", "xyz": scala.<repeated>[scala.Predef.String]))
-Pattern: scala.StringContext.apply(("abc", "xyz": scala.<repeated>[scala.Predef.String]))
+Scrutinee: scala.StringContext.apply("abc", "xyz")
+Pattern: scala.StringContext.apply("abc", "xyz")
 Result: Some(List())
 
-Scrutinee: scala.StringContext.apply(("abc", "xyz": scala.<repeated>[scala.Predef.String]))
-Pattern: scala.StringContext.apply((scala.internal.Quoted.patternHole[java.lang.String], scala.internal.Quoted.patternHole[java.lang.String]: scala.<repeated>[scala.Predef.String]))
+Scrutinee: scala.StringContext.apply("abc", "xyz")
+Pattern: scala.StringContext.apply(scala.internal.Quoted.patternHole[java.lang.String], scala.internal.Quoted.patternHole[java.lang.String])
 Result: Some(List(Expr("abc"), Expr("xyz")))
 
-Scrutinee: scala.StringContext.apply(("abc", "xyz": scala.<repeated>[scala.Predef.String]))
-Pattern: scala.StringContext.apply((scala.internal.Quoted.patternHole[scala.Seq[scala.Predef.String]]: scala.<repeated>[scala.Predef.String]))
-Result: Some(List(Expr(("abc", "xyz": scala.<repeated>[scala.Predef.String]))))
+Scrutinee: scala.StringContext.apply("abc", "xyz")
+Pattern: scala.StringContext.apply(scala.internal.Quoted.patternHole[scala.Seq[scala.Predef.String]]: _*)
+Result: Some(List(Expr("abc", "xyz")))
 
 Scrutinee: {
   val a: scala.Int = 45
@@ -714,21 +714,21 @@ Pattern: try scala.internal.Quoted.patternHole[scala.Int] finally {
 }
 Result: Some(List(Expr(1), Expr(2)))
 
-Scrutinee: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
+Scrutinee: scala.List.apply[scala.Int](1, 2, 3).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
 Pattern: {
   @scala.internal.Quoted.patternBindHole type T
   scala.internal.Quoted.patternHole[scala.List[scala.Int]].foreach[T](scala.internal.Quoted.patternHole[scala.Function1[scala.Int, T]])
 }
-Result: Some(List(Type(scala.Unit), Expr(scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int]))), Expr(((x: scala.Int) => scala.Predef.println(x)))))
+Result: Some(List(Type(scala.Unit), Expr(scala.List.apply[scala.Int](1, 2, 3)), Expr(((x: scala.Int) => scala.Predef.println(x)))))
 
-Scrutinee: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
+Scrutinee: scala.List.apply[scala.Int](1, 2, 3).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
 Pattern: {
   @scala.internal.Quoted.patternBindHole type T = scala.Unit
   scala.internal.Quoted.patternHole[scala.List[scala.Int]].foreach[T](scala.internal.Quoted.patternHole[scala.Function1[scala.Int, T]])
 }
-Result: Some(List(Type(scala.Unit), Expr(scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int]))), Expr(((x: scala.Int) => scala.Predef.println(x)))))
+Result: Some(List(Type(scala.Unit), Expr(scala.List.apply[scala.Int](1, 2, 3)), Expr(((x: scala.Int) => scala.Predef.println(x)))))
 
-Scrutinee: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
+Scrutinee: scala.List.apply[scala.Int](1, 2, 3).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
 Pattern: {
   @scala.internal.Quoted.patternBindHole type T <: scala.Predef.String
   scala.internal.Quoted.patternHole[scala.List[scala.Int]].foreach[T](scala.internal.Quoted.patternHole[scala.Function1[scala.Int, T]])
@@ -787,7 +787,7 @@ Pattern: {
 }
 Result: None
 
-Scrutinee: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).map[scala.Double](((x: scala.Int) => x.toDouble./(2))).map[java.lang.String](((y: scala.Double) => y.toString()))
+Scrutinee: scala.List.apply[scala.Int](1, 2, 3).map[scala.Double](((x: scala.Int) => x.toDouble./(2))).map[java.lang.String](((y: scala.Double) => y.toString()))
 Pattern: {
   @scala.internal.Quoted.patternBindHole type T
   @scala.internal.Quoted.patternBindHole type U
@@ -795,7 +795,7 @@ Pattern: {
 
   (scala.internal.Quoted.patternHole[scala.List[T]].map[U](scala.internal.Quoted.patternHole[scala.Function1[T, U]]).map[V](scala.internal.Quoted.patternHole[scala.Function1[U, V]]): scala.collection.immutable.List[scala.Any])
 }
-Result: Some(List(Type(scala.Int), Type(scala.Double), Type(java.lang.String), Expr(scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int]))), Expr(((x: scala.Int) => x.toDouble./(2))), Expr(((y: scala.Double) => y.toString()))))
+Result: Some(List(Type(scala.Int), Type(scala.Double), Type(java.lang.String), Expr(scala.List.apply[scala.Int](1, 2, 3)), Expr(((x: scala.Int) => x.toDouble./(2))), Expr(((y: scala.Double) => y.toString()))))
 
 Scrutinee: ((x: scala.Int) => x)
 Pattern: {
