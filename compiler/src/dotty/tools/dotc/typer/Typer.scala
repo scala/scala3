@@ -955,35 +955,19 @@ class Typer extends Namer
       case _ => false
     }
 
-    pt match {
-      case pt: TypeVar if untpd.isFunctionWithUnknownParamType(tree) =>
-        // try to instantiate `pt` if this is possible. If it does not
-        // work the error will be reported later in `inferredParam`,
-        // when we try to infer the parameter type.
-        isFullyDefined(pt, ForceDegree.noBottom)
-      case _ =>
-    }
-
-    val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length)
+    /** The function body to be returned in the closure. Can become a TypedSplice
+     *  of a typed expression if this is necessary to infer a parameter type.
+     */
+    var fnBody = tree.body
 
     def refersTo(arg: untpd.Tree, param: untpd.ValDef): Boolean = arg match {
       case Ident(name) => name == param.name
       case _ => false
     }
 
-    /** The function body to be returned in the closure. Can become a TypedSplice
-      *  of a typed expression if this is necessary to infer a parameter type.
-      */
-    var fnBody = tree.body
-
-    /** A map from parameter names to unique positions where the parameter
-      *  appears in the argument list of an application.
-      */
-    var paramIndex = Map[Name, Int]()
-
     /** If parameter `param` appears exactly once as an argument in `args`,
-      *  the singleton list consisting of its position in `args`, otherwise `Nil`.
-      */
+     *  the singleton list consisting of its position in `args`, otherwise `Nil`.
+     */
     def paramIndices(param: untpd.ValDef, args: List[untpd.Tree]): List[Int] = {
       def loop(args: List[untpd.Tree], start: Int): List[Int] = args match {
         case arg :: args1 =>
@@ -995,15 +979,20 @@ class Typer extends Namer
       if (allIndices.length == 1) allIndices else Nil
     }
 
-    /** If function is of the form
-      *      (x1, ..., xN) => f(... x1, ..., XN, ...)
-      *  where each `xi` occurs exactly once in the argument list of `f` (in
-      *  any order), the type of `f`, otherwise NoType.
-      *  Updates `fnBody` and `paramIndex` as a side effect.
-      *  @post: If result exists, `paramIndex` is defined for the name of
-      *         every parameter in `params`.
-      */
-    def calleeType: Type = fnBody match {
+    /** A map from parameter names to unique positions where the parameter
+     *  appears in the argument list of an application.
+     */
+    var paramIndex = Map[Name, Int]()
+
+     /** If function is of the form
+     *      (x1, ..., xN) => f(... x1, ..., XN, ...)
+     *  where each `xi` occurs exactly once in the argument list of `f` (in
+     *  any order), the type of `f`, otherwise NoType.
+     *  Updates `fnBody` and `paramIndex` as a side effect.
+     *  @post: If result exists, `paramIndex` is defined for the name of
+     *         every parameter in `params`.
+     */
+    lazy val calleeType: Type = fnBody match {
       case app @ Apply(expr, args) =>
         paramIndex = {
           for (param <- params; idx <- paramIndices(param, args))
@@ -1024,6 +1013,18 @@ class Typer extends Namer
       case _ =>
         NoType
     }
+
+    pt match {
+      case pt: TypeVar
+      if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists =>
+        // try to instantiate `pt` if this is possible. If it does not
+        // work the error will be reported later in `inferredParam`,
+        // when we try to infer the parameter type.
+        isFullyDefined(pt, ForceDegree.noBottom)
+      case _ =>
+    }
+
+    val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length)
 
     /** Two attempts: First, if expected type is fully defined pick this one.
       *  Second, if function is of the form
