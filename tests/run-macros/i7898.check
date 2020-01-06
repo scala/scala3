@@ -1,0 +1,4 @@
+scala.List.apply[scala.PartialFunction[scala.Int, scala.Predef.String]](((x$1: scala.Int) => (x$1: @scala.unchecked) match {
+  case 1 =>
+    "x"
+}))

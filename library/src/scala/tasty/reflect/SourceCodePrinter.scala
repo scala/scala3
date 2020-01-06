@@ -1228,7 +1228,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     def printAnnotation(annot: Term)(given elideThis: Option[Symbol]): Buffer = {
       val Annotation(ref, args) = annot
-      if (annot.symbol.owner.fullName == "scala.internal.quoted.showName") this
+      if (annot.symbol.maybeOwner.fullName == "scala.internal.quoted.showName") this
       else {
         this += "@"
         printTypeTree(ref)
@@ -1467,7 +1467,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     object ScalaPackage {
       def unapply(tpe: TypeOrBounds)(given ctx: Context): Boolean = tpe match {
-        case tpe: TermRef => tpe.termSymbol == defn.ScalaPackage
+        case tpe: Type => tpe.termSymbol == defn.ScalaPackage
         case _ => false
       }
     }

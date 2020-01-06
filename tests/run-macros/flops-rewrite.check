@@ -4,6 +4,6 @@ scala.Nil
 scala.Nil.map[scala.Nothing](((x: scala.Nothing) => x)).++[scala.Nothing](scala.Nil.map[scala.Nothing](((x: scala.Nothing) => x)))
 scala.Nil
 
-scala.Nil.map[scala.Nothing](((x: scala.Nothing) => x)).++[scala.Int](scala.List.apply[scala.Int]((3: scala.<repeated>[scala.Int]))).++[scala.Int](scala.Nil)
-scala.List.apply[scala.Int]((3: scala.<repeated>[scala.Int]))
+scala.Nil.map[scala.Nothing](((x: scala.Nothing) => x)).++[scala.Int](scala.List.apply[scala.Int](3)).++[scala.Int](scala.Nil)
+scala.List.apply[scala.Int](3)
 

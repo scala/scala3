@@ -16,8 +16,11 @@ trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
 
   given symbolOps: extension (self: Symbol) {
 
-    /** Owner of this symbol. The owner is the symbol in which this symbol is defined */
+    /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
     def owner(given ctx: Context): Symbol = internal.Symbol_owner(self)
+
+    /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Returns `NoSymbol` if this symbol does not have an owner. */
+    def maybeOwner(given ctx: Context): Symbol = internal.Symbol_maybeOwner(self)
 
     /** Flags of this symbol */
     def flags(given ctx: Context): Flags = internal.Symbol_flags(self)

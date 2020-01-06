@@ -2,5 +2,5 @@
 6
 12.+(Test.a)
 17
-4.+(Macro_1$package.sum((Test.seq: scala.<repeated>[scala.Int])))
+4.+(Macro_1$package.sum(Test.seq: _*))
 13
