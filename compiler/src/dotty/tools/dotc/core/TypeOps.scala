@@ -555,17 +555,17 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
-    instantiate(childTp, parent)(ctx.fresh.setNewTyperState()).dealias
+    instantiateToSubType(childTp, parent)(ctx.fresh.setNewTyperState()).dealias
   }
 
   /** Instantiate type `tp1` to be a subtype of `tp2`
    *
-   *  Return the instantiated type if type parameters and this type
+   *  Return the instantiated type if type parameters in this type
    *  in `tp1` can be instantiated such that `tp1 <:< tp2`.
    *
    *  Otherwise, return NoType.
    */
-  private def instantiate(tp1: NamedType, tp2: Type)(implicit ctx: Context): Type = {
+  private def instantiateToSubType(tp1: NamedType, tp2: Type)(implicit ctx: Context): Type = {
     /** expose abstract type references to their bounds or tvars according to variance */
     class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends TypeMap {
       def expose(lo: Type, hi: Type): Type =
@@ -637,7 +637,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       tvar =>
         !(ctx.typerState.constraint.entry(tvar.origin) `eq` tvar.origin.underlying) ||
         (tvar `eq` removeThisType.prefixTVar),
-      minimizeAll = false,
       allowBottom = false
     )
 

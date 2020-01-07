@@ -779,7 +779,7 @@ trait Implicits { self: Typer =>
   /** If `formal` is of the form Eql[T, U], try to synthesize an
     *  `Eql.eqlAny[T, U]` as solution.
     */
-  lazy val synthesizedEq: SpecialHandler = {
+  lazy val synthesizedEql: SpecialHandler = {
     (formal, span) => implicit ctx => {
 
       /** Is there an `Eql[T, T]` instance, assuming -strictEquality? */
@@ -1091,7 +1091,7 @@ trait Implicits { self: Typer =>
       mySpecialHandlers = List(
         defn.ClassTagClass        -> synthesizedClassTag,
         defn.QuotedTypeClass      -> synthesizedTypeTag,
-        defn.EqlClass             -> synthesizedEq,
+        defn.EqlClass             -> synthesizedEql,
         defn.TupledFunctionClass  -> synthesizedTupleFunction,
         defn.ValueOfClass         -> synthesizedValueOf,
         defn.Mirror_ProductClass  -> synthesizedProductMirror,
