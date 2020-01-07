@@ -3970,7 +3970,6 @@ object Types {
    *  and `X_1,...X_n` are the type variables bound in `patternType`
    */
   abstract case class MatchType(bound: Type, scrutinee: Type, cases: List[Type]) extends CachedProxyType with ValueType {
-
     def derivedMatchType(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context): MatchType =
       if (bound.eq(this.bound) && scrutinee.eq(this.scrutinee) && cases.eqElements(this.cases)) this
       else MatchType(bound, scrutinee, cases)
@@ -4948,6 +4947,15 @@ object Types {
       }
     override protected def derivedWildcardType(tp: WildcardType, bounds: Type): WildcardType =
       tp.derivedWildcardType(rangeToBounds(bounds))
+
+    override protected def derivedMatchType(tp: MatchType, bound: Type, scrutinee: Type, cases: List[Type]): Type =
+      bound match
+        case Range(lo, hi) =>
+          range(derivedMatchType(tp, lo, scrutinee, cases), derivedMatchType(tp, hi, scrutinee, cases))
+        case _ =>
+          scrutinee match
+            case Range(lo, hi) => range(bound.bounds.lo, bound.bounds.hi)
+            case _ => tp.derivedMatchType(bound, scrutinee, cases)
 
     override protected def derivedSkolemType(tp: SkolemType, info: Type): Type = info match {
       case Range(lo, hi) =>
