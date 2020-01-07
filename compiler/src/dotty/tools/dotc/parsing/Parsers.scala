@@ -3105,7 +3105,7 @@ object Parsers {
      *            |  this ParamClause ParamClauses `=' ConstrExpr
      *  DefDcl  ::=  DefSig `:' Type
      *  DefSig  ::=  id [DefTypeParamClause] DefParamClauses
-     *            |  ExtParamClause [nl] id DefParamClauses
+     *            |  ExtParamClause [nl] [‘.’] id DefParamClauses
      */
     def defDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
       def scala2ProcedureSyntax(resultTypeStr: String) = {
@@ -3134,7 +3134,11 @@ object Parsers {
         makeConstructor(Nil, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
       }
       else {
-        def extParamss() = try paramClause(0, prefix = true) :: Nil finally newLineOpt()
+        def extParamss() =
+          try paramClause(0, prefix = true) :: Nil
+          finally
+            if in.token == DOT then in.nextToken()
+            else newLineOpt()
         val (leadingTparams, leadingVparamss, flags) =
           if in.token == LBRACKET then
             (typeParamClause(ParamOwner.Def), extParamss(), Method | Extension)

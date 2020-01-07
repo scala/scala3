@@ -1,5 +1,5 @@
 trait Semigroup[A] {
-  def (x: A) combine (y: A): A
+  def (x: A).combine(y: A): A
 }
 given Semigroup[Int] = ???
 given [A, B]: Semigroup[A], Semigroup[B] => Semigroup[(A, B)]  = ???

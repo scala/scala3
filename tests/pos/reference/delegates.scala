@@ -1,15 +1,15 @@
 class Common with
 
   trait Ord[T] with
-    def (x: T) compareTo (y: T): Int
+    def (x: T).compareTo(y: T): Int
     def (x: T) < (y: T) = x.compareTo(y) < 0
     def (x: T) > (y: T) = x.compareTo(y) > 0
 
   trait Convertible[From, To] with
-    def (x: From) convert: To
+    def (x: From).convert: To
 
   trait SemiGroup[T] with
-    def (x: T) combine (y: T): T
+    def (x: T).combine(y: T): T
 
   trait Monoid[T] extends SemiGroup[T] with
     def unit: T
@@ -26,11 +26,11 @@ class Common with
 object Instances extends Common with
 
   given intOrd: Ord[Int] with
-    def (x: Int) compareTo (y: Int) =
+    def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
   given listOrd[T]: Ord[T] => Ord[List[T]] with
-    def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match
+    def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
@@ -64,7 +64,7 @@ object Instances extends Common with
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
   def descending[T](given asc: Ord[T]): Ord[T] = new Ord[T] with
-    def (x: T) compareTo (y: T) = asc.compareTo(y)(x)
+    def (x: T).compareTo(y: T) = asc.compareTo(y)(x)
 
   def minimum[T](xs: List[T])(given Ord[T]) =
     maximum(xs)(given descending)
@@ -87,14 +87,14 @@ object Instances extends Common with
   trait TastyAPI with
     type Symbol
     trait SymDeco with
-      def (sym: Symbol) name: String
+      def (sym: Symbol).name: String
     def symDeco: SymDeco
     given SymDeco = symDeco
 
   object TastyImpl extends TastyAPI with
     type Symbol = String
     val symDeco = new SymDeco with
-      def (sym: Symbol) name = sym
+      def (sym: Symbol).name = sym
 
   class D[T]
 
@@ -141,11 +141,11 @@ end PostConditions
 
 object AnonymousInstances extends Common with
   given Ord[Int] with
-    def (x: Int) compareTo (y: Int) =
+    def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
   given [T: Ord] : Ord[List[T]] with
-    def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match
+    def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
@@ -162,10 +162,10 @@ object AnonymousInstances extends Common with
     def second = xs.tail.head
 
   given [From, To]: (c: Convertible[From, To]) => Convertible[List[From], List[To]] with
-    def (x: List[From]) convert: List[To] = x.map(c.convert)
+    def (x: List[From]).convert: List[To] = x.map(c.convert)
 
   given Monoid[String] with
-    def (x: String) combine (y: String): String = x.concat(y)
+    def (x: String).combine(y: String): String = x.concat(y)
     def unit: String = ""
 
   def sum[T: Monoid](xs: List[T]): T =
@@ -174,11 +174,11 @@ end AnonymousInstances
 
 object Implicits extends Common with
   implicit object IntOrd extends Ord[Int] with
-    def (x: Int) compareTo (y: Int) =
+    def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
   class ListOrd[T: Ord] extends Ord[List[T]] with
-    def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match
+    def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
@@ -189,7 +189,7 @@ object Implicits extends Common with
 
   class given_Convertible_List_List[From, To](implicit c: Convertible[From, To])
   extends Convertible[List[From], List[To]] with
-    def (x: List[From]) convert: List[To] = x.map(c.convert)
+    def (x: List[From]).convert: List[To] = x.map(c.convert)
   implicit def given_Convertible_List_List[From, To](implicit c: Convertible[From, To])
     : Convertible[List[From], List[To]] =
     new given_Convertible_List_List[From, To]
@@ -199,7 +199,7 @@ object Implicits extends Common with
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
   def descending[T](implicit asc: Ord[T]): Ord[T] = new Ord[T] with
-    def (x: T) compareTo (y: T) = asc.compareTo(y)(x)
+    def (x: T).compareTo(y: T) = asc.compareTo(y)(x)
 
   def minimum[T](xs: List[T])(implicit cmp: Ord[T]) =
     maximum(xs)(descending)

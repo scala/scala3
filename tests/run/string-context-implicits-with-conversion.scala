@@ -1,6 +1,6 @@
 
 object Lib {
-  def (sc: StringContext) showMe(args: Showed*): String = sc.s(args: _*)
+  def (sc: StringContext).showMe(args: Showed*): String = sc.s(args: _*)
 
   opaque type Showed = String
 

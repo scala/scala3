@@ -9,5 +9,5 @@ type Liftable
 given Liftable = ???
 
 implicit object ExprOps {
-  def (x: T) toExpr[T](given Liftable): Expr[T] = ???
+  def (x: T).toExpr[T](given Liftable): Expr[T] = ???
 }

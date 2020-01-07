@@ -1,12 +1,12 @@
 trait Semigroup[T] {
-  def (x: T) combine (y: T): T
+  def (x: T).combine(y: T): T
 }
 object Test {
   implicit val IntSemigroup: Semigroup[Int] = new {
-    def (x: Int) combine (y: Int): Int = x + y
+    def (x: Int).combine(y: Int): Int = x + y
   }
   implicit def OptionSemigroup[T: Semigroup]: Semigroup[Option[T]] = new {
-    def (x: Option[T]) combine (y: Option[T]): Option[T] = for {
+    def (x: Option[T]).combine(y: Option[T]): Option[T] = for {
       x0 <- x
       y0 <- y
     } yield x0.combine(y0)

@@ -88,7 +88,7 @@ But you can also do:
 assertPositioned(tree.reporting(s"Tree is: $result"))
 ```
 
-`def (a: A) reporting(f: given WrappedResult[T] => String, p: Printer = Printers.default): A` is defined on all types. The function `f` can be written without the argument since the argument is `given`. The `result` variable is a part of the `WrapperResult` – a tiny framework powering the `reporting` function. Basically, whenever you are using `reporting` on an object `A`, you can use the `result: A` variable from this function and it will be equal to the object you are calling `reporting` on.
+`def (a: A).reporting(f: given WrappedResult[T] => String, p: Printer = Printers.default): A` is defined on all types. The function `f` can be written without the argument since the argument is `given`. The `result` variable is a part of the `WrapperResult` – a tiny framework powering the `reporting` function. Basically, whenever you are using `reporting` on an object `A`, you can use the `result: A` variable from this function and it will be equal to the object you are calling `reporting` on.
 
 ## Printing out trees after phases
 To print out the trees you are compiling after the FrontEnd (scanner, parser, namer, typer) phases:

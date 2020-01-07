@@ -8,7 +8,7 @@ class Pouring(capacity: Vector[Int]) with
       case Fill(g) => content.updated(g, capacity(g))
       case Pour(from, to) =>
         val amount = content(from) min (capacity(to) - content(to))
-        def (s: Content) adjust (g: Glass, delta: Int) = s.updated(g, s(g) + delta)
+        def (s: Content).adjust(g: Glass, delta: Int) = s.updated(g, s(g) + delta)
         content.adjust(from, -amount).adjust(to, amount)
 
     case Empty(glass: Glass)
