@@ -33,7 +33,7 @@ object Logger {
 The `Config` object contains a definition of the **inline value** `logging`.
 This means that `logging` is treated as a _constant value_, equivalent to its
 right-hand side `false`. The right-hand side of such an `inline val` must itself
-be a [constant expression](https://scala-lang.org/files/archive/spec/2.12/06-expressions.html#constant-expressions).
+be a [constant expression](https://scala-lang.org/files/archive/spec/2.13/06-expressions.html#constant-expressions).
 Used in this way, `inline` is equivalent to Java and Scala 2's `final`. Note that `final`, meaning
 _inlined constant_, is still supported in Dotty, but will be phased out.
 
@@ -108,16 +108,16 @@ inline def power(x: Double, n: Int): Double = {
     val y = power(x, n / 2)
     if (n % 2 == 0) y * y else y * y * x
   }
-
-  power(expr, 10)
-    // translates to
-    //
-    //    val x = expr
-    //    val y1 = x * x   // ^2
-    //    val y2 = y1 * y1 // ^4
-    //    val y3 = y2 * x  // ^5
-    //    y3 * y3          // ^10
 }
+
+power(expr, 10)
+// translates to
+//
+//    val x = expr
+//    val y1 = x * x   // ^2
+//    val y2 = y1 * y1 // ^4
+//    val y3 = y2 * x  // ^5
+//    y3 * y3          // ^10
 ```
 
 Parameters of inline methods can have an `inline` modifier as well. This means
