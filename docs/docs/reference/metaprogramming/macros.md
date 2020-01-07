@@ -267,7 +267,7 @@ knowing anything about the representation of `Expr` trees. For
 instance, here is a possible instance of `Liftable[Boolean]`:
 ```scala
 given Liftable[Boolean] {
-  def toExpr(b: Boolean)(given QuoteContext): Expr[Boolean] =
+  def toExpr(b: Boolean) =
     if (b) '{ true } else '{ false }
 }
 ```
@@ -276,7 +276,7 @@ possible implementation of `Liftable[Int]` that does not use the underlying
 tree machinery:
 ```scala
 given Liftable[Int] {
-  def toExpr(n: Int)(given QuoteContext): Expr[Int] = n match {
+  def toExpr(n: Int) = n match {
     case Int.MinValue    => '{ Int.MinValue }
     case _ if n < 0      => '{ - ${ toExpr(-n) } }
     case 0               => '{ 0 }
@@ -288,9 +288,9 @@ given Liftable[Int] {
 Since `Liftable` is a type class, its instances can be conditional. For example,
 a `List` is liftable if its element type is:
 ```scala
-given [T: Liftable] : Liftable[List[T]] {
-  def toExpr(xs: List[T])(given QuoteContext): Expr[List[T]] = xs match {
-    case head :: tail => '{ ${ toExpr(head) } :: ${ toExpr(tail) } }
+given [T: Liftable : Type] : Liftable[List[T]] {
+  def toExpr(xs: List[T]) = xs match {
+    case head :: tail => '{ ${ Expr(head) } :: ${ toExpr(tail) } }
     case Nil => '{ Nil: List[T] }
   }
 }
@@ -303,7 +303,7 @@ analogue of lifting.
 
 Using lifting, we can now give the missing definition of `showExpr` in the introductory example:
 ```scala
-def showExpr[T](expr: Expr[T]): Expr[String] = {
+def showExpr[T](expr: Expr[T])(given QuoteContext): Expr[String] = {
   val code: String = expr.show
   Expr(code)
 }
