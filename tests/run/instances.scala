@@ -1,7 +1,7 @@
 object Test extends App {
 
   implicit object O {
-    def (x: Int) em: Boolean = x > 0
+    def (x: Int).em: Boolean = x > 0
   }
 
   assert(1.em == O.em(1))
@@ -44,13 +44,13 @@ object Test extends App {
   assert(Nil.flattened == Nil)
 
   trait SemiGroup[T] with
-    def (x: T) combine (y: T): T
+    def (x: T).combine(y: T): T
 
   trait Monoid[T] extends SemiGroup[T] with
     def unit: T
 
   given StringMonoid : Monoid[String] with
-    def (x: String) combine (y: String): String = x.concat(y)
+    def (x: String).combine(y: String): String = x.concat(y)
     def unit: String = ""
 
   // Abstracting over a typeclass with a context bound:
@@ -60,19 +60,19 @@ object Test extends App {
   println(sum(names))
 
   trait Ord[T] with
-    def (x: T) compareTo (y: T): Int
+    def (x: T).compareTo(y: T): Int
     def (x: T) < (y: T) = x.compareTo(y) < 0
     def (x: T) > (y: T) = x.compareTo(y) > 0
     val minimum: T
   end Ord
 
   given Ord[Int] with
-    def (x: Int) compareTo (y: Int) =
+    def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
 
   given listOrd[T: Ord]: Ord[List[T]] with
-    def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match
+    def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1

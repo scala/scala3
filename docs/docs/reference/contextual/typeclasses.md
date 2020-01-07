@@ -11,7 +11,7 @@ with canonical implementations defined by given instances. Here are some example
 
 ```scala
 trait SemiGroup[T] with
-  def (x: T) combine (y: T): T
+  def (x: T).combine(y: T): T
 
 trait Monoid[T] extends SemiGroup[T] with
   def unit: T
@@ -20,11 +20,11 @@ object Monoid with
   def apply[T](given Monoid[T]) = summon[Monoid[T]]
 
 given Monoid[String] with
-  def (x: String) combine (y: String): String = x.concat(y)
+  def (x: String).combine(y: String): String = x.concat(y)
   def unit: String = ""
 
 given Monoid[Int] with
-  def (x: Int) combine (y: Int): Int = x + y
+  def (x: Int).combine(y: Int): Int = x + y
   def unit: Int = 0
 
 def sum[T: Monoid](xs: List[T]): T =

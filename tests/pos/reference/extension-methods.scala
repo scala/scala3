@@ -2,14 +2,14 @@ object ExtMethods with
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  def (c: Circle) circumference: Double = c.radius * math.Pi * 2
+  def (c: Circle).circumference: Double = c.radius * math.Pi * 2
 
   val circle = Circle(0, 0, 1)
   circle.circumference
   assert(circle.circumference == circumference(circle))
 
   trait StringSeqOps {
-    def (xs: Seq[String]) longestStrings = {
+    def (xs: Seq[String]).longestStrings = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
@@ -57,7 +57,7 @@ object ExtMethods with
     def largest(n: Int) = xs.sorted.takeRight(n)
 
   given stringOps1: AnyRef {
-    def (xs: Seq[String]) longestStrings: Seq[String] = {
+    def (xs: Seq[String]).longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }

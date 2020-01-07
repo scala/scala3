@@ -88,13 +88,13 @@ object Test extends App {
   class C {
     def xx (x: Any) = 2
   }
-  def (c: C) xx (x: Int) = 1
+  def (c: C).xx(x: Int) = 1
 
   val c = new C
   assert(c.xx(1) == 2)  // member method takes precedence
 
   object D {
-    def (x: Int) yy (y: Int) = x + y
+    def (x: Int).yy(y: Int) = x + y
   }
 
   given (x: Int) extended with {
@@ -114,8 +114,8 @@ object Test extends App {
     def b: Long = a
   }
 
-  def (rectangle: Rectangle) area: Long = 0
-  def (square: Square) area: Long = square.a * square.a
+  def (rectangle: Rectangle).area: Long = 0
+  def (square: Square).area: Long = square.a * square.a
   val rectangles = List(GenericRectangle(2, 3), Square(5))
   val areas = rectangles.map(_.area)
   assert(areas.sum == 0)

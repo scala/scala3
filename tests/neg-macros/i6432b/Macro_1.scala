@@ -4,7 +4,7 @@ import scala.quoted.autolift.given
 import scala.quoted.matching._
 
 object Macro {
-  inline def (sc: => StringContext) foo (args: String*): Unit = ${ impl('sc) }
+  inline def (sc: => StringContext).foo(args: String*): Unit = ${ impl('sc) }
 
   def impl(sc: Expr[StringContext])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty.{_, given}

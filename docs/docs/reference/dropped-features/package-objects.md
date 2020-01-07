@@ -22,7 +22,7 @@ def b = a._2
 case class C()
 
 implicit object Cops {
-  def (x: C) pair (y: C) = (x, y)
+  def (x: C).pair(y: C) = (x, y)
 }
 ```
 There may be several source files in a package containing such toplevel definitions, and source files can freely mix toplevel value, method, and type definitions with classes and objects.

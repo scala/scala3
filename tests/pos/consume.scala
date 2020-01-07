@@ -24,7 +24,7 @@ object math3 with
   trait Numeric[T] extends Ord[T] with
     def (x: T) + (y: T): T = ???
     def (x: T) - (y: T): T = ???
-    def (x: Int) numeric: T = ???
+    def (x: Int).numeric: T = ???
 end math3
 
 object Test3 with

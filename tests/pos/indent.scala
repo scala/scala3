@@ -28,7 +28,7 @@ object Test
         1
       else
         2
-    def (x: Int) gt (y: Int) = x > y
+    def (x: Int).gt(y: Int) = x > y
     val y3 =
       if (1) max 10 gt 0
 
