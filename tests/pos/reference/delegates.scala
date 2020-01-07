@@ -39,12 +39,12 @@ object Instances extends Common with
         if (fst != 0) fst else xs1.compareTo(ys1)
   end listOrd
 
-  given stringOps: (xs: Seq[String]) extended with
+  extension stringOps of (xs: Seq[String]) with
     def longestStrings: Seq[String] =
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
 
-  given [T](xs: List[T]) extended with
+  extension of [T](xs: List[T]) with
     def second = xs.tail.head
     def third = xs.tail.tail.head
 
@@ -133,7 +133,7 @@ object PostConditions with
 
   def result[T](given x: WrappedResult[T]): T = x
 
-  given [T](x: T) extended with
+  extension of [T](x: T) with
     def ensuring(condition: (given WrappedResult[T]) => Boolean): T =
       assert(condition(given x))
       x
@@ -153,12 +153,12 @@ object AnonymousInstances extends Common with
         val fst = x.compareTo(y)
         if (fst != 0) fst else xs1.compareTo(ys1)
 
-  given (xs: Seq[String]) extended with
+  extension of (xs: Seq[String]) with
     def longestStrings: Seq[String] =
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
 
-  given [T](xs: List[T]) extended with
+  extension of [T](xs: List[T]) with
     def second = xs.tail.head
 
   given [From, To]: (c: Convertible[From, To]) => Convertible[List[From], List[To]] with

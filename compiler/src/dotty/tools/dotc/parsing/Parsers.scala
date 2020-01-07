@@ -188,7 +188,7 @@ object Parsers {
 /* -------------- TOKEN CLASSES ------------------------------------------- */
 
     def isIdent = in.isIdent
-    def isIdent(name: Name) = in.token == IDENTIFIER && in.name == name
+    def isIdent(name: Name) = in.isIdent(name)
     def isSimpleLiteral = simpleLiteralTokens contains in.token
     def isLiteral = literalTokens contains in.token
     def isNumericLit = numericLitTokens contains in.token
@@ -216,10 +216,11 @@ object Parsers {
       in.canStartExprTokens.contains(in.token) && !in.isSoftModifierInModifierPosition
 
     def isDefIntro(allowedMods: BitSet, excludedSoftModifiers: Set[TermName] = Set.empty): Boolean =
-      in.token == AT ||
-      (defIntroTokens `contains` in.token) ||
-      (allowedMods `contains` in.token) ||
-      in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
+      in.token == AT
+      || defIntroTokens.contains(in.token)
+      || allowedMods.contains(in.token)
+      || in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
+      || isIdent(nme.extension) && followingIsExtension()
 
     def isStatSep: Boolean = in.isNewLine || in.token == SEMI
 
@@ -943,6 +944,13 @@ object Parsers {
       while lookahead.token == LPAREN || lookahead.token == LBRACKET do
         lookahead.skipParens()
       lookahead.token == COLON || lookahead.token == SUBTYPE
+
+    def followingIsExtension() =
+      val lookahead = in.LookaheadScanner()
+      lookahead.nextToken()
+      if lookahead.isIdent && !lookahead.isIdent(nme.of) then
+        lookahead.nextToken()
+      lookahead.isIdent(nme.of)
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -3275,6 +3283,7 @@ object Parsers {
      *            |  [‘case’] ‘object’ ObjectDef
      *            |  ‘enum’ EnumDef
      *            |  ‘given’ GivenDef
+     *            |  ‘extension’ ExtensionDef
      */
     def tmplDef(start: Int, mods: Modifiers): Tree =
       in.token match {
@@ -3293,8 +3302,11 @@ object Parsers {
         case GIVEN =>
           givenDef(start, mods, atSpan(in.skipToken()) { Mod.Given() })
         case _ =>
-          syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
-          EmptyTree
+          if isIdent(nme.extension) && followingIsExtension() then
+            extensionDef(start, mods)
+          else
+            syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
+            EmptyTree
       }
 
     /** ClassDef ::= id ClassConstr TemplateOpt
@@ -3522,6 +3534,23 @@ object Parsers {
       finalizeDef(gdef, mods1, start)
     }
 
+    /** ExtensionDef  ::=  [id] ‘of’ ExtParamClause {GivenParamClause} ‘with’ ExtMethods
+     */
+    def extensionDef(start: Offset, mods: Modifiers): ModuleDef =
+      in.nextToken()
+      val name = if isIdent && !isIdent(nme.of) then ident() else EmptyTermName
+      if !isIdent(nme.of) then syntaxErrorOrIncomplete("`of` expected")
+      if isIdent(nme.of) then in.nextToken()
+      val tparams = typeParamClauseOpt(ParamOwner.Def)
+      val extParams = paramClause(0, prefix = true)
+      val givenParamss = paramClauses(givenOnly = true)
+      accept(WITH)
+      if !in.isNestedStart then syntaxError("Extension without extension methods")
+      val templ = templateBodyOpt(makeConstructor(tparams, extParams :: givenParamss), Nil, Nil)
+      templ.body.foreach(checkExtensionMethod(tparams, _))
+      val edef = ModuleDef(name, templ)
+      finalizeDef(edef, addFlag(mods, Given), start)
+
 /* -------- TEMPLATES ------------------------------------------- */
 
     /** SimpleConstrApp  ::=  AnnotType {ParArgumentExprs}
@@ -3681,7 +3710,7 @@ object Parsers {
     def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
       var self: ValDef = EmptyValDef
       val stats = new ListBuffer[Tree]
-      if (isExprIntro) {
+      if (isExprIntro && !isDefIntro(modifierTokens)) {
         val first = expr1()
         if (in.token == ARROW) {
           first match {
@@ -3707,10 +3736,10 @@ object Parsers {
           stats ++= importClause(IMPORT, Import)
         else if (in.token == EXPORT)
           stats ++= importClause(EXPORT, Export.apply)
-        else if (isExprIntro)
-          stats += expr1()
         else if (isDefIntro(modifierTokensOrCase))
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
+        else if (isExprIntro)
+          stats += expr1()
         else if (!isStatSep) {
           exitOnError = mustStartStat
           syntaxErrorOrIncomplete("illegal start of definition")

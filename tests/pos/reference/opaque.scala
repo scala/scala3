@@ -12,7 +12,7 @@ object Logarithms {
   }
 
   // Extension methods define opaque types' public APIs
-  given (x: Logarithm) extended with {
+  extension of (x: Logarithm) with {
     def toDouble: Double = math.exp(x)
     def + (y: Logarithm): Logarithm = Logarithm(math.exp(x) + math.exp(y))
     def * (y: Logarithm): Logarithm = Logarithm(x + y)

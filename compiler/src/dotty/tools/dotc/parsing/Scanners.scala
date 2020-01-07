@@ -1016,6 +1016,7 @@ object Scanners {
 
     def isNewLine = token == NEWLINE || token == NEWLINES
     def isIdent = token == IDENTIFIER || token == BACKQUOTED_IDENT
+    def isIdent(name: Name) = token == IDENTIFIER && this.name == name
 
     def isNestedStart = token == LBRACE || token == INDENT
     def isNestedEnd = token == RBRACE || token == OUTDENT

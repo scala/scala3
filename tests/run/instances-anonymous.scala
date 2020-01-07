@@ -8,7 +8,7 @@ object Test extends App {
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  given (c: Circle) extended with {
+  extension of (c: Circle) with {
     def circumference: Double = c.radius * math.Pi * 2
   }
 
@@ -25,13 +25,13 @@ object Test extends App {
   val names = List("hi", "hello", "world")
   assert(names.longestStrings == List("hello", "world"))
 
-  given [T](xs: Seq[T]) extended with {
+  extension of [T](xs: Seq[T]) with {
     def second = xs.tail.head
   }
 
   assert(names.longestStrings.second == "world")
 
-  given [T](xs: List[List[T]]) extended with {
+  extension of [T](xs: List[List[T]]) with {
     def flattened = xs.foldLeft[List[T]](Nil)(_ ++ _)
   }
 

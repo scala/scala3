@@ -80,7 +80,7 @@ So `circle.circumference` translates to `CircleOps.circumference(circle)`, provi
 
 ### Operators
 
-The extension method syntax also applies to the definition of operators. 
+The extension method syntax also applies to the definition of operators.
 In this case it is allowed and preferable to omit the period between the leading parameter list
 and the operator. In each case the definition syntax mirrors the way the operator is applied.
 Examples:
@@ -122,24 +122,25 @@ If an extension method has type parameters, they come immediately after the `def
 ```scala
 List(1, 2, 3).second[Int]
 ```
-### Given Instances for Extension Methods
+### Collective Extensions
 
-`given` extensions are given instances that define extension methods and nothing else. Examples:
+A collective extension defines one or more concrete methods that have the same type parameters
+and prefix parameter. Examples:
 
 ```scala
-given stringOps: (xs: Seq[String]) extended with {
+extension stringOps of (xs: Seq[String]) with {
   def longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
 
-given listOps: [T](xs: List[T]) extended with {
+extension listOps of [T](xs: List[T]) with {
   def second = xs.tail.head
   def third: T = xs.tail.tail.head
 }
 
-given [T](xs: List[T])(given Ordering[T]) extended with {
+extension of [T](xs: List[T])(given Ordering[T]) with {
   def largest(n: Int) = xs.sorted.takeRight(n)
 }
 ```
@@ -163,6 +164,8 @@ given given_largest_of_List_T: AnyRef {
 }
 ```
 
+`extension` and `of` are soft keywords. They can also be used as a regular identifiers.
+
 ### Syntax
 
 Here are the syntax changes for extension methods and given extensions relative
@@ -170,8 +173,9 @@ to the [current syntax](../../internals/syntax.md). `extension` is a soft keywor
 ```
 DefSig            ::=  ...
                     |  ExtParamClause [nl] [‘.’] id DefParamClauses
-GivenDef          ::=  ...
-                       [id ‘:’] ‘extension’ ExtParamClause {GivenParamClause} ExtMethods
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
-ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
+TmplDef           ::=  ...
+                    |  ‘extension’ ExtensionDef
+ExtensionDef      ::=  [id] ‘of’ ExtParamClause {GivenParamClause} ‘with’ ExtMethods
+ExtMethods        ::=  ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ```
