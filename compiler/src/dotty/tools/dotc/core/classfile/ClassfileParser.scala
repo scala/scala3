@@ -774,16 +774,14 @@ class ClassfileParser(
         val attrLen = in.nextInt
         val bytes = in.nextBytes(attrLen)
         if (attrLen == 16) { // A tasty attribute with that has only a UUID (16 bytes) implies the existence of the .tasty file
-          val tastyBytes: Array[Byte] = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
-            case None =>
-              ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
-              Array.empty
-            case Some(jar: ZipArchive) => // We are in a jar
-              val cl = new URLClassLoader(Array(jar.jpath.toUri.toURL), /*parent =*/ null)
-              try {
-                val path = classfile.path.stripSuffix(".class") + ".tasty"
-                val stream = cl.getResourceAsStream(path)
-                if (stream != null) {
+          val tastyBytes: Array[Byte] = classfile match { // TODO: simplify when #3552 is fixed
+            case classfile: io.ZipArchive#Entry => // We are in a jar
+              val path = classfile.parent.lookupName(
+                classfile.name.stripSuffix(".class") + ".tasty", directory = false
+              )
+              if (path != null) {
+                val stream = path.input
+                try {
                   val tastyOutStream = new ByteArrayOutputStream()
                   val buffer = new Array[Byte](1024)
                   var read = stream.read(buffer, 0, buffer.length)
@@ -793,23 +791,25 @@ class ClassfileParser(
                   }
                   tastyOutStream.flush()
                   tastyOutStream.toByteArray
-                }
-                else {
-                  ctx.error(s"Could not find $path in $jar")
-                  Array.empty
+                } finally {
+                  stream.close()
                 }
               }
-              finally {
-                // If we don't close the classloader, spooky things happen (see
-                // scripted test source-dependencies/export-jars2).
-                cl.close()
+              else {
+                ctx.error(s"Could not find $path in ${classfile.underlyingSource}")
+                Array.empty
               }
             case _ =>
-              val plainFile = new PlainFile(io.File(classfile.jpath).changeExtension("tasty"))
-              if (plainFile.exists) plainFile.toByteArray
-              else {
-                ctx.error("Could not find " + plainFile)
+              if (classfile.jpath == null) {
+                ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
                 Array.empty
+              } else {
+                val plainFile = new PlainFile(io.File(classfile.jpath).changeExtension("tasty"))
+                if (plainFile.exists) plainFile.toByteArray
+                else {
+                  ctx.error("Could not find " + plainFile)
+                  Array.empty
+                }
               }
           }
           if (tastyBytes.nonEmpty) {
