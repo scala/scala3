@@ -43,10 +43,20 @@ object Inferencing {
     if (isFullyDefined(tp, ForceDegree.all)) tp
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $span") // !!! DEBUG
 
-  /** Instantiate selected type variables `tvars` in type `tp` */
+  /** Instantiate selected type variables `tvars` in type `tp` in a special mode:
+   *   1. If a type variable is constrained from below (i.e. constraint bound != given lower bound)
+   *      it is minimized.
+   *   2. Otherwise, if the type variable is constrained from above, it is maximized.
+   *   3. Otherwise, if the type variable has a lower bound != Nothing, it is minimized.
+   *   4. Otherwise, if the type variable has an upper bound != Any, it is maximized.
+   *  If none of (1) - (4) applies, the type variable is left uninstantiated.
+   *  The method is called to instantiate type variables before an implicit search.
+   */
   def instantiateSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit =
     if (tvars.nonEmpty)
-      new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains, minimizeAll = true, allowBottom = false)).process(tp)
+      IsFullyDefinedAccumulator(
+        ForceDegree.Value(tvars.contains, allowBottom = false), minimizeSelected = true
+      ).process(tp)
 
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
    *  one of the parameters in `tparams` or `vparamss`.
@@ -78,19 +88,27 @@ object Inferencing {
    *   2. T is maximized if the constraint over T is only from above (i.e.
    *      constrained upper bound != given upper bound and
    *      constrained lower bound == given lower bound).
-   *  If (1) and (2) do not apply:
-   *   3. T is minimized if forceDegree is minimizeAll.
-   *   4. Otherwise, T is maximized if it appears only contravariantly in the given type,
-   *      or if forceDegree is `noBottom` and T's minimized value is a bottom type.
-   *   5. Otherwise, T is minimized.
    *
-   *  The instantiation is done in two phases:
+   *  If (1) and (2) do not apply, and minimizeSelected is set:
+   *   3. T is minimized if it has a lower bound (different from Nothing) in the
+   *      current constraint (the bound might come from T's declaration).
+   *   4. Otherwise, T is maximized if it has an upper bound (different from Any)
+   *      in the currented constraint (the bound might come from T's declaration).
+   *   5. Otherwise, T is not instantiated at all.
+
+   *  If (1) and (2) do not apply, and minimizeSelected is not set:
+   *   6: T is maximized if it appears only contravariantly in the given type,
+   *      or if forceDegree is `noBottom` and T has no lower bound different from Nothing.
+   *   7. Otherwise, T is minimized.
+   *
+   *  The instantiation for (6) and (7) is done in two phases:
    *  1st Phase: Try to instantiate minimizable type variables to
    *  their lower bound. Record whether successful.
    *  2nd Phase: If first phase was successful, instantiate all remaining type variables
    *  to their upper bound.
    */
-  private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+  private class IsFullyDefinedAccumulator(force: ForceDegree.Value, minimizeSelected: Boolean = false)
+    (implicit ctx: Context) extends TypeAccumulator[Boolean] {
 
     private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type = {
       val inst = tvar.instantiate(fromBelow)
@@ -108,14 +126,16 @@ object Inferencing {
         && ctx.typerState.constraint.contains(tvar)
         && {
           val direction = instDirection(tvar.origin)
-          def preferMin =
-            force.minimizeAll && (tvar.hasLowerBound || !tvar.hasUpperBound)
-            || variance >= 0 && (force.allowBottom || tvar.hasLowerBound)
-          if (direction != 0) instantiate(tvar, direction < 0)
-          else if (preferMin)
-            if force.minimizeAll && !tvar.hasLowerBound then () // do nothing
-            else instantiate(tvar, fromBelow = true)
-          else toMaximize = tvar :: toMaximize
+          if direction != 0 then
+            instantiate(tvar, fromBelow = direction < 0)
+          else if minimizeSelected then
+            if tvar.hasLowerBound then instantiate(tvar, fromBelow = true)
+            else if tvar.hasUpperBound then instantiate(tvar, fromBelow = false)
+            else () // hold off instantiating unbounded unconstrained variables
+          else if variance >= 0 && (force.allowBottom || tvar.hasLowerBound) then
+            instantiate(tvar, fromBelow = true)
+          else
+            toMaximize = tvar :: toMaximize
           foldOver(x, tvar)
         }
       case tp =>
@@ -489,9 +509,9 @@ trait Inferencing { this: Typer =>
 
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
 @sharable object ForceDegree {
-  class Value(val appliesTo: TypeVar => Boolean, val minimizeAll: Boolean, val allowBottom: Boolean = true)
-  val none: Value = new Value(_ => false, minimizeAll = false)
-  val all: Value = new Value(_ => true, minimizeAll = false)
-  val noBottom: Value = new Value(_ => true, minimizeAll = false, allowBottom = false)
+  class Value(val appliesTo: TypeVar => Boolean, val allowBottom: Boolean)
+  val none: Value = new Value(_ => false, allowBottom = true)
+  val all: Value = new Value(_ => true, allowBottom = true)
+  val noBottom: Value = new Value(_ => true, allowBottom = false)
 }
 
