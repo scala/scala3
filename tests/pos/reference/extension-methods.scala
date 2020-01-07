@@ -41,19 +41,19 @@ object ExtMethods with
 
   List(1, 2, 3).second[Int]
 
-  given stringOps: (xs: Seq[String]) extended with {
+  extension stringOps of (xs: Seq[String]) with {
     def longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  given listOps: [T](xs: List[T]) extended with
+  extension listOps of [T](xs: List[T]) with
     def second = xs.tail.head
     def third: T = xs.tail.tail.head
 
 
-  given [T](xs: List[T])(given Ordering[T]) extended with
+  extension of [T](xs: List[T])(given Ordering[T]) with
     def largest(n: Int) = xs.sorted.takeRight(n)
 
   given stringOps1: AnyRef {

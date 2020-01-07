@@ -529,6 +529,7 @@ object StdNames {
     val notify_ : N             = "notify"
     val null_ : N               = "null"
     val nullExpr: N             = "nullExpr"
+    val of: N                   = "of"
     val ofDim: N                = "ofDim"
     val opaque: N               = "opaque"
     val open: N                 = "open"

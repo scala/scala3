@@ -8,14 +8,14 @@ object Test extends App {
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  given circleOps: (c: Circle) extended with
+  extension circleOps of (c: Circle) with
     def circumference: Double = c.radius * math.Pi * 2
 
   val circle = new Circle(1, 1, 2.0)
 
   assert(circle.circumference == circleOps.circumference(circle))
 
-  given stringOps: (xs: Seq[String]) extended with
+  extension stringOps of (xs: Seq[String]) with
     def longestStrings: Seq[String] =
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
@@ -23,12 +23,12 @@ object Test extends App {
   val names = List("hi", "hello", "world")
   assert(names.longestStrings == List("hello", "world"))
 
-  given [T](xs: Seq[T]) extended with
+  extension of [T](xs: Seq[T]) with
     def second = xs.tail.head
 
   assert(names.longestStrings.second == "world")
 
-  given listListOps: [T](xs: List[List[T]]) extended with
+  extension listListOps of [T](xs: List[List[T]]) with
     def flattened = xs.foldLeft[List[T]](Nil)(_ ++ _)
 
   // A right associative op. Note: can't use given extension for this!
