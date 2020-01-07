@@ -1,13 +1,13 @@
 ---
-name: "\U0001F41B Bug report"
-about: Report a bug about the Dotty Compiler
+name: "Other issue"
+about: Report an issue about the Dotty Compiler (not bug or crash)
 title: ''
-labels: itype:bug
+labels:
 assignees: ''
 
 ---
 
-## minimized code
+## minimized example
 
 ```Scala
 println("hello, world")
