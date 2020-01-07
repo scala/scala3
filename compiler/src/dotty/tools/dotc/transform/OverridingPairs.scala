@@ -87,10 +87,16 @@ object OverridingPairs {
     /** The current entry candidate for overridden */
     private var nextEntry = curEntry
 
-    /** The current candidate symbol for overriding */
+    /** The current candidate symbol for overriding
+     * Eg:- class Foo extends (Int => Int) { override def apply(x: Int) = x }.
+     * Foo.apply is overriding symbol
+     **/
     var overriding: Symbol = _
 
-    /** If not null: The symbol overridden by overriding */
+    /** If not null: The symbol overridden by overriding
+     * Eg:- class Foo extends (Int => Int) { override def apply(x: Int) = x }.
+     * Function1.apply is an overridden symbol
+     **/
     var overridden: Symbol = _
 
     //@M: note that next is called once during object initialization
