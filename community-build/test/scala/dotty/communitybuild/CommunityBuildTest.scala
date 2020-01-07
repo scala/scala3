@@ -262,6 +262,12 @@ object projects
   //   sbtTestCommand   = "compile",
   //   sbtUpdateCommand = "update"
   // )
+
+  lazy val sconfig = SbtCommunityProject(
+    project       = "sconfig",
+    sbtTestCommand   = "sconfigJVM/test",
+    sbtUpdateCommand = "sconfigJVM/update"
+  )
 end projects
 
 @Category(Array(classOf[TestCategory]))
@@ -335,6 +341,7 @@ class CommunityBuildTest {
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
   @Test def semanticdb = projects.semanticdb.run()
   @Test def effpi = projects.effpi.run()
+  @Test def sconfig = projects.sconfig.run()
 }
 
 class TestCategory
