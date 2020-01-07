@@ -366,7 +366,7 @@ private[quoted] object Matcher {
       */
     private def patternsMatches(scrutinee: Tree, pattern: Tree)(given Context, Env): (Env, Matching) = (scrutinee, pattern) match {
       case (v1: Term, Unapply(TypeApply(Select(patternHole @ Ident("patternHole"), "unapply"), List(tpt)), Nil, Nil))
-        if patternHole.symbol.owner.fullName == "scala.runtime.quoted.Matcher$" =>
+          if patternHole.symbol.owner == summon[Context].requiredModule("scala.runtime.quoted.Matcher") =>
         (summon[Env], matched(v1.seal))
 
       case (Ident("_"), Ident("_")) =>

@@ -150,7 +150,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         }
 
         val parents1 = parents.filter {
-          case Apply(Select(New(tpt), _), _) => !Types.JavaLangObject.unapply(tpt.tpe)
+          case Apply(Select(New(tpt), _), _) => tpt.tpe.typeSymbol != ctx.requiredClass("java.lang.Object")
           case TypeSelect(Select(Ident("_root_"), "scala"), "Product") => false
           case TypeSelect(Select(Ident("_root_"), "scala"), "Serializable") => false
           case _ => true
@@ -356,7 +356,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         this += "throw "
         printTree(expr)
 
-      case Apply(fn, args) if fn.symbol.fullName == "scala.internal.Quoted$.exprQuote" =>
+      case Apply(fn, args) if fn.symbol == ctx.requiredMethod("scala.internal.Quoted.exprQuote") =>
         args.head match {
           case Block(stats, expr) =>
             this += "'{"
@@ -371,12 +371,12 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
             this += "}"
         }
 
-      case TypeApply(fn, args) if fn.symbol.fullName == "scala.internal.Quoted$.typeQuote" =>
+      case TypeApply(fn, args) if fn.symbol == ctx.requiredMethod("scala.internal.Quoted.typeQuote") =>
         this += "'["
         printTypeTree(args.head)
         this += "]"
 
-      case Apply(fn, arg :: Nil) if fn.symbol.fullName == "scala.internal.Quoted$.exprSplice" =>
+      case Apply(fn, arg :: Nil) if fn.symbol == ctx.requiredMethod("scala.internal.Quoted.exprSplice") =>
         this += "${"
         printTree(arg)
         this += "}"
@@ -573,7 +573,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     def printFlatBlock(stats: List[Statement], expr: Term)(given elideThis: Option[Symbol]): Buffer = {
       val (stats1, expr1) = flatBlock(stats, expr)
       val stats2 = stats1.filter {
-        case tree: TypeDef => !tree.symbol.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag")
+        case tree: TypeDef => !tree.symbol.annots.exists(_.symbol.owner == ctx.requiredClass("scala.internal.Quoted.quoteTypeTag"))
         case _ => true
       }
       if (stats2.isEmpty) {
@@ -971,7 +971,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
             printTypeAndAnnots(tp)
             this += " "
             printAnnotation(annot)
-          case tpe: TypeRef if tpe.typeSymbol.fullName == "scala.runtime.Null$" || tpe.typeSymbol.fullName == "scala.runtime.Nothing$" =>
+          case tpe: TypeRef if tpe.typeSymbol == ctx.requiredClass("scala.runtime.Null$") || tpe.typeSymbol == ctx.requiredClass("scala.runtime.Nothing$") =>
             // scala.runtime.Null$ and scala.runtime.Nothing$ are not modules, those are their actual names
             printType(tpe)
           case tpe: TermRef if tpe.termSymbol.isClassDef && tpe.termSymbol.name.endsWith("$") =>
@@ -1014,7 +1014,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       case Annotated(tpt, annot) =>
         val Annotation(ref, args) = annot
         ref.tpe match {
-          case Types.RepeatedAnnotation() =>
+          case tpe: TypeRef if tpe.typeSymbol == ctx.requiredClass("scala.annotation.internal.Repeated") =>
             val Types.Sequence(tp) = tpt.tpe
             printType(tp)
             this += highlightTypeDef("*")
@@ -1115,7 +1115,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         tp match {
           case tp: TypeLambda =>
             printType(tpe.dealias)
-          case TypeRef(Types.ScalaPackage(), "<repeated>") =>
+          case tp: TypeRef if tp.typeSymbol == ctx.requiredClass("scala.<repeated>") =>
             this += "_*"
           case _ =>
             printType(tp)
@@ -1228,7 +1228,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     def printAnnotation(annot: Term)(given elideThis: Option[Symbol]): Buffer = {
       val Annotation(ref, args) = annot
-      if (annot.symbol.maybeOwner.fullName == "scala.internal.quoted.showName") this
+      if (annot.symbol.maybeOwner == ctx.requiredClass("scala.internal.quoted.showName")) this
       else {
         this += "@"
         printTypeTree(ref)
@@ -1242,12 +1242,9 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     def printDefAnnotations(definition: Definition)(given elideThis: Option[Symbol]): Buffer = {
       val annots = definition.symbol.annots.filter {
         case Annotation(annot, _) =>
-          annot.tpe match {
-            case TypeRef(prefix: TermRef, _) if prefix.termSymbol.fullName == "scala.annotation.internal" => false
-            case TypeRef(prefix: TypeRef, _) if prefix.typeSymbol.fullName == "scala.annotation.internal" => false
-            case TypeRef(Types.ScalaPackage(), "forceInline") => false
-            case _ => true
-          }
+          val sym = annot.tpe.typeSymbol
+          sym != ctx.requiredClass("scala.forceInline") &&
+          sym.maybeOwner != ctx.requiredPackage("scala.annotation.internal")
         case x => throw new MatchError(x.showExtractors)
       }
       printAnnotations(annots)
@@ -1404,7 +1401,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
   }
 
   private def splicedName(sym: Symbol)(given ctx: Context): Option[String] = {
-    sym.annots.find(_.symbol.owner.fullName == "scala.internal.quoted.showName").flatMap {
+    sym.annots.find(_.symbol.owner == ctx.requiredClass("scala.internal.quoted.showName")).flatMap {
       case Apply(_, Literal(Constant(c: String)) :: Nil) => Some(c)
       case Apply(_, Inlined(_, _, Literal(Constant(c: String))) :: Nil) => Some(c)
       case annot => None
@@ -1435,40 +1432,17 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
   // TODO Provide some of these in scala.tasty.Reflection.scala and implement them using checks on symbols for performance
   private object Types {
 
-    object JavaLangObject {
-      def unapply(tpe: Type)(given ctx: Context): Boolean = tpe match {
-        case TypeRef(prefix: TermRef, "Object") => prefix.typeSymbol.fullName == "java.lang"
-        case _ => false
-      }
-    }
-
     object Sequence {
       def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
-        case AppliedType(TypeRef(prefix: TermRef, "Seq"), (tp: Type) :: Nil) if prefix.termSymbol.fullName == "scala.collection" => Some(tp)
-        case AppliedType(TypeRef(prefix: TypeRef, "Seq"), (tp: Type) :: Nil) if prefix.typeSymbol.fullName == "scala.collection" => Some(tp)
+        case AppliedType(seq, (tp: Type) :: Nil) if seq.typeSymbol == ctx.requiredClass("scala.collection.Seq") => Some(tp)
         case _ => None
-      }
-    }
-
-    object RepeatedAnnotation {
-      def unapply(tpe: Type)(given ctx: Context): Boolean = tpe match {
-        case TypeRef(prefix: TermRef, "Repeated") => prefix.termSymbol.fullName == "scala.annotation.internal"
-        case TypeRef(prefix: TypeRef, "Repeated") => prefix.typeSymbol.fullName == "scala.annotation.internal"
-        case _ => false
       }
     }
 
     object Repeated {
       def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
-        case AppliedType(TypeRef(ScalaPackage(), "<repeated>"), (tp: Type) :: Nil) => Some(tp)
+        case AppliedType(rep, (tp: Type) :: Nil) if rep.typeSymbol == ctx.requiredClass("scala.<repeated>") => Some(tp)
         case _ => None
-      }
-    }
-
-    object ScalaPackage {
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Boolean = tpe match {
-        case tpe: Type => tpe.termSymbol == defn.ScalaPackage
-        case _ => false
       }
     }
 

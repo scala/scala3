@@ -59,6 +59,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Context_GADT_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type =
     self.gadt.approximation(sym, fromBelow)
 
+  def Context_requiredPackage(self: Context)(path: String): Symbol = self.requiredPackage(path)
+  def Context_requiredClass(self: Context)(path: String): Symbol = self.requiredClass(path)
+  def Context_requiredModule(self: Context)(path: String): Symbol = self.requiredModule(path)
+  def Context_requiredMethod(self: Context)(path: String): Symbol = self.requiredMethod(path)
+
   //
   // REPORTING
   //

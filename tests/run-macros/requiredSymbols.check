@@ -1,0 +1,13 @@
+java
+java.lang
+scala
+scala.collection
+java.lang.Object
+scala.Any
+scala.Any
+scala.AnyVal
+scala.Unit
+scala.Null
+scala.None
+scala.package$.Nil
+scala.collection.immutable.List$.empty
