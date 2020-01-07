@@ -158,7 +158,7 @@ given listOps: AnyRef {
   def [T](xs: List[T]) second = xs.tail.head
   def [T](xs: List[T]) third: T = xs.tail.tail.head
 }
-given given_largest_of_List_T: AnyRef {
+given extension_largest_List_T: AnyRef {
   def [T](xs: List[T]) largest (given Ordering[T])(n: Int) =
     xs.sorted.takeRight(n)
 }
