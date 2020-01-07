@@ -780,22 +780,29 @@ class ClassfileParser(
               Array.empty
             case Some(jar: ZipArchive) => // We are in a jar
               val cl = new URLClassLoader(Array(jar.jpath.toUri.toURL), /*parent =*/ null)
-              val path = classfile.path.stripSuffix(".class") + ".tasty"
-              val stream = cl.getResourceAsStream(path)
-              if (stream != null) {
-                val tastyOutStream = new ByteArrayOutputStream()
-                val buffer = new Array[Byte](1024)
-                var read = stream.read(buffer, 0, buffer.length)
-                while (read != -1) {
-                  tastyOutStream.write(buffer, 0, read)
-                  read = stream.read(buffer, 0, buffer.length)
+              try {
+                val path = classfile.path.stripSuffix(".class") + ".tasty"
+                val stream = cl.getResourceAsStream(path)
+                if (stream != null) {
+                  val tastyOutStream = new ByteArrayOutputStream()
+                  val buffer = new Array[Byte](1024)
+                  var read = stream.read(buffer, 0, buffer.length)
+                  while (read != -1) {
+                    tastyOutStream.write(buffer, 0, read)
+                    read = stream.read(buffer, 0, buffer.length)
+                  }
+                  tastyOutStream.flush()
+                  tastyOutStream.toByteArray
                 }
-                tastyOutStream.flush()
-                tastyOutStream.toByteArray
+                else {
+                  ctx.error(s"Could not find $path in $jar")
+                  Array.empty
+                }
               }
-              else {
-                ctx.error(s"Could not find $path in $jar")
-                Array.empty
+              finally {
+                // If we don't close the classloader, spooky things happen (see
+                // scripted test source-dependencies/export-jars2).
+                cl.close()
               }
             case _ =>
               val plainFile = new PlainFile(io.File(classfile.jpath).changeExtension("tasty"))

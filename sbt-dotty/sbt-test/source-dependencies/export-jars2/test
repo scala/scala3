@@ -1,0 +1,7 @@
+> compile
+$ copy-file changes/A1.scala a/A.scala
+$ copy-file changes/B1.scala b/B.scala
+# This used to fail with "Tasty UUID (...) file did not correspond the tasty UUID (...) declared in the classfile"
+# because we were somehow reading the .tasty file from the previous compilation run, even though it does not exist
+# on disk anymore (#7852)
+> compile
