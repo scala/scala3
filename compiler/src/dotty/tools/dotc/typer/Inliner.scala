@@ -1035,7 +1035,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               case _ => false
             }
           }
-          if (guardOK) Some((caseBindings, cdef.body.subst(from, to)))
+          if (guardOK) Some((caseBindings.map(_.subst(from, to)), cdef.body.subst(from, to)))
           else None
         }
         else None
@@ -1135,7 +1135,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                 }
               case _ => rhs0
             }
-
             val (usedBindings, rhs2) = dropUnusedDefs(caseBindings, rhs1)
             val rhs = seq(usedBindings, rhs2)
             inlining.println(i"""--- reduce:
