@@ -118,6 +118,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     aggregateTests(
       compileFilesInDir("tests/run-macros", defaultOptions),
       compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees"),
+      compileFilesInDir("tests/run-custom-args/run-macros-erased", defaultOptions and "-Yerased-terms"),
     )
   }.checkRuns()
 
