@@ -236,6 +236,11 @@ class Definitions {
     @tu lazy val CompiletimeTesting_ErrorKind: Symbol = ctx.requiredModule("scala.compiletime.testing.ErrorKind")
       @tu lazy val CompiletimeTesting_ErrorKind_Parser: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Parser")
       @tu lazy val CompiletimeTesting_ErrorKind_Typer: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Typer")
+  @tu lazy val CompiletimeOpsPackageObject: Symbol = ctx.requiredModule("scala.compiletime.ops.package")
+    @tu lazy val CompiletimeOpsPackageObjectAny: Symbol = ctx.requiredModule("scala.compiletime.ops.package.any")
+    @tu lazy val CompiletimeOpsPackageObjectInt: Symbol = ctx.requiredModule("scala.compiletime.ops.package.int")
+    @tu lazy val CompiletimeOpsPackageObjectString: Symbol = ctx.requiredModule("scala.compiletime.ops.package.string")
+    @tu lazy val CompiletimeOpsPackageObjectBoolean: Symbol = ctx.requiredModule("scala.compiletime.ops.package.boolean")
 
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
@@ -945,6 +950,26 @@ class Definitions {
 
   final def isCompiletime_S(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.name == tpnme.S && sym.owner == CompiletimePackageObject.moduleClass
+
+  private val compiletimePackageAnyTypes: Set[Name] = Set(tpnme.Equals, tpnme.NotEquals)
+  private val compiletimePackageIntTypes: Set[Name] = Set(
+    tpnme.Plus, tpnme.Minus, tpnme.Times, tpnme.Div, tpnme.Mod,
+    tpnme.Lt, tpnme.Gt, tpnme.Ge, tpnme.Le,
+    tpnme.Abs, tpnme.Negate, tpnme.Min, tpnme.Max, tpnme.ToString,
+  )
+  private val compiletimePackageBooleanTypes: Set[Name] = Set(tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or)
+  private val compiletimePackageStringTypes: Set[Name] = Set(tpnme.Plus)
+
+  final def isCompiletimeAppliedType(sym: Symbol)(implicit ctx: Context): Boolean = {
+    def isOpsPackageObjectAppliedType: Boolean =
+      sym.owner == CompiletimeOpsPackageObjectAny.moduleClass && compiletimePackageAnyTypes.contains(sym.name) ||
+      sym.owner == CompiletimeOpsPackageObjectInt.moduleClass && compiletimePackageIntTypes.contains(sym.name) ||
+      sym.owner == CompiletimeOpsPackageObjectBoolean.moduleClass && compiletimePackageBooleanTypes.contains(sym.name) ||
+      sym.owner == CompiletimeOpsPackageObjectString.moduleClass && compiletimePackageStringTypes.contains(sym.name)
+
+    sym.isType && (isCompiletime_S(sym) || isOpsPackageObjectAppliedType)
+  }
+
 
   // ----- Symbol sets ---------------------------------------------------
 

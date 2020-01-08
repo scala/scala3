@@ -971,7 +971,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           compareLower(bounds(param2), tyconIsTypeRef = false)
         case tycon2: TypeRef =>
           isMatchingApply(tp1) ||
-          defn.isCompiletime_S(tycon2.symbol) && compareS(tp2, tp1, fromBelow = true) || {
+          defn.isCompiletimeAppliedType(tycon2.symbol) && compareCompiletimeAppliedType(tp2, tp1, fromBelow = true) || {
             tycon2.info match {
               case info2: TypeBounds =>
                 compareLower(info2, tyconIsTypeRef = true)
@@ -1011,7 +1011,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         case tycon1: TypeRef =>
           val sym = tycon1.symbol
           !sym.isClass && {
-            defn.isCompiletime_S(sym) && compareS(tp1, tp2, fromBelow = false) ||
+            defn.isCompiletimeAppliedType(sym) && compareCompiletimeAppliedType(tp1, tp2, fromBelow = false) ||
             recur(tp1.superType, tp2) ||
             tryLiftedToThis1
           }
@@ -1021,7 +1021,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           false
       }
 
-    /** Compare `tp` of form `S[arg]` with `other`, via ">:>` if fromBelow is true, "<:<" otherwise.
+    /** Compare `tp` of form `S[arg]` with `other`, via ">:>" if fromBelow is true, "<:<" otherwise.
      *  If `arg` is a Nat constant `n`, proceed with comparing `n + 1` and `other`.
      *  Otherwise, if `other` is a Nat constant `n`, proceed with comparing `arg` and `n - 1`.
      */
@@ -1041,6 +1041,18 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             }
         }
       case _ => false
+    }
+
+    /** Compare `tp` of form `tycon[...args]`, where `tycon` is a scala.compiletime type,
+     *  with `other` via ">:>" if fromBelow is true, "<:<" otherwise.
+     *  Delegates to compareS if `tycon` is scala.compiletime.S. Otherwise, constant folds if possible.
+     */
+    def compareCompiletimeAppliedType(tp: AppliedType, other: Type, fromBelow: Boolean): Boolean = {
+      if (defn.isCompiletime_S(tp.tycon.typeSymbol)) compareS(tp, other, fromBelow)
+      else {
+        val folded = tp.tryCompiletimeConstantFold
+        if (fromBelow) recur(other, folded) else recur(folded, other)
+      }
     }
 
     /** Like tp1 <:< tp2, but returns false immediately if we know that

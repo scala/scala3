@@ -1,0 +1,75 @@
+import scala.compiletime.ops.int._
+
+object Test {
+  summon[2 + 3 =:= 6 - 1]
+  summon[1763 =:= 41 * 43]
+  summon[2 + 2 =:= 3] // error
+  summon[29 * 31 =:= 900] // error
+  summon[Int <:< Int + 1] // error
+  summon[1 + Int <:< Int]
+
+  val t0: 2 + 3 = 5
+  val t1: 2 + 2 = 5 // error
+  val t2: -1 + 1 = 0
+  val t3: -5 + -5 = -11 // error
+
+  val t4: 10 * 20 = 200
+  val t5: 30 * 10 = 400 // error
+  val t6: -10 * 2  = -20
+  val t7: -2 * -2 = 4
+
+  val t8: 10 / 2 = 5
+  val t9: 11 / -2 = -5 // Integer division
+  val t10: 2 / 4 = 2 // error
+  val t11: -1 / 0 = 1 // error
+
+  val t12: 10 % 3 = 1
+  val t13: 12 % 2 = 1 // error
+  val t14: 1 % -3 = 1
+  val t15: -3 % 0 = 0 // error
+
+  val t16: 1 < 0 = false
+  val t17: 0 < 1 = true
+  val t18: 10 < 5 = true // error
+  val t19: 5 < 10 = false // error
+
+  val t20: 1 <= 0 = false
+  val t21: 1 <= 1 = true
+  val t22: 10 <= 5 = true // error
+  val t23: 5 <= 10 = false // error
+
+  val t24: 1 > 0 = true
+  val t25: 0 > 1 = false
+  val t26: 10 > 5 = false // error
+  val t27: 5 > 10 = true // error
+
+  val t28: 1 >= 1 = true
+  val t29: 0 >= 1 = false
+  val t30: 10 >= 5 = false // error
+  val t31: 5 >= 10 = true // error
+
+  val t32: Abs[0] = 0
+  val t33: Abs[-1] = 1
+  val t34: Abs[-1] = -1 // error
+  val t35: Abs[1] = -1 // error
+
+  val t36: Negate[-10] = 10
+  val t37: Negate[10] = -10
+  val t38: Negate[1] = 1 // error
+  val t39: Negate[-1] = -1 // error
+
+  val t40: Max[-1, 10] = 10
+  val t41: Max[4, 2] = 4
+  val t42: Max[2, 2] = 1 // error
+  val t43: Max[-1, -1] = 0 // error
+
+  val t44: Min[-1, 10] = -1
+  val t45: Min[4, 2] = 2
+  val t46: Min[2, 2] = 1 // error
+  val t47: Min[-1, -1] = 0 // error
+
+  val t48: ToString[213] = "213"
+  val t49: ToString[-1] = "-1"
+  val t50: ToString[0] = "-0" // error
+  val t51: ToString[200] = "100" // error
+}
