@@ -682,7 +682,7 @@ class Definitions {
     @tu lazy val LiftableModule_CharIsLiftable: Symbol = LiftableModule.requiredMethod("CharIsLiftable")
     @tu lazy val LiftableModule_StringIsLiftable: Symbol = LiftableModule.requiredMethod("StringIsLiftable")
 
-  @tu lazy val InternalQuotedModule: Symbol = ctx.requiredModule("scala.internal.Quoted")
+  @tu lazy val InternalQuotedModule: Symbol = ctx.requiredModule("scala.internal.quoted.CompileTime")
     @tu lazy val InternalQuoted_exprQuote  : Symbol = InternalQuotedModule.requiredMethod("exprQuote")
     @tu lazy val InternalQuoted_exprSplice : Symbol = InternalQuotedModule.requiredMethod("exprSplice")
     @tu lazy val InternalQuoted_typeQuote  : Symbol = InternalQuotedModule.requiredMethod("typeQuote")

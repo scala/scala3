@@ -1,39 +1,37 @@
-// TODO remove when reference compiler is updated
-package scala.internal
+package scala.internal.quoted
 
 import scala.annotation.{Annotation, compileTimeOnly}
 import scala.quoted._
 
-@compileTimeOnly("Illegal reference to `scala.internal.Quoted`")
-@deprecated("Use scala.internal.quoted.CompileTime", "0.22.0")
-object Quoted {
+@compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime`")
+object CompileTime {
 
   /** A term quote is desugared by the compiler into a call to this method */
-  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.exprQuote`")
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprQuote`")
   def exprQuote[T](x: T): (given QuoteContext) => Expr[T] = ???
 
   /** A term splice is desugared by the compiler into a call to this method */
-  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.exprSplice`")
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprSplice`")
   def exprSplice[T](x: (given QuoteContext) => Expr[T]): T = ???
 
   /** A type quote is desugared by the compiler into a call to this method */
-  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.typeQuote`")
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.typeQuote`")
   def typeQuote[T <: AnyKind]: Type[T] = ???
 
   /** A splice in a quoted pattern is desugared by the compiler into a call to this method */
-  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.patternHole`")
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHole`")
   def patternHole[T]: T = ???
 
   /** A splice of a name in a quoted pattern is desugared by wrapping getting this annotation */
-  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.patternBindHole`")
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternBindHole`")
   class patternBindHole extends Annotation
 
   /** A splice of a name in a quoted pattern is that marks the definition of a type splice */
-  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.patternType`")
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternType`")
   class patternType extends Annotation
 
   /** A type pattern that must be aproximated from above */
-  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.fromAbove`")
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.fromAbove`")
   class fromAbove extends Annotation
 
   /** Artifact of pickled type splices
@@ -44,7 +42,7 @@ object Quoted {
    *
    *  See ReifyQuotes.scala and PickledQuotes.scala
    */
-  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.quoteTypeTag`")
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.quoteTypeTag`")
   class quoteTypeTag extends Annotation
 
 }
