@@ -1,10 +1,8 @@
-// TODO remove when reference compiler is updated
-package scala.runtime.quoted
+package scala.internal.quoted
 
 import scala.quoted.{Expr, QuoteContext, Type}
 
 /** Provides methods to unpickle `Expr` and `Type` trees. */
-@deprecated("Use scala.internal.quoted.Unpickler", "0.22.0")
 object Unpickler {
 
   type PickledQuote = List[String]
@@ -22,6 +20,5 @@ object Unpickler {
    */
   def unpickleType[T](repr: PickledQuote, args: PickledTypeArgs): (given QuoteContext) => Type[T] =
     summon[QuoteContext].tasty.internal.unpickleType(repr, args).asInstanceOf[Type[T]]
-
 
 }

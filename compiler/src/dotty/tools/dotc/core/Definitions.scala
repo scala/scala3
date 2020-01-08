@@ -705,8 +705,8 @@ class Definitions {
   @tu lazy val QuotedMatchingSymClass: ClassSymbol = ctx.requiredClass("scala.quoted.matching.Sym")
   @tu lazy val TastyReflectionClass: ClassSymbol = ctx.requiredClass("scala.tasty.Reflection")
 
-  @tu lazy val Unpickler_unpickleExpr: Symbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
-  @tu lazy val Unpickler_unpickleType: Symbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
+  @tu lazy val Unpickler_unpickleExpr: Symbol = ctx.requiredMethod("scala.internal.quoted.Unpickler.unpickleExpr")
+  @tu lazy val Unpickler_unpickleType: Symbol = ctx.requiredMethod("scala.internal.quoted.Unpickler.unpickleType")
 
   @tu lazy val EqlClass: ClassSymbol = ctx.requiredClass("scala.Eql")
     def Eql_eqlAny(implicit ctx: Context): TermSymbol = EqlClass.companionModule.requiredMethod(nme.eqlAny)

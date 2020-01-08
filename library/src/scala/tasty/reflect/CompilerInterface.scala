@@ -2,7 +2,7 @@ package scala.tasty.reflect // TODO move to scala.internal.tasty.reflect
 
 import scala.quoted.QuoteContext
 import scala.tasty.Reflection
-import scala.runtime.quoted.Unpickler
+import scala.internal.quoted.Unpickler
 
 /** Tasty reflect abstract types
  *
