@@ -22,7 +22,7 @@ import dotty.tools.tasty.TastyString
 import scala.internal.quoted._
 import scala.reflect.ClassTag
 
-import scala.runtime.quoted.Unpickler._
+import scala.internal.quoted.Unpickler._
 
 object PickledQuotes {
   import tpd._

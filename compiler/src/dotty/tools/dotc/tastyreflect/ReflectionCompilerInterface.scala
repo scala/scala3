@@ -15,7 +15,7 @@ import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFr
 import dotty.tools.dotc.typer.Implicits.{AmbiguousImplicits, DivergingImplicit, NoMatchingImplicits, SearchFailure, SearchFailureType}
 import dotty.tools.dotc.util.{SourceFile, SourcePosition, Spans}
 
-import scala.runtime.quoted.Unpickler
+import scala.internal.quoted.Unpickler
 import scala.tasty.reflect.CompilerInterface
 
 import scala.tasty.reflect.IsInstanceOf

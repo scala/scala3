@@ -4,7 +4,7 @@ import java.io._
 import java.util.Base64
 import java.nio.charset.StandardCharsets.UTF_8
 
-import scala.runtime.quoted.Unpickler.PickledQuote
+import scala.internal.quoted.Unpickler.PickledQuote
 
 /** Utils for String representation of TASTY */
 object TastyString {
