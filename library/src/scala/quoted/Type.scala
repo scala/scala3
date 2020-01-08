@@ -2,12 +2,8 @@ package scala.quoted
 
 import scala.quoted.show.SyntaxHighlight
 
-/** Quoted type (or kind) `T`
- *
- *  Restriction: only the QuoteContext.tasty.internal implementation is allowed to extend this trait.
- *  Any other implementation will result in an undefined behavior.
- */
-trait Type[T <: AnyKind] {
+/** Quoted type (or kind) `T` */
+class Type[T <: AnyKind] private[scala] {
   type `$splice` = T
 
   /** Show a source code like representation of this type without syntax highlight */
