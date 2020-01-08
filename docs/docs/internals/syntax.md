@@ -146,6 +146,9 @@ FunType           ::=  FunArgTypes ‘=>’ Type                                
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ ‘[given]’ FunArgType {‘,’ FunArgType } ] ‘)’
                     |  ‘(’ ‘[given]’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+GivenArgs         ::=  InfixType
+                    |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
+                    |  ‘(’ ‘val’ TypedFunParam {‘,’ ‘val’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
 MatchType         ::=  InfixType `match` ‘{’ TypeCaseClauses ‘}’
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
