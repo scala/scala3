@@ -404,10 +404,15 @@ object DottyPlugin extends AutoPlugin {
 
   /** Create a scalaInstance task that uses Dotty based on `moduleName`. */
   def dottyScalaInstanceTask(moduleName: String): Initialize[Task[ScalaInstance]] = Def.task {
+    val ivyConfig0 = mkIvyConfiguration.value
+    // When compiling non-bootstrapped projects in the build of Dotty itself,
+    // dependency resolution might pick a local project which is not what we
+    // want. We avoid this by dropping the inter-project resolver.
+    val ivyConfig1 = ivyConfig0.withResolvers(ivyConfig0.resolvers.filter(_.name != "inter-project"))
     val updateReport =
       fetchArtifactsOf(
         scalaOrganization.value %% moduleName % scalaVersion.value,
-        dependencyResolution.value,
+        ivy.IvyDependencyResolution(ivyConfig1),
         scalaModuleInfo.value,
         updateConfiguration.value,
         (unresolvedWarningConfiguration in update).value,
@@ -430,6 +435,25 @@ object DottyPlugin extends AutoPlugin {
       allJars
     )
   }
+
+  // Copy-pasted from sbt until we upgrade to a version of sbt
+  // with https://github.com/sbt/sbt/pull/5271 in.
+  def mkIvyConfiguration: Initialize[Task[InlineIvyConfiguration]] =
+    Def.task {
+      val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
+      val s = streams.value
+      Classpaths.warnResolversConflict(rs ++: other, s.log)
+      InlineIvyConfiguration()
+        .withPaths(ivyPaths.value)
+        .withResolvers(rs)
+        .withOtherResolvers(other)
+        .withModuleConfigurations(moduleConfigurations.value.toVector)
+        .withLock(Defaults.lock(appConfiguration.value))
+        .withChecksums((checksums in update).value.toVector)
+        .withResolutionCacheDir(crossTarget.value / "resolution-cache")
+        .withUpdateOptions(updateOptions.value)
+        .withLog(s.log)
+    }
 
   def makeScalaInstance(
     state: State, dottyVersion: String, scalaLibrary: File, dottyLibrary: File, compiler: File, all: Seq[File]
