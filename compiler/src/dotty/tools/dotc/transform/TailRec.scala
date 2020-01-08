@@ -5,6 +5,7 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
 import dotty.tools.dotc.config.Printers.tailrec
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds.{TailLabelName, TailLocalName, TailTempName}
@@ -173,6 +174,25 @@ class TailRec extends MiniPhase {
               typeMap = _.subst(rewrittenParamSyms, varsForRewrittenParamSyms.map(_.termRef))
             ).transform(rhsSemiTransformed)
         }
+
+        // Is a simple this a simple recursive tail call, possibly with swapped or modified pure arguments
+        def isInfiniteRecCall(tree: Tree): Boolean = {
+          def statOk(stat: Tree): Boolean = stat match {
+            case stat: ValDef if stat.name.is(TailTempName) || !stat.symbol.is(Mutable) => statOk(stat.rhs)
+            case Assign(lhs: Ident, rhs: Ident) if lhs.symbol.name.is(TailLocalName) => statOk(rhs)
+            case stat: Ident if stat.symbol.name.is(TailLocalName) => true
+            case _ => tpd.isPureExpr(stat)
+          }
+          tree match {
+            case Typed(expr, _) => isInfiniteRecCall(expr)
+            case Return(Literal(Constant(())), label) => label.symbol == transformer.continueLabel
+            case Block(stats, expr) => stats.forall(statOk) && isInfiniteRecCall(expr)
+            case _ => false
+          }
+        }
+
+        if isInfiniteRecCall(rhsFullyTransformed) then
+          ctx.warning("Infinite recursive call", tree.sourcePos)
 
         cpy.DefDef(tree)(rhs =
           Block(
