@@ -797,6 +797,8 @@ trait CompilerInterface {
 
   def isInstanceOfTypeBounds(given ctx: Context): IsInstanceOf[TypeBounds]
 
+  def TypeBounds_apply(low: Type, hi: Type)(given ctx: Context): TypeBounds
+
   def TypeBounds_low(self: TypeBounds)(given ctx: Context): Type
   def TypeBounds_hi(self: TypeBounds)(given ctx: Context): Type
 
@@ -887,6 +889,8 @@ trait CompilerInterface {
 
   def isInstanceOfConstantType(given ctx: Context): IsInstanceOf[ConstantType]
 
+  def ConstantType_apply(const : Constant)(given ctx : Context) : ConstantType
+
   def ConstantType_constant(self: ConstantType)(given ctx: Context): Constant
 
   /** Type of a reference to a term symbol */
@@ -941,6 +945,8 @@ trait CompilerInterface {
 
   def isInstanceOfAnnotatedType(given ctx: Context): IsInstanceOf[AnnotatedType]
 
+  def AnnotatedType_apply(underlying: Type, annot: Term)(given ctx: Context): AnnotatedType
+
   def AnnotatedType_underlying(self: AnnotatedType)(given ctx: Context): Type
   def AnnotatedType_annot(self: AnnotatedType)(given ctx: Context): Term
 
@@ -948,6 +954,8 @@ trait CompilerInterface {
   type AndType <: Type
 
   def isInstanceOfAndType(given ctx: Context): IsInstanceOf[AndType]
+
+  def AndType_apply(lhs: Type, rhs: Type)(given ctx: Context): AndType
 
   def AndType_left(self: AndType)(given ctx: Context): Type
   def AndType_right(self: AndType)(given ctx: Context): Type
@@ -957,6 +965,8 @@ trait CompilerInterface {
 
   def isInstanceOfOrType(given ctx: Context): IsInstanceOf[OrType]
 
+  def OrType_apply(lhs : Type, rhs : Type)(given ctx : Context): OrType
+
   def OrType_left(self: OrType)(given ctx: Context): Type
   def OrType_right(self: OrType)(given ctx: Context): Type
 
@@ -964,6 +974,8 @@ trait CompilerInterface {
   type MatchType <: Type
 
   def isInstanceOfMatchType(given ctx: Context): IsInstanceOf[MatchType]
+
+  def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type])(given ctx: Context): MatchType
 
   def MatchType_bound(self: MatchType)(given ctx: Context): Type
   def MatchType_scrutinee(self: MatchType)(given ctx: Context): Type
@@ -1037,8 +1049,11 @@ trait CompilerInterface {
 
   def isInstanceOfTypeLambda(given ctx: Context): IsInstanceOf[TypeLambda]
 
+  def TypeLambda_apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda
+
   def TypeLambda_paramNames(self: TypeLambda)(given ctx: Context): List[String]
   def TypeLambda_paramBounds(self: TypeLambda)(given ctx: Context): List[TypeBounds]
+  def TypeLambda_param(self: TypeLambda, idx: Int)(given ctx: Context): Type
   def TypeLambda_resType(self: TypeLambda)(given ctx: Context): Type
 
   //

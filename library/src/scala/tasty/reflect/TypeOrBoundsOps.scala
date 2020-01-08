@@ -103,6 +103,7 @@ trait TypeOrBoundsOps extends Core {
     def unapply(x: ConstantType)(given ctx: Context): Option[ConstantType] = Some(x)
 
   object ConstantType {
+    def apply(x : Constant)(given ctx: Context): ConstantType = internal.ConstantType_apply(x)
     def unapply(x: ConstantType)(given ctx: Context): Option[Constant] = Some(x.constant)
   }
 
@@ -205,6 +206,8 @@ trait TypeOrBoundsOps extends Core {
     def unapply(x: AnnotatedType)(given ctx: Context): Option[AnnotatedType] = Some(x)
 
   object AnnotatedType {
+    def apply(underlying: Type, annot: Term)(given ctx: Context): AnnotatedType =
+      internal.AnnotatedType_apply(underlying, annot)
     def unapply(x: AnnotatedType)(given ctx: Context): Option[(Type, Term)] =
       Some((x.underlying, x.annot))
   }
@@ -221,6 +224,8 @@ trait TypeOrBoundsOps extends Core {
     def unapply(x: AndType)(given ctx: Context): Option[AndType] = Some(x)
 
   object AndType {
+    def apply(lhs: Type, rhs: Type)(given ctx: Context): AndType =
+      internal.AndType_apply(lhs, rhs)
     def unapply(x: AndType)(given ctx: Context): Option[(Type, Type)] =
       Some((x.left, x.right))
   }
@@ -237,6 +242,7 @@ trait TypeOrBoundsOps extends Core {
     def unapply(x: OrType)(given ctx: Context): Option[OrType] = Some(x)
 
   object OrType {
+    def apply(lhs: Type, rhs: Type)(given ctx: Context): OrType = internal.OrType_apply(lhs, rhs)
     def unapply(x: OrType)(given ctx: Context): Option[(Type, Type)] =
       Some((x.left, x.right))
   }
@@ -253,6 +259,8 @@ trait TypeOrBoundsOps extends Core {
     def unapply(x: MatchType)(given ctx: Context): Option[MatchType] = Some(x)
 
   object MatchType {
+    def apply(bound: Type, scrutinee: Type, cases: List[Type])(given ctx: Context): MatchType =
+      internal.MatchType_apply(bound, scrutinee, cases)
     def unapply(x: MatchType)(given ctx: Context): Option[(Type, Type, List[Type])] =
       Some((x.bound, x.scrutinee, x.cases))
   }
@@ -261,6 +269,14 @@ trait TypeOrBoundsOps extends Core {
     def bound(given ctx: Context): Type = internal.MatchType_bound(self)
     def scrutinee(given ctx: Context): Type = internal.MatchType_scrutinee(self)
     def cases(given ctx: Context): List[Type] = internal.MatchType_cases(self)
+  }
+
+  /**
+   * An accessor for `scala.internal.MatchCase[_,_]`, the representation of a `MatchType` case.
+    */
+  def MatchCaseType(given Context): Type = {
+    import scala.internal.MatchCase
+    Type(classOf[MatchCase[_,_]])
   }
 
   given (given Context): IsInstanceOf[ByNameType] = internal.isInstanceOfByNameType
@@ -381,6 +397,8 @@ trait TypeOrBoundsOps extends Core {
     def unapply(x: TypeLambda)(given ctx: Context): Option[TypeLambda] = Some(x)
 
   object TypeLambda {
+    def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda =
+      internal.TypeLambda_apply(paramNames, boundsFn, bodyFn)
     def unapply(x: TypeLambda)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
       Some((x.paramNames, x.paramBounds, x.resType))
   }
@@ -388,6 +406,7 @@ trait TypeOrBoundsOps extends Core {
   given TypeLambdaOps: extension (self: TypeLambda) {
     def paramNames(given ctx: Context): List[String] = internal.TypeLambda_paramNames(self)
     def paramBounds(given ctx: Context): List[TypeBounds] = internal.TypeLambda_paramBounds(self)
+    def param(idx: Int)(given ctx: Context) : Type = internal.TypeLambda_param(self, idx)
     def resType(given ctx: Context): Type = internal.TypeLambda_resType(self)
   }
 
@@ -400,6 +419,8 @@ trait TypeOrBoundsOps extends Core {
     def unapply(x: TypeBounds)(given ctx: Context): Option[TypeBounds] = Some(x)
 
   object TypeBounds {
+    def apply(low: Type, hi: Type)(given ctx: Context): TypeBounds =
+      internal.TypeBounds_apply(low, hi)
     def unapply(x: TypeBounds)(given ctx: Context): Option[(Type, Type)] = Some((x.low, x.hi))
   }
 
