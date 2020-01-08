@@ -35,3 +35,4 @@ In short, no need to make it pretty, particularly human-readable or give it a pa
 License
 =======
 Dotty is licensed under the [3-Clause BSD License](https://github.com/lampepfl/dotty/blob/master/LICENSE.md)
+
