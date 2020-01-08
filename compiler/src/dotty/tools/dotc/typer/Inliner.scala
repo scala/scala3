@@ -439,7 +439,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
     case tpe: NamedType
     if tpe.symbol.is(Param) && tpe.symbol.owner == inlinedMethod && !paramProxy.contains(tpe) =>
-      paramProxy(tpe) = paramBinding(tpe.name)
+      paramBinding.get(tpe.name) match
+        case Some(bound) => paramProxy(tpe) = bound
+        case _ =>  // can happen for params bound by type-lambda trees.
     case _ =>
   }
 
