@@ -374,11 +374,9 @@ object Build {
     dottyLib + File.pathSeparator + findArtifactPath(externalDeps, "scala-library")
   }
 
-  lazy val tastydocSettings = Seq(
+  lazy val commonDocSettings = Seq(
     baseDirectory in (Compile, run) := baseDirectory.value / "..",
     baseDirectory in Test := baseDirectory.value / "..",
-    libraryDependencies +=
-      "com.novocode" % "junit-interface" % "0.11",
     libraryDependencies ++= {
       val flexmarkVersion = "0.42.12"
       Seq(
@@ -397,9 +395,6 @@ object Build {
   )
 
   def dottyDocSettings(implicit mode: Mode) = Seq(
-    baseDirectory in (Compile, run) := baseDirectory.value / "..",
-    baseDirectory in Test := baseDirectory.value / "..",
-
     connectInput in run := true,
     outputStrategy := Some(StdoutOutput),
 
@@ -434,22 +429,6 @@ object Build {
 
       (runMain in Compile).toTask(s" dotty.tools.dottydoc.Main -classpath $cp " + args.mkString(" "))
     }.evaluated,
-
-    libraryDependencies ++= {
-      val flexmarkVersion = "0.42.12"
-      Seq(
-        "com.vladsch.flexmark" % "flexmark-all" % flexmarkVersion,
-        "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
-        "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % flexmarkVersion,
-        "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
-        "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % flexmarkVersion,
-        "com.vladsch.flexmark" % "flexmark-ext-emoji" % flexmarkVersion,
-        "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
-        "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
-        Dependencies.`jackson-dataformat-yaml`,
-        "nl.big-o" % "liqp" % "0.6.7"
-      )
-    }
   )
 
   lazy val `dotty-doc` = project.in(file("doc-tool")).asDottyDoc(NonBootstrapped)
@@ -1352,6 +1331,7 @@ object Build {
 
     def asDottyDoc(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler, dottyCompiler % "test->test").
+      settings(commonDocSettings).
       settings(dottyDocSettings)
 
     def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
@@ -1362,7 +1342,7 @@ object Build {
     def asDottyTastydoc(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`dotty-tastydoc-input`).
       dependsOn(dottyCompiler).
-      settings(tastydocSettings)
+      settings(commonDocSettings)
 
     def asDottyTastydocInput(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler)
