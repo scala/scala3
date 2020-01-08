@@ -380,7 +380,7 @@ object Build {
     libraryDependencies ++= {
       val flexmarkVersion = "0.42.12"
       Seq(
-        "com.vladsch.flexmark" % "flexmark-all" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
         "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
         "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % flexmarkVersion,
         "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
