@@ -3,6 +3,7 @@ package scala.internal
 import scala.annotation.{Annotation, compileTimeOnly}
 import scala.quoted._
 
+@compileTimeOnly("Illegal reference to `scala.internal.Quoted`")
 object Quoted {
 
   /** A term quote is desugared by the compiler into a call to this method */
@@ -26,9 +27,11 @@ object Quoted {
   class patternBindHole extends Annotation
 
   /** A splice of a name in a quoted pattern is that marks the definition of a type splice */
+  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.patternType`")
   class patternType extends Annotation
 
   /** A type pattern that must be aproximated from above */
+  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.fromAbove`")
   class fromAbove extends Annotation
 
   /** Artifact of pickled type splices
@@ -39,7 +42,7 @@ object Quoted {
    *
    *  See ReifyQuotes.scala and PickledQuotes.scala
    */
-  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.patternBindHole`")
+  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.quoteTypeTag`")
   class quoteTypeTag extends Annotation
 
 }
