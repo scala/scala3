@@ -134,3 +134,17 @@ with `with-compiler` in their name.
  ```
 
  This mode can be run under `dotty-compiler-bootstrapped/testCompilation` to test on a bootstrapped Dotty compiler.
+
+### SemanticDB tests
+
+The output of the `extractSemanticDB` phase, enabled with `-Ysemanticdb` is tested with the bootstrapped JUnit test
+`dotty.tools.dotc.semanticdb.SemanticdbTests`. It uses source files in `tests/semanticdb/expect` to generate
+two kinds of output file that are compared with "expect files": placement of semanticdb symbol occurrences inline in
+sourcecode (`*.expect.scala`), for human verification by inspection; and secondly metap formatted output which outputs
+all information stored in semanticdb (`metac.expect`).
+Expect files are used as regression tests to detect changes in the compiler.
+
+The test suite will create a new file if it detects any difference, which can be compared with the
+original expect file, or if the user wants to globally replace all expect files for semanticdb they can use
+`dotty-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect`, and compare the changes via version
+control.
