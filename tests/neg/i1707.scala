@@ -12,13 +12,13 @@ object DepBug {
     val a = new A
     val b = a mkB
   }
-  def useDep(d: Dep) {  // error: procedure syntax
+  def useDep(d: Dep) {  // error: '=' expected, but '{' found
     import d._
     a m (b)
   }
-  {   // error: Null does not take parameters (follow on)
+  {
     import dep._
     a m (b) // error: not found: a
   }
-  dep.a m (dep b) // error (follow on)
+  dep.a m (dep b) // error: value a is not a member of Object (follow on)
 }

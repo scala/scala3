@@ -3,17 +3,17 @@ object Test {
     val x = 42
     val Y = "42"
 
-    x match { case { 42 }           => () } // error // error
-    x match { case { 42.toString }  => () } // error // error
-    x match { case { 42 }.toString  => () } // error // error
-    x match { case "42".toInt       => () } // error
-    x match { case { "42".toInt }   => () } // error // error
-    x match { case { "42" }.toInt   => () } // error // error
-    x match { case { "42".toInt }   => () } // error // error
-    x match { case Y                => () } // error
-    x match { case { Y.toInt }      => () } // error // error
-    x match { case { Y }.toInt      => () } // error // error
-    x match { case { Y }.toString   => () } // error // error
-    x match { case { Y.toString }   => () } // error // error
+    x match { case { 42 }           => () } // error: pattern expected
+    x match { case { 42.toString }  => () } // error: pattern expected
+    x match { case { 42 }.toString  => () } // error: pattern expected
+    x match { case "42".toInt       => () } // error: '=>' expected, but '.' found
+    x match { case { "42".toInt }   => () } // error: pattern expected
+    x match { case { "42" }.toInt   => () } // error: pattern expected
+    x match { case { "42".toInt }   => () } // error: pattern expected
+    x match { case Y                => () } // error: Values of types String and Int cannot be compared with == or !=
+    x match { case { Y.toInt }      => () } // error: pattern expected
+    x match { case { Y }.toInt      => () } // error: pattern expected
+    x match { case { Y }.toString   => () } // error: pattern expected
+    x match { case { Y.toString }   => () } // error: pattern expected
   }
 }

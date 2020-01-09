@@ -3,11 +3,11 @@ object Test {
     val x = 42
     val Y = "42"
 
-    x match { case { 42 }           => () } // error // error
-    x match { case { "42".toInt }   => () } // error // error
-    x match { case { "42" }.toInt   => () } // error // error
-    x match { case { "42".toInt }   => () } // error // error
-    x match { case { Y.toInt }      => () } // error // error
-    x match { case { Y }.toInt      => () } // error // error
+    x match { case { 42 }           => () } // error: pattern expected
+    x match { case { "42".toInt }   => () } // error: pattern expected
+    x match { case { "42" }.toInt   => () } // error: pattern expected
+    x match { case { "42".toInt }   => () } // error: pattern expected
+    x match { case { Y.toInt }      => () } // error: pattern expected
+    x match { case { Y }.toInt      => () } // error: pattern expected
   }
 }

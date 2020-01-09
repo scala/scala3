@@ -401,7 +401,9 @@ object Parsers {
       false
     }
 
-    def errorTermTree: Literal = atSpan(in.offset) { Literal(Constant(null)) }
+    def errorTermTree: Tree = atSpan(in.offset) {
+      TypedSplice(Literal(Constant(null)).withType(Types.UnspecifiedErrorType))
+    }
 
     private var inFunReturnType = false
     private def fromWithinReturnType[T](body: => T): T = {

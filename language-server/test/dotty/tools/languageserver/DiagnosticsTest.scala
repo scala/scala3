@@ -22,8 +22,6 @@ class DiagnosticsTest {
           |}""".withSource
       .diagnostics(m1,
         (m2 to m2, "expression expected but ')' found", Error, Some(IllegalStartSimpleExprID)),
-        (m1 to m1, """Found:    Null
-                     |Required: Boolean""".stripMargin, Error, Some(TypeMismatchID))
       )
 
   @Test def diagnosticPureExpression: Unit =
