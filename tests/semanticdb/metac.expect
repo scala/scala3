@@ -1342,12 +1342,12 @@ Occurrences:
 [16:15..16:16): A <- a/b/Givens.Monoid#[A]
 [17:8..17:13): empty <- a/b/Givens.Monoid#empty().
 [17:15..17:16): A -> a/b/Givens.Monoid#[A]
-[18:8..18:15): (x: A)  <- a/b/Givens.Monoid#combine().
+[18:8..18:15): (x: A). <- a/b/Givens.Monoid#combine().
 [18:9..18:10): x <- a/b/Givens.Monoid#combine().(x)
 [18:12..18:13): A -> a/b/Givens.Monoid#[A]
-[18:24..18:25): y <- a/b/Givens.Monoid#combine().(y)
-[18:27..18:28): A -> a/b/Givens.Monoid#[A]
-[18:31..18:32): A -> a/b/Givens.Monoid#[A]
+[18:23..18:24): y <- a/b/Givens.Monoid#combine().(y)
+[18:26..18:27): A -> a/b/Givens.Monoid#[A]
+[18:30..18:31): A -> a/b/Givens.Monoid#[A]
 [20:8..21:4): <- a/b/Givens.given_Monoid_String.
 [20:8..20:14): Monoid -> a/b/Givens.Monoid#
 [20:15..20:21): String -> scala/Predef.String#
@@ -1355,11 +1355,11 @@ Occurrences:
 [22:8..22:15): (x: Str <- a/b/Givens.given_Monoid_String.combine().
 [22:9..22:10): x <- a/b/Givens.given_Monoid_String.combine().(x)
 [22:12..22:18): String -> scala/Predef.String#
-[22:29..22:30): y <- a/b/Givens.given_Monoid_String.combine().(y)
-[22:32..22:38): String -> scala/Predef.String#
-[22:42..22:43): x -> a/b/Givens.given_Monoid_String.combine().(x)
-[22:44..22:45): + -> java/lang/String#`+`().
-[22:46..22:47): y -> a/b/Givens.given_Monoid_String.combine().(y)
+[22:28..22:29): y <- a/b/Givens.given_Monoid_String.combine().(y)
+[22:31..22:37): String -> scala/Predef.String#
+[22:41..22:42): x -> a/b/Givens.given_Monoid_String.combine().(x)
+[22:43..22:44): + -> java/lang/String#`+`().
+[22:45..22:46): y -> a/b/Givens.given_Monoid_String.combine().(y)
 [24:15..24:25): int2String <- a/b/Givens.int2String().
 [24:27..24:37): Conversion -> scala/Conversion#
 [24:38..24:41): Int -> scala/Int#
@@ -3565,3 +3565,4 @@ Occurrences:
 [2:46..2:47): z -> _empty_/toplevel$package.combine(+1).(z)
 [3:4..3:11): combine <- _empty_/toplevel$package.combine(+2).
 [4:4..4:7): foo <- _empty_/toplevel$package.foo().
+
