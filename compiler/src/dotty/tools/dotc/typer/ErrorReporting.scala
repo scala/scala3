@@ -167,6 +167,7 @@ object ErrorReporting {
      */
     def userDefinedErrorString(raw: String, paramNames: List[String], args: List[Type]): String = {
       def translate(name: String): Option[String] = {
+        assert(paramNames.length == args.length)
         val idx = paramNames.indexOf(name)
         if (idx >= 0) Some(quoteReplacement(ex"${args(idx)}")) else None
       }
