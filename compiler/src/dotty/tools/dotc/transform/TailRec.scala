@@ -179,7 +179,7 @@ class TailRec extends MiniPhase {
         def isInfiniteRecCall(tree: Tree): Boolean = {
           def statOk(stat: Tree): Boolean = stat match {
             case stat: ValDef if stat.name.is(TailTempName) || !stat.symbol.is(Mutable) => statOk(stat.rhs)
-            case Assign(lhs: Ident, rhs: Ident) if lhs.symbol.name.is(TailLocalName) => statOk(rhs)
+            case Assign(lhs: Ident, rhs) if lhs.symbol.name.is(TailLocalName) => statOk(rhs)
             case stat: Ident if stat.symbol.name.is(TailLocalName) => true
             case _ => tpd.isPureExpr(stat)
           }
