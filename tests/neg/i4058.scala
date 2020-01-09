@@ -9,4 +9,3 @@ class D {
   def g(override a: Int) = 0 // error
   def g(abstract a: Int) = 0 // error
 }
-sealed erased class E // error
