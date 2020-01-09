@@ -1217,7 +1217,7 @@ trait Implicits { self: Typer =>
           err.userDefinedErrorString(
             raw,
             pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
-            pt.widenExpr.argInfos))
+            pt.widenExpr.dropDependentRefinement.argInfos))
 
         def hiddenImplicitsAddendum: String =
 
