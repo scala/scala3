@@ -175,18 +175,23 @@ class TailRec extends MiniPhase {
             ).transform(rhsSemiTransformed)
         }
 
-        // Is a simple this a simple recursive tail call, possibly with swapped or modified pure arguments
+        /** Is the RHS a direct recursive tailcall, possibly with swapped arguments or modified pure arguments.
+         *  ```
+         *  def f(<params>): T = f(<args>)
+         *  ```
+         *  where `<args>` are pure arguments or references to parameters in `<params>`.
+         */
         def isInfiniteRecCall(tree: Tree): Boolean = {
-          def statOk(stat: Tree): Boolean = stat match {
-            case stat: ValDef if stat.name.is(TailTempName) || !stat.symbol.is(Mutable) => statOk(stat.rhs)
-            case Assign(lhs: Ident, rhs) if lhs.symbol.name.is(TailLocalName) => statOk(rhs)
+          def tailArgOrPureExpr(stat: Tree): Boolean = stat match {
+            case stat: ValDef if stat.name.is(TailTempName) || !stat.symbol.is(Mutable) => tailArgOrPureExpr(stat.rhs)
+            case Assign(lhs: Ident, rhs) if lhs.symbol.name.is(TailLocalName) => tailArgOrPureExpr(rhs)
             case stat: Ident if stat.symbol.name.is(TailLocalName) => true
             case _ => tpd.isPureExpr(stat)
           }
           tree match {
             case Typed(expr, _) => isInfiniteRecCall(expr)
             case Return(Literal(Constant(())), label) => label.symbol == transformer.continueLabel
-            case Block(stats, expr) => stats.forall(statOk) && isInfiniteRecCall(expr)
+            case Block(stats, expr) => stats.forall(tailArgOrPureExpr) && isInfiniteRecCall(expr)
             case _ => false
           }
         }
