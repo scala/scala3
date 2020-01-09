@@ -202,7 +202,8 @@ object Scanners {
     private val commentBuf = new mutable.StringBuilder
 
     private def handleMigration(keyword: Token): Token =
-      if (!isScala2CompatMode) keyword
+      if (keyword == ERASED && !ctx.settings.YerasedTerms.value) IDENTIFIER
+      else if (!isScala2CompatMode) keyword
       else if (scala3keywords.contains(keyword)) treatAsIdent()
       else keyword
 

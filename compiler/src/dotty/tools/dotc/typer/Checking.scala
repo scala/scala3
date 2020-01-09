@@ -457,8 +457,7 @@ object Checking {
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
     if (sym.is(Erased))
-      if ctx.settings.YerasedTerms.value || sym == defn.Compiletime_erasedValue then checkApplicable(Erased, !sym.isOneOf(MutableOrLazy))
-      else fail("cannot use `erased` without " + ctx.settings.YerasedTerms.name)
+      checkApplicable(Erased, !sym.isOneOf(MutableOrLazy))
   }
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer

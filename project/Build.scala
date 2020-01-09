@@ -737,6 +737,8 @@ object Build {
 
   lazy val `dotty-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
   lazy val `dotty-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped)
+    // TODO: move -Yerased-terms to dottyLibrarySettings on reference compiler update
+    .settings(scalacOptions in Compile += "-Yerased-terms") // support declaration of scala.compiletime.erasedValue
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `dotty-library`
@@ -758,6 +760,7 @@ object Build {
     settings(
       unmanagedSourceDirectories in Compile :=
         (unmanagedSourceDirectories in (`dotty-library-bootstrapped`, Compile)).value,
+      scalacOptions += "-Yerased-terms", // support declaration of scala.compiletime.erasedValue
     )
 
   lazy val tastyCoreSettings = Seq(
@@ -990,7 +993,7 @@ object Build {
         val dir = fetchScalaJSSource.value / "test-suite"
         (
           (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala":FileFilter) -- "RegressionTest.scala" -- "ReflectiveCallTest.scala")).get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** (("*.scala": FileFilter) -- "StringTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/io" ** (("*.scala": FileFilter) -- "ReadersTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/math" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/net" ** "*.scala").get
