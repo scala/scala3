@@ -583,8 +583,8 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
   def apiModifiers(sym: Symbol): api.Modifiers = {
     val absOver = sym.is(AbsOverride)
-    val abs = sym.is(Abstract) || sym.is(Deferred) || absOver
-    val over = sym.is(Override) || absOver
+    val abs = absOver || sym.isOneOf(Trait | Abstract | Deferred)
+    val over = absOver || sym.is(Override)
     new api.Modifiers(abs, over, sym.is(Final), sym.is(Sealed),
       sym.isOneOf(GivenOrImplicit), sym.is(Lazy), sym.is(Macro), sym.isSuperAccessor)
   }
