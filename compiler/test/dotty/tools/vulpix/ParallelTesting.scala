@@ -109,7 +109,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         case source: JointCompilationSource => {
           source.sourceFiles.map(_.getPath).foreach { path =>
             sb.append(delimiter)
+            sb += '''
             sb.append(path)
+            sb += '''
             sb += ' '
           }
           sb.toString + "\n\n"
@@ -121,7 +123,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             files.map(_.getPath).foreach { path =>
               fsb.append(delimiter)
               lineLen = 8
+              fsb += '''
               fsb.append(path)
+              fsb += '''
               fsb += ' '
             }
             fsb.append("\n\n")
