@@ -416,7 +416,8 @@ object Build {
         "-project-version", dottyVersion,
         "-project-url", dottyGithubUrl,
         "-project-logo", "dotty-logo.svg",
-        "-classpath", dottydocClasspath.value
+        "-classpath", dottydocClasspath.value,
+        "-Yerased-terms"
       )
       (runMain in Compile).toTask(
         s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
