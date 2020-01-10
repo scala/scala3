@@ -7,6 +7,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.experimental.categories.Category
 
+import java.io.File
 import java.nio.file._
 import java.util.stream.{ Stream => JStream }
 import scala.collection.JavaConverters._
@@ -197,24 +198,26 @@ class CompilationTests extends ParallelTesting {
    */
   @Test def tastyBootstrap: Unit = {
     implicit val testGroup: TestGroup = TestGroup("tastyBootstrap/tests")
+    val libGroup = TestGroup("tastyBootstrap/lib")
+    val tastyCoreGroup = TestGroup("tastyBootstrap/tastyCore")
     val dotty1Group = TestGroup("tastyBootstrap/dotty1")
     val dotty2Group = TestGroup("tastyBootstrap/dotty2")
-    val libGroup = TestGroup("tastyBootstrap/lib")
 
     // Make sure that the directory is clean
     dotty.tools.io.Directory(defaultOutputDir + "tastyBootstrap").deleteRecursively()
 
-    val sep = java.io.File.pathSeparator
-
     val opt = TestFlags(
-      // compile with bootstrapped library on cp:
-      defaultOutputDir + libGroup + "/src/" + sep +
-      // as well as bootstrapped compiler:
-      defaultOutputDir + dotty1Group + "/dotty/" + sep +
-      // and the other compiler dependenies:
-      Properties.compilerInterface + sep + Properties.scalaLibrary + sep + Properties.scalaAsm + sep +
-      Properties.dottyInterfaces + sep + Properties.tastyCore + sep + Properties.jlineTerminal + sep +
-      Properties.jlineReader,
+      List(
+        // compile with bootstrapped library on cp:
+        defaultOutputDir + libGroup + "/lib/",
+        // and bootstrapped tasty-core:
+        defaultOutputDir + tastyCoreGroup + "/tastyCore/",
+        // as well as bootstrapped compiler:
+        defaultOutputDir + dotty1Group + "/dotty1/",
+        // and the other compiler dependencies:
+        Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
+        Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
+      ).mkString(File.pathSeparator),
       Array("-Ycheck-reentrant", "-Yemit-tasty-in-class")
     )
 
@@ -222,20 +225,23 @@ class CompilationTests extends ParallelTesting {
     val librarySources = libraryDirs.flatMap(sources(_))
 
     val lib =
-      compileList("src", librarySources,
+      compileList("lib", librarySources,
         defaultOptions.and("-Ycheck-reentrant",
           "-Yerased-terms", // support declaration of scala.compiletime.erasedValue
           //  "-strict",  // TODO: re-enable once we allow : @unchecked in pattern definitions. Right now, lots of narrowing pattern definitions fail.
           "-priorityclasspath", defaultOutputDir))(libGroup)
 
+    val tastyCoreSources = sources(Paths.get("tasty/src"))
+    val tastyCore = compileList("tastyCore", tastyCoreSources, opt)(tastyCoreGroup)
+
     val compilerSources = sources(Paths.get("compiler/src"))
     val compilerManagedSources = sources(Properties.dottyCompilerManagedSources)
 
-    val dotty1 = compileList("dotty", compilerSources ++ compilerManagedSources, opt)(dotty1Group)
-    val dotty2 = compileList("dotty", compilerSources ++ compilerManagedSources, opt)(dotty2Group)
+    val dotty1 = compileList("dotty1", compilerSources ++ compilerManagedSources, opt)(dotty1Group)
+    val dotty2 = compileList("dotty2", compilerSources ++ compilerManagedSources, opt)(dotty2Group)
 
     val tests = {
-      lib.keepOutput :: dotty1.keepOutput :: aggregateTests(
+      lib.keepOutput :: tastyCore.keepOutput :: dotty1.keepOutput :: aggregateTests(
         dotty2,
         compileShallowFilesInDir("compiler/src/dotty/tools", opt),
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc", opt),
@@ -255,9 +261,10 @@ class CompilationTests extends ParallelTesting {
     }.map(_.checkCompile())
 
     def assertExists(path: String) = assertTrue(Files.exists(Paths.get(path)))
-    assertExists(s"out/$dotty1Group/dotty/")
-    assertExists(s"out/$dotty2Group/dotty/")
-    assertExists(s"out/$libGroup/src/")
+    assertExists(s"out/$libGroup/lib/")
+    assertExists(s"out/$tastyCoreGroup/tastyCore/")
+    assertExists(s"out/$dotty1Group/dotty1/")
+    assertExists(s"out/$dotty2Group/dotty2/")
     compileList("idempotency", List("tests/idempotency/BootstrapChecker.scala", "tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
 
     tests.foreach(_.delete())
