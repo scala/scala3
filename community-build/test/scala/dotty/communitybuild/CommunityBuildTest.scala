@@ -216,7 +216,7 @@ object projects
 
   lazy val stdLib213 = SbtCommunityProject(
     project       = "stdLib213",
-    sbtTestCommand   = "library/compile",
+    sbtTestCommand   = """;set scalacOptions in Global += "-Yerased-terms" ;library/compile""",
     sbtUpdateCommand = "library/update",
     extraSbtArgs  = List("-Dscala.build.compileWithDotty=true")
   )
