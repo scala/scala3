@@ -66,15 +66,23 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver {
 
   private def getCurrentClasspath(cl: ClassLoader): String = {
     val classpath0 = System.getProperty("java.class.path")
-    cl match {
-      case cl: URLClassLoader =>
-        // Loads the classes loaded by this class loader
-        // When executing `run` or `test` in sbt the classpath is not in the property java.class.path
-        import java.nio.file.Paths
-        val newClasspath = cl.getURLs.map(url => Paths.get(url.toURI).toString)
-        newClasspath.mkString("", java.io.File.pathSeparator, if (classpath0 == "") "" else java.io.File.pathSeparator + classpath0)
-      case _ => classpath0
+    val classLoaderClasspath = {
+      // Loads the classes loaded by this class loader
+      // When executing `run` or `test` in sbt the classpath is not in the property java.class.path
+      def collectClassLoaderURLs(cl: ClassLoader, urlBuff: collection.mutable.ArrayBuilder[java.net.URL]): Array[String] = {
+        cl match {
+          case cl: URLClassLoader =>
+            urlBuff ++= cl.getURLs.iterator
+            collectClassLoaderURLs(cl.getParent, urlBuff)
+          case _ =>
+            urlBuff.result().map(url => java.nio.file.Paths.get(url.toURI).toString)
+        }
+      }
+      collectClassLoaderURLs(cl, Array.newBuilder[java.net.URL])
     }
+
+    val classpath1 = if (classpath0 == "") classLoaderClasspath else classLoaderClasspath :+ classpath0
+    classpath1.mkString(java.io.File.pathSeparator)
   }
 }
 
