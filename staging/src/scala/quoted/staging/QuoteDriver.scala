@@ -73,23 +73,19 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver {
    *  the wrong thing.
    */
   private def classpathFromClassloader(cl: ClassLoader): String = {
-    @tailrec
-    def loop(cl: ClassLoader, suffixClasspath: String): String =
-      cl match {
-        case cl: URLClassLoader =>
-          val updatedClasspath = cl.getURLs
-            .map(url => Paths.get(url.toURI).toAbsolutePath.toString)
-            .mkString(
-              "",
-              File.pathSeparator,
-              if (suffixClasspath.isEmpty) "" else File.pathSeparator + suffixClasspath
-            )
-          loop(cl.getParent, updatedClasspath)
-        case _ =>
-          suffixClasspath
-      }
-
-    loop(cl, "")
+    val classpathBuff = List.newBuilder[String]
+    def collectClassLoaderPaths(cl: ClassLoader): Unit = cl match {
+      case cl: URLClassLoader =>
+        collectClassLoaderPaths(cl.getParent)
+        // Parent classloaders are searched before their child, so the part of
+        // the classpath coming from the child is added at the _end_ of the
+        // classpath.
+        classpathBuff ++=
+          cl.getURLs.iterator.map(url => Paths.get(url.toURI).toAbsolutePath.toString)
+      case _ =>
+    }
+    collectClassLoaderPaths(cl)
+    classpathBuff.result().mkString(java.io.File.pathSeparator)
   }
 }
 
