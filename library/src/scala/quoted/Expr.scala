@@ -2,12 +2,8 @@ package scala.quoted
 
 import scala.quoted.show.SyntaxHighlight
 
-/** Quoted expression of type `T`
- *
- *  Restriction: only the QuoteContext.tasty.internal implementation is allowed to extend this trait.
- *  Any other implementation will result in an undefined behavior.
- */
-trait Expr[+T] {
+/** Quoted expression of type `T` */
+class Expr[+T] private[scala] {
 
   /** Show a source code like representation of this expression without syntax highlight */
   def show(implicit qctx: QuoteContext): String = qctx.show(this, SyntaxHighlight.plain)
@@ -56,8 +52,6 @@ trait Expr[+T] {
 }
 
 object Expr {
-
-  import scala.internal.quoted._
 
   /** Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])` */
   type TupleOfExpr[Tup <: Tuple] = Tuple.Map[Tup, [X] =>> (given QuoteContext) => Expr[X]]

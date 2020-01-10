@@ -9,7 +9,7 @@ import dotty.tools.dotc.ast.tpd.Tree
  *
  *  May contain references to code defined outside this TastyTreeExpr instance.
  */
-final class TastyTreeExpr(val tree: Tree, val scopeId: Int) extends scala.quoted.Expr[Any] {
+final class TastyTreeExpr(val tree: Tree, val scopeId: Int) extends scala.internal.quoted.Expr[Any] {
   override def equals(that: Any): Boolean = that match {
     case that: TastyTreeExpr =>
       // TastyTreeExpr are wrappers around trees, therfore they are equals if their trees are equal.

@@ -2,6 +2,13 @@ package scala.internal.quoted
 
 import scala.quoted._
 
+/** Quoted expression of type `T`
+ *
+ *  Restriction: only the QuoteContext.tasty.internal implementation is allowed to extend this trait.
+ *  Any other implementation will result in an undefined behavior.
+ */
+class Expr[+T] extends scala.quoted.Expr[T]
+
 object Expr {
 
   /** Pattern matches an the scrutineeExpr against the patternExpr and returns a tuple
@@ -25,7 +32,7 @@ object Expr {
    *  @param qctx the current QuoteContext
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
    */
-  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_],
+  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: scala.quoted.Expr[_])(implicit patternExpr: scala.quoted.Expr[_],
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
     import qctx.tasty.{_, given}
     new Matcher.QuoteMatcher[qctx.type].termMatch(scrutineeExpr.unseal, patternExpr.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
