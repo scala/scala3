@@ -284,6 +284,13 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsRun")
     compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions)
   }.checkRuns()
+
+  @Test def compilerCrash: Unit = {
+      implicit val testGroup: TestGroup = TestGroup("compilePos")
+      aggregateTests(
+        compileFilesInDir("tests/compiler-crash", defaultOptions),
+      )
+    }.checkCompile()
 }
 
 object CompilationTests {
