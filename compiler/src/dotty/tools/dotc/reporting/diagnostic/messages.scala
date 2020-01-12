@@ -1457,6 +1457,15 @@ object messages {
     val explanation: String = ""
   }
 
+  case class MissingTypeParameterInTypeApp(tpe: Type)(implicit ctx: Context)
+    extends Message(MissingTypeParameterInTypeAppID) {
+    val numParams = tpe.typeParams.length
+    val parameters = if (numParams == 1) "parameter" else "parameters"
+    val msg: String = em"Missing type $parameters for $tpe"
+    val kind: String = "Type Mismatch"
+    val explanation: String = em"A fully applied type is expected but $tpe takes $numParams $parameters."
+  }
+
   case class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(
     err: Errors)(implicit ctx: Context)
     extends Message(DoesNotConformToBoundID) {
