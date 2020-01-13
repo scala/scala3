@@ -915,6 +915,13 @@ trait Applications extends Compatibility {
             // applications of inline functions.
             tree.args match {
               case (arg @ Match(EmptyTree, cases)) :: Nil =>
+                cases.foreach {
+                  case CaseDef(Typed(_: Ident, _), _, _) => // OK
+                  case CaseDef(Bind(_, Typed(_: Ident, _)), _, _) => // OK
+                  case CaseDef(Ident(name), _, _) if name == nme.WILDCARD => // Ok
+                  case CaseDef(pat, _, _) =>
+                    ctx.error("Unexpected pattern for summonFrom. Expeced `x: T` or `_`", pat.sourcePos)
+                }
                 typed(untpd.InlineMatch(EmptyTree, cases).withSpan(arg.span), pt)
               case _ =>
                 errorTree(tree, em"argument to summonFrom must be a pattern matching closure")
