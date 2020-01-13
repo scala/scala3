@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import java.io.{PrintWriter, StringWriter}
-import java.lang.reflect.{InvocationTargetException, Method}
+import java.lang.reflect.{InvocationTargetException, Method => JLRMethod}
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees._
@@ -194,10 +194,13 @@ object Splicer {
           interpretNew(fn.symbol, args.flatten.map(interpretTree))
         else if (fn.symbol.is(Module))
           interpretModuleAccess(fn.symbol)
-        else if (fn.symbol.isStatic) {
+        else if (fn.symbol.is(Method) && fn.symbol.isStatic) {
           val staticMethodCall = interpretedStaticMethodCall(fn.symbol.owner, fn.symbol)
           staticMethodCall(args.flatten.map(interpretTree))
         }
+        else if (fn.symbol.isStatic)
+          assert(args.isEmpty)
+          interpretedStaticFieldAccess(fn.symbol)
         else if (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic)
           if (fn.name == nme.asInstanceOfPM)
             interpretModuleAccess(fn.qualifier.symbol)
@@ -277,6 +280,12 @@ object Splicer {
       (args: List[Object]) => stopIfRuntimeException(method.invoke(inst, args: _*), method)
     }
 
+    private def interpretedStaticFieldAccess(sym: Symbol)(implicit env: Env): Object = {
+      val clazz = loadClass(sym.owner.fullName.toString)
+      val field = clazz.getField(sym.name.toString)
+      field.get(null)
+    }
+
     private def interpretModuleAccess(fn: Symbol)(implicit env: Env): Object =
       loadModule(fn.moduleClass)
 
@@ -319,7 +328,7 @@ object Splicer {
           throw new StopInterpretation(msg, pos)
       }
 
-    private def getMethod(clazz: Class[?], name: Name, paramClasses: List[Class[?]]): Method =
+    private def getMethod(clazz: Class[?], name: Name, paramClasses: List[Class[?]]): JLRMethod =
       try clazz.getMethod(name.toString, paramClasses: _*)
       catch {
         case _: NoSuchMethodException =>
@@ -327,7 +336,7 @@ object Splicer {
           throw new StopInterpretation(msg, pos)
       }
 
-    private def stopIfRuntimeException[T](thunk: => T, method: Method): T =
+    private def stopIfRuntimeException[T](thunk: => T, method: JLRMethod): T =
       try thunk
       catch {
         case ex: RuntimeException =>
