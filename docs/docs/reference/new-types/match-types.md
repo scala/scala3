@@ -23,7 +23,7 @@ Here `=:=` is understood to mean that left and right hand sides are mutually sub
 
 In general, a match type is of the form
 ```scala
-S match { P1 => Tn ... Pn => Tn }
+S match { P1 => T1 ... Pn => Tn }
 ```
 where `S`, `T1`, ..., `Tn` are types and `P1`, ..., `Pn` are type patterns. Type variables
 in patterns start as usual with a lower case letter.
@@ -50,7 +50,7 @@ In this definition, every instance of `Concat[A, B]`, whether reducible or not, 
 
 The internal representation of a match type
 ```
-S match { P1 => Tn ... Pn => Tn }
+S match { P1 => T1 ... Pn => Tn }
 ```
 is `Match(S, C1, ..., Cn) <: B` where each case `Ci` is of the form
 ```
