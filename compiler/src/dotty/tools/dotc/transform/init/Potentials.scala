@@ -20,12 +20,14 @@ object Potentials {
   def show(pots: Potentials)(implicit ctx: Context): String =
     pots.map(_.show).mkString(", ")
 
+  /** A potential represents an aliasing of a value that is possibly under initialization */
   sealed trait Potential {
     def size: Int
     def show(implicit ctx: Context): String
     def source: Tree
   }
 
+  /** The object pointed by `C.this` */
   case class ThisRef(classSymbol: ClassSymbol)(val source: Tree) extends Potential {
     val size: Int = 1
     def show(implicit ctx: Context): String = classSymbol.name.show + ".this"
@@ -50,6 +52,7 @@ object Potentials {
     }
   }
 
+  /** The object pointed by `C.super.this`, mainly used for override resolution */
   case class SuperRef(pot: Potential, supercls: ClassSymbol)(val source: Tree) extends Potential {
     val size: Int = 1
     def show(implicit ctx: Context): String = pot.show + ".super[" + supercls.name.show + "]"
@@ -113,21 +116,25 @@ object Potentials {
     def show(implicit ctx: Context): String = "Outer[" + pot.show + ", " + classSymbol.show + "]"
   }
 
+  /** The object pointed by `this.f` */
   case class FieldReturn(potential: Potential, field: Symbol)(val source: Tree) extends Potential {
     def size: Int = potential.size + 1
     def show(implicit ctx: Context): String = potential.show + "." + field.name.show
   }
 
+  /** The object returned by `this.m()` */
   case class MethodReturn(potential: Potential, symbol: Symbol)(val source: Tree) extends Potential {
     def size: Int = potential.size + 1
     def show(implicit ctx: Context): String = potential.show + "." + symbol.name.show
   }
 
+  /** The object whose initialization status is unknown */
   case class Cold()(val source: Tree) extends Potential {
     def size: Int = 1
     def show(implicit ctx: Context): String = "Cold"
   }
 
+  /** A function when called will produce the `effects` and return the `potentials` */
   case class Fun(potentials: Potentials, effects: Effects)(val source: Tree) extends Potential {
     def size: Int = 1
     def show(implicit ctx: Context): String =

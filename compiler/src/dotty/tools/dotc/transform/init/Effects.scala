@@ -18,24 +18,38 @@ object Effects {
   def show(effs: Effects)(implicit ctx: Context): String =
     effs.map(_.show).mkString(", ")
 
+  /** Effects that are related to safe initialization */
   sealed trait Effect {
     def size: Int
     def show(implicit ctx: Context): String
     def source: Tree
   }
 
+  /** An effect means that a value that's possibly under initialization
+   *  leaks from the initializing world to fully-initialized world.
+   *
+   *  Essentially, this effect enforces that the object pointed to by
+   *  `potential` is fully initialized.
+   *
+   *  This effect is trigger in several scenarios:
+   *  - a potential is used as arguments to method calls or new-expressions
+   *  - a potential is assigned (not initialize) to a field
+   *  - the selection chain on a potential is too long
+   */
   case class Leak(potential: Potential)(val source: Tree) extends Effect {
     def size: Int = potential.size
     def show(implicit ctx: Context): String =
       potential.show + "↑"
   }
 
+  /** Field access, `a.f` */
   case class FieldAccess(potential: Potential, field: Symbol)(val source: Tree) extends Effect {
     def size: Int = potential.size
     def show(implicit ctx: Context): String =
       potential.show + "." + field.name.show + "!"
   }
 
+  /** Method call, `a.m()` */
   case class MethodCall(potential: Potential, method: Symbol)(val source: Tree) extends Effect {
     def size: Int = potential.size
     def show(implicit ctx: Context): String = potential.show + "." + method.name.show + "!"

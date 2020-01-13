@@ -20,7 +20,7 @@ import Effects._, Potentials._, Summary._, Util._
 object Checking {
   /** The checking state
    *
-   *  Why `visited` is a set of `MethodCall` instead of `Symbol`? Think the following program:
+   *  Why `visited` is a set of effects instead of `Symbol`? Think the following program:
    *
    *      class C(x: Int, a: A @cold) {
    *        val n = if (x > 0) new C(x - 1, a).m() else 0
@@ -84,20 +84,15 @@ object Checking {
           val (pots, effs) = Summarization.analyze(vdef.rhs)(theEnv.withOwner(vdef.symbol))
           theEnv.summaryOf(cls).cacheFor(vdef.symbol, (pots, effs))
           if (!vdef.symbol.is(Flags.Lazy)) {
-            checkEffects(effs)
+            checkEffectsIn(effs, cls)
             traceIndented(vdef.symbol.show + " initialized", init)
             state.fieldsInited += vdef.symbol
           }
 
         case tree =>
           val (_, effs) = Summarization.analyze(tree)
-          checkEffects(effs)
+          checkEffectsIn(effs, cls)
       }
-    }
-
-    def checkEffects(effs: Effects): Unit = {
-      val rebased = Effects.asSeenFrom(effs, ThisRef(state.thisClass)(null), cls, Potentials.empty)
-      rebased.foreach { check(_) }
     }
 
     // check parent calls : follows linearization ordering
@@ -159,8 +154,7 @@ object Checking {
 
     (stats :+ expr).foreach { stat =>
       val (_, effs) = Summarization.analyze(stat)(theEnv.withOwner(ctor))
-      val rebased = Effects.asSeenFrom(effs, ThisRef(state.thisClass)(null), cls, Potentials.empty)
-      rebased.foreach { check(_) }
+      checkEffectsIn(effs, cls)
     }
   }
 
@@ -182,6 +176,11 @@ object Checking {
       ". Calling trace:\n" + state.trace,
       source.sourcePos
     )
+
+  private def checkEffectsIn(effs: Effects, cls: ClassSymbol)(implicit state: State): Unit = {
+    val rebased = Effects.asSeenFrom(effs, ThisRef(state.thisClass)(null), cls, Potentials.empty)
+    rebased.foreach { check(_) }
+  }
 
   private def check(eff: Effect)(implicit state: State): Unit =
     if (!state.visited.contains(eff)) traceOp("checking effect " + eff.show, init) {
@@ -317,8 +316,8 @@ object Checking {
       }
     }
 
-  private def expand(pot: Potential)(implicit state: State): Potentials =
-    trace("expand " + pot.show, init, pots => Potentials.show(pots.asInstanceOf[Potentials])) { pot match {
+  private def expand(pot: Potential)(implicit state: State): Potentials = trace("expand " + pot.show, init, pots => Potentials.show(pots.asInstanceOf[Potentials])) {
+    pot match {
       case MethodReturn(pot1, sym) =>
         pot1 match {
           case thisRef @ ThisRef(cls) =>
