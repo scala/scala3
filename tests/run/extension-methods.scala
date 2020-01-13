@@ -1,18 +1,18 @@
 object Test extends App {
 
-  def (x: Int) em: Boolean = x > 0
+  def (x: Int).em: Boolean = x > 0
 
   assert(1.em == em(1))
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  def (c: Circle) circumference: Double = c.radius * math.Pi * 2
+  def (c: Circle).circumference: Double = c.radius * math.Pi * 2
 
   val circle = new Circle(1, 1, 2.0)
 
   assert(circle.circumference == circumference(circle))
 
-  def (xs: Seq[String]) longestStrings: Seq[String] = {
+  def (xs: Seq[String]).longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
@@ -29,7 +29,7 @@ object Test extends App {
   assert(Nil.flattened == Nil)
 
   trait SemiGroup[T] {
-    def (x: T) combine (y: T): T
+    def (x: T).combine(y: T): T
   }
   trait Monoid[T] extends SemiGroup[T] {
     def unit: T
@@ -37,7 +37,7 @@ object Test extends App {
 
   // An instance declaration:
   implicit object StringMonoid extends Monoid[String] {
-    def (x: String) combine (y: String): String = x.concat(y)
+    def (x: String).combine(y: String): String = x.concat(y)
     def unit: String = ""
   }
 
@@ -48,14 +48,14 @@ object Test extends App {
   println(sum(names))
 
   trait Ord[T] {
-    def (x: T) compareTo (y: T): Int
+    def (x: T).compareTo(y: T): Int
     def (x: T) < (y: T) = x.compareTo(y) < 0
     def (x: T) > (y: T) = x.compareTo(y) > 0
     val minimum: T
   }
 
   implicit object IntOrd extends Ord[Int] {
-    def (x: Int) compareTo (y: Int) =
+    def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
   }

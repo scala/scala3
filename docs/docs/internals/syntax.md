@@ -103,7 +103,7 @@ yield
 ### Soft keywords
 
 ```
-as        derives   inline    opaque    open
+derives   extension inline    opaque    open
 ~         *         |         &         +         -
 ```
 
@@ -358,7 +358,7 @@ ValDcl            ::=  ids ‘:’ Type                                         
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig ‘:’ Type                                          DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  id [DefTypeParamClause] DefParamClauses
-                    |  ExtParamClause [nl] id DefParamClauses
+                    |  ExtParamClause [nl] [‘.’] id DefParamClauses
 TypeDcl           ::=  id [TypeParamClause] SubtypeBounds [‘=’ Type]           TypeDefTree(_, name, tparams, bound
 
 Def               ::=  ‘val’ PatDef
@@ -378,7 +378,7 @@ TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
                     |  ‘given’ GivenDef
-                    |  Export
+                    |  ‘extension’ ExtensionDef
 ClassDef          ::=  id ClassConstr [Template]                                ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
@@ -388,11 +388,10 @@ GivenDef          ::=  [GivenSig (‘:’ | <:)] {FunArgTypes ‘=>’}
                        AnnotType ‘=’ Expr
                     |  [GivenSig ‘:’] {FunArgTypes ‘=>’}
                        ConstrApps [[‘with’] TemplateBody]
-                    |  [id ‘:’] ExtParamClause {GivenParamClause}
-                       ‘extended’ ‘with’ ExtMethods
 GivenSig          ::=  [id] [DefTypeParamClause] {GivenParamClause}
-ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
+ExtensionDef      ::=  [id] ‘of’ ExtParamClause {GivenParamClause} ExtMethods
 ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
+ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
 Template          ::=  InheritClauses [[‘with’] TemplateBody]                   Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}

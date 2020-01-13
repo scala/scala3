@@ -11,9 +11,10 @@ object Library {
     def toInt(n: Nat): Int = n
 
   }
-  given (x: Nat) extended with
+  extension on (x: Nat) {
     def * (y: Nat): Nat = x * y
     def toInt: Int = x
+  }
 }
 
 object User extends App {

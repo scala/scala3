@@ -183,7 +183,7 @@ given extension (s: String) { ... }
 ```
 or
 ```scala
-given listOps: [T](xs: List[T]) extended with { ... }
+extension listOps of [T](xs: List[T]) with { ... }
 
 given (s: String) extended with { ... }
 ```

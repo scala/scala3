@@ -3,7 +3,7 @@ import scala.language.implicitConversions
 trait Fixture[A] extends Conversion[0, A]
 
 trait TestFramework[A] {
-  def (testName: String) in (test: (given Fixture[A]) => Unit): Unit = ???
+  def (testName: String).in(test: (given Fixture[A]) => Unit): Unit = ???
 }
 
 trait Greeter {

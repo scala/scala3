@@ -6,7 +6,7 @@ import scala.language.implicitConversions
 
 object TestFooErrors { // Defined in tests
   implicit object StringContextOps {
-    inline def (ctx: => StringContext) foo (args: => Any*): List[(Boolean, Int, Int, Int, String)] = ${ Macro.fooErrors('ctx, 'args) }
+    inline def (ctx: => StringContext).foo(args: => Any*): List[(Boolean, Int, Int, Int, String)] = ${ Macro.fooErrors('ctx, 'args) }
   }
 }
 

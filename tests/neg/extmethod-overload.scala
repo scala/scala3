@@ -1,8 +1,9 @@
 object Test {
-  given a: (x: Int) extended with
+  extension a on (x: Int) {
     def |+| (y: Int) = x + y
+  }
 
-  given b: (x: Int) extended with {
+  extension b on (x: Int) {
     def |+| (y: String) = x + y.length
   }
   assert((1 |+| 2) == 3)  // error ambiguous

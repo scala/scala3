@@ -3,7 +3,7 @@ import scala.language.implicitConversions
 
 object Macro {
 
-  implicit inline def (strCtx: => StringContext) f3 (args: =>Any*): String = ${FIntepolator.apply('strCtx, 'args)}
+  implicit inline def (strCtx: => StringContext).f3(args: =>Any*): String = ${FIntepolator.apply('strCtx, 'args)}
 
 }
 

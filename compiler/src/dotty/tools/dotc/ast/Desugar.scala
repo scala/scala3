@@ -954,10 +954,6 @@ object desugar {
     else tree
   }
 
-  /** Invent a name for an anonympus given of type or template `impl`. */
-  def inventGivenName(impl: Tree)(implicit ctx: Context): SimpleName =
-    s"given_${inventName(impl)}".toTermName.asSimpleName
-
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
    *      If it does redefine, issue an error and return a mangled name instead of the original one.
@@ -965,7 +961,7 @@ object desugar {
    */
   def normalizeName(mdef: MemberDef, impl: Tree)(implicit ctx: Context): Name = {
     var name = mdef.name
-    if (name.isEmpty) name = name.likeSpaced(inventGivenName(impl))
+    if (name.isEmpty) name = name.likeSpaced(inventGivenOrExtensionName(impl))
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
       def kind = if (name.isTypeName) "class" else "object"
       ctx.error(em"illegal redefinition of standard $kind $name", mdef.sourcePos)
@@ -974,27 +970,26 @@ object desugar {
     name
   }
 
-  /** Invent a name for an anonymous instance with template `impl`.
-   */
-  private def inventName(impl: Tree)(implicit ctx: Context): String = impl match {
-    case impl: Template =>
-      if (impl.parents.isEmpty)
-        impl.body.find {
-          case dd: DefDef if dd.mods.is(Extension) => true
-          case _ => false
-        }
-        match {
-          case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
-            s"${name}_of_${inventTypeName(vparam.tpt)}"
-          case _ =>
-            ctx.error(i"anonymous instance must implement a type or have at least one extension method", impl.sourcePos)
-            nme.ERROR.toString
-        }
-      else
-        impl.parents.map(inventTypeName(_)).mkString("_")
-    case impl: Tree =>
-      inventTypeName(impl)
-  }
+  /** Invent a name for an anonympus given or extension of type or template `impl`. */
+  def inventGivenOrExtensionName(impl: Tree)(given ctx: Context): SimpleName =
+    val str = impl match
+      case impl: Template =>
+        if impl.parents.isEmpty then
+          impl.body.find {
+            case dd: DefDef if dd.mods.is(Extension) => true
+            case _ => false
+          }
+          match
+            case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
+              s"extension_${name}_${inventTypeName(vparam.tpt)}"
+            case _ =>
+              ctx.error(i"anonymous instance must implement a type or have at least one extension method", impl.sourcePos)
+              nme.ERROR.toString
+        else
+          impl.parents.map(inventTypeName(_)).mkString("given_", "_", "")
+      case impl: Tree =>
+        "given_" ++ inventTypeName(impl)
+    str.toTermName.asSimpleName
 
   private class NameExtractor(followArgs: Boolean) extends UntypedTreeAccumulator[String] {
     private def extractArgs(args: List[Tree])(implicit ctx: Context): String =

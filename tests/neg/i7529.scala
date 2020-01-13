@@ -1,4 +1,4 @@
-given fooOps: [A](a: A) extended with
+extension fooOps on [A](a: A) with
 
   @nonsense    // error: not found: nonsense
   def foo = ???

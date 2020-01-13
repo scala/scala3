@@ -1,10 +1,10 @@
 class A
 class B extends A
 
-given a: (x: A) extended with
+extension a on (x: A) with
   def foo: Int = 1
 
-given b: (x: B) extended with
+extension b on (x: B) with
   def foo: Int = 2
 
 @main def Test =

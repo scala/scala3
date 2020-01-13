@@ -12,10 +12,10 @@ object Enums with
     case Hearts, Spades, Clubs, Diamonds
 
   object Suits with
-    def (suit: Suits) isRed: Boolean =
+    def (suit: Suits).isRed: Boolean =
       suit == Hearts || suit == Diamonds
 
-    def (suit: Suits) isBlack: Boolean = suit match
+    def (suit: Suits).isBlack: Boolean = suit match
       case Spades | Diamonds => true
       case _                 => false
 

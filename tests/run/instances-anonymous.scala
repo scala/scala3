@@ -1,14 +1,14 @@
 object Test extends App {
 
   implicit object O {
-    def (x: Int) em: Boolean = x > 0
+    def (x: Int).em: Boolean = x > 0
   }
 
   assert(1.em == O.em(1))
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  given (c: Circle) extended with {
+  extension on (c: Circle) {
     def circumference: Double = c.radius * math.Pi * 2
   }
 
@@ -17,7 +17,7 @@ object Test extends App {
   println(circle.circumference)
 
   given AnyRef {
-    def (xs: Seq[String]) longestStrings: Seq[String] = {
+    def (xs: Seq[String]).longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
@@ -25,13 +25,13 @@ object Test extends App {
   val names = List("hi", "hello", "world")
   assert(names.longestStrings == List("hello", "world"))
 
-  given [T](xs: Seq[T]) extended with {
+  extension on [T](xs: Seq[T]) {
     def second = xs.tail.head
   }
 
   assert(names.longestStrings.second == "world")
 
-  given [T](xs: List[List[T]]) extended with {
+  extension on [T](xs: List[List[T]]) {
     def flattened = xs.foldLeft[List[T]](Nil)(_ ++ _)
   }
 
@@ -39,14 +39,14 @@ object Test extends App {
   assert(Nil.flattened == Nil)
 
   trait SemiGroup[T] {
-    def (x: T) combine (y: T): T
+    def (x: T).combine(y: T): T
   }
   trait Monoid[T] extends SemiGroup[T] {
     def unit: T
   }
 
   given Monoid[String] {
-    def (x: String) combine (y: String): String = x.concat(y)
+    def (x: String).combine(y: String): String = x.concat(y)
     def unit: String = ""
   }
 
@@ -57,20 +57,20 @@ object Test extends App {
   println(sum(names))
 
   trait Ord[T] {
-    def (x: T) compareTo (y: T): Int
+    def (x: T).compareTo(y: T): Int
     def (x: T) < (y: T) = x.compareTo(y) < 0
     def (x: T) > (y: T) = x.compareTo(y) > 0
     val minimum: T
   }
 
   given Ord[Int] {
-    def (x: Int) compareTo (y: Int) =
+    def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
   }
 
   given [T: Ord] : Ord[List[T]] {
-    def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
+    def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys).match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1

@@ -1541,7 +1541,7 @@ class Typer extends Namer
         var name = tree.name
         if (name == nme.WILDCARD && tree.mods.is(Given)) {
           val Typed(_, tpt): @unchecked = tree.body
-          name = desugar.inventGivenName(tpt)
+          name = desugar.inventGivenOrExtensionName(tpt)
         }
         if (name == nme.WILDCARD) body1
         else {

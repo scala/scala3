@@ -16,13 +16,13 @@ object opaques
       *  @param n   the index of the element to select
       *  @return    the element of the array at the given index
       */
-    def (arr: IArray[Byte]) apply (n: Int): Byte = arr.asInstanceOf[Array[Byte]].apply(n)
-    def (arr: IArray[Short]) apply (n: Int): Short = arr.asInstanceOf[Array[Short]].apply(n)
-    def (arr: IArray[Char]) apply (n: Int): Char = arr.asInstanceOf[Array[Char]].apply(n)
-    def (arr: IArray[Int]) apply (n: Int): Int = arr.asInstanceOf[Array[Int]].apply(n)
-    def (arr: IArray[Long]) apply (n: Int): Long = arr.asInstanceOf[Array[Long]].apply(n)
-    def (arr: IArray[Float]) apply (n: Int): Float = arr.asInstanceOf[Array[Float]].apply(n)
-    def (arr: IArray[Double]) apply (n: Int): Double = arr.asInstanceOf[Array[Double]].apply(n)
+    def (arr: IArray[Byte]) apply(n: Int): Byte = arr.asInstanceOf[Array[Byte]].apply(n)
+    def (arr: IArray[Short]) apply(n: Int): Short = arr.asInstanceOf[Array[Short]].apply(n)
+    def (arr: IArray[Char]) apply(n: Int): Char = arr.asInstanceOf[Array[Char]].apply(n)
+    def (arr: IArray[Int]) apply(n: Int): Int = arr.asInstanceOf[Array[Int]].apply(n)
+    def (arr: IArray[Long]) apply(n: Int): Long = arr.asInstanceOf[Array[Long]].apply(n)
+    def (arr: IArray[Float]) apply(n: Int): Float = arr.asInstanceOf[Array[Float]].apply(n)
+    def (arr: IArray[Double]) apply(n: Int): Double = arr.asInstanceOf[Array[Double]].apply(n)
     def [T <: Object](arr: IArray[T]) apply (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
     def [T](arr: IArray[T]) apply (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
 

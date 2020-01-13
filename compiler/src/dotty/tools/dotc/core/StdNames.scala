@@ -530,6 +530,7 @@ object StdNames {
     val null_ : N               = "null"
     val nullExpr: N             = "nullExpr"
     val ofDim: N                = "ofDim"
+    val on: N                   = "on"
     val opaque: N               = "opaque"
     val open: N                 = "open"
     val ordinal: N              = "ordinal"
