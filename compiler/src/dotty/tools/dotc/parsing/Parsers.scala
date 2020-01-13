@@ -948,9 +948,9 @@ object Parsers {
     def followingIsExtension() =
       val lookahead = in.LookaheadScanner()
       lookahead.nextToken()
-      if lookahead.isIdent && !lookahead.isIdent(nme.of) then
+      if lookahead.isIdent && !lookahead.isIdent(nme.on) then
         lookahead.nextToken()
-      lookahead.isIdent(nme.of)
+      lookahead.isIdent(nme.on)
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -3538,9 +3538,9 @@ object Parsers {
      */
     def extensionDef(start: Offset, mods: Modifiers): ModuleDef =
       in.nextToken()
-      val name = if isIdent && !isIdent(nme.of) then ident() else EmptyTermName
-      if !isIdent(nme.of) then syntaxErrorOrIncomplete("`of` expected")
-      if isIdent(nme.of) then in.nextToken()
+      val name = if isIdent && !isIdent(nme.on) then ident() else EmptyTermName
+      if !isIdent(nme.on) then syntaxErrorOrIncomplete("`on` expected")
+      if isIdent(nme.on) then in.nextToken()
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       val extParams = paramClause(0, prefix = true)
       val givenParamss = paramClauses(givenOnly = true)

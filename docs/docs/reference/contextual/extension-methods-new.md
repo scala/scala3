@@ -128,19 +128,19 @@ A collective extension defines one or more concrete methods that have the same t
 and prefix parameter. Examples:
 
 ```scala
-extension stringOps of (xs: Seq[String]) {
+extension stringOps on (xs: Seq[String]) {
   def longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
 
-extension listOps of [T](xs: List[T]) {
+extension listOps on [T](xs: List[T]) {
   def second = xs.tail.head
   def third: T = xs.tail.tail.head
 }
 
-extension of [T](xs: List[T])(given Ordering[T]) {
+extension on [T](xs: List[T])(given Ordering[T]) {
   def largest(n: Int) = xs.sorted.takeRight(n)
 }
 ```
@@ -164,18 +164,19 @@ given extension_largest_List_T: AnyRef {
 }
 ```
 
-`extension` and `of` are soft keywords. They can also be used as a regular identifiers.
+`extension` and `on` are soft keywords. They can also be used as a regular identifiers.
 
 ### Syntax
 
 Here are the syntax changes for extension methods and given extensions relative
-to the [current syntax](../../internals/syntax.md). `extension` is a soft keyword, recognized only after a `given`. It can be used as an identifier everywhere else.
+to the [current syntax](../../internals/syntax.md). `extension` is a soft keyword, recognized only in tandem with `on`. It can be used as an identifier everywhere else.
+
 ```
 DefSig            ::=  ...
                     |  ExtParamClause [nl] [‘.’] id DefParamClauses
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
 TmplDef           ::=  ...
                     |  ‘extension’ ExtensionDef
-ExtensionDef      ::=  [id] ‘of’ ExtParamClause {GivenParamClause} ExtMethods
+ExtensionDef      ::=  [id] ‘on’ ExtParamClause {GivenParamClause} ExtMethods
 ExtMethods        ::=  ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ```

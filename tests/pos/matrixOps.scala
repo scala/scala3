@@ -3,7 +3,7 @@ object Test with
   type Matrix = Array[Array[Double]]
   type Vector = Array[Double]
 
-  extension of (m: Matrix) with
+  extension on (m: Matrix) with
     def nRows = m.length
     def nCols = m(0).length
     def row(i: Int): Vector = m(i)

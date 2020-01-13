@@ -7,7 +7,7 @@ object testObjectInstance with
   object instances {
     given zipOption: Zip[Option] = ???
     given traverseList: Traverse[List] = ???
-    extension listExtension of [T](xs: List[T]) with
+    extension listExtension on [T](xs: List[T]) with
       def second: T = xs.tail.head
     def [T](xs: List[T]) first: T = xs.head
   }
