@@ -10,7 +10,7 @@ class Reflect(val internal: CompilerInterface) {
   opaque type Term <: Tree = internal.Term
 
   object Tree {
-    extension ops of (tree: Tree) with {
+    extension ops of (tree: Tree) {
       def show: String = ???
     }
   }

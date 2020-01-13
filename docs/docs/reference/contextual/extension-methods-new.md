@@ -128,19 +128,19 @@ A collective extension defines one or more concrete methods that have the same t
 and prefix parameter. Examples:
 
 ```scala
-extension stringOps of (xs: Seq[String]) with {
+extension stringOps of (xs: Seq[String]) {
   def longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
 
-extension listOps of [T](xs: List[T]) with {
+extension listOps of [T](xs: List[T]) {
   def second = xs.tail.head
   def third: T = xs.tail.tail.head
 }
 
-extension of [T](xs: List[T])(given Ordering[T]) with {
+extension of [T](xs: List[T])(given Ordering[T]) {
   def largest(n: Int) = xs.sorted.takeRight(n)
 }
 ```
@@ -176,6 +176,6 @@ DefSig            ::=  ...
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
 TmplDef           ::=  ...
                     |  ‘extension’ ExtensionDef
-ExtensionDef      ::=  [id] ‘of’ ExtParamClause {GivenParamClause} ‘with’ ExtMethods
+ExtensionDef      ::=  [id] ‘of’ ExtParamClause {GivenParamClause} ExtMethods
 ExtMethods        ::=  ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ```

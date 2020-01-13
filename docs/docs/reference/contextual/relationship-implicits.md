@@ -72,7 +72,7 @@ Anonymous collective extensions also get compiler synthesized names, which are f
 
 For example, the extension
 ```scala
-extension of [T] (xs: List[T]) with {
+extension of [T] (xs: List[T]) {
   def second = ...
 }
 ```

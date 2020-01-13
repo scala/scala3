@@ -41,7 +41,7 @@ object ExtMethods with
 
   List(1, 2, 3).second[Int]
 
-  extension stringOps of (xs: Seq[String]) with {
+  extension stringOps of (xs: Seq[String]) {
     def longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)

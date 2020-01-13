@@ -389,9 +389,8 @@ GivenDef          ::=  [GivenSig (‘:’ | <:)] {FunArgTypes ‘=>’}
                     |  [GivenSig ‘:’] {FunArgTypes ‘=>’}
                        ConstrApps [[‘with’] TemplateBody]
 GivenSig          ::=  [id] [DefTypeParamClause] {GivenParamClause}
-ExtensionDef      ::=  [id] ‘of’ ExtParamClause {GivenParamClause}
-                       ‘with’ ExtMethods
-ExtMethods        ::=  ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
+ExtensionDef      ::=  [id] ‘of’ ExtParamClause {GivenParamClause} ExtMethods
+ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
 Template          ::=  InheritClauses [[‘with’] TemplateBody]                   Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]

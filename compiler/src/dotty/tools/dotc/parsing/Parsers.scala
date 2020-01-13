@@ -3544,7 +3544,7 @@ object Parsers {
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       val extParams = paramClause(0, prefix = true)
       val givenParamss = paramClauses(givenOnly = true)
-      accept(WITH)
+      possibleTemplateStart()
       if !in.isNestedStart then syntaxError("Extension without extension methods")
       val templ = templateBodyOpt(makeConstructor(tparams, extParams :: givenParamss), Nil, Nil)
       templ.body.foreach(checkExtensionMethod(tparams, _))
