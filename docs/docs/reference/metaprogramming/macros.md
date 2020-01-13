@@ -6,11 +6,11 @@ title: "Macros"
 ### Macros: Quotes and Splices
 
 Macros are built on two well-known fundamental operations: quotation and
-splicing.  Quotation is expressed as `'{...}` for expressions (both forms are
-equivalent) and as `'[...]` for types. Splicing is expressed as `${ ... }`.
-Additionally, within a quote or a splice we can quote or splice identifiers
-directly (i.e. `'e` and `$e`). Readers may notice the resemblance of the two
-aforementioned syntactic schemes with the familiar string interpolation syntax.
+splicing.  Quotation is expressed as `'{...}` for expressions and as `'[...]`
+for types. Splicing is expressed as `${ ... }`. Additionally, within a quote
+or a splice we can quote or splice identifiers directly (i.e. `'e` and `$e`).
+Readers may notice the resemblance of the two aforementioned syntactic
+schemes with the familiar string interpolation syntax.
 
 ```scala
 println(s"Hello, $name, here is the result of 1 + 1 = ${1 + 1}")
