@@ -5,7 +5,7 @@ Bz:
 private final int Bz.theValue
 private final int Bz.theValueInBz
 C:
-
+private final int C.theValue
 D:
 private final int D.other
 NonVal:
@@ -13,4 +13,4 @@ NonVal:
 X:
 private final int X.theValue
 Y:
-
+private final int Y.theValue

@@ -296,7 +296,7 @@ object Flags {
   val (_, CaseAccessor @ _, _) = newFlags(25, "<caseaccessor>")
 
   /** A Scala 2x super accessor / an unpickled Scala 2.x class */
-  val (SuperAccessorOrScala2x @ _, Scala2SuperAccessor @ _, Scala2x @ _) = newFlags(26, "<superaccessor>", "<scala-2.x>")
+  val (SuperParamAliasOrScala2x @ _, SuperParamAlias @ _, Scala2x @ _) = newFlags(26, "<super-param-alias>", "<scala-2.x>")
 
   /** A method that has default params */
   val (_, DefaultParameterized @ _, _) = newFlags(27, "<defaultparam>")
@@ -371,8 +371,9 @@ object Flags {
   /** Symbol is a self name */
   val (_, SelfName @ _, _) = newFlags(54, "<selfname>")
 
-  /** An existentially bound symbol (Scala 2.x only) */
-  val (Scala2ExistentialCommon @ _, _, Scala2Existential @ _) = newFlags(55, "<existential>")
+  /** A Scala 2 superaccessor (only needed during Scala2Unpickling) /
+   *  an existentially bound symbol (Scala 2.x only) */
+  val (Scala2SpecialFlags @ _, Scala2SuperAccessor @ _, Scala2Existential @ _) = newFlags(55, "<existential>")
 
   /** Children were queried on this class */
   val (_, _, ChildrenQueried @ _) = newFlags(56, "<children-queried>")
@@ -439,10 +440,10 @@ object Flags {
   val FromStartFlags: FlagSet = commonFlags(
     Module, Package, Deferred, Method, Case,
     HigherKinded, Param, ParamAccessor,
-    Scala2ExistentialCommon, MutableOrOpen, Opaque, Touched, JavaStatic,
+    Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic,
-    SuperAccessorOrScala2x, Inline, Macro)
+    SuperParamAliasOrScala2x, Inline, Macro)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -561,7 +562,7 @@ object Flags {
   val PrivateMethod: FlagSet                 = Method | Private
   val NoInitsInterface: FlagSet              = NoInits | PureInterface
   val NoInitsTrait: FlagSet                  = NoInits | Trait                                // A trait that does not need to be initialized
-  val ValidForeverFlags: FlagSet             = Package | Permanent | Scala2ExistentialCommon
+  val ValidForeverFlags: FlagSet             = Package | Permanent | Scala2SpecialFlags
   val TermParamOrAccessor: FlagSet           = Param | ParamAccessor
   val PrivateParamAccessor: FlagSet          = ParamAccessor | Private
   val PrivateOrSynthetic: FlagSet            = Private | Synthetic

@@ -1,88 +1,82 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
 import ast.Trees._
 import Contexts._, Types._, Symbols._, Flags._, TypeUtils._, DenotTransformers._, StdNames._
 import Decorators._
+import MegaPhase._
+import NameKinds.ParamAccessorName
 import config.Printers.typr
 
-/** For all parameter accessors
+/** For all private parameter accessors
  *
- *      val x: T = ...
+ *      private val x: T = ...
  *
- *  if
- *  (1) x is forwarded in the supercall to a parameter that's also named `x`
- *  (2) the superclass parameter accessor for `x` is accessible from the current class
- *  change the accessor to
+ *  If there is a chain of parameter accessors starting with `x` such that
+ *  (1) The last parameter accessor in the chain is a field that's accessible
+ *      from the current class, and
+ *  (2) each preceding parameter is forwarded in the supercall of its class
+ *      to a parameter that's also named `x`
+ *  then change the accessor to
  *
- *      def x: T = super.x.asInstanceOf[T]
+ *      private def x$accessor: T = super.x'.asInstanceOf[T]
  *
- *  Do the same also if there are intermediate inaccessible parameter accessor forwarders.
+ *  where x' is a reference to the final parameter in the chain.
+ *  Property (1) is established by the @see forwardParamAccessors method in PostTyper.
+ *
+ *  The reason for renaming `x` to `x$accessor` is that private methods in the JVM
+ *  cannot override public ones.
+ *
  *  The aim of this transformation is to avoid redundant parameter accessor fields.
  */
-class ParamForwarding(thisPhase: DenotTransformer) {
+class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
   import ast.tpd._
 
-  def forwardParamAccessors(impl: Template)(implicit ctx: Context): Template = {
-    def fwd(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
-      val (superArgs, superParamNames) = impl.parents match {
-        case superCall @ Apply(fn, args) :: _ =>
-          fn.tpe.widen match {
-            case MethodType(paramNames) => (args, paramNames)
-            case _ => (Nil, Nil)
-          }
-        case _ => (Nil, Nil)
-      }
-      def inheritedAccessor(sym: Symbol): Symbol = {
-        /**
-         * Dmitry: having it have the same name is needed to maintain correctness in presence of subclassing
-         * if you would use parent param-name `a` to implement param-field `b`
-         * overriding field `b` will actually override field `a`, that is wrong!
-         *
-         * class A(val s: Int);
-         * class B(val b: Int) extends A(b)
-         * class C extends A(2) {
-         *   def s = 3
-         *   assert(this.b == 2)
-         * }
-         */
-        val candidate = sym.owner.asClass.superClass
-          .info.decl(sym.name).suchThat(_.is(ParamAccessor, butNot = Mutable)).symbol
-        if (candidate.isAccessibleFrom(currentClass.thisType, superAccess = true)) candidate
-        else if (candidate.exists) inheritedAccessor(candidate)
-        else NoSymbol
-      }
-      def forwardParamAccessor(stat: Tree): Tree = {
-        stat match {
-          case stat: ValDef =>
-            val sym = stat.symbol.asTerm
-            if (sym.is(ParamAccessor, butNot = Mutable) && !sym.info.isInstanceOf[ExprType]) {
-              // ElimByName gets confused with methods returning an ExprType,
-              // so avoid param forwarding if parameter is by name. See i1766.scala
-              val idx = superArgs.indexWhere(_.symbol == sym)
-              if (idx >= 0 && superParamNames(idx) == stat.name) { // supercall to like-named parameter
-                val alias = inheritedAccessor(sym)
-                if (alias.exists) {
-                  def forwarder(implicit ctx: Context) = {
-                    sym.copySymDenotation(initFlags = sym.flags | Method | StableRealizable, info = sym.info.ensureMethodic)
-                      .installAfter(thisPhase)
-                    val superAcc =
-                      Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
-                    typr.println(i"adding param forwarder $superAcc")
-                    DefDef(sym, superAcc.ensureConforms(sym.info.widen)).withSpan(stat.span)
-                  }
-                  return forwarder(ctx.withPhase(thisPhase.next))
-                }
-              }
-            }
-          case _ =>
-        }
-        stat
-      }
-      stats map forwardParamAccessor
-    }
+  private def thisPhase: ParamForwarding = this
 
-    cpy.Template(impl)(body = fwd(impl.body)(ctx.withPhase(thisPhase)))
-  }
-}
+  val phaseName: String = "paramForwarding"
+
+  def transformIfParamAlias(mdef: ValOrDefDef)(using ctx: Context): Tree =
+
+    def inheritedAccessor(sym: Symbol)(using Context): Symbol =
+      val candidate = sym.owner.asClass.superClass
+        .info.decl(sym.name).suchThat(_.is(ParamAccessor, butNot = Mutable))
+        .symbol
+      if !candidate.is(Private)  // candidate might be private and accessible if it is in an outer class
+         && candidate.isAccessibleFrom(currentClass.thisType, superAccess = true)
+      then
+        candidate
+      else if candidate.is(SuperParamAlias) then
+        inheritedAccessor(candidate)
+      else
+        NoSymbol
+
+    val sym = mdef.symbol.asTerm
+    if sym.is(SuperParamAlias) then
+      assert(sym.is(ParamAccessor, butNot = Mutable))
+      val alias = inheritedAccessor(sym)(using ctx.withPhase(thisPhase))
+      if alias.exists then
+        sym.copySymDenotation(
+            name = ParamAccessorName(sym.name),
+            initFlags = sym.flags | Method | StableRealizable,
+            info = sym.info.ensureMethodic
+          ).installAfter(thisPhase)
+        val superAcc =
+          Super(This(currentClass), tpnme.EMPTY, inConstrCall = false)
+            .withSpan(mdef.span)
+            .select(alias)
+            .ensureApplied
+            .ensureConforms(sym.info.finalResultType)
+        ctx.log(i"adding param forwarder $superAcc")
+        DefDef(sym, superAcc)
+      else mdef
+    else mdef
+  end transformIfParamAlias
+
+  override def transformValDef(mdef: ValDef)(using Context): Tree =
+    transformIfParamAlias(mdef)
+
+  override def transformDefDef(mdef: DefDef)(using Context): Tree =
+    transformIfParamAlias(mdef)

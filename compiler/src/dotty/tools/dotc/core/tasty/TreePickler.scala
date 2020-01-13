@@ -682,6 +682,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags.is(StableRealizable)) writeModTag(STABLE)
       if (flags.is(Extension)) writeModTag(EXTENSION)
       if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)
+      if (flags.is(SuperParamAlias)) writeModTag(PARAMalias)
       if (flags.is(Exported)) writeModTag(EXPORTED)
       assert(!(flags.is(Label)))
     }

@@ -145,10 +145,6 @@ object Annotations {
     def deferredResolve(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
       deferred(atp.classSymbol)(resolveConstructor(atp, args))
 
-    def makeAlias(sym: TermSymbol)(implicit ctx: Context): Annotation =
-      apply(defn.AliasAnnot, List(
-        ref(TermRef(sym.owner.thisType, sym.name, sym))))
-
     /** Extractor for child annotations */
     object Child {
 

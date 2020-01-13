@@ -598,7 +598,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                   denot.info matches denot.owner.thisType.memberInfo(alt)
                 }
               val alias = readDisambiguatedSymbolRef(disambiguate).asTerm
-              denot.addAnnotation(Annotation.makeAlias(alias))
+              if alias.name == denot.name then denot.setFlag(SuperParamAlias)
             }
         }
         // println(s"unpickled ${denot.debugString}, info = ${denot.info}") !!! DEBUG
