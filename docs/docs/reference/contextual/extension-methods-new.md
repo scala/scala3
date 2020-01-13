@@ -3,15 +3,12 @@ layout: doc-page
 title: "Extension Methods"
 ---
 
-**Note:** The syntax of extension methods is about to change. Here is the
-[doc page with the new syntax](./extension-methods-new.html), supported from Dotty 0.22 onwards.
-
 Extension methods allow one to add methods to a type after the type is defined. Example:
 
 ```scala
 case class Circle(x: Double, y: Double, radius: Double)
 
-def (c: Circle) circumference: Double = c.radius * math.Pi * 2
+def (c: Circle).circumference: Double = c.radius * math.Pi * 2
 ```
 
 Like regular methods, extension methods can be invoked with infix `.`:
@@ -45,7 +42,7 @@ As an example, consider an extension method `longestStrings` on `Seq[String]` de
 
 ```scala
 trait StringSeqOps {
-  def (xs: Seq[String]) longestStrings = {
+  def (xs: Seq[String]).longestStrings = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
@@ -84,21 +81,25 @@ So `circle.circumference` translates to `CircleOps.circumference(circle)`, provi
 ### Operators
 
 The extension method syntax also applies to the definition of operators.
-In each case the definition syntax mirrors the way the operator is applied.
+In this case it is allowed and preferable to omit the period between the leading parameter list
+and the operator. In each case the definition syntax mirrors the way the operator is applied.
 Examples:
 ```scala
 def (x: String) < (y: String) = ...
 def (x: Elem) +: (xs: Seq[Elem]) = ...
+def (x: Number) min (y: Number) = ...
 
 "ab" < "c"
 1 +: List(2, 3)
+x min 3
 ```
-The two definitions above translate to
+The three definitions above translate to
 ```scala
 def < (x: String)(y: String) = ...
 def +: (xs: Seq[Elem])(x: Elem) = ...
+def min(x: Number)(y: Number) = ...
 ```
-Note that swap of the two parameters `x` and `xs` when translating
+Note the swap of the two parameters `x` and `xs` when translating
 the right-binding operator `+:` to an extension method. This is analogous
 to the implementation of right binding operators as normal methods.
 
@@ -121,24 +122,25 @@ If an extension method has type parameters, they come immediately after the `def
 ```scala
 List(1, 2, 3).second[Int]
 ```
-### Given Instances for Extension Methods
+### Collective Extensions
 
-`given` extensions are given instances that define extension methods and nothing else. Examples:
+A collective extension defines one or more concrete methods that have the same type parameters
+and prefix parameter. Examples:
 
 ```scala
-given stringOps: (xs: Seq[String]) extended with {
+extension stringOps of (xs: Seq[String]) with {
   def longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
 
-given listOps: [T](xs: List[T]) extended with {
+extension listOps of [T](xs: List[T]) with {
   def second = xs.tail.head
   def third: T = xs.tail.tail.head
 }
 
-given [T](xs: List[T])(given Ordering[T]) extended with {
+extension of [T](xs: List[T])(given Ordering[T]) with {
   def largest(n: Int) = xs.sorted.takeRight(n)
 }
 ```
@@ -147,7 +149,7 @@ If a given extension is anonymous (as in the last clause), its name is synthesiz
 The extensions above are equivalent to the following regular given instances where the implemented parent is `AnyRef` and the parameters in the `extension` clause are repeated in each extension method definition:
 ```scala
 given stringOps: AnyRef {
-  def (xs: Seq[String]) longestStrings: Seq[String] = {
+  def (xs: Seq[String]).longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
@@ -156,11 +158,13 @@ given listOps: AnyRef {
   def [T](xs: List[T]) second = xs.tail.head
   def [T](xs: List[T]) third: T = xs.tail.tail.head
 }
-given given_largest_of_List_T: AnyRef {
+given extension_largest_List_T: AnyRef {
   def [T](xs: List[T]) largest (given Ordering[T])(n: Int) =
     xs.sorted.takeRight(n)
 }
 ```
+
+`extension` and `of` are soft keywords. They can also be used as a regular identifiers.
 
 ### Syntax
 
@@ -168,9 +172,10 @@ Here are the syntax changes for extension methods and given extensions relative
 to the [current syntax](../../internals/syntax.md). `extension` is a soft keyword, recognized only after a `given`. It can be used as an identifier everywhere else.
 ```
 DefSig            ::=  ...
-                    |  ExtParamClause [nl] id DefParamClauses
-GivenDef          ::=  ...
-                       [id ‘:’] ‘extension’ ExtParamClause {GivenParamClause} ExtMethods
+                    |  ExtParamClause [nl] [‘.’] id DefParamClauses
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
-ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
+TmplDef           ::=  ...
+                    |  ‘extension’ ExtensionDef
+ExtensionDef      ::=  [id] ‘of’ ExtParamClause {GivenParamClause} ‘with’ ExtMethods
+ExtMethods        ::=  ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ```
