@@ -695,19 +695,21 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         companion.findMember(nme.unapplySeq, NoPrefix, required = EmptyFlags, excluded = Synthetic).exists
     }
 
-    def doShow(s: Space, mergeList: Boolean = false): String = s match {
+    def doShow(s: Space, flattenList: Boolean = false): String = s match {
       case Empty => ""
       case Typ(c: ConstantType, _) => "" + c.value.value
-      case Typ(tp: TermRef, _) => tp.symbol.showName
+      case Typ(tp: TermRef, _) =>
+        if (flattenList && tp <:< scalaNilType) ""
+        else tp.symbol.showName
       case Typ(tp, decomposed) =>
         val sym = tp.widen.classSymbol
 
         if (ctx.definitions.isTupleType(tp))
           params(tp).map(_ => "_").mkString("(", ", ", ")")
         else if (scalaListType.isRef(sym))
-          if (mergeList) "_: _*" else "_: List"
+          if (flattenList) "_: _*" else "_: List"
         else if (scalaConsType.isRef(sym))
-          if (mergeList) "_, _: _*"  else "List(_, _: _*)"
+          if (flattenList) "_, _: _*"  else "List(_, _: _*)"
         else if (tp.classSymbol.is(Sealed) && tp.classSymbol.hasAnonymousChild)
           "_: " + showType(tp) + " (anonymous)"
         else if (tp.classSymbol.is(CaseClass) && !hasCustomUnapply(tp.classSymbol))
@@ -719,15 +721,18 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         if (ctx.definitions.isTupleType(tp))
           "(" + params.map(doShow(_)).mkString(", ") + ")"
         else if (tp.isRef(scalaConsType.symbol))
-          if (mergeList) params.map(doShow(_, mergeList)).mkString(", ")
-          else params.map(doShow(_, true)).filter(_ != "Nil").mkString("List(", ", ", ")")
-        else
-          showType(sym.owner.typeRef) + params.map(doShow(_)).mkString("(", ", ", ")")
+          if (flattenList) params.map(doShow(_, flattenList)).mkString(", ")
+          else params.map(doShow(_, flattenList = true)).filter(!_.isEmpty).mkString("List(", ", ", ")")
+        else {
+          val isUnapplySeq = sym.name.eq(nme.unapplySeq)
+          val paramsStr = params.map(doShow(_, flattenList = isUnapplySeq)).mkString("(", ", ", ")")
+          showType(sym.owner.typeRef) + paramsStr
+        }
       case Or(_) =>
         throw new Exception("incorrect flatten result " + s)
     }
 
-    flatten(s).map(doShow(_, false)).distinct.mkString(", ")
+    flatten(s).map(doShow(_, flattenList = false)).distinct.mkString(", ")
   }
 
   private def exhaustivityCheckable(sel: Tree): Boolean = {
