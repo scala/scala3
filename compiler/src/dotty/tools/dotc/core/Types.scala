@@ -4518,7 +4518,7 @@ object Types {
           case et: ExprType => true
           case _ => false
         }
-        if (tp.cls.is(Trait) || zeroParams(tp.cls.primaryConstructor.info)) tp // !!! needs to be adapted once traits have parameters
+        if (zeroParams(tp.cls.primaryConstructor.info)) tp
         else NoType
       case tp: AppliedType =>
         zeroParamClass(tp.superType)
