@@ -940,7 +940,7 @@ trait Checking {
 
   /** Check that the signature of the class mamber does not return a repeated parameter type */
   def checkSignatureRepeatedParam(sym: Symbol)(implicit ctx: Context): Unit =
-    if (sym.maybeOwner.isClass && sym.info.finalResultType.isRepeatedParam)
+    if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
       ctx.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.sourcePos)
 
   /** Verify classes extending AnyVal meet the requirements */
