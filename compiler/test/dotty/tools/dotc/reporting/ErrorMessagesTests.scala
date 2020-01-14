@@ -636,6 +636,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("List", tpe.show)
     }
 
+  @Test def missingTypeParameterInTypeApp =
+    checkMessagesAfter(RefChecks.name) {
+      """object Scope {
+        |  def f[T] = ???
+        |  val x = f[List]
+        |  val y = f[Either]
+        |}""".stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(2, messages)
+      assertEquals("Missing type parameter for List", messages(1).msg)
+      assertEquals("Missing type parameters for Either", messages(0).msg)
+    }
+
   @Test def doesNotConformToBound =
     checkMessagesAfter(RefChecks.name) {
       """class WithParam[A <: List[Int]]
