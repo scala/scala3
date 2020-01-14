@@ -4518,7 +4518,9 @@ object Types {
           case et: ExprType => true
           case _ => false
         }
-        if (tp.cls.is(Trait) || zeroParams(tp.cls.primaryConstructor.info)) tp // !!! needs to be adapted once traits have parameters
+        // `ImplicitFunctionN` does not have constructors
+        val ctor = tp.cls.primaryConstructor
+        if (!ctor.exists || zeroParams(ctor.info)) tp
         else NoType
       case tp: AppliedType =>
         zeroParamClass(tp.superType)
