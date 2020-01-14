@@ -508,6 +508,8 @@ trait ConstraintHandling[AbstractContext] {
             case inst =>
               prune(inst)
           }
+        case bound: ExprType =>
+          NoType
         case _ =>
           pruneLambdaParams(bound)
       }
