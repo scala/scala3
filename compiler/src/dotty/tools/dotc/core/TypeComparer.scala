@@ -482,7 +482,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           }
           else if (cls2.is(JavaDefined)) {
             // If `cls2` is parameterized, we are seeing a raw type, so we need to compare only the symbol
-            val base = tp1.baseType(cls2)
+            val base = nonExprBaseType(tp1, cls2)
             if (base.typeSymbol == cls2) return true
           }
           else if (tp1.isLambdaSub && !tp1.isRef(AnyKindClass))
@@ -706,7 +706,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     }
 
     def tryBaseType(cls2: Symbol) = {
-      val base = tp1.baseType(cls2)
+      val base = nonExprBaseType(tp1, cls2)
       if (base.exists && (base `ne` tp1))
         isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow) ||
         base.isInstanceOf[OrType] && fourthTry
@@ -930,8 +930,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               val classBounds = tycon2.classSymbols
               def liftToBase(bcs: List[ClassSymbol]): Boolean = bcs match {
                 case bc :: bcs1 =>
-                  classBounds.exists(bc.derivesFrom) && appOK(tp1w.baseType(bc)) ||
-                  liftToBase(bcs1)
+                  classBounds.exists(bc.derivesFrom) && appOK(nonExprBaseType(tp1, bc))
+                  || liftToBase(bcs1)
                 case _ =>
                   false
               }
@@ -1106,6 +1106,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       }
     }
   }
+
+  private def nonExprBaseType(tp: Type, cls: Symbol)(given Context): Type =
+    if tp.isInstanceOf[ExprType] then NoType
+    else tp.baseType(cls)
 
   /** If `tp` is an external reference to an enclosing module M that contains opaque types,
    *  convert to M.this.
@@ -1283,7 +1287,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       case bc :: bcs1 =>
         (classBounds.exists(bc.derivesFrom) &&
           variancesConform(bc.typeParams, tparams) &&
-          p(tp1.baseType(bc))
+          p(nonExprBaseType(tp1, bc))
         ||
         recur(bcs1))
       case nil =>
