@@ -11,7 +11,9 @@ object Macros {
   def argsImpl(given qctx: QuoteContext): Expr[FirstArg] = {
     import qctx.tasty.{_, given}
 
-    var enclosingCls: Symbol = rootContext.owner
+    def enclosingClass(cur: Symbol = rootContext.owner): Symbol =
+      if (cur.isClassDef) cur
+      else enclosingClass(cur.owner)
 
     def enclosingParamList(owner: Symbol): Seq[Seq[Symbol]] =
       if owner.isClassDef then
@@ -24,7 +26,7 @@ object Macros {
       Literal(Constant(value)).seal.asInstanceOf[Expr[String]]
     val paramss = enclosingParamList(rootContext.owner)
     val firstArg = paramss.flatten.head
-    val ref = Select.unique(This(enclosingCls), firstArg.name)
+    val ref = Select.unique(This(enclosingClass()), firstArg.name)
     '{ FirstArg(${ref.seal}, ${Expr(firstArg.name)}) }
   }
 }
