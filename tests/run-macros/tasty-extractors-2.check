@@ -102,3 +102,4 @@ TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(ValDef("lambda", Applied(Inferred(), List(TypeIdent("Int"), TypeIdent("Int"))), Some(Block(List(DefDef("$anonfun", Nil, List(List(ValDef("x", Inferred(), None))), Inferred(), Some(Ident("x")))), Closure(Ident("$anonfun"), None))))), Literal(Constant(()))))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
+
