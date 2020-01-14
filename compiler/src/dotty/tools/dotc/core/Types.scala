@@ -4518,7 +4518,9 @@ object Types {
           case et: ExprType => true
           case _ => false
         }
-        if (zeroParams(tp.cls.primaryConstructor.info)) tp
+        // `ImplicitFunctionN` does not have constructors
+        val ctor = tp.cls.primaryConstructor
+        if (!ctor.exists || zeroParams(ctor.info)) tp
         else NoType
       case tp: AppliedType =>
         zeroParamClass(tp.superType)
