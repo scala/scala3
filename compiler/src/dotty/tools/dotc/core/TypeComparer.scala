@@ -417,6 +417,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         if (tp11.stripTypeVar eq tp12.stripTypeVar) recur(tp11, tp2)
         else thirdTry
       case tp1 @ OrType(tp11, tp12) =>
+
         def joinOK = tp2.dealiasKeepRefiningAnnots match {
           case tp2: AppliedType if !tp2.tycon.typeSymbol.isClass =>
             // If we apply the default algorithm for `A[X] | B[Y] <: C[Z]` where `C` is a
@@ -427,6 +428,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           case _ =>
             false
         }
+
+        def containsAnd(tp: Type): Boolean = tp.dealiasKeepRefiningAnnots match
+          case tp: AndType => true
+          case OrType(tp1, tp2) => containsAnd(tp1) || containsAnd(tp2)
+          case _ => false
+
         def widenOK =
           (tp2.widenSingletons eq tp2) &&
           (tp1.widenSingletons ne tp1) &&
@@ -435,7 +442,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         if (tp2.atoms.nonEmpty && canCompare(tp2.atoms))
           tp1.atoms.nonEmpty && tp1.atoms.subsetOf(tp2.atoms)
         else
-          widenOK || joinOK || recur(tp11, tp2) && recur(tp12, tp2)
+          widenOK
+          || joinOK
+          || recur(tp11, tp2) && recur(tp12, tp2)
+          || containsAnd(tp1) && recur(tp1.join, tp2)
+              // An & on the left side loses information. Compensate by also trying the join.
+              // This is less ad-hoc than it looks since we produce joins in type inference,
+              // and then need to check that they are indeed supertypes of the original types
+              // under -Ycheck. Test case is i7965.scala.
+
       case tp1: MatchType =>
         val reduced = tp1.reduced
         if (reduced.exists) recur(reduced, tp2) else thirdTry
