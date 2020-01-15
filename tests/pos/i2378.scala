@@ -9,6 +9,7 @@ trait Toolbox {
   }
 
   val Apply: ApplyImpl
+
   trait ApplyImpl {
     def unapply(tree: Tree): Option[(Tree, Seq[Tree])]
     def unapply(tree: tpd.Tree)(implicit c: Cap): Option[(tpd.Tree, Seq[tpd.Tree])]
@@ -19,11 +20,11 @@ class Test(val tb: Toolbox) {
   import tb._
   implicit val cap: Cap = null
 
-  def foo(tree: Tree): Int = tree match {
-    case Apply(fun, args) => 3
+  def foo(tree: Tree): Int = (tree: Any) match {
+    case tb.Apply(fun, args) => 3
   }
 
-  def bar(tree: tpd.Tree): Int = tree match {
+  def bar(tree: tpd.Tree): Int = (tree: Any) match {
     case Apply(fun, args) => 3
   }
 }
