@@ -1616,7 +1616,7 @@ trait Applications extends Compatibility {
    *  called twice from the public `resolveOverloaded` method, once with
    *  implicits and SAM conversions enabled, and once without.
    */
-  private def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type])(implicit ctx: Context): List[TermRef] = {
+  private def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type])(implicit ctx: Context): List[TermRef] =
     record("resolveOverloaded/2")
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
@@ -1785,28 +1785,38 @@ trait Applications extends Compatibility {
       candidates.flatMap(cloneCandidate)
     }
 
+    def resultIsMethod(tp: Type): Boolean = tp.widen.stripPoly match
+      case tp: MethodType => tp.resultType.isInstanceOf[MethodType]
+      case _ => false
+
     val found = narrowMostSpecific(candidates)
     if (found.length <= 1) found
-    else pt match {
-      case pt @ FunProto(_, resType: FunProto) =>
-        // try to narrow further with snd argument list
-        val advanced = advanceCandidates(pt.typedArgs().tpes)
-        resolveOverloaded(advanced.map(_._1), resType, Nil) // resolve with candidates where first params are stripped
-          .map(advanced.toMap) // map surviving result(s) back to original candidates
-      case _ =>
-        val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
-        val noDefaultsCount = noDefaults.length
-        if (noDefaultsCount == 1)
-          noDefaults // return unique alternative without default parameters if it exists
-        else if (noDefaultsCount > 1 && noDefaultsCount < alts.length)
-          resolveOverloaded(noDefaults, pt, targs) // try again, dropping defult arguments
-        else {
-          val deepPt = pt.deepenProto
-          if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
-          else candidates
-        }
-    }
-  }
+    else
+      val deepPt = pt.deepenProto
+      deepPt match
+        case pt @ FunProto(_, resType: FunProto) =>
+          // try to narrow further with snd argument list
+          val advanced = advanceCandidates(pt.typedArgs().tpes)
+          resolveOverloaded(advanced.map(_._1), resType, Nil) // resolve with candidates where first params are stripped
+            .map(advanced.toMap) // map surviving result(s) back to original candidates
+        case _ =>
+          // prefer alternatives that need no eta expansion
+          val noCurried = alts.filter(!resultIsMethod(_))
+          if noCurried.length == 1 then
+            noCurried
+          else
+            // prefer alternatves that match without default parameters
+            val noDefaults = noCurried.filter(!_.symbol.hasDefaultParams)
+            val noDefaultsCount = noDefaults.length
+            if noDefaultsCount == 1 then
+              noDefaults // return unique alternative without default parameters if it exists
+            else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
+              resolveOverloaded(noDefaults, pt, targs) // try again, dropping defult arguments
+            else if deepPt ne pt then
+              // try again with a deeper known expected type
+              resolveOverloaded(alts, deepPt, targs)
+            else candidates
+  end resolveOverloaded
 
   /** Try to typecheck any arguments in `pt` that are function values missing a
    *  parameter type. If the formal parameter types corresponding to a closure argument
