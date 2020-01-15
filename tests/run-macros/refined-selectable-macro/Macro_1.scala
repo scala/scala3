@@ -22,8 +22,8 @@ object Macro {
           info match {
             case _: TypeBounds =>
               rec(parent)
-            case _: MethodType | _: PolyType | _: TypeBounds =>
-              qctx.warning(s"Ignored $name as a field of the record", s)
+            case _: MethodType | _: PolyType | _: TypeBounds | _: ByNameType =>
+              qctx.warning(s"Ignored `$name` as a field of the record", s)
               rec(parent)
             case info: Type =>
               (name, info) :: rec(parent)
