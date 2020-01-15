@@ -1802,20 +1802,24 @@ trait Applications extends Compatibility {
         case _ =>
           // prefer alternatives that need no eta expansion
           val noCurried = alts.filter(!resultIsMethod(_))
+          val noCurriedCount = noCurried.length
           if noCurried.length == 1 then
             noCurried
+          else if noCurriedCount > 1 && noCurriedCount < alts.length then
+            resolveOverloaded(noCurried, pt, targs)
           else
             // prefer alternatves that match without default parameters
-            val noDefaults = noCurried.filter(!_.symbol.hasDefaultParams)
+            val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
             val noDefaultsCount = noDefaults.length
             if noDefaultsCount == 1 then
-              noDefaults // return unique alternative without default parameters if it exists
+              noDefaults
             else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
-              resolveOverloaded(noDefaults, pt, targs) // try again, dropping defult arguments
+              resolveOverloaded(noDefaults, pt, targs)
             else if deepPt ne pt then
               // try again with a deeper known expected type
               resolveOverloaded(alts, deepPt, targs)
-            else candidates
+            else
+              candidates
   end resolveOverloaded
 
   /** Try to typecheck any arguments in `pt` that are function values missing a
