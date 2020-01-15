@@ -484,11 +484,7 @@ trait Applications extends Compatibility {
             cx.denotNamed(meth.name).hasAltWith(_.symbol == meth)) {
             val denot = cx.denotNamed(getterName)
             if (denot.exists) ref(TermRef(cx.owner.thisType, getterName, denot))
-            else {
-              assert(ctx.mode.is(Mode.Interactive) || ctx.reporter.errorsReported,
-                s"non-existent getter denotation ($denot) for getter($getterName)")
-              findGetter(cx.outer)
-            }
+            else findGetter(cx.outer)
           }
           else findGetter(cx.outer)
         findGetter(ctx)
