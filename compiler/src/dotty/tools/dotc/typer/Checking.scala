@@ -937,6 +937,11 @@ trait Checking {
       errorTree(tpt, MissingTypeParameterFor(tpt.tpe))
     else tpt
 
+  /** Check that the signature of the class mamber does not return a repeated parameter type */
+  def checkSignatureRepeatedParam(sym: Symbol)(implicit ctx: Context): Unit =
+    if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
+      ctx.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.sourcePos)
+
   /** Verify classes extending AnyVal meet the requirements */
   def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context): Unit =
     Checking.checkDerivedValueClass(clazz, stats)

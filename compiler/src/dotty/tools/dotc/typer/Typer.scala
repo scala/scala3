@@ -1609,6 +1609,7 @@ class Typer extends Namer
       case rhs => typedExpr(rhs, tpt1.tpe.widenExpr)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
+    checkSignatureRepeatedParam(sym)
     if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
       checkInlineConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of inline $sym")
     patchFinalVals(vdef1)
@@ -1694,7 +1695,9 @@ class Typer extends Namer
       checkThisConstrCall(rhs1)
     }
 
-    assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym).setDefTree
+    val ddef2 = assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
+    checkSignatureRepeatedParam(sym)
+    ddef2.setDefTree
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
