@@ -1803,7 +1803,7 @@ trait Applications extends Compatibility {
           // prefer alternatives that need no eta expansion
           val noCurried = alts.filter(!resultIsMethod(_))
           val noCurriedCount = noCurried.length
-          if noCurried.length == 1 then
+          if noCurriedCount == 1 then
             noCurried
           else if noCurriedCount > 1 && noCurriedCount < alts.length then
             resolveOverloaded(noCurried, pt, targs)
