@@ -212,6 +212,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               tp1.derivedAppliedType(
                 mergeRefinedOrApplied(tycon1, tycon2),
                 ctx.typeComparer.lubArgs(args1, args2, tycon1.typeParams))
+            case AndType(tp21, tp22) =>
+              mergeRefinedOrApplied(tp1, tp21) & mergeRefinedOrApplied(tp1, tp22)
             case _ => fail
           }
         case tp1 @ TypeRef(pre1, _) =>
@@ -220,6 +222,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               tp1.derivedSelect(pre1 | pre2)
             case _ => fail
           }
+        case AndType(tp11, tp12) =>
+          mergeRefinedOrApplied(tp11, tp2) & mergeRefinedOrApplied(tp12, tp2)
         case _ => fail
       }
     }
