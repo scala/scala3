@@ -2381,4 +2381,18 @@ object messages {
       val msg: String = i"illegal cyclic type reference: ${where} ${hl(lastChecked.show)} of $sym refers back to the type itself"
       val explanation: String = ""
     }
+
+  case class ImplicitTypesCanOnlyBeFunctionTypes()(implicit val ctx: Context)
+    extends Message(ImplicitTypesCanOnlyBeFunctionTypesID) {
+    val kind: String = "Syntax"
+    val msg: String = "Types with given keyword can only be function types `given (...) => ...`"
+    val explanation: String = ""
+  }
+
+  case class ErasedTypesCanOnlyBeFunctionTypes()(implicit val ctx: Context)
+    extends Message(ErasedTypesCanOnlyBeFunctionTypesID) {
+    val kind: String = "Syntax"
+    val msg: String = "Types with erased keyword can only be function types `erased (...) => ...`"
+    val explanation: String = ""
+  }
 }

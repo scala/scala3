@@ -1684,4 +1684,30 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("alias", where)
       assertEquals("List[X]", lastChecked.show)
     }
+
+  @Test def implicitTypesCanOnlyBeFunctionTypesSuccess() =
+    checkMessagesAfter(RefChecks.name) ("def foo(f: (given Int) => Int): Int = 1")
+    .expectNoErrors
+
+  @Test def erasedTypesCanOnlyBeFunctionTypesSuccess() =
+    checkMessagesAfter(FrontEnd.name) ("def foo(f: (erased Int) => Int): Int = 1")
+      .expectNoErrors
+
+  @Test def implicitTypesCanOnlyBeFunctionTypesFailed() =
+    checkMessagesAfter(FrontEnd.name) ("def foo(f: (given Int)): Int = 1")
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val ImplicitTypesCanOnlyBeFunctionTypes() :: Nil = messages
+        assertEquals("Types with given keyword can only be function types `given (...) => ...`", messages.head.msg)
+      }
+
+  @Test def erasedTypesCanOnlyBeFunctionTypesFailed() =
+    checkMessagesAfter(FrontEnd.name) ("def foo(f: (erased Int)): Int = 1")
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val ErasedTypesCanOnlyBeFunctionTypes() :: Nil = messages
+        assertEquals("Types with erased keyword can only be function types `erased (...) => ...`", messages.head.msg)
+      }
 }
