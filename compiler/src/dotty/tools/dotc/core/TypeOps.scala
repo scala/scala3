@@ -223,7 +223,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           tp2 match {
             case tp2 @ TypeRef(pre2, _) if tp1.name eq tp2.name =>
               tp1.derivedSelect(pre1 | pre2)
-            case _ => fail
+            case _ => fallback
           }
         case AndType(tp11, tp12) =>
           mergeRefinedOrApplied(tp11, tp2) & mergeRefinedOrApplied(tp12, tp2)
