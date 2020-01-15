@@ -2888,7 +2888,7 @@ class Typer extends Namer
               |To turn this error into a warning, pass -Xignore-scala2-macros to the compiler""".stripMargin, tree.sourcePos.startPos)
           tree
         }
-      else if (tree.tpe <:< pt) {
+      else if (tree.tpe.widenExpr <:< pt) {
         if (pt.hasAnnotation(defn.InlineParamAnnot))
           checkInlineConformant(tree, isFinal = false, "argument to inline parameter")
         if (ctx.typeComparer.GADTused && pt.isValueType)
