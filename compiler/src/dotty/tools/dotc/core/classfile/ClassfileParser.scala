@@ -204,9 +204,6 @@ class ClassfileParser(
     if (isEnum) {
       instanceScope.toList.map(_.ensureCompleted())
       staticScope.toList.map(_.ensureCompleted())
-      val flag = if moduleRoot.is(Flags.JavaDefined) then Flags.JavaEnumTrait else Flags.Enum
-      classRoot.setFlag(flag)
-      moduleRoot.setFlag(flag)
     }
 
     result
