@@ -3458,78 +3458,63 @@ object Parsers {
             if in.token == LPAREN && followingIsParamOrGivenType()
             then paramClauses() // todo: ONLY admit a single paramClause
             else Nil
-          val isExtension = isIdent(nme.extended)
           def checkAllGivens(vparamss: List[List[ValDef]], what: String) =
             vparamss.foreach(_.foreach(vparam =>
               if !vparam.mods.is(Given) then syntaxError(em"$what must be `given`", vparam.span)))
-          if isExtension then
-            if !name.isEmpty && !hasLabel then
-              syntaxError(em"name $name of extension clause must be followed by `:`", nameStart)
-            vparamss match
-              case (vparam :: Nil) :: vparamss1 if !vparam.mods.is(Given) =>
-                checkAllGivens(vparamss1, "follow-on parameter in extension clause")
-              case _ =>
-                syntaxError("extension clause must start with a single regular parameter", paramsStart)
-            in.nextToken()
-            accept(WITH)
-            val (self, stats) = templateBody()
-            stats.foreach(checkExtensionMethod(tparams, _))
-            ModuleDef(name, Template(makeConstructor(tparams, vparamss), Nil, Nil, self, stats))
-          else
-            def makeGiven(params: List[ValDef]): List[ValDef] =
-              params.map(param => param.withMods(param.mods | Given))
-            def conditionalParents(): List[Tree] =
-              accept(ARROW)
-              if in.token == LPAREN && followingIsParam() then
-                vparamss = vparamss :+ makeGiven(paramClause(vparamss.flatten.length))
-                conditionalParents()
-              else
-                val constrs = constrApps(commaOK = true, templateCanFollow = true)
-                if in.token == ARROW && constrs.forall(_.isType) then
-                  vparamss = vparamss
-                    :+ typesToGivenParams(constrs, ofClass = false, vparamss.flatten.length)
-                  conditionalParents()
-                else constrs
-
-            val isConditional =
-              in.token == ARROW
-              && vparamss.length == 1
-              && (hasLabel || name.isEmpty && tparams.isEmpty)
-            if !isConditional then checkAllGivens(vparamss, "parameter of given instance")
-            val parents =
-              if in.token == SUBTYPE && !hasLabel then
-                if !mods.is(Inline) then
-                  syntaxError("`<:` is only allowed for given with `inline` modifier")
-                in.nextToken()
-                TypeBoundsTree(EmptyTree, annotType()) :: Nil
-              else if isConditional then
-                vparamss = vparamss.map(makeGiven)
-                conditionalParents()
-              else
-                if !hasLabel && !(name.isEmpty && tparams.isEmpty && vparamss.isEmpty) then
-                  accept(COLON)
-                val constrs = constrApps(commaOK = true, templateCanFollow = true)
-                if in.token == ARROW && vparamss.isEmpty && constrs.forall(_.isType) then
-                  vparamss = typesToGivenParams(constrs, ofClass = false, 0) :: Nil
-                  conditionalParents()
-                else
-                  constrs
-
-            if in.token == EQUALS && parents.length == 1 && parents.head.isType then
-              in.nextToken()
-              mods1 |= Final
-              DefDef(name, tparams, vparamss, parents.head, subExpr())
+          def makeGiven(params: List[ValDef]): List[ValDef] =
+            params.map(param => param.withMods(param.mods | Given))
+          def conditionalParents(): List[Tree] =
+            accept(ARROW)
+            if in.token == LPAREN && followingIsParam() then
+              vparamss = vparamss :+ makeGiven(paramClause(vparamss.flatten.length))
+              conditionalParents()
             else
-              parents match
-                case TypeBoundsTree(_, _) :: _ => syntaxError("`=` expected")
-                case _ =>
-              possibleTemplateStart()
-              val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
-              val vparamss1 = vparamss.map(_.map(vparam =>
-                vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
-              val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
-              if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
-              else TypeDef(name.toTypeName, templ)
+              val constrs = constrApps(commaOK = true, templateCanFollow = true)
+              if in.token == ARROW && constrs.forall(_.isType) then
+                vparamss = vparamss
+                  :+ typesToGivenParams(constrs, ofClass = false, vparamss.flatten.length)
+                conditionalParents()
+              else constrs
+
+          val isConditional =
+            in.token == ARROW
+            && vparamss.length == 1
+            && (hasLabel || name.isEmpty && tparams.isEmpty)
+          if !isConditional then checkAllGivens(vparamss, "parameter of given instance")
+          val parents =
+            if in.token == SUBTYPE && !hasLabel then
+              if !mods.is(Inline) then
+                syntaxError("`<:` is only allowed for given with `inline` modifier")
+              in.nextToken()
+              TypeBoundsTree(EmptyTree, annotType()) :: Nil
+            else if isConditional then
+              vparamss = vparamss.map(makeGiven)
+              conditionalParents()
+            else
+              if !hasLabel && !(name.isEmpty && tparams.isEmpty && vparamss.isEmpty) then
+                accept(COLON)
+              val constrs = constrApps(commaOK = true, templateCanFollow = true)
+              if in.token == ARROW && vparamss.isEmpty && constrs.forall(_.isType) then
+                vparamss = typesToGivenParams(constrs, ofClass = false, 0) :: Nil
+                conditionalParents()
+              else
+                constrs
+
+          if in.token == EQUALS && parents.length == 1 && parents.head.isType then
+            in.nextToken()
+            mods1 |= Final
+            DefDef(name, tparams, vparamss, parents.head, subExpr())
+          else
+            parents match
+              case TypeBoundsTree(_, _) :: _ => syntaxError("`=` expected")
+              case _ =>
+            possibleTemplateStart()
+            val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
+            val vparamss1 = vparamss.map(_.map(vparam =>
+              vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
+            val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
+            if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
+            else TypeDef(name.toTypeName, templ)
         }
       finalizeDef(gdef, mods1, start)
     }

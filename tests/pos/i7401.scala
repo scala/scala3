@@ -1,5 +1,5 @@
 object Test {
-  given ops: (a: Int) extended with {
+  extension ops on (a: Int) {
     def foo(i: Int): Unit = ()
     def foo: Unit = ()
   }

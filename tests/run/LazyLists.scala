@@ -55,8 +55,7 @@ package xcollections with
         if it.hasNext then set(it.next, fromIterator  (it))
         else empty
 
-    given [T, U >: T](xs: LazyList[T]) extended with
-
+    extension on [T, U >: T](xs: LazyList[T]) {
       def #::(x: U): LazyList[U] = new with
         protected def force(): LazyList[U] =
           set(x, xs)
@@ -65,8 +64,9 @@ package xcollections with
         protected def force() =
           if xs.isEmpty then ys.forced()
           else set(xs.head, xs.tail ++ ys)
+    }
 
-    given [T, U](xs: LazyList[T]) extended with
+    extension on [T, U](xs: LazyList[T]) {
       def map(f: T => U): LazyList[U] = new with
         protected def force() =
           if xs.isEmpty then empty
@@ -80,8 +80,9 @@ package xcollections with
       def foldLeft(z: U)(f: (U, T) => U): U =
         if xs.isEmpty then z
         else xs.tail.foldLeft(f(z, xs.head))(f)
+    }
 
-    given [T](xs: LazyList[T]) extended with
+    extension on [T](xs: LazyList[T]) {
       def filter(p: T => Boolean): LazyList[T] = new with
         protected def force(): LazyList[T] =
           if xs.isEmpty then empty
@@ -103,6 +104,7 @@ package xcollections with
               if n <= 0 || xs.isEmpty then xs
               else advance(xs.tail, n - 1)
             advance(xs, n)
+    }
   end LazyList
 end xcollections
 
