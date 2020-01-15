@@ -508,6 +508,17 @@ trait ConstraintHandling[AbstractContext] {
             case inst =>
               prune(inst)
           }
+        case bound: ExprType =>
+          // ExprTypes are not value types, so type parameters should not
+          // be instantiated to ExprTypes. A scenario where such an attempted
+          // instantiation can happen is if we unify (=> T) => () with A => ()
+          // where A is a TypeParamRef. See the comment on EtaExpansion.etaExpand
+          // why types such as (=> T) => () can be constructed and i7969.scala
+          // as a test where this happens.
+          // Note that scalac by contrast allows such instantiations. But letting
+          // type variables be ExprTypes has its own problems (e.g. you can't write
+          // the resulting types down) and is largely unknown terrain.
+          NoType
         case _ =>
           pruneLambdaParams(bound)
       }
