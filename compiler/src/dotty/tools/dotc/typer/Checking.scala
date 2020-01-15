@@ -835,10 +835,13 @@ trait Checking {
             def isCaseObject(sym: Symbol): Boolean =
               // TODO add alias to Nil in scala package
               sym.is(Case) && sym.is(Module)
+            def isStaticEnumCase(sym: Symbol): Boolean =
+              sym.is(Enum) && sym.is(JavaStatic) && sym.is(Case)
             val allow =
               ctx.erasedTypes ||
               ctx.inInlineMethod ||
               (tree.symbol.isStatic && isCaseObject(tree.symbol) || isCaseClassApply(tree.symbol)) ||
+              isStaticEnumCase(tree.symbol) ||
               isCaseClassNew(tree.symbol)
 
             if (!allow) ctx.error(em"$what must be a known value", tree.sourcePos)
