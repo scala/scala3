@@ -2792,10 +2792,7 @@ object Parsers {
       var counter = nparams
       def nextIdx = { counter += 1; counter }
       val paramFlags = if ofClass then Private | Local | ParamAccessor else Param
-      val tps1 = tps match
-        case Tuple(tps1) :: Nil => tps1
-        case _ => tps
-      tps1.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given))
+      tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given))
 
     /** OLD: GivenTypes   ::=  AnnotType {‘,’ AnnotType}
      *  NEW: GivenTypes   ::=  Type {‘,’ Type}
