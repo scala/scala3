@@ -1100,15 +1100,16 @@ class Typer extends Namer
               case SAMType(sam)
               if !defn.isFunctionType(pt) && mt <:< sam =>
                 val targetTpe =
-                  if (!isFullyDefined(pt, ForceDegree.all))
-                    if (pt.isRef(defn.PartialFunctionClass))
-                      // Replace the underspecified expected type by one based on the closure method type
-                      defn.PartialFunctionOf(mt.firstParamTypes.head, mt.resultType)
-                    else {
-                      ctx.error(ex"result type of lambda is an underspecified SAM type $pt", tree.sourcePos)
-                      pt
-                    }
-                  else pt
+                  if isFullyDefined(pt, ForceDegree.all)
+                     && !pt.argInfos.exists(_.isInstanceOf[TypeBounds])
+                  then
+                    pt
+                  else if pt.isRef(defn.PartialFunctionClass) then
+                    // Replace the underspecified expected type by one based on the closure method type
+                    defn.PartialFunctionOf(mt.firstParamTypes.head, mt.resultType)
+                  else
+                    ctx.error(ex"result type of lambda is an underspecified SAM type $pt", tree.sourcePos)
+                    pt
                 if (pt.classSymbol.isOneOf(FinalOrSealed)) {
                   val offendingFlag = pt.classSymbol.flags & FinalOrSealed
                   ctx.error(ex"lambda cannot implement $offendingFlag ${pt.classSymbol}", tree.sourcePos)
