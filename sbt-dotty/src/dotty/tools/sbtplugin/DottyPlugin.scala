@@ -34,7 +34,7 @@ object DottyPlugin extends AutoPlugin {
 
         // get latest nightly version from maven
         def fetchSource(version: String): (scala.io.BufferedSource, String) =
-          try Source.fromURL(s"http://repo1.maven.org/maven2/ch/epfl/lamp/dotty_$version/maven-metadata.xml") -> version
+          try Source.fromURL(s"https://repo1.maven.org/maven2/ch/epfl/lamp/dotty_$version/maven-metadata.xml") -> version
           catch { case t: java.io.FileNotFoundException =>
             val major :: minor :: Nil = version.split('.').toList
             if (minor.toInt <= 0) throw t
