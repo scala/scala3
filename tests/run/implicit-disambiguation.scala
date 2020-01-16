@@ -9,12 +9,12 @@ class C extends A {
 }
 object M {
   def f(given B, C): String = {
-    given a : A = summon[B]
+    given a as A = summon[B]
     summon[A].show
   }
 }
 object Test extends App {
-  given b : B
-  given c : C
+  given b as B
+  given c as C
   println(M.f)
 }

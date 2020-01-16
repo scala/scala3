@@ -32,7 +32,7 @@ object Test extends App {
     def flattened = xs.foldLeft[List[T]](Nil)(_ ++ _)
 
   // A right associative op. Note: can't use given extension for this!
-  given prepend: AnyRef {
+  given prepend as AnyRef {
     def [T](x: T) :: (xs: Seq[T]) = x +: xs
   }
 
@@ -49,7 +49,7 @@ object Test extends App {
   trait Monoid[T] extends SemiGroup[T]:
     def unit: T
 
-  given StringMonoid : Monoid[String]:
+  given StringMonoid as Monoid[String]:
     def (x: String).combine(y: String): String = x.concat(y)
     def unit: String = ""
 
@@ -71,7 +71,7 @@ object Test extends App {
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
 
-  given listOrd[T: Ord]: Ord[List[T]]:
+  given listOrd[T: Ord] as Ord[List[T]]:
     def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -102,13 +102,13 @@ object Test extends App {
     def pure[A](x: A): F[A]
   end Monad
 
-  given listMonad: Monad[List]:
+  given listMonad as Monad[List]:
     def [A, B](xs: List[A]) flatMap (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
 
-  given readerMonad[Ctx]: Monad[[X] =>> Ctx => X]:
+  given readerMonad[Ctx] as Monad[[X] =>> Ctx => X]:
     def [A, B](r: Ctx => A) flatMap (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =

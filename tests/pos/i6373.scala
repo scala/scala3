@@ -6,7 +6,7 @@ object Test {
 
     inline def f(): Contextual[Boolean] = summon[Context].t
 
-    given ctx : Context = new Context(true)
+    given ctx as Context = new Context(true)
 
     f()
   }

@@ -25,11 +25,11 @@ class Common:
 
 object Instances extends Common:
 
-  given intOrd: Ord[Int]:
+  given intOrd as Ord[Int]:
     def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  given listOrd[T](given Ord[T]): Ord[List[T]]:
+  given listOrd[T](given Ord[T]) as Ord[List[T]]:
     def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -48,13 +48,13 @@ object Instances extends Common:
     def second = xs.tail.head
     def third = xs.tail.tail.head
 
-  given listMonad: Monad[List]:
+  given listMonad as Monad[List]:
     def [A, B](xs: List[A]) flatMap (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
 
-  given readerMonad[Ctx]: Monad[[X] =>> Ctx => X]:
+  given readerMonad[Ctx] as Monad[[X] =>> Ctx => X]:
     def [A, B](r: Ctx => A) flatMap (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -110,11 +110,11 @@ object Instances extends Common:
         println(summon[Context].value)
       }
       locally {
-        given d[T]: D[T]
+        given d[T] as D[T]
         println(summon[D[Int]])
       }
       locally {
-        given (given Context): D[Int]
+        given (given Context) as D[Int]
         println(summon[D[Int]])
       }
   end C
@@ -122,7 +122,7 @@ object Instances extends Common:
   class Token(str: String)
 
   object Token:
-    given StringToToken : Conversion[String, Token]:
+    given StringToToken as Conversion[String, Token]:
       def apply(str: String): Token = new Token(str)
 
   val x: Token = "if"
@@ -144,7 +144,7 @@ object AnonymousInstances extends Common:
     def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  given [T: Ord] : Ord[List[T]]:
+  given [T: Ord] as Ord[List[T]]:
     def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -161,7 +161,7 @@ object AnonymousInstances extends Common:
   extension on [T](xs: List[T]):
     def second = xs.tail.head
 
-  given [From, To](given c: Convertible[From, To]) : Convertible[List[From], List[To]]:
+  given [From, To](given c: Convertible[From, To]) as Convertible[List[From], List[To]]:
     def (x: List[From]).convert: List[To] = x.map(c.convert)
 
   given Monoid[String]:
@@ -231,9 +231,9 @@ object Completions:
     //
     //   CompletionArg.from(statusCode)
 
-    given fromString : Conversion[String, CompletionArg] = Error(_)
-    given fromFuture : Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    given fromStatusCode : Conversion[Future[StatusCode], CompletionArg] = Status(_)
+    given fromString as Conversion[String, CompletionArg] = Error(_)
+    given fromFuture as Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    given fromStatusCode as Conversion[Future[StatusCode], CompletionArg] = Status(_)
   import CompletionArg._
 
   def complete[T](arg: CompletionArg) = arg match

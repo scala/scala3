@@ -83,13 +83,13 @@ with implicit function types as parameters to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
   def table(init: (given Table) => Unit) = {
-    given t: Table
+    given t as Table
     init
     t
   }
 
   def row(init: (given Row) => Unit)(given t: Table) = {
-    given r: Row
+    given r as Row
     init
     t.add(r)
   }

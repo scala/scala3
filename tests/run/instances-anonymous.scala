@@ -69,7 +69,7 @@ object Test extends App {
     val minimum = Int.MinValue
   }
 
-  given [T: Ord] : Ord[List[T]] {
+  given [T: Ord] as Ord[List[T]] {
     def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys).match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -108,7 +108,7 @@ object Test extends App {
       List(x)
   }
 
-  given [Ctx] : Monad[[X] =>> Ctx => X] {
+  given [Ctx] as Monad[[X] =>> Ctx => X] {
     def [A, B](r: Ctx => A) flatMap (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =

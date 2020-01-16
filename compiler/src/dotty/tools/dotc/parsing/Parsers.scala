@@ -344,6 +344,15 @@ object Parsers {
       offset
     }
 
+    def accept(name: Name): Int = {
+      val offset = in.offset
+      if !isIdent(name) then
+        syntaxErrorOrIncomplete(em"`$name` expected")
+      if isIdent(name) then
+        in.nextToken()
+      offset
+    }
+
     def reportMissing(expected: Token): Unit =
       syntaxError(ExpectedTokenButFound(expected, in.token))
 
@@ -932,7 +941,7 @@ object Parsers {
       if lookahead.token == COLON then
         lookahead.nextToken()
         !lookahead.isAfterLineEnd
-      else lookahead.token == SUBTYPE
+      else lookahead.token == SUBTYPE || lookahead.isIdent(nme.as)
 
     def followingIsExtension() =
       val lookahead = in.LookaheadScanner()
@@ -3404,9 +3413,9 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
-    /** GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
-     *                   |  [GivenSig ‘:’] ConstrApps [TemplateBody]
-     *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
+    /** GivenDef       ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
+     *                   |  [GivenSig] ConstrApps [TemplateBody]
+     *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause} ‘as’
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause
      *  ExtMethods     ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
      */
@@ -3433,7 +3442,7 @@ object Parsers {
           templ.body.foreach(checkExtensionMethod(tparams, _))
           ModuleDef(name, templ)
         else
-          val hasLabel = !name.isEmpty && in.token == COLON
+          val hasLabel = !name.isEmpty && in.token == COLON || in.isIdent(nme.as)
           if hasLabel then in.nextToken()
           val tparams = typeParamClauseOpt(ParamOwner.Def)
           val paramsStart = in.offset
@@ -3446,17 +3455,21 @@ object Parsers {
               if !vparam.mods.is(Given) then syntaxError(em"$what must be `given`", vparam.span)))
           checkAllGivens(vparamss, "parameter of given instance")
           val parents =
-            if hasLabel then
-              constrApps(commaOK = true, templateCanFollow = true)
-            else if in.token == SUBTYPE then
+            if in.token == SUBTYPE && !hasLabel then
               if !mods.is(Inline) then
                 syntaxError("`<:` is only allowed for given with `inline` modifier")
               in.nextToken()
               TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
             else
-              if !(name.isEmpty && tparams.isEmpty && vparamss.isEmpty) then
-                accept(COLON)
-              constrApps(commaOK = true, templateCanFollow = true)
+              if !hasLabel && !(name.isEmpty && tparams.isEmpty && vparamss.isEmpty) then
+                if in.token == COLON then in.nextToken()
+                else accept(nme.as)
+              if in.token == USCORE then
+                in.nextToken()
+                accept(SUBTYPE)
+                TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
+              else
+                constrApps(commaOK = true, templateCanFollow = true)
 
           if in.token == EQUALS && parents.length == 1 && parents.head.isType then
             in.nextToken()

@@ -11,7 +11,7 @@ object Macros {
 
     type Env = Map[Int, Any]
 
-    given ev0 : Env = Map.empty
+    given ev0 as Env = Map.empty
 
     def envWith[T](id: Int, ref: Expr[R[T]])(given env: Env): Env =
       env.updated(id, ref)

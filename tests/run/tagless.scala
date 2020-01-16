@@ -196,7 +196,7 @@ object Test extends App {
   // Added operation: negation pushdown
   enum NCtx { case Pos, Neg }
 
-  given [T](given e: Exp[T]): Exp[NCtx => T] {
+  given [T](given e: Exp[T]) as Exp[NCtx => T] {
     import NCtx._
     def lit(i: Int) = {
       case Pos => e.lit(i)
@@ -216,7 +216,7 @@ object Test extends App {
   println(pushNeg(tf1[NCtx => String]))
   println(pushNeg(pushNeg(pushNeg(tf1))): String)
 
-  given [T](given e: Mult[T]) : Mult[NCtx => T] {
+  given [T](given e: Mult[T]) as Mult[NCtx => T] {
     import NCtx._
     def mul(l: NCtx => T, r: NCtx => T): NCtx => T = {
       case Pos => e.mul(l(Pos), r(Pos))
@@ -230,7 +230,7 @@ object Test extends App {
   import IExp._
 
   // Going from type class encoding to ADT encoding
-  given initialize : Exp[IExp] {
+  given initialize as Exp[IExp] {
     def lit(i: Int): IExp = Lit(i)
     def neg(t: IExp): IExp = Neg(t)
     def add(l: IExp, r: IExp): IExp = Add(l, r)

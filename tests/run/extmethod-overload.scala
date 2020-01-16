@@ -22,7 +22,7 @@ object Test extends App {
   // Test with extension methods in given object
   object test1 {
 
-    given Foo: AnyRef {
+    given Foo as AnyRef {
       def (x: Int) |+| (y: Int) = x + y
       def (x: Int) |+| (y: String) = x + y.length
 
@@ -61,7 +61,7 @@ object Test extends App {
       def [T](xs: List[T]) +++ (ys: List[T]): List[T] = xs ++ ys ++ ys
       def [T](xs: List[T]) +++ (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
     }
-    given Bar : Foo
+    given Bar as Foo
 
     assert((1 |+| 2) == 3)
     assert((1 |+| "2") == 2)

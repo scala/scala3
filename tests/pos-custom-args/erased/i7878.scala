@@ -9,7 +9,7 @@ object Boom {
   }
 
   val a: Int = 1
-  given ev1: Fail[a.type, 2] = null
+  given ev1 as Fail[a.type, 2] = null
 
   summon[Fail[a.type, 3]]
 }
