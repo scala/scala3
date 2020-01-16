@@ -913,7 +913,10 @@ object Parsers {
           lookahead.nextToken()
         if lookahead.token == IDENTIFIER then
           lookahead.nextToken()
-          lookahead.token == COLON
+          if lookahead.token == COLON then
+            lookahead.nextToken()
+            !lookahead.isAfterLineEnd
+          else false
         else false
       else false
 
@@ -943,7 +946,10 @@ object Parsers {
         lookahead.nextToken()
       while lookahead.token == LPAREN || lookahead.token == LBRACKET do
         lookahead.skipParens()
-      lookahead.token == COLON || lookahead.token == SUBTYPE
+      if lookahead.token == COLON then
+        lookahead.nextToken()
+        !lookahead.isAfterLineEnd
+      else lookahead.token == SUBTYPE
 
     def followingIsExtension() =
       val lookahead = in.LookaheadScanner()
@@ -1304,7 +1310,12 @@ object Parsers {
     }
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
-      if in.token == WITH then
+      in.observeColonEOL()
+      if in.token == COLONEOL then
+        in.nextToken()
+        if in.token != INDENT then
+          syntaxError(i"indented definitions expected")
+      else if in.token == WITH then
         in.nextToken()
         if in.token != LBRACE && in.token != INDENT then
           syntaxError(i"indented definitions or `{` expected")
@@ -3415,7 +3426,7 @@ object Parsers {
     }
 
     /** GivenDef       ::=  [GivenSig (‘:’ | <:)] {FunArgTypes ‘=>’} AnnotType ‘=’ Expr
-     *                   |  [GivenSig ‘:’] {FunArgTypes ‘=>’} ConstrApps [[‘with’] TemplateBody]
+     *                   |  [GivenSig ‘:’] {FunArgTypes ‘=>’} ConstrApps [‘:’ nl | ‘with’] TemplateBody]
      *                   |  [id ‘:’] ExtParamClause {GivenParamClause} ‘extended’ ‘with’ ExtMethods
      *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause

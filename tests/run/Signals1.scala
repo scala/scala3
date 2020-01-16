@@ -1,13 +1,13 @@
 
 import annotation.unchecked._
-package frp with
+package frp:
 
-  trait Signal[+T] with
+  trait Signal[+T]:
     def apply()(given caller: Signal.Caller): T
 
-  object Signal with
+  object Signal:
 
-    abstract class AbstractSignal[+T] extends Signal[T] with
+    abstract class AbstractSignal[+T] extends Signal[T]:
       private var currentValue: T = _
       private var observers: Set[Caller] = Set()
 
@@ -29,11 +29,11 @@ package frp with
     end AbstractSignal
 
     def apply[T](expr: (given Caller) => T): Signal[T] =
-      new AbstractSignal[T] with
+      new AbstractSignal[T]:
         protected val eval = expr(given _)
         computeValue()
 
-    class Var[T](expr: (given Caller) => T) extends AbstractSignal[T] with
+    class Var[T](expr: (given Caller) => T) extends AbstractSignal[T]:
       protected var eval: Caller => T = expr(given _)
       computeValue()
 
@@ -43,7 +43,7 @@ package frp with
     end Var
 
     opaque type Caller = AbstractSignal[?]
-    given noCaller: Caller = new AbstractSignal[Nothing] with
+    given noCaller: Caller = new AbstractSignal[Nothing]:
       override def eval = ???
       override def computeValue() = ()
 
@@ -51,7 +51,7 @@ package frp with
 end frp
 
 import frp._
-class BankAccount with
+class BankAccount:
   def balance: Signal[Int] = myBalance
 
   private val myBalance: Signal.Var[Int] = Signal.Var(0)

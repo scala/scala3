@@ -1,4 +1,4 @@
-object ExtMethods with
+object ExtMethods:
 
   case class Circle(x: Double, y: Double, radius: Double)
 
@@ -48,12 +48,12 @@ object ExtMethods with
     }
   }
 
-  extension listOps on [T](xs: List[T]) with
+  extension listOps on [T](xs: List[T]):
     def second = xs.tail.head
     def third: T = xs.tail.tail.head
 
 
-  extension on [T](xs: List[T])(given Ordering[T]) with
+  extension on [T](xs: List[T])(given Ordering[T]):
     def largest(n: Int) = xs.sorted.takeRight(n)
 
   given stringOps1: AnyRef {

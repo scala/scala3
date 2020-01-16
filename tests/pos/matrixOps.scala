@@ -1,9 +1,9 @@
-object Test with
+object Test:
 
   type Matrix = Array[Array[Double]]
   type Vector = Array[Double]
 
-  extension on (m: Matrix) with
+  extension on (m: Matrix):
     def nRows = m.length
     def nCols = m(0).length
     def row(i: Int): Vector = m(i)
