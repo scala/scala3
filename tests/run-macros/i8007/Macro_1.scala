@@ -6,31 +6,30 @@ import scala.compiletime.{erasedValue, summonFrom, constValue}
 object Macro {
   case class Person(name: String, age: Int)
 
-   // Summon a mirror for a particular type
-  inline def summonMirror[T]: Option[Mirror.Of[T]] =
-    summonFrom {
-      case given m: Mirror.Of[T] => Some(m)
-      case _ => None
+  def mirrorFields[T](t: Type[T])(given qctx: QuoteContext): List[String] =
+    t match {
+      case '[$field *: $fields] => field.show :: mirrorFields(fields)
+      case '[Unit] => Nil
     }
 
-  // Get fields from a mirror:
-  inline def mirrorFields[Fields <: Tuple]: List[String] =
-    inline erasedValue[Fields] match {
-      case _: (field *: fields) => constValue[field].toString :: mirrorFields[fields]
-      case _ => Nil
-    }
+  inline def usingSummonFrom[T](value: =>T): List[String] =
+    ${ usingSummonFromImpl('value) }
 
-  inline def usingSummonFrom[T](value: =>T): String =
-    ${ usingSummonFromImpl('value, summonMirror[T]) }
-
-  def usingSummonFromImpl[T: Type](value: Expr[T], m: Option[Mirror.Of[T]])(given qctx: QuoteContext): Expr[String] = {
+  def usingSummonFromImpl[T: Type](value: Expr[T])(given qctx: QuoteContext): Expr[List[String]] = {
     import qctx.tasty.{_, given}
-    val theMirror = m match { case Some(mirror) => mirror }
 
-    theMirror match {
-      case m: Mirror.ProductOf[T] => println("it's a product: " + mirrorFields[m.MirroredElemLabels])
+
+    val mirrorTpe = '[Mirror.Of[T]]
+
+    summonExpr(given mirrorTpe).get match {
+      case '{ $m: Mirror.ProductOf[T] } => {
+        val typeMember = TypeSelect(m.unseal, "MirroredElemLabels")
+
+        type TT
+        implicit val TT: quoted.Type[TT] = typeMember.tpe.seal.asInstanceOf[quoted.Type[TT]]
+
+        Expr(mirrorFields('[TT]))
+      }
     }
-
-    '{ "Doesn't matter" }
   }
 }
