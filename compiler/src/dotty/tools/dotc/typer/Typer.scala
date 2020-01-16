@@ -1099,6 +1099,9 @@ class Typer extends Namer
             pt match {
               case SAMType(sam)
               if !defn.isFunctionType(pt) && mt <:< sam =>
+                // SAMs of the form C[?] where C is a class cannot be conversion targets.
+                // The resulting class `class $anon extends C[?] {...}` would be illegal,
+                // since type arguments to `C`'s super constructor cannot be constructed.
                 def isWildcardClassSAM =
                   !pt.classSymbol.is(Trait) && pt.argInfos.exists(_.isInstanceOf[TypeBounds])
                 val targetTpe =
