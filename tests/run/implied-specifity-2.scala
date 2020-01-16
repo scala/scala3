@@ -1,32 +1,32 @@
 class Low
 object Low {
-  given low : Low
+  given low as Low
 }
 class Medium extends Low
 object Medium {
-  given medium : Medium
+  given medium as Medium
 }
 class High extends Medium
 object High {
-  given high : High
+  given high as High
 }
 
 class Foo[T](val i: Int)
 object Foo {
   def apply[T](given fooT: Foo[T]): Int = fooT.i
 
-  given foo[T](given Low)    : Foo[T](0)
-  given foobar[T](given Low) : Foo[Bar[T]](1)
-  given foobarbaz(given Low) : Foo[Bar[Baz]](2)
+  given foo[T](given Low) as Foo[T](0)
+  given foobar[T](given Low) as Foo[Bar[T]](1)
+  given foobarbaz(given Low) as Foo[Bar[Baz]](2)
 }
 class Bar[T]
 object Bar {
-  given foobar[T](given Medium): Foo[Bar[T]](3)
-  given foobarbaz(given Medium): Foo[Bar[Baz]](4)
+  given foobar[T](given Medium) as Foo[Bar[T]](3)
+  given foobarbaz(given Medium) as Foo[Bar[Baz]](4)
 }
 class Baz
 object Baz {
-  given baz(given High): Foo[Bar[Baz]](5)
+  given baz(given High) as Foo[Bar[Baz]](5)
 }
 
 class Arg

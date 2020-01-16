@@ -3,8 +3,8 @@ class B extends T
 class C extends T
 
 object A {
-  given b : B
-  given c : C
+  given b as B
+  given c as C
 }
 
 object Test extends App {
