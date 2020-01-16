@@ -1469,7 +1469,7 @@ object Parsers {
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
 
-    /** RefinedType   ::=  WithType {[nl | `with'] Refinement}
+    /** RefinedType   ::=  WithType {[nl] Refinement}
      */
     val refinedType: () => Tree = () => refinedTypeRest(withType())
 
@@ -2093,7 +2093,8 @@ object Parsers {
       }
       else simpleExpr()
 
-    /** SimpleExpr    ::= ‘new’ (ConstrApp [[‘with’] TemplateBody] | TemplateBody)
+    /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
+     *                 |  ‘new’ TemplateBody
      *                 |  BlockExpr
      *                 |  ‘$’ ‘{’ Block ‘}’
      *                 |  Quoted
@@ -2188,7 +2189,7 @@ object Parsers {
       }
     }
 
-    /** SimpleExpr    ::=  ‘new’ ConstrApp {`with` ConstrApp} [[‘with’] TemplateBody]
+    /** SimpleExpr    ::=  ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                  |  ‘new’ TemplateBody
      */
     def newExpr(): Tree =
@@ -3363,7 +3364,7 @@ object Parsers {
         syntaxError(s"Only access modifiers are allowed on enum $where")
       mods1
 
-    /**  EnumDef ::=  id ClassConstr InheritClauses [‘with’] EnumBody
+    /**  EnumDef ::=  id ClassConstr InheritClauses EnumBody
      */
     def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
       val mods1 = checkAccessOnly(mods, "definitions")
@@ -3426,8 +3427,7 @@ object Parsers {
     }
 
     /** GivenDef       ::=  [GivenSig (‘:’ | <:)] {FunArgTypes ‘=>’} AnnotType ‘=’ Expr
-     *                   |  [GivenSig ‘:’] {FunArgTypes ‘=>’} ConstrApps [‘:’ nl | ‘with’] TemplateBody]
-     *                   |  [id ‘:’] ExtParamClause {GivenParamClause} ‘extended’ ‘with’ ExtMethods
+     *                   |  [GivenSig ‘:’] {FunArgTypes ‘=>’} ConstrApps [TemplateBody]
      *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause
      *  ExtMethods     ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
@@ -3530,7 +3530,7 @@ object Parsers {
       finalizeDef(gdef, mods1, start)
     }
 
-    /** ExtensionDef  ::=  [id] ‘of’ ExtParamClause {GivenParamClause} ‘with’ ExtMethods
+    /** ExtensionDef  ::=  [id] ‘on’ ExtParamClause {GivenParamClause} ExtMethods
      */
     def extensionDef(start: Offset, mods: Modifiers): ModuleDef =
       in.nextToken()
@@ -3576,7 +3576,7 @@ object Parsers {
         else Nil
       t :: ts
 
-    /** Template          ::=  InheritClauses [[‘with’] TemplateBody]
+    /** Template          ::=  InheritClauses [TemplateBody]
      *  InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
      */
     def template(constr: DefDef, isEnum: Boolean = false): Template = {
@@ -3646,7 +3646,7 @@ object Parsers {
       case x: RefTree => atSpan(start, pointOffset(pkg))(PackageDef(x, stats))
     }
 
-    /** Packaging ::= package QualId [nl | `with'] `{' TopStatSeq `}'
+    /** Packaging ::= package QualId [nl] `{' TopStatSeq `}'
      */
     def packaging(start: Int): Tree = {
       val pkg = qualId()
