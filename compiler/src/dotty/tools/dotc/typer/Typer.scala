@@ -1099,10 +1099,10 @@ class Typer extends Namer
             pt match {
               case SAMType(sam)
               if !defn.isFunctionType(pt) && mt <:< sam =>
+                def isWildcardClassSAM =
+                  !pt.classSymbol.is(Trait) && pt.argInfos.exists(_.isInstanceOf[TypeBounds])
                 val targetTpe =
-                  if isFullyDefined(pt, ForceDegree.all)
-                     && !pt.argInfos.exists(_.isInstanceOf[TypeBounds])
-                  then
+                  if isFullyDefined(pt, ForceDegree.all) && !isWildcardClassSAM then
                     pt
                   else if pt.isRef(defn.PartialFunctionClass) then
                     // Replace the underspecified expected type by one based on the closure method type
