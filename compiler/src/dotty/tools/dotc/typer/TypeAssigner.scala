@@ -161,7 +161,8 @@ trait TypeAssigner {
     avoid(expr.tpe, localSyms(bindings).filter(_.isTerm))
 
   def avoidPrivateLeaks(sym: Symbol)(implicit ctx: Context): Type =
-    if (!sym.isOneOf(PrivateOrSynthetic) && sym.owner.isClass) checkNoPrivateLeaks(sym)
+    if sym.owner.isClass && !sym.isOneOf(JavaOrPrivateOrSynthetic)
+    then checkNoPrivateLeaks(sym)
     else sym.info
 
   private def toRepeated(tree: Tree, from: ClassSymbol)(implicit ctx: Context): Tree =
