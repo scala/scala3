@@ -117,10 +117,11 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     val moduleCls = clazz.companionClass
     val moduleRef = ref(clazz.companionModule)
 
-    val enums = moduleCls.info.decls.filter(member => member.isTerm && member.isAllOf(EnumValue))
+    val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue))
     for { enumValue <- enums }
     yield {
-      val fieldSym = ctx.newSymbol(clazz, enumValue.name.asTermName, EnumValue, enumValue.info)
+      val fieldSym = ctx.newSymbol(clazz, enumValue.name.asTermName, EnumValue | JavaStatic, enumValue.info)
+      fieldSym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
       ValDef(fieldSym, moduleRef.select(enumValue))
     }
   }

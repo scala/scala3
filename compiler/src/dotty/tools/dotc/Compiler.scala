@@ -58,8 +58,8 @@ class Compiler {
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
          new CookComments,           // Cook the comments: expand variables, doc, etc.
-         new CompleteJavaEnums) ::   // Fill in constructors for Java enums
-    List(new CheckStatic,            // Check restrictions that apply to @static members
+         new CheckStatic) ::         // Check restrictions that apply to @static members
+    List(new CompleteJavaEnums,      // Fill in constructors for Java enums
          new ElimRepeated,           // Rewrite vararg parameters and arguments
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ProtectedAccessors,     // Add accessors for protected members
