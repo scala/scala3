@@ -902,7 +902,6 @@ object Parsers {
 
     /** Are the next tokens a prefix of a formal parameter or given type?
      *  @pre: current token is LPAREN
-     *  TODO: Drop once syntax has stabilized
      */
     def followingIsParamOrGivenType() =
       val lookahead = in.LookaheadScanner()
@@ -917,22 +916,6 @@ object Parsers {
             lookahead.nextToken()
             !lookahead.isAfterLineEnd
           else false
-        else false
-      else false
-
-    /** Are the next tokens a prefix of a formal parameter?
-     *  @pre: current token is LPAREN
-     */
-     def followingIsParam() =
-      val lookahead = in.LookaheadScanner()
-      lookahead.nextToken()
-      if startParamTokens.contains(lookahead.token) then true
-      else if lookahead.token == IDENTIFIER then
-        if lookahead.name == nme.inline then
-          lookahead.nextToken()
-        if lookahead.token == IDENTIFIER then
-          lookahead.nextToken()
-          lookahead.token == COLON
         else false
       else false
 
@@ -2788,17 +2771,15 @@ object Parsers {
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
-    def typesToGivenParams(tps: List[Tree], ofClass: Boolean, nparams: Int): List[ValDef] =
+    /** OLD: GivenTypes   ::=  AnnotType {‘,’ AnnotType}
+     *  NEW: GivenTypes   ::=  Type {‘,’ Type}
+     */
+    def givenTypes(nparams: Int, ofClass: Boolean): List[ValDef] =
+      val tps = commaSeparated(typ)
       var counter = nparams
       def nextIdx = { counter += 1; counter }
       val paramFlags = if ofClass then Private | Local | ParamAccessor else Param
       tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given))
-
-    /** OLD: GivenTypes   ::=  AnnotType {‘,’ AnnotType}
-     *  NEW: GivenTypes   ::=  Type {‘,’ Type}
-     */
-    def givenTypes(ofClass: Boolean, nparams: Int): List[ValDef] =
-      typesToGivenParams(commaSeparated(typ), ofClass, nparams)
 
     /** ClsParamClause    ::=  ‘(’ [‘erased’] ClsParams ‘)’
      *  GivenClsParamClause::= ‘(’ ‘given’ [‘erased’] (ClsParams | GivenTypes) ‘)’
@@ -2897,7 +2878,7 @@ object Parsers {
                 || startParamTokens.contains(in.token)
                 || isIdent && (in.name == nme.inline || in.lookaheadIn(BitSet(COLON)))
               if isParams then commaSeparated(() => param())
-              else givenTypes(ofClass, nparams)
+              else givenTypes(nparams, ofClass)
           checkVarArgsRules(clause)
           clause
       }
@@ -3423,12 +3404,11 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
-    /** GivenDef       ::=  [GivenSig (‘:’ | <:)] {FunArgTypes ‘=>’} AnnotType ‘=’ Expr
-     *                   |  [GivenSig ‘:’] {FunArgTypes ‘=>’} ConstrApps [TemplateBody]
+    /** GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
+     *                   |  [GivenSig ‘:’] ConstrApps [TemplateBody]
      *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause
      *  ExtMethods     ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
-     *  TODO: cleanup once syntax has stabilized
      */
     def givenDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
@@ -3453,60 +3433,30 @@ object Parsers {
           templ.body.foreach(checkExtensionMethod(tparams, _))
           ModuleDef(name, templ)
         else
-          var hasLabel = false
-          def skipColon() =
-            if !hasLabel && in.token == COLON then
-              hasLabel = true
-              in.nextToken()
-          if !name.isEmpty then skipColon()
+          val hasLabel = !name.isEmpty && in.token == COLON
+          if hasLabel then in.nextToken()
           val tparams = typeParamClauseOpt(ParamOwner.Def)
-          if !tparams.isEmpty then skipColon()
           val paramsStart = in.offset
-          var vparamss =
+          val vparamss =
             if in.token == LPAREN && followingIsParamOrGivenType()
-            then paramClauses() // todo: ONLY admit a single paramClause
+            then paramClauses()
             else Nil
           def checkAllGivens(vparamss: List[List[ValDef]], what: String) =
             vparamss.foreach(_.foreach(vparam =>
               if !vparam.mods.is(Given) then syntaxError(em"$what must be `given`", vparam.span)))
-          def makeGiven(params: List[ValDef]): List[ValDef] =
-            params.map(param => param.withMods(param.mods | Given))
-          def conditionalParents(): List[Tree] =
-            accept(ARROW)
-            if in.token == LPAREN && followingIsParam() then
-              vparamss = vparamss :+ makeGiven(paramClause(vparamss.flatten.length))
-              conditionalParents()
-            else
-              val constrs = constrApps(commaOK = true, templateCanFollow = true)
-              if in.token == ARROW && constrs.forall(_.isType) then
-                vparamss = vparamss
-                  :+ typesToGivenParams(constrs, ofClass = false, vparamss.flatten.length)
-                conditionalParents()
-              else constrs
-
-          val isConditional =
-            in.token == ARROW
-            && vparamss.length == 1
-            && (hasLabel || name.isEmpty && tparams.isEmpty)
-          if !isConditional then checkAllGivens(vparamss, "parameter of given instance")
+          checkAllGivens(vparamss, "parameter of given instance")
           val parents =
-            if in.token == SUBTYPE && !hasLabel then
+            if hasLabel then
+              constrApps(commaOK = true, templateCanFollow = true)
+            else if in.token == SUBTYPE then
               if !mods.is(Inline) then
                 syntaxError("`<:` is only allowed for given with `inline` modifier")
               in.nextToken()
-              TypeBoundsTree(EmptyTree, annotType()) :: Nil
-            else if isConditional then
-              vparamss = vparamss.map(makeGiven)
-              conditionalParents()
+              TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
             else
-              if !hasLabel && !(name.isEmpty && tparams.isEmpty && vparamss.isEmpty) then
+              if !(name.isEmpty && tparams.isEmpty && vparamss.isEmpty) then
                 accept(COLON)
-              val constrs = constrApps(commaOK = true, templateCanFollow = true)
-              if in.token == ARROW && vparamss.isEmpty && constrs.forall(_.isType) then
-                vparamss = typesToGivenParams(constrs, ofClass = false, 0) :: Nil
-                conditionalParents()
-              else
-                constrs
+              constrApps(commaOK = true, templateCanFollow = true)
 
           if in.token == EQUALS && parents.length == 1 && parents.head.isType then
             in.nextToken()

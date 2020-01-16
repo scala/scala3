@@ -103,7 +103,7 @@ yield
 ### Soft keywords
 
 ```
-derives   extension inline    opaque    open
+as        derives   extension inline    on        opaque    open
 ~         *         |         &         +         -
 ```
 
@@ -384,10 +384,8 @@ ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
-GivenDef          ::=  [GivenSig (‘:’ | <:)] {FunArgTypes ‘=>’}
-                       AnnotType ‘=’ Expr
-                    |  [GivenSig ‘:’] {FunArgTypes ‘=>’}
-                       ConstrApps [TemplateBody]
+GivenDef          ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
+                    |  [GivenSig ‘:’] ConstrApps [TemplateBody]
 GivenSig          ::=  [id] [DefTypeParamClause] {GivenParamClause}
 ExtensionDef      ::=  [id] ‘on’ ExtParamClause {GivenParamClause} ExtMethods
 ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
