@@ -11,7 +11,7 @@ object test:
   }
   locally {
     object instances2 {
-      given xFromY: Y => X = ???
+      given xFromY(given Y): X = ???
     }
     f // error
   }
