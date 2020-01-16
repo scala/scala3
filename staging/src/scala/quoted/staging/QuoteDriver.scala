@@ -11,6 +11,9 @@ import dotty.tools.dotc.reporting._
 import scala.quoted._
 import scala.quoted.staging.Toolbox
 import java.net.URLClassLoader
+import java.nio.file.Paths
+import java.io.File
+import scala.annotation.tailrec
 
 /** Driver to compile quoted code
  *
@@ -53,7 +56,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver {
 
   override def initCtx: Context = {
     val ictx = contextBase.initialCtx
-    ictx.settings.classpath.update(getCurrentClasspath(appClassloader))(ictx)
+    ictx.settings.classpath.update(classpathFromClassloader(appClassloader))(ictx)
     ictx
   }
 
@@ -64,17 +67,42 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver {
     ctx.setReporter(new ThrowingReporter(ctx.reporter))
   }
 
-  private def getCurrentClasspath(cl: ClassLoader): String = {
-    val classpath0 = System.getProperty("java.class.path")
-    cl match {
-      case cl: URLClassLoader =>
-        // Loads the classes loaded by this class loader
-        // When executing `run` or `test` in sbt the classpath is not in the property java.class.path
-        import java.nio.file.Paths
-        val newClasspath = cl.getURLs.map(url => Paths.get(url.toURI).toString)
-        newClasspath.mkString("", java.io.File.pathSeparator, if (classpath0 == "") "" else java.io.File.pathSeparator + classpath0)
-      case _ => classpath0
+  /** Attempt to recreate a classpath from a classloader.
+   *
+   *  BEWARE: with exotic enough classloaders, this may not work at all or do
+   *  the wrong thing.
+   */
+  private def classpathFromClassloader(cl: ClassLoader): String = {
+    val classpathBuff = List.newBuilder[String]
+    def collectClassLoaderPaths(cl: ClassLoader): Unit = {
+      if (cl != null) {
+        cl match {
+          case cl: URLClassLoader =>
+            // This is wrong if we're in a subclass of URLClassLoader
+            // that filters loading classes from its parent ¯\_(ツ)_/¯
+            collectClassLoaderPaths(cl.getParent)
+            // Parent classloaders are searched before their child, so the part of
+            // the classpath coming from the child is added at the _end_ of the
+            // classpath.
+            classpathBuff ++=
+              cl.getURLs.iterator.map(url => Paths.get(url.toURI).toAbsolutePath.toString)
+          case _ =>
+            // HACK: We can't just collect the classpath from arbitrary parent
+            // classloaders since the current classloader might intentionally
+            // filter loading classes from its parent (for example
+            // BootFilteredLoader in the sbt launcher does this and we really
+            // don't want to include the scala-library that sbt depends on
+            // here), but we do need to look at the parent of the REPL
+            // classloader, so we special case it. We can't do this using a type
+            // test since the REPL classloader class itself is normally loaded
+            // with a different classloader.
+            if (cl.getClass.getName == classOf[AbstractFileClassLoader].getName)
+              collectClassLoaderPaths(cl.getParent)
+        }
+      }
     }
+    collectClassLoaderPaths(cl)
+    classpathBuff.result().mkString(java.io.File.pathSeparator)
   }
 }
 

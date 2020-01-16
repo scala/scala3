@@ -100,7 +100,7 @@ final case class SbtCommunityProject(project: String, sbtTestCommand: String,
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
     extraSbtArgs ++ sbtProps ++ List(
-      "-sbt-version", "1.2.7",
+      "-sbt-version", "1.3.6",
       s"--addPluginSbtFile=$sbtPluginFilePath")
 
 object projects

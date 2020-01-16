@@ -54,14 +54,18 @@ object MyScalaJSPlugin extends AutoPlugin {
 
     // Typecheck the Scala.js IR found on the classpath
     scalaJSLinkerConfig ~= (_.withCheckIR(true)),
+
+    // Exclude all these projects from `configureIDE/launchIDE` since they
+    // take time to compile, print a bunch of warnings, and are rarely edited.
+    excludeFromIDE := true
   )
 }
 
 object Build {
-  val referenceVersion = "0.21.0-RC1"
+  val referenceVersion = "0.22.0-bin-20200114-193f7de-NIGHTLY"
 
   val baseVersion = "0.22.0"
-  val baseSbtDottyVersion = "0.3.5"
+  val baseSbtDottyVersion = "0.4.0"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -191,6 +195,11 @@ object Build {
 
       state
     },
+
+    // Turn off the sbt supershell because it can mangle the output of some tasks
+    // (see https://github.com/sbt/sbt/issues/5122, https://github.com/sbt/sbt/issues/5352)
+    // and in general I find it more distracting than helpful anyway.
+    useSuperShell := false,
 
     // Credentials to release to Sonatype
     credentials ++= (
@@ -730,16 +739,18 @@ object Build {
     case Bootstrapped => `dotty-compiler-bootstrapped`
   }
 
-  // Settings shared between dotty-library and dotty-library-bootstrapped
+  // Settings shared between dotty-library, dotty-library-bootstrapped and dotty-library-bootstrappedJS
   lazy val dottyLibrarySettings = Seq(
-    // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
-    scalacOptions in Compile ++= Seq("-sourcepath", (sourceDirectories in Compile).value.map(_.getAbsolutePath).distinct.mkString(File.pathSeparator)),
+    scalacOptions in Compile ++= Seq(
+      // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
+      "-sourcepath", (sourceDirectories in Compile).value.map(_.getAbsolutePath).distinct.mkString(File.pathSeparator),
+     // support declaration of scala.compiletime.erasedValue
+      "-Yerased-terms"
+    ),
   )
 
   lazy val `dotty-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
   lazy val `dotty-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped)
-    // TODO: move -Yerased-terms to dottyLibrarySettings on reference compiler update
-    .settings(scalacOptions in Compile += "-Yerased-terms") // support declaration of scala.compiletime.erasedValue
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `dotty-library`
@@ -761,7 +772,6 @@ object Build {
     settings(
       unmanagedSourceDirectories in Compile :=
         (unmanagedSourceDirectories in (`dotty-library-bootstrapped`, Compile)).value,
-      scalacOptions += "-Yerased-terms", // support declaration of scala.compiletime.erasedValue
     )
 
   lazy val tastyCoreSettings = Seq(
@@ -1109,8 +1119,6 @@ object Build {
       version := "0.1.17-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,
-      includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",
-      watchSources in Global ++= (unmanagedSources in Compile).value,
       resourceGenerators in Compile += Def.task {
         // Resources that will be copied when bootstrapping a new project
         val buildSbtFile = baseDirectory.value / "out" / "build.sbt"
