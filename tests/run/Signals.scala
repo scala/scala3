@@ -1,8 +1,8 @@
 
 import annotation.unchecked._
-package frp with
+package frp:
 
-  sealed class Signal[+T](expr: (given Signal.Caller) => T) with
+  sealed class Signal[+T](expr: (given Signal.Caller) => T):
     private var myExpr: Signal.Caller => T = _
     private var myValue: T = _
     private var observers: Set[Signal.Caller] = Set()
@@ -26,19 +26,19 @@ package frp with
         observers = Set()
         obs.foreach(_.computeValue())
 
-  object Signal with
+  object Signal:
     type Caller = Signal[?]
-    given noCaller: Caller(???) with
+    given noCaller: Caller(???):
       override def computeValue() = ()
   end Signal
 
-  class Var[T](expr: (given Signal.Caller) => T) extends Signal[T](expr) with
+  class Var[T](expr: (given Signal.Caller) => T) extends Signal[T](expr):
     def update(expr: (given Signal.Caller) => T): Unit = changeTo(expr)
   end Var
 end frp
 
 import frp._
-class BankAccount with
+class BankAccount:
   def balance: Signal[Int] = myBalance
 
   private var myBalance: Var[Int] = Var(0)

@@ -1,17 +1,17 @@
-object Enums/*<-_empty_::Enums.*/ with
+object Enums/*<-_empty_::Enums.*/:
   import <:</*->_empty_::Enums.`<:<`.*/._
 
-  enum Colour/*<-_empty_::Enums.Colour#*/ with
+  enum Colour/*<-_empty_::Enums.Colour#*/:
     import Colour/*->_empty_::Enums.Colour.*/.Red/*->_empty_::Enums.Colour.Red.*/
     case Red/*<-_empty_::Enums.Colour.Red.*/, Green/*<-_empty_::Enums.Colour.Green.*/, Blue/*<-_empty_::Enums.Colour.Blue.*/
 
-  enum Directions/*<-_empty_::Enums.Directions#*/ with
+  enum Directions/*<-_empty_::Enums.Directions#*/:
     case North/*<-_empty_::Enums.Directions.North.*/, East/*<-_empty_::Enums.Directions.East.*/, South/*<-_empty_::Enums.Directions.South.*/, West/*<-_empty_::Enums.Directions.West.*/
 
-  enum Suits/*<-_empty_::Enums.Suits#*/ derives /*->scala::Eql.derived.*/Eql with
+  enum Suits/*<-_empty_::Enums.Suits#*/ derives /*->scala::Eql.derived.*/Eql:
     case Hearts/*<-_empty_::Enums.Suits.Hearts.*/, Spades/*<-_empty_::Enums.Suits.Spades.*/, Clubs/*<-_empty_::Enums.Suits.Clubs.*/, Diamonds/*<-_empty_::Enums.Suits.Diamonds.*/
 
-  object Suits/*<-_empty_::Enums.Suits.*/ with
+  object Suits/*<-_empty_::Enums.Suits.*/:
     def (suit/*<-_empty_::Enums.Suits.isRed().*//*<-_empty_::Enums.Suits.isRed().(suit)*/: Suits/*->_empty_::Enums.Suits#*/).isRed: Boolean/*->scala::Boolean#*/ =
       suit/*->_empty_::Enums.Suits.isRed().(suit)*/ ==/*->scala::Any#`==`().*/ Hearts/*->_empty_::Enums.Suits.Hearts.*/ ||/*->scala::Boolean#`||`().*/ suit/*->_empty_::Enums.Suits.isRed().(suit)*/ ==/*->scala::Any#`==`().*/ Diamonds/*->_empty_::Enums.Suits.Diamonds.*/
 
@@ -19,7 +19,7 @@ object Enums/*<-_empty_::Enums.*/ with
       case Spades/*->_empty_::Enums.Suits.Spades.*/ | Diamonds/*->_empty_::Enums.Suits.Diamonds.*/ => true
       case _                 => false
 
-  enum WeekDays/*<-_empty_::Enums.WeekDays#*/ with
+  enum WeekDays/*<-_empty_::Enums.WeekDays#*/:
     case Monday/*<-_empty_::Enums.WeekDays.Monday.*/
     case Tuesday/*<-_empty_::Enums.WeekDays.Tuesday.*/
     case Wednesday/*<-_empty_::Enums.WeekDays.Wednesday.*/
@@ -28,25 +28,25 @@ object Enums/*<-_empty_::Enums.*/ with
     case Saturday/*<-_empty_::Enums.WeekDays.Saturday.*/
     case Sunday/*<-_empty_::Enums.WeekDays.Sunday.*/
 
-  enum Coin/*<-_empty_::Enums.Coin#*/(value/*<-_empty_::Enums.Coin#value.*/: Int/*->scala::Int#*/) with
+  enum Coin/*<-_empty_::Enums.Coin#*/(value/*<-_empty_::Enums.Coin#value.*/: Int/*->scala::Int#*/):
     case Penny/*<-_empty_::Enums.Coin.Penny.*/    extends Coin/*->_empty_::Enums.Coin#*/(1)
     case Nickel/*<-_empty_::Enums.Coin.Nickel.*/   extends Coin/*->_empty_::Enums.Coin#*/(5)
     case Dime/*<-_empty_::Enums.Coin.Dime.*/     extends Coin/*->_empty_::Enums.Coin#*/(10)
     case Quarter/*<-_empty_::Enums.Coin.Quarter.*/  extends Coin/*->_empty_::Enums.Coin#*/(25)
     case Dollar/*<-_empty_::Enums.Coin.Dollar.*/   extends Coin/*->_empty_::Enums.Coin#*/(100)
 
-  enum Maybe/*<-_empty_::Enums.Maybe#*/[+A/*<-_empty_::Enums.Maybe#[A]*/] with
+  enum Maybe/*<-_empty_::Enums.Maybe#*/[+A/*<-_empty_::Enums.Maybe#[A]*/]:
     case Just/*<-_empty_::Enums.Maybe.Just#*/(value/*<-_empty_::Enums.Maybe.Just#value.*/: A/*->_empty_::Enums.Maybe.Just#[A]*/)
     case None/*<-_empty_::Enums.Maybe.None.*/
 
-  enum Tag/*<-_empty_::Enums.Tag#*/[A/*<-_empty_::Enums.Tag#[A]*/] with
+  enum Tag/*<-_empty_::Enums.Tag#*/[A/*<-_empty_::Enums.Tag#[A]*/]:
     case IntTag/*<-_empty_::Enums.Tag.IntTag.*/ extends Tag/*->_empty_::Enums.Tag#*/[Int/*->scala::Int#*/]
     case BooleanTag/*<-_empty_::Enums.Tag.BooleanTag.*/ extends Tag/*->_empty_::Enums.Tag#*/[Boolean/*->scala::Boolean#*/]
 
-  enum <:</*<-_empty_::Enums.`<:<`#*/[-A/*<-_empty_::Enums.`<:<`#[A]*/, B/*<-_empty_::Enums.`<:<`#[B]*/] with
+  enum <:</*<-_empty_::Enums.`<:<`#*/[-A/*<-_empty_::Enums.`<:<`#[A]*/, B/*<-_empty_::Enums.`<:<`#[B]*/]:
     case Refl/*<-_empty_::Enums.`<:<`.Refl#*/[C/*<-_empty_::Enums.`<:<`.Refl#[C]*/]() extends (C/*->_empty_::Enums.`<:<`.Refl#[C]*/ <:</*->_empty_::Enums.`<:<`#*/ C/*->_empty_::Enums.`<:<`.Refl#[C]*/)
 
-  object <:</*<-_empty_::Enums.`<:<`.*/ with
+  object <:</*<-_empty_::Enums.`<:<`.*/ :
     given [T]: (T/*<-_empty_::Enums.`<:<`.given_T().*//*<-_empty_::Enums.`<:<`.given_T().[T]*//*->_empty_::Enums.`<:<`.given_T().[T]*/ <:</*->_empty_::Enums.`<:<`#*/ T/*->_empty_::Enums.`<:<`.given_T().[T]*/) = Refl/*->_empty_::Enums.`<:<`.Refl.*//*->_empty_::Enums.`<:<`.Refl.apply().*/()
 
   def [A, B]/*<-_empty_::Enums.unwrap().*//*<-_empty_::Enums.unwrap().[A]*//*<-_empty_::Enums.unwrap().[B]*/(opt/*<-_empty_::Enums.unwrap().(opt)*/: Option/*->scala::Option#*/[A/*->_empty_::Enums.unwrap().[A]*/]) unwrap(given ev/*<-_empty_::Enums.unwrap().(ev)*/: A/*->_empty_::Enums.unwrap().[A]*/ <:</*->_empty_::Enums.`<:<`#*/ Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/]): Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/] = ev/*->_empty_::Enums.unwrap().(ev)*/ match
@@ -54,7 +54,7 @@ object Enums/*<-_empty_::Enums.*/ with
 
   val some1/*<-_empty_::Enums.some1.*/ = /*->_empty_::Enums.unwrap().*/Some/*->scala::Some.*//*->scala::Some.apply().*/(Some/*->scala::Some.*//*->scala::Some.apply().*/(1))/*->_empty_::Enums.`<:<`.given_T().*/.unwrap
 
-  enum Planet/*<-_empty_::Enums.Planet#*/(mass/*<-_empty_::Enums.Planet#mass.*/: Double/*->scala::Double#*/, radius/*<-_empty_::Enums.Planet#radius.*/: Double/*->scala::Double#*/) extends java.lang.Enum/*->java::lang::Enum#*/[Planet/*->_empty_::Enums.Planet#*/]/*->java::lang::Enum#`<init>`().*/ with
+  enum Planet/*<-_empty_::Enums.Planet#*/(mass/*<-_empty_::Enums.Planet#mass.*/: Double/*->scala::Double#*/, radius/*<-_empty_::Enums.Planet#radius.*/: Double/*->scala::Double#*/) extends java.lang.Enum/*->java::lang::Enum#*/[Planet/*->_empty_::Enums.Planet#*/]/*->java::lang::Enum#`<init>`().*/:
     private final val G/*<-_empty_::Enums.Planet#G.*/ = 6.67300E-11
     def surfaceGravity/*<-_empty_::Enums.Planet#surfaceGravity().*/ = G/*->_empty_::Enums.Planet#G.*/ */*->scala::Double#`*`(+6).*/ mass/*->_empty_::Enums.Planet#mass.*/ //*->scala::Double#`::`(+6).*/ (radius/*->_empty_::Enums.Planet#radius.*/ */*->scala::Double#`*`(+6).*/ radius/*->_empty_::Enums.Planet#radius.*/)
     def surfaceWeight/*<-_empty_::Enums.Planet#surfaceWeight().*/(otherMass/*<-_empty_::Enums.Planet#surfaceWeight().(otherMass)*/: Double/*->scala::Double#*/) = otherMass/*->_empty_::Enums.Planet#surfaceWeight().(otherMass)*/ */*->scala::Double#`*`(+6).*/ surfaceGravity/*->_empty_::Enums.Planet#surfaceGravity().*/

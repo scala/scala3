@@ -1,10 +1,10 @@
-package foo with
-  package bar with
-    object A with
+package foo:
+  package bar:
+    object A:
       def foo = 1
   end bar
 end foo
-package baz with
-  object B with
+package baz:
+  object B:
     def f = foo.bar.A.foo
 end baz

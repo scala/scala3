@@ -149,7 +149,7 @@ FunArgTypes       ::=  InfixType
 TypedFunParam     ::=  id ‘:’ Type
 MatchType         ::=  InfixType `match` ‘{’ TypeCaseClauses ‘}’
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
-RefinedType       ::=  WithType {[nl | ‘with’] Refinement}                      RefinedTypeTree(t, ds)
+RefinedType       ::=  WithType {[nl] Refinement}                               RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
 SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
@@ -214,7 +214,7 @@ SimpleExpr        ::=  Path
                     |  ‘$’ ‘{’ Block ‘}’
                     |  Quoted
                     |  quoteId     // only inside splices
-                    |  ‘new’ ConstrApp {‘with’ ConstrApp} [[‘with’] TemplateBody] New(constr | templ)
+                    |  ‘new’ ConstrApp {‘with’ ConstrApp} [TemplateBody]        New(constr | templ)
                     |  ‘new’ TemplateBody
                     |  ‘(’ ExprsInParens ‘)’                                    Parens(exprs)
                     |  SimpleExpr ‘.’ id                                        Select(expr, id)
@@ -383,16 +383,16 @@ ClassDef          ::=  id ClassConstr [Template]                                
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
-EnumDef           ::=  id ClassConstr InheritClauses [‘with’] EnumBody          EnumDef(mods, name, tparams, template)
+EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
 GivenDef          ::=  [GivenSig (‘:’ | <:)] {FunArgTypes ‘=>’}
                        AnnotType ‘=’ Expr
                     |  [GivenSig ‘:’] {FunArgTypes ‘=>’}
-                       ConstrApps [[‘with’] TemplateBody]
+                       ConstrApps [TemplateBody]
 GivenSig          ::=  [id] [DefTypeParamClause] {GivenParamClause}
-ExtensionDef      ::=  [id] ‘of’ ExtParamClause {GivenParamClause} ExtMethods
+ExtensionDef      ::=  [id] ‘on’ ExtParamClause {GivenParamClause} ExtMethods
 ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
-Template          ::=  InheritClauses [[‘with’] TemplateBody]                   Template(constr, parents, self, stats)
+Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
 ConstrApp         ::=  AnnotType {ParArgumentExprs}                             Apply(tp, args)
@@ -410,7 +410,7 @@ TemplateStat      ::=  Import
 SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)
                     |  ‘this’ ‘:’ InfixType ‘=>’
 
-EnumBody          ::=  [nl | ‘with’] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+EnumBody          ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
 EnumStat          ::=  TemplateStat
                     |  {Annotation [nl]} {Modifier} EnumCase
 EnumCase          ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps]] | ids)
@@ -422,7 +422,7 @@ TopStat           ::=  Import
                     |  Packaging
                     |  PackageObject
                     |
-Packaging         ::=  ‘package’ QualId [nl | ‘with’] ‘{’ TopStatSeq ‘}’        Package(qid, stats)
+Packaging         ::=  ‘package’ QualId [nl] ‘{’ TopStatSeq ‘}’                 Package(qid, stats)
 PackageObject     ::=  ‘package’ ‘object’ ObjectDef                             object with package in mods.
 
 CompilationUnit   ::=  {‘package’ QualId semi} TopStatSeq                       Package(qid, stats)

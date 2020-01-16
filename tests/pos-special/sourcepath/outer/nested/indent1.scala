@@ -2,7 +2,7 @@ package outer
 package nested
 
 object indent1
-  object inner with
+  object inner:
     def x: Int = 1
   end inner
   val y: Int = 2

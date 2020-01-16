@@ -1,6 +1,6 @@
 trait X
 trait Y
-object test with
+object test:
   def f(given x: X) = ???
   object instances {
     given y: Y = ???

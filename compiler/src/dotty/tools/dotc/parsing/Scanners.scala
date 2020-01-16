@@ -550,6 +550,13 @@ object Scanners {
          |Previous indent : $lastWidth
          |Latest indent   : $nextWidth"""
 
+    def observeColonEOL(): Unit =
+      if token == COLON then
+        lookahead()
+        val atEOL = isAfterLineEnd
+        reset()
+        if atEOL then token = COLONEOL
+
     def observeIndented(): Unit =
       if indentSyntax && isNewLine then
         val nextWidth = indentWidth(next.offset)
@@ -575,19 +582,21 @@ object Scanners {
         insert(OUTDENT, offset)
       case _ =>
 
+    def lookahead() = {
+      prev.copyFrom(this)
+      lastOffset = lastCharOffset
+      fetchToken()
+    }
+
+    def reset() = {
+      next.copyFrom(this)
+      this.copyFrom(prev)
+    }
+
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
      *  - Insert missing OUTDENTs at EOF
      */
     def postProcessToken(): Unit = {
-      def lookahead() = {
-        prev.copyFrom(this)
-        lastOffset = lastCharOffset
-        fetchToken()
-      }
-      def reset() = {
-        next.copyFrom(this)
-        this.copyFrom(prev)
-      }
       def fuse(tok: Int) = {
         token = tok
         offset = prev.offset
@@ -611,10 +620,7 @@ object Scanners {
             /* skip the trailing comma */
           } else reset()
         case COLON =>
-          lookahead()
-          val atEOL = isAfterLineEnd
-          reset()
-          if (colonSyntax && atEOL) token = COLONEOL
+          if colonSyntax then observeColonEOL()
         case EOF | RBRACE =>
           currentRegion match {
             case r: Indented if !r.isOutermost =>

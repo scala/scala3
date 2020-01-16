@@ -1,7 +1,7 @@
-package xcollections with
+package xcollections:
   import annotation.unchecked.uncheckedVariance
 
-  abstract class LazyList[+T] with
+  abstract class LazyList[+T]:
 
     private var myHead: T = _
     private var myTail: LazyList[T] = _
@@ -40,39 +40,38 @@ package xcollections with
       case xs: LazyList[T] @unchecked => xs
       case _ => LazyList.fromIterator(xs.iterator)
 
-  object LazyList with
+  object LazyList:
 
-    val empty: LazyList[Nothing] = new with
+    val empty: LazyList[Nothing] = new:
       protected def force(): LazyList[Nothing] = this
 
-    object #:: with
+    object #:: :
       def unapply[T](xs: LazyList[T]): Option[(T, LazyList[T])] =
         if xs.isEmpty then None
         else Some((xs.head, xs.tail))
 
-    def fromIterator[T](it: Iterator[T]): LazyList[T] = new with
+    def fromIterator[T](it: Iterator[T]): LazyList[T] = new:
       protected def force() =
         if it.hasNext then set(it.next, fromIterator  (it))
         else empty
 
-    given [T, U >: T](xs: LazyList[T]) extended with
-
-      def #::(x: U): LazyList[U] = new with
+    extension on [T, U >: T](xs: LazyList[T]):
+      def #::(x: U): LazyList[U] = new:
         protected def force(): LazyList[U] =
           set(x, xs)
 
-      def ++(ys: LazyList[U]): LazyList[U] = new with
+      def ++(ys: LazyList[U]): LazyList[U] = new:
         protected def force() =
           if xs.isEmpty then ys.forced()
           else set(xs.head, xs.tail ++ ys)
 
-    given [T, U](xs: LazyList[T]) extended with
-      def map(f: T => U): LazyList[U] = new with
+    extension on [T, U](xs: LazyList[T]):
+      def map(f: T => U): LazyList[U] = new:
         protected def force() =
           if xs.isEmpty then empty
           else set(f(xs.head), xs.tail.map(f))
 
-      def flatMap(f: T => LazyList[U]): LazyList[U] = new with
+      def flatMap(f: T => LazyList[U]): LazyList[U] = new:
         protected def force(): LazyList[U] =
           if xs.isEmpty then empty
           else f(xs.head) ++ xs.tail.flatMap(f)
@@ -81,8 +80,8 @@ package xcollections with
         if xs.isEmpty then z
         else xs.tail.foldLeft(f(z, xs.head))(f)
 
-    given [T](xs: LazyList[T]) extended with
-      def filter(p: T => Boolean): LazyList[T] = new with
+    extension on [T](xs: LazyList[T]):
+      def filter(p: T => Boolean): LazyList[T] = new:
         protected def force(): LazyList[T] =
           if xs.isEmpty then empty
           else if p(xs.head) then set(xs.head, xs.tail.filter(p))
@@ -90,19 +89,20 @@ package xcollections with
 
       def take(n: Int): LazyList[T] =
         if n <= 0 then empty
-        else new with
+        else new:
           protected def force(): LazyList[T] =
             if xs.isEmpty then xs
             else set(xs.head, xs.tail.take(n - 1))
 
       def drop(n: Int): LazyList[T] =
         if n <= 0 then xs
-        else new with
+        else new:
           protected def force(): LazyList[T] =
             def advance(xs: LazyList[T], n: Int): LazyList[T] =
               if n <= 0 || xs.isEmpty then xs
               else advance(xs.tail, n - 1)
             advance(xs, n)
+
   end LazyList
 end xcollections
 
