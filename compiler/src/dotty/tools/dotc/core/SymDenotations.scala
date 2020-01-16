@@ -2018,7 +2018,7 @@ object SymDenotations {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       try {
-        for (p <- classParents)
+        for (p <- classParents if p.classSymbol.isClass)
           for (name <- p.classSymbol.asClass.memberNames(keepOnly))
             maybeAdd(name)
         val ownSyms =
