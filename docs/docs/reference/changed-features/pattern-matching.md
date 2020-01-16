@@ -50,6 +50,13 @@ and `S` conforms to one of the following matches:
 The former form of `unapply` has higher precedence, and _single match_ has higher
 precedence over _name-based match_.
 
+A usage of a fixed-arity extractor is irrefutable if one of the following condition holds:
+
+- `U = true`
+- the extractor is used as a product match
+- `U = Some[T]` (for Scala2 compatibility)
+- `U <: R` and `U <: { def isEmpty: false }`
+
 ### Variadic Extractors
 
 Variadic extractors expose the following signature:
@@ -76,6 +83,12 @@ and `S` conforms to one of the two matches above.
 
 The former form of `unapplySeq` has higher priority, and _sequence match_ has higher
 precedence over _product-sequence match_.
+
+A usage of a variadic extractor is irrefutable if one of the following condition holds:
+
+- the extractor is used directly as a sequence match or product-sequence match
+- `U = Some[T]` (for Scala2 compatibility)
+- `U <: R` and `U <: { def isEmpty: false }`
 
 ## Boolean Match
 

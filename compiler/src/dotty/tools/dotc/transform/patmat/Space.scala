@@ -275,12 +275,30 @@ object SpaceEngine {
   /** Is the unapply irrefutable?
    *  @param  unapp   The unapply function reference
    */
-  def isIrrefutableUnapply(unapp: tpd.Tree)(implicit ctx: Context): Boolean = {
+  def isIrrefutableUnapply(unapp: tpd.Tree, patSize: Int)(implicit ctx: Context): Boolean = {
     val unappResult = unapp.tpe.widen.finalResultType
     unappResult.isRef(defn.SomeClass) ||
-    unappResult =:= ConstantType(Constant(true)) ||
-    (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||
-    productArity(unappResult) > 0
+    unappResult <:< ConstantType(Constant(true)) ||
+    (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||  // scala2 compatibility
+    (patSize != -1 && productArity(unappResult) == patSize) || {
+      val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, unapp.sourcePos)
+      isEmptyTp <:< ConstantType(Constant(false))
+    }
+  }
+
+  /** Is the unapplySeq irrefutable?
+   *  @param  unapp   The unapplySeq function reference
+   */
+  def isIrrefutableUnapplySeq(unapp: tpd.Tree, patSize: Int)(implicit ctx: Context): Boolean = {
+    val unappResult = unapp.tpe.widen.finalResultType
+    unappResult.isRef(defn.SomeClass) ||
+    (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||  // scala2 compatibility
+    unapplySeqTypeElemTp(unappResult).exists ||
+    isProductSeqMatch(unappResult, patSize) ||
+    {
+      val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, unapp.sourcePos)
+      isEmptyTp <:< ConstantType(Constant(false))
+    }
   }
 }
 
@@ -348,16 +366,15 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         else {
           val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.sourcePos)
           if (elemTp.exists)
-            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, isIrrefutableUnapply(fun))
+            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, isIrrefutableUnapplySeq(fun, pats.size))
           else
-            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)),isIrrefutableUnapply(fun))
+            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)), isIrrefutableUnapplySeq(fun, pats.size))
         }
       else
-        Prod(erase(pat.tpe.stripAnnots), erase(fun.tpe), fun.symbol, pats.map(project), isIrrefutableUnapply(fun))
-    case Typed(expr @ Ident(nme.WILDCARD), tpt) =>
+        Prod(erase(pat.tpe.stripAnnots), erase(fun.tpe), fun.symbol, pats.map(project), isIrrefutableUnapply(fun, pats.length))
+    case Typed(pat @ UnApply(_, _, _), _) => project(pat)
+    case Typed(expr, _) =>
       Typ(erase(expr.tpe.stripAnnots), true)
-    case Typed(pat, _) =>
-      project(pat)
     case This(_) =>
       Typ(pat.tpe.stripAnnots, false)
     case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
@@ -678,19 +695,21 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         companion.findMember(nme.unapplySeq, NoPrefix, required = EmptyFlags, excluded = Synthetic).exists
     }
 
-    def doShow(s: Space, mergeList: Boolean = false): String = s match {
+    def doShow(s: Space, flattenList: Boolean = false): String = s match {
       case Empty => ""
       case Typ(c: ConstantType, _) => "" + c.value.value
-      case Typ(tp: TermRef, _) => tp.symbol.showName
+      case Typ(tp: TermRef, _) =>
+        if (flattenList && tp <:< scalaNilType) ""
+        else tp.symbol.showName
       case Typ(tp, decomposed) =>
         val sym = tp.widen.classSymbol
 
         if (ctx.definitions.isTupleType(tp))
           params(tp).map(_ => "_").mkString("(", ", ", ")")
         else if (scalaListType.isRef(sym))
-          if (mergeList) "_: _*" else "_: List"
+          if (flattenList) "_: _*" else "_: List"
         else if (scalaConsType.isRef(sym))
-          if (mergeList) "_, _: _*"  else "List(_, _: _*)"
+          if (flattenList) "_, _: _*"  else "List(_, _: _*)"
         else if (tp.classSymbol.is(Sealed) && tp.classSymbol.hasAnonymousChild)
           "_: " + showType(tp) + " (anonymous)"
         else if (tp.classSymbol.is(CaseClass) && !hasCustomUnapply(tp.classSymbol))
@@ -702,15 +721,18 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         if (ctx.definitions.isTupleType(tp))
           "(" + params.map(doShow(_)).mkString(", ") + ")"
         else if (tp.isRef(scalaConsType.symbol))
-          if (mergeList) params.map(doShow(_, mergeList)).mkString(", ")
-          else params.map(doShow(_, true)).filter(_ != "Nil").mkString("List(", ", ", ")")
-        else
-          showType(sym.owner.typeRef) + params.map(doShow(_)).mkString("(", ", ", ")")
+          if (flattenList) params.map(doShow(_, flattenList)).mkString(", ")
+          else params.map(doShow(_, flattenList = true)).filter(!_.isEmpty).mkString("List(", ", ", ")")
+        else {
+          val isUnapplySeq = sym.name.eq(nme.unapplySeq)
+          val paramsStr = params.map(doShow(_, flattenList = isUnapplySeq)).mkString("(", ", ", ")")
+          showType(sym.owner.typeRef) + paramsStr
+        }
       case Or(_) =>
         throw new Exception("incorrect flatten result " + s)
     }
 
-    flatten(s).map(doShow(_, false)).distinct.mkString(", ")
+    flatten(s).map(doShow(_, flattenList = false)).distinct.mkString(", ")
   }
 
   private def exhaustivityCheckable(sel: Tree): Boolean = {

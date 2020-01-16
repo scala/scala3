@@ -8,7 +8,7 @@ import collection.mutable
 import Symbols._, Contexts._, Types._, StdNames._, NameOps._
 import ast.Trees._
 import util.Spans._
-import typer.Applications.{isProductMatch, isGetMatch, isProductSeqMatch, productSelectors, productArity}
+import typer.Applications.{isProductMatch, isGetMatch, isProductSeqMatch, productSelectors, productArity, unapplySeqTypeElemTp}
 import SymUtils._
 import Flags._, Constants._
 import Decorators._
@@ -329,9 +329,12 @@ object PatternMatcher {
                 .map(ref(unappResult).select(_))
               matchArgsPlan(selectors, args, onSuccess)
             }
-            else if (isProductSeqMatch(unapp.tpe.widen, args.length, unapp.sourcePos) && isUnapplySeq) {
+            else if (isUnapplySeq && isProductSeqMatch(unapp.tpe.widen, args.length, unapp.sourcePos)) {
               val arity = productArity(unapp.tpe.widen, unapp.sourcePos)
               unapplyProductSeqPlan(unappResult, args, arity)
+            }
+            else if (isUnapplySeq && unapplySeqTypeElemTp(unapp.tpe.widen.finalResultType).exists) {
+              unapplySeqPlan(unappResult, args)
             }
             else {
               assert(isGetMatch(unapp.tpe))

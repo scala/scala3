@@ -1,6 +1,4 @@
 final class StringExtract(val s: String) extends AnyVal {
-  def isEmpty                     = (s eq null) || (s == "")
-  def get                         = this
   def length                      = s.length
   def lengthCompare(n: Int)       = s.length compare n
   def apply(idx: Int): Char       = s charAt idx
@@ -13,7 +11,6 @@ final class StringExtract(val s: String) extends AnyVal {
 }
 
 final class ThreeStringExtract(val s: String) extends AnyVal {
-  def isEmpty                             = (s eq null) || (s == "")
   def get: (List[Int], Double, Seq[Char]) = ((s.length :: Nil, s.length.toDouble, toSeq))
   def length                              = s.length
   def lengthCompare(n: Int)               = s.length compare n
@@ -28,10 +25,14 @@ final class ThreeStringExtract(val s: String) extends AnyVal {
 
 
 object Bippy {
-  def unapplySeq(x: Any): StringExtract = new StringExtract("" + x)
+  def unapplySeq(x: Any): Option[StringExtract] =
+    if ((x == null) || (x == "")) None
+    else Some(new StringExtract("" + x))
 }
 object TripleBippy {
-  def unapplySeq(x: Any): ThreeStringExtract = new ThreeStringExtract("" + x)
+  def unapplySeq(x: Any): Option[(List[Int], Double, Seq[Char])] =
+    if ((x == null) || (x == "")) then None
+    else Some(new ThreeStringExtract("" + x).get)
 }
 
 object Test {
