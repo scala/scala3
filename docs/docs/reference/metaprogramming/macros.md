@@ -190,7 +190,7 @@ would be rewritten to
 def reflect[T: Type, U: Type](f: Expr[T] => Expr[U]): Expr[T => U] =
   '{ (x: ${ summon[Type[T]] }) => ${ f('x) } }
 ```
-The `the` query succeeds because there is a given instance of
+The `summon` query succeeds because there is a given instance of
 type `Type[T]` available (namely the given parameter corresponding
 to the context bound `: Type`), and the reference to that value is
 phase-correct. If that was not the case, the phase inconsistency for
