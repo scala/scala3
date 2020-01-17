@@ -233,12 +233,6 @@ object projects
     sbtUpdateCommand = "update"
   )
 
-  lazy val semanticdb = SbtCommunityProject(
-    project       = "semanticdb",
-    sbtTestCommand   = "test:compile",
-    sbtUpdateCommand = "update"
-  )
-
   lazy val effpi = SbtCommunityProject(
     project       = "effpi",
     // We set `useEffpiPlugin := false` because we don't want to run their
@@ -339,7 +333,6 @@ class CommunityBuildTest {
   @Test def stdLib213 = projects.stdLib213.run()
   @Test def shapeless = projects.shapeless.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
-  @Test def semanticdb = projects.semanticdb.run()
   @Test def effpi = projects.effpi.run()
   @Test def sconfig = projects.sconfig.run()
 }
