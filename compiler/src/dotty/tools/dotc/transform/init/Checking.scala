@@ -187,37 +187,37 @@ object Checking {
       implicit val state2: State = state.withVisited(eff)
 
       eff match {
-        case Leak(pot) =>
+        case Promote(pot) =>
           pot match {
             case ThisRef(cls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
               theCtx.warning(
-                "Leaking of this. Calling trace:\n" + state.trace,
+                "Promote `this` to be initialized while it is not. Calling trace:\n" + state.trace,
                 eff.source.sourcePos
               )
 
             case _: Cold =>
               theCtx.warning(
-                "Leaking of cold value " + eff.source.show +
+                "Promoting the value " + eff.source.show + " to be initialized while it is under initialization" +
                 ". Calling trace:\n" + state.trace,
                 eff.source.sourcePos
               )
 
             case Warm(cls, outer) =>
               theCtx.warning(
-                "Leaking of value under initialization: " + pot.source.show +
+                "Promoting the value under initialization to be initialized: " + pot.source.show +
                 ". Calling trace:\n" + state.trace,
                 eff.source.sourcePos
               )
 
             case Fun(pots, effs) =>
               effs.foreach { check(_) }
-              pots.foreach { pot => check(Leak(pot)(eff.source)) }
+              pots.foreach { pot => check(Promote(pot)(eff.source)) }
 
             case pot =>
               val pots = expand(pot)
-              pots.foreach { pot => check(Leak(pot)(eff.source)) }
+              pots.foreach { pot => check(Promote(pot)(eff.source)) }
           }
 
         case FieldAccess(pot, field) =>
@@ -303,7 +303,7 @@ object Checking {
               // TODO: assertion might be false, due to SAM
               if (sym.name.toString == "apply") {
                 effs.foreach { check(_) }
-                pots.foreach { pot => check(Leak(pot)(eff.source)) }
+                pots.foreach { pot => check(Promote(pot)(eff.source)) }
               }
               // curried, tupled, toString are harmless
 

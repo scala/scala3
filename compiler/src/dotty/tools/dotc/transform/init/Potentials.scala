@@ -150,7 +150,7 @@ object Potentials {
       // max potential length
       // TODO: it can be specified on a project basis via compiler options
       if (pot.size > 2)
-        (pots, effs + Leak(pot)(source))
+        (pots, effs + Promote(pot)(source))
       else if (symbol.isConstructor)
         (pots + pot, effs + MethodCall(pot, symbol)(source))
       else if (symbol.isOneOf(Flags.Method | Flags.Lazy))
@@ -162,7 +162,7 @@ object Potentials {
         (pots + FieldReturn(pot, symbol)(source), effs + FieldAccess(pot, symbol)(source))
     }
 
-  def (ps: Potentials) leak(source: Tree): Effects = ps.map(Leak(_)(source))
+  def (ps: Potentials) promote(source: Tree): Effects = ps.map(Promote(_)(source))
 
   def asSeenFrom(pot: Potential, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potentials =
     trace(pot.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show + ", outer = " + show(outer), init, pots => show(pots.asInstanceOf[Potentials])) { pot match {

@@ -26,7 +26,7 @@ object Effects {
   }
 
   /** An effect means that a value that's possibly under initialization
-   *  leaks from the initializing world to fully-initialized world.
+   *  is promoted from the initializing world to the fully-initialized world.
    *
    *  Essentially, this effect enforces that the object pointed to by
    *  `potential` is fully initialized.
@@ -36,7 +36,7 @@ object Effects {
    *  - a potential is assigned (not initialize) to a field
    *  - the selection chain on a potential is too long
    */
-  case class Leak(potential: Potential)(val source: Tree) extends Effect {
+  case class Promote(potential: Potential)(val source: Tree) extends Effect {
     def size: Int = potential.size
     def show(implicit ctx: Context): String =
       potential.show + "↑"
@@ -61,8 +61,8 @@ object Effects {
 
   def asSeenFrom(eff: Effect, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
     trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show + ", outer = " + Potentials.show(outer), init, effs => show(effs.asInstanceOf[Effects])) { eff match {
-      case Leak(pot) =>
-        Potentials.asSeenFrom(pot, thisValue, currentClass, outer).leak(eff.source)
+      case Promote(pot) =>
+        Potentials.asSeenFrom(pot, thisValue, currentClass, outer).promote(eff.source)
 
       case FieldAccess(pot, field) =>
         Potentials.asSeenFrom(pot, thisValue, currentClass, outer).map { pot =>
