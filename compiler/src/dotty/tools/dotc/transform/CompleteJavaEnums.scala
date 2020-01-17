@@ -110,11 +110,20 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     else tree
   }
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context): ValDef = {
-    val sym = tree.symbol
-    if ((sym.isAllOf(EnumValue) || sym.name == nme.DOLLAR_VALUES) && sym.owner.linkedClass.derivesFromJavaEnum)
-      sym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
-    tree
+  /** Return a list of forwarders for enum values defined in the companion object
+   *  for java interop.
+   */
+  private def addedEnumForwarders(clazz: Symbol)(implicit ctx: Context): List[ValDef] = {
+    val moduleCls = clazz.companionClass
+    val moduleRef = ref(clazz.companionModule)
+
+    val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue))
+    for { enumValue <- enums }
+    yield {
+      val fieldSym = ctx.newSymbol(clazz, enumValue.name.asTermName, EnumValue | JavaStatic, enumValue.info)
+      fieldSym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
+      ValDef(fieldSym, moduleRef.select(enumValue))
+    }
   }
 
   /** 1. If this is an enum class, add $name and $ordinal parameters to its
@@ -143,9 +152,10 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       val (params, rest) = decomposeTemplateBody(templ.body)
       val addedDefs = addedParams(cls, ParamAccessor)
       val addedSyms = addedDefs.map(_.symbol.entered)
+      val addedForwarders = addedEnumForwarders(cls)
       cpy.Template(templ)(
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
-        body = params ++ addedDefs ++ rest)
+        body = params ++ addedDefs ++ addedForwarders ++ rest)
     }
     else if (cls.isAnonymousClass && cls.owner.isAllOf(EnumCase) && cls.owner.owner.linkedClass.derivesFromJavaEnum) {
       def rhsOf(name: TermName) =

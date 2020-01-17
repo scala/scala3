@@ -1,0 +1,4 @@
+scala> enum E { case A, B, C }
+// defined class E
+scala> E.A
+val res0: E = A

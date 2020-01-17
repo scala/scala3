@@ -200,12 +200,10 @@ class ClassfileParser(
         sym.markAbsent()
       }
 
-    // eager load java enum definitions for exhaustivity check of pattern match
+    // eager load enum definitions for exhaustivity check of pattern match
     if (isEnum) {
       instanceScope.toList.map(_.ensureCompleted())
       staticScope.toList.map(_.ensureCompleted())
-      classRoot.setFlag(Flags.JavaEnumTrait)
-      moduleRoot.setFlag(Flags.JavaEnumTrait)
     }
 
     result
