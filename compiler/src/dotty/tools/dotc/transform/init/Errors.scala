@@ -24,7 +24,7 @@ object Errors {
     def show(implicit ctx: Context): String
 
     def report(implicit ctx: Context): Unit =
-      ctx.warning(show + " Calling trace:\n" + stacktrace, source.sourcePos)
+      ctx.warning(show + stacktrace, source.sourcePos)
 
     def toErrors: Errors = Set(this)
 
@@ -101,14 +101,16 @@ object Errors {
   case class UnsafePromotion(pot: Potential, source: Tree, trace: Vector[Tree], errors: Errors) extends Error {
     assert(errors.nonEmpty)
 
+    override def report(implicit ctx: Context): Unit = ctx.warning(show, source.sourcePos)
+
     def show(implicit ctx: Context): String = {
       var index = 0
       "Promoting the value " + source.show + " to initialized is unsafe.\n" + stacktrace +
-        "\n The unsafe promotion is caused by the following problem(s):" +
-        errors.map { error =>
+        "\nThe unsafe promotion may cause the following problem(s):\n" +
+        (errors.flatMap(_.flatten).map { error =>
           index += 1
-          s"\n  $index" + error.show + error.stacktrace
-        }.mkString
+          s"\n$index. " + error.show + error.stacktrace
+        }.mkString)
     }
   }
 }
