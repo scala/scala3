@@ -5,6 +5,11 @@ import java.net.URLClassLoader
 import dotty.tools.dotc
 import dotty.tools.dotc.core.Contexts._
 
+import java.nio.file.Paths
+import java.io.File
+import java.io.File.{ pathSeparator => sep }
+import scala.annotation.tailrec
+
 import scala.tasty.file.TastyConsumer
 
 object ConsumeTasty {
@@ -18,23 +23,33 @@ object ConsumeTasty {
         new TastyFromClass(tastyConsumer)
     }
 
-    val currentClasspath = getCurrentClasspath(getClass.getClassLoader)
-    import java.io.File.{ pathSeparator => sep }
+    val currentClasspath = classpathFromClassloader(getClass.getClassLoader)
     val args = "-from-tasty" :: "-Yretain-trees" :: "-classpath" :: s"$classpath$sep$currentClasspath" :: classes
     (new Consume).process(args.toArray)
   }
 
-  private def getCurrentClasspath(cl: ClassLoader): String = {
-    val classpath0 = System.getProperty("java.class.path")
-    cl match {
-      case cl: URLClassLoader =>
-        // Loads the classes loaded by this class loader
-        // When executing `run` or `test` in sbt the classpath is not in the property java.class.path
-        import java.nio.file.Paths
-        val newClasspath = cl.getURLs.map(url => Paths.get(url.toURI).toString)
-        newClasspath.mkString("", java.io.File.pathSeparator, if (classpath0 == "") "" else java.io.File.pathSeparator + classpath0)
-      case _ => classpath0
-    }
+  /** Attempt to recreate a classpath from a classloader.
+   *
+   *  BEWARE: with exotic enough classloaders, this may not work at all or do
+   *  the wrong thing.
+   */
+   private def classpathFromClassloader(cl: ClassLoader): String = {
+    @tailrec
+    def loop(cl: ClassLoader, suffixClasspath: String): String =
+      cl match {
+        case cl: URLClassLoader =>
+          val updatedClasspath = cl.getURLs
+            .map(url => Paths.get(url.toURI).toAbsolutePath.toString)
+            .mkString(
+              "",
+              File.pathSeparator,
+              if (suffixClasspath.isEmpty) "" else File.pathSeparator + suffixClasspath
+            )
+          loop(cl.getParent, updatedClasspath)
+        case _ =>
+          suffixClasspath
+      }
+
+    loop(cl, "")
   }
 }
-
