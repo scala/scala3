@@ -1117,6 +1117,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case _ => None
   }
 
+  def TypeBounds_apply(low: Type, hi: Type)(given ctx: Context): TypeBounds =
+    Types.TypeBounds(low, hi)
+
   def TypeBounds_low(self: TypeBounds)(given Context): Type = self.lo
   def TypeBounds_hi(self: TypeBounds)(given Context): Type = self.hi
 
@@ -1201,6 +1204,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case tpe: Types.ConstantType => Some(tpe)
       case _ => None
   }
+  
+  def ConstantType_apply(const: Constant)(given Context): ConstantType =
+    Types.ConstantType(const)
 
   def ConstantType_constant(self: ConstantType)(given Context): Constant = self.value
 
@@ -1305,6 +1311,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case _ => None
   }
 
+  def AnnotatedType_apply(underlying: Type, annot: Term)(given Context): AnnotatedType =
+    Types.AnnotatedType(underlying, Annotations.Annotation(annot))
+
   def AnnotatedType_underlying(self: AnnotatedType)(given Context): Type = self.underlying.stripTypeVar
   def AnnotatedType_annot(self: AnnotatedType)(given Context): Term = self.annot.tree
 
@@ -1316,6 +1325,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case tpe: Types.AndType => Some(tpe)
       case _ => None
   }
+
+  def AndType_apply(lhs: Type, rhs: Type)(given Context): AndType =
+    Types.AndType(lhs, rhs)
 
   def AndType_left(self: AndType)(given Context): Type = self.tp1.stripTypeVar
   def AndType_right(self: AndType)(given Context): Type = self.tp2.stripTypeVar
@@ -1329,6 +1341,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case _ => None
   }
 
+  def OrType_apply(lhs: Type, rhs: Type)(given Context): OrType =
+    Types.OrType(lhs, rhs)
+
   def OrType_left(self: OrType)(given Context): Type = self.tp1.stripTypeVar
   def OrType_right(self: OrType)(given Context): Type = self.tp2.stripTypeVar
 
@@ -1340,6 +1355,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case tpe: Types.MatchType => Some(tpe)
       case _ => None
   }
+
+  def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type])(given Context): MatchType =
+    Types.MatchType(bound, scrutinee, cases)
 
   def MatchType_bound(self: MatchType)(given Context): Type = self.bound
   def MatchType_scrutinee(self: MatchType)(given Context): Type = self.scrutinee
@@ -1445,8 +1463,13 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case _ => None
   }
 
+  def TypeLambda_apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda =
+    Types.HKTypeLambda(paramNames.map(_.toTypeName))(boundsFn, bodyFn)
+
   def TypeLambda_paramNames(self: TypeLambda)(given Context): List[String] = self.paramNames.map(_.toString)
   def TypeLambda_paramBounds(self: TypeLambda)(given Context): List[TypeBounds] = self.paramInfos
+  def TypeLambda_param(self: TypeLambda, idx: Int)(given Context): Type =
+    self.newParamRef(idx)
   def TypeLambda_resType(self: TypeLambda)(given Context): Type = self.resType
 
   //
