@@ -1010,22 +1010,22 @@ object Build {
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/net" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/security" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util/regex" ** "*.scala").get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util/concurrent" ** (("*.scala": FileFilter) -- "ConcurrentHashMapTest.scala" -- "ConcurrentLinkedQueueTest.scala" -- "ConcurrentMapTest.scala" -- "ConcurrentSkipListSetTest.scala" -- "CopyOnWriteArrayListTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util/concurrent" ** "*.scala").get
 
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util" * (("*.scala": FileFilter)
-            -- "AbstractCollectionTest.scala" -- "AbstractListTest.scala" -- "AbstractMapTest.scala" -- "AbstractSetTest.scala" -- "ArrayDequeTest.scala" -- "ArrayListTest.scala"
-            -- "CollectionTest.scala" -- "CollectionsOnCheckedCollectionTest.scala" -- "CollectionsOnCheckedListTest.scala" -- "CollectionsOnCheckedMapTest.scala" -- "CollectionsOnCheckedSetTest.scala"
+            -- "AbstractListTest.scala" -- "AbstractMapTest.scala" -- "AbstractSetTest.scala" -- "ArrayDequeTest.scala" -- "ArrayListTest.scala"
+            -- "CollectionsOnCheckedCollectionTest.scala" -- "CollectionsOnCheckedListTest.scala" -- "CollectionsOnCheckedMapTest.scala" -- "CollectionsOnCheckedSetTest.scala"
             -- "CollectionsOnCollectionsTest.scala" -- "CollectionsOnListsTest.scala" -- "CollectionsOnMapsTest.scala" -- "CollectionsOnSetFromMapTest.scala" -- "CollectionsOnSetsTest.scala"
             -- "CollectionsOnSynchronizedCollectionTest.scala" -- "CollectionsOnSynchronizedListTest.scala" -- "CollectionsOnSynchronizedMapTest.scala" -- "CollectionsOnSynchronizedSetTest.scala" -- "CollectionsTest.scala"
             -- "DequeTest.scala" -- "EventObjectTest.scala" -- "FormatterTest.scala" -- "HashMapTest.scala" -- "HashSetTest.scala" -- "IdentityHashMapTest.scala"
-            -- "LinkedHashMapTest.scala" -- "LinkedHashSetTest.scala" -- "LinkedListTest.scala" -- "ListTest.scala" -- "MapTest.scala"
-            -- "NavigableSetTest.scala" -- "PriorityQueueTest.scala" -- "SetTest.scala" -- "SortedMapTest.scala" -- "SortedSetTest.scala" -- "TreeSetTest.scala")).get
+            -- "LinkedHashMapTest.scala" -- "LinkedHashSetTest.scala" -- "LinkedListTest.scala"
+            -- "PriorityQueueTest.scala"  -- "SortedMapTest.scala" -- "SortedSetTest.scala" -- "TreeSetTest.scala")).get
 
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter))).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/junit" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/niobuffer" ** (("*.scala": FileFilter)  -- "ByteBufferTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/niocharset" ** (("*.scala": FileFilter)  -- "BaseCharsetTest.scala" -- "Latin1Test.scala" -- "USASCIITest.scala" -- "UTF16Test.scala" -- "UTF8Test.scala")).get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/scalalib" ** (("*.scala": FileFilter)  -- "ArrayBuilderTest.scala" -- "ClassTagTest.scala" -- "EnumerationTest.scala" -- "RangesTest.scala" -- "SymbolTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/scalalib" ** (("*.scala": FileFilter)  -- "ArrayBuilderTest.scala" -- "ClassTagTest.scala" -- "EnumerationTest.scala" -- "SymbolTest.scala")).get
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter) -- "DefaultMethodsTest.scala")).get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
