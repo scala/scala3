@@ -11,7 +11,7 @@ object Test2 {
   trait T
   trait S
 
-  def foo(given ev: (given T) => S): Unit = ()
+  def foo(given ev: T ?=> S): Unit = ()
   implicit def bar(given ev: T): S = ???
 
   foo

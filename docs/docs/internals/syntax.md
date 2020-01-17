@@ -97,7 +97,7 @@ private   protected override  return    super     sealed    then      throw
 trait     true      try       type      val       var       while     with
 yield
 :         =         <-        =>        <:        :>        #         @
-=>>
+=>>       ?=>
 ```
 
 ### Soft keywords
@@ -141,11 +141,11 @@ Type              ::=  FunType
                     |  HkTypeParamClause ‘=>>’ Type                             TypeLambda(ps, t)
                     |  MatchType
                     |  InfixType
-FunType           ::=  FunArgTypes ‘=>’ Type                                    Function(ts, t)
+FunType           ::=  FunArgTypes (‘=>’ | ‘?=>’) Type                          Function(ts, t)
                     |  HKTypeParamClause '=>' Type                              PolyFunction(ps, t)
 FunArgTypes       ::=  InfixType
-                    |  ‘(’ [ ‘[given]’ FunArgType {‘,’ FunArgType } ] ‘)’
-                    |  ‘(’ ‘[given]’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+                    |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
+                    |  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
 MatchType         ::=  InfixType `match` ‘{’ TypeCaseClauses ‘}’
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
@@ -177,9 +177,9 @@ TypeParamBounds   ::=  SubtypeBounds {‘:’ Type}                             
 
 ### Expressions
 ```ebnf
-Expr              ::=  [‘implicit’] FunParams ‘=>’ Expr                                     Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
+Expr              ::=  FunParams (‘=>’ | ‘?=>’) Expr                            Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
                     |  Expr1
-BlockResult       ::=  [‘implicit’] FunParams ‘=>’ Block
+BlockResult       ::=  FunParams (‘=>’ | ‘?=>’) Block
                     |  Expr1
 FunParams         ::=  Bindings
                     |  id

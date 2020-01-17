@@ -23,7 +23,7 @@ package object staging {
    *
    *  Usage:
    *  ```
-   *  val e: T = withQuoteContext { // (given qctx: QuoteContext) =>
+   *  val e: T = withQuoteContext { // (qctx: QuoteContext) ?=>
    *    thunk
    *  }
    *  ```
@@ -32,7 +32,7 @@ package object staging {
    *  This method should not be called in a context where there is already has a `QuoteContext`
    *  such as within a `run` or a `withQuoteContext`.
    */
-  def withQuoteContext[T](thunk: (given QuoteContext) => T)(given toolbox: Toolbox): T = {
+  def withQuoteContext[T](thunk: QuoteContext ?=> T)(given toolbox: Toolbox): T = {
     val noResult = new Object
     var result: T = noResult.asInstanceOf[T]
     def dummyRun(given QuoteContext): Expr[Unit] = {

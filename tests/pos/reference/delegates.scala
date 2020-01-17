@@ -77,12 +77,12 @@ object Instances extends Common:
     println(minimum(xs))
 
   case class Context(value: String)
-  val c0: (given Context) => String = (given ctx) => ctx.value
-  val c1: ((given Context) => String) = (given ctx: Context) => ctx.value
+  val c0: Context ?=> String = ctx ?=> ctx.value
+  val c1: Context ?=> String = (ctx: Context) ?=> ctx.value
 
   class A
   class B
-  val ab: (given x: A, y: B) => Int = (given a: A, b: B) => 22
+  val ab: (x: A, y: B) ?=> Int = (a: A, b: B) ?=> 22
 
   trait TastyAPI:
     type Symbol
@@ -134,7 +134,7 @@ object PostConditions:
   def result[T](given x: WrappedResult[T]): T = x
 
   extension on [T](x: T):
-    def ensuring(condition: (given WrappedResult[T]) => Boolean): T =
+    def ensuring(condition: WrappedResult[T] ?=> Boolean): T =
       assert(condition(given x))
       x
 end PostConditions
