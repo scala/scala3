@@ -123,7 +123,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         else sym.copySymDenotation(initFlags = sym.flags &~ ParamAccessor | Deferred)
       sym1.ensureNotPrivate
     }
-    else if (sym.isConstructor && sym.owner.is(Trait, butNot = Scala2x))
+    else if (sym.isConstructor && (sym.owner.is(Trait, butNot = Scala2x) || (sym.owner.isAllOf(Trait | Scala2x) && ctx.settings.scalajs.value)))
       sym.copySymDenotation(
         name = nme.TRAIT_CONSTRUCTOR,
         info = MethodType(Nil, sym.info.resultType))
