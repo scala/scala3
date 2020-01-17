@@ -196,9 +196,7 @@ object Build {
       state
     },
 
-    // Turn off the sbt supershell because it can mangle the output of some tasks
-    // (see https://github.com/sbt/sbt/issues/5122, https://github.com/sbt/sbt/issues/5352)
-    // and in general I find it more distracting than helpful anyway.
+    // I find supershell more distracting than helpful
     useSuperShell := false,
 
     // Credentials to release to Sonatype
