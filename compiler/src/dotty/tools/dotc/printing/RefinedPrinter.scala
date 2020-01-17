@@ -131,6 +131,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else simpleNameString(tsym)
     }
 
+  private def arrow(isGiven: Boolean): String =
+    if isGiven then "?=>" else "=>"
+
   override def toText(tp: Type): Text = controlled {
     def toTextTuple(args: List[Type]): Text =
       "(" ~ argsText(args) ~ ")"
@@ -145,19 +148,19 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             atPrec(InfixPrec) { argText(args.head) }
           else
             "("
-            ~ keywordText("given ").provided(isGiven)
             ~ keywordText("erased ").provided(isErased)
             ~ argsText(args.init)
             ~ ")"
-        argStr ~ " => " ~ argText(args.last)
+        argStr ~ " " ~ arrow(isGiven) ~ " " ~ argText(args.last)
       }
 
     def toTextDependentFunction(appType: MethodType): Text =
       "("
-      ~ keywordText("given ").provided(appType.isImplicitMethod)
       ~ keywordText("erased ").provided(appType.isErasedMethod)
       ~ paramsText(appType)
-      ~ ") => "
+      ~ ") "
+      ~ arrow(appType.isImplicitMethod)
+      ~ " "
       ~ toText(appType.resultType)
 
     def isInfixType(tp: Type): Boolean = tp match {
@@ -577,12 +580,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg)
           case _ =>
             "("
-            ~ keywordText("given ").provided(isGiven)
             ~ keywordText("erased ").provided(isErased)
             ~ Text(args.map(argToText), ", ")
             ~ ")"
         }
-        argsText ~ " => " ~ toText(body)
+        argsText ~ " " ~ arrow(isGiven) ~ " " ~ toText(body)
       case PolyFunction(targs, body) =>
         val targsText = "[" ~ Text(targs.map((arg: Tree) => toText(arg)), ", ") ~ "]"
         changePrec(GlobalPrec) {
