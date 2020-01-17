@@ -146,9 +146,8 @@ object Summarization {
       //   Summary.empty
 
       case Return(expr, from) =>
-        // TODO: return potential to the method
         val (pots, effs) = analyze(expr)
-        (Potentials.empty, effs)
+        (Potentials.empty, effs ++ pots.promote(expr))
 
       case WhileDo(cond, body) =>
         // for lazy fields, the translation may result im `while (<empty>)`
