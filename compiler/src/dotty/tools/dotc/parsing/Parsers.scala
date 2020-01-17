@@ -2797,12 +2797,12 @@ object Parsers {
       tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given))
 
     /** ClsParamClause    ::=  ‘(’ [‘erased’] ClsParams ‘)’
-     *  GivenClsParamClause::= ‘(’ ‘given’ [‘erased’] (ClsParams | GivenTypes) ‘)’
+     *  GivenClsParamClause::= 'with' ‘(’ (ClsParams | GivenTypes) ‘)’
      *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
      *  ClsParam          ::=  {Annotation}
      *
      *  DefParamClause    ::=  ‘(’ [‘erased’] DefParams ‘)’
-     *  GivenParamClause  ::=  ‘(’ ‘given’ [‘erased’] (DefParams | GivenTypes) ‘)’
+     *  GivenParamClause  ::=  ‘with’ ‘(’ (DefParams | GivenTypes) ‘)’
      *  DefParams         ::=  DefParam {‘,’ DefParam}
      *  DefParam          ::=  {Annotation} [‘inline’] Param
      *
@@ -2815,9 +2815,10 @@ object Parsers {
                     ofCaseClass: Boolean = false,            // owner is a case class
                     prefix: Boolean = false,                 // clause precedes name of an extension method
                     givenOnly: Boolean = false,              // only given parameters allowed
-                    firstClause: Boolean = false             // clause is the first in regular list of clauses
+                    firstClause: Boolean = false,            // clause is the first in regular list of clauses
+                    prefixMods: Modifiers = EmptyModifiers   // is `Given` if this is a with clause
                    ): List[ValDef] = {
-      var impliedMods: Modifiers = EmptyModifiers
+      var impliedMods: Modifiers = prefixMods
 
       def impliedModOpt(token: Token, mod: () => Mod): Boolean =
         if in.token == token then
@@ -2900,9 +2901,10 @@ object Parsers {
     }
 
     /** ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
-     *                      |  {ClsParamClause} {GivenClsParamClause}
+     *                      |  {ClsParamClause | GivenClsParamClause} [‘with’ GivenTypes]
      *  DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
-     *                      |  {DefParamClause} {GivenParamClause}
+     *                      |  {DefParamClause | GivenParamClause} [‘with’ GivenTypes]
+     *  GivenParamClauses ::=  {GivenParamClause} [‘with’ GivenTypes]
      *
      *  @return  The parameter definitions
      */
@@ -2912,6 +2914,12 @@ object Parsers {
 
       def recur(firstClause: Boolean, nparams: Int): List[List[ValDef]] =
         newLineOptWhenFollowedBy(LPAREN)
+        val prefixMods =
+          if in.token == WITH then
+            in.nextToken()
+            Modifiers(Given)
+          else
+            EmptyModifiers
         if in.token == LPAREN then
           val paramsStart = in.offset
           val params = paramClause(
@@ -2919,11 +2927,14 @@ object Parsers {
               ofClass = ofClass,
               ofCaseClass = ofCaseClass,
               givenOnly = givenOnly,
-              firstClause = firstClause)
+              firstClause = firstClause,
+              prefixMods = prefixMods)
           val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
           params :: (
             if lastClause then Nil
             else recur(firstClause = false, nparams + params.length))
+        else if prefixMods.is(Given) then
+          givenTypes(nparams, ofClass) :: Nil
         else Nil
       end recur
 
@@ -3421,7 +3432,7 @@ object Parsers {
 
     /** GivenDef       ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
      *                   |  [GivenSig] ConstrApps [TemplateBody]
-     *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause} ‘as’
+     *  GivenSig       ::=  [id] [DefTypeParamClause] GivenParamClauses ‘as’
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause
      *  ExtMethods     ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
      */
@@ -3453,7 +3464,7 @@ object Parsers {
           val tparams = typeParamClauseOpt(ParamOwner.Def)
           val paramsStart = in.offset
           val vparamss =
-            if in.token == LPAREN && followingIsParamOrGivenType()
+            if in.token == WITH || in.token == LPAREN && followingIsParamOrGivenType()
             then paramClauses()
             else Nil
           def checkAllGivens(vparamss: List[List[ValDef]], what: String) =
@@ -3496,7 +3507,7 @@ object Parsers {
       finalizeDef(gdef, mods1, start)
     }
 
-    /** ExtensionDef  ::=  [id] ‘on’ ExtParamClause {GivenParamClause} ExtMethods
+    /** ExtensionDef  ::=  [id] ‘on’ ExtParamClause GivenParamClauses ExtMethods
      */
     def extensionDef(start: Offset, mods: Modifiers): ModuleDef =
       in.nextToken()
