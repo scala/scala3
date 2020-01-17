@@ -266,7 +266,7 @@ Potentials (π) represent values that are possibly under initialization.
 
 Effects are triggered from potentials:
 
-- `π↑`: leak of the potential `π`
+- `π↑`: promote the object pointed to by the potential `π` to fully-initialized
 - `π.f!`: access field `f` on the potential `π`
 - `π.m!`: call the method `m` on the potential `π`
 

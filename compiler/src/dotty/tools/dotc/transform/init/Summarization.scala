@@ -70,7 +70,7 @@ object Summarization {
         val res = args.foldLeft(summary) { (sum, arg) =>
           val (pots1, effs1) = analyze(arg)
           if (ignoredCall) sum.withEffs(effs1)
-          else sum.withEffs(pots1.leak(arg) ++ effs1)
+          else sum.withEffs(pots1.promote(arg) ++ effs1)
         }
 
         if (ignoredCall) (Potentials.empty, res._2)
@@ -114,7 +114,7 @@ object Summarization {
 
       case Assign(lhs, rhs) =>
         val (pots, effs) = analyze(rhs)
-        (Potentials.empty, pots.leak(expr) ++ effs)
+        (Potentials.empty, pots.promote(expr) ++ effs)
 
       case closureDef(ddef) =>     // must be before `Block`
         val (pots, effs) = analyze(ddef.rhs)
@@ -138,7 +138,7 @@ object Summarization {
       case Match(selector, cases) =>
         // possible for switches
         val (pots, effs) = analyze(selector)
-        cases.foldLeft((Potentials.empty, pots.leak(selector) ++ effs)) { (acc, cas) =>
+        cases.foldLeft((Potentials.empty, pots.promote(selector) ++ effs)) { (acc, cas) =>
           acc union analyze(cas.body)
         }
 
@@ -170,7 +170,7 @@ object Summarization {
       case SeqLiteral(elems, elemtpt) =>
         val effsAll: Effects = elems.foldLeft(Effects.empty) { (effs, elem) =>
           val (pots1, effs1) = analyze(elem)
-          pots1.leak(expr) ++ effs1 ++ effs
+          pots1.promote(expr) ++ effs1 ++ effs
         }
         (Potentials.empty, effsAll)
 
@@ -184,7 +184,7 @@ object Summarization {
         if (vdef.symbol.owner.isClass)
           (Potentials.empty, if (vdef.symbol.is(Flags.Lazy)) Effects.empty else effs)
         else
-          (Potentials.empty, pots.leak(vdef) ++ effs)
+          (Potentials.empty, pots.promote(vdef) ++ effs)
 
       case Thicket(List()) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
@@ -194,7 +194,7 @@ object Summarization {
         val (pots, effs) = analyze(ddef.rhs)
 
         if (ddef.symbol.owner.isClass) Summary.empty
-        else (Potentials.empty, pots.leak(ddef) ++ effs)
+        else (Potentials.empty, pots.promote(ddef) ++ effs)
 
       case _: TypeDef =>
         Summary.empty
