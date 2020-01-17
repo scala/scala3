@@ -73,7 +73,7 @@ object Errors {
   /** Promote `this` under initialization to fully-initialized */
   case class PromoteWarm(pot: Warm, source: Tree, trace: Vector[Tree]) extends Error {
     def show(implicit ctx: Context): String =
-      "Promoting the value under initialization to be initialized: " + source.show + "."
+      "Promoting the value under initialization to be initialized."
   }
 
   /** Promote a cold value under initialization to fully-initialized */
@@ -105,7 +105,7 @@ object Errors {
 
     def show(implicit ctx: Context): String = {
       var index = 0
-      "Promoting the value " + source.show + " to initialized is unsafe.\n" + stacktrace +
+      "Promoting the value to initialized is unsafe.\n" + stacktrace +
         "\nThe unsafe promotion may cause the following problem(s):\n" +
         (errors.flatMap(_.flatten).map { error =>
           index += 1

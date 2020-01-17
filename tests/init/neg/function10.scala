@@ -1,7 +1,7 @@
 class Base { self =>
-  (0 to 10).foreach { i =>
+  (0 to 10).foreach { i =>             // error
     println(a)
   }
 
-  val a = 10             // error
+  val a = 10
 }

@@ -155,19 +155,19 @@ object Checking {
           pot match {
             case pot @ ThisRef(cls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
-              PromoteThis(pot, eff.source, state.path).toErrors
+              PromoteThis(pot, eff.source, state2.path).toErrors
 
             case _: Cold =>
-              PromoteCold(eff.source, state.path).toErrors
+              PromoteCold(eff.source, state2.path).toErrors
 
             case pot @ Warm(cls, outer) =>
-              PromoteWarm(pot, eff.source, state.path).toErrors
+              PromoteWarm(pot, eff.source, state2.path).toErrors
 
             case Fun(pots, effs) =>
               val errs1 = effs.flatMap { check(_) }
               val errs2 = pots.flatMap { pot => check(Promote(pot)(eff.source))(state.copy(path = Vector.empty)) }
               if (errs1.nonEmpty || errs2.nonEmpty)
-                UnsafePromotion(pot, eff.source, state.path, errs1 ++ errs2).toErrors
+                UnsafePromotion(pot, eff.source, state2.path, errs1 ++ errs2).toErrors
               else
                 Errors.empty
 
@@ -184,7 +184,7 @@ object Checking {
 
               val target = resolve(cls, field)
               if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
-              else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state.path).toErrors
+              else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state2.path).toErrors
               else Errors.empty
 
             case SuperRef(ThisRef(cls), supercls) =>
@@ -192,7 +192,7 @@ object Checking {
 
               val target = resolveSuper(cls, supercls, field)
               if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
-              else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state.path).toErrors
+              else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state2.path).toErrors
               else Errors.empty
 
             case Warm(cls, outer) =>
@@ -202,7 +202,7 @@ object Checking {
               else Errors.empty
 
             case _: Cold =>
-              AccessCold(field, eff.source, state.path).toErrors
+              AccessCold(field, eff.source, state2.path).toErrors
 
             case Fun(pots, effs) =>
               throw new Exception("Unexpected effect " + eff.show)
@@ -224,7 +224,7 @@ object Checking {
                 val effs = thisRef.effectsOf(target)
                 effs.flatMap { check(_) }
               }
-              else CallUnknown(target, eff.source, state.path).toErrors
+              else CallUnknown(target, eff.source, state2.path).toErrors
 
             case SuperRef(thisRef @ ThisRef(cls), supercls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
@@ -236,7 +236,7 @@ object Checking {
                 val effs = thisRef.effectsOf(target)
                 effs.flatMap { check(_) }
               }
-              else CallUnknown(target, eff.source, state.path).toErrors
+              else CallUnknown(target, eff.source, state2.path).toErrors
 
             case warm @ Warm(cls, outer) =>
               val target = resolve(cls, sym)
@@ -245,11 +245,11 @@ object Checking {
                 val effs = warm.effectsOf(target)
                 effs.flatMap { check(_) }
               }
-              else if (!sym.isConstructor) CallUnknown(target, eff.source, state.path).toErrors
+              else if (!sym.isConstructor) CallUnknown(target, eff.source, state2.path).toErrors
               else Errors.empty
 
             case _: Cold =>
-              CallCold(sym, eff.source, state.path).toErrors
+              CallCold(sym, eff.source, state2.path).toErrors
 
             case Fun(pots, effs) =>
               // TODO: assertion might be false, due to SAM

@@ -1,7 +1,7 @@
 abstract class A {
   def f: Int
 
-  (1 to 10).foreach { i =>
+  (1 to 10).foreach { i =>  // error
     f
   }
 
@@ -9,6 +9,6 @@ abstract class A {
 }
 
 class B extends A {
-  private val a = 30  // error
+  private val a = 30
   def f: Int = a
 }

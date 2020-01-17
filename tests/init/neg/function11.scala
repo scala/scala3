@@ -1,11 +1,11 @@
 final class Capture {
   private[this] var m: Boolean = false
 
-  (0 to 10).foreach { i =>
+  (0 to 10).foreach { i =>      // error
     f()
   }
 
-  val a = 10      // error
+  val a = 10
 
   def f() = while ({
     println(a)
