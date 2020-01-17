@@ -28,16 +28,16 @@ package frp:
         currentValue
     end AbstractSignal
 
-    def apply[T](expr: (given Caller) => T): Signal[T] =
+    def apply[T](expr: Caller ?=> T): Signal[T] =
       new AbstractSignal[T]:
         protected val eval = expr(given _)
         computeValue()
 
-    class Var[T](expr: (given Caller) => T) extends AbstractSignal[T]:
+    class Var[T](expr: Caller ?=> T) extends AbstractSignal[T]:
       protected var eval: Caller => T = expr(given _)
       computeValue()
 
-      def update(expr: (given Caller) => T): Unit =
+      def update(expr: Caller ?=> T): Unit =
         eval = expr(given _)
         computeValue()
     end Var

@@ -471,7 +471,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeAndType(left: Tree, right: Tree)(implicit ctx: Context): AppliedTypeTree =
     AppliedTypeTree(ref(defn.andType.typeRef), left :: right :: Nil)
 
-  def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers = EmptyModifiers, isBackquoted: Boolean = false)(implicit ctx: Context): ValDef = {
+  def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers, isBackquoted: Boolean = false)(implicit ctx: Context): ValDef = {
     val vdef = ValDef(pname, tpe, EmptyTree)
     if (isBackquoted) vdef.pushAttachment(Backquoted, ())
     vdef.withMods(mods | Param)

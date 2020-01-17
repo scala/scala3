@@ -200,14 +200,15 @@ object Tokens extends TokensCommon {
   final val HASH = 82;             enter(HASH, "#")
   final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%")
   final val TLARROW = 85;          enter(TLARROW, "=>>")
+  final val CTXARROW = 86;         enter(CTXARROW, "?=>")
 
-  final val QUOTE = 86;            enter(QUOTE, "'")
+  final val QUOTE = 87;            enter(QUOTE, "'")
 
   /** XML mode */
   final val XMLSTART = 98;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords: TokenSet = tokenRange(IF, MACRO)
-  final val symbolicKeywords: TokenSet = tokenRange(USCORE, TLARROW)
+  final val symbolicKeywords: TokenSet = tokenRange(USCORE, CTXARROW)
   final val keywords: TokenSet = alphaKeywords | symbolicKeywords
 
   final val allTokens: TokenSet = tokenRange(minToken, maxToken)

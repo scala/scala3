@@ -1301,8 +1301,8 @@ object Scanners {
 
     override def toString: String =
       showTokenDetailed(token) + {
-        if identifierTokens.contains(token) then name
-        else if literalTokens.contains(token) then strVal
+        if identifierTokens.contains(token) then s" $name"
+        else if literalTokens.contains(token) then s" $strVal"
         else ""
       }
 

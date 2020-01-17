@@ -3,7 +3,7 @@ import scala.quoted.autolift.given
 
 object SourceFiles {
 
-  type Macro[X] = (given QuoteContext) => Expr[X]
+  type Macro[X] = QuoteContext ?=> Expr[X]
   def tastyContext(given qctx: QuoteContext): QuoteContext = qctx
 
   implicit inline def getThisFile: String =

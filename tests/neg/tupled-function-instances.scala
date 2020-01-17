@@ -16,8 +16,8 @@ object Test {
     summon[TupledFunction[(T, T, T) => R, () => R]] // error
     summon[TupledFunction[(T, T, T) => R, (T, T) => R]] // error
 
-    summon[TupledFunction[(T, T, T) => R, (given (T, T, T)) =>R]] // error
-    summon[TupledFunction[(given T, T, T) => R, ((T, T, T)) =>R]] // error
+    summon[TupledFunction[(T, T, T) => R, ((T, T, T)) ?=> R]] // error
+    summon[TupledFunction[(T, T, T) => R, ((T, T, T)) ?=> R]] // error
 
   }
 }

@@ -12,7 +12,7 @@ object PostConditions {
 
   def res[T](given b: Box[T]): T = b.t
 
-  def [T](e: T) ensure (cond: (given Box[T]) => Boolean): T = {
+  def [T](e: T) ensure (cond: Box[T] ?=> Boolean): T = {
     if (cond(given Box(e))) e
     else throw new AssertionError("condition not fulfilled")
   }

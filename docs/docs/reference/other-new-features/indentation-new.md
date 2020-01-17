@@ -61,7 +61,7 @@ There are two rules:
      - after the leading parameter(s) of a given extension method clause, or
      - after one of the following tokens:
     ```
-    =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match  return  with
+    =  =>  <-  :  if  then  else  while  do  try  catch  finally  for  yield  match  return
     ```
     If an `<indent>` is inserted, the indentation width of the token on the next line
     is pushed onto `IW`, which makes it the new current indentation width.
@@ -106,19 +106,19 @@ type T = A {
 ```
 ---
 ```scala
-trait A with {
+trait A: {
   def f: Int
 }
-class C(x: Int) extends A with {
+class C(x: Int) extends A: {
   def f = x
 }
-type T = A with {
+type T = A: {
   def f: Int
 }
 ```
 ---
 ```scala
-trait A with
+trait A
   def f: Int
 
 class C(x: Int) extends A with
