@@ -15,7 +15,7 @@ import util.NoSourcePosition
 import reporting.trace
 import config.Printers.init
 
-import Effects._, Potentials._, Summary._, Util._
+import Effects._, Potentials._, Summary._, Util._, Errors._
 
 object Checking {
   /** The checking state
@@ -40,26 +40,6 @@ object Checking {
     def withVisited(eff: Effect): State = {
       visited += eff
       copy(path = this.path :+ eff.source)
-    }
-
-    def trace(implicit state: State): String = {
-      var indentCount = 0
-      var last = ""
-      val sb = new StringBuilder
-      this.path.foreach { tree =>
-        indentCount += 1
-        val pos = tree.sourcePos
-        val line = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
-        if (last != line)
-          sb.append(
-            if (pos.source.exists)
-              i"${ " " * indentCount }-> ${pos.lineContent.trim}\t$line\n"
-            else
-              i"${tree.show}\n"
-          )
-        last = line
-      }
-      sb.toString
     }
   }
 
@@ -158,66 +138,36 @@ object Checking {
     }
   }
 
-  private def nonInitError(field: Symbol)(implicit state: State) = {
-    traceIndented("initialized: " + state.fieldsInited, init)
-
-    // should issue error, use warning so that it will continue compile subprojects
-    theCtx.warning(
-      "Access non-initialized field " + field.show +
-      ". Calling trace:\n" + state.trace,
-      field.sourcePos
-    )
-  }
-
-  private def externalCallError(sym: Symbol, source: Tree)(implicit state: State) =
-    theCtx.warning(
-      "Calling the external method " + sym.show +
-      " may cause initialization errors" +
-      ". Calling trace:\n" + state.trace,
-      source.sourcePos
-    )
-
   private def checkEffectsIn(effs: Effects, cls: ClassSymbol)(implicit state: State): Unit = {
     val rebased = Effects.asSeenFrom(effs, ThisRef(state.thisClass)(null), cls, Potentials.empty)
     rebased.foreach { check(_) }
   }
 
-  private def check(eff: Effect)(implicit state: State): Unit =
-    if (!state.visited.contains(eff)) traceOp("checking effect " + eff.show, init) {
+  private def check(eff: Effect)(implicit state: State): Errors =
+    if (state.visited.contains(eff)) Errors.empty else trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
       implicit val state2: State = state.withVisited(eff)
 
       eff match {
         case Promote(pot) =>
           pot match {
-            case ThisRef(cls) =>
+            case pot @ ThisRef(cls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-              theCtx.warning(
-                "Promote `this` to be initialized while it is not. Calling trace:\n" + state.trace,
-                eff.source.sourcePos
-              )
+              PromoteThis(pot, eff.source, state.path).toErrors
 
             case _: Cold =>
-              theCtx.warning(
-                "Promoting the value " + eff.source.show + " to be initialized while it is under initialization" +
-                ". Calling trace:\n" + state.trace,
-                eff.source.sourcePos
-              )
+              PromoteCold(eff.source, state.path).toErrors
 
-            case Warm(cls, outer) =>
-              theCtx.warning(
-                "Promoting the value under initialization to be initialized: " + pot.source.show +
-                ". Calling trace:\n" + state.trace,
-                eff.source.sourcePos
-              )
+            case pot @ Warm(cls, outer) =>
+              PromoteWarm(pot, eff.source, state.path).toErrors
 
             case Fun(pots, effs) =>
-              effs.foreach { check(_) }
-              pots.foreach { pot => check(Promote(pot)(eff.source)) }
+              val errs1 = effs.flatMap { check(_) }
+              val errs2 = pots.flatMap { pot => check(Promote(pot)(eff.source)) }
+              UnsafePromotion(pot, eff.source, state.path, errs1 ++ errs2).toErrors
 
             case pot =>
               val pots = expand(pot)
-              pots.foreach { pot => check(Promote(pot)(eff.source)) }
+              pots.flatMap { pot => check(Promote(pot)(eff.source)) }
           }
 
         case FieldAccess(pot, field) =>
@@ -228,33 +178,32 @@ object Checking {
 
               val target = resolve(cls, field)
               if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
-              else if (!state.fieldsInited.contains(target)) nonInitError(target)
+              else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state.path).toErrors
+              else Errors.empty
 
             case SuperRef(ThisRef(cls), supercls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
               val target = resolveSuper(cls, supercls, field)
               if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
-              else if (!state.fieldsInited.contains(target)) nonInitError(target)
+              else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state.path).toErrors
+              else Errors.empty
 
             case Warm(cls, outer) =>
               // all fields of warm values are initialized
               val target = resolve(cls, field)
               if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
+              else Errors.empty
 
             case _: Cold =>
-              theCtx.warning(
-                "Access field " + eff.source.show + " on a known value under initialization" +
-                ". Calling trace:\n" + state.trace,
-                eff.source.sourcePos
-              )
+              AccessCold(field, eff.source, state.path).toErrors
 
             case Fun(pots, effs) =>
               throw new Exception("Unexpected effect " + eff.show)
 
             case pot =>
               val pots = expand(pot)
-              pots.foreach { pot => check(FieldAccess(pot, field)(eff.source)) }
+              pots.flatMap { pot => check(FieldAccess(pot, field)(eff.source)) }
           }
 
         case MethodCall(pot, sym) =>
@@ -267,9 +216,9 @@ object Checking {
                 check(FieldAccess(pot, target)(eff.source))
               else if (target.isInternal) {
                 val effs = thisRef.effectsOf(target)
-                effs.foreach { check(_) }
+                effs.flatMap { check(_) }
               }
-              else externalCallError(target, eff.source)
+              else CallUnknown(target, eff.source, state.path).toErrors
 
             case SuperRef(thisRef @ ThisRef(cls), supercls) =>
               assert(cls == state.thisClass, "unexpected potential " + pot.show)
@@ -279,37 +228,32 @@ object Checking {
                 check(FieldAccess(pot, target)(eff.source))
               else if (target.isInternal) {
                 val effs = thisRef.effectsOf(target)
-                effs.foreach { check(_) }
+                effs.flatMap { check(_) }
               }
-              else externalCallError(target, eff.source)
+              else CallUnknown(target, eff.source, state.path).toErrors
 
             case warm @ Warm(cls, outer) =>
               val target = resolve(cls, sym)
 
               if (target.isInternal) {
                 val effs = warm.effectsOf(target)
-                effs.foreach { check(_) }
+                effs.flatMap { check(_) }
               }
-              else if (!sym.isConstructor) externalCallError(target, eff.source)
+              else if (!sym.isConstructor) CallUnknown(target, eff.source, state.path).toErrors
+              else Errors.empty
 
             case _: Cold =>
-              theCtx.warning(
-                "Call method " + eff.source.show + " on a cold value" +
-                ". Calling trace:\n" + state.trace,
-                eff.source.sourcePos
-              )
+              CallCold(sym, eff.source, state.path).toErrors
 
             case Fun(pots, effs) =>
               // TODO: assertion might be false, due to SAM
-              if (sym.name.toString == "apply") {
-                effs.foreach { check(_) }
-                pots.foreach { pot => check(Promote(pot)(eff.source)) }
-              }
+              if (sym.name.toString == "apply") effs.flatMap { check(_) }
+              else Errors.empty
               // curried, tupled, toString are harmless
 
             case pot =>
               val pots = expand(pot)
-              pots.foreach { pot =>
+              pots.flatMap { pot =>
                 check(MethodCall(pot, sym)(eff.source))
               }
           }
