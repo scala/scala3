@@ -1,7 +1,7 @@
 abstract class A {
   val g = (n: Int) => n + y
-  val x: Int = f(g)
-  val y: Int = 10      // error
+  val x: Int = f(g)          // error
+  val y: Int = 10
 
   def f(m: Int => Int): Int
 }

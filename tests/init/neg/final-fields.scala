@@ -29,8 +29,8 @@ object Test1 extends U {
 }
 
 object Test extends T {
- override final val f1 = /*super.f1*/ 1 + f2
- override final val f2 = 2
+ override final val f1 = /*super.f1*/ 1 + f2  // error
+ override final val f2 = 2                    // error
  override final val f3 = {println(3); 3}      // error
  override val f4 = f3 + 1                     // error
 
