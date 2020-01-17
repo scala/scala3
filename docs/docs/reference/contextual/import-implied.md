@@ -1,1 +1,1 @@
-The contents of this page have [moved](./import-delegate.md).
+The contents of this page have [moved](./given-imports.md).

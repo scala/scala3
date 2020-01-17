@@ -103,7 +103,7 @@ yield
 ### Soft keywords
 
 ```
-derives   extension inline    opaque    open
+as        derives   extension inline    on       opaque    open
 ~         *         |         &         +         -
 ```
 

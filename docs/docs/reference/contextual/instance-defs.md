@@ -1,1 +1,1 @@
-The contents of this page have [moved](./delegates.md).
+The contents of this page have [moved](./givens.md).
