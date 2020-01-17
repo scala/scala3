@@ -140,7 +140,10 @@ object Checking {
 
   private def checkEffectsIn(effs: Effects, cls: ClassSymbol)(implicit state: State): Unit = {
     val rebased = Effects.asSeenFrom(effs, ThisRef(state.thisClass)(null), cls, Potentials.empty)
-    rebased.foreach { check(_) }
+    for {
+      eff <- rebased
+      error <- check(eff)
+    } error.report
   }
 
   private def check(eff: Effect)(implicit state: State): Errors =
@@ -162,8 +165,11 @@ object Checking {
 
             case Fun(pots, effs) =>
               val errs1 = effs.flatMap { check(_) }
-              val errs2 = pots.flatMap { pot => check(Promote(pot)(eff.source)) }
-              UnsafePromotion(pot, eff.source, state.path, errs1 ++ errs2).toErrors
+              val errs2 = pots.flatMap { pot => check(Promote(pot)(eff.source))(state.copy(path = Vector.empty)) }
+              if (errs1.nonEmpty || errs2.nonEmpty)
+                UnsafePromotion(pot, eff.source, state.path, errs1 ++ errs2).toErrors
+              else
+                Errors.empty
 
             case pot =>
               val pots = expand(pot)
