@@ -1099,16 +1099,20 @@ class Typer extends Namer
             pt match {
               case SAMType(sam)
               if !defn.isFunctionType(pt) && mt <:< sam =>
+                // SAMs of the form C[?] where C is a class cannot be conversion targets.
+                // The resulting class `class $anon extends C[?] {...}` would be illegal,
+                // since type arguments to `C`'s super constructor cannot be constructed.
+                def isWildcardClassSAM =
+                  !pt.classSymbol.is(Trait) && pt.argInfos.exists(_.isInstanceOf[TypeBounds])
                 val targetTpe =
-                  if (!isFullyDefined(pt, ForceDegree.all))
-                    if (pt.isRef(defn.PartialFunctionClass))
-                      // Replace the underspecified expected type by one based on the closure method type
-                      defn.PartialFunctionOf(mt.firstParamTypes.head, mt.resultType)
-                    else {
-                      ctx.error(ex"result type of lambda is an underspecified SAM type $pt", tree.sourcePos)
-                      pt
-                    }
-                  else pt
+                  if isFullyDefined(pt, ForceDegree.all) && !isWildcardClassSAM then
+                    pt
+                  else if pt.isRef(defn.PartialFunctionClass) then
+                    // Replace the underspecified expected type by one based on the closure method type
+                    defn.PartialFunctionOf(mt.firstParamTypes.head, mt.resultType)
+                  else
+                    ctx.error(ex"result type of lambda is an underspecified SAM type $pt", tree.sourcePos)
+                    pt
                 if (pt.classSymbol.isOneOf(FinalOrSealed)) {
                   val offendingFlag = pt.classSymbol.flags & FinalOrSealed
                   ctx.error(ex"lambda cannot implement $offendingFlag ${pt.classSymbol}", tree.sourcePos)
