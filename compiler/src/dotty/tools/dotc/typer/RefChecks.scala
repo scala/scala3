@@ -260,7 +260,7 @@ object RefChecks {
       def overrideAccessError() = {
         ctx.log(i"member: ${member.showLocated} ${member.flagsString}") // DEBUG
         ctx.log(i"other: ${other.showLocated} ${other.flagsString}") // DEBUG
-        val otherAccess = (other.flags & AccessFlags).toString
+        val otherAccess = (other.flags & AccessFlags).flagsString
         overrideError("has weaker access privileges; it should be " +
           (if (otherAccess == "") "public" else "at least " + otherAccess))
       }
@@ -325,13 +325,14 @@ object RefChecks {
       // todo: align accessibility implication checking with isAccessible in Contexts
       val ob = other.accessBoundary(member.owner)
       val mb = member.accessBoundary(member.owner)
-      def isOverrideAccessOK = (
-        (member.flags & AccessFlags).isEmpty // member is public
-        || // - or -
-        (!other.is(Protected) || member.is(Protected)) && // if o is protected, so is m, and
-        (ob.isContainedIn(mb) || other.isAllOf(JavaProtected)) // m relaxes o's access boundary,
-        // or o is Java defined and protected (see #3946)
-        )
+      def isOverrideAccessOK =
+           (member.flags & AccessFlags).isEmpty
+           && !member.privateWithin.exists // member is public, or
+        || (!other.is(Protected) || member.is(Protected))
+              // if o is protected, so is m, and
+           && (ob.isContainedIn(mb) || other.isAllOf(JavaProtected))
+             // m relaxes o's access boundary,
+             // or o is Java defined and protected (see #3946)
       if (!isOverrideAccessOK)
         overrideAccessError()
       else if (other.isClass)
