@@ -3,6 +3,10 @@ layout: doc-page
 title: "TASTy Inspection"
 ---
 
+```scala
+libraryDependencies += "ch.epfl.lamp" %% "dotty-tasty-consumer" % scalaVersion.value
+```
+
 TASTy files contain the full typed tree of a class including source positions
 and documentation. This is ideal for tools that analyze or extract semantic
 information of the code. To avoid the hassle of working directly with the TASTy
@@ -16,6 +20,9 @@ To inspect the TASTy Reflect trees of a TASTy file a consumer can be defined in
 the following way.
 
 ```scala
+import scala.tasty.Reflection
+import scala.tasty.file._
+
 class Consumer extends TastyConsumer {
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
@@ -33,4 +40,12 @@ object Test {
     ConsumeTasty("", List("foo.Bar"), new Consumer)
   }
 }
+```
+
+Note that if we need to run the main (in an object called `Test`) after
+compilation we need make available the compiler to the runtime:
+
+```shell
+dotc -with-compiler -d out Test.scala
+dotr -with-compiler -classpath out Test
 ```

@@ -1,4 +1,4 @@
-package dotty.tools.dotc.consumetasty
+package scala.tasty.file
 
 import dotty.tools.dotc.Run
 import dotty.tools.dotc.core.Mode
@@ -6,9 +6,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.fromtasty._
 
-import scala.tasty.file.TastyConsumer
-
-class TastyFromClass(consumer: TastyConsumer) extends TASTYCompiler {
+private class TastyFromClass(consumer: TastyConsumer) extends TASTYCompiler {
 
   override protected def frontendPhases: List[List[Phase]] =
     List(new ReadTasty) :: // Load classes from tasty

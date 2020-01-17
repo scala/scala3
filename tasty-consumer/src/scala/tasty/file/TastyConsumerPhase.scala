@@ -1,4 +1,4 @@
-package dotty.tools.dotc.consumetasty
+package scala.tasty.file
 
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
@@ -6,7 +6,7 @@ import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
 import scala.tasty.file.TastyConsumer
 
-class TastyConsumerPhase(consumer: TastyConsumer) extends Phase {
+private class TastyConsumerPhase(consumer: TastyConsumer) extends Phase {
 
   override def phaseName: String = "tastyConsumer"
 
