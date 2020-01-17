@@ -1221,8 +1221,8 @@ object Build {
     publishLocalConfiguration ~= (_.withOverwrite(true)),
     publishArtifact in Test := false,
     homepage := Some(url(dottyGithubUrl)),
-    licenses += ("BSD New",
-      url(s"$dottyGithubUrl/blob/master/LICENSE.md")),
+    licenses += (("Apache-2.0",
+      url("https://www.apache.org/licenses/LICENSE-2.0"))),
     scmInfo := Some(
       ScmInfo(
         url(dottyGithubUrl),

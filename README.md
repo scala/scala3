@@ -34,4 +34,4 @@ In short, no need to make it pretty, particularly human-readable or give it a pa
 
 License
 =======
-Dotty is licensed under the [3-Clause BSD License](https://github.com/lampepfl/dotty/blob/master/LICENSE.md)
+Dotty is licensed under the [Apache License Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
