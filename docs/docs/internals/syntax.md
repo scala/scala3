@@ -299,9 +299,9 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
                        SubtypeBounds
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
-                    |  {ClsParamClause} {GivenClsParamClause}
+                    |  {ClsParamClause} {WithClsParamClause}
 ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
-GivenClsParamClause::= ‘with’ (‘(’ (ClsParams | Types) ‘)’ | AnnotTypes)
+WithClsParamClause::= ‘with’ (‘(’ (ClsParams | Types) ‘)’ | AnnotTypes)
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
@@ -309,9 +309,9 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
                     |  INT
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
-                    |  {DefParamClause} {GivenParamClause}
+                    |  {DefParamClause} {WithParamClause}
 DefParamClause    ::=  [nl] ‘(’ DefParams ‘)’
-GivenParamClause  ::=  ‘with’ (‘(’ (DefParams | Types) ‘)’ | AnnotTypes)
+WithParamClause   ::=  ‘with’ (‘(’ (DefParams | Types) ‘)’ | AnnotTypes)
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
 ClosureMods       ::=  { ‘implicit’ | ‘given’}
@@ -391,8 +391,8 @@ ObjectDef         ::=  id [Template]                                            
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
 GivenDef          ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
                     |  [GivenSig] ConstrApps [TemplateBody]
-GivenSig          ::=  [id] [DefTypeParamClause] {GivenParamClause} ‘as’
-ExtensionDef      ::=  [id] ‘on’ ExtParamClause {GivenParamClause} ExtMethods
+GivenSig          ::=  [id] [DefTypeParamClause] {WithParamClause} ‘as’
+ExtensionDef      ::=  [id] ‘on’ ExtParamClause {WithParamClause} ExtMethods
 ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)

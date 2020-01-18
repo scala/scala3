@@ -3,6 +3,9 @@ layout: doc-page
 title: "Implicit Function Types"
 ---
 
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.22](./context-functions.html).
+
 _Implicit functions_ are functions with (only) implicit parameters.
 Their types are _implicit function types_. Here is an example of an implicit function type:
 

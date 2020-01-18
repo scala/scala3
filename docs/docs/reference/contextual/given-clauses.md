@@ -3,6 +3,9 @@ layout: doc-page
 title: "Given Parameters"
 ---
 
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.22](./context-parameters.html).
+
 Functional programming tends to express most dependencies as simple function parameterization.
 This is clean and powerful, but it sometimes leads to functions that take many parameters and
 call trees where the same value is passed over and over again in long call chains to many

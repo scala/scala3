@@ -3,6 +3,10 @@ layout: doc-page
 title: "Implementing Typeclasses"
 ---
 
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.22](./typeclasses-new.html).
+
+
 Given instances, extension methods and context bounds
 allow a concise and natural expression of _typeclasses_. Typeclasses are just traits
 with canonical implementations defined by given instances. Here are some examples of standard typeclasses:
