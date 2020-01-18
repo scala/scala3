@@ -1,1 +1,1 @@
-The contents of this page have [moved](./implicit-function-types-spec.md).
+The contents of this page have [moved](./context-functions-spec.md).

@@ -3,6 +3,9 @@ layout: doc-page
 title: "Context Bounds"
 ---
 
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.22](./context-bounds-new.html).
+
 ## Context Bounds
 
 A context bound is a shorthand for expressing the common pattern of an implicit parameter that depends on a type parameter. Using a context bound, the `maximum` function of the last section can be written like this:

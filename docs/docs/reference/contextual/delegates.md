@@ -3,6 +3,9 @@ layout: doc-page
 title: "Given Instances"
 ---
 
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.22](./givens.html).
+
 Given instances (or, simply, "givens") define "canonical" values of certain types
 that serve for synthesizing arguments to [given clauses](./given-clauses.md). Example:
 
