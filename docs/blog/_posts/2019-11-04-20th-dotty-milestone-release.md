@@ -96,15 +96,12 @@ It is now possible to specialize `inline given`s with the help of `<:` as follow
 trait A
 class B extends A
 
-inline given wb as _ <: A = B()
+inline given tc <: A = B()
 
 val x: B = summon[A]
 ```
-In this example, the inline given `wb` will return a result of a subtype of the declared upper bound `A` as determined by `B`. In our terminology, `wb` is a whitebox macro. Contrast with the following definition of a blackbox given macro `bb`:
-```
-inline given bb as A = B()
-```
-Here, the type of `bb` will always be `A`, no matter what `B` returns.
+
+This change brings `given`s even with the ordinary `inline def`s.
 
 ## Normal parameters can follow `given` parameters
 Previously normal parameters after `given` parameter was disallowed mainly because they looked awkward with the old syntax. With the syntax being improved, this restriction is now lifted and you can write, e.g., the following program:
