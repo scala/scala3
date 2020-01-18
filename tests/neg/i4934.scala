@@ -1,6 +1,3 @@
-object Foo {
-  val a = ""); // error: end of statement expected
-}
 // From #5824:
 object Main {
   def main(args: Array[String]): Unit = {
@@ -8,3 +5,7 @@ object Main {
     println(foo)
   }
 }
+
+object Foo {
+  val a = ""); // error: `}` expected but `)` found
+} // error: eof expected
