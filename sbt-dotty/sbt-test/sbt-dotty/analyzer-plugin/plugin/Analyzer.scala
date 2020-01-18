@@ -13,7 +13,7 @@ import Decorators._
 import Symbols.Symbol
 import Constants.Constant
 import Types._
-import transform.{CheckStatic}
+import transform.CompleteJavaEnums
 
 class InitPlugin extends StandardPlugin {
   import tpd._
@@ -30,7 +30,7 @@ class InitChecker extends PluginPhase {
   val phaseName = "symbolTreeChecker"
 
   override val runsAfter = Set(SetDefTree.name)
-  override val runsBefore = Set(CheckStatic.name)
+  override val runsBefore = Set(CompleteJavaEnums.name)
 
   private def checkDef(tree: Tree)(implicit ctx: Context): Tree = {
     if (tree.symbol.defTree.isEmpty)
