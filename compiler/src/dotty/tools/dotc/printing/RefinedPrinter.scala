@@ -389,8 +389,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else
           toTextLocal(fun)
+          ~ ("." ~ keywordText("with")).provided(app.isGivenApply && !homogenizedView)
           ~ "("
-          ~ keywordText("given ").provided(app.isGivenApply && !homogenizedView)
           ~ toTextGlobal(args, ", ")
           ~ ")"
       case tree: TypeApply =>
@@ -772,10 +772,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   private def paramsText[T>: Untyped](params: List[ValDef[T]]) =
-    "("
-    ~ keywordText("given ").provided(params.nonEmpty && params.head.mods.is(Given))
-    ~ toText(params, ", ")
-    ~ ")"
+    keywordText(" with ").provided(params.nonEmpty && params.head.mods.is(Given))
+    ~ "(" ~ toText(params, ", ") ~ ")"
 
   protected def defDefToText[T >: Untyped](tree: DefDef[T]): Text = {
     import untpd.{modsDeco => _}
