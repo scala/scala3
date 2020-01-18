@@ -141,6 +141,9 @@ Packaging    ::=  ‘package’ QualId [colonEol] ‘{’ TopStatSeq ‘}’
 RefinedType  ::=  AnnotType {[colonEol] Refinement}
 ```
 Here, `colonEol` stands for ": at end of line", as described above.
+The lexical analyzer is modified so that a `:` at the end of a line
+is reported as `colonEol` if the parser is at a point where a `colonEol` is
+valid as next token.
 
 ### Spaces vs Tabs
 
