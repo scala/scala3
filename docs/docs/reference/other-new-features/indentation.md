@@ -4,7 +4,7 @@ title: Optional Braces
 ---
 
 **Note** The syntax described in this section is currently under revision.
-[Here is the new version which will be implemented in Dotty 0.20](./indentation-new.html).
+[Here is the new version which will be implemented in Dotty 0.22](./indentation-new.html).
 
 As an experimental feature, Scala 3 treats indentation as significant and allows
 some occurrences of braces `{...}` to be optional.
