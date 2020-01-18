@@ -7,7 +7,7 @@ A special form of import wildcard selector is used to import given instances. Ex
 ```scala
 object A {
   class TC
-  given tc as TC
+  given tc: TC
   def f(given TC) = ???
 }
 object B {
@@ -50,8 +50,8 @@ Importing all given instances of a parameterized type is expressed by wildcard a
 For instance, assuming the object
 ```scala
 object Instances {
-  given intOrd as Ordering[Int]
-  given [T as Ordering] listOrd as Ordering[List[T]]
+  given intOrd: Ordering[Int]
+  given [T: Ordering] listOrd: Ordering[List[T]]
   given ec: ExecutionContext = ...
   given im: Monoid[Int]
 }
