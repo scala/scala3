@@ -1274,7 +1274,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     checkMessagesAfter(FrontEnd.name) {
       """
         |object Test {
-        |  { ) }
+        |  { with }
         |  { private ) }
         |}
       """.stripMargin
