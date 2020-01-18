@@ -220,13 +220,14 @@ object Expr {
     content(bodyExpr, [t] => (e: Expr[t]) => (v1: Expr[T1], v2: Expr[T2], v3: Expr[T3]) => bodyFn[t](e.unseal, params, List(v1.unseal, v2.unseal, v3.unseal)).seal.asInstanceOf[Expr[t]])
   }
 
-  private def paramsAndBody[R](given qctx: QuoteContext)(f: Expr[Any]) = {
+  private def paramsAndBody[R](f: Expr[Any])(given qctx: QuoteContext) = {
     import qctx.tasty.{given, _}
     val Block(List(DefDef("$anonfun", Nil, List(params), _, Some(body))), Closure(Ident("$anonfun"), None)) = f.unseal.etaExpand
     (params, body.seal.asInstanceOf[Expr[R]])
   }
 
-  private def bodyFn[t](given qctx: QuoteContext)(e: qctx.tasty.Term, params: List[qctx.tasty.ValDef], args: List[qctx.tasty.Term]): qctx.tasty.Term = {
+  private def bodyFn[t](given qctx: QuoteContext) = {
+    (e: qctx.tasty.Term, params: List[qctx.tasty.ValDef], args: List[qctx.tasty.Term]) =>
     import qctx.tasty.{given, _}
     val map = params.map(_.symbol).zip(args).toMap
     new TreeMap {
@@ -236,5 +237,4 @@ object Expr {
           case tree => tree
     }.transformTerm(e)
   }
-
 }

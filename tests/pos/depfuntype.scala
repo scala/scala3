@@ -25,9 +25,9 @@ object Test {
 
   val ifun: IDF = implicitly[C].m
 
-  val u = ifun(given c)
+  val u = ifun.with(c)
   val u1: Int = u
 
-  val v = ifun(given d)
+  val v = ifun.with(d)
   val v1: d.M = v
 }

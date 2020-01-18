@@ -1,7 +1,7 @@
 object PostConditions:
   opaque type WrappedResult[T] = T
 
-  def result[T](given r: WrappedResult[T]): T = r
+  def result[T] with (r: WrappedResult[T]) : T = r
 
   def [T](x: T) ensuring (condition: WrappedResult[T] ?=> Boolean): T =
     given WrappedResult[T] = x

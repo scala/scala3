@@ -7,6 +7,6 @@ object Macros:
   inline def (sc: StringContext).show(args: =>Any*): String = ???
 
 object Show:
-  def[A] (a: A) show(given S: Show[A]): String = S.show(a)
+  def[A] (a: A) show with (S: Show[A]) : String = S.show(a)
 
   export Macros.show

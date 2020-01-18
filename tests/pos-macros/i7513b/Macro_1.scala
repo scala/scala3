@@ -5,7 +5,7 @@ trait Quoted {
 }
 inline def quote: Quoted = ${ quoteImpl }
 
-def quoteImpl(given qctx: QuoteContext): Expr[Quoted] = '{
+def quoteImpl with (qctx: QuoteContext) : Expr[Quoted] = '{
   new Quoted {
     val foo = ???
   }

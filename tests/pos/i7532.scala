@@ -11,7 +11,7 @@ class Tasty {
 }
 
 object Foo {
-  def impl(given tasty: Tasty): Unit = {
+  def impl with (tasty: Tasty) : Unit = {
     import tasty.{_, given}
     val Select() = (??? : Term)
   }

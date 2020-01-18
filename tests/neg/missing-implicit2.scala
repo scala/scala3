@@ -1,17 +1,17 @@
 trait X
 trait Y
 object test:
-  def f(given x: X) = ???
+  def f with (x: X) = ???
   object instances {
     given y as Y = ???
   }
   locally {
-    given xFromY(given y: Y) as X = ???
-    f(given xFromY) // error
+    given xFromY with (y: Y) as X = ???
+    f.with(xFromY) // error
   }
   locally {
     object instances2 {
-      given xFromY(given Y) as X = ???
+      given xFromY with Y as X = ???
     }
     f // error
   }

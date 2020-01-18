@@ -3,7 +3,7 @@ import scala.quoted.given
 
 inline def foo = ${fooImpl}
 
-def fooImpl(given qctx: QuoteContext) = {
+def fooImpl with (qctx: QuoteContext) = {
   val res = Expr.ofList(List('{"One"}))
   Expr(res.show)
 }

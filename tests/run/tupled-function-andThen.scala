@@ -32,7 +32,7 @@ object Test {
     *  @tparam GArgs the tuple type with the same types as the function arguments of G and return type of F
     *  @tparam R the return type of G
     */
-  def [F, G, FArgs <: Tuple, GArgs <: Tuple, R](f: F) andThen (g: G)(given tf: TupledFunction[F, FArgs => GArgs], tg: TupledFunction[G, GArgs => R]): FArgs => R = {
+  def [F, G, FArgs <: Tuple, GArgs <: Tuple, R](f: F) andThen (g: G) with (tf: TupledFunction[F, FArgs => GArgs], tg: TupledFunction[G, GArgs => R]) : FArgs => R = {
     x => tg.tupled(g)(tf.tupled(f)(x))
   }
 

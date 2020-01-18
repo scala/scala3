@@ -2,7 +2,7 @@ import scala.quoted._
 
 inline def test(e: Int): String = ${testExpr('e)}
 
-private def testExpr(e: Expr[Int])(given QuoteContext): Expr[String] = {
+private def testExpr(e: Expr[Int]) with QuoteContext : Expr[String] = {
   e match {
     case '{ val y: Int = 4; $body } => Expr("Matched closed\n" + body.show)
     case '{ val y: Int = 4; ($body: Int => Int)(y) } => Expr("Matched open\n" + body.show)
