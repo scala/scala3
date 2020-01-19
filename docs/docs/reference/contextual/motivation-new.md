@@ -51,7 +51,7 @@ The following pages introduce a redesign of contextual abstractions in Scala. Th
 
  2. [With Clauses](./context-parameters.md) define are a new syntax for implicit _parameters_ and their _arguments_. It unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several with clauses in a definition.
 
- 3. [Given Imports](./given-imports.md) are a new class of import selectors that specifically import
+ 3. ["Given" Imports](./given-imports.md) are a new class of import selectors that specifically import
     givens and nothing else.
 
  4. [Implicit Conversions](./conversions.md) are now expressed as given instances of a standard `Conversion` class. All other forms of implicit conversions will be phased out.
