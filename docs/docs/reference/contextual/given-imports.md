@@ -16,7 +16,7 @@ object B {
 }
 ```
 In the code above, the `import A._` clause of object `B` will import all members
-of `A` _except_ the given instance `tc`. Conversely, the second import `import A.given` will import _only_ that given instance.
+of `A` _except_ the given instance `tc`. Conversely, the second import `import A.{given _}` will import _only_ that given instance.
 The two import clauses can also be merged into one:
 ```scala
 object B
