@@ -722,7 +722,7 @@ object Scanners {
                *  there a realistic situation where one would need it?
                */
               if (isDigit(ch) || (isNumberSeparator(ch) && isDigit(lookaheadChar())))
-                error("Non-zero numbers may not have a leading zero.")
+                error("Numbers may not have a leading zero.")
               base = 10
             }
             getNumber()
