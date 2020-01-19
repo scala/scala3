@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 object Macro {
   class StringContextOps(sc: => StringContext) {
@@ -7,7 +7,7 @@ object Macro {
   }
   implicit inline def XmlQuote(sc: => StringContext): StringContextOps = new StringContextOps(sc)
   def impl(sc: Expr[StringContext], args: Expr[Seq[Any]]) with (qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     (sc.unseal.underlyingArgument.showExtractors + "\n" + args.unseal.underlyingArgument.showExtractors)
   }
 }

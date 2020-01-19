@@ -1,7 +1,7 @@
 import scala.quoted._
 import scala.quoted.staging._
 import scala.quoted.util._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 /**
   * Port of the strymonas library as described in O. Kiselyov et al., Stream fusion, to completeness (POPL 2017)

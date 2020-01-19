@@ -1,6 +1,6 @@
 
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 object Macros {
   def tup1(tup: Tuple1[Int]) with QuoteContext : Expr[Int] = tup.productIterator.map(_.asInstanceOf[Int]).sum

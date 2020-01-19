@@ -342,12 +342,11 @@ Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  StableId ‘.’ ImportSpec                                  Import(expr, sels)
 ImportSpec        ::=  id
                     | ‘_’
-                    | ‘given’
                     | ‘{’ ImportSelectors) ‘}’
 ImportSelectors   ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
                     |  WildCardSelector {‘,’ WildCardSelector}
-WildCardSelector  ::=  ‘given’ [InfixType]
-                    |  ‘_' [‘:’ InfixType]
+WildCardSelector  ::=  ‘given’ (‘_' | InfixType)
+                    |  ‘_'
 Export            ::=  ‘export’ [‘given’] ImportExpr {‘,’ ImportExpr}
 ```
 

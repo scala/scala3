@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 object Macros {
 
@@ -10,13 +10,13 @@ object Macros {
     ${isSubTypeOfImpl('[T], '[U])}
 
   def isTypeEqualImpl[T, U](t: Type[T], u: Type[U]) with (qctx: QuoteContext) : Expr[Boolean] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     val isTypeEqual = t.unseal.tpe =:= u.unseal.tpe
     isTypeEqual
   }
 
   def isSubTypeOfImpl[T, U](t: Type[T], u: Type[U]) with (qctx: QuoteContext) : Expr[Boolean] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     val isTypeEqual = t.unseal.tpe <:< u.unseal.tpe
     isTypeEqual
   }

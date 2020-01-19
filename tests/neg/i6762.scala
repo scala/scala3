@@ -1,4 +1,4 @@
-import scala.quoted.{_, given}
+import scala.quoted.{_, given _}
 
 type G[X]
 case class Foo[T](x: T)

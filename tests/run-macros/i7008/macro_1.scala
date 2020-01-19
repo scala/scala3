@@ -1,5 +1,5 @@
 import scala.quoted._, scala.quoted.matching._
-import scala.quoted.given
+import scala.quoted.{given _}
 import scala.tasty._
 
 case class Box[T](v: T)

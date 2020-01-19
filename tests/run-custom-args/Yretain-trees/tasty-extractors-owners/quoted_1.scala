@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 object Macros {
 
@@ -7,7 +7,7 @@ object Macros {
     ${ impl('x) }
 
   def impl[T](x: Expr[T]) with (qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
 
     val buff = new StringBuilder
 

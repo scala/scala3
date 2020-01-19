@@ -4,7 +4,7 @@ import scala.tasty.interpreter.jvm.JVMReflection
 import scala.tasty.Reflection
 
 abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
-  import reflect.{_, given}
+  import reflect.{_, given _}
 
   final val LOG = false
 

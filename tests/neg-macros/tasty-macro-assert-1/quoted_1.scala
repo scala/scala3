@@ -13,7 +13,7 @@ object Asserts {
     ${impl('cond)}
 
   def impl(cond: Expr[Boolean]) with (qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
 
     val tree = cond.unseal
 
