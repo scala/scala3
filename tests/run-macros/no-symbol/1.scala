@@ -9,7 +9,7 @@ object Macro {
     ${ fooImpl }
 
   def fooImpl[T](implicit t: Type[T], qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     val sym = t.unseal.symbol
     if sym.isClassDef then '{ "symbol" }
     else if sym.isNoSymbol then '{ "no symbol" }

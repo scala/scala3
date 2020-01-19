@@ -30,7 +30,7 @@ object Macros {
       case '{ envVar(${Const(i)}) } => env(i)
 
       case _ =>
-        import qctx.tasty.{_, given}
+        import qctx.tasty.{_, given _}
         error("Expected explicit DSL " + e.show, e.unseal.pos)
         ???
     }
@@ -44,7 +44,7 @@ object Macros {
           }
         )
       case _ =>
-        import qctx.tasty.{_, given}
+        import qctx.tasty.{_, given _}
         error("Expected explicit DSL => DSL "  + e.show, e.unseal.pos)
         ???
     }

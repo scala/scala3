@@ -1,6 +1,6 @@
 import scala.quoted._
 import scala.quoted.staging._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 enum Exp {
   case Num(n: Int)

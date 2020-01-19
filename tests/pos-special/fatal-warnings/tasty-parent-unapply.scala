@@ -6,7 +6,7 @@ object Macros {
 
 
   def impl(reflect: Reflection): Unit = {
-    import reflect.{_, given}
+    import reflect.{_, given _}
 
     def foo(tree: Tree, term: Term, typeTree: TypeTree, parent: Tree) = {
 

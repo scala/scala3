@@ -10,7 +10,7 @@ object Test {
 class DBConsumer extends TastyConsumer {
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
-    import reflect.{_, given}
+    import reflect.{_, given _}
     object Traverser extends TreeTraverser {
 
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {

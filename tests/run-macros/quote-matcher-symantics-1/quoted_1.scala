@@ -20,7 +20,7 @@ object Macros {
         '{ $sym.times(${lift(x)}, ${lift(y)}) }
 
       case _ =>
-        import qctx.tasty.{_, given}
+        import qctx.tasty.{_, given _}
         error("Expected explicit DSL", e.unseal.pos)
         '{ ??? }
 

@@ -5,7 +5,7 @@ object scalatest {
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition) }
 
   def assertImpl(cond: Expr[Boolean]) with (qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     import util._
 
     cond.unseal.underlyingArgument match {

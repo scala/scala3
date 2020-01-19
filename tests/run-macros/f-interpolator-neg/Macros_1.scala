@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 import scala.quoted.matching._
 
 import scala.language.implicitConversions

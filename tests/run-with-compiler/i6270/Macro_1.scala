@@ -6,7 +6,7 @@ object api {
     ${ reflImpl('x) }
 
   private def reflImpl(x: Expr[String]) with (qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     Expr(x.show)
   }
 
@@ -14,7 +14,7 @@ object api {
     ${ reflImplColor('x) }
 
   private def reflImplColor(x: Expr[String]) with (qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     Expr(x.show(ANSI))
   }
 }

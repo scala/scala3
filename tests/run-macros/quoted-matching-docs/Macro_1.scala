@@ -9,7 +9,7 @@ private def sumExprShow(argsExpr: Expr[Seq[Int]]) with QuoteContext : Expr[Strin
   Expr(sumExpr(argsExpr).show)
 
 private def sumExpr(argsExpr: Expr[Seq[Int]]) with (qctx: QuoteContext) : Expr[Int] = {
-  import qctx.tasty.{given, _}
+  import qctx.tasty.{given _, _}
   argsExpr.underlyingArgument match {
     case ConstSeq(args) => // args is of type Seq[Int]
       Expr(args.sum) // precompute result of sum

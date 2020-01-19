@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 object Macros {
 
@@ -18,7 +18,7 @@ object Macros {
 
   implicit def intIsEvalable: Valuable[Int] = new Valuable[Int] {
     override def value(e: Expr[Int]) with (qctx: QuoteContext) : Option[Int] = {
-      import qctx.tasty.{_, given}
+      import qctx.tasty.{_, given _}
 
       e.unseal.tpe match {
         case pre: TermRef if pre.termSymbol.isValDef =>

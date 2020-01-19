@@ -6,7 +6,7 @@ object Macros {
     ${ impl('rhs, 'body) }
 
   private def impl[T](rhs: Expr[T], body: Expr[T => Unit]) with (qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
 
     val rhsTerm = rhs.unseal
 

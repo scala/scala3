@@ -2985,7 +2985,6 @@ object Parsers {
     /**  ImportExpr ::= StableId ‘.’ ImportSpec
      *   ImportSpec  ::=  id
      *                 | ‘_’
-     *                 | ‘given’
      *                 | ‘{’ ImportSelectors) ‘}’
      */
     def importExpr(mkTree: ImportConstr): () => Tree = {
@@ -3007,15 +3006,16 @@ object Parsers {
         val selector =
           if isWildcard then
             val id = wildcardSelectorId()
-            val bound =
-              if selToken == USCORE && in.token == COLON then
+            if selToken == USCORE then ImportSelector(id)
+            else atSpan(startOffset(id)) {
+              if in.token == USCORE then
                 in.nextToken()
-                infixType()
-              else if selToken == GIVEN && in.token != RBRACE && in.token != COMMA then
-                infixType()
+                ImportSelector(id)
+              else if in.token != RBRACE && in.token != COMMA then
+                ImportSelector(id, bound = infixType())
               else
-                EmptyTree
-            ImportSelector(id, bound = bound)
+                ImportSelector(id)  // TODO: drop
+            }
           else
             val from = termIdent()
             if !idOK then syntaxError(i"named imports cannot follow wildcard imports")

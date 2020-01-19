@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 import scala.quoted.matching._
 
 import scala.language.implicitConversions
@@ -24,7 +24,7 @@ object Macro {
       case ('{ StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
-            import qctx.tasty.{_, given}
+            import qctx.tasty.{_, given _}
             error(msg, parts(partIdx).unseal.pos)
           }
         }
@@ -38,7 +38,7 @@ object Macro {
         val errors = List.newBuilder[Expr[(Int, Int, Int, String)]]
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
-            import qctx.tasty.{_, given}
+            import qctx.tasty.{_, given _}
             val pos = parts(partIdx).unseal.pos
             errors += '{ Tuple4($partIdx, ${pos.start}, ${pos.end}, $msg) }
           }

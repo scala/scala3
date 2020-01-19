@@ -207,7 +207,7 @@ object Implicits extends Common:
 object Test extends App:
   Instances.test()
   import PostConditions.result
-  import PostConditions.given
+  import PostConditions.{given _}
   val s = List(1, 2, 3).sum
   s.ensuring(result == 6)
 end Test

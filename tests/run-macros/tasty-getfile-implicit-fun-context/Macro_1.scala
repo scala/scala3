@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 object SourceFiles {
 
@@ -11,7 +11,7 @@ object SourceFiles {
 
   def getThisFileImpl: Macro[String] = {
     val qctx = tastyContext
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     rootContext.source.getFileName.toString
   }
 

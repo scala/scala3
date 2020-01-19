@@ -1,6 +1,6 @@
 
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 trait VecROp[Idx, T, Unt] extends VecOp[Idx, Unt] {
   def reduce: ((T, T) => T, T, Vec[Idx, T]) => T

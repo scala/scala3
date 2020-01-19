@@ -1,7 +1,7 @@
 
 import scala.quoted._
 import scala.language.implicitConversions
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 object Macro {
 
@@ -55,7 +55,7 @@ abstract class MacroStringInterpolator[T] {
   protected def interpolate(strCtx: StringContext, argExprs: List[Expr[Any]]) with QuoteContext : Expr[T]
 
   protected def getStaticStringContext(strCtxExpr: Expr[StringContext]) with (qctx: QuoteContext) : StringContext = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     strCtxExpr.unseal.underlyingArgument match {
       case Select(Typed(Apply(_, List(Apply(_, List(Typed(Repeated(strCtxArgTrees, _), Inferred()))))), _), _) =>
         val strCtxArgs = strCtxArgTrees.map {
@@ -69,7 +69,7 @@ abstract class MacroStringInterpolator[T] {
   }
 
   protected def getArgsList(argsExpr: Expr[Seq[Any]]) with (qctx: QuoteContext) : List[Expr[Any]] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     argsExpr.unseal.underlyingArgument match {
       case Typed(Repeated(args, _), _) => args.map(_.seal)
       case tree => throw new NotStaticlyKnownError("Expected statically known argument list", tree.seal)

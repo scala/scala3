@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 
 object Macros {
@@ -8,7 +8,7 @@ object Macros {
     ${ impl('x) }
 
   def impl[T](x: Expr[T]) with (qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
 
     val buff = new StringBuilder
 
@@ -41,7 +41,7 @@ object Macros {
   def dummyShow with (qctx: QuoteContext) : scala.tasty.reflect.Printer[qctx.tasty.type] = {
     new scala.tasty.reflect.Printer {
       val tasty = qctx.tasty
-      import qctx.tasty.{_, given}
+      import qctx.tasty.{_, given _}
       def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
       def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
       def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"

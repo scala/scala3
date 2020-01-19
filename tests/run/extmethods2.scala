@@ -30,7 +30,7 @@ object Test extends App {
   }
 
   object B {
-    import A.given
+    import A.{given _}
     val xs = List(1, 2, 3)
     assert(xs.second[Int] == 2)
     assert(xs.third == 3)
