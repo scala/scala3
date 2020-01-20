@@ -112,14 +112,17 @@ object JavaParsers {
         case nil => (EmptyTree, nil)
       }
       var (constr1, stats1) = pullOutFirstConstr(stats)
-      if (constr1 == EmptyTree) constr1 = makeConstructor(List(), tparams)
       // A dummy first constructor is needed for Java classes so that the real constructors see the
       // import of the companion object. The constructor has parameter of type Unit so no Java code
       // can call it.
       // This also avoids clashes between the constructor parameter names and member names.
       if (needsDummyConstr) {
+        if (constr1 == EmptyTree) constr1 = makeConstructor(List(), Nil)
         stats1 = constr1 :: stats1
         constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, Flags.JavaDefined | Flags.PrivateLocal)
+      }
+      else if (constr1 == EmptyTree) {
+        constr1 = makeConstructor(List(), tparams)
       }
       Template(constr1.asInstanceOf[DefDef], parents, Nil, EmptyValDef, stats1)
     }
@@ -506,7 +509,7 @@ object JavaParsers {
         optThrows()
         List {
           atSpan(start) {
-            DefDef(nme.CONSTRUCTOR, parentTParams,
+            DefDef(nme.CONSTRUCTOR, tparams,
                 List(vparams), TypeTree(), methodBody()).withMods(mods)
           }
         }

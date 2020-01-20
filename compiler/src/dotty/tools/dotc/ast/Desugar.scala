@@ -473,7 +473,7 @@ object desugar {
           decompose(
             defDef(
               addEvidenceParams(
-                cpy.DefDef(ddef)(tparams = constrTparams),
+                cpy.DefDef(ddef)(tparams = constrTparams ++ ddef.tparams),
                 evidenceParams(constr1).map(toDefParam(_, keepAnnotations = false)))))
         case stat =>
           stat
