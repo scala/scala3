@@ -5,7 +5,7 @@ object Test {
 
   def f(x: Int) with (c: C) = x + c.x
 
-  def g0(x: Int) with (c: C) (y: Int) = x + c.x + y // error: normal parameter cannot follow context parameter
+  def g0(x: Int) with (c: C) (y: Int) = x + c.x + y
 
   def g(x: Int) with (c: C) with D = x + c.x + summon[D].x  // OK
 

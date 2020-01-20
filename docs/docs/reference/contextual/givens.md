@@ -42,7 +42,7 @@ parameters, which are explained in the [next section](./context-parameters.md).
 The name of a given can be left out. So the definitions
 of the last section can also be expressed like this:
 ```scala
-given as Ord[Int] { ... }
+given Ord[Int] { ... }
 given [T] with Ord[T] as Ord[List[T]] { ... }
 ```
 If the name of a given is missing, the compiler will synthesize a name from
@@ -90,9 +90,10 @@ is created for each reference.
 Here is the new syntax for givens, seen as a delta from the [standard context free syntax of Scala 3](../../internals/syntax.md).
 
 ```
-TmplDef          ::=  ...
-                  |   ‘given’ GivenDef
-GivenDef         ::=  GivenSig [‘_’ ‘<:’] Type ‘=’ Expr
-                  |   GivenSig ConstrApp {‘,’ ConstrApp } [TemplateBody]
-GivenSig         ::=  [id] [DefTypeParamClause] {WithParamClause} ‘of’
+TmplDef           ::=  ...
+                   |   ‘given’ GivenDef
+GivenDef          ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
+                   |   [GivenSig] ConstrApp {‘,’ ConstrApp } [TemplateBody]
+GivenSig          ::=  [id] [DefTypeParamClause] {WithParamsOrTypes} ‘as’
+WithParamsOrTypes ::=  WithParamClause | AnnotTypes
 ```

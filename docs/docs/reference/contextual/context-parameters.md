@@ -69,7 +69,7 @@ maximum(xs).with(descending.with(listOrd.with(intOrd)))
 
 ## Multiple With Clauses
 
-There can be several with clauses in a definition and with clauses can be freely interspersed with normal parameters. Example:
+There can be several with clauses in a definition. Example:
 ```scala
 def f(u: Universe) with (ctx: u.Context) with (s: ctx.Symbol, k: ctx.Kind) = ...
 ```
@@ -88,6 +88,17 @@ f(global).with(ctx).with(sym, kind)
 ```
 But `f(global).with(sym, kind)` would give a type error.
 
+With clauses can be freely interspersed with normal parameters, but a normal parameter clause cannot
+directly follow a with parameter clause consisting only of types outside parentheses. So the following is illegal:
+```scala
+def f with A, B (x: C) = ...
+```
+But the following variants are valid:
+```scala
+def g with A, B with (x: C) = ...
+def h with (A, B) (x: C) = ...
+```
+
 ## Summoning Instances
 
 The method `summon` in `Predef` returns the given of a specific type. For example,
@@ -105,9 +116,15 @@ def summon[T] with (x: T): x.type = x
 Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](../../internals/syntax.md).
 ```
 ClsParamClauses     ::=  ...
-                      |  {ClsParamClause} {WithClsParamClause}
+                      |  ClsParamClause ClsParamClauses
+                      |  ClsParamClauses1
+ClsParamClauses1    ::=  WithClsParamClause ClsParamClauses
+                      |  AnnotTypes ClsParamClauses1
 DefParamClauses     ::=  ...
-                      |  {DefParamClause} {WithParamClause}
+                      |  DefParamClause DefParamClauses
+                      |  DefParamClauses1
+DefParamClauses1    ::=  WithParamClause DefParamClauses
+                      |  AnnotTypes DefParamClauses1
 WithClsParamClause  ::=  ‘with’ (‘(’ (ClsParams | Types) ‘)’ | AnnotTypes)
 WithParamClause     ::=  ‘with’ (‘(’ (DefParams | Types) ‘)’ | AnnotTypes)
 Types               ::=  Type {‘,’ Type}

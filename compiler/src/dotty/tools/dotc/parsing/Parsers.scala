@@ -2917,9 +2917,15 @@ object Parsers {
     }
 
     /** ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
-     *                      |  {ClsParamClause} {GivenClsParamClause}
+     *                      |  ClsParamClause ClsParamClauses
+     *                      |  ClsParamClauses1
+     *  ClsParamClauses1  ::=  WithClsParamClause ClsParamClauses
+     *                      |  AnnotTypes ClsParamClauses1ClsParamClauses
      *  DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
-     *                      |  {DefParamClause} {GivenParamClause}
+     *                      |  DefParamClause DefParamClauses
+     *                      |  DefParamClauses1
+     *  DefParamClauses1  ::=  WithCaramClause DefParamClauses
+     *                      |  AnnotTypes DeParamClauses1
      *
      *  @return  The parameter definitions
      */
@@ -2927,7 +2933,7 @@ object Parsers {
                      ofCaseClass: Boolean = false,
                      givenOnly: Boolean = false): List[List[ValDef]] =
 
-      def recur(firstClause: Boolean, nparams: Int, givenOnly: Boolean): List[List[ValDef]] =
+      def recur(firstClause: Boolean, nparams: Int): List[List[ValDef]] =
         newLineOptWhenFollowedBy(LPAREN)
         val prefixMods =
           if in.token == WITH && in.ch != Chars.LF then // TODO: remove LF test
@@ -2949,14 +2955,17 @@ object Parsers {
             || params.nonEmpty && params.head.mods.flags.is(Given)
           params :: (
             if lastClause then Nil
-            else recur(firstClause = false, nparams + params.length, givenOnly | isGivenClause))
+            else recur(firstClause = false, nparams + params.length))
         else if prefixMods.is(Given) then
           val params = givenTypes(annotType, nparams, ofClass)
-          params :: recur(firstClause = false, nparams + params.length, true)
+          params :: (
+            if in.token == WITH then recur(firstClause = false, nparams + params.length)
+            else Nil
+          )
         else Nil
       end recur
 
-      recur(firstClause = true, 0, givenOnly)
+      recur(firstClause = true, 0)
     end paramClauses
 
 /* -------- DEFS ------------------------------------------- */
@@ -3448,11 +3457,12 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
-    /** GivenDef       ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
-     *                   |  [GivenSig] ConstrApps [TemplateBody]
-     *  GivenSig       ::=  [id] [DefTypeParamClause] GivenParamClauses ‘as’
-     *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause
-     *  ExtMethods     ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
+    /** GivenDef          ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
+     *                      |  [GivenSig] ConstrApps [TemplateBody]
+     *  GivenSig          ::=  [id] [DefTypeParamClause] {WithParamsOrTypes} ‘as’
+     *  ExtParamClause    ::=  [DefTypeParamClause] DefParamClause
+     *  ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
+     *  WithParamsOrTypes ::=  WithParamClause | AnnotTypes
      */
     def givenDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
