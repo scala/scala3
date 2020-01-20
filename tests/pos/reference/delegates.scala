@@ -22,6 +22,7 @@ class Common:
     def [A, B](x: F[A]) map (f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
+end Common
 
 object Instances extends Common:
 
