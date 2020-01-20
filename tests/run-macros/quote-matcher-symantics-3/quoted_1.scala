@@ -1,5 +1,6 @@
 import scala.quoted._
 import scala.quoted.matching._
+import scala.quoted.unsafe._
 
 object Macros {
 
@@ -46,17 +47,17 @@ object Macros {
 
       case '{ (x0: Int) => ($bodyFn: Int => Any)(x0) } =>
         val (i, nEnvVar) = freshEnvVar[Int]()
-        val body2 = Expr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
+        val body2 = UnsafeExpr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
         '{ $sym.lam((x: R[Int]) => ${given Env = envWith(i, 'x)(given env); lift(body2)}).asInstanceOf[R[T]] }
 
       case '{ (x0: Boolean) => ($bodyFn: Boolean => Any)(x0) } =>
         val (i, nEnvVar) = freshEnvVar[Boolean]()
-        val body2 = Expr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
+        val body2 = UnsafeExpr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
         '{ $sym.lam((x: R[Boolean]) => ${given Env = envWith(i, 'x)(given env); lift(body2)}).asInstanceOf[R[T]] }
 
       case '{ (x0: Int => Int) => ($bodyFn: (Int => Int) => Any)(x0) } =>
         val (i, nEnvVar) = freshEnvVar[Int => Int]()
-        val body2 = Expr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
+        val body2 = UnsafeExpr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
         '{ $sym.lam((x: R[Int => Int]) => ${given Env = envWith(i, 'x)(given env); lift(body2)}).asInstanceOf[R[T]] }
 
       case '{ Symantics.fix[$t, $u]($f) } =>
