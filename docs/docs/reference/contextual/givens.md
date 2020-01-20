@@ -62,7 +62,7 @@ returned for this and all subsequent accesses to `global`.
 Alias givens can be anonymous, e.g.
 ```scala
 given as Position = enclosingTree.position
-given with outer: Context as Context = outer.withOwner(currentOwner)
+given with (outer: Context) as Context = outer.withOwner(currentOwner)
 ```
 An alias given can have type parameters and implicit parameters just like any other given,
 but it can only implement a single type.
