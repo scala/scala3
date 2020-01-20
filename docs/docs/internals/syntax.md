@@ -157,7 +157,7 @@ SimpleType        ::=  SimpleType TypeArgs                                      
                     |  StableId
                     |  Path ‘.’ ‘type’                                          SingletonTypeTree(p)
                     |  ‘(’ ArgTypes ‘)’                                         Tuple(ts)
-                    |  ‘_’ SubtypeBounds
+                    |  ‘?’ SubtypeBounds
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  SimpleLiteral                                            SingletonTypeTree(l)
                     |  ‘$’ ‘{’ Block ‘}’
