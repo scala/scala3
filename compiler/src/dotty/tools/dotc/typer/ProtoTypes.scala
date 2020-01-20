@@ -61,6 +61,8 @@ object ProtoTypes {
 
     private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
       case _: OrType => true
+        // Don't constrain results with union types, since comparison with a union
+        // type on the right might commit too early into one side.
       case pt => pt.isRef(defn.UnitClass)
     }
 
