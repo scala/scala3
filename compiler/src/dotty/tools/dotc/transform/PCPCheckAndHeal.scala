@@ -176,7 +176,12 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     if (!sym.exists || levelOK(sym) || isStaticPathOK(tp) || isStaticNew(tp))
       None
     else if (!sym.isStaticOwner && !isClassRef)
-      tryHeal(sym, tp, pos)
+      tp match
+        case tp: TypeRef =>
+          if levelOf(sym).getOrElse(0) < level then tryHeal(sym, tp, pos)
+          else None
+        case _ =>
+          levelError(sym, tp, pos, "")
     else if (!sym.owner.isStaticOwner) // non-top level class reference that is phase inconsistent
       levelError(sym, tp, pos, "")
     else
@@ -202,40 +207,29 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       sym.is(Package) || sym.owner.isStaticOwner || levelOK(sym.owner)
   }
 
-  /** Try to heal phase-inconsistent reference to type `T` using a local type definition.
+  /** Try to heal reference to type `T` used in a higher level than its definition.
    *  @return None      if successful
    *  @return Some(msg) if unsuccessful where `msg` is a potentially empty error message
    *                    to be added to the "inconsistent phase" message.
    */
-  protected def tryHeal(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[Tree] =
-    tp match {
-      case tp: TypeRef =>
-        if (level == -1) {
-          assert(ctx.inInlineMethod)
-          None
-        }
-        else {
-          val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
-          val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
-          tag.tpe match {
-            case _: TermRef =>
-              Some(tag.select(tpnme.splice))
-            case _: SearchFailureType =>
-              levelError(sym, tp, pos,
-                         i"""
-                            |
-                            | The access would be accepted with the right type tag, but
-                            | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
-            case _ =>
-              levelError(sym, tp, pos,
-                         i"""
-                            |
-                            | The access would be accepted with an implict $reqType""")
-          }
-        }
+  protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(implicit ctx: Context): Option[Tree] = {
+    val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
+    val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
+    tag.tpe match
+      case _: TermRef =>
+        Some(tag.select(tpnme.splice))
+      case _: SearchFailureType =>
+        levelError(sym, tp, pos,
+                    i"""
+                      |
+                      | The access would be accepted with the right type tag, but
+                      | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
       case _ =>
-        levelError(sym, tp, pos, "")
-    }
+        levelError(sym, tp, pos,
+                    i"""
+                      |
+                      | The access would be accepted with a given $reqType""")
+  }
 
   private def levelError(sym: Symbol, tp: Type, pos: SourcePosition, errMsg: String)(given Context) = {
     def symStr =
