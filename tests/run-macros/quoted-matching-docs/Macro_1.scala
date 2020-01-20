@@ -1,5 +1,6 @@
 import scala.quoted._
 import scala.quoted.matching._
+import scala.quoted.unsafe._
 
 inline def sum(args: Int*): Int = ${ sumExpr('args) }
 
@@ -10,7 +11,7 @@ private def sumExprShow(argsExpr: Expr[Seq[Int]])(given QuoteContext): Expr[Stri
 
 private def sumExpr(argsExpr: Expr[Seq[Int]])(given qctx: QuoteContext): Expr[Int] = {
   import qctx.tasty.{given, _}
-  argsExpr.underlyingArgument match {
+  UnsafeExpr.underlyingArgument(argsExpr) match {
     case ConstSeq(args) => // args is of type Seq[Int]
       Expr(args.sum) // precompute result of sum
     case ExprSeq(argExprs) => // argExprs is of type Seq[Expr[Int]]
