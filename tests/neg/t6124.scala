@@ -28,6 +28,10 @@ trait T {
   val x10 = 052 // error
   val x11 = 0_0.52 // error
   val x12 = 00.52 // error
+  val x13 = 00 // error
+  val x14 = 00d // error
+  val x15 = 00.0 // error
+  val x16 = 0_0 // error
 
   def z = 0
 }
