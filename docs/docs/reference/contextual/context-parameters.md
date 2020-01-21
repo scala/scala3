@@ -69,7 +69,7 @@ maximum(xs).with(descending.with(listOrd.with(intOrd)))
 
 ## Multiple With Clauses
 
-There can be several with clauses in a definition. Example:
+There can be several `with` clauses in a definition. Example:
 ```scala
 def f(u: Universe) with (ctx: u.Context) with (s: ctx.Symbol, k: ctx.Kind) = ...
 ```
@@ -88,8 +88,8 @@ f(global).with(ctx).with(sym, kind)
 ```
 But `f(global).with(sym, kind)` would give a type error.
 
-With clauses can be freely interspersed with normal parameters, but a normal parameter clause cannot
-directly follow a with parameter clause consisting only of types outside parentheses. So the following is illegal:
+`with` clauses can be freely interspersed with normal parameters, but a normal parameter clause cannot
+directly follow a `with` clause consisting only of types outside parentheses. So the following is illegal:
 ```scala
 def f with A, B (x: C) = ...
 ```
