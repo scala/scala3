@@ -348,7 +348,7 @@ Export            ::=  ‘export’ [‘given’] ImportExpr {‘,’ ImportExpr
 
 ### Declarations and Definitions
 ```ebnf
-RefineDcl         ::=  ‘val’ VarDcl
+RefineDcl         ::=  ‘val’ ValDcl
                     |  ‘def’ DefDcl
                     |  ‘type’ {nl} TypeDcl
                     |  INT
