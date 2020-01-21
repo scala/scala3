@@ -222,7 +222,10 @@ object desugar {
     val epbuf = ListBuffer[ValDef]()
     def desugarContextBounds(rhs: Tree): Tree = rhs match {
       case ContextBounds(tbounds, cxbounds) =>
-        epbuf ++= makeImplicitParameters(cxbounds, Implicit, forPrimaryConstructor = isPrimaryConstructor)
+        val iflag = cxbounds match
+          case (_: untpd.Function) :: Nil => Implicit // it's a view bound
+          case _ => Given
+        epbuf ++= makeImplicitParameters(cxbounds, iflag, forPrimaryConstructor = isPrimaryConstructor)
         tbounds
       case LambdaTypeTree(tparams, body) =>
         cpy.LambdaTypeTree(rhs)(tparams, desugarContextBounds(body))

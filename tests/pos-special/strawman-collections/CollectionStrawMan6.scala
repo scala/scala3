@@ -753,11 +753,11 @@ object CollectionStrawMan6 extends LowPriority {
 
     def elemTag: ClassTag[A] = ClassTag(xs.getClass.getComponentType)
 
-    protected def fromIterableWithSameElemType(coll: Iterable[A]): Array[A] = coll.toArray[A](elemTag)
+    protected def fromIterableWithSameElemType(coll: Iterable[A]): Array[A] = coll.toArray[A].with(elemTag)
 
     def fromIterable[B: ClassTag](coll: Iterable[B]): Array[B] = coll.toArray[B]
 
-    protected[this] def newBuilder = new ArrayBuffer[A].mapResult(_.toArray(elemTag))
+    protected[this] def newBuilder = new ArrayBuffer[A].mapResult(_.toArray.with(elemTag))
 
     override def knownSize = xs.length
 

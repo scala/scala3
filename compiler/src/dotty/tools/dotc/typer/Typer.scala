@@ -2650,7 +2650,17 @@ class Typer extends Namer
           else
             tree
         else if (wtp.isContextualMethod)
-          adaptNoArgs(wtp)  // insert arguments implicitly
+          def isContextBoundParams = wtp.stripPoly match
+            case MethodType(EvidenceParamName(_) :: _) => true
+            case _ => false
+          if ctx.scala2CompatMode && isContextBoundParams then
+            ctx.migrationWarning(
+              em"""Context bounds will map to context parameters.
+                  |A `with` clause is needed to pass explicit arguments to them""", tree.sourcePos)
+            patch(Span(tree.span.end), ".with")
+            tree
+          else
+            adaptNoArgs(wtp)  // insert arguments implicitly
         else if (tree.symbol.isPrimaryConstructor && tree.symbol.info.firstParamTypes.isEmpty)
           readapt(tree.appliedToNone) // insert () to primary constructors
         else
