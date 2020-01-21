@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import ast.{Trees, tpd}
@@ -71,10 +72,11 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
           evalOnce(qual) { ev =>
             val ctArgs = ctParams.map(tparam =>
               TypeTree(tparam.typeRef.asSeenFrom(ev.tpe, origCls)))
-            ref(extensionMeth)
+            transformFollowing(
+              ref(extensionMeth)
               .appliedToTypeTrees(mtArgs ++ ctArgs)
               .appliedTo(ev)
-              .appliedToArgss(mArgss)
+              .appliedToArgss(mArgss))
           }
         else
           ref(extensionMeth)
