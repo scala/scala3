@@ -3,7 +3,7 @@ import scala.quoted._
 import scala.quoted.matching._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 
-object Macro {
+object Macro1 {
   case class Person(name: String, age: Int)
 
   def mirrorFields[T](t: Type[T])(given qctx: QuoteContext): List[String] =
@@ -12,23 +12,21 @@ object Macro {
       case '[Unit] => Nil
     }
 
-  inline def usingSummonFrom[T](value: =>T): List[String] =
-    ${ usingSummonFromImpl('value) }
+  // Macro method 1
+  //   Demonstrates the use of quoted pattern matching
+  //   over a refined type, extracting the tuple type
+  //   for e.g., MirroredElemLabels
+  inline def test1[T](value: =>T): List[String] =
+    ${ test1Impl('value) }
 
-  def usingSummonFromImpl[T: Type](value: Expr[T])(given qctx: QuoteContext): Expr[List[String]] = {
+  def test1Impl[T: Type](value: Expr[T])(given qctx: QuoteContext): Expr[List[String]] = {
     import qctx.tasty.{_, given}
-
 
     val mirrorTpe = '[Mirror.Of[T]]
 
     summonExpr(given mirrorTpe).get match {
-      case '{ $m: Mirror.ProductOf[T] } => {
-        val typeMember = TypeSelect(m.unseal, "MirroredElemLabels")
-
-        type TT
-        implicit val TT: quoted.Type[TT] = typeMember.tpe.seal.asInstanceOf[quoted.Type[TT]]
-
-        Expr(mirrorFields('[TT]))
+      case '{ $m: Mirror.ProductOf[T]{ type MirroredElemLabels = $t } } => {
+        Expr(mirrorFields(t))
       }
     }
   }
