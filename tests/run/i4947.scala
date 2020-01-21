@@ -1,6 +1,6 @@
 object Test {
 
-  inline def track[T](f: => T): T = {
+  inline def track[T](inline f: T): T = {
     printStack("track")
     printStack("track")
     f

@@ -25,9 +25,18 @@ object trace extends TraceSyntax {
 abstract class TraceSyntax {
   val isForced: Boolean
 
+  // FIXME Use this signature after reference compiler is updated
+  // inline def onDebug[TD](inline question: String)(inline op: TD)(implicit ctx: Context): TD =
   inline def onDebug[TD](question: => String)(op: => TD)(implicit ctx: Context): TD =
     conditionally(ctx.settings.YdebugTrace.value, question, false)(op)
 
+  // FIXME Use this implementation after reference compiler is updated
+  // inline def conditionally[TC](inline cond: Boolean, inline question: String, inline show: Boolean)(op: => TC)(implicit ctx: Context): TC =
+  //   inline if (isForced || Config.tracingEnabled) {
+  //     if (cond) apply[TC](question, Printers.default, show)(op)
+  //     else op
+  //   }
+  //   else op
   inline def conditionally[TC](cond: Boolean, question: => String, show: Boolean)(op: => TC)(implicit ctx: Context): TC =
     inline if (isForced || Config.tracingEnabled) {
       def op1 = op
@@ -36,6 +45,13 @@ abstract class TraceSyntax {
     }
     else op
 
+  // FIXME Use this implementation after reference compiler is updated
+  // inline def apply[T](inline question: String, inline printer: Printers.Printer, inline showOp: Any => String)(op: => T)(implicit ctx: Context): T =
+  //   inline if (isForced || Config.tracingEnabled) {
+  //     if (!isForced && printer.eq(config.Printers.noPrinter)) op
+  //     else doTrace[T](question, printer, showOp)(op)
+  //   }
+  //   else op
   inline def apply[T](question: => String, printer: Printers.Printer, showOp: Any => String)(op: => T)(implicit ctx: Context): T =
     inline if (isForced || Config.tracingEnabled) {
       def op1 = op
@@ -44,6 +60,13 @@ abstract class TraceSyntax {
     }
     else op
 
+  // FIXME Use this implementation after reference compiler is updated
+  // inline def apply[T](inline question: String, inline printer: Printers.Printer, inline show: Boolean)(op: => T)(implicit ctx: Context): T =
+  //   inline if (isForced || Config.tracingEnabled) {
+  //     if (!isForced && printer.eq(config.Printers.noPrinter)) op
+  //     else doTrace[T](question, printer, if (show) showShowable(_) else alwaysToString)(op)
+  //   }
+  //   else op
   inline def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: Context): T =
     inline if (isForced || Config.tracingEnabled) {
       def op1 = op
@@ -52,12 +75,18 @@ abstract class TraceSyntax {
     }
     else op
 
+  // FIXME Use this signature after reference compiler is updated
+  // inline def apply[T](inline question: String, inline printer: Printers.Printer)(inline op: T)(implicit ctx: Context): T =
   inline def apply[T](question: => String, printer: Printers.Printer)(op: => T)(implicit ctx: Context): T =
     apply[T](question, printer, false)(op)
 
+  // FIXME Use this signature after reference compiler is updated
+  // inline def apply[T](inline question: String, inline show: Boolean)(inline op: T)(implicit ctx: Context): T =
   inline def apply[T](question: => String, show: Boolean)(op: => T)(implicit ctx: Context): T =
     apply[T](question, Printers.default, show)(op)
 
+  // FIXME Use this signature after reference compiler is updated
+  // inline def apply[T](inline question: String)(inline op: T)(implicit ctx: Context): T =
   inline def apply[T](question: => String)(op: => T)(implicit ctx: Context): T =
     apply[T](question, Printers.default, false)(op)
 

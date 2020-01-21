@@ -21,12 +21,29 @@ By name function
   val j: scala.Int = 5
   while (i.<(j)) {
     val x$3: scala.Int = i
-    scala.Predef.println(x$3)
+    f.apply(x$3)
     i = i.+(1)
   }
   while ({
     val x$4: scala.Int = i
-    scala.Predef.println(x$4)
+    f.apply(x$4)
+    i = i.+(1)
+    i.<(j)
+  }) ()
+}
+
+Inline function
+{
+  var i: scala.Int = 0
+  val j: scala.Int = 5
+  while (i.<(j)) {
+    val x$5: scala.Int = i
+    scala.Predef.println(x$5)
+    i = i.+(1)
+  }
+  while ({
+    val x$6: scala.Int = i
+    scala.Predef.println(x$6)
     i = i.+(1)
     i.<(j)
   }) ()

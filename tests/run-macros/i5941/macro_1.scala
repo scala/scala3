@@ -69,7 +69,7 @@ object GenLens {
 
   def apply[S] = new MkGenLens[S]
   class MkGenLens[S] {
-    inline def apply[T](get: => (S => T)): Lens[S, T] = ${ Lens.impl('get) }
+    inline def apply[T](inline get: (S => T)): Lens[S, T] = ${ Lens.impl('get) }
   }
 }
 

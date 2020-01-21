@@ -121,11 +121,23 @@ power(expr, 10)
 ```
 
 Parameters of inline methods can have an `inline` modifier as well. This means
-that actual arguments to these parameters must be constant expressions.
-For example:
+that actual arguments to these parameters will be inlined in the body of the `inline def`.
+`inline` parameter have call semantics equivalent to by-name parameters but allows for duplication
+of the code in the argument. It is usualy useful constant values need to be propagated to allow
+further optimizations/reductions.
+
+The following example shows the difference in translation between by-value, by-name and `inline`
+parameters:
 
 ```scala
-inline def power(x: Double, inline n: Int): Double
+inline def sumTwice(a: Int, b: =>Int, inline c: Int) = a + a + b + b + c + c
+
+sumTwice(x(), y(), z())
+// translates to
+//
+//    val a = x()
+//    def b = y()
+//    a + a + b + b + z() + z()
 ```
 
 ### Relationship to @inline
@@ -414,7 +426,7 @@ fail(identity("foo")) // error: failed on: identity("foo")
 ### The `scala.compiletime.ops` package
 
 The `scala.compiletime.ops` package contains types that provide support for
-primitive operations on singleton types. For example, 
+primitive operations on singleton types. For example,
 `scala.compiletime.ops.int.*` provides support for multiplying two singleton
 `Int` types, and `scala.compiletime.ops.boolean.&&` for the conjunction of two
 `Boolean` types. When all arguments to a type in `scala.compiletime.ops` are
@@ -425,14 +437,14 @@ import scala.compiletime.ops.int._
 import scala.compiletime.ops.boolean._
 
 val conjunction: true && true = true
-val multiplication: 3 * 5 = 15 
+val multiplication: 3 * 5 = 15
 ```
 
 Many of these singleton operation types are meant to be used infix (as in [SLS §
 3.2.8](https://www.scala-lang.org/files/archive/spec/2.12/03-types.html#infix-types)),
 and are annotated with [`@infix`](scala.annotation.infix) accordingly.
 
-Since type aliases have the same precedence rules as their term-level 
+Since type aliases have the same precedence rules as their term-level
 equivalents, the operations compose with the expected precedence rules:
 
 ```scala
@@ -440,10 +452,10 @@ import scala.compiletime.ops.int._
 val x: 1 + 2 * 3 = 7
 ```
 
-The operation types are located in packages named after the type of the 
+The operation types are located in packages named after the type of the
 left-hand side parameter: for instance, `scala.compiletime.int.+` represents
 addition of two numbers, while `scala.compiletime.string.+` represents string
-concatenation. To use both and distinguish the two types from each other, a 
+concatenation. To use both and distinguish the two types from each other, a
 match type can dispatch to the correct implementation:
 
 ```scala

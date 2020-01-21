@@ -1,0 +1,52 @@
+f1(42)
+
+f2(42)
+
+g1(42)
+
+g2(42)
+
+h1(ArraySeq(42))
+
+h2(ArraySeq(42))
+
+i1(ArraySeq(42))
+
+i2(ArraySeq(42))
+
+y
+f1(43)
+
+y
+f2(43)
+y
+
+y
+g1(43)
+y
+
+y
+g2(43)
+y
+
+y
+y
+h1(ArraySeq(43, 43))
+
+y
+y
+h2(ArraySeq(43, 43))
+y
+y
+
+y
+y
+i1(ArraySeq(43, 43))
+y
+y
+
+y
+y
+i2(ArraySeq(43, 43))
+y
+y

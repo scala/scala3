@@ -9,5 +9,9 @@ object Test {
 
     println("By name function")
     println(foreach2(0, 5, x => println(x)))
+    println()
+
+    println("Inline function")
+    println(foreach3(0, 5, x => println(x)))
   }
 }

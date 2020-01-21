@@ -19,6 +19,8 @@ import collection.mutable
     override def default(key: String): Int = 0
   }
 
+  // FIXME Use this signature after reference compiler is updated
+  // inline def record(inline fn: String, inline n: Int = 1): Unit =
   inline def record(fn: => String, n: => Int = 1): Unit =
     if (enabled) doRecord(fn, n)
 
@@ -28,16 +30,17 @@ import collection.mutable
       hits(name) += n
     }
 
+  // FIXME Use this signature after reference compiler is updated
+  // inline def trackTime[T](fn: String)(inline op: T): T =
   inline def trackTime[T](fn: String)(op: => T): T =
     if (enabled) doTrackTime(fn)(op) else op
 
   def doTrackTime[T](fn: String)(op: => T): T = {
-    def op1 = op
     if (monitored) {
       val start = System.nanoTime
-      try op1 finally record(fn, ((System.nanoTime - start) / 1000).toInt)
+      try op finally record(fn, ((System.nanoTime - start) / 1000).toInt)
     }
-    else op1
+    else op
   }
 
   final val GroupChar = '/'

@@ -1,7 +1,7 @@
 import scala.quoted._
 import scala.quoted.matching._
 
-inline def rewrite[T](x: => T): T = ${ rewriteMacro('x) }
+inline def rewrite[T](inline x: T): T = ${ rewriteMacro('x) }
 
 def plus(x: Int, y: Int): Int = x + y
 def times(x: Int, y: Int): Int = x * y

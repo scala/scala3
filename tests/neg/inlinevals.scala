@@ -2,7 +2,8 @@ object Test {
 
   def power0(x: Double, inline n: Int): Double = ???  // error
 
-  inline def power(x: Double, inline n: Int): Double = ???  // ok
+  inline def power(x: Double, inline n: Int): Double = // ok
+    inline if n == 0 then ??? else ???
 
   inline val N = 10
   def X = 20

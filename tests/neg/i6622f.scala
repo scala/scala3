@@ -6,6 +6,6 @@ object Test {
     fail(println("foo")) // error
   }
 
-  inline def fail(p1: => Any) = error(code"failed: $p1 ...")
+  inline def fail(inline p1: Any) = error(code"failed: $p1 ...")
 
 }

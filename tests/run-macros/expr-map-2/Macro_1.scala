@@ -1,7 +1,7 @@
 import scala.quoted._
 import scala.quoted.matching._
 
-inline def rewrite[T](x: => Any): Any = ${ stringRewriter('x) }
+inline def rewrite[T](inline x: Any): Any = ${ stringRewriter('x) }
 
 private def stringRewriter(e: Expr[Any]) with QuoteContext : Expr[Any] =
   StringRewriter.transform(e)

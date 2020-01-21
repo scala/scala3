@@ -208,7 +208,8 @@ object Inliner {
       }
 
       val Apply(_, codeArg :: Nil) = tree
-      ConstFold(stripTyped(codeArg.underlyingArgument)).tpe.widenTermRefExpr match {
+      val underlyingCodeArg = stripTyped(codeArg.underlying)
+      ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
           val source2 = SourceFile.virtual("tasty-reflect", code)
           val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer).setSource(source2)
@@ -223,7 +224,7 @@ object Inliner {
             res ++= typerErrors.map(e => ErrorKind.Typer -> e)
           res.toList
         case t =>
-          assert(ctx.reporter.hasErrors) // at least: argument to inline parameter must be a known value
+          ctx.error("argument to compileError must be a statically known String", underlyingCodeArg.sourcePos)
           Nil
       }
 
@@ -333,9 +334,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     val argtpe = arg.tpe.dealiasKeepAnnots
     val isByName = paramtp.dealias.isInstanceOf[ExprType]
     var inlineFlags: FlagSet = InlineProxy
-    if (paramtp.hasAnnotation(defn.InlineParamAnnot)) inlineFlags |= Inline
+    if (paramtp.widenExpr.hasAnnotation(defn.InlineParamAnnot)) inlineFlags |= Inline
+    if (isByName) inlineFlags |= Method
     val (bindingFlags, bindingType) =
-      if (isByName) (InlineByNameProxy.toTermFlags, ExprType(argtpe.widen))
+      if (isByName) (inlineFlags, ExprType(argtpe.widen))
       else (inlineFlags, argtpe.widen)
     val boundSym = newSym(name, bindingFlags, bindingType).asTerm
     val binding = {
@@ -765,10 +767,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         def search(buf: mutable.ListBuffer[ValOrDefDef]) = buf.find(_.name == tree.name)
         if (paramProxies.contains(tree.typeOpt))
           search(bindingsBuf) match {
-            case Some(vdef: ValDef) if vdef.symbol.is(Inline) =>
-              Some(integrate(vdef.rhs, vdef.symbol))
-            case Some(ddef: DefDef) =>
-              Some(integrate(ddef.rhs, ddef.symbol))
+            case Some(bind: ValOrDefDef) if bind.symbol.is(Inline) =>
+              Some(integrate(bind.rhs, bind.symbol))
             case _ => None
           }
         else None
@@ -1198,7 +1198,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       val bindingOfSym = newMutableSymbolMap[MemberDef]
 
       def isInlineable(binding: MemberDef) = binding match {
-        case DefDef(_, Nil, Nil, _, _) => true
+        case ddef @ DefDef(_, Nil, Nil, _, _) => isPureExpr(ddef.rhs)
         case vdef @ ValDef(_, _, _) => isPureExpr(vdef.rhs)
         case _ => false
       }
@@ -1236,7 +1236,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           case Some(x) => x > 1 || x == 1 && !boundSym.is(Method)
           case none => true
         }
-      } && !(boundSym.isAllOf(InlineMethod) && boundSym.isOneOf(GivenOrImplicit))
+      } && !boundSym.is(Inline)
 
       val inlineBindings = new TreeMap {
         override def transform(t: Tree)(implicit ctx: Context) = t match {

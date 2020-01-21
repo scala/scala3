@@ -9,7 +9,7 @@ object Asserts {
 
   object Ops
 
-  inline def macroAssert(cond: => Boolean): Unit =
+  inline def macroAssert(inline cond: Boolean): Unit =
     ${ impl('cond) }
 
   def impl(cond: Expr[Boolean]) with (qctx: QuoteContext) : Expr[Unit] = {

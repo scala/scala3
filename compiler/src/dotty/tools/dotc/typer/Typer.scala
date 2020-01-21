@@ -2910,8 +2910,6 @@ class Typer extends Namer
           tree
         }
       else if (tree.tpe.widenExpr <:< pt) {
-        if (pt.hasAnnotation(defn.InlineParamAnnot))
-          checkInlineConformant(tree, isFinal = false, "argument to inline parameter")
         if (ctx.typeComparer.GADTused && pt.isValueType)
           // Insert an explicit cast, so that -Ycheck in later phases succeeds.
           // I suspect, but am not 100% sure that this might affect inferred types,

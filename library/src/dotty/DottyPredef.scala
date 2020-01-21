@@ -8,7 +8,7 @@ object DottyPredef {
       assertFail(message)
   }
 
-  inline final def assert(assertion: => Boolean) <: Unit = {
+  inline final def assert(inline assertion: => Boolean) <: Unit = {
     if (!assertion)
       assertFail()
   }
