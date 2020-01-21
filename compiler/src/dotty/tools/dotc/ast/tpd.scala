@@ -42,8 +42,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Super(qual, if (mixName.isEmpty) untpd.EmptyTypeIdent else untpd.Ident(mixName), inConstrCall, mixinClass)
 
   def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
-    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply[_]])
-    ta.assignType(untpd.Apply(fn, args), fn, args)
+    fn match {
+       case Inlined(o,b,e) => Apply(e,args)
+       case _ =>
+         assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply[_]])
+         ta.assignType(untpd.Apply(fn, args), fn, args)
+    }
   }
 
   def TypeApply(fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
