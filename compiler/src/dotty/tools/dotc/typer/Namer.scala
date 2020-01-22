@@ -1130,8 +1130,13 @@ class Namer { typer: Typer =>
 
       index(constr)
       index(rest)(localCtx)
-      symbolOfTree(constr).ensureCompleted()
-
+      symbolOfTree(constr).info.stripPoly match // Completes constr symbol as a side effect
+        case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
+          // See issue #8073 for background
+          ctx.error(
+              i"""Implementation restriction: case classes cannot have dependencies between parameters""",
+              cls.sourcePos)
+        case _ =>
       denot.info = savedInfo
     }
 
