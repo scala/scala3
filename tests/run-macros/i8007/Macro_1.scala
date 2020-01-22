@@ -12,10 +12,9 @@ object Macro1 {
       case '[Unit] => Nil
     }
 
-  // Macro method 1
-  //   Demonstrates the use of quoted pattern matching
-  //   over a refined type, extracting the tuple type
-  //   for e.g., MirroredElemLabels
+  // Demonstrates the use of quoted pattern matching
+  // over a refined type extracting the tuple type
+  // for e.g., MirroredElemLabels
   inline def test1[T](value: =>T): List[String] =
     ${ test1Impl('value) }
 
