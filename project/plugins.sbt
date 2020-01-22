@@ -2,6 +2,9 @@
 //
 // e.g. addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
+// DO NOT update this plugin without regenerating our Docker
+// image (https://github.com/lampepfl/dotty-drone) or fixing
+// https://github.com/lampepfl/dotty/issues/3146.
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.0.0-RC2")
 
 addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.6")
