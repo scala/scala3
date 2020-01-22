@@ -1,7 +1,6 @@
 import scala.deriving._
 import scala.quoted._
 import scala.quoted.matching._
-import scala.compiletime.{erasedValue, summonFrom, constValue}
 
 object Macro1 {
   case class Person(name: String, age: Int)

@@ -347,6 +347,10 @@ inline def derived[A](given gen: K0.Generic[A]): Eq[A] = gen.derive(eqSum, eqPro
 
 The framework described here enables all three of these approaches without mandating any of them.
 
+For a brief discussion on how to use macros to write a type class `derived`
+method please read more at [How to write a type class `derived` method using
+macros](./derivation-macro.md).
+
 ### Deriving instances elsewhere
 
 Sometimes one would like to derive a type class instance for an ADT after the ADT is defined, without being able to
