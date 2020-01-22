@@ -1,7 +1,7 @@
 import scala.quoted._
 import scala.quoted.matching._
 
-def sum(args: =>Int*): Int = args.sum
+def sum(args: Int*): Int = args.sum
 
 inline def showOptimize(arg: Int): String = ${ showOptimizeExpr('arg) }
 inline def optimize(arg: Int): Int = ${ optimizeExpr('arg) }

@@ -52,6 +52,9 @@ object Splicer {
       catch {
         case ex: CompilationUnit.SuspendException =>
           throw ex
+        case ex: scala.quoted.StopQuotedContext if ctx.reporter.hasErrors =>
+           // errors have been emitted
+          EmptyTree
         case ex: StopInterpretation =>
           ctx.error(ex.msg, ex.pos)
           EmptyTree
@@ -389,6 +392,8 @@ object Splicer {
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
           ex.getTargetException match {
+            case ex: scala.quoted.StopQuotedContext =>
+              throw ex
             case MissingClassDefinedInCurrentRun(sym) =>
               if (ctx.settings.XprintSuspension.value)
                 ctx.echo(i"suspension triggered by a dependency on $sym", pos)

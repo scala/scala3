@@ -5,8 +5,8 @@ object Macros {
   inline def macro1 = ${ macro1Impl }
   def macro1Impl with QuoteContext = '{3}
 
-  inline def macro2(inline p: Boolean) = ${ macro2Impl(p) }
-  def macro2Impl(p: Boolean) with QuoteContext = if (p) '{3} else '{4}
+  inline def macro2(inline p: Boolean) = ${ macro2Impl('p) }
+  def macro2Impl(p: Expr[Boolean]) with QuoteContext = if (p.value) '{3} else '{4}
 
   inline def macro3(n: Int) = ${ macro3Impl('n) }
   def macro3Impl(p: Expr[Int]) with QuoteContext = '{ 2 + $p }
@@ -17,7 +17,10 @@ object Macros {
   inline def macro5(i: Int, j: Int) = ${ macro5Impl(j = 'j, i = 'i) }
   def macro5Impl(i: Expr[Int], j: Expr[Int]) with QuoteContext = '{ $i + $j }
 
-  inline def power(inline n: Int, x: Double) = ${ powerCode(n, 'x) }
+  inline def power(inline n: Int, x: Double) = ${ powerCode('n, 'x) }
+
+  def powerCode(n: Expr[Int], x: Expr[Double]) with QuoteContext : Expr[Double] =
+    powerCode(n.value, x)
 
   def powerCode(n: Int, x: Expr[Double]) with QuoteContext : Expr[Double] =
     if (n == 0) '{1.0}

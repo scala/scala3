@@ -7,7 +7,6 @@ object Test {
 
   def main(args: Array[String]): Unit = withQuoteContext {
     println(('{}).getValue)
-    println(('{null}).getValue)
     println(('{true}).getValue)
     println(('{1}).getValue)
     println(('{2: Byte}).getValue)

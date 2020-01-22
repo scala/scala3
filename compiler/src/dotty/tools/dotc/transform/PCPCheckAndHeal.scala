@@ -88,8 +88,6 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     tree match {
       case Quoted(_) | Spliced(_)  =>
         tree
-      case tree: RefTree if tree.symbol.isAllOf(InlineParam) =>
-        tree
       case _: This =>
         assert(checkSymLevel(tree.symbol, tree.tpe, tree.sourcePos).isEmpty)
         tree
@@ -197,10 +195,8 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     case Some(l) =>
       l == level ||
         level == -1 && (
-            // here we assume that Splicer.canBeSpliced was true before going to level -1,
-            // this implies that all non-inline arguments are quoted and that the following two cases are checked
-            // on inline parameters or type parameters.
-            sym.is(Param) ||
+            // here we assume that Splicer.checkValidMacroBody was true before going to level -1,
+            // this implies that all arguments are quoted.
             sym.isClass // reference to this in inline methods
           )
     case None =>

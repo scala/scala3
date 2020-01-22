@@ -1,11 +1,29 @@
 
 import scala.quoted._
+import scala.quoted.matching._
 
 object E {
 
-  inline def eval[T](inline x: E[T]): T = ${ impl(x) }
+  inline def eval[T](inline x: E[T]): T = ${ impl('x) }
 
-  def impl[T](x: E[T]) with QuoteContext : Expr[T] = x.lift
+  def impl[T: Type](expr: Expr[E[T]]) with QuoteContext : Expr[T] =
+    expr.value.lift
+
+  implicit def ev1[T: Type]: ValueOfExpr[E[T]] = new ValueOfExpr { // TODO use type class derivation
+    def apply(x: Expr[E[T]]) with QuoteContext : Option[E[T]] = (x match {
+      case '{ I(${Const(n)}) } => Some(I(n))
+      case '{ D(${Const(n)}) } => Some(D(n))
+      case '{ Plus[Int](${Value(x)}, ${Value(y)})(given $op) } => Some(Plus(x, y)(given Plus2.IPlus))
+      case '{ Plus[Double](${Value(x)}, ${Value(y)})(given $op) } => Some(Plus(x, y)(given Plus2.DPlus))
+      case '{ Times[Int](${Value(x)}, ${Value(y)})(given $op) } => Some(Times(x, y)(given Times2.ITimes))
+      case '{ Times[Double](${Value(x)}, ${Value(y)})(given $op) } => Some(Times(x, y)(given Times2.DTimes))
+      case _ => None
+    }).asInstanceOf[Option[E[T]]]
+  }
+
+  object Value {
+    def unapply[T, U >: T](expr: Expr[T])(given ValueOfExpr[U], QuoteContext): Option[U] = expr.getValue
+  }
 
 }
 

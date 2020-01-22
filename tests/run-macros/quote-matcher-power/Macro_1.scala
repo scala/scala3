@@ -3,13 +3,16 @@ import scala.quoted.matching._
 
 object Macros {
 
+  def power_s(x: Expr[Double], n: Expr[Int]) with QuoteContext : Expr[Double] =
+    power_s(x, n.value)
+
   def power_s(x: Expr[Double], n: Int) with QuoteContext : Expr[Double] =
     if (n == 0) '{1.0}
     else if (n % 2 == 1) '{ $x * ${power_s(x, n - 1)} }
     else '{ val y = $x * $x; ${power_s('y, n / 2)} }
 
   inline def power(x: Double, inline n: Int): Double =
-    ${power_s('x, n)}
+    ${power_s('x, 'n)}
 
   def power2(x: Double, y: Double): Double = if y == 0.0 then 1.0 else x * power2(x, y - 1.0)
 

@@ -6,16 +6,16 @@ import scala.quoted._
 object Macro {
 
   inline def unrolledForeach(inline unrollSize: Int, seq: Array[Int], f: => Int => Unit): Unit = // or f: Int => Unit
-    ${ unrolledForeachImpl(unrollSize, 'seq, 'f) }
+    ${ unrolledForeachImpl('unrollSize, 'seq, 'f) }
 
-  private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit]) with QuoteContext : Expr[Unit] = '{
+  private def unrolledForeachImpl(unrollSize: Expr[Int], seq: Expr[Array[Int]], f: Expr[Int => Unit]) with QuoteContext : Expr[Unit] = '{
     val size = ($seq).length
     assert(size % (${unrollSize}) == 0) // for simplicity of the implementation
     var i = 0
     while (i < size) {
       println("<log> start loop")
       ${
-        for (j <- new UnrolledRange(0, unrollSize)) '{
+        for (j <- new UnrolledRange(0, unrollSize.value)) '{
           val element = ($seq)(i + ${j})
           ${Expr.betaReduce(f)('element)} // or `($f)(element)` if `f` should not be inlined
         }

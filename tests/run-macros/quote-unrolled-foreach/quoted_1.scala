@@ -5,7 +5,10 @@ import scala.quoted.autolift.{given _}
 object Macro {
 
   inline def unrolledForeach(inline unrollSize: Int, seq: Array[Int])(f: => Int => Unit): Unit = // or f: Int => Unit
-    ${unrolledForeachImpl(unrollSize, 'seq, 'f)}
+    ${unrolledForeachImpl('unrollSize, 'seq, 'f)}
+
+  private def unrolledForeachImpl(unrollSizeExpr: Expr[Int], seq: Expr[Array[Int]], f: Expr[Int => Unit]) with QuoteContext : Expr[Unit] =
+    unrolledForeachImpl(unrollSizeExpr.value, seq, f)
 
   private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit]) with QuoteContext : Expr[Unit] = '{
     val size = $seq.length
