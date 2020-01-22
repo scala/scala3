@@ -22,7 +22,18 @@ Context bounds can be combined with subtype bounds. If both are present, subtype
 def g[T <: B : C](x: T): R = ...
 ```
 
-## Syntax
+### Migration
+
+To ease migration, context bounds in Dotty map in Scala 3.0 to old-style implicit parameters
+for which arguments can be passed either using `.with(...)` or using a normal application.
+From Scala 3.1 on, they will map to context parameters instead, as is described above.
+
+If the source version is `3.1` and the `-migration` command-line option is set, any pairing of an evidence
+context parameter stemming from a context bound with a normal argument will give a migration
+warning. The warning indicates that a `.with(...)` clause should be used instead. The rewrite can be
+done automatically under `-rewrite`.
+
+### Syntax
 
 ```
 TypeParamBounds   ::=  [SubtypeBounds] {ContextBound}

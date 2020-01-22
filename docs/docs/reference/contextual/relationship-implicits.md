@@ -105,11 +105,9 @@ asked for.
 
 ### Context Bounds
 
-Context bounds are the same in both language versions. They expand to the respective forms of implicit parameters.
-
-**Note:** To ease migration, context bounds in Dotty map for a limited time to old-style implicit parameters for which arguments can be passed either with `given` or
-with a normal application. Once old-style implicits are deprecated, context bounds
-will map to given clauses instead.
+Context bounds are the same in both language versions.
+They expand to `implicit` parameters in Scala 2 and also in Scala 3.0.
+They will expand to context parameters from Scala 3.1 on.
 
 ### Extension Methods
 
