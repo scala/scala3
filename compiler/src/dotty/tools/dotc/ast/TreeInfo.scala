@@ -442,7 +442,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** The purity level of this reference.
    *  @return
-   *    PurePath        if reference is (nonlazy and stable) or to a parameterized function
+   *    PurePath        if reference is (nonlazy and stable)
+   *                    or to a parameterized function
+   *                    or its type is a constant type
    *    IdempotentPath  if reference is lazy and stable
    *    Impure          otherwise
    *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
@@ -452,6 +454,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     val sym = tree.symbol
     if (!tree.hasType) Impure
     else if (!tree.tpe.widen.isParameterless || sym.isEffectivelyErased) PurePath
+    else if tree.tpe.isInstanceOf[ConstantType] then PurePath
     else if (!sym.isStableMember) Impure
     else if (sym.is(Module))
       if (sym.moduleClass.isNoInitsClass) PurePath else IdempotentPath
