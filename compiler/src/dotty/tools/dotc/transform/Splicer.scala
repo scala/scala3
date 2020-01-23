@@ -70,11 +70,10 @@ object Splicer {
   def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(given ctx: Context): tree.type =
     new TreeTraverser {
       private[this] var locals = Set.empty[Symbol]
+      private def markSymbol(sym: Symbol)(implicit ctx: Context): Unit =
+          locals = locals + sym
       private def markDef(tree: Tree)(implicit ctx: Context): Unit = tree match {
-        case tree: DefTree =>
-          val sym = tree.symbol
-          if (!locals.contains(sym))
-            locals = locals + sym
+        case tree: DefTree => markSymbol(tree.symbol)
         case _ =>
       }
       def traverse(tree: Tree)(given ctx: Context): Unit =
@@ -91,13 +90,7 @@ object Splicer {
             traverseOver(last)
           case CaseDef(pat, guard, body) =>
             val last = locals
-            // mark all bindings
-            new TreeTraverser {
-              def traverse(tree: Tree)(implicit ctx: Context): Unit = {
-                markDef(tree)
-                traverseChildren(tree)
-              }
-            }.traverse(pat)
+            tpd.patVars(pat).foreach(markSymbol)
             traverseOver(last)
           case _ =>
             markDef(tree)
