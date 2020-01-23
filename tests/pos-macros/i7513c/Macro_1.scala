@@ -6,7 +6,7 @@ object Macros {
   }
   inline def quote: Quoted = ${ quoteImpl }
 
-  def quoteImpl(given qctx: QuoteContext): Expr[Quoted] = '{
+  def quoteImpl with (qctx: QuoteContext) : Expr[Quoted] = '{
     new Quoted {
       def foo = ???
     }

@@ -9,10 +9,10 @@ object Test {
     println(powerCode(77).show)
   }
 
-  def powerCode(n: Long)(given QuoteContext): Expr[Double => Double] =
+  def powerCode(n: Long) with QuoteContext : Expr[Double => Double] =
     '{ x1 => ${powerCode(n, 2, 'x1)} }
 
-  def powerCode(n: Long, idx: Int, x: Expr[Double])(given QuoteContext): Expr[Double] =
+  def powerCode(n: Long, idx: Int, x: Expr[Double]) with QuoteContext : Expr[Double] =
     if (n == 0) '{1.0}
     else if (n == 1) x
     else if (n % 2 == 0) '{ @showName(${Expr("x" + idx)}) val y = $x * $x; ${powerCode(n / 2, idx * 2, '{y})} }

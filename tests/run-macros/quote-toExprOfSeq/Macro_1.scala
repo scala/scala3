@@ -3,6 +3,6 @@ import scala.quoted.given
 
 inline def seq = ${fooImpl}
 
-def fooImpl(given qctx: QuoteContext) = {
+def fooImpl with (qctx: QuoteContext) = {
   Expr.ofSeq(List('{1}, '{2}, '{3}))
 }

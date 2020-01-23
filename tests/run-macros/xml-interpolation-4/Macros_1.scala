@@ -6,12 +6,12 @@ import scala.language.implicitConversions
 object XmlQuote {
 
   implicit object SCOps {
-    inline def (ctx: => StringContext) xml (args: => (Scope ?=> Any)*)(given Scope): String =
+    inline def (ctx: => StringContext) xml (args: => (Scope ?=> Any)*) with Scope : String =
       ${XmlQuote.impl('ctx, 'args, '{implicitly[Scope]})}
   }
 
-  private def impl(receiver: Expr[StringContext], args: Expr[Seq[Scope ?=> Any]], scope: Expr[Scope])(given QuoteContext): Expr[String] = '{
-    $receiver.s($args.map(_(given $scope.inner)): _*)
+  private def impl(receiver: Expr[StringContext], args: Expr[Seq[Scope ?=> Any]], scope: Expr[Scope]) with QuoteContext : Expr[String] = '{
+    $receiver.s($args.map(_.with($scope.inner)): _*)
   }
 }
 

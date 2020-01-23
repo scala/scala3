@@ -7,7 +7,7 @@ object Macros {
   inline def printComment[T](t: => T): Unit =
     ${ impl('t) }
 
-  def impl[T](x: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
+  def impl[T](x: Expr[T]) with (qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty.{_, given}
 
     val tree = x.unseal

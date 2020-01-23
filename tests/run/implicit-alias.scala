@@ -53,7 +53,7 @@ object Test extends App {
 
   locally {
     println("with given")
-    given t(given TC1) as TC  = new TC
+    given t with TC1 as TC  = new TC
     summon[TC]
     summon[TC]
   }

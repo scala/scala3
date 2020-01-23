@@ -2,15 +2,15 @@ class TC
 
 given tc : TC
 
-class Foo(given TC) {
+class Foo with TC {
   println("hi")
 }
 
 object Test extends App {
   new Foo
-  new Foo(given tc)
+  new Foo.with(tc)
   new Foo()
-  new Foo()(given tc)
+  new Foo().with(tc)
   Foo()
-  Foo()(given tc)
+  Foo().with(tc)
 }

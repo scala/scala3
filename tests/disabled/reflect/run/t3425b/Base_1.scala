@@ -26,7 +26,7 @@ object Gen {
   }
   case class Pair(tp1: Tp, tp2: Tp) {
     def expr = s"((new ABC): $tp)"
-    def tp   = s"($tp1) with ($tp2)"
+    def tp   = s"($tp1) with $tp2"
   }
   val traits = Vector("Any", "A", "B", "C") map ("%6s" format _)
   val types  = Vector("P", "Q", "R forSome { type R <: P with Q }")
@@ -39,7 +39,7 @@ object Gen {
     import p._
     List(
       s"type R1_$idx = $tp",
-      s"type R2_$idx = R1_$idx { val y: (${tp1.elem}) with (${tp2.elem}) }"
+      s"type R2_$idx = R1_$idx { val y: (${tp1.elem}) with ${tp2.elem} }"
     )
   }
 

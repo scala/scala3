@@ -12,7 +12,7 @@ object testObjectInstance:
     def [T](xs: List[T]) first: T = xs.head
   }
 
-  def ff(given xs: Zip[Option]) = ???
+  def ff with (xs: Zip[Option]) = ???
 
   ff // error
 
@@ -39,7 +39,7 @@ def testLocalInstance =
     given traverseList as Traverse[List] = ???
   }
 
-  def ff(given xs: Zip[Option]) = ???
+  def ff with (xs: Zip[Option]) = ???
 
   ff // error
 

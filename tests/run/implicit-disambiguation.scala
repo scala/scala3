@@ -8,7 +8,7 @@ class C extends A {
   def show = "C"
 }
 object M {
-  def f(given B, C): String = {
+  def f with (B, C) : String = {
     given a as A = summon[B]
     summon[A].show
   }

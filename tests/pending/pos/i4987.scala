@@ -12,6 +12,6 @@ object Foo {
 
   implicit def NilIsLiftable: Liftable[Nil.type] = ???
 
-  Expr(Nil)(given NilIsLiftable)
+  Expr(Nil) with NilIsLiftable
   Expr(Nil)
 }

@@ -7,7 +7,7 @@ class Test()(implicit qtx: QuoteContext) {
   @annot1('{4}) // error
   def foo(str: String) = ()
 
-  @annot2(4)(given '[Int]) // error
+  @annot2(4).with('[Int]) // error
   def foo2(str: String) = ()
 
 }

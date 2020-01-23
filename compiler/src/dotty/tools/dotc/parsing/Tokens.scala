@@ -189,7 +189,6 @@ object Tokens extends TokensCommon {
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
   final val NEWLINES = 79;         enter(NEWLINES, "end of statement", "new lines")
-  final val COLONEOL = 88;         enter(COLONEOL, ":", ": at eol")
 
   /** special keywords */
   final val USCORE = 73;           enter(USCORE, "_")
@@ -203,6 +202,9 @@ object Tokens extends TokensCommon {
   final val CTXARROW = 86;         enter(CTXARROW, "?=>")
 
   final val QUOTE = 87;            enter(QUOTE, "'")
+
+  final val COLONEOL = 88;         enter(COLONEOL, ":", ": at eol")
+  final val DOTWITH = 89;          enter(DOTWITH, ".with")
 
   /** XML mode */
   final val XMLSTART = 98;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
