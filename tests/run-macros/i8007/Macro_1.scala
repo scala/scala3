@@ -3,7 +3,6 @@ import scala.quoted._
 import scala.quoted.matching._
 
 object Macro1 {
-  case class Person(name: String, age: Int)
 
   def mirrorFields[T](t: Type[T])(given qctx: QuoteContext): List[String] =
     t match {
