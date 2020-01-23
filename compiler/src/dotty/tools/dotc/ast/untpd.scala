@@ -747,4 +747,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   class UntypedDeepFolder[X](f: (X, Tree) => X) extends UntypedTreeAccumulator[X] {
     def apply(x: X, tree: Tree)(implicit ctx: Context): X = foldOver(f(x, tree), tree)
   }
+
+  /** Is there a subtree of this tree that satisfies predicate `p`? */
+  def (tree: Tree).existsSubTree(p: Tree => Boolean)(implicit ctx: Context): Boolean = {
+    val acc = new UntypedTreeAccumulator[Boolean] {
+      def apply(x: Boolean, t: Tree)(implicit ctx: Context) = x || p(t) || foldOver(x, t)
+    }
+    acc(false, tree)
+  }
 }

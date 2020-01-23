@@ -683,15 +683,28 @@ object desugar {
           val mods = constr1.mods
           mods.is(Private) || (!mods.is(Protected) && mods.hasPrivateWithin)
         }
+ 
+        /** Does one of the parameter's types (in the first param clause)
+         *  mention a preceding parameter?
+         */
+        def isParamDependent = constrVparamss match
+          case vparams :: _ =>
+            val paramNames = vparams.map(_.name).toSet
+            vparams.exists(_.tpt.existsSubTree {
+              case Ident(name: TermName) => paramNames.contains(name)
+              case _ => false
+            })
+          case _ => false
 
         val companionParent =
-          if (constrTparams.nonEmpty ||
-              constrVparamss.length > 1 ||
-              mods.is(Abstract) ||
-              restrictedAccess ||
-              isEnumCase) anyRef
+          if constrTparams.nonEmpty
+             || constrVparamss.length > 1
+             || mods.is(Abstract)
+             || restrictedAccess
+             || isParamDependent
+             || isEnumCase
+          then anyRef
           else
-            // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
             constrVparamss.foldRight(classTypeRef)((vparams, restpe) => Function(vparams map (_.tpt), restpe))
         def widenedCreatorExpr =
           widenDefs.foldLeft(creatorExpr)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
