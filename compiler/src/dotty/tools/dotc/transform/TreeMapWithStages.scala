@@ -48,13 +48,15 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   protected def localSymbols: List[Symbol] = enteredSyms
 
   /** Enter staging level of symbol defined by `tree`, if applicable. */
+  private def markSymbol(sym: Symbol)(implicit ctx: Context): Unit =
+    if ((sym.isClass || sym.maybeOwner.isTerm) && !levelOfMap.contains(sym)) {
+      levelOfMap(sym) = level
+      enteredSyms = sym :: enteredSyms
+  }
+
+  /** Enter staging level of symbol defined by `tree`, if applicable. */
   private def markDef(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case tree: DefTree =>
-      val sym = tree.symbol
-      if ((sym.isClass || sym.maybeOwner.isTerm) && !levelOfMap.contains(sym)) {
-        levelOfMap(sym) = level
-        enteredSyms = sym :: enteredSyms
-      }
+    case tree: DefTree => markSymbol(tree.symbol)
     case _ =>
   }
 
@@ -106,16 +108,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
 
         case CaseDef(pat, guard, body) =>
           val last = enteredSyms
-          // mark all bindings
-          new TreeTraverser {
-            def traverse(tree: Tree)(implicit ctx: Context): Unit = tree match {
-              case Quoted(t) => traverse(t)(quoteContext)
-              case Splice(t) => traverse(t)(spliceContext)
-              case _ =>
-                markDef(tree)
-                traverseChildren(tree)
-            }
-          }.traverse(pat)
+          tpd.patVars(pat).foreach(markSymbol)
           mapOverTree(last)
 
         case _: Import =>
