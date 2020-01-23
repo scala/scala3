@@ -26,12 +26,9 @@ object Eq {
     }
 
   def summonAll[T](t: Type[T])(given qctx: QuoteContext): List[Expr[Eq[_]]] = t match {
-    case '[$tpe *: $tpes] =>
-      val eqInstance = summonExpr(given '[Eq[$tpe]]) match {
-        case Some(ev) => ev
-        case None => derived(given tpe, qctx)
-      }
-      eqInstance :: summonAll(tpes)
+    case '[String *: $tpes] => '{ summon[Eq[String]] }  :: summonAll(tpes)
+    case '[Int *: $tpes]    => '{ summon[Eq[Int]] }     :: summonAll(tpes)
+    case '[$tpe *: $tpes]   => derived(given tpe, qctx) :: summonAll(tpes)
     case '[Unit] => Nil
   }
 
