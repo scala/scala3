@@ -50,7 +50,7 @@ object Inliner {
 
   /** Should call to method `meth` be inlined in this context? */
   def isInlineable(meth: Symbol)(implicit ctx: Context): Boolean =
-    meth.is(Inline) && !ctx.inInlineMethod && !bodyToInline(meth).isEmpty
+    meth.is(Inline) && meth.hasAnnotation(defn.BodyAnnot) && !ctx.inInlineMethod
 
   /** Should call be inlined in this context? */
   def isInlineable(tree: Tree)(implicit ctx: Context): Boolean = tree match {
