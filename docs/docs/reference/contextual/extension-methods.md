@@ -143,7 +143,7 @@ extension listOps on [T](xs: List[T]) {
   def third: T = xs.tail.tail.head
 }
 
-extension on [T](xs: List[T]) with Ordering[T]) {
+extension on [T](xs: List[T]) with Ordering[T] {
   def largest(n: Int) = xs.sorted.takeRight(n)
 }
 ```
