@@ -259,9 +259,11 @@ private[quoted] object Matcher {
               if (hasBindAnnotation(pattern.symbol)) bindingMatch(scrutinee.symbol)
               else matched
             def rhsEnv =
-              summon[Env] + (scrutinee.symbol -> pattern.symbol) ++
-                typeParams1.zip(typeParams2).map((tparam1, tparam2) => tparam1.symbol -> tparam2.symbol) ++
+              val oldEnv: Env = summon[Env]
+              val newEnv: List[(Symbol, Symbol)] =
+                (scrutinee.symbol -> pattern.symbol) :: typeParams1.zip(typeParams2).map((tparam1, tparam2) => tparam1.symbol -> tparam2.symbol) :::
                 paramss1.flatten.zip(paramss2.flatten).map((param1, param2) => param1.symbol -> param2.symbol)
+              oldEnv ++ newEnv
 
             bindMatch &&
               typeParams1 =?= typeParams2 &&

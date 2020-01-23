@@ -274,31 +274,29 @@ object DynamicTuple {
   def dynamicConcat[This <: Tuple, That <: Tuple](self: This, that: That): Concat[This, That] = {
     type Result = Concat[This, That]
 
+    val selfSize: Int = self.size
     // If one of the tuples is empty, we can leave early
-    (self: Any) match {
-      case self: Unit => return that.asInstanceOf[Result]
-      case _ =>
-    }
+    if selfSize == 0 then
+      return that.asInstanceOf[Result]
 
-    (that: Any) match {
-      case that: Unit => return self.asInstanceOf[Result]
-      case _ =>
-    }
+    val thatSize: Int = that.size
+    if thatSize == 0 then
+      return self.asInstanceOf[Result]
 
-    val arr = new Array[Object](self.size + that.size)
+    val arr = new Array[Object](selfSize + thatSize)
 
     // Copies the tuple to an array, at the given offset
-    inline def copyToArray[T <: Tuple](tuple: T, array: Array[Object], offset: Int): Unit = (tuple: Any) match {
+    inline def copyToArray[T <: Tuple](tuple: T, size: Int, array: Array[Object], offset: Int): Unit = (tuple: Any) match {
       case xxl: TupleXXL =>
-        System.arraycopy(xxl.elems, 0, array, offset, tuple.size)
+        System.arraycopy(xxl.elems, 0, array, offset, size)
       case _ =>
         tuple.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
-          .copyToArray(array, offset, tuple.size)
+          .copyToArray(array, offset, size)
     }
 
     // In the general case, we copy the two tuples to an array, and convert it back to a tuple
-    copyToArray(self, arr, 0)
-    copyToArray(that, arr, self.size)
+    copyToArray(self, selfSize, arr, 0)
+    copyToArray(that, thatSize, arr, selfSize)
     dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]])
   }
 
@@ -401,9 +399,11 @@ object DynamicTuple {
   }
 
   def dynamicZip[This <: Tuple, T2 <: Tuple](t1: This, t2: T2): Zip[This, T2] = {
-    if (t1.size == 0 || t2.size == 0) return ().asInstanceOf[Zip[This, T2]]
-    val size = Math.min(t1.size, t2.size)
-    Tuple.fromIArray(
+    val t1Size: Int = t1.size
+    val t2Size: Int = t2.size
+    val size = Math.min(t1Size, t2Size)
+    if size == 0 then ().asInstanceOf[Zip[This, T2]]
+    else Tuple.fromIArray(
       zipIterators(
         t1.asInstanceOf[Product].productIterator,
         t2.asInstanceOf[Product].productIterator,
@@ -475,7 +475,8 @@ object DynamicTuple {
 
   def dynamicTake[This <: Tuple, N <: Int](self: This, n: N): Take[This, N] = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
-    val actualN = Math.min(n, self.size)
+    val selfSize: Int = self.size
+    val actualN = Math.min(n, selfSize)
 
     type Result = Take[This, N]
 
