@@ -749,7 +749,7 @@ class Definitions {
     lazy val NonEmptyTuple_tail: Symbol = NonEmptyTupleClass.requiredMethod("tail")
 
   @tu lazy val PairClass: ClassSymbol = ctx.requiredClass("scala.*:")
-  @tu lazy val TupleXXLClass: ClassSymbol = ctx.requiredClass("scala.TupleXXL")
+  @tu lazy val TupleXXLClass: ClassSymbol = ctx.requiredClass("scala.runtime.TupleXXL")
   def TupleXXLModule(implicit ctx: Context): Symbol = TupleXXLClass.companionModule
 
     def TupleXXL_fromIterator(implicit ctx: Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")

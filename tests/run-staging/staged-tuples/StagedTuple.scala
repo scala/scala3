@@ -2,6 +2,8 @@ package scala.internal
 
 import scala.quoted._
 
+import scala.runtime.TupleXXL
+
 object StagedTuple {
   import Tuple.Concat
   import Tuple.Head

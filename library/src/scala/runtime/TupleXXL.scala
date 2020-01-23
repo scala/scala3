@@ -1,4 +1,4 @@
-package scala
+package scala.runtime
 import java.util.Arrays.{deepEquals, deepHashCode}
 
 final class TupleXXL private (es: IArray[Object]) extends Product {
