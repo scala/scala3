@@ -153,50 +153,6 @@ The third rule states that a match type conforms to its upper bound
 
 Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count as covariant. By the nature of the cases `Ci` this means that occurrences in pattern position are contravarant (since patterns are represented as function type arguments).
 
-<!-- TODO revise this section, at least `S` has to be invariant according to the current implementation -->
-
-## Typing Rules for Match Expressions (Work in Progress)
-
-<!-- TODO document the final solution and remove (Work in Progress) -->
-
-Typing rules for match expressions are tricky. First, they need some new form of GADT matching for value parameters.
-Second, they have to account for the difference between sequential match on the term level and parallel match on the type level. As a running example consider:
-```scala
-type M[X] = X match {
-  case A => 1
-  case B => 2
-}
-```
-We would like to be able to typecheck
-```scala
-def m[X](x: X): M[X] = x match {
-  case _: A => 1 // type error
-  case _: B => 2 // type error
-}
-```
-Unfortunately, this goes nowhere. Let's try the first case. We have: `x.type <: A` and `x.type <: X`. This tells
-us nothing useful about `X`, so we cannot reduce `M` in order to show that the right hand side of the case is valid.
-
-The following variant is more promising but does not compile either:
-```scala
-def m(x: Any): M[x.type] = x match {
-  case _: A => 1
-  case _: B => 2
-}
-```
-To make this work, we would need a new form of GADT checking: If the scrutinee is a term variable `s`, we can make use of
-the fact that `s.type` must conform to the pattern's type and derive a GADT constraint from that. For the first case above,
-this would be the constraint `x.type <: A`. The new aspect here is that we need GADT constraints over singleton types where
-before we just had constraints over type parameters.
-
-Assuming this extension, we can then try to typecheck as usual. E.g. to typecheck the first case `case _: A => 1` of the definition of `m` above, GADT matching will produce the constraint `x.type <: A`. Therefore, `M[x.type]` reduces to the singleton type `1`. The right hand side `1` of the case conforms to this type, so the case typechecks.
-
-Typechecking the second case hits a snag, though. In general, the assumption `x.type <: B` is not enough to prove that
-`M[x.type]` reduces to `2`. However we can reduce `M[x.type]` to `2` if the types `A` and `B` do not overlap.
-So correspondence of match terms to match types is feasible only in the case of non-overlapping patterns (see next section about [overlapping patterns](#overlapping-patterns))
-
-For simplicity, we have disregarded the `null` value in this discussion. `null` does not cause a fundamental problem but complicates things somewhat because some forms of patterns do not match `null`.
-
 ## Overlapping Patterns
 
 A complete defininition of when two patterns or types overlap still needs to be worked out. Some examples we want to cover are:
