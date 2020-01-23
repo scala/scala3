@@ -55,6 +55,26 @@ type Concat[Xs <: Tuple, +Ys <: Tuple] <: Tuple = Xs match {
 
 In this definition, every instance of `Concat[A, B]`, whether reducible or not, is known to be a subtype of `Tuple`. This is necessary to make the recursive invocation `x *: Concat[xs, Ys]` type check, since `*:` demands a `Tuple` as its right operand.
 
+## Dependent typing
+
+Match types can be used to define dependently type methods. For instance, here is value level counterpart to the`LeafElem` defined above (note the use of the match type as return type):
+
+```scala
+def leafElem[X](x: X): LeafElem[X] = x match {
+  case x: String      => x.charAt(0)
+  case x: Array[t]    => leafElem(x(9))
+  case x: Iterable[t] => leafElem(x.next())
+  case x: AnyVal      => x
+}
+```
+
+This special mode of typing for match expressions is only used when the following conditions are met:
+
+1. The match expression patterns do not have guards
+2. The match expression scrutinee's type is a subtype of the match type scrutinee's type
+3. The match expression and the match type have the same number of cases
+4. The match expression patterns are all [Typed Patterns](https://scala-lang.org/files/archive/spec/2.13/08-pattern-matching.html#typed-patterns), and these types are `=:=` to their corresponding type patterns in the match type
+
 ## Representation of Match Types
 
 The internal representation of a match type
