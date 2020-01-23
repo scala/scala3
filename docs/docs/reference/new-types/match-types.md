@@ -118,7 +118,6 @@ if
 Match(S, C1, ..., Cn)  can-reduce  i, T
 ```
 and, for `j` in `1..i-1`: `Cj` is disjoint from `Ci`, or else `S` cannot possibly match `Cj`.
-See the section on [overlapping patterns](#overlapping-patterns) for an elaboration of "disjoint" and "cannot possibly match".
 
 ## Subtyping Rules for Match Types
 
@@ -152,22 +151,6 @@ The third rule states that a match type conforms to its upper bound
 ## Variance Laws for Match Types
 
 Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count as covariant. By the nature of the cases `Ci` this means that occurrences in pattern position are contravarant (since patterns are represented as function type arguments).
-
-## Overlapping Patterns
-
-A complete defininition of when two patterns or types overlap still needs to be worked out. Some examples we want to cover are:
-
- - Two classes overlap only if one is a subtype of the other
- - A final class `C` overlaps with a trait `T` only if `C` extends `T` directly or indirectly.
- - A class overlaps with a sealed trait `T` only if it overlaps with one of the known subclasses of `T`.
- - An abstract type or type parameter `A` overlaps with a type `B` only if `A`'s upper bound overlaps with `B`.
- - A union type `A1 | ... | An` overlaps with `B` only if at least one of `Ai` for `i` in `1..n` overlaps with `B`.
- - An intersection type `A1 & ... & An` overlaps with `B` only if all of `Ai` for `i` in `1..n` overlap with `B`.
- - If `C[X1, ..., Xn]` is a case class, then the instance type `C[A1, ..., An]` overlaps with the instance type `C[B1, ..., Bn]` only if for every index `i` in `1..n`,
- if `Xi` is the type of a parameter of the class, then `Ai` overlaps with `Bi`.
-
- The last rule in particular is needed to detect non-overlaps for cases where the scrutinee and the patterns are tuples. I.e. `(Int, String)` does not overlap `(Int, Int)` since
-`String` does not overlap `Int`.
 
 ## Handling Termination
 
@@ -224,8 +207,6 @@ Match types have similarities with [closed type families](https://wiki.haskell.o
 
   - Subtyping instead of type equalities.
   - Match type reduction does not tighten the underlying constraint, whereas type family reduction does unify. This difference in approach mirrors the difference between local type inference in Scala and global type inference in Haskell.
-  - No a-priori requirement that cases are non-overlapping. Uses parallel reduction
-    instead of always chosing a unique branch.
 
 Match types are also similar to Typescript's [conditional types](https://github.com/Microsoft/TypeScript/pull/21316). The main differences here are:
 
