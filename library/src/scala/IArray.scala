@@ -8,7 +8,7 @@ object opaques
   opaque type IArray[+T] = Array[_ <: T]
 
   /** Defines extension methods for immutable arrays */
-  given arrayOps: Object with
+  given arrayOps: Object {
 
     /** The selection operation on an immutable array.
       *
@@ -255,6 +255,7 @@ object opaques
       * If one of the two collections is longer than the other, its remaining elements are ignored. */
     def [T, U: ClassTag](arr: IArray[T]) zip(that: IArray[U]): IArray[(T, U)] =
       genericArrayOps(arr).zip(that).asInstanceOf[IArray[(T, U)]]
+  }
 end opaques
 
 type IArray[+T] = opaques.IArray[T]

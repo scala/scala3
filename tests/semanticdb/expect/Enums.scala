@@ -47,9 +47,9 @@ object Enums:
     case Refl[C]() extends (C <:< C)
 
   object <:< :
-    given [T]: (T <:< T) = Refl()
+    given [T] as (T <:< T) = Refl()
 
-  def [A, B](opt: Option[A]) unwrap(given ev: A <:< Option[B]): Option[B] = ev match
+  def [A, B](opt: Option[A]) unwrap with (ev: A <:< Option[B]) : Option[B] = ev match
     case Refl() => opt.flatMap(identity[Option[B]])
 
   val some1 = Some(Some(1)).unwrap

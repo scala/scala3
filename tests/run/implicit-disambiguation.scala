@@ -8,13 +8,13 @@ class C extends A {
   def show = "C"
 }
 object M {
-  def f(given B, C): String = {
-    given a : A = summon[B]
+  def f with (B, C) : String = {
+    given a as A = summon[B]
     summon[A].show
   }
 }
 object Test extends App {
-  given b : B
-  given c : C
+  given b as B
+  given c as C
   println(M.f)
 }

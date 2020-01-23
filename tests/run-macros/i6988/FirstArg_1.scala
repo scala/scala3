@@ -8,8 +8,8 @@ object FirstArg {
 object Macros {
   import scala.quoted._
 
-  def argsImpl(given qctx: QuoteContext): Expr[FirstArg] = {
-    import qctx.tasty.{_, given}
+  def argsImpl with (qctx: QuoteContext) : Expr[FirstArg] = {
+    import qctx.tasty.{_, given _}
 
     def enclosingClass(cur: Symbol = rootContext.owner): Symbol =
       if (cur.isClassDef) cur

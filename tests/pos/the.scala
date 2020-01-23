@@ -2,7 +2,7 @@ object Test {
 
   trait Foo { type T; val x: T }
 
-  given intFoo : Foo {
+  given intFoo as Foo {
     type T = Int
     val x = 3
   }

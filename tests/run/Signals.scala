@@ -2,17 +2,17 @@
 import annotation.unchecked._
 package frp:
 
-  sealed class Signal[+T](expr: (given Signal.Caller) => T):
+  sealed class Signal[+T](expr: Signal.Caller ?=> T):
     private var myExpr: Signal.Caller => T = _
     private var myValue: T = _
     private var observers: Set[Signal.Caller] = Set()
     changeTo(expr)
 
-    protected def changeTo(expr: (given Signal.Caller) => T @uncheckedVariance): Unit =
-      myExpr = (caller => expr(given caller))
+    protected def changeTo(expr: Signal.Caller ?=> T @uncheckedVariance): Unit =
+      myExpr = (caller => expr.with(caller))
       computeValue()
 
-    def apply()(given caller: Signal.Caller) =
+    def apply() with (caller: Signal.Caller) =
       observers += caller
       assert(!caller.observers.contains(this), "cyclic signal definition")
       myValue
@@ -28,12 +28,12 @@ package frp:
 
   object Signal:
     type Caller = Signal[?]
-    given noCaller: Caller(???):
+    given noCaller as Caller(???):
       override def computeValue() = ()
   end Signal
 
-  class Var[T](expr: (given Signal.Caller) => T) extends Signal[T](expr):
-    def update(expr: (given Signal.Caller) => T): Unit = changeTo(expr)
+  class Var[T](expr: Signal.Caller ?=> T) extends Signal[T](expr):
+    def update(expr: Signal.Caller ?=> T): Unit = changeTo(expr)
   end Var
 end frp
 

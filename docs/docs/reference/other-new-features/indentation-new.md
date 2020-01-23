@@ -58,10 +58,10 @@ There are two rules:
     An indentation region can start
 
      - after the condition of an `if-else`, or
-     - after the leading parameter(s) of a given extension method clause, or
+     - after a ": at end of line" token (see below)
      - after one of the following tokens:
     ```
-    =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match  return  with
+    =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match  return
     ```
     If an `<indent>` is inserted, the indentation width of the token on the next line
     is pushed onto `IW`, which makes it the new current indentation width.
@@ -90,65 +90,60 @@ if x < 0
 Indentation tokens are only inserted in regions where newline statement separators are also inferred:
 at the toplevel, inside braces `{...}`, but not inside parentheses `(...)`, patterns or types.
 
-### New Role of With
+### Optional Braces Around Template Bodies
 
-To make bracews optional for constructs like class bodies, the syntax of the language is changed so that a class body or similar construct may optionally be prefixed with `with`. Since `with` can start an indentation region, this means that all of the following syntaxes are allowed and are equivalent:
+The Scala grammar uses the term _template body_ for the definitions of a class, trait, object, given instance or extension that are normally enclosed in braces. The braces around a template body can also be omitted by means of the following rule:
+
+If at the point where a template body can start there is a `:` that occurs at the end
+of a line, and that is followed by at least one indented statement, the recognized
+token is changed from ":" to ": at end of line". The latter token is one of the tokens
+that can start an indentation region. The Scala grammar is changed so an optional ": at end of line" is allowed in front of a template body.
+
+Analogous rules apply for enum bodies, type refinements, definitions in an instance creation expressions, and local packages containing nested definitions.
+
+With these new rules, the following constructs are all valid:
 ```scala
-trait A {
-  def f: Any
-}
-class C(x: Int) extends A {
-  def f = x
-}
-type T = A {
-  def f: Int
-}
-```
----
-```scala
-trait A with {
-  def f: Int
-}
-class C(x: Int) extends A with {
-  def f = x
-}
-type T = A with {
-  def f: Int
-}
-```
----
-```scala
-trait A with
+trait A:
   def f: Int
 
-class C(x: Int) extends A with
+class C(x: Int) extends A:
   def f = x
 
-type T = A with
+object O:
+  def f = 3
+
+enum Color:
+  case Red, Green, Blue
+
+type T = A:
   def f: Int
+
+given [T] with Ord[T] as Ord[List[T]]:
+  def compare(x: List[T], y: List[T]) = ???
+
+extension on (xs: List[Int]):
+  def second: Int = xs.tail.head
+
+new A:
+  def f = 3
+
+package p:
+  def a = 1
+package q:
+  def b = 2
 ```
 
 The syntax changes allowing this are as follows:
 ```
-TemplateBody ::=  [‘with’] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’
-EnumBody     ::=  [‘with’] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
-Packaging    ::=  ‘package’ QualId [‘with’] ‘{’ TopStatSeq ‘}’
-RefinedType  ::=  AnnotType {[‘with’] Refinement}
+TemplateBody ::=  [colonEol] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’
+EnumBody     ::=  [colonEol] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+Packaging    ::=  ‘package’ QualId [colonEol] ‘{’ TopStatSeq ‘}’
+RefinedType  ::=  AnnotType {[colonEol] Refinement}
 ```
-It is assumed here that braces following a `with` can be transparently replaced by an
-indentation region.
-
-With the new indentation rules, the previously allowed syntax
-```
-class A extends B with
-                C
-```
-becomes illegal since `C` above would be terated as a nested statement inside `A`. More generally, a `with` that separates parent constructors cannot be at the end of a line. One has to write
-```
-class A extends B
-           with C
-```
-instead (or replace the "`with`" by a "`,`"). When compiling in Scala-2 mode, a migration warning is issued for the illegal syntax and a (manual) rewrite is suggested.
+Here, `colonEol` stands for ": at end of line", as described above.
+The lexical analyzer is modified so that a `:` at the end of a line
+is reported as `colonEol` if the parser is at a point where a `colonEol` is
+valid as next token.
 
 ### Spaces vs Tabs
 

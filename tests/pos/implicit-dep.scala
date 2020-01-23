@@ -5,5 +5,5 @@ trait HasT {
 object Test {
 
 
-  def foo: (given Int) => (given g: HasT) => g.T = ???
+  def foo: Int ?=> (g: HasT) ?=> g.T = ???
 }

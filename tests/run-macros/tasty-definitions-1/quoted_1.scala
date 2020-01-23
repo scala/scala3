@@ -1,12 +1,12 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 object Macros {
 
   inline def testDefinitions(): Unit = ${testDefinitionsImpl}
 
-  def testDefinitionsImpl(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty.{_, given}
+  def testDefinitionsImpl with (qctx: QuoteContext) : Expr[Unit] = {
+    import qctx.tasty.{_, given _}
 
     val buff = List.newBuilder[String]
     def printout(x: => String): Unit = {

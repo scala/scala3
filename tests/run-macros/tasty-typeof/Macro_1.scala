@@ -1,12 +1,12 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 object Macros {
 
   inline def testTypeOf(): Unit = ${ testTypeOfImpl }
 
-  private def testTypeOfImpl(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty.{_, given}
+  private def testTypeOfImpl with (qctx: QuoteContext) : Expr[Unit] = {
+    import qctx.tasty.{_, given _}
     '{
       assert(${(typeOf[Unit] =:= defn.UnitType)}, "Unit")
       assert(${(typeOf[Byte] =:= defn.ByteType)}, "Byte")

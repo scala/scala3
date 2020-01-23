@@ -3,6 +3,9 @@ layout: doc-page
 title: "Import Given"
 ---
 
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.22](./given-imports.html).
+
 A special form of import wildcard selector is used to import given instances. Example:
 ```scala
 object A {

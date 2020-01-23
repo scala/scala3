@@ -6,11 +6,11 @@ inline def sum(args: Int*): Int = ${ sumExpr('args) }
 
 inline def sumShow(args: Int*): String = ${ sumExprShow('args) }
 
-private def sumExprShow(argsExpr: Expr[Seq[Int]])(given QuoteContext): Expr[String] =
+private def sumExprShow(argsExpr: Expr[Seq[Int]]) with QuoteContext : Expr[String] =
   Expr(sumExpr(argsExpr).show)
 
-private def sumExpr(argsExpr: Expr[Seq[Int]])(given qctx: QuoteContext): Expr[Int] = {
-  import qctx.tasty.{given, _}
+private def sumExpr(argsExpr: Expr[Seq[Int]]) with (qctx: QuoteContext) : Expr[Int] = {
+  import qctx.tasty.{given _, _}
   UnsafeExpr.underlyingArgument(argsExpr) match {
     case ConstSeq(args) => // args is of type Seq[Int]
       Expr(args.sum) // precompute result of sum

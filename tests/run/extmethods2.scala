@@ -2,18 +2,18 @@ object Test extends App {
 
   class TC
 
-  given stringListOps: TC => Object {
+  given stringListOps with TC as Object {
     type T = List[String]
     def (x: T).foo(y: T) = (x ++ y, summon[TC])
     def (x: T).bar(y: Int) = (x(0)(y), summon[TC])
   }
 
-  def test(given TC) = {
+  def test with TC = {
     assert(List("abc").foo(List("def"))._1 == List("abc", "def"))
     assert(List("abc").bar(2)._1 == 'c')
   }
 
-  test(given TC())
+  test.with(TC())
 
   object A {
     extension listOps on [T](xs: List[T]) {
@@ -30,7 +30,7 @@ object Test extends App {
   }
 
   object B {
-    import A.given
+    import A.{given _}
     val xs = List(1, 2, 3)
     assert(xs.second[Int] == 2)
     assert(xs.third == 3)

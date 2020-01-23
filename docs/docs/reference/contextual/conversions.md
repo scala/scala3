@@ -3,6 +3,9 @@ layout: doc-page
 title: "Implicit Conversions"
 ---
 
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.22](./conversions-new.html).
+
 Implicit conversions are defined by given instances of the `scala.Conversion` class.
 This class is defined in package `scala` as follows:
 ```scala

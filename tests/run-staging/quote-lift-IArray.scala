@@ -1,6 +1,6 @@
 import scala.quoted._
 import scala.quoted.staging._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 object Test {
   implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)

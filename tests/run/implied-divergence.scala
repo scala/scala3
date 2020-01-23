@@ -6,7 +6,7 @@ given e : E(null)
 
 object Test extends App {
 
-  given f: (e: E) => E(e)
+  given f with (e: E) as E(e)
 
   assert(summon[E].toString == "E(E(null))")
 

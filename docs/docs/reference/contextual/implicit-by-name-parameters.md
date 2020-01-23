@@ -3,6 +3,9 @@ layout: doc-page
 title: "Implicit By-Name Parameters"
 ---
 
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.22](./by-name-context-parameters.html).
+
 Implicit parameters can be declared by-name to avoid a divergent inferred expansion. Example:
 
 ```scala
@@ -12,7 +15,7 @@ trait Codec[T] {
 
 given intCodec: Codec[Int] = ???
 
-given optionCodec[T]: (ev: => Codec[T]) => Codec[Option[T]] {
+given optionCodec[T](given ev: => Codec[T]): Codec[Option[T]] {
   def write(xo: Option[T]) = xo match {
     case Some(x) => ev.write(x)
     case None =>

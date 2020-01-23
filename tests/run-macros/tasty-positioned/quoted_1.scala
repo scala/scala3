@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 case class Position(path: String, start: Int, end: Int,
     startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)
@@ -11,7 +11,7 @@ object Positioned {
   implicit inline def apply[T](x: => T): Positioned[T] = ${impl('x)}
 
   def impl[T](x: Expr[T])(implicit ev: Type[T], qctx: QuoteContext): Expr[Positioned[T]] = {
-    import qctx.tasty.{Position => _, _, given}
+    import qctx.tasty.{Position => _, _, given _}
     val pos = rootPosition
 
     val path = pos.sourceFile.jpath.toString

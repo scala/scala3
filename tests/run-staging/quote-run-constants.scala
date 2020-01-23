@@ -1,5 +1,5 @@
 
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 import scala.quoted._
 import scala.quoted.staging._
@@ -7,7 +7,7 @@ import scala.quoted.staging._
 object Test {
   def main(args: Array[String]): Unit = {
     given Toolbox = Toolbox.make(getClass.getClassLoader)
-    def runAndPrint[T](expr: (given QuoteContext) => Expr[T]): Unit = println(run(expr))
+    def runAndPrint[T](expr: QuoteContext ?=> Expr[T]): Unit = println(run(expr))
 
     runAndPrint(true)
     runAndPrint('a')

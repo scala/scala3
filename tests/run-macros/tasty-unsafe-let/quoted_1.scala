@@ -5,8 +5,8 @@ object Macros {
   inline def let[T](rhs: => T)(body: => T => Unit): Unit =
     ${ impl('rhs, 'body) }
 
-  private def impl[T](rhs: Expr[T], body: Expr[T => Unit])(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty.{_, given}
+  private def impl[T](rhs: Expr[T], body: Expr[T => Unit]) with (qctx: QuoteContext) : Expr[Unit] = {
+    import qctx.tasty.{_, given _}
 
     val rhsTerm = rhs.unseal
 

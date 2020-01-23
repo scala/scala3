@@ -94,15 +94,13 @@ private[quoted] object Matcher {
       case _ => notMatched
     }
 
-    private given treeListOps: extension (scrutinees: List[Tree]) with
-
+    private given treeListOps: extension (scrutinees: List[Tree]) {
       /** Check that all trees match with =?= and concatenate the results with && */
       def =?= (patterns: List[Tree])(given Context, Env): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
+    }
 
-    end treeListOps
-
-    private given treeOps: extension (scrutinee0: Tree) with
+    private given treeOps: extension (scrutinee0: Tree) {
 
       /** Check that the trees match and return the contents from the pattern holes.
        *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
@@ -309,7 +307,7 @@ private[quoted] object Matcher {
             notMatched
         }
       }
-    end treeOps
+    }
 
     private object ClosedPatternTerm {
       /** Matches a term that does not contain free variables defined in the pattern (i.e. not defined in `Env`) */

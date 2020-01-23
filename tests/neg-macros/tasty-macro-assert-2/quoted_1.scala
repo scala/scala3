@@ -12,8 +12,8 @@ object Asserts {
   inline def macroAssert(cond: => Boolean): Unit =
     ${ impl('cond) }
 
-  def impl(cond: Expr[Boolean])(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty.{_, given}
+  def impl(cond: Expr[Boolean]) with (qctx: QuoteContext) : Expr[Unit] = {
+    import qctx.tasty.{_, given _}
 
     val tree = cond.unseal
 

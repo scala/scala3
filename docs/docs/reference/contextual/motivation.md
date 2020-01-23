@@ -3,6 +3,9 @@ layout: doc-page
 title: "Overview"
 ---
 
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.22](./motovation-new.html).
+
 ### Critique of the Status Quo
 
 Scala's implicits are its most distinguished feature. They are _the_ fundamental way to abstract over context. They represent a unified paradigm with a great variety of use cases, among them: implementing type classes, establishing context, dependency injection, expressing capabilities, computing new types and proving relationships between them.

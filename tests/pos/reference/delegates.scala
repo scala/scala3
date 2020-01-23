@@ -22,15 +22,16 @@ class Common:
     def [A, B](x: F[A]) map (f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
+end Common
 
 object Instances extends Common:
 
-  given intOrd: Ord[Int]:
+  given intOrd as Ord[Int]:
     def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  given listOrd[T]: Ord[T] => Ord[List[T]]:
-    def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys).match
+  given listOrd[T] with Ord[T] as Ord[List[T]]:
+    def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
@@ -48,41 +49,41 @@ object Instances extends Common:
     def second = xs.tail.head
     def third = xs.tail.tail.head
 
-  given listMonad: Monad[List]:
+  given listMonad as Monad[List]:
     def [A, B](xs: List[A]) flatMap (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
 
-  given readerMonad[Ctx]: Monad[[X] =>> Ctx => X]:
+  given readerMonad[Ctx] as Monad[[X] =>> Ctx => X]:
     def [A, B](r: Ctx => A) flatMap (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x
 
-  def maximum[T](xs: List[T])(given Ord[T]): T =
+  def maximum[T](xs: List[T]) with Ord[T] : T =
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
-  def descending[T](given asc: Ord[T]): Ord[T] = new Ord[T]:
+  def descending[T] with (asc: Ord[T]) : Ord[T] = new Ord[T]:
     def (x: T).compareTo(y: T) = asc.compareTo(y)(x)
 
-  def minimum[T](xs: List[T])(given Ord[T]) =
-    maximum(xs)(given descending)
+  def minimum[T](xs: List[T]) with Ord[T] =
+    maximum(xs).with(descending)
 
   def test(): Unit =
     val xs = List(1, 2, 3)
     println(maximum(xs))
-    println(maximum(xs)(given descending))
-    println(maximum(xs)(given descending(given intOrd)))
+    println(maximum(xs).with(descending))
+    println(maximum(xs).with(descending.with(intOrd)))
     println(minimum(xs))
 
   case class Context(value: String)
-  val c0: (given Context) => String = (given ctx) => ctx.value
-  val c1: ((given Context) => String) = (given ctx: Context) => ctx.value
+  val c0: Context ?=> String = ctx ?=> ctx.value
+  val c1: Context ?=> String = (ctx: Context) ?=> ctx.value
 
   class A
   class B
-  val ab: (given x: A, y: B) => Int = (given a: A, b: B) => 22
+  val ab: (x: A, y: B) ?=> Int = (a: A, b: B) ?=> 22
 
   trait TastyAPI:
     type Symbol
@@ -98,7 +99,7 @@ object Instances extends Common:
 
   class D[T]
 
-  class C(given ctx: Context):
+  class C with (ctx: Context) :
     def f() =
       locally {
         given Context = this.ctx
@@ -110,11 +111,11 @@ object Instances extends Common:
         println(summon[Context].value)
       }
       locally {
-        given d[T]: D[T]
+        given d[T] as D[T]
         println(summon[D[Int]])
       }
       locally {
-        given Context => D[Int]
+        given with Context as D[Int]
         println(summon[D[Int]])
       }
   end C
@@ -122,7 +123,7 @@ object Instances extends Common:
   class Token(str: String)
 
   object Token:
-    given StringToToken : Conversion[String, Token]:
+    given StringToToken as Conversion[String, Token]:
       def apply(str: String): Token = new Token(str)
 
   val x: Token = "if"
@@ -131,11 +132,11 @@ end Instances
 object PostConditions:
   opaque type WrappedResult[T] = T
 
-  def result[T](given x: WrappedResult[T]): T = x
+  def result[T] with (x: WrappedResult[T]) : T = x
 
   extension on [T](x: T):
-    def ensuring(condition: (given WrappedResult[T]) => Boolean): T =
-      assert(condition(given x))
+    def ensuring(condition: WrappedResult[T] ?=> Boolean): T =
+      assert(condition.with(x))
       x
 end PostConditions
 
@@ -144,7 +145,7 @@ object AnonymousInstances extends Common:
     def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  given [T: Ord] : Ord[List[T]]:
+  given [T: Ord] as Ord[List[T]]:
     def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -161,7 +162,7 @@ object AnonymousInstances extends Common:
   extension on [T](xs: List[T]):
     def second = xs.tail.head
 
-  given [From, To]: (c: Convertible[From, To]) => Convertible[List[From], List[To]]:
+  given [From, To] with (c: Convertible[From, To]) as Convertible[List[From], List[To]]:
     def (x: List[From]).convert: List[To] = x.map(c.convert)
 
   given Monoid[String]:
@@ -207,7 +208,7 @@ object Implicits extends Common:
 object Test extends App:
   Instances.test()
   import PostConditions.result
-  import PostConditions.given
+  import PostConditions.{given _}
   val s = List(1, 2, 3).sum
   s.ensuring(result == 6)
 end Test
@@ -231,9 +232,9 @@ object Completions:
     //
     //   CompletionArg.from(statusCode)
 
-    given fromString : Conversion[String, CompletionArg] = Error(_)
-    given fromFuture : Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    given fromStatusCode : Conversion[Future[StatusCode], CompletionArg] = Status(_)
+    given fromString as Conversion[String, CompletionArg] = Error(_)
+    given fromFuture as Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    given fromStatusCode as Conversion[Future[StatusCode], CompletionArg] = Status(_)
   import CompletionArg._
 
   def complete[T](arg: CompletionArg) = arg match

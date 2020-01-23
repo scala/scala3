@@ -1,13 +1,13 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 object Macros {
 
   implicit inline def printOwners[T](x: => T): Unit =
     ${ impl('x) }
 
-  def impl[T](x: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty.{_, given}
+  def impl[T](x: Expr[T]) with (qctx: QuoteContext) : Expr[Unit] = {
+    import qctx.tasty.{_, given _}
 
     val buff = new StringBuilder
 

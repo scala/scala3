@@ -8,6 +8,6 @@ object Bar {
   inline def myMacro(): Unit = myMacro2()
   inline def myMacro2(): Unit = ${ aMacroImplementation }
 
-  def aMacroImplementation(given QuoteContext): Expr[Unit] = '{}
+  def aMacroImplementation with QuoteContext : Expr[Unit] = '{}
 
 }

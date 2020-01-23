@@ -9,8 +9,8 @@ object Macro {
 
 object FIntepolator {
 
-  def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(given qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty.{_, given}
+  def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) with (qctx: QuoteContext) : Expr[String] = {
+    import qctx.tasty.{_, given _}
     error("there are no parts", strCtxExpr.unseal.underlyingArgument.pos)
     '{ ($strCtxExpr).s($argsExpr: _*) }
   }

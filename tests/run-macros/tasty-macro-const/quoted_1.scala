@@ -4,8 +4,8 @@ object Macros {
 
   inline def natConst(x: Int): Int = ${ natConstImpl('x) }
 
-  def natConstImpl(x: Expr[Int])(given qctx: QuoteContext): Expr[Int] = {
-    import qctx.tasty.{_, given}
+  def natConstImpl(x: Expr[Int]) with (qctx: QuoteContext) : Expr[Int] = {
+    import qctx.tasty.{_, given _}
     val xTree: Term = x.unseal
     xTree match {
       case Inlined(_, _, Literal(Constant(n: Int))) =>

@@ -1,7 +1,7 @@
 
 import scala.quoted._
 import scala.quoted.staging._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 import liftable.Units._
 import liftable.Lets._
@@ -116,7 +116,7 @@ package liftable {
 
   object Exprs {
     implicit class LiftExprOps[T](x: T) extends AnyVal {
-      def toExpr(given Liftable[T], QuoteContext): Expr[T] =
+      def toExpr with (Liftable[T], QuoteContext) : Expr[T] =
         summon[Liftable[T]].toExpr(x)
     }
   }
@@ -137,8 +137,8 @@ package liftable {
   }
 
   object Loops {
-    def liftedWhile(cond: Expr[Boolean])(body: Expr[Unit])(given QuoteContext): Expr[Unit] = '{ while ($cond) $body }
-    def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean])(given QuoteContext): Expr[Unit] = '{ while { $body ; $cond } do () }
+    def liftedWhile(cond: Expr[Boolean])(body: Expr[Unit]) with QuoteContext : Expr[Unit] = '{ while ($cond) $body }
+    def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean]) with QuoteContext : Expr[Unit] = '{ while { $body ; $cond } do () }
   }
 
 
@@ -147,7 +147,7 @@ package liftable {
     implicit class LiftedOps[T: Liftable](list: Expr[List[T]])(implicit t: Type[T]) {
       def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U], qctx: QuoteContext): Expr[U] =
         '{ ($list).foldLeft[$u]($acc)($f) }
-      def foreach(f: Expr[T => Unit])(given QuoteContext): Expr[Unit] =
+      def foreach(f: Expr[T => Unit]) with QuoteContext : Expr[Unit] =
         '{ ($list).foreach($f) }
     }
 

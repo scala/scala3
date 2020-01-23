@@ -3,7 +3,7 @@ package scala.tasty.interpreter.jvm
 import scala.tasty.Reflection
 
 class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
-  import reflect.{_, given}
+  import reflect.{_, given _}
   import java.lang.reflect.{InvocationTargetException, Method}
   private val classLoader: ClassLoader = getClass.getClassLoader
 

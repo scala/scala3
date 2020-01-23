@@ -1,7 +1,7 @@
 class Context
 
 object Test {
-  var f: (given Context) => String = (given _) => ""
+  var f: Context ?=> String = (_ ?=> "")
 
   f = f
 

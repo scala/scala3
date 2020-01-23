@@ -5,14 +5,14 @@ object testObjectInstance:
   }
 
   object instances {
-    given zipOption: Zip[Option] = ???
-    given traverseList: Traverse[List] = ???
+    given zipOption as Zip[Option] = ???
+    given traverseList as Traverse[List] = ???
     extension listExtension on [T](xs: List[T]):
       def second: T = xs.tail.head
     def [T](xs: List[T]) first: T = xs.head
   }
 
-  def ff(given xs: Zip[Option]) = ???
+  def ff with (xs: Zip[Option]) = ???
 
   ff // error
 
@@ -35,11 +35,11 @@ def testLocalInstance =
   }
 
   object instances {
-    given zipOption: Zip[Option] = ???
-    given traverseList: Traverse[List] = ???
+    given zipOption as Zip[Option] = ???
+    given traverseList as Traverse[List] = ???
   }
 
-  def ff(given xs: Zip[Option]) = ???
+  def ff with (xs: Zip[Option]) = ???
 
   ff // error
 

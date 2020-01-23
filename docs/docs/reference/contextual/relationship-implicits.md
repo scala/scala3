@@ -3,6 +3,9 @@ layout: doc-page
 title: Relationship with Scala 2 Implicits
 ---
 
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.22](./relationship-implicits-new.html).
+
 Many, but not all, of the new contextual abstraction features in Scala 3 can be mapped to Scala 2's implicits. This page gives a rundown on the relationships between new and old features.
 
 ## Simulating Contextual Abstraction with Implicits
@@ -21,7 +24,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
     ```
  2. Parameterized given instances are mapped to combinations of classes and implicit methods. E.g.,
     ```scala
-      given listOrd[T]: (ord: Ord[T]) => Ord[List[T]] { ... }
+      given listOrd[T](given ord: Ord[T]): Ord[List[T]] { ... }
     ```
     maps to
     ```scala
@@ -102,11 +105,9 @@ asked for.
 
 ### Context Bounds
 
-Context bounds are the same in both language versions. They expand to the respective forms of implicit parameters.
-
-**Note:** To ease migration, context bounds in Dotty map for a limited time to old-style implicit parameters for which arguments can be passed either with `given` or
-with a normal application. Once old-style implicits are deprecated, context bounds
-will map to given clauses instead.
+Context bounds are the same in both language versions.
+They expand to `implicit` parameters in Scala 2 and also in Scala 3.0.
+They will expand to context parameters from Scala 3.1 on.
 
 ### Extension Methods
 

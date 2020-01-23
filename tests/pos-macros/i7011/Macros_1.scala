@@ -1,10 +1,10 @@
 import scala.quoted._, scala.quoted.matching._
-import scala.quoted.given
+import scala.quoted.{given _}
 
 inline def mcr(body: => Any): Unit = ${mcrImpl('body)}
 
-def mcrImpl[T](body: Expr[Any])(given ctx: QuoteContext): Expr[Any] = {
-  import ctx.tasty.{_, given}
+def mcrImpl[T](body: Expr[Any]) with (ctx: QuoteContext) : Expr[Any] = {
+  import ctx.tasty.{_, given _}
 
   val bTree = body.unseal
   val under = bTree.underlyingArgument

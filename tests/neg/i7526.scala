@@ -9,7 +9,7 @@ trait NetDB extends NetApi:
 trait NetHelper extends NetApi
 
 def compQ(name: => String)
-    : (given n: NetApi) => Tr[Nothing, n.Comp, n.Comp] = ???
+    : (n: NetApi) ?=> Tr[Nothing, n.Comp, n.Comp] = ???
 
 object net extends NetDB with NetHelper
 import net._

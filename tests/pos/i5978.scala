@@ -7,18 +7,18 @@ trait TokenParser[Token, R]
 package p1 {
 
   object TextParser {
-    given TP : TokenParser[Char, Position[CharSequence]] {}
+    given TP as TokenParser[Char, Position[CharSequence]] {}
 
     def f
-      (given TokenParser[Char, Position[CharSequence]]) = ???
+      with (TokenParser[Char, Position[CharSequence]]) = ???
 
-    given FromCharToken(given T: TokenParser[Char, Position[CharSequence]])
+    given FromCharToken with (T: TokenParser[Char, Position[CharSequence]])
       : Conversion[Char, Position[CharSequence]] = ???
   }
 
   object Testcase {
     def main(args: Array[String]): Unit = {
-      import TextParser.{given, _}
+      import TextParser.{given _, _}
 
       val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
       val tp_i = summon[TokenParser[Char, Position[CharSequence]]]
@@ -42,7 +42,7 @@ package p2 {
 
   object Testcase {
     def main(args: Array[String]): Unit = {
-      import TextParser.{given, _}
+      import TextParser.{given _, _}
 
       val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
       val tp_i = summon[TokenParser[Char, Position[CharSequence]]]
@@ -60,7 +60,7 @@ package p3 {
 
   object Testcase {
     def main(args: Array[String]): Unit = {
-      import TextParser.{_, given}
+      import TextParser.{_, given _}
 
       val co_i: Conversion[Char, Position[CharSequence]] = summon[Conversion[Char, Position[CharSequence]]]
 
@@ -71,7 +71,7 @@ package p3 {
         val co_x : Position[CharSequence] = 'x'
 
         {
-          given XXX : Conversion[Char, Position[CharSequence]] = co_i
+          given XXX as Conversion[Char, Position[CharSequence]] = co_i
           val co_y : Position[CharSequence] = 'x'
         }
       }
@@ -81,9 +81,9 @@ package p3 {
 package p4 {
   class TC
 
-  given A : TC
+  given A as TC
 
-  given B[X[_], Y] : TC
+  given B[X[_], Y] as TC
 
-  given C(given TC) : TC
+  given C with TC as TC
 }

@@ -7,8 +7,8 @@ object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${assertImpl('condition)}
 
-  def assertImpl(condition: Expr[Boolean])(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty.{_, given}
+  def assertImpl(condition: Expr[Boolean]) with (qctx: QuoteContext) : Expr[Unit] = {
+    import qctx.tasty.{_, given _}
 
     val tree = condition.unseal
 

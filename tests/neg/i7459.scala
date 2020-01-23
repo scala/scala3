@@ -8,7 +8,7 @@ object Foo {
 import scala.deriving._
 import scala.compiletime.erasedValue
 
-inline def summon[T](given t:T): T = t match {
+inline def summon[T] with (t:T) : T = t match {
   case t: T => t
 }
 
@@ -47,7 +47,7 @@ object Eq {
         }
     }
 
-  inline given derived[T]: (m: Mirror.Of[T]) => Eq[T] = {
+  inline given derived[T] with (m: Mirror.Of[T]) : Eq[T] = {
     val elemInstances = summonAll[m.MirroredElemTypes]
     inline m match {
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)

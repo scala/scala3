@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 import scala.tasty.Reflection
 
@@ -7,7 +7,7 @@ object Macro {
 
   inline def optimize[T](x: => T): Any = ${ Macro.impl('x) }
 
-  def impl[T: Type](x: Expr[T])(given QuoteContext): Expr[Any] = {
+  def impl[T: Type](x: Expr[T]) with QuoteContext : Expr[Any] = {
 
     def optimize(x: Expr[Any]): Expr[Any] = x match {
       case '{ ($ls: List[$t]).filter($f).filter($g) } =>

@@ -222,7 +222,8 @@ object desugar {
     val epbuf = ListBuffer[ValDef]()
     def desugarContextBounds(rhs: Tree): Tree = rhs match {
       case ContextBounds(tbounds, cxbounds) =>
-        epbuf ++= makeImplicitParameters(cxbounds, Implicit, forPrimaryConstructor = isPrimaryConstructor)
+        val iflag = if ctx.settings.strict.value then Given else Implicit
+        epbuf ++= makeImplicitParameters(cxbounds, iflag, forPrimaryConstructor = isPrimaryConstructor)
         tbounds
       case LambdaTypeTree(tparams, body) =>
         cpy.LambdaTypeTree(rhs)(tparams, desugarContextBounds(body))

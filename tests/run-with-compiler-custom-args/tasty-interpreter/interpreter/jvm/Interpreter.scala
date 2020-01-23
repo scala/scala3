@@ -5,7 +5,7 @@ import scala.tasty.interpreter.jvm.JVMReflection
 import scala.tasty.Reflection
 
 class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpreter[R](reflect0) {
-  import reflect.{_, given}
+  import reflect.{_, given _}
 
   // All references are represented by themselves and values are boxed
   type AbstractAny = Any

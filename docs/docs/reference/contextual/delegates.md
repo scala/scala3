@@ -3,6 +3,9 @@ layout: doc-page
 title: "Given Instances"
 ---
 
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.22](./givens.html).
+
 Given instances (or, simply, "givens") define "canonical" values of certain types
 that serve for synthesizing arguments to [given clauses](./given-clauses.md). Example:
 
@@ -18,7 +21,7 @@ given intOrd: Ord[Int] {
     if (x < y) -1 else if (x > y) +1 else 0
 }
 
-given listOrd[T]: (ord: Ord[T]) => Ord[List[T]] {
+given listOrd[T](given ord: Ord[T]): Ord[List[T]] {
 
   def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match {
     case (Nil, Nil) => 0
@@ -33,10 +36,8 @@ given listOrd[T]: (ord: Ord[T]) => Ord[List[T]] {
 This code defines a trait `Ord` with two given instances. `intOrd` defines
 a given for the type `Ord[Int]` whereas `listOrd[T]` defines givens
 for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]` themselves.
-The `(ord: Ord[T]) =>` clause in `listOrd` defines a condition: There must be a
-given instance of type `Ord[T]` so that a given instance of type `List[Ord[T]]` can
-be synthesized. Such conditions are expanded by the compiler to implicit
-parameters, which are explained in the [next section](./given-clauses.md).
+The `(given ord: Ord[T])` clause in `listOrd` defines an implicit parameter.
+Given clauses are further explained in the [next section](./given-clauses.md).
 
 ## Anonymous Given Instances
 
@@ -44,7 +45,7 @@ The name of a given instance can be left out. So the definitions
 of the last section can also be expressed like this:
 ```scala
 given Ord[Int] { ... }
-given [T]: Ord[T] => Ord[List[T]] { ... }
+given [T](given Ord[T]): Ord[List[T]] { ... }
 ```
 If the name of a given is missing, the compiler will synthesize a name from
 the implemented type(s).
@@ -63,7 +64,7 @@ returned for this and all subsequent accesses to `global`.
 Alias givens can be anonymous, e.g.
 ```scala
 given Position = enclosingTree.position
-given (outer: Context) => Context = outer.withOwner(currentOwner)
+given (given outer: Context): Context = outer.withOwner(currentOwner)
 ```
 An alias given can have type parameters and given clauses just like any other given instance, but it can only implement a single type.
 

@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift.given
+import scala.quoted.autolift.{given _}
 
 
 import scala.language.implicitConversions
@@ -13,8 +13,8 @@ object XmlQuote {
   }
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
-          (given qctx: QuoteContext): Expr[Xml] = {
-    import qctx.tasty.{_, given}
+          with (qctx: QuoteContext) : Expr[Xml] = {
+    import qctx.tasty.{_, given _}
 
     // for debugging purpose
     def pp(tree: Tree): Unit = {

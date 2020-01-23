@@ -1,9 +1,9 @@
 import scala.quoted._
 
 object Test {
-  def staged[T](given qctx: QuoteContext) = {
-    import qctx.tasty.{_, given}
-    given typeT: quoted.Type[T] // error
+  def staged[T] with (qctx: QuoteContext) = {
+    import qctx.tasty.{_, given _}
+    given typeT as quoted.Type[T] // error
     val tTypeTree = typeT.unseal
     val tt = typeOf[T]
     '{ "in staged" }

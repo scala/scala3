@@ -2,6 +2,8 @@
 layout: doc-page
 title: "Multiversal Equality"
 ---
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.22](./multiversal-equality-new.html).
 
 Previously, Scala had universal equality: Two values of any types
 could be compared with each other with `==` and `!=`. This came from

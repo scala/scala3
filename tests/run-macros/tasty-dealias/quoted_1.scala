@@ -4,8 +4,8 @@ object Macros {
 
   inline def dealias[T]: String = ${ impl('[T]) }
 
-  def impl[T](x: quoted.Type[T])(given qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty.{_, given}
+  def impl[T](x: quoted.Type[T]) with (qctx: QuoteContext) : Expr[String] = {
+    import qctx.tasty.{_, given _}
     Expr(x.unseal.tpe.dealias.show)
   }
 }

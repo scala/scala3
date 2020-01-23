@@ -3,7 +3,7 @@ import scala.language.implicitConversions
 trait Fixture[A] extends Conversion[0, A]
 
 trait TestFramework[A] {
-  def (testName: String).in(test: (given Fixture[A]) => Unit): Unit = ???
+  def (testName: String).in(test: Fixture[A] ?=> Unit): Unit = ???
 }
 
 trait Greeter {
@@ -13,7 +13,7 @@ trait Greeter {
 case class MyFixture(name: String, greeter: Greeter)
 
 object Test1:
-  given conv: Conversion[0, Greeter]
+  given conv as Conversion[0, Greeter]
     def apply(x: 0): Greeter = ???
   val g: Greeter = 0
 
