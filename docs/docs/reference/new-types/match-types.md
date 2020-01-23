@@ -90,34 +90,25 @@ Here, `[Xs]` is a type parameter clause of the variables bound in pattern `Pi`. 
 `B` is the declared upper bound of the match type, or `Any` if no such bound is given.
 We will leave it out in places where it does not matter for the discussion. Scrutinee, bound and pattern types must be first-order types.
 
+
 ## Match type reduction
 
-We define match type reduction in terms of an auxiliary relation, `can-reduce`:
+Match type reduction follows the semantics of match expression, that is, a match type of the form `S match { P1 => T1 ... Pn => Tn }` reduces to `Ti` if and only if `s: S match { _: P1 => T1 ... _: Pn => Tn }` evaluates to a value of type `Ti` for all `s: S`.
 
-```
-Match(S, C1, ..., Cn)  can-reduce  i, T'
-```
-if `Ci = [Xs] =>> P => T` and there are minimal instantiations `Is` of the type variables `Xs` such that
-```
-S <: [Xs := Is] P
-T' = [Xs := Is] T
-```
-An instantiation `Is` is _minimal_ for `Xs` if all type variables in `Xs` that appear
-covariantly and nonvariantly in `Is` are as small as possible and all type variables in `Xs` that appear contravariantly in `Is` are as large as possible. Here, "small" and "large" are understood with respect to  `<:`.
+The compiler implements the following reduction algorithm:
 
-For simplicity, we have omitted constraint handling so far. The full formulation of subtyping tests describes them as a function from a constraint and a pair of types to
-either _success_ and a new constraint or _failure_. In the context of reduction, the subtyping test `S <: [Xs := Is] P` is understood to leave the bounds of all variables
-in the input constraint unchanged, i.e. existing variables in the constraint cannot be instantiated by matching the scrutinee against the patterns.
+- If the scrutinee type `S` is an empty set of values (such as `Nothing` or `String & Int`), do not reduce.
+- Sequentially consider each pattern `Pi`
+    - If `S <: Pi` reduce to `Ti`.
+    - Otherwise, try constructing a proof that `S` and `Pi` are disjoint, or, in other words, that no value `s` of type `S` is also of type `Pi`.
+    - If such proof is found, proceed to the case (`Pi+1`), otherwise, do not reduce.
 
-Using `can-reduce`, we can now define match type reduction proper in the `reduces-to` relation:
-```
-Match(S, C1, ..., Cn)  reduces-to  T
-```
-if
-```
-Match(S, C1, ..., Cn)  can-reduce  i, T
-```
-and, for `j` in `1..i-1`: `Cj` is disjoint from `Ci`, or else `S` cannot possibly match `Cj`.
+Disjointness proofs rely on the following properties of Scala types:
+
+1. Single inheritance of classes
+2. Final classes cannot be extended
+3. Constant types with distinct values are nonintersecting
+
 
 ## Subtyping Rules for Match Types
 
