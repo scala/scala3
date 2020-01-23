@@ -186,8 +186,11 @@ trait ImportSuggestions with
           typedImplicit(candidate, expectedType, argument, span)(
             given ctx.fresh.setExploreTyperState()).isSuccess
         finally
-          task.cancel()
-          ctx.run.isCancelled = false
+          if task.cancel() then // timer task has not run yet
+            assert(!ctx.run.isCancelled)
+          else
+            while !ctx.run.isCancelled do () // wait until timer task has run to completion
+            ctx.run.isCancelled = false
       }
     end deepTest
 
