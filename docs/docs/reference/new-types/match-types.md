@@ -3,7 +3,7 @@ layout: doc-page
 title: "Match Types"
 ---
 
-A match type reduces to one of a number of right hand sides, depending on a scrutinee type. Example:
+A match type reduces to one of its right-hand sides, depending on a scrutinee type. Example:
 
 ```scala
 type Elem[X] = X match {
@@ -12,23 +12,29 @@ type Elem[X] = X match {
   case Iterable[t] => t
 }
 ```
-This defines a type that, depending on the scrutinee type `X`, can reduce to one of its right hand sides. For instance,
+
+This defines a type that reduces as follows:
+
 ```scala
 Elem[String]       =:=  Char
 Elem[Array[Int]]   =:=  Int
 Elem[List[Float]]  =:=  Float
 Elem[Nil.type]     =:=  Nothing
 ```
+
 Here `=:=` is understood to mean that left and right hand sides are mutually subtypes of each other.
 
 In general, a match type is of the form
+
 ```scala
 S match { P1 => T1 ... Pn => Tn }
 ```
+
 where `S`, `T1`, ..., `Tn` are types and `P1`, ..., `Pn` are type patterns. Type variables
 in patterns start as usual with a lower case letter.
 
 Match types can form part of recursive type definitions. Example:
+
 ```scala
 type LeafElem[X] = X match {
   case String => Char
@@ -37,13 +43,16 @@ type LeafElem[X] = X match {
   case AnyVal => X
 }
 ```
+
 Recursive match type definitions can also be given an upper bound, like this:
+
 ```scala
 type Concat[Xs <: Tuple, +Ys <: Tuple] <: Tuple = Xs match {
   case Unit => Ys
   case x *: xs => x *: Concat[xs, Ys]
 }
 ```
+
 In this definition, every instance of `Concat[A, B]`, whether reducible or not, is known to be a subtype of `Tuple`. This is necessary to make the recursive invocation `x *: Concat[xs, Ys]` type check, since `*:` demands a `Tuple` as its right operand.
 
 ## Representation of Match Types
