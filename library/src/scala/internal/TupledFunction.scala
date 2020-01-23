@@ -1,6 +1,8 @@
 package scala
 package internal
 
+import scala.runtime.TupleXXL
+
 object TupledFunction {
 
   def tupledFunction0[F, G]: TupledFunction[F, G] = scala.TupledFunction[F, G](
