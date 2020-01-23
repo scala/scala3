@@ -1,5 +1,6 @@
 import scala.quoted._
 import scala.quoted.matching._
+import scala.quoted.unsafe._
 
 object Macros {
 
@@ -22,7 +23,7 @@ object Macros {
       case '{ ($f: DSL => DSL)($x: DSL) } => sym.app(liftFun(f), lift(x))
 
       case '{ val x: DSL = $value; ($bodyFn: DSL => DSL)(x) } =>
-        Expr.open(bodyFn) { (body1, close) =>
+        UnsafeExpr.open(bodyFn) { (body1, close) =>
           val (i, nEnvVar) = freshEnvVar()
           lift(close(body1)(nEnvVar))(env + (i -> lift(value)))
         }
@@ -38,7 +39,7 @@ object Macros {
     def liftFun(e: Expr[DSL => DSL])(implicit env: Map[Int, Expr[T]]): Expr[T => T] = e match {
       case '{ (x: DSL) => ($bodyFn: DSL => DSL)(x) } =>
         sym.lam((y: Expr[T]) =>
-          Expr.open(bodyFn) { (body1, close) =>
+          UnsafeExpr.open(bodyFn) { (body1, close) =>
             val (i, nEnvVar) = freshEnvVar()
             lift(close(body1)(nEnvVar))(env + (i -> y))
           }
