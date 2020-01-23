@@ -1358,8 +1358,15 @@ object Parsers {
       def functionRest(params: List[Tree]): Tree =
         atSpan(start, accept(ARROW)) {
           val t = typ()
+
           if (imods.isOneOf(Given | Erased)) new FunctionWithMods(params, t, imods)
-          else Function(params, t)
+          else if (ctx.settings.YkindProjector.value) {
+            val (newParams :+ newT, tparams) = replaceKindProjectorPlaceholders(params :+ t)
+
+            lambdaAbstract(tparams, Function(newParams, newT))
+          } else {
+            Function(params, t)
+          }
         }
       def funArgTypesRest(first: Tree, following: () => Tree) = {
         val buf = new ListBuffer[Tree] += first
@@ -1447,6 +1454,26 @@ object Parsers {
             syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
           t
       }
+    }
+
+    private def makeKindProjectorTypeDef(name: TypeName): TypeDef =
+      TypeDef(name, TypeBoundsTree(EmptyTree, EmptyTree)).withFlags(Param)
+
+    /** Replaces kind-projector's `*` in a list of types arguments with synthetic names,
+     *  returning the new argument list and the synthetic type definitions.
+     */
+    private def replaceKindProjectorPlaceholders(params: List[Tree]): (List[Tree], List[TypeDef]) = {
+      val tparams = new ListBuffer[TypeDef]
+
+      val newParams = params.mapConserve {
+        case param @ Ident(tpnme.raw.STAR) =>
+          val name = WildcardParamName.fresh().toTypeName
+          tparams += makeKindProjectorTypeDef(name)
+          Ident(name)
+        case other => other
+      }
+
+      (newParams, tparams.toList)
     }
 
     private def implicitKwPos(start: Int): Span =
@@ -1565,7 +1592,6 @@ object Parsers {
         typeBounds().withSpan(Span(start, in.lastOffset, start))
       }
       else if (isIdent(nme.*) && ctx.settings.YkindProjector.value) {
-        syntaxError("`*` placeholders are not implemented yet")
         typeIdent()
       }
       else if (isSplice)
@@ -1586,8 +1612,56 @@ object Parsers {
     private def simpleTypeRest(t: Tree): Tree = in.token match {
       case HASH => simpleTypeRest(typeProjection(t))
       case LBRACKET => simpleTypeRest(atSpan(startOffset(t)) {
-        AppliedTypeTree(rejectWildcardType(t), typeArgs(namedOK = false, wildOK = true)) })
-      case _ => t
+        val applied = rejectWildcardType(t)
+        val args = typeArgs(namedOK = false, wildOK = true)
+
+        if (ctx.settings.YkindProjector.value) {
+          def fail(): Tree = {
+            syntaxError(
+              "λ requires a single argument of the form X => ... or (X, Y) => ...",
+              Span(t.span.start, in.lastOffset)
+            )
+            AppliedTypeTree(applied, args)
+          }
+
+          applied match {
+            case Ident(tpnme.raw.LAMBDA) =>
+              args match {
+                case List(Function(params, body)) =>
+                  val typeDefs = params.collect {
+                    case param @ Ident(name) => makeKindProjectorTypeDef(name.toTypeName).withSpan(param.span)
+                  }
+                  if (typeDefs.length != params.length) fail()
+                  else LambdaTypeTree(typeDefs, body)
+                case _ =>
+                  fail()
+              }
+            case _ =>
+              val (newArgs, tparams) = replaceKindProjectorPlaceholders(args)
+
+              lambdaAbstract(tparams, AppliedTypeTree(applied, newArgs))
+          }
+
+        } else {
+          AppliedTypeTree(applied, args)
+        }
+      })
+      case _ =>
+        if (ctx.settings.YkindProjector.value) {
+          t match {
+            case Tuple(params) =>
+              val (newParams, tparams) = replaceKindProjectorPlaceholders(params)
+
+              if (tparams.isEmpty) {
+                t
+              } else {
+                LambdaTypeTree(tparams, Tuple(newParams))
+              }
+            case _ => t
+          }
+        } else {
+          t
+        }
     }
 
     private def typeProjection(t: Tree): Tree = {
