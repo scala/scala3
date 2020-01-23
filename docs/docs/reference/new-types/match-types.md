@@ -85,11 +85,11 @@ is `Match(S, C1, ..., Cn) <: B` where each case `Ci` is of the form
 ```
 [Xs] =>> P => T
 ```
+
 Here, `[Xs]` is a type parameter clause of the variables bound in pattern `Pi`. If there are no bound type variables in a case, the type parameter clause is omitted and only the function type `P => T` is kept. So each case is either a unary function type or a type lambda over a unary function type.
 
 `B` is the declared upper bound of the match type, or `Any` if no such bound is given.
 We will leave it out in places where it does not matter for the discussion. Scrutinee, bound and pattern types must be first-order types.
-
 
 ## Match type reduction
 
@@ -115,28 +115,36 @@ Disjointness proofs rely on the following properties of Scala types:
 The following rules apply to match types. For simplicity, we omit environments and constraints.
 
 The first rule is a structural comparison between two match types:
+
 ```
-Match(S, C1, ..., Cm) <: Match(T, D1, ..., Dn)
+S match { P1 => T1 ... Pm => Tm }  <:  T match { Q1 => U1 ... Qn => Un }
 ```
+
 if
+
 ```
-S <: T,  m >= n,  Ci <: Di for i in 1..n
+S =:= T,  m >= n,  Pi =:= Qi and Ti <: Ui for i in 1..n
 ```
-I.e. scrutinees and corresponding cases must be subtypes, no case re-ordering is allowed, but the subtype can have more cases than the supertype.
+
+I.e. scrutinees and patterns must be equal and the corresponding bodies must be subtypes. No case re-ordering is allowed, but the subtype can have more cases than the supertype.
 
 The second rule states that a match type and its redux are mutual subtypes
+
 ```
-  Match(S, Cs) <: T
-  T <: Match(S, Cs)
-```
-if
-```
-  Match(S, Cs)  reduces-to  T
+S match { P1 => T1 ... Pn => Tn }  <:  U
+U  <:  S match { P1 => T1 ... Pn => Tn }
 ```
 
-The third rule states that a match type conforms to its upper bound
+if
+
 ```
-  (Match(S, Cs) <: B)  <:  B
+S match { P1 => T1 ... Pn => Tn }  reduces-to  U
+```
+
+The third rule states that a match type conforms to its upper bound:
+
+```
+(S match { P1 => T1 ... Pn => Tn } <: B)  <:  B
 ```
 
 ## Variance Laws for Match Types
