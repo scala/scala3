@@ -143,55 +143,6 @@ The third rule states that a match type conforms to its upper bound
 
 Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count as covariant. By the nature of the cases `Ci` this means that occurrences in pattern position are contravarant (since patterns are represented as function type arguments).
 
-## Handling Termination
-
-Match type definitions can be recursive, which raises the question whether and how to check
-that reduction terminates. This is currently an open question. We should investigate whether
-there are workable ways to enforce that recursion is primitive.
-
-Note that, since reduction is linked to subtyping, we already have a cycle dectection mechanism in place.
-So the following will already give a reasonable error message:
-```scala
-type L[X] = X match {
-  case Int => L[X]
-}
-def g[X]: L[X] = ???
-```
-
-```
-   |  val x: Int = g[Int]
-   |               ^^^^^^
-   |               found:    Test.L[Int]
-   |               required: Int
-```
-
-The subtype cycle test can be circumvented by producing larger types in each recursive invocation, as in the following definitions:
-```scala
-type LL[X] = X match {
-  case Int => LL[LL[X]]
-}
-def gg[X]: LL[X] = ???
-```
-In this case subtyping enters into an infinite recursion. This is not as bad as it looks, however, because
-`dotc` turns selected stack overflows into type errors. If there is a stackoverflow during subtyping,
-the exception will be caught and turned into a compile-time error that indicates
-a trace of the subtype tests that caused the overflow without showing a full stacktrace.
-Concretely:
-```
-   |  val xx: Int = gg[Int]
-   |                  ^
-   |Recursion limit exceeded.
-   |Maybe there is an illegal cyclic reference?
-   |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
-   |A recurring operation is (inner to outer):
-   |
-   |  subtype Test.LL[Int] <:< Int
-   |  subtype Test.LL[Int] <:< Int
-   |  ...
-   |  subtype Test.LL[Int] <:< Int
-```
-(The actual error message shows some additional lines in the stacktrace).
-
 ## Related Work
 
 Match types have similarities with [closed type families](https://wiki.haskell.org/GHC/Type_families) in Haskell. Some differences are:
@@ -205,5 +156,4 @@ Match types are also similar to Typescript's [conditional types](https://github.
    match types also work for type parameters and abstract types.
  - Match types can bind variables in type patterns.
  - Match types support direct recursion.
-
-Conditional types in Typescript distribute through union types. We should evaluate whether match types should support this as well.
+ - Conditional types distribute through union types.
