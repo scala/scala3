@@ -271,9 +271,14 @@ class ClassfileParser(
          *  and make constructor type polymorphic in the type parameters of the class
          */
         def normalizeConstructorInfo() = {
-          val mt @ MethodType(paramNames) = denot.info
           val rt = classRoot.typeRef appliedTo (classRoot.typeParams map (_.typeRef))
-          denot.info = mt.derivedLambdaType(paramNames, mt.paramInfos, rt)
+
+          def resultType(tpe: Type): Type = tpe match {
+            case mt @ MethodType(paramNames) => mt.derivedLambdaType(paramNames, mt.paramInfos, rt)
+            case pt : PolyType => pt.derivedLambdaType(pt.paramNames, pt.paramInfos, resultType(pt.resType))
+          }
+
+          denot.info = resultType(denot.info)
           addConstructorTypeParams(denot)
         }
 
