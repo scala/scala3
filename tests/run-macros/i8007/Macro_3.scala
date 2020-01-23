@@ -27,13 +27,18 @@ object Eq {
 
   def summonAll[T](t: Type[T])(given qctx: QuoteContext): List[Expr[Eq[_]]] = t match {
     case '[$tpe *: $tpes] =>
-      println(tpe.show)
-      summonExpr(given '[Eq[$tpe]]).get :: summonAll(tpes)
+      val eqInstance = summonExpr(given '[Eq[$tpe]]) match {
+        case Some(ev) => ev
+        case None => derived(given tpe, qctx)
+      }
+      eqInstance :: summonAll(tpes)
     case '[Unit] => Nil
   }
 
-  def derived[T: Type](ev: Expr[Mirror.Of[T]])(given qctx: QuoteContext): Expr[Eq[T]] = {
+  given derived[T: Type](given qctx: QuoteContext): Expr[Eq[T]] = {
     import qctx.tasty.{_, given}
+
+    val ev: Expr[Mirror.Of[T]] = summonExpr(given '[Mirror.Of[T]]).get
 
     ev match {
       case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = $elementTypes }} =>
@@ -71,20 +76,7 @@ object Eq {
 }
 
 object Macro3 {
+  inline def [T](x: =>T) === (y: =>T)(given eq: Eq[T]): Boolean = eq.eqv(x, y)
 
-
-
-  inline def test3[T](value: =>T, value2: =>T): Boolean = ${ test3Impl('value, 'value2) }
-
-  def test3Impl[T: Type](value: Expr[T], value2: Expr[T])(given qctx: QuoteContext): Expr[Boolean] = {
-    import qctx.tasty.{_, given}
-
-    val mirrorTpe = '[Mirror.Of[T]]
-    val mirrorExpr = summonExpr(given mirrorTpe).get
-    val derivedInstance = Eq.derived(mirrorExpr)
-
-    '{
-      $derivedInstance.eqv($value, $value2)
-    }
-  }
+  implicit inline def eqGen[T]: Eq[T] = ${ Eq.derived[T] }
 }
