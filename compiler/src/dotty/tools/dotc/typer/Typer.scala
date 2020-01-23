@@ -1498,7 +1498,10 @@ class Typer extends Namer
     val sel1 = typed(tree.selector)
     val pt1 = if (bound1.isEmpty) pt else bound1.tpe
     val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1.tpe, pt1))
-    assignType(cpy.MatchTypeTree(tree)(bound1, sel1, cases1), bound1, sel1, cases1)
+    val bound2 =
+      if (tree.bound.isEmpty) TypeTree(cases1.map(_.body.tpe).reduce(_ | _))
+      else bound1
+    assignType(cpy.MatchTypeTree(tree)(bound2, sel1, cases1), bound2, sel1, cases1)
   }
 
   def typedByNameTypeTree(tree: untpd.ByNameTypeTree)(implicit ctx: Context): ByNameTypeTree = {
