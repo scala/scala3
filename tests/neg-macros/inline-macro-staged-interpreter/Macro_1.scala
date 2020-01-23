@@ -1,13 +1,24 @@
 
 import scala.quoted._
 import scala.quoted.autolift.{given _}
+import scala.quoted.matching._
 
 object E {
 
-  inline def eval[T](inline x: E[T]): T = ${ impl(x) }
+  inline def eval[T](inline x: E[T]): T = ${ impl('x) }
 
-  def impl[T](x: E[T]) with QuoteContext : Expr[T] = x.lift
+  def impl[T: Type](x: Expr[E[T]]) with QuoteContext : Expr[T] = x.value.lift
 
+  implicit def ev1[T: Type]: ValueOfExpr[E[T]] = new ValueOfExpr {
+    def apply(x: Expr[E[T]]) with QuoteContext : Option[E[T]] = x match {
+      case '{ I(${Const(n)}) } => Some(I(n).asInstanceOf[E[T]])
+      case '{ Plus[T](${Value(x)}, ${Value(y)})(given $op) } => Some(Plus(x, y)(given Plus2.IPlus.asInstanceOf[Plus2[T]]).asInstanceOf[E[T]])
+    }
+  }
+
+  object Value {
+    def unapply[T, U >: T](expr: Expr[T])(given ValueOfExpr[U], QuoteContext): Option[U] = expr.getValue
+  }
 }
 
 trait E[T] {

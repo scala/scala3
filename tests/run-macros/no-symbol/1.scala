@@ -5,8 +5,8 @@ case class Foo(i: Int)
 case class Box[A](x: A)
 
 object Macro {
-  inline def foo[T](implicit inline t: Type[T]): String =
-    ${ fooImpl }
+  inline def foo[T]: String =
+    ${ fooImpl[T] }
 
   def fooImpl[T](implicit t: Type[T], qctx: QuoteContext): Expr[String] = {
     import qctx.tasty.{_, given _}

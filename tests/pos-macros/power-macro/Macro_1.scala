@@ -3,7 +3,10 @@ import scala.quoted._
 
 object PowerMacro {
 
-  inline def power(inline n: Long, x: Double) = ${powerCode(n, 'x)}
+  inline def power(inline n: Long, x: Double) = ${powerCode('n, 'x)}
+
+  def powerCode(n: Expr[Long], x: Expr[Double]) with QuoteContext : Expr[Double] =
+    powerCode(n.value, x)
 
   def powerCode(n: Long, x: Expr[Double]) with QuoteContext : Expr[Double] =
     if (n == 0) '{1.0}

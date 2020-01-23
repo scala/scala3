@@ -41,10 +41,10 @@ object TypeToolbox {
     Expr(fields)
   }
 
-  inline def fieldIn[T](inline mem: String): String = ${fieldInImpl('[T], mem)}
-  private def fieldInImpl(t: Type[_], mem: String) with (qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty.{_, given _}
-    val field = t.unseal.symbol.field(mem)
+  inline def fieldIn[T](inline mem: String): String = ${fieldInImpl('[T], 'mem)}
+  private def fieldInImpl(t: Type[_], mem: Expr[String]) with (qctx: QuoteContext) : Expr[String] = {
+    import qctx.tasty.{_, given}
+    val field = t.unseal.symbol.field(mem.value)
     Expr(if field.isNoSymbol then "" else field.name)
   }
 
@@ -55,10 +55,10 @@ object TypeToolbox {
     Expr(fields.map(_.name).toList)
   }
 
-  inline def methodIn[T](inline mem: String): Seq[String] = ${methodInImpl('[T], mem)}
-  private def methodInImpl(t: Type[_], mem: String) with (qctx: QuoteContext) : Expr[Seq[String]] = {
-    import qctx.tasty.{_, given _}
-    Expr(t.unseal.symbol.classMethod(mem).map(_.name))
+  inline def methodIn[T](inline mem: String): Seq[String] = ${methodInImpl('[T], 'mem)}
+  private def methodInImpl(t: Type[_], mem: Expr[String]) with (qctx: QuoteContext) : Expr[Seq[String]] = {
+    import qctx.tasty.{_, given}
+    Expr(t.unseal.symbol.classMethod(mem.value).map(_.name))
   }
 
   inline def methodsIn[T]: Seq[String] = ${methodsInImpl('[T])}
@@ -67,10 +67,10 @@ object TypeToolbox {
     Expr(t.unseal.symbol.classMethods.map(_.name))
   }
 
-  inline def method[T](inline mem: String): Seq[String] = ${methodImpl('[T], mem)}
-  private def methodImpl(t: Type[_], mem: String) with (qctx: QuoteContext) : Expr[Seq[String]] = {
-    import qctx.tasty.{_, given _}
-    Expr(t.unseal.symbol.method(mem).map(_.name))
+  inline def method[T](inline mem: String): Seq[String] = ${methodImpl('[T], 'mem)}
+  private def methodImpl(t: Type[_], mem: Expr[String]) with (qctx: QuoteContext) : Expr[Seq[String]] = {
+    import qctx.tasty.{_, given}
+    Expr(t.unseal.symbol.method(mem.value).map(_.name))
   }
 
   inline def methods[T]: Seq[String] = ${methodsImpl('[T])}

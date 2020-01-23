@@ -1,14 +1,13 @@
 import scala.quoted._
 
 inline def (inline x: String) strip: String =
-  ${ stripImpl(x) }
+  ${ stripImpl('x) }
 
-def stripImpl(x: String) with (qctx: QuoteContext) : Expr[String] =
-  Expr(x.stripMargin)
+def stripImpl(x: Expr[String]) with (qctx: QuoteContext) : Expr[String] =
+  Expr(x.value.stripMargin)
 
 inline def isHello(inline x: String): Boolean =
-  ${ isHelloImpl(x) }
+  ${ isHelloImpl('x) }
 
-def isHelloImpl(x: String) with (qctx: QuoteContext) : Expr[Boolean] =
-  if (x == "hello") Expr(true) else Expr(false)
-
+def isHelloImpl(x: Expr[String]) with (qctx: QuoteContext) : Expr[Boolean] =
+  if (x.value == "hello") Expr(true) else Expr(false)

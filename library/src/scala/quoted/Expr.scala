@@ -18,6 +18,14 @@ class Expr[+T] private[scala] {
    */
   final def getValue[U >: T](given qctx: QuoteContext, valueOf: ValueOfExpr[U]): Option[U] = valueOf(this)
 
+  /** Return the value of this expression.
+   *
+   *  Emits an error error and throws if the expression does not contain a value or contains side effects.
+   *  Otherwise returns the value.
+   */
+  final def value[U >: T](given qctx: QuoteContext, valueOf: ValueOfExpr[U]): U =
+    valueOf(this).getOrElse(qctx.throwError(s"Expected a known value. \n\nThe value of: $show\ncould not be recovered using $valueOf", this))
+
   /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
    *  It does the equivalent of
    *  ```

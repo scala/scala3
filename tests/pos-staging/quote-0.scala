@@ -14,7 +14,10 @@ object Macros {
 
   def showExpr[T](expr: Expr[T]) with QuoteContext : Expr[String] = expr.toString
 
-  inline def power(inline n: Int, x: Double) = ${ powerCode(n, 'x) }
+  inline def power(inline n: Int, x: Double) = ${ powerCode('n, 'x) }
+
+  def powerCode(n: Expr[Int], x: Expr[Double]) with QuoteContext : Expr[Double] =
+    powerCode(n.value, x)
 
   def powerCode(n: Int, x: Expr[Double]) with QuoteContext : Expr[Double] =
     if (n == 0) '{1.0}

@@ -227,8 +227,8 @@ private[quoted] object Matcher {
           case (While(cond1, body1), While(cond2, body2)) =>
             cond1 =?= cond2 && body1 =?= body2
 
-          case (New(tpt1), New(tpt2)) =>
-            tpt1 =?= tpt2
+          case (New(tpt1), New(tpt2)) if tpt1.tpe.typeSymbol == tpt2.tpe.typeSymbol =>
+            matched
 
           case (This(_), This(_)) if scrutinee.symbol == pattern.symbol =>
             matched
