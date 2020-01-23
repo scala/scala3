@@ -455,7 +455,10 @@ class TypeApplications(val self: Type) extends AnyVal {
       self.derivedExprType(tp.translateParameterized(from, to))
     case _ =>
       if (self.derivesFrom(from)) {
-        val arg = self.baseType(from).argInfos.head
+        def elemType(tp: Type): Type = tp match
+          case tp: AndOrType => tp.derivedAndOrType(elemType(tp.tp1), elemType(tp.tp2))
+          case _ => tp.baseType(from).argInfos.head
+        val arg = elemType(self)
         val arg1 = if (wildcardArg) TypeBounds.upper(arg) else arg
         to.typeRef.appliedTo(arg1)
       }
