@@ -1499,8 +1499,10 @@ class Typer extends Namer
     val pt1 = if (bound1.isEmpty) pt else bound1.tpe
     val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1.tpe, pt1))
     val bound2 =
-      if (tree.bound.isEmpty) TypeTree(cases1.map(_.body.tpe).reduce(_ | _))
-      else bound1
+      if (tree.bound.isEmpty) {
+        val cases2 = cases1.map(x => avoid(x.body.tpe, cases1.flatMap(patVars)))
+        TypeTree(cases2.reduce(_ | _))
+      } else bound1
     assignType(cpy.MatchTypeTree(tree)(bound2, sel1, cases1), bound2, sel1, cases1)
   }
 
