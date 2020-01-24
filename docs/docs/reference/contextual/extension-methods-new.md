@@ -8,7 +8,7 @@ Extension methods allow one to add methods to a type after the type is defined. 
 ```scala
 case class Circle(x: Double, y: Double, radius: Double)
 
-def (c: Circle) circumference: Double = c.radius * math.Pi * 2
+def (c: Circle).circumference: Double = c.radius * math.Pi * 2
 ```
 
 Like regular methods, extension methods can be invoked with infix `.`:
