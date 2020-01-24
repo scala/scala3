@@ -565,7 +565,7 @@ sum
 ### Find implicits within a macro
 
 Similarly to the `summonFrom` construct, it is possible to make implicit search available
-in a quote context. For this we simply provide `scala.quoted.matching.summonExpr:
+in a quote context. For this we simply provide `scala.quoted.matching.summonExpr`:
 
 ```scala
 inline def setFor[T]: Set[T] = ${ setForExpr[T] }
