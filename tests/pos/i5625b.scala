@@ -2,7 +2,7 @@ object Test {
 
   type AV[t <: AnyVal] = t
 
-  type LeafElem[X] = X match {
+  type LeafElem[X] <: Any = X match {
     case String => Char
     case Array[t] => LeafElem[t]
     case Iterable[t] => LeafElem[t]

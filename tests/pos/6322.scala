@@ -7,7 +7,7 @@ object Test {
     def apply(x: T1): Unit
   }
 
-  type F[N] = N match {
+  type F[N] <: Any = N match {
     case A => F1[String]
     case B => F[A]
     case C => F[B]

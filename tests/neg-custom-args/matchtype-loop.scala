@@ -1,8 +1,8 @@
 object Test {
-  type L[X] = X match {
+  type L[X] <: Any = X match {
     case Int => L[X]
   }
-  type LL[X] = X match {
+  type LL[X] <: Any = X match {
     case Int => LL[LL[X]]
   }
   def a: L[Boolean] = ???

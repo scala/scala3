@@ -75,7 +75,7 @@ sealed trait Tuple extends Any {
 object Tuple {
 
   /** Type of the head of a tuple */
-  type Head[X <: NonEmptyTuple] = X match {
+  type Head[X <: NonEmptyTuple] <: Any = X match {
     case x *: _ => x
   }
 
@@ -91,12 +91,14 @@ object Tuple {
   }
 
   /** Type of the element a position N in the tuple X */
-  type Elem[X <: Tuple, N <: Int] = X match {
+  type Elem[X <: Tuple, N <: Int] <: Any = X match {
     case x *: xs =>
-      N match {
-        case 0 => x
-        case S[n1] => Elem[xs, n1]
-      }
+      Elem0[x, xs, N]
+  }
+
+  type Elem0[x, xs, N] <: Any = N match {
+    case 0 => x
+    case S[n1] => Elem[xs, n1]
   }
 
   /** Literal constant Int size of a tuple */
@@ -139,19 +141,23 @@ object Tuple {
   /** Transforms a tuple `(T1, ..., Tn)` into `(T1, ..., Ti)`. */
   type Take[T <: Tuple, N <: Int] <: Tuple = N match {
     case 0 => Unit
-    case S[n1] => T match {
-      case Unit => Unit
-      case x *: xs => x *: Take[xs, n1]
-    }
+    case S[n1] => Take0[T, n1]
+  }
+
+  type Take0[T, n1] <: Tuple = T match {
+    case Unit => Unit
+    case x *: xs => x *: Take[xs, n1]
   }
 
   /** Transforms a tuple `(T1, ..., Tn)` into `(Ti+1, ..., Tn)`. */
   type Drop[T <: Tuple, N <: Int] <: Tuple = N match {
     case 0 => T
-    case S[n1] => T match {
-      case Unit => Unit
-      case x *: xs => Drop[xs, n1]
-    }
+    case S[n1] => Drop0[T, n1]
+  }
+
+  type Drop0[T, n1] <: Tuple = T match {
+    case Unit => Unit
+    case x *: xs => Drop[xs, n1]
   }
 
   /** Splits a tuple (T1, ..., Tn) into a pair of two tuples `(T1, ..., Ti)` and
