@@ -3745,7 +3745,7 @@ object Types {
         NoType
     }
 
-    def typeParams(implicit ctx: Context): List[ParamInfo] = {
+    def tyconTypeParams(implicit ctx: Context): List[ParamInfo] = {
       val tparams = tycon.typeParams
       if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
     }
@@ -4693,7 +4693,7 @@ object Types {
             case nil =>
               nil
           }
-          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tp.typeParams))
+          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tp.tyconTypeParams))
 
         case tp: RefinedType =>
           derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
@@ -5000,7 +5000,7 @@ object Types {
                 case nil =>
                   true
               }
-              if (distributeArgs(args, tp.typeParams))
+              if (distributeArgs(args, tp.tyconTypeParams))
                 range(tp.derivedAppliedType(tycon, loBuf.toList),
                       tp.derivedAppliedType(tycon, hiBuf.toList))
               else range(defn.NothingType, defn.AnyType)
@@ -5109,7 +5109,7 @@ object Types {
             }
             foldArgs(acc, tparams.tail, args.tail)
           }
-        foldArgs(this(x, tycon), tp.typeParams, args)
+        foldArgs(this(x, tycon), tp.tyconTypeParams, args)
 
       case _: BoundType | _: ThisType => x
 
