@@ -6,7 +6,7 @@ import scala.tasty.file._
 object Main extends App {
 
 
-  class Consumer extends TastyConsumer {
+  class Consumer extends TastyInspector {
     final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
       import reflect._
       val tastyStr = root.show
@@ -14,6 +14,6 @@ object Main extends App {
     }
   }
 
-  ConsumeTasty("", List("lib.Foo"), new Consumer)
+  InspectTasty("", List("lib.Foo"), new Consumer)
 
 }

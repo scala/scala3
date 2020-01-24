@@ -1,7 +1,6 @@
 package dotty.tastydoc
 
 import scala.tasty.Reflection
-import scala.tasty.file._
 import scala.collection.mutable.HashMap
 
 import org.junit.Test
@@ -10,7 +9,6 @@ import java.nio.file._
 import scala.collection.JavaConverters._
 import java.io.File
 import scala.tasty.Reflection
-import scala.tasty.file.TastyConsumer
 import java.lang.reflect.InvocationTargetException
 
 class Tests {

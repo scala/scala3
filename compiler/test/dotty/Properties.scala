@@ -53,8 +53,8 @@ object Properties {
   /** dotty-staging jar */
   def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging")
 
-  /** dotty-tasty-consumer jar */
-  def dottyTastyConsumer: String = sys.props("dotty.tests.classes.dottyTastyConsumer")
+  /** dotty-tasty-inspector jar */
+  def dottyTastyInspector: String = sys.props("dotty.tests.classes.dottyTastyInspector")
 
   /** tasty-core jar */
   def tastyCore: String = sys.props("dotty.tests.classes.tastyCore")

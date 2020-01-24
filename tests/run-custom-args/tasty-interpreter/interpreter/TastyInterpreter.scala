@@ -1,11 +1,11 @@
 package scala.tasty.interpreter
 
 import scala.tasty.Reflection
-import scala.tasty.file.TastyConsumer
+import scala.tasty.inspector.TastyInspector
 
-class TastyInterpreter extends TastyConsumer {
+class TastyInterpreter extends TastyInspector {
 
-  final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
+  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect.{_, given _}
     object Traverser extends TreeTraverser {
 

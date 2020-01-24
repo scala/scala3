@@ -39,8 +39,8 @@ object TestConfiguration {
   lazy val withStagingClasspath =
     withCompilerClasspath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
 
-  lazy val withTastyConsumerClasspath =
-    withCompilerClasspath + File.pathSeparator + mkClasspath(List(Properties.dottyTastyConsumer))
+  lazy val withTastyInspectorClasspath =
+    withCompilerClasspath + File.pathSeparator + mkClasspath(List(Properties.dottyTastyInspector))
 
   def mkClasspath(classpaths: List[String]): String =
     classpaths.map({ p =>
@@ -57,8 +57,8 @@ object TestConfiguration {
     defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
   lazy val withStagingOptions =
     defaultOptions.withClasspath(withStagingClasspath).withRunClasspath(withStagingClasspath)
-  lazy val withTastyConsumerOptions =
-    defaultOptions.withClasspath(withTastyConsumerClasspath).withRunClasspath(withTastyConsumerClasspath)
+  lazy val withTastyInspectorOptions =
+    defaultOptions.withClasspath(withTastyInspectorClasspath).withRunClasspath(withTastyInspectorClasspath)
   val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
   val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
   val picklingOptions = defaultOptions and (

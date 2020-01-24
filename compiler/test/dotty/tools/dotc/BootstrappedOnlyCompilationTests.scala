@@ -127,8 +127,8 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     aggregateTests(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),
       compileFilesInDir("tests/run-staging", withStagingOptions),
-      compileFilesInDir("tests/run-custom-args/tasty-consumer", withTastyConsumerOptions),
-      compileDir("tests/run-custom-args/tasty-interpreter", withTastyConsumerOptions),
+      compileFilesInDir("tests/run-custom-args/tasty-inspector", withTastyInspectorOptions),
+      compileDir("tests/run-custom-args/tasty-interpreter", withTastyInspectorOptions),
     ).checkRuns()
   }
 

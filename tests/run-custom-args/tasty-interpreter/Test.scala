@@ -7,7 +7,6 @@ import dotty.tools.dotc.util.DiffUtil
 import dotty.tools.io.Path
 
 import scala.io.Source
-import scala.tasty.file._
 import scala.tasty.interpreter.TastyInterpreter
 
 object Test {
@@ -103,7 +102,7 @@ object Test {
   def interpret(classpath: String*)(interpretedClasses: String*): String = {
     val ps = new ByteArrayOutputStream()
     try scala.Console.withOut(ps) {
-      ConsumeTasty(classpath.mkString(java.io.File.pathSeparatorChar.toString), interpretedClasses.toList, new TastyInterpreter)
+      new TastyInterpreter().inspect(classpath.mkString(java.io.File.pathSeparatorChar.toString), interpretedClasses.toList)
     } catch {
       case e: Throwable => throw new Exception(ps.toString, e)
     }

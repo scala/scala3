@@ -4,13 +4,13 @@ title: "TASTy Inspection"
 ---
 
 ```scala
-libraryDependencies += "ch.epfl.lamp" %% "dotty-tasty-consumer" % scalaVersion.value
+libraryDependencies += "ch.epfl.lamp" %% "dotty-tasty-inspector" % scalaVersion.value
 ```
 
 TASTy files contain the full typed tree of a class including source positions
 and documentation. This is ideal for tools that analyze or extract semantic
 information of the code. To avoid the hassle of working directly with the TASTy
-file we provide the `TastyConsumer` which loads the contents and exposes it
+file we provide the `TastyInspector` which loads the contents and exposes it
 through the TASTy reflect API.
 
 
@@ -23,7 +23,7 @@ the following way.
 import scala.tasty.Reflection
 import scala.tasty.file._
 
-class Consumer extends TastyConsumer {
+class Consumer extends TastyInspector {
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
     // Do something with the tree
@@ -37,7 +37,7 @@ the class `foo.Bar` for a foo in the classpath.
 ```scala
 object Test {
   def main(args: Array[String]): Unit = {
-    ConsumeTasty("", List("foo.Bar"), new Consumer)
+    InspectTasty("", List("foo.Bar"), new Consumer)
   }
 }
 ```
