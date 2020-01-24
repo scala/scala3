@@ -193,17 +193,18 @@ call sites (for instance the compiler generated instance definitions in the comp
 
 The body of this method (1) first materializes the `Eq` instances for all the child types of type the instance is
 being derived for. This is either all the branches of a sum type or all the fields of a product type. The
-implementation of `summonAll` is `inline` and uses Dotty's `given match` construct to collect the instances as a
+implementation of `summonAll` is `inline` and uses Dotty's `summonFrom` construct to summon the instances as a
 `List`,
 
 ```scala
-inline def summon[T]: T = given match {
-  case t: T => t
-}
+inline def summonEq[T]: Eq[T] =
+  summonFrom {
+    case eq: Eq[T] =>  eq
+  }
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
   case _: Unit => Nil
-  case _: (t *: ts) => summon[Eq[t]] :: summonAll[ts]
+  case _: (t *: ts) => summonEq[t] :: summonAll[ts]
 }
 ```
 
@@ -284,15 +285,29 @@ object Eq {
         }
     }
 
-  inline given derived[T](given m: Mirror.Of[T]): Eq[T] = {
-    val elemInstances = summonAll[m.MirroredElemTypes]
-    inline m match {
-      case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
-      case p: Mirror.ProductOf[T] => eqProduct(p, elemInstances)
+  inline def derived[T]: Eq[T] =
+    summonFrom {
+      case m: Mirror.Of[T] =>
+        val elemInstances = summonAll[m.MirroredElemTypes]
+        inline m match {
+          case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
+          case p: Mirror.ProductOf[T] => eqProduct(p, elemInstances)
+        }
     }
-  }
 }
 ```
+
+> Note that we can explicitly state the dependence on `Mirror[T]` in `derived` by using the
+> following encoding:
+> ```scala
+> inline def derived[T](given m: Mirror.Of[T]): Eq[T]
+> ```
+> This is also equivalent to using the Implicit Function Type:
+> ```scala
+> inline given derived[T]: (m: Mirror.Of[T]) => Eq[T]
+> ```
+> However, these encodings do not easily accomodate the ability to provide automatic-derivations.
+
 
 we can test this relative to a simple ADT like so,
 
@@ -363,6 +378,35 @@ given [T: Ordering] : Ordering[Option[T]] = Ordering.derived
 Assuming the `Ordering.derived` method has a given parameter of type `Mirror[T]` it will be satisfied by the
 compiler generated `Mirror` instance for `Option` and the derivation of the instance will be expanded on the right
 hand side of this definition in the same way as an instance defined in ADT companion objects.
+
+### Automatic Derivation
+
+Automatic derivation of Typeclass instances is less efficient than explicit derivation since it requires a derivation
+to be performed at every site it is invoked. For many use-cases however, this is sufficient. The `derived` appraoch
+above allows for the following implementation.
+
+```scala
+object AutomaticEq {
+  inline implicit def autoEq[T]: Eq[T] = Eq.derived
+  inline def [T](a: T) === (b: T) = autoEq[T].eqv(a, b)
+}
+```
+It is then possible to use the `Eq` Typeclass without explicit specification of `Eq` givens or `derives` clauses.
+Using our simple ADT defined above:
+```scala
+enum Opt[+T] { // derives Eq - automatically inferred
+  case Sm(t: T)
+  case Nn
+}
+
+object Test extends App {
+  import Opt._
+  assert(Sm(23) === Sm(23))
+  assert(!(Sm(23) === Sm(13)))
+  assert(!(Sm(23) === Nn))
+}
+```
+
 
 ### Syntax
 
