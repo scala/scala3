@@ -22,7 +22,7 @@ class CrossCastAnd extends MiniPhase {
 
     lazy val qtype = tree.qualifier.tpe.widen
     val sym = tree.symbol
-    if (sym.is(Flags.Private) && qtype.typeSymbol != sym.owner)
+    if (sym.is(Flags.Private) && !sym.isConstructor && qtype.typeSymbol != sym.owner)
       cpy.Select(tree)(tree.qualifier.cast(AndType(qtype.baseType(sym.owner), tree.qualifier.tpe)), tree.name)
     else tree
   }
