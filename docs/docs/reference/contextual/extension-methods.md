@@ -11,7 +11,7 @@ Extension methods allow one to add methods to a type after the type is defined. 
 ```scala
 case class Circle(x: Double, y: Double, radius: Double)
 
-def (c: Circle).circumference: Double = c.radius * math.Pi * 2
+def (c: Circle) circumference: Double = c.radius * math.Pi * 2
 ```
 
 Like regular methods, extension methods can be invoked with infix `.`:
@@ -143,7 +143,7 @@ extension listOps on [T](xs: List[T]) {
   def third: T = xs.tail.tail.head
 }
 
-extension on [T](xs: List[T]) with Ordering[T]) {
+extension on [T](xs: List[T]) with Ordering[T] {
   def largest(n: Int) = xs.sorted.takeRight(n)
 }
 ```
