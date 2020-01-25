@@ -749,7 +749,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   /** Is there a subtree of this tree that satisfies predicate `p`? */
-  def (tree: Tree).existsSubTree(p: Tree => Boolean)(implicit ctx: Context): Boolean = {
+  def (tree: Tree) existsSubTree(p: Tree => Boolean)(implicit ctx: Context): Boolean = {
     val acc = new UntypedTreeAccumulator[Boolean] {
       def apply(x: Boolean, t: Tree)(implicit ctx: Context) = x || p(t) || foldOver(x, t)
     }
