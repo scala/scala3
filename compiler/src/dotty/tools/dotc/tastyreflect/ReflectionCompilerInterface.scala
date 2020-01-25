@@ -1372,6 +1372,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case _ => None
   }
 
+  def ByNameType_apply(underlying: Type)(given Context): Type = Types.ExprType(underlying)
+
   def ByNameType_underlying(self: ByNameType)(given Context): Type = self.resType.stripTypeVar
 
   type ParamRef = Types.ParamRef
@@ -1437,6 +1439,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def MethodType_isErased(self: MethodType): Boolean = self.isErasedMethod
   def MethodType_isImplicit(self: MethodType): Boolean = self.isImplicitMethod
+  def MethodType_param(self: MethodType, idx: Int)(given Context): Type = self.newParamRef(idx)
   def MethodType_paramNames(self: MethodType)(given Context): List[String] = self.paramNames.map(_.toString)
   def MethodType_paramTypes(self: MethodType)(given Context): List[Type] = self.paramInfos
   def MethodType_resType(self: MethodType)(given Context): Type = self.resType
@@ -1450,6 +1453,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case _ => None
   }
 
+  def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(given Context): PolyType =
+    Types.PolyType(paramNames.map(_.toTypeName))(paramBoundsExp, resultTypeExp)
+
+  def PolyType_param(self: PolyType, idx: Int)(given Context): Type = self.newParamRef(idx)
   def PolyType_paramNames(self: PolyType)(given Context): List[String] = self.paramNames.map(_.toString)
   def PolyType_paramBounds(self: PolyType)(given Context): List[TypeBounds] = self.paramInfos
   def PolyType_resType(self: PolyType)(given Context): Type = self.resType
@@ -1716,6 +1723,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Symbol_of(fullName: String)(given ctx: Context): Symbol =
     ctx.requiredClass(fullName)
+
+  def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(given ctx: Context): Symbol = {
+    val computedFlags = flags | Flags.Method
+    ctx.newSymbol(parent, name.toTermName, computedFlags, tpe, privateWithin)
+  }
 
   def Symbol_isTypeParam(self: Symbol)(given Context): Boolean =
     self.isTypeParam

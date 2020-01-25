@@ -9,6 +9,25 @@ trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
     def classSymbol(fullName: String)(given ctx: Context): Symbol =
       internal.Symbol_of(fullName)
 
+    /** Generates a new method symbol with the given parent, name and type.
+     *
+     *  This symbol starts without an accompanying definition.
+     *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+     *  this symbol to the DefDef constructor.
+     *
+     *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+     *        direct or indirect children of the reflection context's owner. */
+    def newMethod(parent: Symbol, name: String, tpe: Type)(given ctx: Context): Symbol =
+      newMethod(parent, name, tpe, Flags.EmptyFlags, noSymbol)
+
+    /** Works as the other newMethod, but with additional parameters.
+     *
+     *  @param flags extra flags to with which the symbol should be constructed
+     *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
+     * */
+    def newMethod(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol)(given ctx: Context): Symbol =
+      internal.Symbol_newMethod(parent, name, flags, tpe, privateWithin)
+
     /** Definition not available */
     def noSymbol(given ctx: Context): Symbol =
       internal.Symbol_noSymbol

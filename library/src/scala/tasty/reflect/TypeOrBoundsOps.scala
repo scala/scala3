@@ -286,6 +286,7 @@ trait TypeOrBoundsOps extends Core {
     def unapply(x: ByNameType)(given ctx: Context): Option[ByNameType] = Some(x)
 
   object ByNameType {
+    def apply(underlying: Type)(given ctx: Context): Type = internal.ByNameType_apply(underlying)
     def unapply(x: ByNameType)(given ctx: Context): Option[Type] = Some(x.underlying)
   }
 
@@ -368,6 +369,7 @@ trait TypeOrBoundsOps extends Core {
   given MethodTypeOps: extension (self: MethodType) {
     def isImplicit: Boolean = internal.MethodType_isImplicit(self)
     def isErased: Boolean = internal.MethodType_isErased(self)
+    def param(idx: Int)(given ctx: Context): Type = internal.MethodType_param(self, idx)
     def paramNames(given ctx: Context): List[String] = internal.MethodType_paramNames(self)
     def paramTypes(given ctx: Context): List[Type] = internal.MethodType_paramTypes(self)
     def resType(given ctx: Context): Type = internal.MethodType_resType(self)
@@ -380,11 +382,14 @@ trait TypeOrBoundsOps extends Core {
     def unapply(x: PolyType)(given ctx: Context): Option[PolyType] = Some(x)
 
   object PolyType {
+    def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(given ctx: Context): PolyType =
+      internal.PolyType_apply(paramNames)(paramBoundsExp, resultTypeExp)
     def unapply(x: PolyType)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
       Some((x.paramNames, x.paramBounds, x.resType))
   }
 
   given PolyTypeOps: extension (self: PolyType) {
+    def param(idx: Int)(given ctx: Context): Type = internal.PolyType_param(self, idx)
     def paramNames(given ctx: Context): List[String] = internal.PolyType_paramNames(self)
     def paramBounds(given ctx: Context): List[TypeBounds] = internal.PolyType_paramBounds(self)
     def resType(given ctx: Context): Type = internal.PolyType_resType(self)
