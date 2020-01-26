@@ -10,10 +10,15 @@ object Variances {
   val Bivariant: Variance = VarianceFlags
   val Invariant: Variance = EmptyFlags
 
-  def varianceFromInt(v: Int) =
+  def varianceFromInt(v: Int): Variance =
     if v < 0 then Covariant
     else if v > 0 then Contravariant
     else Invariant
+
+  def varianceToInt(v: Variance): Int =
+    if v.is(Covariant) then 1
+    else if v.is(Contravariant) then -1
+    else 0
 
   /** Flip between covariant and contravariant */
   def flip(v: Variance): Variance =

@@ -18,6 +18,7 @@ import Decorators._
 import Denotations._
 import Periods._
 import CheckRealizable._
+import Variances.{Variance, varianceFromInt, varianceToInt}
 import util.Stats._
 import util.SimpleIdentitySet
 import reporting.diagnostic.Message
@@ -29,7 +30,8 @@ import Hashable._
 import Uniques._
 import collection.mutable
 import config.Config
-import annotation.tailrec
+import annotation.{tailrec, constructorOnly}
+
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr}
@@ -1670,7 +1672,7 @@ object Types {
     def computeHash(bs: Binders): Int
 
     /** Is the `hash` of this type the same for all possible sequences of enclosing binders? */
-    def stableHash: Boolean = true
+    def hashIsStable: Boolean = true
   }
 
   // end Type
@@ -2331,8 +2333,8 @@ object Types {
 
     override def computeHash(bs: Binders): Int = doHash(bs, designator, prefix)
 
-    override def stableHash: Boolean = {
-      if (myStableHash == 0) myStableHash = if (prefix.stableHash) 1 else -1
+    override def hashIsStable: Boolean = {
+      if (myStableHash == 0) myStableHash = if (prefix.hashIsStable) 1 else -1
       myStableHash > 0
     }
 
@@ -2616,7 +2618,7 @@ object Types {
       else parent
 
     override def computeHash(bs: Binders): Int = doHash(bs, refinedName, refinedInfo, parent)
-    override def stableHash: Boolean = refinedInfo.stableHash && parent.stableHash
+    override def hashIsStable: Boolean = refinedInfo.hashIsStable && parent.hashIsStable
 
     override def eql(that: Type): Boolean = that match {
       case that: RefinedType =>
@@ -2717,7 +2719,7 @@ object Types {
 
     override def computeHash(bs: Binders): Int = doHash(new Binders(this, bs), parent)
 
-    override def stableHash: Boolean = false
+    override def hashIsStable: Boolean = false
       // this is a conservative observation. By construction RecTypes contain at least
       // one RecThis occurrence. Since `stableHash` does not keep track of enclosing
       // bound types, it will return "unstable" for this occurrence and this would propagate.
@@ -3025,7 +3027,7 @@ object Types {
       if (resType eq this.resType) this else ExprType(resType)
 
     override def computeHash(bs: Binders): Int = doHash(bs, resType)
-    override def stableHash: Boolean = resType.stableHash
+    override def hashIsStable: Boolean = resType.hashIsStable
 
     override def eql(that: Type): Boolean = that match {
       case that: ExprType => resType.eq(that.resType)
@@ -3110,38 +3112,19 @@ object Types {
       if ((paramNames eq this.paramNames) && (paramInfos eq this.paramInfos) && (resType eq this.resType)) this
       else newLikeThis(paramNames, paramInfos, resType)
 
-    final def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): This =
+    def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): This =
       companion(paramNames)(
           x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
           x => resType.subst(this, x))
 
     protected def prefixString: String
-    final override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
+    override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
   }
 
   abstract class HKLambda extends CachedProxyType with LambdaType {
     final override def underlying(implicit ctx: Context): Type = resType
-
-    override def computeHash(bs: Binders): Int =
-      doHash(new Binders(this, bs), paramNames, resType, paramInfos)
-
-    override def stableHash: Boolean = resType.stableHash && paramInfos.stableHash
-
+    final override def hashIsStable: Boolean = resType.hashIsStable && paramInfos.hashIsStable
     final override def equals(that: Any): Boolean = equals(that, null)
-
-    // No definition of `eql` --> fall back on equals, which calls iso
-
-    final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
-      case that: HKLambda =>
-        paramNames.eqElements(that.paramNames) &&
-        companion.eq(that.companion) && {
-          val bs1 = new BinderPairs(this, that, bs)
-          paramInfos.equalElements(that.paramInfos, bs1) &&
-          resType.equals(that.resType, bs1)
-        }
-      case _ =>
-        false
-    }
   }
 
   abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType {
@@ -3430,8 +3413,12 @@ object Types {
 
     def newParamRef(n: Int): TypeParamRef = new TypeParamRefImpl(this, n)
 
-    @threadUnsafe lazy val typeParams: List[LambdaParam] =
-      paramNames.indices.toList.map(new LambdaParam(this, _))
+    protected var myTypeParams: List[LambdaParam] = null
+
+    def typeParams: List[LambdaParam] =
+      if myTypeParams == null then
+        myTypeParams = paramNames.indices.toList.map(new LambdaParam(this, _))
+      myTypeParams
 
     def derivedLambdaAbstraction(paramNames: List[TypeName], paramInfos: List[TypeBounds], resType: Type)(implicit ctx: Context): Type =
       resType match {
@@ -3457,7 +3444,7 @@ object Types {
    *  @param  resultTypeExp   A function that, given the polytype itself, returns the
    *                          result type `T`.
    */
-  class HKTypeLambda(val paramNames: List[TypeName])(
+  class HKTypeLambda(val paramNames: List[TypeName], @constructorOnly variances: List[Variance])(
       paramInfosExp: HKTypeLambda => List[TypeBounds], resultTypeExp: HKTypeLambda => Type)
   extends HKLambda with TypeLambda {
     type This = HKTypeLambda
@@ -3469,7 +3456,49 @@ object Types {
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
 
+    private def setVariances(tparams: List[LambdaParam], vs: List[Variance]): Unit =
+      if tparams.nonEmpty then
+        tparams.head.setVariance(vs.head)
+        setVariances(tparams.tail, vs.tail)
+
+    val isVariant = variances.nonEmpty
+    if isVariant then setVariances(typeParams, variances)
+
+    def givenVariances =
+      if isVariant then typeParams.map(_.paramVariance)
+      else Nil
+
+    override def computeHash(bs: Binders): Int =
+      doHash(new Binders(this, bs), givenVariances ::: paramNames, resType, paramInfos)
+
+    // No definition of `eql` --> fall back on equals, which calls iso
+
+    final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
+      case that: HKTypeLambda =>
+        paramNames.eqElements(that.paramNames)
+        && isVariant == that.isVariant
+        && (!isVariant
+            || typeParams.corresponds(that.typeParams)((x, y) =>
+                  x.paramVariance == y.paramVariance))
+        && {
+          val bs1 = new BinderPairs(this, that, bs)
+          paramInfos.equalElements(that.paramInfos, bs1) &&
+          resType.equals(that.resType, bs1)
+        }
+      case _ =>
+        false
+    }
+
+    override def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): This =
+      HKTypeLambda(paramNames, givenVariances)(
+          x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
+          x => resType.subst(this, x))
+
     protected def prefixString: String = "HKTypeLambda"
+    final override def toString: String =
+      if isVariant then
+        s"HKTypeLambda($paramNames, $paramInfos, $resType, ${givenVariances.map(_.flagsString)})"
+      else super.toString
   }
 
   /** The type of a polymorphic method. It has the same form as HKTypeLambda,
@@ -3519,7 +3548,12 @@ object Types {
     def apply(paramNames: List[TypeName])(
         paramInfosExp: HKTypeLambda => List[TypeBounds],
         resultTypeExp: HKTypeLambda => Type)(implicit ctx: Context): HKTypeLambda =
-      unique(new HKTypeLambda(paramNames)(paramInfosExp, resultTypeExp))
+      apply(paramNames, Nil)(paramInfosExp, resultTypeExp)
+
+    def apply(paramNames: List[TypeName], variances: List[Variance])(
+        paramInfosExp: HKTypeLambda => List[TypeBounds],
+        resultTypeExp: HKTypeLambda => Type)(implicit ctx: Context): HKTypeLambda =
+      unique(new HKTypeLambda(paramNames, variances)(paramInfosExp, resultTypeExp))
 
     def unapply(tl: HKTypeLambda): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
@@ -3580,6 +3614,7 @@ object Types {
   /** The parameter of a type lambda */
   case class LambdaParam(tl: TypeLambda, n: Int) extends ParamInfo {
     type ThisName = TypeName
+
     def isTypeParam(implicit ctx: Context): Boolean = tl.paramNames.head.isTypeName
     def paramName(implicit ctx: Context): tl.ThisName = tl.paramNames(n)
     def paramInfo(implicit ctx: Context): tl.PInfo = tl.paramInfos(n)
@@ -3587,6 +3622,13 @@ object Types {
     def paramInfoOrCompleter(implicit ctx: Context): Type = paramInfo
     def paramVarianceSign(implicit ctx: Context): Int = tl.paramNames(n).variance
     def paramRef(implicit ctx: Context): Type = tl.paramRefs(n)
+
+    private var myVariance: FlagSet = UndefinedFlags
+    def setVariance(v: Variance): Unit = myVariance = v
+    def paramVariance: Variance =
+      if myVariance == UndefinedFlags then
+        myVariance = varianceFromInt(tl.paramNames(n).variance)
+      myVariance
   }
 
   /** A type application `C[T_1, ..., T_n]` */
@@ -3758,8 +3800,8 @@ object Types {
 
     override def computeHash(bs: Binders): Int = doHash(bs, tycon, args)
 
-    override def stableHash: Boolean = {
-      if (myStableHash == 0) myStableHash = if (tycon.stableHash && args.stableHash) 1 else -1
+    override def hashIsStable: Boolean = {
+      if (myStableHash == 0) myStableHash = if (tycon.hashIsStable && args.hashIsStable) 1 else -1
       myStableHash > 0
     }
 
@@ -3790,7 +3832,7 @@ object Types {
     type BT <: Type
     val binder: BT
     def copyBoundType(bt: BT): Type
-    override def stableHash: Boolean = false
+    override def hashIsStable: Boolean = false
   }
 
   abstract class ParamRef extends BoundType {
@@ -4193,7 +4235,7 @@ object Types {
       else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
     override def computeHash(bs: Binders): Int = doHash(bs, cls, prefix)
-    override def stableHash: Boolean = prefix.stableHash && classParents.stableHash
+    override def hashIsStable: Boolean = prefix.hashIsStable && classParents.hashIsStable
 
     override def eql(that: Type): Boolean = that match {
       case that: ClassInfo =>
@@ -4290,7 +4332,7 @@ object Types {
     }
 
     override def computeHash(bs: Binders): Int = doHash(bs, lo, hi)
-    override def stableHash: Boolean = lo.stableHash && hi.stableHash
+    override def hashIsStable: Boolean = lo.hashIsStable && hi.hashIsStable
 
     override def equals(that: Any): Boolean = equals(that, null)
 
@@ -4315,7 +4357,7 @@ object Types {
     def derivedAlias(alias: Type)(implicit ctx: Context): AliasingBounds
 
     override def computeHash(bs: Binders): Int = doHash(bs, alias)
-    override def stableHash: Boolean = alias.stableHash
+    override def hashIsStable: Boolean = alias.hashIsStable
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: AliasingBounds => this.isTypeAlias == that.isTypeAlias && alias.equals(that.alias, bs)
@@ -4416,7 +4458,7 @@ object Types {
       if (elemtp eq this.elemType) this else JavaArrayType(elemtp)
 
     override def computeHash(bs: Binders): Int = doHash(bs, elemType)
-    override def stableHash: Boolean = elemType.stableHash
+    override def hashIsStable: Boolean = elemType.hashIsStable
 
     override def eql(that: Type): Boolean = that match {
       case that: JavaArrayType => elemType.eq(that.elemType)
@@ -4479,7 +4521,7 @@ object Types {
       else WildcardType(optBounds.asInstanceOf[TypeBounds])
 
     override def computeHash(bs: Binders): Int = doHash(bs, optBounds)
-    override def stableHash: Boolean = optBounds.stableHash
+    override def hashIsStable: Boolean = optBounds.hashIsStable
 
     override def eql(that: Type): Boolean = that match {
       case that: WildcardType => optBounds.eq(that.optBounds)
@@ -5386,8 +5428,8 @@ object Types {
   implicit def decorateTypeApplications(tpe: Type): TypeApplications = new TypeApplications(tpe)
 
   implicit class typeListDeco(val tps1: List[Type]) extends AnyVal {
-    @tailrec def stableHash: Boolean =
-      tps1.isEmpty || tps1.head.stableHash && tps1.tail.stableHash
+    @tailrec def hashIsStable: Boolean =
+      tps1.isEmpty || tps1.head.hashIsStable && tps1.tail.hashIsStable
     @tailrec def equalElements(tps2: List[Type], bs: BinderPairs): Boolean =
       (tps1 `eq` tps2) || {
         if (tps1.isEmpty) tps2.isEmpty
