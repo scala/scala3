@@ -11,6 +11,7 @@ import config.Config
 import config.Printers.{constr, subtyping, gadts, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
+import Variances.variancesConform
 import Constants.Constant
 import transform.TypeUtils._
 import transform.SymUtils._

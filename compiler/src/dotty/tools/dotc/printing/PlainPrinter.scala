@@ -8,6 +8,7 @@ import StdNames.nme
 import ast.Trees._
 import typer.Implicits._
 import typer.ImportInfo
+import Variances.varianceString
 import util.SourcePosition
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
@@ -414,15 +415,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def toTextFlags(sym: Symbol, flags: FlagSet): Text =
     Text(flags.flagStrings(privateWithinString(sym)).map(flag => stringToText(keywordStr(flag))), " ")
-
-  /** String representation of symbol's variance or "" if not applicable */
-  protected def varianceString(sym: Symbol): String = varianceString(sym.variance)
-
-  protected def varianceString(v: Int): String = v match {
-    case -1 => "-"
-    case 1 => "+"
-    case _ => ""
-  }
 
   def annotsText(sym: Symbol): Text = Text(sym.annotations.map(toText))
 

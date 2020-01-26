@@ -1,14 +1,19 @@
 package dotty.tools.dotc
-package typer
+package core
 
-import core._
 import Types._, Contexts._, Flags._, Symbols._, Annotations._
+import TypeApplications.TypeParamInfo
 
 object Variances {
 
   type Variance = FlagSet
   val Bivariant: Variance = VarianceFlags
   val Invariant: Variance = EmptyFlags
+
+  def varianceFromInt(v: Int) =
+    if v < 0 then Covariant
+    else if v > 0 then Contravariant
+    else Invariant
 
   /** Flip between covariant and contravariant */
   def flip(v: Variance): Variance =
@@ -97,6 +102,53 @@ object Variances {
     case _ =>
       Bivariant
   }
+
+  /** A map from the index of a lambda parameter to its variance in -1 .. 1 */
+  type ParamVarianceMap = Map[Int, Int]
+
+  def lambdaVariances(lam: HKTypeLambda)(implicit ctx: Context): ParamVarianceMap =
+    object accu extends TypeAccumulator[ParamVarianceMap] {
+      def apply(vmap: ParamVarianceMap, t: Type): ParamVarianceMap = t match {
+        case t: TypeParamRef if t.binder eq lam =>
+          val idx = t.paramNum
+          vmap.get(idx) match
+            case None =>
+              vmap.updated(idx, variance)
+            case Some(v) =>
+              if v == variance || v == 0 then vmap else vmap.updated(idx, 0)
+        case _ =>
+          foldOver(vmap, t)
+      }
+    }
+    accu(Map(), lam.resType)
+
+  /** Does variance `v1` conform to variance `v2`?
+   *  This is the case if the variances are the same or `sym` is nonvariant.
+   */
+   def varianceConforms(v1: Int, v2: Int): Boolean =
+    v1 == v2 || v2 == 0
+
+  /** Does the variance of type parameter `tparam1` conform to the variance of type parameter `tparam2`?
+   */
+   def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(implicit ctx: Context): Boolean =
+    varianceConforms(tparam1.paramVariance, tparam2.paramVariance)
+
+  /** Do the variances of type parameters `tparams1` conform to the variances
+   *  of corresponding type parameters `tparams2`?
+   *  This is only the case of `tparams1` and `tparams2` have the same length.
+   */
+  def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(implicit ctx: Context): Boolean =
+    tparams1.corresponds(tparams2)(varianceConforms)
+
+  def variancesConform(vs1: List[Variance], vs2: List[Variance]): Boolean = vs2 match
+    case v2 :: rest2 =>
+      vs1 match
+        case v1 :: rest1 => v1.isAllOf(v2) && variancesConform(rest1, rest2)
+        case nil => v2.isEmpty && variancesConform(vs1, rest2)
+    case nil => true
+
+  def varianceString(sym: Symbol)(implicit ctx: Context): String =
+    varianceString(sym.variance)
 
   def varianceString(v: Variance): String =
     if (v is Covariant) "covariant"

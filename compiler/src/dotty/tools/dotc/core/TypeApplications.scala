@@ -10,6 +10,7 @@ import Decorators._
 import util.Stats._
 import Names._
 import NameOps._
+import Variances.{varianceConforms, variancesConform}
 import dotty.tools.dotc.config.Config
 
 object TypeApplications {
@@ -21,24 +22,6 @@ object TypeApplications {
     case tp: TypeBounds => throw new AssertionError("no TypeBounds allowed")
     case _ => tp
   }
-
-  /** Does variance `v1` conform to variance `v2`?
-   *  This is the case if the variances are the same or `sym` is nonvariant.
-   */
-  def varianceConforms(v1: Int, v2: Int): Boolean =
-    v1 == v2 || v2 == 0
-
-  /** Does the variance of type parameter `tparam1` conform to the variance of type parameter `tparam2`?
-   */
-  def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(implicit ctx: Context): Boolean =
-    varianceConforms(tparam1.paramVariance, tparam2.paramVariance)
-
-  /** Do the variances of type parameters `tparams1` conform to the variances
-   *  of corresponding type parameters `tparams2`?
-   *  This is only the case of `tparams1` and `tparams2` have the same length.
-   */
-  def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(implicit ctx: Context): Boolean =
-    tparams1.corresponds(tparams2)(varianceConforms)
 
   /** Extractor for
    *
