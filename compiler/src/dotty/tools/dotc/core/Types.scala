@@ -31,7 +31,6 @@ import Uniques._
 import collection.mutable
 import config.Config
 import annotation.{tailrec, constructorOnly}
-
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr}

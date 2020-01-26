@@ -8,7 +8,7 @@ import StdNames.nme
 import ast.Trees._
 import typer.Implicits._
 import typer.ImportInfo
-import Variances.varianceString
+import Variances.{varianceString, varianceToInt}
 import util.SourcePosition
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
@@ -327,14 +327,39 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case None => "?"
   }
 
+  protected def decomposeLambdas(bounds: TypeBounds): (String, TypeBounds) =
+    def decompose(tp: Type) = tp.stripTypeVar match
+      case lam: HKTypeLambda =>
+        val names =
+          if lam.isVariant then
+            lam.paramNames.lazyZip(lam.givenVariances).map((name, v) =>
+              varianceString(varianceToInt(v)) + name)
+          else lam.paramNames
+        (names.mkString("[", ", ", "]"), lam.resType)
+      case _ =>
+        ("", tp)
+    bounds match
+      case bounds: AliasingBounds =>
+        val (tparamStr, aliasRhs) = decompose(bounds.alias)
+        (tparamStr, bounds.derivedAlias(aliasRhs))
+      case TypeBounds(lo, hi) =>
+        val (_, loRhs) = decompose(lo)
+        val (tparamStr, hiRhs) = decompose(hi)
+        (tparamStr, bounds.derivedTypeBounds(loRhs, hiRhs))
+  end decomposeLambdas
+
   /** String representation of a definition's type following its name */
   protected def toTextRHS(tp: Type): Text = controlled {
     homogenize(tp) match {
-      case tp: AliasingBounds =>
-        " = " ~ toText(tp.alias)
-      case tp @ TypeBounds(lo, hi) =>
-        (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo)) ~
-          (if (hi isRef defn.AnyClass) Text() else " <: " ~ toText(hi))
+      case tp: TypeBounds =>
+        val (tparamStr, rhs) = decomposeLambdas(tp)
+        val binder = rhs match
+          case tp: AliasingBounds =>
+            " = " ~ toText(tp.alias)
+          case TypeBounds(lo, hi) =>
+            (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo))
+            ~ (if (hi isRef defn.AnyClass) Text() else " <: " ~ toText(hi))
+        tparamStr ~ binder
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)
         val (tparams, otherDecls) = decls.toList partition treatAsTypeParam
