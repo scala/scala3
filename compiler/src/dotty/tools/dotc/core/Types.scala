@@ -3486,9 +3486,15 @@ object Types {
     }
 
     override def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): This =
-      HKTypeLambda(paramNames, givenVariances)(
+      newLikeThis(paramNames, givenVariances, paramInfos, resType)
+
+    def newLikeThis(paramNames: List[ThisName], variances: List[Variance], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): This =
+      HKTypeLambda(paramNames, variances)(
           x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
           x => resType.subst(this, x))
+
+    def withVariances(variances: List[Variance])(implicit ctx: Context): This =
+      newLikeThis(paramNames, variances, paramInfos, resType)
 
     protected def prefixString: String = "HKTypeLambda"
     final override def toString: String =

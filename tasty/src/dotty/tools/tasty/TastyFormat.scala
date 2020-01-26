@@ -154,7 +154,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   REFINEDtype    Length underlying_Type refinement_NameRef info_Type -- underlying { refinement_name : info }
                   APPLIEDtype    Length tycon_Type arg_Type*                       -- tycon[args]
                   TYPEALIAS             alias_Type                                 -- = alias
-                  TYPEBOUNDS     Length low_Type high_Type                         -- >: low <: high
+                  TYPEBOUNDS     Length lowOrAlias_Type high_Type? Variance*       -- = alias or >: low <: high, possibly with variances of lambda parameters
                   ANNOTATEDtype  Length underlying_Type annotation_Term            -- underlying @ annotation
                   ANDtype        Length left_Type right_Type                       -- left & right
                   ORtype         Length left_Type right_Type                       -- lefgt | right
@@ -212,6 +212,10 @@ Standard-Section: "ASTs" TopLevelStat*
                   EXPORTED                                                         -- An export forwarder
                   OPEN                                                             -- an open class
                   Annotation
+
+  Variance      = SEALED                                                           -- invariant
+                | COVARIANT
+                | CONTRAVARIANT
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term             -- An annotation, given (class) type of constructor, and full application tree
 

@@ -16,6 +16,7 @@ import Flags._
 import Constants._
 import Annotations._
 import NameKinds._
+import Variances.Invariant
 import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import util.Spans._
@@ -303,6 +304,17 @@ class TreeUnpickler(reader: TastyReader,
           result.asInstanceOf[LT]
         }
 
+        def readVariances(tp: Type): Type = tp match
+          case tp: HKTypeLambda if currentAddr != end =>
+            val vs = until(end) {
+              readByte() match
+                case STABLE => Invariant
+                case COVARIANT => Covariant
+                case CONTRAVARIANT => Contravariant
+            }
+            tp.withVariances(vs)
+          case _ => tp
+
         val result =
           (tag: @switch) match {
             case TERMREFin =>
@@ -335,9 +347,10 @@ class TreeUnpickler(reader: TastyReader,
               readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
               val lo = readType()
-              val hi = readType()
-              if (lo.isMatch && (lo `eq` hi)) MatchAlias(lo)
-              else TypeBounds(lo, hi)
+              val hi = if nothingButMods(end) then lo else readType()
+              val variantHi = readVariances(hi)
+              if (lo.isMatch && (lo `eq` hi)) MatchAlias(variantHi)
+              else TypeBounds(lo, variantHi)
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
             case ANDtype =>
