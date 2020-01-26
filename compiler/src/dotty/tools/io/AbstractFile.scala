@@ -10,7 +10,7 @@ import java.io.{
   ByteArrayOutputStream
 }
 import java.net.URL
-import java.nio.file.{Files, Paths}
+import java.nio.file.{FileAlreadyExistsException, Files, Paths}
 
 /**
  * An abstraction over files for use in the reflection/compiler libraries.
@@ -235,17 +235,21 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
     file
   }
 
-  private def fileOrSubdirectoryNamed(name: String, isDir: Boolean): AbstractFile = {
-    val lookup = lookupName(name, isDir)
-    if (lookup != null) lookup
-    else {
-      Files.createDirectories(jpath)
-      val path = jpath.resolve(name)
-      if (isDir) Files.createDirectory(path)
-      else Files.createFile(path)
-      new PlainFile(new File(path))
+  private def fileOrSubdirectoryNamed(name: String, isDir: Boolean): AbstractFile =
+    lookupName(name, isDir) match {
+      case null =>
+        // the optional exception may be thrown for symlinks, notably /tmp on MacOS.
+        // isDirectory tests for existing directory. The default behavior is hypothetical isDirectory(jpath, FOLLOW_LINKS).
+        try Files.createDirectories(jpath)
+        catch { case _: FileAlreadyExistsException if Files.isDirectory(jpath) => }
+
+        // a race condition in creating the entry after the failed lookup may throw
+        val path = jpath.resolve(name)
+        if (isDir) Files.createDirectory(path)
+        else Files.createFile(path)
+        new PlainFile(new File(path))
+      case lookup => lookup
     }
-  }
 
   /**
    * Get the file in this directory with the given name,
