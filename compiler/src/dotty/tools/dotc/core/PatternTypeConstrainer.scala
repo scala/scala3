@@ -191,7 +191,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       def apply(tp: Type) = mapOver(tp) match {
         case tp @ AppliedType(tycon, args) =>
           val args1 = args.zipWithConserve(tycon.typeParams)((arg, tparam) =>
-            if (tparam.paramVariance != 0) TypeBounds.empty else arg
+            if (tparam.paramVarianceSign != 0) TypeBounds.empty else arg
           )
           tp.derivedAppliedType(tycon, args1)
         case tp =>

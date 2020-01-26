@@ -310,11 +310,11 @@ class TypeApplications(val self: Type) extends AnyVal {
     else {
       def adaptArg(arg: Type): Type = arg match {
         case arg @ HKTypeLambda(tparams, body) if
-             !tparams.corresponds(hkParams)(_.paramVariance == _.paramVariance) &&
+             !tparams.corresponds(hkParams)(_.paramVarianceSign == _.paramVarianceSign) &&
              tparams.corresponds(hkParams)(varianceConforms) =>
           HKTypeLambda(
             tparams.lazyZip(hkParams).map((tparam, hkparam) =>
-              tparam.paramName.withVariance(hkparam.paramVariance)))(
+              tparam.paramName.withVariance(hkparam.paramVarianceSign)))(
             tl => arg.paramInfos.map(_.subst(arg, tl).bounds),
             tl => arg.resultType.subst(arg, tl)
           )

@@ -87,7 +87,7 @@ object Variances {
         args match {
           case arg :: args1 =>
             varianceInArgs(
-              v & compose(varianceInType(arg)(tparam), tparams.head.paramVariance),
+              v & compose(varianceInType(arg)(tparam), tparams.head.paramVarianceSign),
               args1, tparams.tail)
           case nil =>
             v
@@ -131,7 +131,7 @@ object Variances {
   /** Does the variance of type parameter `tparam1` conform to the variance of type parameter `tparam2`?
    */
    def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(implicit ctx: Context): Boolean =
-    varianceConforms(tparam1.paramVariance, tparam2.paramVariance)
+    varianceConforms(tparam1.paramVarianceSign, tparam2.paramVarianceSign)
 
   /** Do the variances of type parameters `tparams1` conform to the variances
    *  of corresponding type parameters `tparams2`?

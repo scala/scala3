@@ -2035,7 +2035,7 @@ object Types {
       if (0 <= idx && idx < args.length) {
         val argInfo = args(idx) match {
           case arg: TypeBounds =>
-            val v = param.paramVariance
+            val v = param.paramVarianceSign
             val pbounds = param.paramInfo
             if (v > 0 && pbounds.loBound.dealiasKeepAnnots.isBottomType) TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
             else if (v < 0 && pbounds.hiBound.dealiasKeepAnnots.isTopType) TypeAlias(arg.loBound | rebase(pbounds.loBound))
@@ -2191,7 +2191,7 @@ object Types {
         case base: AndOrType =>
           var tp1 = argForParam(base.tp1)
           var tp2 = argForParam(base.tp2)
-          val variance = tparam.paramVariance
+          val variance = tparam.paramVarianceSign
           if (isBounds(tp1) || isBounds(tp2) || variance == 0) {
             // compute argument as a type bounds instead of a point type
             tp1 = tp1.bounds
@@ -3529,7 +3529,7 @@ object Types {
         pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
 
     override def paramName(param: ParamInfo.Of[TypeName])(implicit ctx: Context): TypeName =
-      param.paramName.withVariance(param.paramVariance)
+      param.paramName.withVariance(param.paramVarianceSign)
 
     /** Distributes Lambda inside type bounds. Examples:
      *
@@ -3585,7 +3585,7 @@ object Types {
     def paramInfo(implicit ctx: Context): tl.PInfo = tl.paramInfos(n)
     def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context): tl.PInfo = paramInfo
     def paramInfoOrCompleter(implicit ctx: Context): Type = paramInfo
-    def paramVariance(implicit ctx: Context): Int = tl.paramNames(n).variance
+    def paramVarianceSign(implicit ctx: Context): Int = tl.paramNames(n).variance
     def paramRef(implicit ctx: Context): Type = tl.paramRefs(n)
   }
 
@@ -4685,7 +4685,7 @@ object Types {
             case arg :: otherArgs if tparams.nonEmpty =>
               val arg1 = arg match {
                 case arg: TypeBounds => this(arg)
-                case arg => atVariance(variance * tparams.head.paramVariance)(this(arg))
+                case arg => atVariance(variance * tparams.head.paramVarianceSign)(this(arg))
               }
               val otherArgs1 = mapArgs(otherArgs, tparams.tail)
               if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
@@ -4987,7 +4987,7 @@ object Types {
               // @return  operation succeeded for all arguments.
               def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
                 case Range(lo, hi) :: args1 =>
-                  val v = tparams.head.paramVariance
+                  val v = tparams.head.paramVarianceSign
                   if (v == 0) false
                   else {
                     if (v > 0) { loBuf += lo; hiBuf += hi }
@@ -5105,7 +5105,7 @@ object Types {
             val tparam = tparams.head
             val acc = args.head match {
               case arg: TypeBounds => this(x, arg)
-              case arg => atVariance(variance * tparam.paramVariance)(this(x, arg))
+              case arg => atVariance(variance * tparam.paramVarianceSign)(this(x, arg))
             }
             foldArgs(acc, tparams.tail, args.tail)
           }

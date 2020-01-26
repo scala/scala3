@@ -1214,7 +1214,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       if (args1.isEmpty) args2.isEmpty
       else args2.nonEmpty && {
         val tparam = tparams2.head
-        val v = tparam.paramVariance
+        val v = tparam.paramVarianceSign
 
         /** Try a capture conversion:
          *  If the original left-hand type `leftRoot` is a path `p.type`,
@@ -1840,7 +1840,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         val arg1 :: args1Rest = args1
         val arg2 :: args2Rest = args2
         val common = singletonInterval(arg1, arg2)
-        val v = tparam.paramVariance
+        val v = tparam.paramVarianceSign
         val lubArg =
           if (common.exists) common
           else if (v > 0) lub(arg1.hiBound, arg2.hiBound, canConstrain)
@@ -1872,7 +1872,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         val arg1 :: args1Rest = args1
         val arg2 :: args2Rest = args2
         val common = singletonInterval(arg1, arg2)
-        val v = tparam.paramVariance
+        val v = tparam.paramVarianceSign
         val glbArg =
           if (common.exists) common
           else if (v > 0) glb(arg1.hiBound, arg2.hiBound)
@@ -2022,7 +2022,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       HKTypeLambda(
         paramNames = HKTypeLambda.syntheticParamNames(tparams1.length).lazyZip(tparams1).lazyZip(tparams2)
           .map((pname, tparam1, tparam2) =>
-            pname.withVariance((tparam1.paramVariance + tparam2.paramVariance) / 2)))(
+            pname.withVariance((tparam1.paramVarianceSign + tparam2.paramVarianceSign) / 2)))(
         paramInfosExp = tl => tparams1.lazyZip(tparams2).map((tparam1, tparam2) =>
           tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
           tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
@@ -2211,7 +2211,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       case OrType(tp1, tp2) => provablyEmpty(tp1) && provablyEmpty(tp2)
       case at @ AppliedType(tycon, args) =>
         args.lazyZip(tycon.typeParams).exists { (arg, tparam) =>
-          tparam.paramVariance >= 0
+          tparam.paramVarianceSign >= 0
           && provablyEmpty(arg)
           && typeparamCorrespondsToField(tycon, tparam)
         }
@@ -2286,7 +2286,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
         args1.lazyZip(args2).lazyZip(tycon1.typeParams).exists {
           (arg1, arg2, tparam) =>
-            val v = tparam.paramVariance
+            val v = tparam.paramVarianceSign
             if (v > 0)
               covariantDisjoint(arg1, arg2, tparam)
             else if (v < 0)
