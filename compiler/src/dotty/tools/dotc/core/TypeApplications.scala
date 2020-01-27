@@ -271,62 +271,6 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
-  /** If argument A and type parameter P are higher-kinded, adapt the variances
-   *  of A to those of P, ensuring that the variances of the type lambda A
-   *  agree with the variances of corresponding higher-kinded type parameters of P. Example:
-   *
-   *     class GenericCompanion[+CC[X]]
-   *     GenericCompanion[List]
-   *
-   *  with adaptHkVariances, the argument `List` will expand to
-   *
-   *     [X] => List[X]
-   *
-   *  instead of
-   *
-   *     [+X] => List[X]
-   *
-   *  even though `List` is covariant. This adaptation is necessary to ignore conflicting
-   *  variances in overriding members that have types of hk-type parameters such as
-   *  `GenericCompanion[GenTraversable]` or `GenericCompanion[ListBuffer]`.
-   *  When checking overriding, we need to validate the subtype relationship
-   *
-   *      GenericCompanion[[X] -> ListBuffer[X]] <: GenericCompanion[[+X] -> GenTraversable[X]]
-   *
-   *   Without adaptation, this would be false, and hence an overriding error would
-   *   result. But with adaptation, the rhs argument will be adapted to
-   *
-   *     [X] -> GenTraversable[X]
-   *
-   *   which makes the subtype test succeed. The crucial point here is that, since
-   *   GenericCompanion only expects a non-variant CC, the fact that GenTraversable
-   *   is covariant is irrelevant, so can be ignored.
-   */
-  def adaptHkVariances(bound: Type)(implicit ctx: Context): Type = self/*{
-    val hkParams = bound.hkTypeParams
-    if (hkParams.isEmpty) self
-    else {
-      def adaptArg(arg: Type): Type = arg match {
-        case arg @ HKTypeLambda(tparams, body) if
-             !tparams.corresponds(hkParams)(_.paramVarianceSign == _.paramVarianceSign) &&
-             tparams.corresponds(hkParams)(varianceConforms) =>
-          HKTypeLambda(
-            tparams.lazyZip(hkParams).map((tparam, hkparam) =>
-              tparam.paramName.withVariance(hkparam.paramVarianceSign)))(
-            tl => arg.paramInfos.map(_.subst(arg, tl).bounds),
-            tl => arg.resultType.subst(arg, tl)
-          )
-        case arg: AliasingBounds =>
-          arg.derivedAlias(adaptArg(arg.alias))
-        case arg @ TypeBounds(lo, hi) =>
-          arg.derivedTypeBounds(adaptArg(lo), adaptArg(hi))
-        case _ =>
-          arg
-      }
-      adaptArg(self)
-    }
-  }*/
-
   /** The type representing
    *
    *     T[U1, ..., Un]

@@ -1279,14 +1279,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             }
         }
 
-        val arg1 = args1.head
-        val arg2 = args2.head
-        isSubArg(arg1, arg2) || {
-          // last effort: try to adapt variances of higher-kinded types if this is sound.
-          // TODO: Move this to eta-expansion?
-          val adapted2 = arg2.adaptHkVariances(tparam.paramInfo)
-          adapted2.ne(arg2) && isSubArg(arg1, adapted2)
-        }
+        isSubArg(args1.head, args2.head)
       } && recurArgs(args1.tail, args2.tail, tparams2.tail)
 
     recurArgs(args1, args2, tparams2)
@@ -1553,19 +1546,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *       Further, no refinement refers back to the refined type via a refined this.
    *  The precondition is established by `skipMatching`.
    */
-  private def isSubRefinements(tp1: RefinedType, tp2: RefinedType, limit: Type): Boolean = {
-    def hasSubRefinement(tp1: RefinedType, refine2: Type): Boolean =
-      isSubType(tp1.refinedInfo, refine2) || {
-        // last effort: try to adapt variances of higher-kinded types if this is sound.
-        // TODO: Move this to eta-expansion?
-        val adapted2 = refine2.adaptHkVariances(tp1.parent.member(tp1.refinedName).symbol.info)
-        adapted2.ne(refine2) && hasSubRefinement(tp1, adapted2)
-      }
-    hasSubRefinement(tp1, tp2.refinedInfo) && (
-      (tp2.parent eq limit) ||
-      isSubRefinements(
-        tp1.parent.asInstanceOf[RefinedType], tp2.parent.asInstanceOf[RefinedType], limit))
-  }
+  private def isSubRefinements(tp1: RefinedType, tp2: RefinedType, limit: Type): Boolean =
+    isSubType(tp1.refinedInfo, tp2.refinedInfo)
+    && ((tp2.parent eq limit)
+       || isSubRefinements(
+            tp1.parent.asInstanceOf[RefinedType],
+            tp2.parent.asInstanceOf[RefinedType], limit))
 
   /** A type has been covered previously in subtype checking if it
    *  is some combination of TypeRefs that point to classes, where the
