@@ -3564,7 +3564,9 @@ object Types {
         pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
 
     override def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type)(implicit ctx: Context): Type =
-      fromParams(params, resultType, useVariances = resultType.isInstanceOf[TypeBounds])
+      resultType match
+        case bounds: TypeBounds => boundsFromParams(params, bounds)
+        case _ => super.fromParams(params, resultType)
 
     /** Distributes Lambda inside type bounds. Examples:
      *
@@ -3572,13 +3574,25 @@ object Types {
      *      type T[X] <: U       becomes    type T >: Nothing <: ([X] -> U)
      *      type T[X] >: L <: U  becomes    type T >: ([X] -> L) <: ([X] -> U)
      *
-     *  @param  useVariances  If true, set parameter variances of the type lambda to be as in `params`,
-     *                        If false, TypeBounds types and match aliases aways get their variances set
-     *                        and type aliases get variances set if some parameter is not invariant,
-     *                        but variances of parameters of other types are determined structurally,
-     *                        by looking how the parameter is used in the result type.
+     *  The variances of regular TypeBounds types, as well as of match aliases
+     *  and of opaque aliases are always determined from the given parameters
+     *  `params`. The variances of other type aliases are determined from
+     *  the given parameters only if one of these parameters carries a `+`
+     *  or `-` variance annotation. Type aliases without variance annotation
+     *  are treated structurally. That is, their parameter variances are
+     *  determined by how the parameter(s) appear in the result type.
+     *
+     *  Examples:
+     *
+     *    type T[X] >: A              // X is invariant
+     *    type T[X] <: List[X]        // X is invariant
+     *    type T[X] = List[X]         // X is covariant (determined structurally)
+     *    opaque type T[X] = List[X]  // X is invariant
+     *    opaque type T[+X] = List[X] // X is covariant
+     *    type T[A, B] = A => B       // A is contravariant, B is covariant (determined structurally)
+     *    type T[A, +B] = A => B      // A is invariant, B is covariant
      */
-    def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type, useVariances: Boolean)(implicit ctx: Context): Type = {
+    def boundsFromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], bounds: TypeBounds)(implicit ctx: Context): TypeBounds = {
       def expand(tp: Type, useVariances: Boolean) =
         if params.nonEmpty && useVariances then
           apply(params.map(_.paramName), params.map(_.paramVariance))(
@@ -3586,17 +3600,19 @@ object Types {
             tl => tl.integrate(params, tp))
         else
           super.fromParams(params, tp)
-      resultType match {
-        case rt: MatchAlias =>
-          rt.derivedAlias(expand(rt.alias, true))
-        case rt: TypeAlias =>
-          rt.derivedAlias(expand(rt.alias, params.exists(!_.paramVariance.isEmpty)))
-        case rt @ TypeBounds(lo, hi) =>
-          rt.derivedTypeBounds(
-            if (lo.isRef(defn.NothingClass)) lo else expand(lo, true),
+      def isOpaqueAlias = params match
+        case (param: Symbol) :: _ => param.owner.is(Opaque)
+        case _ => false
+      bounds match {
+        case bounds: MatchAlias =>
+          bounds.derivedAlias(expand(bounds.alias, true))
+        case bounds: TypeAlias =>
+          bounds.derivedAlias(expand(bounds.alias,
+            isOpaqueAlias | params.exists(!_.paramVariance.isEmpty)))
+        case TypeBounds(lo, hi) =>
+          bounds.derivedTypeBounds(
+            if lo.isRef(defn.NothingClass) then lo else expand(lo, true),
             expand(hi, true))
-        case rt =>
-          expand(rt, useVariances)
       }
     }
   }
