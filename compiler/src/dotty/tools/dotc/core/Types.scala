@@ -18,7 +18,7 @@ import Decorators._
 import Denotations._
 import Periods._
 import CheckRealizable._
-import Variances.{Variance, varianceFromInt, varianceToInt}
+import Variances.{Variance, varianceFromInt, varianceToInt, setStructuralVariances, Invariant}
 import util.Stats._
 import util.SimpleIdentitySet
 import reporting.diagnostic.Message
@@ -3409,12 +3409,8 @@ object Types {
 
     def newParamRef(n: Int): TypeParamRef = new TypeParamRefImpl(this, n)
 
-    protected var myTypeParams: List[LambdaParam] = null
-
-    def typeParams: List[LambdaParam] =
-      if myTypeParams == null then
-        myTypeParams = paramNames.indices.toList.map(new LambdaParam(this, _))
-      myTypeParams
+    @threadUnsafe lazy val typeParams: List[LambdaParam] =
+      paramNames.indices.toList.map(new LambdaParam(this, _))
 
     def derivedLambdaAbstraction(paramNames: List[TypeName], paramInfos: List[TypeBounds], resType: Type)(implicit ctx: Context): Type =
       resType match {
@@ -3632,6 +3628,11 @@ object Types {
     def paramRef(implicit ctx: Context): Type = tl.paramRefs(n)
 
     private var myVariance: FlagSet = UndefinedFlags
+    def storedVariance_= (v: Variance): Unit =
+      myVariance = v
+    def storedVariance: Variance =
+      myVariance
+
     def givenVariance_=(v: Variance): Unit =
       assert(myVariance == UndefinedFlags)
       myVariance = v
@@ -3641,7 +3642,11 @@ object Types {
 
     def paramVariance(implicit ctx: Context): Variance =
       if myVariance == UndefinedFlags then
-        myVariance = varianceFromInt(tl.paramNames(n).variance)
+        tl match
+          case tl: HKTypeLambda =>
+            setStructuralVariances(tl)
+          case _ =>
+            myVariance = Invariant
       myVariance
   }
 

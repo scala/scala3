@@ -139,8 +139,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** The type parameters of this type are:
    *  For a ClassInfo type, the type parameters of its class.
    *  For a typeref referring to a class, the type parameters of the class.
-   *  For a typeref referring to a Lambda class, the type parameters of
-   *    its right hand side or upper bound.
    *  For a refinement type, the type parameters of its parent, dropping
    *  any type parameter that is-rebound by the refinement.
    */

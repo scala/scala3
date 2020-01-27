@@ -3,6 +3,7 @@ package core
 
 import Types._, Contexts._, Flags._, Symbols._, Annotations._
 import TypeApplications.TypeParamInfo
+import Decorators._
 
 object Variances {
 
@@ -108,24 +109,19 @@ object Variances {
       Bivariant
   }
 
-  /** A map from the index of a lambda parameter to its variance in -1 .. 1 */
-  type ParamVarianceMap = Map[Int, Int]
-
-  def lambdaVariances(lam: HKTypeLambda)(implicit ctx: Context): ParamVarianceMap =
-    object accu extends TypeAccumulator[ParamVarianceMap] {
-      def apply(vmap: ParamVarianceMap, t: Type): ParamVarianceMap = t match {
+  def setStructuralVariances(lam: HKTypeLambda)(implicit ctx: Context): Unit =
+    assert(!lam.isVariant)
+    for param <- lam.typeParams do param.storedVariance = Bivariant
+    object traverse extends TypeAccumulator[Unit] {
+      def apply(x: Unit, t: Type): Unit = t match
         case t: TypeParamRef if t.binder eq lam =>
-          val idx = t.paramNum
-          vmap.get(idx) match
-            case None =>
-              vmap.updated(idx, variance)
-            case Some(v) =>
-              if v == variance || v == 0 then vmap else vmap.updated(idx, 0)
+          lam.typeParams(t.paramNum).storedVariance &= varianceFromInt(variance)
+        case _: LazyRef =>
+          x
         case _ =>
-          foldOver(vmap, t)
-      }
+          foldOver(x, t)
     }
-    accu(Map(), lam.resType)
+    traverse((), lam.resType)
 
   /** Does variance `v1` conform to variance `v2`?
    *  This is the case if the variances are the same or `sym` is nonvariant.
@@ -136,21 +132,19 @@ object Variances {
   /** Does the variance of type parameter `tparam1` conform to the variance of type parameter `tparam2`?
    */
    def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(implicit ctx: Context): Boolean =
-    varianceConforms(tparam1.paramVarianceSign, tparam2.paramVarianceSign)
+    tparam1.paramVariance.isAllOf(tparam2.paramVariance)
 
   /** Do the variances of type parameters `tparams1` conform to the variances
    *  of corresponding type parameters `tparams2`?
    *  This is only the case of `tparams1` and `tparams2` have the same length.
    */
   def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(implicit ctx: Context): Boolean =
-    tparams1.corresponds(tparams2)(varianceConforms)
-
-  def variancesConform(vs1: List[Variance], vs2: List[Variance]): Boolean = vs2 match
-    case v2 :: rest2 =>
-      vs1 match
-        case v1 :: rest1 => v1.isAllOf(v2) && variancesConform(rest1, rest2)
-        case nil => v2.isEmpty && variancesConform(vs1, rest2)
-    case nil => true
+    val needsDetailedCheck = tparams2 match
+      case (_: Symbol) :: _ => true
+      case LambdaParam(tl: HKTypeLambda, _) :: _ => tl.isVariant
+      case _ => false
+    if needsDetailedCheck then tparams1.corresponds(tparams2)(varianceConforms)
+    else tparams1.hasSameLengthAs(tparams2)
 
   def varianceString(sym: Symbol)(implicit ctx: Context): String =
     varianceString(sym.variance)
