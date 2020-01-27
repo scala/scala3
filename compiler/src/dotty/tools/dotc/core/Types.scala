@@ -3564,29 +3564,32 @@ object Types {
       apply(syntheticParamNames(n))(
         pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
 
+    override def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type)(implicit ctx: Context): Type =
+      fromParams(params, resultType, useVariances = resultType.isInstanceOf[TypeBounds])
+
     /** Distributes Lambda inside type bounds. Examples:
      *
      *      type T[X] = U        becomes    type T = [X] -> U
      *      type T[X] <: U       becomes    type T >: Nothing <: ([X] -> U)
      *      type T[X] >: L <: U  becomes    type T >: ([X] -> L) <: ([X] -> U)
      */
-    override def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type)(implicit ctx: Context): Type = {
-      def expand(tp: Type, useVariances: Boolean) = params match
-        case (param: Symbol) :: _ if useVariances =>
+    def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type, useVariances: Boolean)(implicit ctx: Context): Type = {
+      def expand(tp: Type, useVariances: Boolean) =
+        if params.nonEmpty then
           apply(params.map(_.paramName), params.map(_.paramVariance))(
             tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
-            tl => tl.integrate(params, tp.resultType))
-        case _ =>
+            tl => tl.integrate(params, tp))
+        else
           super.fromParams(params, tp)
       resultType match {
         case rt: AliasingBounds =>
-          rt.derivedAlias(expand(rt.alias, true))
+          rt.derivedAlias(expand(rt.alias, useVariances))
         case rt @ TypeBounds(lo, hi) =>
           rt.derivedTypeBounds(
             if (lo.isRef(defn.NothingClass)) lo else expand(lo, false),
-            expand(hi, true))
+            expand(hi, useVariances))
         case rt =>
-          expand(rt, false)
+          expand(rt, useVariances)
       }
     }
   }

@@ -28,8 +28,11 @@ object VarianceChecker {
   def checkLambda(tree: tpd.LambdaTypeTree)(implicit ctx: Context): Unit = {
     def checkType(tl: HKTypeLambda): Unit = {
       val checkOK = new TypeAccumulator[Boolean] {
+        def paramVarianceSign(tref: TypeParamRef) =
+          tl.typeParams(tref.paramNum).paramVarianceSign
         def error(tref: TypeParamRef) = {
-          val VariantName(paramName, v) = tl.paramNames(tref.paramNum).toTermName
+          val paramName = tl.paramNames(tref.paramNum).toTermName
+          val v = paramVarianceSign(tref)
           val paramVarianceStr = if (v == 0) "contra" else "co"
           val occursStr = variance match {
             case -1 => "contra"
@@ -45,7 +48,7 @@ object VarianceChecker {
         def apply(x: Boolean, t: Type) = x && {
           t match {
             case tref: TypeParamRef if tref.binder `eq` tl =>
-              val v = tl.typeParams(tref.paramNum).paramVarianceSign
+              val v = paramVarianceSign(tref)
               varianceConforms(variance, v) || { error(tref); false }
             case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
               x

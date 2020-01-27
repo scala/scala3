@@ -1505,7 +1505,7 @@ class Namer { typer: Typer =>
   }
 
   def typeDefSig(tdef: TypeDef, sym: Symbol, tparamSyms: List[TypeSymbol])(implicit ctx: Context): Type = {
-    def abstracted(tp: Type): Type = HKTypeLambda.fromParams(tparamSyms, tp)
+    def abstracted(tp: Type): Type = HKTypeLambda.fromParams(tparamSyms, tp, useVariances = true)
     val dummyInfo1 = abstracted(TypeBounds.empty)
     sym.info = dummyInfo1
     sym.setFlag(Provisional)
