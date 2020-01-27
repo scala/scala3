@@ -132,12 +132,12 @@ parameters:
 ```scala
 inline def sumTwice(a: Int, b: =>Int, inline c: Int) = a + a + b + b + c + c
 
-sumTwice(x(), y(), z())
+sumTwice(f(), g(), h())
 // translates to
 //
-//    val a = x()
-//    def b = y()
-//    a + a + b + b + z() + z()
+//    val a = f()
+//    def b = g()
+//    a + a + b + b + h() + h()
 ```
 
 ### Relationship to @inline
