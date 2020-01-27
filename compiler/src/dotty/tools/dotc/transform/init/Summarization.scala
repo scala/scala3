@@ -150,7 +150,7 @@ object Summarization {
         (Potentials.empty, effs ++ pots.promote(expr))
 
       case WhileDo(cond, body) =>
-        // for lazy fields, the translation may result im `while (<empty>)`
+        // for lazy fields, the translation may result in `while (<empty>)`
         val (_, effs1) = if (cond.isEmpty) Summary.empty else analyze(cond)
         val (_, effs2) = analyze(body)
         (Potentials.empty, effs1 ++ effs2)
@@ -178,7 +178,7 @@ object Summarization {
         analyze(expansion).withEffs(effs)
 
       case vdef : ValDef =>
-        val (pots, effs) = analyze(vdef.rhs)
+        lazy val (pots, effs) = analyze(vdef.rhs)
 
         if (vdef.symbol.owner.isClass)
           (Potentials.empty, if (vdef.symbol.is(Flags.Lazy)) Effects.empty else effs)
@@ -190,7 +190,7 @@ object Summarization {
         Summary.empty
 
       case ddef : DefDef =>
-        val (pots, effs) = analyze(ddef.rhs)
+        lazy val (pots, effs) = analyze(ddef.rhs)
 
         if (ddef.symbol.owner.isClass) Summary.empty
         else (Potentials.empty, pots.promote(ddef) ++ effs)
@@ -265,8 +265,9 @@ object Summarization {
       val tpl = ctor.owner.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
       val effs = analyze(Block(tpl.body, unitLiteral))._2
 
-      def parentArgEffs(stats: List[Tree]): Effects =
-        stats.foldLeft(Effects.empty) { (acc, stat) =>
+      def parentArgEffsWithInit(stats: List[Tree], ctor: Symbol, source: Tree): Effects =
+        val initCall = MethodCall(ThisRef(cls)(source), ctor)(source)
+        stats.foldLeft(Set(initCall)) { (acc, stat) =>
           val (_, effs) = Summarization.analyze(stat)
           acc ++ effs
         }
@@ -275,18 +276,15 @@ object Summarization {
         effs ++ (parent match {
           case tree @ Block(stats, parent) =>
             val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
-            parentArgEffs(qual :: stats ++ argss.flatten) +
-              MethodCall(ThisRef(cls)(tree), ctor.symbol)(tree)
+            parentArgEffsWithInit(qual :: stats ++ argss.flatten, ctor.symbol, tree)
 
           case tree @ Apply(Block(stats, parent), args) =>
             val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
-            parentArgEffs(qual :: stats ++ args ++ argss.flatten) +
-              MethodCall(ThisRef(cls)(tree), ctor.symbol)(tree)
+            parentArgEffsWithInit(qual :: stats ++ args ++ argss.flatten, ctor.symbol, tree)
 
           case parent : Apply =>
             val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
-            parentArgEffs(qual :: argss.flatten) +
-              MethodCall(ThisRef(cls)(parent), ctor.symbol)(parent)
+            parentArgEffsWithInit(qual :: argss.flatten, ctor.symbol, parent)
 
           case ref =>
             val tref: TypeRef = ref.tpe.typeConstructor.asInstanceOf
@@ -305,38 +303,31 @@ object Summarization {
   }
 
   def classSummary(cls: ClassSymbol)(implicit env: Env): ClassSummary =
+    def extractParentOuters(parent: Type, source: Tree): (ClassSymbol, Potentials) = {
+      val tref = parent.typeConstructor.asInstanceOf[TypeRef]
+      val parentCls = tref.classSymbol.asClass
+      if (tref.prefix != NoPrefix)
+        parentCls ->analyze(tref.prefix, source)._1
+      else
+        parentCls -> analyze(cls.enclosingClass.thisType, source)._1
+    }
+
     if (cls.defTree.isEmpty)
       cls.info match {
         case cinfo: ClassInfo =>
-          val parentOuter: List[(ClassSymbol, Potentials)] = cinfo.classParents.map {
-            case parentTp: TypeRef =>
-              val source = {
-                implicit val ctx2: Context = theCtx.withSource(cls.source(theCtx))
-                TypeTree(parentTp).withSpan(cls.span)
-              }
-              val parentCls = parentTp.classSymbol.asClass
-              if (parentTp.prefix != NoPrefix)
-                parentCls -> analyze(parentTp.prefix, source)._1
-              else
-                parentCls -> analyze(cls.enclosingClass.thisType, source)._1
+          val source = {
+            implicit val ctx2: Context = theCtx.withSource(cls.source(theCtx))
+            TypeTree(cls.typeRef).withSpan(cls.span)
           }
 
-          ClassSummary(cls, parentOuter.toMap)
+          val parentOuter =  cinfo.classParents.map { extractParentOuters(_, source) }.toMap
+          ClassSummary(cls, parentOuter)
       }
     else {
       val tpl = cls.defTree.asInstanceOf[TypeDef]
       val parents = tpl.rhs.asInstanceOf[Template].parents
 
-      val parentOuter: List[(ClassSymbol, Potentials)] = parents.map { parent =>
-        val tref = parent.tpe.typeConstructor.asInstanceOf[TypeRef]
-        val parentCls = tref.classSymbol.asClass
-        if (tref.prefix != NoPrefix)
-          parentCls ->analyze(tref.prefix, parent)._1
-        else
-          parentCls -> analyze(cls.enclosingClass.thisType, parent)._1
-
-      }
-
+      val parentOuter = parents.map { parent => extractParentOuters(parent.tpe, parent) }
       ClassSummary(cls, parentOuter.toMap)
     }
 
