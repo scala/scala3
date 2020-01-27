@@ -198,6 +198,9 @@ object Summarization {
       case _: TypeDef =>
         Summary.empty
 
+      case _: Import =>
+        Summary.empty
+
       case _ =>
         throw new Exception("unexpected tree: " + expr.show)
     }
