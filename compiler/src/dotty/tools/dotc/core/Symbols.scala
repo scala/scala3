@@ -22,6 +22,7 @@ import ast.tpd
 import tpd.{Tree, TreeProvider, TreeOps}
 import ast.TreeTypeMap
 import Constants.Constant
+import Variances.{Variance, varianceFromInt}
 import reporting.diagnostic.Message
 import collection.mutable
 import io.AbstractFile
@@ -699,7 +700,7 @@ object Symbols {
     def paramInfo(implicit ctx: Context): Type = denot.info
     def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context): Type = pre.memberInfo(this)
     def paramInfoOrCompleter(implicit ctx: Context): Type = denot.infoOrCompleter
-    def paramVarianceSign(implicit ctx: Context): Int = denot.variance
+    def paramVariance(implicit ctx: Context): Variance = varianceFromInt(denot.variance)
     def paramRef(implicit ctx: Context): TypeRef = denot.typeRef
 
 // -------- Printing --------------------------------------------------------

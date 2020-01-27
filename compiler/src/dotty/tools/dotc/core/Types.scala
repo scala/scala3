@@ -3458,14 +3458,14 @@ object Types {
 
     private def setVariances(tparams: List[LambdaParam], vs: List[Variance]): Unit =
       if tparams.nonEmpty then
-        tparams.head.setVariance(vs.head)
+        tparams.head.givenVariance = vs.head
         setVariances(tparams.tail, vs.tail)
 
     val isVariant = variances.nonEmpty
     if isVariant then setVariances(typeParams, variances)
 
     def givenVariances =
-      if isVariant then typeParams.map(_.paramVariance)
+      if isVariant then typeParams.map(_.givenVariance)
       else Nil
 
     override def computeHash(bs: Binders): Int =
@@ -3479,7 +3479,7 @@ object Types {
         && isVariant == that.isVariant
         && (!isVariant
             || typeParams.corresponds(that.typeParams)((x, y) =>
-                  x.paramVariance == y.paramVariance))
+                  x.givenVariance == y.givenVariance))
         && {
           val bs1 = new BinderPairs(this, that, bs)
           paramInfos.equalElements(that.paramInfos, bs1) &&
@@ -3620,12 +3620,17 @@ object Types {
     def paramInfo(implicit ctx: Context): tl.PInfo = tl.paramInfos(n)
     def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context): tl.PInfo = paramInfo
     def paramInfoOrCompleter(implicit ctx: Context): Type = paramInfo
-    def paramVarianceSign(implicit ctx: Context): Int = tl.paramNames(n).variance
     def paramRef(implicit ctx: Context): Type = tl.paramRefs(n)
 
     private var myVariance: FlagSet = UndefinedFlags
-    def setVariance(v: Variance): Unit = myVariance = v
-    def paramVariance: Variance =
+    def givenVariance_=(v: Variance): Unit =
+      assert(myVariance == UndefinedFlags)
+      myVariance = v
+    def givenVariance: Variance =
+      assert(myVariance != UndefinedFlags)
+      myVariance
+
+    def paramVariance(implicit ctx: Context): Variance =
       if myVariance == UndefinedFlags then
         myVariance = varianceFromInt(tl.paramNames(n).variance)
       myVariance

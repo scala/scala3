@@ -11,8 +11,8 @@ object Variances {
   val Invariant: Variance = EmptyFlags
 
   def varianceFromInt(v: Int): Variance =
-    if v < 0 then Covariant
-    else if v > 0 then Contravariant
+    if v < 0 then Contravariant
+    else if v > 0 then Covariant
     else Invariant
 
   def varianceToInt(v: Variance): Int =
