@@ -3311,14 +3311,11 @@ object Types {
     def apply(paramInfos: List[PInfo], resultType: Type)(implicit ctx: Context): LT =
       apply(syntheticParamNames(paramInfos.length), paramInfos, resultType)
 
-    protected def paramName(param: ParamInfo.Of[N])(implicit ctx: Context): N =
-      param.paramName
-
     protected def toPInfo(tp: Type)(implicit ctx: Context): PInfo
 
     def fromParams[PI <: ParamInfo.Of[N]](params: List[PI], resultType: Type)(implicit ctx: Context): Type =
       if (params.isEmpty) resultType
-      else apply(params.map(paramName))(
+      else apply(params.map(_.paramName))(
         tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
         tl => tl.integrate(params, resultType))
   }
@@ -3562,9 +3559,6 @@ object Types {
       apply(syntheticParamNames(n))(
         pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
 
-    override def paramName(param: ParamInfo.Of[TypeName])(implicit ctx: Context): TypeName =
-      param.paramName.withVariance(param.paramVarianceSign)
-
     /** Distributes Lambda inside type bounds. Examples:
      *
      *      type T[X] = U        becomes    type T = [X] -> U
@@ -3572,15 +3566,22 @@ object Types {
      *      type T[X] >: L <: U  becomes    type T >: ([X] -> L) <: ([X] -> U)
      */
     override def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type)(implicit ctx: Context): Type = {
-      def expand(tp: Type) = super.fromParams(params, tp)
+      def expand(tp: Type, useVariances: Boolean) = params match
+        case (param: Symbol) :: _ if useVariances =>
+          apply(params.map(_.paramName), params.map(_.paramVariance))(
+            tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
+            tl => tl.integrate(params, tp.resultType))
+        case _ =>
+          super.fromParams(params, tp)
       resultType match {
         case rt: AliasingBounds =>
-          rt.derivedAlias(expand(rt.alias))
+          rt.derivedAlias(expand(rt.alias, true))
         case rt @ TypeBounds(lo, hi) =>
           rt.derivedTypeBounds(
-            if (lo.isRef(defn.NothingClass)) lo else expand(lo), expand(hi))
+            if (lo.isRef(defn.NothingClass)) lo else expand(lo, false),
+            expand(hi, true))
         case rt =>
-          expand(rt)
+          expand(rt, false)
       }
     }
   }
