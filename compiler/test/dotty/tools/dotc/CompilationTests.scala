@@ -63,6 +63,7 @@ class CompilationTests extends ParallelTesting {
       compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings")),
       compileFile("tests/pos-special/i7575.scala", defaultOptions.and("-language:dynamics")),
       compileFile("tests/pos-special/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
+      compileFile("tests/run/i5606.scala", defaultOptions.and("-Yretain-trees")),
     ).checkCompile()
   }
 
