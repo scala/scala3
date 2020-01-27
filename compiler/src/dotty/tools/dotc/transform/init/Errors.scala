@@ -67,7 +67,7 @@ object Errors {
 
   /** Promote `this` under initialization to fully-initialized */
   case class PromoteThis(pot: ThisRef, source: Tree, trace: Vector[Tree]) extends Error {
-    def show(implicit ctx: Context): String = "Promote `this` to be initialized while it is not."
+    def show(implicit ctx: Context): String = "Promote the value under initialization to be initialized."
   }
 
   /** Promote `this` under initialization to fully-initialized */
@@ -84,12 +84,12 @@ object Errors {
 
   case class AccessCold(field: Symbol, source: Tree, trace: Vector[Tree]) extends Error {
     def show(implicit ctx: Context): String =
-      "Access field " + source.show + " on a value under unknown initialization status" + "."
+      "Access field " + source.show + " on a value with an unknown initialization status" + "."
   }
 
   case class CallCold(meth: Symbol, source: Tree, trace: Vector[Tree]) extends Error {
     def show(implicit ctx: Context): String =
-      "Call method " + source.show + " on a value under unknown initialization" + "."
+      "Call method " + source.show + " on a value with an unknown initialization" + "."
   }
 
   case class CallUnknown(meth: Symbol, source: Tree, trace: Vector[Tree]) extends Error {
