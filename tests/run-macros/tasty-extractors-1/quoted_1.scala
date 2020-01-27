@@ -3,7 +3,7 @@ import scala.quoted.autolift.{given _}
 
 object Macros {
 
-  implicit inline def printTree[T](x: => T): Unit =
+  implicit inline def printTree[T](inline x: T): Unit =
     ${ impl('x) }
 
   def impl[T](x: Expr[T]) with (qctx: QuoteContext) : Expr[Unit] = {

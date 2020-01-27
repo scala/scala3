@@ -3360,11 +3360,11 @@ object Types {
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters:
      *   - replace @repeated annotations on Seq or Array types by <repeated> types
-     *   - add @inlineParam to inline call-by-value parameters
+     *   - add @inlineParam to inline parameters
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context): MethodType = {
       def translateInline(tp: Type): Type = tp match {
-        case _: ExprType => tp
+        case ExprType(resType) => ExprType(AnnotatedType(resType, Annotation(defn.InlineParamAnnot)))
         case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
       }
       def paramInfo(param: Symbol) = {

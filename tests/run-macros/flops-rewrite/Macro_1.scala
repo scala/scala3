@@ -1,6 +1,6 @@
 import scala.quoted._
 
-inline def rewrite[T](x: => T): T = ${ rewriteMacro('x) }
+inline def rewrite[T](inline x: T): T = ${ rewriteMacro('x) }
 
 private def rewriteMacro[T: Type](x: Expr[T]) with QuoteContext : Expr[T] = {
   val rewriter = Rewriter(

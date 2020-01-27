@@ -3,7 +3,7 @@ import scala.quoted._
 
 object Foo {
 
-  inline def inspectBody(i: => Int): String =
+  inline def inspectBody(inline i: Int): String =
     ${ inspectBodyImpl('i) }
 
   def inspectBodyImpl(x: Expr[Int]) with (qctx: QuoteContext) : Expr[String] = {

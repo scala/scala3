@@ -4,7 +4,7 @@ import scala.quoted.matching._
 
 object Macros {
 
-  inline def (self: => StringContext) xyz(args: => String*): String = ${impl('self, 'args)}
+  inline def (self: => StringContext) xyz(inline args: String*): String = ${impl('self, 'args)}
 
   private def impl(self: Expr[StringContext], args: Expr[Seq[String]]) with QuoteContext : Expr[String] = {
     (self, args) match {

@@ -262,32 +262,51 @@ type IArray[+T] = opaques.IArray[T]
 
 object IArray {
 
-  /** An immutable array of length 0.
-   */
+  /** An immutable array of length 0. */
   def empty[T: ClassTag]: IArray[T] = new Array[T](0).asInstanceOf
 
+  /** An immutable boolean array of length 0. */
   def emptyBooleanIArray = Array.emptyBooleanArray.asInstanceOf[IArray[Boolean]]
+  /** An immutable byte array of length 0. */
   def emptyByteIArray    = Array.emptyByteArray.asInstanceOf[IArray[Byte]]
+  /** An immutable char array of length 0. */
   def emptyCharIArray    = Array.emptyCharArray.asInstanceOf[IArray[Char]]
+  /** An immutable double array of length 0. */
   def emptyDoubleIArray  = Array.emptyDoubleArray.asInstanceOf[IArray[Double]]
+  /** An immutable float array of length 0. */
   def emptyFloatIArray   = Array.emptyFloatArray.asInstanceOf[IArray[Float]]
+  /** An immutable int array of length 0. */
   def emptyIntIArray     = Array.emptyIntArray.asInstanceOf[IArray[Int]]
+  /** An immutable long array of length 0. */
   def emptyLongIArray    = Array.emptyLongArray.asInstanceOf[IArray[Long]]
+  /** An immutable short array of length 0. */
   def emptyShortIArray   = Array.emptyShortArray.asInstanceOf[IArray[Short]]
+  /** An immutable object array of length 0. */
   def emptyObjectIArray  = Array.emptyObjectArray.asInstanceOf[IArray[Object]]
 
-  /** An immutable array with given elements.
-   */
-  inline def apply[T](xs: =>T*)(given ct: => ClassTag[T]): IArray[T] = Array(xs: _*).asInstanceOf
-  inline def apply(x: Boolean, xs: =>Boolean*): IArray[Boolean] = Array(x, xs: _*).asInstanceOf
-  inline def apply(x: Byte, xs: =>Byte*): IArray[Byte] = Array(x, xs: _*).asInstanceOf
-  inline def apply(x: Short, xs: =>Short*): IArray[Short] = Array(x, xs: _*).asInstanceOf
-  inline def apply(x: Char, xs: =>Char*): IArray[Char] = Array(x, xs: _*).asInstanceOf
-  inline def apply(x: Int, xs: =>Int*): IArray[Int] = Array(x, xs: _*).asInstanceOf
-  inline def apply(x: Long, xs: =>Long*): IArray[Long] = Array(x, xs: _*).asInstanceOf
-  inline def apply(x: Float, xs: =>Float*): IArray[Float] = Array(x, xs: _*).asInstanceOf
-  inline def apply(x: Double, xs: =>Double*): IArray[Double] = Array(x, xs: _*).asInstanceOf
-  inline def apply(x: Unit, xs: =>Unit*): IArray[Unit] = Array(x, xs: _*).asInstanceOf
+  // FIXME: add inline parameters (requires updated reference compiler)
+  //        Also change: compiler/test/dotty/tools/backend/jvm/ArrayApplyOptTest.scala
+
+  /** An immutable array with given elements. */
+  inline def apply[T](/*inline*/ xs: T*)(given ct: => ClassTag[T]): IArray[T] = Array(xs: _*).asInstanceOf
+  /** An immutable array with given elements. */
+  inline def apply(/*inline*/ x: Boolean, /*inline*/ xs: Boolean*): IArray[Boolean] = Array(x, xs: _*).asInstanceOf
+  /** An immutable array with given elements. */
+  inline def apply(/*inline*/ x: Byte, /*inline*/ xs: Byte*): IArray[Byte] = Array(x, xs: _*).asInstanceOf
+  /** An immutable array with given elements. */
+  inline def apply(/*inline*/ x: Short, /*inline*/ xs: Short*): IArray[Short] = Array(x, xs: _*).asInstanceOf
+  /** An immutable array with given elements. */
+  inline def apply(/*inline*/ x: Char, /*inline*/ xs: Char*): IArray[Char] = Array(x, xs: _*).asInstanceOf
+  /** An immutable array with given elements. */
+  inline def apply(/*inline*/ x: Int, /*inline*/ xs: Int*): IArray[Int] = Array(x, xs: _*).asInstanceOf
+  /** An immutable array with given elements. */
+  inline def apply(/*inline*/ x: Long, /*inline*/ xs: Long*): IArray[Long] = Array(x, xs: _*).asInstanceOf
+  /** An immutable array with given elements. */
+  inline def apply(/*inline*/ x: Float, /*inline*/ xs: Float*): IArray[Float] = Array(x, xs: _*).asInstanceOf
+  /** An immutable array with given elements. */
+  inline def apply(/*inline*/ x: Double, /*inline*/ xs: Double*): IArray[Double] = Array(x, xs: _*).asInstanceOf
+  /** An immutable array with given elements. */
+  inline def apply(/*inline*/ x: Unit, /*inline*/ xs: Unit*): IArray[Unit] = Array(x, xs: _*).asInstanceOf
 
   /** Concatenates all arrays into a single immutable array.
    *

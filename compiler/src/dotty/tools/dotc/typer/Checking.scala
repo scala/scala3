@@ -818,43 +818,8 @@ trait Checking {
     tree.tpe.widenTermRefExpr match {
       case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
       case _ =>
-        tree match {
-          case Typed(expr, _) =>
-            checkInlineConformant(expr, isFinal, what)
-          case Inlined(_, Nil, expr) =>
-            checkInlineConformant(expr, isFinal, what)
-          case SeqLiteral(elems, _) =>
-            elems.foreach(elem => checkInlineConformant(elem, isFinal, what))
-          case Apply(fn, List(arg)) if defn.WrapArrayMethods().contains(fn.symbol) =>
-            checkInlineConformant(arg, isFinal, what)
-          case _ =>
-            def isCaseClassApply(sym: Symbol): Boolean =
-              sym.name == nme.apply && sym.is(Synthetic) && sym.owner.is(Module) && sym.owner.companionClass.is(Case)
-            def isCaseClassNew(sym: Symbol): Boolean =
-              sym.isPrimaryConstructor && sym.owner.is(Case) && sym.owner.isStatic
-            def isCaseObject(sym: Symbol): Boolean =
-              // TODO add alias to Nil in scala package
-              sym.is(Case) && sym.is(Module)
-            def isStaticEnumCase(sym: Symbol): Boolean =
-              sym.is(Enum) && sym.is(JavaStatic) && sym.is(Case)
-            val allow =
-              ctx.erasedTypes ||
-              ctx.inInlineMethod ||
-              (tree.symbol.isStatic && isCaseObject(tree.symbol) || isCaseClassApply(tree.symbol)) ||
-              isStaticEnumCase(tree.symbol) ||
-              isCaseClassNew(tree.symbol)
-
-            if (!allow) ctx.error(em"$what must be a known value", tree.sourcePos)
-            else {
-              def checkArgs(tree: Tree): Unit = tree match {
-                case Apply(fn, args) =>
-                  args.foreach(arg => checkInlineConformant(arg, isFinal, what))
-                  checkArgs(fn)
-                case _ =>
-              }
-              checkArgs(tree)
-            }
-        }
+        if (!ctx.erasedTypes && !ctx.inInlineMethod)
+          ctx.error(em"$what must be a known value", tree.sourcePos)
     }
   }
 

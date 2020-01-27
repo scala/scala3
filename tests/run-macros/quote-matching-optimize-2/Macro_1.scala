@@ -5,7 +5,7 @@ import scala.tasty.Reflection
 
 object Macro {
 
-  inline def optimize[T](x: => T): Any = ${ Macro.impl('x) }
+  inline def optimize[T](inline x: T): Any = ${ Macro.impl('x) }
 
   def impl[T: Type](x: Expr[T]) with QuoteContext : Expr[Any] = {
 
