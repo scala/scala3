@@ -302,7 +302,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *   GenericCompanion only expects a non-variant CC, the fact that GenTraversable
    *   is covariant is irrelevant, so can be ignored.
    */
-  def adaptHkVariances(bound: Type)(implicit ctx: Context): Type = {
+  def adaptHkVariances(bound: Type)(implicit ctx: Context): Type = self/*{
     val hkParams = bound.hkTypeParams
     if (hkParams.isEmpty) self
     else {
@@ -325,7 +325,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       }
       adaptArg(self)
     }
-  }
+  }*/
 
   /** The type representing
    *

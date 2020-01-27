@@ -34,7 +34,6 @@ Macro-format:
 
                   UNIQUE            Length separator_NameRef uniqid_Nat underlying_NameRef? -- Unique name A<separator><number>
                   DEFAULTGETTER     Length underlying_NameRef index_Nat                     -- DefaultGetter$<number>
-                  VARIANT           Length underlying_NameRef variance_Nat                  -- variance 0: +A, variance = 1: -A
 
                   SUPERACCESSOR     Length underlying_NameRef                               -- super$A
                   INLINEACCESSOR    Length underlying_NameRef                               -- inline$A
@@ -169,7 +168,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ERASEDGIVENMETHODtype Length result_Type NamesTypes              -- A method type `given(erased NamesTypes)result`, needed for refinements
                   IMPLICITMETHODtype    Length result_Type NamesTypes              -- A method type `(implicit NamesTypes)result`, needed for refinements
   // TODO: remove ERASEDIMPLICITMETHODtype
-                  TYPELAMBDAtype Length result_Type NamesTypes                     -- A type lambda `[NamesTypes] => result`, variance encoded using VARIANT names
+                  TYPELAMBDAtype Length result_Type NamesTypes                     -- A type lambda `[NamesTypes] => result`
                   SHAREDtype            type_ASTRef                                -- link to previously serialized type
   NamesTypes    = NameType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef                            -- `termName : type`  or  `typeName bounds`
@@ -255,7 +254,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 18
+  val MajorVersion: Int = 19
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names, should update [[nameTagToString]] if a new constant is added */
@@ -275,9 +274,6 @@ object TastyFormat {
 
     final val DEFAULTGETTER = 11     // The name `<meth-name>$default$<param-num>`
                                      // of a default getter that returns a default argument.
-
-    final val VARIANT = 12           // A name `+<name>` or `-<name>` indicating
-                                     // a co- or contra-variant parameter of a type lambda.
 
     final val SUPERACCESSOR = 20     // The name of a super accessor `super$name` created by SuperAccesors.
 
@@ -304,7 +300,6 @@ object TastyFormat {
       case EXPANDPREFIX => "EXPANDPREFIX"
       case UNIQUE => "UNIQUE"
       case DEFAULTGETTER => "DEFAULTGETTER"
-      case VARIANT => "VARIANT"
       case SUPERACCESSOR => "SUPERACCESSOR"
       case INLINEACCESSOR => "INLINEACCESSOR"
       case OBJECTCLASS => "OBJECTCLASS"

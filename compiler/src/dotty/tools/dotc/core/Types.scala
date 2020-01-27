@@ -363,6 +363,9 @@ object Types {
       case _ => false
     }
 
+    /** Is this a higher-kinded type lambda with given parameter variances? */ 
+    def isVariantLambda: Boolean = false
+
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
@@ -3453,11 +3456,11 @@ object Types {
         tparams.head.givenVariance = vs.head
         setVariances(tparams.tail, vs.tail)
 
-    val isVariant = variances.nonEmpty
-    if isVariant then setVariances(typeParams, variances)
+    override val isVariantLambda = variances.nonEmpty
+    if isVariantLambda then setVariances(typeParams, variances)
 
     def givenVariances =
-      if isVariant then typeParams.map(_.givenVariance)
+      if isVariantLambda then typeParams.map(_.givenVariance)
       else Nil
 
     override def computeHash(bs: Binders): Int =
@@ -3468,8 +3471,8 @@ object Types {
     final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: HKTypeLambda =>
         paramNames.eqElements(that.paramNames)
-        && isVariant == that.isVariant
-        && (!isVariant
+        && isVariantLambda == that.isVariantLambda
+        && (!isVariantLambda
             || typeParams.corresponds(that.typeParams)((x, y) =>
                   x.givenVariance == y.givenVariance))
         && {
@@ -3494,7 +3497,7 @@ object Types {
 
     protected def prefixString: String = "HKTypeLambda"
     final override def toString: String =
-      if isVariant then
+      if isVariantLambda then
         s"HKTypeLambda($paramNames, $paramInfos, $resType, ${givenVariances.map(_.flagsString)})"
       else super.toString
   }

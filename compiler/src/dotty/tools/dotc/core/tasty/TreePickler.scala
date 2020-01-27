@@ -135,7 +135,7 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleVariances(tp: Type)(given Context): Unit = tp match
-    case tp: HKTypeLambda if tp.isVariant =>
+    case tp: HKTypeLambda if tp.isVariantLambda =>
       for v <- tp.givenVariances do
         writeByte(
           if v.is(Covariant) then COVARIANT
@@ -240,7 +240,7 @@ class TreePickler(pickler: TastyPickler) {
       pickleType(tpe.parent)
     case tpe: TypeAlias =>
       tpe.alias match
-        case alias: HKTypeLambda if alias.isVariant =>
+        case alias: HKTypeLambda if alias.isVariantLambda =>
           writeByte(TYPEBOUNDS)
           withLength {
             pickleType(tpe.alias, richTypes)

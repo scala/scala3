@@ -331,7 +331,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     def decompose(tp: Type) = tp.stripTypeVar match
       case lam: HKTypeLambda =>
         val names =
-          if lam.isVariant then
+          if lam.isVariantLambda then
             lam.paramNames.lazyZip(lam.givenVariances).map((name, v) =>
               varianceString(varianceToInt(v)) + name)
           else lam.paramNames

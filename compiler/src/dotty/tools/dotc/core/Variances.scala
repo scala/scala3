@@ -110,7 +110,7 @@ object Variances {
   }
 
   def setStructuralVariances(lam: HKTypeLambda)(implicit ctx: Context): Unit =
-    assert(!lam.isVariant)
+    assert(!lam.isVariantLambda)
     for param <- lam.typeParams do param.storedVariance = Bivariant
     object traverse extends TypeAccumulator[Unit] {
       def apply(x: Unit, t: Type): Unit = t match
@@ -141,7 +141,7 @@ object Variances {
   def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(implicit ctx: Context): Boolean =
     val needsDetailedCheck = tparams2 match
       case (_: Symbol) :: _ => true
-      case LambdaParam(tl: HKTypeLambda, _) :: _ => tl.isVariant
+      case LambdaParam(tl: HKTypeLambda, _) :: _ => tl.isVariantLambda
       case _ => false
     if needsDetailedCheck then tparams1.corresponds(tparams2)(varianceConforms)
     else tparams1.hasSameLengthAs(tparams2)

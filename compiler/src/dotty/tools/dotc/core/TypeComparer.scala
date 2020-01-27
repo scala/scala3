@@ -11,7 +11,7 @@ import config.Config
 import config.Printers.{constr, subtyping, gadts, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
-import Variances.variancesConform
+import Variances.{Variance, variancesConform}
 import Constants.Constant
 import transform.TypeUtils._
 import transform.SymUtils._
@@ -1952,7 +1952,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       val t2 = distributeAnd(tp2, tp1)
       if (t2.exists) t2
       else if (isErased) erasedGlb(tp1, tp2, isJava = false)
-      else liftIfHK(tp1, tp2, op, original)
+      else liftIfHK(tp1, tp2, op, original, _ | _)
     }
   }
 
@@ -2000,7 +2000,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       val t2 = distributeOr(tp2, tp1)
       if (t2.exists) t2
       else if (isErased) erasedLub(tp1, tp2)
-      else liftIfHK(tp1, tp2, OrType(_, _), _ | _)
+      else liftIfHK(tp1, tp2, OrType(_, _), _ | _, _ & _)
     }
   }
 
@@ -2009,7 +2009,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *
    *    [X1, ..., Xn] -> op(tp1[X1, ..., Xn], tp2[X1, ..., Xn])
    */
-  private def liftIfHK(tp1: Type, tp2: Type, op: (Type, Type) => Type, original: (Type, Type) => Type) = {
+  private def liftIfHK(tp1: Type, tp2: Type,
+      op: (Type, Type) => Type, original: (Type, Type) => Type, combineVariance: (Variance, Variance) => Variance) = {
     val tparams1 = tp1.typeParams
     val tparams2 = tp2.typeParams
     def applied(tp: Type) = tp.appliedTo(tp.typeParams.map(_.paramInfoAsSeenFrom(tp)))
@@ -2020,9 +2021,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       original(applied(tp1), tp2)
     else if (tparams1.hasSameLengthAs(tparams2))
       HKTypeLambda(
-        paramNames = HKTypeLambda.syntheticParamNames(tparams1.length).lazyZip(tparams1).lazyZip(tparams2)
-          .map((pname, tparam1, tparam2) =>
-            pname.withVariance((tparam1.paramVarianceSign + tparam2.paramVarianceSign) / 2)))(
+        paramNames = HKTypeLambda.syntheticParamNames(tparams1.length),
+        variances =
+          if tp1.isVariantLambda && tp2.isVariantLambda then
+            tparams1.lazyZip(tparams2).map((p1, p2) => combineVariance(p1.paramVariance, p2.paramVariance))
+          else Nil
+      )(
         paramInfosExp = tl => tparams1.lazyZip(tparams2).map((tparam1, tparam2) =>
           tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
           tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
