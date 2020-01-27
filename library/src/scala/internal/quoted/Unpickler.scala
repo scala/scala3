@@ -7,7 +7,7 @@ object Unpickler {
 
   type PickledQuote = List[String]
   type PickledExprArgs = Seq[Seq[Any] => ((QuoteContext ?=> Expr[Any]) | Type[_])]
-  type PickledTypeArgs = Seq[Seq[Any] => Type[_]]
+  type PickledTypeArgs = Seq[Seq[Any] => ((QuoteContext ?=> Expr[Any]) | Type[_])]
 
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `args`

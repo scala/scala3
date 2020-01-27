@@ -9,6 +9,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.quoted._
+import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
@@ -49,7 +50,10 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           case annot => transform(annot.tree)(given annotCtx)
         }
         checkLevel(super.transform(tree))
-      case _ => checkLevel(super.transform(tree))
+      case _ =>
+        val ctx1 = if tree.isType then ctx.addMode(Mode.Type) else ctx
+        given Context = ctx1
+        checkLevel(super.transform(tree))
     }
 
   /** Transform quoted trees while maintaining phase correctness */
@@ -100,7 +104,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
             case Some(tpRef) => tpRef
             case _ => tree
           }
-      case _: TypeTree | _: AppliedTypeTree | _: Apply | _: TypeApply | _: UnApply | Select(_, OuterSelectName(_, _)) =>
+      case _: TypeTree | _: AppliedTypeTree | _: Apply | _: UnApply | Select(_, OuterSelectName(_, _)) =>
         tree.withType(checkTp(tree.tpe))
       case _: ValOrDefDef | _: Bind =>
         tree.symbol.info = checkTp(tree.symbol.info)
@@ -179,6 +183,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         case tp: TypeRef =>
           if levelOf(sym).getOrElse(0) < level then tryHeal(sym, tp, pos)
           else None
+        case _: TermRef if ctx.mode.is(Mode.Type) && levelOf(sym).getOrElse(0) >= level => None
         case _ =>
           levelError(sym, tp, pos, "")
     else if (!sym.owner.isStaticOwner) // non-top level class reference that is phase inconsistent
