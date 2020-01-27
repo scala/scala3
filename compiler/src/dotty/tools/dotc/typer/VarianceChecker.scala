@@ -25,57 +25,46 @@ object VarianceChecker {
    *  Note: this is achieved by a mechanism separate from checking class type parameters.
    *  Question: Can the two mechanisms be combined in one?
    */
-  def checkLambda(tree: tpd.LambdaTypeTree)(implicit ctx: Context): Unit = {
-    def checkType(tl: HKTypeLambda): Unit = {
-      val checkOK = new TypeAccumulator[Boolean] {
-        def paramVarianceSign(tref: TypeParamRef) =
-          tl.typeParams(tref.paramNum).paramVarianceSign
-        def error(tref: TypeParamRef) = {
-          val paramName = tl.paramNames(tref.paramNum).toTermName
-          val v = paramVarianceSign(tref)
-          val paramVarianceStr = if (v == 0) "contra" else "co"
-          val occursStr = variance match {
-            case -1 => "contra"
-            case 0 => "in"
-            case 1 => "co"
+  def checkLambda(tree: tpd.LambdaTypeTree, bounds: TypeBounds)(implicit ctx: Context): Unit =
+    def checkType(tpe: Type): Unit = tpe match
+      case tl: HKTypeLambda if tl.isVariantLambda =>
+        val checkOK = new TypeAccumulator[Boolean] {
+          def paramVarianceSign(tref: TypeParamRef) =
+            tl.typeParams(tref.paramNum).paramVarianceSign
+          def error(tref: TypeParamRef) = {
+            val paramName = tl.paramNames(tref.paramNum).toTermName
+            val v = paramVarianceSign(tref)
+            val paramVarianceStr = if (v < 0) "contra" else "co"
+            val occursStr = variance match {
+              case -1 => "contra"
+              case 0 => "in"
+              case 1 => "co"
+            }
+            val pos = tree.tparams
+              .find(_.name.toTermName == paramName)
+              .map(_.sourcePos)
+              .getOrElse(tree.sourcePos)
+            ctx.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
           }
-          val pos = tree.tparams
-            .find(_.name.toTermName == paramName)
-            .map(_.sourcePos)
-            .getOrElse(tree.sourcePos)
-          ctx.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
-        }
-        def apply(x: Boolean, t: Type) = x && {
-          t match {
-            case tref: TypeParamRef if tref.binder `eq` tl =>
-              val v = paramVarianceSign(tref)
-              varianceConforms(variance, v) || { error(tref); false }
-            case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
-              x
-            case _ =>
-              foldOver(x, t)
+          def apply(x: Boolean, t: Type) = x && {
+            t match {
+              case tref: TypeParamRef if tref.binder `eq` tl =>
+                val v = paramVarianceSign(tref)
+                varianceConforms(variance, v) || { error(tref); false }
+              case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
+                x
+              case _ =>
+                foldOver(x, t)
+            }
           }
         }
-      }
-      checkOK.apply(true, tl.resType)
-    }
+        checkOK(true, tl.resType)
+      case _ =>
+    end checkType
 
-    (tree.tpe: @unchecked) match {
-      case tl: HKTypeLambda =>
-        checkType(tl)
-      // The type of a LambdaTypeTree can be a TypeBounds, see the documentation
-      // of `LambdaTypeTree`.
-      case TypeBounds(lo, hi: HKTypeLambda) =>
-        // Can't assume that the lower bound is a type lambda, it could also be
-        // a reference to `Nothing`.
-        lo match {
-          case lo: HKTypeLambda =>
-            checkType(lo)
-          case _ =>
-        }
-        checkType(hi)
-    }
-  }
+    checkType(bounds.lo)
+    checkType(bounds.hi)
+  end checkLambda
 }
 
 class VarianceChecker()(implicit ctx: Context) {

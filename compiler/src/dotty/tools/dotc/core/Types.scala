@@ -363,7 +363,7 @@ object Types {
       case _ => false
     }
 
-    /** Is this a higher-kinded type lambda with given parameter variances? */ 
+    /** Is this a higher-kinded type lambda with given parameter variances? */
     def isVariantLambda: Boolean = false
 
 // ----- Higher-order combinators -----------------------------------
@@ -3571,22 +3571,30 @@ object Types {
      *      type T[X] = U        becomes    type T = [X] -> U
      *      type T[X] <: U       becomes    type T >: Nothing <: ([X] -> U)
      *      type T[X] >: L <: U  becomes    type T >: ([X] -> L) <: ([X] -> U)
+     *
+     *  @param  useVariances  If true, set parameter variances of the type lambda to be as in `params`,
+     *                        If false, TypeBounds types and match aliases aways get their variances set
+     *                        and type aliases get variances set if some parameter is not invariant,
+     *                        but variances of parameters of other types are determined structurally,
+     *                        by looking how the parameter is used in the result type.
      */
     def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type, useVariances: Boolean)(implicit ctx: Context): Type = {
       def expand(tp: Type, useVariances: Boolean) =
-        if params.nonEmpty then
+        if params.nonEmpty && useVariances then
           apply(params.map(_.paramName), params.map(_.paramVariance))(
             tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
             tl => tl.integrate(params, tp))
         else
           super.fromParams(params, tp)
       resultType match {
-        case rt: AliasingBounds =>
-          rt.derivedAlias(expand(rt.alias, useVariances))
+        case rt: MatchAlias =>
+          rt.derivedAlias(expand(rt.alias, true))
+        case rt: TypeAlias =>
+          rt.derivedAlias(expand(rt.alias, params.exists(!_.paramVariance.isEmpty)))
         case rt @ TypeBounds(lo, hi) =>
           rt.derivedTypeBounds(
-            if (lo.isRef(defn.NothingClass)) lo else expand(lo, false),
-            expand(hi, useVariances))
+            if (lo.isRef(defn.NothingClass)) lo else expand(lo, true),
+            expand(hi, true))
         case rt =>
           expand(rt, useVariances)
       }

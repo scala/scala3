@@ -250,6 +250,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                && sym != defn.SourceFileAnnot
             then
               sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
+          else (tree.rhs, sym.info) match
+            case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
+              VarianceChecker.checkLambda(rhs, bounds)
+            case _ =>
           processMemberDef(super.transform(tree))
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.posd)
@@ -279,9 +283,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case tpe => tpe
             }
           )
-        case tree: LambdaTypeTree =>
-          VarianceChecker.checkLambda(tree)
-          super.transform(tree)
         case Import(expr, selectors) =>
           val exprTpe = expr.tpe
           val seen = mutable.Set.empty[Name]
