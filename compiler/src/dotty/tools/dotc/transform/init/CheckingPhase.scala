@@ -25,7 +25,7 @@ class Checker extends MiniPhase {
   // cache of class summary
   private val baseEnv = Env(null, mutable.Map.empty)
 
-  override val runsAfter = Set(SetDefTree.name)
+  override val runsAfter = Set(Pickler.name)
 
   override def isEnabled(implicit ctx: Context): Boolean =
     super.isEnabled && ctx.settings.YcheckInit.value
