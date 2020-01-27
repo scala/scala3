@@ -37,8 +37,3 @@ nullable.scala
 
 # parameter untupling with overloaded functions (see comment in Applications.normArg)
 i7757.scala
-
-# variances (temporary)
-kindPolySemiGroup.scala
-typeclass-encoding2.scala
-anykind.scala
