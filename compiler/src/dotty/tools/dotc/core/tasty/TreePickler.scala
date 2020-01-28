@@ -238,22 +238,12 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: RecType =>
       writeByte(RECtype)
       pickleType(tpe.parent)
-    case tpe: TypeAlias =>
-      tpe.alias match
-        case alias: HKTypeLambda if alias.isVariantLambda =>
-          writeByte(TYPEBOUNDS)
-          withLength {
-            pickleType(tpe.alias, richTypes)
-            pickleVariances(tpe.alias)
-          }
-        case _ =>
-          writeByte(TYPEALIAS)
-          pickleType(tpe.alias, richTypes)
     case tpe: TypeBounds =>
       writeByte(TYPEBOUNDS)
       withLength {
         pickleType(tpe.lo, richTypes)
-        pickleType(tpe.hi, richTypes)
+        if !tpe.isInstanceOf[AliasingBounds] then
+          pickleType(tpe.hi, richTypes)
         pickleVariances(tpe.hi)
       }
     case tpe: AnnotatedType =>

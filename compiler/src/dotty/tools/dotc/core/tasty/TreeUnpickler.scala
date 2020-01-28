@@ -338,8 +338,7 @@ class TreeUnpickler(reader: TastyReader,
             case REFINEDtype =>
               var name: Name = readName()
               val parent = readType()
-              val ttag = nextUnsharedTag
-              if (ttag == TYPEBOUNDS || ttag == TYPEALIAS) name = name.toTypeName
+              if nextUnsharedTag == TYPEBOUNDS then name = name.toTypeName
               RefinedType(parent, name, readType())
                 // Note that the lambda "rt => ..." is not equivalent to a wildcard closure!
                 // Eta expansion of the latter puts readType() out of the expression.
@@ -348,12 +347,9 @@ class TreeUnpickler(reader: TastyReader,
             case TYPEBOUNDS =>
               val lo = readType()
               if nothingButMods(end) then
-                TypeAlias(readVariances(lo))
-              else
-                val hi = readType()
-                val variantHi = readVariances(hi)
-                if (lo.isMatch && (lo `eq` hi)) MatchAlias(variantHi)
-                else TypeBounds(lo, variantHi)
+                if lo.isMatch then MatchAlias(readVariances(lo))
+                else TypeAlias(readVariances(lo))
+              else TypeBounds(lo, readVariances(readType()))
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
             case ANDtype =>
@@ -420,8 +416,6 @@ class TreeUnpickler(reader: TastyReader,
           }
         case RECthis =>
           readTypeRef().asInstanceOf[RecType].recThis
-        case TYPEALIAS =>
-          TypeAlias(readType())
         case SHAREDtype =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
@@ -522,10 +516,7 @@ class TreeUnpickler(reader: TastyReader,
       val tag = readByte()
       val end = readEnd()
       var name: Name = readName()
-      nextUnsharedTag match {
-        case TYPEBOUNDS | TYPEALIAS => name = name.toTypeName
-        case _ =>
-      }
+      if nextUnsharedTag == TYPEBOUNDS then name = name.toTypeName
       val typeReader = fork
       val completer = new LazyType {
         def complete(denot: SymDenotation)(implicit ctx: Context) =

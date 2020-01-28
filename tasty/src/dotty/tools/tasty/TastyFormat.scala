@@ -152,7 +152,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   SUPERtype      Length this_Type underlying_Type                  -- A super type reference to `underlying`
                   REFINEDtype    Length underlying_Type refinement_NameRef info_Type -- underlying { refinement_name : info }
                   APPLIEDtype    Length tycon_Type arg_Type*                       -- tycon[args]
-                  TYPEALIAS             alias_Type                                 -- = alias
                   TYPEBOUNDS     Length lowOrAlias_Type high_Type? Variance*       -- = alias or >: low <: high, possibly with variances of lambda parameters
                   ANNOTATEDtype  Length underlying_Type annotation_Term            -- underlying @ annotation
                   ANDtype        Length left_Type right_Type                       -- left & right
@@ -391,9 +390,8 @@ object TastyFormat {
   final val PRIVATEqualified = 89
   final val PROTECTEDqualified = 90
   final val RECtype = 91
-  final val TYPEALIAS = 92
-  final val SINGLETONtpt = 93
-  final val BOUNDED = 94
+  final val SINGLETONtpt = 92
+  final val BOUNDED = 93
 
   // Cat. 4:    tag Nat AST
 
@@ -669,7 +667,6 @@ object TastyFormat {
     case APPLIEDtpt => "APPLIEDtpt"
     case TYPEBOUNDS => "TYPEBOUNDS"
     case TYPEBOUNDStpt => "TYPEBOUNDStpt"
-    case TYPEALIAS => "TYPEALIAS"
     case ANDtype => "ANDtype"
     case ORtype => "ORtype"
     case BYNAMEtype => "BYNAMEtype"
