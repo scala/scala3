@@ -986,6 +986,8 @@ trait CompilerInterface {
 
   def isInstanceOfByNameType(given ctx: Context): IsInstanceOf[ByNameType]
 
+  def ByNameType_apply(underlying: Type)(given ctx: Context): Type
+
   def ByNameType_underlying(self: ByNameType)(given ctx: Context): Type
 
   /** Type of a parameter reference */
@@ -1031,6 +1033,7 @@ trait CompilerInterface {
 
   def MethodType_isErased(self: MethodType): Boolean
   def MethodType_isImplicit(self: MethodType): Boolean
+  def MethodType_param(self: MethodType, ids: Int)(given ctx: Context): Type
   def MethodType_paramNames(self: MethodType)(given ctx: Context): List[String]
   def MethodType_paramTypes(self: MethodType)(given ctx: Context): List[Type]
   def MethodType_resType(self: MethodType)(given ctx: Context): Type
@@ -1040,6 +1043,9 @@ trait CompilerInterface {
 
   def isInstanceOfPolyType(given ctx: Context): IsInstanceOf[PolyType]
 
+  def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(given ctx: Context): PolyType 
+
+  def PolyType_param(self: PolyType, idx: Int)(given ctx: Context): Type
   def PolyType_paramNames(self: PolyType)(given ctx: Context): List[String]
   def PolyType_paramBounds(self: PolyType)(given ctx: Context): List[TypeBounds]
   def PolyType_resType(self: PolyType)(given ctx: Context): Type
@@ -1263,6 +1269,8 @@ trait CompilerInterface {
   def Symbol_caseFields(self: Symbol)(given ctx: Context): List[Symbol]
 
   def Symbol_of(fullName: String)(given ctx: Context): Symbol
+
+  def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(given ctx: Context): Symbol
 
   def Symbol_isTypeParam(self: Symbol)(given ctx: Context): Boolean
 
