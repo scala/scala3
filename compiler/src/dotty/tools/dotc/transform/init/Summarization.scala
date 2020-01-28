@@ -83,7 +83,7 @@ object Summarization {
         Summary.empty
 
       case New(tpt) =>
-        def typeRefOf(tp: Type): TypeRef = tp.typeConstructor match {
+        def typeRefOf(tp: Type): TypeRef = tp.dealias.typeConstructor match {
           case tref: TypeRef => tref
           case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
         }
