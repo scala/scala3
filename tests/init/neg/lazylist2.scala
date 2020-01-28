@@ -26,8 +26,8 @@ final class Test1 {
   a.head // ok
   b.head // ok
 
-  val x: LazyList[Int] = 5 #:: y
-  val y: LazyList[Int] = 10 #:: x   // error
+  val x: LazyList[Int] = 5 #:: y   // error
+  val y: LazyList[Int] = 10 #:: x
 }
 
 final class Test2 {
@@ -37,7 +37,7 @@ final class Test2 {
 }
 
 final class Test3 {
-  val a: LazyList[Int] = n #:: (a: @unchecked)
+  val a: LazyList[Int] = n #:: (a: @unchecked)    // error
   a.head
-  val n: Int = 20    // error
+  val n: Int = 20
 }

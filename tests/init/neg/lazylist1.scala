@@ -2,7 +2,7 @@ class LazyList[A]
 
 object LazyList {
   inline implicit def toDeferred[A](l: LazyList[A]): Deferred[A] =
-    new Deferred(l)
+    new Deferred(l)  // error
 
   final class Deferred[A](l: => LazyList[A]) {
     def #:: [B >: A](elem: => B): LazyList[B] = ???
@@ -16,5 +16,5 @@ final class Test {
   lazy val b: LazyList[Int] = 10 #:: a
 
   val x: LazyList[Int] = 5 #:: y
-  val y: LazyList[Int] = 10 #:: x  // error
+  val y: LazyList[Int] = 10 #:: x
 }

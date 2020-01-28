@@ -60,7 +60,7 @@ object Errors {
   case class AccessNonInit(field: Symbol, trace: Vector[Tree]) extends Error {
     def source: Tree = trace.last
     def show(implicit ctx: Context): String =
-      "Access non-initialized field " + field.show + "."
+      "Access non-initialized field " + field.name.show + "."
 
     override def report(implicit ctx: Context): Unit = ctx.error(show + stacktrace, field.sourcePos)
   }
