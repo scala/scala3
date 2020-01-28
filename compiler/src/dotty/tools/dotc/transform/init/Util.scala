@@ -24,7 +24,7 @@ object Util {
 
   def resolve(cls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol =
     if (sym.isEffectivelyFinal || sym.isConstructor) sym
-    else sym.matchingMember(cls.typeRef)
+    else sym.matchingMember(cls.appliedRef)
 
   def resolveSuper(cls: ClassSymbol, superCls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol = {
     // println(s"bases of $cls: " + cls.info.baseClasses)
