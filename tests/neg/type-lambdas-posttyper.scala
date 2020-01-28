@@ -16,7 +16,7 @@ object Test extends App {
   type TL3[+X] = Ref[X] // error: covariant type parameter X occurs in nonvariant position in Test.Ref[X]
   type TL4[-X] = X => X // error: contravariant type parameter X occurs in covariant position in X => X
 
-  def f[F <: [+X] =>> Any](x: F[String]): F[Any] = x
+  def f[F[+X]](x: F[String]): F[Any] = x
 
   val sref = new Ref[String]("abc")
   val aref: Ref[Any] = f[TL3](sref)
@@ -27,7 +27,7 @@ object Test extends App {
   type Neg2[-X] >: X // error
   type Neg3[-X] <: X // error
 
-  type Neg4 = [-X] =>> X // error
+  type Neg4[-X] = X // error
   type Neg5[-X] >: X <: Any // error
   type Neg6[-X] <: X // error
 
@@ -35,7 +35,7 @@ object Test extends App {
   type Pos2[+X] >: Ref[X] // error
   type Pos3[+X] <: Ref[X] // error
 
-  type Pos4 = [+X] =>> Ref[X] // error
+  type Pos4[+X] = Ref[X] // error
   type Pos5[+X] >: Ref[X] <: Any // error
   type Pos6[+X] <: Ref[X] // error
 }

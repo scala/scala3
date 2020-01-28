@@ -25,7 +25,7 @@ object Coproduct {
   def upCast[A, B](a: A) with (erased evidence: (A <:< B) ): B = a.asInstanceOf[B]
 
   def from[Set, Value, Index <: Int](value: Value) with (erased at: At[Set, Value, Index]) : ValueOf[Index] ?=> Coproduct[Set, Value, Index] = {
-    Coproduct[Set, Value, Index](upCast(value: Value).with(at.cast.liftCo[[+X] =>> Value & X]), valueOf[Index])
+    Coproduct[Set, Value, Index](upCast(value: Value).with(at.cast.liftCo[[X] =>> Value & X]), valueOf[Index])
   }
 
 }

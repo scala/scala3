@@ -2845,19 +2845,25 @@ object Parsers {
      *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypePamClause] | ‘_’) TypeBounds
      */
     def typeParamClause(ownerKind: ParamOwner.Value): List[TypeDef] = inBrackets {
+
+      def variance(vflag: FlagSet): FlagSet =
+        if ownerKind == ParamOwner.Def || ownerKind == ParamOwner.TypeParam then
+          syntaxError(i"no `+/-` variance annotation allowed here")
+          in.nextToken()
+          EmptyFlags
+        else
+          in.nextToken()
+          vflag
+
       def typeParam(): TypeDef = {
         val isAbstractOwner = ownerKind == ParamOwner.Type || ownerKind == ParamOwner.TypeParam
         val start = in.offset
         val mods =
-          annotsAsMods() | {
-            if (ownerKind == ParamOwner.Class) Param | PrivateLocal
-            else Param
-          } | {
-            if (ownerKind == ParamOwner.Def) EmptyFlags
-            else if (isIdent(nme.raw.PLUS)) { in.nextToken(); Covariant }
-            else if (isIdent(nme.raw.MINUS)) { in.nextToken(); Contravariant }
-            else EmptyFlags
-          }
+          annotsAsMods()
+          | (if (ownerKind == ParamOwner.Class) Param | PrivateLocal else Param)
+          | (if isIdent(nme.raw.PLUS) then variance(Covariant)
+             else if isIdent(nme.raw.MINUS) then variance(Contravariant)
+             else EmptyFlags)
         atSpan(start, nameStart) {
           val name =
             if (isAbstractOwner && in.token == USCORE) {
@@ -2865,7 +2871,7 @@ object Parsers {
               WildcardParamName.fresh().toTypeName
             }
             else ident().toTypeName
-          val hkparams = typeParamClauseOpt(ParamOwner.TypeParam)
+          val hkparams = typeParamClauseOpt(ParamOwner.Type)
           val bounds = if (isAbstractOwner) typeBounds() else typeParamBounds(name)
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
