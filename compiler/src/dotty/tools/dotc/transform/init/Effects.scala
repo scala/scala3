@@ -44,6 +44,8 @@ object Effects {
 
   /** Field access, `a.f` */
   case class FieldAccess(potential: Potential, field: Symbol)(val source: Tree) extends Effect {
+    assert(field != NoSymbol)
+
     def size: Int = potential.size
     def show(implicit ctx: Context): String =
       potential.show + "." + field.name.show + "!"
@@ -51,6 +53,8 @@ object Effects {
 
   /** Method call, `a.m()` */
   case class MethodCall(potential: Potential, method: Symbol)(val source: Tree) extends Effect {
+    assert(method != NoSymbol)
+
     def size: Int = potential.size
     def show(implicit ctx: Context): String = potential.show + "." + method.name.show + "!"
   }
