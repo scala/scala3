@@ -230,7 +230,7 @@ object Summarization {
         Summary.empty
 
       case thisTp: ThisType =>
-        val cls = thisTp.widen.classSymbol.asClass
+        val cls = thisTp.tref.classSymbol.asClass
         Summary.empty + ThisRef(cls)(source)
 
       case SuperType(thisTp, superTp) =>
