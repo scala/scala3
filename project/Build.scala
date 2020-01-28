@@ -130,7 +130,7 @@ object Build {
   val dotr = inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
 
   // Compiles the documentation and static site
-  val genDocs = taskKey[Unit]("run dottydoc to generate static documentation site")
+  val genDocs = inputKey[Unit]("run dottydoc to generate static documentation site")
 
   // Shorthand for compiling a docs site
   val dottydoc = inputKey[Unit]("run dottydoc")
@@ -409,7 +409,9 @@ object Build {
 
     javaOptions ++= (javaOptions in `dotty-compiler`).value,
 
-    genDocs := Def.taskDyn {
+    genDocs := Def.inputTaskDyn {
+      val dottydocExtraArgs = spaceDelimited("<arg>").parsed
+
       // Make majorVersion available at dotty.epfl.ch/versions/latest-nightly-base
       // Used by sbt-dotty to resolve the latest nightly
       val majorVersion = baseVersion.take(baseVersion.lastIndexOf('.'))
@@ -427,11 +429,11 @@ object Build {
         "-project-logo", "dotty-logo.svg",
         "-classpath", dottydocClasspath.value,
         "-Yerased-terms"
-      )
+      ) ++ dottydocExtraArgs
       (runMain in Compile).toTask(
         s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
       )
-    }.value,
+    }.evaluated,
 
     dottydoc := Def.inputTaskDyn {
       val args = spaceDelimited("<arg>").parsed
