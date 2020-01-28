@@ -112,7 +112,7 @@ object Checking {
 
       case ref =>
         val cls = ref.tpe.classSymbol.asClass
-        if (!state.parentsInited.contains(cls))
+        if (!state.parentsInited.contains(cls) && cls.primaryConstructor.exists)
           checkCtor(cls.primaryConstructor, ref.tpe, ref)
     }
 
