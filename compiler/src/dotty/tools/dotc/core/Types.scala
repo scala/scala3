@@ -177,18 +177,18 @@ object Types {
      *        It makes no sense for it to be an alias type because isRef would always
      *        return false in that case.
      */
-    def isRef(sym: Symbol)(implicit ctx: Context): Boolean = stripAnnots.stripTypeVar match {
+    def isRef(sym: Symbol, skipRefined: Boolean = true)(implicit ctx: Context): Boolean = stripAnnots.stripTypeVar match {
       case this1: TypeRef =>
         this1.info match { // see comment in Namer#typeDefSig
-          case TypeAlias(tp) => tp.isRef(sym)
+          case TypeAlias(tp) => tp.isRef(sym, skipRefined)
           case _ => this1.symbol eq sym
         }
-      case this1: RefinedOrRecType =>
-        this1.parent.isRef(sym)
+      case this1: RefinedOrRecType if skipRefined =>
+        this1.parent.isRef(sym, skipRefined)
       case this1: AppliedType =>
         val this2 = this1.dealias
-        if (this2 ne this1) this2.isRef(sym)
-        else this1.underlying.isRef(sym)
+        if (this2 ne this1) this2.isRef(sym, skipRefined)
+        else this1.underlying.isRef(sym, skipRefined)
       case _ => false
     }
 
@@ -200,6 +200,10 @@ object Types {
       case _ =>
         false
     }
+
+    def isAny(given Context): Boolean     = isRef(defn.AnyClass, skipRefined = false)
+    def isAnyRef(given Context): Boolean  = isRef(defn.ObjectClass, skipRefined = false)
+    def isAnyKind(given Context): Boolean = isRef(defn.AnyKindClass, skipRefined = false)
 
     /** Does this type refer exactly to class symbol `sym`, instead of to a subclass of `sym`?
      *  Implemented like `isRef`, but follows more types: all type proxies as well as and- and or-types

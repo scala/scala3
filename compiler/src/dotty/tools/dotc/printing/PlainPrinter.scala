@@ -175,7 +175,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           def casesText = Text(cases.map(caseText), "\n")
             atPrec(InfixPrec) { toText(scrutinee) } ~
             keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
-            (" <: " ~ toText(bound) provided !bound.isRef(defn.AnyClass))
+            (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
       case tp: ErrorType =>
         s"<error ${tp.msg.msg}>"
@@ -358,7 +358,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
             " = " ~ toText(tp.alias)
           case TypeBounds(lo, hi) =>
             (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo))
-            ~ (if (hi isRef defn.AnyClass) Text() else " <: " ~ toText(hi))
+            ~ (if hi.isAny then Text() else " <: " ~ toText(hi))
         tparamStr ~ binder
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)

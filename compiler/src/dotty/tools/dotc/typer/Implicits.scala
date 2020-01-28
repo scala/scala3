@@ -662,14 +662,15 @@ trait Implicits { self: Typer =>
    */
   def inferView(from: Tree, to: Type)(implicit ctx: Context): SearchResult = {
     record("inferView")
-    if    ((to isRef defn.AnyClass)
-        || (to isRef defn.ObjectClass)
-        || (to isRef defn.UnitClass)
-        || (from.tpe isRef defn.NothingClass)
-        || (from.tpe isRef defn.NullClass)
-        || !(ctx.mode is Mode.ImplicitsEnabled)
-        || from.isInstanceOf[Super]
-        || (from.tpe eq NoPrefix)) NoMatchingImplicitsFailure
+    if    to.isAny
+       || to.isAnyRef
+       || to.isRef(defn.UnitClass)
+       || from.tpe.isRef(defn.NothingClass)
+       || from.tpe.isRef(defn.NullClass)
+       || !ctx.mode.is(Mode.ImplicitsEnabled)
+       || from.isInstanceOf[Super]
+       || (from.tpe eq NoPrefix)
+    then NoMatchingImplicitsFailure
     else {
       def adjust(to: Type) = to.stripTypeVar.widenExpr match {
         case SelectionProto(name, memberProto, compat, true) =>

@@ -775,7 +775,7 @@ object Denotations {
 
     def matchesImportBound(bound: Type)(implicit ctx: Context): Boolean =
       if bound.isRef(defn.NothingClass) then false
-      else if bound.isRef(defn.AnyClass) then true
+      else if bound.isAny then true
       else NoViewsAllowed.normalizedCompatible(info, bound, keepConstraint = false)
 
     // ------ Transformations -----------------------------------------

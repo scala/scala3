@@ -501,7 +501,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             val base = nonExprBaseType(tp1, cls2)
             if (base.typeSymbol == cls2) return true
           }
-          else if (tp1.isLambdaSub && !tp1.isRef(AnyKindClass))
+          else if tp1.isLambdaSub && !tp1.isAnyKind then
             return recur(tp1, EtaExpansion(cls2.typeRef))
         fourthTry
     }
@@ -734,7 +734,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               (gbounds1 != null) &&
                 (isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
                 narrowGADTBounds(tp1, tp2, approx, isUpper = true)) &&
-                { tp2.isRef(AnyClass) || GADTusage(tp1.symbol) }
+                { tp2.isAny || GADTusage(tp1.symbol) }
             }
             isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
           case _ =>
@@ -816,7 +816,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       case JavaArrayType(elem1) =>
         def compareJavaArray = tp2 match {
           case JavaArrayType(elem2) => isSubType(elem1, elem2)
-          case _ => tp2 isRef ObjectClass
+          case _ => tp2.isAnyRef
         }
         compareJavaArray
       case tp1: ExprType if ctx.phase.id > ctx.gettersPhase.id =>
@@ -1629,20 +1629,21 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             // 'Object|Null', depending on whether explicit nulls are enabled.
             def formal1IsObject =
               if (ctx.explicitNulls) formal1 match {
-                case OrNull(formal1b) => formal1b.isRef(ObjectClass)
+                case OrNull(formal1b) => formal1b.isAnyRef
                 case _ => false
               }
-              else formal1.isRef(ObjectClass)
+              else formal1.isAnyRef
             def formal2IsObject =
               if (ctx.explicitNulls) formal2 match {
-                case OrNull(formal2b) => formal2b.isRef(ObjectClass)
+                case OrNull(formal2b) => formal2b.isAnyRef
                 case _ => false
               }
-              else formal2.isRef(ObjectClass)
+              else formal2.isAnyRef
             (isSameTypeWhenFrozen(formal1, formal2a)
-            || tp1.isJavaMethod && formal2IsObject && (formal1 isRef AnyClass)
-            || tp2.isJavaMethod && formal1IsObject && (formal2 isRef AnyClass)) &&
-            loop(rest1, rest2)
+             || tp1.isJavaMethod && formal2IsObject && formal1.isAny
+             || tp2.isJavaMethod && formal1IsObject && formal2.isAny
+            )
+            && loop(rest1, rest2)
           case nil =>
             false
         }
@@ -1723,8 +1724,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
-    else if ((tp1 isRef AnyClass) && !tp2.isLambdaSub || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) tp2
-    else if ((tp2 isRef AnyClass) && !tp1.isLambdaSub || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) tp1
+    else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || tp2.isRef(NothingClass) then tp2
+    else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || tp1.isRef(NothingClass) then tp1
     else tp2 match {  // normalize to disjunctive normal form if possible.
       case OrType(tp21, tp22) =>
         tp1 & tp21 | tp1 & tp22
@@ -1770,11 +1771,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  @note  We do not admit singleton types in or-types as lubs.
    */
   def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type = /*>|>*/ trace(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
+
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
-    else if ((tp1 isRef AnyClass) || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) tp1
-    else if ((tp2 isRef AnyClass) || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) tp2
+    else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || tp2.isRef(NothingClass) then tp1
+    else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || tp1.isRef(NothingClass) then tp2
     else {
       def mergedLub: Type = {
         val atoms1 = tp1.atoms
