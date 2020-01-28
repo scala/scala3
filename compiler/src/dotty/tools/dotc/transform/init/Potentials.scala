@@ -118,14 +118,18 @@ object Potentials {
 
   /** The object pointed by `this.f` */
   case class FieldReturn(potential: Potential, field: Symbol)(val source: Tree) extends Potential {
+    assert(field != NoSymbol)
+
     def size: Int = potential.size + 1
     def show(implicit ctx: Context): String = potential.show + "." + field.name.show
   }
 
   /** The object returned by `this.m()` */
-  case class MethodReturn(potential: Potential, symbol: Symbol)(val source: Tree) extends Potential {
+  case class MethodReturn(potential: Potential, method: Symbol)(val source: Tree) extends Potential {
+    assert(method != NoSymbol)
+
     def size: Int = potential.size + 1
-    def show(implicit ctx: Context): String = potential.show + "." + symbol.name.show
+    def show(implicit ctx: Context): String = potential.show + "." + method.name.show
   }
 
   /** The object whose initialization status is unknown */

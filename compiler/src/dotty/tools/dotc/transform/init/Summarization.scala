@@ -288,9 +288,13 @@ object Summarization {
 
           case ref =>
             val tref: TypeRef = ref.tpe.typeConstructor.asInstanceOf
-            val ctor = tref.classSymbol.asClass.primaryConstructor
-            Summarization.analyze(tref.prefix, ref)._2 +
-              MethodCall(ThisRef(cls)(ref), ctor)(ref)
+            val cls = tref.classSymbol.asClass
+            if (cls == defn.AnyClass || cls == defn.AnyValClass) Effects.empty
+            else {
+              val ctor = cls.primaryConstructor
+              Summarization.analyze(tref.prefix, ref)._2 +
+                MethodCall(ThisRef(cls)(ref), ctor)(ref)
+            }
         })
       }
 
