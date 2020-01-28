@@ -116,8 +116,6 @@ object Variances {
       def apply(x: Unit, t: Type): Unit = t match
         case t: TypeParamRef if t.binder eq lam =>
           lam.typeParams(t.paramNum).storedVariance &= varianceFromInt(variance)
-        case _: LazyRef =>
-          x
         case _ =>
           foldOver(x, t)
     }
