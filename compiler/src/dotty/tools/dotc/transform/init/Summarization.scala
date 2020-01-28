@@ -311,7 +311,7 @@ object Summarization {
 
   def classSummary(cls: ClassSymbol)(implicit env: Env): ClassSummary =
     def extractParentOuters(parent: Type, source: Tree): (ClassSymbol, Potentials) = {
-      val tref = parent.typeConstructor.asInstanceOf[TypeRef]
+      val tref = parent.typeConstructor.stripAnnots.asInstanceOf[TypeRef]
       val parentCls = tref.classSymbol.asClass
       if (tref.prefix != NoPrefix)
         parentCls ->analyze(tref.prefix, source)._1
