@@ -19,9 +19,7 @@ import collection.mutable
     override def default(key: String): Int = 0
   }
 
-  // FIXME Use this signature after reference compiler is updated
-  // inline def record(inline fn: String, inline n: Int = 1): Unit =
-  inline def record(fn: => String, n: => Int = 1): Unit =
+  inline def record(inline fn: String, inline n: Int = 1): Unit =
     if (enabled) doRecord(fn, n)
 
   def doRecord(fn: String, n: Int) =
@@ -30,9 +28,7 @@ import collection.mutable
       hits(name) += n
     }
 
-  // FIXME Use this signature after reference compiler is updated
-  // inline def trackTime[T](fn: String)(inline op: T): T =
-  inline def trackTime[T](fn: String)(op: => T): T =
+  inline def trackTime[T](fn: String)(inline op: T): T =
     if (enabled) doTrackTime(fn)(op) else op
 
   def doTrackTime[T](fn: String)(op: => T): T = {

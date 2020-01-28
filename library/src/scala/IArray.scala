@@ -284,29 +284,26 @@ object IArray {
   /** An immutable object array of length 0. */
   def emptyObjectIArray  = Array.emptyObjectArray.asInstanceOf[IArray[Object]]
 
-  // FIXME: add inline parameters (requires updated reference compiler)
-  //        Also change: compiler/test/dotty/tools/backend/jvm/ArrayApplyOptTest.scala
-
   /** An immutable array with given elements. */
-  inline def apply[T](/*inline*/ xs: T*)(given ct: => ClassTag[T]): IArray[T] = Array(xs: _*).asInstanceOf
+  inline def apply[T](inline xs: T*)(given inline ct: ClassTag[T]): IArray[T] = Array(xs: _*).asInstanceOf
   /** An immutable array with given elements. */
-  inline def apply(/*inline*/ x: Boolean, /*inline*/ xs: Boolean*): IArray[Boolean] = Array(x, xs: _*).asInstanceOf
+  inline def apply(inline x: Boolean, inline xs: Boolean*): IArray[Boolean] = Array(x, xs: _*).asInstanceOf
   /** An immutable array with given elements. */
-  inline def apply(/*inline*/ x: Byte, /*inline*/ xs: Byte*): IArray[Byte] = Array(x, xs: _*).asInstanceOf
+  inline def apply(inline x: Byte, inline xs: Byte*): IArray[Byte] = Array(x, xs: _*).asInstanceOf
   /** An immutable array with given elements. */
-  inline def apply(/*inline*/ x: Short, /*inline*/ xs: Short*): IArray[Short] = Array(x, xs: _*).asInstanceOf
+  inline def apply(inline x: Short, inline xs: Short*): IArray[Short] = Array(x, xs: _*).asInstanceOf
   /** An immutable array with given elements. */
-  inline def apply(/*inline*/ x: Char, /*inline*/ xs: Char*): IArray[Char] = Array(x, xs: _*).asInstanceOf
+  inline def apply(inline x: Char, inline xs: Char*): IArray[Char] = Array(x, xs: _*).asInstanceOf
   /** An immutable array with given elements. */
-  inline def apply(/*inline*/ x: Int, /*inline*/ xs: Int*): IArray[Int] = Array(x, xs: _*).asInstanceOf
+  inline def apply(inline x: Int, inline xs: Int*): IArray[Int] = Array(x, xs: _*).asInstanceOf
   /** An immutable array with given elements. */
-  inline def apply(/*inline*/ x: Long, /*inline*/ xs: Long*): IArray[Long] = Array(x, xs: _*).asInstanceOf
+  inline def apply(inline x: Long, inline xs: Long*): IArray[Long] = Array(x, xs: _*).asInstanceOf
   /** An immutable array with given elements. */
-  inline def apply(/*inline*/ x: Float, /*inline*/ xs: Float*): IArray[Float] = Array(x, xs: _*).asInstanceOf
+  inline def apply(inline x: Float, inline xs: Float*): IArray[Float] = Array(x, xs: _*).asInstanceOf
   /** An immutable array with given elements. */
-  inline def apply(/*inline*/ x: Double, /*inline*/ xs: Double*): IArray[Double] = Array(x, xs: _*).asInstanceOf
+  inline def apply(inline x: Double, inline xs: Double*): IArray[Double] = Array(x, xs: _*).asInstanceOf
   /** An immutable array with given elements. */
-  inline def apply(/*inline*/ x: Unit, /*inline*/ xs: Unit*): IArray[Unit] = Array(x, xs: _*).asInstanceOf
+  inline def apply(inline x: Unit, inline xs: Unit*): IArray[Unit] = Array(x, xs: _*).asInstanceOf
 
   /** Concatenates all arrays into a single immutable array.
    *
