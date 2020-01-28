@@ -138,7 +138,7 @@ object Checking {
     }
   }
 
-  private def checkEffectsIn(effs: Effects, cls: ClassSymbol)(implicit state: State): Unit = {
+  private def checkEffectsIn(effs: Effects, cls: ClassSymbol)(implicit state: State): Unit = traceOp("checking effects " + Effects.show(effs), init) {
     val rebased = Effects.asSeenFrom(effs, ThisRef(state.thisClass)(null), cls, Potentials.empty)
     for {
       eff <- rebased
@@ -172,8 +172,9 @@ object Checking {
                 Errors.empty
 
             case pot =>
-              val pots = expand(pot)
-              pots.flatMap { pot => check(Promote(pot)(eff.source)) }
+              val (pots, effs) = expand(pot)
+              val effs2 = pots.map(Promote(_)(eff.source))
+              (effs2 ++ effs).flatMap(check(_))
           }
 
         case FieldAccess(pot, field) =>
@@ -208,8 +209,10 @@ object Checking {
               throw new Exception("Unexpected effect " + eff.show)
 
             case pot =>
-              val pots = expand(pot)
-              pots.flatMap { pot => check(FieldAccess(pot, field)(eff.source)) }
+              val (pots, effs) = expand(pot)
+              val effs2 = pots.map(FieldAccess(_, field)(eff.source))
+              (effs2 ++ effs).flatMap(check(_))
+
           }
 
         case MethodCall(pot, sym) =>
@@ -258,15 +261,14 @@ object Checking {
               // curried, tupled, toString are harmless
 
             case pot =>
-              val pots = expand(pot)
-              pots.flatMap { pot =>
-                check(MethodCall(pot, sym)(eff.source))
-              }
+              val (pots, effs) = expand(pot)
+              val effs2 = pots.map(MethodCall(_, sym)(eff.source))
+              (effs2 ++ effs).flatMap(check(_))
           }
       }
     }
 
-  private def expand(pot: Potential)(implicit state: State): Potentials = trace("expand " + pot.show, init, pots => Potentials.show(pots.asInstanceOf[Potentials])) {
+  private def expand(pot: Potential)(implicit state: State): Summary = trace("expand " + pot.show, init, sum => Summary.show(sum.asInstanceOf[Summary])) {
     pot match {
       case MethodReturn(pot1, sym) =>
         pot1 match {
@@ -274,39 +276,40 @@ object Checking {
             assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
             val target = resolve(cls, sym)
-            if (target.isInternal) thisRef.potentialsOf(target)
-            else Potentials.empty // warning already issued in call effect
+            if (target.isInternal) (thisRef.potentialsOf(target), Effects.empty)
+            else Summary.empty // warning already issued in call effect
 
           case SuperRef(thisRef @ ThisRef(cls), supercls) =>
             assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
             val target = resolveSuper(cls, supercls, sym)
-            if (target.isInternal) thisRef.potentialsOf(target)
-            else Potentials.empty // warning already issued in call effect
+            if (target.isInternal) (thisRef.potentialsOf(target), Effects.empty)
+            else Summary.empty // warning already issued in call effect
 
 
           case Fun(pots, effs) =>
             val name = sym.name.toString
-            if (name == "apply") pots
-            else if (name == "tupled") Set(pot1)
+            if (name == "apply") (pots, Effects.empty)
+            else if (name == "tupled") (Set(pot1), Effects.empty)
             else if (name == "curried") {
               val arity = defn.functionArity(sym.info.finalResultType)
-              (1 until arity).foldLeft(Set(pot1)) { (acc, i) => Set(Fun(acc, Effects.empty)(pot1.source)) }
+              val pots = (1 until arity).foldLeft(Set(pot1)) { (acc, i) => Set(Fun(acc, Effects.empty)(pot1.source)) }
+              (pots, Effects.empty)
             }
-            else Potentials.empty
+            else Summary.empty
 
           case warm : Warm =>
             val target = resolve(warm.classSymbol, sym)
-            if (target.isInternal) warm.potentialsOf(target)
-            else Potentials.empty // warning already issued in call effect
+            if (target.isInternal) (warm.potentialsOf(target), Effects.empty)
+            else Summary.empty // warning already issued in call effect
 
           case _: Cold =>
-            Potentials.empty // error already reported, ignore
+            Summary.empty // error already reported, ignore
 
           case _ =>
-            val (pots, effs) = expand(pot1).select(sym, pot.source)
-            effs.foreach(check(_))
-            pots
+            val (pots, effs) = expand(pot1)
+            val (pots2, effs2) = pots.select(sym, pot.source)
+            (pots2, effs ++ effs2)
         }
 
       case FieldReturn(pot1, sym) =>
@@ -315,31 +318,31 @@ object Checking {
             assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
             val target = resolve(cls, sym)
-            if (sym.isInternal) thisRef.potentialsOf(target)
-            else Cold()(pot.source).toPots
+            if (sym.isInternal) (thisRef.potentialsOf(target), Effects.empty)
+            else (Cold()(pot.source).toPots, Effects.empty)
 
           case SuperRef(thisRef @ ThisRef(cls), supercls) =>
             assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
             val target = resolveSuper(cls, supercls, sym)
-            if (target.isInternal) thisRef.potentialsOf(target)
-            else Cold()(pot.source).toPots
+            if (target.isInternal) (thisRef.potentialsOf(target), Effects.empty)
+            else (Cold()(pot.source).toPots, Effects.empty)
 
           case _: Fun =>
             throw new Exception("Unexpected code reached")
 
           case warm: Warm =>
             val target = resolve(warm.classSymbol, sym)
-            if (target.isInternal) warm.potentialsOf(target)
-            else Cold()(pot.source).toPots
+            if (target.isInternal) (warm.potentialsOf(target), Effects.empty)
+            else (Cold()(pot.source).toPots, Effects.empty)
 
           case _: Cold =>
-            Potentials.empty // error already reported, ignore
+            Summary.empty // error already reported, ignore
 
           case _ =>
-            val (pots, effs) = expand(pot1).select(sym, pot.source)
-            effs.foreach(check(_))
-            pots
+            val (pots, effs) = expand(pot1)
+            val (pots2, effs2) = pots.select(sym, pot.source)
+            (pots2, effs ++ effs2)
         }
 
       case Outer(pot1, cls) =>
@@ -347,26 +350,30 @@ object Checking {
           case ThisRef(cls) =>
             assert(cls == state.thisClass, "unexpected potential " + pot.show)
 
-            Potentials.empty
+            Summary.empty
 
           case _: Fun =>
             throw new Exception("Unexpected code reached")
 
           case warm: Warm =>
-            warm.outerFor(cls)
+            (warm.outerFor(cls), Effects.empty)
 
           case _: Cold =>
             throw new Exception("Unexpected code reached")
 
           case _ =>
-            expand(pot1).map { Outer(_, cls)(pot.source) }
+            val (pots, effs) = expand(pot1)
+            val pots2 = pots.map { Outer(_, cls)(pot.source): Potential }
+            (pots2, effs)
         }
 
       case _: ThisRef | _: Fun | _: Warm | _: Cold =>
-        Set(pot)
+        (Set(pot), Effects.empty)
 
       case SuperRef(pot1, supercls) =>
-        expand(pot1).map { SuperRef(_, supercls)(pot.source) }
+        val (pots, effs) = expand(pot1)
+        val pots2 = pots.map { SuperRef(_, supercls)(pot.source): Potential }
+        (pots2, effs)
     }
   }
 }
