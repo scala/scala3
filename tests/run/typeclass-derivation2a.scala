@@ -25,11 +25,11 @@ object TypeLevel {
     def mirror(ordinal: Int): Mirror =
       mirror(ordinal, EmptyProduct)
 
-    val label: Array[Array[String]] =
-      initLabels(0, 0, new mutable.ArrayBuffer[String], new mutable.ArrayBuffer[Array[String]])
-
     private final val elemSeparator = '\000'
     private final val caseSeparator = '\001'
+
+    val label: Array[Array[String]] =
+      initLabels(0, 0, new mutable.ArrayBuffer[String], new mutable.ArrayBuffer[Array[String]])
 
     private def initLabels(start: Int, cur: Int,
                            elems: mutable.ArrayBuffer[String],
