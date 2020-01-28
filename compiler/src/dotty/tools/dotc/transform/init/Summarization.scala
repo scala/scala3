@@ -39,8 +39,8 @@ object Summarization {
       case supert: Super =>
         val SuperType(thisTp, superTp) = supert.tpe.asInstanceOf[SuperType]
         val thisRef = ThisRef(thisTp.widen.classSymbol.asClass)(supert)
-        val pot = SuperRef(thisRef, superTp.classSymbol.asClass)(supert)
-        Summary.empty + pot
+        val pots = superTp.classSymbols.map { cls => SuperRef(thisRef, cls.asClass)(supert) }
+        (pots.toSet, Effects.empty)
 
       case Select(qualifier, name) =>
         val (pots, effs) = analyze(qualifier)
