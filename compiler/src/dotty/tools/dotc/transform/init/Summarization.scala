@@ -70,9 +70,13 @@ object Summarization {
         val summary = analyze(fun)
         val ignoredCall = env.ignoredMethods.contains(expr.symbol)
 
-        val res = args.foldLeft(summary) { (sum, arg) =>
+        val argTps = fun.tpe.widen match
+          case mt: MethodType => mt.paramInfos
+
+        val res = args.zip(argTps).foldLeft(summary) { case (sum, (arg, argTp)) =>
           val (pots1, effs1) = analyze(arg)
           if (ignoredCall) sum.withEffs(effs1)
+          else if (argTp.isInstanceOf[ExprType]) sum + Promote(Fun(pots1, effs1)(arg))(arg)
           else sum.withEffs(pots1.promote(arg) ++ effs1)
         }
 
