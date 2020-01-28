@@ -18,6 +18,7 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeMapWithStages._
+import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
 import dotty.tools.dotc.typer.Inliner
 
@@ -31,7 +32,7 @@ import scala.annotation.constructorOnly
  *
  *  Type healing consists in transforming a phase inconsistent type `T` into a splice of `implicitly[Type[T]]`.
  */
-class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) {
+class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) with Checking {
   import tpd._
 
   private val InAnnotation = Property.Key[Unit]()
@@ -212,7 +213,8 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
     val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
     tag.tpe match
-      case _: TermRef =>
+      case tp: TermRef =>
+        checkStable(tp, pos)
         Some(tag.select(tpnme.splice))
       case _: SearchFailureType =>
         levelError(sym, tp, pos,
