@@ -909,7 +909,7 @@ trait Implicits { self: Typer =>
   /** A path referencing the companion of class type `clsType` */
   private def companionPath(clsType: Type, span: Span)(implicit ctx: Context) = {
     val ref = pathFor(clsType.companionRef)
-    assert(ref.symbol.is(Module) && ref.symbol.companionClass == clsType.classSymbol)
+    assert(ref.symbol.is(Module) && (clsType.classSymbol.is(ModuleClass) || (ref.symbol.companionClass == clsType.classSymbol)))
     ref.withSpan(span)
   }
 
