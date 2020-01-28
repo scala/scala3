@@ -45,6 +45,9 @@ object Summarization {
       case Select(qualifier, name) =>
         val (pots, effs) = analyze(qualifier)
         if (env.ignoredMethods.contains(expr.symbol)) (Potentials.empty, effs)
+        else if (!expr.symbol.exists) { // polymorphic function apply and structural types
+          (Potentials.empty, pots.promote(expr) ++ effs)
+        }
         else {
           val (pots2, effs2) = pots.select(expr.symbol, expr)
           (pots2, effs ++ effs2)
