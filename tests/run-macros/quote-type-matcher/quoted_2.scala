@@ -1,8 +1,6 @@
 
 import Macros._
 
-import scala.internal.Quoted._
-
 object Test {
 
   def main(args: Array[String]): Unit = {
