@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
 # Usage:
-# BOT_TOKEN=<dotty-bot password> ./genDocs
+# BOT_TOKEN=<dotty-bot password> ./genDocs [-doc-snapshot]
 
 set -e
+GENDOC_EXTRA_ARGS=$@
 
 # set extended glob, needed for rm everything but x
 shopt -s extglob
@@ -18,7 +19,7 @@ echo "Working directory: $PWD"
 
 # this command will generate docs in $PWD/docs/_site
 SBT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/sbt"
-"$SBT" "genDocs"
+"$SBT" "genDocs $GENDOC_EXTRA_ARGS"
 
 # make sure that the previous command actually succeeded
 if [ ! -d "$PWD/docs/_site" ]; then
@@ -38,6 +39,9 @@ git config user.email "dotty-bot@d-d.me"
 # check out correct branch
 git fetch doc-remote gh-pages
 git checkout gh-pages
+
+# save the old snapshots to the newly generated site
+mv 0.*/ $PWD/docs/_site
 
 # move newly generated _site dir to $PWD
 mv $PWD/docs/_site .

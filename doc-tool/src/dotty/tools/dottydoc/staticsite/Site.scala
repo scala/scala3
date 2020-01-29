@@ -31,11 +31,13 @@ import util.syntax._
 
 case class Site(
   root: JFile,
+  outDir: JFile,
   projectTitle: String,
   projectVersion: String,
   projectUrl: Option[String],
   projectLogo: Option[String],
-  documentation: Map[String, Package]
+  documentation: Map[String, Package],
+  baseUrl: String
 ) extends ResourceFinder {
   /** Documentation serialized to java maps */
   private val docs: JList[_] = {
@@ -101,7 +103,7 @@ case class Site(
         .flatMap { file =>
           val BlogPost.extract(year, month, day, name, ext) = file.getName
           val sourceFile = toSourceFile(file)
-          val params = defaultParams(file, 2).withUrl(s"/blog/$year/$month/$day/$name.html").toMap
+          val params = defaultParams(file).withUrl(s"/blog/$year/$month/$day/$name.html").toMap
           val page =
             if (ext == "md")
               new MarkdownPage(file.getPath, sourceFile, params, includes, documentation)
@@ -128,11 +130,8 @@ case class Site(
     new SourceFile(virtualFile, Codec.UTF8)
   }
 
-  /** Copy static files to `outDir` */
-  private[this] val defaultOutDir = new JFile(root.getAbsolutePath + JFile.separator + "_site")
-
-  def copyStaticFiles(outDir: JFile = defaultOutDir)(implicit ctx: Context): this.type =
-    createOutput (outDir) {
+  def copyStaticFiles()(implicit ctx: Context): this.type =
+    createOutput {
       // Copy user-defined static assets
       staticAssets.foreach { asset =>
         val target = mkdirs(fs.getPath(outDir.getAbsolutePath, stripRoot(asset)))
@@ -169,15 +168,8 @@ case class Site(
     }
 
   /** Generate default params included in each page */
-  private def defaultParams(pageLocation: JFile, additionalDepth: Int = 0): DefaultParams = {
+  private def defaultParams(pageLocation: JFile): DefaultParams =
     val pathFromRoot = stripRoot(pageLocation)
-    val baseUrl: String = {
-      val rootLen = root.toPath.toAbsolutePath.normalize.getNameCount
-      val assetLen = pageLocation.toPath.toAbsolutePath.normalize.getNameCount
-      "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
-      // -1 because for root/index.html the root is the current directory (.) not its parent (../.)
-    }
-
     DefaultParams(
       docs, docsFlattened, documentation, PageInfo(pathFromRoot),
       SiteInfo(
@@ -186,10 +178,9 @@ case class Site(
       ),
       sidebar
     )
-  }
 
   /* Creates output directories if allowed */
-  private def createOutput(outDir: JFile)(op: => Unit)(implicit ctx: Context): this.type = {
+  private def createOutput(op: => Unit)(implicit ctx: Context): this.type = {
     if (!outDir.isDirectory) outDir.mkdirs()
     if (!outDir.isDirectory) ctx.docbase.error(s"couldn't create output folder: $outDir")
     else op
@@ -197,8 +188,8 @@ case class Site(
   }
 
   /** Generate HTML for the API documentation */
-  def generateApiDocs(outDir: JFile = defaultOutDir)(implicit ctx: Context): this.type =
-    createOutput(outDir) {
+  def generateApiDocs()(implicit ctx: Context): this.type =
+    createOutput {
       def genDoc(e: model.Entity): Unit = {
         ctx.docbase.echo(s"Generating doc page for: ${e.path.mkString(".")}")
         // Suffix is index.html for packages and therefore the additional depth
@@ -212,7 +203,7 @@ case class Site(
         else
           e.path
         val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  sep + "api" + sep + path.mkString(sep) + suffix))
-        val params = defaultParams(target.toFile, -1).withPosts(blogInfo).withEntity(Some(e)).toMap
+        val params = defaultParams(target.toFile).withPosts(blogInfo).withEntity(Some(e)).toMap
         val page = new HtmlPage("_layouts" + sep + "api-page.html", layouts("api-page").content, params, includes)
 
         render(page).foreach { rendered =>
@@ -231,7 +222,7 @@ case class Site(
 
       // generate search page:
       val target = mkdirs(fs.getPath(outDir.getAbsolutePath + sep + "api" + sep + "search.html"))
-      val searchPageParams = defaultParams(target.toFile, -1).withPosts(blogInfo).toMap
+      val searchPageParams = defaultParams(target.toFile).withPosts(blogInfo).toMap
       val searchPage = new HtmlPage("_layouts" + sep + "search.html", layouts("search").content, searchPageParams, includes)
       render(searchPage).foreach { rendered =>
         Files.copy(
@@ -243,8 +234,8 @@ case class Site(
     }
 
   /** Generate HTML files from markdown and .html sources */
-  def generateHtmlFiles(outDir: JFile = defaultOutDir)(implicit ctx: Context): this.type =
-    createOutput(outDir) {
+  def generateHtmlFiles()(implicit ctx: Context): this.type =
+    createOutput {
       compilableFiles.foreach { asset =>
         val pathFromRoot = stripRoot(asset)
         val sourceFile = toSourceFile(asset)
@@ -263,13 +254,13 @@ case class Site(
     }
 
   /** Generate blog from files in `blog/_posts` and output in `outDir` */
-  def generateBlog(outDir: JFile = defaultOutDir)(implicit ctx: Context): this.type =
-    createOutput(outDir) {
+  def generateBlog()(implicit ctx: Context): this.type =
+    createOutput {
       blogposts.foreach { file =>
         val BlogPost.extract(year, month, day, name, ext) = file.getName
         val sourceFile = toSourceFile(file)
         val date = s"$year-$month-$day 00:00:00"
-        val params = defaultParams(file, 2).withPosts(blogInfo).withDate(date).toMap
+        val params = defaultParams(file).withPosts(blogInfo).withDate(date).toMap
 
         // Output target
         val target = mkdirs(fs.getPath(outDir.getAbsolutePath, "blog", year, month, day, name + ".html"))

@@ -215,5 +215,7 @@ class ScalaSettings extends Settings.SettingGroup {
     ""
   )
 
+  val docSnapshot: Setting[Boolean] = BooleanSetting("-doc-snapshot", "Generate a documentation snapshot for the current Dotty version")
+
   val wikiSyntax: Setting[Boolean] = BooleanSetting("-Xwiki-syntax", "Retains the Scala2 behavior of using Wiki Syntax in Scaladoc.")
 }
