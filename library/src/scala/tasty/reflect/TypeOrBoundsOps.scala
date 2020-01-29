@@ -86,21 +86,12 @@ trait TypeOrBoundsOps extends Core {
 
   given (given Context): IsInstanceOf[Type] = internal.isInstanceOfType
 
-  object IsType
-    @deprecated("Use _: Type", "")
-    def unapply(x: Type)(given ctx: Context): Option[Type] =
-      internal.isInstanceOfType.unapply(x)
-
   object Type {
     def apply(clazz: Class[_])(given ctx: Context): Type =
       internal.Type_apply(clazz)
   }
 
   given (given Context): IsInstanceOf[ConstantType] = internal.isInstanceOfConstantType
-
-  object IsConstantType
-    @deprecated("Use _: ConstantType", "")
-    def unapply(x: ConstantType)(given ctx: Context): Option[ConstantType] = Some(x)
 
   object ConstantType {
     def apply(x : Constant)(given ctx: Context): ConstantType = internal.ConstantType_apply(x)
@@ -112,10 +103,6 @@ trait TypeOrBoundsOps extends Core {
   }
 
   given (given Context): IsInstanceOf[TermRef] = internal.isInstanceOfTermRef
-
-  object IsTermRef
-    @deprecated("Use _: TermRef", "")
-    def unapply(x: TermRef)(given ctx: Context): Option[TermRef] = Some(x)
 
   object TermRef {
     def apply(qual: TypeOrBounds, name: String)(given ctx: Context): TermRef =
@@ -131,10 +118,6 @@ trait TypeOrBoundsOps extends Core {
 
   given (given Context): IsInstanceOf[TypeRef] = internal.isInstanceOfTypeRef
 
-  object IsTypeRef
-    @deprecated("Use _: TypeRef", "")
-    def unapply(x: TypeRef)(given ctx: Context): Option[TypeRef] = Some(x)
-
   object TypeRef {
     def unapply(x: TypeRef)(given ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
       Some((x.qualifier, x.name))
@@ -147,10 +130,6 @@ trait TypeOrBoundsOps extends Core {
 
   given (given Context): IsInstanceOf[SuperType] = internal.isInstanceOfSuperType
 
-  object IsSuperType
-    @deprecated("Use _: SuperType", "")
-    def unapply(x: SuperType)(given ctx: Context): Option[SuperType] = Some(x)
-
   object SuperType {
     def unapply(x: SuperType)(given ctx: Context): Option[(Type, Type)] =
       Some((x.thistpe, x.supertpe))
@@ -162,10 +141,6 @@ trait TypeOrBoundsOps extends Core {
   }
 
   given (given Context): IsInstanceOf[Refinement] = internal.isInstanceOfRefinement
-
-  object IsRefinement
-    @deprecated("Use _: Refinement", "")
-    def unapply(x: Refinement)(given ctx: Context): Option[Refinement] = Some(x)
 
   object Refinement {
     def apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(given ctx: Context): Refinement =
@@ -183,10 +158,6 @@ trait TypeOrBoundsOps extends Core {
 
   given (given Context): IsInstanceOf[AppliedType] = internal.isInstanceOfAppliedType
 
-  object IsAppliedType
-    @deprecated("Use _: AppliedType", "")
-    def unapply(x: AppliedType)(given ctx: Context): Option[AppliedType] = Some(x)
-
   object AppliedType {
     def apply(tycon: Type, args: List[TypeOrBounds])(given ctx: Context): AppliedType =
       internal.AppliedType_apply(tycon, args)
@@ -200,10 +171,6 @@ trait TypeOrBoundsOps extends Core {
   }
 
   given (given Context): IsInstanceOf[AnnotatedType] = internal.isInstanceOfAnnotatedType
-
-  object IsAnnotatedType
-    @deprecated("Use _: AnnotatedType", "")
-    def unapply(x: AnnotatedType)(given ctx: Context): Option[AnnotatedType] = Some(x)
 
   object AnnotatedType {
     def apply(underlying: Type, annot: Term)(given ctx: Context): AnnotatedType =
@@ -219,10 +186,6 @@ trait TypeOrBoundsOps extends Core {
 
   given (given Context): IsInstanceOf[AndType] = internal.isInstanceOfAndType
 
-  object IsAndType
-    @deprecated("Use _: AndType", "")
-    def unapply(x: AndType)(given ctx: Context): Option[AndType] = Some(x)
-
   object AndType {
     def apply(lhs: Type, rhs: Type)(given ctx: Context): AndType =
       internal.AndType_apply(lhs, rhs)
@@ -237,10 +200,6 @@ trait TypeOrBoundsOps extends Core {
 
   given (given Context): IsInstanceOf[OrType] = internal.isInstanceOfOrType
 
-  object IsOrType
-    @deprecated("Use _: OrType", "")
-    def unapply(x: OrType)(given ctx: Context): Option[OrType] = Some(x)
-
   object OrType {
     def apply(lhs: Type, rhs: Type)(given ctx: Context): OrType = internal.OrType_apply(lhs, rhs)
     def unapply(x: OrType)(given ctx: Context): Option[(Type, Type)] =
@@ -253,10 +212,6 @@ trait TypeOrBoundsOps extends Core {
   }
 
   given (given Context): IsInstanceOf[MatchType] = internal.isInstanceOfMatchType
-
-  object IsMatchType
-    @deprecated("Use _: MatchType", "")
-    def unapply(x: MatchType)(given ctx: Context): Option[MatchType] = Some(x)
 
   object MatchType {
     def apply(bound: Type, scrutinee: Type, cases: List[Type])(given ctx: Context): MatchType =
@@ -281,10 +236,6 @@ trait TypeOrBoundsOps extends Core {
 
   given (given Context): IsInstanceOf[ByNameType] = internal.isInstanceOfByNameType
 
-  object IsByNameType
-    @deprecated("Use _: ByNameType", "")
-    def unapply(x: ByNameType)(given ctx: Context): Option[ByNameType] = Some(x)
-
   object ByNameType {
     def apply(underlying: Type)(given ctx: Context): Type = internal.ByNameType_apply(underlying)
     def unapply(x: ByNameType)(given ctx: Context): Option[Type] = Some(x.underlying)
@@ -295,10 +246,6 @@ trait TypeOrBoundsOps extends Core {
   }
 
   given (given Context): IsInstanceOf[ParamRef] = internal.isInstanceOfParamRef
-
-  object IsParamRef
-    @deprecated("Use _: ParamRef", "")
-    def unapply(x: ParamRef)(given ctx: Context): Option[ParamRef] = Some(x)
 
   object ParamRef {
     def unapply(x: ParamRef)(given ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] =
@@ -312,10 +259,6 @@ trait TypeOrBoundsOps extends Core {
 
   given (given Context): IsInstanceOf[ThisType] = internal.isInstanceOfThisType
 
-  object IsThisType
-    @deprecated("Use _: ThisType", "")
-    def unapply(x: ThisType)(given ctx: Context): Option[ThisType] = Some(x)
-
   object ThisType {
     def unapply(x: ThisType)(given ctx: Context): Option[Type] = Some(x.tref)
   }
@@ -325,10 +268,6 @@ trait TypeOrBoundsOps extends Core {
   }
 
   given (given Context): IsInstanceOf[RecursiveThis] = internal.isInstanceOfRecursiveThis
-
-  object IsRecursiveThis
-    @deprecated("Use _: RecursiveThis", "")
-    def unapply(x: RecursiveThis)(given ctx: Context): Option[RecursiveThis] = Some(x)
 
   object RecursiveThis {
     def unapply(x: RecursiveThis)(given ctx: Context): Option[RecursiveType] = Some(x.binder)
@@ -340,10 +279,6 @@ trait TypeOrBoundsOps extends Core {
 
   given (given Context): IsInstanceOf[RecursiveType] = internal.isInstanceOfRecursiveType
 
-  object IsRecursiveType
-    @deprecated("Use _: RecursiveType", "")
-    def unapply(x: RecursiveType)(given ctx: Context): Option[RecursiveType] = Some(x)
-
   object RecursiveType {
     def unapply(x: RecursiveType)(given ctx: Context): Option[Type] = Some(x.underlying)
   }
@@ -353,10 +288,6 @@ trait TypeOrBoundsOps extends Core {
   }
 
   given (given Context): IsInstanceOf[MethodType] = internal.isInstanceOfMethodType
-
-  object IsMethodType
-    @deprecated("Use _: MethodType", "")
-    def unapply(x: MethodType)(given ctx: Context): Option[MethodType] = Some(x)
 
   object MethodType {
     def apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType =
@@ -377,10 +308,6 @@ trait TypeOrBoundsOps extends Core {
 
   given (given Context): IsInstanceOf[PolyType] = internal.isInstanceOfPolyType
 
-  object IsPolyType
-    @deprecated("Use _: PolyType", "")
-    def unapply(x: PolyType)(given ctx: Context): Option[PolyType] = Some(x)
-
   object PolyType {
     def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(given ctx: Context): PolyType =
       internal.PolyType_apply(paramNames)(paramBoundsExp, resultTypeExp)
@@ -396,10 +323,6 @@ trait TypeOrBoundsOps extends Core {
   }
 
   given (given Context): IsInstanceOf[TypeLambda] = internal.isInstanceOfTypeLambda
-
-  object IsTypeLambda
-    @deprecated("Use _: TypeLambda", "")
-    def unapply(x: TypeLambda)(given ctx: Context): Option[TypeLambda] = Some(x)
 
   object TypeLambda {
     def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda =
@@ -418,10 +341,6 @@ trait TypeOrBoundsOps extends Core {
   // ----- TypeBounds -----------------------------------------------
 
   given (given Context): IsInstanceOf[TypeBounds] = internal.isInstanceOfTypeBounds
-
-  object IsTypeBounds
-    @deprecated("Use _: TypeBounds", "")
-    def unapply(x: TypeBounds)(given ctx: Context): Option[TypeBounds] = Some(x)
 
   object TypeBounds {
     def apply(low: Type, hi: Type)(given ctx: Context): TypeBounds =
