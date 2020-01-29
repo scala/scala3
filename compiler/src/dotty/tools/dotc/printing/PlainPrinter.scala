@@ -8,7 +8,7 @@ import StdNames.nme
 import ast.Trees._
 import typer.Implicits._
 import typer.ImportInfo
-import Variances.{varianceString, varianceToInt}
+import Variances.varianceSign
 import util.SourcePosition
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
@@ -333,7 +333,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val names =
           if lam.isVariantLambda then
             lam.paramNames.lazyZip(lam.givenVariances).map((name, v) =>
-              varianceString(varianceToInt(v)) + name)
+              varianceSign(v) + name)
           else lam.paramNames
         (names.mkString("[", ", ", "]"), lam.resType)
       case _ =>
@@ -449,7 +449,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   private def dclTextWithInfo(sym: Symbol, info: Option[Type]): Text =
     (toTextFlags(sym) ~~ keyString(sym) ~~
-      (varianceString(sym) ~ nameString(sym)) ~ toTextRHS(info)).close
+      (varianceSign(sym.variance) ~ nameString(sym)) ~ toTextRHS(info)).close
 
   def toText(sym: Symbol): Text =
     (kindString(sym) ~~ {

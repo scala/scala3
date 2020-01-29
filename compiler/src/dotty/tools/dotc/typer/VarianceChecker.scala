@@ -65,6 +65,11 @@ object VarianceChecker {
     checkType(bounds.lo)
     checkType(bounds.hi)
   end checkLambda
+
+  private def varianceLabel(v: Variance): String =
+    if (v is Covariant) "covariant"
+    else if (v is Contravariant) "contravariant"
+    else "invariant"
 }
 
 class VarianceChecker()(implicit ctx: Context) {
@@ -108,10 +113,10 @@ class VarianceChecker()(implicit ctx: Context) {
       if (relative == Bivariant) None
       else {
         val required = compose(relative, this.variance)
-        def tvar_s = s"$tvar (${varianceString(tvar.flags)} ${tvar.showLocated})"
+        def tvar_s = s"$tvar (${varianceLabel(tvar.flags)} ${tvar.showLocated})"
         def base_s = s"$base in ${base.owner}" + (if (base.owner.isClass) "" else " in " + base.owner.enclosingClass)
-        ctx.log(s"verifying $tvar_s is ${varianceString(required)} at $base_s")
-        ctx.log(s"relative variance: ${varianceString(relative)}")
+        ctx.log(s"verifying $tvar_s is ${varianceLabel(required)} at $base_s")
+        ctx.log(s"relative variance: ${varianceLabel(relative)}")
         ctx.log(s"current variance: ${this.variance}")
         ctx.log(s"owner chain: ${base.ownersIterator.toList}")
         if (tvar.isOneOf(required)) None
@@ -129,7 +134,7 @@ class VarianceChecker()(implicit ctx: Context) {
         else tp.normalized match {
           case tp: TypeRef =>
             val sym = tp.symbol
-            if (sym.variance != 0 && base.isContainedIn(sym.owner)) checkVarianceOfSymbol(sym)
+            if (sym.isOneOf(VarianceFlags) && base.isContainedIn(sym.owner)) checkVarianceOfSymbol(sym)
             else sym.info match {
               case MatchAlias(_) => foldOver(status, tp)
               case TypeAlias(alias) => this(status, alias)
@@ -160,7 +165,7 @@ class VarianceChecker()(implicit ctx: Context) {
   private object Traverser extends TreeTraverser {
     def checkVariance(sym: Symbol, pos: SourcePosition) = Validator.validateDefinition(sym) match {
       case Some(VarianceError(tvar, required)) =>
-        def msg = i"${varianceString(tvar.flags)} $tvar occurs in ${varianceString(required)} position in type ${sym.info} of $sym"
+        def msg = i"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym"
         if (ctx.scala2CompatMode &&
             (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal))))
           ctx.migrationWarning(

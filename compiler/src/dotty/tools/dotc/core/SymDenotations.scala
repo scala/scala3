@@ -12,6 +12,7 @@ import dotty.tools.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
 import Trees.Literal
+import Variances.Variance
 import annotation.tailrec
 import util.SimpleIdentityMap
 import util.Stats
@@ -1374,13 +1375,13 @@ object SymDenotations {
     def namedType(implicit ctx: Context): NamedType =
       if (isType) typeRef else termRef
 
-    /** The variance of this type parameter or type member as an Int, with
-     *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
+    /** The variance of this type parameter or type member as a subset of
+     *  {Covariant, Contravariant}
      */
-    final def variance(implicit ctx: Context): Int =
-      if (this.is(Covariant)) 1
-      else if (this.is(Contravariant)) -1
-      else 0
+    final def variance(implicit ctx: Context): Variance =
+      if is(Covariant) then Covariant
+      else if is(Contravariant) then Contravariant
+      else EmptyFlags
 
     /** The flags to be used for a type parameter owned by this symbol.
      *  Overridden by ClassDenotation.

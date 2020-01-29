@@ -119,6 +119,9 @@ object Variances {
         case _ =>
           foldOver(x, t)
     }
+    // Note: Normally, we'd need to repeat `traverse` until a fixpoint is reached.
+    // But since recursive lambdas can only appear in bounds, and bound never have
+    // structural variances, a single traversal is enough.
     traverse((), lam.resType)
 
   /** Does variance `v1` conform to variance `v2`?
@@ -144,15 +147,12 @@ object Variances {
     if needsDetailedCheck then tparams1.corresponds(tparams2)(varianceConforms)
     else tparams1.hasSameLengthAs(tparams2)
 
-  def varianceString(sym: Symbol)(implicit ctx: Context): String =
-    varianceString(sym.variance)
+  def varianceSign(sym: Symbol)(implicit ctx: Context): String =
+    varianceSign(sym.variance)
 
-  def varianceString(v: Variance): String =
-    if (v is Covariant) "covariant"
-    else if (v is Contravariant) "contravariant"
-    else "invariant"
+  def varianceSign(v: Variance): String = varianceSign(varianceToInt(v))
 
-  def varianceString(v: Int): String =
+  def varianceSign(v: Int): String =
     if (v > 0) "+"
     else if (v < 0) "-"
     else ""
