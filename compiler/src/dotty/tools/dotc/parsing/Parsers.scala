@@ -1863,6 +1863,7 @@ object Parsers {
      *  Ascription        ::=  `:' InfixType
      *                      |  `:' Annotation {Annotation}
      *                      |  `:' `_' `*'
+     *  Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
      */
     val exprInParens: () => Tree = () => expr(Location.InParens)
 
@@ -1946,7 +1947,7 @@ object Parsers {
               if in.token == CATCH then
                 val span = in.offset
                 in.nextToken()
-                (if in.token == CASE then Match(EmptyTree, caseClause() :: Nil)
+                (if in.token == CASE then Match(EmptyTree, caseClause(exprOnly = true) :: Nil)
                  else subExpr(),
                  span)
               else (EmptyTree, -1)
@@ -2072,7 +2073,7 @@ object Parsers {
     def matchClause(t: Tree): Match =
       in.endMarkerScope(MATCH) {
         atSpan(t.span.start, in.skipToken()) {
-          Match(t, inBracesOrIndented(caseClauses(caseClause)))
+          Match(t, inBracesOrIndented(caseClauses(() => caseClause())))
         }
       }
 
@@ -2366,7 +2367,7 @@ object Parsers {
     def blockExpr(): Tree = atSpan(in.offset) {
       val simplify = in.token == INDENT
       inDefScopeBraces {
-        if (in.token == CASE) Match(EmptyTree, caseClauses(caseClause))
+        if (in.token == CASE) Match(EmptyTree, caseClauses(() => caseClause()))
         else block(simplify)
       }
     }
@@ -2537,18 +2538,21 @@ object Parsers {
     }
 
     /** CaseClause         ::= ‘case’ Pattern [Guard] `=>' Block
+     *  ExprCaseClause    ::=  ‘case’ Pattern [Guard] ‘=>’ Expr
      */
-    val caseClause: () => CaseDef = () => atSpan(in.offset) {
+    def caseClause(exprOnly: Boolean = false): CaseDef = atSpan(in.offset) {
       val (pat, grd) = inSepRegion(LPAREN, RPAREN) {
         accept(CASE)
         (pattern(), guard())
       }
-      CaseDef(pat, grd, atSpan(accept(ARROW)) { block() })
+      CaseDef(pat, grd, atSpan(accept(ARROW)) {
+        if exprOnly then expr() else block()
+      })
     }
 
     /** TypeCaseClause     ::= ‘case’ InfixType ‘=>’ Type [nl]
      */
-    val typeCaseClause: () => CaseDef = () => atSpan(in.offset) {
+    def typeCaseClause(): CaseDef = atSpan(in.offset) {
       val pat = inSepRegion(LPAREN, RPAREN) {
         accept(CASE)
         infixType()
