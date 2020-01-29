@@ -13,11 +13,10 @@ assignees: ''
 println("hello, world")
 ```
 
-
+## Crash output (click arrow to expand)
 <details>
-<summary>Stack trace</summary>
 
 ```scala
-# TODO add stack trace here
+// TODO add output here
 ```
 </details>
