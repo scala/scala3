@@ -250,8 +250,8 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Convert a type constructor `TC` which has type parameters `X1, ..., Xn`
    *  to `[X1, ..., Xn] -> TC[X1, ..., Xn]`.
    */
-  def EtaExpand(tparams: List[TypeSymbol])(implicit ctx: Context): Type =
-    HKTypeLambda.fromParams(tparams, self.appliedTo(tparams.map(_.typeRef)))
+  def EtaExpand(tparams: List[TypeParamInfo])(implicit ctx: Context): Type =
+    HKTypeLambda.fromParams(tparams, self.appliedTo(tparams.map(_.paramRef)))
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
 
   /** If self is not lambda-bound, eta expand it. */
@@ -361,7 +361,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** Turns non-bounds types to type bounds.
-   *  A (possible lambda abstracted) match type is turned into an abstract type.
+   *  A (possible lambda abstracted) match type is turned into a match alias.
    *  Every other type is turned into a type alias
    */
   final def toBounds(implicit ctx: Context): TypeBounds = self match {
