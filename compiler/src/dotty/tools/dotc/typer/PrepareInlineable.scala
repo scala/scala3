@@ -240,11 +240,10 @@ object PrepareInlineable {
     if (inlined.owner.isClass && inlined.owner.seesOpaques)
       ctx.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.sourcePos)
     if (ctx.outer.inInlineMethod)
-      ctx.error(ex"implementation restriction: nested inline methods are not supported", inlined.sourcePos)
-    if (inlined.name.isUnapplyName && tupleArgs(body).isEmpty)
-      ctx.warning(
-        em"inline unapply method can be rewritten only if its right hand side is a tuple (e1, ..., eN)",
-        body.sourcePos)
+      ctx.error(ex"Implementation restriction: nested inline methods are not supported", inlined.sourcePos)
+    if (inlined.name.isUnapplyName)
+      ctx.error(em"Implementation restriction: inline ${inlined.name} methods are not supported", inlined.sourcePos)
+
     if (inlined.is(Macro) && !ctx.isAfterTyper) {
 
       def checkMacro(tree: Tree): Unit = tree match {

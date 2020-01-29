@@ -1016,14 +1016,8 @@ trait Checking {
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
   def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit =
-    if (!ctx.inInlineMethod && !ctx.isInlineContext) {
-      val inInlineUnapply = ctx.owner.ownersIterator.exists(owner =>
-        owner.name.isUnapplyName && owner.is(Inline) && owner.is(Method))
-      val msg =
-        if (inInlineUnapply) "cannot be used in an inline unapply"
-        else "can only be used in an inline method"
-      ctx.error(em"$what $msg", posd.sourcePos)
-    }
+    if !ctx.inInlineMethod && !ctx.isInlineContext then
+      ctx.error(em"$what can only be used in an inline method", posd.sourcePos)
 
   /** 1. Check that all case classes that extend `scala.Enum` are `enum` cases
    *  2. Check that case class `enum` cases do not extend java.lang.Enum.

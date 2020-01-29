@@ -992,12 +992,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                     yield constToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))
                   caseAccessors.length == pats.length && reduceSubPatterns(pats, selectors)
                 }
-                else if (unapp.symbol.isInlineMethod) { // TODO: Adapt to typed setting
-                  val app = untpd.Apply(untpd.TypedSplice(unapp), untpd.ref(scrut))
-                  val app1 = typer.typedExpr(app)
-                  val args = tupleArgs(app1)
-                  args.nonEmpty && reduceSubPatterns(pats, args)
-                }
                 else false
               case _ =>
                 false
