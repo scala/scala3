@@ -1158,7 +1158,7 @@ object Types {
      *  Overridden and cached in OrType.
      */
     def atoms(implicit ctx: Context): Set[Type] = dealias match {
-      case tp: SingletonType if tp.isStable =>
+      case tp: SingletonType =>
         def normalize(tp: Type): Type = tp match {
           case tp: SingletonType =>
             tp.underlying.dealias match {
@@ -1172,7 +1172,7 @@ object Types {
           case _ => tp
         }
         val underlyingAtoms = tp.underlying.atoms
-        if (underlyingAtoms.isEmpty) Set.empty + normalize(tp)
+        if (underlyingAtoms.isEmpty && tp.isStable) Set.empty + normalize(tp)
         else underlyingAtoms
       case tp: ExprType => tp.resType.atoms
       case tp: OrType => tp.atoms // `atoms` overridden in OrType
