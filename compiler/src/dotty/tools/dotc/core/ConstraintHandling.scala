@@ -524,13 +524,18 @@ trait ConstraintHandling[AbstractContext] {
           pruneLambdaParams(bound)
       }
 
+      def sameKind(tp1: Type, tp2: Type): Boolean =
+        tp1.typeParams.corresponds(tp2.typeParams)((p1, p2) =>
+          sameKind(p1.paramInfo, p2.paramInfo))
+
       try bound match {
         case bound: TypeParamRef if constraint contains bound =>
           addParamBound(bound)
         case _ =>
           val pbound = prune(bound)
-          pbound.exists && (
-            if (fromBelow) addLowerBound(param, pbound) else addUpperBound(param, pbound))
+          pbound.exists
+          && sameKind(param, pbound)
+          && (if fromBelow then addLowerBound(param, pbound) else addUpperBound(param, pbound))
       }
       finally addConstraintInvocations -= 1
     }
