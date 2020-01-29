@@ -3,6 +3,7 @@ package dotty.tools.dotc.tastyreflect
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.typer.Typer
 import dotty.tools.dotc.util.{Property, SourcePosition, Spans}
 
 object MacroExpansion {
@@ -13,6 +14,6 @@ object MacroExpansion {
     ctx.property(MacroExpansionPosition)
 
   def context(inlinedFrom: tpd.Tree)(implicit ctx: Context): Context =
-    ctx.fresh.setProperty(MacroExpansionPosition, SourcePosition(inlinedFrom.source, inlinedFrom.span)).withSource(inlinedFrom.source)
+    ctx.fresh.setProperty(MacroExpansionPosition, SourcePosition(inlinedFrom.source, inlinedFrom.span)).setTypeAssigner(new Typer).withSource(inlinedFrom.source)
 }
 
