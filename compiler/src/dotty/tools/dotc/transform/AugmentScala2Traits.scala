@@ -65,5 +65,6 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer { this
         sym.ensureNotPrivate.installAfter(thisPhase)
     }
     mixin.setFlag(Scala2xPartiallyAugmented)
+    mixin.transformAfter(thisPhase, d => { d.setFlag(Scala2xPartiallyAugmented); d })
   }
 }
