@@ -1942,7 +1942,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         //    object O extends A, B { ... }
         //
         // Here, `F` is treated as bivariant in `O`. That is, only bivariant implementation
-        // of `F` are allowed.
+        // of `F` are allowed. See neg/hk-variance2s.scala test.
     }
   }
 
