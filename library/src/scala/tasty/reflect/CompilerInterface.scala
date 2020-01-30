@@ -455,7 +455,7 @@ trait CompilerInterface {
   def Closure_apply(meth: Term, tpe: Option[Type])(given ctx: Context): Closure
   def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type])(given ctx: Context): Closure
 
-  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(implicit ctx: Context): Block
+  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(given ctx: Context): Block
 
   /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
   type If <: Term
@@ -1043,7 +1043,7 @@ trait CompilerInterface {
 
   def isInstanceOfPolyType(given ctx: Context): IsInstanceOf[PolyType]
 
-  def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(given ctx: Context): PolyType 
+  def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(given ctx: Context): PolyType
 
   def PolyType_param(self: PolyType, idx: Int)(given ctx: Context): Type
   def PolyType_paramNames(self: PolyType)(given ctx: Context): List[String]

@@ -32,7 +32,8 @@ private[quoted] object Matcher {
     def termMatch(scrutineeTerm: Term, patternTerm: Term, hasTypeSplices: Boolean): Option[Tuple] = {
       implicit val env: Env = Map.empty
       if (hasTypeSplices) {
-        implicit val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
+        val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
+        given Context = ctx
         val matchings = scrutineeTerm.underlyingArgument =?= patternTerm.underlyingArgument
         // After matching and doing all subtype checks, we have to aproximate all the type bindings
         // that we have found and seal them in a quoted.Type
@@ -52,7 +53,8 @@ private[quoted] object Matcher {
     def typeTreeMatch(scrutineeTypeTree: TypeTree, patternTypeTree: TypeTree, hasTypeSplices: Boolean): Option[Tuple] = {
       implicit val env: Env = Map.empty
       if (hasTypeSplices) {
-        implicit val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
+        val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
+        given Context = ctx
         val matchings = scrutineeTypeTree =?= patternTypeTree
         // After matching and doing all subtype checks, we have to aproximate all the type bindings
         // that we have found and seal them in a quoted.Type

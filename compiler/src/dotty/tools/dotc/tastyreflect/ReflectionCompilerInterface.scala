@@ -592,7 +592,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type])(given Context): Closure =
     tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
 
-  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(implicit ctx: Context): Block =
+  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(given ctx: Context): Block =
     tpd.Lambda(tpe, rhsFn)
 
   type If = tpd.If
@@ -1204,7 +1204,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case tpe: Types.ConstantType => Some(tpe)
       case _ => None
   }
-  
+
   def ConstantType_apply(const: Constant)(given Context): ConstantType =
     Types.ConstantType(const)
 
