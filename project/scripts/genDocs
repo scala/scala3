@@ -41,7 +41,10 @@ git fetch doc-remote gh-pages
 git checkout gh-pages
 
 # save the old snapshots to the newly generated site
-mv 0.*/ $PWD/docs/_site
+# This command must never fail since failures short-circuit the script
+# The reason for failure is that no folder matches "0.*" pattern
+# because snapshots may not be generated yet
+(mv 0.*/ $PWD/docs/_site; true)
 
 # move newly generated _site dir to $PWD
 mv $PWD/docs/_site .

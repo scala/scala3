@@ -46,25 +46,27 @@ class DocDriver extends Driver {
     val projectUrl = Option(ctx.settings.projectUrl.value).filter(_.nonEmpty)
     val projectLogo = Option(ctx.settings.projectLogo.value).filter(_.nonEmpty)
     val docSnapshot = ctx.settings.docSnapshot.value
-    var baseUrl = "/"
 
-    var outDir = File(siteRoot, "_site")
-    if docSnapshot then
-      val folderName = if projectVersion.endsWith("NIGHTLY") then "nightly" else projectVersion
-      outDir = File(outDir, folderName)
-      baseUrl = s"$baseUrl$folderName"
+    val baseUrl = "/"
+    val outDir = File(siteRoot, "_site")
+    val snapshotFolderName = if projectVersion.endsWith("NIGHTLY") then "nightly" else projectVersion
+    val snapshotOutDir = File(outDir, snapshotFolderName)
+    val snapshotBaseUrl = s"$baseUrl$snapshotFolderName"
 
     if (projectName.isEmpty)
       ctx.error(s"Site project name not set. Use `-project <title>` to set the project name")
     else if (!siteRoot.exists || !siteRoot.isDirectory)
       ctx.error(s"Site root does not exist: $siteRoot")
     else {
-      Site(siteRoot, outDir, projectName, projectVersion, projectUrl, projectLogo, ctx.docbase.packages, baseUrl)
-        .generateApiDocs()
-        .copyStaticFiles()
-        .generateHtmlFiles()
-        .generateBlog()
+      def generateSite(outDir: File, baseUrl: String) =
+        Site(siteRoot, outDir, projectName, projectVersion, projectUrl, projectLogo, ctx.docbase.packages, baseUrl)
+          .generateApiDocs()
+          .copyStaticFiles()
+          .generateHtmlFiles()
+          .generateBlog()
 
+      generateSite(outDir, baseUrl)
+      if docSnapshot then generateSite(snapshotOutDir, snapshotBaseUrl)
       ctx.docbase.printSummary()
     }
 
