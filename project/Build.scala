@@ -597,9 +597,10 @@ object Build {
           val asm = findArtifactPath(externalDeps, "scala-asm")
           val dottyCompiler = jars("dotty-compiler")
           val dottyStaging = jars("dotty-staging")
+          val dottyTastyInspector = jars("dotty-tasty-inspector")
           val dottyInterfaces = jars("dotty-interfaces")
           val tastyCore = jars("tasty-core")
-          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, tastyCore).mkString(File.pathSeparator)))
+          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore).mkString(File.pathSeparator)))
         } else run(args)
       },
 
@@ -673,9 +674,10 @@ object Build {
       }
       val dottyInterfaces = jars("dotty-interfaces")
       val dottyStaging = jars("dotty-staging")
+      val dottyTastyInspector = jars("dotty-tasty-inspector")
       val tastyCore = jars("tasty-core")
       val asm = findArtifactPath(externalDeps, "scala-asm")
-      extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, tastyCore)
+      extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore)
     }
 
     val fullArgs = main :: insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
@@ -717,14 +719,18 @@ object Build {
   )
 
   lazy val bootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
-    javaOptions += {
+    javaOptions ++= {
       val jars = packageAll.value
-      "-Ddotty.tests.classes.dottyStaging=" + jars("dotty-staging")
+      Seq(
+        "-Ddotty.tests.classes.dottyStaging=" + jars("dotty-staging"),
+        "-Ddotty.tests.classes.dottyTastyInspector=" + jars("dotty-tasty-inspector"),
+      )
     },
     packageAll := {
       packageAll.in(`dotty-compiler`).value ++ Seq(
         "dotty-compiler" -> packageBin.in(Compile).value.getAbsolutePath,
         "dotty-staging"  -> packageBin.in(LocalProject("dotty-staging"), Compile).value.getAbsolutePath,
+        "dotty-tasty-inspector"  -> packageBin.in(LocalProject("dotty-tasty-inspector"), Compile).value.getAbsolutePath,
         "tasty-core"     -> packageBin.in(LocalProject("tasty-core-bootstrapped"), Compile).value.getAbsolutePath,
       )
     }
@@ -797,9 +803,18 @@ object Build {
     // We want the compiler to be present in the compiler classpath when compiling this project but not
     // when compiling a project that depends on dotty-staging (see sbt-dotty/sbt-test/sbt-dotty/quoted-example-project),
     // but we always need it to be present on the JVM classpath at runtime.
-    dependsOn(dottyCompiler(Bootstrapped) % "provided").
-    dependsOn(dottyCompiler(Bootstrapped) % "compile->runtime").
-    dependsOn(dottyCompiler(Bootstrapped) % "test->test").
+    dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
+    settings(commonBootstrappedSettings).
+    settings(
+      javaOptions := (javaOptions in `dotty-compiler-bootstrapped`).value
+    )
+
+  lazy val `dotty-tasty-inspector` = project.in(file("tasty-inspector")).
+    withCommonSettings(Bootstrapped).
+    // We want the compiler to be present in the compiler classpath when compiling this project but not
+    // when compiling a project that depends on dotty-tasty-inspector (see sbt-dotty/sbt-test/sbt-dotty/tasty-inspector-example-project),
+    // but we always need it to be present on the JVM classpath at runtime.
+    dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
     settings(commonBootstrappedSettings).
     settings(
       javaOptions := (javaOptions in `dotty-compiler-bootstrapped`).value
@@ -1108,6 +1123,7 @@ object Build {
         publishLocal in `dotty-library-bootstrapped`,
         publishLocal in `tasty-core-bootstrapped`,
         publishLocal in `dotty-staging`,
+        publishLocal in `dotty-tasty-inspector`,
         publishLocal in `scala-library`,
         publishLocal in `scala-reflect`,
         publishLocal in `dotty-doc-bootstrapped`,
@@ -1317,7 +1333,8 @@ object Build {
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`dotty-interfaces`, dottyLibrary, dottyCompiler, tastyCore, dottyDoc, `dotty-sbt-bridge`).
-      bootstrappedAggregate(`scala-library`, `scala-compiler`, `scala-reflect`, scalap, `dotty-language-server`, `dotty-staging`).
+      bootstrappedAggregate(`scala-library`, `scala-compiler`, `scala-reflect`, scalap,
+        `dotty-language-server`, `dotty-staging`, `dotty-tasty-inspector`, `dotty-tastydoc`).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
@@ -1356,6 +1373,7 @@ object Build {
     def asDottyTastydoc(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`dotty-tastydoc-input`).
       dependsOn(dottyCompiler).
+      dependsOn(`dotty-tasty-inspector`).
       settings(commonDocSettings)
 
     def asDottyTastydocInput(implicit mode: Mode): Project = project.withCommonSettings.

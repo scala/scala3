@@ -11,6 +11,7 @@ val `dotty-library-bootstrappedJS` = Build.`dotty-library-bootstrappedJS`
 val `dotty-sbt-bridge` = Build.`dotty-sbt-bridge`
 val `dotty-sbt-bridge-tests` = Build.`dotty-sbt-bridge-tests`
 val `dotty-staging` = Build.`dotty-staging`
+val `dotty-tasty-inspector` = Build.`dotty-tasty-inspector`
 val `dotty-language-server` = Build.`dotty-language-server`
 val `dotty-bench` = Build.`dotty-bench`
 val `dotty-bench-bootstrapped` = Build.`dotty-bench-bootstrapped`

@@ -1,6 +1,6 @@
 package dotty.tastydoc
 
-import scala.tasty.file._
+import scala.tasty.inspector._
 
 import dotty.tastydoc.representations._
 
@@ -92,8 +92,8 @@ object Main {
     } else {
       println("Running Dotty Tastydoc on: " + classes.mkString(" "))
       val mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation] = new scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]()
-      val tc = new TastydocConsumer(mutablePackagesMap)
-      ConsumeTasty(extraClasspath, classes, tc)
+      val tc = new TastydocInspector(mutablePackagesMap)
+      tc.inspect(extraClasspath, classes)
 
       representations.setSubClasses(mutablePackagesMap)
 
