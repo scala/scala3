@@ -110,19 +110,19 @@ object Variances {
   }
 
   def setStructuralVariances(lam: HKTypeLambda)(implicit ctx: Context): Unit =
-    assert(!lam.isVariantLambda)
+    assert(!lam.isDeclaredVarianceLambda)
     for param <- lam.typeParams do param.storedVariance = Bivariant
-    object traverse extends TypeAccumulator[Unit] {
-      def apply(x: Unit, t: Type): Unit = t match
+    object narrowVariances extends TypeTraverser {
+      def traverse(t: Type): Unit = t match
         case t: TypeParamRef if t.binder eq lam =>
           lam.typeParams(t.paramNum).storedVariance &= varianceFromInt(variance)
         case _ =>
-          foldOver(x, t)
+          traverseChildren(t)
     }
     // Note: Normally, we'd need to repeat `traverse` until a fixpoint is reached.
-    // But since recursive lambdas can only appear in bounds, and bound never have
+    // But since recursive lambdas can only appear in bounds, and bounds never have
     // structural variances, a single traversal is enough.
-    traverse((), lam.resType)
+    narrowVariances.traverse(lam.resType)
 
   /** Does variance `v1` conform to variance `v2`?
    *  This is the case if the variances are the same or `sym` is nonvariant.
@@ -137,12 +137,12 @@ object Variances {
 
   /** Do the variances of type parameters `tparams1` conform to the variances
    *  of corresponding type parameters `tparams2`?
-   *  This is only the case of `tparams1` and `tparams2` have the same length.
+   *  This is only the case if `tparams1` and `tparams2` have the same length.
    */
   def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(implicit ctx: Context): Boolean =
     val needsDetailedCheck = tparams2 match
       case (_: Symbol) :: _ => true
-      case LambdaParam(tl: HKTypeLambda, _) :: _ => tl.isVariantLambda
+      case LambdaParam(tl: HKTypeLambda, _) :: _ => tl.isDeclaredVarianceLambda
       case _ => false
     if needsDetailedCheck then tparams1.corresponds(tparams2)(varianceConforms)
     else tparams1.hasSameLengthAs(tparams2)

@@ -368,7 +368,7 @@ object Types {
     }
 
     /** Is this a higher-kinded type lambda with given parameter variances? */
-    def isVariantLambda: Boolean = false
+    def isDeclaredVarianceLambda: Boolean = false
 
 // ----- Higher-order combinators -----------------------------------
 
@@ -3433,15 +3433,19 @@ object Types {
   }
 
   /** A type lambda of the form `[X_0 B_0, ..., X_n B_n] => T`
-   *  Variances are encoded in parameter names. A name starting with `+`
-   *  designates a covariant parameter, a name starting with `-` designates
-   *  a contravariant parameter, and every other name designates a non-variant parameter.
+   *  Variances are encoded in parameter names. A
    *
    *  @param  paramNames      The names `X_0`, ..., `X_n`
    *  @param  paramInfosExp  A function that, given the polytype itself, returns the
    *                          parameter bounds `B_1`, ..., `B_n`
    *  @param  resultTypeExp   A function that, given the polytype itself, returns the
    *                          result type `T`.
+   *  @param  variances       The variances of the type parameters, if the type lambda
+   *                          carries variances, i.e. it is a bound of an abstract type
+   *                          or the rhs of a match alias or opaque alias. The parameter
+   *                          is Nil for all other lambdas.
+   *
+   *  Variances are stored in the `typeParams` list of the lambda.
    */
   class HKTypeLambda(val paramNames: List[TypeName], @constructorOnly variances: List[Variance])(
       paramInfosExp: HKTypeLambda => List[TypeBounds], resultTypeExp: HKTypeLambda => Type)
@@ -3457,28 +3461,28 @@ object Types {
 
     private def setVariances(tparams: List[LambdaParam], vs: List[Variance]): Unit =
       if tparams.nonEmpty then
-        tparams.head.givenVariance = vs.head
+        tparams.head.declaredVariance = vs.head
         setVariances(tparams.tail, vs.tail)
 
-    override val isVariantLambda = variances.nonEmpty
-    if isVariantLambda then setVariances(typeParams, variances)
+    override val isDeclaredVarianceLambda = variances.nonEmpty
+    if isDeclaredVarianceLambda then setVariances(typeParams, variances)
 
-    def givenVariances =
-      if isVariantLambda then typeParams.map(_.givenVariance)
+    def declaredVariances =
+      if isDeclaredVarianceLambda then typeParams.map(_.declaredVariance)
       else Nil
 
     override def computeHash(bs: Binders): Int =
-      doHash(new Binders(this, bs), givenVariances ::: paramNames, resType, paramInfos)
+      doHash(new Binders(this, bs), declaredVariances ::: paramNames, resType, paramInfos)
 
     // No definition of `eql` --> fall back on equals, which calls iso
 
     final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: HKTypeLambda =>
         paramNames.eqElements(that.paramNames)
-        && isVariantLambda == that.isVariantLambda
-        && (!isVariantLambda
+        && isDeclaredVarianceLambda == that.isDeclaredVarianceLambda
+        && (!isDeclaredVarianceLambda
             || typeParams.corresponds(that.typeParams)((x, y) =>
-                  x.givenVariance == y.givenVariance))
+                  x.declaredVariance == y.declaredVariance))
         && {
           val bs1 = new BinderPairs(this, that, bs)
           paramInfos.equalElements(that.paramInfos, bs1) &&
@@ -3489,7 +3493,7 @@ object Types {
     }
 
     override def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): This =
-      newLikeThis(paramNames, givenVariances, paramInfos, resType)
+      newLikeThis(paramNames, declaredVariances, paramInfos, resType)
 
     def newLikeThis(paramNames: List[ThisName], variances: List[Variance], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): This =
       HKTypeLambda(paramNames, variances)(
@@ -3501,8 +3505,8 @@ object Types {
 
     protected def prefixString: String = "HKTypeLambda"
     final override def toString: String =
-      if isVariantLambda then
-        s"HKTypeLambda($paramNames, $paramInfos, $resType, ${givenVariances.map(_.flagsString)})"
+      if isDeclaredVarianceLambda then
+        s"HKTypeLambda($paramNames, $paramInfos, $resType, ${declaredVariances.map(_.flagsString)})"
       else super.toString
   }
 
@@ -3612,7 +3616,7 @@ object Types {
           bounds.derivedAlias(expand(bounds.alias, true))
         case bounds: TypeAlias =>
           bounds.derivedAlias(expand(bounds.alias,
-            isOpaqueAlias | params.exists(!_.paramVariance.isEmpty)))
+            isOpaqueAlias || params.exists(!_.paramVariance.isEmpty)))
         case TypeBounds(lo, hi) =>
           bounds.derivedTypeBounds(
             if lo.isRef(defn.NothingClass) then lo else expand(lo, true),
@@ -3659,18 +3663,32 @@ object Types {
     def paramRef(implicit ctx: Context): Type = tl.paramRefs(n)
 
     private var myVariance: FlagSet = UndefinedFlags
+
+    /** Low level setter, only called from Variances.setStructuralVariances */
     def storedVariance_= (v: Variance): Unit =
       myVariance = v
+
+    /** Low level getter, only called from Variances.setStructuralVariances */
     def storedVariance: Variance =
       myVariance
 
-    def givenVariance_=(v: Variance): Unit =
+    /** Set the declared variance of this parameter.
+     *  @pre the containing lambda is a isDeclaredVarianceLambda
+     */
+    def declaredVariance_=(v: Variance): Unit =
+      assert(tl.isDeclaredVarianceLambda)
       assert(myVariance == UndefinedFlags)
       myVariance = v
-    def givenVariance: Variance =
+
+    /** The declared variance of this parameter.
+     *  @pre the containing lambda is a isDeclaredVarianceLambda
+     */
+    def declaredVariance: Variance =
+      assert(tl.isDeclaredVarianceLambda)
       assert(myVariance != UndefinedFlags)
       myVariance
 
+    /** The declared or structural variance of this parameter. */
     def paramVariance(implicit ctx: Context): Variance =
       if myVariance == UndefinedFlags then
         tl match

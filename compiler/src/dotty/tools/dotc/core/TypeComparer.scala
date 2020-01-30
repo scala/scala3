@@ -1934,6 +1934,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       if (t2.exists) t2
       else if (isErased) erasedGlb(tp1, tp2, isJava = false)
       else liftIfHK(tp1, tp2, op, original, _ | _)
+        // The ` | ` on variances is needed since variances are associated with bounds
+        // not lambdas. Example:
+        //
+        //    trait A { def F[-X] }
+        //    trait B { def F[+X] }
+        //    object O extends A, B { ... }
+        //
+        // Here, `F` is treated as bivariant in `O`. That is, only bivariant implementation
+        // of `F` are allowed.
     }
   }
 
@@ -2004,7 +2013,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       HKTypeLambda(
         paramNames = HKTypeLambda.syntheticParamNames(tparams1.length),
         variances =
-          if tp1.isVariantLambda && tp2.isVariantLambda then
+          if tp1.isDeclaredVarianceLambda && tp2.isDeclaredVarianceLambda then
             tparams1.lazyZip(tparams2).map((p1, p2) => combineVariance(p1.paramVariance, p2.paramVariance))
           else Nil
       )(

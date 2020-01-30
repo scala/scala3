@@ -211,7 +211,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   OPEN                                                             -- an open class
                   Annotation
 
-  Variance      = SEALED                                                           -- invariant
+  Variance      = STABLE                                                           -- invariant
                 | COVARIANT
                 | CONTRAVARIANT
 

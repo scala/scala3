@@ -135,8 +135,8 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleVariances(tp: Type)(given Context): Unit = tp match
-    case tp: HKTypeLambda if tp.isVariantLambda =>
-      for v <- tp.givenVariances do
+    case tp: HKTypeLambda if tp.isDeclaredVarianceLambda =>
+      for v <- tp.declaredVariances do
         writeByte(
           if v.is(Covariant) then COVARIANT
           else if v.is(Contravariant) then CONTRAVARIANT

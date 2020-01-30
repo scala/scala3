@@ -38,8 +38,6 @@ its eta expansion. I.e, `List = [X] =>> List[X]`. This allows type constructors 
 
 ## Relationship with Parameterized Type Definitions
 
-type F[X] <: List[F[X]]
-
 A parameterized type definition
 ```scala
 type T[X] = R
@@ -53,7 +51,7 @@ it is checked that the variance annotations are satisfied by the type lambda.
 For instance,
 ```scala
 type F2[A, +B] = A => B
-```scala
+```
 expands to
 ```scala
 type F2 = [A, B] =>> A => B

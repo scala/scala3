@@ -27,7 +27,7 @@ object VarianceChecker {
    */
   def checkLambda(tree: tpd.LambdaTypeTree, bounds: TypeBounds)(implicit ctx: Context): Unit =
     def checkType(tpe: Type): Unit = tpe match
-      case tl: HKTypeLambda if tl.isVariantLambda =>
+      case tl: HKTypeLambda if tl.isDeclaredVarianceLambda =>
         val checkOK = new TypeAccumulator[Boolean] {
           def paramVarianceSign(tref: TypeParamRef) =
             tl.typeParams(tref.paramNum).paramVarianceSign
