@@ -1,11 +1,11 @@
 object Test {
-  def id: (x: 1 | 0) => x.type = x => x
-  id(0): 0   // fails
+  def id: (x: 1 | 0) => x.type = ???
+  id(0): 0   // ok
 
   def id2: Function1[1 | 0, 1 | 0] {
     def apply(x: 1 | 0): x.type
   } = ???
-  id2(0): 0  // fails
+  id2(0): 0  // ok
 
   def id3: Function1[1 | 0, Int] {
     def apply(x: 1 | 0): x.type

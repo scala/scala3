@@ -1188,8 +1188,9 @@ object Types {
           case _ => tp
         }
         val underlyingAtoms = tp.underlying.atoms(widenOK)
-        if (underlyingAtoms.isEmpty && tp.isStable) Set.empty + normalize(tp)
-        else underlyingAtoms
+        if underlyingAtoms.isEmpty && tp.isStable then Set.empty + normalize(tp)
+        else if underlyingAtoms.size == 1 || widenOK then underlyingAtoms
+        else Set.empty
       case tp: ExprType => tp.resType.atoms(widenOK)
       case tp: OrType => tp.atoms(widenOK) // `atoms` overridden in OrType
       case tp: AndType => tp.tp1.atoms(widenOK) & tp.tp2.atoms(widenOK)
