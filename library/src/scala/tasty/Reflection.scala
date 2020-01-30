@@ -1,30 +1,3016 @@
 package scala.tasty
 
 import scala.quoted.QuoteContext
+import scala.quoted.show.SyntaxHighlight
 import scala.tasty.reflect._
 
-class Reflection(private[scala] val internal: CompilerInterface)
-    extends Core
-    with ConstantOps
-    with ContextOps
-    with CommentOps
-    with FlagsOps
-    with IdOps
-    with ImplicitsOps
-    with ImportSelectorOps
-    with QuotedOps
-    with PositionOps
-    with PrinterOps
-    with ReportingOps
-    with RootPosition
-    with SignatureOps
-    with StandardDefinitions
-    with SymbolOps
-    with TreeOps
-    with TreeUtils
-    with TypeOrBoundsOps { self =>
+/** TASTy Reflect
+ *
+ *
+ *  Type hierarchy
+ *  ```none
+ *
+ *  +- Tree -+- PackageClause
+ *           +- Import
+ *           +- Statement -+- Definition --+- PackageDef
+ *           |             |               +- ClassDef
+ *           |             |               +- TypeDef
+ *           |             |               +- DefDef
+ *           |             |               +- ValDef
+ *           |             |
+ *           |             +- Term --------+- Ref -+- Ident
+ *           |                             |       +- Select
+ *           |                             |
+ *           |                             +- Literal
+ *           |                             +- This
+ *           |                             +- New
+ *           |                             +- NamedArg
+ *           |                             +- Apply
+ *           |                             +- TypeApply
+ *           |                             +- Super
+ *           |                             +- Typed
+ *           |                             +- Assign
+ *           |                             +- Block
+ *           |                             +- Closure
+ *           |                             +- If
+ *           |                             +- Match
+ *           |                             +- GivenMatch
+ *           |                             +- Try
+ *           |                             +- Return
+ *           |                             +- Repeated
+ *           |                             +- Inlined
+ *           |                             +- SelectOuter
+ *           |                             +- While
+ *           |
+ *           |
+ *           +- TypeTree ----+- Inferred
+ *           |               +- TypeIdent
+ *           |               +- TypeSelect
+ *           |               +- Projection
+ *           |               +- Singleton
+ *           |               +- Refined
+ *           |               +- Applied
+ *           |               +- Annotated
+ *           |               +- MatchTypeTree
+ *           |               +- ByName
+ *           |               +- LambdaTypeTree
+ *           |               +- TypeBind
+ *           |               +- TypeBlock
+ *           |
+ *           +- TypeBoundsTree
+ *           +- WildcardTypeTree
+ *           |
+ *           +- CaseDef
+ *           |
+ *           +- TypeCaseDef
+ *           +- Bind
+ *           +- Unapply
+ *           +- Alternatives
+ *
+ *
+ *                   +- NoPrefix
+ *  +- TypeOrBounds -+- TypeBounds
+ *                   |
+ *                   +- Type -------+- ConstantType
+ *                                  +- TermRef
+ *                                  +- TypeRef
+ *                                  +- SuperType
+ *                                  +- Refinement
+ *                                  +- AppliedType
+ *                                  +- AnnotatedType
+ *                                  +- AndType
+ *                                  +- OrType
+ *                                  +- MatchType
+ *                                  +- ByNameType
+ *                                  +- ParamRef
+ *                                  +- ThisType
+ *                                  +- RecursiveThis
+ *                                  +- RecursiveType
+ *                                  +- LambdaType[ParamInfo <: TypeOrBounds] -+- MethodType
+ *                                                                            +- PolyType
+ *                                                                            +- TypeLambda
+ *
+ *  +- ImportSelector -+- SimpleSelector
+ *                     +- RenameSelector
+ *                     +- OmitSelector
+ *
+ *  +- Id
+ *
+ *  +- Signature
+ *
+ *  +- Position
+ *
+ *  +- Comment
+ *
+ *  +- Constant
+ *
+ *  +- Symbol
+ *
+ *  +- Flags
+ *
+ *  ```
+ */
+class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
-  def typeOf[T: scala.quoted.Type]: Type =
-    summon[scala.quoted.Type[T]].unseal.tpe
+  /** Compilation context */
+  type Context = internal.Context
+
+  /** Settings */
+  type Settings = internal.Settings
+
+  /** Tree representing code written in the source */
+  type Tree = internal.Tree
+
+    /** Tree representing a pacakage clause in the source code */
+    type PackageClause = internal.PackageClause
+
+    /** Tree representing a statement in the source code */
+    type Statement = internal.Statement
+
+      /** Tree representing an import in the source code */
+      type Import = internal.Import
+
+      /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
+      type Definition = internal.Definition
+
+        /** Tree representing a package definition. This includes definitions in all source files */
+        type PackageDef = internal.PackageDef
+
+        /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
+        type ClassDef = internal.ClassDef
+
+        /** Tree representing a type (paramter or member) definition in the source code */
+        type TypeDef = internal.TypeDef
+
+        /** Tree representing a method definition in the source code */
+        type DefDef = internal.DefDef
+
+        /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
+        type ValDef = internal.ValDef
+
+      /** Tree representing an expression in the source code */
+      type Term = internal.Term
+
+        /** Tree representing a reference to definition */
+        type Ref = internal.Ref
+
+          /** Tree representing a reference to definition with a given name */
+          type Ident = internal.Ident
+
+          /** Tree representing a selection of definition with a given name on a given prefix */
+          type Select = internal.Select
+
+        /** Tree representing a literal value in the source code */
+        type Literal = internal.Literal
+
+        /** Tree representing `this` in the source code */
+        type This = internal.This
+
+        /** Tree representing `new` in the source code */
+        type New = internal.New
+
+        /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
+        type NamedArg = internal.NamedArg
+
+        /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s  */
+        type Apply = internal.Apply
+
+        /** Tree an application of type arguments */
+        type TypeApply = internal.TypeApply
+
+        /** Tree representing `super` in the source code */
+        type Super = internal.Super
+
+        /** Tree representing a type ascription `x: T` in the source code */
+        type Typed = internal.Typed
+
+        /** Tree representing an assignment `x = y` in the source code */
+        type Assign = internal.Assign
+
+        /** Tree representing a block `{ ... }` in the source code */
+        type Block = internal.Block
+
+        /** A lambda `(...) => ...` in the source code is represented as
+          *  a local method and a closure:
+          *
+          *  {
+          *    def m(...) = ...
+          *    closure(m)
+          *  }
+          *
+          */
+        type Closure = internal.Closure
+
+        /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
+        type If = internal.If
+
+        /** Tree representing a pattern match `x match  { ... }` in the source code */
+        type Match = internal.Match
+
+        /** Tree representing a pattern match `given match { ... }` in the source code */  // TODO: drop
+        type GivenMatch = internal.GivenMatch
+
+        /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
+        type Try = internal.Try
+
+        /** Tree representing a `return` in the source code */
+        type Return = internal.Return
+
+        /** Tree representing a variable argument list in the source code */
+        type Repeated = internal.Repeated
+
+        /** Tree representing the scope of an inlined tree */
+        type Inlined = internal.Inlined
+
+        /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
+        type SelectOuter = internal.SelectOuter
+
+        /** Tree representing a while loop */
+        type While = internal.While
+
+      /** Type tree representing a type written in the source */
+      type TypeTree = internal.TypeTree
+
+        /** Type tree representing an inferred type */
+        type Inferred = internal.Inferred
+
+        /** Type tree representing a reference to definition with a given name */
+        type TypeIdent = internal.TypeIdent
+
+        /** Type tree representing a selection of definition with a given name on a given term prefix */
+        type TypeSelect = internal.TypeSelect
+
+        /** Type tree representing a selection of definition with a given name on a given type prefix */
+        type Projection = internal.Projection
+
+        /** Type tree representing a singleton type */
+        type Singleton = internal.Singleton
+
+        /** Type tree representing a type refinement */
+        type Refined = internal.Refined
+
+        /** Type tree representing a type application */
+        type Applied = internal.Applied
+
+        /** Type tree representing an annotated type */
+        type Annotated = internal.Annotated
+
+        /** Type tree representing a type match */
+        type MatchTypeTree = internal.MatchTypeTree
+
+        /** Type tree representing a by name parameter */
+        type ByName = internal.ByName
+
+        /** Type tree representing a lambda abstraction type */
+        type LambdaTypeTree = internal.LambdaTypeTree
+
+        /** Type tree representing a type binding */
+        type TypeBind = internal.TypeBind
+
+        /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
+        type TypeBlock = internal.TypeBlock
+
+      /** Type tree representing a type bound written in the source */
+      type TypeBoundsTree = internal.TypeBoundsTree
+
+      /** Type tree representing wildcard type bounds written in the source.
+        *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
+        *  represents a type but has `TypeBound`a inside.
+        */
+      type WildcardTypeTree = internal.WildcardTypeTree
+
+  /** Branch of a pattern match or catch clause */
+  type CaseDef = internal.CaseDef
+
+  /** Branch of a type pattern match */
+  type TypeCaseDef = internal.TypeCaseDef
+
+  /** Pattern representing a `_ @ _` binding. */
+  type Bind = internal.Bind
+
+  /** Pattern representing a `Xyz(...)` unapply. */
+  type Unapply = internal.Unapply
+
+  /** Pattern representing `X | Y | ...` alternatives. */
+  type Alternatives = internal.Alternatives
+
+  /** Type or bounds */
+  type TypeOrBounds = internal.TypeOrBounds
+
+    /** NoPrefix for a type selection */
+    type NoPrefix = internal.NoPrefix
+
+    /** Type bounds */
+    type TypeBounds = internal.TypeBounds
+
+    /** A type */
+    type Type = internal.Type
+
+      /** A singleton type representing a known constant value */
+      type ConstantType = internal.ConstantType
+
+      /** Type of a reference to a term symbol */
+      type TermRef = internal.TermRef
+
+      /** Type of a reference to a type symbol */
+      type TypeRef = internal.TypeRef
+
+      /** Type of a `super` reference */
+      type SuperType = internal.SuperType
+
+      /** A type with a type refinement `T { type U }` */
+      type Refinement = internal.Refinement
+
+      /** A higher kinded type applied to some types `T[U]` */
+      type AppliedType = internal.AppliedType
+
+      /** A type with an anottation `T @foo` */
+      type AnnotatedType = internal.AnnotatedType
+
+      /** Intersection type `T & U` */
+      type AndType = internal.AndType
+
+      /** Union type `T | U` */
+      type OrType = internal.OrType
+
+      /** Type match `T match { case U => ... }` */
+      type MatchType = internal.MatchType
+
+      /** Type of a by by name parameter */
+      type ByNameType = internal.ByNameType
+
+      /** Type of a parameter reference */
+      type ParamRef = internal.ParamRef
+
+      /** Type of `this` */
+      type ThisType = internal.ThisType
+
+      /** A type that is recursively defined `this` */
+      type RecursiveThis = internal.RecursiveThis
+
+      /** A type that is recursively defined */
+      type RecursiveType = internal.RecursiveType
+
+      // TODO can we add the bound back without an cake?
+      // TODO is LambdaType really needed? ParamRefExtractor could be split into more precise extractors
+      /** Common abstraction for lambda types (MethodType, PolyType and TypeLambda). */
+      type LambdaType[ParamInfo /*<: TypeOrBounds*/] = internal.LambdaType[ParamInfo]
+
+        /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
+        type MethodType = internal.MethodType
+
+        /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
+        type PolyType = internal.PolyType
+
+        /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
+        type TypeLambda = internal.TypeLambda
+
+
+  /** Import selectors:
+    *   * SimpleSelector: `.bar` in `import foo.bar`
+    *   * RenameSelector: `.{bar => baz}` in `import foo.{bar => baz}`
+    *   * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
+    */
+  type ImportSelector = internal.ImportSelector
+  type SimpleSelector = internal.SimpleSelector
+  type RenameSelector = internal.RenameSelector
+  type OmitSelector = internal.OmitSelector
+
+  /** Untyped identifier */
+  type Id = internal.Id
+
+  /** Signature of a method */
+  type Signature = internal.Signature
+
+  /** Position in a source file */
+  type Position = internal.Position
+
+  /** Scala source file */
+  type SourceFile = internal.SourceFile
+
+  /** Comment */
+  type Comment = internal.Comment
+
+  /** Constant value represented as the constant itself */
+  type Constant = internal.Constant
+
+  /** Symbol of a definition.
+    *  Then can be compared with == to know if the definition is the same.
+    */
+  type Symbol = internal.Symbol
+
+  /** FlagSet of a Symbol */
+  type Flags = internal.Flags
+
+  type ImplicitSearchResult = internal.ImplicitSearchResult
+
+  type ImplicitSearchSuccess = internal.ImplicitSearchSuccess
+
+  type ImplicitSearchFailure = internal.ImplicitSearchFailure
+
+  type DivergingImplicit = internal.DivergingImplicit
+
+  type NoMatchingImplicits = internal.NoMatchingImplicits
+
+  type AmbiguousImplicits = internal.AmbiguousImplicits
+
+
+  ////////////////
+  //   QUOTES   //
+  ////////////////
+
+  implicit class QuotedExprAPI[T](expr: scala.quoted.Expr[T]) {
+    /** View this expression `quoted.Expr[T]` as a `Term` */
+    def unseal(given ctx: Context): Term =
+      internal.QuotedExpr_unseal(expr)
+
+    /** Checked cast to a `quoted.Expr[U]` */
+    def cast[U: scala.quoted.Type](given ctx: Context): scala.quoted.Expr[U] =
+      internal.QuotedExpr_cast[U](expr)
+  }
+
+  implicit class QuotedTypeAPI[T <: AnyKind](tpe: scala.quoted.Type[T]) {
+    /** View this expression `quoted.Type[T]` as a `TypeTree` */
+    def unseal(given ctx: Context): TypeTree =
+      internal.QuotedType_unseal(tpe)
+  }
+
+  implicit class TermToQuotedAPI(term: Term) {
+    /** Convert `Term` to an `quoted.Expr[Any]` */
+    def seal(given ctx: Context): scala.quoted.Expr[Any] =
+      internal.QuotedExpr_seal(term)
+  }
+
+  implicit class TypeToQuotedAPI(tpe: Type) {
+    /** Convert `Type` to an `quoted.Type[_]` */
+    def seal(given ctx: Context): scala.quoted.Type[_] =
+      internal.QuotedType_seal(tpe)
+  }
+
+  //////////////
+  // CONTEXTS //
+  //////////////
+
+  /** Context of the macro expansion */
+  implicit def rootContext: Context = internal.rootContext // TODO: Use given // TODO: Should this be moved to QuoteContext?
+
+  given ContextOps: extension (self: Context) {
+    /** Returns the owner of the context */
+    def owner: Symbol = internal.Context_owner(self)
+
+    /** Returns the source file being compiled. The path is relative to the current working directory. */
+    def source: java.nio.file.Path = internal.Context_source(self)
+
+    /** Get package symbol if package is either defined in current compilation run or present on classpath. */
+    def requiredPackage(path: String): Symbol = internal.Context_requiredPackage(self)(path)
+
+    /** Get class symbol if class is either defined in current compilation run or present on classpath. */
+    def requiredClass(path: String): Symbol = internal.Context_requiredClass(self)(path)
+
+    /** Get module symbol if module is either defined in current compilation run or present on classpath. */
+    def requiredModule(path: String): Symbol = internal.Context_requiredModule(self)(path)
+
+    /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
+    def requiredMethod(path: String): Symbol = internal.Context_requiredMethod(self)(path)
+
+  }
+
+
+  ///////////////
+  //   TREES   //
+  ///////////////
+
+  // ----- Tree -----------------------------------------------------
+
+  given TreeOps: extension (self: Tree) {
+    /** Position in the source code */
+    def pos(given ctx: Context): Position = internal.Tree_pos(self)
+
+    def symbol(given ctx: Context): Symbol = internal.Tree_symbol(self)
+  }
+
+  given (given Context): IsInstanceOf[PackageClause] = internal.isInstanceOfPackageClause
+
+  object PackageClause {
+    def apply(pid: Ref, stats: List[Tree])(given ctx: Context): PackageClause =
+      internal.PackageClause_apply(pid, stats)
+    def copy(original: Tree)(pid: Ref, stats: List[Tree])(given ctx: Context): PackageClause =
+      internal.PackageClause_copy(original)(pid, stats)
+    def unapply(tree: PackageClause)(given ctx: Context): Some[(Ref, List[Tree])] =
+      Some((tree.pid, tree.stats))
+  }
+
+  given PackageClauseOps: extension (self: PackageClause) {
+    def pid(given ctx: Context): Ref = internal.PackageClause_pid(self)
+    def stats(given ctx: Context): List[Tree] = internal.PackageClause_stats(self)
+  }
+
+  given (given Context): IsInstanceOf[Import] = internal.isInstanceOfImport
+
+  object Import {
+    def apply(expr: Term, selectors: List[ImportSelector])(given ctx: Context): Import =
+      internal.Import_apply(expr, selectors)
+    def copy(original: Tree)(expr: Term, selectors: List[ImportSelector])(given ctx: Context): Import =
+      internal.Import_copy(original)(expr, selectors)
+    def unapply(tree: Import)(given ctx: Context): Option[(Term, List[ImportSelector])] =
+      Some((tree.expr, tree.selectors))
+  }
+
+  given ImportOps: extension (self: Import)  {
+    def expr(given ctx: Context): Term = internal.Import_expr(self)
+    def selectors(given ctx: Context): List[ImportSelector] =
+      internal.Import_selectors(self)
+  }
+
+  given (given Context): IsInstanceOf[Statement] = internal.isInstanceOfStatement
+
+  // ----- Definitions ----------------------------------------------
+
+  given (given Context): IsInstanceOf[Definition] = internal.isInstanceOfDefinition
+
+  given DefinitionOps: extension (self: Definition) {
+    def name(given ctx: Context): String = internal.Definition_name(self)
+  }
+
+  // ClassDef
+
+  given (given Context): IsInstanceOf[ClassDef] = internal.isInstanceOfClassDef
+
+  object ClassDef {
+    // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef
+    def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef =
+      internal.ClassDef_copy(original)(name, constr, parents, derived, selfOpt, body)
+    def unapply(cdef: ClassDef)(given ctx: Context): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
+      Some((cdef.name, cdef.constructor, cdef.parents, cdef.derived, cdef.self, cdef.body))
+  }
+
+  given ClassDefOps: extension (self: ClassDef) {
+    def constructor(given ctx: Context): DefDef = internal.ClassDef_constructor(self)
+    def parents(given ctx: Context): List[Tree /* Term | TypeTree */] = internal.ClassDef_parents(self)
+    def derived(given ctx: Context): List[TypeTree] = internal.ClassDef_derived(self)
+    def self(given ctx: Context): Option[ValDef] = internal.ClassDef_self(self)
+    def body(given ctx: Context): List[Statement] = internal.ClassDef_body(self)
+  }
+
+  // DefDef
+
+  given (given Context): IsInstanceOf[DefDef] = internal.isInstanceOfDefDef
+
+  object DefDef {
+    def apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(given ctx: Context): DefDef =
+      internal.DefDef_apply(symbol, rhsFn)
+    def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(given ctx: Context): DefDef =
+      internal.DefDef_copy(original)(name, typeParams, paramss, tpt, rhs)
+    def unapply(ddef: DefDef)(given ctx: Context): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
+      Some((ddef.name, ddef.typeParams, ddef.paramss, ddef.returnTpt, ddef.rhs))
+  }
+
+  given DefDefOps: extension (self: DefDef) {
+    def typeParams(given ctx: Context): List[TypeDef] = internal.DefDef_typeParams(self)
+    def paramss(given ctx: Context): List[List[ValDef]] = internal.DefDef_paramss(self)
+    def returnTpt(given ctx: Context): TypeTree = internal.DefDef_returnTpt(self) // TODO rename to tpt
+    def rhs(given ctx: Context): Option[Term] = internal.DefDef_rhs(self)
+  }
+
+  // ValDef
+
+  given (given Context): IsInstanceOf[ValDef] = internal.isInstanceOfValDef
+
+  object ValDef {
+    def apply(symbol: Symbol, rhs: Option[Term])(given ctx: Context): ValDef =
+      internal.ValDef_apply(symbol, rhs)
+    def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term])(given ctx: Context): ValDef =
+      internal.ValDef_copy(original)(name, tpt, rhs)
+    def unapply(vdef: ValDef)(given ctx: Context): Option[(String, TypeTree, Option[Term])] =
+      Some((vdef.name, vdef.tpt, vdef.rhs))
+  }
+
+  given ValDefOps: extension (self: ValDef) {
+    def tpt(given ctx: Context): TypeTree = internal.ValDef_tpt(self)
+    def rhs(given ctx: Context): Option[Term] = internal.ValDef_rhs(self)
+  }
+
+  // TypeDef
+
+  given (given Context): IsInstanceOf[TypeDef] = internal.isInstanceOfTypeDef
+
+  object TypeDef {
+    def apply(symbol: Symbol)(given ctx: Context): TypeDef =
+      internal.TypeDef_apply(symbol)
+    def copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeDef =
+      internal.TypeDef_copy(original)(name, rhs)
+    def unapply(tdef: TypeDef)(given ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)] =
+      Some((tdef.name, tdef.rhs))
+  }
+
+  given TypeDefOps: extension (self: TypeDef) {
+    def rhs(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeDef_rhs(self)
+  }
+
+  // PackageDef
+
+  given (given Context): IsInstanceOf[PackageDef] = internal.isInstanceOfPackageDef
+
+  given PackageDefOps: extension (self: PackageDef) {
+    def owner(given ctx: Context): PackageDef = internal.PackageDef_owner(self)
+    def members(given ctx: Context): List[Statement] = internal.PackageDef_members(self)
+  }
+
+  object PackageDef {
+    def unapply(tree: PackageDef)(given ctx: Context): Option[(String, PackageDef)] =
+      Some((tree.name, tree.owner))
+  }
+
+  // ----- Terms ----------------------------------------------------
+
+  given TermOps: extension (self: Term) {
+    def tpe(given ctx: Context): Type = internal.Term_tpe(self)
+    def underlyingArgument(given ctx: Context): Term = internal.Term_underlyingArgument(self)
+    def underlying(given ctx: Context): Term = internal.Term_underlying(self)
+    def etaExpand(given ctx: Context): Term = internal.Term_etaExpand(self)
+
+    /** A unary apply node with given argument: `tree(arg)` */
+    def appliedTo(arg: Term)(given ctx: Context): Term =
+      self.appliedToArgs(arg :: Nil)
+
+    /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
+    def appliedTo(arg: Term, args: Term*)(given ctx: Context): Term =
+      self.appliedToArgs(arg :: args.toList)
+
+    /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))` */
+    def appliedToArgs(args: List[Term])(given ctx: Context): Apply =
+      Apply(self, args)
+
+    /** The current tree applied to given argument lists:
+     *  `tree (argss(0)) ... (argss(argss.length -1))`
+     */
+    def appliedToArgss(argss: List[List[Term]])(given ctx: Context): Term =
+      argss.foldLeft(self: Term)(Apply(_, _))
+
+    /** The current tree applied to (): `tree()` */
+    def appliedToNone(given ctx: Context): Apply =
+      self.appliedToArgs(Nil)
+
+    /** The current tree applied to given type argument: `tree[targ]` */
+    def appliedToType(targ: Type)(given ctx: Context): Term =
+      self.appliedToTypes(targ :: Nil)
+
+    /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
+    def appliedToTypes(targs: List[Type])(given ctx: Context): Term =
+      self.appliedToTypeTrees(targs map (Inferred(_)))
+
+    /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
+    def appliedToTypeTrees(targs: List[TypeTree])(given ctx: Context): Term =
+      if (targs.isEmpty) self else TypeApply(self, targs)
+
+    /** A select node that selects the given symbol.
+     */
+    def select(sym: Symbol)(given ctx: Context): Select = Select(self, sym)
+  }
+
+  given (given Context): IsInstanceOf[Term] = internal.isInstanceOfTerm
+
+  given (given Context): IsInstanceOf[Ref] = internal.isInstanceOfRef
+
+  object Ref {
+
+    /** Create a reference tree from a symbol
+      *
+      *  If `sym` refers to a class member `foo` in class `C`,
+      *  returns a tree representing `C.this.foo`.
+      *
+      *  If `sym` refers to a local definition `foo`, returns
+      *  a tree representing `foo`.
+      *
+      *  @note In both cases, the constructed tree should only
+      *  be spliced into the places where such accesses make sense.
+      *  For example, it is incorrect to have `C.this.foo` outside
+      *  the class body of `C`, or have `foo` outside the lexical
+      *  scope for the definition of `foo`.
+      */
+    def apply(sym: Symbol)(given ctx: Context): Ref =
+      internal.Ref_apply(sym)
+  }
+
+  given (given Context): IsInstanceOf[Ident] = internal.isInstanceOfIdent
+
+  given IdentOps: extension (self: Ident) {
+    def name(given ctx: Context): String = internal.Ident_name(self)
+  }
+
+  /** Scala term identifier */
+  object Ident {
+    def apply(tmref: TermRef)(given ctx: Context): Term =
+      internal.Ident_apply(tmref)
+
+    def copy(original: Tree)(name: String)(given ctx: Context): Ident =
+      internal.Ident_copy(original)(name)
+
+    /** Matches a term identifier and returns its name */
+    def unapply(tree: Ident)(given ctx: Context): Option[String] =
+      Some(tree.name)
+  }
+
+  given (given Context): IsInstanceOf[Select] = internal.isInstanceOfSelect
+
+  /** Scala term selection */
+  object Select {
+    /** Select a term member by symbol */
+    def apply(qualifier: Term, symbol: Symbol)(given ctx: Context): Select =
+      internal.Select_apply(qualifier, symbol)
+
+    /** Select a field or a non-overloaded method by name
+     *
+     *  @note The method will produce an assertion error if the selected
+     *        method is overloaded. The method `overloaded` should be used
+     *        in that case.
+     */
+    def unique(qualifier: Term, name: String)(given ctx: Context): Select =
+      internal.Select_unique(qualifier, name)
+
+    // TODO rename, this returns an Apply and not a Select
+    /** Call an overloaded method with the given type and term parameters */
+    def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(given ctx: Context): Apply =
+      internal.Select_overloaded(qualifier, name, targs, args)
+
+    def copy(original: Tree)(qualifier: Term, name: String)(given ctx: Context): Select =
+      internal.Select_copy(original)(qualifier, name)
+
+    /** Matches `<qualifier: Term>.<name: String>` */
+    def unapply(x: Select)(given ctx: Context): Option[(Term, String)] =
+      Some((x.qualifier, x.name))
+  }
+
+  given SelectOps: extension (self: Select) {
+    def qualifier(given ctx: Context): Term = internal.Select_qualifier(self)
+    def name(given ctx: Context): String = internal.Select_name(self)
+    def signature(given ctx: Context): Option[Signature] = internal.Select_signature(self)
+  }
+
+  given (given Context): IsInstanceOf[Literal] =
+    internal.isInstanceOfLiteral
+
+  /** Scala literal constant */
+  object Literal {
+
+    /** Create a literal constant */
+    def apply(constant: Constant)(given ctx: Context): Literal =
+      internal.Literal_apply(constant)
+
+    def copy(original: Tree)(constant: Constant)(given ctx: Context): Literal =
+      internal.Literal_copy(original)(constant)
+
+    /** Matches a literal constant */
+    def unapply(x: Literal)(given ctx: Context): Option[Constant] =
+      Some(x.constant)
+  }
+
+  given LiteralOps: extension (self: Literal) {
+    def constant(given ctx: Context): Constant = internal.Literal_constant(self)
+  }
+
+  given (given Context): IsInstanceOf[This] = internal.isInstanceOfThis
+
+  /** Scala `this` or `this[id]` */
+  object This {
+
+    /** Create a `this[<id: Id]>` */
+    def apply(cls: Symbol)(given ctx: Context): This =
+      internal.This_apply(cls)
+
+    def copy(original: Tree)(qual: Option[Id])(given ctx: Context): This =
+      internal.This_copy(original)(qual)
+
+    /** Matches `this[<id: Option[Id]>` */
+    def unapply(x: This)(given ctx: Context): Option[Option[Id]] = Some(x.id)
+
+  }
+
+  given ThisOps: extension (self: This) {
+    def id(given ctx: Context): Option[Id] = internal.This_id(self)
+  }
+
+  given (given Context): IsInstanceOf[New] = internal.isInstanceOfNew
+
+  /** Scala `new` */
+  object New {
+
+    /** Create a `new <tpt: TypeTree>` */
+    def apply(tpt: TypeTree)(given ctx: Context): New =
+      internal.New_apply(tpt)
+
+    def copy(original: Tree)(tpt: TypeTree)(given ctx: Context): New =
+      internal.New_copy(original)(tpt)
+
+    /** Matches a `new <tpt: TypeTree>` */
+    def unapply(x: New)(given ctx: Context): Option[TypeTree] = Some(x.tpt)
+  }
+
+  given NewOps: extension (self: New) {
+    def tpt(given ctx: Context): TypeTree = internal.New_tpt(self)
+  }
+
+  given (given Context): IsInstanceOf[NamedArg] = internal.isInstanceOfNamedArg
+
+  /** Scala named argument `x = y` in argument position */
+  object NamedArg {
+
+    /** Create a named argument `<name: String> = <value: Term>` */
+    def apply(name: String, arg: Term)(given ctx: Context): NamedArg =
+      internal.NamedArg_apply(name, arg)
+
+    def copy(original: Tree)(name: String, arg: Term)(given ctx: Context): NamedArg =
+      internal.NamedArg_copy(original)(name, arg)
+
+    /** Matches a named argument `<name: String> = <value: Term>` */
+    def unapply(x: NamedArg)(given ctx: Context): Option[(String, Term)] =
+      Some((x.name, x.value))
+
+  }
+
+  given NamedArgOps: extension (self: NamedArg) {
+    def name(given ctx: Context): String = internal.NamedArg_name(self)
+    def value(given ctx: Context): Term = internal.NamedArg_value(self)
+  }
+
+  given (given Context): IsInstanceOf[Apply] = internal.isInstanceOfApply
+
+  /** Scala parameter application */
+  object Apply {
+
+    /** Create a function application `<fun: Term>(<args: List[Term]>)` */
+    def apply(fun: Term, args: List[Term])(given ctx: Context): Apply =
+      internal.Apply_apply(fun, args)
+
+    def copy(original: Tree)(fun: Term, args: List[Term])(given ctx: Context): Apply =
+      internal.Apply_copy(original)(fun, args)
+
+    /** Matches a function application `<fun: Term>(<args: List[Term]>)` */
+    def unapply(x: Apply)(given ctx: Context): Option[(Term, List[Term])] =
+      Some((x.fun, x.args))
+  }
+
+  given ApplyOps: extension (self: Apply) {
+    def fun(given ctx: Context): Term = internal.Apply_fun(self)
+    def args(given ctx: Context): List[Term] = internal.Apply_args(self)
+  }
+
+  given (given Context): IsInstanceOf[TypeApply] = internal.isInstanceOfTypeApply
+
+  /** Scala type parameter application */
+  object TypeApply {
+
+    /** Create a function type application `<fun: Term>[<args: List[TypeTree]>]` */
+    def apply(fun: Term, args: List[TypeTree])(given ctx: Context): TypeApply =
+      internal.TypeApply_apply(fun, args)
+
+    def copy(original: Tree)(fun: Term, args: List[TypeTree])(given ctx: Context): TypeApply =
+      internal.TypeApply_copy(original)(fun, args)
+
+    /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]` */
+    def unapply(x: TypeApply)(given ctx: Context): Option[(Term, List[TypeTree])] =
+      Some((x.fun, x.args))
+
+  }
+
+  given TypeApplyOps: extension (self: TypeApply) {
+    def fun(given ctx: Context): Term = internal.TypeApply_fun(self)
+    def args(given ctx: Context): List[TypeTree] = internal.TypeApply_args(self)
+  }
+
+  given (given Context): IsInstanceOf[Super] = internal.isInstanceOfSuper
+
+  /** Scala `x.super` or `x.super[id]` */
+
+  object Super {
+
+    /** Creates a `<qualifier: Term>.super[<id: Option[Id]>` */
+    def apply(qual: Term, mix: Option[Id])(given ctx: Context): Super =
+      internal.Super_apply(qual, mix)
+
+    def copy(original: Tree)(qual: Term, mix: Option[Id])(given ctx: Context): Super =
+      internal.Super_copy(original)(qual, mix)
+
+    /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
+    def unapply(x: Super)(given ctx: Context): Option[(Term, Option[Id])] =
+      Some((x.qualifier, x.id))
+  }
+
+  given SuperOps: extension (self: Super) {
+    def qualifier(given ctx: Context): Term = internal.Super_qualifier(self)
+    def id(given ctx: Context): Option[Id] = internal.Super_id(self)
+  }
+
+  given (given Context): IsInstanceOf[Typed] = internal.isInstanceOfTyped
+
+  /** Scala ascription `x: T` */
+  object Typed {
+
+    /** Create a type ascription `<x: Term>: <tpt: TypeTree>` */
+    def apply(expr: Term, tpt: TypeTree)(given ctx: Context): Typed =
+      internal.Typed_apply(expr, tpt)
+
+    def copy(original: Tree)(expr: Term, tpt: TypeTree)(given ctx: Context): Typed =
+      internal.Typed_copy(original)(expr, tpt)
+
+    /** Matches `<expr: Term>: <tpt: TypeTree>` */
+    def unapply(x: Typed)(given ctx: Context): Option[(Term, TypeTree)] =
+      Some((x.expr, x.tpt))
+
+  }
+
+  given TypedOps: extension (self: Typed) {
+    def expr(given ctx: Context): Term = internal.Typed_expr(self)
+    def tpt(given ctx: Context): TypeTree = internal.Typed_tpt(self)
+  }
+
+  given (given Context): IsInstanceOf[Assign] = internal.isInstanceOfAssign
+
+  /** Scala assign `x = y` */
+  object Assign {
+
+    /** Create an assignment `<lhs: Term> = <rhs: Term>` */
+    def apply(lhs: Term, rhs: Term)(given ctx: Context): Assign =
+      internal.Assign_apply(lhs, rhs)
+
+    def copy(original: Tree)(lhs: Term, rhs: Term)(given ctx: Context): Assign =
+      internal.Assign_copy(original)(lhs, rhs)
+
+    /** Matches an assignment `<lhs: Term> = <rhs: Term>` */
+    def unapply(x: Assign)(given ctx: Context): Option[(Term, Term)] =
+      Some((x.lhs, x.rhs))
+  }
+
+  given AssignOps: extension (self: Assign) {
+    def lhs(given ctx: Context): Term = internal.Assign_lhs(self)
+    def rhs(given ctx: Context): Term = internal.Assign_rhs(self)
+  }
+
+  given (given Context): IsInstanceOf[Block] = internal.isInstanceOfBlock
+
+  /** Scala code block `{ stat0; ...; statN; expr }` term */
+
+  object Block {
+
+    /** Creates a block `{ <statements: List[Statement]>; <expr: Term> }` */
+    def apply(stats: List[Statement], expr: Term)(given ctx: Context): Block =
+      internal.Block_apply(stats, expr)
+
+    def copy(original: Tree)(stats: List[Statement], expr: Term)(given ctx: Context): Block =
+      internal.Block_copy(original)(stats, expr)
+
+    /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }` */
+    def unapply(x: Block)(given ctx: Context): Option[(List[Statement], Term)] =
+      Some((x.statements, x.expr))
+  }
+
+  given BlockOps: extension (self: Block) {
+    def statements(given ctx: Context): List[Statement] = internal.Block_statements(self)
+    def expr(given ctx: Context): Term = internal.Block_expr(self)
+  }
+
+  given (given Context): IsInstanceOf[Closure] = internal.isInstanceOfClosure
+
+  object Closure {
+
+    def apply(meth: Term, tpt: Option[Type])(given ctx: Context): Closure =
+      internal.Closure_apply(meth, tpt)
+
+    def copy(original: Tree)(meth: Tree, tpt: Option[Type])(given ctx: Context): Closure =
+      internal.Closure_copy(original)(meth, tpt)
+
+    def unapply(x: Closure)(given ctx: Context): Option[(Term, Option[Type])] =
+      Some((x.meth, x.tpeOpt))
+  }
+
+  given ClosureOps: extension (self: Closure) {
+    def meth(given ctx: Context): Term = internal.Closure_meth(self)
+    def tpeOpt(given ctx: Context): Option[Type] = internal.Closure_tpeOpt(self)
+  }
+
+  /** A lambda `(...) => ...` in the source code is represented as
+   *  a local method and a closure:
+   *
+   *  {
+   *    def m(...) = ...
+   *    closure(m)
+   *  }
+   *
+   *  @note Due to the encoding, in pattern matches the case for `Lambda`
+   *        should come before the case for `Block` to avoid mishandling
+   *        of `Lambda`.
+   */
+  object Lambda {
+    def unapply(tree: Tree)(given ctx: Context): Option[(List[ValDef], Term)] = tree match {
+      case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
+      if ddef.symbol == meth.symbol =>
+        Some(params, body)
+
+      case _ => None
+    }
+
+    def apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(implicit ctx: Context): Block =
+      internal.Lambda_apply(tpe, rhsFn)
+
+  }
+
+  given (given Context): IsInstanceOf[If] = internal.isInstanceOfIf
+
+  /** Scala `if`/`else` term */
+  object If {
+
+    /** Create an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
+    def apply(cond: Term, thenp: Term, elsep: Term)(given ctx: Context): If =
+      internal.If_apply(cond, thenp, elsep)
+
+    def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(given ctx: Context): If =
+      internal.If_copy(original)(cond, thenp, elsep)
+
+    /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
+    def unapply(tree: If)(given ctx: Context): Option[(Term, Term, Term)] =
+      Some((tree.cond, tree.thenp, tree.elsep))
+
+  }
+
+  given IfOps: extension (self: If) {
+    def cond(given ctx: Context): Term = internal.If_cond(self)
+    def thenp(given ctx: Context): Term = internal.If_thenp(self)
+    def elsep(given ctx: Context): Term = internal.If_elsep(self)
+  }
+
+  given (given Context): IsInstanceOf[Match] = internal.isInstanceOfMatch
+
+  /** Scala `match` term */
+  object Match {
+
+    /** Creates a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
+    def apply(selector: Term, cases: List[CaseDef])(given ctx: Context): Match =
+      internal.Match_apply(selector, cases)
+
+    def copy(original: Tree)(selector: Term, cases: List[CaseDef])(given ctx: Context): Match =
+      internal.Match_copy(original)(selector, cases)
+
+    /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
+    def unapply(x: Match)(given ctx: Context): Option[(Term, List[CaseDef])] =
+      Some((x.scrutinee, x.cases))
+
+  }
+
+  given MatchOps: extension (self: Match) {
+    def scrutinee(given ctx: Context): Term = internal.Match_scrutinee(self)
+    def cases(given ctx: Context): List[CaseDef] = internal.Match_cases(self)
+  }
+
+  given (given Context): IsInstanceOf[GivenMatch] = internal.isInstanceOfGivenMatch
+
+  /** Scala implicit `match` term */
+
+  object GivenMatch {
+
+    /** Creates a pattern match `given match { <cases: List[CaseDef]> }` */
+    def apply(cases: List[CaseDef])(given ctx: Context): GivenMatch =
+      internal.GivenMatch_apply(cases)
+
+    def copy(original: Tree)(cases: List[CaseDef])(given ctx: Context): GivenMatch =
+      internal.GivenMatch_copy(original)(cases)
+
+    /** Matches a pattern match `given match { <cases: List[CaseDef]> }` */
+    def unapply(x: GivenMatch)(given ctx: Context): Option[List[CaseDef]] = Some(x.cases)
+
+  }
+
+  given GivenMatchOps: extension (self: GivenMatch) {
+    def cases(given ctx: Context): List[CaseDef] = internal.GivenMatch_cases(self)
+  }
+
+  given (given Context): IsInstanceOf[Try] = internal.isInstanceOfTry
+
+  /** Scala `try`/`catch`/`finally` term */
+  object Try {
+
+    /** Create a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
+    def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(given ctx: Context): Try =
+      internal.Try_apply(expr, cases, finalizer)
+
+    def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(given ctx: Context): Try =
+      internal.Try_copy(original)(expr, cases, finalizer)
+
+    /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
+    def unapply(x: Try)(given ctx: Context): Option[(Term, List[CaseDef], Option[Term])] =
+      Some((x.body, x.cases, x.finalizer))
+
+  }
+
+  given TryOps: extension (self: Try) {
+    def body(given ctx: Context): Term = internal.Try_body(self)
+    def cases(given ctx: Context): List[CaseDef] = internal.Try_cases(self)
+    def finalizer(given ctx: Context): Option[Term] = internal.Try_finalizer(self)
+  }
+
+  given (given Context): IsInstanceOf[Return] = internal.isInstanceOfReturn
+
+  /** Scala local `return` */
+  object Return {
+
+    /** Creates `return <expr: Term>` */
+    def apply(expr: Term)(given ctx: Context): Return =
+      internal.Return_apply(expr)
+
+    def copy(original: Tree)(expr: Term)(given ctx: Context): Return =
+      internal.Return_copy(original)(expr)
+
+    /** Matches `return <expr: Term>` */
+    def unapply(x: Return)(given ctx: Context): Option[Term] = Some(x.expr)
+
+  }
+
+  given ReturnOps: extension (self: Return) {
+    def expr(given ctx: Context): Term = internal.Return_expr(self)
+  }
+
+  given (given Context): IsInstanceOf[Repeated] = internal.isInstanceOfRepeated
+
+  object Repeated {
+
+    def apply(elems: List[Term], tpt: TypeTree)(given ctx: Context): Repeated =
+      internal.Repeated_apply(elems, tpt)
+
+    def copy(original: Tree)(elems: List[Term], tpt: TypeTree)(given ctx: Context): Repeated =
+      internal.Repeated_copy(original)(elems, tpt)
+
+    def unapply(x: Repeated)(given ctx: Context): Option[(List[Term], TypeTree)] =
+      Some((x.elems, x.elemtpt))
+
+  }
+
+  given RepeatedOps: extension (self: Repeated) {
+    def elems(given ctx: Context): List[Term] = internal.Repeated_elems(self)
+    def elemtpt(given ctx: Context): TypeTree = internal.Repeated_elemtpt(self)
+  }
+
+  given (given Context): IsInstanceOf[Inlined] = internal.isInstanceOfInlined
+
+  object Inlined {
+
+    def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(given ctx: Context): Inlined =
+      internal.Inlined_apply(call, bindings, expansion)
+
+    def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(given ctx: Context): Inlined =
+      internal.Inlined_copy(original)(call, bindings, expansion)
+
+    def unapply(x: Inlined)(given ctx: Context): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
+      Some((x.call, x.bindings, x.body))
+
+  }
+
+  given InlinedOps: extension (self: Inlined) {
+    def call(given ctx: Context): Option[Tree /* Term | TypeTree */] = internal.Inlined_call(self)
+    def bindings(given ctx: Context): List[Definition] = internal.Inlined_bindings(self)
+    def body(given ctx: Context): Term = internal.Inlined_body(self)
+  }
+
+  given (given Context): IsInstanceOf[SelectOuter] = internal.isInstanceOfSelectOuter
+
+  object SelectOuter {
+
+    def apply(qualifier: Term, name: String, levels: Int)(given ctx: Context): SelectOuter =
+      internal.SelectOuter_apply(qualifier, name, levels)
+
+    def copy(original: Tree)(qualifier: Term, name: String, levels: Int)(given ctx: Context): SelectOuter =
+      internal.SelectOuter_copy(original)(qualifier, name, levels)
+
+    def unapply(x: SelectOuter)(given ctx: Context): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
+      Some((x.qualifier, x.level, x.tpe))
+
+  }
+
+  given SelectOuterOps: extension (self: SelectOuter) {
+    def qualifier(given ctx: Context): Term = internal.SelectOuter_qualifier(self)
+    def level(given ctx: Context): Int = internal.SelectOuter_level(self)
+  }
+
+  given (given Context): IsInstanceOf[While] = internal.isInstanceOfWhile
+
+  object While {
+
+    /** Creates a while loop `while (<cond>) <body>` and returns (<cond>, <body>) */
+    def apply(cond: Term, body: Term)(given ctx: Context): While =
+      internal.While_apply(cond, body)
+
+    def copy(original: Tree)(cond: Term, body: Term)(given ctx: Context): While =
+      internal.While_copy(original)(cond, body)
+
+    /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
+    def unapply(x: While)(given ctx: Context): Option[(Term, Term)] =
+      Some((x.cond, x.body))
+
+  }
+
+  given WhileOps: extension (self: While) {
+    def cond(given ctx: Context): Term = internal.While_cond(self)
+    def body(given ctx: Context): Term = internal.While_body(self)
+  }
+
+  // ----- TypeTrees ------------------------------------------------
+
+  given TypeTreeOps: extension (self: TypeTree) {
+    /** Type of this type tree */
+    def tpe(given ctx: Context): Type = internal.TypeTree_tpe(self)
+  }
+
+  given (given Context): IsInstanceOf[TypeTree] =
+    internal.isInstanceOfTypeTree
+
+  given (given Context): IsInstanceOf[Inferred] = internal.isInstanceOfInferred
+
+  /** TypeTree containing an inferred type */
+  object Inferred {
+    def apply(tpe: Type)(given ctx: Context): Inferred =
+      internal.Inferred_apply(tpe)
+    /** Matches a TypeTree containing an inferred type */
+    def unapply(x: Inferred)(given ctx: Context): Boolean = true
+  }
+
+  given (given Context): IsInstanceOf[TypeIdent] = internal.isInstanceOfTypeIdent
+
+  given TypeIdentOps: extension (self: TypeIdent) {
+    def name(given ctx: Context): String = internal.TypeIdent_name(self)
+  }
+
+  object TypeIdent {
+    def apply(sym: Symbol)(given ctx: Context): TypeTree =
+      internal.TypeRef_apply(sym)
+    def copy(original: Tree)(name: String)(given ctx: Context): TypeIdent =
+      internal.TypeIdent_copy(original)(name)
+    def unapply(x: TypeIdent)(given ctx: Context): Option[String] = Some(x.name)
+  }
+
+  given (given Context): IsInstanceOf[TypeSelect] = internal.isInstanceOfTypeSelect
+
+  object TypeSelect {
+    def apply(qualifier: Term, name: String)(given ctx: Context): TypeSelect =
+      internal.TypeSelect_apply(qualifier, name)
+    def copy(original: Tree)(qualifier: Term, name: String)(given ctx: Context): TypeSelect =
+      internal.TypeSelect_copy(original)(qualifier, name)
+    def unapply(x: TypeSelect)(given ctx: Context): Option[(Term, String)] =
+      Some((x.qualifier, x.name))
+  }
+
+  given TypeSelectOps: extension (self: TypeSelect) {
+    def qualifier(given ctx: Context): Term = internal.TypeSelect_qualifier(self)
+    def name(given ctx: Context): String = internal.TypeSelect_name(self)
+  }
+
+  given (given Context): IsInstanceOf[Projection] = internal.isInstanceOfProjection
+
+  object Projection {
+    // TODO def apply(qualifier: TypeTree, name: String)(given ctx: Context): Project
+    def copy(original: Tree)(qualifier: TypeTree, name: String)(given ctx: Context): Projection =
+      internal.Projection_copy(original)(qualifier, name)
+    def unapply(x: Projection)(given ctx: Context): Option[(TypeTree, String)] =
+      Some((x.qualifier, x.name))
+  }
+
+  given ProjectionOps: extension (self: Projection) {
+    def qualifier(given ctx: Context): TypeTree = internal.Projection_qualifier(self)
+    def name(given ctx: Context): String = internal.Projection_name(self)
+  }
+
+  given (given Context): IsInstanceOf[Singleton] =
+    internal.isInstanceOfSingleton
+
+  object Singleton {
+    def apply(ref: Term)(given ctx: Context): Singleton =
+      internal.Singleton_apply(ref)
+    def copy(original: Tree)(ref: Term)(given ctx: Context): Singleton =
+      internal.Singleton_copy(original)(ref)
+    def unapply(x: Singleton)(given ctx: Context): Option[Term] =
+      Some(x.ref)
+  }
+
+  given SingletonOps: extension (self: Singleton) {
+    def ref(given ctx: Context): Term = internal.Singleton_ref(self)
+  }
+
+  given (given Context): IsInstanceOf[Refined] = internal.isInstanceOfRefined
+
+  object Refined {
+    // TODO def apply(tpt: TypeTree, refinements: List[Definition])(given ctx: Context): Refined
+    def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition])(given ctx: Context): Refined =
+      internal.Refined_copy(original)(tpt, refinements)
+    def unapply(x: Refined)(given ctx: Context): Option[(TypeTree, List[Definition])] =
+      Some((x.tpt, x.refinements))
+  }
+
+  given RefinedOps: extension (self: Refined) {
+    def tpt(given ctx: Context): TypeTree = internal.Refined_tpt(self)
+    def refinements(given ctx: Context): List[Definition] = internal.Refined_refinements(self)
+  }
+
+  given (given Context): IsInstanceOf[Applied] = internal.isInstanceOfApplied
+
+  object Applied {
+    def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(given ctx: Context): Applied =
+      internal.Applied_apply(tpt, args)
+    def copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(given ctx: Context): Applied =
+      internal.Applied_copy(original)(tpt, args)
+    def unapply(x: Applied)(given ctx: Context): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
+      Some((x.tpt, x.args))
+  }
+
+  given AppliedOps: extension (self: Applied) {
+    def tpt(given ctx: Context): TypeTree = internal.Applied_tpt(self)
+    def args(given ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = internal.Applied_args(self)
+  }
+
+  given (given Context): IsInstanceOf[Annotated] =
+    internal.isInstanceOfAnnotated
+
+  object Annotated {
+    def apply(arg: TypeTree, annotation: Term)(given ctx: Context): Annotated =
+      internal.Annotated_apply(arg, annotation)
+    def copy(original: Tree)(arg: TypeTree, annotation: Term)(given ctx: Context): Annotated =
+      internal.Annotated_copy(original)(arg, annotation)
+    def unapply(x: Annotated)(given ctx: Context): Option[(TypeTree, Term)] =
+      Some((x.arg, x.annotation))
+  }
+
+  given AnnotatedOps: extension (self: Annotated) {
+    def arg(given ctx: Context): TypeTree = internal.Annotated_arg(self)
+    def annotation(given ctx: Context): Term = internal.Annotated_annotation(self)
+  }
+
+  given (given Context): IsInstanceOf[MatchTypeTree] =
+    internal.isInstanceOfMatchTypeTree
+
+  object MatchTypeTree {
+    def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(given ctx: Context): MatchTypeTree =
+      internal.MatchTypeTree_apply(bound, selector, cases)
+    def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(given ctx: Context): MatchTypeTree =
+      internal.MatchTypeTree_copy(original)(bound, selector, cases)
+    def unapply(x: MatchTypeTree)(given ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
+      Some((x.bound, x.selector, x.cases))
+  }
+
+  given MatchTypeTreeOps: extension (self: MatchTypeTree) {
+    def bound(given ctx: Context): Option[TypeTree] = internal.MatchTypeTree_bound(self)
+    def selector(given ctx: Context): TypeTree = internal.MatchTypeTree_selector(self)
+    def cases(given ctx: Context): List[TypeCaseDef] = internal.MatchTypeTree_cases(self)
+  }
+
+  given (given Context): IsInstanceOf[ByName] =
+    internal.isInstanceOfByName
+
+  object ByName {
+    def apply(result: TypeTree)(given ctx: Context): ByName =
+      internal.ByName_apply(result)
+    def copy(original: Tree)(result: TypeTree)(given ctx: Context): ByName =
+      internal.ByName_copy(original)(result)
+    def unapply(x: ByName)(given ctx: Context): Option[TypeTree] =
+      Some(x.result)
+  }
+
+  given ByNameOps: extension (self: ByName) {
+    def result(given ctx: Context): TypeTree = internal.ByName_result(self)
+  }
+
+  given (given Context): IsInstanceOf[LambdaTypeTree] = internal.isInstanceOfLambdaTypeTree
+
+  object LambdaTypeTree {
+    def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): LambdaTypeTree =
+      internal.Lambdaapply(tparams, body)
+    def copy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): LambdaTypeTree =
+      internal.Lambdacopy(original)(tparams, body)
+    def unapply(tree: LambdaTypeTree)(given ctx: Context): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
+      Some((tree.tparams, tree.body))
+  }
+
+  given LambdaTypeTreeOps: extension (self: LambdaTypeTree) {
+    def tparams(given ctx: Context): List[TypeDef] = internal.Lambdatparams(self)
+    def body(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.Lambdabody(self)
+  }
+
+  given (given Context): IsInstanceOf[TypeBind] = internal.isInstanceOfTypeBind
+
+  object TypeBind {
+    // TODO def apply(name: String, tree: Tree)(given ctx: Context): TypeBind
+    def copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeBind =
+      internal.TypeBind_copy(original)(name, tpt)
+    def unapply(x: TypeBind)(given ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
+      Some((x.name, x.body))
+  }
+
+  given TypeBindOps: extension (self: TypeBind) {
+    def name(given ctx: Context): String = internal.TypeBind_name(self)
+    def body(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeBind_body(self)
+  }
+
+  given (given Context): IsInstanceOf[TypeBlock] = internal.isInstanceOfTypeBlock
+
+  object TypeBlock {
+    def apply(aliases: List[TypeDef], tpt: TypeTree)(given ctx: Context): TypeBlock =
+      internal.TypeBlock_apply(aliases, tpt)
+    def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree)(given ctx: Context): TypeBlock =
+      internal.TypeBlock_copy(original)(aliases, tpt)
+    def unapply(x: TypeBlock)(given ctx: Context): Option[(List[TypeDef], TypeTree)] =
+      Some((x.aliases, x.tpt))
+  }
+
+  given TypeBlockOps: extension (self: TypeBlock) {
+    def aliases(given ctx: Context): List[TypeDef] = internal.TypeBlock_aliases(self)
+    def tpt(given ctx: Context): TypeTree = internal.TypeBlock_tpt(self)
+  }
+
+  // ----- TypeBoundsTrees ------------------------------------------------
+
+  given TypeBoundsTreeOps: extension (self: TypeBoundsTree) {
+    def tpe(given ctx: Context): TypeBounds = internal.TypeBoundsTree_tpe(self)
+    def low(given ctx: Context): TypeTree = internal.TypeBoundsTree_low(self)
+    def hi(given ctx: Context): TypeTree = internal.TypeBoundsTree_hi(self)
+  }
+
+  given (given Context): IsInstanceOf[TypeBoundsTree] = internal.isInstanceOfTypeBoundsTree
+
+  object TypeBoundsTree {
+    def unapply(x: TypeBoundsTree)(given ctx: Context): Option[(TypeTree, TypeTree)] =
+      Some((x.low, x.hi))
+  }
+
+  given WildcardTypeTreeOps: extension (self: WildcardTypeTree) {
+    def tpe(given ctx: Context): TypeOrBounds = internal.WildcardTypeTree_tpe(self)
+  }
+
+  given (given Context): IsInstanceOf[WildcardTypeTree] = internal.isInstanceOfWildcardTypeTree
+
+  object WildcardTypeTree {
+    /** Matches a TypeBoundsTree containing wildcard type bounds */
+    def unapply(x: WildcardTypeTree)(given ctx: Context): Boolean = true
+  }
+
+  // ----- CaseDefs ------------------------------------------------
+
+  given CaseDefOps: extension (caseDef: CaseDef) {
+    def pattern(given ctx: Context): Tree = internal.CaseDef_pattern(caseDef)
+    def guard(given ctx: Context): Option[Term] = internal.CaseDef_guard(caseDef)
+    def rhs(given ctx: Context): Term = internal.CaseDef_rhs(caseDef)
+  }
+
+  given (given Context): IsInstanceOf[CaseDef] = internal.isInstanceOfCaseDef
+
+  object CaseDef {
+    def apply(pattern: Tree, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
+      internal.CaseDef_module_apply(pattern, guard, rhs)
+
+    def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
+      internal.CaseDef_module_copy(original)(pattern, guard, rhs)
+
+    def unapply(x: CaseDef)(given ctx: Context): Option[(Tree, Option[Term], Term)] =
+      Some((x.pattern, x.guard, x.rhs))
+  }
+
+  given TypeCaseDefOps: extension (caseDef: TypeCaseDef) {
+    def pattern(given ctx: Context): TypeTree = internal.TypeCaseDef_pattern(caseDef)
+    def rhs(given ctx: Context): TypeTree = internal.TypeCaseDef_rhs(caseDef)
+  }
+
+  given (given Context): IsInstanceOf[TypeCaseDef] =
+    internal.isInstanceOfTypeCaseDef
+
+  object TypeCaseDef {
+    def apply(pattern: TypeTree, rhs: TypeTree)(given ctx: Context): TypeCaseDef =
+      internal.TypeCaseDef_module_apply(pattern, rhs)
+
+    def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree)(given ctx: Context): TypeCaseDef =
+      internal.TypeCaseDef_module_copy(original)(pattern, rhs)
+
+    def unapply(tree: TypeCaseDef)(given ctx: Context): Option[(TypeTree, TypeTree)] =
+      Some((tree.pattern, tree.rhs))
+  }
+
+  // ----- Patterns ------------------------------------------------
+
+  given (given Context): IsInstanceOf[Bind] = internal.isInstanceOfBind
+
+  object Bind {
+    // TODO def apply(name: String, pattern: Tree)(given ctx: Context): Bind
+    def copy(original: Tree)(name: String, pattern: Tree)(given ctx: Context): Bind =
+      internal.Tree_Bind_module_copy(original)(name, pattern)
+    def unapply(pattern: Bind)(given ctx: Context): Option[(String, Tree)] =
+      Some((pattern.name, pattern.pattern))
+  }
+
+  given BindOps: extension (bind: Bind) {
+    def name(given ctx: Context): String = internal.Tree_Bind_name(bind)
+    def pattern(given ctx: Context): Tree = internal.Tree_Bind_pattern(bind)
+  }
+
+  given (given Context): IsInstanceOf[Unapply] = internal.isInstanceOfUnapply
+
+  object Unapply {
+    // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply
+    def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply =
+      internal.Tree_Unapply_module_copy(original)(fun, implicits, patterns)
+    def unapply(x: Unapply)(given ctx: Context): Option[(Term, List[Term], List[Tree])] =
+      Some((x.fun, x.implicits, x.patterns))
+  }
+
+  given UnapplyOps: extension (unapply: Unapply) {
+    def fun(given ctx: Context): Term = internal.Tree_Unapply_fun(unapply)
+    def implicits(given ctx: Context): List[Term] = internal.Tree_Unapply_implicits(unapply)
+    def patterns(given ctx: Context): List[Tree] = internal.Tree_Unapply_patterns(unapply)
+  }
+
+  given (given Context): IsInstanceOf[Alternatives] = internal.isInstanceOfAlternatives
+
+  object Alternatives {
+    def apply(patterns: List[Tree])(given ctx: Context): Alternatives =
+      internal.Tree_Alternatives_module_apply(patterns)
+    def copy(original: Tree)(patterns: List[Tree])(given ctx: Context): Alternatives =
+      internal.Tree_Alternatives_module_copy(original)(patterns)
+    def unapply(x: Alternatives)(given ctx: Context): Option[List[Tree]] =
+      Some(x.patterns)
+  }
+
+  given AlternativesOps: extension (alternatives: Alternatives) {
+    def patterns(given ctx: Context): List[Tree] = internal.Tree_Alternatives_patterns(alternatives)
+  }
+
+
+  //////////////////////
+  // IMPORT SELECTORS //
+  /////////////////////
+
+  given simpleSelectorOps: extension (self: SimpleSelector) {
+    def selection(given ctx: Context): Id =
+      internal.SimpleSelector_selection(self)
+  }
+
+  given (given Context): IsInstanceOf[SimpleSelector] = internal.isInstanceOfSimpleSelector
+
+  object SimpleSelector
+    def unapply(x: SimpleSelector)(given ctx: Context): Option[Id] = Some(x.selection)
+
+  given renameSelectorOps: extension (self: RenameSelector) {
+    def from(given ctx: Context): Id =
+      internal.RenameSelector_from(self)
+
+    def to(given ctx: Context): Id =
+      internal.RenameSelector_to(self)
+  }
+
+  given (given Context): IsInstanceOf[RenameSelector] = internal.isInstanceOfRenameSelector
+
+  object RenameSelector
+    def unapply(x: RenameSelector)(given ctx: Context): Option[(Id, Id)] = Some((x.from, x.to))
+
+  given omitSelectorOps: extension (self: OmitSelector) {
+    def omitted(given ctx: Context): Id =
+      internal.SimpleSelector_omitted(self)
+  }
+
+  given (given Context): IsInstanceOf[OmitSelector] = internal.isInstanceOfOmitSelector
+
+  object OmitSelector
+    def unapply(x: OmitSelector)(given ctx: Context): Option[Id] = Some(x.omitted)
+
+
+  ///////////////
+  //   TYPES   //
+  ///////////////
+
+  /** Returns the type (Type) of T */
+  def typeOf[T](given qtype: scala.quoted.Type[T]): Type = qtype.unseal.tpe
+
+  // ----- Types ----------------------------------------------------
+
+  given TypeOps: extension (self: Type) {
+
+    /** Is `self` type the same as `that` type?
+     *  This is the case iff `self <:< that` and `that <:< self`.
+     */
+    def =:=(that: Type)(given ctx: Context): Boolean = internal.Type_isTypeEq(self)(that)
+
+    /** Is this type a subtype of that type? */
+    def <:<(that: Type)(given ctx: Context): Boolean = internal.Type_isSubType(self)(that)
+
+    /** Widen from singleton type to its underlying non-singleton
+     *  base type by applying one or more `underlying` dereferences,
+     *  Also go from => T to T.
+     *  Identity for all other types. Example:
+     *
+     *  class Outer { class C ; val x: C }
+     *  def o: Outer
+     *  <o.x.type>.widen = o.C
+     */
+    def widen(given ctx: Context): Type = internal.Type_widen(self)
+
+    /** Widen from TermRef to its underlying non-termref
+     *  base type, while also skipping `=>T` types.
+     */
+    def widenTermRefExpr(given ctx: Context): Type = internal.Type_widenTermRefExpr(self)
+
+    /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
+     *  TypeVars until type is no longer alias type, annotated type, LazyRef,
+     *  or instantiated type variable.
+     */
+    def dealias(given ctx: Context): Type = internal.Type_dealias(self)
+
+    /** A simplified version of this type which is equivalent wrt =:= to this type.
+     *  Reduces typerefs, applied match types, and and or types.
+     */
+    def simplified(given ctx: Context): Type = internal.Type_simplified(self)
+
+    def classSymbol(given ctx: Context): Option[Symbol] = internal.Type_classSymbol(self)
+    def typeSymbol(given ctx: Context): Symbol = internal.Type_typeSymbol(self)
+    def termSymbol(given ctx: Context): Symbol = internal.Type_termSymbol(self)
+    def isSingleton(given ctx: Context): Boolean = internal.Type_isSingleton(self)
+    def memberType(member: Symbol)(given ctx: Context): Type = internal.Type_memberType(self)(member)
+
+    /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
+    def derivesFrom(cls: Symbol)(given ctx: Context): Boolean =
+      internal.Type_derivesFrom(self)(cls)
+
+    /** Is this type a function type?
+     *
+     *  @return true if the dealised type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
+     *
+     *  @note The function
+     *
+     *     - returns true for `given Int => Int` and `erased Int => Int`
+     *     - returns false for `List[Int]`, despite that `List[Int] <:< Int => Int`.
+     */
+    def isFunctionType(given ctx: Context): Boolean = internal.Type_isFunctionType(self)
+
+    /** Is this type an implicit function type?
+     *
+     *  @see `isFunctionType`
+     */
+    def isImplicitFunctionType(given ctx: Context): Boolean = internal.Type_isImplicitFunctionType(self)
+
+    /** Is this type an erased function type?
+     *
+     *  @see `isFunctionType`
+     */
+    def isErasedFunctionType(given ctx: Context): Boolean = internal.Type_isErasedFunctionType(self)
+
+    /** Is this type a dependent function type?
+     *
+     *  @see `isFunctionType`
+     */
+    def isDependentFunctionType(given ctx: Context): Boolean = internal.Type_isDependentFunctionType(self)
+  }
+
+  given (given Context): IsInstanceOf[Type] = internal.isInstanceOfType
+
+  object Type {
+    def apply(clazz: Class[_])(given ctx: Context): Type =
+      internal.Type_apply(clazz)
+  }
+
+  given (given Context): IsInstanceOf[ConstantType] = internal.isInstanceOfConstantType
+
+  object ConstantType {
+    def apply(x : Constant)(given ctx: Context): ConstantType = internal.ConstantType_apply(x)
+    def unapply(x: ConstantType)(given ctx: Context): Option[Constant] = Some(x.constant)
+  }
+
+  given ConstantTypeOps: extension (self: ConstantType) {
+    def constant(given ctx: Context): Constant = internal.ConstantType_constant(self)
+  }
+
+  given (given Context): IsInstanceOf[TermRef] = internal.isInstanceOfTermRef
+
+  object TermRef {
+    def apply(qual: TypeOrBounds, name: String)(given ctx: Context): TermRef =
+      internal.TermRef_apply(qual, name)
+    def unapply(x: TermRef)(given ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
+      Some((x.qualifier, x.name))
+  }
+
+  given TermRefOps: extension (self: TermRef) {
+    def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TermRef_qualifier(self)
+    def name(given ctx: Context): String = internal.TermRef_name(self)
+  }
+
+  given (given Context): IsInstanceOf[TypeRef] = internal.isInstanceOfTypeRef
+
+  object TypeRef {
+    def unapply(x: TypeRef)(given ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
+      Some((x.qualifier, x.name))
+  }
+
+  given TypeRefOps: extension (self: TypeRef) {
+    def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TypeRef_qualifier(self)
+    def name(given ctx: Context): String = internal.TypeRef_name(self)
+  }
+
+  given (given Context): IsInstanceOf[SuperType] = internal.isInstanceOfSuperType
+
+  object SuperType {
+    def unapply(x: SuperType)(given ctx: Context): Option[(Type, Type)] =
+      Some((x.thistpe, x.supertpe))
+  }
+
+  given SuperTypeOps: extension (self: SuperType) {
+    def thistpe(given ctx: Context): Type = internal.SuperType_thistpe(self)
+    def supertpe(given ctx: Context): Type = internal.SuperType_supertpe(self)
+  }
+
+  given (given Context): IsInstanceOf[Refinement] = internal.isInstanceOfRefinement
+
+  object Refinement {
+    def apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(given ctx: Context): Refinement =
+      internal.Refinement_apply(parent, name, info)
+
+    def unapply(x: Refinement)(given ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] =
+      Some((x.parent, x.name, x.info))
+  }
+
+  given RefinementOps: extension (self: Refinement) {
+    def parent(given ctx: Context): Type = internal.Refinement_parent(self)
+    def name(given ctx: Context): String = internal.Refinement_name(self)
+    def info(given ctx: Context): TypeOrBounds = internal.Refinement_info(self)
+  }
+
+  given (given Context): IsInstanceOf[AppliedType] = internal.isInstanceOfAppliedType
+
+  object AppliedType {
+    def apply(tycon: Type, args: List[TypeOrBounds])(given ctx: Context): AppliedType =
+      internal.AppliedType_apply(tycon, args)
+    def unapply(x: AppliedType)(given ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] =
+      Some((x.tycon, x.args))
+  }
+
+  given AppliedTypeOps: extension (self: AppliedType) {
+    def tycon(given ctx: Context): Type = internal.AppliedType_tycon(self)
+    def args(given ctx: Context): List[TypeOrBounds /* Type | TypeBounds */] = internal.AppliedType_args(self)
+  }
+
+  given (given Context): IsInstanceOf[AnnotatedType] = internal.isInstanceOfAnnotatedType
+
+  object AnnotatedType {
+    def apply(underlying: Type, annot: Term)(given ctx: Context): AnnotatedType =
+      internal.AnnotatedType_apply(underlying, annot)
+    def unapply(x: AnnotatedType)(given ctx: Context): Option[(Type, Term)] =
+      Some((x.underlying, x.annot))
+  }
+
+  given AnnotatedTypeOps: extension (self: AnnotatedType) {
+    def underlying(given ctx: Context): Type = internal.AnnotatedType_underlying(self)
+    def annot(given ctx: Context): Term = internal.AnnotatedType_annot(self)
+  }
+
+  given (given Context): IsInstanceOf[AndType] = internal.isInstanceOfAndType
+
+  object AndType {
+    def apply(lhs: Type, rhs: Type)(given ctx: Context): AndType =
+      internal.AndType_apply(lhs, rhs)
+    def unapply(x: AndType)(given ctx: Context): Option[(Type, Type)] =
+      Some((x.left, x.right))
+  }
+
+  given AndTypeOps: extension (self: AndType) {
+    def left(given ctx: Context): Type = internal.AndType_left(self)
+    def right(given ctx: Context): Type = internal.AndType_right(self)
+  }
+
+  given (given Context): IsInstanceOf[OrType] = internal.isInstanceOfOrType
+
+  object OrType {
+    def apply(lhs: Type, rhs: Type)(given ctx: Context): OrType = internal.OrType_apply(lhs, rhs)
+    def unapply(x: OrType)(given ctx: Context): Option[(Type, Type)] =
+      Some((x.left, x.right))
+  }
+
+  given OrTypeOps: extension (self: OrType) {
+    def left(given ctx: Context): Type = internal.OrType_left(self)
+    def right(given ctx: Context): Type = internal.OrType_right(self)
+  }
+
+  given (given Context): IsInstanceOf[MatchType] = internal.isInstanceOfMatchType
+
+  object MatchType {
+    def apply(bound: Type, scrutinee: Type, cases: List[Type])(given ctx: Context): MatchType =
+      internal.MatchType_apply(bound, scrutinee, cases)
+    def unapply(x: MatchType)(given ctx: Context): Option[(Type, Type, List[Type])] =
+      Some((x.bound, x.scrutinee, x.cases))
+  }
+
+  given MatchTypeOps: extension (self: MatchType) {
+    def bound(given ctx: Context): Type = internal.MatchType_bound(self)
+    def scrutinee(given ctx: Context): Type = internal.MatchType_scrutinee(self)
+    def cases(given ctx: Context): List[Type] = internal.MatchType_cases(self)
+  }
+
+  /**
+   * An accessor for `scala.internal.MatchCase[_,_]`, the representation of a `MatchType` case.
+    */
+  def MatchCaseType(given Context): Type = {
+    import scala.internal.MatchCase
+    Type(classOf[MatchCase[_,_]])
+  }
+
+  given (given Context): IsInstanceOf[ByNameType] = internal.isInstanceOfByNameType
+
+  object ByNameType {
+    def apply(underlying: Type)(given ctx: Context): Type = internal.ByNameType_apply(underlying)
+    def unapply(x: ByNameType)(given ctx: Context): Option[Type] = Some(x.underlying)
+  }
+
+  given ByNameTypeOps: extension (self: ByNameType) {
+    def underlying(given ctx: Context): Type = internal.ByNameType_underlying(self)
+  }
+
+  given (given Context): IsInstanceOf[ParamRef] = internal.isInstanceOfParamRef
+
+  object ParamRef {
+    def unapply(x: ParamRef)(given ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] =
+      Some((x.binder, x.paramNum))
+  }
+
+  given ParamRefOps: extension (self: ParamRef) {
+    def binder(given ctx: Context): LambdaType[TypeOrBounds] = internal.ParamRef_binder(self)
+    def paramNum(given ctx: Context): Int = internal.ParamRef_paramNum(self)
+  }
+
+  given (given Context): IsInstanceOf[ThisType] = internal.isInstanceOfThisType
+
+  object ThisType {
+    def unapply(x: ThisType)(given ctx: Context): Option[Type] = Some(x.tref)
+  }
+
+  given ThisTypeOps: extension (self: ThisType) {
+    def tref(given ctx: Context): Type = internal.ThisType_tref(self)
+  }
+
+  given (given Context): IsInstanceOf[RecursiveThis] = internal.isInstanceOfRecursiveThis
+
+  object RecursiveThis {
+    def unapply(x: RecursiveThis)(given ctx: Context): Option[RecursiveType] = Some(x.binder)
+  }
+
+  given RecursiveThisOps: extension (self: RecursiveThis) {
+    def binder(given ctx: Context): RecursiveType = internal.RecursiveThis_binder(self)
+  }
+
+  given (given Context): IsInstanceOf[RecursiveType] = internal.isInstanceOfRecursiveType
+
+  object RecursiveType {
+    def unapply(x: RecursiveType)(given ctx: Context): Option[Type] = Some(x.underlying)
+  }
+
+  given RecursiveTypeOps: extension (self: RecursiveType) {
+    def underlying(given ctx: Context): Type = internal.RecursiveType_underlying(self)
+  }
+
+  given (given Context): IsInstanceOf[MethodType] = internal.isInstanceOfMethodType
+
+  object MethodType {
+    def apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType =
+      internal.MethodType_apply(paramNames)(paramInfosExp, resultTypeExp)
+
+    def unapply(x: MethodType)(given ctx: Context): Option[(List[String], List[Type], Type)] =
+      Some((x.paramNames, x.paramTypes, x.resType))
+  }
+
+  given MethodTypeOps: extension (self: MethodType) {
+    def isImplicit: Boolean = internal.MethodType_isImplicit(self)
+    def isErased: Boolean = internal.MethodType_isErased(self)
+    def param(idx: Int)(given ctx: Context): Type = internal.MethodType_param(self, idx)
+    def paramNames(given ctx: Context): List[String] = internal.MethodType_paramNames(self)
+    def paramTypes(given ctx: Context): List[Type] = internal.MethodType_paramTypes(self)
+    def resType(given ctx: Context): Type = internal.MethodType_resType(self)
+  }
+
+  given (given Context): IsInstanceOf[PolyType] = internal.isInstanceOfPolyType
+
+  object PolyType {
+    def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(given ctx: Context): PolyType =
+      internal.PolyType_apply(paramNames)(paramBoundsExp, resultTypeExp)
+    def unapply(x: PolyType)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
+      Some((x.paramNames, x.paramBounds, x.resType))
+  }
+
+  given PolyTypeOps: extension (self: PolyType) {
+    def param(idx: Int)(given ctx: Context): Type = internal.PolyType_param(self, idx)
+    def paramNames(given ctx: Context): List[String] = internal.PolyType_paramNames(self)
+    def paramBounds(given ctx: Context): List[TypeBounds] = internal.PolyType_paramBounds(self)
+    def resType(given ctx: Context): Type = internal.PolyType_resType(self)
+  }
+
+  given (given Context): IsInstanceOf[TypeLambda] = internal.isInstanceOfTypeLambda
+
+  object TypeLambda {
+    def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda =
+      internal.TypeLambda_apply(paramNames, boundsFn, bodyFn)
+    def unapply(x: TypeLambda)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
+      Some((x.paramNames, x.paramBounds, x.resType))
+  }
+
+  given TypeLambdaOps: extension (self: TypeLambda) {
+    def paramNames(given ctx: Context): List[String] = internal.TypeLambda_paramNames(self)
+    def paramBounds(given ctx: Context): List[TypeBounds] = internal.TypeLambda_paramBounds(self)
+    def param(idx: Int)(given ctx: Context) : Type = internal.TypeLambda_param(self, idx)
+    def resType(given ctx: Context): Type = internal.TypeLambda_resType(self)
+  }
+
+  // ----- TypeBounds -----------------------------------------------
+
+  given (given Context): IsInstanceOf[TypeBounds] = internal.isInstanceOfTypeBounds
+
+  object TypeBounds {
+    def apply(low: Type, hi: Type)(given ctx: Context): TypeBounds =
+      internal.TypeBounds_apply(low, hi)
+    def unapply(x: TypeBounds)(given ctx: Context): Option[(Type, Type)] = Some((x.low, x.hi))
+  }
+
+  given TypeBoundsOps: extension (self: TypeBounds) {
+    def low(given ctx: Context): Type = internal.TypeBounds_low(self)
+    def hi(given ctx: Context): Type = internal.TypeBounds_hi(self)
+  }
+
+  // ----- NoPrefix -------------------------------------------------
+
+  given (given Context): IsInstanceOf[NoPrefix] = internal.isInstanceOfNoPrefix
+
+  object NoPrefix
+    def unapply(x: NoPrefix)(given ctx: Context): Boolean = true
+
+
+  ///////////////
+  // CONSTANTS //
+  ///////////////
+
+  given ConstantOps: extension (const: Constant) {
+    def value: Any = internal.Constant_value(const)
+  }
+
+  /** Module of Constant literals */
+  object Constant {
+
+    def apply(x: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type): Constant =
+      internal.Constant_apply(x)
+
+    def unapply(constant: Constant): Option[Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type] =
+      internal.matchConstant(constant)
+
+    /** Module of ClassTag literals */
+    object ClassTag {
+      /** scala.reflect.ClassTag literal */
+      def apply[T](given x: Type): Constant =
+        internal.Constant_ClassTag_apply(x)
+
+      /** Extractor for ClassTag literals */
+      def unapply(constant: Constant): Option[Type] =
+        internal.matchConstant_ClassTag(constant)
+    }
+  }
+
+
+  /////////
+  // IDs //
+  /////////
+
+  given IdOps: extension (id: Id) {
+
+    /** Position in the source code */
+    def pos(given ctx: Context): Position = internal.Id_pos(id)
+
+    /** Name of the identifier */
+    def name(given ctx: Context): String = internal.Id_name(id)
+
+  }
+
+  object Id {
+    def unapply(id: Id)(given ctx: Context): Option[String] = Some(id.name)
+  }
+
+
+  /////////////////////
+  // IMPLICIT SEARCH //
+  /////////////////////
+
+  def searchImplicit(tpe: Type)(given ctx: Context): ImplicitSearchResult =
+    internal.searchImplicit(tpe)
+
+  given (given Context): IsInstanceOf[ImplicitSearchSuccess] = internal.isInstanceOfImplicitSearchSuccess
+
+  given successOps: extension (self: ImplicitSearchSuccess) {
+    def tree(given ctx: Context): Term = internal.ImplicitSearchSuccess_tree(self)
+  }
+
+  given (given Context): IsInstanceOf[ImplicitSearchFailure] = internal.isInstanceOfImplicitSearchFailure
+
+  given failureOps: extension (self: ImplicitSearchFailure) {
+    def explanation(given ctx: Context): String = internal.ImplicitSearchFailure_explanation(self)
+  }
+
+  given (given Context): IsInstanceOf[DivergingImplicit] = internal.isInstanceOfDivergingImplicit
+
+  given (given Context): IsInstanceOf[NoMatchingImplicits] = internal.isInstanceOfNoMatchingImplicits
+
+  given (given Context): IsInstanceOf[AmbiguousImplicits] = internal.isInstanceOfAmbiguousImplicits
+
+
+  /////////////
+  // SYMBOLS //
+  /////////////
+
+  object Symbol {
+    /** The class Symbol of a global class definition */
+    def classSymbol(fullName: String)(given ctx: Context): Symbol =
+      internal.Symbol_of(fullName)
+
+    /** Generates a new method symbol with the given parent, name and type.
+     *
+     *  This symbol starts without an accompanying definition.
+     *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+     *  this symbol to the DefDef constructor.
+     *
+     *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+     *        direct or indirect children of the reflection context's owner. */
+    def newMethod(parent: Symbol, name: String, tpe: Type)(given ctx: Context): Symbol =
+      newMethod(parent, name, tpe, Flags.EmptyFlags, noSymbol)
+
+    /** Works as the other newMethod, but with additional parameters.
+     *
+     *  @param flags extra flags to with which the symbol should be constructed
+     *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
+     * */
+    def newMethod(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol)(given ctx: Context): Symbol =
+      internal.Symbol_newMethod(parent, name, flags, tpe, privateWithin)
+
+    /** Definition not available */
+    def noSymbol(given ctx: Context): Symbol =
+      internal.Symbol_noSymbol
+  }
+
+  given symbolOps: extension (self: Symbol) {
+
+    /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
+    def owner(given ctx: Context): Symbol = internal.Symbol_owner(self)
+
+    /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Returns `NoSymbol` if this symbol does not have an owner. */
+    def maybeOwner(given ctx: Context): Symbol = internal.Symbol_maybeOwner(self)
+
+    /** Flags of this symbol */
+    def flags(given ctx: Context): Flags = internal.Symbol_flags(self)
+
+    /** This symbol is private within the resulting type */
+    def privateWithin(given ctx: Context): Option[Type] = internal.Symbol_privateWithin(self)
+
+    /** This symbol is protected within the resulting type */
+    def protectedWithin(given ctx: Context): Option[Type] = internal.Symbol_protectedWithin(self)
+
+    /** The name of this symbol */
+    def name(given ctx: Context): String = internal.Symbol_name(self)
+
+    /** The full name of this symbol up to the root package */
+    def fullName(given ctx: Context): String = internal.Symbol_fullName(self)
+
+    /** The position of this symbol */
+    def pos(given ctx: Context): Position = internal.Symbol_pos(self)
+
+    def localContext(given ctx: Context): Context = internal.Symbol_localContext(self)
+
+    /** The comment for this symbol, if any */
+    def comment(given ctx: Context): Option[Comment] = internal.Symbol_comment(self)
+
+    /** Tree of this definition
+     *
+     * if this symbol `isPackageDef` it will return a `PackageDef`,
+     * if this symbol `isClassDef` it will return a `ClassDef`,
+     * if this symbol `isTypeDef` it will return a `TypeDef`,
+     * if this symbol `isValDef` it will return a `ValDef`,
+     * if this symbol `isDefDef` it will return a `DefDef`
+     * if this symbol `isBind` it will return a `Bind`
+     */
+    def tree(given ctx: Context): Tree =
+      internal.Symbol_tree(self)
+
+    /** Annotations attached to this symbol */
+    def annots(given ctx: Context): List[Term] = internal.Symbol_annots(self)
+
+    def isDefinedInCurrentRun(given ctx: Context): Boolean = internal.Symbol_isDefinedInCurrentRun(self)
+
+    def isLocalDummy(given ctx: Context): Boolean = internal.Symbol_isLocalDummy(self)
+    def isRefinementClass(given ctx: Context): Boolean = internal.Symbol_isRefinementClass(self)
+    def isAliasType(given ctx: Context): Boolean = internal.Symbol_isAliasType(self)
+    def isAnonymousClass(given ctx: Context): Boolean = internal.Symbol_isAnonymousClass(self)
+    def isAnonymousFunction(given ctx: Context): Boolean = internal.Symbol_isAnonymousFunction(self)
+    def isAbstractType(given ctx: Context): Boolean = internal.Symbol_isAbstractType(self)
+    def isClassConstructor(given ctx: Context): Boolean = internal.Symbol_isClassConstructor(self)
+
+    /** Is this the definition of a type? */
+    def isType(given ctx: Context): Boolean = internal.Symbol_isType(self)
+
+    /** Is this the definition of a term? */
+    def isTerm(given ctx: Context): Boolean = internal.Symbol_isTerm(self)
+
+    /** Is this the definition of a PackageDef tree? */
+    def isPackageDef(given ctx: Context): Boolean = internal.Symbol_isPackageDef(self)
+
+    /** Is this the definition of a ClassDef tree? */
+    def isClassDef(given ctx: Context): Boolean = internal.Symbol_isClassDef(self)
+
+    /** Is this the definition of a TypeDef tree */
+    def isTypeDef(given ctx: Context): Boolean = internal.Symbol_isTypeDef(self)
+
+    /** Is this the definition of a ValDef tree? */
+    def isValDef(given ctx: Context): Boolean = internal.Symbol_isValDef(self)
+
+    /** Is this the definition of a DefDef tree? */
+    def isDefDef(given ctx: Context): Boolean = internal.Symbol_isDefDef(self)
+
+    /** Is this the definition of a Bind pattern? */
+    def isBind(given ctx: Context): Boolean = internal.Symbol_isBind(self)
+
+    /** Does this symbol represent a no definition? */
+    def isNoSymbol(given ctx: Context): Boolean = self == Symbol.noSymbol
+
+    /** Does this symbol represent a definition? */
+    def exists(given ctx: Context): Boolean = self != Symbol.noSymbol
+
+    /** Fields directly declared in the class */
+    def fields(given ctx: Context): List[Symbol] =
+      internal.Symbol_fields(self)
+
+    /** Field with the given name directly declared in the class */
+    def field(name: String)(given ctx: Context): Symbol =
+      internal.Symbol_field(self)(name)
+
+    /** Get non-private named methods defined directly inside the class */
+    def classMethod(name: String)(given ctx: Context): List[Symbol] =
+      internal.Symbol_classMethod(self)(name)
+
+    /** Get all non-private methods defined directly inside the class, exluding constructors */
+    def classMethods(given ctx: Context): List[Symbol] =
+      internal.Symbol_classMethods(self)
+
+    /** Get named non-private methods declared or inherited */
+    def method(name: String)(given ctx: Context): List[Symbol] =
+      internal.Symbol_method(self)(name)
+
+    /** Get all non-private methods declared or inherited */
+    def methods(given ctx: Context): List[Symbol] =
+      internal.Symbol_methods(self)
+
+    /** Fields of a case class type -- only the ones declared in primary constructor */
+    def caseFields(given ctx: Context): List[Symbol] =
+      internal.Symbol_caseFields(self)
+
+    def isTypeParam(given ctx: Context): Boolean =
+      internal.Symbol_isTypeParam(self)
+
+    /** Signature of this definition */
+    def signature(given ctx: Context): Signature =
+      internal.Symbol_signature(self)
+
+    /** The class symbol of the companion module class */
+    def moduleClass(given ctx: Context): Symbol =
+      internal.Symbol_moduleClass(self)
+
+    /** The symbol of the companion class */
+    def companionClass(given ctx: Context): Symbol =
+      internal.Symbol_companionClass(self)
+
+    /** The symbol of the companion module */
+    def companionModule(given ctx: Context): Symbol =
+      internal.Symbol_companionModule(self)
+  }
+
+
+  ////////////////
+  // SIGNATURES //
+  ////////////////
+
+  /** The signature of a method */
+  object Signature {
+    /** Matches the method signature and returns its parameters and result type. */
+    def unapply(sig: Signature)(given ctx: Context): Option[(List[String | Int], String)] =
+      Some((sig.paramSigs, sig.resultSig))
+  }
+
+  given signatureOps: extension (sig: Signature) {
+
+    /** The signatures of the method parameters.
+      *
+      *  Each *type parameter section* is represented by a single Int corresponding
+      *  to the number of type parameters in the section.
+      *  Each *term parameter* is represented by a String corresponding to the fully qualified
+      *  name of the parameter type.
+      */
+    def paramSigs: List[String | Int] = internal.Signature_paramSigs(sig)
+
+    /** The signature of the result type */
+    def resultSig: String = internal.Signature_resultSig(sig)
+
+  }
+
+  //////////////////////////
+  // STANDARD DEFINITIONS //
+  //////////////////////////
+
+  /** A value containing all standard definitions in [[DefinitionsAPI]]
+   *  @group Definitions
+   */
+  object defn extends StandardSymbols with StandardTypes
+
+  /** Defines standard symbols (and types via its base trait).
+    *  @group API
+    */
+  trait StandardSymbols {
+
+    /** The module symbol of root package `_root_`. */
+    def RootPackage: Symbol = internal.Definitions_RootPackage
+
+    /** The class symbol of root package `_root_`. */
+    def RootClass: Symbol = internal.Definitions_RootClass
+
+    /** The class symbol of empty package `_root_._empty_`. */
+    def EmptyPackageClass: Symbol = internal.Definitions_EmptyPackageClass
+
+    /** The module symbol of package `scala`. */
+    def ScalaPackage: Symbol = internal.Definitions_ScalaPackage
+
+    /** The class symbol of package `scala`. */
+    def ScalaPackageClass: Symbol = internal.Definitions_ScalaPackageClass
+
+    /** The class symbol of core class `scala.Any`. */
+    def AnyClass: Symbol = internal.Definitions_AnyClass
+
+    /** The class symbol of core class `scala.AnyVal`. */
+    def AnyValClass: Symbol = internal.Definitions_AnyValClass
+
+    /** The class symbol of core class `java.lang.Object`. */
+    def ObjectClass: Symbol = internal.Definitions_ObjectClass
+
+    /** The type symbol of core class `scala.AnyRef`. */
+    def AnyRefClass: Symbol = internal.Definitions_AnyRefClass
+
+    /** The class symbol of core class `scala.Null`. */
+    def NullClass: Symbol = internal.Definitions_NullClass
+
+    /** The class symbol of core class `scala.Nothing`. */
+    def NothingClass: Symbol = internal.Definitions_NothingClass
+
+    /** The class symbol of primitive class `scala.Unit`. */
+    def UnitClass: Symbol = internal.Definitions_UnitClass
+
+    /** The class symbol of primitive class `scala.Byte`. */
+    def ByteClass: Symbol = internal.Definitions_ByteClass
+
+    /** The class symbol of primitive class `scala.Short`. */
+    def ShortClass: Symbol = internal.Definitions_ShortClass
+
+    /** The class symbol of primitive class `scala.Char`. */
+    def CharClass: Symbol = internal.Definitions_CharClass
+
+    /** The class symbol of primitive class `scala.Int`. */
+    def IntClass: Symbol = internal.Definitions_IntClass
+
+    /** The class symbol of primitive class `scala.Long`. */
+    def LongClass: Symbol = internal.Definitions_LongClass
+
+    /** The class symbol of primitive class `scala.Float`. */
+    def FloatClass: Symbol = internal.Definitions_FloatClass
+
+    /** The class symbol of primitive class `scala.Double`. */
+    def DoubleClass: Symbol = internal.Definitions_DoubleClass
+
+    /** The class symbol of primitive class `scala.Boolean`. */
+    def BooleanClass: Symbol = internal.Definitions_BooleanClass
+
+    /** The class symbol of class `scala.String`. */
+    def StringClass: Symbol = internal.Definitions_StringClass
+
+    /** The class symbol of class `java.lang.Class`. */
+    def ClassClass: Symbol = internal.Definitions_ClassClass
+
+    /** The class symbol of class `scala.Array`. */
+    def ArrayClass: Symbol = internal.Definitions_ArrayClass
+
+    /** The module symbol of module `scala.Predef`. */
+    def PredefModule: Symbol = internal.Definitions_PredefModule
+
+    /** The method symbol of method `scala.Predef.classOf`. */
+    def Predef_classOf: Symbol = internal.Definitions_Predef_classOf
+
+    /** The module symbol of package `java.lang`. */
+    def JavaLangPackage: Symbol = internal.Definitions_JavaLangPackage
+
+    /** The module symbol of module `scala.Array`. */
+    def ArrayModule: Symbol = internal.Definitions_ArrayModule
+
+    /** The method symbol of method `apply` in class `scala.Array`. */
+    def Array_apply: Symbol = internal.Definitions_Array_apply
+
+    /** The method symbol of method `clone` in class `scala.Array`. */
+    def Array_clone: Symbol = internal.Definitions_Array_clone
+
+    /** The method symbol of method `length` in class `scala.Array`. */
+    def Array_length: Symbol = internal.Definitions_Array_length
+
+    /** The method symbol of method `update` in class `scala.Array`. */
+    def Array_update: Symbol = internal.Definitions_Array_update
+
+    /** A dummy class symbol that is used to indicate repeated parameters
+      *  compiled by the Scala compiler.
+      */
+    def RepeatedParamClass: Symbol = internal.Definitions_RepeatedParamClass
+
+    /** The class symbol of class `scala.Option`. */
+    def OptionClass: Symbol = internal.Definitions_OptionClass
+
+    /** The module symbol of module `scala.None`. */
+    def NoneModule: Symbol = internal.Definitions_NoneModule
+
+    /** The module symbol of module `scala.Some`. */
+    def SomeModule: Symbol = internal.Definitions_SomeModule
+
+    /** Function-like object that maps arity to symbols for classes `scala.Product` */
+    def ProductClass: Symbol = internal.Definitions_ProductClass
+
+    /** Function-like object that maps arity to symbols for classes `scala.FunctionX`.
+      *   -  0th element is `Function0`
+      *   -  1st element is `Function1`
+      *   -  ...
+      *   -  Nth element is `FunctionN`
+      */
+    def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol =
+      internal.Definitions_FunctionClass(arity, isImplicit, isErased)
+
+    /** Function-like object that maps arity to symbols for classes `scala.TupleX`.
+      *   -  0th element is `NoSymbol`
+      *   -  1st element is `NoSymbol`
+      *   -  2st element is `Tuple2`
+      *   -  ...
+      *   - 22nd element is `Tuple22`
+      *   - 23nd element is `NoSymbol`  // TODO update when we will have more tuples
+      *   - ...
+      */
+    def TupleClass(arity: Int): Symbol =
+      internal.Definitions_TupleClass(arity)
+
+    /** Returns `true` if `sym` is a `Tuple1`, `Tuple2`, ... `Tuple22` */
+    def isTupleClass(sym: Symbol): Boolean =
+      internal.Definitions_isTupleClass(sym)
+
+    /** Contains Scala primitive value classes:
+      *   - Byte
+      *   - Short
+      *   - Int
+      *   - Long
+      *   - Float
+      *   - Double
+      *   - Char
+      *   - Boolean
+      *   - Unit
+      */
+    def ScalaPrimitiveValueClasses: List[Symbol] =
+      UnitClass :: BooleanClass :: ScalaNumericValueClasses
+
+    /** Contains Scala numeric value classes:
+      *   - Byte
+      *   - Short
+      *   - Int
+      *   - Long
+      *   - Float
+      *   - Double
+      *   - Char
+      */
+    def ScalaNumericValueClasses: List[Symbol] =
+      ByteClass :: ShortClass :: IntClass :: LongClass :: FloatClass :: DoubleClass :: CharClass :: Nil
+
+  }
+
+  /** Defines standard types.
+   *  @group Definitions
+   */
+  trait StandardTypes {
+    /** The type of primitive type `Unit`. */
+    def UnitType: Type = internal.Definitions_UnitType
+
+    /** The type of primitive type `Byte`. */
+    def ByteType: Type = internal.Definitions_ByteType
+
+    /** The type of primitive type `Short`. */
+    def ShortType: Type = internal.Definitions_ShortType
+
+    /** The type of primitive type `Char`. */
+    def CharType: Type = internal.Definitions_CharType
+
+    /** The type of primitive type `Int`. */
+    def IntType: Type = internal.Definitions_IntType
+
+    /** The type of primitive type `Long`. */
+    def LongType: Type = internal.Definitions_LongType
+
+    /** The type of primitive type `Float`. */
+    def FloatType: Type = internal.Definitions_FloatType
+
+    /** The type of primitive type `Double`. */
+    def DoubleType: Type = internal.Definitions_DoubleType
+
+    /** The type of primitive type `Boolean`. */
+    def BooleanType: Type = internal.Definitions_BooleanType
+
+    /** The type of core type `Any`. */
+    def AnyType: Type = internal.Definitions_AnyType
+
+    /** The type of core type `AnyVal`. */
+    def AnyValType: Type = internal.Definitions_AnyValType
+
+    /** The type of core type `AnyRef`. */
+    def AnyRefType: Type = internal.Definitions_AnyRefType
+
+    /** The type of core type `Object`. */
+    def ObjectType: Type = internal.Definitions_ObjectType
+
+    /** The type of core type `Nothing`. */
+    def NothingType: Type = internal.Definitions_NothingType
+
+    /** The type of core type `Null`. */
+    def NullType: Type = internal.Definitions_NullType
+
+    /** The type for `scala.String`. */
+    def StringType: Type = internal.Definitions_StringType
+  }
+
+
+  ///////////////
+  // POSITIONS //
+  ///////////////
+
+  // TODO: Should this be in the QuoteContext?
+  /** Root position of this tasty context. For macros it corresponds to the expansion site. */
+  def rootPosition: Position = internal.rootPosition
+
+  given FlagsOps: extension (self: Flags) {
+
+    /** Is the given flag set a subset of this flag sets */
+    def is(that: Flags): Boolean = internal.Flags_is(self)(that)
+
+    /** Union of the two flag sets */
+    def |(that: Flags): Flags = internal.Flags_or(self)(that)
+
+    /** Intersection of the two flag sets */
+    def &(that: Flags): Flags = internal.Flags_and(self)(that)
+
+  }
+
+  object Flags {
+
+    /** The empty set of flags */
+    def EmptyFlags = internal.Flags_EmptyFlags
+
+    /** Is this symbol `private` */
+    def Private: Flags = internal.Flags_Private
+
+    /** Is this symbol `protected` */
+    def Protected: Flags = internal.Flags_Protected
+
+    /** Is this symbol `abstract` */
+    def Abstract: Flags = internal.Flags_Abstract
+
+    /** Is this symbol `final` */
+    def Final: Flags = internal.Flags_Final
+
+    /** Is this symbol `sealed` */
+    def Sealed: Flags = internal.Flags_Sealed
+
+    /** Is this symbol `case` */
+    def Case: Flags = internal.Flags_Case
+
+    /** Is this symbol `implicit` */
+    def Implicit: Flags = internal.Flags_Implicit
+
+    /** Is this symbol an inferable ("given") parameter */
+    def Given: Flags = internal.Flags_Given
+
+     /** Is this symbol `erased` */
+    def Erased: Flags = internal.Flags_Erased
+
+    /** Is this symbol `lazy` */
+    def Lazy: Flags = internal.Flags_Lazy
+
+    /** Is this symbol `override` */
+    def Override: Flags = internal.Flags_Override
+
+    /** Is this symbol `inline` */
+    def Inline: Flags = internal.Flags_Inline
+
+    /** Is this symbol marked as a macro. An inline method containing toplevel splices */
+    def Macro: Flags = internal.Flags_Macro
+
+    /** Is this symbol marked as static. Mapped to static Java member */
+    def Static: Flags = internal.Flags_Static
+
+    /** Is this symbol defined in a Java class */
+    def JavaDefined: Flags = internal.Flags_JavaDefined
+
+    /** Is this symbol an object or its class (used for a ValDef or a ClassDef extends Modifier respectively) */
+    def Object: Flags = internal.Flags_Object
+
+    /** Is this symbol a trait */
+    def Trait: Flags = internal.Flags_Trait
+
+    /** Is this symbol local? Used in conjunction with private/private[Type] to mean private[this] extends Modifier proctected[this] */
+    def Local: Flags = internal.Flags_Local
+
+    /** Was this symbol generated by Scala compiler */
+    def Synthetic: Flags = internal.Flags_Synthetic
+
+    /** Is this symbol to be tagged Java Synthetic */
+    def Artifact: Flags = internal.Flags_Artifact
+
+    /** Is this symbol a `var` (when used on a ValDef) */
+    def Mutable: Flags = internal.Flags_Mutable
+
+    /** Is this symbol a getter or a setter */
+    def FieldAccessor: Flags = internal.Flags_FieldAccessor
+
+    /** Is this symbol a getter for case class parameter */
+    def CaseAcessor: Flags = internal.Flags_CaseAcessor
+
+    /** Is this symbol a type parameter marked as covariant `+` */
+    def Covariant: Flags = internal.Flags_Covariant
+
+    /** Is this symbol a type parameter marked as contravariant `-` */
+    def Contravariant: Flags = internal.Flags_Contravariant
+
+    /** Was this symbol imported from Scala2.x */
+    def Scala2X: Flags = internal.Flags_Scala2X
+
+    /** Is this symbol a method with default parameters */
+    def DefaultParameterized: Flags = internal.Flags_DefaultParameterized
+
+    /** Is this symbol member that is assumed to be stable and realizable */
+    def StableRealizable: Flags = internal.Flags_StableRealizable
+
+    /** Is this symbol a parameter */
+    def Param: Flags = internal.Flags_Param
+
+    /** Is this symbol a parameter accessor */
+    def ParamAccessor: Flags = internal.Flags_ParamAccessor
+
+    /** Is this symbol an enum */
+    def Enum: Flags = internal.Flags_Enum
+
+    /** Is this symbol a module class */
+    def ModuleClass: Flags = internal.Flags_ModuleClass
+
+    /** Is this symbol labeled private[this] */
+    def PrivateLocal: Flags = internal.Flags_PrivateLocal
+
+    /** Is this symbol a package */
+    def Package: Flags = internal.Flags_Package
+  }
+
+
+  ///////////////
+  // POSITIONS //
+  ///////////////
+
+  given positionOps: extension (pos: Position) {
+
+    /** The start offset in the source file */
+    def start: Int = internal.Position_start(pos)
+
+    /** The end offset in the source file */
+    def end: Int = internal.Position_end(pos)
+
+    /** Does this position exist */
+    def exists: Boolean = internal.Position_exists(pos)
+
+    /** Source file in which this position is located */
+    def sourceFile: SourceFile = internal.Position_sourceFile(pos)
+
+    /** The start line in the source file */
+    def startLine: Int = internal.Position_startLine(pos)
+
+    /** The end line in the source file */
+    def endLine: Int = internal.Position_endLine(pos)
+
+    /** The start column in the source file */
+    def startColumn: Int = internal.Position_startColumn(pos)
+
+    /** The end column in the source file */
+    def endColumn: Int = internal.Position_endColumn(pos)
+
+    /** Source code within the position */
+    def sourceCode: String = internal.Position_sourceCode(pos)
+
+  }
+
+  given sourceFileOps: extension (sourceFile: SourceFile) {
+
+    /** Path to this source file */
+    def jpath: java.nio.file.Path = internal.SourceFile_jpath(sourceFile)
+
+    /** Content of this source file */
+    def content: String = internal.SourceFile_content(sourceFile)
+
+  }
+
+
+  ///////////////
+  // REPORTING //
+  ///////////////
+
+  /** Emits an error message */
+  def error(msg: => String, pos: Position)(given ctx: Context): Unit =
+    internal.error(msg, pos)
+
+  /** Emits an error at a specific range of a file */
+  def error(msg: => String, source: SourceFile, start: Int, end: Int)(given ctx: Context): Unit =
+    internal.error(msg, source, start, end)
+
+  /** Emits an error message */
+  def warning(msg: => String, pos: Position)(given ctx: Context): Unit =
+    internal.warning(msg, pos)
+
+  /** Emits a warning at a specific range of a file */
+  def warning(msg: => String, source: SourceFile, start: Int, end: Int)(given ctx: Context): Unit =
+    internal.warning(msg, source, start, end)
+
+  //////////////
+  // PRINTERS //
+  //////////////
+
+  /** Adds `show` as an extension method of a `Tree` */
+  implicit class TreeShowDeco(tree: Tree) {
+    /** Shows the tree as extractors */
+    def showExtractors(given ctx: Context): String =
+      new ExtractorsPrinter[self.type](self).showTree(tree)
+
+    /** Shows the tree as fully typed source code */
+    def show(given ctx: Context): String =
+      show(SyntaxHighlight.plain)
+
+    /** Shows the tree as fully typed source code */
+    def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showTree(tree)
+
+  }
+
+  /** Adds `show` as an extension method of a `TypeOrBounds` */
+  implicit class TypeOrBoundsShowDeco(tpe: TypeOrBounds) {
+    /** Shows the tree as extractors */
+    def showExtractors(given ctx: Context): String =
+      new ExtractorsPrinter[self.type](self).showTypeOrBounds(tpe)
+
+    /** Shows the tree as fully typed source code */
+    def show(given ctx: Context): String =
+      show(SyntaxHighlight.plain)
+
+    /** Shows the tree as fully typed source code */
+    def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showTypeOrBounds(tpe)
+  }
+
+  /** Adds `show` as an extension method of a `Constant` */
+  implicit class ConstantShowDeco(const: Constant) {
+    /** Shows the tree as extractors */
+    def showExtractors(given ctx: Context): String =
+      new ExtractorsPrinter[self.type](self).showConstant(const)
+
+    /** Shows the tree as fully typed source code */
+    def show(given ctx: Context): String = show(SyntaxHighlight.plain)
+
+    /** Shows the tree as fully typed source code */
+    def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showConstant(const)
+  }
+
+  /** Adds `show` as an extension method of a `Symbol` */
+  implicit class SymbolShowDeco(symbol: Symbol) {
+    /** Shows the tree as extractors */
+    def showExtractors(given ctx: Context): String =
+      new ExtractorsPrinter[self.type](self).showSymbol(symbol)
+
+    /** Shows the tree as fully typed source code */
+    def show(given ctx: Context): String = show(SyntaxHighlight.plain)
+
+    /** Shows the tree as fully typed source code */
+    def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showSymbol(symbol)
+  }
+
+  /** Adds `show` as an extension method of a `Flags` */
+  implicit class FlagsShowDeco(flags: Flags) {
+    /** Shows the tree as extractors */
+    def showExtractors(given ctx: Context): String =
+      new ExtractorsPrinter[self.type](self).showFlags(flags)
+
+    /** Shows the tree as fully typed source code */
+    def show(given ctx: Context): String = show(SyntaxHighlight.plain)
+
+    /** Shows the tree as fully typed source code */
+    def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showFlags(flags)
+  }
+
+
+  //////////////
+  // COMMENTS //
+  //////////////
+
+  given CommentOps: extension (self: Comment) {
+
+    /** Raw comment string */
+    def raw: String = internal.Comment_raw(self)
+
+    /** Expanded comment string, if any */
+    def expanded: Option[String] = internal.Comment_expanded(self)
+
+    /** List of usecases and their corresponding trees, if any */
+    def usecases: List[(String, Option[DefDef])] = internal.Comment_usecases(self)
+
+  }
+
+
+  ///////////////
+  //   UTILS   //
+  ///////////////
+
+  abstract class TreeAccumulator[X] {
+
+    // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
+    def foldTree(x: X, tree: Tree)(given ctx: Context): X
+
+    def foldTrees(x: X, trees: Iterable[Tree])(given ctx: Context): X = trees.foldLeft(x)(foldTree)
+
+    def foldOverTree(x: X, tree: Tree)(given ctx: Context): X = {
+      def localCtx(definition: Definition): Context = definition.symbol.localContext
+      tree match {
+        case Ident(_) =>
+          x
+        case Select(qualifier, _) =>
+          foldTree(x, qualifier)
+        case This(qual) =>
+          x
+        case Super(qual, _) =>
+          foldTree(x, qual)
+        case Apply(fun, args) =>
+          foldTrees(foldTree(x, fun), args)
+        case TypeApply(fun, args) =>
+          foldTrees(foldTree(x, fun), args)
+        case Literal(const) =>
+          x
+        case New(tpt) =>
+          foldTree(x, tpt)
+        case Typed(expr, tpt) =>
+          foldTree(foldTree(x, expr), tpt)
+        case NamedArg(_, arg) =>
+          foldTree(x, arg)
+        case Assign(lhs, rhs) =>
+          foldTree(foldTree(x, lhs), rhs)
+        case Block(stats, expr) =>
+          foldTree(foldTrees(x, stats), expr)
+        case If(cond, thenp, elsep) =>
+          foldTree(foldTree(foldTree(x, cond), thenp), elsep)
+        case While(cond, body) =>
+          foldTree(foldTree(x, cond), body)
+        case Closure(meth, tpt) =>
+          foldTree(x, meth)
+        case Match(selector, cases) =>
+          foldTrees(foldTree(x, selector), cases)
+        case Return(expr) =>
+          foldTree(x, expr)
+        case Try(block, handler, finalizer) =>
+          foldTrees(foldTrees(foldTree(x, block), handler), finalizer)
+        case Repeated(elems, elemtpt) =>
+          foldTrees(foldTree(x, elemtpt), elems)
+        case Inlined(call, bindings, expansion) =>
+          foldTree(foldTrees(x, bindings), expansion)
+        case vdef @ ValDef(_, tpt, rhs) =>
+          implicit val ctx = localCtx(vdef)
+          foldTrees(foldTree(x, tpt), rhs)
+        case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
+          implicit val ctx = localCtx(ddef)
+          foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams))(foldTrees), tpt), rhs)
+        case tdef @ TypeDef(_, rhs) =>
+          implicit val ctx = localCtx(tdef)
+          foldTree(x, rhs)
+        case cdef @ ClassDef(_, constr, parents, derived, self, body) =>
+          implicit val ctx = localCtx(cdef)
+          foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr), parents), derived), self), body)
+        case Import(expr, _) =>
+          foldTree(x, expr)
+        case clause @ PackageClause(pid, stats) =>
+          foldTrees(foldTree(x, pid), stats)(given clause.symbol.localContext)
+        case Inferred() => x
+        case TypeIdent(_) => x
+        case TypeSelect(qualifier, _) => foldTree(x, qualifier)
+        case Projection(qualifier, _) => foldTree(x, qualifier)
+        case Singleton(ref) => foldTree(x, ref)
+        case Refined(tpt, refinements) => foldTrees(foldTree(x, tpt), refinements)
+        case Applied(tpt, args) => foldTrees(foldTree(x, tpt), args)
+        case ByName(result) => foldTree(x, result)
+        case Annotated(arg, annot) => foldTree(foldTree(x, arg), annot)
+        case LambdaTypeTree(typedefs, arg) => foldTree(foldTrees(x, typedefs), arg)
+        case TypeBind(_, tbt) => foldTree(x, tbt)
+        case TypeBlock(typedefs, tpt) => foldTree(foldTrees(x, typedefs), tpt)
+        case MatchTypeTree(boundopt, selector, cases) =>
+          foldTrees(foldTree(boundopt.fold(x)(foldTree(x, _)), selector), cases)
+        case WildcardTypeTree() => x
+        case TypeBoundsTree(lo, hi) => foldTree(foldTree(x, lo), hi)
+        case CaseDef(pat, guard, body) => foldTree(foldTrees(foldTree(x, pat), guard), body)
+        case TypeCaseDef(pat, body) => foldTree(foldTree(x, pat), body)
+        case Bind(_, body) => foldTree(x, body)
+        case Unapply(fun, implicits, patterns) => foldTrees(foldTrees(foldTree(x, fun), implicits), patterns)
+        case Alternatives(patterns) => foldTrees(x, patterns)
+      }
+    }
+  }
+
+  abstract class TreeTraverser extends TreeAccumulator[Unit] {
+
+    def traverseTree(tree: Tree)(given ctx: Context): Unit = traverseTreeChildren(tree)
+
+    def foldTree(x: Unit, tree: Tree)(given ctx: Context): Unit = traverseTree(tree)
+
+    protected def traverseTreeChildren(tree: Tree)(given ctx: Context): Unit = foldOverTree((), tree)
+
+  }
+
+  abstract class TreeMap { self =>
+
+    def transformTree(tree: Tree)(given ctx: Context): Tree = {
+      tree match {
+        case tree: PackageClause =>
+          PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(given tree.symbol.localContext))
+        case tree: Import =>
+          Import.copy(tree)(transformTerm(tree.expr), tree.selectors)
+        case tree: Statement =>
+          transformStatement(tree)
+        case tree: TypeTree => transformTypeTree(tree)
+        case tree: TypeBoundsTree => tree // TODO traverse tree
+        case tree: WildcardTypeTree => tree // TODO traverse tree
+        case tree: CaseDef =>
+          transformCaseDef(tree)
+        case tree: TypeCaseDef =>
+          transformTypeCaseDef(tree)
+        case pattern: Bind =>
+          Bind.copy(pattern)(pattern.name, pattern.pattern)
+        case pattern: Unapply =>
+          Unapply.copy(pattern)(transformTerm(pattern.fun), transformSubTrees(pattern.implicits), transformTrees(pattern.patterns))
+        case pattern: Alternatives =>
+          Alternatives.copy(pattern)(transformTrees(pattern.patterns))
+      }
+    }
+
+    def transformStatement(tree: Statement)(given ctx: Context): Statement = {
+      def localCtx(definition: Definition): Context = definition.symbol.localContext
+      tree match {
+        case tree: Term =>
+          transformTerm(tree)
+        case tree: ValDef =>
+          implicit val ctx = localCtx(tree)
+          val tpt1 = transformTypeTree(tree.tpt)
+          val rhs1 = tree.rhs.map(x => transformTerm(x))
+          ValDef.copy(tree)(tree.name, tpt1, rhs1)
+        case tree: DefDef =>
+          implicit val ctx = localCtx(tree)
+          DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams), tree.paramss mapConserve (transformSubTrees(_)), transformTypeTree(tree.returnTpt), tree.rhs.map(x => transformTerm(x)))
+        case tree: TypeDef =>
+          implicit val ctx = localCtx(tree)
+          TypeDef.copy(tree)(tree.name, transformTree(tree.rhs))
+        case tree: ClassDef =>
+          ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
+        case tree: Import =>
+          Import.copy(tree)(transformTerm(tree.expr), tree.selectors)
+      }
+    }
+
+    def transformTerm(tree: Term)(given ctx: Context): Term = {
+      tree match {
+        case Ident(name) =>
+          tree
+        case Select(qualifier, name) =>
+          Select.copy(tree)(transformTerm(qualifier), name)
+        case This(qual) =>
+          tree
+        case Super(qual, mix) =>
+          Super.copy(tree)(transformTerm(qual), mix)
+        case Apply(fun, args) =>
+          Apply.copy(tree)(transformTerm(fun), transformTerms(args))
+        case TypeApply(fun, args) =>
+          TypeApply.copy(tree)(transformTerm(fun), transformTypeTrees(args))
+        case Literal(const) =>
+          tree
+        case New(tpt) =>
+          New.copy(tree)(transformTypeTree(tpt))
+        case Typed(expr, tpt) =>
+          Typed.copy(tree)(transformTerm(expr), transformTypeTree(tpt))
+        case tree: NamedArg =>
+          NamedArg.copy(tree)(tree.name, transformTerm(tree.value))
+        case Assign(lhs, rhs) =>
+          Assign.copy(tree)(transformTerm(lhs), transformTerm(rhs))
+        case Block(stats, expr) =>
+          Block.copy(tree)(transformStats(stats), transformTerm(expr))
+        case If(cond, thenp, elsep) =>
+          If.copy(tree)(transformTerm(cond), transformTerm(thenp), transformTerm(elsep))
+        case Closure(meth, tpt) =>
+          Closure.copy(tree)(transformTerm(meth), tpt)
+        case Match(selector, cases) =>
+          Match.copy(tree)(transformTerm(selector), transformCaseDefs(cases))
+        case Return(expr) =>
+          Return.copy(tree)(transformTerm(expr))
+        case While(cond, body) =>
+          While.copy(tree)(transformTerm(cond), transformTerm(body))
+        case Try(block, cases, finalizer) =>
+          Try.copy(tree)(transformTerm(block), transformCaseDefs(cases), finalizer.map(x => transformTerm(x)))
+        case Repeated(elems, elemtpt) =>
+          Repeated.copy(tree)(transformTerms(elems), transformTypeTree(elemtpt))
+        case Inlined(call, bindings, expansion) =>
+          Inlined.copy(tree)(call, transformSubTrees(bindings), transformTerm(expansion)/*()call.symbol.localContext)*/)
+      }
+    }
+
+    def transformTypeTree(tree: TypeTree)(given ctx: Context): TypeTree = tree match {
+      case Inferred() => tree
+      case tree: TypeIdent => tree
+      case tree: TypeSelect =>
+        TypeSelect.copy(tree)(tree.qualifier, tree.name)
+      case tree: Projection =>
+        Projection.copy(tree)(tree.qualifier, tree.name)
+      case tree: Annotated =>
+        Annotated.copy(tree)(tree.arg, tree.annotation)
+      case tree: Singleton =>
+        Singleton.copy(tree)(transformTerm(tree.ref))
+      case tree: Refined =>
+        Refined.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.refinements).asInstanceOf[List[Definition]])
+      case tree: Applied =>
+        Applied.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.args))
+      case tree: MatchTypeTree =>
+        MatchTypeTree.copy(tree)(tree.bound.map(b => transformTypeTree(b)), transformTypeTree(tree.selector), transformTypeCaseDefs(tree.cases))
+      case tree: ByName =>
+        ByName.copy(tree)(transformTypeTree(tree.result))
+      case tree: LambdaTypeTree =>
+        LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTree(tree.body))(given tree.symbol.localContext)
+      case tree: TypeBind =>
+        TypeBind.copy(tree)(tree.name, tree.body)
+      case tree: TypeBlock =>
+        TypeBlock.copy(tree)(tree.aliases, tree.tpt)
+    }
+
+    def transformCaseDef(tree: CaseDef)(given ctx: Context): CaseDef = {
+      CaseDef.copy(tree)(transformTree(tree.pattern), tree.guard.map(transformTerm), transformTerm(tree.rhs))
+    }
+
+    def transformTypeCaseDef(tree: TypeCaseDef)(given ctx: Context): TypeCaseDef = {
+      TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern), transformTypeTree(tree.rhs))
+    }
+
+    def transformStats(trees: List[Statement])(given ctx: Context): List[Statement] =
+      trees mapConserve (transformStatement(_))
+
+    def transformTrees(trees: List[Tree])(given ctx: Context): List[Tree] =
+      trees mapConserve (transformTree(_))
+
+    def transformTerms(trees: List[Term])(given ctx: Context): List[Term] =
+      trees mapConserve (transformTerm(_))
+
+    def transformTypeTrees(trees: List[TypeTree])(given ctx: Context): List[TypeTree] =
+      trees mapConserve (transformTypeTree(_))
+
+    def transformCaseDefs(trees: List[CaseDef])(given ctx: Context): List[CaseDef] =
+      trees mapConserve (transformCaseDef(_))
+
+    def transformTypeCaseDefs(trees: List[TypeCaseDef])(given ctx: Context): List[TypeCaseDef] =
+      trees mapConserve (transformTypeCaseDef(_))
+
+    def transformSubTrees[Tr <: Tree](trees: List[Tr])(given ctx: Context): List[Tr] =
+      transformTrees(trees).asInstanceOf[List[Tr]]
+
+  }
+
+  /** Bind the `rhs` to a `val` and use it in `body` */
+  def let(rhs: Term)(body: Ident => Term): Term = {
+    import scala.quoted.QuoteContext
+    given QuoteContext = new QuoteContext(this)
+    val expr = (rhs.seal: @unchecked) match {
+      case '{ $rhsExpr: $t } =>
+        '{
+          val x = $rhsExpr
+          ${
+            val id = ('x).unseal.asInstanceOf[Ident]
+            body(id).seal
+          }
+        }
+    }
+    expr.unseal
+  }
+
+  /** Bind the given `terms` to names and use them in the `body` */
+  def lets(terms: List[Term])(body: List[Term] => Term): Term = {
+    def rec(xs: List[Term], acc: List[Term]): Term = xs match {
+      case Nil => body(acc)
+      case x :: xs => let(x) { (x: Term) => rec(xs, x :: acc) }
+    }
+    rec(terms, Nil)
+  }
 
 }
