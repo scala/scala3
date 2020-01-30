@@ -114,7 +114,7 @@ _stackability_, _monotonicity_ and _scopability_.
 
 Stackability means that objects are initialized in stack order: if the
 object `b` is created during the initialization of object `a`, then
-`b` should become transitively initialized before or at the same time
+all fields of `b` should become initialized before or at the same time
 as `a`.  Scala enforces this property in syntax by demanding that all
 fields are initialized at the end of the primary constructor, except
 for the language feature below:
@@ -166,16 +166,16 @@ typestate_ to ensure soundness in the presence of aliasing
 [1]. Otherwise, either soundness will be compromised or we have to
 disallow the usage of already initialized fields.
 
-Scopability means that given any environment `ρ` (which are the value
-bindings for method parameters) and heap `σ` for evaluating an
-expression `e`, if the resulting value reaches an object `o`
-pre-existent in `σ`, then `o` is reachable from `ρ` in `σ`. Control
-effects like coroutines, delimited control, resumable exceptions may
-break the property, as they can transport a value upper in the stack
-(not in scope) to be reachable from the current scope.  Static fields
-can also serve as a teleport thus breaks this property.  In the
-implementation, we need to enforce that teleported values are
-transitively initialized.
+Scopability means that an expression may only access existing objects via formal
+parameters and `this`. More precisely, given any environment `ρ` (which are the
+value bindings for method parameters and `this`) and heap `σ` for evaluating an expression
+`e`, if the resulting value reaches an object `o` pre-existent in `σ`, then `o`
+is reachable from `ρ` in `σ`. Control effects like coroutines, delimited
+control, resumable exceptions may break the property, as they can transport a
+value upper in the stack (not in scope) to be reachable from the current scope.
+Static fields can also serve as a teleport thus breaks this property.  In the
+implementation, we need to enforce that teleported values are transitively
+initialized.
 
 With the established principles and design goals, following rules are imposed:
 
