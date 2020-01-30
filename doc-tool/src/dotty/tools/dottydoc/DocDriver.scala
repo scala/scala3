@@ -47,11 +47,11 @@ class DocDriver extends Driver {
     val projectLogo = Option(ctx.settings.projectLogo.value).filter(_.nonEmpty)
     val docSnapshot = ctx.settings.docSnapshot.value
 
-    val baseUrl = "/"
+    val baseUrl = ""
     val outDir = File(siteRoot, "_site")
     val snapshotFolderName = if projectVersion.endsWith("NIGHTLY") then "nightly" else projectVersion
     val snapshotOutDir = File(outDir, snapshotFolderName)
-    val snapshotBaseUrl = s"$baseUrl$snapshotFolderName"
+    val snapshotBaseUrl = s"$baseUrl/$snapshotFolderName"
 
     if (projectName.isEmpty)
       ctx.error(s"Site project name not set. Use `-project <title>` to set the project name")
