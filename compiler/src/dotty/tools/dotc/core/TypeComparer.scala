@@ -439,8 +439,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           (tp1.widenSingletons ne tp1) &&
           recur(tp1.widenSingletons, tp2)
 
-        if (tp2.atoms.nonEmpty && canCompare(tp2.atoms))
-          tp1.atoms.nonEmpty && tp1.atoms.subsetOf(tp2.atoms)
+        if (tp2.atoms().nonEmpty && canCompare(tp2.atoms()))
+          val atoms1 = tp1.atoms(widenOK = true)
+          atoms1.nonEmpty && atoms1.subsetOf(tp2.atoms())
         else
           widenOK
           || joinOK
@@ -620,8 +621,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         }
         compareTypeLambda
       case OrType(tp21, tp22) =>
-        if (tp2.atoms.nonEmpty && canCompare(tp2.atoms))
-          return tp1.atoms.nonEmpty && tp1.atoms.subsetOf(tp2.atoms) || isSubType(tp1, NothingType)
+        if (tp2.atoms().nonEmpty && canCompare(tp2.atoms()))
+          val atoms1 = tp1.atoms(widenOK = true)
+          return atoms1.nonEmpty && atoms1.subsetOf(tp2.atoms()) || isSubType(tp1, NothingType)
 
         // The next clause handles a situation like the one encountered in i2745.scala.
         // We have:
@@ -1797,9 +1799,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     else if ((tp2 isRef AnyClass) || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) tp2
     else {
       def mergedLub: Type = {
-        val atoms1 = tp1.atoms
+        val atoms1 = tp1.atoms(widenOK = true)
         if (atoms1.nonEmpty && !widenInUnions) {
-          val atoms2 = tp2.atoms
+          val atoms2 = tp2.atoms(widenOK = true)
           if (atoms2.nonEmpty) {
             if (atoms1.subsetOf(atoms2)) return tp2
             if (atoms2.subsetOf(atoms1)) return tp1
