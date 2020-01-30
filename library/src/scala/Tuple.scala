@@ -213,5 +213,5 @@ sealed trait NonEmptyTuple extends Tuple {
 sealed abstract class *:[+H, +T <: Tuple] extends NonEmptyTuple
 
 object *: {
-  inline def unapply[H, T <: Tuple](x: H *: T) = (x.head, x.tail)
+  def unapply[H, T <: Tuple](x: H *: T): (H, T) = (x.head, x.tail)
 }
