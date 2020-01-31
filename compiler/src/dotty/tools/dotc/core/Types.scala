@@ -3433,7 +3433,6 @@ object Types {
   }
 
   /** A type lambda of the form `[X_0 B_0, ..., X_n B_n] => T`
-   *  Variances are encoded in parameter names. A
    *
    *  @param  paramNames      The names `X_0`, ..., `X_n`
    *  @param  paramInfosExp  A function that, given the polytype itself, returns the
