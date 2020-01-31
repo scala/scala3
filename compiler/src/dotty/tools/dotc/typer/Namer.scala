@@ -1505,7 +1505,7 @@ class Namer { typer: Typer =>
   }
 
   def typeDefSig(tdef: TypeDef, sym: Symbol, tparamSyms: List[TypeSymbol])(implicit ctx: Context): Type = {
-    def abstracted(tp: Type): Type = HKTypeLambda.fromParams(tparamSyms, tp)
+    def abstracted(tp: TypeBounds): TypeBounds = HKTypeLambda.boundsFromParams(tparamSyms, tp)
     val dummyInfo1 = abstracted(TypeBounds.empty)
     sym.info = dummyInfo1
     sym.setFlag(Provisional)
@@ -1535,9 +1535,8 @@ class Namer { typer: Typer =>
     }
     sym.info = dummyInfo2
 
-    val rhsBodyType = typedAheadType(rhs).tpe
-    val rhsType = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
-    val unsafeInfo = rhsType.toBounds
+    val rhsBodyType: TypeBounds = typedAheadType(rhs).tpe.toBounds
+    val unsafeInfo = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
     if (isDerived) sym.info = unsafeInfo
     else {
       sym.info = NoCompleter

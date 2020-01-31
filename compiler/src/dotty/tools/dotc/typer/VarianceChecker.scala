@@ -7,7 +7,6 @@ import Types._, Contexts._, Flags._, Symbols._, Trees._
 import Decorators._
 import Variances._
 import NameKinds._
-import TypeApplications.varianceConforms
 import util.Spans._
 import util.SourcePosition
 import config.Printers.variances
@@ -26,54 +25,51 @@ object VarianceChecker {
    *  Note: this is achieved by a mechanism separate from checking class type parameters.
    *  Question: Can the two mechanisms be combined in one?
    */
-  def checkLambda(tree: tpd.LambdaTypeTree)(implicit ctx: Context): Unit = {
-    def checkType(tl: HKTypeLambda): Unit = {
-      val checkOK = new TypeAccumulator[Boolean] {
-        def error(tref: TypeParamRef) = {
-          val VariantName(paramName, v) = tl.paramNames(tref.paramNum).toTermName
-          val paramVarianceStr = if (v == 0) "contra" else "co"
-          val occursStr = variance match {
-            case -1 => "contra"
-            case 0 => "in"
-            case 1 => "co"
+  def checkLambda(tree: tpd.LambdaTypeTree, bounds: TypeBounds)(implicit ctx: Context): Unit =
+    def checkType(tpe: Type): Unit = tpe match
+      case tl: HKTypeLambda if tl.isDeclaredVarianceLambda =>
+        val checkOK = new TypeAccumulator[Boolean] {
+          def paramVarianceSign(tref: TypeParamRef) =
+            tl.typeParams(tref.paramNum).paramVarianceSign
+          def error(tref: TypeParamRef) = {
+            val paramName = tl.paramNames(tref.paramNum).toTermName
+            val v = paramVarianceSign(tref)
+            val paramVarianceStr = if (v < 0) "contra" else "co"
+            val occursStr = variance match {
+              case -1 => "contra"
+              case 0 => "in"
+              case 1 => "co"
+            }
+            val pos = tree.tparams
+              .find(_.name.toTermName == paramName)
+              .map(_.sourcePos)
+              .getOrElse(tree.sourcePos)
+            ctx.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
           }
-          val pos = tree.tparams
-            .find(_.name.toTermName == paramName)
-            .map(_.sourcePos)
-            .getOrElse(tree.sourcePos)
-          ctx.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
-        }
-        def apply(x: Boolean, t: Type) = x && {
-          t match {
-            case tref: TypeParamRef if tref.binder `eq` tl =>
-              val v = tl.typeParams(tref.paramNum).paramVariance
-              varianceConforms(variance, v) || { error(tref); false }
-            case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
-              x
-            case _ =>
-              foldOver(x, t)
+          def apply(x: Boolean, t: Type) = x && {
+            t match {
+              case tref: TypeParamRef if tref.binder `eq` tl =>
+                varianceConforms(variance, paramVarianceSign(tref))
+                || { error(tref); false }
+              case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
+                x
+              case _ =>
+                foldOver(x, t)
+            }
           }
         }
-      }
-      checkOK.apply(true, tl.resType)
-    }
+        checkOK(true, tl.resType)
+      case _ =>
+    end checkType
 
-    (tree.tpe: @unchecked) match {
-      case tl: HKTypeLambda =>
-        checkType(tl)
-      // The type of a LambdaTypeTree can be a TypeBounds, see the documentation
-      // of `LambdaTypeTree`.
-      case TypeBounds(lo, hi: HKTypeLambda) =>
-        // Can't assume that the lower bound is a type lambda, it could also be
-        // a reference to `Nothing`.
-        lo match {
-          case lo: HKTypeLambda =>
-            checkType(lo)
-          case _ =>
-        }
-        checkType(hi)
-    }
-  }
+    checkType(bounds.lo)
+    checkType(bounds.hi)
+  end checkLambda
+
+  private def varianceLabel(v: Variance): String =
+    if (v is Covariant) "covariant"
+    else if (v is Contravariant) "contravariant"
+    else "invariant"
 }
 
 class VarianceChecker()(implicit ctx: Context) {
@@ -117,10 +113,10 @@ class VarianceChecker()(implicit ctx: Context) {
       if (relative == Bivariant) None
       else {
         val required = compose(relative, this.variance)
-        def tvar_s = s"$tvar (${varianceString(tvar.flags)} ${tvar.showLocated})"
+        def tvar_s = s"$tvar (${varianceLabel(tvar.flags)} ${tvar.showLocated})"
         def base_s = s"$base in ${base.owner}" + (if (base.owner.isClass) "" else " in " + base.owner.enclosingClass)
-        ctx.log(s"verifying $tvar_s is ${varianceString(required)} at $base_s")
-        ctx.log(s"relative variance: ${varianceString(relative)}")
+        ctx.log(s"verifying $tvar_s is ${varianceLabel(required)} at $base_s")
+        ctx.log(s"relative variance: ${varianceLabel(relative)}")
         ctx.log(s"current variance: ${this.variance}")
         ctx.log(s"owner chain: ${base.ownersIterator.toList}")
         if (tvar.isOneOf(required)) None
@@ -138,7 +134,7 @@ class VarianceChecker()(implicit ctx: Context) {
         else tp.normalized match {
           case tp: TypeRef =>
             val sym = tp.symbol
-            if (sym.variance != 0 && base.isContainedIn(sym.owner)) checkVarianceOfSymbol(sym)
+            if (sym.isOneOf(VarianceFlags) && base.isContainedIn(sym.owner)) checkVarianceOfSymbol(sym)
             else sym.info match {
               case MatchAlias(_) => foldOver(status, tp)
               case TypeAlias(alias) => this(status, alias)
@@ -169,7 +165,7 @@ class VarianceChecker()(implicit ctx: Context) {
   private object Traverser extends TreeTraverser {
     def checkVariance(sym: Symbol, pos: SourcePosition) = Validator.validateDefinition(sym) match {
       case Some(VarianceError(tvar, required)) =>
-        def msg = i"${varianceString(tvar.flags)} $tvar occurs in ${varianceString(required)} position in type ${sym.info} of $sym"
+        def msg = i"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym"
         if (ctx.scala2CompatMode &&
             (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal))))
           ctx.migrationWarning(

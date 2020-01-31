@@ -493,7 +493,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
             case tr :: trs1 =>
               assert(!tr.classSymbol.is(Trait), i"$cls has bad parents $parents%, %")
               val tr1 = if (cls.is(Trait)) defn.ObjectType else tr
-              tr1 :: trs1.filterNot(_ isRef defn.ObjectClass)
+              tr1 :: trs1.filterNot(_.isAnyRef)
             case nil => nil
           }
         val erasedDecls = decls.filteredScope(sym => !sym.isType || sym.isClass)

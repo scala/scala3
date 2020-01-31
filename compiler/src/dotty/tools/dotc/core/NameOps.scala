@@ -139,31 +139,7 @@ object NameOps {
       name.replace { case ExpandedName(_, unexp) => unexp }
     }
 
-    /** Remove the variance from the name. */
-    def invariantName: N = likeSpacedN {
-      name.replace { case VariantName(invariant, _) => invariant }
-    }
-
     def errorName: N = likeSpacedN(name ++ nme.ERROR)
-
-    /** Map variance value -1, +1 to 0, 1 */
-    private def varianceToNat(v: Int) = (v + 1) / 2
-
-    /** Map 0, 1 to variance value -1, +1 */
-    private def natToVariance(n: Int) = n * 2 - 1
-
-    /** Name with variance prefix: `+` for covariant, `-` for contravariant */
-    def withVariance(v: Int): N = {
-      val underlying = name.exclude(VariantName)
-      likeSpacedN(
-          if (v == 0) underlying
-          else VariantName(underlying.toTermName, varianceToNat(v)))
-    }
-
-    /** The variance as implied by the variance prefix, or 0 if there is
-     *  no variance prefix.
-     */
-    def variance: Int = name.collect { case VariantName(_, n) => natToVariance(n) }.getOrElse(0)
 
     def freshened(implicit ctx: Context): N = likeSpacedN {
       name.toTermName match {

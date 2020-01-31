@@ -667,7 +667,7 @@ object RefChecks {
       def checkCaseClassInheritanceInvariant() =
         for (caseCls <- clazz.info.baseClasses.tail.find(_.is(Case)))
           for (baseCls <- caseCls.info.baseClasses.tail)
-            if (baseCls.typeParams.exists(_.paramVariance != 0))
+            if (baseCls.typeParams.exists(_.paramVarianceSign != 0))
               for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
                 ctx.errorOrMigrationWarning(problem(), clazz.sourcePos)
       checkNoAbstractMembers()

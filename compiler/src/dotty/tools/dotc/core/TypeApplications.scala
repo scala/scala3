@@ -10,6 +10,7 @@ import Decorators._
 import util.Stats._
 import Names._
 import NameOps._
+import Variances.variancesConform
 import dotty.tools.dotc.config.Config
 
 object TypeApplications {
@@ -21,24 +22,6 @@ object TypeApplications {
     case tp: TypeBounds => throw new AssertionError("no TypeBounds allowed")
     case _ => tp
   }
-
-  /** Does variance `v1` conform to variance `v2`?
-   *  This is the case if the variances are the same or `sym` is nonvariant.
-   */
-  def varianceConforms(v1: Int, v2: Int): Boolean =
-    v1 == v2 || v2 == 0
-
-  /** Does the variance of type parameter `tparam1` conform to the variance of type parameter `tparam2`?
-   */
-  def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(implicit ctx: Context): Boolean =
-    varianceConforms(tparam1.paramVariance, tparam2.paramVariance)
-
-  /** Do the variances of type parameters `tparams1` conform to the variances
-   *  of corresponding type parameters `tparams2`?
-   *  This is only the case of `tparams1` and `tparams2` have the same length.
-   */
-  def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(implicit ctx: Context): Boolean =
-    tparams1.corresponds(tparams2)(varianceConforms)
 
   /** Extractor for
    *
@@ -156,8 +139,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** The type parameters of this type are:
    *  For a ClassInfo type, the type parameters of its class.
    *  For a typeref referring to a class, the type parameters of the class.
-   *  For a typeref referring to a Lambda class, the type parameters of
-   *    its right hand side or upper bound.
    *  For a refinement type, the type parameters of its parent, dropping
    *  any type parameter that is-rebound by the refinement.
    */
@@ -269,11 +250,9 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Convert a type constructor `TC` which has type parameters `X1, ..., Xn`
    *  to `[X1, ..., Xn] -> TC[X1, ..., Xn]`.
    */
-  def EtaExpand(tparams: List[TypeSymbol])(implicit ctx: Context): Type = {
-    val tparamsToUse = if (variancesConform(typeParams, tparams)) tparams else typeParamSymbols
-    HKTypeLambda.fromParams(tparamsToUse, self.appliedTo(tparams.map(_.typeRef)))
+  def EtaExpand(tparams: List[TypeSymbol])(implicit ctx: Context): Type =
+    HKTypeLambda.fromParams(tparams, self.appliedTo(tparams.map(_.typeRef)))
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
-  }
 
   /** If self is not lambda-bound, eta expand it. */
   def ensureLambdaSub(implicit ctx: Context): Type =
@@ -287,62 +266,6 @@ class TypeApplications(val self: Type) extends AnyVal {
       case self: TypeRef if self.symbol.isClass && self.typeParams.length == hkParams.length =>
         EtaExpansion(self)
       case _ => self
-    }
-  }
-
-  /** If argument A and type parameter P are higher-kinded, adapt the variances
-   *  of A to those of P, ensuring that the variances of the type lambda A
-   *  agree with the variances of corresponding higher-kinded type parameters of P. Example:
-   *
-   *     class GenericCompanion[+CC[X]]
-   *     GenericCompanion[List]
-   *
-   *  with adaptHkVariances, the argument `List` will expand to
-   *
-   *     [X] => List[X]
-   *
-   *  instead of
-   *
-   *     [+X] => List[X]
-   *
-   *  even though `List` is covariant. This adaptation is necessary to ignore conflicting
-   *  variances in overriding members that have types of hk-type parameters such as
-   *  `GenericCompanion[GenTraversable]` or `GenericCompanion[ListBuffer]`.
-   *  When checking overriding, we need to validate the subtype relationship
-   *
-   *      GenericCompanion[[X] -> ListBuffer[X]] <: GenericCompanion[[+X] -> GenTraversable[X]]
-   *
-   *   Without adaptation, this would be false, and hence an overriding error would
-   *   result. But with adaptation, the rhs argument will be adapted to
-   *
-   *     [X] -> GenTraversable[X]
-   *
-   *   which makes the subtype test succeed. The crucial point here is that, since
-   *   GenericCompanion only expects a non-variant CC, the fact that GenTraversable
-   *   is covariant is irrelevant, so can be ignored.
-   */
-  def adaptHkVariances(bound: Type)(implicit ctx: Context): Type = {
-    val hkParams = bound.hkTypeParams
-    if (hkParams.isEmpty) self
-    else {
-      def adaptArg(arg: Type): Type = arg match {
-        case arg @ HKTypeLambda(tparams, body) if
-             !tparams.corresponds(hkParams)(_.paramVariance == _.paramVariance) &&
-             tparams.corresponds(hkParams)(varianceConforms) =>
-          HKTypeLambda(
-            tparams.lazyZip(hkParams).map((tparam, hkparam) =>
-              tparam.paramName.withVariance(hkparam.paramVariance)))(
-            tl => arg.paramInfos.map(_.subst(arg, tl).bounds),
-            tl => arg.resultType.subst(arg, tl)
-          )
-        case arg: AliasingBounds =>
-          arg.derivedAlias(adaptArg(arg.alias))
-        case arg @ TypeBounds(lo, hi) =>
-          arg.derivedTypeBounds(adaptArg(lo), adaptArg(hi))
-        case _ =>
-          arg
-      }
-      adaptArg(self)
     }
   }
 

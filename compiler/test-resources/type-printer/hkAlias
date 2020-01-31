@@ -1,5 +1,5 @@
 scala> type Identity[T] = T
-// defined alias type Identity = [T] => T
+// defined alias type Identity[T] = T
 scala> def foo[T](x: T): Identity[T] = x
 def foo[T](x: T): Identity[T]
 scala> foo(1)

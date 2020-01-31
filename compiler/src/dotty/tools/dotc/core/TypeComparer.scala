@@ -11,6 +11,7 @@ import config.Config
 import config.Printers.{constr, subtyping, gadts, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
+import Variances.{Variance, variancesConform}
 import Constants.Constant
 import transform.TypeUtils._
 import transform.SymUtils._
@@ -500,7 +501,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             val base = nonExprBaseType(tp1, cls2)
             if (base.typeSymbol == cls2) return true
           }
-          else if (tp1.isLambdaSub && !tp1.isRef(AnyKindClass))
+          else if tp1.isLambdaSub && !tp1.isAnyKind then
             return recur(tp1, EtaExpansion(cls2.typeRef))
         fourthTry
     }
@@ -595,14 +596,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             val saved = comparedTypeLambdas
             comparedTypeLambdas += tp1
             comparedTypeLambdas += tp2
-            val variancesOK =
-              variancesConform(tp1.typeParams, tp2.typeParams)
-              || { // if tp1 is of the form [X] =>> C[X] where `C` is co- or contra-variant
-                   // assume the variance of `C` for `tp1` instead. Fixes #7648.
-                tp1 match
-                  case EtaExpansion(tycon1) => variancesConform(tycon1.typeParams, tp2.typeParams)
-                  case _ => false
-              }
+            val variancesOK = variancesConform(tp1.typeParams, tp2.typeParams)
             try variancesOK && boundsOK && isSubType(tp1.resType, tp2.resType.subst(tp2, tp1))
             finally comparedTypeLambdas = saved
           case _ =>
@@ -740,7 +734,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               (gbounds1 != null) &&
                 (isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
                 narrowGADTBounds(tp1, tp2, approx, isUpper = true)) &&
-                { tp2.isRef(AnyClass) || GADTusage(tp1.symbol) }
+                { tp2.isAny || GADTusage(tp1.symbol) }
             }
             isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
           case _ =>
@@ -822,7 +816,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       case JavaArrayType(elem1) =>
         def compareJavaArray = tp2 match {
           case JavaArrayType(elem2) => isSubType(elem1, elem2)
-          case _ => tp2 isRef ObjectClass
+          case _ => tp2.isAnyRef
         }
         compareJavaArray
       case tp1: ExprType if ctx.phase.id > ctx.gettersPhase.id =>
@@ -1213,7 +1207,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       if (args1.isEmpty) args2.isEmpty
       else args2.nonEmpty && {
         val tparam = tparams2.head
-        val v = tparam.paramVariance
+        val v = tparam.paramVarianceSign
 
         /** Try a capture conversion:
          *  If the original left-hand type `leftRoot` is a path `p.type`,
@@ -1278,14 +1272,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             }
         }
 
-        val arg1 = args1.head
-        val arg2 = args2.head
-        isSubArg(arg1, arg2) || {
-          // last effort: try to adapt variances of higher-kinded types if this is sound.
-          // TODO: Move this to eta-expansion?
-          val adapted2 = arg2.adaptHkVariances(tparam.paramInfo)
-          adapted2.ne(arg2) && isSubArg(arg1, adapted2)
-        }
+        isSubArg(args1.head, args2.head)
       } && recurArgs(args1.tail, args2.tail, tparams2.tail)
 
     recurArgs(args1, args2, tparams2)
@@ -1552,19 +1539,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *       Further, no refinement refers back to the refined type via a refined this.
    *  The precondition is established by `skipMatching`.
    */
-  private def isSubRefinements(tp1: RefinedType, tp2: RefinedType, limit: Type): Boolean = {
-    def hasSubRefinement(tp1: RefinedType, refine2: Type): Boolean =
-      isSubType(tp1.refinedInfo, refine2) || {
-        // last effort: try to adapt variances of higher-kinded types if this is sound.
-        // TODO: Move this to eta-expansion?
-        val adapted2 = refine2.adaptHkVariances(tp1.parent.member(tp1.refinedName).symbol.info)
-        adapted2.ne(refine2) && hasSubRefinement(tp1, adapted2)
-      }
-    hasSubRefinement(tp1, tp2.refinedInfo) && (
-      (tp2.parent eq limit) ||
-      isSubRefinements(
-        tp1.parent.asInstanceOf[RefinedType], tp2.parent.asInstanceOf[RefinedType], limit))
-  }
+  private def isSubRefinements(tp1: RefinedType, tp2: RefinedType, limit: Type): Boolean =
+    isSubType(tp1.refinedInfo, tp2.refinedInfo)
+    && ((tp2.parent eq limit)
+       || isSubRefinements(
+            tp1.parent.asInstanceOf[RefinedType],
+            tp2.parent.asInstanceOf[RefinedType], limit))
 
   /** A type has been covered previously in subtype checking if it
    *  is some combination of TypeRefs that point to classes, where the
@@ -1649,20 +1629,21 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             // 'Object|Null', depending on whether explicit nulls are enabled.
             def formal1IsObject =
               if (ctx.explicitNulls) formal1 match {
-                case OrNull(formal1b) => formal1b.isRef(ObjectClass)
+                case OrNull(formal1b) => formal1b.isAnyRef
                 case _ => false
               }
-              else formal1.isRef(ObjectClass)
+              else formal1.isAnyRef
             def formal2IsObject =
               if (ctx.explicitNulls) formal2 match {
-                case OrNull(formal2b) => formal2b.isRef(ObjectClass)
+                case OrNull(formal2b) => formal2b.isAnyRef
                 case _ => false
               }
-              else formal2.isRef(ObjectClass)
+              else formal2.isAnyRef
             (isSameTypeWhenFrozen(formal1, formal2a)
-            || tp1.isJavaMethod && formal2IsObject && (formal1 isRef AnyClass)
-            || tp2.isJavaMethod && formal1IsObject && (formal2 isRef AnyClass)) &&
-            loop(rest1, rest2)
+             || tp1.isJavaMethod && formal2IsObject && formal1.isAny
+             || tp2.isJavaMethod && formal1IsObject && formal2.isAny
+            )
+            && loop(rest1, rest2)
           case nil =>
             false
         }
@@ -1743,8 +1724,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
-    else if ((tp1 isRef AnyClass) && !tp2.isLambdaSub || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) tp2
-    else if ((tp2 isRef AnyClass) && !tp1.isLambdaSub || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) tp1
+    else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || tp2.isRef(NothingClass) then tp2
+    else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || tp1.isRef(NothingClass) then tp1
     else tp2 match {  // normalize to disjunctive normal form if possible.
       case OrType(tp21, tp22) =>
         tp1 & tp21 | tp1 & tp22
@@ -1790,11 +1771,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  @note  We do not admit singleton types in or-types as lubs.
    */
   def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type = /*>|>*/ trace(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
+
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
-    else if ((tp1 isRef AnyClass) || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) tp1
-    else if ((tp2 isRef AnyClass) || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) tp2
+    else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || tp2.isRef(NothingClass) then tp1
+    else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || tp1.isRef(NothingClass) then tp2
     else {
       def mergedLub: Type = {
         val atoms1 = tp1.atoms
@@ -1839,7 +1821,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         val arg1 :: args1Rest = args1
         val arg2 :: args2Rest = args2
         val common = singletonInterval(arg1, arg2)
-        val v = tparam.paramVariance
+        val v = tparam.paramVarianceSign
         val lubArg =
           if (common.exists) common
           else if (v > 0) lub(arg1.hiBound, arg2.hiBound, canConstrain)
@@ -1871,7 +1853,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         val arg1 :: args1Rest = args1
         val arg2 :: args2Rest = args2
         val common = singletonInterval(arg1, arg2)
-        val v = tparam.paramVariance
+        val v = tparam.paramVarianceSign
         val glbArg =
           if (common.exists) common
           else if (v > 0) glb(arg1.hiBound, arg2.hiBound)
@@ -1951,7 +1933,16 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       val t2 = distributeAnd(tp2, tp1)
       if (t2.exists) t2
       else if (isErased) erasedGlb(tp1, tp2, isJava = false)
-      else liftIfHK(tp1, tp2, op, original)
+      else liftIfHK(tp1, tp2, op, original, _ | _)
+        // The ` | ` on variances is needed since variances are associated with bounds
+        // not lambdas. Example:
+        //
+        //    trait A { def F[-X] }
+        //    trait B { def F[+X] }
+        //    object O extends A, B { ... }
+        //
+        // Here, `F` is treated as bivariant in `O`. That is, only bivariant implementation
+        // of `F` are allowed. See neg/hk-variance2s.scala test.
     }
   }
 
@@ -1999,7 +1990,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       val t2 = distributeOr(tp2, tp1)
       if (t2.exists) t2
       else if (isErased) erasedLub(tp1, tp2)
-      else liftIfHK(tp1, tp2, OrType(_, _), _ | _)
+      else liftIfHK(tp1, tp2, OrType(_, _), _ | _, _ & _)
     }
   }
 
@@ -2008,7 +1999,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *
    *    [X1, ..., Xn] -> op(tp1[X1, ..., Xn], tp2[X1, ..., Xn])
    */
-  private def liftIfHK(tp1: Type, tp2: Type, op: (Type, Type) => Type, original: (Type, Type) => Type) = {
+  private def liftIfHK(tp1: Type, tp2: Type,
+      op: (Type, Type) => Type, original: (Type, Type) => Type, combineVariance: (Variance, Variance) => Variance) = {
     val tparams1 = tp1.typeParams
     val tparams2 = tp2.typeParams
     def applied(tp: Type) = tp.appliedTo(tp.typeParams.map(_.paramInfoAsSeenFrom(tp)))
@@ -2019,9 +2011,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       original(applied(tp1), tp2)
     else if (tparams1.hasSameLengthAs(tparams2))
       HKTypeLambda(
-        paramNames = HKTypeLambda.syntheticParamNames(tparams1.length).lazyZip(tparams1).lazyZip(tparams2)
-          .map((pname, tparam1, tparam2) =>
-            pname.withVariance((tparam1.paramVariance + tparam2.paramVariance) / 2)))(
+        paramNames = HKTypeLambda.syntheticParamNames(tparams1.length),
+        variances =
+          if tp1.isDeclaredVarianceLambda && tp2.isDeclaredVarianceLambda then
+            tparams1.lazyZip(tparams2).map((p1, p2) => combineVariance(p1.paramVariance, p2.paramVariance))
+          else Nil
+      )(
         paramInfosExp = tl => tparams1.lazyZip(tparams2).map((tparam1, tparam2) =>
           tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
           tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
@@ -2210,7 +2205,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       case OrType(tp1, tp2) => provablyEmpty(tp1) && provablyEmpty(tp2)
       case at @ AppliedType(tycon, args) =>
         args.lazyZip(tycon.typeParams).exists { (arg, tparam) =>
-          tparam.paramVariance >= 0
+          tparam.paramVarianceSign >= 0
           && provablyEmpty(arg)
           && typeparamCorrespondsToField(tycon, tparam)
         }
@@ -2285,7 +2280,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
         args1.lazyZip(args2).lazyZip(tycon1.typeParams).exists {
           (arg1, arg2, tparam) =>
-            val v = tparam.paramVariance
+            val v = tparam.paramVarianceSign
             if (v > 0)
               covariantDisjoint(arg1, arg2, tparam)
             else if (v < 0)

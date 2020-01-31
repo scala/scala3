@@ -338,11 +338,6 @@ object NameKinds {
     }
   }
 
-  /** The kind of names that also encode a variance: 0 for contravariance, 1 for covariance. */
-  val VariantName: NumberedNameKind = new NumberedNameKind(VARIANT, "Variant") {
-    def mkString(underlying: TermName, info: ThisInfo) = "-+"(info.num).toString + underlying
-  }
-
   /** Names of the form N_<outer>. Emitted by inliner, replaced by outer path
    *  in ExplicitOuter.
    */

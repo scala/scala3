@@ -18,6 +18,7 @@ import Decorators._
 import Denotations._
 import Periods._
 import CheckRealizable._
+import Variances.{Variance, varianceFromInt, varianceToInt, setStructuralVariances, Invariant}
 import util.Stats._
 import util.SimpleIdentitySet
 import reporting.diagnostic.Message
@@ -29,7 +30,7 @@ import Hashable._
 import Uniques._
 import collection.mutable
 import config.Config
-import annotation.tailrec
+import annotation.{tailrec, constructorOnly}
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr}
@@ -176,18 +177,18 @@ object Types {
      *        It makes no sense for it to be an alias type because isRef would always
      *        return false in that case.
      */
-    def isRef(sym: Symbol)(implicit ctx: Context): Boolean = stripAnnots.stripTypeVar match {
+    def isRef(sym: Symbol, skipRefined: Boolean = true)(implicit ctx: Context): Boolean = stripAnnots.stripTypeVar match {
       case this1: TypeRef =>
         this1.info match { // see comment in Namer#typeDefSig
-          case TypeAlias(tp) => tp.isRef(sym)
+          case TypeAlias(tp) => tp.isRef(sym, skipRefined)
           case _ => this1.symbol eq sym
         }
-      case this1: RefinedOrRecType =>
-        this1.parent.isRef(sym)
+      case this1: RefinedOrRecType if skipRefined =>
+        this1.parent.isRef(sym, skipRefined)
       case this1: AppliedType =>
         val this2 = this1.dealias
-        if (this2 ne this1) this2.isRef(sym)
-        else this1.underlying.isRef(sym)
+        if (this2 ne this1) this2.isRef(sym, skipRefined)
+        else this1.underlying.isRef(sym, skipRefined)
       case _ => false
     }
 
@@ -199,6 +200,10 @@ object Types {
       case _ =>
         false
     }
+
+    def isAny(given Context): Boolean     = isRef(defn.AnyClass, skipRefined = false)
+    def isAnyRef(given Context): Boolean  = isRef(defn.ObjectClass, skipRefined = false)
+    def isAnyKind(given Context): Boolean = isRef(defn.AnyKindClass, skipRefined = false)
 
     /** Does this type refer exactly to class symbol `sym`, instead of to a subclass of `sym`?
      *  Implemented like `isRef`, but follows more types: all type proxies as well as and- and or-types
@@ -361,6 +366,9 @@ object Types {
       case tp: HKTypeLambda => tp.resType.isMatch
       case _ => false
     }
+
+    /** Is this a higher-kinded type lambda with given parameter variances? */
+    def isDeclaredVarianceLambda: Boolean = false
 
 // ----- Higher-order combinators -----------------------------------
 
@@ -1670,7 +1678,7 @@ object Types {
     def computeHash(bs: Binders): Int
 
     /** Is the `hash` of this type the same for all possible sequences of enclosing binders? */
-    def stableHash: Boolean = true
+    def hashIsStable: Boolean = true
   }
 
   // end Type
@@ -2035,7 +2043,7 @@ object Types {
       if (0 <= idx && idx < args.length) {
         val argInfo = args(idx) match {
           case arg: TypeBounds =>
-            val v = param.paramVariance
+            val v = param.paramVarianceSign
             val pbounds = param.paramInfo
             if (v > 0 && pbounds.loBound.dealiasKeepAnnots.isBottomType) TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
             else if (v < 0 && pbounds.hiBound.dealiasKeepAnnots.isTopType) TypeAlias(arg.loBound | rebase(pbounds.loBound))
@@ -2191,7 +2199,7 @@ object Types {
         case base: AndOrType =>
           var tp1 = argForParam(base.tp1)
           var tp2 = argForParam(base.tp2)
-          val variance = tparam.paramVariance
+          val variance = tparam.paramVarianceSign
           if (isBounds(tp1) || isBounds(tp2) || variance == 0) {
             // compute argument as a type bounds instead of a point type
             tp1 = tp1.bounds
@@ -2331,8 +2339,8 @@ object Types {
 
     override def computeHash(bs: Binders): Int = doHash(bs, designator, prefix)
 
-    override def stableHash: Boolean = {
-      if (myStableHash == 0) myStableHash = if (prefix.stableHash) 1 else -1
+    override def hashIsStable: Boolean = {
+      if (myStableHash == 0) myStableHash = if (prefix.hashIsStable) 1 else -1
       myStableHash > 0
     }
 
@@ -2616,7 +2624,7 @@ object Types {
       else parent
 
     override def computeHash(bs: Binders): Int = doHash(bs, refinedName, refinedInfo, parent)
-    override def stableHash: Boolean = refinedInfo.stableHash && parent.stableHash
+    override def hashIsStable: Boolean = refinedInfo.hashIsStable && parent.hashIsStable
 
     override def eql(that: Type): Boolean = that match {
       case that: RefinedType =>
@@ -2717,7 +2725,7 @@ object Types {
 
     override def computeHash(bs: Binders): Int = doHash(new Binders(this, bs), parent)
 
-    override def stableHash: Boolean = false
+    override def hashIsStable: Boolean = false
       // this is a conservative observation. By construction RecTypes contain at least
       // one RecThis occurrence. Since `stableHash` does not keep track of enclosing
       // bound types, it will return "unstable" for this occurrence and this would propagate.
@@ -3025,7 +3033,7 @@ object Types {
       if (resType eq this.resType) this else ExprType(resType)
 
     override def computeHash(bs: Binders): Int = doHash(bs, resType)
-    override def stableHash: Boolean = resType.stableHash
+    override def hashIsStable: Boolean = resType.hashIsStable
 
     override def eql(that: Type): Boolean = that match {
       case that: ExprType => resType.eq(that.resType)
@@ -3110,38 +3118,19 @@ object Types {
       if ((paramNames eq this.paramNames) && (paramInfos eq this.paramInfos) && (resType eq this.resType)) this
       else newLikeThis(paramNames, paramInfos, resType)
 
-    final def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): This =
+    def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): This =
       companion(paramNames)(
           x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
           x => resType.subst(this, x))
 
     protected def prefixString: String
-    final override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
+    override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
   }
 
   abstract class HKLambda extends CachedProxyType with LambdaType {
     final override def underlying(implicit ctx: Context): Type = resType
-
-    override def computeHash(bs: Binders): Int =
-      doHash(new Binders(this, bs), paramNames, resType, paramInfos)
-
-    override def stableHash: Boolean = resType.stableHash && paramInfos.stableHash
-
+    final override def hashIsStable: Boolean = resType.hashIsStable && paramInfos.hashIsStable
     final override def equals(that: Any): Boolean = equals(that, null)
-
-    // No definition of `eql` --> fall back on equals, which calls iso
-
-    final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
-      case that: HKLambda =>
-        paramNames.eqElements(that.paramNames) &&
-        companion.eq(that.companion) && {
-          val bs1 = new BinderPairs(this, that, bs)
-          paramInfos.equalElements(that.paramInfos, bs1) &&
-          resType.equals(that.resType, bs1)
-        }
-      case _ =>
-        false
-    }
   }
 
   abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType {
@@ -3328,14 +3317,11 @@ object Types {
     def apply(paramInfos: List[PInfo], resultType: Type)(implicit ctx: Context): LT =
       apply(syntheticParamNames(paramInfos.length), paramInfos, resultType)
 
-    protected def paramName(param: ParamInfo.Of[N])(implicit ctx: Context): N =
-      param.paramName
-
     protected def toPInfo(tp: Type)(implicit ctx: Context): PInfo
 
     def fromParams[PI <: ParamInfo.Of[N]](params: List[PI], resultType: Type)(implicit ctx: Context): Type =
       if (params.isEmpty) resultType
-      else apply(params.map(paramName))(
+      else apply(params.map(_.paramName))(
         tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
         tl => tl.integrate(params, resultType))
   }
@@ -3447,17 +3433,20 @@ object Types {
   }
 
   /** A type lambda of the form `[X_0 B_0, ..., X_n B_n] => T`
-   *  Variances are encoded in parameter names. A name starting with `+`
-   *  designates a covariant parameter, a name starting with `-` designates
-   *  a contravariant parameter, and every other name designates a non-variant parameter.
    *
    *  @param  paramNames      The names `X_0`, ..., `X_n`
    *  @param  paramInfosExp  A function that, given the polytype itself, returns the
    *                          parameter bounds `B_1`, ..., `B_n`
    *  @param  resultTypeExp   A function that, given the polytype itself, returns the
    *                          result type `T`.
+   *  @param  variances       The variances of the type parameters, if the type lambda
+   *                          carries variances, i.e. it is a bound of an abstract type
+   *                          or the rhs of a match alias or opaque alias. The parameter
+   *                          is Nil for all other lambdas.
+   *
+   *  Variances are stored in the `typeParams` list of the lambda.
    */
-  class HKTypeLambda(val paramNames: List[TypeName])(
+  class HKTypeLambda(val paramNames: List[TypeName], @constructorOnly variances: List[Variance])(
       paramInfosExp: HKTypeLambda => List[TypeBounds], resultTypeExp: HKTypeLambda => Type)
   extends HKLambda with TypeLambda {
     type This = HKTypeLambda
@@ -3469,7 +3458,55 @@ object Types {
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
 
+    private def setVariances(tparams: List[LambdaParam], vs: List[Variance]): Unit =
+      if tparams.nonEmpty then
+        tparams.head.declaredVariance = vs.head
+        setVariances(tparams.tail, vs.tail)
+
+    override val isDeclaredVarianceLambda = variances.nonEmpty
+    if isDeclaredVarianceLambda then setVariances(typeParams, variances)
+
+    def declaredVariances =
+      if isDeclaredVarianceLambda then typeParams.map(_.declaredVariance)
+      else Nil
+
+    override def computeHash(bs: Binders): Int =
+      doHash(new Binders(this, bs), declaredVariances ::: paramNames, resType, paramInfos)
+
+    // No definition of `eql` --> fall back on equals, which calls iso
+
+    final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
+      case that: HKTypeLambda =>
+        paramNames.eqElements(that.paramNames)
+        && isDeclaredVarianceLambda == that.isDeclaredVarianceLambda
+        && (!isDeclaredVarianceLambda
+            || typeParams.corresponds(that.typeParams)((x, y) =>
+                  x.declaredVariance == y.declaredVariance))
+        && {
+          val bs1 = new BinderPairs(this, that, bs)
+          paramInfos.equalElements(that.paramInfos, bs1) &&
+          resType.equals(that.resType, bs1)
+        }
+      case _ =>
+        false
+    }
+
+    override def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): This =
+      newLikeThis(paramNames, declaredVariances, paramInfos, resType)
+
+    def newLikeThis(paramNames: List[ThisName], variances: List[Variance], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): This =
+      HKTypeLambda(paramNames, variances)(
+          x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
+          x => resType.subst(this, x))
+
+    def withVariances(variances: List[Variance])(implicit ctx: Context): This =
+      newLikeThis(paramNames, variances, paramInfos, resType)
+
     protected def prefixString: String = "HKTypeLambda"
+    final override def toString: String =
+      if isDeclaredVarianceLambda then
+        s"HKTypeLambda($paramNames, $paramInfos, $resType, ${declaredVariances.map(_.flagsString)})"
+      else super.toString
   }
 
   /** The type of a polymorphic method. It has the same form as HKTypeLambda,
@@ -3519,7 +3556,12 @@ object Types {
     def apply(paramNames: List[TypeName])(
         paramInfosExp: HKTypeLambda => List[TypeBounds],
         resultTypeExp: HKTypeLambda => Type)(implicit ctx: Context): HKTypeLambda =
-      unique(new HKTypeLambda(paramNames)(paramInfosExp, resultTypeExp))
+      apply(paramNames, Nil)(paramInfosExp, resultTypeExp)
+
+    def apply(paramNames: List[TypeName], variances: List[Variance])(
+        paramInfosExp: HKTypeLambda => List[TypeBounds],
+        resultTypeExp: HKTypeLambda => Type)(implicit ctx: Context): HKTypeLambda =
+      unique(new HKTypeLambda(paramNames, variances)(paramInfosExp, resultTypeExp))
 
     def unapply(tl: HKTypeLambda): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
@@ -3528,25 +3570,56 @@ object Types {
       apply(syntheticParamNames(n))(
         pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
 
-    override def paramName(param: ParamInfo.Of[TypeName])(implicit ctx: Context): TypeName =
-      param.paramName.withVariance(param.paramVariance)
+    override def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type)(implicit ctx: Context): Type =
+      resultType match
+        case bounds: TypeBounds => boundsFromParams(params, bounds)
+        case _ => super.fromParams(params, resultType)
 
     /** Distributes Lambda inside type bounds. Examples:
      *
      *      type T[X] = U        becomes    type T = [X] -> U
      *      type T[X] <: U       becomes    type T >: Nothing <: ([X] -> U)
      *      type T[X] >: L <: U  becomes    type T >: ([X] -> L) <: ([X] -> U)
+     *
+     *  The variances of regular TypeBounds types, as well as of match aliases
+     *  and of opaque aliases are always determined from the given parameters
+     *  `params`. The variances of other type aliases are determined from
+     *  the given parameters only if one of these parameters carries a `+`
+     *  or `-` variance annotation. Type aliases without variance annotation
+     *  are treated structurally. That is, their parameter variances are
+     *  determined by how the parameter(s) appear in the result type.
+     *
+     *  Examples:
+     *
+     *    type T[X] >: A              // X is invariant
+     *    type T[X] <: List[X]        // X is invariant
+     *    type T[X] = List[X]         // X is covariant (determined structurally)
+     *    opaque type T[X] = List[X]  // X is invariant
+     *    opaque type T[+X] = List[X] // X is covariant
+     *    type T[A, B] = A => B       // A is contravariant, B is covariant (determined structurally)
+     *    type T[A, +B] = A => B      // A is invariant, B is covariant
      */
-    override def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type)(implicit ctx: Context): Type = {
-      def expand(tp: Type) = super.fromParams(params, tp)
-      resultType match {
-        case rt: AliasingBounds =>
-          rt.derivedAlias(expand(rt.alias))
-        case rt @ TypeBounds(lo, hi) =>
-          rt.derivedTypeBounds(
-            if (lo.isRef(defn.NothingClass)) lo else expand(lo), expand(hi))
-        case rt =>
-          expand(rt)
+    def boundsFromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], bounds: TypeBounds)(implicit ctx: Context): TypeBounds = {
+      def expand(tp: Type, useVariances: Boolean) =
+        if params.nonEmpty && useVariances then
+          apply(params.map(_.paramName), params.map(_.paramVariance))(
+            tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
+            tl => tl.integrate(params, tp))
+        else
+          super.fromParams(params, tp)
+      def isOpaqueAlias = params match
+        case (param: Symbol) :: _ => param.owner.is(Opaque)
+        case _ => false
+      bounds match {
+        case bounds: MatchAlias =>
+          bounds.derivedAlias(expand(bounds.alias, true))
+        case bounds: TypeAlias =>
+          bounds.derivedAlias(expand(bounds.alias,
+            isOpaqueAlias || params.exists(!_.paramVariance.isEmpty)))
+        case TypeBounds(lo, hi) =>
+          bounds.derivedTypeBounds(
+            if lo.isRef(defn.NothingClass) then lo else expand(lo, true),
+            expand(hi, true))
       }
     }
   }
@@ -3580,13 +3653,49 @@ object Types {
   /** The parameter of a type lambda */
   case class LambdaParam(tl: TypeLambda, n: Int) extends ParamInfo {
     type ThisName = TypeName
+
     def isTypeParam(implicit ctx: Context): Boolean = tl.paramNames.head.isTypeName
     def paramName(implicit ctx: Context): tl.ThisName = tl.paramNames(n)
     def paramInfo(implicit ctx: Context): tl.PInfo = tl.paramInfos(n)
     def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context): tl.PInfo = paramInfo
     def paramInfoOrCompleter(implicit ctx: Context): Type = paramInfo
-    def paramVariance(implicit ctx: Context): Int = tl.paramNames(n).variance
     def paramRef(implicit ctx: Context): Type = tl.paramRefs(n)
+
+    private var myVariance: FlagSet = UndefinedFlags
+
+    /** Low level setter, only called from Variances.setStructuralVariances */
+    def storedVariance_= (v: Variance): Unit =
+      myVariance = v
+
+    /** Low level getter, only called from Variances.setStructuralVariances */
+    def storedVariance: Variance =
+      myVariance
+
+    /** Set the declared variance of this parameter.
+     *  @pre the containing lambda is a isDeclaredVarianceLambda
+     */
+    def declaredVariance_=(v: Variance): Unit =
+      assert(tl.isDeclaredVarianceLambda)
+      assert(myVariance == UndefinedFlags)
+      myVariance = v
+
+    /** The declared variance of this parameter.
+     *  @pre the containing lambda is a isDeclaredVarianceLambda
+     */
+    def declaredVariance: Variance =
+      assert(tl.isDeclaredVarianceLambda)
+      assert(myVariance != UndefinedFlags)
+      myVariance
+
+    /** The declared or structural variance of this parameter. */
+    def paramVariance(implicit ctx: Context): Variance =
+      if myVariance == UndefinedFlags then
+        tl match
+          case tl: HKTypeLambda =>
+            setStructuralVariances(tl)
+          case _ =>
+            myVariance = Invariant
+      myVariance
   }
 
   /** A type application `C[T_1, ..., T_n]` */
@@ -3758,8 +3867,8 @@ object Types {
 
     override def computeHash(bs: Binders): Int = doHash(bs, tycon, args)
 
-    override def stableHash: Boolean = {
-      if (myStableHash == 0) myStableHash = if (tycon.stableHash && args.stableHash) 1 else -1
+    override def hashIsStable: Boolean = {
+      if (myStableHash == 0) myStableHash = if (tycon.hashIsStable && args.hashIsStable) 1 else -1
       myStableHash > 0
     }
 
@@ -3790,7 +3899,7 @@ object Types {
     type BT <: Type
     val binder: BT
     def copyBoundType(bt: BT): Type
-    override def stableHash: Boolean = false
+    override def hashIsStable: Boolean = false
   }
 
   abstract class ParamRef extends BoundType {
@@ -4193,7 +4302,7 @@ object Types {
       else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
     override def computeHash(bs: Binders): Int = doHash(bs, cls, prefix)
-    override def stableHash: Boolean = prefix.stableHash && classParents.stableHash
+    override def hashIsStable: Boolean = prefix.hashIsStable && classParents.hashIsStable
 
     override def eql(that: Type): Boolean = that match {
       case that: ClassInfo =>
@@ -4290,7 +4399,7 @@ object Types {
     }
 
     override def computeHash(bs: Binders): Int = doHash(bs, lo, hi)
-    override def stableHash: Boolean = lo.stableHash && hi.stableHash
+    override def hashIsStable: Boolean = lo.hashIsStable && hi.hashIsStable
 
     override def equals(that: Any): Boolean = equals(that, null)
 
@@ -4315,7 +4424,7 @@ object Types {
     def derivedAlias(alias: Type)(implicit ctx: Context): AliasingBounds
 
     override def computeHash(bs: Binders): Int = doHash(bs, alias)
-    override def stableHash: Boolean = alias.stableHash
+    override def hashIsStable: Boolean = alias.hashIsStable
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: AliasingBounds => this.isTypeAlias == that.isTypeAlias && alias.equals(that.alias, bs)
@@ -4416,7 +4525,7 @@ object Types {
       if (elemtp eq this.elemType) this else JavaArrayType(elemtp)
 
     override def computeHash(bs: Binders): Int = doHash(bs, elemType)
-    override def stableHash: Boolean = elemType.stableHash
+    override def hashIsStable: Boolean = elemType.hashIsStable
 
     override def eql(that: Type): Boolean = that match {
       case that: JavaArrayType => elemType.eq(that.elemType)
@@ -4479,7 +4588,7 @@ object Types {
       else WildcardType(optBounds.asInstanceOf[TypeBounds])
 
     override def computeHash(bs: Binders): Int = doHash(bs, optBounds)
-    override def stableHash: Boolean = optBounds.stableHash
+    override def hashIsStable: Boolean = optBounds.hashIsStable
 
     override def eql(that: Type): Boolean = that match {
       case that: WildcardType => optBounds.eq(that.optBounds)
@@ -4685,7 +4794,7 @@ object Types {
             case arg :: otherArgs if tparams.nonEmpty =>
               val arg1 = arg match {
                 case arg: TypeBounds => this(arg)
-                case arg => atVariance(variance * tparams.head.paramVariance)(this(arg))
+                case arg => atVariance(variance * tparams.head.paramVarianceSign)(this(arg))
               }
               val otherArgs1 = mapArgs(otherArgs, tparams.tail)
               if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
@@ -4987,7 +5096,7 @@ object Types {
               // @return  operation succeeded for all arguments.
               def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
                 case Range(lo, hi) :: args1 =>
-                  val v = tparams.head.paramVariance
+                  val v = tparams.head.paramVarianceSign
                   if (v == 0) false
                   else {
                     if (v > 0) { loBuf += lo; hiBuf += hi }
@@ -5105,7 +5214,7 @@ object Types {
             val tparam = tparams.head
             val acc = args.head match {
               case arg: TypeBounds => this(x, arg)
-              case arg => atVariance(variance * tparam.paramVariance)(this(x, arg))
+              case arg => atVariance(variance * tparam.paramVarianceSign)(this(x, arg))
             }
             foldArgs(acc, tparams.tail, args.tail)
           }
@@ -5386,8 +5495,8 @@ object Types {
   implicit def decorateTypeApplications(tpe: Type): TypeApplications = new TypeApplications(tpe)
 
   implicit class typeListDeco(val tps1: List[Type]) extends AnyVal {
-    @tailrec def stableHash: Boolean =
-      tps1.isEmpty || tps1.head.stableHash && tps1.tail.stableHash
+    @tailrec def hashIsStable: Boolean =
+      tps1.isEmpty || tps1.head.hashIsStable && tps1.tail.hashIsStable
     @tailrec def equalElements(tps2: List[Type], bs: BinderPairs): Boolean =
       (tps1 `eq` tps2) || {
         if (tps1.isEmpty) tps2.isEmpty

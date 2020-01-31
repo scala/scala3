@@ -379,8 +379,9 @@ trait ConstraintHandling[AbstractContext] {
           case bounds: TypeBounds =>
             val lower = constraint.lower(param)
             val upper = constraint.upper(param)
-            if (lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass) ||
-              upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) constr_println(i"INIT*** $tl")
+            if lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass)
+               || upper.nonEmpty && !bounds.hi.isAny
+            then constr_println(i"INIT*** $tl")
             lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
               upper.forall(addOneBound(_, bounds.lo, isUpper = false))
           case _ =>

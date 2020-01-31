@@ -6,9 +6,9 @@ title: "Type Lambdas - More Details"
 ## Syntax
 
 ```
-Type              ::=  ... |  HkTypeParamClause ‘=>>’ Type
-HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
-HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] | ‘_’) TypeBounds
+Type            ::=  ... |  TypeParamClause ‘=>>’ Type
+TypeParamClause ::=  ‘[’ TypeParam {‘,’ TypeParam} ‘]’
+TypeParam       ::=  {Annotation} (id [HkTypeParamClause] | ‘_’) TypeBounds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]
 ```
 
@@ -18,41 +18,23 @@ A type lambda such as `[X] =>> F[X]` defines a function from types to types. The
 If a parameter is bounded, as in `[X >: L <: H] =>> F[X]` it is checked that arguments to the parameters conform to the bounds `L` and `H`.
 Only the upper bound `H` can be F-bounded, i.e. `X` can appear in it.
 
-A variance annotation on a parameter indicates a subtyping relationship on type instances. For instance, given
-```scala
-type TL1 = [+A] =>> F[A]
-type TL2 = [-A] =>> F[A]
-```
-and two types `S <: T`, we have
-```scala
-TL1[S] <: TL1[T]
-TL2[T] <: TL2[S]
-```
-It is checked that variance annotations on parameters of type lambdas are respected by the parameter occurrences on the type lambda's body.
-
-**Note** No requirements hold for the variances of occurrences of type variables in their bounds. It is an open question whether we need to impose additional requirements here
-(`scalac` doesn't check variances in bounds either).
-
 ## Subtyping Rules
 
 Assume two type lambdas
 ```scala
-type TL1  =  [v1 X >: L1 <: U1] =>> R1
-type TL2  =  [v2 X >: L2 <: U2] =>> R2
+type TL1  =  [X >: L1 <: U1] =>> R1
+type TL2  =  [X >: L2 <: U2] =>> R2
 ```
-where `v1` and `v2` are optional variance annotations: `+`, `-`, or absent.
 Then `TL1 <: TL2`, if
 
  - the type interval `L2..U2` is contained in the type interval `L1..U1` (i.e.
 `L1 <: L2` and `U2 <: U1`),
- - either `v2` is absent or `v1 = v2`
  - `R1 <: R2`
 
 Here we have relied on alpha renaming to bring match the two bound types `X`.
 
 A partially applied type constructor such as `List` is assumed to be equivalent to
-its eta expansion. I.e, `List = [+X] =>> List[X]`. This allows type constructors
-to be compared with type lambdas.
+its eta expansion. I.e, `List = [X] =>> List[X]`. This allows type constructors to be compared with type lambdas.
 
 ## Relationship with Parameterized Type Definitions
 
@@ -64,6 +46,17 @@ is regarded as a shorthand for an unparameterized definition with a type lambda 
 ```scala
 type T = [X] =>> R
 ```
+If the a type definition carries `+` or `-` variance annotations,
+it is checked that the variance annotations are satisfied by the type lambda.
+For instance,
+```scala
+type F2[A, +B] = A => B
+```
+expands to
+```scala
+type F2 = [A, B] =>> A => B
+```
+and at the same time it is checked that the parameter `B` appears covariantly in `A => B`.
 
 A parameterized abstract type
 ```scala
@@ -75,15 +68,15 @@ type T >: ([X] =>> L) <: ([X] =>> U)
 ```
 However, if `L` is `Nothing` it is not parameterized, since `Nothing` is treated as a bottom type for all kinds. For instance,
 ```scala
-type T[-X] <: X => ()
+type T[X] <: X => X
 ```
 is expanded to
 ```scala
-type T >: Nothing <: ([-X] =>> X => ())
+type T >: Nothing <: ([X] =>> X => X)
 ```
 instead of
 ```scala
-type T >: ([X] =>> Nothing) <: ([-X] =>> X => ())
+type T >: ([X] =>> Nothing) <: ([X] =>> X => X)
 ```
 
 The same expansions apply to type parameters. E.g.
@@ -94,6 +87,20 @@ is treated as a shorthand for
 ```scala
 [F >: Nothing <: [X] =>> Coll[X]]
 ```
+Abstract types and opaque type aliases remember the variances they were created with. So the type
+```scala
+def F2[-A, +B]
+```
+is known to be contravariant in `A` and covariant in `B` and can be instantiated only
+with types that satisfy these constraints. Likewise
+```scala
+opaque type O[X] = List[X]
+```
+`O` is known to be invariant (and not covariant, as its right hand side would suggest). On the other hand, a transparent alias
+```scala
+type O2[X] = List[X]
+```
+would be treated as covariant, `X` is used covariantly on its right-hand side.
 
 **Note**: The decision to treat `Nothing` as universal bottom type is provisional, and might be changed afer further discussion.
 

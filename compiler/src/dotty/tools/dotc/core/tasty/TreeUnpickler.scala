@@ -16,6 +16,7 @@ import Flags._
 import Constants._
 import Annotations._
 import NameKinds._
+import Variances.Invariant
 import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import util.Spans._
@@ -303,6 +304,17 @@ class TreeUnpickler(reader: TastyReader,
           result.asInstanceOf[LT]
         }
 
+        def readVariances(tp: Type): Type = tp match
+          case tp: HKTypeLambda if currentAddr != end =>
+            val vs = until(end) {
+              readByte() match
+                case STABLE => Invariant
+                case COVARIANT => Covariant
+                case CONTRAVARIANT => Contravariant
+            }
+            tp.withVariances(vs)
+          case _ => tp
+
         val result =
           (tag: @switch) match {
             case TERMREFin =>
@@ -326,8 +338,7 @@ class TreeUnpickler(reader: TastyReader,
             case REFINEDtype =>
               var name: Name = readName()
               val parent = readType()
-              val ttag = nextUnsharedTag
-              if (ttag == TYPEBOUNDS || ttag == TYPEALIAS) name = name.toTypeName
+              if nextUnsharedTag == TYPEBOUNDS then name = name.toTypeName
               RefinedType(parent, name, readType())
                 // Note that the lambda "rt => ..." is not equivalent to a wildcard closure!
                 // Eta expansion of the latter puts readType() out of the expression.
@@ -335,9 +346,10 @@ class TreeUnpickler(reader: TastyReader,
               readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
               val lo = readType()
-              val hi = readType()
-              if (lo.isMatch && (lo `eq` hi)) MatchAlias(lo)
-              else TypeBounds(lo, hi)
+              if nothingButMods(end) then
+                if lo.isMatch then MatchAlias(readVariances(lo))
+                else TypeAlias(readVariances(lo))
+              else TypeBounds(lo, readVariances(readType()))
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
             case ANDtype =>
@@ -404,8 +416,6 @@ class TreeUnpickler(reader: TastyReader,
           }
         case RECthis =>
           readTypeRef().asInstanceOf[RecType].recThis
-        case TYPEALIAS =>
-          TypeAlias(readType())
         case SHAREDtype =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
@@ -506,10 +516,7 @@ class TreeUnpickler(reader: TastyReader,
       val tag = readByte()
       val end = readEnd()
       var name: Name = readName()
-      nextUnsharedTag match {
-        case TYPEBOUNDS | TYPEALIAS => name = name.toTypeName
-        case _ =>
-      }
+      if nextUnsharedTag == TYPEBOUNDS then name = name.toTypeName
       val typeReader = fork
       val completer = new LazyType {
         def complete(denot: SymDenotation)(implicit ctx: Context) =

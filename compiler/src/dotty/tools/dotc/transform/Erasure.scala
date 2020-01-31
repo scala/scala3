@@ -460,9 +460,9 @@ object Erasure {
         untpd.cpy.Select(tree)(qual, sym.name).withType(NamedType(qual.tpe, sym))
 
       def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
-        if (erasedPre isRef defn.ObjectClass)
+        if erasedPre.isAnyRef then
           runtimeCallWithProtoArgs(tree.name.genericArrayOp, pt, qual)
-        else if (!(qual.tpe <:< erasedPre))
+        else if !(qual.tpe <:< erasedPre) then
           selectArrayMember(cast(qual, erasedPre), erasedPre)
         else
           assignType(untpd.cpy.Select(tree)(qual, tree.name.primitiveArrayOp), qual)
