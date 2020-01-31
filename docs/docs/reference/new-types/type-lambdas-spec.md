@@ -91,7 +91,7 @@ Abstract types and opaque type aliases remember the variances they were created 
 ```scala
 def F2[-A, +B]
 ```
-is known to be covariant in `A` and contravariant in `B` and can be instantiated only
+is known to be contravariant in `A` and covariant in `B` and can be instantiated only
 with types that satisfy these constraints. Likewise
 ```scala
 opaque type O[X] = List[X]
