@@ -419,29 +419,29 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   //   QUOTES   //
   ////////////////
 
-  implicit class QuotedExprAPI[T](expr: scala.quoted.Expr[T]) {
+  given  QuotedExprOps: extension (expr: scala.quoted.Expr[?]) {
     /** View this expression `quoted.Expr[T]` as a `Term` */
     def unseal(given ctx: Context): Term =
       internal.QuotedExpr_unseal(expr)
 
     /** Checked cast to a `quoted.Expr[U]` */
-    def cast[U: scala.quoted.Type](given ctx: Context): scala.quoted.Expr[U] =
+    def cast[U](given tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U] =
       internal.QuotedExpr_cast[U](expr)
   }
 
-  implicit class QuotedTypeAPI[T <: AnyKind](tpe: scala.quoted.Type[T]) {
+  given QuotedTypeAPI: extension [T <: AnyKind](tpe: scala.quoted.Type[T]) {
     /** View this expression `quoted.Type[T]` as a `TypeTree` */
     def unseal(given ctx: Context): TypeTree =
       internal.QuotedType_unseal(tpe)
   }
 
-  implicit class TermToQuotedAPI(term: Term) {
+  given TermToQuotedOps: extension (term: Term) {
     /** Convert `Term` to an `quoted.Expr[Any]` */
     def seal(given ctx: Context): scala.quoted.Expr[Any] =
       internal.QuotedExpr_seal(term)
   }
 
-  implicit class TypeToQuotedAPI(tpe: Type) {
+  given TypeToQuotedOps: extension (tpe: Type) {
     /** Convert `Type` to an `quoted.Type[_]` */
     def seal(given ctx: Context): scala.quoted.Type[_] =
       internal.QuotedType_seal(tpe)
@@ -452,7 +452,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   //////////////
 
   /** Context of the macro expansion */
-  implicit def rootContext: Context = internal.rootContext // TODO: Use given // TODO: Should this be moved to QuoteContext?
+  given rootContext: Context = internal.rootContext // TODO: Use given // TODO: Should this be moved to QuoteContext?
 
   given ContextOps: extension (self: Context) {
     /** Returns the owner of the context */
@@ -1009,7 +1009,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       case _ => None
     }
 
-    def apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(implicit ctx: Context): Block =
+    def apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(given ctx: Context): Block =
       internal.Lambda_apply(tpe, rhsFn)
 
   }
@@ -2785,16 +2785,20 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
         case Inlined(call, bindings, expansion) =>
           foldTree(foldTrees(x, bindings), expansion)
         case vdef @ ValDef(_, tpt, rhs) =>
-          implicit val ctx = localCtx(vdef)
+          val ctx = localCtx(vdef)
+          given Context = ctx
           foldTrees(foldTree(x, tpt), rhs)
         case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
-          implicit val ctx = localCtx(ddef)
+          val ctx = localCtx(ddef)
+          given Context = ctx
           foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams))(foldTrees), tpt), rhs)
         case tdef @ TypeDef(_, rhs) =>
-          implicit val ctx = localCtx(tdef)
+          val ctx = localCtx(tdef)
+          given Context = ctx
           foldTree(x, rhs)
         case cdef @ ClassDef(_, constr, parents, derived, self, body) =>
-          implicit val ctx = localCtx(cdef)
+          val ctx = localCtx(cdef)
+          given Context = ctx
           foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr), parents), derived), self), body)
         case Import(expr, _) =>
           foldTree(x, expr)
@@ -2867,15 +2871,18 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
         case tree: Term =>
           transformTerm(tree)
         case tree: ValDef =>
-          implicit val ctx = localCtx(tree)
+          val ctx = localCtx(tree)
+          given Context = ctx
           val tpt1 = transformTypeTree(tree.tpt)
           val rhs1 = tree.rhs.map(x => transformTerm(x))
           ValDef.copy(tree)(tree.name, tpt1, rhs1)
         case tree: DefDef =>
-          implicit val ctx = localCtx(tree)
+          val ctx = localCtx(tree)
+          given Context = ctx
           DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams), tree.paramss mapConserve (transformSubTrees(_)), transformTypeTree(tree.returnTpt), tree.rhs.map(x => transformTerm(x)))
         case tree: TypeDef =>
-          implicit val ctx = localCtx(tree)
+          val ctx = localCtx(tree)
+          given Context = ctx
           TypeDef.copy(tree)(tree.name, transformTree(tree.rhs))
         case tree: ClassDef =>
           ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
