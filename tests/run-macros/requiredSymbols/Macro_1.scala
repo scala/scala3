@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Macro {
   inline def foo: String = ${ fooImpl }
-  def fooImpl with (qctx: QuoteContext) : Expr[String] = {
+  def fooImpl(using qctx: QuoteContext) : Expr[String] = {
     import qctx.tasty.{given _, _}
     val list = List(
       rootContext.requiredPackage("java"),

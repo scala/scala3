@@ -6,7 +6,7 @@ object Macro {
 
   inline def ff[A <: Int, B <: Int]() <: AddInt[A, B] = ${ impl('[A], '[B]) }
 
-  def impl[A <: Int : Type, B <: Int : Type](a: Type[A], b: Type[B]) with (qctx: QuoteContext) : Expr[AddInt[A, B]] = {
+  def impl[A <: Int : Type, B <: Int : Type](a: Type[A], b: Type[B])(using qctx: QuoteContext) : Expr[AddInt[A, B]] = {
     import qctx.tasty.{_, given _}
 
     val ConstantType(Constant(v1: Int)) = a.unseal.tpe

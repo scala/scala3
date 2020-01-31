@@ -11,7 +11,7 @@ object Macro {
     inline def fromTuple[T <: Tuple](s: T) <: Any = ${ fromTupleImpl('s, '{ (x: Array[(String, Any)]) => fromUntypedTuple(x: _*) } ) }
   }
 
-  private def toTupleImpl(s: Expr[Selectable]) with (qctx:QuoteContext) : Expr[Tuple] = {
+  private def toTupleImpl(s: Expr[Selectable])(using qctx:QuoteContext) : Expr[Tuple] = {
     import qctx.tasty.{given _, _}
 
     val repr = s.unseal.tpe.widenTermRefExpr.dealias
@@ -45,7 +45,7 @@ object Macro {
     Expr.ofTuple(ret)
   }
 
-  private def fromTupleImpl[T: Type](s: Expr[Tuple], newRecord: Expr[Array[(String, Any)] => T]) with (qctx:QuoteContext) : Expr[Any] = {
+  private def fromTupleImpl[T: Type](s: Expr[Tuple], newRecord: Expr[Array[(String, Any)] => T])(using qctx:QuoteContext) : Expr[Any] = {
     import qctx.tasty.{given _, _}
 
     val repr = s.unseal.tpe.widenTermRefExpr.dealias

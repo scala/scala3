@@ -1,7 +1,7 @@
 import scala.quoted._
 
 object Test {
-  def staged[T] with (qctx: QuoteContext) = {
+  def staged[T](using qctx: QuoteContext) = {
     import qctx.tasty.{_, given _}
     given typeT as quoted.Type[T] // error
     val tTypeTree = typeT.unseal

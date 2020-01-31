@@ -6,7 +6,7 @@ object Macros {
   inline def unrolledForeach(seq: IndexedSeq[Int], f: => Int => Unit, inline unrollSize: Int): Unit = // or f: Int => Unit
     ${ unrolledForeachImpl('seq, 'f, 'unrollSize) }
 
-  def unrolledForeachImpl(seq: Expr[IndexedSeq[Int]], f: Expr[Int => Unit], unrollSizeExpr: Expr[Int]) with QuoteContext : Expr[Unit] =
+  def unrolledForeachImpl(seq: Expr[IndexedSeq[Int]], f: Expr[Int => Unit], unrollSizeExpr: Expr[Int]) (using QuoteContext): Expr[Unit] =
     unrolledForeachImpl(seq, f, unrollSizeExpr.value)
 
   def unrolledForeachImpl(seq: Expr[IndexedSeq[Int]], f: Expr[Int => Unit], unrollSize: Int)(given QuoteContext): Expr[Unit] = '{

@@ -5,7 +5,7 @@ object Macros {
 
   inline def simplified[T <: Tuple]: Seq[String] = ${ impl[T] }
 
-  def impl[T: Type] with (qctx: QuoteContext) : Expr[Seq[String]] = {
+  def impl[T: Type](using qctx: QuoteContext) : Expr[Seq[String]] = {
     import qctx.tasty.{_, given _}
 
     def unpackTuple(tp: Type): List[Type] = {

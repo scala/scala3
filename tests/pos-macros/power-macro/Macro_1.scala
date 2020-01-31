@@ -5,7 +5,7 @@ object PowerMacro {
 
   inline def power(inline n: Long, x: Double) = ${powerCode('n, 'x)}
 
-  def powerCode(n: Expr[Long], x: Expr[Double]) with QuoteContext : Expr[Double] =
+  def powerCode(n: Expr[Long], x: Expr[Double]) (using QuoteContext): Expr[Double] =
     powerCode(n.value, x)
 
   def powerCode(n: Long, x: Expr[Double])(given QuoteContext): Expr[Double] =

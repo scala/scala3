@@ -7,7 +7,7 @@ object Macros {
   implicit inline def printTypes[T](inline x: T): Unit =
     ${impl('x)}
 
-  def impl[T](x: Expr[T]) with (qctx: QuoteContext) : Expr[Unit] = {
+  def impl[T](x: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty.{_, given _}
 
     val buff = new StringBuilder

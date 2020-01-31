@@ -4,7 +4,7 @@ object Macros {
 
   inline def natConst(x: Int): Int = ${ natConstImpl('x) }
 
-  def natConstImpl(x: Expr[Int]) with (qctx: QuoteContext) : Expr[Int] = {
+  def natConstImpl(x: Expr[Int])(using qctx: QuoteContext) : Expr[Int] = {
     import qctx.tasty.{_, given _}
     val xTree: Term = x.unseal
     xTree match {

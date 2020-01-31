@@ -16,7 +16,7 @@ object Macros {
 
   inline def power(inline n: Int, x: Double) = ${ powerCode('n, 'x) }
 
-  def powerCode(n: Expr[Int], x: Expr[Double]) with QuoteContext : Expr[Double] =
+  def powerCode(n: Expr[Int], x: Expr[Double]) (using QuoteContext): Expr[Double] =
     powerCode(n.value, x)
 
   def powerCode(n: Int, x: Expr[Double])(given QuoteContext): Expr[Double] =
