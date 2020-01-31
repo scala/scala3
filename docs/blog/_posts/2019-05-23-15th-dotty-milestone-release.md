@@ -2,7 +2,7 @@
 layout: blog-page
 title: Announcing Dotty 0.15.0-RC1 – the fully bootstrapped compiler
 author: Anatolii Kmetiuk
-authorImg: /images/anatolii.png
+authorImg: images/anatolii.png
 date: 2019-05-23
 ---
 

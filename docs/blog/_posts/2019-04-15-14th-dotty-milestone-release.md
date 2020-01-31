@@ -2,7 +2,7 @@
 layout: blog-page
 title: Announcing Dotty 0.14.0-RC1 with export, immutable arrays, creator applications and more
 author: Anatolii Kmetiuk
-authorImg: /images/anatolii.png
+authorImg: images/anatolii.png
 date: 2019-04-15
 ---
 
