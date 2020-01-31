@@ -106,5 +106,10 @@ given readerMonad[Ctx] as Monad[[X] =>> Ctx => X] {
 }
 ```
 
+### Summary
 
-The conjunction of given instances, extension methods and context bounds allow a concise and natural expression of _typeclasses_
+The definition of a _typeclass_ is expressed in Scala 3 via a `trait`.
+The main difference with other traits resides in how these traits are implemented. 
+In the case of a _typeclass_ the trait's implementations are expressed through `given ... as` type definitions, and not through classes that `extends` the trait linearly.
+
+In addition to these given instances, extension methods and context bounds allow a concise and natural expression of _typeclasses_.
