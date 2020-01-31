@@ -90,7 +90,7 @@ trait Functor[F[_]] {
 }
 ```
 
-Which could read as follows: "The `Functor` ability for a wrapper type `F` represents the ability to transform `F[A]` to `F[B]` through the application of the `mapper` function whose type is `A => B`".
+Which could read as follows: "A `Functor` for the type constructor `F[_]` represents the ability to transform `F[A]` to `F[B]` through the application of the `mapper` function whose type is `A => B`". We call the `Functor` definition here a _typeclass_.
 This way, we could define an instance of `Functor` for the `List` type: 
 
 ```scala
