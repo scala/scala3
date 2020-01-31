@@ -916,7 +916,9 @@ object Parsers {
     def followingIsParamOrGivenType() =
       val lookahead = in.LookaheadScanner()
       lookahead.nextToken()
-      if startParamOrGivenTypeTokens.contains(lookahead.token) then true
+      if startParamOrGivenTypeTokens.contains(lookahead.token)
+         || lookahead.isIdent(nme.using)
+      then true
       else if lookahead.token == IDENTIFIER then
         if lookahead.name == nme.inline then
           lookahead.nextToken()
