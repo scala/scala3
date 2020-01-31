@@ -429,19 +429,19 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       internal.QuotedExpr_cast[U](expr)
   }
 
-  given QuotedTypeAPI: extension [T <: AnyKind](tpe: scala.quoted.Type[T]) {
+  extension QuotedTypeAPI on [T <: AnyKind](tpe: scala.quoted.Type[T]) {
     /** View this expression `quoted.Type[T]` as a `TypeTree` */
     def unseal(given ctx: Context): TypeTree =
       internal.QuotedType_unseal(tpe)
   }
 
-  given TermToQuotedOps: extension (term: Term) {
+  extension TermToQuotedOps on (term: Term) {
     /** Convert `Term` to an `quoted.Expr[Any]` */
     def seal(given ctx: Context): scala.quoted.Expr[Any] =
       internal.QuotedExpr_seal(term)
   }
 
-  given TypeToQuotedOps: extension (tpe: Type) {
+  extension TypeToQuotedOps on (tpe: Type) {
     /** Convert `Type` to an `quoted.Type[_]` */
     def seal(given ctx: Context): scala.quoted.Type[_] =
       internal.QuotedType_seal(tpe)
@@ -454,7 +454,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   /** Context of the macro expansion */
   given rootContext: Context = internal.rootContext // TODO: Use given // TODO: Should this be moved to QuoteContext?
 
-  given ContextOps: extension (self: Context) {
+  extension ContextOps on (self: Context) {
     /** Returns the owner of the context */
     def owner: Symbol = internal.Context_owner(self)
 
@@ -482,7 +482,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   // ----- Tree -----------------------------------------------------
 
-  given TreeOps: extension (self: Tree) {
+  extension TreeOps on (self: Tree) {
     /** Position in the source code */
     def pos(given ctx: Context): Position = internal.Tree_pos(self)
 
@@ -500,7 +500,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((tree.pid, tree.stats))
   }
 
-  given PackageClauseOps: extension (self: PackageClause) {
+  extension PackageClauseOps on (self: PackageClause) {
     def pid(given ctx: Context): Ref = internal.PackageClause_pid(self)
     def stats(given ctx: Context): List[Tree] = internal.PackageClause_stats(self)
   }
@@ -516,7 +516,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((tree.expr, tree.selectors))
   }
 
-  given ImportOps: extension (self: Import)  {
+  extension ImportOps on (self: Import)  {
     def expr(given ctx: Context): Term = internal.Import_expr(self)
     def selectors(given ctx: Context): List[ImportSelector] =
       internal.Import_selectors(self)
@@ -528,7 +528,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   given (given Context): IsInstanceOf[Definition] = internal.isInstanceOfDefinition
 
-  given DefinitionOps: extension (self: Definition) {
+  extension DefinitionOps on (self: Definition) {
     def name(given ctx: Context): String = internal.Definition_name(self)
   }
 
@@ -544,7 +544,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((cdef.name, cdef.constructor, cdef.parents, cdef.derived, cdef.self, cdef.body))
   }
 
-  given ClassDefOps: extension (self: ClassDef) {
+  extension ClassDefOps on (self: ClassDef) {
     def constructor(given ctx: Context): DefDef = internal.ClassDef_constructor(self)
     def parents(given ctx: Context): List[Tree /* Term | TypeTree */] = internal.ClassDef_parents(self)
     def derived(given ctx: Context): List[TypeTree] = internal.ClassDef_derived(self)
@@ -565,7 +565,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((ddef.name, ddef.typeParams, ddef.paramss, ddef.returnTpt, ddef.rhs))
   }
 
-  given DefDefOps: extension (self: DefDef) {
+  extension DefDefOps on (self: DefDef) {
     def typeParams(given ctx: Context): List[TypeDef] = internal.DefDef_typeParams(self)
     def paramss(given ctx: Context): List[List[ValDef]] = internal.DefDef_paramss(self)
     def returnTpt(given ctx: Context): TypeTree = internal.DefDef_returnTpt(self) // TODO rename to tpt
@@ -585,7 +585,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((vdef.name, vdef.tpt, vdef.rhs))
   }
 
-  given ValDefOps: extension (self: ValDef) {
+  extension ValDefOps on (self: ValDef) {
     def tpt(given ctx: Context): TypeTree = internal.ValDef_tpt(self)
     def rhs(given ctx: Context): Option[Term] = internal.ValDef_rhs(self)
   }
@@ -603,7 +603,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((tdef.name, tdef.rhs))
   }
 
-  given TypeDefOps: extension (self: TypeDef) {
+  extension TypeDefOps on (self: TypeDef) {
     def rhs(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeDef_rhs(self)
   }
 
@@ -611,7 +611,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   given (given Context): IsInstanceOf[PackageDef] = internal.isInstanceOfPackageDef
 
-  given PackageDefOps: extension (self: PackageDef) {
+  extension PackageDefOps on (self: PackageDef) {
     def owner(given ctx: Context): PackageDef = internal.PackageDef_owner(self)
     def members(given ctx: Context): List[Statement] = internal.PackageDef_members(self)
   }
@@ -623,7 +623,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   // ----- Terms ----------------------------------------------------
 
-  given TermOps: extension (self: Term) {
+  extension TermOps on (self: Term) {
     def tpe(given ctx: Context): Type = internal.Term_tpe(self)
     def underlyingArgument(given ctx: Context): Term = internal.Term_underlyingArgument(self)
     def underlying(given ctx: Context): Term = internal.Term_underlying(self)
@@ -694,7 +694,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   given (given Context): IsInstanceOf[Ident] = internal.isInstanceOfIdent
 
-  given IdentOps: extension (self: Ident) {
+  extension IdentOps on (self: Ident) {
     def name(given ctx: Context): String = internal.Ident_name(self)
   }
 
@@ -741,7 +741,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.qualifier, x.name))
   }
 
-  given SelectOps: extension (self: Select) {
+  extension SelectOps on (self: Select) {
     def qualifier(given ctx: Context): Term = internal.Select_qualifier(self)
     def name(given ctx: Context): String = internal.Select_name(self)
     def signature(given ctx: Context): Option[Signature] = internal.Select_signature(self)
@@ -765,7 +765,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some(x.constant)
   }
 
-  given LiteralOps: extension (self: Literal) {
+  extension LiteralOps on (self: Literal) {
     def constant(given ctx: Context): Constant = internal.Literal_constant(self)
   }
 
@@ -786,7 +786,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given ThisOps: extension (self: This) {
+  extension ThisOps on (self: This) {
     def id(given ctx: Context): Option[Id] = internal.This_id(self)
   }
 
@@ -806,7 +806,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def unapply(x: New)(given ctx: Context): Option[TypeTree] = Some(x.tpt)
   }
 
-  given NewOps: extension (self: New) {
+  extension NewOps on (self: New) {
     def tpt(given ctx: Context): TypeTree = internal.New_tpt(self)
   }
 
@@ -828,7 +828,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given NamedArgOps: extension (self: NamedArg) {
+  extension NamedArgOps on (self: NamedArg) {
     def name(given ctx: Context): String = internal.NamedArg_name(self)
     def value(given ctx: Context): Term = internal.NamedArg_value(self)
   }
@@ -850,7 +850,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.fun, x.args))
   }
 
-  given ApplyOps: extension (self: Apply) {
+  extension ApplyOps on (self: Apply) {
     def fun(given ctx: Context): Term = internal.Apply_fun(self)
     def args(given ctx: Context): List[Term] = internal.Apply_args(self)
   }
@@ -873,7 +873,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given TypeApplyOps: extension (self: TypeApply) {
+  extension TypeApplyOps on (self: TypeApply) {
     def fun(given ctx: Context): Term = internal.TypeApply_fun(self)
     def args(given ctx: Context): List[TypeTree] = internal.TypeApply_args(self)
   }
@@ -896,7 +896,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.qualifier, x.id))
   }
 
-  given SuperOps: extension (self: Super) {
+  extension SuperOps on (self: Super) {
     def qualifier(given ctx: Context): Term = internal.Super_qualifier(self)
     def id(given ctx: Context): Option[Id] = internal.Super_id(self)
   }
@@ -919,7 +919,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given TypedOps: extension (self: Typed) {
+  extension TypedOps on (self: Typed) {
     def expr(given ctx: Context): Term = internal.Typed_expr(self)
     def tpt(given ctx: Context): TypeTree = internal.Typed_tpt(self)
   }
@@ -941,7 +941,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.lhs, x.rhs))
   }
 
-  given AssignOps: extension (self: Assign) {
+  extension AssignOps on (self: Assign) {
     def lhs(given ctx: Context): Term = internal.Assign_lhs(self)
     def rhs(given ctx: Context): Term = internal.Assign_rhs(self)
   }
@@ -964,7 +964,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.statements, x.expr))
   }
 
-  given BlockOps: extension (self: Block) {
+  extension BlockOps on (self: Block) {
     def statements(given ctx: Context): List[Statement] = internal.Block_statements(self)
     def expr(given ctx: Context): Term = internal.Block_expr(self)
   }
@@ -983,7 +983,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.meth, x.tpeOpt))
   }
 
-  given ClosureOps: extension (self: Closure) {
+  extension ClosureOps on (self: Closure) {
     def meth(given ctx: Context): Term = internal.Closure_meth(self)
     def tpeOpt(given ctx: Context): Option[Type] = internal.Closure_tpeOpt(self)
   }
@@ -1032,7 +1032,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given IfOps: extension (self: If) {
+  extension IfOps on (self: If) {
     def cond(given ctx: Context): Term = internal.If_cond(self)
     def thenp(given ctx: Context): Term = internal.If_thenp(self)
     def elsep(given ctx: Context): Term = internal.If_elsep(self)
@@ -1056,7 +1056,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given MatchOps: extension (self: Match) {
+  extension MatchOps on (self: Match) {
     def scrutinee(given ctx: Context): Term = internal.Match_scrutinee(self)
     def cases(given ctx: Context): List[CaseDef] = internal.Match_cases(self)
   }
@@ -1079,7 +1079,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given GivenMatchOps: extension (self: GivenMatch) {
+  extension GivenMatchOps on (self: GivenMatch) {
     def cases(given ctx: Context): List[CaseDef] = internal.GivenMatch_cases(self)
   }
 
@@ -1101,7 +1101,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given TryOps: extension (self: Try) {
+  extension TryOps on (self: Try) {
     def body(given ctx: Context): Term = internal.Try_body(self)
     def cases(given ctx: Context): List[CaseDef] = internal.Try_cases(self)
     def finalizer(given ctx: Context): Option[Term] = internal.Try_finalizer(self)
@@ -1124,7 +1124,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given ReturnOps: extension (self: Return) {
+  extension ReturnOps on (self: Return) {
     def expr(given ctx: Context): Term = internal.Return_expr(self)
   }
 
@@ -1143,7 +1143,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given RepeatedOps: extension (self: Repeated) {
+  extension RepeatedOps on (self: Repeated) {
     def elems(given ctx: Context): List[Term] = internal.Repeated_elems(self)
     def elemtpt(given ctx: Context): TypeTree = internal.Repeated_elemtpt(self)
   }
@@ -1163,7 +1163,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given InlinedOps: extension (self: Inlined) {
+  extension InlinedOps on (self: Inlined) {
     def call(given ctx: Context): Option[Tree /* Term | TypeTree */] = internal.Inlined_call(self)
     def bindings(given ctx: Context): List[Definition] = internal.Inlined_bindings(self)
     def body(given ctx: Context): Term = internal.Inlined_body(self)
@@ -1184,7 +1184,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given SelectOuterOps: extension (self: SelectOuter) {
+  extension SelectOuterOps on (self: SelectOuter) {
     def qualifier(given ctx: Context): Term = internal.SelectOuter_qualifier(self)
     def level(given ctx: Context): Int = internal.SelectOuter_level(self)
   }
@@ -1206,14 +1206,14 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given WhileOps: extension (self: While) {
+  extension WhileOps on (self: While) {
     def cond(given ctx: Context): Term = internal.While_cond(self)
     def body(given ctx: Context): Term = internal.While_body(self)
   }
 
   // ----- TypeTrees ------------------------------------------------
 
-  given TypeTreeOps: extension (self: TypeTree) {
+  extension TypeTreeOps on (self: TypeTree) {
     /** Type of this type tree */
     def tpe(given ctx: Context): Type = internal.TypeTree_tpe(self)
   }
@@ -1233,7 +1233,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   given (given Context): IsInstanceOf[TypeIdent] = internal.isInstanceOfTypeIdent
 
-  given TypeIdentOps: extension (self: TypeIdent) {
+  extension TypeIdentOps on (self: TypeIdent) {
     def name(given ctx: Context): String = internal.TypeIdent_name(self)
   }
 
@@ -1256,7 +1256,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.qualifier, x.name))
   }
 
-  given TypeSelectOps: extension (self: TypeSelect) {
+  extension TypeSelectOps on (self: TypeSelect) {
     def qualifier(given ctx: Context): Term = internal.TypeSelect_qualifier(self)
     def name(given ctx: Context): String = internal.TypeSelect_name(self)
   }
@@ -1271,7 +1271,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.qualifier, x.name))
   }
 
-  given ProjectionOps: extension (self: Projection) {
+  extension ProjectionOps on (self: Projection) {
     def qualifier(given ctx: Context): TypeTree = internal.Projection_qualifier(self)
     def name(given ctx: Context): String = internal.Projection_name(self)
   }
@@ -1288,7 +1288,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some(x.ref)
   }
 
-  given SingletonOps: extension (self: Singleton) {
+  extension SingletonOps on (self: Singleton) {
     def ref(given ctx: Context): Term = internal.Singleton_ref(self)
   }
 
@@ -1302,7 +1302,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.tpt, x.refinements))
   }
 
-  given RefinedOps: extension (self: Refined) {
+  extension RefinedOps on (self: Refined) {
     def tpt(given ctx: Context): TypeTree = internal.Refined_tpt(self)
     def refinements(given ctx: Context): List[Definition] = internal.Refined_refinements(self)
   }
@@ -1318,7 +1318,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.tpt, x.args))
   }
 
-  given AppliedOps: extension (self: Applied) {
+  extension AppliedOps on (self: Applied) {
     def tpt(given ctx: Context): TypeTree = internal.Applied_tpt(self)
     def args(given ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = internal.Applied_args(self)
   }
@@ -1335,7 +1335,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.arg, x.annotation))
   }
 
-  given AnnotatedOps: extension (self: Annotated) {
+  extension AnnotatedOps on (self: Annotated) {
     def arg(given ctx: Context): TypeTree = internal.Annotated_arg(self)
     def annotation(given ctx: Context): Term = internal.Annotated_annotation(self)
   }
@@ -1352,7 +1352,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.bound, x.selector, x.cases))
   }
 
-  given MatchTypeTreeOps: extension (self: MatchTypeTree) {
+  extension MatchTypeTreeOps on (self: MatchTypeTree) {
     def bound(given ctx: Context): Option[TypeTree] = internal.MatchTypeTree_bound(self)
     def selector(given ctx: Context): TypeTree = internal.MatchTypeTree_selector(self)
     def cases(given ctx: Context): List[TypeCaseDef] = internal.MatchTypeTree_cases(self)
@@ -1370,7 +1370,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some(x.result)
   }
 
-  given ByNameOps: extension (self: ByName) {
+  extension ByNameOps on (self: ByName) {
     def result(given ctx: Context): TypeTree = internal.ByName_result(self)
   }
 
@@ -1385,7 +1385,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((tree.tparams, tree.body))
   }
 
-  given LambdaTypeTreeOps: extension (self: LambdaTypeTree) {
+  extension LambdaTypeTreeOps on (self: LambdaTypeTree) {
     def tparams(given ctx: Context): List[TypeDef] = internal.Lambdatparams(self)
     def body(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.Lambdabody(self)
   }
@@ -1400,7 +1400,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.name, x.body))
   }
 
-  given TypeBindOps: extension (self: TypeBind) {
+  extension TypeBindOps on (self: TypeBind) {
     def name(given ctx: Context): String = internal.TypeBind_name(self)
     def body(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeBind_body(self)
   }
@@ -1416,14 +1416,14 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.aliases, x.tpt))
   }
 
-  given TypeBlockOps: extension (self: TypeBlock) {
+  extension TypeBlockOps on (self: TypeBlock) {
     def aliases(given ctx: Context): List[TypeDef] = internal.TypeBlock_aliases(self)
     def tpt(given ctx: Context): TypeTree = internal.TypeBlock_tpt(self)
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------
 
-  given TypeBoundsTreeOps: extension (self: TypeBoundsTree) {
+  extension TypeBoundsTreeOps on (self: TypeBoundsTree) {
     def tpe(given ctx: Context): TypeBounds = internal.TypeBoundsTree_tpe(self)
     def low(given ctx: Context): TypeTree = internal.TypeBoundsTree_low(self)
     def hi(given ctx: Context): TypeTree = internal.TypeBoundsTree_hi(self)
@@ -1436,7 +1436,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.low, x.hi))
   }
 
-  given WildcardTypeTreeOps: extension (self: WildcardTypeTree) {
+  extension WildcardTypeTreeOps on (self: WildcardTypeTree) {
     def tpe(given ctx: Context): TypeOrBounds = internal.WildcardTypeTree_tpe(self)
   }
 
@@ -1449,7 +1449,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   // ----- CaseDefs ------------------------------------------------
 
-  given CaseDefOps: extension (caseDef: CaseDef) {
+  extension CaseDefOps on (caseDef: CaseDef) {
     def pattern(given ctx: Context): Tree = internal.CaseDef_pattern(caseDef)
     def guard(given ctx: Context): Option[Term] = internal.CaseDef_guard(caseDef)
     def rhs(given ctx: Context): Term = internal.CaseDef_rhs(caseDef)
@@ -1468,7 +1468,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.pattern, x.guard, x.rhs))
   }
 
-  given TypeCaseDefOps: extension (caseDef: TypeCaseDef) {
+  extension TypeCaseDefOps on (caseDef: TypeCaseDef) {
     def pattern(given ctx: Context): TypeTree = internal.TypeCaseDef_pattern(caseDef)
     def rhs(given ctx: Context): TypeTree = internal.TypeCaseDef_rhs(caseDef)
   }
@@ -1499,7 +1499,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((pattern.name, pattern.pattern))
   }
 
-  given BindOps: extension (bind: Bind) {
+  extension BindOps on (bind: Bind) {
     def name(given ctx: Context): String = internal.Tree_Bind_name(bind)
     def pattern(given ctx: Context): Tree = internal.Tree_Bind_pattern(bind)
   }
@@ -1514,7 +1514,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.fun, x.implicits, x.patterns))
   }
 
-  given UnapplyOps: extension (unapply: Unapply) {
+  extension UnapplyOps on (unapply: Unapply) {
     def fun(given ctx: Context): Term = internal.Tree_Unapply_fun(unapply)
     def implicits(given ctx: Context): List[Term] = internal.Tree_Unapply_implicits(unapply)
     def patterns(given ctx: Context): List[Tree] = internal.Tree_Unapply_patterns(unapply)
@@ -1531,7 +1531,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some(x.patterns)
   }
 
-  given AlternativesOps: extension (alternatives: Alternatives) {
+  extension AlternativesOps on (alternatives: Alternatives) {
     def patterns(given ctx: Context): List[Tree] = internal.Tree_Alternatives_patterns(alternatives)
   }
 
@@ -1540,7 +1540,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   // IMPORT SELECTORS //
   /////////////////////
 
-  given simpleSelectorOps: extension (self: SimpleSelector) {
+  extension simpleSelectorOps on (self: SimpleSelector) {
     def selection(given ctx: Context): Id =
       internal.SimpleSelector_selection(self)
   }
@@ -1550,7 +1550,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   object SimpleSelector
     def unapply(x: SimpleSelector)(given ctx: Context): Option[Id] = Some(x.selection)
 
-  given renameSelectorOps: extension (self: RenameSelector) {
+  extension renameSelectorOps on (self: RenameSelector) {
     def from(given ctx: Context): Id =
       internal.RenameSelector_from(self)
 
@@ -1563,7 +1563,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   object RenameSelector
     def unapply(x: RenameSelector)(given ctx: Context): Option[(Id, Id)] = Some((x.from, x.to))
 
-  given omitSelectorOps: extension (self: OmitSelector) {
+  extension omitSelectorOps on (self: OmitSelector) {
     def omitted(given ctx: Context): Id =
       internal.SimpleSelector_omitted(self)
   }
@@ -1583,7 +1583,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   // ----- Types ----------------------------------------------------
 
-  given TypeOps: extension (self: Type) {
+  extension TypeOps on (self: Type) {
 
     /** Is `self` type the same as `that` type?
      *  This is the case iff `self <:< that` and `that <:< self`.
@@ -1674,7 +1674,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def unapply(x: ConstantType)(given ctx: Context): Option[Constant] = Some(x.constant)
   }
 
-  given ConstantTypeOps: extension (self: ConstantType) {
+  extension ConstantTypeOps on (self: ConstantType) {
     def constant(given ctx: Context): Constant = internal.ConstantType_constant(self)
   }
 
@@ -1687,7 +1687,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.qualifier, x.name))
   }
 
-  given TermRefOps: extension (self: TermRef) {
+  extension TermRefOps on (self: TermRef) {
     def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TermRef_qualifier(self)
     def name(given ctx: Context): String = internal.TermRef_name(self)
   }
@@ -1699,7 +1699,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.qualifier, x.name))
   }
 
-  given TypeRefOps: extension (self: TypeRef) {
+  extension TypeRefOps on (self: TypeRef) {
     def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TypeRef_qualifier(self)
     def name(given ctx: Context): String = internal.TypeRef_name(self)
   }
@@ -1711,7 +1711,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.thistpe, x.supertpe))
   }
 
-  given SuperTypeOps: extension (self: SuperType) {
+  extension SuperTypeOps on (self: SuperType) {
     def thistpe(given ctx: Context): Type = internal.SuperType_thistpe(self)
     def supertpe(given ctx: Context): Type = internal.SuperType_supertpe(self)
   }
@@ -1726,7 +1726,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.parent, x.name, x.info))
   }
 
-  given RefinementOps: extension (self: Refinement) {
+  extension RefinementOps on (self: Refinement) {
     def parent(given ctx: Context): Type = internal.Refinement_parent(self)
     def name(given ctx: Context): String = internal.Refinement_name(self)
     def info(given ctx: Context): TypeOrBounds = internal.Refinement_info(self)
@@ -1741,7 +1741,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.tycon, x.args))
   }
 
-  given AppliedTypeOps: extension (self: AppliedType) {
+  extension AppliedTypeOps on (self: AppliedType) {
     def tycon(given ctx: Context): Type = internal.AppliedType_tycon(self)
     def args(given ctx: Context): List[TypeOrBounds /* Type | TypeBounds */] = internal.AppliedType_args(self)
   }
@@ -1755,7 +1755,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.underlying, x.annot))
   }
 
-  given AnnotatedTypeOps: extension (self: AnnotatedType) {
+  extension AnnotatedTypeOps on (self: AnnotatedType) {
     def underlying(given ctx: Context): Type = internal.AnnotatedType_underlying(self)
     def annot(given ctx: Context): Term = internal.AnnotatedType_annot(self)
   }
@@ -1769,7 +1769,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.left, x.right))
   }
 
-  given AndTypeOps: extension (self: AndType) {
+  extension AndTypeOps on (self: AndType) {
     def left(given ctx: Context): Type = internal.AndType_left(self)
     def right(given ctx: Context): Type = internal.AndType_right(self)
   }
@@ -1782,7 +1782,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.left, x.right))
   }
 
-  given OrTypeOps: extension (self: OrType) {
+  extension OrTypeOps on (self: OrType) {
     def left(given ctx: Context): Type = internal.OrType_left(self)
     def right(given ctx: Context): Type = internal.OrType_right(self)
   }
@@ -1796,7 +1796,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.bound, x.scrutinee, x.cases))
   }
 
-  given MatchTypeOps: extension (self: MatchType) {
+  extension MatchTypeOps on (self: MatchType) {
     def bound(given ctx: Context): Type = internal.MatchType_bound(self)
     def scrutinee(given ctx: Context): Type = internal.MatchType_scrutinee(self)
     def cases(given ctx: Context): List[Type] = internal.MatchType_cases(self)
@@ -1817,7 +1817,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def unapply(x: ByNameType)(given ctx: Context): Option[Type] = Some(x.underlying)
   }
 
-  given ByNameTypeOps: extension (self: ByNameType) {
+  extension ByNameTypeOps on (self: ByNameType) {
     def underlying(given ctx: Context): Type = internal.ByNameType_underlying(self)
   }
 
@@ -1828,7 +1828,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.binder, x.paramNum))
   }
 
-  given ParamRefOps: extension (self: ParamRef) {
+  extension ParamRefOps on (self: ParamRef) {
     def binder(given ctx: Context): LambdaType[TypeOrBounds] = internal.ParamRef_binder(self)
     def paramNum(given ctx: Context): Int = internal.ParamRef_paramNum(self)
   }
@@ -1839,7 +1839,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def unapply(x: ThisType)(given ctx: Context): Option[Type] = Some(x.tref)
   }
 
-  given ThisTypeOps: extension (self: ThisType) {
+  extension ThisTypeOps on (self: ThisType) {
     def tref(given ctx: Context): Type = internal.ThisType_tref(self)
   }
 
@@ -1849,7 +1849,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def unapply(x: RecursiveThis)(given ctx: Context): Option[RecursiveType] = Some(x.binder)
   }
 
-  given RecursiveThisOps: extension (self: RecursiveThis) {
+  extension RecursiveThisOps on (self: RecursiveThis) {
     def binder(given ctx: Context): RecursiveType = internal.RecursiveThis_binder(self)
   }
 
@@ -1859,7 +1859,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def unapply(x: RecursiveType)(given ctx: Context): Option[Type] = Some(x.underlying)
   }
 
-  given RecursiveTypeOps: extension (self: RecursiveType) {
+  extension RecursiveTypeOps on (self: RecursiveType) {
     def underlying(given ctx: Context): Type = internal.RecursiveType_underlying(self)
   }
 
@@ -1873,7 +1873,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.paramNames, x.paramTypes, x.resType))
   }
 
-  given MethodTypeOps: extension (self: MethodType) {
+  extension MethodTypeOps on (self: MethodType) {
     def isImplicit: Boolean = internal.MethodType_isImplicit(self)
     def isErased: Boolean = internal.MethodType_isErased(self)
     def param(idx: Int)(given ctx: Context): Type = internal.MethodType_param(self, idx)
@@ -1891,7 +1891,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.paramNames, x.paramBounds, x.resType))
   }
 
-  given PolyTypeOps: extension (self: PolyType) {
+  extension PolyTypeOps on (self: PolyType) {
     def param(idx: Int)(given ctx: Context): Type = internal.PolyType_param(self, idx)
     def paramNames(given ctx: Context): List[String] = internal.PolyType_paramNames(self)
     def paramBounds(given ctx: Context): List[TypeBounds] = internal.PolyType_paramBounds(self)
@@ -1907,7 +1907,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((x.paramNames, x.paramBounds, x.resType))
   }
 
-  given TypeLambdaOps: extension (self: TypeLambda) {
+  extension TypeLambdaOps on (self: TypeLambda) {
     def paramNames(given ctx: Context): List[String] = internal.TypeLambda_paramNames(self)
     def paramBounds(given ctx: Context): List[TypeBounds] = internal.TypeLambda_paramBounds(self)
     def param(idx: Int)(given ctx: Context) : Type = internal.TypeLambda_param(self, idx)
@@ -1924,7 +1924,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def unapply(x: TypeBounds)(given ctx: Context): Option[(Type, Type)] = Some((x.low, x.hi))
   }
 
-  given TypeBoundsOps: extension (self: TypeBounds) {
+  extension TypeBoundsOps on (self: TypeBounds) {
     def low(given ctx: Context): Type = internal.TypeBounds_low(self)
     def hi(given ctx: Context): Type = internal.TypeBounds_hi(self)
   }
@@ -1941,7 +1941,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   // CONSTANTS //
   ///////////////
 
-  given ConstantOps: extension (const: Constant) {
+  extension ConstantOps on (const: Constant) {
     def value: Any = internal.Constant_value(const)
   }
 
@@ -1971,7 +1971,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   // IDs //
   /////////
 
-  given IdOps: extension (id: Id) {
+  extension IdOps on (id: Id) {
 
     /** Position in the source code */
     def pos(given ctx: Context): Position = internal.Id_pos(id)
@@ -1995,13 +1995,13 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   given (given Context): IsInstanceOf[ImplicitSearchSuccess] = internal.isInstanceOfImplicitSearchSuccess
 
-  given successOps: extension (self: ImplicitSearchSuccess) {
+  extension successOps on (self: ImplicitSearchSuccess) {
     def tree(given ctx: Context): Term = internal.ImplicitSearchSuccess_tree(self)
   }
 
   given (given Context): IsInstanceOf[ImplicitSearchFailure] = internal.isInstanceOfImplicitSearchFailure
 
-  given failureOps: extension (self: ImplicitSearchFailure) {
+  extension failureOps on (self: ImplicitSearchFailure) {
     def explanation(given ctx: Context): String = internal.ImplicitSearchFailure_explanation(self)
   }
 
@@ -2045,7 +2045,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       internal.Symbol_noSymbol
   }
 
-  given symbolOps: extension (self: Symbol) {
+  extension symbolOps on (self: Symbol) {
 
     /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
     def owner(given ctx: Context): Symbol = internal.Symbol_owner(self)
@@ -2191,7 +2191,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some((sig.paramSigs, sig.resultSig))
   }
 
-  given signatureOps: extension (sig: Signature) {
+  extension signatureOps on (sig: Signature) {
 
     /** The signatures of the method parameters.
       *
@@ -2446,7 +2446,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   /** Root position of this tasty context. For macros it corresponds to the expansion site. */
   def rootPosition: Position = internal.rootPosition
 
-  given FlagsOps: extension (self: Flags) {
+  extension FlagsOps on (self: Flags) {
 
     /** Is the given flag set a subset of this flag sets */
     def is(that: Flags): Boolean = internal.Flags_is(self)(that)
@@ -2572,7 +2572,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   // POSITIONS //
   ///////////////
 
-  given positionOps: extension (pos: Position) {
+  extension positionOps on (pos: Position) {
 
     /** The start offset in the source file */
     def start: Int = internal.Position_start(pos)
@@ -2603,7 +2603,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given sourceFileOps: extension (sourceFile: SourceFile) {
+  extension sourceFileOps on (sourceFile: SourceFile) {
 
     /** Path to this source file */
     def jpath: java.nio.file.Path = internal.SourceFile_jpath(sourceFile)
@@ -2716,7 +2716,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   // COMMENTS //
   //////////////
 
-  given CommentOps: extension (self: Comment) {
+  extension CommentOps on (self: Comment) {
 
     /** Raw comment string */
     def raw: String = internal.Comment_raw(self)
