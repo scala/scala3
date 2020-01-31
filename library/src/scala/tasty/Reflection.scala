@@ -442,9 +442,9 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   }
 
   given TypeToQuotedOps: extension (tpe: Type) {
-      /** Convert `Type` to an `quoted.Type[_]` */
-      def seal(given ctx: Context): scala.quoted.Type[_] =
-        internal.QuotedType_seal(tpe)
+    /** Convert `Type` to an `quoted.Type[_]` */
+    def seal(given ctx: Context): scala.quoted.Type[_] =
+      internal.QuotedType_seal(tpe)
   }
 
   //////////////
@@ -2742,7 +2742,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def foldTrees(x: X, trees: Iterable[Tree])(given ctx: Context): X = trees.foldLeft(x)(foldTree)
 
     def foldOverTree(x: X, tree: Tree)(given ctx: Context): X = {
-      lazy val localCtx: Context = tree.symbol.localContext
+      def localCtx(definition: Definition): Context = definition.symbol.localContext
       tree match {
         case Ident(_) =>
           x
@@ -2785,16 +2785,20 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
         case Inlined(call, bindings, expansion) =>
           foldTree(foldTrees(x, bindings), expansion)
         case vdef @ ValDef(_, tpt, rhs) =>
-          given Context = localCtx
+          val ctx = localCtx(vdef)
+          given Context = ctx
           foldTrees(foldTree(x, tpt), rhs)
         case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
-          given Context = localCtx
+          val ctx = localCtx(ddef)
+          given Context = ctx
           foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams))(foldTrees), tpt), rhs)
         case tdef @ TypeDef(_, rhs) =>
-          given Context = localCtx
+          val ctx = localCtx(tdef)
+          given Context = ctx
           foldTree(x, rhs)
         case cdef @ ClassDef(_, constr, parents, derived, self, body) =>
-          given Context = localCtx
+          val ctx = localCtx(cdef)
+          given Context = ctx
           foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr), parents), derived), self), body)
         case Import(expr, _) =>
           foldTree(x, expr)
@@ -2862,20 +2866,23 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     }
 
     def transformStatement(tree: Statement)(given ctx: Context): Statement = {
-      lazy val localCtx: Context = tree.symbol.localContext
+      def localCtx(definition: Definition): Context = definition.symbol.localContext
       tree match {
         case tree: Term =>
           transformTerm(tree)
         case tree: ValDef =>
-          given Context = localCtx
+          val ctx = localCtx(tree)
+          given Context = ctx
           val tpt1 = transformTypeTree(tree.tpt)
           val rhs1 = tree.rhs.map(x => transformTerm(x))
           ValDef.copy(tree)(tree.name, tpt1, rhs1)
         case tree: DefDef =>
-          given Context = localCtx
+          val ctx = localCtx(tree)
+          given Context = ctx
           DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams), tree.paramss mapConserve (transformSubTrees(_)), transformTypeTree(tree.returnTpt), tree.rhs.map(x => transformTerm(x)))
         case tree: TypeDef =>
-          given Context = localCtx
+          val ctx = localCtx(tree)
+          given Context = ctx
           TypeDef.copy(tree)(tree.name, transformTree(tree.rhs))
         case tree: ClassDef =>
           ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
