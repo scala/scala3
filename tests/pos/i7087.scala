@@ -7,7 +7,7 @@ type F[T] = T match {
 }
 
 extension on [T](tup: T) {
-  def g with (Foo: F[T]) = ???
+  def g(given Foo: F[T]) = ???
 }
 
-def f(x: G[Int]) with (Foo: String) = x.g
+def f(x: G[Int])(given Foo: String) = x.g

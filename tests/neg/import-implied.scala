@@ -1,27 +1,27 @@
 class TC
 object A {
   given tc as TC
-  def foo with TC = ()
+  def foo(given TC) = ()
 }
 object B {
   import A._
   foo             // error: no implicit argument was found
-  foo.with(tc)   // error: not found: tc
-  foo.with(A.tc) // ok
+  foo(given tc)   // error: not found: tc
+  foo(given A.tc) // ok
 }
 object C {
   import A._
   import A.tc
   foo            // ok
-  foo.with(tc)  // ok
+  foo(given tc)  // ok
 }
 object D {
   import A.{foo, given _}
   foo            // ok
-  foo.with(tc)  // ok
+  foo(given tc)  // ok
 }
 object E {
   import A.{_, given _}
   foo            // ok
-  foo.with(tc)  // ok
+  foo(given tc)  // ok
 }

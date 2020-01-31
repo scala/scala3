@@ -3,6 +3,6 @@ object Test {
   given myInt as Int = 4
 
   foo.apply(1)
-  foo.with(2)
+  foo(given 2)
   foo(3)
 }

@@ -2,7 +2,7 @@ import quoted._
 
 class Foo {
   class Bar
-  def foo() with QuoteContext = {
+  def foo()(given QuoteContext) = {
     '[Bar] // error
   }
 }

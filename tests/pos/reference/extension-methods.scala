@@ -53,7 +53,7 @@ object ExtMethods:
     def third: T = xs.tail.tail.head
 
 
-  extension on [T](xs: List[T]) with Ordering[T] :
+  extension on [T](xs: List[T])(given Ordering[T]):
     def largest(n: Int) = xs.sorted.takeRight(n)
 
   given stringOps1 as AnyRef {
@@ -69,7 +69,7 @@ object ExtMethods:
   }
 
   given AnyRef {
-    def [T](xs: List[T]) largest (n: Int) with Ordering[T] =
+    def [T](xs: List[T]) largest (given Ordering[T])(n: Int) =
       xs.sorted.takeRight(n)
   }
 

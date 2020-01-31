@@ -8,18 +8,18 @@ object Macros {
   inline def assert(expr: => Boolean): Unit =
     ${ assertImpl('expr) }
 
-  def assertImpl(expr: Expr[Boolean]) with QuoteContext =
+  def assertImpl(expr: Expr[Boolean])(given QuoteContext) =
     '{ if !($expr) then throw new AssertionError(s"failed assertion: ${${showExpr(expr)}}") }
 
 
-  def showExpr[T](expr: Expr[T]) with QuoteContext : Expr[String] = expr.toString
+  def showExpr[T](expr: Expr[T])(given QuoteContext): Expr[String] = expr.toString
 
   inline def power(inline n: Int, x: Double) = ${ powerCode('n, 'x) }
 
   def powerCode(n: Expr[Int], x: Expr[Double]) with QuoteContext : Expr[Double] =
     powerCode(n.value, x)
 
-  def powerCode(n: Int, x: Expr[Double]) with QuoteContext : Expr[Double] =
+  def powerCode(n: Int, x: Expr[Double])(given QuoteContext): Expr[Double] =
     if (n == 0) '{1.0}
     else if (n == 1) x
     else if (n % 2 == 0) '{ { val y = $x * $x; ${ powerCode(n / 2, 'y) } } }

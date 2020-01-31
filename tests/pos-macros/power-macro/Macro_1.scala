@@ -8,7 +8,7 @@ object PowerMacro {
   def powerCode(n: Expr[Long], x: Expr[Double]) with QuoteContext : Expr[Double] =
     powerCode(n.value, x)
 
-  def powerCode(n: Long, x: Expr[Double]) with QuoteContext : Expr[Double] =
+  def powerCode(n: Long, x: Expr[Double])(given QuoteContext): Expr[Double] =
     if (n == 0) '{1.0}
     else if (n % 2 == 0) '{ { val y = $x * $x; ${powerCode(n / 2, 'y)} } }
     else '{ $x * ${powerCode(n - 1, x)} }
