@@ -252,7 +252,7 @@ given configDependentMonad as Monad[[Result] =>> Config => Result]
 
 
 
-The Reader monad allows to abstract over the `Config` type, named `Ctx` in the following examples. It is therefore _parameterized_ by `Ctx`:
+It is likely that we would like to use this pattern with other kinds of environments than our `Config` trait. The Reader monad allows us to abstract away `Config` as a type _parameter_, named `Ctx` in the following definition:
 
 ```scala
 given readerMonad[Ctx] as Monad[[X] =>> Ctx => X] {
