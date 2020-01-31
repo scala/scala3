@@ -201,7 +201,58 @@ given optionMonad as Monad[Option] {
 Another example of a `Monad` is the Reader Monad. It no longer acts on a type like `List` or `Option`, but on a function.
 It can be used for example for combining functions that all need the same type of parameter. For instance multiple functions needing access to some configuration, context, environment variables, etc.
 
-The Reader monad allows to abstract over such a configuration dependency (or context, environment, ...), named `Ctx` in the following examples. It is therefore _parameterized_ by `Ctx`:
+Let us have a `Config` type, and two functions using it:
+
+```scala
+trait Config
+def compute(i: Int)(config: Config): String = ???
+def show(str: String)(config: Config): Unit = ???
+```
+
+We may want to combine `compute` and `show` into a single function, accepting a `Config` as parameter, and showing the result of the computation.
+If we had a `flatMap` function as in the examples above, we would be able to write the following:
+
+```scala
+def computeAndShow(i: Int): Config => Unit = compute(i).flatMap(show)
+```
+
+Let's define this `Monad` then. First, we are going to define a type named `ConfigDependent` representing a function that when passed a `Config` produces a `Result`.
+
+```scala
+trait Config // the Config defined above
+type ConfigDependent[Result] = Config => Result
+```
+
+The monad will look like this:
+
+```scala
+given configDependentMonad as Monad[ConfigDependent]
+  def [A, B](r: ConfigDependent[A]).flatMap(f: A => ConfigDependent[B]): ConfigDependent[B] =
+    config => f(r(config))(config)
+  def pure[A](x: A): ConfigDependent[A] =
+    config => x
+```
+
+The type `ConfigDependent` can be written using [type lambdas](../new-types/type-lambdas.html):
+
+```scala
+type ConfigDependent = [Result] =>> Config => Result
+```
+
+Using this syntax would turn the previous `configReaderMonad` into:
+
+
+```scala
+given configDependentMonad as Monad[[Result] =>> Config => Result]
+  def [A, B](r: Config => A).flatMap(f: A => Config => B): Config => B =
+    config => f(r(config))(config)
+  def pure[A](x: A): Config => A =
+    config => x
+```
+
+
+
+The Reader monad allows to abstract over the `Config` type, named `Ctx` in the following examples. It is therefore _parameterized_ by `Ctx`:
 
 ```scala
 given readerMonad[Ctx] as Monad[[X] =>> Ctx => X] {
