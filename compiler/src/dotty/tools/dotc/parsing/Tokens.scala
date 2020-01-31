@@ -204,7 +204,6 @@ object Tokens extends TokensCommon {
   final val QUOTE = 87;            enter(QUOTE, "'")
 
   final val COLONEOL = 88;         enter(COLONEOL, ":", ": at eol")
-  final val DOTWITH = 89;          enter(DOTWITH, ".with")
 
   /** XML mode */
   final val XMLSTART = 98;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
