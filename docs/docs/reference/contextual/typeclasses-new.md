@@ -265,7 +265,7 @@ given readerMonad[Ctx] as Monad[[X] =>> Ctx => X] {
 
 ### Summary
 
-The definition of a _typeclass_ is expressed in Scala 3 via a `trait`.
+The definition of a _typeclass_ is expressed via a parameterised type with abstract members, such as a `trait`.
 The main difference with other traits resides in how these traits are implemented. 
 In the case of a _typeclass_ the trait's implementations are expressed through `given ... as` type definitions, and not through classes that `extends` the trait linearly.
 
