@@ -269,4 +269,4 @@ The definition of a _typeclass_ is expressed via a parameterised type with abstr
 The main difference between object oriented polymorphism, and ad-hoc polymorphism with _typeclasses_, is how the definition of the _typeclass_ is implemented, in relation to the type it acts upon.
 In the case of a _typeclass_, its implementation for a concrete type is expressed through a `given ... as` term definition, which is supplied as an implicit argument alongside the value it acts upon. With object oriented polymorphism, the implementation is mixed into the parents of a class, and only a single term is required to perform a polymorphic operation.
 
-In addition to these given instances, other constructs like extension methods, context bounds and type lambdas allow a concise and natural expression of _typeclasses_.
+To conclude, in addition to given instances, other constructs like extension methods, context bounds and type lambdas allow a concise and natural expression of _typeclasses_.
