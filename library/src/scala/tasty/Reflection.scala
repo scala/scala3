@@ -2439,12 +2439,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
 
   ///////////////
-  // POSITIONS //
+  //   FLAGS   //
   ///////////////
-
-  // TODO: Should this be in the QuoteContext?
-  /** Root position of this tasty context. For macros it corresponds to the expansion site. */
-  def rootPosition: Position = internal.rootPosition
 
   extension FlagsOps on (self: Flags) {
 
@@ -2571,6 +2567,11 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   ///////////////
   // POSITIONS //
   ///////////////
+
+  // TODO: Should this be in the QuoteContext?
+  // TODO: rename to enclosingPosition (as in scala.reflect)
+  /** Root position of this tasty context. For macros it corresponds to the expansion site. */
+  def rootPosition: Position = internal.rootPosition
 
   extension positionOps on (pos: Position) {
 
