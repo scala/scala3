@@ -80,7 +80,7 @@ assert(3 == List(1, 2).combineAll)
 ### Functors:
 
 A `Functor` represents the ability for a type containing zero or more elements to be "mapped over", i.e. apply a function to every of its elements.
-Let's name our "type containing zero or more elements" `F`. It's a [higher-kinded type](http://guillaume.martres.me/publications/dotty-hk.pdf), since it contains elements of an other type.
+Let's name our "type containing zero or more elements" `F`. It's a type constructor: the type of its values becomes concrete when provided a type argument.
 Therefore we'll write it `F[_]` since we don't really care about the type of the elements it contains.
 The definition of the `Functor` ability would thus be written as:
 
