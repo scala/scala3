@@ -266,7 +266,7 @@ given readerMonad[Ctx] as Monad[[X] =>> Ctx => X] {
 ### Summary
 
 The definition of a _typeclass_ is expressed via a parameterised type with abstract members, such as a `trait`.
-The main difference with other traits resides in how these traits are implemented. 
+The main difference between object oriented polymorphism, and ad-hoc polymorphism with _typeclasses_, is how the definition of the _typeclass_ is implemented, in relation to the type it acts upon.
 In the case of a _typeclass_ the trait's implementations are expressed through `given ... as` type definitions, and not through classes that `extends` the trait linearly.
 
 In addition to these given instances, other constructs like extension methods, context bounds and type lambdas allow a concise and natural expression of _typeclasses_.
