@@ -199,9 +199,9 @@ given optionMonad as Monad[Option] {
 #### The Reader Monad
 
 Another example of a `Monad` is the Reader Monad. It no longer acts on a type like `List` or `Option`, but on a function.
-It can be used for example for combining functions that all have need the same type of parameter, for instance, if multiple functions need to access some configuration, context, environment variables, etc.
+It can be used for example for combining functions that all need the same type of parameter. For instance multiple functions needing access to some configuration, context, environment variables, etc.
 
-The Reader monad allows to abstract over such a `Config` dependency (or context, environment, ...), named `Ctx` in the following examples. It is therefore _parameterized_ by `Ctx`:
+The Reader monad allows to abstract over such a configuration dependency (or context, environment, ...), named `Ctx` in the following examples. It is therefore _parameterized_ by `Ctx`:
 
 ```scala
 given readerMonad[Ctx] as Monad[[X] =>> Ctx => X] {
