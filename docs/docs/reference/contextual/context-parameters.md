@@ -60,7 +60,7 @@ maximum(xs)(using descending(using listOrd))
 maximum(xs)(using descending(using listOrd(using intOrd)))
 ```
 
-## Multiple With Clauses
+## Multiple Using Clauses
 
 There can be several using clauses in a definition and using clauses can be freely mixed with normal parameter clauses. Example:
 ```scala
