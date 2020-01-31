@@ -3,12 +3,12 @@ layout: doc-page
 title: "Importing Givens"
 ---
 
-A special form of import wildcard selector is used to import givens. Example:
+A special form of import wildcard selector is used to import given instances. Example:
 ```scala
 object A {
   class TC
   given tc as TC
-  def f with TC = ???
+  def f(using TC) = ???
 }
 object B {
   import A._
@@ -47,7 +47,7 @@ is expressed by multiple `given` selectors.
 ```
 import A.{given T1, ..., given Tn}
 ```
-Importing all givens of a parameterized type is expressed by wildcard arguments.
+Importing all given instances of a parameterized type is expressed by wildcard arguments.
 For instance, assuming the object
 ```scala
 object Instances {

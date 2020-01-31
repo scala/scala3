@@ -17,7 +17,7 @@ the same way methods with context parameters is applied. For instance:
 
   def f(x: Int): Executable[Int] = ...
 
-  f(2).with(ec)    // explicit argument
+  f(2)(using ec)   // explicit argument
   f(2)             // argument is inferred
 ```
 Conversely, if the expected type of an expression `E` is a context function type
@@ -38,9 +38,9 @@ For example, continuing with the previous definitions,
 
   g(22)      // is expanded to g((ev: ExecutionContext) ?=> 22)
 
-  g(f(2))    // is expanded to g((ev: ExecutionContext) ?=> f(2).with(ev))
+  g(f(2))    // is expanded to g((ev: ExecutionContext) ?=> f(2)(using ev))
 
-  g((ctx: ExecutionContext) ?=> f(22).with(ctx)) // is left as it is
+  g((ctx: ExecutionContext) ?=> f(22)(using ctx)) // is left as it is
 ```
 ### Example: Builder Pattern
 
@@ -86,13 +86,13 @@ that would otherwise be necessary.
     t
   }
 
-  def row(init: Row ?=> Unit) with (t: Table) = {
+  def row(init: Row ?=> Unit)(using t: Table) = {
     given r as Row
     init
     t.add(r)
   }
 
-  def cell(str: String) with (r: Row) =
+  def cell(str: String)(using r: Row) =
     r.add(new Cell(str))
 ```
 With that setup, the table construction code above compiles and expands to:
@@ -100,14 +100,14 @@ With that setup, the table construction code above compiles and expands to:
   table { ($t: Table) ?=>
 
     row { ($r: Row) ?=>
-      cell("top left").with($r)
-      cell("top right").with($r)
-    }.with($t)
+      cell("top left")(using $r)
+      cell("top right")(using $r)
+    }(using $t)
 
     row { ($r: Row) ?=>
-      cell("bottom left").with($r)
-      cell("bottom right").with($r)
-    }.with($t)
+      cell("bottom left")(using $r)
+      cell("bottom right")(using $r)
+    }(using $t)
   }
 ```
 ### Example: Postconditions
@@ -118,10 +118,10 @@ As a larger example, here is a way to define constructs for checking arbitrary p
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  def result[T] with (r: WrappedResult[T]) : T = r
+  def result[T](using r: WrappedResult[T]): T = r
 
-  def (x: T) ensuring[T](condition: WrappedResult[T] ?=> Boolean): T = {
-    assert(condition.with(x))
+  def (x: T).ensuring[T](condition: WrappedResult[T] ?=> Boolean): T = {
+    assert(condition(using x))
     x
   }
 }

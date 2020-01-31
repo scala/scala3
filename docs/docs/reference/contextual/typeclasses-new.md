@@ -19,15 +19,15 @@ trait Monoid[T] extends SemiGroup[T] {
 }
 
 object Monoid {
-  def apply[T] with (m: Monoid[T]) = m
+  def apply[T](using m: Monoid[T]) = m
 }
 
-given as Monoid[String] {
+given Monoid[String] {
   def (x: String) combine (y: String): String = x.concat(y)
   def unit: String = ""
 }
 
-given as Monoid[Int] {
+given Monoid[Int] {
   def (x: Int) combine (y: Int): Int = x + y
   def unit: Int = 0
 }

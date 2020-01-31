@@ -50,7 +50,7 @@ trait StringSeqOps {
 ```
 We can make the extension method available by defining a given `StringSeqOps` instance, like this:
 ```scala
-given ops1: StringSeqOps
+given ops1 as StringSeqOps
 ```
 Then
 ```scala
@@ -69,9 +69,9 @@ Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type ar
 and where `T` is the expected type. The following two rewritings are tried in order:
 
  1. The selection is rewritten to `m[Ts](e)`.
- 2. If the first rewriting does not typecheck with expected type `T`, and there is a given instance `i`
-    in either the current scope or in the implicit scope of `T`, and `i` defines an extension
-    method named `m`, then selection is expanded to `i.m[Ts](e)`.
+ 2. If the first rewriting does not typecheck with expected type `T`, and there is a given instance `g`
+    in either the current scope or in the context scope of `T`, and `g` defines an extension
+    method named `m`, then selection is expanded to `g.m[Ts](e)`.
     This second rewriting is attempted at the time where the compiler also tries an implicit conversion
     from `T` to a type containing `m`. If there is more than one way of rewriting, an ambiguity error results.
 
@@ -140,35 +140,33 @@ extension listOps on [T](xs: List[T]) {
   def third: T = xs.tail.tail.head
 }
 
-extension on [T](xs: List[T])(given Ordering[T]) {
+extension on [T](xs: List[T])(using Ordering[T]) {
   def largest(n: Int) = xs.sorted.takeRight(n)
 }
 ```
-If a given extension is anonymous (as in the last clause), its name is synthesized from the name of the first defined extension method.
+If an extension is anonymous (as in the last clause), its name is synthesized from the name of the first defined extension method.
 
-The extensions above are equivalent to the following regular given instances where the implemented parent is `AnyRef` and the parameters in the `extension` clause are repeated in each extension method definition:
+The extensions above are equivalent to the following regular given instances where the implemented parent is `AnyRef` and the leading parameters are repeated in each extension method definition:
 ```scala
-given stringOps: AnyRef {
+given stringOps as AnyRef {
   def (xs: Seq[String]).longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
-given listOps: AnyRef {
-  def [T](xs: List[T]) second = xs.tail.head
-  def [T](xs: List[T]) third: T = xs.tail.tail.head
+given listOps as AnyRef {
+  def [T](xs: List[T]).second = xs.tail.head
+  def [T](xs: List[T]).third: T = xs.tail.tail.head
 }
-given extension_largest_List_T: AnyRef {
-  def [T](xs: List[T]) largest (given Ordering[T])(n: Int) =
+given extension_largest_List_T as AnyRef {
+  def [T](xs: List[T]).largest(using Ordering[T])(n: Int) =
     xs.sorted.takeRight(n)
 }
 ```
 
-`extension` and `on` are soft keywords. They can also be used as a regular identifiers.
-
 ### Syntax
 
-Here are the syntax changes for extension methods and given extensions relative
+Here are the syntax changes for extension methods and collective extensions relative
 to the [current syntax](../../internals/syntax.md). `extension` is a soft keyword, recognized only in tandem with `on`. It can be used as an identifier everywhere else.
 
 ```
