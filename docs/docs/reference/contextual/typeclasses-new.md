@@ -82,7 +82,7 @@ assert(3 == List(1, 2).combineAll)
 A `Functor` for a type provides the ability for its values to be "mapped over", i.e. apply a function that transforms inside a value while remembering its shape. For example, to modify every element of a collection without dropping or adding elements.
 Let's name our "type containing zero or more elements" `F`. It's a type constructor: the type of its values becomes concrete when provided a type argument.
 Therefore we'll write it `F[_]` since we don't really care about the type of the elements it contains.
-The definition of the `Functor` ability would thus be written as:
+The definition of a generic `Functor` would thus be written as:
 
 ```scala
 trait Functor[F[_]] {
