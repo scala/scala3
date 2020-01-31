@@ -144,21 +144,66 @@ Since we can now use the `map` method directly accessible on `original` which is
 
 ### Monads
 
+Now we have a `Functor` for `List`.
+
+Applying the `List.map` ability with the following mapping function as parameter: `mapping: A => B` would result in a `List[B]`.
+
+Now, applying the `List.map` ability with the following mapping function as parameter: `mapping: A => List[B]` would result in a `List[List[B]]`.  
+
+To avoid avoid managing lists of lists, we may want to "flatten" the values in a single list.
+
+That's where `Monad` enter the party. A `Monad` for type `F[_]` is a `Functor[F]` with 2 more abilities: 
+* the flatten ability we just described: turning `F[A]` to `F[B]` when given a `mapping: A => F[B]` function
+* the ability to create `F[A]` from a single value `A`
+
+Here is the translation of this definition in Scala 3:
+
 ```scala
-trait Monad[F[_]] extends Functor[F] {
-  def [A, B](x: F[A]).flatMap(f: A => F[B]): F[B]
-  def [A, B](x: F[A]).map(f: A => B) = x.flatMap(f `andThen` pure)
-
-  def pure[A](x: A): F[A]
+trait Monad[F[_]] extends Functor[F] { // "A `Monad` for type `F[_]` is a `Functor[F]`" => thus has the `map` ability
+  def pure[A](x: A): F[A] // `pure` can construct F[A] from a single value A
+  def [A, B](x: F[A]).flatMap(f: A => F[B]): F[B] // the flattening ability is named `flatMap`, using extension methods as previous examples
+  def [A, B](x: F[A]).map(f: A => B) = x.flatMap(f `andThen` pure) // the `map(f)` ability is simply a combination of applying `f` then turning the result into an `F[A]` then applying `flatMap` to it
 }
+```
 
+#### List
+
+Let us declare the `Monad` ability for type `List`  
+```scala
 given listMonad as Monad[List] {
-  def [A, B](xs: List[A]).flatMap(f: A => List[B]): List[B] =
-    xs.flatMap(f)
   def pure[A](x: A): List[A] =
     List(x)
+  def [A, B](xs: List[A]).flatMap(f: A => List[B]): List[B] =
+    xs.flatMap(f) // let's rely on the existing `flatMap` method of `List`
 }
+```
 
+`map` implementation is no longer needed.
+
+#### Option
+
+`Option` is an other type having the same kind of behaviour:
+* the `map` ability turning `Option[A]` into `Option[B]` if passed a function `f: A => B`
+* the `flatMap` ability turning `Option[A]` into `Option[B]` if passed a function `f: A => Option[B]`
+* the `pure` ability turning `A` into `Option[A]`
+
+```scala
+given optionMonad as Monad[Option] {
+  def pure[A](x: A): Option[A] =
+    Option(x)
+  def [A, B](xs: Option[A]).flatMap(f: A => Option[B]): Option[B] =
+    xs.flatMap(f) // let's rely on the existing `flatMap` method of `Option`
+}
+```
+
+#### The Reader Monad
+
+Another example of a `Monad` is the Reader Monad. It no longer acts on a type like `List` or `Option`, but on a function.
+It can be used for example for combining functions that all have need the same type of parameter, for instance, if multiple functions need to access some configuration, context, environment variables, etc.
+
+The Reader monad allows to abstract over such a `Config` dependency (or context, environment, ...), named `Ctx` in the following examples. It is therefore _parameterized_ by `Ctx`:
+
+```scala
 given readerMonad[Ctx] as Monad[[X] =>> Ctx => X] {
   def [A, B](r: Ctx => A).flatMap(f: A => Ctx => B): Ctx => B =
     ctx => f(r(ctx))(ctx)
@@ -173,4 +218,4 @@ The definition of a _typeclass_ is expressed in Scala 3 via a `trait`.
 The main difference with other traits resides in how these traits are implemented. 
 In the case of a _typeclass_ the trait's implementations are expressed through `given ... as` type definitions, and not through classes that `extends` the trait linearly.
 
-In addition to these given instances, extension methods and context bounds allow a concise and natural expression of _typeclasses_.
+In addition to these given instances, other constructs like extension methods, context bounds and type lambdas allow a concise and natural expression of _typeclasses_.
