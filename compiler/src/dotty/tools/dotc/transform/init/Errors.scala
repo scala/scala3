@@ -5,9 +5,9 @@ package init
 import ast.tpd._
 
 import core._
-import Decorators._
+import Decorators._, printing.SyntaxHighlighting
 import Types._, Symbols._, Contexts._
-import util.NoSourcePosition
+import util.SourcePosition
 
 import Effects._, Potentials._
 
@@ -30,19 +30,22 @@ object Errors {
 
     def stacktrace(implicit ctx: Context): String = if (trace.isEmpty) "" else " Calling trace:\n" + {
       var indentCount = 0
-      var last = ""
+      var last: String = ""
       val sb = new StringBuilder
       trace.foreach { tree =>
         indentCount += 1
         val pos = tree.sourcePos
-        val line = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
-        if (last != line)
-          sb.append(
-            if (pos.source.exists)
-              i"${ " " * indentCount }-> ${pos.lineContent.trim}\t$line\n"
-            else
-              i"${tree.show}\n"
-          )
+        val prefix = s"${ " " * indentCount }-> "
+        val line =
+          if pos.source.exists then
+            val loc = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
+            val code = SyntaxHighlighting.highlight(pos.lineContent.trim)
+            i"$code\t$loc"
+          else
+            tree.show
+
+        if (last != line)  sb.append(prefix + line + "\n")
+
         last = line
       }
       sb.toString
