@@ -274,9 +274,9 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   type TypeBoundsTree = internal.TypeBoundsTree
 
   /** Type tree representing wildcard type bounds written in the source.
-  *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
-  *  represents a type but has `TypeBound`a inside.
-  */
+   *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
+   *  represents a type but has `TypeBound`a inside.
+   */
   type WildcardTypeTree = internal.WildcardTypeTree
 
   /** Branch of a pattern match or catch clause */
@@ -367,10 +367,10 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
 
   /** Import selectors:
-  *   * SimpleSelector: `.bar` in `import foo.bar`
-  *   * RenameSelector: `.{bar => baz}` in `import foo.{bar => baz}`
-  *   * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
-  */
+   *   * SimpleSelector: `.bar` in `import foo.bar`
+   *   * RenameSelector: `.{bar => baz}` in `import foo.{bar => baz}`
+   *   * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
+   */
   type ImportSelector = internal.ImportSelector
   type SimpleSelector = internal.SimpleSelector
   type RenameSelector = internal.RenameSelector
@@ -395,8 +395,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   type Constant = internal.Constant
 
   /** Symbol of a definition.
-  *  Then can be compared with == to know if the definition is the same.
-  */
+   *  Then can be compared with == to know if the definition is the same.
+   */
   type Symbol = internal.Symbol
 
   /** FlagSet of a Symbol */
@@ -675,19 +675,19 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   object Ref {
 
     /** Create a reference tree from a symbol
-      *
-      *  If `sym` refers to a class member `foo` in class `C`,
-      *  returns a tree representing `C.this.foo`.
-      *
-      *  If `sym` refers to a local definition `foo`, returns
-      *  a tree representing `foo`.
-      *
-      *  @note In both cases, the constructed tree should only
-      *  be spliced into the places where such accesses make sense.
-      *  For example, it is incorrect to have `C.this.foo` outside
-      *  the class body of `C`, or have `foo` outside the lexical
-      *  scope for the definition of `foo`.
-      */
+     *
+     *  If `sym` refers to a class member `foo` in class `C`,
+     *  returns a tree representing `C.this.foo`.
+     *
+     *  If `sym` refers to a local definition `foo`, returns
+     *  a tree representing `foo`.
+     *
+     *  @note In both cases, the constructed tree should only
+     *  be spliced into the places where such accesses make sense.
+     *  For example, it is incorrect to have `C.this.foo` outside
+     *  the class body of `C`, or have `foo` outside the lexical
+     *  scope for the definition of `foo`.
+     */
     def apply(sym: Symbol)(given ctx: Context): Ref =
       internal.Ref_apply(sym)
   }
@@ -1804,7 +1804,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   /**
    * An accessor for `scala.internal.MatchCase[_,_]`, the representation of a `MatchType` case.
-    */
+   */
   def MatchCaseType(given Context): Type = {
     import scala.internal.MatchCase
     Type(classOf[MatchCase[_,_]])
@@ -2028,7 +2028,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
      *  this symbol to the DefDef constructor.
      *
      *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
-     *        direct or indirect children of the reflection context's owner. */
+     *        direct or indirect children of the reflection context's owner.
+     */
     def newMethod(parent: Symbol, name: String, tpe: Type)(given ctx: Context): Symbol =
       newMethod(parent, name, tpe, Flags.EmptyFlags, noSymbol)
 
@@ -2036,7 +2037,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
      *
      *  @param flags extra flags to with which the symbol should be constructed
      *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
-     * */
+     */
     def newMethod(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol)(given ctx: Context): Symbol =
       internal.Symbol_newMethod(parent, name, flags, tpe, privateWithin)
 
@@ -2194,12 +2195,12 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   extension signatureOps on (sig: Signature) {
 
     /** The signatures of the method parameters.
-      *
-      *  Each *type parameter section* is represented by a single Int corresponding
-      *  to the number of type parameters in the section.
-      *  Each *term parameter* is represented by a String corresponding to the fully qualified
-      *  name of the parameter type.
-      */
+     *
+     *  Each *type parameter section* is represented by a single Int corresponding
+     *  to the number of type parameters in the section.
+     *  Each *term parameter* is represented by a String corresponding to the fully qualified
+     *  name of the parameter type.
+     */
     def paramSigs: List[String | Int] = internal.Signature_paramSigs(sig)
 
     /** The signature of the result type */
@@ -2217,8 +2218,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   object defn extends StandardSymbols with StandardTypes
 
   /** Defines standard symbols (and types via its base trait).
-    *  @group API
-    */
+   *  @group API
+   */
   trait StandardSymbols {
 
     /** The module symbol of root package `_root_`. */
@@ -2315,8 +2316,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def Array_update: Symbol = internal.Definitions_Array_update
 
     /** A dummy class symbol that is used to indicate repeated parameters
-      *  compiled by the Scala compiler.
-      */
+     *  compiled by the Scala compiler.
+     */
     def RepeatedParamClass: Symbol = internal.Definitions_RepeatedParamClass
 
     /** The class symbol of class `scala.Option`. */
@@ -2332,23 +2333,23 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def ProductClass: Symbol = internal.Definitions_ProductClass
 
     /** Function-like object that maps arity to symbols for classes `scala.FunctionX`.
-      *   -  0th element is `Function0`
-      *   -  1st element is `Function1`
-      *   -  ...
-      *   -  Nth element is `FunctionN`
-      */
+     *   -  0th element is `Function0`
+     *   -  1st element is `Function1`
+     *   -  ...
+     *   -  Nth element is `FunctionN`
+     */
     def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol =
       internal.Definitions_FunctionClass(arity, isImplicit, isErased)
 
     /** Function-like object that maps arity to symbols for classes `scala.TupleX`.
-      *   -  0th element is `NoSymbol`
-      *   -  1st element is `NoSymbol`
-      *   -  2st element is `Tuple2`
-      *   -  ...
-      *   - 22nd element is `Tuple22`
-      *   - 23nd element is `NoSymbol`  // TODO update when we will have more tuples
-      *   - ...
-      */
+     *   -  0th element is `NoSymbol`
+     *   -  1st element is `NoSymbol`
+     *   -  2st element is `Tuple2`
+     *   -  ...
+     *   - 22nd element is `Tuple22`
+     *   - 23nd element is `NoSymbol`  // TODO update when we will have more tuples
+     *   - ...
+     */
     def TupleClass(arity: Int): Symbol =
       internal.Definitions_TupleClass(arity)
 
@@ -2357,28 +2358,28 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       internal.Definitions_isTupleClass(sym)
 
     /** Contains Scala primitive value classes:
-      *   - Byte
-      *   - Short
-      *   - Int
-      *   - Long
-      *   - Float
-      *   - Double
-      *   - Char
-      *   - Boolean
-      *   - Unit
-      */
+     *   - Byte
+     *   - Short
+     *   - Int
+     *   - Long
+     *   - Float
+     *   - Double
+     *   - Char
+     *   - Boolean
+     *   - Unit
+     */
     def ScalaPrimitiveValueClasses: List[Symbol] =
       UnitClass :: BooleanClass :: ScalaNumericValueClasses
 
     /** Contains Scala numeric value classes:
-      *   - Byte
-      *   - Short
-      *   - Int
-      *   - Long
-      *   - Float
-      *   - Double
-      *   - Char
-      */
+     *   - Byte
+     *   - Short
+     *   - Int
+     *   - Long
+     *   - Float
+     *   - Double
+     *   - Char
+     */
     def ScalaNumericValueClasses: List[Symbol] =
       ByteClass :: ShortClass :: IntClass :: LongClass :: FloatClass :: DoubleClass :: CharClass :: Nil
 
