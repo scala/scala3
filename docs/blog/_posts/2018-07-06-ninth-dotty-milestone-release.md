@@ -2,7 +2,7 @@
 layout: blog-page
 title: Announcing Dotty 0.9.0-RC1
 author: Allan Renucci
-authorImg: /images/allan.jpg
+authorImg: images/allan.jpg
 date: 2018-07-06
 ---
 

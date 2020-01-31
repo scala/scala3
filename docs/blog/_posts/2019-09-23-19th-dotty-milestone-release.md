@@ -2,7 +2,7 @@
 layout: blog-page
 title: Announcing Dotty 0.19.0-RC1 – further refinements of the syntax and the migration to 2.13.1 standard library
 author: Anatolii Kmetiuk
-authorImg: /images/anatolii.png
+authorImg: images/anatolii.png
 date: 2019-09-23
 ---
 

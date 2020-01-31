@@ -2,7 +2,7 @@
 layout: blog-page
 title: The Essence of Scala
 author: Martin Odersky
-authorImg: /images/martin.jpg
+authorImg: images/martin.jpg
 date: 2016-02-03
 ---
 

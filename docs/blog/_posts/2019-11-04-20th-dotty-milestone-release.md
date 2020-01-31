@@ -2,7 +2,7 @@
 layout: blog-page
 title: Announcing Dotty 0.20.0-RC1 – `with` starting indentation blocks, inline given specializations and more
 author: Anatolii Kmetiuk
-authorImg: /images/anatolii.png
+authorImg: images/anatolii.png
 date: 2019-11-04
 ---
 

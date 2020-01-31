@@ -2,7 +2,7 @@
 layout: blog-page
 title: Announcing Dotty 0.21.0-RC1 - explicit nulls, new syntax for `match` and conditional givens, and more
 author: Aggelos Biboudis
-authorImg: /images/aggelos.jpg
+authorImg: images/aggelos.jpg
 date: 2019-12-20
 ---
 
