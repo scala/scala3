@@ -139,7 +139,7 @@ def assertTransformation[F[_]: Functor, A, B](expected: F[B], original: F[A], ma
   assert(expected == original.map(mapping))
 ```
 
-Since we can now use the `map` method directly accessible on `original` which is of type `F[A]`, where `F` is a `Functor`.
+The `map` method is now directly used on `original` since it is of type `F[A]` (where `F` is a `Functor`).
 
 
 ### Monads
