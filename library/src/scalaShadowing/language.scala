@@ -225,7 +225,7 @@ object language {
    *  compilation units are allowed.
    *
    *  '''Why control the feature?''' Ad-hoc extensions should usually be avoided
-   *  since they typically cannot reply on an "internal" contract between a class
+   *  since they typically cannot rely on an "internal" contract between a class
    *  and its extensions. Only open classes need to specify such a contract.
    *  Ad-hoc extensions might break for future versions of the extended class,
    *  since the extended class is free to change its implementation without
