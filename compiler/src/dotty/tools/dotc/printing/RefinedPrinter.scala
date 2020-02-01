@@ -389,8 +389,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else
           toTextLocal(fun)
-          ~ ("." ~ keywordText("with")).provided(app.isGivenApply && !homogenizedView)
           ~ "("
+          ~ Str("using ").provided(app.isGivenApply && !homogenizedView)
           ~ toTextGlobal(args, ", ")
           ~ ")"
       case tree: TypeApply =>
