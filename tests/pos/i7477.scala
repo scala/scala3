@@ -14,9 +14,9 @@ package X {
 
   class Test1 {
 
-    def spawn[T](f: => T)(given ec:ExecutionContext,  naming: Int = 3): Future[T] = ???
+    def spawn[T](f: => T)(using ec:ExecutionContext,  naming: Int = 3): Future[T] = ???
 
-    def await[T](f:Future[T], atMost: Duration = Duration.Inf)(given ec: ExecutionContext):T = ???
+    def await[T](f:Future[T], atMost: Duration = Duration.Inf)(using ec: ExecutionContext):T = ???
 
     def test(): Unit = {
       val promiseToWait = Promise[Int]()

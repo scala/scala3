@@ -3,7 +3,7 @@ import annotation.unchecked._
 package frp:
 
   trait Signal[+T]:
-    def apply()(given caller: Signal.Caller): T
+    def apply()(using caller: Signal.Caller): T
 
   object Signal:
 
@@ -22,7 +22,7 @@ package frp:
           observers = Set()
           obs.foreach(_.computeValue())
 
-      def apply()(given caller: Caller): T =
+      def apply()(using caller: Caller): T =
         observers += caller
         assert(!caller.observers.contains(this), "cyclic signal definition")
         currentValue
@@ -30,15 +30,15 @@ package frp:
 
     def apply[T](expr: Caller ?=> T): Signal[T] =
       new AbstractSignal[T]:
-        protected val eval = expr(given _)
+        protected val eval = expr(using _)
         computeValue()
 
     class Var[T](expr: Caller ?=> T) extends AbstractSignal[T]:
-      protected var eval: Caller => T = expr(given _)
+      protected var eval: Caller => T = expr(using _)
       computeValue()
 
       def update(expr: Caller ?=> T): Unit =
-        eval = expr(given _)
+        eval = expr(using _)
         computeValue()
     end Var
 

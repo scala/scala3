@@ -8,17 +8,17 @@ object Macros {
   inline def lift[R[_]](sym: Symantics { type Repr = R })(a: => Int): R[Int] = ${impl('sym, 'a)}
 
 
-  private def impl[R[_]: Type](sym: Expr[Symantics { type Repr[X] = R[X] }], expr: Expr[Int])(given QuoteContext): Expr[R[Int]] = {
+  private def impl[R[_]: Type](sym: Expr[Symantics { type Repr[X] = R[X] }], expr: Expr[Int])(using QuoteContext): Expr[R[Int]] = {
 
     type Env = Map[Int, Any]
 
     given ev0 as Env = Map.empty
 
-    def envWith[T](id: Int, ref: Expr[R[T]])(given env: Env): Env =
+    def envWith[T](id: Int, ref: Expr[R[T]])(using env: Env): Env =
       env.updated(id, ref)
 
     object FromEnv {
-      def unapply[T](e: Expr[Any])(given env: Env): Option[Expr[R[T]]] =
+      def unapply[T](e: Expr[Any])(using env: Env): Option[Expr[R[T]]] =
         e match
           case '{envVar[$t](${Const(id)})} =>
             env.get(id).asInstanceOf[Option[Expr[R[T]]]] // We can only add binds that have the same type as the refs
@@ -26,7 +26,7 @@ object Macros {
             None
     }
 
-    def lift[T: Type](e: Expr[T])(given env: Env): Expr[R[T]] = ((e: Expr[Any]) match {
+    def lift[T: Type](e: Expr[T])(using env: Env): Expr[R[T]] = ((e: Expr[Any]) match {
       case Const(e: Int) => '{ $sym.int(${Expr(e)}).asInstanceOf[R[T]] }
       case Const(e: Boolean) => '{ $sym.bool(${Expr(e)}).asInstanceOf[R[T]] }
 
@@ -48,17 +48,17 @@ object Macros {
       case '{ (x0: Int) => ($bodyFn: Int => Any)(x0) } =>
         val (i, nEnvVar) = freshEnvVar[Int]()
         val body2 = UnsafeExpr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
-        '{ $sym.lam((x: R[Int]) => ${given Env = envWith(i, 'x)(given env); lift(body2)}).asInstanceOf[R[T]] }
+        '{ $sym.lam((x: R[Int]) => ${given Env = envWith(i, 'x)(using env); lift(body2)}).asInstanceOf[R[T]] }
 
       case '{ (x0: Boolean) => ($bodyFn: Boolean => Any)(x0) } =>
         val (i, nEnvVar) = freshEnvVar[Boolean]()
         val body2 = UnsafeExpr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
-        '{ $sym.lam((x: R[Boolean]) => ${given Env = envWith(i, 'x)(given env); lift(body2)}).asInstanceOf[R[T]] }
+        '{ $sym.lam((x: R[Boolean]) => ${given Env = envWith(i, 'x)(using env); lift(body2)}).asInstanceOf[R[T]] }
 
       case '{ (x0: Int => Int) => ($bodyFn: (Int => Int) => Any)(x0) } =>
         val (i, nEnvVar) = freshEnvVar[Int => Int]()
         val body2 = UnsafeExpr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
-        '{ $sym.lam((x: R[Int => Int]) => ${given Env = envWith(i, 'x)(given env); lift(body2)}).asInstanceOf[R[T]] }
+        '{ $sym.lam((x: R[Int => Int]) => ${given Env = envWith(i, 'x)(using env); lift(body2)}).asInstanceOf[R[T]] }
 
       case '{ Symantics.fix[$t, $u]($f) } =>
         '{ $sym.fix[$t, $u]((x: R[$t => $u]) => $sym.app(${lift(f)}, x)).asInstanceOf[R[T]] }
@@ -76,7 +76,7 @@ object Macros {
 
 }
 
-def freshEnvVar[T: Type]()(given QuoteContext): (Int, Expr[T]) = {
+def freshEnvVar[T: Type]()(using QuoteContext): (Int, Expr[T]) = {
   v += 1
   (v, '{envVar[T](${Expr(v)})})
 }

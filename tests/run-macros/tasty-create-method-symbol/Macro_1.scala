@@ -4,7 +4,7 @@ object Macros {
 
   inline def theTestBlock : Unit = ${ theTestBlockImpl }
 
-  def theTestBlockImpl(given qctx: QuoteContext) : Expr[Unit] = {
+  def theTestBlockImpl(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty.{_,given}
 
     // simple smoke test

@@ -12,7 +12,7 @@ object XmlQuote {
       ${XmlQuote.impl('ctx, 'args)}
   }
 
-  def impl(receiver: Expr[StringContext], args: Expr[Seq[Any]]) (using QuoteContext): Expr[Xml] = {
+  def impl(receiver: Expr[StringContext], args: Expr[Seq[Any]])(using QuoteContext): Expr[Xml] = {
     val string = receiver.value.parts.mkString("??")
     '{new Xml(${string}, $args.toList)}
   }

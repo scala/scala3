@@ -6,7 +6,7 @@ object Test {
     assert("p1" == firstArgName)
     assert("something" == firstArgValue)
   }
-  def debug(given foo.FirstArg): Unit = {
+  def debug(using foo.FirstArg): Unit = {
     firstArgName = summon[foo.FirstArg].source
     firstArgValue = summon[foo.FirstArg].value
   }

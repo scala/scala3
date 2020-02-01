@@ -24,4 +24,4 @@ object Givens
 
   inline given int2String: Conversion[Int, String] = _.toString
 
-  def foo[A](given A: Monoid[A]): A = A.combine(A.empty)(A.empty)
+  def foo[A](using A: Monoid[A]): A = A.combine(A.empty)(A.empty)

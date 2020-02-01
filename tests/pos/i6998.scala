@@ -1,5 +1,5 @@
 import scala.quoted._
 
-def foo(given QuoteContext) : Unit = {
+def foo(using QuoteContext) : Unit = {
   val '{ $f : (Int => Double) } = ???
 }

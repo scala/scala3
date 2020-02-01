@@ -3,14 +3,14 @@ package a {
   trait Expr[+T]
   trait QCtx
 
-  /*Quote*/ def q[T](x: T)(given QCtx): Expr[T] = ???
-  /*Splice*/ def s[T](x: (given QCtx) => Expr[T]): T = ???
-  /*run*/ def r[T](x: (given QCtx) => Expr[T]): T = ???
+  /*Quote*/ def q[T](x: T)(using QCtx): Expr[T] = ???
+  /*Splice*/ def s[T](x: QCtx ?=> Expr[T]): T = ???
+  /*run*/ def r[T](x: QCtx ?=> Expr[T]): T = ???
 
 
   val test: Any = {
 
-    def pow(x: Expr[Double], n: Int)(given QCtx): Expr[Double] =
+    def pow(x: Expr[Double], n: Int)(using QCtx): Expr[Double] =
       if n == 0 then q{1.0} else q{ s{x} * s{pow(x, n - 1)} }
 
     r {
@@ -46,14 +46,14 @@ package b {
     type Expr[+T]
   }
 
-  /*Quote*/ def q[T](x: T)(given qctx: QCtx): qctx.Expr[T] = ???
-  /*Splice*/ def s[T](given qctx0: QCtx)(x: (given qctx: QCtx { type Expr[+T] >: qctx0.Expr[T] }) => qctx.Expr[T]): T = ???
-  /*run*/ def r[T](x: (given qctx: QCtx) => qctx.Expr[T]): T = ???
+  /*Quote*/ def q[T](x: T)(using qctx: QCtx): qctx.Expr[T] = ???
+  /*Splice*/ def s[T](using qctx0: QCtx)(x: (qctx: QCtx { type Expr[+T] >: qctx0.Expr[T] }) ?=> qctx.Expr[T]): T = ???
+  /*run*/ def r[T](x: (qctx: QCtx) ?=> qctx.Expr[T]): T = ???
 
 
   val test: Any = {
 
-    def pow(given qctx: QCtx)(x: qctx.Expr[Double], n: Int): qctx.Expr[Double] =
+    def pow(using qctx: QCtx)(x: qctx.Expr[Double], n: Int): qctx.Expr[Double] =
       if n == 0 then q{1.0} else q{ s{x} * s{pow(x, n - 1)} }
 
     r {
@@ -69,7 +69,7 @@ package b {
       }
     }
 
-    r { (given qctx) =>
+    r { qctx ?=>
       var escaped: qctx.Expr[Double] = ???
       q{ (x: Double) =>
         s{

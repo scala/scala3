@@ -18,10 +18,10 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def localValue(sym: Symbol)(implicit env: Env): LocalValue = env(sym)
 
   def withLocalValue[T](sym: Symbol, value: LocalValue)(in: Env ?=> T)(implicit env: Env): T =
-    in(given env.updated(sym, value))
+    in(using env.updated(sym, value))
 
   def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: Env ?=> T)(implicit env: Env): T =
-    in(given env ++ syms.zip(values))
+    in(using env ++ syms.zip(values))
 
   def interpretCall(inst: AbstractAny, sym: Symbol, args: List[AbstractAny]): Result = {
     // TODO
@@ -68,7 +68,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def interpretBlock(stats: List[Statement], expr: Term): Result = {
     val newEnv = stats.foldLeft(implicitly[Env])((accEnv, stat) => stat match {
       case ValDef(name, tpt, Some(rhs)) =>
-        def evalRhs = eval(rhs)(given accEnv)
+        def evalRhs = eval(rhs)(using accEnv)
         val evalRef: LocalValue =
           if (stat.symbol.flags.is(Flags.Lazy)) LocalValue.lazyValFrom(evalRhs)
           else if (stat.symbol.flags.is(Flags.Mutable)) LocalValue.varFrom(evalRhs)
@@ -79,10 +79,10 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
         // TODO: record the environment for closure purposes
         accEnv
       case stat =>
-        eval(stat)(given accEnv)
+        eval(stat)(using accEnv)
         accEnv
     })
-    eval(expr)(given newEnv)
+    eval(expr)(using newEnv)
   }
 
   def interpretUnit(): AbstractAny

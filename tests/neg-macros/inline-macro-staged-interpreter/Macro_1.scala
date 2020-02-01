@@ -12,13 +12,13 @@ object E {
   implicit def ev1[T: Type]: ValueOfExpr[E[T]] = new ValueOfExpr {
     def apply(x: Expr[E[T]]) (using QuoteContext): Option[E[T]] = x match {
       case '{ I(${Const(n)}) } => Some(I(n).asInstanceOf[E[T]])
-      case '{ Plus[T](${Value(x)}, ${Value(y)})(given $op) } if op.matches('{Plus2.IPlus}) => Some(Plus(x, y)(given Plus2.IPlus.asInstanceOf[Plus2[T]]).asInstanceOf[E[T]])
+      case '{ Plus[T](${Value(x)}, ${Value(y)})(using $op) } if op.matches('{Plus2.IPlus}) => Some(Plus(x, y)(using Plus2.IPlus.asInstanceOf[Plus2[T]]).asInstanceOf[E[T]])
       case _ => None
     }
   }
 
   object Value {
-    def unapply[T, U >: T](expr: Expr[T])(given ValueOfExpr[U], QuoteContext): Option[U] = expr.getValue
+    def unapply[T, U >: T](expr: Expr[T])(using ValueOfExpr[U], QuoteContext): Option[U] = expr.getValue
   }
 }
 

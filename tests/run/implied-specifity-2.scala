@@ -13,20 +13,20 @@ object High {
 
 class Foo[T](val i: Int)
 object Foo {
-  def apply[T](given fooT: Foo[T]): Int = fooT.i
+  def apply[T](using fooT: Foo[T]): Int = fooT.i
 
-  given foo[T](given Low) as Foo[T](0)
-  given foobar[T](given Low) as Foo[Bar[T]](1)
-  given foobarbaz(given Low) as Foo[Bar[Baz]](2)
+  given foo[T](using Low) as Foo[T](0)
+  given foobar[T](using Low) as Foo[Bar[T]](1)
+  given foobarbaz(using Low) as Foo[Bar[Baz]](2)
 }
 class Bar[T]
 object Bar {
-  given foobar[T](given Medium) as Foo[Bar[T]](3)
-  given foobarbaz(given Medium) as Foo[Bar[Baz]](4)
+  given foobar[T](using Medium) as Foo[Bar[T]](3)
+  given foobarbaz(using Medium) as Foo[Bar[Baz]](4)
 }
 class Baz
 object Baz {
-  given baz(given High) as Foo[Bar[Baz]](5)
+  given baz(using High) as Foo[Bar[Baz]](5)
 }
 
 class Arg
@@ -35,24 +35,24 @@ given Arg
 
 class Bam(val str: String)
 
-given lo(given Low): Bam("lo")
+given lo(using Low): Bam("lo")
 
-given hi(given High)(given Arg): Bam("hi")
+given hi(using High)(using Arg): Bam("hi")
 
 class Bam2(val str: String)
 
-given lo2(given Low) : Bam2("lo")
+given lo2(using Low) : Bam2("lo")
 
-given mid2(given High)(given Arg) : Bam2("mid")
+given mid2(using High)(using Arg) : Bam2("mid")
 
 given hi2 : Bam2("hi")
 
 class Arg2
 class Red(val str: String)
 
-given normal(given Arg2) : Red("normal")
+given normal(using Arg2) : Red("normal")
 
-given reduced(given ev: Arg2 | Low) : Red("reduced")
+given reduced(using ev: Arg2 | Low) : Red("reduced")
 
 object Test extends App {
   assert(Foo[Int] == 0)

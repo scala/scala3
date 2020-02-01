@@ -1,2 +1,2 @@
-inline def foo: String = bar(given 4)
+inline def foo: String = bar(using 4)
 private def bar: Int ?=> String = "baz"

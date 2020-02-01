@@ -15,7 +15,7 @@ class LowPriorityImplicits {
 }
 
 object NormalImplicits extends LowPriorityImplicits {
-  given t2[T](given Arg[T]) as E[T]("norm")
+  given t2[T](using Arg[T]) as E[T]("norm")
 }
 
 def test1 = {
@@ -38,8 +38,8 @@ object Priority {
 }
 
 object Impl2 {
-  given t1[T](given Priority.Low) as E[T]("low")
-  given t2[T](given Priority.High)(given Arg[T]) as E[T]("norm")
+  given t1[T](using Priority.Low) as E[T]("low")
+  given t2[T](using Priority.High)(using Arg[T]) as E[T]("norm")
 }
 
 def test2 = {
@@ -103,11 +103,11 @@ def test3 = {
 object Impl4 {
   given t1 as E[String]("string")
 
-  given t2[T](given Arg[T]) as E[T]("generic")
+  given t2[T](using Arg[T]) as E[T]("generic")
 }
 
 object fallback4 {
-  def withFallback[T](given ev: E[T] = new E[T]("fallback")): E[T] = ev
+  def withFallback[T](using ev: E[T] = new E[T]("fallback")): E[T] = ev
 }
 
 def test4 = {
@@ -134,7 +134,7 @@ object HigherPriority {
 }
 
 object fallback5 {
-  given [T](given ev: E[T] = new E[T]("fallback")) as (E[T] & HigherPriority.Type) = HigherPriority.inject(ev)
+  given [T](using ev: E[T] = new E[T]("fallback")) as (E[T] & HigherPriority.Type) = HigherPriority.inject(ev)
 }
 
 def test5 = {

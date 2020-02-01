@@ -13,16 +13,16 @@ object E {
     def apply(x: Expr[E[T]]) (using QuoteContext): Option[E[T]] = (x match {
       case '{ I(${Const(n)}) } => Some(I(n))
       case '{ D(${Const(n)}) } => Some(D(n))
-      case '{ Plus[Int](${Value(x)}, ${Value(y)})(given $op) } => Some(Plus(x, y)(given Plus2.IPlus))
-      case '{ Plus[Double](${Value(x)}, ${Value(y)})(given $op) } => Some(Plus(x, y)(given Plus2.DPlus))
-      case '{ Times[Int](${Value(x)}, ${Value(y)})(given $op) } => Some(Times(x, y)(given Times2.ITimes))
-      case '{ Times[Double](${Value(x)}, ${Value(y)})(given $op) } => Some(Times(x, y)(given Times2.DTimes))
+      case '{ Plus[Int](${Value(x)}, ${Value(y)})(using $op) } => Some(Plus(x, y)(using Plus2.IPlus))
+      case '{ Plus[Double](${Value(x)}, ${Value(y)})(using $op) } => Some(Plus(x, y)(using Plus2.DPlus))
+      case '{ Times[Int](${Value(x)}, ${Value(y)})(using $op) } => Some(Times(x, y)(using Times2.ITimes))
+      case '{ Times[Double](${Value(x)}, ${Value(y)})(using $op) } => Some(Times(x, y)(using Times2.DTimes))
       case _ => None
     }).asInstanceOf[Option[E[T]]]
   }
 
   object Value {
-    def unapply[T, U >: T](expr: Expr[T])(given ValueOfExpr[U], QuoteContext): Option[U] = expr.getValue
+    def unapply[T, U >: T](expr: Expr[T])(using ValueOfExpr[U], QuoteContext): Option[U] = expr.getValue
   }
 
 }

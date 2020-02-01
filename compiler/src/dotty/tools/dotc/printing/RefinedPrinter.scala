@@ -244,7 +244,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ => toTextGlobal(args, ", ")
         }
         "[applied to ("
-        ~ keywordText("given ").provided(tp.isContextualMethod)
+        ~ keywordText("using ").provided(tp.isContextualMethod)
         ~ keywordText("erased ").provided(tp.isErasedMethod)
         ~ argsText
         ~ ") returning "

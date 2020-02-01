@@ -1,5 +1,5 @@
 object Foo {
-  type X = (given) => Int // error: an identifier expected, but ')' found
+  type X = (using ) => Int // error: an identifier expected, but ')' found
   def ff: X = () // error: found: Unit, expected: Int
 
   type Y = (erased) => Int // error: empty function may not be erased
