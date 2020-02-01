@@ -117,9 +117,10 @@ trait CompilerInterface {
 
   def settings: Settings
 
-  //
-  // QUOTE UNPICKLING
-  //
+
+  //////////////////////
+  // QUOTE UNPICKLING //
+  //////////////////////
 
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `args`
@@ -131,9 +132,10 @@ trait CompilerInterface {
    */
   def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[_]
 
-  //
-  // CONTEXT
-  //
+
+  /////////////
+  // CONTEXT //
+  /////////////
 
   /** Compilation context */
   type Context <: AnyRef
@@ -160,9 +162,10 @@ trait CompilerInterface {
   /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
   def Context_requiredMethod(self: Context)(path: String): Symbol
 
-  //
-  // REPORTING
-  //
+
+  ///////////////
+  // REPORTING //
+  ///////////////
 
   /** Report a compilation error with the given message at the given position */
   def error(msg: => String, pos: Position)(given ctx: Context): Unit
@@ -176,18 +179,20 @@ trait CompilerInterface {
   /** Report a compilation warning with the given message at the given position range */
   def warning(msg: => String, source: SourceFile, start: Int, end: Int)(given ctx: Context): Unit
 
-  //
-  // Settings
-  //
+
+  //////////////
+  // Settings //
+  //////////////
 
   /** Settings */
   type Settings <: AnyRef
 
   def Settings_color(self: Settings): Boolean
 
-  //
-  // TREES
-  //
+
+  /////////////
+  //  TREES  //
+  /////////////
 
   /** Tree representing code written in the source */
   type Tree <: AnyRef
@@ -1062,9 +1067,10 @@ trait CompilerInterface {
   def TypeLambda_param(self: TypeLambda, idx: Int)(given ctx: Context): Type
   def TypeLambda_resType(self: TypeLambda)(given ctx: Context): Type
 
-  //
-  // IMPORT SELECTORS
-  //
+
+  //////////////////////
+  // IMPORT SELECTORS //
+  //////////////////////
 
   /** Import selectors:
    *  * SimpleSelector: `.bar` in `import foo.bar`
@@ -1092,9 +1098,10 @@ trait CompilerInterface {
 
   def SimpleSelector_omitted(self: OmitSelector)(given ctx: Context): Id
 
-  //
-  // IDENTIFIERS
-  //
+
+  /////////////////
+  // IDENTIFIERS //
+  /////////////////
 
   /** Untyped identifier */
   type Id <: AnyRef
@@ -1105,9 +1112,10 @@ trait CompilerInterface {
   /** Name of the identifier */
   def Id_name(self: Id)(given ctx: Context): String
 
-  //
-  // SIGNATURES
-  //
+
+  ////////////////
+  // SIGNATURES //
+  ////////////////
 
   type Signature <: AnyRef
 
@@ -1115,9 +1123,10 @@ trait CompilerInterface {
 
   def Signature_resultSig(self: Signature): String
 
-  //
-  // POSITIONS
-  //
+
+  ///////////////
+  // POSITIONS //
+  ///////////////
 
   /** Position in a source file */
   type Position <: AnyRef
@@ -1149,9 +1158,9 @@ trait CompilerInterface {
   /** Source code within the position */
   def Position_sourceCode(self: Position): String
 
-  //
-  // SOURCE FILE
-  //
+  /////////////////
+  // SOURCE FILE //
+  /////////////////
 
   /** Scala source file */
   type SourceFile <: AnyRef
@@ -1162,9 +1171,10 @@ trait CompilerInterface {
   /** Content of a source file */
   def SourceFile_content(self: SourceFile): String
 
-  //
-  // COMMENTS
-  //
+
+  //////////////
+  // COMMENTS //
+  //////////////
 
   /** Comment */
   type Comment <: AnyRef
@@ -1173,9 +1183,10 @@ trait CompilerInterface {
   def Comment_expanded(self: Comment): Option[String]
   def Comment_usecases(self: Comment): List[(String, Option[DefDef])]
 
-  //
-  // CONSTANTS
-  //
+
+  ///////////////
+  // CONSTANTS //
+  ///////////////
 
   /** Constant value represented as the constant itself */
   type Constant <: AnyRef
@@ -1188,9 +1199,10 @@ trait CompilerInterface {
   def Constant_apply(x: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type): Constant
   def Constant_ClassTag_apply(x: Type): Constant
 
-  //
-  // SYMBOLS
-  //
+
+  /////////////
+  // SYMBOLS //
+  /////////////
 
   /** Symbol of a definition.
    *  Then can be compared with == to know if the definition is the same.
@@ -1311,9 +1323,10 @@ trait CompilerInterface {
 
   def Symbol_noSymbol(given ctx: Context): Symbol
 
-  //
-  // FLAGS
-  //
+
+  ///////////
+  // FLAGS //
+  ///////////
 
   /** FlagSet of a Symbol */
   type Flags
@@ -1363,9 +1376,10 @@ trait CompilerInterface {
   def Flags_PrivateLocal: Flags
   def Flags_Package: Flags
 
-  //
-  // QUOTED SEAL/UNSEAL
-  //
+
+  ////////////////////////
+  // QUOTED SEAL/UNSEAL //
+  ////////////////////////
 
   /** View this expression `quoted.Expr[_]` as a `Term` */
   def QuotedExpr_unseal(self: scala.quoted.Expr[_])(given ctx: Context): Term
@@ -1383,9 +1397,10 @@ trait CompilerInterface {
   /** Convert `Type` to an `quoted.Type[_]` */
   def QuotedType_seal(self: Type)(given ctx: Context): scala.quoted.Type[_]
 
-  //
-  // DEFINITIONS
-  //
+
+  /////////////////
+  // DEFINITIONS //
+  /////////////////
 
   def Definitions_RootPackage: Symbol
   def Definitions_RootClass: Symbol
@@ -1464,9 +1479,10 @@ trait CompilerInterface {
   def Definitions_NullType: Type
   def Definitions_StringType: Type
 
-  //
-  // IMPLICITS
-  //
+
+  ///////////////
+  // IMPLICITS //
+  ///////////////
 
   type ImplicitSearchResult <: AnyRef
 

@@ -30,9 +30,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def rootPosition: util.SourcePosition =
     tastyreflect.MacroExpansion.position.getOrElse(SourcePosition(rootContext.source, Spans.NoSpan))
 
-  //
-  // QUOTE UNPICKLING
-  //
+
+  //////////////////////
+  // QUOTE UNPICKLING //
+  //////////////////////
 
   def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): scala.quoted.Expr[?] =
     new TastyTreeExpr(PickledQuotes.unpickleExpr(repr, args), compilerId)
@@ -40,9 +41,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[?] =
     new TreeType(PickledQuotes.unpickleType(repr, args), compilerId)
 
-  //
-  // CONTEXT
-  //
+
+  /////////////
+  // CONTEXT //
+  /////////////
 
   type Context = core.Contexts.Context
 
@@ -64,9 +66,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Context_requiredModule(self: Context)(path: String): Symbol = self.requiredModule(path)
   def Context_requiredMethod(self: Context)(path: String): Symbol = self.requiredMethod(path)
 
-  //
-  // REPORTING
-  //
+
+  ///////////////
+  // REPORTING //
+  ///////////////
 
   def error(msg: => String, pos: Position)(given ctx: Context): Unit =
     ctx.error(msg, pos)
@@ -80,17 +83,19 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(given ctx: Context): Unit =
     ctx.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
 
-  //
-  // Settings
-  //
+
+  //////////////
+  // Settings //
+  //////////////
 
   type Settings = config.ScalaSettings
 
   def Settings_color(self: Settings): Boolean = self.color.value(rootContext) == "always"
 
-  //
-  // TREES
-  //
+
+  ///////////
+  // TREES //
+  ///////////
 
   type Tree = tpd.Tree
 
@@ -1094,9 +1099,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Tree_Alternatives_module_copy(original: Tree)(patterns: List[Tree])(given Context): Alternatives =
     tpd.cpy.Alternative(original)(patterns)
 
-  //
-  // TYPES
-  //
+
+  /////////////
+  //  TYPES  //
+  /////////////
 
   type TypeOrBounds = Types.Type
 
@@ -1479,9 +1485,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     self.newParamRef(idx)
   def TypeLambda_resType(self: TypeLambda)(given Context): Type = self.resType
 
-  //
-  // IMPORT SELECTORS
-  //
+
+  //////////////////////
+  // IMPORT SELECTORS //
+  //////////////////////
 
   type ImportSelector = untpd.ImportSelector
 
@@ -1527,9 +1534,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def SimpleSelector_omitted(self: OmitSelector)(given Context): Id =
     self.imported
 
-  //
-  // IDENTIFIERS
-  //
+
+  /////////////////
+  // IDENTIFIERS //
+  /////////////////
 
   type Id = untpd.Ident
 
@@ -1537,9 +1545,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Id_name(self: Id)(given Context): String = self.name.toString
 
-  //
-  // SIGNATURES
-  //
+
+  ////////////////
+  // SIGNATURES //
+  ////////////////
 
   type Signature = core.Signature
 
@@ -1554,9 +1563,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Signature_resultSig(self: Signature): String =
     self.resSig.toString
 
-  //
-  // POSITIONS
-  //
+
+  ///////////////
+  // POSITIONS //
+  ///////////////
 
   type Position = util.SourcePosition
 
@@ -1579,9 +1589,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Position_sourceCode(self: Position): String =
     new String(self.source.content(), self.start, self.end - self.start)
 
-  //
-  // SOURCE FILES
-  //
+
+  //////////////////
+  // SOURCE FILES //
+  //////////////////
 
   type SourceFile = util.SourceFile
 
@@ -1589,9 +1600,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def SourceFile_content(self: SourceFile): String = new String(self.content())
 
-  //
-  // COMMENTS
-  //
+
+  //////////////
+  // COMMENTS //
+  //////////////
 
   type Comment = core.Comments.Comment
 
@@ -1599,9 +1611,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Comment_expanded(self: Comment): Option[String] = self.expanded
   def Comment_usecases(self: Comment): List[(String, Option[DefDef])] = self.usecases.map { uc => (uc.code, uc.tpdCode) }
 
-  //
-  // CONSTANTS
-  //
+
+  ///////////////
+  // CONSTANTS //
+  ///////////////
 
   type Constant = Constants.Constant
 
@@ -1618,9 +1631,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Constant_ClassTag_apply(x: Type): Constant = Constants.Constant(x)
 
-  //
-  // SYMBOLS
-  //
+
+  /////////////
+  // SYMBOLS //
+  /////////////
 
   type Symbol = core.Symbols.Symbol
 
@@ -1768,9 +1782,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Symbol_noSymbol(given ctx: Context): Symbol = core.Symbols.NoSymbol
 
-  //
-  // FLAGS
-  //
+
+  ///////////
+  // FLAGS //
+  ///////////
 
   type Flags = core.Flags.FlagSet
 
@@ -1820,9 +1835,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Flags_PrivateLocal: Flags = core.Flags.PrivateLocal
   def Flags_Package: Flags = core.Flags.Package
 
-  //
-  // QUOTED SEAL/UNSEAL
-  //
+
+  ////////////////////////
+  // QUOTED SEAL/UNSEAL //
+  ////////////////////////
 
   /** View this expression `quoted.Expr[?]` as a `Term` */
   def QuotedExpr_unseal(self: scala.quoted.Expr[?])(given Context): Term =
@@ -1858,9 +1874,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     new TreeType(tpd.TypeTree(self).withSpan(dummySpan), compilerId)
   }
 
-  //
-  // DEFINITIONS
-  //
+  /////////////////
+  // DEFINITIONS //
+  /////////////////
 
   // Symbols
 
@@ -1937,9 +1953,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Definitions_NullType: Type = defn.NullType
   def Definitions_StringType: Type = defn.StringType
 
-  //
-  // IMPLICITS
-  //
+
+  ///////////////
+  // IMPLICITS //
+  ///////////////
 
   type ImplicitSearchResult = Tree
 
@@ -2033,9 +2050,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     seq(argVals, rec(fn))
   }
 
-  //
-  // HELPERS
-  //
+  /////////////
+  // HELPERS //
+  /////////////
 
   private def optional[T <: Trees.Tree[?]](tree: T): Option[tree.type] =
     if (tree.isEmpty) None else Some(tree)

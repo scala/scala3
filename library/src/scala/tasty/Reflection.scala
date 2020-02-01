@@ -121,163 +121,163 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   /** Tree representing code written in the source */
   type Tree = internal.Tree
 
-    /** Tree representing a pacakage clause in the source code */
-    type PackageClause = internal.PackageClause
+  /** Tree representing a pacakage clause in the source code */
+  type PackageClause = internal.PackageClause
 
-    /** Tree representing a statement in the source code */
-    type Statement = internal.Statement
+  /** Tree representing a statement in the source code */
+  type Statement = internal.Statement
 
-      /** Tree representing an import in the source code */
-      type Import = internal.Import
+  /** Tree representing an import in the source code */
+  type Import = internal.Import
 
-      /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
-      type Definition = internal.Definition
+  /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
+  type Definition = internal.Definition
 
-        /** Tree representing a package definition. This includes definitions in all source files */
-        type PackageDef = internal.PackageDef
+  /** Tree representing a package definition. This includes definitions in all source files */
+  type PackageDef = internal.PackageDef
 
-        /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
-        type ClassDef = internal.ClassDef
+  /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
+  type ClassDef = internal.ClassDef
 
-        /** Tree representing a type (paramter or member) definition in the source code */
-        type TypeDef = internal.TypeDef
+  /** Tree representing a type (paramter or member) definition in the source code */
+  type TypeDef = internal.TypeDef
 
-        /** Tree representing a method definition in the source code */
-        type DefDef = internal.DefDef
+  /** Tree representing a method definition in the source code */
+  type DefDef = internal.DefDef
 
-        /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
-        type ValDef = internal.ValDef
+  /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
+  type ValDef = internal.ValDef
 
-      /** Tree representing an expression in the source code */
-      type Term = internal.Term
+  /** Tree representing an expression in the source code */
+  type Term = internal.Term
 
-        /** Tree representing a reference to definition */
-        type Ref = internal.Ref
+  /** Tree representing a reference to definition */
+  type Ref = internal.Ref
 
-          /** Tree representing a reference to definition with a given name */
-          type Ident = internal.Ident
+  /** Tree representing a reference to definition with a given name */
+  type Ident = internal.Ident
 
-          /** Tree representing a selection of definition with a given name on a given prefix */
-          type Select = internal.Select
+  /** Tree representing a selection of definition with a given name on a given prefix */
+  type Select = internal.Select
 
-        /** Tree representing a literal value in the source code */
-        type Literal = internal.Literal
+  /** Tree representing a literal value in the source code */
+  type Literal = internal.Literal
 
-        /** Tree representing `this` in the source code */
-        type This = internal.This
+  /** Tree representing `this` in the source code */
+  type This = internal.This
 
-        /** Tree representing `new` in the source code */
-        type New = internal.New
+  /** Tree representing `new` in the source code */
+  type New = internal.New
 
-        /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
-        type NamedArg = internal.NamedArg
+  /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
+  type NamedArg = internal.NamedArg
 
-        /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s  */
-        type Apply = internal.Apply
+  /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s  */
+  type Apply = internal.Apply
 
-        /** Tree an application of type arguments */
-        type TypeApply = internal.TypeApply
+  /** Tree an application of type arguments */
+  type TypeApply = internal.TypeApply
 
-        /** Tree representing `super` in the source code */
-        type Super = internal.Super
+  /** Tree representing `super` in the source code */
+  type Super = internal.Super
 
-        /** Tree representing a type ascription `x: T` in the source code */
-        type Typed = internal.Typed
+  /** Tree representing a type ascription `x: T` in the source code */
+  type Typed = internal.Typed
 
-        /** Tree representing an assignment `x = y` in the source code */
-        type Assign = internal.Assign
+  /** Tree representing an assignment `x = y` in the source code */
+  type Assign = internal.Assign
 
-        /** Tree representing a block `{ ... }` in the source code */
-        type Block = internal.Block
+  /** Tree representing a block `{ ... }` in the source code */
+  type Block = internal.Block
 
-        /** A lambda `(...) => ...` in the source code is represented as
-          *  a local method and a closure:
-          *
-          *  {
-          *    def m(...) = ...
-          *    closure(m)
-          *  }
-          *
-          */
-        type Closure = internal.Closure
+  /** A lambda `(...) => ...` in the source code is represented as
+   *  a local method and a closure:
+   *
+   *  {
+   *    def m(...) = ...
+   *    closure(m)
+   *  }
+   *
+   */
+  type Closure = internal.Closure
 
-        /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
-        type If = internal.If
+  /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
+  type If = internal.If
 
-        /** Tree representing a pattern match `x match  { ... }` in the source code */
-        type Match = internal.Match
+  /** Tree representing a pattern match `x match  { ... }` in the source code */
+  type Match = internal.Match
 
-        /** Tree representing a pattern match `given match { ... }` in the source code */  // TODO: drop
-        type GivenMatch = internal.GivenMatch
+  /** Tree representing a pattern match `given match { ... }` in the source code */  // TODO: drop
+  type GivenMatch = internal.GivenMatch
 
-        /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
-        type Try = internal.Try
+  /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
+  type Try = internal.Try
 
-        /** Tree representing a `return` in the source code */
-        type Return = internal.Return
+  /** Tree representing a `return` in the source code */
+  type Return = internal.Return
 
-        /** Tree representing a variable argument list in the source code */
-        type Repeated = internal.Repeated
+  /** Tree representing a variable argument list in the source code */
+  type Repeated = internal.Repeated
 
-        /** Tree representing the scope of an inlined tree */
-        type Inlined = internal.Inlined
+  /** Tree representing the scope of an inlined tree */
+  type Inlined = internal.Inlined
 
-        /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
-        type SelectOuter = internal.SelectOuter
+  /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
+  type SelectOuter = internal.SelectOuter
 
-        /** Tree representing a while loop */
-        type While = internal.While
+  /** Tree representing a while loop */
+  type While = internal.While
 
-      /** Type tree representing a type written in the source */
-      type TypeTree = internal.TypeTree
+  /** Type tree representing a type written in the source */
+  type TypeTree = internal.TypeTree
 
-        /** Type tree representing an inferred type */
-        type Inferred = internal.Inferred
+  /** Type tree representing an inferred type */
+  type Inferred = internal.Inferred
 
-        /** Type tree representing a reference to definition with a given name */
-        type TypeIdent = internal.TypeIdent
+  /** Type tree representing a reference to definition with a given name */
+  type TypeIdent = internal.TypeIdent
 
-        /** Type tree representing a selection of definition with a given name on a given term prefix */
-        type TypeSelect = internal.TypeSelect
+  /** Type tree representing a selection of definition with a given name on a given term prefix */
+  type TypeSelect = internal.TypeSelect
 
-        /** Type tree representing a selection of definition with a given name on a given type prefix */
-        type Projection = internal.Projection
+  /** Type tree representing a selection of definition with a given name on a given type prefix */
+  type Projection = internal.Projection
 
-        /** Type tree representing a singleton type */
-        type Singleton = internal.Singleton
+  /** Type tree representing a singleton type */
+  type Singleton = internal.Singleton
 
-        /** Type tree representing a type refinement */
-        type Refined = internal.Refined
+  /** Type tree representing a type refinement */
+  type Refined = internal.Refined
 
-        /** Type tree representing a type application */
-        type Applied = internal.Applied
+  /** Type tree representing a type application */
+  type Applied = internal.Applied
 
-        /** Type tree representing an annotated type */
-        type Annotated = internal.Annotated
+  /** Type tree representing an annotated type */
+  type Annotated = internal.Annotated
 
-        /** Type tree representing a type match */
-        type MatchTypeTree = internal.MatchTypeTree
+  /** Type tree representing a type match */
+  type MatchTypeTree = internal.MatchTypeTree
 
-        /** Type tree representing a by name parameter */
-        type ByName = internal.ByName
+  /** Type tree representing a by name parameter */
+  type ByName = internal.ByName
 
-        /** Type tree representing a lambda abstraction type */
-        type LambdaTypeTree = internal.LambdaTypeTree
+  /** Type tree representing a lambda abstraction type */
+  type LambdaTypeTree = internal.LambdaTypeTree
 
-        /** Type tree representing a type binding */
-        type TypeBind = internal.TypeBind
+  /** Type tree representing a type binding */
+  type TypeBind = internal.TypeBind
 
-        /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
-        type TypeBlock = internal.TypeBlock
+  /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
+  type TypeBlock = internal.TypeBlock
 
-      /** Type tree representing a type bound written in the source */
-      type TypeBoundsTree = internal.TypeBoundsTree
+  /** Type tree representing a type bound written in the source */
+  type TypeBoundsTree = internal.TypeBoundsTree
 
-      /** Type tree representing wildcard type bounds written in the source.
-        *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
-        *  represents a type but has `TypeBound`a inside.
-        */
-      type WildcardTypeTree = internal.WildcardTypeTree
+  /** Type tree representing wildcard type bounds written in the source.
+   *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
+   *  represents a type but has `TypeBound`a inside.
+   */
+  type WildcardTypeTree = internal.WildcardTypeTree
 
   /** Branch of a pattern match or catch clause */
   type CaseDef = internal.CaseDef
@@ -297,80 +297,80 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   /** Type or bounds */
   type TypeOrBounds = internal.TypeOrBounds
 
-    /** NoPrefix for a type selection */
-    type NoPrefix = internal.NoPrefix
+  /** NoPrefix for a type selection */
+  type NoPrefix = internal.NoPrefix
 
-    /** Type bounds */
-    type TypeBounds = internal.TypeBounds
+  /** Type bounds */
+  type TypeBounds = internal.TypeBounds
 
-    /** A type */
-    type Type = internal.Type
+  /** A type */
+  type Type = internal.Type
 
-      /** A singleton type representing a known constant value */
-      type ConstantType = internal.ConstantType
+  /** A singleton type representing a known constant value */
+  type ConstantType = internal.ConstantType
 
-      /** Type of a reference to a term symbol */
-      type TermRef = internal.TermRef
+  /** Type of a reference to a term symbol */
+  type TermRef = internal.TermRef
 
-      /** Type of a reference to a type symbol */
-      type TypeRef = internal.TypeRef
+  /** Type of a reference to a type symbol */
+  type TypeRef = internal.TypeRef
 
-      /** Type of a `super` reference */
-      type SuperType = internal.SuperType
+  /** Type of a `super` reference */
+  type SuperType = internal.SuperType
 
-      /** A type with a type refinement `T { type U }` */
-      type Refinement = internal.Refinement
+  /** A type with a type refinement `T { type U }` */
+  type Refinement = internal.Refinement
 
-      /** A higher kinded type applied to some types `T[U]` */
-      type AppliedType = internal.AppliedType
+  /** A higher kinded type applied to some types `T[U]` */
+  type AppliedType = internal.AppliedType
 
-      /** A type with an anottation `T @foo` */
-      type AnnotatedType = internal.AnnotatedType
+  /** A type with an anottation `T @foo` */
+  type AnnotatedType = internal.AnnotatedType
 
-      /** Intersection type `T & U` */
-      type AndType = internal.AndType
+  /** Intersection type `T & U` */
+  type AndType = internal.AndType
 
-      /** Union type `T | U` */
-      type OrType = internal.OrType
+  /** Union type `T | U` */
+  type OrType = internal.OrType
 
-      /** Type match `T match { case U => ... }` */
-      type MatchType = internal.MatchType
+  /** Type match `T match { case U => ... }` */
+  type MatchType = internal.MatchType
 
-      /** Type of a by by name parameter */
-      type ByNameType = internal.ByNameType
+  /** Type of a by by name parameter */
+  type ByNameType = internal.ByNameType
 
-      /** Type of a parameter reference */
-      type ParamRef = internal.ParamRef
+  /** Type of a parameter reference */
+  type ParamRef = internal.ParamRef
 
-      /** Type of `this` */
-      type ThisType = internal.ThisType
+  /** Type of `this` */
+  type ThisType = internal.ThisType
 
-      /** A type that is recursively defined `this` */
-      type RecursiveThis = internal.RecursiveThis
+  /** A type that is recursively defined `this` */
+  type RecursiveThis = internal.RecursiveThis
 
-      /** A type that is recursively defined */
-      type RecursiveType = internal.RecursiveType
+  /** A type that is recursively defined */
+  type RecursiveType = internal.RecursiveType
 
-      // TODO can we add the bound back without an cake?
-      // TODO is LambdaType really needed? ParamRefExtractor could be split into more precise extractors
-      /** Common abstraction for lambda types (MethodType, PolyType and TypeLambda). */
-      type LambdaType[ParamInfo /*<: TypeOrBounds*/] = internal.LambdaType[ParamInfo]
+  // TODO can we add the bound back without an cake?
+  // TODO is LambdaType really needed? ParamRefExtractor could be split into more precise extractors
+  /** Common abstraction for lambda types (MethodType, PolyType and TypeLambda). */
+  type LambdaType[ParamInfo /*<: TypeOrBounds*/] = internal.LambdaType[ParamInfo]
 
-        /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
-        type MethodType = internal.MethodType
+  /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
+  type MethodType = internal.MethodType
 
-        /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
-        type PolyType = internal.PolyType
+  /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
+  type PolyType = internal.PolyType
 
-        /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
-        type TypeLambda = internal.TypeLambda
+  /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
+  type TypeLambda = internal.TypeLambda
 
 
   /** Import selectors:
-    *   * SimpleSelector: `.bar` in `import foo.bar`
-    *   * RenameSelector: `.{bar => baz}` in `import foo.{bar => baz}`
-    *   * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
-    */
+   *   * SimpleSelector: `.bar` in `import foo.bar`
+   *   * RenameSelector: `.{bar => baz}` in `import foo.{bar => baz}`
+   *   * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
+   */
   type ImportSelector = internal.ImportSelector
   type SimpleSelector = internal.SimpleSelector
   type RenameSelector = internal.RenameSelector
@@ -395,8 +395,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   type Constant = internal.Constant
 
   /** Symbol of a definition.
-    *  Then can be compared with == to know if the definition is the same.
-    */
+   *  Then can be compared with == to know if the definition is the same.
+   */
   type Symbol = internal.Symbol
 
   /** FlagSet of a Symbol */
@@ -675,19 +675,19 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   object Ref {
 
     /** Create a reference tree from a symbol
-      *
-      *  If `sym` refers to a class member `foo` in class `C`,
-      *  returns a tree representing `C.this.foo`.
-      *
-      *  If `sym` refers to a local definition `foo`, returns
-      *  a tree representing `foo`.
-      *
-      *  @note In both cases, the constructed tree should only
-      *  be spliced into the places where such accesses make sense.
-      *  For example, it is incorrect to have `C.this.foo` outside
-      *  the class body of `C`, or have `foo` outside the lexical
-      *  scope for the definition of `foo`.
-      */
+     *
+     *  If `sym` refers to a class member `foo` in class `C`,
+     *  returns a tree representing `C.this.foo`.
+     *
+     *  If `sym` refers to a local definition `foo`, returns
+     *  a tree representing `foo`.
+     *
+     *  @note In both cases, the constructed tree should only
+     *  be spliced into the places where such accesses make sense.
+     *  For example, it is incorrect to have `C.this.foo` outside
+     *  the class body of `C`, or have `foo` outside the lexical
+     *  scope for the definition of `foo`.
+     */
     def apply(sym: Symbol)(given ctx: Context): Ref =
       internal.Ref_apply(sym)
   }
@@ -1804,7 +1804,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   /**
    * An accessor for `scala.internal.MatchCase[_,_]`, the representation of a `MatchType` case.
-    */
+   */
   def MatchCaseType(given Context): Type = {
     import scala.internal.MatchCase
     Type(classOf[MatchCase[_,_]])
@@ -2028,7 +2028,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
      *  this symbol to the DefDef constructor.
      *
      *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
-     *        direct or indirect children of the reflection context's owner. */
+     *        direct or indirect children of the reflection context's owner.
+     */
     def newMethod(parent: Symbol, name: String, tpe: Type)(given ctx: Context): Symbol =
       newMethod(parent, name, tpe, Flags.EmptyFlags, noSymbol)
 
@@ -2036,7 +2037,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
      *
      *  @param flags extra flags to with which the symbol should be constructed
      *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
-     * */
+     */
     def newMethod(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol)(given ctx: Context): Symbol =
       internal.Symbol_newMethod(parent, name, flags, tpe, privateWithin)
 
@@ -2194,12 +2195,12 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   extension signatureOps on (sig: Signature) {
 
     /** The signatures of the method parameters.
-      *
-      *  Each *type parameter section* is represented by a single Int corresponding
-      *  to the number of type parameters in the section.
-      *  Each *term parameter* is represented by a String corresponding to the fully qualified
-      *  name of the parameter type.
-      */
+     *
+     *  Each *type parameter section* is represented by a single Int corresponding
+     *  to the number of type parameters in the section.
+     *  Each *term parameter* is represented by a String corresponding to the fully qualified
+     *  name of the parameter type.
+     */
     def paramSigs: List[String | Int] = internal.Signature_paramSigs(sig)
 
     /** The signature of the result type */
@@ -2217,8 +2218,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   object defn extends StandardSymbols with StandardTypes
 
   /** Defines standard symbols (and types via its base trait).
-    *  @group API
-    */
+   *  @group API
+   */
   trait StandardSymbols {
 
     /** The module symbol of root package `_root_`. */
@@ -2315,8 +2316,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def Array_update: Symbol = internal.Definitions_Array_update
 
     /** A dummy class symbol that is used to indicate repeated parameters
-      *  compiled by the Scala compiler.
-      */
+     *  compiled by the Scala compiler.
+     */
     def RepeatedParamClass: Symbol = internal.Definitions_RepeatedParamClass
 
     /** The class symbol of class `scala.Option`. */
@@ -2332,23 +2333,23 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def ProductClass: Symbol = internal.Definitions_ProductClass
 
     /** Function-like object that maps arity to symbols for classes `scala.FunctionX`.
-      *   -  0th element is `Function0`
-      *   -  1st element is `Function1`
-      *   -  ...
-      *   -  Nth element is `FunctionN`
-      */
+     *   -  0th element is `Function0`
+     *   -  1st element is `Function1`
+     *   -  ...
+     *   -  Nth element is `FunctionN`
+     */
     def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol =
       internal.Definitions_FunctionClass(arity, isImplicit, isErased)
 
     /** Function-like object that maps arity to symbols for classes `scala.TupleX`.
-      *   -  0th element is `NoSymbol`
-      *   -  1st element is `NoSymbol`
-      *   -  2st element is `Tuple2`
-      *   -  ...
-      *   - 22nd element is `Tuple22`
-      *   - 23nd element is `NoSymbol`  // TODO update when we will have more tuples
-      *   - ...
-      */
+     *   -  0th element is `NoSymbol`
+     *   -  1st element is `NoSymbol`
+     *   -  2st element is `Tuple2`
+     *   -  ...
+     *   - 22nd element is `Tuple22`
+     *   - 23nd element is `NoSymbol`  // TODO update when we will have more tuples
+     *   - ...
+     */
     def TupleClass(arity: Int): Symbol =
       internal.Definitions_TupleClass(arity)
 
@@ -2357,28 +2358,28 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       internal.Definitions_isTupleClass(sym)
 
     /** Contains Scala primitive value classes:
-      *   - Byte
-      *   - Short
-      *   - Int
-      *   - Long
-      *   - Float
-      *   - Double
-      *   - Char
-      *   - Boolean
-      *   - Unit
-      */
+     *   - Byte
+     *   - Short
+     *   - Int
+     *   - Long
+     *   - Float
+     *   - Double
+     *   - Char
+     *   - Boolean
+     *   - Unit
+     */
     def ScalaPrimitiveValueClasses: List[Symbol] =
       UnitClass :: BooleanClass :: ScalaNumericValueClasses
 
     /** Contains Scala numeric value classes:
-      *   - Byte
-      *   - Short
-      *   - Int
-      *   - Long
-      *   - Float
-      *   - Double
-      *   - Char
-      */
+     *   - Byte
+     *   - Short
+     *   - Int
+     *   - Long
+     *   - Float
+     *   - Double
+     *   - Char
+     */
     def ScalaNumericValueClasses: List[Symbol] =
       ByteClass :: ShortClass :: IntClass :: LongClass :: FloatClass :: DoubleClass :: CharClass :: Nil
 
@@ -2439,12 +2440,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
 
   ///////////////
-  // POSITIONS //
+  //   FLAGS   //
   ///////////////
-
-  // TODO: Should this be in the QuoteContext?
-  /** Root position of this tasty context. For macros it corresponds to the expansion site. */
-  def rootPosition: Position = internal.rootPosition
 
   extension FlagsOps on (self: Flags) {
 
@@ -2571,6 +2568,11 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   ///////////////
   // POSITIONS //
   ///////////////
+
+  // TODO: Should this be in the QuoteContext?
+  // TODO: rename to enclosingPosition (as in scala.reflect)
+  /** Root position of this tasty context. For macros it corresponds to the expansion site. */
+  def rootPosition: Position = internal.rootPosition
 
   extension positionOps on (pos: Position) {
 
