@@ -3847,7 +3847,7 @@ object Parsers {
       def checkLegal(tree: Tree): List[Tree] =
         val problem = tree match
           case tree: MemberDef if !(tree.mods.flags & ModifierFlags).isEmpty =>
-            i"refinement cannot be ${(tree.mods.flags & ModifierFlags).flagsString}"
+            i"refinement cannot be ${(tree.mods.flags & ModifierFlags).flagStrings().mkString("`", "`, `", "`")}"
           case tree: ValOrDefDef =>
             if tree.rhs.isEmpty then ""
             else "refinement in cannot have a right-hand side"
