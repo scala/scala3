@@ -28,7 +28,7 @@ package scalaShadowing
  *
  *  and, for dotty:
  *
- *   - [[Scala2              `Scala2`]               backwards compatibility mode for Scala2
+ *   - [[Scala2              `Scala2`]]              backwards compatibility mode for Scala2
  *   - [[noAtoTupling        `noAutoTupling`]]       disable auto-tupling
  *   - [[strictEquality      `strictEquality`]]      enable strick equality
  *
