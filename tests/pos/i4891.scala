@@ -1,5 +1,5 @@
 import scala.quoted._
 
 object Test {
-  def foo with QuoteContext : Expr[Option[String]] = '{None}
+  def foo(using QuoteContext): Expr[Option[String]] = '{None}
 }

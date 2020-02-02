@@ -21,14 +21,14 @@ Given instances can be mapped to combinations of implicit objects, classes and i
     ```
  2. Parameterized givens are mapped to combinations of classes and implicit methods. E.g.,
     ```scala
-      given listOrd[T] with (ord: Ord[T]) as Ord[List[T]] { ... }
+      given listOrd[T](using ord: Ord[T]) as Ord[List[T]] { ... }
     ```
     maps to
     ```scala
     class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
     final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
     ```
- 3. Alias givens map to implicit methods or implicit lazy vals. If an alias has neither type nor implicit parameters,
+ 3. Alias givens map to implicit methods or implicit lazy vals. If an alias has neither type nor context parameters,
     it is treated as a lazy val, unless the right hand side is a simple reference, in which case we can use a forwarder to
     that reference without caching it.
 
@@ -37,7 +37,7 @@ Examples:
 given global as ExecutionContext = new ForkJoinContext()
 
 val ctx: Context
-given as Context = ctx
+given Context = ctx
 ```
 would map to
 ```scala
@@ -82,15 +82,15 @@ gets the synthesized name `extension_second_List_T`.
 
 Given clauses correspond largely to Scala-2's implicit parameter clauses. E.g.
 ```scala
-def max[T](x: T, y: T) with (ord: Ord[T]) : T
+def max[T](x: T, y: T)(using ord: Ord[T]): T
 ```
 would be written
 ```scala
 def max[T](x: T, y: T)(implicit ord: Ord[T]): T
 ```
 in Scala 2. The main difference concerns applications of such parameters.
-Explicit arguments to parameters of with clauses _must_ be written using `.with(...)`,
-mirroring the definition syntax. E.g, `max(2, 3).with(IntOrd)`.
+Explicit arguments to parameters of using clauses _must_ be written using `(using ...)`,
+mirroring the definition syntax. E.g, `max(2, 3)(using IntOrd)`.
 Scala 2 uses normal applications `max(2, 3)(IntOrd)` instead. The Scala 2 syntax has some inherent ambiguities and restrictions which are overcome by the new syntax. For instance, multiple implicit parameter lists are not available in the old syntax, even though they can be simulated using auxiliary objects in the "Aux" pattern.
 
 The `summon` method corresponds to `implicitly` in Scala 2.
@@ -103,8 +103,8 @@ asked for.
 
 Context bounds are the same in both language versions. They expand to the respective forms of implicit parameters.
 
-**Note:** To ease migration, context bounds in Dotty map for a limited time to old-style implicit parameters for which arguments can be passed either followin `.with(...)` or
-with a normal application. Once old-style implicits are deprecated, context bounds
+**Note:** To ease migration, context bounds in Dotty map for a limited time to old-style implicit parameters for which arguments can be passed either in a using clause or
+in a normal argument list. Once old-style implicits are deprecated, context bounds
 will map to with clauses instead.
 
 ### Extension Methods
@@ -154,7 +154,7 @@ given stringToToken as Conversion[String, Token] = KeyWord(_)
 
 ### Implicit Classes
 
-Implicit classes in Scala 2 are often used to define extension methods, which are directly supported in Dotty. Other uses of implicit classes can be simulated by a pair of a regular class and a given as `Conversion` type.
+Implicit classes in Scala 2 are often used to define extension methods, which are directly supported in Dotty. Other uses of implicit classes can be simulated by a pair of a regular class and a given `Conversion` instance.
 
 ### Implicit Values
 
@@ -166,7 +166,7 @@ lazy implicit val pos: Position = tree.sourcePos
 can be expressed in Dotty as
 ```scala
 lazy val pos: Position = tree.sourcePos
-given as Position = pos
+given Position = pos
 ```
 
 ### Abstract Implicits
@@ -178,7 +178,7 @@ implicit def symDecorator: SymDecorator
 can be expressed in Dotty as
 ```scala
 def symDecorator: SymDecorator
-given as SymDecorator = symDecorator
+given SymDecorator = symDecorator
 ```
 
 ## Implementation Status and Timeline

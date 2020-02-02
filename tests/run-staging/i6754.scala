@@ -6,8 +6,8 @@ object Test {
   implicit val tbx: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = {
-    def y with QuoteContext : Expr[Unit] = '{
-      def x with QuoteContext : Expr[Unit] = '{println("bar")}
+    def y(using QuoteContext): Expr[Unit] = '{
+      def x(using QuoteContext): Expr[Unit] = '{println("bar")}
       println("foo")
       run(x)
     }

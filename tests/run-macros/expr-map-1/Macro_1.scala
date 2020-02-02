@@ -3,12 +3,12 @@ import scala.quoted.matching._
 
 inline def rewrite[T](inline x: Any): Any = ${ stringRewriter('x) }
 
-private def stringRewriter(e: Expr[Any]) with QuoteContext : Expr[Any] =
+private def stringRewriter(e: Expr[Any])(using QuoteContext): Expr[Any] =
   StringRewriter.transform(e)
 
 private object StringRewriter extends util.ExprMap {
 
-  def transform[T](e: Expr[T]) with (QuoteContext, Type[T]) : Expr[T] = e match
+  def transform[T](e: Expr[T])(using QuoteContext, Type[T]): Expr[T] = e match
     case Const(s: String) =>
       Expr(s.reverse) match
         case '{ $x: T } => x

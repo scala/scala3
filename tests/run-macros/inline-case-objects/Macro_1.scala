@@ -2,7 +2,7 @@
 import scala.quoted._
 
 object Macros {
-  def impl(expr: Expr[Any]) with QuoteContext : Expr[String] =
+  def impl(expr: Expr[Any]) (using QuoteContext): Expr[String] =
     val obj = expr match {
       case '{ None } => None
       case '{ scala.collection.immutable.Nil } => Nil

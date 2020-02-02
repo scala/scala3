@@ -5,7 +5,7 @@ object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = {
-    def res with QuoteContext = '{
+    def res(using QuoteContext) = '{
       val x: Option[Int] = Option(3)
       if (x.isInstanceOf[Some[_]]) Option(1)
       else None

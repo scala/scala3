@@ -5,7 +5,7 @@ object Macros {
 
   inline def testDefinitions(): Unit = ${testDefinitionsImpl}
 
-  def testDefinitionsImpl with (qctx: QuoteContext) : Expr[Unit] = {
+  def testDefinitionsImpl(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty.{_, given _}
 
     val buff = List.newBuilder[String]

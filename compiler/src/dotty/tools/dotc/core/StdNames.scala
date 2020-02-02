@@ -601,6 +601,7 @@ object StdNames {
     val universe: N             = "universe"
     val update: N               = "update"
     val updateDynamic: N        = "updateDynamic"
+    val using: N                = "using"
     val value: N                = "value"
     val valueOf : N             = "valueOf"
     val values: N               = "values"

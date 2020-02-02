@@ -4,7 +4,7 @@ object Foo {
 
   inline def myMacro(): Unit = ${ aMacroImplementation }
 
-  def aMacroImplementation with QuoteContext : Expr[Unit] =
+  def aMacroImplementation(using QuoteContext): Expr[Unit] =
     throw new NoClassDefFoundError()
 
 }

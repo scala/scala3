@@ -6,7 +6,7 @@ object Foo {
   inline def inspectBody(inline i: Int): String =
     ${ inspectBodyImpl('i) }
 
-  def inspectBodyImpl(x: Expr[Int]) with (qctx: QuoteContext) : Expr[String] = {
+  def inspectBodyImpl(x: Expr[Int])(using qctx: QuoteContext) : Expr[String] = {
     import qctx.tasty.{_, given _}
     x.unseal match {
       case Inlined(None, Nil, arg) => arg.symbol.tree.showExtractors

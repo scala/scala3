@@ -1,4 +1,4 @@
-def myMacroImpl(a: quoted.Expr[_])(given qctx: quoted.QuoteContext) = {
+def myMacroImpl(a: quoted.Expr[_])(using qctx: quoted.QuoteContext) = {
   import qctx.tasty.{_, given}
   def typed[A] = {
     implicit val t: quoted.Type[A] = a.unseal.tpe.widen.seal.asInstanceOf[quoted.Type[A]]

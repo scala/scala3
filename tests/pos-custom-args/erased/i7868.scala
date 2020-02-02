@@ -15,17 +15,17 @@ object Coproduct {
       def cast: Head <:< Head +: Tail = summon[Head <:< Head +: Tail]
     }
 
-    given atTail[Head, Tail, Value, NextIndex <: Int] with (atNext: At[Tail, Value, NextIndex]) : At[Head +: Tail, Value, S[NextIndex]] {
+    given atTail[Head, Tail, Value, NextIndex <: Int](using atNext: At[Tail, Value, NextIndex]) as At[Head +: Tail, Value, S[NextIndex]] {
       val cast: Value <:< Head +: Tail = atNext.cast
     }
 
-    given [A] with A as (() => A)= { () => summon[A]}
+    given [A](using A) as (() => A)= { () => summon[A]}
   }
 
-  def upCast[A, B](a: A) with (erased evidence: (A <:< B) ): B = a.asInstanceOf[B]
+  def upCast[A, B](a: A)(using erased evidence: (A <:< B) ): B = a.asInstanceOf[B]
 
-  def from[Set, Value, Index <: Int](value: Value) with (erased at: At[Set, Value, Index]) : ValueOf[Index] ?=> Coproduct[Set, Value, Index] = {
-    Coproduct[Set, Value, Index](upCast(value: Value).with(at.cast.liftCo[[X] =>> Value & X]), valueOf[Index])
+  def from[Set, Value, Index <: Int](value: Value)(using erased at: At[Set, Value, Index]) : ValueOf[Index] ?=> Coproduct[Set, Value, Index] = {
+    Coproduct[Set, Value, Index](upCast(value: Value)(using at.cast.liftCo[[X] =>> Value & X]), valueOf[Index])
   }
 
 }

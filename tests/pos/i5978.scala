@@ -10,9 +10,9 @@ package p1 {
     given TP as TokenParser[Char, Position[CharSequence]] {}
 
     def f
-      with (TokenParser[Char, Position[CharSequence]]) = ???
+      (using TokenParser[Char, Position[CharSequence]]) = ???
 
-    given FromCharToken with (T: TokenParser[Char, Position[CharSequence]])
+    given FromCharToken(using T: TokenParser[Char, Position[CharSequence]])
       : Conversion[Char, Position[CharSequence]] = ???
   }
 
@@ -85,5 +85,5 @@ package p4 {
 
   given B[X[_], Y] as TC
 
-  given C with TC as TC
+  given C(using TC) as TC
 }

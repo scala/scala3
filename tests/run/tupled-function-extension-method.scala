@@ -36,12 +36,12 @@ object Test {
   // Specialized only for arity 0 and one as auto tupling will not provide the disired effect
   def [R](e: Expr[() => R]) apply (): R = e.x()
   def [Arg, R](e: Expr[Arg => R]) apply (arg: Arg): R = e.x(arg)
-  def [Arg, R](e: Expr[Arg ?=> R]) applyGiven(arg: Arg): R = e.x.with(arg)
+  def [Arg, R](e: Expr[Arg ?=> R]) applyGiven(arg: Arg): R = e.x(using arg)
 
   // Applied to all funtions of arity 2 or more (including more than 22 parameters)
-  def [F, Args <: Tuple, R](e: Expr[F]) apply (args: Args) with (tf: TupledFunction[F, Args => R]) : R =
+  def [F, Args <: Tuple, R](e: Expr[F]) apply (args: Args)(using tf: TupledFunction[F, Args => R]): R =
     tf.tupled(e.x)(args)
-  def [F, Args <: Tuple, R](e: Expr[F]) applyGiven (args: Args) with (tf: TupledFunction[F, Args ?=> R]) : R =
-    tf.tupled(e.x).with(args)
+  def [F, Args <: Tuple, R](e: Expr[F]) applyGiven (args: Args)(using tf: TupledFunction[F, Args ?=> R]): R =
+    tf.tupled(e.x)(using args)
 
 }

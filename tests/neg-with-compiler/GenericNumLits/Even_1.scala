@@ -11,7 +11,7 @@ object Even {
     else throw FromDigits.MalformedNumber(s"$digits is odd")
   }
 
-  private def evenFromDigitsImpl(digits: Expr[String]) with (ctx: QuoteContext) : Expr[Even] = digits match {
+  private def evenFromDigitsImpl(digits: Expr[String])(using ctx: QuoteContext): Expr[Even] = digits match {
     case Const(ds) =>
       val ev =
         try evenFromDigits(ds)

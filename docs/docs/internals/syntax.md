@@ -104,7 +104,7 @@ yield
 ### Soft keywords
 
 ```
-as        derives   extension inline    on        opaque    open
+as        derives   extension inline    on        opaque    open      using
 ~         *         |         &         +         -
 ```
 
@@ -175,7 +175,6 @@ Refinement        ::=  ‘{’ [RefineDcl] {semi [RefineDcl]} ‘}’           
 SubtypeBounds     ::=  [‘>:’ Type] [‘<:’ Type] | INT                            TypeBoundsTree(lo, hi)
 TypeParamBounds   ::=  SubtypeBounds {‘:’ Type}                                 ContextBounds(typeBounds, tps)
 Types             ::=  Type {‘,’ Type}
-AnnotTypes        ::=  AnnotType {‘,’ AnnotType}
 ```
 
 ### Expressions
@@ -222,7 +221,6 @@ SimpleExpr        ::=  Path
                     |  ‘(’ ExprsInParens ‘)’                                    Parens(exprs)
                     |  SimpleExpr ‘.’ id                                        Select(expr, id)
                     |  SimpleExpr ‘.’ MatchClause
-                    |  SimpleExpr ‘.’ ContextArguments
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
                     |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _)
@@ -232,12 +230,10 @@ Quoted            ::=  ‘'’ ‘{’ Block ‘}’
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
                     |  Expr
-ParArgumentExprs  ::=  ‘(’ ExprsInParens ‘)’                                    exprs
+ParArgumentExprs  ::=  ‘(’ [‘using’] ExprsInParens ‘)’                          exprs
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’      exprs :+ Typed(expr, Ident(wildcardStar))
-ParArgumentExprss ::=  {ParArgumentExprs | ContextArguments}
 ArgumentExprs     ::=  ParArgumentExprs
                     |  [nl] BlockExpr
-ContextArguments  ::=  ‘.’ ‘with’ ArgumentExprs
 BlockExpr         ::=  ‘{’ (CaseClauses | Block) ‘}’
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
@@ -300,12 +296,8 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypeParamClause] 
                        SubtypeBounds
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
-                    |  ClsParamClause ClsParamClauses
-                    |  ClsParamClauses1
-ClsParamClauses1  ::=  WithClsParamClause ClsParamClauses
-                    |  AnnotTypes ClsParamClauses1
-ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
-WithClsParamClause::= ‘with’ ‘(’ (ClsParams | Types) ‘)’
+ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’ 
+                    |  [nl] ‘(’ ‘using’ (ClsParams | Types) ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
@@ -313,13 +305,8 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
                     |  INT
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
-                    |  DefParamClause DefParamClauses
-                    |  DefParamClauses1
-DefParamClauses1  ::=  WithParamClause DefParamClauses
-                    |  AnnotTypes DefParamClauses1
-DefParamClause    ::=  [nl] ‘(’ DefParams ‘)’
-WithParamClause   ::=  ‘with’ (‘(’ (DefParams | Types) ‘)’
-WithParamsOrTypes ::=  WithParamClause | AnnotTypes
+DefParamClause    ::=  [nl] ‘(’ DefParams ‘)’ | UsingParamClause
+UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefParams | Types) ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
 ClosureMods       ::=  { ‘implicit’ | ‘given’}
@@ -344,7 +331,7 @@ LocalModifier     ::=  ‘abstract’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’
 
-Annotation        ::=  ‘@’ SimpleType ParArgumentExprss                         Apply(tpe, args)
+Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
 
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  StableId ‘.’ ImportSpec                                  Import(expr, sels)
@@ -398,14 +385,14 @@ ObjectDef         ::=  id [Template]                                            
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
 GivenDef          ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
                     |  [GivenSig] ConstrApps [TemplateBody]
-GivenSig          ::=  [id] [DefTypeParamClause] {WithParamsOrTypes} ‘as’
+GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘as’
 ExtensionDef      ::=  [id] ‘on’ ExtParamClause {WithParamsOrTypes} ExtMethods
 ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
-ConstrApp         ::=  AnnotType ParArgumentExprss                              Apply(tp, args)
+ConstrApp         ::=  AnnotType {ParArgumentExprs}                             Apply(tp, args)
 ConstrExpr        ::=  SelfInvocation
                     |  ‘{’ SelfInvocation {semi BlockStat} ‘}’
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}

@@ -1,7 +1,7 @@
 object Foo {
   def foo(): Int = {
     val f: Int ?=> Int = (x: Int) ?=> 2 * x
-    f.with(2)
+    f(using 2)
   }
 
   val f = implicit (x: Int) => x

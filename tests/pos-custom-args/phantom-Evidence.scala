@@ -10,8 +10,8 @@ object WithNormalState {
     def newInstance(): Instance[Off] = new Instance[Off]
   }
   class Instance[S <: State] private {
-    def getOnInstance with (erased ev: S =::= Off) : Instance[On] = new Instance[On] // phantom parameter ev is erased
-    def getOffInstance with (erased ev: S =::= On) : Instance[Off] = new Instance[Off] // phantom parameter ev is erased
+    def getOnInstance (using erased ev: S =::= Off): Instance[On] = new Instance[On] // phantom parameter ev is erased
+    def getOffInstance (using erased ev: S =::= On): Instance[Off] = new Instance[Off] // phantom parameter ev is erased
   }
 
   def run() = {

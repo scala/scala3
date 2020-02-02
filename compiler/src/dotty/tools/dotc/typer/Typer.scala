@@ -2663,9 +2663,9 @@ class Typer extends Namer
                // coming from context bounds. Issue a warning instead and offer a patch.
             ctx.migrationWarning(
               em"""Context bounds will map to context parameters.
-                  |A `with` clause is needed to pass explicit arguments to them.
+                  |A `using` clause is needed to pass explicit arguments to them.
                   |This code can be rewritten automatically using -rewrite""", tree.sourcePos)
-            patch(Span(tree.span.end), ".with")
+            patch(Span(pt.args.head.span.start), "using ")
             tree
           else
             adaptNoArgs(wtp)  // insert arguments implicitly

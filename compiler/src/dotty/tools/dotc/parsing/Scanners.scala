@@ -593,11 +593,7 @@ object Scanners {
       this.copyFrom(prev)
     }
 
-    /** - Join CASE + CLASS => CASECLASS,
-     *    CASE + OBJECT => CASEOBJECT,
-     *    SEMI + ELSE => ELSE,
-     *    COLON + <EOL> => COLONEOL
-     *    DOT + WITH => DOTWITH
+    /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
      *  - Insert missing OUTDENTs at EOF
      */
     def postProcessToken(): Unit = {
@@ -623,10 +619,6 @@ object Scanners {
           } else if (token == EOF) { // e.g. when the REPL is parsing "val List(x, y, _*,"
             /* skip the trailing comma */
           } else reset()
-        case DOT =>
-          lookahead()
-          if token == WITH then fuse(DOTWITH)
-          else reset()
         case COLON =>
           if colonSyntax then observeColonEOL()
         case EOF | RBRACE =>
