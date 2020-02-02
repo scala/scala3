@@ -976,6 +976,7 @@ class Namer { typer: Typer =>
     protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
 
     private var localCtx: Context = _
+
     /** info to be used temporarily while completing the class, to avoid cyclic references. */
     private var tempInfo: TempClassInfo = _
 
@@ -1105,9 +1106,9 @@ class Namer { typer: Typer =>
      *  accessors, that's why the constructor needs to be completed before
      *  the parent types are elaborated.
      */
-    def completeConstructor(denot: SymDenotation): Unit = {
+    def completeConstructor(denot: SymDenotation): TempClassInfo = {
       if (tempInfo != null) // Constructor has been completed already
-        return
+        return tempInfo
 
       addAnnotations(denot.symbol)
 
@@ -1123,8 +1124,7 @@ class Namer { typer: Typer =>
         else createSymbol(self)
 
       val savedInfo = denot.infoOrCompleter
-      tempInfo = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
-      denot.info = tempInfo
+      denot.info = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
 
       localCtx = ctx.inClassContext(selfInfo)
 
@@ -1137,7 +1137,9 @@ class Namer { typer: Typer =>
               i"""Implementation restriction: case classes cannot have dependencies between parameters""",
               cls.sourcePos)
         case _ =>
+      tempInfo = denot.info.asInstanceOf[TempClassInfo]
       denot.info = savedInfo
+      tempInfo
     }
 
     /** The type signature of a ClassDef with given symbol */
@@ -1224,10 +1226,9 @@ class Namer { typer: Typer =>
         deriver.enterDerived(impl.derived)
         original.putAttachment(Deriver, deriver)
       }
-      denot.info = tempInfo.finalized(parentTypes)
 
-      // The temporary info can now be garbage-collected
-      tempInfo = null
+      denot.info = tempInfo.finalized(parentTypes)
+      tempInfo = null // The temporary info can now be garbage-collected
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
