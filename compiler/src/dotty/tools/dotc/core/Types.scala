@@ -4343,9 +4343,9 @@ object Types {
   final class TempClassInfo(prefix: Type, cls: ClassSymbol, decls: Scope, selfInfo: TypeOrSymbol)
   extends CachedClassInfo(prefix, cls, Nil, decls, selfInfo) {
 
-    /** Install classinfo with known parents in `denot` s */
-    def finalize(denot: SymDenotation, parents: List[Type])(implicit ctx: Context): Unit =
-      denot.info = ClassInfo(prefix, cls, parents, decls, selfInfo)
+    /** Convert to classinfo with known parents */
+    def finalized(parents: List[Type])(implicit ctx: Context): ClassInfo =
+      ClassInfo(prefix, cls, parents, decls, selfInfo)
 
     override def derivedClassInfo(prefix: Type)(implicit ctx: Context): ClassInfo =
       if (prefix eq this.prefix) this

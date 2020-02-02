@@ -1208,9 +1208,7 @@ class Namer { typer: Typer =>
         }
       }
 
-      if (tempInfo == null) // Constructor has not been completed yet
-        completeConstructor(denot)
-
+      completeConstructor(denot)
       denot.info = tempInfo
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
@@ -1226,8 +1224,8 @@ class Namer { typer: Typer =>
         deriver.enterDerived(impl.derived)
         original.putAttachment(Deriver, deriver)
       }
+      denot.info = tempInfo.finalized(parentTypes)
 
-      tempInfo.finalize(denot, parentTypes)
       // The temporary info can now be garbage-collected
       tempInfo = null
 
