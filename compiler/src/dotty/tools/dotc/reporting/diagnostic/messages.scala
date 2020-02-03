@@ -1262,7 +1262,8 @@ object messages {
   case class CyclicReferenceInvolving(denot: SymDenotation)(implicit ctx: Context)
   extends Message(CyclicReferenceInvolvingID) {
     val kind: String = "Cyclic"
-    val msg: String = em"""Cyclic reference involving $denot"""
+    val where = if denot.exists then s" involving $denot" else ""
+    val msg: String = em"Cyclic reference $where"
     val explanation: String =
       em"""|$denot is declared as part of a cycle which makes it impossible for the
            |compiler to decide upon ${denot.name}'s type.
