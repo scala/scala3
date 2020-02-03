@@ -4300,13 +4300,16 @@ object Types {
       parentsCache
     }
 
+    protected def newLikeThis(prefix: Type, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)(given Context): ClassInfo =
+      ClassInfo(prefix, cls, classParents, decls, selfInfo)
+
     def derivedClassInfo(prefix: Type)(implicit ctx: Context): ClassInfo =
       if (prefix eq this.prefix) this
-      else ClassInfo(prefix, cls, classParents, decls, selfInfo)
+      else newLikeThis(prefix, classParents, decls, selfInfo)
 
     def derivedClassInfo(prefix: Type = this.prefix, classParents: List[Type] = this.classParents, decls: Scope = this.decls, selfInfo: TypeOrSymbol = this.selfInfo)(implicit ctx: Context): ClassInfo =
       if ((prefix eq this.prefix) && (classParents eq this.classParents) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
-      else ClassInfo(prefix, cls, classParents, decls, selfInfo)
+      else newLikeThis(prefix, classParents, decls, selfInfo)
 
     override def computeHash(bs: Binders): Int = doHash(bs, cls, prefix)
     override def hashIsStable: Boolean = prefix.hashIsStable && classParents.hashIsStable
@@ -4347,9 +4350,8 @@ object Types {
     def finalized(parents: List[Type])(implicit ctx: Context): ClassInfo =
       ClassInfo(prefix, cls, parents, decls, selfInfo)
 
-    override def derivedClassInfo(prefix: Type)(implicit ctx: Context): ClassInfo =
-      if (prefix eq this.prefix) this
-      else new TempClassInfo(prefix, cls, decls, selfInfo)
+    override def newLikeThis(prefix: Type, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)(given Context): ClassInfo =
+      TempClassInfo(prefix, cls, decls, selfInfo)
 
     override def toString: String = s"TempClassInfo($prefix, $cls)"
   }

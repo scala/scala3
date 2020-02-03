@@ -1203,7 +1203,10 @@ object SymDenotations {
     def opaqueAlias(implicit ctx: Context): Type = {
       def recur(tp: Type): Type = tp match {
         case RefinedType(parent, rname, TypeAlias(alias)) =>
-          if (rname == name) alias else recur(parent)
+          def alias1 = alias match
+            case alias: LazyRef => alias.ref
+            case _ => alias
+          if (rname == name) alias1 else recur(parent)
         case _ =>
           NoType
       }
