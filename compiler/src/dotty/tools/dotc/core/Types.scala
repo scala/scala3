@@ -1007,7 +1007,8 @@ object Types {
      *  pos/i536 demonstrates that the infinite loop can also involve lower bounds.
      */
     def safe_& (that: Type)(implicit ctx: Context): Type = (this, that) match {
-      case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) => TypeBounds(OrType(lo1, lo2), AndType(hi1, hi2))
+      case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) =>
+        TypeBounds(OrType(lo1.stripLazyRef, lo2.stripLazyRef), AndType(hi1.stripLazyRef, hi2.stripLazyRef))
       case _ => this & that
     }
 
@@ -1048,6 +1049,10 @@ object Types {
       case tp: PolyType => tp.resType.stripPoly
       case _ => this
     }
+
+    def stripLazyRef(given Context): Type = this match
+      case lzy: LazyRef => lzy.ref
+      case _ => this
 
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences,
@@ -2566,7 +2571,7 @@ object Types {
     }
   }
 
-  case class LazyRef(private var refFn: Context => Type) extends UncachedProxyType with ValueType {
+  case class LazyRef(private var refFn: Context => Type, reportCycles: Boolean = false) extends UncachedProxyType with ValueType {
     private var myRef: Type = null
     private var computed = false
     def ref(implicit ctx: Context): Type = {
@@ -2574,7 +2579,7 @@ object Types {
         if (myRef == null) {
           // if errors were reported previously handle this by throwing a CyclicReference
           // instead of crashing immediately. A test case is neg/i6057.scala.
-          assert(ctx.reporter.errorsReported)
+          assert(reportCycles || ctx.reporter.errorsReported)
           throw CyclicReference(NoDenotation)
         }
       }
