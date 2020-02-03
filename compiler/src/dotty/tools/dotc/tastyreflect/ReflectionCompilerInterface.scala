@@ -1247,7 +1247,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def TypeRef_isOpaqueAlias(self: TypeRef)(given Context): Boolean = self.symbol.isOpaqueAlias
 
-  def TypeRef_opaqueAliasWrappedType(self: TypeRef)(given Context): Type = self.translucentSuperType
+  def TypeRef_translucentSuperType(self: TypeRef)(given Context): Type = self.translucentSuperType
 
   type NamedTermRef = Types.NamedType
 

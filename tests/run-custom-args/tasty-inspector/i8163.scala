@@ -35,7 +35,7 @@ class TestInspector() extends TastyInspector
           case _ => throw new Exception("unexpected")
         }
         assert(shouldBePhoneType.isOpaqueAlias)
-        assert(shouldBePhoneType.opaqueAliasWrappedType.show == "scala.Predef.String")
+        assert(shouldBePhoneType.translucentSuperType.show == "scala.Predef.String")
 
         val shouldNotBePhone = interestingVals.find(_.name == "other").get
         val shouldNotBePhoneType = shouldNotBePhone.tpt.tpe match {

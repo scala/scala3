@@ -129,7 +129,6 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
       compileFilesInDir("tests/run-staging", withStagingOptions),
       compileFilesInDir("tests/run-custom-args/tasty-inspector", withTastyInspectorOptions),
       compileDir("tests/run-custom-args/tasty-interpreter", withTastyInspectorOptions),
-      compileFile("tests/run-custom-args/i8163.scala", withTastyInspectorOptions),
     ).checkRuns()
   }
 

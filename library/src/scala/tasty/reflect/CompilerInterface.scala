@@ -916,7 +916,7 @@ trait CompilerInterface {
   def TypeRef_qualifier(self: TypeRef)(given ctx: Context): TypeOrBounds
   def TypeRef_name(self: TypeRef)(given Context): String
   def TypeRef_isOpaqueAlias(self: TypeRef)(given Context): Boolean
-  def TypeRef_opaqueAliasWrappedType(self: TypeRef)(given Context): Type
+  def TypeRef_translucentSuperType(self: TypeRef)(given Context): Type
 
   /** Type of a `super` reference */
   type SuperType <: Type
