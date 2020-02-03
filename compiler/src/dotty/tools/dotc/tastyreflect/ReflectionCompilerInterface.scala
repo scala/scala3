@@ -1245,6 +1245,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def TypeRef_name(self: TypeRef)(given Context): String = self.name.toString
 
+  def TypeRef_isOpaqueAlias(self: TypeRef)(given Context): Boolean = self.symbol.isOpaqueAlias
+
+  def TypeRef_opaqueAliasWrappedType(self: TypeRef)(given Context): Type = self.translucentSuperType
+
   type NamedTermRef = Types.NamedType
 
   def isInstanceOfNamedTermRef(given ctx: Context): IsInstanceOf[NamedTermRef] = new {
