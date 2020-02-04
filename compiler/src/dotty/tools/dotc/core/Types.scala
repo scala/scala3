@@ -1164,8 +1164,10 @@ object Types {
     /** If this type is an alias of a disjunction of stable singleton types,
      *  these types as a set, otherwise the empty set.
      *  Overridden and cached in OrType.
+     *  @param widenOK  If type proxies that are upperbounded by types with atoms
+     *                  have the same atoms. 
      */
-    def atoms(implicit ctx: Context): Set[Type] = dealias match {
+    def atoms(widenOK: Boolean = false)(implicit ctx: Context): Set[Type] = dealias match {
       case tp: SingletonType =>
         def normalize(tp: Type): Type = tp match {
           case tp: SingletonType =>
@@ -1179,12 +1181,13 @@ object Types {
             }
           case _ => tp
         }
-        val underlyingAtoms = tp.underlying.atoms
+        val underlyingAtoms = tp.underlying.atoms(widenOK)
         if (underlyingAtoms.isEmpty && tp.isStable) Set.empty + normalize(tp)
         else underlyingAtoms
-      case tp: ExprType => tp.resType.atoms
-      case tp: OrType => tp.atoms // `atoms` overridden in OrType
-      case tp: AndType => tp.tp1.atoms & tp.tp2.atoms
+      case tp: ExprType => tp.resType.atoms(widenOK)
+      case tp: OrType => tp.atoms(widenOK) // `atoms` overridden in OrType
+      case tp: AndType => tp.tp1.atoms(widenOK) & tp.tp2.atoms(widenOK)
+      case tp: TypeProxy if widenOK => tp.underlying.atoms(widenOK)
       case _ => Set.empty
     }
 
@@ -2902,22 +2905,26 @@ object Types {
 
     private var atomsRunId: RunId = NoRunId
     private var myAtoms: Set[Type] = _
+    private var myWidenedAtoms: Set[Type] = _
     private var myWidened: Type = _
 
     private def ensureAtomsComputed()(implicit ctx: Context): Unit =
       if (atomsRunId != ctx.runId) {
-        val atoms1 = tp1.atoms
-        val atoms2 = tp2.atoms
+        val atoms1 = tp1.atoms()
+        val atoms2 = tp2.atoms()
         myAtoms = if (atoms1.nonEmpty && atoms2.nonEmpty) atoms1 | atoms2 else Set.empty
+        val widenedAtoms1 = tp1.atoms(widenOK = true)
+        val widenedAtoms2 = tp2.atoms(widenOK = true)
+        myWidenedAtoms = if (widenedAtoms1.nonEmpty && widenedAtoms2.nonEmpty) widenedAtoms1 | widenedAtoms2 else Set.empty
         val tp1w = tp1.widenSingletons
         val tp2w = tp2.widenSingletons
         myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
         atomsRunId = ctx.runId
       }
 
-    override def atoms(implicit ctx: Context): Set[Type] = {
+    override def atoms(widenOK: Boolean)(implicit ctx: Context): Set[Type] = {
       ensureAtomsComputed()
-      myAtoms
+      if widenOK then myAtoms else myWidenedAtoms
     }
 
     override def widenSingletons(implicit ctx: Context): Type = {

@@ -118,7 +118,7 @@ object ErrorReporting {
       else if (ctx.settings.explainTypes.value)
         i"""
            |${ctx.typerState.constraint}
-           |${TypeComparer.explained((found <:< expected)(_))}"""
+           |${TypeComparer.explained(found <:< expected)}"""
       else
         ""
     }
