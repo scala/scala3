@@ -119,7 +119,7 @@ def macroImpl()(qctx: QuoteContext): Expr[Unit] = {
 
 ### Tree Utilities
 
-`scala.tasty.reflect.TreeUtils` contains three facilities for tree traversal and
+`scala.tasty.reflect` contains three facilities for tree traversal and
 transformations.
 
 `TreeAccumulator` ties the knot of a traversal. By calling `foldOver(x, tree))`
@@ -144,7 +144,7 @@ but without returning any value. Finally a `TreeMap` performs a transformation.
 
 #### Let
 
-`scala.tasty.reflect.utils.TreeUtils` also offers a method `let` that allows us
+`scala.tasty.Reflection` also offers a method `let` that allows us
 to bind the `rhs` to a `val` and use it in `body`. Additionally, `lets` binds
 the given `terms` to names and use them in the `body`. Their type definitions
 are shown below:

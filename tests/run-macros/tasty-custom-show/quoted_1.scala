@@ -12,7 +12,8 @@ object Macros {
 
     val buff = new StringBuilder
 
-    val output = new TreeTraverser {
+    val output = new scala.tasty.reflect.TreeTraverser {
+      val reflect: qctx.tasty.type = qctx.tasty
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         // Use custom Show[_] here
         val printer = dummyShow

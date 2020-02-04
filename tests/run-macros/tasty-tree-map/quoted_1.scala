@@ -6,7 +6,9 @@ object Macros {
 
   def impl[T: Type](x: Expr[T])(using qctx: QuoteContext) : Expr[T] = {
     import qctx.tasty.{_, given _}
-    val identityMap = new TreeMap { }
+    val identityMap = new scala.tasty.reflect.TreeMap {
+      val reflect: qctx.tasty.type = qctx.tasty
+    }
     val transformed = identityMap.transformTerm(x.unseal).seal.cast[T]
     transformed
   }

@@ -65,7 +65,8 @@ object UnsafeExpr {
   private def bodyFn[t](given qctx: QuoteContext)(e: qctx.tasty.Term, params: List[qctx.tasty.ValDef], args: List[qctx.tasty.Term]): qctx.tasty.Term = {
     import qctx.tasty.{given, _}
     val map = params.map(_.symbol).zip(args).toMap
-    new TreeMap {
+    new scala.tasty.reflect.TreeMap {
+      val reflect: qctx.tasty.type = qctx.tasty
       override def transformTerm(tree: Term)(given ctx: Context): Term =
         super.transformTerm(tree) match
           case tree: Ident => map.getOrElse(tree.symbol, tree)

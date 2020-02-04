@@ -156,7 +156,9 @@ private[quoted] object Matcher {
               if patternHole.symbol == internal.Definitions_InternalQuoted_patternHole =>
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
               val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
-              new TreeMap {
+              new scala.tasty.reflect.TreeMap {
+                val reflect: qctx.tasty.type = qctx.tasty
+                import reflect.{given,  _}
                 override def transformTerm(tree: Term)(given ctx: Context): Term =
                   tree match
                     case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
@@ -317,8 +319,10 @@ private[quoted] object Matcher {
         if freePatternVars(term).isEmpty then Some(term) else None
 
       /** Return all free variables of the term defined in the pattern (i.e. defined in `Env`) */
-      def freePatternVars(term: Term)(given qctx: Context, env: Env): Set[Symbol] =
-        val accumulator = new TreeAccumulator[Set[Symbol]] {
+      def freePatternVars(term: Term)(given ctx: Context, env: Env): Set[Symbol] =
+        val accumulator = new scala.tasty.reflect.TreeAccumulator[Set[Symbol]] {
+          val reflect: qctx.tasty.type = qctx.tasty
+          import reflect.{given, _}
           def foldTree(x: Set[Symbol], tree: Tree)(given ctx: Context): Set[Symbol] =
             tree match
               case tree: Ident if env.contains(tree.symbol) => foldOverTree(x + tree.symbol, tree)
