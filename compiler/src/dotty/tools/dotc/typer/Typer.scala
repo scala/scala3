@@ -1832,6 +1832,23 @@ class Typer extends Namer
         ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef.sourcePos)
       }
 
+      // TODO: Drop or use
+      def simplifyOpaques(tp: Type): Type = tp match
+        case tp @ RefinedType(parent, name, alias @ TypeAlias(lzy: LazyRef)) =>
+          tp.derivedRefinedType(simplifyOpaques(parent), name,
+            alias.derivedAlias(lzy.ref))
+        case _ =>
+          tp
+
+      if false && cls.containsOpaques then
+        val cinfo = cls.classInfo
+        cinfo.selfInfo match
+          case self: Type =>
+            cls.info = cinfo.derivedClassInfo(selfInfo = simplifyOpaques(self))
+          case self: Symbol =>
+            self.info = simplifyOpaques(self.info)
+        //println(i"simplified: $cls with ${cls.classInfo.selfInfo}")
+
       checkNonCyclicInherited(cls.thisType, cls.classParents, cls.info.decls, cdef.posd)
 
       // check value class constraints

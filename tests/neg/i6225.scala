@@ -11,7 +11,7 @@ object O2 {
 }
 
 object O3 {
-  opaque type R[X] = R[X]   // error
+  opaque type R[X] = R[X]   // error: R does not take parameters // error: cyclic
 }
 
 object O4{

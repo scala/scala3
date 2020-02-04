@@ -463,6 +463,40 @@ object SymDenotations {
         }
     }
 
+    /** If this is an opaque alias, replace the right hand side `info`
+     *  by appropriate bounds and store `info` in the refinement of the
+     *  self type of the enclosing class.
+     *  Otherwise return `info`
+     *
+     *  @param info   Is assumed to be a (lambda-abstracted) right hand side TypeAlias
+     *                of the opaque type definition.
+     */
+    def opaqueToBounds(info: Type)(given Context): Type =
+
+      def setAlias(tp: Type) =
+        def recur(self: Type): Unit = self match
+          case RefinedType(parent, name, rinfo) => rinfo match
+            case TypeAlias(lzy: LazyRef) if name == this.name =>
+              lzy.update(tp)
+            case _ =>
+              recur(parent)
+        recur(owner.asClass.givenSelfType)
+      end setAlias
+
+      info match
+        case TypeAlias(alias) if isOpaqueAlias && owner.isClass =>
+          val bounds = alias match
+            case AnnotatedType(alias1, Annotation.WithBounds(bounds)) =>
+              setAlias(alias1)
+              bounds
+            case _ =>
+              setAlias(alias)
+              TypeBounds.empty
+          HKTypeLambda.boundsFromParams(alias.typeParams, bounds)
+        case _ =>
+          info
+    end opaqueToBounds
+
     // ------ Names ----------------------------------------------
 
     /** The expanded name of this denotation. */
@@ -1203,10 +1237,10 @@ object SymDenotations {
     def opaqueAlias(implicit ctx: Context): Type = {
       def recur(tp: Type): Type = tp match {
         case RefinedType(parent, rname, TypeAlias(alias)) =>
-          def alias1 = alias match
+          if rname == name then alias match
             case alias: LazyRef => alias.ref
             case _ => alias
-          if (rname == name) alias1 else recur(parent)
+          else recur(parent)
         case _ =>
           NoType
       }

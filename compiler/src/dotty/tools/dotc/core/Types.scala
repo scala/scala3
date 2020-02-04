@@ -2574,22 +2574,31 @@ object Types {
   case class LazyRef(private var refFn: Context => Type, reportCycles: Boolean = false) extends UncachedProxyType with ValueType {
     private var myRef: Type = null
     private var computed = false
-    def ref(implicit ctx: Context): Type = {
-      if (computed) {
-        if (myRef == null) {
+
+    def ref(implicit ctx: Context): Type =
+      if computed then
+        if myRef == null then
           // if errors were reported previously handle this by throwing a CyclicReference
           // instead of crashing immediately. A test case is neg/i6057.scala.
           assert(reportCycles || ctx.reporter.errorsReported)
           throw CyclicReference(NoDenotation)
-        }
-      }
-      else {
+      else
         computed = true
-        myRef = refFn(ctx)
+        val result = refFn(ctx)
         refFn = null
-      }
+        if result != null then myRef = result
+        else assert(myRef != null)  // must have been `update`d
       myRef
-    }
+
+    /** Update the value of the lazyref, discarding the compute function `refFn`
+     *  Can be called only as long as the ref is still undefined.
+     */
+    def update(tp: Type) =
+      assert(myRef == null)
+      myRef = tp
+      computed = true
+      refFn = null
+
     def evaluating: Boolean = computed && myRef == null
     def completed: Boolean = myRef != null
     override def underlying(implicit ctx: Context): Type = ref
@@ -4315,6 +4324,37 @@ object Types {
     def derivedClassInfo(prefix: Type = this.prefix, classParents: List[Type] = this.classParents, decls: Scope = this.decls, selfInfo: TypeOrSymbol = this.selfInfo)(implicit ctx: Context): ClassInfo =
       if ((prefix eq this.prefix) && (classParents eq this.classParents) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
       else newLikeThis(prefix, classParents, decls, selfInfo)
+
+    /** If this class has opqque type alias members, a new class info
+     *  with their aliases added as refinements to the self type of the class.
+     *  Otherwise, this classInfo.
+     *  If there are opaque alias members, updates `cls` to have `Opaque` flag as a side effect.
+     */
+    def integrateOpaqueMembers(given Context): ClassInfo =
+      decls.toList.foldLeft(this) { (cinfo, sym) =>
+        if sym.isOpaqueAlias then
+          cls.setFlag(Opaque)
+          def force =
+            if sym.isOpaqueAlias then // could have been reset because of a syntax error
+              sym.infoOrCompleter match
+                case completer: LazyType =>
+                  completer.complete(sym) // will update the LazyRef
+                  null                    // tells the LazyRef to use the updated value
+                case info => // can occur under cyclic references, e.g. i6225.scala
+                  defn.AnyType
+            else defn.AnyType         // dummy type in case of errors
+          def refineSelfType(selfType: Type) =
+            RefinedType(selfType, sym.name,
+              TypeAlias(LazyRef(_ => force, reportCycles = true)))
+          cinfo.selfInfo match
+            case self: Type =>
+              cinfo.derivedClassInfo(
+                selfInfo = refineSelfType(self.orElse(defn.AnyType)))
+            case self: Symbol =>
+              self.info = refineSelfType(self.info)
+              cinfo
+        else cinfo
+      }
 
     override def computeHash(bs: Binders): Int = doHash(bs, cls, prefix)
     override def hashIsStable: Boolean = prefix.hashIsStable && classParents.hashIsStable

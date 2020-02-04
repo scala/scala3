@@ -570,6 +570,7 @@ class TreeUnpickler(reader: TastyReader,
               ctx.newSymbol(ctx.owner, name, flags, completer, privateWithin, coord)
         }
       sym.annotations = annotFns.map(_(sym))
+      if sym.isOpaqueAlias then sym.setFlag(Deferred)
       ctx.owner match {
         case cls: ClassSymbol => cls.enter(sym)
         case _ =>
@@ -832,11 +833,13 @@ class TreeUnpickler(reader: TastyReader,
               override def completerTypeParams(sym: Symbol)(implicit ctx: Context) =
                 rhs.tpe.typeParams
             }
-            sym.info = rhs.tpe match {
-              case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
-              case _ => rhs.tpe.toBounds
+            sym.info = sym.opaqueToBounds {
+              rhs.tpe match
+                case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
+                case _ => rhs.tpe.toBounds
             }
-            sym.normalizeOpaque()
+            if sym.isOpaqueAlias then
+              sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
             sym.resetFlag(Provisional)
             TypeDef(rhs)
           }
@@ -905,8 +908,10 @@ class TreeUnpickler(reader: TastyReader,
         }
         else EmptyValDef
       cls.setNoInitsFlags(parentsKind(parents), bodyFlags)
-      cls.info = ClassInfo(cls.owner.thisType, cls, parentTypes, cls.unforcedDecls,
-        if (self.isEmpty) NoType else self.tpt.tpe)
+      cls.info = ClassInfo(
+        cls.owner.thisType, cls, parentTypes, cls.unforcedDecls,
+        selfInfo = if (self.isEmpty) NoType else self.tpt.tpe)
+        .integrateOpaqueMembers
       val constr = readIndexedDef().asInstanceOf[DefDef]
       val mappedParents = parents.map(_.changeOwner(localDummy, constr.symbol))
 

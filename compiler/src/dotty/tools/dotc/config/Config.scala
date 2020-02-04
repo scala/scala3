@@ -2,6 +2,8 @@ package dotty.tools.dotc.config
 
 object Config {
 
+  val newScheme = true
+
   final val cacheMembersNamed = true
   final val cacheAsSeenFrom = true
   final val cacheMemberNames = true
