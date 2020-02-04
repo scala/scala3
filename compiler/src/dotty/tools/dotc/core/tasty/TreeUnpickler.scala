@@ -838,8 +838,7 @@ class TreeUnpickler(reader: TastyReader,
                 case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
                 case _ => rhs.tpe.toBounds
             }
-            if sym.isOpaqueAlias then
-              sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
+            if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
             sym.resetFlag(Provisional)
             TypeDef(rhs)
           }

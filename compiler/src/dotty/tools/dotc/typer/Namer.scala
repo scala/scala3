@@ -1156,9 +1156,9 @@ class Namer { typer: Typer =>
      *  accessors, that's why the constructor needs to be completed before
      *  the parent types are elaborated.
      */
-    def completeConstructor(denot: SymDenotation): TempClassInfo = {
+    def completeConstructor(denot: SymDenotation): Unit = {
       if (tempInfo != null) // Constructor has been completed already
-        return tempInfo
+        return
 
       addAnnotations(denot.symbol)
 
@@ -1191,7 +1191,6 @@ class Namer { typer: Typer =>
 
       tempInfo = denot.asClass.classInfo.integrateOpaqueMembers.asInstanceOf[TempClassInfo]
       denot.info = savedInfo
-      tempInfo
     }
 
     /** The type signature of a ClassDef with given symbol */

@@ -426,43 +426,6 @@ object SymDenotations {
       case _ => unforcedDecls.openForMutations
     }
 
-    /** If this is a synthetic opaque type alias, mark it as Deferred with bounds
-     *  as given by the right hand side's `WithBounds` annotation, if one is present,
-     *  or with empty bounds of the right kind, otherwise.
-     *  At the same time, integrate the original alias as a refinement of the
-     *  self type of the enclosing class.
-     */
-    final def normalizeOpaque()(implicit ctx: Context) = {
-      def abstractRHS(tp: Type): Type = tp match {
-        case tp: HKTypeLambda => tp.derivedLambdaType(resType = abstractRHS(tp.resType))
-        case _ => defn.AnyType
-      }
-      if (isOpaqueAlias)
-        info match {
-          case TypeAlias(alias) =>
-            val (refiningAlias, bounds) = alias match {
-              case AnnotatedType(alias1, Annotation.WithBounds(bounds)) =>
-              	(alias1, bounds)
-              case _ =>
-              	(alias, TypeBounds(defn.NothingType, abstractRHS(alias)))
-            }
-            def refineSelfType(selfType: Type) =
-              RefinedType(selfType, name, TypeAlias(refiningAlias))
-            val enclClassInfo = owner.asClass.classInfo
-            enclClassInfo.selfInfo match {
-              case self: Type =>
-                owner.info = enclClassInfo.derivedClassInfo(
-                  selfInfo = refineSelfType(self.orElse(defn.AnyType)))
-              case self: Symbol =>
-                self.info = refineSelfType(self.info)
-            }
-            info = bounds
-            setFlag(Deferred)
-            typeRef.recomputeDenot()
-          case _ =>
-        }
-    }
-
     /** If this is an opaque alias, replace the right hand side `info`
      *  by appropriate bounds and store `info` in the refinement of the
      *  self type of the enclosing class.
