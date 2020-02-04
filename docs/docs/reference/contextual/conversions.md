@@ -3,9 +3,6 @@ layout: doc-page
 title: "Implicit Conversions"
 ---
 
-**Note** The syntax described in this section is currently under revision.
-[Here is the new version which will be implemented in Dotty 0.22](./conversions-new.html).
-
 Implicit conversions are defined by given instances of the `scala.Conversion` class.
 This class is defined in package `scala` as follows:
 ```scala
@@ -28,11 +25,11 @@ An implicit conversion is applied automatically by the compiler in three situati
 3. In an application `e.m(args)` with `e` of type `T`, if `T` does define
    some member(s) named `m`, but none of these members can be applied to the arguments `args`.
 
-In the first case, the compiler looks for a given `scala.Conversion` that maps
+In the first case, the compiler looks for a given `scala.Conversion` instance that maps
 an argument of type `T` to type `S`. In the second and third
-case, it looks for a given `scala.Conversion` that maps an argument of type `T`
+case, it looks for a given `scala.Conversion` instance that maps an argument of type `T`
 to a type that defines a member `m` which can be applied to `args` if present.
-If such an instance `C` is given, the expression `e` is replaced by `C.apply(e)`.
+If such an instance `C` is found, the expression `e` is replaced by `C.apply(e)`.
 
 ## Examples
 
@@ -40,7 +37,7 @@ If such an instance `C` is given, the expression `e` is replaced by `C.apply(e)`
 primitive number types to subclasses of `java.lang.Number`. For instance, the
 conversion from `Int` to `java.lang.Integer` can be defined as follows:
 ```scala
-given int2Integer: Conversion[Int, java.lang.Integer] =
+given int2Integer as Conversion[Int, java.lang.Integer] =
  java.lang.Integer.valueOf(_)
 ```
 
@@ -62,9 +59,9 @@ object Completions {
     //
     //   CompletionArg.fromStatusCode(statusCode)
 
-    given fromString     : Conversion[String, CompletionArg]               = Error(_)
-    given fromFuture     : Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    given fromStatusCode : Conversion[Future[StatusCode], CompletionArg]   = Status(_)
+    given fromString     as Conversion[String, CompletionArg]               = Error(_)
+    given fromFuture     as Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    given fromStatusCode as Conversion[Future[StatusCode], CompletionArg]   = Status(_)
   }
   import CompletionArg._
 
