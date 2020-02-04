@@ -1731,6 +1731,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   extension TypeRefOps on (self: TypeRef) {
     def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TypeRef_qualifier(self)
     def name(given ctx: Context): String = internal.TypeRef_name(self)
+    def isOpaqueAlias(given ctx: Context): Boolean = internal.TypeRef_isOpaqueAlias(self)
+    def translucentSuperType(given ctx: Context): Type = internal.TypeRef_translucentSuperType(self)
   }
 
   given (given Context): IsInstanceOf[SuperType] = internal.isInstanceOfSuperType
