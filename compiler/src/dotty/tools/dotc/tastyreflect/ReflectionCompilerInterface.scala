@@ -1191,8 +1191,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Type_isFunctionType(self: Type)(given Context): Boolean =
     defn.isFunctionType(self)
 
-  def Type_isImplicitFunctionType(self: Type)(given Context): Boolean =
-    defn.isImplicitFunctionType(self)
+  def Type_isContextFunctionType(self: Type)(given Context): Boolean =
+    defn.isContextFunctionType(self)
 
   def Type_isErasedFunctionType(self: Type)(given Context): Boolean =
     defn.isErasedFunctionType(self)

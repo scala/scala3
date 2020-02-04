@@ -1670,11 +1670,11 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
      */
     def isFunctionType(given ctx: Context): Boolean = internal.Type_isFunctionType(self)
 
-    /** Is this type an implicit function type?
+    /** Is this type an context function type?
      *
      *  @see `isFunctionType`
      */
-    def isImplicitFunctionType(given ctx: Context): Boolean = internal.Type_isImplicitFunctionType(self)
+    def isContextFunctionType(given ctx: Context): Boolean = internal.Type_isContextFunctionType(self)
 
     /** Is this type an erased function type?
      *

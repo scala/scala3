@@ -76,7 +76,7 @@ class Definitions {
     newClassSymbol(ScalaPackageClass, name, Artifact, completer).entered
   }
 
-  /** The trait FunctionN, ImplicitFunctionN, ErasedFunctionN or ErasedImplicitFunction, for some N
+  /** The trait FunctionN, ContextFunctionN, ErasedFunctionN or ErasedContextFunction, for some N
    *  @param  name   The name of the trait to be created
    *
    *  FunctionN traits follow this template:
@@ -89,9 +89,9 @@ class Definitions {
    *  standard library, but without `tupled` and `curried` methods and without
    *  a `toString`.
    *
-   *  ImplicitFunctionN traits follow this template:
+   *  ContextFunctionN traits follow this template:
    *
-   *      trait ImplicitFunctionN[T0,...,T{N-1}, R] extends Object {
+   *      trait ContextFunctionN[T0,...,T{N-1}, R] extends Object {
    *        def apply(given $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
@@ -101,13 +101,13 @@ class Definitions {
    *        def apply(erased $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
-   *  ErasedImplicitFunctionN traits follow this template:
+   *  ErasedContextFunctionN traits follow this template:
    *
-   *      trait ErasedImplicitFunctionN[T0,...,T{N-1}, R] extends Object {
+   *      trait ErasedContextFunctionN[T0,...,T{N-1}, R] extends Object {
    *        def apply (given erased $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
-   *  ErasedFunctionN and ErasedImplicitFunctionN erase to Function0.
+   *  ErasedFunctionN and ErasedContextFunctionN erase to Function0.
    */
   def newFunctionNTrait(name: TypeName): ClassSymbol = {
     val completer = new LazyType {
@@ -122,7 +122,7 @@ class Definitions {
         val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
         val methodType = MethodType.companion(
           isJava = false,
-          isContextual = name.isImplicitFunction,
+          isContextual = name.isContextFunction,
           isImplicit = false,
           isErased = name.isErasedFunction)
         decls.enter(newMethod(cls, nme.apply, methodType(argParamRefs, resParamRef), Deferred))
@@ -131,7 +131,7 @@ class Definitions {
       }
     }
     val flags0 = Trait | NoInits
-    val flags = if (name.isImplicitFunction) flags0 | Final else flags0
+    val flags = if (name.isContextFunction) flags0 | Final else flags0
     newClassSymbol(ScalaPackageClass, name, flags, completer)
   }
 
@@ -878,7 +878,7 @@ class Definitions {
       if (isFunctionClass(tsym)) {
         val targs = ft.dealias.argInfos
         if (targs.isEmpty) None
-        else Some(targs.init, targs.last, tsym.name.isImplicitFunction, tsym.name.isErasedFunction)
+        else Some(targs.init, targs.last, tsym.name.isContextFunction, tsym.name.isErasedFunction)
       }
       else None
     }
@@ -998,9 +998,9 @@ class Definitions {
 
   def FunctionClass(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): Symbol =
     if (isContextual && isErased)
-      ctx.requiredClass("scala.ErasedImplicitFunction" + n.toString)
+      ctx.requiredClass("scala.ErasedContextFunction" + n.toString)
     else if (isContextual)
-      ctx.requiredClass("scala.ImplicitFunction" + n.toString)
+      ctx.requiredClass("scala.ContextFunction" + n.toString)
     else if (isErased)
       ctx.requiredClass("scala.ErasedFunction" + n.toString)
     else if (n <= MaxImplementedFunctionArity)
@@ -1047,28 +1047,28 @@ class Definitions {
   /** Is a function class.
    *   - FunctionXXL
    *   - FunctionN for N >= 0
-   *   - ImplicitFunctionN for N >= 0
+   *   - ContextFunctionN for N >= 0
    *   - ErasedFunctionN for N > 0
-   *   - ErasedImplicitFunctionN for N > 0
+   *   - ErasedContextFunctionN for N > 0
    */
   def isFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).isFunction
 
-  /** Is an implicit function class.
-   *   - ImplicitFunctionN for N >= 0
-   *   - ErasedImplicitFunctionN for N > 0
+  /** Is an context function class.
+   *   - ContextFunctionN for N >= 0
+   *   - ErasedContextFunctionN for N > 0
    */
-  def isImplicitFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).isImplicitFunction
+  def isContextFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).isContextFunction
 
   /** Is an erased function class.
    *   - ErasedFunctionN for N > 0
-   *   - ErasedImplicitFunctionN for N > 0
+   *   - ErasedContextFunctionN for N > 0
    */
   def isErasedFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).isErasedFunction
 
   /** Is either FunctionXXL or  a class that will be erased to FunctionXXL
    *   - FunctionXXL
    *   - FunctionN for N >= 22
-   *   - ImplicitFunctionN for N >= 22
+   *   - ContextFunctionN for N >= 22
    */
   def isXXLFunctionClass(cls: Symbol): Boolean = {
     val name = scalaClassName(cls)
@@ -1077,9 +1077,9 @@ class Definitions {
 
   /** Is a synthetic function class
    *    - FunctionN for N > 22
-   *    - ImplicitFunctionN for N >= 0
+   *    - ContextFunctionN for N >= 0
    *    - ErasedFunctionN for N > 0
-   *    - ErasedImplicitFunctionN for N > 0
+   *    - ErasedContextFunctionN for N > 0
    */
   def isSyntheticFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).isSyntheticFunction
 
@@ -1093,8 +1093,8 @@ class Definitions {
   /** Returns the erased class of the function class `cls`
    *    - FunctionN for N > 22 becomes FunctionXXL
    *    - FunctionN for 22 > N >= 0 remains as FunctionN
-   *    - ImplicitFunctionN for N > 22 becomes FunctionXXL
-   *    - ImplicitFunctionN for N <= 22 becomes FunctionN
+   *    - ContextFunctionN for N > 22 becomes FunctionXXL
+   *    - ContextFunctionN for N <= 22 becomes FunctionN
    *    - ErasedFunctionN becomes Function0
    *    - ImplicitErasedFunctionN becomes Function0
    *    - anything else becomes a NoSymbol
@@ -1110,8 +1110,8 @@ class Definitions {
   /** Returns the erased type of the function class `cls`
    *    - FunctionN for N > 22 becomes FunctionXXL
    *    - FunctionN for 22 > N >= 0 remains as FunctionN
-   *    - ImplicitFunctionN for N > 22 becomes FunctionXXL
-   *    - ImplicitFunctionN for N <= 22 becomes FunctionN
+   *    - ContextFunctionN for N > 22 becomes FunctionXXL
+   *    - ContextFunctionN for N <= 22 becomes FunctionN
    *    - ErasedFunctionN becomes Function0
    *    - ImplicitErasedFunctionN becomes Function0
    *    - anything else becomes a NoType
@@ -1194,7 +1194,7 @@ class Definitions {
 
   def isProductSubType(tp: Type)(implicit ctx: Context): Boolean = tp.derivesFrom(ProductClass)
 
-  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN
+  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ContextFunctionN
    *  instance?
    */
   def isNonRefinedFunction(tp: Type)(implicit ctx: Context): Boolean = {
@@ -1203,7 +1203,7 @@ class Definitions {
 
     arity >= 0 &&
       isFunctionClass(sym) &&
-      tp.isRef(FunctionType(arity, sym.name.isImplicitFunction, sym.name.isErasedFunction).typeSymbol) &&
+      tp.isRef(FunctionType(arity, sym.name.isContextFunction, sym.name.isErasedFunction).typeSymbol) &&
       !tp.isInstanceOf[RefinedType]
   }
 
@@ -1251,24 +1251,24 @@ class Definitions {
 
   def functionArity(tp: Type)(implicit ctx: Context): Int = tp.dropDependentRefinement.dealias.argInfos.length - 1
 
-  /** Return underlying immplicit function type (i.e. instance of an ImplicitFunctionN class)
+  /** Return underlying context function type (i.e. instance of an ContextFunctionN class)
    *  or NoType if none exists. The following types are considered as underlying types:
    *   - the alias of an alias type
    *   - the instance or origin of a TypeVar (i.e. the result of a stripTypeVar)
    *   - the upper bound of a TypeParamRef in the current constraint
    */
-  def asImplicitFunctionType(tp: Type)(implicit ctx: Context): Type =
+  def asContextFunctionType(tp: Type)(implicit ctx: Context): Type =
     tp.stripTypeVar.dealias match {
       case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
-        asImplicitFunctionType(ctx.typeComparer.bounds(tp1).hiBound)
+        asContextFunctionType(ctx.typeComparer.bounds(tp1).hiBound)
       case tp1 =>
-        if (isFunctionType(tp1) && tp1.typeSymbol.name.isImplicitFunction) tp1
+        if (isFunctionType(tp1) && tp1.typeSymbol.name.isContextFunction) tp1
         else NoType
     }
 
-  /** Is `tp` an implicit function type? */
-  def isImplicitFunctionType(tp: Type)(implicit ctx: Context): Boolean =
-    asImplicitFunctionType(tp).exists
+  /** Is `tp` an context function type? */
+  def isContextFunctionType(tp: Type)(implicit ctx: Context): Boolean =
+    asContextFunctionType(tp).exists
 
   def isErasedFunctionType(tp: Type)(implicit ctx: Context): Boolean =
     isFunctionType(tp) && tp.dealias.typeSymbol.name.isErasedFunction

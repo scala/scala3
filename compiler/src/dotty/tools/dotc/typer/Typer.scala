@@ -2194,7 +2194,7 @@ class Typer extends Namer
           case _ => typedUnadapted(desugar(tree), pt, locked)
         }
 
-        val ifpt = defn.asImplicitFunctionType(pt)
+        val ifpt = defn.asContextFunctionType(pt)
         val result =
           if ifpt.exists
              && xtree.isTerm
@@ -2815,7 +2815,7 @@ class Typer extends Namer
       */
     def adaptNoArgsUnappliedMethod(wtp: MethodType, functionExpected: Boolean, arity: Int): Tree = {
       def isExpandableApply =
-        defn.isImplicitFunctionClass(tree.symbol.maybeOwner) && functionExpected
+        defn.isContextFunctionClass(tree.symbol.maybeOwner) && functionExpected
 
       /** Is reference to this symbol `f` automatically expanded to `f()`? */
       def isAutoApplied(sym: Symbol): Boolean =
@@ -2850,17 +2850,17 @@ class Typer extends Namer
         missingArgs(wtp)
     }
 
-    def isImplicitFunctionRef(wtp: Type): Boolean = wtp match {
+    def isContextFunctionRef(wtp: Type): Boolean = wtp match {
       case RefinedType(parent, nme.apply, _) =>
-        isImplicitFunctionRef(parent) // apply refinements indicate a dependent IFT
+        isContextFunctionRef(parent) // apply refinements indicate a dependent IFT
       case _ =>
         val underlying = wtp.underlyingClassRef(refinementOK = false) // other refinements are not OK
-        defn.isImplicitFunctionClass(underlying.classSymbol)
+        defn.isContextFunctionClass(underlying.classSymbol)
     }
 
     def adaptNoArgsOther(wtp: Type): Tree = {
       ctx.typeComparer.GADTused = false
-      if (isImplicitFunctionRef(wtp) &&
+      if (isContextFunctionRef(wtp) &&
           !untpd.isContextualClosure(tree) &&
           !isApplyProto(pt) &&
           pt != AssignProto &&
@@ -3197,7 +3197,7 @@ class Typer extends Namer
    *   - neither is contextual, or
    *   - the prototype is contextual and the method type is implicit.
    *  The last rule is there for a transition period; it allows to mix `with` applications
-   *  with old-style implicit functions.
+   *  with old-style context functions.
    *  Overridden in `ReTyper`, where all applications are treated the same
    */
   protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(implicit ctx: Context): Boolean =

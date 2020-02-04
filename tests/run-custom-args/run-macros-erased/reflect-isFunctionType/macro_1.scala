@@ -9,11 +9,11 @@ def isFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[Boolean]
 }
 
 
-inline def isImplicitFunctionType[T:Type]: Boolean = ${ isImplicitFunctionTypeImpl('[T]) }
+inline def isContextFunctionType[T:Type]: Boolean = ${ isContextFunctionTypeImpl('[T]) }
 
-def isImplicitFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[Boolean] = {
+def isContextFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[Boolean] = {
   import qctx.tasty.{_, given _}
-  Expr(tp.unseal.tpe.isImplicitFunctionType)
+  Expr(tp.unseal.tpe.isContextFunctionType)
 }
 
 
