@@ -27,7 +27,7 @@ class B/*<-annot::B#*/ @ConstructorAnnotation/*->com::javacp::annot::Constructor
 @ObjectAnnotation/*->com::javacp::annot::ObjectAnnotation#*/
 object M/*<-annot::M.*/ {
   @MacroAnnotation/*->com::javacp::annot::MacroAnnotation#*/
-  def m/*<-annot::M.m().*/[TT/*<-annot::M.m().[TT]*/]: Int/*->scala::Int#*//*->scala::Predef.`???`().*/ = macro ???
+  def m/*<-annot::M.m().*/[TT/*<-annot::M.m().[TT]*/]: Int/*->scala::Int#*/ = macro ???/*->scala::Predef.`???`().*/
 }
 
 @TraitAnnotation/*->com::javacp::annot::TraitAnnotation#*/

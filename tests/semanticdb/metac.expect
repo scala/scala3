@@ -210,7 +210,7 @@ annot/B#`<init>`().(x) => param x
 annot/B#`<init>`(+1). => ctor <init>
 annot/B#x. => val method x
 annot/M. => final object M
-annot/M.m(). => method m
+annot/M.m(). => macro m
 annot/M.m().[TT] => typeparam TT
 annot/T# => trait T
 annot/T#`<init>`(). => primary ctor <init>
@@ -262,7 +262,7 @@ Occurrences:
 [29:6..29:7): m <- annot/M.m().
 [29:8..29:10): TT <- annot/M.m().[TT]
 [29:13..29:16): Int -> scala/Int#
-[29:16..29:16): -> scala/Predef.`???`().
+[29:25..29:28): ??? -> scala/Predef.`???`().
 [32:0..32:0): <- annot/T#`<init>`().
 [32:1..32:16): TraitAnnotation -> com/javacp/annot/TraitAnnotation#
 [33:6..33:7): T <- annot/T#
@@ -2986,7 +2986,7 @@ flags/p/package.Z# => sealed trait Z
 flags/p/package.Z#`<init>`(). => primary ctor <init>
 flags/p/package.`y_=`(). => var method y_=
 flags/p/package.`y_=`().(x$1) => param x$1
-flags/p/package.m(). => method m
+flags/p/package.m(). => macro m
 flags/p/package.m().[TT] => typeparam TT
 flags/p/package.x. => lazy val method x
 flags/p/package.xs1. => val method xs1
@@ -3013,7 +3013,7 @@ Occurrences:
 [8:6..8:7): m <- flags/p/package.m().
 [8:8..8:10): TT <- flags/p/package.m().[TT]
 [8:13..8:16): Int -> scala/Int#
-[8:16..8:16): -> scala/Predef.`???`().
+[8:25..8:28): ??? -> scala/Predef.`???`().
 [9:17..9:18): C <- flags/p/package.C#
 [9:18..9:47): <- flags/p/package.C#`<init>`().
 [9:20..9:21): T <- flags/p/package.C#[T]

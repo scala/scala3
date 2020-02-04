@@ -113,6 +113,7 @@ class SemanticdbTests:
       // "-Xprint:extractSemanticDB",
       "-sourceroot", expectSrc.toString,
       "-classpath", target.toString,
+      "-Xignore-scala2-macros",
       "-usejavacp"
     ) ++ inputFiles().map(_.toString)
     val exit = Main.process(args)

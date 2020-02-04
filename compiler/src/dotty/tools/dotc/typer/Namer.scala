@@ -435,7 +435,8 @@ class Namer { typer: Typer =>
     *  package members are not entered twice in the same run.
     */
   def enterSymbol(sym: Symbol)(using Context): Symbol = {
-    if (sym.exists) {
+    // We do not enter Scala 2 macros defined in Scala 3 as they have an equivalent Scala 3 inline method.
+    if (sym.exists && !sym.isScala2MacroInScala3) {
       typr.println(s"entered: $sym in ${ctx.owner}")
       ctx.enter(sym)
     }

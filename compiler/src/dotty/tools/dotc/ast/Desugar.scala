@@ -237,8 +237,10 @@ object desugar {
       cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
     }
 
-    val meth1 = addEvidenceParams(
-      cpy.DefDef(meth)(name = methName, tparams = tparams1), epbuf.toList)
+    val meth1 =
+      rhs match
+        case MacroTree(call) => cpy.DefDef(meth)(rhs = call).withMods(mods | Macro | Erased)
+        case _ => addEvidenceParams(cpy.DefDef(meth)(name = methName, tparams = tparams1), epbuf.toList)
 
     /** The longest prefix of parameter lists in vparamss whose total length does not exceed `n` */
     def takeUpTo(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {
