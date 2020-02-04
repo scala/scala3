@@ -1004,8 +1004,7 @@ class Namer { typer: Typer =>
         sym.info = NoCompleter
         sym.info = sym.opaqueToBounds(checkNonCyclic(sym, unsafeInfo, reportErrors = true))
       }
-      if !Config.newScheme then sym.normalizeOpaque()
-      else if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
+      if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
       sym.resetFlag(Provisional)
 
       // Here we pay the price for the cavalier setting info to TypeBounds.empty above.
