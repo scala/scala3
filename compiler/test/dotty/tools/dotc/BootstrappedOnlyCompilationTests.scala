@@ -32,7 +32,10 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def posMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosMacros")
-    compileFilesInDir("tests/pos-macros", defaultOptions).checkCompile()
+    aggregateTests(
+      compileFilesInDir("tests/pos-macros", defaultOptions),
+      compileFilesInDir("tests/pos-macro-compat", withReflectOptions),
+    ).checkCompile()
   }
 
   @Test def posWithCompiler: Unit = {
@@ -100,7 +103,10 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def negMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
-    compileFilesInDir("tests/neg-macros", defaultOptions).checkExpectedErrors()
+    aggregateTests(
+      compileFilesInDir("tests/neg-macros", defaultOptions),
+      compileFilesInDir("tests/neg-macro-compat", withReflectOptions),
+    ).checkExpectedErrors()
   }
 
   @Test def negWithCompiler: Unit = {

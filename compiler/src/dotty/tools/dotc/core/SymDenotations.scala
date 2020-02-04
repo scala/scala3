@@ -933,7 +933,7 @@ object SymDenotations {
       isAllOf(InlineMethod, butNot = Accessor)
 
     /** Is this a Scala 2 macro */
-    final def isScala2Macro(implicit ctx: Context): Boolean = is(Macro) && symbol.owner.is(Scala2x)
+    final def isScala2Macro(implicit ctx: Context): Boolean = is(Macro, butNot = Inline)
 
     /** An erased value or an inline method.
      */

@@ -24,6 +24,12 @@ object TestConfiguration {
     Properties.dottyLibrary
   ))
 
+  val withReflectClasspath = mkClasspath(List(
+    Properties.scalaLibrary,
+    Properties.dottyLibrary,
+    Properties.scalaReflect,
+  ))
+
   val withCompilerClasspath = mkClasspath(List(
     Properties.scalaLibrary,
     Properties.scalaAsm,
@@ -55,6 +61,8 @@ object TestConfiguration {
   val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val withCompilerOptions =
     defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+  lazy val withReflectOptions =
+    defaultOptions.withClasspath(withReflectClasspath).and("-language:Scala2Compat")
   lazy val withStagingOptions =
     defaultOptions.withClasspath(withStagingClasspath).withRunClasspath(withStagingClasspath)
   lazy val withTastyInspectorOptions =

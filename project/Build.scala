@@ -536,6 +536,7 @@ object Build {
           "-Ddotty.tests.classes.compilerInterface=" + findArtifactPath(externalDeps, "compiler-interface"),
           "-Ddotty.tests.classes.scalaLibrary=" + findArtifactPath(externalDeps, "scala-library"),
           "-Ddotty.tests.classes.scalaAsm=" + findArtifactPath(externalDeps, "scala-asm"),
+          "-Ddotty.tests.classes.scalaReflect=" + findArtifactPath(externalDeps, "scala-reflect"),
           "-Ddotty.tests.classes.jlineTerminal=" + findArtifactPath(externalDeps, "jline-terminal"),
           "-Ddotty.tests.classes.jlineReader=" + findArtifactPath(externalDeps, "jline-reader"),
         )
@@ -726,6 +727,7 @@ object Build {
         "-Ddotty.tests.classes.dottyTastyInspector=" + jars("dotty-tasty-inspector"),
       )
     },
+    libraryDependencies += "org.scala-lang" % "scala-reflect" %  "2.13.1",
     packageAll := {
       packageAll.in(`dotty-compiler`).value ++ Seq(
         "dotty-compiler" -> packageBin.in(Compile).value.getAbsolutePath,

@@ -1675,8 +1675,61 @@ class Typer extends Namer
       }
     }
 
+    def typeScala2MacroBody(tree: untpd.Tree)(implicit ctx: Context): Tree =
+      def checked(rhs: Tree): rhs.type = {
+        if ctx.phase.isTyper && rhs.symbol.ne(defn.Predef_undefined) then
+          val reflectWContextType = ctx.requiredClassRef("scala.reflect.macros.whitebox.Context")
+          val reflectBContextType = ctx.requiredClassRef("scala.reflect.macros.blackbox.Context")
+          def checkResType(res: Type, cParam: TermParamRef): Unit =
+            res match
+              case AppliedType(expr, res) if expr <:< cParam.select(tpnme.Expr) =>
+                // TODO check res type
+              case _ =>
+                ctx.error(s"Expected macro implementation to return a ${cParam.paramName}.Expr", tree.sourcePos)
+
+          def checkParams(tpe: Type, paramss: List[List[ValDef]], cParam: TermParamRef): Unit = {
+            tpe match
+              case mt: MethodType =>
+                paramss match
+                  case params :: paramss2 =>
+                    if mt.paramInfos.size != params.size then
+                      ctx.error("Wrong number of macro arguments", tree.sourcePos)
+                    else
+                      val expected = params.map(x => cParam.select(tpnme.Expr).appliedTo(x.tpt.tpe))
+                      for ((e, a) <- expected.zip(mt.paramInfos))
+                        if !(a =:= e) then ctx.error("Expected macro implementation to match parameters", tree.sourcePos)
+                      checkParams(mt.resType, paramss2, cParam)
+                  case Nil =>
+                    ctx.error("Expected macro implementation has too many parameter groups", tree.sourcePos)
+
+              case res =>
+                if paramss.isEmpty then checkResType(res, cParam)
+                else ctx.error("Expected macro implementation to not have parameters after Context", tree.sourcePos)
+          }
+          rhs.tpe.widenDealias match
+            case mt: PolyType =>
+              // TODO
+              ctx.error("Scala 2 macro definitions with type parameters not supported yet", tree.sourcePos)
+            case mt: MethodType =>
+              mt.paramInfos match
+                case c :: Nil if c <:< reflectWContextType || c <:< reflectBContextType =>
+                  checkParams(mt.resType, vparamss1, mt.paramRefs(0))
+                case _ =>
+                  ctx.error("Expected macro implementation first parameter to be Context parameter", tree.sourcePos)
+            case _ =>
+              ctx.error("Expected macro implementation to have at least a Context parameter", tree.sourcePos)
+        rhs
+      }
+      val rhs1 = ddef.rhs match
+        case rhs0: Ident => typedIdent(rhs0, defn.AnyType)
+        case rhs0: Select => typedSelect(rhs0, defn.AnyType)
+        case rhs0: TypeApply => typedTypeApply(rhs0, defn.AnyType)
+      checked(rhs1)
+
     if (sym.isInlineMethod) rhsCtx.addMode(Mode.InlineableBody)
-    val rhs1 = typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(rhsCtx)
+    val rhs1 =
+      if sym.isScala2Macro then typeScala2MacroBody(ddef.rhs)(rhsCtx) // Scala 2 macro definition
+      else typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(rhsCtx)
 
     if (sym.isInlineMethod)
       PrepareInlineable.registerInlineInfo(sym, _ => rhs1)

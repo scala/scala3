@@ -68,6 +68,9 @@ object Properties {
   /** scala-asm jar */
   def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")
 
+  /** scala-reflect jar */
+  def scalaReflect: String = sys.props("dotty.tests.classes.scalaReflect")
+
   /** jline-terminal jar */
   def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal")
 

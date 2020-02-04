@@ -2225,15 +2225,20 @@ object Parsers {
           newExpr()
         case MACRO =>
           val start = in.skipToken()
-          val call = ident()
-          // The standard library uses "macro ???" to denote "fast track" macros
-          // hardcoded in the compiler, don't issue an error for those macros
-          // since we want to be able to compile the standard library.
-          if (call `ne` nme.???)
-            syntaxError(
-              "Scala 2 macros are not supported, see https://dotty.epfl.ch/docs/reference/dropped-features/macros.html",
-              start)
-          unimplementedExpr
+          val call = simpleExpr()
+          call match
+            case Ident(name) if name eq nme.??? =>
+              // The standard library uses "macro ???" to denote "fast track" macros
+              // hardcoded in the compiler, don't issue an error for those macros
+              // since we want to be able to compile the standard library.
+              MacroTree(call)
+            case _ if ctx.scala2CompatMode =>
+              MacroTree(call)
+            case _ =>
+              syntaxError(
+                "Scala 2 macros are not supported, see https://dotty.epfl.ch/docs/reference/dropped-features/macros.html",
+                start)
+              unimplementedExpr
         case COLONEOL =>
           syntaxError("':' not allowed here")
           in.nextToken()

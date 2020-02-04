@@ -111,6 +111,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @constructorOnly src: SourceFile) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
   case class Export(expr: Tree, selectors: List[ImportSelector])(implicit @constructorOnly src: SourceFile) extends Tree
+  case class MacroTree(call: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
 
   case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
     // TODO: Make bound a typed tree?
@@ -732,6 +733,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         x
       case TypedSplice(splice) =>
         this(x, splice)
+      case MacroTree(call) =>
+        this(x, call)
       case _ =>
         super.foldMoreCases(x, tree)
     }

@@ -259,6 +259,12 @@ object desugar {
         case _ =>
       }
 
+    meth1.rhs match {
+      case MacroTree(call) =>
+        meth1 = cpy.DefDef(meth1)(rhs = call).withMods(meth1.mods | Macro | Erased)
+      case _ =>
+    }
+
     /** The longest prefix of parameter lists in vparamss whose total length does not exceed `n` */
     def takeUpTo(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {
       case vparams :: vparamss1 =>
@@ -684,7 +690,7 @@ object desugar {
           val mods = constr1.mods
           mods.is(Private) || (!mods.is(Protected) && mods.hasPrivateWithin)
         }
- 
+
         /** Does one of the parameter's types (in the first param clause)
          *  mention a preceding parameter?
          */

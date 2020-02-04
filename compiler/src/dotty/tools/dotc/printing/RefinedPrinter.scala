@@ -634,6 +634,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(tree.app) ~ Str("(with integrated type args)").provided(printDebug)
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
+      case MacroTree(call) =>
+        keywordStr("macro ") ~ toTextGlobal(call)
       case _ =>
         tree.fallbackToText(this)
     }

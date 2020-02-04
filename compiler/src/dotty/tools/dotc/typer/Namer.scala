@@ -437,7 +437,7 @@ class Namer { typer: Typer =>
     *  package members are not entered twice in the same run.
     */
   def enterSymbol(sym: Symbol)(implicit ctx: Context): Symbol = {
-    if (sym.exists) {
+    if (sym.exists && !sym.isScala2Macro) {
       typr.println(s"entered: $sym in ${ctx.owner}")
       ctx.enter(sym)
     }
