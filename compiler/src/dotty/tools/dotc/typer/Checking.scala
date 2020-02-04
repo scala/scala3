@@ -440,6 +440,8 @@ object Checking {
     }
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
       fail(CannotExtendAnyVal(sym))
+    if (sym.isConstructor && !sym.isPrimaryConstructor && sym.owner.is(Trait))
+      fail("Traits cannot have secondary constructors")
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
     checkCombination(Final, Sealed)
