@@ -483,16 +483,21 @@ object SymDenotations {
         recur(owner.asClass.givenSelfType)
       end setAlias
 
+      def split(tp: Type): (Type, TypeBounds) = tp match
+        case AnnotatedType(alias, Annotation.WithBounds(bounds)) =>
+          (alias, bounds)
+        case tp: HKTypeLambda =>
+          val (alias1, bounds1) = split(tp.resType)
+          (tp.derivedLambdaType(resType = alias1),
+           HKTypeLambda.boundsFromParams(tp.typeParams, bounds1))
+        case _ =>
+          (tp, HKTypeLambda.boundsFromParams(tp.typeParams, TypeBounds.empty))
+
       info match
-        case TypeAlias(alias) if isOpaqueAlias && owner.isClass =>
-          val bounds = alias match
-            case AnnotatedType(alias1, Annotation.WithBounds(bounds)) =>
-              setAlias(alias1)
-              bounds
-            case _ =>
-              setAlias(alias)
-              TypeBounds.empty
-          HKTypeLambda.boundsFromParams(alias.typeParams, bounds)
+        case TypeAlias(tp) if isOpaqueAlias && owner.isClass =>
+          val (alias, bounds) = split(tp)
+          setAlias(alias)
+          bounds
         case _ =>
           info
     end opaqueToBounds
