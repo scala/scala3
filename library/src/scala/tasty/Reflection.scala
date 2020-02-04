@@ -1579,7 +1579,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   ///////////////
 
   /** Returns the type (Type) of T */
-  def typeOf[T](given qtype: scala.quoted.Type[T]): Type = qtype.unseal.tpe
+  def typeOf[T](given qtype: scala.quoted.Type[T], ctx: Context): Type = qtype.unseal.tpe
 
   // ----- Types ----------------------------------------------------
 
@@ -2997,7 +2997,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   }
 
   /** Bind the `rhs` to a `val` and use it in `body` */
-  def let(rhs: Term)(body: Ident => Term): Term = {
+  def let(rhs: Term)(body: Ident => Term)(given ctx: Context): Term = {
     import scala.quoted.QuoteContext
     given QuoteContext = new QuoteContext(this)
     val expr = (rhs.seal: @unchecked) match {
@@ -3014,7 +3014,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   }
 
   /** Bind the given `terms` to names and use them in the `body` */
-  def lets(terms: List[Term])(body: List[Term] => Term): Term = {
+  def lets(terms: List[Term])(body: List[Term] => Term)(given Context): Term = {
     def rec(xs: List[Term], acc: List[Term]): Term = xs match {
       case Nil => body(acc)
       case x :: xs => let(x) { (x: Term) => rec(xs, x :: acc) }
