@@ -313,7 +313,7 @@ object Splicer {
         }
 
       def getDirectName(tp: Type, name: TermName): TermName = tp.widenDealias match {
-        case tp: AppliedType if defn.isImplicitFunctionType(tp) =>
+        case tp: AppliedType if defn.isContextFunctionType(tp) =>
           getDirectName(tp.args.last, NameKinds.DirectMethodName(name))
         case _ => name
       }
@@ -468,8 +468,8 @@ object Splicer {
         else java.lang.Class.forName(javaSig(param), false, classLoader)
       }
       def getExtraParams(tp: Type): List[Type] = tp.widenDealias match {
-        case tp: AppliedType if defn.isImplicitFunctionType(tp) =>
-          // Call implicit function type direct method
+        case tp: AppliedType if defn.isContextFunctionType(tp) =>
+          // Call context function type direct method
           tp.args.init.map(arg => TypeErasure.erasure(arg)) ::: getExtraParams(tp.args.last)
         case _ => Nil
       }
@@ -496,7 +496,7 @@ object Splicer {
 
     private object Call0 {
       def unapply(arg: Tree)(implicit ctx: Context): Option[(RefTree, List[List[Tree]])] = arg match {
-        case Select(Call0(fn, args), nme.apply) if defn.isImplicitFunctionType(fn.tpe.widenDealias.finalResultType) =>
+        case Select(Call0(fn, args), nme.apply) if defn.isContextFunctionType(fn.tpe.widenDealias.finalResultType) =>
           Some((fn, args))
         case fn: RefTree => Some((fn, Nil))
         case Apply(f @ Call0(fn, args1), args2) =>

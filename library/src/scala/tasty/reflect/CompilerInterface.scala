@@ -871,11 +871,11 @@ trait CompilerInterface {
   def Type_isFunctionType(self: Type)(given ctx: Context): Boolean
 
 
-  /** Is this type an implicit function type?
+  /** Is this type an context function type?
    *
    *  @see `Type_isFunctionType`
    */
-  def Type_isImplicitFunctionType(self: Type)(given ctx: Context): Boolean
+  def Type_isContextFunctionType(self: Type)(given ctx: Context): Boolean
 
   /** Is this type an erased function type?
    *

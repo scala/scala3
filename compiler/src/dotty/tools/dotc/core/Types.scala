@@ -4627,7 +4627,7 @@ object Types {
           case et: ExprType => true
           case _ => false
         }
-        // `ImplicitFunctionN` does not have constructors
+        // `ContextFunctionN` does not have constructors
         val ctor = tp.cls.primaryConstructor
         if (!ctor.exists || zeroParams(ctor.info)) tp
         else NoType
@@ -4657,7 +4657,7 @@ object Types {
         if (absMems.size == 1)
           absMems.head.info match {
             case mt: MethodType if !mt.isParamDependent &&
-                !defn.isImplicitFunctionType(mt.resultType) =>
+                !defn.isContextFunctionType(mt.resultType) =>
               val cls = tp.classSymbol
 
               // Given a SAM type such as:

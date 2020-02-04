@@ -85,7 +85,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
   /** Transform `qual.apply` occurrences according to rewrite rule (2) above */
   override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
     if (tree.name == nme.apply &&
-        defn.isImplicitFunctionType(tree.qualifier.tpe.widen) &&
+        defn.isContextFunctionType(tree.qualifier.tpe.widen) &&
         needsImplicitShortcut(tree.qualifier.symbol)) {
       def directQual(tree: Tree): Tree = tree match {
         case Apply(fn, args)     => cpy.Apply(tree)(directQual(fn), args)
@@ -165,7 +165,7 @@ object ShortcutImplicits {
     */
   def needsImplicitShortcut(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.is(Method, butNot = Accessor) &&
-    defn.isImplicitFunctionType(sym.info.finalResultType) &&
+    defn.isContextFunctionType(sym.info.finalResultType) &&
     defn.functionArity(sym.info.finalResultType) > 0 &&
     !sym.isAnonymousFunction &&
     (specializeMonoTargets || !sym.isEffectivelyFinal || sym.allOverriddenSymbols.nonEmpty)

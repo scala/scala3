@@ -741,7 +741,7 @@ trait Implicits { self: Typer =>
     (formal, span) => implicit ctx => formal match {
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
         def functionTypeEqual(baseFun: Type, actualArgs: List[Type], actualRet: Type, expected: Type) =
-          expected =:= defn.FunctionOf(actualArgs, actualRet, defn.isImplicitFunctionType(baseFun), defn.isErasedFunctionType(baseFun))
+          expected =:= defn.FunctionOf(actualArgs, actualRet, defn.isContextFunctionType(baseFun), defn.isErasedFunctionType(baseFun))
         val arity: Int =
           if (defn.isErasedFunctionType(fun) || defn.isErasedFunctionType(fun)) -1 // TODO support?
           else if (defn.isFunctionType(fun))

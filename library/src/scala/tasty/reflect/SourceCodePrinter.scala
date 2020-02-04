@@ -384,7 +384,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       case Apply(fn, args) =>
         fn match {
           case Select(This(_), "<init>") => this += "this" // call to constructor inside a constructor
-          case Select(qual, "apply") if qual.tpe.isImplicitFunctionType =>
+          case Select(qual, "apply") if qual.tpe.isContextFunctionType =>
             printTree(qual) += " given "
           case _ => printQualTree(fn)
         }

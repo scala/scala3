@@ -195,7 +195,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp @ AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
         if (tycon.isRepeatedParam)  toTextLocal(args.head) ~ "*"
-        else if (defn.isFunctionClass(cls))  toTextFunction(args, cls.name.isImplicitFunction, cls.name.isErasedFunction)
+        else if (defn.isFunctionClass(cls))  toTextFunction(args, cls.name.isContextFunction, cls.name.isErasedFunction)
         else if (tp.tupleArity >= 2 && !printDebug)  toTextTuple(tp.tupleElementTypes)
         else if (isInfixType(tp)) {
           val l :: r :: Nil = args

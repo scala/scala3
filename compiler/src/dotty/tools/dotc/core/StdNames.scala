@@ -35,8 +35,8 @@ object StdNames {
 
     final val Function                   = "Function"
     final val ErasedFunction             = "ErasedFunction"
-    final val ImplicitFunction           = "ImplicitFunction"
-    final val ErasedImplicitFunction     = "ErasedImplicitFunction"
+    final val ContextFunction            = "ContextFunction"
+    final val ErasedContextFunction      = "ErasedContextFunction"
     final val AbstractFunction           = "AbstractFunction"
     final val Tuple                      = "Tuple"
     final val Product                    = "Product"
