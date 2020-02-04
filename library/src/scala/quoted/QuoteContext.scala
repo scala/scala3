@@ -14,12 +14,12 @@ class QuoteContext(val tasty: scala.tasty.Reflection) {
 
   def show(expr: Expr[_], syntaxHighlight: SyntaxHighlight): String = {
     import tasty.{_, given}
-    expr.unseal.show(syntaxHighlight)
+    expr.unseal.showWith(syntaxHighlight)
   }
 
   def show(tpe: Type[_], syntaxHighlight: SyntaxHighlight): String = {
     import tasty.{_, given}
-    tpe.unseal.show(syntaxHighlight)
+    tpe.unseal.showWith(syntaxHighlight)
   }
 
   /** Report an error at the position of the macro expansion */
