@@ -25,13 +25,13 @@ class QuoteContext(val tasty: scala.tasty.Reflection) {
   /** Report an error at the position of the macro expansion */
   def error(msg: => String): Unit = {
     import tasty.{_, given}
-    tasty.error(msg, rootPosition)(given rootContext)
+    tasty.error(msg, rootPosition)
   }
 
   /** Report an error at the on the position of `expr` */
-  def error(msg: => String, expr: Expr[_]): Unit = {
+  def error(msg: => String, expr: Expr[Any]): Unit = {
     import tasty.{_, given}
-    tasty.error(msg, expr.unseal.pos)(given rootContext)
+    tasty.error(msg, expr.unseal.pos)
   }
 
   /** Report an error at the position of the macro expansion and throws a StopQuotedContext */
@@ -40,7 +40,7 @@ class QuoteContext(val tasty: scala.tasty.Reflection) {
     throw new StopQuotedContext
   }
   /** Report an error at the on the position of `expr` and throws a StopQuotedContext */
-  def throwError(msg: => String, expr: Expr[_]): Nothing = {
+  def throwError(msg: => String, expr: Expr[Any]): Nothing = {
     error(msg, expr)
     throw new StopQuotedContext
   }
@@ -48,13 +48,13 @@ class QuoteContext(val tasty: scala.tasty.Reflection) {
   /** Report a warning */
   def warning(msg: => String): Unit = {
     import tasty.{_, given}
-    tasty.warning(msg, rootPosition)(given rootContext)
+    tasty.warning(msg, rootPosition)
   }
 
   /** Report a warning at the on the position of `expr` */
   def warning(msg: => String, expr: Expr[_]): Unit = {
     import tasty.{_, given}
-    tasty.warning(msg, expr.unseal.pos)(given rootContext)
+    tasty.warning(msg, expr.unseal.pos)
   }
 
 }
