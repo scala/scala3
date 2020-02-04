@@ -1595,6 +1595,21 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   /** Returns the type (Type) of T */
   def typeOf[T](given qtype: scala.quoted.Type[T]): Type = qtype.unseal.tpe
 
+  /** Members of `TypeOrBounds` */
+  extension TypeOrBoundsOps on (tpe: TypeOrBounds) {
+    /** Shows the tree as extractors */
+    def showExtractors(given ctx: Context): String =
+      new ExtractorsPrinter[self.type](self).showTypeOrBounds(tpe)
+
+    /** Shows the tree as fully typed source code */
+    def show(given ctx: Context): String =
+      tpe.showWith(SyntaxHighlight.plain)
+
+    /** Shows the tree as fully typed source code */
+    def showWith(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showTypeOrBounds(tpe)
+  }
+
   // ----- Types ----------------------------------------------------
 
   extension TypeOps on (self: Type) {
@@ -2668,21 +2683,6 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   //////////////
   // PRINTERS //
   //////////////
-
-  /** Adds `show` as an extension method of a `TypeOrBounds` */
-  extension TypeOrBoundsShowDeco on (tpe: TypeOrBounds) {
-    /** Shows the tree as extractors */
-    def showExtractors(given ctx: Context): String =
-      new ExtractorsPrinter[self.type](self).showTypeOrBounds(tpe)
-
-    /** Shows the tree as fully typed source code */
-    def show(given ctx: Context): String =
-      tpe.showWith(SyntaxHighlight.plain)
-
-    /** Shows the tree as fully typed source code */
-    def showWith(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
-      new SourceCodePrinter[self.type](self)(syntaxHighlight).showTypeOrBounds(tpe)
-  }
 
   /** Adds `show` as an extension method of a `Symbol` */
   extension SymbolShowDeco on (symbol: Symbol) {
