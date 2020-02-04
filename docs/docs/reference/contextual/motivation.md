@@ -4,7 +4,7 @@ title: "Overview"
 ---
 
 **Note** The syntax described in this section is currently under revision.
-[Here is the new version which will be implemented in Dotty 0.22](./motovation-new.html).
+[Here is the new version which will be implemented in Dotty 0.22](./motivation-new.html).
 
 ### Critique of the Status Quo
 
