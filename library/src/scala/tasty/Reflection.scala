@@ -1941,8 +1941,23 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   // CONSTANTS //
   ///////////////
 
+  /** Members of `Constant` */
   extension ConstantOps on (const: Constant) {
+
+    /** Returns the value of the constant */
     def value: Any = internal.Constant_value(const)
+
+    /** Shows the tree as extractors */
+    def showExtractors(given ctx: Context): String =
+      new ExtractorsPrinter[self.type](self).showConstant(const)
+
+    /** Shows the tree as fully typed source code */
+    def show(given ctx: Context): String =
+      const.showWith(SyntaxHighlight.plain)
+
+    /** Shows the tree as fully typed source code */
+    def showWith(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showConstant(const)
   }
 
   /** Module of Constant literals */
@@ -2669,21 +2684,6 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     /** Shows the tree as fully typed source code */
     def showWith(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
       new SourceCodePrinter[self.type](self)(syntaxHighlight).showTypeOrBounds(tpe)
-  }
-
-  /** Adds `show` as an extension method of a `Constant` */
-  extension ConstantShowDeco on (const: Constant) {
-    /** Shows the tree as extractors */
-    def showExtractors(given ctx: Context): String =
-      new ExtractorsPrinter[self.type](self).showConstant(const)
-
-    /** Shows the tree as fully typed source code */
-    def show(given ctx: Context): String =
-      const.showWith(SyntaxHighlight.plain)
-
-    /** Shows the tree as fully typed source code */
-    def showWith(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
-      new SourceCodePrinter[self.type](self)(syntaxHighlight).showConstant(const)
   }
 
   /** Adds `show` as an extension method of a `Symbol` */
