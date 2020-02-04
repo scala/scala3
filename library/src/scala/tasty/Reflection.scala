@@ -2500,16 +2500,29 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   //   FLAGS   //
   ///////////////
 
-  extension FlagsOps on (self: Flags) {
+  /** Members of `Flag` */
+  extension FlagsOps on (flags: Flags) {
 
     /** Is the given flag set a subset of this flag sets */
-    def is(that: Flags): Boolean = internal.Flags_is(self)(that)
+    def is(that: Flags): Boolean = internal.Flags_is(flags)(that)
 
     /** Union of the two flag sets */
-    def |(that: Flags): Flags = internal.Flags_or(self)(that)
+    def |(that: Flags): Flags = internal.Flags_or(flags)(that)
 
     /** Intersection of the two flag sets */
-    def &(that: Flags): Flags = internal.Flags_and(self)(that)
+    def &(that: Flags): Flags = internal.Flags_and(flags)(that)
+
+    /** Shows the tree as extractors */
+    def showExtractors(given ctx: Context): String =
+      new ExtractorsPrinter[self.type](self).showFlags(flags)
+
+    /** Shows the tree as fully typed source code */
+    def show(given ctx: Context): String =
+      flags.showWith(SyntaxHighlight.plain)
+
+    /** Shows the tree as fully typed source code */
+    def showWith(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showFlags(flags)
 
   }
 
@@ -2692,25 +2705,6 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   /** Emits a warning at a specific range of a file */
   def warning(msg: => String, source: SourceFile, start: Int, end: Int)(given ctx: Context): Unit =
     internal.warning(msg, source, start, end)
-
-  //////////////
-  // PRINTERS //
-  //////////////
-
-  /** Adds `show` as an extension method of a `Flags` */
-  extension FlagsShowDeco on (flags: Flags) {
-    /** Shows the tree as extractors */
-    def showExtractors(given ctx: Context): String =
-      new ExtractorsPrinter[self.type](self).showFlags(flags)
-
-    /** Shows the tree as fully typed source code */
-    def show(given ctx: Context): String =
-      flags.showWith(SyntaxHighlight.plain)
-
-    /** Shows the tree as fully typed source code */
-    def showWith(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
-      new SourceCodePrinter[self.type](self)(syntaxHighlight).showFlags(flags)
-  }
 
 
   //////////////
