@@ -2090,36 +2090,37 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       internal.Symbol_noSymbol
   }
 
-  extension symbolOps on (self: Symbol) {
+  /** Members of `Symbol` */
+  extension SymbolOps on (sym: Symbol) {
 
     /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
-    def owner(given ctx: Context): Symbol = internal.Symbol_owner(self)
+    def owner(given ctx: Context): Symbol = internal.Symbol_owner(sym)
 
     /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Returns `NoSymbol` if this symbol does not have an owner. */
-    def maybeOwner(given ctx: Context): Symbol = internal.Symbol_maybeOwner(self)
+    def maybeOwner(given ctx: Context): Symbol = internal.Symbol_maybeOwner(sym)
 
     /** Flags of this symbol */
-    def flags(given ctx: Context): Flags = internal.Symbol_flags(self)
+    def flags(given ctx: Context): Flags = internal.Symbol_flags(sym)
 
     /** This symbol is private within the resulting type */
-    def privateWithin(given ctx: Context): Option[Type] = internal.Symbol_privateWithin(self)
+    def privateWithin(given ctx: Context): Option[Type] = internal.Symbol_privateWithin(sym)
 
     /** This symbol is protected within the resulting type */
-    def protectedWithin(given ctx: Context): Option[Type] = internal.Symbol_protectedWithin(self)
+    def protectedWithin(given ctx: Context): Option[Type] = internal.Symbol_protectedWithin(sym)
 
     /** The name of this symbol */
-    def name(given ctx: Context): String = internal.Symbol_name(self)
+    def name(given ctx: Context): String = internal.Symbol_name(sym)
 
     /** The full name of this symbol up to the root package */
-    def fullName(given ctx: Context): String = internal.Symbol_fullName(self)
+    def fullName(given ctx: Context): String = internal.Symbol_fullName(sym)
 
     /** The position of this symbol */
-    def pos(given ctx: Context): Position = internal.Symbol_pos(self)
+    def pos(given ctx: Context): Position = internal.Symbol_pos(sym)
 
-    def localContext(given ctx: Context): Context = internal.Symbol_localContext(self)
+    def localContext(given ctx: Context): Context = internal.Symbol_localContext(sym)
 
     /** The comment for this symbol, if any */
-    def comment(given ctx: Context): Option[Comment] = internal.Symbol_comment(self)
+    def comment(given ctx: Context): Option[Comment] = internal.Symbol_comment(sym)
 
     /** Tree of this definition
      *
@@ -2131,97 +2132,109 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
      * if this symbol `isBind` it will return a `Bind`
      */
     def tree(given ctx: Context): Tree =
-      internal.Symbol_tree(self)
+      internal.Symbol_tree(sym)
 
     /** Annotations attached to this symbol */
-    def annots(given ctx: Context): List[Term] = internal.Symbol_annots(self)
+    def annots(given ctx: Context): List[Term] = internal.Symbol_annots(sym)
 
-    def isDefinedInCurrentRun(given ctx: Context): Boolean = internal.Symbol_isDefinedInCurrentRun(self)
+    def isDefinedInCurrentRun(given ctx: Context): Boolean = internal.Symbol_isDefinedInCurrentRun(sym)
 
-    def isLocalDummy(given ctx: Context): Boolean = internal.Symbol_isLocalDummy(self)
-    def isRefinementClass(given ctx: Context): Boolean = internal.Symbol_isRefinementClass(self)
-    def isAliasType(given ctx: Context): Boolean = internal.Symbol_isAliasType(self)
-    def isAnonymousClass(given ctx: Context): Boolean = internal.Symbol_isAnonymousClass(self)
-    def isAnonymousFunction(given ctx: Context): Boolean = internal.Symbol_isAnonymousFunction(self)
-    def isAbstractType(given ctx: Context): Boolean = internal.Symbol_isAbstractType(self)
-    def isClassConstructor(given ctx: Context): Boolean = internal.Symbol_isClassConstructor(self)
+    def isLocalDummy(given ctx: Context): Boolean = internal.Symbol_isLocalDummy(sym)
+    def isRefinementClass(given ctx: Context): Boolean = internal.Symbol_isRefinementClass(sym)
+    def isAliasType(given ctx: Context): Boolean = internal.Symbol_isAliasType(sym)
+    def isAnonymousClass(given ctx: Context): Boolean = internal.Symbol_isAnonymousClass(sym)
+    def isAnonymousFunction(given ctx: Context): Boolean = internal.Symbol_isAnonymousFunction(sym)
+    def isAbstractType(given ctx: Context): Boolean = internal.Symbol_isAbstractType(sym)
+    def isClassConstructor(given ctx: Context): Boolean = internal.Symbol_isClassConstructor(sym)
 
     /** Is this the definition of a type? */
-    def isType(given ctx: Context): Boolean = internal.Symbol_isType(self)
+    def isType(given ctx: Context): Boolean = internal.Symbol_isType(sym)
 
     /** Is this the definition of a term? */
-    def isTerm(given ctx: Context): Boolean = internal.Symbol_isTerm(self)
+    def isTerm(given ctx: Context): Boolean = internal.Symbol_isTerm(sym)
 
     /** Is this the definition of a PackageDef tree? */
-    def isPackageDef(given ctx: Context): Boolean = internal.Symbol_isPackageDef(self)
+    def isPackageDef(given ctx: Context): Boolean = internal.Symbol_isPackageDef(sym)
 
     /** Is this the definition of a ClassDef tree? */
-    def isClassDef(given ctx: Context): Boolean = internal.Symbol_isClassDef(self)
+    def isClassDef(given ctx: Context): Boolean = internal.Symbol_isClassDef(sym)
 
     /** Is this the definition of a TypeDef tree */
-    def isTypeDef(given ctx: Context): Boolean = internal.Symbol_isTypeDef(self)
+    def isTypeDef(given ctx: Context): Boolean = internal.Symbol_isTypeDef(sym)
 
     /** Is this the definition of a ValDef tree? */
-    def isValDef(given ctx: Context): Boolean = internal.Symbol_isValDef(self)
+    def isValDef(given ctx: Context): Boolean = internal.Symbol_isValDef(sym)
 
     /** Is this the definition of a DefDef tree? */
-    def isDefDef(given ctx: Context): Boolean = internal.Symbol_isDefDef(self)
+    def isDefDef(given ctx: Context): Boolean = internal.Symbol_isDefDef(sym)
 
     /** Is this the definition of a Bind pattern? */
-    def isBind(given ctx: Context): Boolean = internal.Symbol_isBind(self)
+    def isBind(given ctx: Context): Boolean = internal.Symbol_isBind(sym)
 
     /** Does this symbol represent a no definition? */
-    def isNoSymbol(given ctx: Context): Boolean = self == Symbol.noSymbol
+    def isNoSymbol(given ctx: Context): Boolean = sym == Symbol.noSymbol
 
     /** Does this symbol represent a definition? */
-    def exists(given ctx: Context): Boolean = self != Symbol.noSymbol
+    def exists(given ctx: Context): Boolean = sym != Symbol.noSymbol
 
     /** Fields directly declared in the class */
     def fields(given ctx: Context): List[Symbol] =
-      internal.Symbol_fields(self)
+      internal.Symbol_fields(sym)
 
     /** Field with the given name directly declared in the class */
     def field(name: String)(given ctx: Context): Symbol =
-      internal.Symbol_field(self)(name)
+      internal.Symbol_field(sym)(name)
 
     /** Get non-private named methods defined directly inside the class */
     def classMethod(name: String)(given ctx: Context): List[Symbol] =
-      internal.Symbol_classMethod(self)(name)
+      internal.Symbol_classMethod(sym)(name)
 
     /** Get all non-private methods defined directly inside the class, exluding constructors */
     def classMethods(given ctx: Context): List[Symbol] =
-      internal.Symbol_classMethods(self)
+      internal.Symbol_classMethods(sym)
 
     /** Get named non-private methods declared or inherited */
     def method(name: String)(given ctx: Context): List[Symbol] =
-      internal.Symbol_method(self)(name)
+      internal.Symbol_method(sym)(name)
 
     /** Get all non-private methods declared or inherited */
     def methods(given ctx: Context): List[Symbol] =
-      internal.Symbol_methods(self)
+      internal.Symbol_methods(sym)
 
     /** Fields of a case class type -- only the ones declared in primary constructor */
     def caseFields(given ctx: Context): List[Symbol] =
-      internal.Symbol_caseFields(self)
+      internal.Symbol_caseFields(sym)
 
     def isTypeParam(given ctx: Context): Boolean =
-      internal.Symbol_isTypeParam(self)
+      internal.Symbol_isTypeParam(sym)
 
     /** Signature of this definition */
     def signature(given ctx: Context): Signature =
-      internal.Symbol_signature(self)
+      internal.Symbol_signature(sym)
 
     /** The class symbol of the companion module class */
     def moduleClass(given ctx: Context): Symbol =
-      internal.Symbol_moduleClass(self)
+      internal.Symbol_moduleClass(sym)
 
     /** The symbol of the companion class */
     def companionClass(given ctx: Context): Symbol =
-      internal.Symbol_companionClass(self)
+      internal.Symbol_companionClass(sym)
 
     /** The symbol of the companion module */
     def companionModule(given ctx: Context): Symbol =
-      internal.Symbol_companionModule(self)
+      internal.Symbol_companionModule(sym)
+
+    /** Shows the tree as extractors */
+    def showExtractors(given ctx: Context): String =
+      new ExtractorsPrinter[self.type](self).showSymbol(sym)
+
+    /** Shows the tree as fully typed source code */
+    def show(given ctx: Context): String =
+      sym.showWith(SyntaxHighlight.plain)
+
+    /** Shows the tree as fully typed source code */
+    def showWith(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showSymbol(sym)
   }
 
 
@@ -2683,21 +2696,6 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   //////////////
   // PRINTERS //
   //////////////
-
-  /** Adds `show` as an extension method of a `Symbol` */
-  extension SymbolShowDeco on (symbol: Symbol) {
-    /** Shows the tree as extractors */
-    def showExtractors(given ctx: Context): String =
-      new ExtractorsPrinter[self.type](self).showSymbol(symbol)
-
-    /** Shows the tree as fully typed source code */
-    def show(given ctx: Context): String =
-      symbol.showWith(SyntaxHighlight.plain)
-
-    /** Shows the tree as fully typed source code */
-    def showWith(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
-      new SourceCodePrinter[self.type](self)(syntaxHighlight).showSymbol(symbol)
-  }
 
   /** Adds `show` as an extension method of a `Flags` */
   extension FlagsShowDeco on (flags: Flags) {
