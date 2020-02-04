@@ -3,9 +3,6 @@ layout: doc-page
 title: Type Class Derivation
 ---
 
-**Note** The syntax described in this section is currently under revision.
-[Here is the new version which will be implemented in Dotty 0.22](./derivation-new.html).
-
 Type class derivation is a way to automatically generate given instances for type classes which satisfy some simple
 conditions. A type class in this sense is any trait or class with a type parameter determining the type being operated
 on. Common examples are `Eq`, `Ordering`, or `Show`. For example, given the following `Tree` algebraic data type
@@ -22,16 +19,16 @@ The `derives` clause generates the following given instances for the `Eq`, `Orde
 companion object of `Tree`,
 
 ```scala
-given [T: Eq]       : Eq[Tree[T]]    = Eq.derived
-given [T: Ordering] : Ordering[Tree] = Ordering.derived
-given [T: Show]     : Show[Tree]     = Show.derived
+given [T: Eq]       as Eq[Tree[T]]    = Eq.derived
+given [T: Ordering] as Ordering[Tree] = Ordering.derived
+given [T: Show]     as Show[Tree]     = Show.derived
 ```
 
 We say that `Tree` is the _deriving type_ and that the `Eq`, `Ordering` and `Show` instances are _derived instances_.
 
 ### Types supporting `derives` clauses
 
-All data types can have a `derives` clause. This document focuses primarily on data types which also have an instance
+All data types can have a `derives` clause. This document focuses primarily on data types which also have a given instance
 of the `Mirror` type class available. Instances of the `Mirror` type class are generated automatically by the compiler
 for,
 
@@ -142,15 +139,15 @@ signature and implementation of a `derived` method for a type class `TC[_]` are 
 following form,
 
 ```scala
-def derived[T](given Mirror.Of[T]): TC[T] = ...
+def derived[T](using Mirror.Of[T]): TC[T] = ...
 ```
 
-That is, the `derived` method takes a given parameter of (some subtype of) type `Mirror` which defines the shape of
+That is, the `derived` method takes a context parameter of (some subtype of) type `Mirror` which defines the shape of
 the deriving type `T`, and computes the type class implementation according to that shape. This is all that the
 provider of an ADT with a `derives` clause has to know about the derivation of a type class instance.
 
-Note that `derived` methods may have given `Mirror` arguments indirectly (e.g. by having a given argument which in turn
-has a given `Mirror`, or not at all (e.g. they might use some completely different user-provided mechanism, for
+Note that `derived` methods may have context `Mirror` parameters indirectly (e.g. by having a context argument which in turn
+has a context `Mirror` parameter, or not at all (e.g. they might use some completely different user-provided mechanism, for
 instance using Dotty macros or runtime reflection). We expect that (direct or indirect) `Mirror` based implementations
 will be the most common and that is what this document emphasises.
 
@@ -174,11 +171,11 @@ trait Eq[T] {
 }
 ```
 
-we need to implement a method `Eq.derived` on the companion object of `Eq` that produces an instance for `Eq[T]` given
+we need to implement a method `Eq.derived` on the companion object of `Eq` that produces a given instance for `Eq[T]` given
 a `Mirror[T]`. Here is a possible implementation,
 
 ```scala
-inline given derived[T](given m: Mirror.Of[T]): Eq[T] = {
+inline given derived[T](using m: Mirror.Of[T]) as Eq[T] = {
   val elemInstances = summonAll[m.MirroredElemTypes]           // (1)
   inline m match {                                             // (2)
     case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
@@ -187,17 +184,17 @@ inline given derived[T](given m: Mirror.Of[T]): Eq[T] = {
 }
 ```
 
-Note that the `derived` method is defined as both `inline` and `given`. This means that the method will be expanded at
+Note that `derived` is defined as an `inline` given. This means that the method will be expanded at
 call sites (for instance the compiler generated instance definitions in the companion objects of ADTs which have a
-`derived Eq` clause), and also that it can be used recursively if necessary, to compute instance for children.
+`derived Eq` clause), and also that it can be used recursively if necessary, to compute instances for children.
 
 The body of this method (1) first materializes the `Eq` instances for all the child types of type the instance is
 being derived for. This is either all the branches of a sum type or all the fields of a product type. The
-implementation of `summonAll` is `inline` and uses Dotty's `given match` construct to collect the instances as a
+implementation of `summonAll` is `inline` and uses Dotty's `summonFrom` construct to collect the instances as a
 `List`,
 
 ```scala
-inline def summon[T]: T = given match {
+inline def summonAll[T]: T = summonFrom {
   case t: T => t
 }
 
@@ -243,9 +240,9 @@ Pulling this all together we have the following complete implementation,
 
 ```scala
 import scala.deriving._
-import scala.compiletime.erasedValue
+import scala.compiletime.{erasedValue, summonFrom}
 
-inline def summon[T]: T = given match {
+inline def summon[T]: T = summonFrom {
   case t: T => t
 }
 
@@ -259,7 +256,7 @@ trait Eq[T] {
 }
 
 object Eq {
-  given Eq[Int] {
+  given Eq[Int] as {
     def eqv(x: Int, y: Int) = x == y
   }
 
@@ -284,7 +281,7 @@ object Eq {
         }
     }
 
-  inline given derived[T](given m: Mirror.Of[T]): Eq[T] = {
+  inline given derived[T](using m: Mirror.Of[T]) as Eq[T] = {
     val elemInstances = summonAll[m.MirroredElemTypes]
     inline m match {
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
@@ -315,7 +312,7 @@ In this case the code that is generated by the inline expansion for the derived 
 following, after a little polishing,
 
 ```scala
-given derived$Eq[T](given eqT: Eq[T]): Eq[Opt[T]] =
+given derived$Eq[T](using eqT: Eq[T]) as Eq[Opt[T]] =
   eqSum(summon[Mirror[Opt[T]]],
     List(
       eqProduct(summon[Mirror[Sm[T]]], List(summon[Eq[T]]))
@@ -332,20 +329,19 @@ As a third example, using a higher level library such as shapeless the type clas
 `derived` method as,
 
 ```scala
-given eqSum[A](given inst: => K0.CoproductInstances[Eq, A]): Eq[A] {
+given eqSum[A](using inst: => K0.CoproductInstances[Eq, A]) as Eq[A] {
   def eqv(x: A, y: A): Boolean = inst.fold2(x, y)(false)(
     [t] => (eqt: Eq[t], t0: t, t1: t) => eqt.eqv(t0, t1)
   )
 }
 
-given eqProduct[A](given inst: K0.ProductInstances[Eq, A]): Eq[A] {
+given eqProduct[A](using inst: K0.ProductInstances[Eq, A]) as Eq[A] {
   def eqv(x: A, y: A): Boolean = inst.foldLeft2(x, y)(true: Boolean)(
     [t] => (acc: Boolean, eqt: Eq[t], t0: t, t1: t) => Complete(!eqt.eqv(t0, t1))(false)(true)
   )
 }
 
-
-inline def derived[A](given gen: K0.Generic[A]): Eq[A] = gen.derive(eqSum, eqProduct)
+inline def derived[A](using gen: K0.Generic[A]) as Eq[A] = gen.derive(eqSum, eqProduct)
 ```
 
 The framework described here enables all three of these approaches without mandating any of them.
@@ -361,10 +357,10 @@ change the code of the ADT itself.  To do this, simply define an instance using 
 as right-hand side. E.g, to implement `Ordering` for `Option` define,
 
 ```scala
-given [T: Ordering] : Ordering[Option[T]] = Ordering.derived
+given [T: Ordering] as Ordering[Option[T]] = Ordering.derived
 ```
 
-Assuming the `Ordering.derived` method has a given parameter of type `Mirror[T]` it will be satisfied by the
+Assuming the `Ordering.derived` method has a context parameter of type `Mirror[T]` it will be satisfied by the
 compiler generated `Mirror` instance for `Option` and the derivation of the instance will be expanded on the right
 hand side of this definition in the same way as an instance defined in ADT companion objects.
 

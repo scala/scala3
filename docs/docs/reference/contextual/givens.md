@@ -4,7 +4,7 @@ title: "Given Instances"
 ---
 
 Given instances (or, simply, "givens") define "canonical" values of certain types
-that serve for synthesizing arguments to [context parameters](./context-parameters.md). Example:
+that serve for synthesizing arguments to [context parameters](./using-clauses.html). Example:
 
 ```scala
 trait Ord[T] {
@@ -35,7 +35,7 @@ for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]
 themselves. The `using` clause in `listOrd` defines a condition: There must be a
 given of type `Ord[T]` for a given of type `List[Ord[T]]` to exist.
 Such conditions are expanded by the compiler to context
-parameters, which are explained in the [next section](./context-parameters.md).
+parameters, which are explained in the [next section](./using-clauses.html).
 
 ## Anonymous Givens
 
