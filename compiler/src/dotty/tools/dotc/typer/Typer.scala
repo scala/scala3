@@ -1515,6 +1515,11 @@ class Typer extends Namer
     val lo2 = if (lo1.isEmpty) typed(untpd.TypeTree(defn.NothingType)) else lo1
     val hi2 = if (hi1.isEmpty) typed(untpd.TypeTree(defn.AnyType)) else hi1
 
+    if !alias1.isEmpty then
+      val bounds = TypeBounds(lo2.tpe, hi2.tpe)
+      if !bounds.contains(alias1.tpe) then
+        ctx.error(em"type ${alias1.tpe} outside bounds $bounds", tree.sourcePos)
+
     val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo2, hi2, alias1), lo2, hi2, alias1)
     if (ctx.mode.is(Mode.Pattern))
       // Associate a pattern-bound type symbol with the wildcard.
@@ -1952,13 +1957,7 @@ class Typer extends Namer
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
       if arg1.isType then
-        val result = assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
-        result.tpe match {
-          case AnnotatedType(rhs, Annotation.WithBounds(bounds)) =>
-            if (!bounds.contains(rhs)) ctx.error(em"type $rhs outside bounds $bounds", tree.sourcePos)
-          case _ =>
-        }
-        result
+        assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
       else
         assert(ctx.reporter.errorsReported)
         TypeTree(UnspecifiedErrorType)

@@ -3350,14 +3350,10 @@ object Parsers {
                       syntaxError(i"cannot combine lower bound and match type alias", eqOffset)
                   }
                 case _ =>
-                  if (mods.is(Opaque)) {
-                    val annotType = AppliedTypeTree(
-                      TypeTree(defn.WithBoundsAnnot.typeRef),
-                        bounds.lo.orElse(TypeTree(defn.NothingType)) ::
-                        bounds.hi.orElse(TypeTree(defn.AnyType)) :: Nil)
-                    rhs = Annotated(rhs, ensureApplied(wrapNew(annotType)))
-                  }
-                  else syntaxError(i"cannot combine bound and alias", eqOffset)
+                  if mods.is(Opaque) then
+                    rhs = TypeBoundsTree(bounds.lo, bounds.hi, rhs)
+                  else
+                    syntaxError(i"cannot combine bound and alias", eqOffset)
               }
               makeTypeDef(rhs)
             }

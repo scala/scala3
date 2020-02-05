@@ -1156,7 +1156,8 @@ object desugar {
   val legalOpaque: MemberDefTest = {
     case TypeDef(_, rhs) =>
       def rhsOK(tree: Tree): Boolean = tree match {
-        case _: TypeBoundsTree | _: Template => false
+        case bounds: TypeBoundsTree => !bounds.alias.isEmpty
+        case _: Template => false
         case LambdaTypeTree(_, body) => rhsOK(body)
         case _ => true
       }

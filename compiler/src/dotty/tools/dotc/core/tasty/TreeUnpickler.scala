@@ -833,11 +833,12 @@ class TreeUnpickler(reader: TastyReader,
               override def completerTypeParams(sym: Symbol)(implicit ctx: Context) =
                 rhs.tpe.typeParams
             }
-            sym.info = sym.opaqueToBounds {
-              rhs.tpe match
+            sym.info = sym.opaqueToBounds(
+              rhs.tpe match {
                 case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
                 case _ => rhs.tpe.toBounds
-            }
+              },
+              rhs)
             if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
             sym.resetFlag(Provisional)
             TypeDef(rhs)

@@ -997,12 +997,13 @@ class Namer { typer: Typer =>
       }
       sym.info = dummyInfo2
 
-      val rhsBodyType: TypeBounds = typedAheadType(rhs).tpe.toBounds
+      val rhs1 = typedAheadType(rhs)
+      val rhsBodyType: TypeBounds = rhs1.tpe.toBounds
       val unsafeInfo = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
       if (isDerived) sym.info = unsafeInfo
       else {
         sym.info = NoCompleter
-        sym.info = sym.opaqueToBounds(checkNonCyclic(sym, unsafeInfo, reportErrors = true))
+        sym.info = sym.opaqueToBounds(checkNonCyclic(sym, unsafeInfo, reportErrors = true), rhs1)
       }
       if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
       sym.resetFlag(Provisional)
