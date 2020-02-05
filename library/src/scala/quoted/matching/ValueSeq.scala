@@ -9,14 +9,14 @@ object ValueSeq {
    *  Usage:
    *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
-   *  def sumExpr(argsExpr: Expr[Seq[Int]])(given QuoteContext): Expr[Int] = argsExpr match
+   *  def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match
    *    case ValueSeq(args) =>
    *      // args: Seq[Int]
    *      ...
    *  }
    *  ```
    */
-  def unapply[T](expr: Expr[Seq[T]])(given valueOf: ValueOfExpr[T], qctx: QuoteContext): Option[Seq[T]] = expr match {
+  def unapply[T](expr: Expr[Seq[T]])(using valueOf: ValueOfExpr[T], qctx: QuoteContext): Option[Seq[T]] = expr match {
     case ExprSeq(elems) =>
       elems.foldRight(Option(List.empty[T])) { (elem, acc) =>
         (elem, acc) match {

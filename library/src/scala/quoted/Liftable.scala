@@ -8,7 +8,7 @@ import scala.reflect.ClassTag
 trait Liftable[T] {
 
   /** Lift a value into an expression containing the construction of that value */
-  def toExpr(x: T): (given QuoteContext) => Expr[T]
+  def toExpr(x: T): QuoteContext ?=> Expr[T]
 
 }
 
@@ -31,7 +31,7 @@ object Liftable {
 
   private class PrimitiveLiftable[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Liftable[T] {
     /** Lift a primitive value `n` into `'{ n }` */
-    def toExpr(x: T) = (given qctx) => {
+    def toExpr(x: T) = qctx ?=> {
       import qctx.tasty.{_, given}
       Literal(Constant(x)).seal.asInstanceOf[Expr[T]]
     }
@@ -39,104 +39,104 @@ object Liftable {
 
   given ClassIsLiftable[T] : Liftable[Class[T]] = new Liftable[Class[T]] {
     /** Lift a `Class[T]` into `'{ classOf[T] }` */
-    def toExpr(x: Class[T]) = (given qctx) => {
+    def toExpr(x: Class[T]) = qctx ?=> {
       import qctx.tasty.{_, given}
       Ref(defn.Predef_classOf).appliedToType(Type(x)).seal.asInstanceOf[Expr[Class[T]]]
     }
   }
 
   given ClassTagIsLiftable[T: Type] : Liftable[ClassTag[T]] = new Liftable[ClassTag[T]] {
-    def toExpr(ct: ClassTag[T]): (given QuoteContext) => Expr[ClassTag[T]] =
+    def toExpr(ct: ClassTag[T]): QuoteContext ?=> Expr[ClassTag[T]] =
       '{ ClassTag[T](${Expr(ct.runtimeClass.asInstanceOf[Class[T]])}) }
   }
 
   given ArrayIsLiftable[T: Type: Liftable: ClassTag] : Liftable[Array[T]] = new Liftable[Array[T]] {
-    def toExpr(arr: Array[T]): (given QuoteContext) => Expr[Array[T]] =
+    def toExpr(arr: Array[T]): QuoteContext ?=> Expr[Array[T]] =
       '{ Array[T](${Expr(arr.toSeq)}: _*)(${Expr(summon[ClassTag[T]])}) }
   }
 
   given ArrayOfBooleanIsLiftable : Liftable[Array[Boolean]] = new Liftable[Array[Boolean]] {
-    def toExpr(array: Array[Boolean]): (given QuoteContext) => Expr[Array[Boolean]] =
+    def toExpr(array: Array[Boolean]): QuoteContext ?=> Expr[Array[Boolean]] =
       if (array.length == 0) '{ Array.emptyBooleanArray }
       else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
   }
 
   given ArrayOfByteIsLiftable : Liftable[Array[Byte]] = new Liftable[Array[Byte]] {
-    def toExpr(array: Array[Byte]): (given QuoteContext) => Expr[Array[Byte]] =
+    def toExpr(array: Array[Byte]): QuoteContext ?=> Expr[Array[Byte]] =
       if (array.length == 0) '{ Array.emptyByteArray }
       else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
   }
 
   given ArrayOfShortIsLiftable : Liftable[Array[Short]] = new Liftable[Array[Short]] {
-    def toExpr(array: Array[Short]): (given QuoteContext) => Expr[Array[Short]] =
+    def toExpr(array: Array[Short]): QuoteContext ?=> Expr[Array[Short]] =
       if (array.length == 0) '{ Array.emptyShortArray }
       else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
   }
 
   given ArrayOfCharIsLiftable : Liftable[Array[Char]] = new Liftable[Array[Char]] {
-    def toExpr(array: Array[Char]): (given QuoteContext) => Expr[Array[Char]] =
+    def toExpr(array: Array[Char]): QuoteContext ?=> Expr[Array[Char]] =
       if (array.length == 0) '{ Array.emptyCharArray }
       else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
   }
 
   given ArrayOfIntIsLiftable : Liftable[Array[Int]] = new Liftable[Array[Int]] {
-    def toExpr(array: Array[Int]): (given QuoteContext) => Expr[Array[Int]] =
+    def toExpr(array: Array[Int]): QuoteContext ?=> Expr[Array[Int]] =
       if (array.length == 0) '{ Array.emptyIntArray }
       else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
   }
 
   given ArrayOfLongIsLiftable : Liftable[Array[Long]] = new Liftable[Array[Long]] {
-    def toExpr(array: Array[Long]): (given QuoteContext) => Expr[Array[Long]] =
+    def toExpr(array: Array[Long]): QuoteContext ?=> Expr[Array[Long]] =
       if (array.length == 0) '{ Array.emptyLongArray }
       else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
   }
 
   given ArrayOfFloatIsLiftable : Liftable[Array[Float]] = new Liftable[Array[Float]] {
-    def toExpr(array: Array[Float]): (given QuoteContext) => Expr[Array[Float]] =
+    def toExpr(array: Array[Float]): QuoteContext ?=> Expr[Array[Float]] =
       if (array.length == 0) '{ Array.emptyFloatArray }
       else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
   }
 
   given ArrayOfDoubleIsLiftable : Liftable[Array[Double]] = new Liftable[Array[Double]] {
-    def toExpr(array: Array[Double]): (given QuoteContext) => Expr[Array[Double]] =
+    def toExpr(array: Array[Double]): QuoteContext ?=> Expr[Array[Double]] =
       if (array.length == 0) '{ Array.emptyDoubleArray }
       else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
   }
 
-  given iArrayIsLiftable[T: Type](given ltArray: Liftable[Array[T]]): Liftable[IArray[T]] {
-    def toExpr(iarray: IArray[T]): (given QuoteContext) => Expr[IArray[T]] =
+  given iArrayIsLiftable[T: Type](using ltArray: Liftable[Array[T]]): Liftable[IArray[T]] {
+    def toExpr(iarray: IArray[T]): QuoteContext ?=> Expr[IArray[T]] =
       '{ ${ltArray.toExpr(iarray.asInstanceOf[Array[T]])}.asInstanceOf[IArray[T]] }
   }
 
   given [T: Type: Liftable] : Liftable[Seq[T]] = new Liftable[Seq[T]] {
-    def toExpr(xs: Seq[T]): (given QuoteContext) => Expr[Seq[T]] =
+    def toExpr(xs: Seq[T]): QuoteContext ?=> Expr[Seq[T]] =
       Expr.ofSeq(xs.map(summon[Liftable[T]].toExpr))
   }
 
   given [T: Type: Liftable] : Liftable[List[T]] = new Liftable[List[T]] {
-    def toExpr(xs: List[T]): (given QuoteContext) => Expr[List[T]] =
+    def toExpr(xs: List[T]): QuoteContext ?=> Expr[List[T]] =
       Expr.ofList(xs.map(summon[Liftable[T]].toExpr))
   }
 
   given [T: Type: Liftable] : Liftable[Set[T]] = new Liftable[Set[T]] {
-    def toExpr(set: Set[T]): (given QuoteContext) => Expr[Set[T]] =
+    def toExpr(set: Set[T]): QuoteContext ?=> Expr[Set[T]] =
       '{ Set(${Expr(set.toSeq)}: _*) }
   }
 
   given [T: Type: Liftable, U: Type: Liftable] : Liftable[Map[T, U]] = new Liftable[Map[T, U]] {
-    def toExpr(map: Map[T, U]): (given QuoteContext) => Expr[Map[T, U]] =
+    def toExpr(map: Map[T, U]): QuoteContext ?=> Expr[Map[T, U]] =
     '{ Map(${Expr(map.toSeq)}: _*) }
   }
 
   given [T: Type: Liftable] : Liftable[Option[T]] = new Liftable[Option[T]] {
-    def toExpr(x: Option[T]): (given QuoteContext) => Expr[Option[T]] = x match {
+    def toExpr(x: Option[T]): QuoteContext ?=> Expr[Option[T]] = x match {
       case Some(x) => '{ Some[T](${Expr(x)}) }
       case None => '{ None: Option[T] }
     }
   }
 
   given [L: Type: Liftable, R: Type: Liftable] : Liftable[Either[L, R]] = new Liftable[Either[L, R]] {
-    def toExpr(x: Either[L, R]): (given QuoteContext) => Expr[Either[L, R]] = x match {
+    def toExpr(x: Either[L, R]): QuoteContext ?=> Expr[Either[L, R]] = x match {
       case Left(x) => '{ Left[L, R](${Expr(x)}) }
       case Right(x) => '{ Right[L, R](${Expr(x)}) }
     }
@@ -289,19 +289,19 @@ object Liftable {
   }
 
   given [H: Type: Liftable, T <: Tuple: Type: Liftable] : Liftable[H *: T] = new {
-    def toExpr(tup: H *: T): (given QuoteContext) => Expr[H *: T] =
+    def toExpr(tup: H *: T): QuoteContext ?=> Expr[H *: T] =
       '{ ${summon[Liftable[H]].toExpr(tup.head)} *: ${summon[Liftable[T]].toExpr(tup.tail)} }
       // '{ ${Expr(tup.head)} *: ${Expr(tup.tail)} } // TODO figure out why this fails during CI documentation
   }
 
   given Liftable[BigInt] = new Liftable[BigInt] {
-    def toExpr(x: BigInt): (given QuoteContext) => Expr[BigInt] =
+    def toExpr(x: BigInt): QuoteContext ?=> Expr[BigInt] =
       '{ BigInt(${Expr(x.toByteArray)}) }
   }
 
   /** Lift a BigDecimal using the default MathContext */
   given Liftable[BigDecimal] = new Liftable[BigDecimal] {
-    def toExpr(x: BigDecimal): (given QuoteContext) => Expr[BigDecimal] =
+    def toExpr(x: BigDecimal): QuoteContext ?=> Expr[BigDecimal] =
       '{ BigDecimal(${Expr(x.toString)}) }
   }
 
