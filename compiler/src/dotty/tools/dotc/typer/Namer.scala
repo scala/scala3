@@ -901,28 +901,25 @@ class Namer { typer: Typer =>
     def registerIfChild(denot: SymDenotation)(implicit ctx: Context): Unit = {
       val sym = denot.symbol
 
-      def register(child: Symbol, parent: Type) = {
-        val cls = parent.classSymbol
-        if (cls.is(Sealed))
-          if ((child.isInaccessibleChildOf(cls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
-            addChild(cls, cls)
-          else if (!cls.is(ChildrenQueried))
-            addChild(cls, child)
+      def register(child: Symbol, parentCls: ClassSymbol) = {
+        if (parentCls.is(Sealed))
+          if ((child.isInaccessibleChildOf(parentCls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
+            addChild(parentCls, parentCls)
+          else if (!parentCls.is(ChildrenQueried))
+            addChild(parentCls, child)
           else
-            ctx.error(em"""children of $cls were already queried before $sym was discovered.
-                          |As a remedy, you could move $sym on the same nesting level as $cls.""",
+            ctx.error(em"""children of $parentCls were already queried before $sym was discovered.
+                          |As a remedy, you could move $sym on the same nesting level as $parentCls.""",
                       child.sourcePos)
       }
 
-      if (denot.isClass && !sym.isEnumAnonymClass && !sym.isRefinementClass)
-        denot.asClass.classParents.foreach { parent =>
-          val child = if (denot.is(Module)) denot.sourceModule else denot.symbol
-          register(child, parent)
-        }
-      else if (denot.is(CaseVal, butNot = Method | Module)) {
+      if denot.isClass && !sym.isEnumAnonymClass && !sym.isRefinementClass then
+        val child = if (denot.is(Module)) denot.sourceModule else denot.symbol
+        denot.asClass.classParents.foreach { parent => register(child, parent.classSymbol.asClass) }
+      else if denot.is(CaseVal, butNot = Method | Module) then
         assert(denot.is(Enum), denot)
-        register(denot.symbol, denot.info)
-      }
+        denot.info.classSymbols.foreach { parent => register(denot.symbol, parent) }
+      end if
     }
 
     /** Intentionally left without `implicit ctx` parameter. We need
