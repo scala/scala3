@@ -39,6 +39,6 @@ introduce the following fundamental facilities:
    moniker.
 
 5. [TASTy Inspection](./tasty-inspect.md) Typed abstract syntax trees are serialized
-   in a custom compressed binary format in `.tasty` files. TASTy inspection allows
+   in a custom compressed binary format to `.tasty` files. TASTy inspection allows
    to load these files and analyze their content's tree structure.
 
