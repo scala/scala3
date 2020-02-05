@@ -213,7 +213,9 @@ object Parsers {
     } && !in.isSoftModifierInModifierPosition
 
     def isExprIntro: Boolean =
-      in.canStartExprTokens.contains(in.token) && !in.isSoftModifierInModifierPosition
+      in.canStartExprTokens.contains(in.token)
+      && !in.isSoftModifierInModifierPosition
+      && !(isIdent(nme.extension) && followingIsExtension())
 
     def isDefIntro(allowedMods: BitSet, excludedSoftModifiers: Set[TermName] = Set.empty): Boolean =
       in.token == AT
