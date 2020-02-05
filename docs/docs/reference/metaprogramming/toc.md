@@ -28,7 +28,7 @@ introduce the following fundamental facilities:
 3. [Staging](./staging.md) Where macros construct code at _compile-time_,
    staging lets programs construct new code at _runtime_. That way,
    code generation can depend not only on static data but also on data available at runtime. This splits the evaluation of the program in two or more phases or ...
-   stages. Consequently, this method generative programming is called "Multi-Stage Programming". Staging is built on the same foundations as macros. It uses
+   stages. Consequently, this method of generative programming is called "Multi-Stage Programming". Staging is built on the same foundations as macros. It uses
    quotes and splices, but leaves out `inline`.
 
 4. [TASTy Reflection](./tasty-reflect.md) Quotations are a "black-box"
