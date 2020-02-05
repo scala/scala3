@@ -186,7 +186,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ERASED                                                           -- erased
                   LAZY                                                             -- lazy
                   OVERRIDE                                                         -- override
-                  OPAQUE                                                           -- opaque
+                  OPAQUE                                                           -- opaque, also used for classes containing opaque aliases
                   INLINE                                                           -- inline
                   MACRO                                                            -- Inline method containing toplevel splices
                   INLINEPROXY                                                      -- Symbol of binding with an argument to an inline method as rhs (TODO: do we still need this?)
