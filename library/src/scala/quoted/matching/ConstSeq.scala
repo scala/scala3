@@ -9,14 +9,14 @@ object ConstSeq {
    *  Usage:
    *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
-   *  def sumExpr(argsExpr: Expr[Seq[Int]])(given QuoteContext): Expr[Int] = argsExpr match
+   *  def sumExpr(argsExpr: Expr[Seq[Int]])(usingusing QuoteContext): Expr[Int] = argsExpr match
    *    case ConstSeq(args) =>
    *      // args: Seq[Int]
    *      ...
    *  }
    *  ```
    */
-  def unapply[T](expr: Expr[Seq[T]])(given qctx: QuoteContext): Option[Seq[T]] = expr match {
+  def unapply[T](expr: Expr[Seq[T]])(using qctx: QuoteContext): Option[Seq[T]] = expr match {
     case ExprSeq(elems) =>
       elems.foldRight(Option(List.empty[T])) { (elem, acc) =>
         (elem, acc) match {

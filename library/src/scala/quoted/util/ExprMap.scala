@@ -5,14 +5,14 @@ import scala.quoted._
 trait ExprMap {
 
   /** Map an expression `e` with a type `tpe` */
-  def transform[T](e: Expr[T])(given qctx: QuoteContext, tpe: Type[T]): Expr[T]
+  def transform[T](e: Expr[T])(using qctx: QuoteContext, tpe: Type[T]): Expr[T]
 
   /** Map subexpressions an expression `e` with a type `tpe` */
-  def transformChildren[T](e: Expr[T])(given qctx: QuoteContext, tpe: Type[T]): Expr[T] = {
+  def transformChildren[T](e: Expr[T])(using qctx: QuoteContext, tpe: Type[T]): Expr[T] = {
     import qctx.tasty.{_, given}
     final class MapChildren() {
 
-      def transformStatement(tree: Statement)(given ctx: Context): Statement = {
+      def transformStatement(tree: Statement)(using ctx: Context): Statement = {
         def localCtx(definition: Definition): Context = definition.symbol.localContext
         tree match {
           case tree: Term =>
@@ -24,7 +24,7 @@ trait ExprMap {
         }
       }
 
-      def transformDefinition(tree: Definition)(given ctx: Context): Definition = {
+      def transformDefinition(tree: Definition)(using ctx: Context): Definition = {
         def localCtx(definition: Definition): Context = definition.symbol.localContext
         tree match {
           case tree: ValDef =>
@@ -42,7 +42,7 @@ trait ExprMap {
         }
       }
 
-      def transformTermChildren(tree: Term, tpe: Type)(given ctx: Context): Term = tree match {
+      def transformTermChildren(tree: Term, tpe: Type)(using ctx: Context): Term = tree match {
         case Ident(name) =>
           tree
         case Select(qualifier, name) =>
@@ -99,7 +99,7 @@ trait ExprMap {
           Inlined.copy(tree)(call, transformDefinitions(bindings), transformTerm(expansion, tpe)/*()call.symbol.localContext)*/)
       }
 
-      def transformTerm(tree: Term, tpe: Type)(given ctx: Context): Term =
+      def transformTerm(tree: Term, tpe: Type)(using ctx: Context): Term =
         tree match {
         case _: Closure =>
           tree
@@ -117,22 +117,22 @@ trait ExprMap {
           }
       }
 
-      def transformTypeTree(tree: TypeTree)(given ctx: Context): TypeTree = tree
+      def transformTypeTree(tree: TypeTree)(using ctx: Context): TypeTree = tree
 
-      def transformCaseDef(tree: CaseDef, tpe: Type)(given ctx: Context): CaseDef =
+      def transformCaseDef(tree: CaseDef, tpe: Type)(using ctx: Context): CaseDef =
         CaseDef.copy(tree)(tree.pattern, tree.guard.map(x => transformTerm(x, defn.BooleanType)), transformTerm(tree.rhs, tpe))
 
-      def transformTypeCaseDef(tree: TypeCaseDef)(given ctx: Context): TypeCaseDef = {
+      def transformTypeCaseDef(tree: TypeCaseDef)(using ctx: Context): TypeCaseDef = {
         TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern), transformTypeTree(tree.rhs))
       }
 
-      def transformStats(trees: List[Statement])(given ctx: Context): List[Statement] =
+      def transformStats(trees: List[Statement])(using ctx: Context): List[Statement] =
         trees mapConserve (transformStatement(_))
 
-      def transformDefinitions(trees: List[Definition])(given ctx: Context): List[Definition] =
+      def transformDefinitions(trees: List[Definition])(using ctx: Context): List[Definition] =
         trees mapConserve (transformDefinition(_))
 
-      def transformTerms(trees: List[Term], tpes: List[Type])(given ctx: Context): List[Term] =
+      def transformTerms(trees: List[Term], tpes: List[Type])(using ctx: Context): List[Term] =
         var tpes2 = tpes // TODO use proper zipConserve
         trees mapConserve { x =>
           val tpe :: tail = tpes2
@@ -140,16 +140,16 @@ trait ExprMap {
           transformTerm(x, tpe)
         }
 
-      def transformTerms(trees: List[Term], tpe: Type)(given ctx: Context): List[Term] =
+      def transformTerms(trees: List[Term], tpe: Type)(using ctx: Context): List[Term] =
         trees.mapConserve(x => transformTerm(x, tpe))
 
-      def transformTypeTrees(trees: List[TypeTree])(given ctx: Context): List[TypeTree] =
+      def transformTypeTrees(trees: List[TypeTree])(using ctx: Context): List[TypeTree] =
         trees mapConserve (transformTypeTree(_))
 
-      def transformCaseDefs(trees: List[CaseDef], tpe: Type)(given ctx: Context): List[CaseDef] =
+      def transformCaseDefs(trees: List[CaseDef], tpe: Type)(using ctx: Context): List[CaseDef] =
         trees mapConserve (x => transformCaseDef(x, tpe))
 
-      def transformTypeCaseDefs(trees: List[TypeCaseDef])(given ctx: Context): List[TypeCaseDef] =
+      def transformTypeCaseDefs(trees: List[TypeCaseDef])(using ctx: Context): List[TypeCaseDef] =
         trees mapConserve (transformTypeCaseDef(_))
 
     }
