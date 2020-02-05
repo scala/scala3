@@ -1044,14 +1044,15 @@ object Types {
       case _ => this
     }
 
-    /** Strip PolyType prefix */
+    /** Strip PolyType prefixes */
     def stripPoly(implicit ctx: Context): Type = this match {
       case tp: PolyType => tp.resType.stripPoly
       case _ => this
     }
 
+    /** Strip LazyRef wrappers */
     def stripLazyRef(given Context): Type = this match
-      case lzy: LazyRef => lzy.ref
+      case lzy: LazyRef => lzy.ref.stripLazyRef
       case _ => this
 
     /** Widen from singleton type to its underlying non-singleton
@@ -1170,7 +1171,7 @@ object Types {
      *  these types as a set, otherwise the empty set.
      *  Overridden and cached in OrType.
      *  @param widenOK  If type proxies that are upperbounded by types with atoms
-     *                  have the same atoms. 
+     *                  have the same atoms.
      */
     def atoms(widenOK: Boolean = false)(implicit ctx: Context): Set[Type] = dealias match {
       case tp: SingletonType =>
@@ -4325,7 +4326,7 @@ object Types {
       if ((prefix eq this.prefix) && (classParents eq this.classParents) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
       else newLikeThis(prefix, classParents, decls, selfInfo)
 
-    /** If this class has opqque type alias members, a new class info
+    /** If this class has opaque type alias members, a new class info
      *  with their aliases added as refinements to the self type of the class.
      *  Otherwise, this classInfo.
      *  If there are opaque alias members, updates `cls` to have `Opaque` flag as a side effect.
