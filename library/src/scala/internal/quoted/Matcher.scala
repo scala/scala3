@@ -317,7 +317,7 @@ private[quoted] object Matcher {
         if freePatternVars(term).isEmpty then Some(term) else None
 
       /** Return all free variables of the term defined in the pattern (i.e. defined in `Env`) */
-      def freePatternVars(term: Term)(given qctx: Context, env: Env): Set[Symbol] =
+      def freePatternVars(term: Term)(given ctx: Context, env: Env): Set[Symbol] =
         val accumulator = new TreeAccumulator[Set[Symbol]] {
           def foldTree(x: Set[Symbol], tree: Tree)(given ctx: Context): Set[Symbol] =
             tree match
