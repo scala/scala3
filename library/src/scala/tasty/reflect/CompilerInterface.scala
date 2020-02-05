@@ -923,6 +923,8 @@ trait CompilerInterface {
 
   def isInstanceOfSuperType(given ctx: Context): IsInstanceOf[SuperType]
 
+  def SuperType_apply(thistpe: Type, supertpe: Type)(given ctx: Context): SuperType
+
   def SuperType_thistpe(self: SuperType)(given ctx: Context): Type
   def SuperType_supertpe(self: SuperType)(given ctx: Context): Type
 
@@ -1024,7 +1026,19 @@ trait CompilerInterface {
 
   def isInstanceOfRecursiveType(given ctx: Context): IsInstanceOf[RecursiveType]
 
+  /** Create a RecType, normalizing its contents. This means:
+   *
+   *   1. Nested Rec types on the type's spine are merged with the outer one.
+   *   2. Any refinement of the form `type T = z.T` on the spine of the type
+   *      where `z` refers to the created rec-type is replaced by
+   *      `type T`. This avoids infinite recursions later when we
+   *      try to follow these references.
+   */
+  def RecursiveType_apply(parentExp: RecursiveType => Type)(given ctx: Context): RecursiveType
+
   def RecursiveType_underlying(self: RecursiveType)(given ctx: Context): Type
+
+  def RecursiveThis_recThis(self: RecursiveType)(given Context): RecursiveThis
 
   // TODO can we add the bound back without an cake?
   // TODO is LambdaType really needed? ParamRefExtractor could be split into more precise extractors

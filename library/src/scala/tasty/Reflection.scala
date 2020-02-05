@@ -1738,6 +1738,9 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   given (given Context): IsInstanceOf[SuperType] = internal.isInstanceOfSuperType
 
   object SuperType {
+    def apply(thistpe: Type, supertpe: Type)(given ctx: Context): SuperType =
+      internal.SuperType_apply(thistpe, supertpe)
+
     def unapply(x: SuperType)(given ctx: Context): Option[(Type, Type)] =
       Some((x.thistpe, x.supertpe))
   }
@@ -1887,11 +1890,25 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   given (given Context): IsInstanceOf[RecursiveType] = internal.isInstanceOfRecursiveType
 
   object RecursiveType {
+
+    /** Create a RecType, normalizing its contents. This means:
+     *
+     *   1. Nested Rec types on the type's spine are merged with the outer one.
+     *   2. Any refinement of the form `type T = z.T` on the spine of the type
+     *      where `z` refers to the created rec-type is replaced by
+     *      `type T`. This avoids infinite recursions later when we
+     *      try to follow these references.
+     */
+    def apply(parentExp: RecursiveType => Type)(given ctx: Context): RecursiveType =
+      internal.RecursiveType_apply(parentExp)
+
     def unapply(x: RecursiveType)(given ctx: Context): Option[Type] = Some(x.underlying)
+
   }
 
   extension RecursiveTypeOps on (self: RecursiveType) {
     def underlying(given ctx: Context): Type = internal.RecursiveType_underlying(self)
+    def recThis(given Context): RecursiveThis = internal.RecursiveThis_recThis(self)
   }
 
   given (given Context): IsInstanceOf[MethodType] = internal.isInstanceOfMethodType
