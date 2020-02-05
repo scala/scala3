@@ -2731,6 +2731,21 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   //   UTILS   //
   ///////////////
 
+  /** TASTy Reflect tree accumulator */
+  trait TreeAccumulator[X] extends reflect.TreeAccumulator[X] {
+    val reflect: self.type = self
+  }
+
+  /** TASTy Reflect tree traverser */
+  trait TreeTraverser extends reflect.TreeTraverser {
+    val reflect: self.type = self
+  }
+
+  /** TASTy Reflect tree map */
+  trait TreeMap extends reflect.TreeMap {
+    val reflect: self.type = self
+  }
+
   // TODO extract from Reflection
 
   /** Bind the `rhs` to a `val` and use it in `body` */

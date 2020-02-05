@@ -1,5 +1,4 @@
 import scala.tasty.Reflection
-import scala.tasty.reflect.TreeTraverser
 import scala.tasty.inspector._
 
 object Test {
@@ -10,10 +9,10 @@ object Test {
 
 class CommentInspector extends TastyInspector {
 
-  def processCompilationUnit(reflect0: Reflection)(root: reflect0.Tree): Unit = {
-    import reflect0.{_, given _}
+  def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = {
+    import reflect.{_, given _}
     object Traverser extends TreeTraverser {
-      val reflect: reflect0.type = reflect0
+
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
         case tree: Definition =>
           tree.symbol.comment match {
@@ -26,7 +25,7 @@ class CommentInspector extends TastyInspector {
       }
 
     }
-    Traverser.traverseTree(root)(reflect0.rootContext)
+    Traverser.traverseTree(root)(reflect.rootContext)
   }
 
 }

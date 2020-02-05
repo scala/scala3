@@ -11,8 +11,7 @@ object Macros {
     import qctx.tasty.{_, given _}
 
     val buff = new StringBuilder
-    val traverser = new scala.tasty.reflect.TreeTraverser {
-      val reflect: qctx.tasty.type = qctx.tasty
+    val traverser = new TreeTraverser {
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
         case tree: TypeBoundsTree =>
           buff.append(tree.tpe.showExtractors)
