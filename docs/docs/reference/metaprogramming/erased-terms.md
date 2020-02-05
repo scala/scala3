@@ -35,7 +35,7 @@ m.turnedOn.turnedOn // ERROR
 //                  State is must be Off
 ```
 
-Note that in the code above the actual implicit arguments for `IsOff` are never
+Note that in the code above the actual context arguments for `IsOff` are never
 used at runtime; they serve only to establish the right constraints at compile
 time. As these terms are never used at runtime there is not real need to have
 them around, but they still need to be present in some form in the generated
@@ -99,15 +99,15 @@ The following example is an extended implementation of a simple state machine
 which can be in a state `On` or `Off`. The machine can change state from `Off`
 to `On` with `turnedOn` only if it is currently `Off`, conversely from `On` to
 `Off` with `turnedOff` only if it is currently `On`. These last constraint are
-captured with the `IsOff[S]` and `IsOn[S]` implicit evidence only exist for
+captured with the `IsOff[S]` and `IsOn[S]` given evidence only exist for
 `IsOff[Off]` and `IsOn[On]`. For example, not allowing calling `turnedOff` on in
 an `Off` state as we would require an evidence `IsOn[Off]` that will not be
 found.
 
-As the implicit evidences of `turnedOn` and `turnedOff` are not used in the
+As the given evidences of `turnedOn` and `turnedOff` are not used in the
 bodies of those functions we can mark them as `erased`. This will remove the
 evidence parameters at runtime, but we would still evaluate the `isOn` and
-`isOff` implicits that were found as arguments. As `isOn` and `isOff` are not
+`isOff` givens that were found as arguments. As `isOn` and `isOff` are not
 used except as `erased` arguments, we can mark them as `erased`, hence removing
 the evaluation of the `isOn` and `isOff` evidences.
 
@@ -121,21 +121,21 @@ final class Off extends State
 @implicitNotFound("State is must be Off")
 class IsOff[S <: State]
 object IsOff {
-  // def isOff will not be called at runtime for turnedOn, the compiler will only require that this evidence exists
-  implicit def isOff: IsOff[Off] = new IsOff[Off]
+  // will not be called at runtime for turnedOn, the compiler will only require that this evidence exists
+  given IsOff[Off] = new IsOff[Off]
 }
 
 @implicitNotFound("State is must be On")
 class IsOn[S <: State]
 object IsOn {
-  // erased val isOn will not exist at runtime, the compiler will only require that this evidence exists at compile time
-  erased implicit val isOn: IsOn[On] = new IsOn[On]
+  // will not exist at runtime, the compiler will only require that this evidence exists at compile time
+  erased given IsOn[On] = new IsOn[On]
 }
 
 class Machine[S <: State] private {
   // ev will disappear from both functions
-  def turnedOn(given erased ev: IsOff[S]): Machine[On] = new Machine[On]
-  def turnedOff(given erased ev: IsOn[S]): Machine[Off] = new Machine[Off]
+  def turnedOn(using erased ev: IsOff[S]): Machine[On] = new Machine[On]
+  def turnedOff(using erased ev: IsOn[S]): Machine[Off] = new Machine[Off]
 }
 
 object Machine {
