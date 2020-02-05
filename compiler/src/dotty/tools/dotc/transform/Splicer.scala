@@ -41,7 +41,7 @@ object Splicer {
     case Quoted(quotedTree) => quotedTree
     case _ =>
       val interpreter = new Interpreter(pos, classLoader)
-      val macroOwner = ctx.newSymbol(ctx.owner, NameKinds.UniqueName.fresh(nme.MACROkw), Synthetic, defn.AnyType, coord = tree.span)
+      val macroOwner = ctx.newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
       try {
         given Context = ctx.withOwner(macroOwner)
         // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
@@ -100,7 +100,10 @@ object Splicer {
             traverseChildren(tree)
       private def isEscapedVariable(sym: Symbol)(given ctx: Context): Boolean =
         sym.exists && !sym.is(Package)
-        && sym.owner.ownersIterator.contains(expansionOwner) // symbol was generated within the macro expansion
+        && sym.owner.ownersIterator.exists(x =>
+          x == expansionOwner || // symbol was generated within this macro expansion
+          x.is(Macro, butNot = Method) && x.name == nme.MACROkw // symbol was generated within another macro expansion
+        )
         && !locals.contains(sym) // symbol is not in current scope
     }.traverse(tree)
     tree
