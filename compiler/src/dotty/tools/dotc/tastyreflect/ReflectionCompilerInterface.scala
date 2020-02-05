@@ -1274,6 +1274,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case _ => None
   }
 
+  def SuperType_apply(thistpe: Type, supertpe: Type)(given ctx: Context): SuperType =
+    Types.SuperType(thistpe, supertpe)
+
   def SuperType_thistpe(self: SuperType)(given Context): Type = self.thistpe
   def SuperType_supertpe(self: SuperType)(given Context): Type = self.supertpe
 
@@ -1431,7 +1434,12 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case _ => None
   }
 
+  def RecursiveType_apply(parentExp: RecursiveType => Type)(given ctx: Context): RecursiveType =
+    Types.RecType(parentExp)
+
   def RecursiveType_underlying(self: RecursiveType)(given Context): Type = self.underlying.stripTypeVar
+
+  def RecursiveThis_recThis(self: RecursiveType)(given Context): RecursiveThis = self.recThis
 
   type LambdaType[ParamInfo] = Types.LambdaType { type PInfo = ParamInfo }
 

@@ -1165,7 +1165,7 @@ object Types {
      *  these types as a set, otherwise the empty set.
      *  Overridden and cached in OrType.
      *  @param widenOK  If type proxies that are upperbounded by types with atoms
-     *                  have the same atoms. 
+     *                  have the same atoms.
      */
     def atoms(widenOK: Boolean = false)(implicit ctx: Context): Set[Type] = dealias match {
       case tp: SingletonType =>
@@ -2544,7 +2544,7 @@ object Types {
   final class CachedSuperType(thistpe: Type, supertpe: Type) extends SuperType(thistpe, supertpe)
 
   object SuperType {
-    def apply(thistpe: Type, supertpe: Type)(implicit ctx: Context): Type = {
+    def apply(thistpe: Type, supertpe: Type)(implicit ctx: Context): SuperType = {
       assert(thistpe != NoPrefix)
       unique(new CachedSuperType(thistpe, supertpe))
     }
