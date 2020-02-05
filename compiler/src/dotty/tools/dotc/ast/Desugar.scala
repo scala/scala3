@@ -252,7 +252,7 @@ object desugar {
 
     if (meth1.mods.is(Inline))
       meth1.tpt match {
-        case TypeBoundsTree(_, tpt1) =>
+        case TypeBoundsTree(_, tpt1, _) =>
           meth1 = cpy.DefDef(meth1)(tpt = tpt1)
         case tpt if !tpt.isEmpty && !meth1.rhs.isEmpty =>
           meth1 = cpy.DefDef(meth1)(rhs = Typed(meth1.rhs, tpt))
@@ -684,7 +684,7 @@ object desugar {
           val mods = constr1.mods
           mods.is(Private) || (!mods.is(Protected) && mods.hasPrivateWithin)
         }
- 
+
         /** Does one of the parameter's types (in the first param clause)
          *  mention a preceding parameter?
          */

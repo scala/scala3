@@ -136,7 +136,7 @@ class ReifyQuotes extends MacroTransform {
       def mkTagSymbolAndAssignType(spliced: TermRef): TypeDef = {
         val splicedTree = tpd.ref(spliced).withSpan(expr.span)
         val rhs = transform(splicedTree.select(tpnme.splice))
-        val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
+        val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs, EmptyTree)
         val local = ctx.newSymbol(
           owner = ctx.owner,
           name = UniqueName.fresh((splicedTree.symbol.name.toString + "$_").toTermName).toTypeName,

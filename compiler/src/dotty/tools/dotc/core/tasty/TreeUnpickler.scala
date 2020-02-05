@@ -1209,8 +1209,9 @@ class TreeUnpickler(reader: TastyReader,
               MatchTypeTree(bound, scrut, readCases(end))
             case TYPEBOUNDStpt =>
               val lo = readTpt()
-              val hi = if (currentAddr == end) lo else readTpt()
-              TypeBoundsTree(lo, hi)
+              val hi = if currentAddr == end then lo else readTpt()
+              val alias = if currentAddr == end then EmptyTree else readTpt()
+              TypeBoundsTree(lo, hi, alias)
             case HOLE =>
               readHole(end, isType = false)
             case _ =>

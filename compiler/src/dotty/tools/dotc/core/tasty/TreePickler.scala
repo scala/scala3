@@ -588,11 +588,15 @@ class TreePickler(pickler: TastyPickler) {
         case LambdaTypeTree(tparams, body) =>
           writeByte(LAMBDAtpt)
           withLength { pickleParams(tparams); pickleTree(body) }
-        case TypeBoundsTree(lo, hi) =>
+        case TypeBoundsTree(lo, hi, alias) =>
           writeByte(TYPEBOUNDStpt)
           withLength {
             pickleTree(lo);
-            if (hi ne lo) pickleTree(hi)
+            if alias.isEmpty then
+              if hi ne lo then pickleTree(hi)
+            else
+              pickleTree(hi)
+              pickleTree(alias)
           }
         case Hole(_, idx, args) =>
           writeByte(HOLE)

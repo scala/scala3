@@ -690,8 +690,10 @@ object Trees {
     type ThisTree[-T >: Untyped] = ByNameTypeTree[T]
   }
 
-  /** >: lo <: hi */
-  case class TypeBoundsTree[-T >: Untyped] private[ast] (lo: Tree[T], hi: Tree[T])(implicit @constructorOnly src: SourceFile)
+  /** >: lo <: hi
+   *  >: lo <: hi = alias  for RHS of bounded opaque type
+   */
+  case class TypeBoundsTree[-T >: Untyped] private[ast] (lo: Tree[T], hi: Tree[T], alias: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = TypeBoundsTree[T]
   }
@@ -760,7 +762,8 @@ object Trees {
   /** mods class name template     or
    *  mods trait name template     or
    *  mods type name = rhs   or
-   *  mods type name >: lo <: hi, if rhs = TypeBoundsTree(lo, hi) & (lo ne hi)
+   *  mods type name >: lo <: hi,          if rhs = TypeBoundsTree(lo, hi)      or
+   *  mods type name >: lo <: hi = rhs     if rhs = TypeBoundsTree(lo, hi, alias) and opaque in mods
    */
   case class TypeDef[-T >: Untyped] private[ast] (name: TypeName, rhs: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends MemberDef[T] {
@@ -1151,9 +1154,9 @@ object Trees {
         case tree: ByNameTypeTree if (result eq tree.result) => tree
         case _ => finalize(tree, untpd.ByNameTypeTree(result)(sourceFile(tree)))
       }
-      def TypeBoundsTree(tree: Tree)(lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree = tree match {
-        case tree: TypeBoundsTree if (lo eq tree.lo) && (hi eq tree.hi) => tree
-        case _ => finalize(tree, untpd.TypeBoundsTree(lo, hi)(sourceFile(tree)))
+      def TypeBoundsTree(tree: Tree)(lo: Tree, hi: Tree, alias: Tree)(implicit ctx: Context): TypeBoundsTree = tree match {
+        case tree: TypeBoundsTree if (lo eq tree.lo) && (hi eq tree.hi) && (alias eq tree.alias) => tree
+        case _ => finalize(tree, untpd.TypeBoundsTree(lo, hi, alias)(sourceFile(tree)))
       }
       def Bind(tree: Tree)(name: Name, body: Tree)(implicit ctx: Context): Bind = tree match {
         case tree: Bind if (name eq tree.name) && (body eq tree.body) => tree
@@ -1304,8 +1307,8 @@ object Trees {
             cpy.MatchTypeTree(tree)(transform(bound), transform(selector), transformSub(cases))
           case ByNameTypeTree(result) =>
             cpy.ByNameTypeTree(tree)(transform(result))
-          case TypeBoundsTree(lo, hi) =>
-            cpy.TypeBoundsTree(tree)(transform(lo), transform(hi))
+          case TypeBoundsTree(lo, hi, alias) =>
+            cpy.TypeBoundsTree(tree)(transform(lo), transform(hi), transform(alias))
           case Bind(name, body) =>
             cpy.Bind(tree)(name, transform(body))
           case Alternative(trees) =>
@@ -1428,8 +1431,8 @@ object Trees {
               this(this(this(x, bound), selector), cases)
             case ByNameTypeTree(result) =>
               this(x, result)
-            case TypeBoundsTree(lo, hi) =>
-              this(this(x, lo), hi)
+            case TypeBoundsTree(lo, hi, alias) =>
+              this(this(this(x, lo), hi), alias)
             case Bind(name, body) =>
               this(x, body)
             case Alternative(trees) =>

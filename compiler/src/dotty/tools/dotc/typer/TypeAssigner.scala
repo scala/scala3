@@ -607,8 +607,11 @@ trait TypeAssigner {
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context): ByNameTypeTree =
     tree.withType(ExprType(result.tpe))
 
-  def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree =
-    tree.withType(if (lo eq hi) TypeAlias(lo.tpe) else TypeBounds(lo.tpe, hi.tpe))
+  def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree, alias: Tree)(implicit ctx: Context): TypeBoundsTree =
+    tree.withType(
+      if !alias.isEmpty then alias.tpe
+      else if lo eq hi then TypeAlias(lo.tpe)
+      else TypeBounds(lo.tpe, hi.tpe))
 
   def assignType(tree: untpd.Bind, sym: Symbol)(implicit ctx: Context): Bind =
     tree.withType(NamedType(NoPrefix, sym))

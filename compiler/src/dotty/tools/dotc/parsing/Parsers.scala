@@ -3344,7 +3344,7 @@ object Parsers {
               rhs match {
                 case mtt: MatchTypeTree =>
                   bounds match {
-                    case TypeBoundsTree(EmptyTree, upper) =>
+                    case TypeBoundsTree(EmptyTree, upper, _) =>
                       rhs = MatchTypeTree(upper, mtt.selector, mtt.cases)
                     case _ =>
                       syntaxError(i"cannot combine lower bound and match type alias", eqOffset)
@@ -3568,7 +3568,7 @@ object Parsers {
             DefDef(name, tparams, vparamss, parents.head, subExpr())
           else
             parents match
-              case TypeBoundsTree(_, _) :: _ => syntaxError("`=` expected")
+              case (_: TypeBoundsTree) :: _ => syntaxError("`=` expected")
               case _ =>
             possibleTemplateStart()
             val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))

@@ -633,7 +633,7 @@ class Typer extends Namer
 
         tpt1 match {
           case AppliedTypeTree(_, targs) =>
-            for (targ @ TypeBoundsTree(_, _) <- targs)
+            for case targ: TypeBoundsTree <- targs do
               ctx.error(WildcardOnTypeArgumentNotAllowedOnNew(), targ.sourcePos)
           case _ =>
         }
@@ -1445,7 +1445,7 @@ class Typer extends Namer
             }
           if (desugaredArg.isType)
             arg match {
-              case TypeBoundsTree(EmptyTree, EmptyTree)
+              case TypeBoundsTree(EmptyTree, EmptyTree, _)
               if tparam.paramInfo.isLambdaSub &&
                  tpt1.tpe.typeParamSymbols.nonEmpty &&
                  !ctx.mode.is(Mode.Pattern) =>
@@ -1464,7 +1464,7 @@ class Typer extends Namer
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
       }
       val paramBounds = tparams.lazyZip(args).map {
-        case (tparam, TypeBoundsTree(EmptyTree, EmptyTree)) =>
+        case (tparam, TypeBoundsTree(EmptyTree, EmptyTree, _)) =>
           // if type argument is a wildcard, suppress kind checking since
           // there is no real argument.
           NoType
@@ -1507,14 +1507,15 @@ class Typer extends Namer
   }
 
   def typedTypeBoundsTree(tree: untpd.TypeBoundsTree, pt: Type)(implicit ctx: Context): Tree = {
-    val TypeBoundsTree(lo, hi) = tree
+    val TypeBoundsTree(lo, hi, alias) = tree
     val lo1 = typed(lo)
     val hi1 = typed(hi)
+    val alias1 = typed(alias)
 
     val lo2 = if (lo1.isEmpty) typed(untpd.TypeTree(defn.NothingType)) else lo1
     val hi2 = if (hi1.isEmpty) typed(untpd.TypeTree(defn.AnyType)) else hi1
 
-    val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo2, hi2), lo2, hi2)
+    val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo2, hi2, alias1), lo2, hi2, alias1)
     if (ctx.mode.is(Mode.Pattern))
       // Associate a pattern-bound type symbol with the wildcard.
       // The bounds of the type symbol can be constrained when comparing a pattern type
