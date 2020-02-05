@@ -48,7 +48,10 @@ class ReadTasty extends Phase {
                 Some(unit)
               }
             case tree: Tree[?] =>
-               alreadyLoaded()
+              if( cls.flags.is(Flags.JavaDefined) )  // Is this a Java class we've tried to inspect?
+                Some(JavaCompilationUnit(cls.fullName.toString))
+              else
+                alreadyLoaded()
             case _ =>
               cannotUnpickle(s"its class file does not have a TASTY attribute")
           }

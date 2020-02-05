@@ -473,6 +473,9 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
     def requiredMethod(path: String): Symbol = internal.Context_requiredMethod(self)(path)
 
+    /** Get Java class name if we've accidentally tried to reflect on a Java class.  None returned if TASTy class. */
+    def getJavaClassname(): Option[String] = internal.Context_getJavaClassname(self)
+
   }
 
 

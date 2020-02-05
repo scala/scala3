@@ -162,6 +162,9 @@ trait CompilerInterface {
   /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
   def Context_requiredMethod(self: Context)(path: String): Symbol
 
+  /** Get Java class name if we've accidentally tried to reflect on a Java class.  None returned if TASTy class. */
+  def Context_getJavaClassname(self: Context): Option[String]
+
 
   ///////////////
   // REPORTING //
