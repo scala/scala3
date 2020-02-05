@@ -35,7 +35,7 @@ introduce the following fundamental facilities:
    representation of code. They can be parameterized and composed using
    splices but their structure cannot be analyzed from the outside. Tasty
    reflection gives a way to analyze code structure by partly revealing the representation type of a piece of code in a standard API. The representation
-   type is a form of typed abstract syntax tree, which gives rise to the "TASTy`
+   type is a form of typed abstract syntax tree, which gives rise to the `TASTy`
    moniker.
 
 5. [TASTy Inspection](./tasty-inspect.md) Typed abstract syntax trees are serialized
