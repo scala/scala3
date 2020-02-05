@@ -948,8 +948,9 @@ trait Applications extends Compatibility {
      *     { val xs = es; e' = e' + args }
      */
     def typedOpAssign(implicit ctx: Context): Tree = {
-      val Apply(Select(lhs, name), rhss) = tree
-      val lhs1 = typedExpr(lhs)
+      val (lhs1, name, rhss) = tree match
+        case Apply(Select(lhs, name), rhss) => (typedExpr(lhs), name, rhss)
+        case Apply(untpd.TypedSplice(Select(lhs1, name)), rhss) => (lhs1, name, rhss)
       val liftedDefs = new mutable.ListBuffer[Tree]
       val lhs2 = untpd.TypedSplice(LiftComplex.liftAssigned(liftedDefs, lhs1))
       val assign = untpd.Assign(lhs2,
