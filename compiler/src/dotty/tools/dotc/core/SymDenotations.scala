@@ -426,42 +426,44 @@ object SymDenotations {
       case _ => unforcedDecls.openForMutations
     }
 
-    /** If this is a synthetic opaque type alias, mark it as Deferred with bounds
-     *  as given by the right hand side's `WithBounds` annotation, if one is present,
-     *  or with empty bounds of the right kind, otherwise.
-     *  At the same time, integrate the original alias as a refinement of the
+    /** If this is an opaque alias, replace the right hand side `info`
+     *  by appropriate bounds and store `info` in the refinement of the
      *  self type of the enclosing class.
+     *  Otherwise return `info`
+     *
+     *  @param info   Is assumed to be a (lambda-abstracted) right hand side TypeAlias
+     *                of the opaque type definition.
      */
-    final def normalizeOpaque()(implicit ctx: Context) = {
-      def abstractRHS(tp: Type): Type = tp match {
-        case tp: HKTypeLambda => tp.derivedLambdaType(resType = abstractRHS(tp.resType))
-        case _ => defn.AnyType
-      }
-      if (isOpaqueAlias)
-        info match {
-          case TypeAlias(alias) =>
-            val (refiningAlias, bounds) = alias match {
-              case AnnotatedType(alias1, Annotation.WithBounds(bounds)) =>
-              	(alias1, bounds)
-              case _ =>
-              	(alias, TypeBounds(defn.NothingType, abstractRHS(alias)))
-            }
-            def refineSelfType(selfType: Type) =
-              RefinedType(selfType, name, TypeAlias(refiningAlias))
-            val enclClassInfo = owner.asClass.classInfo
-            enclClassInfo.selfInfo match {
-              case self: Type =>
-                owner.info = enclClassInfo.derivedClassInfo(
-                  selfInfo = refineSelfType(self.orElse(defn.AnyType)))
-              case self: Symbol =>
-                self.info = refineSelfType(self.info)
-            }
-            info = bounds
-            setFlag(Deferred)
-            typeRef.recomputeDenot()
-          case _ =>
-        }
-    }
+    def opaqueToBounds(info: Type)(given Context): Type =
+
+      def setAlias(tp: Type) =
+        def recur(self: Type): Unit = self match
+          case RefinedType(parent, name, rinfo) => rinfo match
+            case TypeAlias(lzy: LazyRef) if name == this.name =>
+              lzy.update(tp)
+            case _ =>
+              recur(parent)
+        recur(owner.asClass.givenSelfType)
+      end setAlias
+
+      def split(tp: Type): (Type, TypeBounds) = tp match
+        case AnnotatedType(alias, Annotation.WithBounds(bounds)) =>
+          (alias, bounds)
+        case tp: HKTypeLambda =>
+          val (alias1, bounds1) = split(tp.resType)
+          (tp.derivedLambdaType(resType = alias1),
+           HKTypeLambda.boundsFromParams(tp.typeParams, bounds1))
+        case _ =>
+          (tp, HKTypeLambda.boundsFromParams(tp.typeParams, TypeBounds.empty))
+
+      info match
+        case TypeAlias(tp) if isOpaqueAlias && owner.isClass =>
+          val (alias, bounds) = split(tp)
+          setAlias(alias)
+          bounds
+        case _ =>
+          info
+    end opaqueToBounds
 
     // ------ Names ----------------------------------------------
 
@@ -1203,7 +1205,7 @@ object SymDenotations {
     def opaqueAlias(implicit ctx: Context): Type = {
       def recur(tp: Type): Type = tp match {
         case RefinedType(parent, rname, TypeAlias(alias)) =>
-          if (rname == name) alias else recur(parent)
+          if rname == name then alias.stripLazyRef else recur(parent)
         case _ =>
           NoType
       }

@@ -1727,10 +1727,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || tp2.isRef(NothingClass) then tp2
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || tp1.isRef(NothingClass) then tp1
     else tp2 match {  // normalize to disjunctive normal form if possible.
+      case tp2: LazyRef =>
+        glb(tp1, tp2.ref)
       case OrType(tp21, tp22) =>
         tp1 & tp21 | tp1 & tp22
       case _ =>
         tp1 match {
+          case tp1: LazyRef =>
+            glb(tp1.ref, tp2)
           case OrType(tp11, tp12) =>
             tp11 & tp2 | tp12 & tp2
           case _ =>
@@ -1777,8 +1781,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     else if (!tp2.exists) tp2
     else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || tp2.isRef(NothingClass) then tp1
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || tp1.isRef(NothingClass) then tp2
-    else {
-      def mergedLub: Type = {
+    else
+      def mergedLub(tp1: Type, tp2: Type): Type = {
         val atoms1 = tp1.atoms(widenOK = true)
         if (atoms1.nonEmpty && !widenInUnions) {
           val atoms2 = tp2.atoms(widenOK = true)
@@ -1800,8 +1804,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w)
         else orType(tp1w, tp2w) // no need to check subtypes again
       }
-      mergedLub
-    }
+      mergedLub(tp1.stripLazyRef, tp2.stripLazyRef)
   }
 
   /** The least upper bound of a list of types */

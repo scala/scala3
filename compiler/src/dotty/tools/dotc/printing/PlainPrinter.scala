@@ -197,7 +197,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
-      case tp: TypeLambda =>
+      case tp: HKTypeLambda =>
+        changePrec(GlobalPrec) {
+          "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~ Str(" =>> ") ~ toTextGlobal(tp.resultType)
+        }
+      case tp: PolyType =>
         changePrec(GlobalPrec) {
           "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~
           (Str(" => ") provided !tp.resultType.isInstanceOf[MethodType]) ~
