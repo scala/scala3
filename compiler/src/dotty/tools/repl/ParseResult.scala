@@ -1,13 +1,14 @@
 package dotty.tools
 package repl
 
-import dotc.reporting.diagnostic.MessageContainer
+import dotc.CompilationUnit
+import dotc.ast.untpd
 import dotc.core.Contexts.Context
+import dotc.core.StdNames.str
 import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
+import dotc.reporting.diagnostic.MessageContainer
 import dotc.util.SourceFile
-import dotc.ast.untpd
-import dotty.tools.dotc.core.StdNames.str
 
 import scala.annotation.internal.sharable
 
@@ -148,18 +149,21 @@ object ParseResult {
   def apply(sourceCode: String)(implicit state: State): ParseResult =
     apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode))
 
-  /** Check if the input is incomplete
+  /** Check if the input is incomplete.
    *
    *  This can be used in order to check if a newline can be inserted without
-   *  having to evaluate the expression
+   *  having to evaluate the expression.
    */
   def isIncomplete(sourceCode: String)(implicit ctx: Context): Boolean =
     sourceCode match {
       case CommandExtract(_) | "" => false
       case _ => {
         val reporter = newStoreReporter
-        val source = SourceFile.virtual("<incomplete-handler>", sourceCode)
-        val localCtx = ctx.fresh.setSource(source).setReporter(reporter)
+        val source   = SourceFile.virtual("<incomplete-handler>", sourceCode)
+        val unit     = CompilationUnit(source, mustExist = false)
+        val localCtx = ctx.fresh
+                          .setCompilationUnit(unit)
+                          .setReporter(reporter)
         var needsMore = false
         reporter.withIncompleteHandler((_, _) => needsMore = true) {
           parseStats(localCtx)
