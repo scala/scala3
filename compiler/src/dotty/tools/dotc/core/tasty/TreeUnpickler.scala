@@ -833,11 +833,12 @@ class TreeUnpickler(reader: TastyReader,
               override def completerTypeParams(sym: Symbol)(implicit ctx: Context) =
                 rhs.tpe.typeParams
             }
-            sym.info = sym.opaqueToBounds {
-              rhs.tpe match
+            sym.info = sym.opaqueToBounds(
+              rhs.tpe match {
                 case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
                 case _ => rhs.tpe.toBounds
-            }
+              },
+              rhs)
             if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
             sym.resetFlag(Provisional)
             TypeDef(rhs)
@@ -1209,8 +1210,9 @@ class TreeUnpickler(reader: TastyReader,
               MatchTypeTree(bound, scrut, readCases(end))
             case TYPEBOUNDStpt =>
               val lo = readTpt()
-              val hi = if (currentAddr == end) lo else readTpt()
-              TypeBoundsTree(lo, hi)
+              val hi = if currentAddr == end then lo else readTpt()
+              val alias = if currentAddr == end then EmptyTree else readTpt()
+              TypeBoundsTree(lo, hi, alias)
             case HOLE =>
               readHole(end, isType = false)
             case _ =>

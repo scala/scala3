@@ -179,8 +179,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def MatchTypeTree(bound: Tree, selector: Tree, cases: List[CaseDef])(implicit ctx: Context): MatchTypeTree =
     ta.assignType(untpd.MatchTypeTree(bound, selector, cases), bound, selector, cases)
 
-  def TypeBoundsTree(lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree =
-    ta.assignType(untpd.TypeBoundsTree(lo, hi), lo, hi)
+  def TypeBoundsTree(lo: Tree, hi: Tree, alias: Tree = EmptyTree)(implicit ctx: Context): TypeBoundsTree =
+    ta.assignType(untpd.TypeBoundsTree(lo, hi, alias), lo, hi, alias)
 
   def Bind(sym: Symbol, body: Tree)(implicit ctx: Context): Bind =
     ta.assignType(untpd.Bind(sym.name, body), sym)

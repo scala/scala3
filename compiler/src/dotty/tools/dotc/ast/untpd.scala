@@ -376,7 +376,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def LambdaTypeTree(tparams: List[TypeDef], body: Tree)(implicit src: SourceFile): LambdaTypeTree = new LambdaTypeTree(tparams, body)
   def MatchTypeTree(bound: Tree, selector: Tree, cases: List[CaseDef])(implicit src: SourceFile): MatchTypeTree = new MatchTypeTree(bound, selector, cases)
   def ByNameTypeTree(result: Tree)(implicit src: SourceFile): ByNameTypeTree = new ByNameTypeTree(result)
-  def TypeBoundsTree(lo: Tree, hi: Tree)(implicit src: SourceFile): TypeBoundsTree = new TypeBoundsTree(lo, hi)
+  def TypeBoundsTree(lo: Tree, hi: Tree, alias: Tree = EmptyTree)(implicit src: SourceFile): TypeBoundsTree = new TypeBoundsTree(lo, hi, alias)
   def Bind(name: Name, body: Tree)(implicit src: SourceFile): Bind = new Bind(name, body)
   def Alternative(trees: List[Tree])(implicit src: SourceFile): Alternative = new Alternative(trees)
   def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree])(implicit src: SourceFile): UnApply = new UnApply(fun, implicits, patterns)

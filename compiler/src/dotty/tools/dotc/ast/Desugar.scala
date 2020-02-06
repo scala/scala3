@@ -252,7 +252,7 @@ object desugar {
 
     if (meth1.mods.is(Inline))
       meth1.tpt match {
-        case TypeBoundsTree(_, tpt1) =>
+        case TypeBoundsTree(_, tpt1, _) =>
           meth1 = cpy.DefDef(meth1)(tpt = tpt1)
         case tpt if !tpt.isEmpty && !meth1.rhs.isEmpty =>
           meth1 = cpy.DefDef(meth1)(rhs = Typed(meth1.rhs, tpt))
@@ -684,7 +684,7 @@ object desugar {
           val mods = constr1.mods
           mods.is(Private) || (!mods.is(Protected) && mods.hasPrivateWithin)
         }
- 
+
         /** Does one of the parameter's types (in the first param clause)
          *  mention a preceding parameter?
          */
@@ -1156,7 +1156,8 @@ object desugar {
   val legalOpaque: MemberDefTest = {
     case TypeDef(_, rhs) =>
       def rhsOK(tree: Tree): Boolean = tree match {
-        case _: TypeBoundsTree | _: Template => false
+        case bounds: TypeBoundsTree => !bounds.alias.isEmpty
+        case _: Template => false
         case LambdaTypeTree(_, body) => rhsOK(body)
         case _ => true
       }

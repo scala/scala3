@@ -11,6 +11,7 @@ import Scopes.Scope
 import dotty.tools.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
+import ast.Trees.{LambdaTypeTree, TypeBoundsTree}
 import Trees.Literal
 import Variances.Variance
 import annotation.tailrec
@@ -433,8 +434,9 @@ object SymDenotations {
      *
      *  @param info   Is assumed to be a (lambda-abstracted) right hand side TypeAlias
      *                of the opaque type definition.
+     *  @param rhs    The right hand side tree of the type definition
      */
-    def opaqueToBounds(info: Type)(given Context): Type =
+    def opaqueToBounds(info: Type, rhs: tpd.Tree)(given Context): Type =
 
       def setAlias(tp: Type) =
         def recur(self: Type): Unit = self match
@@ -446,21 +448,19 @@ object SymDenotations {
         recur(owner.asClass.givenSelfType)
       end setAlias
 
-      def split(tp: Type): (Type, TypeBounds) = tp match
-        case AnnotatedType(alias, Annotation.WithBounds(bounds)) =>
-          (alias, bounds)
-        case tp: HKTypeLambda =>
-          val (alias1, bounds1) = split(tp.resType)
-          (tp.derivedLambdaType(resType = alias1),
-           HKTypeLambda.boundsFromParams(tp.typeParams, bounds1))
+      def bounds(t: tpd.Tree): TypeBounds = t match
+        case LambdaTypeTree(_, body) =>
+          bounds(body)
+        case TypeBoundsTree(lo, hi, alias) =>
+          assert(!alias.isEmpty)
+          TypeBounds(lo.tpe, hi.tpe)
         case _ =>
-          (tp, HKTypeLambda.boundsFromParams(tp.typeParams, TypeBounds.empty))
+          TypeBounds.empty
 
       info match
-        case TypeAlias(tp) if isOpaqueAlias && owner.isClass =>
-          val (alias, bounds) = split(tp)
+        case TypeAlias(alias) if isOpaqueAlias && owner.isClass =>
           setAlias(alias)
-          bounds
+          HKTypeLambda.boundsFromParams(alias.typeParams, bounds(rhs))
         case _ =>
           info
     end opaqueToBounds

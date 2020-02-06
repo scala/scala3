@@ -784,7 +784,6 @@ class Definitions {
   @tu lazy val AnnotationDefaultAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.AnnotationDefault")
   @tu lazy val BodyAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.Body")
   @tu lazy val ChildAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.Child")
-  @tu lazy val WithBoundsAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.WithBounds")
   @tu lazy val CovariantBetweenAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.CovariantBetween")
   @tu lazy val ContravariantBetweenAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.ContravariantBetween")
   @tu lazy val DeprecatedAnnot: ClassSymbol = ctx.requiredClass("scala.deprecated")
