@@ -440,7 +440,7 @@ object Trees {
     type ThisTree[-T >: Untyped] = Apply[T]
 
     def isGivenApply = hasAttachment(untpd.ApplyGiven)
-    def setGivenApply() = { pushAttachment(untpd.ApplyGiven, ()); this }
+    def setGivenApply() = { putAttachment(untpd.ApplyGiven, ()); this }
   }
 
   /** fun[args] */
