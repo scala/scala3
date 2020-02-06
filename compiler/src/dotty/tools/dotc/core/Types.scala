@@ -275,7 +275,7 @@ object Types {
       @tailrec def loop(tp: Type): Boolean = tp match {
         case tp: TypeRef =>
           val sym = tp.symbol
-          if (sym.isClass) sym == defn.AnyKindClass else loop(tp.superType)
+          if (sym.isClass) sym == defn.AnyKindClass else loop(tp.translucentSuperType)
         case tp: TypeProxy =>
           loop(tp.underlying)
         case _ =>
