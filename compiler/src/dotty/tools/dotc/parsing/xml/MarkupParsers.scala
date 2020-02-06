@@ -362,18 +362,18 @@ object MarkupParsers {
         tmppos = Span(curOffset)    // Iuli: added this line, as it seems content_LT uses tmppos when creating trees
         content_LT(ts)
 
-        // parse more XML ?
+        // parse more XML?
         if (charComingAfter(xSpaceOpt()) == '<') {
-          xSpaceOpt()
-          while (ch == '<') {
-            nextch()
-            ts append element
+          while {
             xSpaceOpt()
-          }
+            nextch()
+            ts.append(element)
+            charComingAfter(xSpaceOpt()) == '<'
+          } do ()
           handle.makeXMLseq(Span(start, curOffset, start), ts)
         }
         else {
-          assert(ts.length == 1)
+          assert(ts.length == 1, "Require one tree")
           ts(0)
         }
       },
