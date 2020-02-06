@@ -163,7 +163,7 @@ trait CompilerInterface {
   def Context_requiredMethod(self: Context)(path: String): Symbol
 
   /** Get Java class name if we've accidentally tried to reflect on a Java class.  None returned if TASTy class. */
-  def Context_getJavaClassname(self: Context): Option[String]
+  def Context_javaCompilationUnitClassname(self: Context): Option[String]
 
 
   ///////////////

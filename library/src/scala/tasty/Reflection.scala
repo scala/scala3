@@ -474,7 +474,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def requiredMethod(path: String): Symbol = internal.Context_requiredMethod(self)(path)
 
     /** Get Java class name if we've accidentally tried to reflect on a Java class.  None returned if TASTy class. */
-    def getJavaClassname(): Option[String] = internal.Context_getJavaClassname(self)
+    def javaCompilationUnitClassname(): Option[String] = internal.Context_javaCompilationUnitClassname(self)
 
   }
 

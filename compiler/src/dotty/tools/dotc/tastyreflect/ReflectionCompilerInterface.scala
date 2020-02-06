@@ -65,7 +65,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Context_requiredClass(self: Context)(path: String): Symbol = self.requiredClass(path)
   def Context_requiredModule(self: Context)(path: String): Symbol = self.requiredModule(path)
   def Context_requiredMethod(self: Context)(path: String): Symbol = self.requiredMethod(path)
-  def Context_getJavaClassname(self: Context): Option[String] = 
+  def Context_javaCompilationUnitClassname(self: Context): Option[String] = 
     self.compilationUnit match {
       case j: fromtasty.JavaCompilationUnit => Some(j.className)
       case _ => None

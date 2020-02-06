@@ -21,4 +21,4 @@ class TestInspector() extends TastyInspector
 
   protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = 
     import reflect.{given,_}
-    gotJava = reflect.rootContext.getJavaClassname()
+    gotJava = reflect.rootContext.javaCompilationUnitClassname()
