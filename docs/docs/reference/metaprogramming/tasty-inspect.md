@@ -47,7 +47,7 @@ compilation we need make available the compiler to the runtime:
 
 ```shell
 dotc -d out Test.scala
-dotr -classpath out Test
+dotr -with-compiler -classpath out Test
 ```
 
 
