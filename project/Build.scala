@@ -727,7 +727,7 @@ object Build {
         "-Ddotty.tests.classes.dottyTastyInspector=" + jars("dotty-tasty-inspector"),
       )
     },
-    libraryDependencies += "org.scala-lang" % "scala-reflect" %  "2.13.1",
+    libraryDependencies += "org.scala-lang" % "scala-reflect" %  stdlibVersion % "test",
     packageAll := {
       packageAll.in(`dotty-compiler`).value ++ Seq(
         "dotty-compiler" -> packageBin.in(Compile).value.getAbsolutePath,
