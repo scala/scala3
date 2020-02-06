@@ -118,3 +118,10 @@ Or, from SBT:
 ```scala
 libraryDependencies += "ch.epfl.lamp" %% "dotty-staging" % scalaVersion.value
 ```
+
+## Template project
+Using sbt version `1.1.5+`, do:
+```
+sbt new lampepfl/dotty-staging.g8
+```
+in the folder where you want to clone the template.
