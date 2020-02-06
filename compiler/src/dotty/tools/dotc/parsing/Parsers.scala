@@ -3800,19 +3800,21 @@ object Parsers {
      */
     def refineStatSeq(): List[Tree] = {
       val stats = new ListBuffer[Tree]
-      def checkLegal(tree: Tree): List[Tree] = {
-        val isLegal = tree match {
-          case tree: ValDef => tree.rhs.isEmpty && !tree.mods.flags.is(Mutable)
-          case tree: DefDef => tree.rhs.isEmpty
-          case tree: TypeDef => true
-          case _ => false
-        }
-        if (isLegal) tree :: Nil
-        else {
-          syntaxError("illegal refinement", tree.span)
-          Nil
-        }
-      }
+      def checkLegal(tree: Tree): List[Tree] =
+        val problem = tree match
+          case tree: MemberDef if !(tree.mods.flags & ModifierFlags).isEmpty =>
+            i"refinement cannot be ${(tree.mods.flags & ModifierFlags).flagStrings().mkString("`", "`, `", "`")}"
+          case tree: ValOrDefDef =>
+            if tree.rhs.isEmpty then ""
+            else "refinement in cannot have a right-hand side"
+          case tree: TypeDef =>
+            if !tree.isClassDef then ""
+            else "refinement cannot be a class or trait"
+          case _ =>
+            "this kind of definition cannot be a refinement"
+        if problem.isEmpty then tree :: Nil
+        else { syntaxError(problem, tree.span); Nil }
+
       while (!isStatSeqEnd) {
         if (isDclIntro)
           stats ++= checkLegal(defOrDcl(in.offset, Modifiers()))
