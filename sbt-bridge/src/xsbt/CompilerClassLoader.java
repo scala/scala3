@@ -110,7 +110,7 @@ public class CompilerClassLoader extends URLClassLoader {
       Field parentBField = dualLoaderClass.getDeclaredField("parentB");
       parentBField.setAccessible(true);
       URLClassLoader scalaLoader = (URLClassLoader) parentAField.get(dualLoader);
-      URLClassLoader sbtLoader = (URLClassLoader) parentBField.get(dualLoader);
+      ClassLoader sbtLoader = (ClassLoader) parentBField.get(dualLoader);
 
       URL[] bridgeURLs = urlBridgeLoader.getURLs();
       return new URLClassLoader(bridgeURLs,
