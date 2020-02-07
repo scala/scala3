@@ -121,23 +121,29 @@ power(expr, 10)
 ```
 
 Parameters of inline methods can have an `inline` modifier as well. This means
-that actual arguments to these parameters will be inlined in the body of the `inline def`.
-`inline` parameter have call semantics equivalent to by-name parameters but allows for duplication
-of the code in the argument. It is usualy useful constant values need to be propagated to allow
-further optimizations/reductions.
+that actual arguments to these parameters will be inlined in the body of the 
+`inline def`. `inline` parameters have call semantics equivalent to by-name parameters 
+but allow for duplication of the code in the argument. It is usualy useful constant 
+values need to be propagated to allow further optimizations/reductions.
 
 The following example shows the difference in translation between by-value, by-name and `inline`
 parameters:
 
 ```scala
-inline def sumTwice(a: Int, b: =>Int, inline c: Int) = a + a + b + b + c + c
+inline def specialSum(a: Int, b: =>Int, inline c: Int) =
+ (if(a < 2) a else 0) + 
+ (if(a < 2) b + b else 0) + 
+ (if(a < 2) c + c else 0)
+}
 
-sumTwice(f(), g(), h())
+specialSum(f(), g(), h())
 // translates to
 //
 //    val a = f()
-//    def b = g()
-//    a + a + b + b + h() + h()
+//    lazy val b = g()
+//    (if(a < 2) a else 0) + 
+//    (if(a < 2) b + b else 0) + 
+//    (if(a < 2) h() + h() else 0)
 ```
 
 ### Relationship to @inline
