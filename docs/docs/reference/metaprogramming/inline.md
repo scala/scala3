@@ -89,10 +89,10 @@ def factorial(n: BigInt): BigInt = {
 }
 ```
 
-Note, that the by-value parameter is evaluated only once, per the usual Scala
+Note, that the by-value parameter `msg` is evaluated only once, per the usual Scala
 semantics, by binding the value and reusing the `msg` through the body of
-`factorial`. Also, note the special handling of setting to the private var
-`indent` by generating the setter method `def inline$indent_=`.
+`factorial`. Also, note the special handling of the assignment to the private var
+`indent`. It is achieved by generating a setter method `def inline$indent_=` and calling it instead.
 
 ### Recursive Inline Methods
 
