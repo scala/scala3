@@ -23,15 +23,15 @@ object Eql {
   def eqlAny[L, R]: Eql[L, R] = derived
 
   // Instances of `Eql` for common Java types
-  implicit def eqlNumber   : Eql[Number, Number] = derived
-  implicit def eqlString   : Eql[String, String] = derived
+  given eqlNumber as Eql[Number, Number] = derived
+  given eqlString as Eql[String, String] = derived
 
   // The next three definitions can go into the companion objects of classes
   // Seq, Set, and Proxy. For now they are here in order not to have to touch the
   // source code of these classes
-  implicit def eqlSeq[T, U](implicit eq: Eql[T, U]): Eql[GenSeq[T], GenSeq[U]] = derived
-  implicit def eqlSet[T, U](implicit eq: Eql[T, U]): Eql[Set[T], Set[U]] = derived
+  given eqlSeq[T, U](using eq: Eql[T, U]) as Eql[GenSeq[T], GenSeq[U]] = derived
+  given eqlSet[T, U](using eq: Eql[T, U]) as Eql[Set[T], Set[U]] = derived
 
   // true asymmetry, modeling the (somewhat problematic) nature of equals on Proxies
-  implicit def eqlProxy    : Eql[Proxy, AnyRef]  = derived
+  given eqlProxy as Eql[Proxy, AnyRef]  = derived
 }
