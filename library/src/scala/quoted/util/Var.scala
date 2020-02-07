@@ -10,7 +10,7 @@ sealed trait Var[T] {
   def get(using qctx: QuoteContext): Expr[T]
 
   // Update the variable with the expression of a value (`e` corresponds to the RHS of variable assignment `x = e`)
-  def update(e: Expr[T])(given qctx: QuoteContext): Expr[Unit]
+  def update(e: Expr[T])(using qctx: QuoteContext): Expr[Unit]
 }
 
 object Var {
@@ -34,7 +34,7 @@ object Var {
    *    x
    *  }
    */
-  def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U])(given qctx: QuoteContext): Expr[U] = '{
+  def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U])(using qctx: QuoteContext): Expr[U] = '{
     var x = $init
     ${
       body(

@@ -70,7 +70,7 @@ object Implicits {
   /** If `expected` is a selection prototype, does `tp` have an extension
    *  method with the selecting name? False otherwise.
    */
-  def hasExtMethod(tp: Type, expected: Type)(given Context) = expected match
+  def hasExtMethod(tp: Type, expected: Type)(using Context) = expected match
     case SelectionProto(name, _, _, _) =>
       tp.memberBasedOnFlags(name, required = ExtensionMethod).exists
     case _ => false

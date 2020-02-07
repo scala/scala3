@@ -8,7 +8,7 @@ package reflect
  *  class MyTreeAccumulator[R <: scala.tasty.Reflection & Singleton](val reflect: R)
  *      extends scala.tasty.reflect.TreeAccumulator[X] {
  *    import reflect.{given, _}
- *    def foldTree(x: X, tree: Tree)(given ctx: Context): X = ...
+ *    def foldTree(x: X, tree: Tree)(using ctx: Context): X = ...
  *  }
  *  ```
  */
@@ -18,11 +18,11 @@ trait TreeAccumulator[X] {
   import reflect.{given, _}
 
   // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
-  def foldTree(x: X, tree: Tree)(given ctx: Context): X
+  def foldTree(x: X, tree: Tree)(using ctx: Context): X
 
-  def foldTrees(x: X, trees: Iterable[Tree])(given ctx: Context): X = trees.foldLeft(x)(foldTree)
+  def foldTrees(x: X, trees: Iterable[Tree])(using ctx: Context): X = trees.foldLeft(x)(foldTree)
 
-  def foldOverTree(x: X, tree: Tree)(given ctx: Context): X = {
+  def foldOverTree(x: X, tree: Tree)(using ctx: Context): X = {
     def localCtx(definition: Definition): Context = definition.symbol.localContext
     tree match {
       case Ident(_) =>
@@ -84,7 +84,7 @@ trait TreeAccumulator[X] {
       case Import(expr, _) =>
         foldTree(x, expr)
       case clause @ PackageClause(pid, stats) =>
-        foldTrees(foldTree(x, pid), stats)(given clause.symbol.localContext)
+        foldTrees(foldTree(x, pid), stats)(using clause.symbol.localContext)
       case Inferred() => x
       case TypeIdent(_) => x
       case TypeSelect(qualifier, _) => foldTree(x, qualifier)

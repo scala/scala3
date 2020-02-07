@@ -16,10 +16,10 @@ trait TreeTraverser extends TreeAccumulator[Unit] {
 
   import reflect._
 
-  def traverseTree(tree: Tree)(given ctx: Context): Unit = traverseTreeChildren(tree)
+  def traverseTree(tree: Tree)(using ctx: Context): Unit = traverseTreeChildren(tree)
 
-  def foldTree(x: Unit, tree: Tree)(given ctx: Context): Unit = traverseTree(tree)
+  def foldTree(x: Unit, tree: Tree)(using ctx: Context): Unit = traverseTree(tree)
 
-  protected def traverseTreeChildren(tree: Tree)(given ctx: Context): Unit = foldOverTree((), tree)
+  protected def traverseTreeChildren(tree: Tree)(using ctx: Context): Unit = foldOverTree((), tree)
 
 }

@@ -436,7 +436,7 @@ object SymDenotations {
      *                of the opaque type definition.
      *  @param rhs    The right hand side tree of the type definition
      */
-    def opaqueToBounds(info: Type, rhs: tpd.Tree)(given Context): Type =
+    def opaqueToBounds(info: Type, rhs: tpd.Tree)(using Context): Type =
 
       def setAlias(tp: Type) =
         def recur(self: Type): Unit = self match
@@ -636,7 +636,7 @@ object SymDenotations {
       name.isPackageObjectName && owner.is(Package) && this.is(Module)
 
     /** Is this symbol a toplevel definition in a package object? */
-    def isWrappedToplevelDef(given Context): Boolean =
+    def isWrappedToplevelDef(using Context): Boolean =
       !isConstructor && owner.isPackageObject
 
     /** Is this symbol an abstract type? */
@@ -1086,7 +1086,7 @@ object SymDenotations {
     /** A class is effectively sealed if has the `final` or `sealed` modifier, or it
      *  is defined in Scala 3 and is neither abstract nor open.
      */
-    final def isEffectivelySealed(given Context): Boolean =
+    final def isEffectivelySealed(using Context): Boolean =
       isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
 
     /** The class containing this denotation which has the given effective name. */
@@ -1546,7 +1546,7 @@ object SymDenotations {
       myBaseTypeCachePeriod = Nowhere
     }
 
-    def invalidateMemberCaches(sym: Symbol)(given Context): Unit =
+    def invalidateMemberCaches(sym: Symbol)(using Context): Unit =
       if myMemberCache != null then myMemberCache.invalidate(sym.name)
       if !sym.flagsUNSAFE.is(Private) then
         invalidateMemberNamesCache()
@@ -1753,7 +1753,7 @@ object SymDenotations {
     }
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
-    def enterNoReplace(sym: Symbol, scope: MutableScope)(given Context): Unit =
+    def enterNoReplace(sym: Symbol, scope: MutableScope)(using Context): Unit =
       scope.enter(sym)
       invalidateMemberCaches(sym)
 
@@ -2267,7 +2267,7 @@ object SymDenotations {
    *   - parameters and parameter accessors, since their Local status is already
    *     determined by whether they have a `val` or `var` or not.
    */
-  def canBeLocal(name: Name, flags: FlagSet)(given Context) =
+  def canBeLocal(name: Name, flags: FlagSet)(using Context) =
     !name.isConstructorName && !flags.is(Param) && !flags.is(ParamAccessor)
 
   // ---- Completion --------------------------------------------------------

@@ -183,7 +183,7 @@ object EtaExpansion extends LiftImpure {
    *  If `expr` has implicit function type, the arguments are passed with `given`.
    *  E.g. for (1):
    *
-   *      { val xs = es; (x1, ..., xn) => expr(given x1, ..., xn) }
+   *      { val xs = es; (x1, ..., xn) => expr(using x1, ..., xn) }
    *
    *  Case (3) applies if the method is curried, i.e. its result type is again a method
    *  type. Case (2) applies if the expected arity of the function type `xarity` differs

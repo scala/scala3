@@ -43,7 +43,7 @@ object ImportInfo {
  *  @param   isRootImport  true if this is one of the implicit imports of scala, java.lang,
  *                         scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
-class ImportInfo(symf: (given Context) => Symbol,
+class ImportInfo(symf: Context ?=> Symbol,
                  val selectors: List[untpd.ImportSelector],
                  symNameOpt: Option[TermName],
                  val isRootImport: Boolean = false) extends Showable {
@@ -52,7 +52,7 @@ class ImportInfo(symf: (given Context) => Symbol,
   // that we cannot use one for `DottyPredefModuleRef`.
   def sym(implicit ctx: Context): Symbol = {
     if (mySym == null) {
-      mySym = symf(given ctx)
+      mySym = symf(using ctx)
       assert(mySym != null)
     }
     mySym

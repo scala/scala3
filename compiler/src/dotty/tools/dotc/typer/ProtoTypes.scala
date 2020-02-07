@@ -337,7 +337,7 @@ object ProtoTypes {
         else ctx.withNotNullInfos(ctx.notNullInfos.retractMutables)
       val locked = ctx.typerState.ownedVars
       val targ = cacheTypedArg(arg,
-        typer.typedUnadapted(_, wideFormal, locked)(given argCtx),
+        typer.typedUnadapted(_, wideFormal, locked)(using argCtx),
         force = true)
       typer.adapt(targ, wideFormal, locked)
     }

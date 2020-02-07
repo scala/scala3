@@ -11,12 +11,12 @@ import core.Contexts.Context
  *  A typical use case is a lazy val in a phase object which exists once per root context where
  *  the expression intiializing the lazy val depends only on the root context, but not any changes afterwards.
  */
-class CtxLazy[T](expr: (given Context) => T) {
+class CtxLazy[T](expr: Context ?=> T) {
   private var myValue: T = _
   private var forced = false
   def apply()(implicit ctx: Context): T = {
     if (!forced) {
-      myValue = expr(given ctx)
+      myValue = expr(using ctx)
       forced = true
     }
     myValue

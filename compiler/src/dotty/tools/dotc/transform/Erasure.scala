@@ -753,7 +753,7 @@ object Erasure {
         if ctx.phase != ctx.erasurePhase && ctx.phase != ctx.erasurePhase.next then
           // this can happen when reading annotations loaded during erasure,
           // since these are loaded at phase typer.
-          adapt(tree, pt, locked)(given ctx.withPhase(ctx.erasurePhase.next))
+          adapt(tree, pt, locked)(using ctx.withPhase(ctx.erasurePhase.next))
         else if (tree.isEmpty) tree
         else if (ctx.mode is Mode.Pattern) tree // TODO: replace with assertion once pattern matcher is active
         else adaptToType(tree, pt)

@@ -10,7 +10,7 @@ import util.Spans.Span
 
 object Annotations {
 
-  def annotClass(tree: Tree)(given Context) =
+  def annotClass(tree: Tree)(using Context) =
     if (tree.symbol.isConstructor) tree.symbol.owner
     else tree.tpe.typeSymbol
 
@@ -118,25 +118,25 @@ object Annotations {
       apply(New(atp, args))
 
     /** Create an annotation where the tree is computed lazily. */
-    def deferred(sym: Symbol)(treeFn: (given Context) => Tree)(implicit ctx: Context): Annotation =
+    def deferred(sym: Symbol)(treeFn: Context ?=> Tree)(implicit ctx: Context): Annotation =
       new LazyAnnotation {
         override def symbol(implicit ctx: Context): Symbol = sym
-        def complete(implicit ctx: Context) = treeFn(given ctx)
+        def complete(implicit ctx: Context) = treeFn(using ctx)
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
-    def deferredSymAndTree(symf: (given Context) => Symbol)(treeFn: (given Context) => Tree)(implicit ctx: Context): Annotation =
+    def deferredSymAndTree(symf: Context ?=> Symbol)(treeFn: Context ?=> Tree)(implicit ctx: Context): Annotation =
       new LazyAnnotation {
         private var mySym: Symbol = _
 
         override def symbol(implicit ctx: Context): Symbol = {
           if (mySym == null || mySym.defRunId != ctx.runId) {
-            mySym = symf(given ctx)
+            mySym = symf(using ctx)
             assert(mySym != null)
           }
           mySym
         }
-        def complete(implicit ctx: Context) = treeFn(given ctx)
+        def complete(implicit ctx: Context) = treeFn(using ctx)
       }
 
     def deferred(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
@@ -153,8 +153,8 @@ object Annotations {
     object Child {
 
       /** A deferred annotation to the result of a given child computation */
-      def later(delayedSym: (given Context) => Symbol, span: Span)(implicit ctx: Context): Annotation = {
-        def makeChildLater(given ctx: Context) = {
+      def later(delayedSym: Context ?=> Symbol, span: Span)(implicit ctx: Context): Annotation = {
+        def makeChildLater(using ctx: Context) = {
           val sym = delayedSym
           New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
             .withSpan(span)

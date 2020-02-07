@@ -53,7 +53,7 @@ object Scala3 with
     val s"${RootPackageName @ _}/" = RootPackage
     val s"${EmptyPackageName @ _}/" = EmptyPackage
 
-    def displaySymbol(symbol: Symbol)(given Context): String =
+    def displaySymbol(symbol: Symbol)(using Context): String =
       if symbol.isPackageObject then
         displaySymbol(symbol.owner)
       else if symbol.is(ModuleClass) then
@@ -91,17 +91,17 @@ object Scala3 with
 
   extension SymbolOps on (sym: Symbol) with
 
-    def ifExists(given Context): Option[Symbol] = if sym.exists then Some(sym) else None
+    def ifExists(using Context): Option[Symbol] = if sym.exists then Some(sym) else None
 
-    def isScala2PackageObject(given Context): Boolean =
+    def isScala2PackageObject(using Context): Boolean =
       sym.name.isScala2PackageObjectName && sym.owner.is(Package) && sym.is(Module)
 
-    def isAnonymous(given Context): Boolean =
+    def isAnonymous(using Context): Boolean =
       sym.isAnonymousClass
       || sym.isAnonymousModuleVal
       || sym.isAnonymousFunction
 
-    def matchingSetter(given Context): Symbol =
+    def matchingSetter(using Context): Symbol =
 
       val setterName = sym.name.toTermName.setterName
 
@@ -112,18 +112,18 @@ object Scala3 with
       sym.owner.info.decls.find(s => s.name == setterName && s.info.matchingType)
 
     /** Is symbol global? Non-global symbols get localN names */
-    def isGlobal(given Context): Boolean =
+    def isGlobal(using Context): Boolean =
       sym.is(Package)
       || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && sym.owner.isGlobal
 
-    def isLocalWithinSameName(given Context): Boolean =
+    def isLocalWithinSameName(using Context): Boolean =
       sym.exists && !sym.isGlobal && sym.name == sym.owner.name
 
     /** Synthetic symbols that are not anonymous or numbered empty ident */
-    def isSyntheticWithIdent(given Context): Boolean =
+    def isSyntheticWithIdent(using Context): Boolean =
       sym.is(Synthetic) && !sym.isAnonymous && !sym.name.isEmptyNumbered
 
-    def isAnnotation(given Context): Boolean =
+    def isAnnotation(using Context): Boolean =
       sym.derivesFrom(defn.AnnotationClass)
 
   // end SymbolOps

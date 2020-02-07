@@ -73,38 +73,38 @@ class ExtractSemanticDB extends Phase with
     private val generated = new mutable.HashSet[SymbolOccurrence]
 
     /** Definitions of this symbol should be excluded from semanticdb */
-    private def excludeDef(sym: Symbol)(given Context): Boolean =
+    private def excludeDef(sym: Symbol)(using Context): Boolean =
       !sym.exists
       || sym.isLocalDummy
       || sym.is(Synthetic)
       || sym.isSetter
       || excludeDefOrUse(sym)
 
-    private def excludeDefOrUse(sym: Symbol)(given Context): Boolean =
+    private def excludeDefOrUse(sym: Symbol)(using Context): Boolean =
       sym.name.is(NameKinds.DefaultGetterName)
       || sym.isConstructor && (sym.owner.is(ModuleClass) || !sym.isGlobal)
       || excludeSymbol(sym)
 
-    private def excludeSymbol(sym: Symbol)(given Context): Boolean =
+    private def excludeSymbol(sym: Symbol)(using Context): Boolean =
       sym.name.isWildcard
       || excludeQual(sym)
 
-    private def excludeQual(sym: Symbol)(given Context): Boolean =
+    private def excludeQual(sym: Symbol)(using Context): Boolean =
       sym.isAnonymousFunction
       || sym.isAnonymousModuleVal
       || sym.name.isEmptyNumbered
 
-    private def excludeChildren(sym: Symbol)(given Context): Boolean =
+    private def excludeChildren(sym: Symbol)(using Context): Boolean =
       sym.isAllOf(HigherKinded | Param)
 
     /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
-    private def excludeUse(qualifier: Option[Symbol], sym: Symbol)(given Context): Boolean =
+    private def excludeUse(qualifier: Option[Symbol], sym: Symbol)(using Context): Boolean =
       excludeDefOrUse(sym)
       || sym.isConstructor && sym.owner.isAnnotation
       || sym == defn.Any_typeCast
       || qualifier.exists(excludeQual)
 
-    override def traverse(tree: Tree)(given Context): Unit =
+    override def traverse(tree: Tree)(using Context): Unit =
 
       inline def traverseCtorParamTpt(ctorSym: Symbol, tpt: Tree): Unit =
         val tptSym = tpt.symbol
@@ -234,7 +234,7 @@ class ExtractSemanticDB extends Phase with
 
     end traverse
 
-    private def funParamSymbol(funSym: Symbol)(given Context): Name => String =
+    private def funParamSymbol(funSym: Symbol)(using Context): Name => String =
       if funSym.isGlobal then
         val funSymbol = symbolName(funSym)
         name => s"$funSymbol($name)"
@@ -244,7 +244,7 @@ class ExtractSemanticDB extends Phase with
 
     private object PatternValDef with
 
-      def unapply(tree: ValDef)(given Context): Option[(Tree, Tree)] = tree.rhs match
+      def unapply(tree: ValDef)(using Context): Option[(Tree, Tree)] = tree.rhs match
 
         case Match(Typed(selected: Tree, tpt: TypeTree), CaseDef(pat: Tree, _, _) :: Nil)
         if tpt.span.exists && !tpt.span.hasLength && tpt.tpe.isAnnotatedByUnchecked =>
@@ -252,7 +252,7 @@ class ExtractSemanticDB extends Phase with
 
         case _ => None
 
-      private inline def (tpe: Types.Type) isAnnotatedByUnchecked(given Context) = tpe match
+      private inline def (tpe: Types.Type) isAnnotatedByUnchecked(using Context) = tpe match
         case Types.AnnotatedType(_, annot) => annot.symbol == defn.UncheckedAnnot
         case _                             => false
 
@@ -274,14 +274,14 @@ class ExtractSemanticDB extends Phase with
 
     end PatternValDef
 
-    private def (tree: NamedDefTree) adjustedNameSpan(given Context): Span =
+    private def (tree: NamedDefTree) adjustedNameSpan(using Context): Span =
       if tree.span.exists && tree.name.isAnonymousFunctionName || tree.name.isAnonymousClassName
         Span(tree.span.point)
       else
         tree.nameSpan
 
     /** Add semanticdb name of the given symbol to string builder */
-    private def addSymName(b: StringBuilder, sym: Symbol)(given ctx: Context): Unit =
+    private def addSymName(b: StringBuilder, sym: Symbol)(using ctx: Context): Unit =
 
       def addName(name: Name) =
         val str = name.toString.unescapeUnicode
@@ -331,7 +331,7 @@ class ExtractSemanticDB extends Phase with
       /** The index of local symbol `sym`. Symbols with the same name and
        *  the same starting position have the same index.
        */
-      def localIdx(sym: Symbol)(given Context): Int =
+      def localIdx(sym: Symbol)(using Context): Int =
         def computeLocalIdx(): Int =
           symsAtOffset(sym.span.start).find(_.name == sym.name) match
             case Some(other) => localIdx(other)
@@ -352,20 +352,20 @@ class ExtractSemanticDB extends Phase with
     end addSymName
 
     /** The semanticdb name of the given symbol */
-    private def symbolName(sym: Symbol)(given ctx: Context): String =
+    private def symbolName(sym: Symbol)(using ctx: Context): String =
       val b = StringBuilder(20)
       addSymName(b, sym)
       b.toString
 
-    inline private def source(given ctx: Context) = ctx.compilationUnit.source
+    inline private def source(using ctx: Context) = ctx.compilationUnit.source
 
-    private def range(span: Span)(given ctx: Context): Option[Range] =
+    private def range(span: Span)(using ctx: Context): Option[Range] =
       def lineCol(offset: Int) = (source.offsetToLine(offset), source.column(offset))
       val (startLine, startCol) = lineCol(span.start)
       val (endLine, endCol) = lineCol(span.end)
       Some(Range(startLine, startCol, endLine, endCol))
 
-    private def symbolKind(sym: Symbol, symkinds: Set[SymbolKind])(given Context): SymbolInformation.Kind =
+    private def symbolKind(sym: Symbol, symkinds: Set[SymbolKind])(using Context): SymbolInformation.Kind =
       if sym.isTypeParam
         SymbolInformation.Kind.TYPE_PARAMETER
       else if sym.is(TermParam)
@@ -399,7 +399,7 @@ class ExtractSemanticDB extends Phase with
       else
         SymbolInformation.Kind.UNKNOWN_KIND
 
-    private def symbolProps(sym: Symbol, symkinds: Set[SymbolKind])(given Context): Int =
+    private def symbolProps(sym: Symbol, symkinds: Set[SymbolKind])(using Context): Int =
       if sym.is(ModuleClass)
         return symbolProps(sym.sourceModule, symkinds)
       var props = 0
@@ -433,7 +433,7 @@ class ExtractSemanticDB extends Phase with
         props |= SymbolInformation.Property.ENUM.value
       props
 
-    private def symbolInfo(sym: Symbol, symbolName: String, symkinds: Set[SymbolKind])(given Context): SymbolInformation =
+    private def symbolInfo(sym: Symbol, symbolName: String, symkinds: Set[SymbolKind])(using Context): SymbolInformation =
       SymbolInformation(
         symbol = symbolName,
         language = Language.SCALA,
@@ -442,39 +442,39 @@ class ExtractSemanticDB extends Phase with
         displayName = Symbols.displaySymbol(sym)
       )
 
-    private def registerSymbol(sym: Symbol, symbolName: String, symkinds: Set[SymbolKind])(given Context): Unit =
+    private def registerSymbol(sym: Symbol, symbolName: String, symkinds: Set[SymbolKind])(using Context): Unit =
       val isLocal = symbolName.isLocal
       if !isLocal || !localNames.contains(symbolName)
         if isLocal
           localNames += symbolName
         symbolInfos += symbolInfo(sym, symbolName, symkinds)
 
-    private def registerSymbolSimple(sym: Symbol)(given Context): Unit =
+    private def registerSymbolSimple(sym: Symbol)(using Context): Unit =
       registerSymbol(sym, symbolName(sym), Set.empty)
 
-    private def registerOccurrence(symbol: String, span: Span, role: SymbolOccurrence.Role)(given Context): Unit =
+    private def registerOccurrence(symbol: String, span: Span, role: SymbolOccurrence.Role)(using Context): Unit =
       val occ = SymbolOccurrence(symbol, range(span), role)
       if !generated.contains(occ) && occ.symbol.nonEmpty then
         occurrences += occ
         generated += occ
 
-    private def registerUseGuarded(qualSym: Option[Symbol], sym: Symbol, span: Span)(given Context) =
+    private def registerUseGuarded(qualSym: Option[Symbol], sym: Symbol, span: Span)(using Context) =
       if !excludeUse(qualSym, sym) then
         registerUse(sym, span)
 
-    private def registerUse(sym: Symbol, span: Span)(given Context): Unit =
+    private def registerUse(sym: Symbol, span: Span)(using Context): Unit =
       registerUse(symbolName(sym), span)
 
-    private def registerUse(symbol: String, span: Span)(given Context): Unit =
+    private def registerUse(symbol: String, span: Span)(using Context): Unit =
       registerOccurrence(symbol, span, SymbolOccurrence.Role.REFERENCE)
 
-    private def registerDefinition(sym: Symbol, span: Span, symkinds: Set[SymbolKind])(given Context) =
+    private def registerDefinition(sym: Symbol, span: Span, symkinds: Set[SymbolKind])(using Context) =
       val symbol = symbolName(sym)
       registerOccurrence(symbol, span, SymbolOccurrence.Role.DEFINITION)
       if !sym.is(Package)
         registerSymbol(sym, symbol, symkinds)
 
-    private def spanOfSymbol(sym: Symbol, span: Span)(given Context): Span =
+    private def spanOfSymbol(sym: Symbol, span: Span)(using Context): Span =
       val contents = if source.exists then source.content() else Array.empty[Char]
       val idx = contents.indexOfSlice(sym.name.show, span.start)
       val start = if idx >= 0 then idx else span.start
@@ -484,10 +484,10 @@ class ExtractSemanticDB extends Phase with
       case (_::Nil)::Nil => true
       case _             => false
 
-    private def (tree: DefDef) isSetterDef(given Context): Boolean =
+    private def (tree: DefDef) isSetterDef(using Context): Boolean =
       tree.name.isSetterName && tree.mods.is(Accessor) && tree.vparamss.isSingleArg
 
-    private def findGetters(ctorParams: Set[Names.TermName], body: List[Tree])(given Context): Map[Names.TermName, ValDef] =
+    private def findGetters(ctorParams: Set[Names.TermName], body: List[Tree])(using Context): Map[Names.TermName, ValDef] =
       if ctorParams.isEmpty || body.isEmpty then
         Map.empty
       else
@@ -499,7 +499,7 @@ class ExtractSemanticDB extends Phase with
         }).toMap
     end findGetters
 
-    private def adjustSpanToName(span: Span, qualSpan: Span, name: Name)(given Context) =
+    private def adjustSpanToName(span: Span, qualSpan: Span, name: Name)(using Context) =
       val end = span.end
       val limit = qualSpan.end
       val start =
@@ -525,18 +525,18 @@ class ExtractSemanticDB extends Phase with
         rest.foreachUntilImport(op)
       case Nil => Nil
 
-    private def (sym: Symbol) adjustIfCtorTyparam(given Context) =
+    private def (sym: Symbol) adjustIfCtorTyparam(using Context) =
       if sym.isType && sym.owner.exists && sym.owner.isConstructor
         matchingMemberType(sym, sym.owner.owner)
       else
         sym
 
-    private inline def matchingMemberType(ctorTypeParam: Symbol, classSym: Symbol)(given Context) =
+    private inline def matchingMemberType(ctorTypeParam: Symbol, classSym: Symbol)(using Context) =
       classSym.info.member(ctorTypeParam.name).symbol
 
     /**Necessary because not all of the eventual flags are propagated from the Tree to the symbol yet.
      */
-    private def symbolKinds(tree: NamedDefTree)(given Context): Set[SymbolKind] =
+    private def symbolKinds(tree: NamedDefTree)(using Context): Set[SymbolKind] =
       if tree.symbol.isSelfSym
         Set.empty
       else
@@ -558,7 +558,7 @@ class ExtractSemanticDB extends Phase with
         symkinds.toSet
 
     private inline def ctorParams(
-      vparamss: List[List[ValDef]], body: List[Tree])(traverseTpt: => Tree => Unit)(given Context): Unit =
+      vparamss: List[List[ValDef]], body: List[Tree])(traverseTpt: => Tree => Unit)(using Context): Unit =
       @tu lazy val getters = findGetters(vparamss.flatMap(_.map(_.name)).toSet, body)
       for
         vparams <- vparamss
@@ -578,7 +578,7 @@ object ExtractSemanticDB with
 
   val name: String = "extractSemanticDB"
 
-  def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(given ctx: Context): Unit =
+  def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using ctx: Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
     val sourcePath = absolutePath(source.file.jpath)
     val sourceRoot = absolutePath(Paths.get(ctx.settings.sourceroot.value))

@@ -1,2 +1,2 @@
-scala> def fun[T](x: T): (given List[T]) => Int = ???
+scala> def fun[T](x: T): List[T] ?=> Int = ???
 def fun[T](x: T): (List[T]) ?=> Int
