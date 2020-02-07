@@ -21,10 +21,10 @@ class Test(val tb: Toolbox) {
   implicit val cap: Cap = null
 
   def foo(tree: Tree): Int = (tree: Any) match {
-    case tb.Apply(fun, args) => 3
+    case tb.Apply(fun, args) => 3  // error: ambiguous overload of unapply
   }
 
   def bar(tree: tpd.Tree): Int = (tree: Any) match {
-    case Apply(fun, args) => 3
+    case Apply(fun, args) => 3  // error: ambiguous overload of unapply
   }
 }
