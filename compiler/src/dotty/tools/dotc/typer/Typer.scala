@@ -1013,11 +1013,16 @@ class Typer extends Namer
             case untpd.TypedSplice(expr1) =>
               expr1.tpe
             case _ =>
+              given nestedCtx as Context = ctx.fresh.setNewTyperState()
               val protoArgs = args map (_ withType WildcardType)
               val callProto = FunProto(protoArgs, WildcardType)(this, app.isGivenApply)
               val expr1 = typedExpr(expr, callProto)
-              fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
-              expr1.tpe
+              if nestedCtx.reporter.hasErrors then NoType
+              else
+                given Context = ctx
+                nestedCtx.typerState.commit()
+                fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
+                expr1.tpe
           }
         else NoType
       case _ =>
