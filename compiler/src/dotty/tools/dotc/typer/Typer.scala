@@ -1009,7 +1009,7 @@ class Typer extends Namer
           yield param.name -> idx
         }.toMap
         if (paramIndex.size == params.length)
-          expr match {
+          expr match
             case untpd.TypedSplice(expr1) =>
               expr1.tpe
             case _ =>
@@ -1023,7 +1023,6 @@ class Typer extends Namer
                 nestedCtx.typerState.commit()
                 fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
                 expr1.tpe
-          }
         else NoType
       case _ =>
         NoType
@@ -1041,28 +1040,38 @@ class Typer extends Namer
 
     val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length)
 
-    /** Two attempts: First, if expected type is fully defined pick this one.
-      *  Second, if function is of the form
-      *      (x1, ..., xN) => f(... x1, ..., XN, ...)
-      *  where each `xi` occurs exactly once in the argument list of `f` (in
-      *  any order), and f has a method type MT, pick the corresponding parameter
-      *  type in MT, if this one is fully defined.
-      *  If both attempts fail, issue a "missing parameter type" error.
-      */
-    def inferredParamType(param: untpd.ValDef, formal: Type): Type = {
-      if (isFullyDefined(formal, ForceDegree.noBottom)) return formal
-      calleeType.widen match {
+    /** The inferred parameter type for a parameter in a lambda that does
+     *  not have an explicit type given.
+     *  An inferred parameter type I has two possible sources:
+     *   - the type S known from the context
+     *   - the "target type" T known from the callee `f` if the lambda is of a form like `x => f(x)`
+     *  If `T` exists, we know that `S <: I <: T`.
+     *
+     *  The inference makes three attempts:
+     *
+     *    1. If the expected type `S` is already fully defined pick this one.
+     *    2. Compute the target type `T` and make it known that `S <: T`.
+     *       If the expected type `S` can be fully defined under ForceDegree.noBottom,
+     *       pick this one (this might use the fact that S <: T for an upper approximation).
+     *    3. Otherwise, if the target type `T` can be fully defined under ForceDegree.noBottom,
+     *       pick this one.
+     *
+     *  If all attempts fail, issue a "missing parameter type" error.
+     */
+    def inferredParamType(param: untpd.ValDef, formal: Type): Type =
+      if isFullyDefined(formal, ForceDegree.none) then return formal
+      val target = calleeType.widen match
         case mtpe: MethodType =>
           val pos = paramIndex(param.name)
-          if (pos < mtpe.paramInfos.length) {
+          if pos < mtpe.paramInfos.length then
             val ptype = mtpe.paramInfos(pos)
-            if (isFullyDefined(ptype, ForceDegree.noBottom) && !ptype.isRepeatedParam)
-              return ptype
-          }
-        case _ =>
-      }
-      errorType(AnonymousFunctionMissingParamType(param, params, tree, formal), param.sourcePos)
-    }
+            if ptype.isRepeatedParam then NoType else ptype
+          else NoType
+        case _ => NoType
+      if target.exists then formal <:< target
+      if isFullyDefined(formal, ForceDegree.noBottom) then formal
+      else if target.exists && isFullyDefined(target, ForceDegree.noBottom) then target
+      else errorType(AnonymousFunctionMissingParamType(param, params, tree, formal), param.sourcePos)
 
     def protoFormal(i: Int): Type =
       if (protoFormals.length == params.length) protoFormals(i)
