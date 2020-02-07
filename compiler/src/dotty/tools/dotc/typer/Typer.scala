@@ -612,7 +612,7 @@ class Typer extends Namer
         var templ1 = templ
         def isEligible(tp: Type) = tp.exists && !tp.typeSymbol.is(Final) && !tp.isRef(defn.AnyClass)
         if (templ1.parents.isEmpty &&
-            isFullyDefined(pt, ForceDegree.noBottom) &&
+            isFullyDefined(pt, ForceDegree.flipBottom) &&
             isSkolemFree(pt) &&
             isEligible(pt.underlyingClassRef(refinementOK = false)))
           templ1 = cpy.Template(templ)(parents = untpd.TypeTree(pt) :: Nil)
@@ -1034,7 +1034,7 @@ class Typer extends Namer
         // try to instantiate `pt` if this is possible. If it does not
         // work the error will be reported later in `inferredParam`,
         // when we try to infer the parameter type.
-        isFullyDefined(pt, ForceDegree.noBottom)
+        isFullyDefined(pt, ForceDegree.flipBottom)
       case _ =>
     }
 
@@ -1049,17 +1049,18 @@ class Typer extends Namer
      *
      *  The inference makes three attempts:
      *
-     *    1. If the expected type `S` is already fully defined pick this one.
+     *    1. If the expected type `S` is already fully defined under ForceDegree.failBottom
+     *       pick this one.
      *    2. Compute the target type `T` and make it known that `S <: T`.
-     *       If the expected type `S` can be fully defined under ForceDegree.noBottom,
+     *       If the expected type `S` can be fully defined under ForceDegree.flipBottom,
      *       pick this one (this might use the fact that S <: T for an upper approximation).
-     *    3. Otherwise, if the target type `T` can be fully defined under ForceDegree.noBottom,
+     *    3. Otherwise, if the target type `T` can be fully defined under ForceDegree.flipBottom,
      *       pick this one.
      *
      *  If all attempts fail, issue a "missing parameter type" error.
      */
     def inferredParamType(param: untpd.ValDef, formal: Type): Type =
-      if isFullyDefined(formal, ForceDegree.none) then return formal
+      if isFullyDefined(formal, ForceDegree.failBottom) then return formal
       val target = calleeType.widen match
         case mtpe: MethodType =>
           val pos = paramIndex(param.name)
@@ -1069,8 +1070,8 @@ class Typer extends Namer
           else NoType
         case _ => NoType
       if target.exists then formal <:< target
-      if isFullyDefined(formal, ForceDegree.noBottom) then formal
-      else if target.exists && isFullyDefined(target, ForceDegree.noBottom) then target
+      if isFullyDefined(formal, ForceDegree.flipBottom) then formal
+      else if target.exists && isFullyDefined(target, ForceDegree.flipBottom) then target
       else errorType(AnonymousFunctionMissingParamType(param, params, tree, formal), param.sourcePos)
 
     def protoFormal(i: Int): Type =
@@ -1079,7 +1080,7 @@ class Typer extends Namer
 
     /** Is `formal` a product type which is elementwise compatible with `params`? */
     def ptIsCorrectProduct(formal: Type) =
-      isFullyDefined(formal, ForceDegree.noBottom) &&
+      isFullyDefined(formal, ForceDegree.flipBottom) &&
       (defn.isProductSubType(formal) || formal.derivesFrom(defn.PairClass)) &&
       productSelectorTypes(formal, tree.sourcePos).corresponds(params) {
         (argType, param) =>
@@ -1393,7 +1394,7 @@ class Typer extends Namer
         }
       case _ =>
         tree.withType(
-          if (isFullyDefined(pt, ForceDegree.noBottom)) pt
+          if (isFullyDefined(pt, ForceDegree.flipBottom)) pt
           else if (ctx.reporter.errorsReported) UnspecifiedErrorType
           else errorType(i"cannot infer type; expected type $pt is not fully defined", tree.sourcePos))
     }
@@ -3068,7 +3069,7 @@ class Typer extends Namer
           pt match {
             case SAMType(sam)
             if wtp <:< sam.toFunctionType() =>
-              // was ... && isFullyDefined(pt, ForceDegree.noBottom)
+              // was ... && isFullyDefined(pt, ForceDegree.flipBottom)
               // but this prevents case blocks from implementing polymorphic partial functions,
               // since we do not know the result parameter a priori. Have to wait until the
               // body is typechecked.

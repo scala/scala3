@@ -55,7 +55,7 @@ object Inferencing {
   def instantiateSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit =
     if (tvars.nonEmpty)
       IsFullyDefinedAccumulator(
-        ForceDegree.Value(tvars.contains, allowBottom = false), minimizeSelected = true
+        ForceDegree.Value(tvars.contains, IfBottom.flip), minimizeSelected = true
       ).process(tp)
 
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
@@ -98,7 +98,7 @@ object Inferencing {
 
    *  If (1) and (2) do not apply, and minimizeSelected is not set:
    *   6: T is maximized if it appears only contravariantly in the given type,
-   *      or if forceDegree is `noBottom` and T has no lower bound different from Nothing.
+   *      or if forceDegree is `flipBottom` and T has no lower bound different from Nothing.
    *   7. Otherwise, T is minimized.
    *
    *  The instantiation for (6) and (7) is done in two phases:
@@ -132,8 +132,10 @@ object Inferencing {
             if tvar.hasLowerBound then instantiate(tvar, fromBelow = true)
             else if tvar.hasUpperBound then instantiate(tvar, fromBelow = false)
             else () // hold off instantiating unbounded unconstrained variables
-          else if variance >= 0 && (force.allowBottom || tvar.hasLowerBound) then
+          else if variance >= 0 && (force.ifBottom == IfBottom.ok || tvar.hasLowerBound) then
             instantiate(tvar, fromBelow = true)
+          else if variance >= 0 && force.ifBottom == IfBottom.fail then
+            return false
           else
             toMaximize = tvar :: toMaximize
           foldOver(x, tvar)
@@ -514,9 +516,13 @@ trait Inferencing { this: Typer =>
 
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
 @sharable object ForceDegree {
-  class Value(val appliesTo: TypeVar => Boolean, val allowBottom: Boolean)
-  val none: Value = new Value(_ => false, allowBottom = true)
-  val all: Value = new Value(_ => true, allowBottom = true)
-  val noBottom: Value = new Value(_ => true, allowBottom = false)
+  class Value(val appliesTo: TypeVar => Boolean, val ifBottom: IfBottom)
+  val none: Value = new Value(_ => false, IfBottom.ok)
+  val all: Value = new Value(_ => true, IfBottom.ok)
+  val failBottom: Value = new Value(_ => true, IfBottom.fail)
+  val flipBottom: Value = new Value(_ => true, IfBottom.flip)
 }
+
+enum IfBottom:
+  case ok, fail, flip
 
