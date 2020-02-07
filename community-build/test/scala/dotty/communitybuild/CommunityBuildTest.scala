@@ -264,8 +264,8 @@ object projects
   )
 
   lazy val zio = SbtCommunityProject(
-    project = "zio"
-    sbtTestCommand = "testJVMDotty"
+    project = "zio",
+    sbtTestCommand = "testJVMDotty",
     sbtUpdateCommand = "update"
   )
 end projects
