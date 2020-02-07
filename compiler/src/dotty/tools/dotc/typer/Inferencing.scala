@@ -150,9 +150,14 @@ object Inferencing {
           if !tvar.isInstantiated then
             instantiate(tvar, fromBelow = false)
         case nil =>
-      val res = apply(true, tp)
-      if res then maximize(toMaximize)
-      res
+      apply(true, tp)
+      && (
+        toMaximize.isEmpty
+        || { maximize(toMaximize)
+             toMaximize = Nil       // Do another round since the maximixing instances
+             process(tp)            // might have type uninstantiated variables themselves.
+           }
+      )
   }
 
   /** For all type parameters occurring in `tp`:
