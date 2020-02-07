@@ -1,0 +1,6 @@
+-- [E145] Syntax Error: tests/neg/EmptyEnum.scala:1:5 ------------------------------------------------------------------
+1 |enum EmptyEnum {} // error
+  |     ^^^^^^^^^
+  |     Enumerations must contain at least one case
+
+longer explanation available when compiling with `-explain`
