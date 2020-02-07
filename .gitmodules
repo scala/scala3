@@ -71,3 +71,6 @@
 [submodule "community-build/community-projects/zio"]
 	path = community-build/community-projects/zio
 	url = https://github.com/dotty-staging/zio.git
+[submodule "community-build/community-projects/scas"]
+	path = community-build/community-projects/scas
+	url = https://github.com/rjolly/scas.git

@@ -138,6 +138,11 @@ object projects:
     dependencies = List(scalatest, scalacheck, scalatestplusScalacheck)
   )
 
+  lazy val scas = MillCommunityProject(
+    project = "scas",
+    baseCommand = s"scas[$compilerVersion]"
+  )
+
   lazy val intent = SbtCommunityProject(
     project       = "intent",
     sbtTestCommand   = "test",
