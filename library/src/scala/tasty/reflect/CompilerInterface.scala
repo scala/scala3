@@ -165,6 +165,9 @@ trait CompilerInterface {
   /** Get Java class name if we've accidentally tried to reflect on a Java class.  None returned if TASTy class. */
   def Context_javaCompilationUnitClassname(self: Context): Option[String]
 
+  /** Get Scala class name if attempted reflection is performed on an older Scala file w/o Tasty information present. */
+  def Context_nonTastyScalaCompilationUnitClassname(self: Context): Option[String]
+
 
   ///////////////
   // REPORTING //

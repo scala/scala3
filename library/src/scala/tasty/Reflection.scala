@@ -476,6 +476,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     /** Get Java class name if we've accidentally tried to reflect on a Java class.  None returned if TASTy class. */
     def javaCompilationUnitClassname(): Option[String] = internal.Context_javaCompilationUnitClassname(self)
 
+    /** Get Scala class name if attempted reflection is performed on an older Scala file w/o Tasty information present. */
+    def nonTastyScalaCompilationUnitClassname(): Option[String] = internal.Context_nonTastyScalaCompilationUnitClassname(self)
   }
 
 

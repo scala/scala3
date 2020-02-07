@@ -70,6 +70,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case j: fromtasty.JavaCompilationUnit => Some(j.className)
       case _ => None
     }
+  def Context_nonTastyScalaCompilationUnitClassname(self: Context): Option[String] = 
+    self.compilationUnit match {
+      case s: fromtasty.NonTastyScalaCompilationUnit => Some(s.className)
+      case _ => None
+    }
 
 
   ///////////////
