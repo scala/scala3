@@ -2408,4 +2408,46 @@ object messages {
            | if you're aiming to have a case class parametrized only by implicit ones, you should
            | add an explicit ${hl("()")} as a parameter list to ${cdef.name}.""".stripMargin
   }
+
+  case class EnumerationsShouldNotBeEmpty(cdef: untpd.TypeDef)(implicit ctx: Context)
+    extends Message(EnumerationsShouldNotBeEmptyID) {
+    val kind: String = "Syntax"
+    val msg: String = "Enumerations must contain at least one case"
+
+    val explanation: String =
+      em"""|Enumeration ${cdef.name} must contain at least one case
+           |Example Usage:
+           | ${hl("enum")} ${cdef.name} {
+           |    ${hl("case")} Option1, Option2
+           | }
+           |""".stripMargin
+  }
+
+  case class AbstractCannotBeUsedForObjects(mdef: untpd.ModuleDef)(implicit ctx: Context)
+    extends Message(AbstractCannotBeUsedForObjectsID) {
+    val kind: String = "Syntax"
+    val msg: String = em"${hl("abstract")} modifier cannot be used for objects"
+
+    val explanation: String =
+      em"""|Objects are final and cannot be extended, thus cannot have the ${hl("abstract")} modifier
+           |
+           |You may want to define an abstract class:
+           | ${hl("abstract")} ${hl("class")} Abstract${mdef.name} { }
+           |
+           |And extend it in an object:
+           | ${hl("object")} ${mdef.name} ${hl("extends")} Abstract${mdef.name} { }
+           |""".stripMargin
+  }
+
+  case class ModifierRedundantForObjects(mdef: untpd.ModuleDef, modifier: String)(implicit ctx: Context)
+    extends Message(ModifierRedundantForObjectsID) {
+    val kind: String = "Syntax"
+    val msg: String = em"${hl(modifier)} modifier is redundant for objects"
+
+    val explanation: String =
+      em"""|Objects cannot be extended making the ${hl(modifier)} modifier redundant.
+           |You may want to define the object without it:
+           | ${hl("object")} ${mdef.name} { }
+           |""".stripMargin
+  }
 }

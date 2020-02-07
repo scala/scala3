@@ -1738,4 +1738,49 @@ class ErrorMessagesTests extends ErrorMessagesTest {
           val CaseClassMissingNonImplicitParamList(tpe) :: Nil = messages
           assertEquals("A case class must have at least one non-implicit parameter list", messages.head.msg)
       }
+
+  @Test def enumMustContainOneCase =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |enum Foo { }
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val EnumerationsShouldNotBeEmpty(typeDef) :: Nil = messages
+        assertEquals("Enumerations must contain at least one case", errorMsg)
+        assertEquals("Foo", typeDef.name.toString)
+      }
+
+  @Test def objectsCannotBeAbstract =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |abstract object Foo { }
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val AbstractCannotBeUsedForObjects(mdef) :: Nil = messages
+        assertEquals("abstract modifier cannot be used for objects", errorMsg)
+        assertEquals("Foo", mdef.name.toString)
+      }
+
+  @Test def sealedOnObjectsIsRedundant =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |sealed object Foo { }
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val ModifierRedundantForObjects(mdef, "sealed") :: Nil = messages
+        assertEquals("sealed modifier is redundant for objects", errorMsg)
+        assertEquals("Foo", mdef.name.toString)
+      }
 }
