@@ -87,7 +87,7 @@ object Scala3 with
         case _                                       => false
       }
 
-  end NameOps
+  // end NameOps
 
   extension SymbolOps on (sym: Symbol) with
 
@@ -126,7 +126,7 @@ object Scala3 with
     def isAnnotation(given Context): Boolean =
       sym.derivesFrom(defn.AnnotationClass)
 
-  end SymbolOps
+  // end SymbolOps
 
   object LocalSymbol with
 
@@ -169,7 +169,7 @@ object Scala3 with
     def isJavaIdent =
       isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
 
-  end StringOps
+  // end StringOps
 
   extension InfoOps on (info: SymbolInformation) with
 
@@ -205,11 +205,11 @@ object Scala3 with
     def isTrait: Boolean = info.kind.isTrait
     def isInterface: Boolean = info.kind.isInterface
 
-  end InfoOps
+  // end InfoOps
 
   extension RangeOps on (range: Range) with
     def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
-  end RangeOps
+  // end RangeOps
 
   /** Sort symbol occurrences by their start position. */
   given OccurrenceOrdering: Ordering[SymbolOccurrence] = (x, y) =>

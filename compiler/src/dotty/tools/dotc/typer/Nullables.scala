@@ -189,7 +189,7 @@ object Nullables with
       val mutables = infos.foldLeft(Set[TermRef]())((ms, info) =>
         ms.union(info.asserted.filter(_.symbol.is(Mutable))))
       infos.extendWith(NotNullInfo(Set(), mutables))
-  end notNullInfoOps
+  // end notNullInfoOps
 
   extension refOps on (ref: TermRef) with
 
