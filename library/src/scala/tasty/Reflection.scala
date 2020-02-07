@@ -419,7 +419,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   //   QUOTES   //
   ////////////////
 
-  given  QuotedExprOps: extension (expr: scala.quoted.Expr[?]) {
+  extension QuotedExprOps on (expr: scala.quoted.Expr[?]) {
     /** View this expression `quoted.Expr[T]` as a `Term` */
     def unseal(using ctx: Context): Term =
       internal.QuotedExpr_unseal(expr)

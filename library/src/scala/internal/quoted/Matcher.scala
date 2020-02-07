@@ -96,13 +96,13 @@ private[quoted] object Matcher {
       case _ => notMatched
     }
 
-    private given treeListOps: extension (scrutinees: List[Tree]) {
+    private extension treeListOps on (scrutinees: List[Tree]) {
       /** Check that all trees match with =?= and concatenate the results with && */
       def =?= (patterns: List[Tree])(using Context, Env): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
     }
 
-    private given treeOps: extension (scrutinee0: Tree) {
+    private extension treeOps on (scrutinee0: Tree) {
 
       /** Check that the trees match and return the contents from the pattern holes.
        *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
