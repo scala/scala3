@@ -309,7 +309,7 @@ The `scala.compiletime` package contains helper definitions that provide support
 
 ### `constValue`, `constValueOpt`, and the `S` combinator
 
-`constvalue` is a function that produces the constant value represented by a
+`constValue` is a function that produces the constant value represented by a
 type.
 
 ```scala
@@ -390,7 +390,7 @@ final val two = toIntT[Succ[Succ[Zero.type]]]
 ```
 
 `erasedValue` is an `erased` method so it cannot be used and has no runtime
-behavior. Since `toInt` performs static checks over the static type of `N` we
+behavior. Since `toIntT` performs static checks over the static type of `N` we
 can safely use it to scrutinize its return type (`S[S[Z]]` in this case).
 
 ### `error`
