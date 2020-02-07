@@ -212,12 +212,12 @@ obj2.meth()    // OK
 Here, the inline method `choose` returns an object of either of the two dynamic types
 `A` and `B`. If `choose` had been declared with a normal return type `: A`, the result
 of its expansion would always be of type `A`, even though the computed value might be
-of type `B`. The inline method is "blackbox"  in the sense that details of its
+of type `B`. The inline method is a "blackbox" in the sense that details of its
 implementation do not leak out. But with the specializing return type `<: A`,
 the type of the expansion is the type of the expanded body. If the argument `b`
 is `true`, that type is `A`, otherwise it is `B`. Consequently, calling `meth` on `obj2`
 type-checks since `obj2` has the same type as the expansion of `choose(false)`, which is `B`.
-Inline methods with specializing return types are "whitebox" in that the type
+Inline methods with specializing return types are a "whitebox" in the sense that the type
 of an application of such a method can be more specialized than its declared
 return type, depending on how the method expands.
 
