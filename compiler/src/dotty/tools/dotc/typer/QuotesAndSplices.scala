@@ -81,6 +81,7 @@ trait QuotesAndSplices {
           if (c.owner eq c.outer.owner) markAsMacro(c.outer)
           else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
           else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
+          else assert(false) // Did not find inline def to mark as macro
         markAsMacro(ctx)
       }
       typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), tree.expr), pt)(spliceContext).withSpan(tree.span)
