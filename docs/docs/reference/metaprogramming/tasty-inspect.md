@@ -46,7 +46,7 @@ Note that if we need to run the main (in an object called `Test`) after
 compilation we need make available the compiler to the runtime:
 
 ```shell
-dotc -with-compiler -d out Test.scala
+dotc -d out Test.scala
 dotr -with-compiler -classpath out Test
 ```
 
