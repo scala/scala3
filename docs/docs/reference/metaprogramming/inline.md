@@ -130,20 +130,17 @@ The following example shows the difference in translation between by-value, by-n
 parameters:
 
 ```scala
-inline def specialSum(a: Int, b: =>Int, inline c: Int) =
- (if(a < 2) a else 0) + 
- (if(a < 2) b + b else 0) + 
- (if(a < 2) c + c else 0)
-}
+inline def funkyAssertEquals(actual: Double, expected: =>Double, inline delta: Double): Unit =
+  if (actual - expected).abs > delta then
+    throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${delta}")
 
-specialSum(f(), g(), h())
+funkyAssertEquals(computeActual(), f() + g(), h() + i() - j())
 // translates to
 //
-//    val a = f()
-//    lazy val b = g()
-//    (if(a < 2) a else 0) + 
-//    (if(a < 2) b + b else 0) + 
-//    (if(a < 2) h() + h() else 0)
+//    val actual = computeActual()
+//    def expected = f() + g()
+//    if (actual - expected).abs > h() + i() - j() then
+//      throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${h() + i() - j()}")
 ```
 
 ### Relationship to @inline
