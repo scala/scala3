@@ -123,7 +123,7 @@ power(expr, 10)
 Parameters of inline methods can have an `inline` modifier as well. This means
 that actual arguments to these parameters will be inlined in the body of the `inline def`.
 `inline` parameter have call semantics equivalent to by-name parameters but allows for duplication
-of the code in the argument. It is usually useful constant values need to be propagated to allow
+of the code in the argument. It is usually useful when constant values need to be propagated to allow
 further optimizations/reductions.
 
 The following example shows the difference in translation between by-value, by-name and `inline`
