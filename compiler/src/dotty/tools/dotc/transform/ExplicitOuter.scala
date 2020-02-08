@@ -387,26 +387,28 @@ object ExplicitOuter {
      */
     def path(start: Tree = This(ctx.owner.lexicallyEnclosingClass.asClass),
              toCls: Symbol = NoSymbol,
-             count: Int = -1): Tree = try {
-      @tailrec def loop(tree: Tree, count: Int): Tree = {
-        val treeCls = tree.tpe.widen.classSymbol
-        val outerAccessorCtx = ctx.withPhaseNoLater(ctx.lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
-        ctx.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${outerAccName(treeCls.asClass)(outerAccessorCtx)} in $treeCls")
-        if (count == 0 || count < 0 && treeCls == toCls) tree
-        else {
-          val acc = outerAccessor(treeCls.asClass)(outerAccessorCtx)
-          assert(acc.exists,
-              i"failure to construct path from ${ctx.owner.ownersIterator.toList}%/% to `this` of ${toCls.showLocated};\n${treeCls.showLocated} does not have an outer accessor")
-          loop(tree.select(acc).ensureApplied, count - 1)
-        }
-      }
-      ctx.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toList}")
-      loop(start, count)
-    }
-    catch {
-      case ex: ClassCastException =>
+             count: Int = -1): Tree =
+      try
+        @tailrec def loop(tree: Tree, count: Int): Tree =
+          val treeCls = tree.tpe.widen.classSymbol
+          val outerAccessorCtx = ctx.withPhaseNoLater(ctx.lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
+          ctx.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${outerAccName(treeCls.asClass)(outerAccessorCtx)} in $treeCls")
+          if (count == 0 || count < 0 && treeCls == toCls) tree
+          else
+            val enclClass = ctx.owner.lexicallyEnclosingClass.asClass
+            val outerAcc = tree match
+              case tree: This if tree.symbol == enclClass && !enclClass.is(Trait) =>
+                outerParamAccessor(enclClass)(using outerAccessorCtx)
+              case _ =>
+                outerAccessor(treeCls.asClass)(using outerAccessorCtx)
+            assert(outerAcc.exists,
+                i"failure to construct path from ${ctx.owner.ownersIterator.toList}%/% to `this` of ${toCls.showLocated};\n${treeCls.showLocated} does not have an outer accessor")
+            loop(tree.select(outerAcc).ensureApplied, count - 1)
+
+        ctx.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toList}")
+        loop(start, count)
+      catch case ex: ClassCastException =>
         throw new ClassCastException(i"no path exists from ${ctx.owner.enclosingClass} to $toCls")
-    }
 
     /** The outer parameter definition of a constructor if it needs one */
     def paramDefs(constr: Symbol): List[ValDef] =
