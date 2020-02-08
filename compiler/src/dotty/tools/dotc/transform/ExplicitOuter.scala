@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import MegaPhase._
@@ -178,7 +179,7 @@ object ExplicitOuter {
 
   /** A new param accessor for the outer field in class `cls` */
   private def newOuterParamAccessor(cls: ClassSymbol)(implicit ctx: Context) =
-    newOuterSym(cls, cls, nme.OUTER, Private | ParamAccessor)
+    newOuterSym(cls, cls, nme.OUTER, Private | Local | ParamAccessor)
 
   /** A new outer accessor for class `cls` which is a member of `owner` */
   private def newOuterAccessor(owner: ClassSymbol, cls: ClassSymbol)(implicit ctx: Context) = {

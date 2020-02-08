@@ -177,6 +177,8 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
              ) &&
              fn.symbol.info.resultType.classSymbol == outerParam.info.classSymbol =>
           ref(outerParam)
+        case tree: RefTree if tree.symbol.is(ParamAccessor) && tree.symbol.name == nme.OUTER =>
+          ref(outerParam)
         case _ =>
           super.transform(tree)
       }
