@@ -633,11 +633,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       lazy val actualErrors = reporters.foldLeft(0)(_ + _.errorCount)
       def hasMissingAnnotations = getMissingExpectedErrors(errorMap, reporters.iterator.flatMap(_.errors))
 
-      if (compilerCrashed) Some(s"Compiler crashed when compiling: ${testSource.title}"                                                             )
-      else if (actualErrors == 0) Some(s"\nNo errors found when compiling neg test $testSource"                                                            )
+      if (compilerCrashed) Some(s"Compiler crashed when compiling: ${testSource.title}")
+      else if (actualErrors == 0) Some(s"\nNo errors found when compiling neg test $testSource")
       else if (expectedErrors != actualErrors) Some(s"\nWrong number of errors encountered when compiling $testSource, expected: $expectedErrors, actual: $actualErrors")
-      else if (hasMissingAnnotations) Some(s"\nErrors found on incorrect row numbers when compiling $testSource"                                               )
-      else if (!errorMap.isEmpty) Some(s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap"                                        )
+      else if (hasMissingAnnotations) Some(s"\nErrors found on incorrect row numbers when compiling $testSource")
+      else if (!errorMap.isEmpty) Some(s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap")
       else None
     }
 
