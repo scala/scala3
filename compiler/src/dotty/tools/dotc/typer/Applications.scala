@@ -948,8 +948,9 @@ trait Applications extends Compatibility {
      *     { val xs = es; e' = e' + args }
      */
     def typedOpAssign(implicit ctx: Context): Tree = {
-      val Apply(Select(lhs, name), rhss) = tree
-      val lhs1 = typedExpr(lhs)
+      val (lhs1, name, rhss) = tree match
+        case Apply(Select(lhs, name), rhss) => (typedExpr(lhs), name, rhss)
+        case Apply(untpd.TypedSplice(Select(lhs1, name)), rhss) => (lhs1, name, rhss)
       val liftedDefs = new mutable.ListBuffer[Tree]
       val lhs2 = untpd.TypedSplice(LiftComplex.liftAssigned(liftedDefs, lhs1))
       val assign = untpd.Assign(lhs2,
@@ -1394,7 +1395,7 @@ trait Applications extends Compatibility {
           def apply(t: Type) = t match {
             case t @ AppliedType(tycon, args) =>
               def mapArg(arg: Type, tparam: TypeParamInfo) =
-                if (variance > 0 && tparam.paramVariance < 0) defn.FunctionOf(arg :: Nil, defn.UnitType)
+                if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionOf(arg :: Nil, defn.UnitType)
                 else arg
               mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams)(mapArg)))
             case _ => mapOver(t)

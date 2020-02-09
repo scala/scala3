@@ -2,7 +2,7 @@
 layout: blog-page
 title: New Year Resolutions
 author: Martin Odersky
-authorImg: /images/martin.jpg
+authorImg: images/martin.jpg
 date: 2016-01-02
 ---
 

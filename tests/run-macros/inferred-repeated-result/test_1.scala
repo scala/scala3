@@ -3,7 +3,7 @@ object Macros {
   import scala.quoted.autolift.{given _}
 
   inline def go[T](inline t: T) = ${ impl('t) }
-  def impl[T](expr: Expr[T]) with (qctx: QuoteContext) : Expr[Unit] = {
+  def impl[T](expr: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty.{_, given _}
 
     val tree = expr.unseal

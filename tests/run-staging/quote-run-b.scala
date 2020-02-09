@@ -5,7 +5,7 @@ import scala.quoted.staging._
 object Test {
   def main(args: Array[String]): Unit = {
     given Toolbox = Toolbox.make(getClass.getClassLoader)
-    def lambdaExpr with QuoteContext = '{
+    def lambdaExpr(using QuoteContext) = '{
       (x: Int) => println("lambda(" + x + ")")
     }
     println()

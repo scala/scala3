@@ -64,6 +64,7 @@ classpathArgs () {
   toolchain+="$DOTTY_COMP$PSEP"
   toolchain+="$TASTY_CORE$PSEP"
   toolchain+="$DOTTY_STAGING$PSEP"
+  toolchain+="$DOTTY_TASTY_INSPECTOR$PSEP"
 
   # jine
   toolchain+="$JLINE_READER$PSEP"

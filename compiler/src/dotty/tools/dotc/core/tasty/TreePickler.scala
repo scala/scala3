@@ -134,6 +134,15 @@ class TreePickler(pickler: TastyPickler) {
       pickleType(c.symbolValue.termRef)
   }
 
+  def pickleVariances(tp: Type)(given Context): Unit = tp match
+    case tp: HKTypeLambda if tp.isDeclaredVarianceLambda =>
+      for v <- tp.declaredVariances do
+        writeByte(
+          if v.is(Covariant) then COVARIANT
+          else if v.is(Contravariant) then CONTRAVARIANT
+          else STABLE)
+    case _ =>
+
   def pickleType(tpe0: Type, richTypes: Boolean = false)(implicit ctx: Context): Unit = {
     val tpe = tpe0.stripTypeVar
     try {
@@ -229,12 +238,14 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: RecType =>
       writeByte(RECtype)
       pickleType(tpe.parent)
-    case tpe: TypeAlias =>
-      writeByte(TYPEALIAS)
-      pickleType(tpe.alias, richTypes)
     case tpe: TypeBounds =>
       writeByte(TYPEBOUNDS)
-      withLength { pickleType(tpe.lo, richTypes); pickleType(tpe.hi, richTypes) }
+      withLength {
+        pickleType(tpe.lo, richTypes)
+        if !tpe.isInstanceOf[AliasingBounds] then
+          pickleType(tpe.hi, richTypes)
+        pickleVariances(tpe.hi)
+      }
     case tpe: AnnotatedType =>
       writeByte(ANNOTATEDtype)
       withLength { pickleType(tpe.parent, richTypes); pickleTree(tpe.annot.tree) }
@@ -577,11 +588,15 @@ class TreePickler(pickler: TastyPickler) {
         case LambdaTypeTree(tparams, body) =>
           writeByte(LAMBDAtpt)
           withLength { pickleParams(tparams); pickleTree(body) }
-        case TypeBoundsTree(lo, hi) =>
+        case TypeBoundsTree(lo, hi, alias) =>
           writeByte(TYPEBOUNDStpt)
           withLength {
             pickleTree(lo);
-            if (hi ne lo) pickleTree(hi)
+            if alias.isEmpty then
+              if hi ne lo then pickleTree(hi)
+            else
+              pickleTree(hi)
+              pickleTree(alias)
           }
         case Hole(_, idx, args) =>
           writeByte(HOLE)

@@ -66,9 +66,9 @@ On the other hand `withQuoteContext` provides a `QuoteContext` without evauating
 ```scala
 package scala.quoted.staging
 
-def run[T](expr:(given QuoteContext) => Expr[T])(given toolbox: Toolbox): T = ...
+def run[T](expr: QuoteContext ?=> Expr[T])(using toolbox: Toolbox): T = ...
 
-def withQuoteContext[T](thunk:(given QuoteContext) => T)(given toolbox: Toolbox): T = ...
+def withQuoteContext[T](thunk: QuoteContext ?=> T)(using toolbox: Toolbox): T = ...
 ```
 
 ## Create a new Dotty project with staging enabled
@@ -118,3 +118,10 @@ Or, from SBT:
 ```scala
 libraryDependencies += "ch.epfl.lamp" %% "dotty-staging" % scalaVersion.value
 ```
+
+## Template project
+Using sbt version `1.1.5+`, do:
+```
+sbt new lampepfl/dotty-staging.g8
+```
+in the folder where you want to clone the template.

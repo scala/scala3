@@ -46,6 +46,35 @@ object o {
 def id(x: o.T): o.T = x
 ```
 
+### Toplevel Opaque Types
+
+An opaque type on the toplevel is transparent in all other toplevel definitions in the sourcefile where it appears, but is opaque in nested
+objects and classes and in all other source files. Example:
+```scala
+// in test1.scala
+opaque type A = String
+val x: A = "abc"
+
+object obj {
+  val y: A = "abc"  // error: found: "abc", required: A
+}
+
+// in test2.scala
+def z: String = x   // error: found: A, required: String
+```
+This behavior becomes clear if one recalls that toplevel definitions are placed in their own synthetic object. For instance, the code in `test1.scala` would expand to
+```scala
+object test1$package {
+  opaque type A = String
+  val x: A = "abc"
+}
+object obj {
+  val y: A = "abc"  // error: cannot assign "abc" to opaque type A
+}
+```
+The opaque type `A` is transparent in its scope, which includes the definition of `x`, but not the definitions of `obj` and `y`.
+
+
 ### Relationship to SIP 35
 
 Opaque types in Dotty are an evolution from what is described in

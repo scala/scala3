@@ -7,17 +7,17 @@ trait Printer[R <: Reflection & Singleton] {
   val tasty: R
 
   /** Show a String representation of a tasty.Tree */
-  def showTree(tree: tasty.Tree)(given ctx: tasty.Context): String
+  def showTree(tree: tasty.Tree)(using ctx: tasty.Context): String
 
   /** Show a String representation of a tasty.TypeOrBounds */
-  def showTypeOrBounds(tpe: tasty.TypeOrBounds)(given ctx: tasty.Context): String
+  def showTypeOrBounds(tpe: tasty.TypeOrBounds)(using ctx: tasty.Context): String
 
   /** Show a String representation of a tasty.Constant */
-  def showConstant(const: tasty.Constant)(given ctx: tasty.Context): String
+  def showConstant(const: tasty.Constant)(using ctx: tasty.Context): String
 
   /** Show a String representation of a tasty.Symbol */
-  def showSymbol(symbol: tasty.Symbol)(given ctx: tasty.Context): String
+  def showSymbol(symbol: tasty.Symbol)(using ctx: tasty.Context): String
 
   /** Show a String representation of a tasty.Flags */
-  def showFlags(flags: tasty.Flags)(given ctx: tasty.Context): String
+  def showFlags(flags: tasty.Flags)(using ctx: tasty.Context): String
 }

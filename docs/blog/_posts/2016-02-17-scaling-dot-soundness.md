@@ -2,7 +2,7 @@
 layout: blog-page
 title: Scaling DOT to Scala - Soundness
 author: Martin Odersky
-authorImg: /images/martin.jpg
+authorImg: images/martin.jpg
 date: 2016-02-17
 ---
 

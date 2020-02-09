@@ -3,10 +3,6 @@ layout: doc-page
 title: "Implementing Typeclasses"
 ---
 
-**Note** The syntax described in this section is currently under revision.
-[Here is the new version which will be implemented in Dotty 0.22](./typeclasses-new.html).
-
-
 Given instances, extension methods and context bounds
 allow a concise and natural expression of _typeclasses_. Typeclasses are just traits
 with canonical implementations defined by given instances. Here are some examples of standard typeclasses:
@@ -14,50 +10,55 @@ with canonical implementations defined by given instances. Here are some example
 ### Semigroups and monoids:
 
 ```scala
-trait SemiGroup[T] with
-  def (x: T).combine(y: T): T
+trait SemiGroup[T] {
+  @infix def (x: T) combine (y: T): T
+}
 
-trait Monoid[T] extends SemiGroup[T] with
+trait Monoid[T] extends SemiGroup[T] {
   def unit: T
+}
 
-object Monoid with
-  def apply[T](given Monoid[T]) = summon[Monoid[T]]
+object Monoid {
+  def apply[T](using m: Monoid[T]) = m
+}
 
-given Monoid[String] with
-  def (x: String).combine(y: String): String = x.concat(y)
+given Monoid[String] {
+  def (x: String) combine (y: String): String = x.concat(y)
   def unit: String = ""
+}
 
-given Monoid[Int] with
-  def (x: Int).combine(y: Int): Int = x + y
+given Monoid[Int] {
+  def (x: Int) combine (y: Int): Int = x + y
   def unit: Int = 0
+}
 
 def sum[T: Monoid](xs: List[T]): T =
-    xs.foldLeft(Monoid[T].unit)(_.combine(_))
+    xs.foldLeft(Monoid[T].unit)(_ combine _)
 ```
 
 ### Functors and monads:
 
 ```scala
 trait Functor[F[_]] {
-  def [A, B](x: F[A]) map (f: A => B): F[B]
+  def [A, B](x: F[A]).map(f: A => B): F[B]
 }
 
 trait Monad[F[_]] extends Functor[F] {
-  def [A, B](x: F[A]) flatMap (f: A => F[B]): F[B]
-  def [A, B](x: F[A]) map (f: A => B) = x.flatMap(f `andThen` pure)
+  def [A, B](x: F[A]).flatMap(f: A => F[B]): F[B]
+  def [A, B](x: F[A]).map(f: A => B) = x.flatMap(f `andThen` pure)
 
   def pure[A](x: A): F[A]
 }
 
-given listMonad: Monad[List] {
-  def [A, B](xs: List[A]) flatMap (f: A => List[B]): List[B] =
+given listMonad as Monad[List] {
+  def [A, B](xs: List[A]).flatMap(f: A => List[B]): List[B] =
     xs.flatMap(f)
   def pure[A](x: A): List[A] =
     List(x)
 }
 
-given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] {
-  def [A, B](r: Ctx => A) flatMap (f: A => Ctx => B): Ctx => B =
+given readerMonad[Ctx] as Monad[[X] =>> Ctx => X] {
+  def [A, B](r: Ctx => A).flatMap(f: A => Ctx => B): Ctx => B =
     ctx => f(r(ctx))(ctx)
   def pure[A](x: A): Ctx => A =
     ctx => x

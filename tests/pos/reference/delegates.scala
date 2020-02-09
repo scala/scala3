@@ -30,7 +30,7 @@ object Instances extends Common:
     def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  given listOrd[T] with Ord[T] as Ord[List[T]]:
+  given listOrd[T](using Ord[T]) as Ord[List[T]]:
     def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -61,20 +61,20 @@ object Instances extends Common:
     def pure[A](x: A): Ctx => A =
       ctx => x
 
-  def maximum[T](xs: List[T]) with Ord[T] : T =
+  def maximum[T](xs: List[T])(using Ord[T]): T =
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
-  def descending[T] with (asc: Ord[T]) : Ord[T] = new Ord[T]:
+  def descending[T](using asc: Ord[T]): Ord[T] = new Ord[T]:
     def (x: T).compareTo(y: T) = asc.compareTo(y)(x)
 
-  def minimum[T](xs: List[T]) with Ord[T] =
-    maximum(xs).with(descending)
+  def minimum[T](xs: List[T])(using Ord[T]) =
+    maximum(xs)(using descending)
 
   def test(): Unit =
     val xs = List(1, 2, 3)
     println(maximum(xs))
-    println(maximum(xs).with(descending))
-    println(maximum(xs).with(descending.with(intOrd)))
+    println(maximum(xs)(using descending))
+    println(maximum(xs)(using descending(using intOrd)))
     println(minimum(xs))
 
   case class Context(value: String)
@@ -99,7 +99,7 @@ object Instances extends Common:
 
   class D[T]
 
-  class C with (ctx: Context) :
+  class C(using ctx: Context):
     def f() =
       locally {
         given Context = this.ctx
@@ -115,7 +115,7 @@ object Instances extends Common:
         println(summon[D[Int]])
       }
       locally {
-        given with Context as D[Int]
+        given (using Context) as D[Int]
         println(summon[D[Int]])
       }
   end C
@@ -132,11 +132,11 @@ end Instances
 object PostConditions:
   opaque type WrappedResult[T] = T
 
-  def result[T] with (x: WrappedResult[T]) : T = x
+  def result[T](using x: WrappedResult[T]): T = x
 
   extension on [T](x: T):
     def ensuring(condition: WrappedResult[T] ?=> Boolean): T =
-      assert(condition.with(x))
+      assert(condition(using x))
       x
 end PostConditions
 
@@ -162,7 +162,7 @@ object AnonymousInstances extends Common:
   extension on [T](xs: List[T]):
     def second = xs.tail.head
 
-  given [From, To] with (c: Convertible[From, To]) as Convertible[List[From], List[To]]:
+  given [From, To](using c: Convertible[From, To]) as Convertible[List[From], List[To]]:
     def (x: List[From]).convert: List[To] = x.map(c.convert)
 
   given Monoid[String]:

@@ -1262,7 +1262,8 @@ object messages {
   case class CyclicReferenceInvolving(denot: SymDenotation)(implicit ctx: Context)
   extends Message(CyclicReferenceInvolvingID) {
     val kind: String = "Cyclic"
-    val msg: String = em"""Cyclic reference involving $denot"""
+    val where = if denot.exists then s" involving $denot" else ""
+    val msg: String = em"Cyclic reference $where"
     val explanation: String =
       em"""|$denot is declared as part of a cycle which makes it impossible for the
            |compiler to decide upon ${denot.name}'s type.
@@ -2382,17 +2383,17 @@ object messages {
       val explanation: String = ""
     }
 
-  case class ImplicitTypesCanOnlyBeFunctionTypes()(implicit val ctx: Context)
+  case class ImplicitTypesCanOnlyBeFunctionTypes()(implicit val ctx: Context) // TODO remove when (given ...) => is removed
     extends Message(ImplicitTypesCanOnlyBeFunctionTypesID) {
     val kind: String = "Syntax"
-    val msg: String = "Types with given keyword can only be function types `given (...) => ...`"
+    val msg: String = "Types with given keyword can only be function types `(given ...) => ...`"
     val explanation: String = ""
   }
 
   case class ErasedTypesCanOnlyBeFunctionTypes()(implicit val ctx: Context)
     extends Message(ErasedTypesCanOnlyBeFunctionTypesID) {
     val kind: String = "Syntax"
-    val msg: String = "Types with erased keyword can only be function types `erased (...) => ...`"
+    val msg: String = "Types with erased keyword can only be function types `(erased ...) => ...`"
     val explanation: String = ""
   }
 
@@ -2406,5 +2407,47 @@ object messages {
       em"""|${cdef.name} must have at least one non-implicit parameter list,
            | if you're aiming to have a case class parametrized only by implicit ones, you should
            | add an explicit ${hl("()")} as a parameter list to ${cdef.name}.""".stripMargin
+  }
+
+  case class EnumerationsShouldNotBeEmpty(cdef: untpd.TypeDef)(implicit ctx: Context)
+    extends Message(EnumerationsShouldNotBeEmptyID) {
+    val kind: String = "Syntax"
+    val msg: String = "Enumerations must contain at least one case"
+
+    val explanation: String =
+      em"""|Enumeration ${cdef.name} must contain at least one case
+           |Example Usage:
+           | ${hl("enum")} ${cdef.name} {
+           |    ${hl("case")} Option1, Option2
+           | }
+           |""".stripMargin
+  }
+
+  case class AbstractCannotBeUsedForObjects(mdef: untpd.ModuleDef)(implicit ctx: Context)
+    extends Message(AbstractCannotBeUsedForObjectsID) {
+    val kind: String = "Syntax"
+    val msg: String = em"${hl("abstract")} modifier cannot be used for objects"
+
+    val explanation: String =
+      em"""|Objects are final and cannot be extended, thus cannot have the ${hl("abstract")} modifier
+           |
+           |You may want to define an abstract class:
+           | ${hl("abstract")} ${hl("class")} Abstract${mdef.name} { }
+           |
+           |And extend it in an object:
+           | ${hl("object")} ${mdef.name} ${hl("extends")} Abstract${mdef.name} { }
+           |""".stripMargin
+  }
+
+  case class ModifierRedundantForObjects(mdef: untpd.ModuleDef, modifier: String)(implicit ctx: Context)
+    extends Message(ModifierRedundantForObjectsID) {
+    val kind: String = "Syntax"
+    val msg: String = em"${hl(modifier)} modifier is redundant for objects"
+
+    val explanation: String =
+      em"""|Objects cannot be extended making the ${hl(modifier)} modifier redundant.
+           |You may want to define the object without it:
+           | ${hl("object")} ${mdef.name} { }
+           |""".stripMargin
   }
 }

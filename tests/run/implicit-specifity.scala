@@ -9,7 +9,7 @@ object Show {
 class Generic
 object Generic {
   given gen as Generic = new Generic
-  given showGen[T] with Generic as Show[T] = new Show[T](2)
+  given showGen[T](using Generic) as Show[T] = new Show[T](2)
 }
 
 class Generic2
@@ -27,11 +27,11 @@ object Contextual {
 
   given ctx as Context
 
-  given showGen[T] with Generic as Show[T] = new Show[T](2)
+  given showGen[T](using Generic) as Show[T] = new Show[T](2)
 
-  given showGen[T] with (Generic, Context) as Show[T] = new Show[T](3)
+  given showGen[T](using Generic, Context) as Show[T] = new Show[T](3)
 
-  given showGen[T] with SubGen as Show[T] = new Show[T](4)
+  given showGen[T](using SubGen) as Show[T] = new Show[T](4)
 }
 
 object Test extends App {

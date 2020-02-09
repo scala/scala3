@@ -28,7 +28,7 @@ import scala.quoted._
 
 inline def natConst(x: => Int): Int = ${natConstImpl('{x})}
 
-def natConstImpl(x: Expr[Int])(given qctx: QuoteContext): Expr[Int] = {
+def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
   import qctx.tasty.{_, given}
   ...
 }
@@ -43,7 +43,7 @@ respectively. It will also import all extractors and methods on TASTy Reflect
 trees. For example the `Literal(_)` extractor used below.
 
 ```scala
-def natConstImpl(x: Expr[Int])(given qctx: QuoteContext): Expr[Int] = {
+def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
   import qctx.tasty.{_, given}
   val xTree: Term = x.unseal
   xTree match {
@@ -80,7 +80,7 @@ operation expression passed while calling the `macro` below.
 ```scala
 inline def macro(param: => Boolean): Unit = ${ macroImpl('param) }
 
-def macroImpl(param: Expr[Boolean])(given qctx: QuoteContext): Expr[Unit] = {
+def macroImpl(param: Expr[Boolean])(using qctx: QuoteContext): Expr[Unit] = {
   import qctx.tasty.{_, given}
   import util._
 
@@ -119,7 +119,7 @@ def macroImpl()(qctx: QuoteContext): Expr[Unit] = {
 
 ### Tree Utilities
 
-`scala.tasty.reflect.TreeUtils` contains three facilities for tree traversal and
+`scala.tasty.reflect` contains three facilities for tree traversal and
 transformations.
 
 `TreeAccumulator` ties the knot of a traversal. By calling `foldOver(x, tree))`
@@ -144,7 +144,7 @@ but without returning any value. Finally a `TreeMap` performs a transformation.
 
 #### Let
 
-`scala.tasty.reflect.utils.TreeUtils` also offers a method `let` that allows us
+`scala.tasty.Reflection` also offers a method `let` that allows us
 to bind the `rhs` to a `val` and use it in `body`. Additionally, `lets` binds
 the given `terms` to names and use them in the `body`. Their type definitions
 are shown below:

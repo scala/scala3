@@ -4,6 +4,6 @@ object Foo {
 
   inline def myMacro(): Unit = ${ aMacroImplementation }
 
-  def aMacroImplementation with QuoteContext : Expr[Unit] = Bar.hello()
+  def aMacroImplementation(using QuoteContext): Expr[Unit] = Bar.hello()
 
 }

@@ -379,8 +379,9 @@ trait ConstraintHandling[AbstractContext] {
           case bounds: TypeBounds =>
             val lower = constraint.lower(param)
             val upper = constraint.upper(param)
-            if (lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass) ||
-              upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) constr_println(i"INIT*** $tl")
+            if lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass)
+               || upper.nonEmpty && !bounds.hi.isAny
+            then constr_println(i"INIT*** $tl")
             lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
               upper.forall(addOneBound(_, bounds.lo, isUpper = false))
           case _ =>
@@ -523,13 +524,22 @@ trait ConstraintHandling[AbstractContext] {
           pruneLambdaParams(bound)
       }
 
+      def kindCompatible(tp1: Type, tp2: Type): Boolean =
+        val tparams1 = tp1.typeParams
+        val tparams2 = tp2.typeParams
+        tparams1.corresponds(tparams2)((p1, p2) => kindCompatible(p1.paramInfo, p2.paramInfo))
+        && (tparams1.isEmpty || kindCompatible(tp1.hkResult, tp2.hkResult))
+        || tp1.hasAnyKind
+        || tp2.hasAnyKind
+
       try bound match {
         case bound: TypeParamRef if constraint contains bound =>
           addParamBound(bound)
         case _ =>
           val pbound = prune(bound)
-          pbound.exists && (
-            if (fromBelow) addLowerBound(param, pbound) else addUpperBound(param, pbound))
+          pbound.exists
+          && kindCompatible(param, pbound)
+          && (if fromBelow then addLowerBound(param, pbound) else addUpperBound(param, pbound))
       }
       finally addConstraintInvocations -= 1
     }

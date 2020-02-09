@@ -1,6 +1,6 @@
 import scala.quoted._
 class Foo {
-  def foo with QuoteContext : Unit = {
+  def foo(using QuoteContext): Unit = {
     val expr ='{
       val a = 3
       println("foo")

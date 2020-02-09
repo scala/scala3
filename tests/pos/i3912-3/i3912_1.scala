@@ -7,5 +7,5 @@ object Macros {
     }
   }
 
-  def impl() with QuoteContext : Expr[Int] = '{1}
+  def impl()(using QuoteContext): Expr[Int] = '{1}
 }

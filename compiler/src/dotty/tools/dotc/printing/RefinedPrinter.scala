@@ -195,7 +195,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp @ AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
         if (tycon.isRepeatedParam)  toTextLocal(args.head) ~ "*"
-        else if (defn.isFunctionClass(cls))  toTextFunction(args, cls.name.isImplicitFunction, cls.name.isErasedFunction)
+        else if (defn.isFunctionClass(cls))  toTextFunction(args, cls.name.isContextFunction, cls.name.isErasedFunction)
         else if (tp.tupleArity >= 2 && !printDebug)  toTextTuple(tp.tupleElementTypes)
         else if (isInfixType(tp)) {
           val l :: r :: Nil = args
@@ -244,7 +244,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ => toTextGlobal(args, ", ")
         }
         "[applied to ("
-        ~ keywordText("given ").provided(tp.isContextualMethod)
+        ~ keywordText("using ").provided(tp.isContextualMethod)
         ~ keywordText("erased ").provided(tp.isErasedMethod)
         ~ argsText
         ~ ") returning "
@@ -389,8 +389,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else
           toTextLocal(fun)
-          ~ ("." ~ keywordText("with")).provided(app.isGivenApply && !homogenizedView)
           ~ "("
+          ~ Str("using ").provided(app.isGivenApply && !homogenizedView)
           ~ toTextGlobal(args, ", ")
           ~ ")"
       case tree: TypeApply =>
@@ -492,9 +492,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case ByNameTypeTree(tpt) =>
         "=> " ~ toTextLocal(tpt)
-      case TypeBoundsTree(lo, hi) =>
-        if (lo eq hi) optText(lo)(" = " ~ _)
-        else optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _)
+      case TypeBoundsTree(lo, hi, alias) =>
+        if (lo eq hi) && alias.isEmpty then optText(lo)(" = " ~ _)
+        else optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _) ~ optText(alias)(" = " ~ _)
       case Bind(name, body) =>
         keywordText("given ").provided(tree.symbol.isOneOf(GivenOrImplicit) && !homogenizedView) ~ // Used for scala.quoted.Type in quote patterns (not pickled)
         changePrec(InfixPrec) { toText(name) ~ " @ " ~ toText(body) }
@@ -882,7 +882,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (tree.exists(!_.isEmpty)) encl(blockText(tree)) else ""
 
   override protected def ParamRefNameString(name: Name): String =
-    name.invariantName.toString
+    name.toString
 
   override protected def treatAsTypeParam(sym: Symbol): Boolean = sym.is(TypeParam)
 

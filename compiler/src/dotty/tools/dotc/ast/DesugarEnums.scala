@@ -49,13 +49,13 @@ object DesugarEnums {
     val tparams = enumClass.typeParams
     def isGround(tp: Type) = tp.subst(tparams, tparams.map(_ => NoType)) eq tp
     val targs = tparams map { tparam =>
-      if (tparam.variance > 0 && isGround(tparam.info.bounds.lo))
+      if (tparam.is(Covariant) && isGround(tparam.info.bounds.lo))
         tparam.info.bounds.lo
-      else if (tparam.variance < 0 && isGround(tparam.info.bounds.hi))
+      else if (tparam.is(Contravariant) && isGround(tparam.info.bounds.hi))
         tparam.info.bounds.hi
       else {
         def problem =
-          if (tparam.variance == 0) "is non variant"
+          if (!tparam.isOneOf(VarianceFlags)) "is non variant"
           else "has bounds that depend on a type parameter in the same parameter list"
         errorType(i"""cannot determine type argument for enum parent $enumClass,
                      |type parameter $tparam $problem""", ctx.source.atSpan(span))

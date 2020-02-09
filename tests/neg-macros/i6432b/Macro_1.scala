@@ -6,7 +6,7 @@ import scala.quoted.matching._
 object Macro {
   inline def (sc: => StringContext).foo(args: String*): Unit = ${ impl('sc) }
 
-  def impl(sc: Expr[StringContext]) with (qctx: QuoteContext) : Expr[Unit] = {
+  def impl(sc: Expr[StringContext])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty.{_, given _}
     sc match {
       case '{ StringContext(${ExprSeq(parts)}: _*) } =>

@@ -6,18 +6,18 @@ object Macros {
   implicit inline def foo(i: Int): String =
     ${ impl('i) }
 
-  def impl(i: Expr[Int]) with QuoteContext : Expr[String] = {
+  def impl(i: Expr[Int]) (using QuoteContext): Expr[String] = {
     value(i).toString
   }
 
   inline implicit def value[X](e: Expr[X])(implicit qctx: QuoteContext, ev: Valuable[X]): Option[X] = ev.value(e)
 
   trait Valuable[X] {
-    def value(e: Expr[X]) with QuoteContext : Option[X]
+    def value(e: Expr[X]) (using QuoteContext): Option[X]
   }
 
   implicit def intIsEvalable: Valuable[Int] = new Valuable[Int] {
-    override def value(e: Expr[Int]) with (qctx: QuoteContext) : Option[Int] = {
+    override def value(e: Expr[Int])(using qctx: QuoteContext) : Option[Int] = {
       import qctx.tasty.{_, given _}
 
       e.unseal.tpe match {

@@ -12,7 +12,7 @@ trait Codec[T] {
 
 given intCodec as Codec[Int] = ???
 
-given optionCodec[T] with (ev: => Codec[T]) as Codec[Option[T]] {
+given optionCodec[T](using ev: => Codec[T]) as Codec[Option[T]] {
   def write(xo: Option[T]) = xo match {
     case Some(x) => ev.write(x)
     case None =>
@@ -55,7 +55,7 @@ In the example above, the definition of `s` would be expanded as follows.
 
 ```scala
 val s = summon[Test.Codec[Option[Int]]](
-  optionCodec[Int].with(intCodec)
+  optionCodec[Int](using intCodec)
 )
 ```
 

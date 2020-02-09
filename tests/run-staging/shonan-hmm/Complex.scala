@@ -8,6 +8,8 @@ object Complex {
     def toExpr(c: Complex[T]) = '{ Complex(${Expr(c.re)}, ${Expr(c.im)}) }
   }
 
-  def of_complex_expr(x: Expr[Complex[Int]]) with QuoteContext : Complex[Expr[Int]] = Complex('{$x.re}, '{$x.im})
-  def of_expr_complex(x: Complex[Expr[Int]]) with QuoteContext : Expr[Complex[Int]] = '{Complex(${x.re}, ${x.im})}
+ def of_complex_expr(x: Expr[Complex[Int]])(using QuoteContext): Complex[Expr[Int]] = Complex('{$x.re}, '{$x.im})
+ def of_expr_complex(x: Complex[Expr[Int]])(using QuoteContext): Expr[Complex[Int]] = '{Complex(${x.re}, ${x.im})}
+
+
 }

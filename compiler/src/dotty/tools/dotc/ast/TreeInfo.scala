@@ -298,7 +298,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
   def isFunctionWithUnknownParamType(tree: Tree): Boolean =
     functionWithUnknownParamType(tree).isDefined
 
-  /** Is `tree` an implicit function or closure, possibly nested in a block? */
+  /** Is `tree` an context function or closure, possibly nested in a block? */
   def isContextualClosure(tree: Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
     case tree: FunctionWithMods => tree.mods.is(Given)
     case Function((param: untpd.ValDef) :: _, _) => param.mods.is(Given)
@@ -307,7 +307,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case Block(DefDef(nme.ANON_FUN, _, params :: _, _, _) :: Nil, cl: Closure) =>
       params match {
         case param :: _ => param.mods.is(Given)
-        case Nil => cl.tpt.eq(untpd.ContextualEmptyTree) || defn.isImplicitFunctionType(cl.tpt.typeOpt)
+        case Nil => cl.tpt.eq(untpd.ContextualEmptyTree) || defn.isContextFunctionType(cl.tpt.typeOpt)
       }
     case _ => false
   }

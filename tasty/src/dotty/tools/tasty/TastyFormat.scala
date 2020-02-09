@@ -34,7 +34,6 @@ Macro-format:
 
                   UNIQUE            Length separator_NameRef uniqid_Nat underlying_NameRef? -- Unique name A<separator><number>
                   DEFAULTGETTER     Length underlying_NameRef index_Nat                     -- DefaultGetter$<number>
-                  VARIANT           Length underlying_NameRef variance_Nat                  -- variance 0: +A, variance = 1: -A
 
                   SUPERACCESSOR     Length underlying_NameRef                               -- super$A
                   INLINEACCESSOR    Length underlying_NameRef                               -- inline$A
@@ -153,8 +152,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SUPERtype      Length this_Type underlying_Type                  -- A super type reference to `underlying`
                   REFINEDtype    Length underlying_Type refinement_NameRef info_Type -- underlying { refinement_name : info }
                   APPLIEDtype    Length tycon_Type arg_Type*                       -- tycon[args]
-                  TYPEALIAS             alias_Type                                 -- = alias
-                  TYPEBOUNDS     Length low_Type high_Type                         -- >: low <: high
+                  TYPEBOUNDS     Length lowOrAlias_Type high_Type? Variance*       -- = alias or >: low <: high, possibly with variances of lambda parameters
                   ANNOTATEDtype  Length underlying_Type annotation_Term            -- underlying @ annotation
                   ANDtype        Length left_Type right_Type                       -- left & right
                   ORtype         Length left_Type right_Type                       -- lefgt | right
@@ -169,7 +167,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ERASEDGIVENMETHODtype Length result_Type NamesTypes              -- A method type `given(erased NamesTypes)result`, needed for refinements
                   IMPLICITMETHODtype    Length result_Type NamesTypes              -- A method type `(implicit NamesTypes)result`, needed for refinements
   // TODO: remove ERASEDIMPLICITMETHODtype
-                  TYPELAMBDAtype Length result_Type NamesTypes                     -- A type lambda `[NamesTypes] => result`, variance encoded using VARIANT names
+                  TYPELAMBDAtype Length result_Type NamesTypes                     -- A type lambda `[NamesTypes] => result`
                   SHAREDtype            type_ASTRef                                -- link to previously serialized type
   NamesTypes    = NameType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef                            -- `termName : type`  or  `typeName bounds`
@@ -188,7 +186,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ERASED                                                           -- erased
                   LAZY                                                             -- lazy
                   OVERRIDE                                                         -- override
-                  OPAQUE                                                           -- opaque
+                  OPAQUE                                                           -- opaque, also used for classes containing opaque aliases
                   INLINE                                                           -- inline
                   MACRO                                                            -- Inline method containing toplevel splices
                   INLINEPROXY                                                      -- Symbol of binding with an argument to an inline method as rhs (TODO: do we still need this?)
@@ -212,6 +210,10 @@ Standard-Section: "ASTs" TopLevelStat*
                   EXPORTED                                                         -- An export forwarder
                   OPEN                                                             -- an open class
                   Annotation
+
+  Variance      = STABLE                                                           -- invariant
+                | COVARIANT
+                | CONTRAVARIANT
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term             -- An annotation, given (class) type of constructor, and full application tree
 
@@ -251,7 +253,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 18
+  val MajorVersion: Int = 20
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names, should update [[nameTagToString]] if a new constant is added */
@@ -271,9 +273,6 @@ object TastyFormat {
 
     final val DEFAULTGETTER = 11     // The name `<meth-name>$default$<param-num>`
                                      // of a default getter that returns a default argument.
-
-    final val VARIANT = 12           // A name `+<name>` or `-<name>` indicating
-                                     // a co- or contra-variant parameter of a type lambda.
 
     final val SUPERACCESSOR = 20     // The name of a super accessor `super$name` created by SuperAccesors.
 
@@ -300,7 +299,6 @@ object TastyFormat {
       case EXPANDPREFIX => "EXPANDPREFIX"
       case UNIQUE => "UNIQUE"
       case DEFAULTGETTER => "DEFAULTGETTER"
-      case VARIANT => "VARIANT"
       case SUPERACCESSOR => "SUPERACCESSOR"
       case INLINEACCESSOR => "INLINEACCESSOR"
       case OBJECTCLASS => "OBJECTCLASS"
@@ -392,9 +390,8 @@ object TastyFormat {
   final val PRIVATEqualified = 89
   final val PROTECTEDqualified = 90
   final val RECtype = 91
-  final val TYPEALIAS = 92
-  final val SINGLETONtpt = 93
-  final val BOUNDED = 94
+  final val SINGLETONtpt = 92
+  final val BOUNDED = 93
 
   // Cat. 4:    tag Nat AST
 
@@ -670,7 +667,6 @@ object TastyFormat {
     case APPLIEDtpt => "APPLIEDtpt"
     case TYPEBOUNDS => "TYPEBOUNDS"
     case TYPEBOUNDStpt => "TYPEBOUNDStpt"
-    case TYPEALIAS => "TYPEALIAS"
     case ANDtype => "ANDtype"
     case ORtype => "ORtype"
     case BYNAMEtype => "BYNAMEtype"

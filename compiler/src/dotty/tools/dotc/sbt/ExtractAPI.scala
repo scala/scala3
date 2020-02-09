@@ -545,7 +545,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   }
 
   def apiTypeParameter(tparam: ParamInfo): api.TypeParameter =
-    apiTypeParameter(tparam.paramName.toString, tparam.paramVariance,
+    apiTypeParameter(tparam.paramName.toString, tparam.paramVarianceSign,
       tparam.paramInfo.bounds.lo, tparam.paramInfo.bounds.hi)
 
   def apiTypeParameter(name: String, variance: Int, lo: Type, hi: Type): api.TypeParameter =

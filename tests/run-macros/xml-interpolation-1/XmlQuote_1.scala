@@ -13,7 +13,7 @@ object XmlQuote {
   }
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
-          with (qctx: QuoteContext) : Expr[Xml] = {
+          (using qctx: QuoteContext) : Expr[Xml] = {
     import qctx.tasty.{_, given _}
 
     // for debugging purpose

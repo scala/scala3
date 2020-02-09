@@ -3,7 +3,7 @@ object Macros {
 
   inline def debug: Unit = ${Macros.debugImpl}
 
-  def debugImpl with (qctx: QuoteContext): Expr[Unit] = {
+  def debugImpl(using qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty.{given, _}
 
     def nearestEnclosingDef(owner: Symbol): Symbol =

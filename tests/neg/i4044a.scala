@@ -1,6 +1,6 @@
 import scala.quoted._
 
-def test with QuoteContext = {
+def test(using QuoteContext) = {
 
   val a = '{1}
   '{

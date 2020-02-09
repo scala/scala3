@@ -662,14 +662,15 @@ trait Implicits { self: Typer =>
    */
   def inferView(from: Tree, to: Type)(implicit ctx: Context): SearchResult = {
     record("inferView")
-    if    ((to isRef defn.AnyClass)
-        || (to isRef defn.ObjectClass)
-        || (to isRef defn.UnitClass)
-        || (from.tpe isRef defn.NothingClass)
-        || (from.tpe isRef defn.NullClass)
-        || !(ctx.mode is Mode.ImplicitsEnabled)
-        || from.isInstanceOf[Super]
-        || (from.tpe eq NoPrefix)) NoMatchingImplicitsFailure
+    if    to.isAny
+       || to.isAnyRef
+       || to.isRef(defn.UnitClass)
+       || from.tpe.isRef(defn.NothingClass)
+       || from.tpe.isRef(defn.NullClass)
+       || !ctx.mode.is(Mode.ImplicitsEnabled)
+       || from.isInstanceOf[Super]
+       || (from.tpe eq NoPrefix)
+    then NoMatchingImplicitsFailure
     else {
       def adjust(to: Type) = to.stripTypeVar.widenExpr match {
         case SelectionProto(name, memberProto, compat, true) =>
@@ -740,7 +741,7 @@ trait Implicits { self: Typer =>
     (formal, span) => implicit ctx => formal match {
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
         def functionTypeEqual(baseFun: Type, actualArgs: List[Type], actualRet: Type, expected: Type) =
-          expected =:= defn.FunctionOf(actualArgs, actualRet, defn.isImplicitFunctionType(baseFun), defn.isErasedFunctionType(baseFun))
+          expected =:= defn.FunctionOf(actualArgs, actualRet, defn.isContextFunctionType(baseFun), defn.isErasedFunctionType(baseFun))
         val arity: Int =
           if (defn.isErasedFunctionType(fun) || defn.isErasedFunctionType(fun)) -1 // TODO support?
           else if (defn.isFunctionType(fun))
@@ -1032,7 +1033,7 @@ trait Implicits { self: Typer =>
                           }
                           resType <:< target
                           val tparams = poly.paramRefs
-                          val variances = caseClass.typeParams.map(_.paramVariance)
+                          val variances = caseClass.typeParams.map(_.paramVarianceSign)
                           val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
                             ctx.typeComparer.instanceType(tparam, fromBelow = variance < 0))
                           resType.substParams(poly, instanceTypes)

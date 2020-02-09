@@ -160,7 +160,7 @@ object Nullables with
     // TODO: Add constant pattern if the constant type is not nullable
     case _ => false
 
-  given notNullInfoOps: extension (infos: List[NotNullInfo]) with
+  extension notNullInfoOps on (infos: List[NotNullInfo]) with
 
     /** Do the current not-null infos imply that `ref` is not null?
      *  Not-null infos are as a history where earlier assertions and retractions replace
@@ -189,9 +189,9 @@ object Nullables with
       val mutables = infos.foldLeft(Set[TermRef]())((ms, info) =>
         ms.union(info.asserted.filter(_.symbol.is(Mutable))))
       infos.extendWith(NotNullInfo(Set(), mutables))
-  end notNullInfoOps
+  // end notNullInfoOps
 
-  given refOps: extension (ref: TermRef) with
+  extension refOps on (ref: TermRef) with
 
     /** Is the use of a mutable variable out of order
      *
@@ -245,7 +245,7 @@ object Nullables with
       && refOwner.isTerm
       && recur(curCtx.owner)
 
-  given treeOps: extension (tree: Tree) with
+  extension treeOps on (tree: Tree) with
 
     /* The `tree` with added nullability attachment */
     def withNotNullInfo(info: NotNullInfo): tree.type =
@@ -335,7 +335,7 @@ object Nullables with
           tree.computeNullable()
       }.traverse(tree)
 
-  given assignOps: extension (tree: Assign) with
+  extension assignOps on (tree: Assign) with
     def computeAssignNullable()(given Context): tree.type = tree.lhs match
       case TrackedRef(ref) =>
         val rhstp = tree.rhs.typeOpt

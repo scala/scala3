@@ -98,7 +98,6 @@ trait FullParameterization {
     }
     val ctparams = if (abstractOverClass) clazz.typeParams else Nil
     val ctnames = ctparams.map(_.name)
-    val ctvariances = ctparams.map(_.variance)
 
     /** The method result type */
     def resultType(mapClassParams: Type => Type) = {

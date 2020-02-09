@@ -16,14 +16,14 @@ class Expr[+T] private[scala] {
    *  Returns `None` if the expression does not contain a value or contains side effects.
    *  Otherwise returns the `Some` of the value.
    */
-  final def getValue[U >: T](given qctx: QuoteContext, valueOf: ValueOfExpr[U]): Option[U] = valueOf(this)
+  final def getValue[U >: T](using qctx: QuoteContext, valueOf: ValueOfExpr[U]): Option[U] = valueOf(this)
 
   /** Return the value of this expression.
    *
    *  Emits an error error and throws if the expression does not contain a value or contains side effects.
    *  Otherwise returns the value.
    */
-  final def value[U >: T](given qctx: QuoteContext, valueOf: ValueOfExpr[U]): U =
+  final def value[U >: T](using qctx: QuoteContext, valueOf: ValueOfExpr[U]): U =
     valueOf(this).getOrElse(qctx.throwError(s"Expected a known value. \n\nThe value of: $show\ncould not be recovered using $valueOf", this))
 
   /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
@@ -34,7 +34,7 @@ class Expr[+T] private[scala] {
    *    case _ => false
    *  ```
    */
-  final def matches(that: Expr[Any])(given qctx: QuoteContext): Boolean =
+  final def matches(that: Expr[Any])(using qctx: QuoteContext): Boolean =
     !scala.internal.quoted.Expr.unapply[Unit, Unit](this)(given that, false, qctx).isEmpty
 
 }
@@ -42,7 +42,7 @@ class Expr[+T] private[scala] {
 object Expr {
 
   /** Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])` */
-  type TupleOfExpr[Tup <: Tuple] = Tuple.Map[Tup, [X] =>> (given QuoteContext) => Expr[X]]
+  type TupleOfExpr[Tup <: Tuple] = Tuple.Map[Tup, [X] =>> QuoteContext ?=> Expr[X]]
 
   /** `Expr.betaReduce(f)(x1, ..., xn)` is functionally the same as `'{($f)($x1, ..., $xn)}`, however it optimizes this call
    *   by returning the result of beta-reducing `f(x1, ..., xn)` if `f` is a known lambda expression.
@@ -52,7 +52,7 @@ object Expr {
    *   Expr.betaReduce(_): Expr[(T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
    *   ```
    */
-  def betaReduce[F, Args <: Tuple, R, G](f: Expr[F])(given tf: TupledFunction[F, Args => R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G = {
+  def betaReduce[F, Args <: Tuple, R, G](f: Expr[F])(using tf: TupledFunction[F, Args => R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G = {
     import qctx.tasty.{_, given}
     tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
   }
@@ -62,22 +62,22 @@ object Expr {
    *
    *  `Expr.betaReduceGiven` distributes applications of `Expr` over function arrows
    *   ```scala
-   *   Expr.betaReduceGiven(_): Expr[(given T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
+   *   Expr.betaReduceGiven(_): Expr[(T1, ..., Tn) ?=> R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
    *   ```
    */
-  def betaReduceGiven[F, Args <: Tuple, R, G](f: Expr[F])(given tf: TupledFunction[F, (given Args) => R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G = {
+  def betaReduceGiven[F, Args <: Tuple, R, G](f: Expr[F])(using tf: TupledFunction[F, Args ?=> R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G = {
     import qctx.tasty.{_, given}
     tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
   }
 
   /** Returns a null expresssion equivalent to `'{null}` */
-  def nullExpr: (given QuoteContext) => Expr[Null] = (given qctx) => {
+  def nullExpr: QuoteContext ?=> Expr[Null] = qctx ?=> {
     import qctx.tasty.{_, given}
     Literal(Constant(null)).seal.asInstanceOf[Expr[Null]]
   }
 
   /** Returns a unit expresssion equivalent to `'{}` or `'{()}` */
-  def unitExpr: (given QuoteContext) => Expr[Unit] = (given qctx) => {
+  def unitExpr: QuoteContext ?=> Expr[Unit] = qctx ?=> {
     import qctx.tasty.{_, given}
     Literal(Constant(())).seal.asInstanceOf[Expr[Unit]]
   }
@@ -86,13 +86,13 @@ object Expr {
    *  Given list of statements `s1 :: s2 :: ... :: Nil` and an expression `e` the resulting expression
    *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
    */
-  def block[T](statements: List[Expr[_]], expr: Expr[T])(given qctx: QuoteContext): Expr[T] = {
+  def block[T](statements: List[Expr[_]], expr: Expr[T])(using qctx: QuoteContext): Expr[T] = {
     import qctx.tasty.{_, given}
     Block(statements.map(_.unseal), expr.unseal).seal.asInstanceOf[Expr[T]]
   }
 
   /** Lift a value into an expression containing the construction of that value */
-  def apply[T: Liftable](x: T)(given QuoteContext): Expr[T] = summon[Liftable[T]].toExpr(x)
+  def apply[T: Liftable](x: T)(using qctx: QuoteContext): Expr[T] = summon[Liftable[T]].toExpr(x)
 
   /** Lifts this sequence of expressions into an expression of a sequence
    *
@@ -106,7 +106,7 @@ object Expr {
    *  '{ List(${Expr.ofSeq(List(1, 2, 3))}: _*) } // equvalent to '{ List(1, 2, 3) }
    *  ```
    */
-  def ofSeq[T](xs: Seq[Expr[T]])(given tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = {
+  def ofSeq[T](xs: Seq[Expr[T]])(using tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = {
     import qctx.tasty.{_, given}
     Repeated(xs.map(_.unseal).toList, tp.unseal).seal.asInstanceOf[Expr[Seq[T]]]
   }
@@ -119,7 +119,7 @@ object Expr {
    *  to an expression equivalent to
    *    `'{ List($e1, $e2, ...) }` typed as an `Expr[List[T]]`
    */
-  def  ofList[T](xs: Seq[Expr[T]])(given Type[T], QuoteContext): Expr[List[T]] =
+  def  ofList[T](xs: Seq[Expr[T]])(using Type[T], QuoteContext): Expr[List[T]] =
     if (xs.isEmpty) '{ Nil } else '{ List(${ofSeq(xs)}: _*) }
 
   /** Lifts this sequence of expressions into an expression of a tuple
@@ -129,7 +129,7 @@ object Expr {
    *  to an expression equivalent to
    *    `'{ ($e1, $e2, ...) }` typed as an `Expr[Tuple]`
    */
-  def ofTuple(seq: Seq[Expr[_]])(given QuoteContext): Expr[Tuple] = {
+  def ofTuple(seq: Seq[Expr[_]])(using qctx: QuoteContext): Expr[Tuple] = {
     seq match {
       case Seq() =>
         unitExpr
@@ -183,7 +183,7 @@ object Expr {
   }
 
   /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
-  def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T) (given qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
+  def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
     import qctx.tasty.{_, given}
     val elems: Seq[Expr[_]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[_]]]
     ofTuple(elems).cast[Tuple.InverseMap[T, Expr]]

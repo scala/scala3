@@ -2,7 +2,7 @@ package typeLambdas
 
 object Test {
 
-  type T =  [+X, Y] =>> Map[Y, X]
+  type T[+X, Y] = Map[Y, X]
 
   type CTL = [X] =>> [Y] =>> (X, Y)
   type T3 = CTL[Int][String]

@@ -2,7 +2,7 @@
 layout: blog-page
 title: Announcing Dotty 0.18.1-RC1 – switch to the 2.13 standard library, indentation-based syntax and other experiments
 author: Anatolii Kmetiuk
-authorImg: /images/anatolii.png
+authorImg: images/anatolii.png
 date: 2019-08-30
 ---
 

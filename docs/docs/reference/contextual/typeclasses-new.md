@@ -23,7 +23,7 @@ trait Monoid[T] extends SemiGroup[T] {
 An implementation of this `Monoid` typeclass for the type `String` can be the following: 
 
 ```scala
-given as Monoid[String] {
+givenMonoid[String] {
   def (x: String) combine (y: String): String = x.concat(y)
   def unit: String = ""
 }
@@ -31,7 +31,7 @@ given as Monoid[String] {
 
 Whereas for the type `Int` one could write the following:
 ```scala
-given as Monoid[Int] {
+givenMonoid[Int] {
   def (x: Int) combine (y: Int): Int = x + y
   def unit: Int = 0
 }
@@ -94,7 +94,7 @@ Which could read as follows: "The `Functor` ability for a wrapper type `F` repre
 This way, we could define an instance of `Functor` for the `List` type: 
 
 ```scala
-given as Functor[List] {
+givenFunctor[List] {
   def map[A, B](original: List[A], mapper: A => B): List[B] =
     original.map(mapper) // List already has a `map` method
 }
@@ -126,7 +126,7 @@ trait Functor[F[_]] {
 The instance of `Functor` for `List` now becomes:
 
 ```scala
-given as Functor[List] {
+givenFunctor[List] {
   def [A, B](original: List[A]).map(mapper: A => B): List[B] =
     original.map(mapper) // List already has a `map` method
 }

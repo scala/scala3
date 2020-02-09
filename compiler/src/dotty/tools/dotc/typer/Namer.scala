@@ -403,7 +403,8 @@ class Namer { typer: Typer =>
                 flags |= HigherKinded
                 analyzeRHS(body)
               case _ =>
-            if tree.rhs.isEmpty then flags |= Deferred else analyzeRHS(tree.rhs)
+                if rhs.isEmpty || flags.is(Opaque) then flags |= Deferred
+            analyzeRHS(tree.rhs)
 
         // to complete a constructor, move one context further out -- this
         // is the context enclosing the class. Note that the context in which a
@@ -416,13 +417,9 @@ class Namer { typer: Typer =>
         // have no implementation.
         val cctx = if (tree.name == nme.CONSTRUCTOR && !flags.is(JavaDefined)) ctx.outer else ctx
 
-        val completer = tree match {
-          case tree: TypeDef =>
-            if (flags.is(Opaque) && ctx.owner.isClass) ctx.owner.setFlag(Opaque)
-            new TypeDefCompleter(tree)(cctx)
-          case _ =>
-            new Completer(tree)(cctx)
-        }
+        val completer = tree match
+          case tree: TypeDef => TypeDefCompleter(tree)(cctx)
+          case _ => Completer(tree)(cctx)
         val info = adjustIfModule(completer, tree)
         createOrRefine[Symbol](tree, name, flags, ctx.owner, _ => info,
           (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.nameSpan))
@@ -939,7 +936,8 @@ class Namer { typer: Typer =>
     }
   }
 
-  class TypeDefCompleter(original: TypeDef)(ictx: Context) extends Completer(original)(ictx) with TypeParamsCompleter {
+  class TypeDefCompleter(original: TypeDef)(ictx: Context)
+  extends Completer(original)(ictx) with TypeParamsCompleter {
     private var myTypeParams: List[TypeSymbol] = null
     private var nestedCtx: Context = null
     assert(!original.isClassDef)
@@ -966,8 +964,61 @@ class Namer { typer: Typer =>
       myTypeParams
     end completerTypeParams
 
-    override protected def typeSig(sym: Symbol): Type =
-      typeDefSig(original, sym, completerTypeParams(sym)(ictx))(nestedCtx)
+    override final def typeSig(sym: Symbol): Type =
+      val tparamSyms = completerTypeParams(sym)(ictx)
+      given ctx as Context = nestedCtx
+      def abstracted(tp: TypeBounds): TypeBounds = HKTypeLambda.boundsFromParams(tparamSyms, tp)
+      val dummyInfo1 = abstracted(TypeBounds.empty)
+      sym.info = dummyInfo1
+      sym.setFlag(Provisional)
+        // Temporarily set info of defined type T to ` >: Nothing <: Any.
+        // This is done to avoid cyclic reference errors for F-bounds.
+        // This is subtle: `sym` has now an empty TypeBounds, but is not automatically
+        // made an abstract type. If it had been made an abstract type, it would count as an
+        // abstract type of its enclosing class, which might make that class an invalid
+        // prefix. I verified this would lead to an error when compiling io.ClassPath.
+        // A distilled version is in pos/prefix.scala.
+        //
+        // The scheme critically relies on an implementation detail of isRef, which
+        // inspects a TypeRef's info, instead of simply dealiasing alias types.
+
+      val isDerived = original.rhs.isInstanceOf[untpd.DerivedTypeTree]
+      val rhs = original.rhs match {
+        case LambdaTypeTree(_, body) => body
+        case rhs => rhs
+      }
+
+      // For match types: approximate with upper bound while evaluating the rhs.
+      val dummyInfo2 = rhs match {
+        case MatchTypeTree(bound, _, _) if !bound.isEmpty =>
+          abstracted(TypeBounds.upper(typedAheadType(bound).tpe))
+        case _ =>
+          dummyInfo1
+      }
+      sym.info = dummyInfo2
+
+      val rhs1 = typedAheadType(rhs)
+      val rhsBodyType: TypeBounds = rhs1.tpe.toBounds
+      val unsafeInfo = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
+      if (isDerived) sym.info = unsafeInfo
+      else {
+        sym.info = NoCompleter
+        sym.info = sym.opaqueToBounds(checkNonCyclic(sym, unsafeInfo, reportErrors = true), rhs1)
+      }
+      if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
+      sym.resetFlag(Provisional)
+
+      // Here we pay the price for the cavalier setting info to TypeBounds.empty above.
+      // We need to compensate by reloading the denotation of references that might
+      // still contain the TypeBounds.empty. If we do not do this, stdlib factories
+      // fail with a bounds error in PostTyper.
+      def ensureUpToDate(tref: TypeRef, outdated: Type) =
+        if (tref.info == outdated && sym.info != outdated) tref.recomputeDenot()
+      ensureUpToDate(sym.typeRef, dummyInfo1)
+      if (dummyInfo2 `ne` dummyInfo1) ensureUpToDate(sym.typeRef, dummyInfo2)
+
+      sym.info
+    end typeSig
   }
 
   class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
@@ -976,6 +1027,7 @@ class Namer { typer: Typer =>
     protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
 
     private var localCtx: Context = _
+
     /** info to be used temporarily while completing the class, to avoid cyclic references. */
     private var tempInfo: TempClassInfo = _
 
@@ -1123,13 +1175,13 @@ class Namer { typer: Typer =>
         else createSymbol(self)
 
       val savedInfo = denot.infoOrCompleter
-      tempInfo = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
-      denot.info = tempInfo
+      denot.info = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
 
       localCtx = ctx.inClassContext(selfInfo)
 
       index(constr)
       index(rest)(localCtx)
+
       symbolOfTree(constr).info.stripPoly match // Completes constr symbol as a side effect
         case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
           // See issue #8073 for background
@@ -1137,6 +1189,8 @@ class Namer { typer: Typer =>
               i"""Implementation restriction: case classes cannot have dependencies between parameters""",
               cls.sourcePos)
         case _ =>
+
+      tempInfo = denot.asClass.classInfo.integrateOpaqueMembers.asInstanceOf[TempClassInfo]
       denot.info = savedInfo
     }
 
@@ -1208,9 +1262,7 @@ class Namer { typer: Typer =>
         }
       }
 
-      if (tempInfo == null) // Constructor has not been completed yet
-        completeConstructor(denot)
-
+      completeConstructor(denot)
       denot.info = tempInfo
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
@@ -1227,9 +1279,8 @@ class Namer { typer: Typer =>
         original.putAttachment(Deriver, deriver)
       }
 
-      tempInfo.finalize(denot, parentTypes)
-      // The temporary info can now be garbage-collected
-      tempInfo = null
+      denot.info = tempInfo.finalized(parentTypes)
+      tempInfo = null // The temporary info can now be garbage-collected
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
@@ -1502,59 +1553,5 @@ class Namer { typer: Typer =>
       wrapMethType(ctx.effectiveResultType(sym, typeParams, NoType))
     }
     else valOrDefDefSig(ddef, sym, typeParams, termParamss, wrapMethType)
-  }
-
-  def typeDefSig(tdef: TypeDef, sym: Symbol, tparamSyms: List[TypeSymbol])(implicit ctx: Context): Type = {
-    def abstracted(tp: Type): Type = HKTypeLambda.fromParams(tparamSyms, tp)
-    val dummyInfo1 = abstracted(TypeBounds.empty)
-    sym.info = dummyInfo1
-    sym.setFlag(Provisional)
-      // Temporarily set info of defined type T to ` >: Nothing <: Any.
-      // This is done to avoid cyclic reference errors for F-bounds.
-      // This is subtle: `sym` has now an empty TypeBounds, but is not automatically
-      // made an abstract type. If it had been made an abstract type, it would count as an
-      // abstract type of its enclosing class, which might make that class an invalid
-      // prefix. I verified this would lead to an error when compiling io.ClassPath.
-      // A distilled version is in pos/prefix.scala.
-      //
-      // The scheme critically relies on an implementation detail of isRef, which
-      // inspects a TypeRef's info, instead of simply dealiasing alias types.
-
-    val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
-    val rhs = tdef.rhs match {
-      case LambdaTypeTree(_, body) => body
-      case rhs => rhs
-    }
-
-    // For match types: approximate with upper bound while evaluating the rhs.
-    val dummyInfo2 = rhs match {
-      case MatchTypeTree(bound, _, _) if !bound.isEmpty =>
-        abstracted(TypeBounds.upper(typedAheadType(bound).tpe))
-      case _ =>
-        dummyInfo1
-    }
-    sym.info = dummyInfo2
-
-    val rhsBodyType = typedAheadType(rhs).tpe
-    val rhsType = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
-    val unsafeInfo = rhsType.toBounds
-    if (isDerived) sym.info = unsafeInfo
-    else {
-      sym.info = NoCompleter
-      sym.info = checkNonCyclic(sym, unsafeInfo, reportErrors = true)
-    }
-    sym.normalizeOpaque()
-    sym.resetFlag(Provisional)
-
-    // Here we pay the price for the cavalier setting info to TypeBounds.empty above.
-    // We need to compensate by reloading the denotation of references that might
-    // still contain the TypeBounds.empty. If we do not do this, stdlib factories
-    // fail with a bounds error in PostTyper.
-    def ensureUpToDate(tref: TypeRef, outdated: Type) =
-      if (tref.info == outdated && sym.info != outdated) tref.recomputeDenot()
-    ensureUpToDate(sym.typeRef, dummyInfo1)
-    if (dummyInfo2 `ne` dummyInfo1) ensureUpToDate(sym.typeRef, dummyInfo2)
-
-    sym.info
   }
 }

@@ -2,7 +2,7 @@
 layout: blog-page
 title: Implicit Function Types
 author: Martin Odersky
-authorImg: /images/martin.jpg
+authorImg: images/martin.jpg
 date: 2016-12-05
 ---
 

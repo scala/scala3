@@ -633,7 +633,7 @@ class Typer extends Namer
 
         tpt1 match {
           case AppliedTypeTree(_, targs) =>
-            for (targ @ TypeBoundsTree(_, _) <- targs)
+            for case targ: TypeBoundsTree <- targs do
               ctx.error(WildcardOnTypeArgumentNotAllowedOnNew(), targ.sourcePos)
           case _ =>
         }
@@ -1445,7 +1445,7 @@ class Typer extends Namer
             }
           if (desugaredArg.isType)
             arg match {
-              case TypeBoundsTree(EmptyTree, EmptyTree)
+              case TypeBoundsTree(EmptyTree, EmptyTree, _)
               if tparam.paramInfo.isLambdaSub &&
                  tpt1.tpe.typeParamSymbols.nonEmpty &&
                  !ctx.mode.is(Mode.Pattern) =>
@@ -1464,7 +1464,7 @@ class Typer extends Namer
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
       }
       val paramBounds = tparams.lazyZip(args).map {
-        case (tparam, TypeBoundsTree(EmptyTree, EmptyTree)) =>
+        case (tparam, TypeBoundsTree(EmptyTree, EmptyTree, _)) =>
           // if type argument is a wildcard, suppress kind checking since
           // there is no real argument.
           NoType
@@ -1507,14 +1507,20 @@ class Typer extends Namer
   }
 
   def typedTypeBoundsTree(tree: untpd.TypeBoundsTree, pt: Type)(implicit ctx: Context): Tree = {
-    val TypeBoundsTree(lo, hi) = tree
+    val TypeBoundsTree(lo, hi, alias) = tree
     val lo1 = typed(lo)
     val hi1 = typed(hi)
+    val alias1 = typed(alias)
 
     val lo2 = if (lo1.isEmpty) typed(untpd.TypeTree(defn.NothingType)) else lo1
     val hi2 = if (hi1.isEmpty) typed(untpd.TypeTree(defn.AnyType)) else hi1
 
-    val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo2, hi2), lo2, hi2)
+    if !alias1.isEmpty then
+      val bounds = TypeBounds(lo2.tpe, hi2.tpe)
+      if !bounds.contains(alias1.tpe) then
+        ctx.error(em"type ${alias1.tpe} outside bounds $bounds", tree.sourcePos)
+
+    val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo2, hi2, alias1), lo2, hi2, alias1)
     if (ctx.mode.is(Mode.Pattern))
       // Associate a pattern-bound type symbol with the wildcard.
       // The bounds of the type symbol can be constrained when comparing a pattern type
@@ -1951,13 +1957,7 @@ class Typer extends Namer
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
       if arg1.isType then
-        val result = assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
-        result.tpe match {
-          case AnnotatedType(rhs, Annotation.WithBounds(bounds)) =>
-            if (!bounds.contains(rhs)) ctx.error(em"type $rhs outside bounds $bounds", tree.sourcePos)
-          case _ =>
-        }
-        result
+        assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
       else
         assert(ctx.reporter.errorsReported)
         TypeTree(UnspecifiedErrorType)
@@ -2194,7 +2194,7 @@ class Typer extends Namer
           case _ => typedUnadapted(desugar(tree), pt, locked)
         }
 
-        val ifpt = defn.asImplicitFunctionType(pt)
+        val ifpt = defn.asContextFunctionType(pt)
         val result =
           if ifpt.exists
              && xtree.isTerm
@@ -2663,9 +2663,9 @@ class Typer extends Namer
                // coming from context bounds. Issue a warning instead and offer a patch.
             ctx.migrationWarning(
               em"""Context bounds will map to context parameters.
-                  |A `with` clause is needed to pass explicit arguments to them.
+                  |A `using` clause is needed to pass explicit arguments to them.
                   |This code can be rewritten automatically using -rewrite""", tree.sourcePos)
-            patch(Span(tree.span.end), ".with")
+            patch(Span(pt.args.head.span.start), "using ")
             tree
           else
             adaptNoArgs(wtp)  // insert arguments implicitly
@@ -2815,7 +2815,7 @@ class Typer extends Namer
       */
     def adaptNoArgsUnappliedMethod(wtp: MethodType, functionExpected: Boolean, arity: Int): Tree = {
       def isExpandableApply =
-        defn.isImplicitFunctionClass(tree.symbol.maybeOwner) && functionExpected
+        defn.isContextFunctionClass(tree.symbol.maybeOwner) && functionExpected
 
       /** Is reference to this symbol `f` automatically expanded to `f()`? */
       def isAutoApplied(sym: Symbol): Boolean =
@@ -2850,17 +2850,17 @@ class Typer extends Namer
         missingArgs(wtp)
     }
 
-    def isImplicitFunctionRef(wtp: Type): Boolean = wtp match {
+    def isContextFunctionRef(wtp: Type): Boolean = wtp match {
       case RefinedType(parent, nme.apply, _) =>
-        isImplicitFunctionRef(parent) // apply refinements indicate a dependent IFT
+        isContextFunctionRef(parent) // apply refinements indicate a dependent IFT
       case _ =>
         val underlying = wtp.underlyingClassRef(refinementOK = false) // other refinements are not OK
-        defn.isImplicitFunctionClass(underlying.classSymbol)
+        defn.isContextFunctionClass(underlying.classSymbol)
     }
 
     def adaptNoArgsOther(wtp: Type): Tree = {
       ctx.typeComparer.GADTused = false
-      if (isImplicitFunctionRef(wtp) &&
+      if (isContextFunctionRef(wtp) &&
           !untpd.isContextualClosure(tree) &&
           !isApplyProto(pt) &&
           pt != AssignProto &&
@@ -3197,7 +3197,7 @@ class Typer extends Namer
    *   - neither is contextual, or
    *   - the prototype is contextual and the method type is implicit.
    *  The last rule is there for a transition period; it allows to mix `with` applications
-   *  with old-style implicit functions.
+   *  with old-style context functions.
    *  Overridden in `ReTyper`, where all applications are treated the same
    */
   protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(implicit ctx: Context): Boolean =

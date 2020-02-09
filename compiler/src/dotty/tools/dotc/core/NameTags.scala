@@ -45,7 +45,6 @@ object NameTags extends TastyFormat.NameTags {
     case TRAITSETTER => "TRAITSETTER"
     case UNIQUE => "UNIQUE"
     case DEFAULTGETTER => "DEFAULTGETTER"
-    case VARIANT => "VARIANT"
     case OUTERSELECT => "OUTERSELECT"
 
     case SUPERACCESSOR => "SUPERACCESSOR"

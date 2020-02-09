@@ -1,0 +1,106 @@
+Input: Nat(1)
+ Type: NatType
+Result: Nat(1)
+
+Failed to type Nat(-1) at level 0 with enviroment Set()
+Failed to typechecks: Nat(-1)
+
+Input: Box(Nat(2))
+ Type: BoxType(NatType)
+Result: Box(Nat(2))
+
+Input: Lift(Nat(3))
+ Type: BoxType(NatType)
+Step: Box(Nat(3))
+Result: Box(Nat(3))
+
+Input: Lambda(`x0`,NatType,Ref(`x0`))
+ Type: LambdaType(NatType,NatType)
+Result: Lambda(`x0`,NatType,Ref(`x0`))
+
+Input: App(Lambda(`x0`,NatType,Ref(`x0`)),Nat(4))
+ Type: NatType
+Step: Nat(4)
+Result: Nat(4)
+
+Input: Box(Splice(Box(Nat(1))))
+ Type: BoxType(NatType)
+Step: Box(Nat(1))
+Result: Box(Nat(1))
+
+Input: Box(Splice(Lift(Nat(1))))
+ Type: BoxType(NatType)
+Step: Box(Splice(Box(Nat(1))))
+Step: Box(Nat(1))
+Result: Box(Nat(1))
+
+Input: Box(Splice(Box(App(Lambda(`x0`,NatType,Ref(`x0`)),Splice(Lift(Nat(4)))))))
+ Type: BoxType(NatType)
+Step: Box(Splice(Box(App(Lambda(`x0`,NatType,Ref(`x0`)),Splice(Box(Nat(4)))))))
+Step: Box(Splice(Box(App(Lambda(`x0`,NatType,Ref(`x0`)),Nat(4)))))
+Step: Box(App(Lambda(`x0`,NatType,Ref(`x0`)),Nat(4)))
+Result: Box(App(Lambda(`x0`,NatType,Ref(`x0`)),Nat(4)))
+
+Input: Match(Box(Nat(2)),PNat(2),Nat(0),Nat(1))
+ Type: NatType
+Step: Nat(0)
+Result: Nat(0)
+
+Input: Match(Box(Nat(2)),PNat(3),Nat(1),Nat(0))
+ Type: NatType
+Step: Nat(0)
+Result: Nat(0)
+
+Input: Match(Box(Nat(2)),PLit(`x0`),Ref(`x0`),Nat(0))
+ Type: NatType
+Step: Nat(2)
+Result: Nat(2)
+
+Input: Match(Box(Nat(2)),PBind(`x0`),Ref(`x0`),Box(Nat(0)))
+ Type: BoxType(NatType)
+Step: Box(Nat(2))
+Result: Box(Nat(2))
+
+Input: Match(Box(Lambda(`y0`,NatType,Ref(`y0`))),PBind(`x0`),Ref(`x0`),Box(Lambda(`z0`,NatType,Nat(2))))
+ Type: BoxType(LambdaType(NatType,NatType))
+Step: Box(Lambda(`y1`,NatType,Ref(`y1`)))
+Result: Box(Lambda(`y1`,NatType,Ref(`y1`)))
+
+Input: Match(Box(App(Lambda(`y0`,NatType,Ref(`y0`)),Nat(4))),PApp(PFun(`f0`),PBind(`x0`)),App(Ref(`f0`),Ref(`x0`)),Box(Nat(3)))
+ Type: BoxType(NatType)
+Step: App(Lambda(`f2`,BoxType(NatType),Box(Splice(Ref(`f2`)))),Box(Nat(4)))
+Step: Box(Splice(Box(Nat(4))))
+Step: Box(Nat(4))
+Result: Box(Nat(4))
+
+Failed to type Lambda(`x0`,NatType,Ref(`x0`)) at level 1 with enviroment Set(EnvVar(`x0`,1,NatType))
+Failed to type Lambda(`x0`,NatType,Lambda(`x0`,NatType,Ref(`x0`))) at level 1 with enviroment Set()
+Failed to type Box(Lambda(`x0`,NatType,Lambda(`x0`,NatType,Ref(`x0`)))) at level 0 with enviroment Set()
+Failed to typechecks: Box(Lambda(`x0`,NatType,Lambda(`x0`,NatType,Ref(`x0`))))
+
+Input: Fix(Lambda(`x0`,NatType,Nat(1)))
+ Type: NatType
+Step: Nat(1)
+Result: Nat(1)
+
+Input: App(Fix(Lambda(`f0`,LambdaType(NatType,NatType),Lambda(`n0`,NatType,Match(Lift(Ref(`n0`)),PNat(0),Nat(1),App(Lambda(`a0`,NatType,App(Ref(`f0`),Ref(`a0`))),Nat(0)))))),Nat(1))
+ Type: NatType
+Step: App(Lambda(`n0`,NatType,Match(Lift(Ref(`n0`)),PNat(0),Nat(1),App(Lambda(`a0`,NatType,App(Fix(Lambda(`f3`,LambdaType(NatType,NatType),Lambda(`n1`,NatType,Match(Lift(Ref(`n1`)),PNat(0),Nat(1),App(Lambda(`a1`,NatType,App(Ref(`f3`),Ref(`a1`))),Nat(0)))))),Ref(`a0`))),Nat(0)))),Nat(1))
+Step: Match(Lift(Nat(1)),PNat(0),Nat(1),App(Lambda(`a0`,NatType,App(Fix(Lambda(`f3`,LambdaType(NatType,NatType),Lambda(`n1`,NatType,Match(Lift(Ref(`n1`)),PNat(0),Nat(1),App(Lambda(`a1`,NatType,App(Ref(`f3`),Ref(`a1`))),Nat(0)))))),Ref(`a0`))),Nat(0)))
+Step: Match(Box(Nat(1)),PNat(0),Nat(1),App(Lambda(`a0`,NatType,App(Fix(Lambda(`f3`,LambdaType(NatType,NatType),Lambda(`n1`,NatType,Match(Lift(Ref(`n1`)),PNat(0),Nat(1),App(Lambda(`a1`,NatType,App(Ref(`f3`),Ref(`a1`))),Nat(0)))))),Ref(`a0`))),Nat(0)))
+Step: App(Lambda(`a0`,NatType,App(Fix(Lambda(`f3`,LambdaType(NatType,NatType),Lambda(`n1`,NatType,Match(Lift(Ref(`n1`)),PNat(0),Nat(1),App(Lambda(`a1`,NatType,App(Ref(`f3`),Ref(`a1`))),Nat(0)))))),Ref(`a0`))),Nat(0))
+Step: App(Fix(Lambda(`f3`,LambdaType(NatType,NatType),Lambda(`n1`,NatType,Match(Lift(Ref(`n1`)),PNat(0),Nat(1),App(Lambda(`a1`,NatType,App(Ref(`f3`),Ref(`a1`))),Nat(0)))))),Nat(0))
+Step: App(Lambda(`n1`,NatType,Match(Lift(Ref(`n1`)),PNat(0),Nat(1),App(Lambda(`a1`,NatType,App(Fix(Lambda(`f4`,LambdaType(NatType,NatType),Lambda(`n2`,NatType,Match(Lift(Ref(`n2`)),PNat(0),Nat(1),App(Lambda(`a2`,NatType,App(Ref(`f4`),Ref(`a2`))),Nat(0)))))),Ref(`a1`))),Nat(0)))),Nat(0))
+Step: Match(Lift(Nat(0)),PNat(0),Nat(1),App(Lambda(`a1`,NatType,App(Fix(Lambda(`f4`,LambdaType(NatType,NatType),Lambda(`n2`,NatType,Match(Lift(Ref(`n2`)),PNat(0),Nat(1),App(Lambda(`a2`,NatType,App(Ref(`f4`),Ref(`a2`))),Nat(0)))))),Ref(`a1`))),Nat(0)))
+Step: Match(Box(Nat(0)),PNat(0),Nat(1),App(Lambda(`a1`,NatType,App(Fix(Lambda(`f4`,LambdaType(NatType,NatType),Lambda(`n2`,NatType,Match(Lift(Ref(`n2`)),PNat(0),Nat(1),App(Lambda(`a2`,NatType,App(Ref(`f4`),Ref(`a2`))),Nat(0)))))),Ref(`a1`))),Nat(0)))
+Step: Nat(1)
+Result: Nat(1)
+
+Input: App(Lambda(`x0`,BoxType(NatType),Match(Ref(`x0`),PApp(PFun(`f0`),PBind(`z0`)),App(Ref(`f0`),Ref(`x0`)),Box(Nat(4)))),Box(App(Lambda(`a0`,NatType,App(Lambda(`b0`,NatType,Ref(`b0`)),Ref(`a0`))),Nat(2))))
+ Type: BoxType(NatType)
+Step: Match(Box(App(Lambda(`a3`,NatType,App(Lambda(`b1`,NatType,Ref(`b1`)),Ref(`a3`))),Nat(2))),PApp(PFun(`f0`),PBind(`z0`)),App(Ref(`f0`),Box(App(Lambda(`a3`,NatType,App(Lambda(`b1`,NatType,Ref(`b1`)),Ref(`a3`))),Nat(2)))),Box(Nat(4)))
+Step: App(Lambda(`f6`,BoxType(NatType),Box(App(Lambda(`b2`,NatType,Ref(`b2`)),Splice(Ref(`f6`))))),Box(App(Lambda(`a3`,NatType,App(Lambda(`b1`,NatType,Ref(`b1`)),Ref(`a3`))),Nat(2))))
+Step: Box(App(Lambda(`b2`,NatType,Ref(`b2`)),Splice(Box(App(Lambda(`a4`,NatType,App(Lambda(`b3`,NatType,Ref(`b3`)),Ref(`a4`))),Nat(2))))))
+Step: Box(App(Lambda(`b2`,NatType,Ref(`b2`)),App(Lambda(`a4`,NatType,App(Lambda(`b3`,NatType,Ref(`b3`)),Ref(`a4`))),Nat(2))))
+Result: Box(App(Lambda(`b2`,NatType,Ref(`b2`)),App(Lambda(`a4`,NatType,App(Lambda(`b3`,NatType,Ref(`b3`)),Ref(`a4`))),Nat(2))))
+

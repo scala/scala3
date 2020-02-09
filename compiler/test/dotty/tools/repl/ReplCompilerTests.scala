@@ -1,6 +1,6 @@
 package dotty.tools.repl
 
-import org.junit.Assert._
+import org.junit.Assert.{assertTrue => assert, _}
 import org.junit.{Ignore, Test}
 
 class ReplCompilerTests extends ReplTest {
@@ -85,33 +85,33 @@ class ReplCompilerTests extends ReplTest {
   @Ignore @Test def i3305: Unit = {
     fromInitialState { implicit s =>
       run("null.toString")
-      assertTrue(storedOutput().startsWith("java.lang.NullPointerException"))
+      assert(storedOutput().startsWith("java.lang.NullPointerException"))
     }
 
     fromInitialState { implicit s =>
       run("def foo: Int = 1 + foo; foo")
-      assertTrue(storedOutput().startsWith("def foo: Int\njava.lang.StackOverflowError"))
+      assert(storedOutput().startsWith("def foo: Int\njava.lang.StackOverflowError"))
     }
 
     fromInitialState { implicit s =>
       run("""throw new IllegalArgumentException("Hello")""")
-      assertTrue(storedOutput().startsWith("java.lang.IllegalArgumentException: Hello"))
+      assert(storedOutput().startsWith("java.lang.IllegalArgumentException: Hello"))
     }
 
     fromInitialState { implicit s =>
       run("val (x, y) = null")
-      assertTrue(storedOutput().startsWith("scala.MatchError: null"))
+      assert(storedOutput().startsWith("scala.MatchError: null"))
     }
   }
 
   @Test def i2789: Unit = fromInitialState { implicit state =>
     run("(x: Int) => println(x)")
-    assertTrue(storedOutput().startsWith("val res0: Int => Unit ="))
+    assert(storedOutput().startsWith("val res0: Int => Unit ="))
   }
 
   @Test def byNameParam: Unit = fromInitialState { implicit state =>
     run("def f(g: => Int): Int = g")
-    assertTrue(storedOutput().startsWith("def f(g: => Int): Int"))
+    assert(storedOutput().startsWith("def f(g: => Int): Int"))
   }
 
   @Test def i4051 = fromInitialState { implicit state =>
@@ -163,8 +163,13 @@ class ReplCompilerTests extends ReplTest {
         storedOutput().trim
       )
       run("IntOrd")
-      assertTrue(storedOutput().startsWith("val res0: IntOrd.type ="))
+      assert(storedOutput().startsWith("val res0: IntOrd.type ="))
     }
+
+  @Test def i7934: Unit = fromInitialState { state =>
+    implicit val ctx = state.context
+    assertFalse(ParseResult.isIncomplete("_ + 1"))  // was: assertThrows[NullPointerException]
+  }
 
   @Test def testSingletonPrint = fromInitialState { implicit state =>
     run("""val a = "hello"; val x: a.type = a""")

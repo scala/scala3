@@ -4,7 +4,7 @@ import scala.quoted.matching._
 
 object Macro2 {
 
-  def mirrorFields[T](t: Type[T])(given qctx: QuoteContext): List[String] =
+  def mirrorFields[T](t: Type[T])(using qctx: QuoteContext): List[String] =
     t match {
       case '[$field *: $fields] => field.show.substring(1, field.show.length-1) :: mirrorFields(fields)
       case '[Unit] => Nil
@@ -20,7 +20,7 @@ object Macro2 {
           def encode(elem: T): String = body(elem)
         }
 
-    def derived[T: Type](ev: Expr[Mirror.Of[T]])(given qctx: QuoteContext): Expr[JsonEncoder[T]] = {
+    def derived[T: Type](ev: Expr[Mirror.Of[T]])(using qctx: QuoteContext): Expr[JsonEncoder[T]] = {
       import qctx.tasty.{_, given}
 
       val fields = ev match {
@@ -42,11 +42,11 @@ object Macro2 {
 
   inline def test2[T](value: =>T): Unit = ${ test2Impl('value) }
 
-  def test2Impl[T: Type](value: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
+  def test2Impl[T: Type](value: Expr[T])(using qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty.{_, given}
 
     val mirrorTpe = '[Mirror.Of[T]]
-    val mirrorExpr = summonExpr(given mirrorTpe).get
+    val mirrorExpr = summonExpr(using mirrorTpe).get
     val derivedInstance = JsonEncoder.derived(mirrorExpr)
 
     '{

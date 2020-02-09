@@ -210,7 +210,7 @@ class SignatureHelpTest {
   @Test def typeParameters: Unit = {
     val signature =
       S("foo",
-        List("M <: [X] => Any", "T <: [Z] => M[Z]", "U >: T"),
+        List("M[X]", "T[Z] <: M[Z]", "U >: T"),
         List(
           List(P("p0", "M[Int]"), P("p1", "T[Int]"), P("p2", "U"))
         ),
@@ -315,7 +315,7 @@ class SignatureHelpTest {
   @Test def classTypeParameters: Unit = {
     val signature =
       S("Foo",
-        List("M <: [X] => Any", "T <: [Z] => M[Z]", "U"),
+        List("M[X]", "T[Z] <: M[Z]", "U"),
         List(
           List(P("p0", "M[Int]"), P("p1", "T[Int]"), P("p2", "U")),
           List(P("p3", "Int"))

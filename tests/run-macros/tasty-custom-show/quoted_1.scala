@@ -7,7 +7,7 @@ object Macros {
   implicit inline def printOwners[T](inline x: T): Unit =
     ${ impl('x) }
 
-  def impl[T](x: Expr[T]) with (qctx: QuoteContext) : Expr[Unit] = {
+  def impl[T](x: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty.{_, given _}
 
     val buff = new StringBuilder
@@ -38,7 +38,7 @@ object Macros {
     '{print(${buff.result()})}
   }
 
-  def dummyShow with (qctx: QuoteContext) : scala.tasty.reflect.Printer[qctx.tasty.type] = {
+  def dummyShow(using qctx: QuoteContext) : scala.tasty.reflect.Printer[qctx.tasty.type] = {
     new scala.tasty.reflect.Printer {
       val tasty = qctx.tasty
       import qctx.tasty.{_, given _}

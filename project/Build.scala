@@ -62,9 +62,9 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "0.22.0-bin-20200127-f00fa72-NIGHTLY"
+  val referenceVersion = "0.22.0-RC1"
 
-  val baseVersion = "0.22.0"
+  val baseVersion = "0.23.0"
   val baseSbtDottyVersion = "0.4.0"
 
   // Versions used by the vscode extension to create a new project
@@ -490,7 +490,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "7.0.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "7.3.1-scala-1", // used by the backend
         Dependencies.`compiler-interface`,
         "org.jline" % "jline-reader" % "3.9.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.9.0",
@@ -1382,7 +1382,7 @@ object Build {
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
       withCommonSettings.
-      dependsOn(`dotty-interfaces`, dottyCompiler, dottyLibrary, tastyCore, `dotty-staging`, dottyDoc).
+      dependsOn(`dotty-interfaces`, dottyCompiler, dottyLibrary, tastyCore, `dotty-staging`, `dotty-tasty-inspector`, dottyDoc).
       settings(commonDistSettings).
       bootstrappedSettings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings

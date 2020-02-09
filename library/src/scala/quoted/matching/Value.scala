@@ -13,7 +13,7 @@ object Value {
    *  }
    *  ```
    */
-  def unapply[T](expr: Expr[T])(given valueOf: ValueOfExpr[T], qxtc: QuoteContext): Option[T] =
+  def unapply[T](expr: Expr[T])(using valueOf: ValueOfExpr[T], qxtc: QuoteContext): Option[T] =
     valueOf(expr)
 
 }

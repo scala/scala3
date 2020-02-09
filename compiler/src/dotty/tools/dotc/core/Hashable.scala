@@ -6,7 +6,7 @@ import scala.util.hashing.{ MurmurHash3 => hashing }
 import annotation.tailrec
 
 object Hashable {
- 
+
   /** A null terminated list of BindingTypes. We use `null` here for efficiency */
   class Binders(val tp: BindingType, val next: Binders)
 
@@ -44,7 +44,7 @@ trait Hashable {
     avoidSpecialHashes(hashing.finalizeHash(hashCode, arity))
 
   final def typeHash(bs: Binders, tp: Type): Int =
-    if (bs == null || tp.stableHash) tp.hash else tp.computeHash(bs)
+    if (bs == null || tp.hashIsStable) tp.hash else tp.computeHash(bs)
 
   def identityHash(bs: Binders): Int = avoidSpecialHashes(System.identityHashCode(this))
 
@@ -80,7 +80,7 @@ trait Hashable {
     finishHash(bs, hashing.mix(seed, elemHash), arity + 1, tps)
   }
 
-  
+
   protected final def doHash(x: Any): Int =
     finishHash(hashing.mix(hashSeed, x.hashCode), 1)
 

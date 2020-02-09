@@ -1,29 +1,29 @@
 class TC
 val tc = TC()
-class C with (x: TC) {
+class C(using x: TC) {
   assert(x eq tc)
 }
-class C2(n: Int) with (x: TC) with List[TC] {
+class C2(n: Int)(using x: TC)(using List[TC]) {
   assert(x eq tc)
   summon[List[TC]].foreach(t => assert(t eq tc))
 
-  def this() with TC with List[TC] = this(1)
+  def this()(using TC)(using List[TC]) = this(1)
 }
 
-class D extends C.with(tc)
-class D2 extends C2(1).with(tc).with(Nil)
+class D extends C(using tc)
+class D2 extends C2(1)(using tc)(using Nil)
 
-class Foo with TC {
+class Foo(using TC) {
   assert(summon[TC] != null)
 }
 
 object Test extends App {
-  new C.with(tc)
-  new C().with(tc)
-  new C.with(tc) {}
-  new C2(1).with(tc).with(List(tc))
-  new C2(1).with(tc).with(List(tc)) {}
-  new C2().with(tc).with(List(tc))
-  def foo with TC = ()
-  foo.with(tc)
+  new C(using tc)
+  new C()(using tc)
+  new C(using tc) {}
+  new C2(1)(using tc)(using List(tc))
+  new C2(1)(using tc)(using List(tc)) {}
+  new C2()(using tc)(using List(tc))
+  def foo(using TC) = ()
+  foo(using tc)
 }

@@ -67,7 +67,7 @@ object Scala3 with
 
   end Symbols
 
-  given NameOps: extension (name: Name) with
+  extension NameOps on (name: Name) with
 
     def isWildcard = name match
       case nme.WILDCARD | WILDCARDTypeName => true
@@ -87,9 +87,9 @@ object Scala3 with
         case _                                       => false
       }
 
-  end NameOps
+  // end NameOps
 
-  given SymbolOps: extension (sym: Symbol) with
+  extension SymbolOps on (sym: Symbol) with
 
     def ifExists(given Context): Option[Symbol] = if sym.exists then Some(sym) else None
 
@@ -126,7 +126,7 @@ object Scala3 with
     def isAnnotation(given Context): Boolean =
       sym.derivesFrom(defn.AnnotationClass)
 
-  end SymbolOps
+  // end SymbolOps
 
   object LocalSymbol with
 
@@ -146,7 +146,7 @@ object Scala3 with
     case '/' | '.' | '#' | ']' | ')' => true
     case _                           => false
 
-  given StringOps: extension (symbol: String) with
+  extension StringOps on (symbol: String) with
 
     def isSymbol: Boolean = !symbol.isEmpty
     def isRootPackage: Boolean = RootPackage == symbol
@@ -169,9 +169,9 @@ object Scala3 with
     def isJavaIdent =
       isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
 
-  end StringOps
+  // end StringOps
 
-  given InfoOps: extension (info: SymbolInformation) with
+  extension InfoOps on (info: SymbolInformation) with
 
     def isAbstract: Boolean = (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
     def isFinal: Boolean = (info.properties & SymbolInformation.Property.FINAL.value) != 0
@@ -205,11 +205,11 @@ object Scala3 with
     def isTrait: Boolean = info.kind.isTrait
     def isInterface: Boolean = info.kind.isInterface
 
-  end InfoOps
+  // end InfoOps
 
-  given RangeOps: extension (range: Range) with
+  extension RangeOps on (range: Range) with
     def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
-  end RangeOps
+  // end RangeOps
 
   /** Sort symbol occurrences by their start position. */
   given OccurrenceOrdering: Ordering[SymbolOccurrence] = (x, y) =>

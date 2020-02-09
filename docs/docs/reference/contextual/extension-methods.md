@@ -143,7 +143,7 @@ extension listOps on [T](xs: List[T]) {
   def third: T = xs.tail.tail.head
 }
 
-extension on [T](xs: List[T]) with Ordering[T] {
+extension on [T](xs: List[T])(using Ordering[T]) {
   def largest(n: Int) = xs.sorted.takeRight(n)
 }
 ```
@@ -158,11 +158,11 @@ given stringOps as AnyRef {
   }
 }
 given listOps as AnyRef {
-  def [T](xs: List[T]) second = xs.tail.head
-  def [T](xs: List[T]) third: T = xs.tail.tail.head
+  def [T](xs: List[T]).second = xs.tail.head
+  def [T](xs: List[T]).third: T = xs.tail.tail.head
 }
 given extension_largest_List_T as AnyRef {
-  def [T](xs: List[T]) largest with (Ordering[T]) (n: Int) =
+  def [T](xs: List[T]).largest(using Ordering[T])(n: Int) =
     xs.sorted.takeRight(n)
 }
 ```
@@ -171,7 +171,7 @@ given extension_largest_List_T as AnyRef {
 
 Here are the syntax changes for extension methods and collective extensions relative
 to the [current syntax](../../internals/syntax.md). `extension` is a soft keyword, recognized only
-in tandem with `of`. It can be used as an identifier everywhere else.
+in tandem with `on`. It can be used as an identifier everywhere else.
 ```
 DefSig            ::=  ...
                     |  ExtParamClause [nl] [‘.’] id DefParamClauses

@@ -11,7 +11,9 @@ import Scopes.Scope
 import dotty.tools.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
+import ast.Trees.{LambdaTypeTree, TypeBoundsTree}
 import Trees.Literal
+import Variances.Variance
 import annotation.tailrec
 import util.SimpleIdentityMap
 import util.Stats
@@ -425,42 +427,43 @@ object SymDenotations {
       case _ => unforcedDecls.openForMutations
     }
 
-    /** If this is a synthetic opaque type alias, mark it as Deferred with bounds
-     *  as given by the right hand side's `WithBounds` annotation, if one is present,
-     *  or with empty bounds of the right kind, otherwise.
-     *  At the same time, integrate the original alias as a refinement of the
+    /** If this is an opaque alias, replace the right hand side `info`
+     *  by appropriate bounds and store `info` in the refinement of the
      *  self type of the enclosing class.
+     *  Otherwise return `info`
+     *
+     *  @param info   Is assumed to be a (lambda-abstracted) right hand side TypeAlias
+     *                of the opaque type definition.
+     *  @param rhs    The right hand side tree of the type definition
      */
-    final def normalizeOpaque()(implicit ctx: Context) = {
-      def abstractRHS(tp: Type): Type = tp match {
-        case tp: HKTypeLambda => tp.derivedLambdaType(resType = abstractRHS(tp.resType))
-        case _ => defn.AnyType
-      }
-      if (isOpaqueAlias)
-        info match {
-          case TypeAlias(alias) =>
-            val (refiningAlias, bounds) = alias match {
-              case AnnotatedType(alias1, Annotation.WithBounds(bounds)) =>
-              	(alias1, bounds)
-              case _ =>
-              	(alias, TypeBounds(defn.NothingType, abstractRHS(alias)))
-            }
-            def refineSelfType(selfType: Type) =
-              RefinedType(selfType, name, TypeAlias(refiningAlias))
-            val enclClassInfo = owner.asClass.classInfo
-            enclClassInfo.selfInfo match {
-              case self: Type =>
-                owner.info = enclClassInfo.derivedClassInfo(
-                  selfInfo = refineSelfType(self.orElse(defn.AnyType)))
-              case self: Symbol =>
-                self.info = refineSelfType(self.info)
-            }
-            info = bounds
-            setFlag(Deferred)
-            typeRef.recomputeDenot()
-          case _ =>
-        }
-    }
+    def opaqueToBounds(info: Type, rhs: tpd.Tree)(given Context): Type =
+
+      def setAlias(tp: Type) =
+        def recur(self: Type): Unit = self match
+          case RefinedType(parent, name, rinfo) => rinfo match
+            case TypeAlias(lzy: LazyRef) if name == this.name =>
+              lzy.update(tp)
+            case _ =>
+              recur(parent)
+        recur(owner.asClass.givenSelfType)
+      end setAlias
+
+      def bounds(t: tpd.Tree): TypeBounds = t match
+        case LambdaTypeTree(_, body) =>
+          bounds(body)
+        case TypeBoundsTree(lo, hi, alias) =>
+          assert(!alias.isEmpty)
+          TypeBounds(lo.tpe, hi.tpe)
+        case _ =>
+          TypeBounds.empty
+
+      info match
+        case TypeAlias(alias) if isOpaqueAlias && owner.isClass =>
+          setAlias(alias)
+          HKTypeLambda.boundsFromParams(alias.typeParams, bounds(rhs))
+        case _ =>
+          info
+    end opaqueToBounds
 
     // ------ Names ----------------------------------------------
 
@@ -1202,7 +1205,7 @@ object SymDenotations {
     def opaqueAlias(implicit ctx: Context): Type = {
       def recur(tp: Type): Type = tp match {
         case RefinedType(parent, rname, TypeAlias(alias)) =>
-          if (rname == name) alias else recur(parent)
+          if rname == name then alias.stripLazyRef else recur(parent)
         case _ =>
           NoType
       }
@@ -1371,13 +1374,13 @@ object SymDenotations {
     def namedType(implicit ctx: Context): NamedType =
       if (isType) typeRef else termRef
 
-    /** The variance of this type parameter or type member as an Int, with
-     *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
+    /** The variance of this type parameter or type member as a subset of
+     *  {Covariant, Contravariant}
      */
-    final def variance(implicit ctx: Context): Int =
-      if (this.is(Covariant)) 1
-      else if (this.is(Contravariant)) -1
-      else 0
+    final def variance(implicit ctx: Context): Variance =
+      if is(Covariant) then Covariant
+      else if is(Contravariant) then Contravariant
+      else EmptyFlags
 
     /** The flags to be used for a type parameter owned by this symbol.
      *  Overridden by ClassDenotation.

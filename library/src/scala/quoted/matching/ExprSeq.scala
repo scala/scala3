@@ -9,14 +9,14 @@ object ExprSeq {
    *  Usage:
    *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
-   *  def sumExpr(argsExpr: Expr[Seq[Int]])(given QuoteContext): Expr[Int] = argsExpr match
+   *  def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match
    *    case ExprSeq(argExprs) =>
    *      // argExprs: Seq[Expr[Int]]
    *      ...
    *  }
    *  ```
    */
-  def unapply[T](expr: Expr[Seq[T]])(given qctx: QuoteContext): Option[Seq[Expr[T]]] = {
+  def unapply[T](expr: Expr[Seq[T]])(using qctx: QuoteContext): Option[Seq[Expr[T]]] = {
     import qctx.tasty.{_, given}
     def rec(tree: Term): Option[Seq[Expr[T]]] = tree match {
       case Typed(Repeated(elems, _), _) => Some(elems.map(x => x.seal.asInstanceOf[Expr[T]]))

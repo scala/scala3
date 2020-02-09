@@ -118,7 +118,7 @@ object ErrorReporting {
       else if (ctx.settings.explainTypes.value)
         i"""
            |${ctx.typerState.constraint}
-           |${TypeComparer.explained((found <:< expected)(_))}"""
+           |${TypeComparer.explained(found <:< expected)}"""
       else
         ""
     }
@@ -152,9 +152,9 @@ object ErrorReporting {
         if (found1 frozen_<:< expected1) (found, expected) else (found1, expected1)
       val postScript1 =
         if !postScript.isEmpty
-           || expected.isRef(defn.AnyClass)
+           || expected.isAny
+           || expected.isAnyRef
            || expected.isRef(defn.AnyValClass)
-           || expected.isRef(defn.ObjectClass)
            || defn.isBottomType(found)
         then postScript
         else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))

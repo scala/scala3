@@ -81,9 +81,23 @@ trait QuotesAndSplices {
           if (c.owner eq c.outer.owner) markAsMacro(c.outer)
           else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
           else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
+          else assert(false) // Did not find inline def to mark as macro
         markAsMacro(ctx)
       }
-      typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), tree.expr), pt)(spliceContext).withSpan(tree.span)
+
+      // Explicitly provide the given QuoteContext of the splice.
+      //  * Avoids leaking implementation details of scala.internal.quoted.CompileTime.exprSplice,
+      //    such as exprSplice taking a ?=> function argument
+      //  * Provide meaningful names for QuoteContext synthesized by within `${ ... }`
+      //  * TODO preserve QuoteContext.tasty path dependent type (see comment below and #8045)
+      val qctxParamName = NameKinds.UniqueName.fresh(s"qctx${level - 1}_".toTermName)
+      // TODO: Refine QuoteContext with the tasty context that the quote received
+      //       If encoloseing quote receives `qctx` then this type should be `QuoteContext { val tasty: qxtx.tasty.type }`
+      val qctxParamTpt = untpd.TypedSplice(TypeTree(defn.QuoteContextClass.typeRef))
+      val qctxParam = untpd.makeParameter(qctxParamName, qctxParamTpt, untpd.Modifiers(Given))
+      val expr = untpd.Function(List(qctxParam), tree.expr).withSpan(tree.span)
+
+      typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), expr), pt)(spliceContext).withSpan(tree.span)
     }
   }
 
@@ -218,7 +232,7 @@ trait QuotesAndSplices {
         case tdef: TypeDef if tdef.symbol.hasAnnotation(defn.InternalQuoted_patternBindHoleAnnot) =>
           transformTypeBindingTypeDef(tdef, typePatBuf)
         case tree @ AppliedTypeTree(tpt, args) =>
-            val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVariance)) { (arg, v) =>
+            val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVarianceSign)) { (arg, v) =>
               arg.tpe match {
                 case _: TypeBounds => transform(arg)
                 case _ => atVariance(variance * v)(transform(arg))
@@ -379,4 +393,3 @@ trait QuotesAndSplices {
       proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
   }
 }
-

@@ -9,10 +9,10 @@ package frp:
     changeTo(expr)
 
     protected def changeTo(expr: Signal.Caller ?=> T @uncheckedVariance): Unit =
-      myExpr = (caller => expr.with(caller))
+      myExpr = (caller => expr(using caller))
       computeValue()
 
-    def apply() with (caller: Signal.Caller) =
+    def apply()(using caller: Signal.Caller) =
       observers += caller
       assert(!caller.observers.contains(this), "cyclic signal definition")
       myValue

@@ -46,6 +46,14 @@ Note that if we need to run the main (in an object called `Test`) after
 compilation we need make available the compiler to the runtime:
 
 ```shell
-dotc -with-compiler -d out Test.scala
+dotc -d out Test.scala
 dotr -with-compiler -classpath out Test
 ```
+
+
+## Template project
+Using sbt version `1.1.5+`, do:
+```
+sbt new lampepfl/dotty-tasty-inspector.g8
+```
+in the folder where you want to clone the template.

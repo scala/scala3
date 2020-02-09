@@ -139,31 +139,7 @@ object NameOps {
       name.replace { case ExpandedName(_, unexp) => unexp }
     }
 
-    /** Remove the variance from the name. */
-    def invariantName: N = likeSpacedN {
-      name.replace { case VariantName(invariant, _) => invariant }
-    }
-
     def errorName: N = likeSpacedN(name ++ nme.ERROR)
-
-    /** Map variance value -1, +1 to 0, 1 */
-    private def varianceToNat(v: Int) = (v + 1) / 2
-
-    /** Map 0, 1 to variance value -1, +1 */
-    private def natToVariance(n: Int) = n * 2 - 1
-
-    /** Name with variance prefix: `+` for covariant, `-` for contravariant */
-    def withVariance(v: Int): N = {
-      val underlying = name.exclude(VariantName)
-      likeSpacedN(
-          if (v == 0) underlying
-          else VariantName(underlying.toTermName, varianceToNat(v)))
-    }
-
-    /** The variance as implied by the variance prefix, or 0 if there is
-     *  no variance prefix.
-     */
-    def variance: Int = name.collect { case VariantName(_, n) => natToVariance(n) }.getOrElse(0)
 
     def freshened(implicit ctx: Context): N = likeSpacedN {
       name.toTermName match {
@@ -174,38 +150,38 @@ object NameOps {
 
     def functionArity: Int =
       functionArityFor(str.Function) max
-      functionArityFor(str.ImplicitFunction) max {
+      functionArityFor(str.ContextFunction) max {
         val n =
           functionArityFor(str.ErasedFunction) max
-          functionArityFor(str.ErasedImplicitFunction)
+          functionArityFor(str.ErasedContextFunction)
         if (n == 0) -1 else n
       }
 
-    /** Is a function name, i.e one of FunctionXXL, FunctionN, ImplicitFunctionN for N >= 0 or ErasedFunctionN, ErasedImplicitFunctionN for N > 0
+    /** Is a function name, i.e one of FunctionXXL, FunctionN, ContextFunctionN for N >= 0 or ErasedFunctionN, ErasedContextFunctionN for N > 0
      */
     def isFunction: Boolean = (name eq tpnme.FunctionXXL) || functionArity >= 0
 
-    /** Is an implicit function name, i.e one of ImplicitFunctionN for N >= 0 or ErasedImplicitFunctionN for N > 0
+    /** Is an context function name, i.e one of ContextFunctionN for N >= 0 or ErasedContextFunctionN for N > 0
      */
-    def isImplicitFunction: Boolean =
-      functionArityFor(str.ImplicitFunction) >= 0 ||
-      functionArityFor(str.ErasedImplicitFunction) > 0
+    def isContextFunction: Boolean =
+      functionArityFor(str.ContextFunction) >= 0 ||
+      functionArityFor(str.ErasedContextFunction) > 0
 
-    /** Is an erased function name, i.e. one of ErasedFunctionN, ErasedImplicitFunctionN for N > 0
+    /** Is an erased function name, i.e. one of ErasedFunctionN, ErasedContextFunctionN for N > 0
       */
     def isErasedFunction: Boolean =
       functionArityFor(str.ErasedFunction) > 0 ||
-      functionArityFor(str.ErasedImplicitFunction) > 0
+      functionArityFor(str.ErasedContextFunction) > 0
 
     /** Is a synthetic function name, i.e. one of
      *    - FunctionN for N > 22
-     *    - ImplicitFunctionN for N >= 0
+     *    - ContextFunctionN for N >= 0
      *    - ErasedFunctionN for N > 0
-     *    - ErasedImplicitFunctionN for N > 0
+     *    - ErasedContextFunctionN for N > 0
      */
     def isSyntheticFunction: Boolean =
       functionArityFor(str.Function) > MaxImplementedFunctionArity ||
-      functionArityFor(str.ImplicitFunction) >= 0 ||
+      functionArityFor(str.ContextFunction) >= 0 ||
       isErasedFunction
 
     /** Parsed function arity for function with some specific prefix */
