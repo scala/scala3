@@ -134,13 +134,13 @@ inline def funkyAssertEquals(actual: Double, expected: =>Double, inline delta: D
   if (actual - expected).abs > delta then
     throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${delta}")
 
-funkyAssertEquals(computeActual(), f() + g(), h() + i() - j())
+funkyAssertEquals(computeActual(), computeExpected(), computeDelta())
 // translates to
 //
 //    val actual = computeActual()
-//    def expected = f() + g()
-//    if (actual - expected).abs > h() + i() - j() then
-//      throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${h() + i() - j()}")
+//    def expected = computeExpected()
+//    if (actual - expected).abs > computeDelta() then
+//      throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${computeDelta()}")
 ```
 
 ### Relationship to @inline
