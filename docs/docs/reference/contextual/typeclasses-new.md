@@ -80,9 +80,9 @@ assert(3 == List(1, 2).combineAll)
 ### Functors:
 
 A `Functor` for a type provides the ability for its values to be "mapped over", i.e. apply a function that transforms inside a value while remembering its shape. For example, to modify every element of a collection without dropping or adding elements.
-Let's name our "type containing zero or more elements" `F`. It's a type constructor: the type of its values becomes concrete when provided a type argument.
-Therefore we'll write it `F[_]` since we don't really care about the type of the elements it contains.
-The definition of the `Functor` ability would thus be written as:
+We can represent all types that can be "mapped over" with `F`. It's a type constructor: the type of its values becomes concrete when provided a type argument.
+Therefore we write it `F[_]`, hinting that it is a type with internal details we can inspect.
+The definition of a generic `Functor` would thus be written as:
 
 ```scala
 trait Functor[F[_]] {
@@ -90,7 +90,7 @@ trait Functor[F[_]] {
 }
 ```
 
-Which could read as follows: "The `Functor` ability for a wrapper type `F` represents the ability to transform `F[A]` to `F[B]` through the application of the `mapper` function whose type is `A => B`".
+Which could read as follows: "A `Functor` for the type constructor `F[_]` represents the ability to transform `F[A]` to `F[B]` through the application of the `mapper` function whose type is `A => B`". We call the `Functor` definition here a _typeclass_.
 This way, we could define an instance of `Functor` for the `List` type: 
 
 ```scala
@@ -252,7 +252,7 @@ given configDependentMonad as Monad[[Result] =>> Config => Result]
 
 
 
-The Reader monad allows to abstract over the `Config` type, named `Ctx` in the following examples. It is therefore _parameterized_ by `Ctx`:
+It is likely that we would like to use this pattern with other kinds of environments than our `Config` trait. The Reader monad allows us to abstract away `Config` as a type _parameter_, named `Ctx` in the following definition:
 
 ```scala
 given readerMonad[Ctx] as Monad[[X] =>> Ctx => X] {
@@ -265,8 +265,8 @@ given readerMonad[Ctx] as Monad[[X] =>> Ctx => X] {
 
 ### Summary
 
-The definition of a _typeclass_ is expressed in Scala 3 via a `trait`.
-The main difference with other traits resides in how these traits are implemented. 
-In the case of a _typeclass_ the trait's implementations are expressed through `given ... as` type definitions, and not through classes that `extends` the trait linearly.
+The definition of a _typeclass_ is expressed via a parameterised type with abstract members, such as a `trait`.
+The main difference between object oriented polymorphism, and ad-hoc polymorphism with _typeclasses_, is how the definition of the _typeclass_ is implemented, in relation to the type it acts upon.
+In the case of a _typeclass_, its implementation for a concrete type is expressed through a `given ... as` term definition, which is supplied as an implicit argument alongside the value it acts upon. With object oriented polymorphism, the implementation is mixed into the parents of a class, and only a single term is required to perform a polymorphic operation.
 
-In addition to these given instances, other constructs like extension methods, context bounds and type lambdas allow a concise and natural expression of _typeclasses_.
+To conclude, in addition to given instances, other constructs like extension methods, context bounds and type lambdas allow a concise and natural expression of _typeclasses_.
