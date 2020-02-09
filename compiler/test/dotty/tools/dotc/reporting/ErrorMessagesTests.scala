@@ -1699,7 +1699,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
         assertMessageCount(1, messages)
         val ImplicitTypesCanOnlyBeFunctionTypes() :: Nil = messages
-        assertEquals("Types with given keyword can only be function types `given (...) => ...`", messages.head.msg)
+        assertEquals("Types with given keyword can only be function types `(given ...) => ...`", messages.head.msg)
       }
 
   @Test def erasedTypesCanOnlyBeFunctionTypesFailed() =
@@ -1708,7 +1708,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
         assertMessageCount(1, messages)
         val ErasedTypesCanOnlyBeFunctionTypes() :: Nil = messages
-        assertEquals("Types with erased keyword can only be function types `erased (...) => ...`", messages.head.msg)
+        assertEquals("Types with erased keyword can only be function types `(erased ...) => ...`", messages.head.msg)
       }
 
   @Test def caseClassMissingParamListSuccessful =

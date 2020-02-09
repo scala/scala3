@@ -2383,17 +2383,17 @@ object messages {
       val explanation: String = ""
     }
 
-  case class ImplicitTypesCanOnlyBeFunctionTypes()(implicit val ctx: Context)
+  case class ImplicitTypesCanOnlyBeFunctionTypes()(implicit val ctx: Context) // TODO remove when (given ...) => is removed
     extends Message(ImplicitTypesCanOnlyBeFunctionTypesID) {
     val kind: String = "Syntax"
-    val msg: String = "Types with given keyword can only be function types `given (...) => ...`"
+    val msg: String = "Types with given keyword can only be function types `(given ...) => ...`"
     val explanation: String = ""
   }
 
   case class ErasedTypesCanOnlyBeFunctionTypes()(implicit val ctx: Context)
     extends Message(ErasedTypesCanOnlyBeFunctionTypesID) {
     val kind: String = "Syntax"
-    val msg: String = "Types with erased keyword can only be function types `erased (...) => ...`"
+    val msg: String = "Types with erased keyword can only be function types `(erased ...) => ...`"
     val explanation: String = ""
   }
 
