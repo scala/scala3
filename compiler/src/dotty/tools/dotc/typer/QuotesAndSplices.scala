@@ -90,8 +90,8 @@ trait QuotesAndSplices {
       //  * Provide meaningful names for QuoteContext synthesized by within `${ ... }`
       //  * TODO preserve QuoteContext.tasty path dependent type (see comment below and #8045)
       val qctxParamName = NameKinds.UniqueName.fresh(s"qctx${level - 1}_".toTermName)
-      // TODO: Refine QuoteContext with the tasty context that the quote reacived
-      //       If encoloseing quote recieves `qctx` then this type should be `QuoteContext { val tasty: qxtx.tasty.type }`
+      // TODO: Refine QuoteContext with the tasty context that the quote received
+      //       If encoloseing quote receives `qctx` then this type should be `QuoteContext { val tasty: qxtx.tasty.type }`
       val qctxParamTpt = untpd.TypedSplice(TypeTree(defn.QuoteContextClass.typeRef))
       val qctxParam = untpd.makeParameter(qctxParamName, qctxParamTpt, untpd.Modifiers(Given))
       val expr = untpd.Function(List(qctxParam), tree.expr).withSpan(tree.span)
@@ -392,4 +392,3 @@ trait QuotesAndSplices {
       proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
   }
 }
-
