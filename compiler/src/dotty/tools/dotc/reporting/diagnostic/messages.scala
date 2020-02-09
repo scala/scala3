@@ -2443,4 +2443,30 @@ object messages {
            | ${hl("object")} ${mdef.name} { }
            |""".stripMargin
   }
+
+  case class TypedCaseDoesNotExplicitlyExtendTypedEnum(enumDef: Symbol, caseDef: untpd.TypeDef)(implicit ctx: Context)
+    extends Message(TypedCaseDoesNotExplicitlyExtendTypedEnumID) {
+    val kind: String = "Syntax"
+    val msg: String = i"explicit extends clause needed because both enum case and enum class have type parameters"
+
+    val explanation: String =
+      em"""Enumerations where the enum class as well as the enum case have type parameters need
+          |an explicit extends.
+          |for example:
+          | ${hl("enum")} ${enumDef.name}[T] {
+          |  ${hl("case")} ${caseDef.name}[U](u: U) ${hl("extends")} ${enumDef.name}[U]
+          | }
+          |""".stripMargin
+  }
+
+  case class IllegalRedefinitionOfStandardKind(kindType: String, name: Name)(implicit ctx: Context)
+    extends Message(IllegalRedefinitionOfStandardKindID) {
+    val kind: String = "Syntax"
+    val msg: String = em"illegal redefinition of standard $kindType $name"
+
+    val explanation: String =
+      em"""| "$name" is a standard Scala core `$kindType`
+           | Please choose a different name to avoid conflicts
+           |""".stripMargin
+  }
 }

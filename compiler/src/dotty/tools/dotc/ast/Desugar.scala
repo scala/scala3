@@ -558,7 +558,7 @@ object desugar {
       else if (originalTparams.isEmpty)
         appliedRef(enumClassRef)
       else {
-        ctx.error(i"explicit extends clause needed because both enum case and enum class have type parameters"
+        ctx.error(TypedCaseDoesNotExplicitlyExtendTypedEnum(enumClass, cdef)
             , cdef.sourcePos.startPos)
         appliedTypeTree(enumClassRef, constrTparams map (_ => anyRef))
       }
@@ -979,7 +979,7 @@ object desugar {
     if (name.isEmpty) name = name.likeSpaced(inventGivenOrExtensionName(impl))
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
       def kind = if (name.isTypeName) "class" else "object"
-      ctx.error(em"illegal redefinition of standard $kind $name", mdef.sourcePos)
+      ctx.error(IllegalRedefinitionOfStandardKind(kind, name), mdef.sourcePos)
       name = name.errorName
     }
     name

@@ -1770,4 +1770,39 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("sealed modifier is redundant for objects", errorMsg)
         assertEquals("Foo", mdef.name.toString)
       }
+
+  @Test def enumAndCaseWithTypesNeedExplicitExtends =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |enum E[T,U,V] {
+        |  case C[X,Y,Z](x: X, y: Y, z: Z)
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val TypedCaseDoesNotExplicitlyExtendTypedEnum(enumDef, caseDef) :: Nil = messages
+        assertEquals("explicit extends clause needed because both enum case and enum class have type parameters", errorMsg)
+        assertEquals("E", enumDef.name.toString)
+        assertEquals("C", caseDef.name.toString)
+      }
+
+  @Test def illegalRedefinitionOfStandardKind =
+    checkMessagesAfter(RefChecks.name) {
+      """ package scala {
+        |   class Any()
+        | }
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val IllegalRedefinitionOfStandardKind(kind, name) :: Nil = messages
+        assertEquals("illegal redefinition of standard class Any", errorMsg)
+        assertEquals("class", kind)
+        assertEquals("Any", name.toString)
+      }
 }
