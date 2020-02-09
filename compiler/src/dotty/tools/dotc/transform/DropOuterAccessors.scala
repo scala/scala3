@@ -31,9 +31,13 @@ class DropOuterAccessors extends MiniPhase with IdentityDenotTransformer:
   def (sym: Symbol).isOuterParamAccessor(using Context) =
     sym.is(ParamAccessor) && sym.name == nme.OUTER
 
+  /** Characterizes outer accessors and outer fields that can be dropped
+   *  if there are no references to them from within the class in which they
+   *  are defined.
+   */
   private def mightBeDropped(sym: Symbol)(using Context) =
     (sym.is(OuterAccessor) || sym.isOuterParamAccessor)
-    && !sym.owner.isExtensibleClass
+    && sym.owner.isAnonymousClass
 
   /** The number of times an outer accessor that might be dropped is accessed */
   private val accessCount = new mutable.HashMap[Symbol, Int]:
