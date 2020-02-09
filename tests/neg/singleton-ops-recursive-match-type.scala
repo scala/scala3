@@ -1,7 +1,7 @@
 import scala.compiletime.ops.int._
 
 object Test {
-  type GCD[A <: Int, B <: Int] <: Int = B match {
+  type GCD[A <: Int & Singleton, B <: Int & Singleton] <: Int & Singleton = B match {
     case 0 => A
     case _ => GCD[B, A % B]
   }

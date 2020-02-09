@@ -462,9 +462,9 @@ match type can dispatch to the correct implementation:
 import scala.compiletime.ops._
 import scala.annotation.infix
 
-@infix type +[X <: Int | String, Y <: Int | String] = (X, Y) match {
-  case (Int, Int) => int.+[X, Y]
-  case (String, String) => string.+[X, Y]
+@infix type +[X <: Int & Singleton | String & Singleton, Y <: Int & Singleton | String & Singleton] = (X, Y) match {
+  case (Int & Singleton, Int & Singleton) => int.+[X, Y]
+  case (String & Singleton, String & Singleton) => string.+[X, Y]
 }
 
 val concat: "a" + "b" = "ab"
