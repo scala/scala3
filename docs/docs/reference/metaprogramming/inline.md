@@ -121,23 +121,26 @@ power(expr, 10)
 ```
 
 Parameters of inline methods can have an `inline` modifier as well. This means
-that actual arguments to these parameters will be inlined in the body of the `inline def`.
-`inline` parameter have call semantics equivalent to by-name parameters but allows for duplication
-of the code in the argument. It is usualy useful constant values need to be propagated to allow
-further optimizations/reductions.
+that actual arguments to these parameters will be inlined in the body of the 
+`inline def`. `inline` parameters have call semantics equivalent to by-name parameters 
+but allow for duplication of the code in the argument. It is usually useful when constant 
+values need to be propagated to allow further optimizations/reductions.
 
 The following example shows the difference in translation between by-value, by-name and `inline`
 parameters:
 
 ```scala
-inline def sumTwice(a: Int, b: =>Int, inline c: Int) = a + a + b + b + c + c
+inline def funkyAssertEquals(actual: Double, expected: =>Double, inline delta: Double): Unit =
+  if (actual - expected).abs > delta then
+    throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${delta}")
 
-sumTwice(f(), g(), h())
+funkyAssertEquals(computeActual(), f() + g(), h() + i() - j())
 // translates to
 //
-//    val a = f()
-//    def b = g()
-//    a + a + b + b + h() + h()
+//    val actual = computeActual()
+//    def expected = f() + g()
+//    if (actual - expected).abs > h() + i() - j() then
+//      throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${h() + i() - j()}")
 ```
 
 ### Relationship to @inline
