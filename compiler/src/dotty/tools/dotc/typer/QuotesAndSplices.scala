@@ -54,7 +54,7 @@ trait QuotesAndSplices {
       else if (tree.quoted.isType)
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuote.termRef), tree.quoted :: Nil), pt)(quoteContext)
       else
-        typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(quoteContext).select(nme.apply).appliedTo(qctx)
+        typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(pushQuoteContext(qctx)).select(nme.apply).appliedTo(qctx)
     tree1.withSpan(tree.span)
   }
 
@@ -91,19 +91,23 @@ trait QuotesAndSplices {
         markAsMacro(ctx)
       }
 
+      val (outerQctx, ctx1) = popQuoteContext()
+
       // Explicitly provide the given QuoteContext of the splice.
       //  * Avoids leaking implementation details of scala.internal.quoted.CompileTime.exprSplice,
       //    such as exprSplice taking a ?=> function argument
       //  * Provide meaningful names for QuoteContext synthesized by within `${ ... }`
-      //  * TODO preserve QuoteContext.tasty path dependent type (see comment below and #8045)
-      val qctxParamName = NameKinds.UniqueName.fresh(s"qctx${level - 1}_".toTermName)
-      // TODO: Refine QuoteContext with the tasty context that the quote received
-      //       If encoloseing quote receives `qctx` then this type should be `QuoteContext { val tasty: qxtx.tasty.type }`
-      val qctxParamTpt = untpd.TypedSplice(TypeTree(defn.QuoteContextClass.typeRef))
+      //  * If within a quote, provide a QuoteContext is linked typewise with the outer QuoteContext
+      val qctxParamName = NameKinds.UniqueName.fresh(s"qctx${if level > 0 then level - 1 else ""}_".toTermName)
+      val qctxParamTpe = outerQctx match {
+        case Some(qctxRef) => qctxRef.tpe.select("NestedContext".toTypeName)
+        case _ => defn.QuoteContextClass.typeRef // splice at level 0 (or lower)
+      }
+      val qctxParamTpt = untpd.TypedSplice(TypeTree(qctxParamTpe))
       val qctxParam = untpd.makeParameter(qctxParamName, qctxParamTpt, untpd.Modifiers(Given))
       val expr = untpd.Function(List(qctxParam), tree.expr).withSpan(tree.span)
 
-      typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), expr), pt)(spliceContext).withSpan(tree.span)
+      typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), expr), pt)(ctx1).withSpan(tree.span)
     }
   }
 

@@ -6,7 +6,7 @@ import scala.quoted.{Expr, QuoteContext, Type}
 object Unpickler {
 
   type PickledQuote = List[String]
-  type PickledExprArgs = Seq[Seq[Any] => ((QuoteContext ?=> Expr[Any]) | Type[_])]
+  type PickledExprArgs = Seq[Seq[Any] => Any]
   type PickledTypeArgs = Seq[Seq[Any] => Type[_]]
 
   /** Unpickle `repr` which represents a pickled `Expr` tree,

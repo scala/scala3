@@ -10,13 +10,32 @@ import scala.quoted.show.SyntaxHighlight
  *
  *  @param tasty Typed AST API. Usage: `def f(qctx: QuoteContext) = { import qctx.tasty.{_, given}; ... }`.
  */
-class QuoteContext(val tasty: scala.tasty.Reflection) {
+class QuoteContext(val tasty: scala.tasty.Reflection) { self =>
 
+  /** Type of a QuoteContext profided by a splice within a quote that took this context.
+   *  It is only required if working with the reflection API.
+   *
+   *  Usually it is infered by the quotes an splices typing. But sometimes it is necessary
+   *  to explicitly state that a context is nested as in the following example:
+   *
+   *  ```scala
+   *  def run(using qctx: QuoteContext)(tree: qctx.tasty.Tree): Unit =
+   *    def nested()(using qctx.NestedContext): Expr[Int] = '{  ${ makeExpr(tree) } + 1  }
+   *    '{  ${ nested() } + 2 }
+   *  def makeExpr(using qctx: QuoteContext)(tree: qctx.tasty.Tree): Expr[Int] = ???
+   *  ```
+   */
+  type NestedContext = QuoteContext {
+    val tasty: self.tasty.type
+  }
+
+  /** Show the fully elaborated source code representation of an expression */
   def show(expr: Expr[_], syntaxHighlight: SyntaxHighlight): String = {
     import tasty.{_, given}
     expr.unseal.showWith(syntaxHighlight)
   }
 
+  /** Show the fully elaborated source code representation of a type */
   def show(tpe: Type[_], syntaxHighlight: SyntaxHighlight): String = {
     import tasty.{_, given}
     tpe.unseal.showWith(syntaxHighlight)

@@ -232,7 +232,7 @@ class ReifyQuotes extends MacroTransform {
           else ref(defn.Unpickler_unpickleExpr).appliedToType(originalTp.widen)
         val spliceResType =
           if (isType) defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
-          else defn.FunctionType(1, isContextual = true).appliedTo(defn.QuoteContextClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)) | defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
+          else defn.AnyType // defn.FunctionType(1, isContextual = true).appliedTo(defn.QuoteContextClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)) | defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
         val pickledQuoteStrings = liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType)
         val splicesList = liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), spliceResType))
         meth.appliedTo(pickledQuoteStrings, splicesList)
@@ -394,7 +394,7 @@ class ReifyQuotes extends MacroTransform {
             val body = capturers(tree.symbol).apply(tree)
             val splice: Tree =
               if (tree.isType) body.select(tpnme.splice)
-              else ref(defn.InternalQuoted_exprSplice).appliedToType(tree.tpe).appliedTo(body)
+              else ref(defn.InternalQuoted_exprSplice).appliedToTypes(List(tree.tpe, defn.QuoteContextClass.typeRef)).appliedTo(body)
 
             transformSplice(body, splice)
 
