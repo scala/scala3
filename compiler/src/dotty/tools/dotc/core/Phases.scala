@@ -230,6 +230,7 @@ object Phases {
     private var myErasurePhase: Phase = _
     private var myElimErasedValueTypePhase: Phase = _
     private var myLambdaLiftPhase: Phase = _
+    private var myCountOuterAccessesPhase: Phase = _
     private var myFlattenPhase: Phase = _
     private var myGenBCodePhase: Phase = _
 
@@ -248,6 +249,7 @@ object Phases {
     final def erasurePhase: Phase = myErasurePhase
     final def elimErasedValueTypePhase: Phase = myElimErasedValueTypePhase
     final def lambdaLiftPhase: Phase = myLambdaLiftPhase
+    final def countOuterAccessesPhase = myCountOuterAccessesPhase
     final def flattenPhase: Phase = myFlattenPhase
     final def genBCodePhase: Phase = myGenBCodePhase
 
@@ -267,6 +269,7 @@ object Phases {
       myElimErasedValueTypePhase = phaseOfClass(classOf[ElimErasedValueType])
       myPatmatPhase = phaseOfClass(classOf[PatternMatcher])
       myLambdaLiftPhase = phaseOfClass(classOf[LambdaLift])
+      myCountOuterAccessesPhase = phaseOfClass(classOf[CountOuterAccesses])
       myFlattenPhase = phaseOfClass(classOf[Flatten])
       myExplicitOuterPhase = phaseOfClass(classOf[ExplicitOuter])
       myGettersPhase = phaseOfClass(classOf[Getters])

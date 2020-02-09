@@ -323,6 +323,9 @@ object ExplicitOuter {
       tpe
   }
 
+  def (sym: Symbol).isOuterParamAccessor(using Context): Boolean =
+    sym.is(ParamAccessor) && sym.name == nme.OUTER
+
   def outer(implicit ctx: Context): OuterOps = new OuterOps(ctx)
 
   /** The operations in this class

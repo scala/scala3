@@ -8,62 +8,44 @@ import ast._
 import Trees._
 import Flags._
 import Symbols._
+import Contexts._
 import Decorators._
 import DenotTransformers._
-import StdNames.nme
+import ExplicitOuter.isOuterParamAccessor
+import CountOuterAccesses.mightBeDropped
 import collection.mutable
+import annotation.threadUnsafe
 
 object DropOuterAccessors:
   val name: String = "dropOuterAccessors"
 
-/** Drops outer accessors of final classes that are unused */
+/** Drops unused outer accessors of inner classes that are visible only in one
+ *  toplevel class. For other classes, we can't tell whether an outer accessor
+ *  is used or not. It could for instance be used in a type test in some other source.
+ */
 class DropOuterAccessors extends MiniPhase with IdentityDenotTransformer:
   thisPhase =>
   import tpd._
 
   override def phaseName: String = DropOuterAccessors.name
 
-  override def runsAfter: Set[String] = Set(LambdaLift.name)
-    // LambdaLift can create outer paths. These need to be known in this phase
+  override def runsAfterGroupsOf: Set[String] = Set(CountOuterAccesses.name)
 
   override def changesMembers: Boolean = true // the phase drops outer accessors
 
-  def (sym: Symbol).isOuterParamAccessor(using Context) =
-    sym.is(ParamAccessor) && sym.name == nme.OUTER
-
-  /** Characterizes outer accessors and outer fields that can be dropped
-   *  if there are no references to them from within the class in which they
-   *  are defined.
-   */
-  private def mightBeDropped(sym: Symbol)(using Context) =
-    (sym.is(OuterAccessor) || sym.isOuterParamAccessor)
-    && sym.owner.isAnonymousClass
-
-  /** The number of times an outer accessor that might be dropped is accessed */
-  private val accessCount = new mutable.HashMap[Symbol, Int]:
-    override def default(key: Symbol): Int = 0
-
-  private def markAccessed(tree: RefTree)(implicit ctx: Context): Tree =
-    val sym = tree.symbol
-    if mightBeDropped(sym) then accessCount(sym) += 1
-    tree
-
-  override def transformIdent(tree: Ident)(using Context): Tree =
-    markAccessed(tree)
-
-  override def transformSelect(tree: Select)(using Context): Tree =
-    markAccessed(tree)
-
   override def transformTemplate(impl: Template)(using ctx: Context): Tree =
+    val outerAccessCount = ctx.base.countOuterAccessesPhase
+      .asInstanceOf[CountOuterAccesses]
+      .outerAccessCount
 
     def dropOuterAccessor(stat: Tree): Boolean = stat match
       case stat: DefDef
       if stat.symbol.is(OuterAccessor)
           && mightBeDropped(stat.symbol)
-          && accessCount(stat.symbol) == 0 =>
+          && outerAccessCount(stat.symbol) == 0 =>
         assert(stat.rhs.isInstanceOf[RefTree], stat)
-        assert(accessCount(stat.rhs.symbol) > 0)
-        accessCount(stat.rhs.symbol) -= 1
+        assert(outerAccessCount(stat.rhs.symbol) > 0)
+        outerAccessCount(stat.rhs.symbol) -= 1
         stat.symbol.dropAfter(thisPhase)
         true
       case _ =>
@@ -75,7 +57,7 @@ class DropOuterAccessors extends MiniPhase with IdentityDenotTransformer:
       case stat: ValDef
       if stat.symbol.isOuterParamAccessor
           && mightBeDropped(stat.symbol)
-          && accessCount(stat.symbol) == 1 =>
+          && outerAccessCount(stat.symbol) == 1 =>
         droppedParamAccessors += stat.symbol
         stat.symbol.dropAfter(thisPhase)
         true
