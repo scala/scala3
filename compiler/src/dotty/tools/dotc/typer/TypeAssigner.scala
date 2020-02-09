@@ -295,7 +295,7 @@ trait TypeAssigner {
     }
   }
 
-  def importSuggestionAddendum(pt: Type)(given Context): String = ""
+  def importSuggestionAddendum(pt: Type)(using Context): String = ""
 
   /** The type of the selection in `tree`, where `qual1` is the typed qualifier part.
    *  The selection type is additionally checked for accessibility.

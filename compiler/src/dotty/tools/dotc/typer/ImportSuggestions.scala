@@ -53,16 +53,16 @@ trait ImportSuggestions with
    *   - Any members of the java or java.lang packages. These are
    *     skipped as an optimization, since they won't contain implicits anyway.
    */
-  private def suggestionRoots(given Context) =
+  private def suggestionRoots(using Context) =
     val seen = mutable.Set[TermRef]()
 
-    def lookInside(root: Symbol)(given Context): Boolean =
+    def lookInside(root: Symbol)(using Context): Boolean =
       if root.is(Package) then root.isTerm && root.isCompleted
       else !root.name.is(FlatName)
         && !root.name.lastPart.contains('$')
         && root.is(ModuleVal, butNot = JavaDefined)
 
-    def nestedRoots(site: Type)(given Context): List[Symbol] =
+    def nestedRoots(site: Type)(using Context): List[Symbol] =
       val seenNames = mutable.Set[Name]()
       site.baseClasses.flatMap { bc =>
         bc.info.decls.filter { dcl =>
@@ -72,7 +72,7 @@ trait ImportSuggestions with
         }
       }
 
-    def rootsStrictlyIn(ref: Type)(given Context): List[TermRef] =
+    def rootsStrictlyIn(ref: Type)(using Context): List[TermRef] =
       val site = ref.widen
       val refSym = site.typeSymbol
       val nested =
@@ -91,18 +91,18 @@ trait ImportSuggestions with
         .flatMap(rootsIn)
         .toList
 
-    def rootsIn(ref: TermRef)(given Context): List[TermRef] =
+    def rootsIn(ref: TermRef)(using Context): List[TermRef] =
       if seen.contains(ref) then Nil
       else
         implicits.println(i"search for suggestions in ${ref.symbol.fullName}")
         seen += ref
         ref :: rootsStrictlyIn(ref)
 
-    def rootsOnPath(tp: Type)(given Context): List[TermRef] = tp match
+    def rootsOnPath(tp: Type)(using Context): List[TermRef] = tp match
       case ref: TermRef => rootsIn(ref) ::: rootsOnPath(ref.prefix)
       case _ => Nil
 
-    def recur(given ctx: Context): List[TermRef] =
+    def recur(using ctx: Context): List[TermRef] =
       if ctx.owner.exists then
         val defined =
           if ctx.owner.isClass then
@@ -118,7 +118,7 @@ trait ImportSuggestions with
           else ctx.importInfo.sym.info match
             case ImportType(expr) => rootsOnPath(expr.tpe)
             case _ => Nil
-        defined ++ imported ++ recur(given ctx.outer)
+        defined ++ imported ++ recur(using ctx.outer)
       else Nil
 
     recur
@@ -137,7 +137,7 @@ trait ImportSuggestions with
    *   return instead a list of all possible references to extension methods named
    *   `name` that are applicable to `T`.
    */
-  private def importSuggestions(pt: Type)(given ctx: Context): (List[TermRef], List[TermRef]) =
+  private def importSuggestions(pt: Type)(using ctx: Context): (List[TermRef], List[TermRef]) =
     val timer = new Timer()
     val deadLine = System.currentTimeMillis() + suggestImplicitTimeOut
 
@@ -239,9 +239,9 @@ trait ImportSuggestions with
    *  The addendum suggests given imports that might fix the problem.
    *  If there's nothing to suggest, an empty string is returned.
    */
-  override def importSuggestionAddendum(pt: Type)(given ctx: Context): String =
+  override def importSuggestionAddendum(pt: Type)(using ctx: Context): String =
     val (fullMatches, headMatches) =
-      importSuggestions(pt)(given ctx.fresh.setExploreTyperState())
+      importSuggestions(pt)(using ctx.fresh.setExploreTyperState())
     implicits.println(i"suggestions for $pt in ${ctx.owner} = ($fullMatches%, %, $headMatches%, %)")
     val (suggestedRefs, help) =
       if fullMatches.nonEmpty then (fullMatches, "fix")

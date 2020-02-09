@@ -201,9 +201,9 @@ object Types {
         false
     }
 
-    def isAny(given Context): Boolean     = isRef(defn.AnyClass, skipRefined = false)
-    def isAnyRef(given Context): Boolean  = isRef(defn.ObjectClass, skipRefined = false)
-    def isAnyKind(given Context): Boolean = isRef(defn.AnyKindClass, skipRefined = false)
+    def isAny(using Context): Boolean     = isRef(defn.AnyClass, skipRefined = false)
+    def isAnyRef(using Context): Boolean  = isRef(defn.ObjectClass, skipRefined = false)
+    def isAnyKind(using Context): Boolean = isRef(defn.AnyKindClass, skipRefined = false)
 
     /** Does this type refer exactly to class symbol `sym`, instead of to a subclass of `sym`?
      *  Implemented like `isRef`, but follows more types: all type proxies as well as and- and or-types
@@ -1051,7 +1051,7 @@ object Types {
     }
 
     /** Strip LazyRef wrappers */
-    def stripLazyRef(given Context): Type = this match
+    def stripLazyRef(using Context): Type = this match
       case lzy: LazyRef => lzy.ref.stripLazyRef
       case _ => this
 
@@ -1469,7 +1469,7 @@ object Types {
     }
 
     /** Is this (an alias of) the `scala.Null` type? */
-    final def isNullType(given Context) = isRef(defn.NullClass)
+    final def isNullType(using Context) = isRef(defn.NullClass)
 
     /** The resultType of a LambdaType, or ExprType, the type itself for others */
     def resultType(implicit ctx: Context): Type = this
@@ -2979,9 +2979,9 @@ object Types {
    *    case _ => // tp was not a nullable union
    */
   object OrNull {
-    def apply(tp: Type)(given Context) =
+    def apply(tp: Type)(using Context) =
       OrType(tp, defn.NullType)
-    def unapply(tp: Type)(given ctx: Context): Option[Type] =
+    def unapply(tp: Type)(using ctx: Context): Option[Type] =
       if (ctx.explicitNulls) {
         val tp1 = tp.stripNull()
         if tp1 ne tp then Some(tp1) else None
@@ -2997,9 +2997,9 @@ object Types {
    *    case _ => // tp was not a Java-nullable union
    */
   object OrUncheckedNull {
-    def apply(tp: Type)(given Context) =
+    def apply(tp: Type)(using Context) =
       OrType(tp, defn.UncheckedNullAliasType)
-    def unapply(tp: Type)(given ctx: Context): Option[Type] =
+    def unapply(tp: Type)(using ctx: Context): Option[Type] =
       if (ctx.explicitNulls) {
         val tp1 = tp.stripUncheckedNull
         if tp1 ne tp then Some(tp1) else None
@@ -4315,7 +4315,7 @@ object Types {
       parentsCache
     }
 
-    protected def newLikeThis(prefix: Type, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)(given Context): ClassInfo =
+    protected def newLikeThis(prefix: Type, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)(using Context): ClassInfo =
       ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
     def derivedClassInfo(prefix: Type)(implicit ctx: Context): ClassInfo =
@@ -4331,7 +4331,7 @@ object Types {
      *  Otherwise, this classInfo.
      *  If there are opaque alias members, updates `cls` to have `Opaque` flag as a side effect.
      */
-    def integrateOpaqueMembers(given Context): ClassInfo =
+    def integrateOpaqueMembers(using Context): ClassInfo =
       decls.toList.foldLeft(this) { (cinfo, sym) =>
         if sym.isOpaqueAlias then
           cls.setFlag(Opaque)
@@ -4396,7 +4396,7 @@ object Types {
     def finalized(parents: List[Type])(implicit ctx: Context): ClassInfo =
       ClassInfo(prefix, cls, parents, decls, selfInfo)
 
-    override def newLikeThis(prefix: Type, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)(given Context): ClassInfo =
+    override def newLikeThis(prefix: Type, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)(using Context): ClassInfo =
       TempClassInfo(prefix, cls, decls, selfInfo)
 
     override def toString: String = s"TempClassInfo($prefix, $cls)"

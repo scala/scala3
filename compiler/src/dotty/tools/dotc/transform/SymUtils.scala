@@ -178,7 +178,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
   /** Is this symbol defined locally (i.e. at some level owned by a term) so that
    *  it cannot be seen from parent class `cls`?
    */
-  def isInaccessibleChildOf(cls: Symbol)(given Context): Boolean =
+  def isInaccessibleChildOf(cls: Symbol)(using Context): Boolean =
     def isAccessible(sym: Symbol, cls: Symbol): Boolean =
       if cls.isType && !cls.is(Package) then
         isAccessible(sym, cls.owner)

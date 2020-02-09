@@ -86,7 +86,7 @@ object opaques
 
     /** Flattens a two-dimensional array by concatenating all its rows
       * into a single array. */
-    def [T, U: ClassTag](arr: IArray[T]) flatten(given T => Iterable[U]): IArray[U] =
+    def [T, U: ClassTag](arr: IArray[T]) flatten(using T => Iterable[U]): IArray[U] =
       genericArrayOps(arr).flatten.asInstanceOf[IArray[U]]
 
     /** Folds the elements of this array using the specified associative binary operator. */
@@ -201,7 +201,7 @@ object opaques
 
     /** Sorts this array according to the Ordering which results from transforming
       * an implicitly given Ordering with a transformation function. */
-    def [T, U: ClassTag](arr: IArray[T]) sortBy(f: T => U)(given math.Ordering[U]): IArray[T] =
+    def [T, U: ClassTag](arr: IArray[T]) sortBy(f: T => U)(using math.Ordering[U]): IArray[T] =
       genericArrayOps(arr).sortBy(f).asInstanceOf[IArray[T]]
 
     /** Sorts this array according to a comparison function. */
@@ -209,7 +209,7 @@ object opaques
       genericArrayOps(arr).sortWith(f).asInstanceOf[IArray[T]]
 
     /** Sorts this array according to an Ordering. */
-    def [T](arr: IArray[T]) sorted(given math.Ordering[T]): IArray[T] =
+    def [T](arr: IArray[T]) sorted(using math.Ordering[T]): IArray[T] =
       genericArrayOps(arr).sorted.asInstanceOf[IArray[T]]
 
     /** Splits this array into a prefix/suffix pair according to a predicate. */
@@ -285,7 +285,7 @@ object IArray {
   def emptyObjectIArray  = Array.emptyObjectArray.asInstanceOf[IArray[Object]]
 
   /** An immutable array with given elements. */
-  inline def apply[T](inline xs: T*)(given inline ct: ClassTag[T]): IArray[T] = Array(xs: _*).asInstanceOf
+  inline def apply[T](inline xs: T*)(using inline ct: ClassTag[T]): IArray[T] = Array(xs: _*).asInstanceOf
   /** An immutable array with given elements. */
   inline def apply(inline x: Boolean, inline xs: Boolean*): IArray[Boolean] = Array(x, xs: _*).asInstanceOf
   /** An immutable array with given elements. */

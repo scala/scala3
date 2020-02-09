@@ -37,7 +37,7 @@ object Splicer {
    *
    *  See: `Staging`
    */
-  def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(given ctx: Context): Tree = tree match {
+  def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(using ctx: Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
     case _ =>
       val interpreter = new Interpreter(pos, classLoader)
@@ -70,7 +70,7 @@ object Splicer {
   }
 
   /** Checks that no symbol that whas generated within the macro expansion has an out of scope reference */
-  def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(given ctx: Context): tree.type =
+  def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(using ctx: Context): tree.type =
     new TreeTraverser {
       private[this] var locals = Set.empty[Symbol]
       private def markSymbol(sym: Symbol)(implicit ctx: Context): Unit =
@@ -79,7 +79,7 @@ object Splicer {
         case tree: DefTree => markSymbol(tree.symbol)
         case _ =>
       }
-      def traverse(tree: Tree)(given ctx: Context): Unit =
+      def traverse(tree: Tree)(using ctx: Context): Unit =
         def traverseOver(lastEntered: Set[Symbol]) =
           try traverseChildren(tree)
           finally locals = lastEntered
@@ -98,7 +98,7 @@ object Splicer {
           case _ =>
             markDef(tree)
             traverseChildren(tree)
-      private def isEscapedVariable(sym: Symbol)(given ctx: Context): Boolean =
+      private def isEscapedVariable(sym: Symbol)(using ctx: Context): Boolean =
         sym.exists && !sym.is(Package)
         && sym.owner.ownersIterator.exists(x =>
           x == expansionOwner || // symbol was generated within this macro expansion
@@ -120,7 +120,7 @@ object Splicer {
     case _ =>
       type Env = Set[Symbol]
 
-      def checkValidStat(tree: Tree)(given Env): Env = tree match {
+      def checkValidStat(tree: Tree)(using Env): Env = tree match {
         case tree: ValDef if tree.symbol.is(Synthetic) =>
           // Check val from `foo(j = x, i = y)` which it is expanded to
           // `val j$1 = x; val i$1 = y; foo(i = i$1, j = j$1)`
@@ -131,7 +131,7 @@ object Splicer {
           summon[Env]
       }
 
-      def checkIfValidArgument(tree: Tree)(given Env): Unit = tree match {
+      def checkIfValidArgument(tree: Tree)(using Env): Unit = tree match {
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
@@ -170,13 +170,13 @@ object Splicer {
               |""".stripMargin, tree.sourcePos)
       }
 
-      def checkIfValidStaticCall(tree: Tree)(given Env): Unit = tree match {
+      def checkIfValidStaticCall(tree: Tree)(using Env): Unit = tree match {
         case closureDef(ddef @ DefDef(_, Nil, (ev :: Nil) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
-          checkIfValidStaticCall(ddef.rhs)(given summon[Env] + ev.symbol)
+          checkIfValidStaticCall(ddef.rhs)(using summon[Env] + ev.symbol)
 
         case Block(stats, expr) =>
-          val newEnv = stats.foldLeft(summon[Env])((env, stat) => checkValidStat(stat)(given env))
-          checkIfValidStaticCall(expr)(given newEnv)
+          val newEnv = stats.foldLeft(summon[Env])((env, stat) => checkValidStat(stat)(using env))
+          checkIfValidStaticCall(expr)(using newEnv)
 
         case Typed(expr, _) =>
           checkIfValidStaticCall(expr)
@@ -197,7 +197,7 @@ object Splicer {
               |""".stripMargin, tree.sourcePos)
       }
 
-      checkIfValidStaticCall(tree)(given Set.empty)
+      checkIfValidStaticCall(tree)(using Set.empty)
   }
 
   /** Tree interpreter that evaluates the tree */
@@ -262,7 +262,7 @@ object Splicer {
           unexpectedTree(tree)
 
       case closureDef((ddef @ DefDef(_, _, (arg :: Nil) :: Nil, _, _))) =>
-        (obj: AnyRef) => interpretTree(ddef.rhs)(given env.updated(arg.symbol, obj))
+        (obj: AnyRef) => interpretTree(ddef.rhs)(using env.updated(arg.symbol, obj))
 
       // Interpret `foo(j = x, i = y)` which it is expanded to
       // `val j$1 = x; val i$1 = y; foo(i = i$1, j = j$1)`
@@ -418,7 +418,7 @@ object Splicer {
       }
 
     private object MissingClassDefinedInCurrentRun {
-      def unapply(targetException: NoClassDefFoundError)(given ctx: Context): Option[Symbol] = {
+      def unapply(targetException: NoClassDefFoundError)(using ctx: Context): Option[Symbol] = {
         val className = targetException.getMessage
         if (className eq null) None
         else {

@@ -39,7 +39,7 @@ object Tools with
     val bytes = Files.readAllBytes(path) // NOTE: a semanticdb file is a TextDocuments message, not TextDocument
     TextDocuments.parseFrom(bytes)
 
-  def metac(doc: TextDocument, realPath: Path)(given sb: StringBuilder): StringBuilder =
+  def metac(doc: TextDocument, realPath: Path)(using sb: StringBuilder): StringBuilder =
     val realURI = realPath.toString
     given SourceFile = SourceFile.virtual(doc.uri, doc.text)
     sb.append(realURI).nl
@@ -78,7 +78,7 @@ object Tools with
     case UNKNOWN_LANGUAGE | Unrecognized(_) => "unknown"
   end languageString
 
-  private def processSymbol(info: SymbolInformation)(given sb: StringBuilder): Unit =
+  private def processSymbol(info: SymbolInformation)(using sb: StringBuilder): Unit =
     import SymbolInformation.Kind._
     sb.append(info.symbol).append(" => ")
     if info.isAbstract then sb.append("abstract ")
@@ -115,7 +115,7 @@ object Tools with
     sb.append(info.displayName).nl
   end processSymbol
 
-  private def processOccurrence(occ: SymbolOccurrence)(given sb: StringBuilder, sourceFile: SourceFile): Unit =
+  private def processOccurrence(occ: SymbolOccurrence)(using sb: StringBuilder, sourceFile: SourceFile): Unit =
     occ.range match
     case Some(range) =>
       sb.append('[')

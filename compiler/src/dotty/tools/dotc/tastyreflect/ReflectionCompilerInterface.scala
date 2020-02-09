@@ -2070,7 +2070,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     if (tree.isEmpty) None else Some(tree)
 
   private def withDefaultPos[T <: Tree](fn: Context ?=> T)(using ctx: Context): T =
-    fn(given ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
+    fn(using ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
 
   private def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()
 }
