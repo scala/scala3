@@ -1,7 +1,7 @@
 import scala.compiletime.ops.int._
 
 object Test {
-  type Max2[A <: Int & Singleton, B <: Int & Singleton] <: Int & Singleton = (A < B) match {
+  type Max2[+A <: Int & Singleton, +B <: Int & Singleton] <: Int & Singleton = (A < B) match {
     case true => B
     case false => A
   }
