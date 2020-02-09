@@ -456,8 +456,8 @@ val x: 1 + 2 * 3 = 7
 ```
 
 The operation types are located in packages named after the type of the
-left-hand side parameter: for instance, `scala.compiletime.int.+` represents
-addition of two numbers, while `scala.compiletime.string.+` represents string
+left-hand side parameter: for instance, `scala.compiletime.ops.int.+` represents
+addition of two numbers, while `scala.compiletime.ops.string.+` represents string
 concatenation. To use both and distinguish the two types from each other, a
 match type can dispatch to the correct implementation:
 
