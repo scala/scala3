@@ -3,8 +3,12 @@ layout: doc-page
 title: "Implementing Typeclasses"
 ---
 
-In Scala 3, _typeclasses_ are just traits whose implementation are defined by given instances. 
-Here are some examples of standard typeclasses:
+A _typeclass_ is an abstract, parameterized type that lets you add new behavior to any closed data type without using sub-typing. This can be useful in multiple use-cases, for example:
+* expressing how a type you don't own (from the standard or 3rd-party library) conforms to such behavior
+* expressing such a behavior for multiple types without involving sub-typing relationships (one `extends` another) between those types (see: [ad hoc polymorphism](https://en.wikipedia.org/wiki/Ad_hoc_polymorphism) for instance) 
+
+Therefore in Scala 3, _typeclasses_ are just _traits_ with one or more parameters whose implementations are not defined through the `extends` keyword, but by **given instances**. 
+Here are some examples of usual typeclasses:
 
 ### Semigroups and monoids:
 
