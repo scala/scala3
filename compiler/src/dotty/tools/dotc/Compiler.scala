@@ -109,8 +109,9 @@ class Compiler {
          new GetClass) ::            // Rewrites getClass calls on primitive types.
     List(new LinkScala2Impls,        // Redirect calls to trait methods defined by Scala 2.x, so that they now go to
          new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
-                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
-         new ElimStaticThis) ::      // Replace `this` references to static objects by global identifiers
+                                     // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
+         new ElimStaticThis,         // Replace `this` references to static objects by global identifiers
+         new DropOuterAccessors) ::  // Drop unused outer accessors
     List(new Flatten,                // Lift all inner classes to package scope
          new RenameLifted,           // Renames lifted classes to local numbering scheme
          new TransformWildcards,     // Replace wildcards with default values
