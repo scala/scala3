@@ -45,10 +45,16 @@ trait QuotesAndSplices {
         ctx.warning("Canceled splice directly inside a quote. '[ ${ XYZ } ] is equivalent to XYZ.", tree.sourcePos)
       case _ =>
     }
+    val qctx = inferImplicitArg(defn.QuoteContextClass.typeRef, tree.span)
+    if (level == 0 && qctx.tpe.isInstanceOf[SearchFailureType])
+      ctx.error(missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(tree.span))
     val tree1 =
-      if (ctx.mode.is(Mode.Pattern) && level == 0) typedQuotePattern(tree, pt)
-      else if (tree.quoted.isType) typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuote.termRef), tree.quoted :: Nil), pt)(quoteContext)
-      else typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(quoteContext)
+      if ctx.mode.is(Mode.Pattern) && level == 0 then
+        typedQuotePattern(tree, pt, qctx)
+      else if (tree.quoted.isType)
+        typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuote.termRef), tree.quoted :: Nil), pt)(quoteContext)
+      else
+        typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(quoteContext).select(nme.apply).appliedTo(qctx)
     tree1.withSpan(tree.span)
   }
 
@@ -326,11 +332,7 @@ trait QuotesAndSplices {
    *        ) => ...
    *  ```
    */
-  private def typedQuotePattern(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = {
-    val qctx = inferImplicitArg(defn.QuoteContextClass.typeRef, tree.span)
-    if (level == 0 && qctx.tpe.isInstanceOf[SearchFailureType])
-      ctx.error(missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(tree.span))
-
+  private def typedQuotePattern(tree: untpd.Quote, pt: Type, qctx: Tree)(implicit ctx: Context): Tree = {
     val quoted = tree.quoted
     val exprPt = pt.baseType(if quoted.isType then defn.QuotedTypeClass else defn.QuotedExprClass)
     val quotedPt = exprPt.argInfos.headOption match {
