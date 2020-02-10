@@ -110,7 +110,7 @@ allowed everywhere.
 
 The phase consistency principle can be motivated as follows: First,
 suppose the result of a program `P` is some quoted text `'{ ... x
-... }` that refers to a free variable `x` in `P` This can be
+... }` that refers to a free variable `x` in `P`. This can be
 represented only by referring to the original variable `x`. Hence, the
 result of the program will need to persist the program state itself as
 one of its parts. We don’t want to do this, hence this situation
