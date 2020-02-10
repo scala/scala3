@@ -70,4 +70,4 @@
 	url = https://github.com/ekrich/sconfig.git
 [submodule "community-build/community-projects/zio"]
 	path = community-build/community-projects/zio
-	url = https://github.com/zio/zio.git
+	url = https://github.com/dotty-staging/zio.git
