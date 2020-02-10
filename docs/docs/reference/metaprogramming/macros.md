@@ -60,7 +60,7 @@ quotation.
 
 Quotes and splices can also be applied directly to identifiers. An identifier
 `$x` starting with a `$` that appears inside a quoted expression or type is treated as a
-splice `${x}`. Analogously, an quoted identifier 'x that appears inside a splice
+splice `${x}`. Analogously, an quoted identifier `'x` that appears inside a splice
 is treated as a quote `'{x}`. See the Syntax section below for details.
 
 Quotes and splices are duals of each other. For arbitrary
