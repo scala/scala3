@@ -16,13 +16,13 @@ import config.Printers.nullables
 import ast.{tpd, untpd}
 
 /** Operations for implementing a flow analysis for nullability */
-object Nullables:
+object Nullables with
   import ast.tpd._
 
   /** A set of val or var references that are known to be not null, plus a set of
    *  variable references that are not known (anymore) to be not null
    */
-  case class NotNullInfo(asserted: Set[TermRef], retracted: Set[TermRef]):
+  case class NotNullInfo(asserted: Set[TermRef], retracted: Set[TermRef])
     assert((asserted & retracted).isEmpty)
 
     def isEmpty = this eq NotNullInfo.empty
@@ -43,7 +43,7 @@ object Nullables:
     def alt(that: NotNullInfo): NotNullInfo =
       NotNullInfo(this.asserted.intersect(that.asserted), this.retracted.union(that.retracted))
 
-  object NotNullInfo:
+  object NotNullInfo with
     val empty = new NotNullInfo(Set(), Set())
     def apply(asserted: Set[TermRef], retracted: Set[TermRef]): NotNullInfo =
       if asserted.isEmpty && retracted.isEmpty then empty
@@ -51,10 +51,10 @@ object Nullables:
   end NotNullInfo
 
   /** A pair of not-null sets, depending on whether a condition is `true` or `false` */
-  case class NotNullConditional(ifTrue: Set[TermRef], ifFalse: Set[TermRef]):
+  case class NotNullConditional(ifTrue: Set[TermRef], ifFalse: Set[TermRef]) with
     def isEmpty = this eq NotNullConditional.empty
 
-  object NotNullConditional:
+  object NotNullConditional with
     val empty = new NotNullConditional(Set(), Set())
     def apply(ifTrue: Set[TermRef], ifFalse: Set[TermRef]): NotNullConditional =
       if ifTrue.isEmpty && ifFalse.isEmpty then empty
@@ -72,7 +72,7 @@ object Nullables:
   private[typer] val NNInfo = Property.StickyKey[NotNullInfo]
 
   /** An extractor for null comparisons */
-  object CompareNull:
+  object CompareNull with
 
     /** Matches one of
      *
@@ -97,7 +97,7 @@ object Nullables:
   end CompareNull
 
   /** An extractor for null-trackable references */
-  object TrackedRef:
+  object TrackedRef
     def unapply(tree: Tree)(using Context): Option[TermRef] = tree.typeOpt match
       case ref: TermRef if isTracked(ref) => Some(ref)
       case _ => None
@@ -160,7 +160,7 @@ object Nullables:
     // TODO: Add constant pattern if the constant type is not nullable
     case _ => false
 
-  extension notNullInfoOps on (infos: List[NotNullInfo]):
+  extension notNullInfoOps on (infos: List[NotNullInfo]) with
 
     /** Do the current not-null infos imply that `ref` is not null?
      *  Not-null infos are as a history where earlier assertions and retractions replace
@@ -191,7 +191,7 @@ object Nullables:
       infos.extendWith(NotNullInfo(Set(), mutables))
   // end notNullInfoOps
 
-  extension refOps on (ref: TermRef):
+  extension refOps on (ref: TermRef) with
 
     /** Is the use of a mutable variable out of order
      *
@@ -245,7 +245,7 @@ object Nullables:
       && refOwner.isTerm
       && recur(curCtx.owner)
 
-  extension treeOps on (tree: Tree):
+  extension treeOps on (tree: Tree) with
 
     /* The `tree` with added nullability attachment */
     def withNotNullInfo(info: NotNullInfo): tree.type =
@@ -335,7 +335,7 @@ object Nullables:
           tree.computeNullable()
       }.traverse(tree)
 
-  extension assignOps on (tree: Assign):
+  extension assignOps on (tree: Assign) with
     def computeAssignNullable()(using Context): tree.type = tree.lhs match
       case TrackedRef(ref) =>
         val rhstp = tree.rhs.typeOpt

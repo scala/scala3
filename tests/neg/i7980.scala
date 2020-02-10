@@ -1,7 +1,7 @@
 trait Evidence[X]
 
-trait Trait[X : Evidence]:
+trait Trait[X : Evidence]
   def method(x : X) : X
 
-given ev as Evidence[Int] = new Evidence[Int]{}
+given ev : Evidence[Int] = new Evidence[Int]{}
 val crash : Trait[Int] = (x: Int) => x          // error

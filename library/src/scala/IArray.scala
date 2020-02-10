@@ -4,7 +4,7 @@ import reflect.ClassTag
 /** An immutable array. An `IArray[T]` has the same representation as an `Array[T]`,
  *  but it cannot be updated. Unlike regular arrays, immutable arrays are covariant.
  */
-object opaques:
+object opaques
   opaque type IArray[+T] = Array[_ <: T]
 
   /** Defines extension methods for immutable arrays */

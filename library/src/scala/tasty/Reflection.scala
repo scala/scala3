@@ -1560,28 +1560,30 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   given (using ctx: Context) as IsInstanceOf[SimpleSelector] = internal.isInstanceOfSimpleSelector
 
-  object SimpleSelector:
+  object SimpleSelector
     def unapply(x: SimpleSelector)(using ctx: Context): Option[Id] = Some(x.selection)
 
-  extension renameSelectorOps on (self: RenameSelector):
+  extension renameSelectorOps on (self: RenameSelector) {
     def from(using ctx: Context): Id =
       internal.RenameSelector_from(self)
 
     def to(using ctx: Context): Id =
       internal.RenameSelector_to(self)
+  }
 
   given (using ctx: Context) as IsInstanceOf[RenameSelector] = internal.isInstanceOfRenameSelector
 
-  object RenameSelector:
+  object RenameSelector
     def unapply(x: RenameSelector)(using ctx: Context): Option[(Id, Id)] = Some((x.from, x.to))
 
-  extension omitSelectorOps on (self: OmitSelector):
+  extension omitSelectorOps on (self: OmitSelector) {
     def omitted(using ctx: Context): Id =
       internal.SimpleSelector_omitted(self)
+  }
 
   given (using ctx: Context) as IsInstanceOf[OmitSelector] = internal.isInstanceOfOmitSelector
 
-  object OmitSelector:
+  object OmitSelector
     def unapply(x: OmitSelector)(using ctx: Context): Option[Id] = Some(x.omitted)
 
 
@@ -1978,7 +1980,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   given (using ctx: Context) as IsInstanceOf[NoPrefix] = internal.isInstanceOfNoPrefix
 
-  object NoPrefix:
+  object NoPrefix
     def unapply(x: NoPrefix)(using ctx: Context): Boolean = true
 
 

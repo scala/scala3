@@ -772,9 +772,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   private def paramsText[T>: Untyped](params: List[ValDef[T]]) =
-    "(" ~ keywordText("using ").provided(params.nonEmpty && params.head.mods.is(Given))
-        ~ keywordText("erased ").provided(params.nonEmpty && params.head.mods.is(Erased))
-        ~ toText(params, ", ") ~ ")"
+    keywordText(" with ").provided(params.nonEmpty && params.head.mods.is(Given))
+    ~ "(" ~ toText(params, ", ") ~ ")"
 
   protected def defDefToText[T >: Untyped](tree: DefDef[T]): Text = {
     import untpd.{modsDeco => _}

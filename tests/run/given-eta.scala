@@ -1,6 +1,6 @@
 class C(val x: Int)
 
-trait D:
+trait D
    type T
    def trans(other: T): T
 
@@ -12,7 +12,7 @@ def g(x: Int)(using d: D) (y: d.T): d.T = d.trans(y)
   val x = f
   assert(x(2)(3) == 6)
 
-  given D:
+  given D
     type T = Int
     def trans(other: T) = 2 * other
   val y = g

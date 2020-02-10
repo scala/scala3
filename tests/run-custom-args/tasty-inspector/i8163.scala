@@ -14,9 +14,9 @@ object Test {
   }
 }
 
-class TestInspector() extends TastyInspector:
+class TestInspector() extends TastyInspector
 
-  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit =
+  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = 
     import reflect._
     inspectClass(reflect)(root)
 
@@ -44,5 +44,5 @@ class TestInspector() extends TastyInspector:
         }
         assert(!shouldNotBePhoneType.isOpaqueAlias)
 
-      case x =>
+      case x => 
     }
