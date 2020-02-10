@@ -7,8 +7,8 @@ package scala.implicits
  *  value of type `C` is available. If we do not want to prioritize `i1` and `i2` by
  *  putting them in different traits we can instead define the following:
  *
- *     implicit def i1: D(implicit ev: C) = ...
- *     implicit def i2: D(implicit ev: Not[C]) = ...
+ *     given i1: D(using ev: C) = ...
+ *     given i2: D(using ev: Not[C]) = ...
  *
  *  `Not` is treated specially in implicit search, similar to the way logical negation
  *  is treated in Prolog: The implicit search for `Not[C]` succeeds if and only if the implicit
@@ -27,7 +27,7 @@ final class Not[+T] private ()
 trait LowPriorityNot {
 
   /** A fallback method used to emulate negation in Scala 2 */
-  implicit def default[T]: Not[T] = Not.value
+  given default[T] as Not[T] = Not.value
 }
 object Not extends LowPriorityNot {
 
@@ -38,8 +38,8 @@ object Not extends LowPriorityNot {
   def value: Not[Nothing] = new Not[Nothing]()
 
   /** One of two ambiguous methods used to emulate negation in Scala 2 */
-  implicit def amb1[T](implicit ev: T): Not[T] = ???
+  given amb1[T](using ev: T) as Not[T] = ???
 
   /** One of two ambiguous methods used to emulate negation in Scala 2 */
-  implicit def amb2[T](implicit ev: T): Not[T] = ???
+  given amb2[T](using ev: T) as Not[T] = ???
 }
