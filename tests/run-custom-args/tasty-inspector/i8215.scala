@@ -29,14 +29,14 @@ object Test {
   }
 }
 
-class TestInspector_NonTasty() extends TastyInspector
+class TestInspector_NonTasty() extends TastyInspector:
 
   var isJava: Boolean = false
   var isScala2: Boolean = false
   var className: String = ""
 
   protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = 
-    import reflect.{given,_}
+    import reflect.{_, given _}
     isJava = reflect.rootContext.isJavaCompilationUnit()
     isScala2 = reflect.rootContext.isScala2CompilationUnit()
     className = reflect.rootContext.compilationUnitClassname()
