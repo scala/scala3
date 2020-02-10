@@ -93,7 +93,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
 
   val newSetters = mutable.HashSet[Symbol]()
 
-  def ensureSetter(sym: TermSymbol)(given Context) =
+  def ensureSetter(sym: TermSymbol)(using Context) =
     if !sym.setter.exists then
       newSetters += sym.copy(
         name = sym.name.setterName,

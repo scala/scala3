@@ -1,7 +1,7 @@
 package outer
 package nested
 
-object indent1
+object indent1:
   object inner:
     def x: Int = 1
   end inner

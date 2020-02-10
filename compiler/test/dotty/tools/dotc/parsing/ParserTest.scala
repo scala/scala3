@@ -23,9 +23,10 @@ class ParserTest extends DottyTest {
     parsedTrees.clear()
   }
 
-  def parse(file: PlainFile): Tree = {
-    //println("***** parsing " + file)
-    val source = new SourceFile(file, Codec.UTF8)
+  def parse(file: PlainFile): Tree = parseSource(new SourceFile(file, Codec.UTF8))
+
+  private def parseSource(source: SourceFile): Tree = {
+    //println("***** parsing " + source.file)
     val parser = new Parser(source)
     val tree = parser.parse()
     parsed += 1
@@ -41,4 +42,6 @@ class ParserTest extends DottyTest {
     for (d <- dir.dirs)
       parseDir(d.path)
   }
+
+  def parseText(code: String): Tree = parseSource(SourceFile.virtual("<code>", code))
 }

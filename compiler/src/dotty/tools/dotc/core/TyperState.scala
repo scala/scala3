@@ -96,9 +96,9 @@ class TyperState(private val previous: TyperState /* | Null */) {
    *  typerstate. If it is unshared, run `op` in current typerState, restoring typerState
    *  to previous state afterwards.
    */
-  def test[T](op: (given Context) => T)(implicit ctx: Context): T =
+  def test[T](op: Context ?=> T)(implicit ctx: Context): T =
     if (isShared)
-      op(given ctx.fresh.setExploreTyperState())
+      op(using ctx.fresh.setExploreTyperState())
     else {
       val savedConstraint = myConstraint
       val savedReporter = myReporter
@@ -113,7 +113,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
         testReporter.inUse = true
         testReporter
       }
-      try op(given ctx)
+      try op(using ctx)
       finally {
         testReporter.inUse = false
         resetConstraintTo(savedConstraint)

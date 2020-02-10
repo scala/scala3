@@ -488,7 +488,7 @@ object desugar {
       if (isEnum) {
         val (enumCases, enumStats) = stats.partition(DesugarEnums.isEnumCase)
         if (enumCases.isEmpty)
-          ctx.error("Enumerations must contain at least one case", namePos)
+          ctx.error(EnumerationsShouldNotBeEmpty(cdef), namePos)
         val enumCompanionRef = TermRefTree()
         val enumImport =
           Import(enumCompanionRef, enumCases.flatMap(caseIds).map(ImportSelector(_)))
@@ -883,12 +883,12 @@ object desugar {
     def flagSourcePos(flag: FlagSet) = mods.mods.find(_.flags == flag).fold(mdef.sourcePos)(_.sourcePos)
 
     if (mods.is(Abstract))
-      ctx.error(em"${hl("abstract")} modifier cannot be used for objects", flagSourcePos(Abstract))
+      ctx.error(AbstractCannotBeUsedForObjects(mdef), flagSourcePos(Abstract))
     if (mods.is(Sealed))
-      ctx.error(em"${hl("sealed")} modifier is redundant for objects", flagSourcePos(Sealed))
+      ctx.error(ModifierRedundantForObjects(mdef, "sealed"), flagSourcePos(Sealed))
     // Maybe this should be an error; see https://github.com/scala/bug/issues/11094.
     if (mods.is(Final) && !mods.is(Synthetic))
-      ctx.warning(em"${hl("final")} modifier is redundant for objects", flagSourcePos(Final))
+      ctx.warning(ModifierRedundantForObjects(mdef, "final"), flagSourcePos(Final))
 
     if (mods.is(Package))
       packageModuleDef(mdef)
@@ -929,7 +929,7 @@ object desugar {
    */
 
   def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef],
-                       givenParamss: List[List[ValDef]])(given ctx: Context): Tree = {
+                       givenParamss: List[List[ValDef]])(using ctx: Context): Tree = {
     val allowed = "allowed here, since collective parameters are given"
     mdef match {
       case mdef: DefDef =>
@@ -986,7 +986,7 @@ object desugar {
   }
 
   /** Invent a name for an anonympus given or extension of type or template `impl`. */
-  def inventGivenOrExtensionName(impl: Tree)(given ctx: Context): SimpleName =
+  def inventGivenOrExtensionName(impl: Tree)(using ctx: Context): SimpleName =
     val str = impl match
       case impl: Template =>
         if impl.parents.isEmpty then
@@ -1253,7 +1253,7 @@ object desugar {
     else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
   }
 
-  private def isTopLevelDef(stat: Tree)(given Context): Boolean = stat match
+  private def isTopLevelDef(stat: Tree)(using Context): Boolean = stat match
     case _: ValDef | _: PatDef | _: DefDef | _: Export => true
     case stat: ModuleDef =>
       stat.mods.isOneOf(GivenOrImplicit)

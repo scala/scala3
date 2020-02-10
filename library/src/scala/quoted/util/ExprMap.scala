@@ -113,7 +113,7 @@ trait ExprMap {
               type X
               val expr = tree.seal.asInstanceOf[Expr[X]]
               val t = tpe.seal.asInstanceOf[quoted.Type[X]]
-              transform(expr)(given qctx, t).unseal
+              transform(expr)(using qctx, t).unseal
           }
       }
 

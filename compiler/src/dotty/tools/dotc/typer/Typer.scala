@@ -179,7 +179,7 @@ class Typer extends Namer
        *  outer package-level definition might trump two conflicting inner
        *  imports, so no error should be issued in that case. See i7876.scala.
        */
-      def recurAndCheckNewOrShadowed(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(given Context): Type =
+      def recurAndCheckNewOrShadowed(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type =
         val found = findRefRecur(previous, prevPrec, prevCtx)
         if found eq previous then checkNewOrShadowed(found, prevPrec)
         else found
@@ -333,11 +333,11 @@ class Typer extends Namer
             else if (isPossibleImport(NamedImport) && (curImport ne outer.importInfo)) {
               val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
-                recurAndCheckNewOrShadowed(namedImp, NamedImport, ctx)(given outer)
+                recurAndCheckNewOrShadowed(namedImp, NamedImport, ctx)(using outer)
               else if (isPossibleImport(WildImport) && !curImport.sym.isCompleting) {
                 val wildImp = wildImportRef(curImport)
                 if (wildImp.exists)
-                  recurAndCheckNewOrShadowed(wildImp, WildImport, ctx)(given outer)
+                  recurAndCheckNewOrShadowed(wildImp, WildImport, ctx)(using outer)
                 else {
                   updateUnimported()
                   loop(ctx)(outer)
@@ -498,7 +498,7 @@ class Typer extends Namer
       case _                  => errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
     }
 
-    def selectWithFallback(fallBack: (given Context) => Tree) =
+    def selectWithFallback(fallBack: Context ?=> Tree) =
       tryAlternatively(typeSelectOnTerm)(fallBack)
 
     if (tree.qualifier.isType) {
@@ -797,8 +797,8 @@ class Typer extends Namer
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context): Tree = {
     val localCtx = ctx.retractMode(Mode.Pattern)
-    val (stats1, exprCtx) = typedBlockStats(tree.stats)(given localCtx)
-    val expr1 = typedExpr(tree.expr, pt.dropIfProto)(given exprCtx)
+    val (stats1, exprCtx) = typedBlockStats(tree.stats)(using localCtx)
+    val expr1 = typedExpr(tree.expr, pt.dropIfProto)(using exprCtx)
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1)
         .withType(expr1.tpe)
@@ -850,13 +850,13 @@ class Typer extends Namer
 
     val result =
       if tree.elsep.isEmpty then
-        val thenp1 = typed(tree.thenp, defn.UnitType)(given cond1.nullableContextIf(true))
+        val thenp1 = typed(tree.thenp, defn.UnitType)(using cond1.nullableContextIf(true))
         val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
         cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
       else
         val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
-          val thenp0 = typed(tree.thenp, pt.dropIfProto)(given cond1.nullableContextIf(true))
-          val elsep0 = typed(tree.elsep, pt.dropIfProto)(given cond1.nullableContextIf(false))
+          val thenp0 = typed(tree.thenp, pt.dropIfProto)(using cond1.nullableContextIf(true))
+          val elsep0 = typed(tree.elsep, pt.dropIfProto)(using cond1.nullableContextIf(false))
           thenp0 :: elsep0 :: Nil
         }
         assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
@@ -1187,7 +1187,7 @@ class Typer extends Namer
   def typedCases(cases: List[untpd.CaseDef], sel: Tree, wideSelType: Type, pt: Type)(implicit ctx: Context): List[CaseDef] =
     var caseCtx = ctx
     cases.mapconserve { cas =>
-      val case1 = typedCase(cas, sel, wideSelType, pt)(given caseCtx)
+      val case1 = typedCase(cas, sel, wideSelType, pt)(using caseCtx)
       caseCtx = Nullables.afterPatternContext(sel, case1.pat)
       case1
     }
@@ -1302,11 +1302,11 @@ class Typer extends Namer
   }
 
   def typedWhileDo(tree: untpd.WhileDo)(implicit ctx: Context): Tree = {
-    given whileCtx: Context = Nullables.whileContext(tree.span)(given ctx)
+    given whileCtx: Context = Nullables.whileContext(tree.span)(using ctx)
     val cond1 =
       if (tree.cond eq EmptyTree) EmptyTree
       else typed(tree.cond, defn.BooleanType)
-    val body1 = typed(tree.body, defn.UnitType)(given cond1.nullableContextIf(true))
+    val body1 = typed(tree.body, defn.UnitType)(using cond1.nullableContextIf(true))
     assignType(cpy.WhileDo(tree)(cond1, body1))
       .withNotNullInfo(body1.notNullInfo.retractedInfo.seq(cond1.notNullInfoIf(false)))
   }
@@ -2278,7 +2278,7 @@ class Typer extends Namer
           case none =>
             val newCtx = if (ctx.owner.isTerm && adaptCreationContext(mdef)) ctx
               else ctx.withNotNullInfos(initialNotNullInfos)
-            typed(mdef)(given newCtx) match {
+            typed(mdef)(using newCtx) match {
               case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf += inlineExpansion(mdef1)
                   // replace body with expansion, because it will be used as inlined body
@@ -2303,7 +2303,7 @@ class Typer extends Namer
         val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
         checkStatementPurity(stat1)(stat, exprOwner)
         buf += stat1
-        traverse(rest)(given stat1.nullableContext)
+        traverse(rest)(using stat1.nullableContext)
       case nil =>
         (buf.toList, ctx)
     }
@@ -2370,9 +2370,9 @@ class Typer extends Namer
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, selType)(ctx addMode Mode.Pattern)
 
-  def tryEither[T](op: (given Context) => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context): T = {
+  def tryEither[T](op: Context ?=> T)(fallBack: (T, TyperState) => T)(implicit ctx: Context): T = {
     val nestedCtx = ctx.fresh.setNewTyperState()
-    val result = op(given nestedCtx)
+    val result = op(using nestedCtx)
     if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors) {
       record("tryEither.fallBack")
       fallBack(result, nestedCtx.typerState)
@@ -2387,7 +2387,7 @@ class Typer extends Namer
   /** Try `op1`, if there are errors, try `op2`, if `op2` also causes errors, fall back
    *  to errors and result of `op1`.
    */
-  def tryAlternatively[T](op1: (given Context) => T)(op2: (given Context) => T)(implicit ctx: Context): T =
+  def tryAlternatively[T](op1: Context ?=> T)(op2: Context ?=> T)(implicit ctx: Context): T =
     tryEither(op1) { (failedVal, failedState) =>
       tryEither(op2) { (_, _) =>
         failedState.commit()
@@ -3189,7 +3189,7 @@ class Typer extends Namer
   }
 
   // Overridden in InlineTyper
-  def suppressInline(given ctx: Context): Boolean = ctx.isAfterTyper
+  def suppressInline(using ctx: Context): Boolean = ctx.isAfterTyper
 
   /** Does the "contextuality" of the method type `methType` match the one of the prototype `pt`?
    *  This is the case if

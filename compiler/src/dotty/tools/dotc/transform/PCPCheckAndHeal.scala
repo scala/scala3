@@ -46,7 +46,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         lazy val annotCtx = ctx.fresh.setProperty(InAnnotation, true).withOwner(tree.symbol)
         for (annot <- tree.symbol.annotations) annot match {
           case annot: BodyAnnotation => annot // already checked in PrepareInlineable before the creation of the BodyAnnotation
-          case annot => transform(annot.tree)(given annotCtx)
+          case annot => transform(annot.tree)(using annotCtx)
         }
         checkLevel(super.transform(tree))
       case _ => checkLevel(super.transform(tree))
@@ -229,7 +229,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
                       | The access would be accepted with a given $reqType""")
   }
 
-  private def levelError(sym: Symbol, tp: Type, pos: SourcePosition, errMsg: String)(given Context) = {
+  private def levelError(sym: Symbol, tp: Type, pos: SourcePosition, errMsg: String)(using Context) = {
     def symStr =
       if (!tp.isInstanceOf[ThisType]) sym.show
       else if (sym.is(ModuleClass)) sym.sourceModule.show

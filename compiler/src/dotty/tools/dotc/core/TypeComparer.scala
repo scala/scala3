@@ -1116,7 +1116,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     }
   }
 
-  private def nonExprBaseType(tp: Type, cls: Symbol)(given Context): Type =
+  private def nonExprBaseType(tp: Type, cls: Symbol)(using Context): Type =
     if tp.isInstanceOf[ExprType] then NoType
     else tp.baseType(cls)
 
@@ -2379,14 +2379,14 @@ object TypeComparer {
   val FreshApprox: ApproxState = new ApproxState(4)
 
   /** Show trace of comparison operations when performing `op` */
-  def explaining[T](say: String => Unit)(op: (given Context) => T)(implicit ctx: Context): T = {
+  def explaining[T](say: String => Unit)(op: Context ?=> T)(implicit ctx: Context): T = {
     val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
-    val res = try { op(given nestedCtx) } finally { say(nestedCtx.typeComparer.lastTrace()) }
+    val res = try { op(using nestedCtx) } finally { say(nestedCtx.typeComparer.lastTrace()) }
     res
   }
 
   /** Like [[explaining]], but returns the trace instead */
-  def explained[T](op: (given Context) => T)(implicit ctx: Context): String = {
+  def explained[T](op: Context ?=> T)(implicit ctx: Context): String = {
     var trace: String = null
     try { explaining(trace = _)(op) } catch { case ex: Throwable => ex.printStackTrace }
     trace

@@ -197,10 +197,10 @@ object Inliner {
 
   object Intrinsics {
     import dotty.tools.dotc.reporting.diagnostic.messages.Error
-    private enum ErrorKind
+    private enum ErrorKind:
       case Parser, Typer
 
-    private def compileForErrors(tree: Tree, stopAfterParser: Boolean)(given ctx: Context): List[(ErrorKind, Error)] =
+    private def compileForErrors(tree: Tree, stopAfterParser: Boolean)(using ctx: Context): List[(ErrorKind, Error)] =
       assert(tree.symbol == defn.CompiletimeTesting_typeChecks || tree.symbol == defn.CompiletimeTesting_typeCheckErrors)
       def stripTyped(t: Tree): Tree = t match {
         case Typed(t2, _) => stripTyped(t2)
@@ -228,7 +228,7 @@ object Inliner {
           Nil
       }
 
-    private def packError(kind: ErrorKind, error: Error)(given Context): Tree =
+    private def packError(kind: ErrorKind, error: Error)(using Context): Tree =
       def lit(x: Any) = Literal(Constant(x))
       val constructor: Tree = ref(defn.CompiletimeTesting_Error_apply)
       val parserErrorKind: Tree = ref(defn.CompiletimeTesting_ErrorKind_Parser)
@@ -240,18 +240,18 @@ object Inliner {
         lit(error.pos.column),
         if kind == ErrorKind.Parser then parserErrorKind else typerErrorKind)
 
-    private def packErrors(errors: List[(ErrorKind, Error)])(given Context): Tree =
+    private def packErrors(errors: List[(ErrorKind, Error)])(using Context): Tree =
       val individualErrors: List[Tree] = errors.map(packError)
       val errorTpt = ref(defn.CompiletimeTesting_ErrorClass)
       mkList(individualErrors, errorTpt)
 
     /** Expand call to scala.compiletime.testing.typeChecks */
-    def typeChecks(tree: Tree)(given Context): Tree =
+    def typeChecks(tree: Tree)(using Context): Tree =
       val errors = compileForErrors(tree, true)
       Literal(Constant(errors.isEmpty))
 
     /** Expand call to scala.compiletime.testing.typeCheckErrors */
-    def typeCheckErrors(tree: Tree)(given Context): Tree =
+    def typeCheckErrors(tree: Tree)(using Context): Tree =
       val errors = compileForErrors(tree, false)
       packErrors(errors)
   }
@@ -1156,7 +1156,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     override def newLikeThis: Typer = new InlineTyper(initialErrorCount)
 
     /** Suppress further inlining if this inline typer has already issued errors */
-    override def suppressInline(given ctx: Context) =
+    override def suppressInline(using ctx: Context) =
       ctx.reporter.errorCount > initialErrorCount || super.suppressInline
   }
 
@@ -1278,7 +1278,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       ctx.compilationUnit.suspend() // this throws a SuspendException
 
     val evaluatedSplice = {
-      given Context = tastyreflect.MacroExpansion.context(inlinedFrom)(given ctx)
+      given Context = tastyreflect.MacroExpansion.context(inlinedFrom)(using ctx)
       Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)
     }
     val inlinedNormailizer = new TreeMap {

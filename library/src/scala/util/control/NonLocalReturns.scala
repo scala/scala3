@@ -19,13 +19,13 @@ object NonLocalReturns {
   }
 
   /** Performs a nonlocal return by throwing an exception. */
-  def throwReturn[T](result: T)(given returner: ReturnThrowable[T]): Nothing =
+  def throwReturn[T](result: T)(using returner: ReturnThrowable[T]): Nothing =
     returner.throwReturn(result)
 
   /** Enable nonlocal returns in `op`. */
-  def returning[T](op: (given ReturnThrowable[T]) => T): T = {
+  def returning[T](op: ReturnThrowable[T] ?=> T): T = {
     val returner = new ReturnThrowable[T]
-    try op(given returner)
+    try op(using returner)
     catch {
       case ex: ReturnThrowable[T] =>
        if (ex.eq(returner)) ex.result else throw ex

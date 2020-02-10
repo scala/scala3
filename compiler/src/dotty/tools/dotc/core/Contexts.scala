@@ -51,7 +51,7 @@ object Contexts {
   private val initialStore = store8
 
   /** The current context */
-  def curCtx(given ctx: Context): Context = ctx
+  def curCtx(using ctx: Context): Context = ctx
 
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
@@ -319,7 +319,7 @@ object Contexts {
     /** Run `op` as if it was run in a fresh explore typer state, but possibly
      *  optimized to re-use the current typer state.
      */
-    final def test[T](op: (given Context) => T): T = typerState.test(op)(this)
+    final def test[T](op: Context ?=> T): T = typerState.test(op)(this)
 
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
@@ -599,7 +599,7 @@ object Contexts {
     def setDebug: this.type = setSetting(base.settings.Ydebug, true)
   }
 
-  given ops: extension (c: Context) with
+  extension ops on (c: Context) with
     def addNotNullInfo(info: NotNullInfo) =
       c.withNotNullInfos(c.notNullInfos.extendWith(info))
 

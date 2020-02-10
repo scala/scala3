@@ -1,4 +1,4 @@
-((qctx: scala.quoted.QuoteContext) => {
-  val a: scala.quoted.Expr[scala.Int] = scala.internal.quoted.CompileTime.exprQuote[scala.Int](4) given (qctx)
-  ((evidence$2: scala.quoted.QuoteContext) => a) given (qctx)
+((qctx: scala.quoted.QuoteContext) ?=> {
+  val a: scala.quoted.Expr[scala.Int] = scala.internal.quoted.CompileTime.exprQuote[scala.Int](4).apply(using qctx)
+  ((qctx1_$1: scala.quoted.QuoteContext) ?=> a).apply(using qctx)
 })

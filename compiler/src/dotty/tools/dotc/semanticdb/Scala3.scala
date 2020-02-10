@@ -53,7 +53,7 @@ object Scala3 with
     val s"${RootPackageName @ _}/" = RootPackage
     val s"${EmptyPackageName @ _}/" = EmptyPackage
 
-    def displaySymbol(symbol: Symbol)(given Context): String =
+    def displaySymbol(symbol: Symbol)(using Context): String =
       if symbol.isPackageObject then
         displaySymbol(symbol.owner)
       else if symbol.is(ModuleClass) then
@@ -67,7 +67,7 @@ object Scala3 with
 
   end Symbols
 
-  given NameOps: extension (name: Name) with
+  extension NameOps on (name: Name) with
 
     def isWildcard = name match
       case nme.WILDCARD | WILDCARDTypeName => true
@@ -87,21 +87,21 @@ object Scala3 with
         case _                                       => false
       }
 
-  end NameOps
+  // end NameOps
 
-  given SymbolOps: extension (sym: Symbol) with
+  extension SymbolOps on (sym: Symbol) with
 
-    def ifExists(given Context): Option[Symbol] = if sym.exists then Some(sym) else None
+    def ifExists(using Context): Option[Symbol] = if sym.exists then Some(sym) else None
 
-    def isScala2PackageObject(given Context): Boolean =
+    def isScala2PackageObject(using Context): Boolean =
       sym.name.isScala2PackageObjectName && sym.owner.is(Package) && sym.is(Module)
 
-    def isAnonymous(given Context): Boolean =
+    def isAnonymous(using Context): Boolean =
       sym.isAnonymousClass
       || sym.isAnonymousModuleVal
       || sym.isAnonymousFunction
 
-    def matchingSetter(given Context): Symbol =
+    def matchingSetter(using Context): Symbol =
 
       val setterName = sym.name.toTermName.setterName
 
@@ -112,21 +112,21 @@ object Scala3 with
       sym.owner.info.decls.find(s => s.name == setterName && s.info.matchingType)
 
     /** Is symbol global? Non-global symbols get localN names */
-    def isGlobal(given Context): Boolean =
+    def isGlobal(using Context): Boolean =
       sym.is(Package)
       || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && sym.owner.isGlobal
 
-    def isLocalWithinSameName(given Context): Boolean =
+    def isLocalWithinSameName(using Context): Boolean =
       sym.exists && !sym.isGlobal && sym.name == sym.owner.name
 
     /** Synthetic symbols that are not anonymous or numbered empty ident */
-    def isSyntheticWithIdent(given Context): Boolean =
+    def isSyntheticWithIdent(using Context): Boolean =
       sym.is(Synthetic) && !sym.isAnonymous && !sym.name.isEmptyNumbered
 
-    def isAnnotation(given Context): Boolean =
+    def isAnnotation(using Context): Boolean =
       sym.derivesFrom(defn.AnnotationClass)
 
-  end SymbolOps
+  // end SymbolOps
 
   object LocalSymbol with
 
@@ -146,7 +146,7 @@ object Scala3 with
     case '/' | '.' | '#' | ']' | ')' => true
     case _                           => false
 
-  given StringOps: extension (symbol: String) with
+  extension StringOps on (symbol: String) with
 
     def isSymbol: Boolean = !symbol.isEmpty
     def isRootPackage: Boolean = RootPackage == symbol
@@ -169,9 +169,9 @@ object Scala3 with
     def isJavaIdent =
       isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
 
-  end StringOps
+  // end StringOps
 
-  given InfoOps: extension (info: SymbolInformation) with
+  extension InfoOps on (info: SymbolInformation) with
 
     def isAbstract: Boolean = (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
     def isFinal: Boolean = (info.properties & SymbolInformation.Property.FINAL.value) != 0
@@ -205,11 +205,11 @@ object Scala3 with
     def isTrait: Boolean = info.kind.isTrait
     def isInterface: Boolean = info.kind.isInterface
 
-  end InfoOps
+  // end InfoOps
 
-  given RangeOps: extension (range: Range) with
+  extension RangeOps on (range: Range) with
     def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
-  end RangeOps
+  // end RangeOps
 
   /** Sort symbol occurrences by their start position. */
   given OccurrenceOrdering: Ordering[SymbolOccurrence] = (x, y) =>

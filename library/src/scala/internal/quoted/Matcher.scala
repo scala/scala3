@@ -25,7 +25,7 @@ private[quoted] object Matcher {
      */
     private type Env = Map[Symbol, Symbol]
 
-    inline private def withEnv[T](env: Env)(body: => Env ?=> T): T = body(given env)
+    inline private def withEnv[T](env: Env)(body: => Env ?=> T): T = body(using env)
 
     class SymBinding(val sym: Symbol, val fromAbove: Boolean)
 
@@ -96,13 +96,13 @@ private[quoted] object Matcher {
       case _ => notMatched
     }
 
-    private given treeListOps: extension (scrutinees: List[Tree]) {
+    private extension treeListOps on (scrutinees: List[Tree]) {
       /** Check that all trees match with =?= and concatenate the results with && */
       def =?= (patterns: List[Tree])(using Context, Env): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
     }
 
-    private given treeOps: extension (scrutinee0: Tree) {
+    private extension treeOps on (scrutinee0: Tree) {
 
       /** Check that the trees match and return the contents from the pattern holes.
        *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
@@ -252,7 +252,7 @@ private[quoted] object Matcher {
               if (hasBindAnnotation(pattern.symbol) || hasBindTypeAnnotation(tpt2)) bindingMatch(scrutinee.symbol)
               else matched
             def rhsEnv = summon[Env] + (scrutinee.symbol -> pattern.symbol)
-            bindMatch && tpt1 =?= tpt2 && treeOptMatches(rhs1, rhs2)(given summon[Context], rhsEnv)
+            bindMatch && tpt1 =?= tpt2 && treeOptMatches(rhs1, rhs2)(using summon[Context], rhsEnv)
 
           case (DefDef(_, typeParams1, paramss1, tpt1, Some(rhs1)), DefDef(_, typeParams2, paramss2, tpt2, Some(rhs2))) =>
             val bindMatch =
@@ -376,7 +376,7 @@ private[quoted] object Matcher {
 
       case (Bind(name1, body1), Bind(name2, body2)) =>
         val bindEnv = summon[Env] + (scrutinee.symbol -> pattern.symbol)
-        patternsMatches(body1, body2)(given summon[Context], bindEnv)
+        patternsMatches(body1, body2)(using summon[Context], bindEnv)
 
       case (Unapply(fun1, implicits1, patterns1), Unapply(fun2, implicits2, patterns2)) =>
         val (patEnv, patternsMatch) = foldPatterns(patterns1, patterns2)
@@ -415,7 +415,7 @@ private[quoted] object Matcher {
     private def foldPatterns(patterns1: List[Tree], patterns2: List[Tree])(using Context, Env): (Env, Matching) = {
       if (patterns1.size != patterns2.size) (summon[Env], notMatched)
       else patterns1.zip(patterns2).foldLeft((summon[Env], matched)) { (acc, x) =>
-        val (env, res) = patternsMatches(x._1, x._2)(given summon[Context], acc._1)
+        val (env, res) = patternsMatches(x._1, x._2)(using summon[Context], acc._1)
         (env, acc._2 && res)
       }
     }

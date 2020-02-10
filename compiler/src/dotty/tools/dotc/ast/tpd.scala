@@ -878,7 +878,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Apply(tree, args)
 
     /** An applied node that accepts only varargs as arguments */
-    def appliedToVarargs(args: List[Tree], tpt: Tree)(given Context): Tree =
+    def appliedToVarargs(args: List[Tree], tpt: Tree)(using Context): Tree =
       appliedTo(repeated(args, tpt))
 
     /** The current tree applied to given argument lists:
@@ -1378,7 +1378,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** Convert a list of trees to a vararg-compatible tree.
    *  Used to make arguments for methods that accept varargs.
    */
-  def repeated(trees: List[Tree], tpt: Tree)(given ctx: Context): Tree =
+  def repeated(trees: List[Tree], tpt: Tree)(using ctx: Context): Tree =
     ctx.typeAssigner.arrayToRepeated(JavaSeqLiteral(trees, tpt))
 
   /** Create a tree representing a list containing all
@@ -1390,7 +1390,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  @param tpe    the type of the elements of the resulting list.
    *
    */
-  def mkList(trees: List[Tree], tpe: Tree)(given Context): Tree =
+  def mkList(trees: List[Tree], tpe: Tree)(using Context): Tree =
     ref(defn.ListModule).select(nme.apply)
       .appliedToTypeTree(tpe)
       .appliedToVarargs(trees, tpe)

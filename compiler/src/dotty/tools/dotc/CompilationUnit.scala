@@ -43,7 +43,7 @@ class CompilationUnit protected (val source: SourceFile) {
 
   var suspended: Boolean = false
 
-  def suspend()(given ctx: Context): Nothing =
+  def suspend()(using ctx: Context): Nothing =
     if !suspended then
       if (ctx.settings.XprintSuspension.value)
         ctx.echo(i"suspended: $this")
@@ -57,7 +57,7 @@ class CompilationUnit protected (val source: SourceFile) {
    *  that can be tracked for being not null to the list of spans of assignments
    *  to these variables.
    */
-  def assignmentSpans(given Context): Map[Int, List[Span]] =
+  def assignmentSpans(using Context): Map[Int, List[Span]] =
     if myAssignmentSpans == null then myAssignmentSpans = Nullables.assignmentSpans
     myAssignmentSpans
 }

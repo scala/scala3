@@ -114,7 +114,7 @@ true
 
 ### Calling the derived method inside the macro
 
-Following the rules in [Macros](../metaprogramming.md) we create two methods.
+Following the rules in [Macros](../metaprogramming/toc.md) we create two methods.
 One that hosts the top-level splice `eqv` and one that is the implementation.
 Alternatively and what is shown below is that we can call the `eqv` method
 directly. The `eqGen` can trigger the derivation.

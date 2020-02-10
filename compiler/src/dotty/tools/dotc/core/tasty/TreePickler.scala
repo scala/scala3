@@ -134,7 +134,7 @@ class TreePickler(pickler: TastyPickler) {
       pickleType(c.symbolValue.termRef)
   }
 
-  def pickleVariances(tp: Type)(given Context): Unit = tp match
+  def pickleVariances(tp: Type)(using Context): Unit = tp match
     case tp: HKTypeLambda if tp.isDeclaredVarianceLambda =>
       for v <- tp.declaredVariances do
         writeByte(

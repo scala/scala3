@@ -188,9 +188,9 @@ object Decorators {
 
   implicit class reportDeco[T](x: T) extends AnyVal {
     def reporting(
-        op: (given WrappedResult[T]) => String,
+        op: WrappedResult[T] ?=> String,
         printer: config.Printers.Printer = config.Printers.default): T = {
-      printer.println(op(given WrappedResult(x)))
+      printer.println(op(using WrappedResult(x)))
       x
     }
   }

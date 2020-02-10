@@ -35,7 +35,7 @@ class Expr[+T] private[scala] {
    *  ```
    */
   final def matches(that: Expr[Any])(using qctx: QuoteContext): Boolean =
-    !scala.internal.quoted.Expr.unapply[Unit, Unit](this)(given that, false, qctx).isEmpty
+    !scala.internal.quoted.Expr.unapply[Unit, Unit](this)(using that, false, qctx).isEmpty
 
 }
 
@@ -57,8 +57,8 @@ object Expr {
     tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
   }
 
-  /** `Expr.betaReduceGiven(f)(x1, ..., xn)` is functionally the same as `'{($f)(given $x1, ..., $xn)}`, however it optimizes this call
-   *   by returning the result of beta-reducing `f(given x1, ..., xn)` if `f` is a known lambda expression.
+  /** `Expr.betaReduceGiven(f)(x1, ..., xn)` is functionally the same as `'{($f)(using $x1, ..., $xn)}`, however it optimizes this call
+   *   by returning the result of beta-reducing `f(using x1, ..., xn)` if `f` is a known lambda expression.
    *
    *  `Expr.betaReduceGiven` distributes applications of `Expr` over function arrows
    *   ```scala

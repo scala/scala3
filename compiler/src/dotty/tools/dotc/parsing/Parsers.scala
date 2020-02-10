@@ -26,7 +26,6 @@ import Decorators._
 import scala.internal.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
-import config.Config.silentTemplateIndent
 
 object Parsers {
 
@@ -1319,7 +1318,6 @@ object Parsers {
         if in.token != LBRACE && in.token != INDENT then
           syntaxError(i"indented definitions or `{` expected")
       else
-        if silentTemplateIndent && !isNew then in.observeIndented()
         newLineOptWhenFollowedBy(LBRACE)
 
     def endMarkerScope[T](pid: Tree)(op: => T): T = pid match {
@@ -3582,17 +3580,19 @@ object Parsers {
     def extensionDef(start: Offset, mods: Modifiers): ModuleDef =
       in.nextToken()
       val name = if isIdent && !isIdent(nme.on) then ident() else EmptyTermName
-      if !isIdent(nme.on) then syntaxErrorOrIncomplete("`on` expected")
-      if isIdent(nme.on) then in.nextToken()
-      val tparams = typeParamClauseOpt(ParamOwner.Def)
-      val extParams = paramClause(0, prefix = true)
-      val givenParamss = paramClauses(givenOnly = true)
-      possibleTemplateStart()
-      if !in.isNestedStart then syntaxError("Extension without extension methods")
-      val templ = templateBodyOpt(makeConstructor(tparams, extParams :: givenParamss), Nil, Nil)
-      templ.body.foreach(checkExtensionMethod(tparams, _))
-      val edef = ModuleDef(name, templ)
-      finalizeDef(edef, addFlag(mods, Given), start)
+      in.endMarkerScope(if name.isEmpty then nme.extension else name) {
+        if !isIdent(nme.on) then syntaxErrorOrIncomplete("`on` expected")
+        if isIdent(nme.on) then in.nextToken()
+        val tparams = typeParamClauseOpt(ParamOwner.Def)
+        val extParams = paramClause(0, prefix = true)
+        val givenParamss = paramClauses(givenOnly = true)
+        possibleTemplateStart()
+        if !in.isNestedStart then syntaxError("Extension without extension methods")
+        val templ = templateBodyOpt(makeConstructor(tparams, extParams :: givenParamss), Nil, Nil)
+        templ.body.foreach(checkExtensionMethod(tparams, _))
+        val edef = ModuleDef(name, templ)
+        finalizeDef(edef, addFlag(mods, Given), start)
+      }
 
 /* -------- TEMPLATES ------------------------------------------- */
 

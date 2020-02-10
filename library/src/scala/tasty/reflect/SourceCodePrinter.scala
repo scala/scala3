@@ -4,6 +4,7 @@ package reflect
 import scala.annotation.switch
 import scala.quoted.show.SyntaxHighlight
 
+/** Printer for fully elaborated representation of the source code */
 class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlight: SyntaxHighlight) extends Printer[R] {
   import tasty.{_, given}
   import syntaxHighlight._
@@ -12,7 +13,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     (new Buffer).printTree(tree).result()
 
   def showTypeOrBounds(tpe: TypeOrBounds)(using ctx: Context): String =
-    (new Buffer).printTypeOrBound(tpe)(given None).result()
+    (new Buffer).printTypeOrBound(tpe)(using None).result()
 
   def showConstant(const: Constant)(using ctx: Context): String =
     (new Buffer).printConstant(const).result()
@@ -160,19 +161,19 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
         def printParent(parent: Tree /* Term | TypeTree */, needEmptyParens: Boolean = false): Unit = parent match {
           case parent: TypeTree =>
-            printTypeTree(parent)(given Some(cdef.symbol))
+            printTypeTree(parent)(using Some(cdef.symbol))
           case TypeApply(fun, targs) =>
             printParent(fun)
           case Apply(fun@Apply(_,_), args) =>
             printParent(fun, true)
             if (!args.isEmpty || needEmptyParens)
-              inParens(printTrees(args, ", ")(given Some(cdef.symbol)))
+              inParens(printTrees(args, ", ")(using Some(cdef.symbol)))
           case Apply(fun, args) =>
             printParent(fun)
             if (!args.isEmpty || needEmptyParens)
-              inParens(printTrees(args, ", ")(given Some(cdef.symbol)))
+              inParens(printTrees(args, ", ")(using Some(cdef.symbol)))
           case Select(newTree: New, _) =>
-            printType(newTree.tpe)(given Some(cdef.symbol))
+            printType(newTree.tpe)(using Some(cdef.symbol))
           case parent: Term =>
             throw new MatchError(parent.showExtractors)
         }
@@ -224,7 +225,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
               indented {
                 val name1 = if (name == "_") "this" else name
                 this += " " += highlightValDef(name1) += ": "
-                printTypeTree(tpt)(given Some(cdef.symbol))
+                printTypeTree(tpt)(using Some(cdef.symbol))
                 this += " =>"
               }
             }
@@ -382,10 +383,15 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         this += "}"
 
       case Apply(fn, args) =>
+        var argsPrefix = ""
         fn match {
           case Select(This(_), "<init>") => this += "this" // call to constructor inside a constructor
-          case Select(qual, "apply") if qual.tpe.isContextFunctionType =>
-            printTree(qual) += " given "
+          case Select(qual, "apply") =>
+            if qual.tpe.isContextFunctionType then
+              argsPrefix += "using "
+            if qual.tpe.isErasedFunctionType then
+              argsPrefix += "erased "
+            printQualTree(fn)
           case _ => printQualTree(fn)
         }
         val args1 = args match {
@@ -393,7 +399,10 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
           case _ => args
         }
 
-        inParens(printTrees(args1, ", "))
+        inParens {
+          this += argsPrefix
+          printTrees(args1, ", ")
+        }
 
       case TypeApply(fn, args) =>
         printQualTree(fn)
@@ -446,10 +455,10 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         this += " = "
         printTree(rhs)
 
-      case Lambda(params, body) =>  // must come before `Block`
+      case tree @ Lambda(params, body) =>  // must come before `Block`
         inParens {
           printArgsDefs(params)
-          this += " => "
+          this += (if tree.tpe.isContextFunctionType then " ?=> " else  " => ")
           printTree(body)
         }
 
@@ -861,7 +870,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       indented {
         caseDef.rhs match {
           case Block(stats, expr) =>
-            printStats(stats, expr)(given None)
+            printStats(stats, expr)(using None)
           case body =>
             this += lineBreak()
             printTree(body)

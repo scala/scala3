@@ -17,10 +17,10 @@ trait TreeMap {
   val reflect: Reflection
   import reflect.{given, _}
 
-  def transformTree(tree: Tree)(given ctx: Context): Tree = {
+  def transformTree(tree: Tree)(using ctx: Context): Tree = {
     tree match {
       case tree: PackageClause =>
-        PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(given tree.symbol.localContext))
+        PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(using tree.symbol.localContext))
       case tree: Import =>
         Import.copy(tree)(transformTerm(tree.expr), tree.selectors)
       case tree: Statement =>
@@ -41,7 +41,7 @@ trait TreeMap {
     }
   }
 
-  def transformStatement(tree: Statement)(given ctx: Context): Statement = {
+  def transformStatement(tree: Statement)(using ctx: Context): Statement = {
     def localCtx(definition: Definition): Context = definition.symbol.localContext
     tree match {
       case tree: Term =>
@@ -67,7 +67,7 @@ trait TreeMap {
     }
   }
 
-  def transformTerm(tree: Term)(given ctx: Context): Term = {
+  def transformTerm(tree: Term)(using ctx: Context): Term = {
     tree match {
       case Ident(name) =>
         tree
@@ -112,7 +112,7 @@ trait TreeMap {
     }
   }
 
-  def transformTypeTree(tree: TypeTree)(given ctx: Context): TypeTree = tree match {
+  def transformTypeTree(tree: TypeTree)(using ctx: Context): TypeTree = tree match {
     case Inferred() => tree
     case tree: TypeIdent => tree
     case tree: TypeSelect =>
@@ -132,40 +132,40 @@ trait TreeMap {
     case tree: ByName =>
       ByName.copy(tree)(transformTypeTree(tree.result))
     case tree: LambdaTypeTree =>
-      LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTree(tree.body))(given tree.symbol.localContext)
+      LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTree(tree.body))(using tree.symbol.localContext)
     case tree: TypeBind =>
       TypeBind.copy(tree)(tree.name, tree.body)
     case tree: TypeBlock =>
       TypeBlock.copy(tree)(tree.aliases, tree.tpt)
   }
 
-  def transformCaseDef(tree: CaseDef)(given ctx: Context): CaseDef = {
+  def transformCaseDef(tree: CaseDef)(using ctx: Context): CaseDef = {
     CaseDef.copy(tree)(transformTree(tree.pattern), tree.guard.map(transformTerm), transformTerm(tree.rhs))
   }
 
-  def transformTypeCaseDef(tree: TypeCaseDef)(given ctx: Context): TypeCaseDef = {
+  def transformTypeCaseDef(tree: TypeCaseDef)(using ctx: Context): TypeCaseDef = {
     TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern), transformTypeTree(tree.rhs))
   }
 
-  def transformStats(trees: List[Statement])(given ctx: Context): List[Statement] =
+  def transformStats(trees: List[Statement])(using ctx: Context): List[Statement] =
     trees mapConserve (transformStatement(_))
 
-  def transformTrees(trees: List[Tree])(given ctx: Context): List[Tree] =
+  def transformTrees(trees: List[Tree])(using ctx: Context): List[Tree] =
     trees mapConserve (transformTree(_))
 
-  def transformTerms(trees: List[Term])(given ctx: Context): List[Term] =
+  def transformTerms(trees: List[Term])(using ctx: Context): List[Term] =
     trees mapConserve (transformTerm(_))
 
-  def transformTypeTrees(trees: List[TypeTree])(given ctx: Context): List[TypeTree] =
+  def transformTypeTrees(trees: List[TypeTree])(using ctx: Context): List[TypeTree] =
     trees mapConserve (transformTypeTree(_))
 
-  def transformCaseDefs(trees: List[CaseDef])(given ctx: Context): List[CaseDef] =
+  def transformCaseDefs(trees: List[CaseDef])(using ctx: Context): List[CaseDef] =
     trees mapConserve (transformCaseDef(_))
 
-  def transformTypeCaseDefs(trees: List[TypeCaseDef])(given ctx: Context): List[TypeCaseDef] =
+  def transformTypeCaseDefs(trees: List[TypeCaseDef])(using ctx: Context): List[TypeCaseDef] =
     trees mapConserve (transformTypeCaseDef(_))
 
-  def transformSubTrees[Tr <: Tree](trees: List[Tr])(given ctx: Context): List[Tr] =
+  def transformSubTrees[Tr <: Tree](trees: List[Tr])(using ctx: Context): List[Tr] =
     transformTrees(trees).asInstanceOf[List[Tr]]
 
 }

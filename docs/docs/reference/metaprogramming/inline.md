@@ -89,10 +89,10 @@ def factorial(n: BigInt): BigInt = {
 }
 ```
 
-Note, that the by-value parameter is evaluated only once, per the usual Scala
+Note, that the by-value parameter `msg` is evaluated only once, per the usual Scala
 semantics, by binding the value and reusing the `msg` through the body of
-`factorial`. Also, note the special handling of setting to the private var
-`indent` by generating the setter method `def inline$indent_=`.
+`factorial`. Also, note the special handling of the assignment to the private var
+`indent`. It is achieved by generating a setter method `def inline$indent_=` and calling it instead.
 
 ### Recursive Inline Methods
 
@@ -121,23 +121,26 @@ power(expr, 10)
 ```
 
 Parameters of inline methods can have an `inline` modifier as well. This means
-that actual arguments to these parameters will be inlined in the body of the `inline def`.
-`inline` parameter have call semantics equivalent to by-name parameters but allows for duplication
-of the code in the argument. It is usualy useful constant values need to be propagated to allow
-further optimizations/reductions.
+that actual arguments to these parameters will be inlined in the body of the 
+`inline def`. `inline` parameters have call semantics equivalent to by-name parameters 
+but allow for duplication of the code in the argument. It is usually useful when constant 
+values need to be propagated to allow further optimizations/reductions.
 
 The following example shows the difference in translation between by-value, by-name and `inline`
 parameters:
 
 ```scala
-inline def sumTwice(a: Int, b: =>Int, inline c: Int) = a + a + b + b + c + c
+inline def funkyAssertEquals(actual: Double, expected: =>Double, inline delta: Double): Unit =
+  if (actual - expected).abs > delta then
+    throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${delta}")
 
-sumTwice(f(), g(), h())
+funkyAssertEquals(computeActual(), computeExpected(), computeDelta())
 // translates to
 //
-//    val a = f()
-//    def b = g()
-//    a + a + b + b + h() + h()
+//    val actual = computeActual()
+//    def expected = computeExpected()
+//    if (actual - expected).abs > computeDelta() then
+//      throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${computeDelta()}")
 ```
 
 ### Relationship to @inline
@@ -212,12 +215,12 @@ obj2.meth()    // OK
 Here, the inline method `choose` returns an object of either of the two dynamic types
 `A` and `B`. If `choose` had been declared with a normal return type `: A`, the result
 of its expansion would always be of type `A`, even though the computed value might be
-of type `B`. The inline method is "blackbox"  in the sense that details of its
+of type `B`. The inline method is a "blackbox" in the sense that details of its
 implementation do not leak out. But with the specializing return type `<: A`,
 the type of the expansion is the type of the expanded body. If the argument `b`
 is `true`, that type is `A`, otherwise it is `B`. Consequently, calling `meth` on `obj2`
 type-checks since `obj2` has the same type as the expansion of `choose(false)`, which is `B`.
-Inline methods with specializing return types are "whitebox" in that the type
+Inline methods with specializing return types are a "whitebox" in the sense that the type
 of an application of such a method can be more specialized than its declared
 return type, depending on how the method expands.
 
@@ -309,7 +312,7 @@ The `scala.compiletime` package contains helper definitions that provide support
 
 ### `constValue`, `constValueOpt`, and the `S` combinator
 
-`constvalue` is a function that produces the constant value represented by a
+`constValue` is a function that produces the constant value represented by a
 type.
 
 ```scala
@@ -390,7 +393,7 @@ final val two = toIntT[Succ[Succ[Zero.type]]]
 ```
 
 `erasedValue` is an `erased` method so it cannot be used and has no runtime
-behavior. Since `toInt` performs static checks over the static type of `N` we
+behavior. Since `toIntT` performs static checks over the static type of `N` we
 can safely use it to scrutinize its return type (`S[S[Z]]` in this case).
 
 ### `error`
@@ -453,8 +456,8 @@ val x: 1 + 2 * 3 = 7
 ```
 
 The operation types are located in packages named after the type of the
-left-hand side parameter: for instance, `scala.compiletime.int.+` represents
-addition of two numbers, while `scala.compiletime.string.+` represents string
+left-hand side parameter: for instance, `scala.compiletime.ops.int.+` represents
+addition of two numbers, while `scala.compiletime.ops.string.+` represents string
 concatenation. To use both and distinguish the two types from each other, a
 match type can dispatch to the correct implementation:
 
