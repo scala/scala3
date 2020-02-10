@@ -28,4 +28,14 @@ class SettingsTests {
     assertEquals(0, reporter.errorCount)
     assertTrue(Files.exists(out))
   }
+
+  @Test def t8124: Unit = {
+    val source = Paths.get("tests/pos/Foo.scala").normalize
+    val outputDir = Paths.get("out/testSettings").normalize
+    if (Files.notExists(outputDir)) Files.createDirectory(outputDir)
+    val options = Array("-encoding", "-d", outputDir.toString, source.toString)
+    val reporter = Main.process(options)
+    assertEquals(1, reporter.errorCount)
+   }
+
 }
