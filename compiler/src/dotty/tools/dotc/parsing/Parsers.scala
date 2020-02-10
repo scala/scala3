@@ -3506,70 +3506,54 @@ object Parsers {
       var mods1 = addMod(mods, instanceMod)
       val hasGivenSig = followingIsGivenSig()
       val nameStart = in.offset
-      val (name, isOldExtension) =
-        if isIdent && hasGivenSig then
-          (ident(), in.token == COLON && in.lookaheadIn(nme.extension))
-        else
-          (EmptyTermName, isIdent(nme.extension))
+      val name = if isIdent && hasGivenSig then ident() else EmptyTermName
 
       val gdef = in.endMarkerScope(if name.isEmpty then GIVEN else name) {
-        if isOldExtension then
-          if (in.token == COLON) in.nextToken()
-          assert(ident() == nme.extension)
-          val tparams = typeParamClauseOpt(ParamOwner.Def)
-          val extParams = paramClause(0, prefix = true)
-          val givenParamss = paramClauses(givenOnly = true)
-          possibleTemplateStart()
-          val templ = templateBodyOpt(
-            makeConstructor(tparams, extParams :: givenParamss), Nil, Nil)
-          templ.body.foreach(checkExtensionMethod(tparams, _))
-          ModuleDef(name, templ)
-        else
-          val hasLabel = !name.isEmpty && in.token == COLON || isIdent(nme.as)
-          if hasLabel then in.nextToken()
-          val tparams = typeParamClauseOpt(ParamOwner.Def)
-          val paramsStart = in.offset
-          val vparamss =
-            if in.token == LPAREN && followingIsParamOrGivenType()
-            then paramClauses()
-            else Nil
-          def checkAllGivens(vparamss: List[List[ValDef]], what: String) =
-            vparamss.foreach(_.foreach(vparam =>
-              if !vparam.mods.is(Given) then syntaxError(em"$what must be preceded by `using`", vparam.span)))
-          checkAllGivens(vparamss, "parameter of given instance")
-          val parents =
-            if in.token == SUBTYPE && !hasLabel then
-              if !mods.is(Inline) then
-                syntaxError("`<:` is only allowed for given with `inline` modifier")
+        val hasLabel = !name.isEmpty && in.token == COLON || isIdent(nme.as)
+        if hasLabel then in.nextToken()
+        val tparams = typeParamClauseOpt(ParamOwner.Def)
+        val paramsStart = in.offset
+        val vparamss =
+          if in.token == LPAREN && followingIsParamOrGivenType()
+          then paramClauses()
+          else Nil
+        def checkAllGivens(vparamss: List[List[ValDef]], what: String) =
+          vparamss.foreach(_.foreach(vparam =>
+            if !vparam.mods.is(Given) then syntaxError(em"$what must be preceded by `using`", vparam.span)))
+        checkAllGivens(vparamss, "parameter of given instance")
+        val parents =
+          if in.token == SUBTYPE && !hasLabel then
+            if !mods.is(Inline) then
+              syntaxError("`<:` is only allowed for given with `inline` modifier")
+            in.nextToken()
+            TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
+          else
+            if !hasLabel && !(name.isEmpty && tparams.isEmpty && vparamss.isEmpty) then
+              if in.token == COLON then in.nextToken()
+              else accept(nme.as)
+            if in.token == USCORE then
               in.nextToken()
+              accept(SUBTYPE)
               TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
             else
-              if !hasLabel && !(name.isEmpty && tparams.isEmpty && vparamss.isEmpty) then
-                if in.token == COLON then in.nextToken()
-                else accept(nme.as)
-              if in.token == USCORE then
-                in.nextToken()
-                accept(SUBTYPE)
-                TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
-              else
-                constrApps(commaOK = true, templateCanFollow = true)
+              constrApps(commaOK = true, templateCanFollow = true)
 
-          if in.token == EQUALS && parents.length == 1 && parents.head.isType then
-            in.nextToken()
-            mods1 |= Final
-            DefDef(name, tparams, vparamss, parents.head, subExpr())
-          else
-            parents match
-              case (_: TypeBoundsTree) :: _ => syntaxError("`=` expected")
-              case _ =>
-            possibleTemplateStart()
-            val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
-            val vparamss1 = vparamss.map(_.map(vparam =>
-              vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
-            val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
-            if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
-            else TypeDef(name.toTypeName, templ)
-        }
+        if in.token == EQUALS && parents.length == 1 && parents.head.isType then
+          in.nextToken()
+          mods1 |= Final
+          DefDef(name, tparams, vparamss, parents.head, subExpr())
+        else
+          parents match
+            case (_: TypeBoundsTree) :: _ => syntaxError("`=` expected")
+            case _ =>
+          possibleTemplateStart()
+          val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
+          val vparamss1 = vparamss.map(_.map(vparam =>
+            vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
+          val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
+          if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
+          else TypeDef(name.toTypeName, templ)
+      }
       finalizeDef(gdef, mods1, start)
     }
 
