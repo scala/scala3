@@ -1015,7 +1015,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
    *        of `Lambda`.
    */
   object Lambda {
-    def unapply(tree: Tree)(using ctx: Context): Option[(List[ValDef], Term)] = tree match {
+    def unapply(tree: Block)(using ctx: Context): Option[(List[ValDef], Term)] = tree match {
       case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
       if ddef.symbol == meth.symbol =>
         Some(params, body)
