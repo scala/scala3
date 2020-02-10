@@ -156,7 +156,7 @@ Now, applying the `List.map` ability with the following mapping function as para
 
 To avoid avoid managing lists of lists, we may want to "flatten" the values in a single list.
 
-That's where `Monad` enter the party. A `Monad` for type `F[_]` is a `Functor[F]` with 2 more abilities: 
+That's where `Monad` enters the party. A `Monad` for type `F[_]` is a `Functor[F]` with 2 more abilities: 
 * the flatten ability we just described: turning `F[A]` to `F[B]` when given a `mapping: A => F[B]` function
 * the ability to create `F[A]` from a single value `A`
 
