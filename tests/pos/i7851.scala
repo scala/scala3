@@ -16,7 +16,7 @@ given [H: Wrappable, T <: Tuple, WrappedT0 <: Tuple](using Wrapper.Aux[T, Wrappe
 
 def wrappedFunction[F, FArgs <: Tuple, WrapperFArgs <: Tuple, R: Wrappable](
   function: F
-)(input: FArgs)(given
+)(input: FArgs)(using
   tf: TupledFunction[F, WrapperFArgs => Wrapped[R]],
   vs: Wrapper.Aux[FArgs, WrapperFArgs]
 ): (R, R => Option[FArgs]) = {

@@ -713,7 +713,7 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
       val argShowedExprs = argExprs.map {
         case '{ $arg: $tp } =>
           val showTp = '[Show[$tp]]
-          summonExpr(given showTp)) match {
+          summonExpr(using showTp)) match {
             case Some(showExpr) => '{ $showExpr.show($arg) }
             case None => qctx.error(s"could not find implicit for ${showTp.show}", arg); '{???}
           }

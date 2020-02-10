@@ -11,7 +11,7 @@ import PositionContext._
  * definition, etc.)
  */
 trait Action {
-  type Exec[T] = (given TestServer, TestClient, PositionContext) => T
+  type Exec[T] = (TestServer, TestClient, PositionContext) ?=> T
 
   /** Execute the action. */
   def execute(): Exec[Unit]

@@ -17,8 +17,8 @@ import java.nio.file.Paths
 
 import PartialFunction.condOpt
 
-import ast.untpd.given
-import NameOps.given
+import ast.untpd.{given _}
+import NameOps.{given _}
 
 import scala.annotation.{ threadUnsafe => tu, tailrec }
 
@@ -28,8 +28,8 @@ import scala.annotation.{ threadUnsafe => tu, tailrec }
  *  TODO: Also extract type information
  */
 class ExtractSemanticDB extends Phase with
-  import Scala3.{_, given}
-  import Symbols.given
+  import Scala3.{_, given _}
+  import Symbols.{given _}
 
   override val phaseName: String = ExtractSemanticDB.name
 

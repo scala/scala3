@@ -917,7 +917,7 @@ object Parsers {
     def followingIsParamOrGivenType() =
       val lookahead = in.LookaheadScanner()
       lookahead.nextToken()
-      if startParamOrGivenTypeTokens.contains(lookahead.token)
+      if startParamTokens.contains(lookahead.token)
          || lookahead.isIdent(nme.using)
       then true
       else if lookahead.token == IDENTIFIER then
@@ -1450,8 +1450,6 @@ object Parsers {
         case MATCH => matchType(t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
-          if (imods.isOneOf(GivenOrImplicit) && !t.isInstanceOf[FunctionWithMods])
-            syntaxError(ImplicitTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
           if (imods.is(Erased) && !t.isInstanceOf[FunctionWithMods])
             syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
           t
@@ -2299,7 +2297,7 @@ object Parsers {
     def parArgumentExprs(): (List[Tree], Boolean) = inParens {
       if in.token == RPAREN then
         (Nil, false)
-      else if in.token == GIVEN || isIdent(nme.using) then
+      else if isIdent(nme.using) then
         in.nextToken()
         (commaSeparated(argumentExpr), true)
       else
@@ -2786,7 +2784,7 @@ object Parsers {
       normalize(loop(start))
     }
 
-    val funTypeArgMods: BitSet = BitSet(GIVEN, ERASED)
+    val funTypeArgMods: BitSet = BitSet(ERASED)
 
     /** Wrap annotation or constructor in New(...).<init> */
     def wrapNew(tpt: Tree): Select = Select(New(tpt), nme.CONSTRUCTOR)
@@ -2912,7 +2910,7 @@ object Parsers {
       def paramMods() =
         if in.token == IMPLICIT then addParamMod(() => Mod.Implicit())
         else
-          if in.token == GIVEN || isIdent(nme.using) then addParamMod(() => Mod.Given())
+          if isIdent(nme.using) then addParamMod(() => Mod.Given())
           if in.token == ERASED then addParamMod(() => Mod.Erased())
 
       def param(): ValDef = {

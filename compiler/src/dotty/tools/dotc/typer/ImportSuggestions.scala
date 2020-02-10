@@ -184,7 +184,7 @@ trait ImportSuggestions with
         try
           timer.schedule(task, testOneImplicitTimeOut)
           typedImplicit(candidate, expectedType, argument, span)(
-            given ctx.fresh.setExploreTyperState()).isSuccess
+            using ctx.fresh.setExploreTyperState()).isSuccess
         finally
           if task.cancel() then // timer task has not run yet
             assert(!ctx.run.isCancelled)

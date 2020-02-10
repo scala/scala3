@@ -150,7 +150,7 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     UnknownNamedEnclosingClassOrObjectID,
     IllegalCyclicTypeReferenceID,
     MissingTypeParameterInTypeAppID,
-    ImplicitTypesCanOnlyBeFunctionTypesID,
+    UNUSED_ImplicitTypesCanOnlyBeFunctionTypesID,
     ErasedTypesCanOnlyBeFunctionTypesID,
     CaseClassMissingNonImplicitParamListID,
     EnumerationsShouldNotBeEmptyID,

@@ -14,6 +14,6 @@ class TastydocInspector(mutablePackagesMap: scala.collection.mutable.HashMap[Str
   protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
 
-    representations.convertToRepresentation(reflect)(root, None)(given mutablePackagesMap)
+    representations.convertToRepresentation(reflect)(root, None)(using mutablePackagesMap)
   }
 }
