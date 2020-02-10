@@ -7,7 +7,7 @@ package object staging {
    *
    *  Usage:
    *  ```
-   *  val e: T = run { // (given qctx: QuoteContext) =>
+   *  val e: T = run { // (using qctx: QuoteContext) =>
    *    expr
    *  }
    *  ```
@@ -16,7 +16,7 @@ package object staging {
    *  This method should not be called in a context where there is already has a `QuoteContext`
    *  such as within a `run` or a `withQuoteContext`.
    */
-  def run[T](expr: (given QuoteContext) => Expr[T])(given toolbox: Toolbox): T = toolbox.run(expr(given _))
+  def run[T](expr: QuoteContext ?=> Expr[T])(using toolbox: Toolbox): T = toolbox.run(expr(using _))
 
   /** Provide a new quote context within the scope of the argument that is only valid within the scope the argument.
    *  Return the result of the argument.
@@ -32,14 +32,14 @@ package object staging {
    *  This method should not be called in a context where there is already has a `QuoteContext`
    *  such as within a `run` or a `withQuoteContext`.
    */
-  def withQuoteContext[T](thunk: QuoteContext ?=> T)(given toolbox: Toolbox): T = {
+  def withQuoteContext[T](thunk: QuoteContext ?=> T)(using toolbox: Toolbox): T = {
     val noResult = new Object
     var result: T = noResult.asInstanceOf[T]
-    def dummyRun(given QuoteContext): Expr[Unit] = {
+    def dummyRun(using QuoteContext): Expr[Unit] = {
       result = thunk
       Expr.unitExpr
     }
-    toolbox.run(dummyRun(given _))
+    toolbox.run(dummyRun(using _))
     assert(result != noResult) // toolbox.run should have thrown an exception
     result
   }

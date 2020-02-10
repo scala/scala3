@@ -10,5 +10,5 @@ scala> def id(x: 4): 4 = x
 def id(x: 4): 4
 scala> id(4)
 val res0: Int = 4
-scala> def f(given Int) = 1
-def f(given x$1: Int): Int
+scala> def f(using Int) = 1
+def f(using x$1: Int): Int

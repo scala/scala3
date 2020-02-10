@@ -4,7 +4,7 @@ object Macro {
 
    inline def f(): Unit = ${ macroImplementation }
 
-   def macroImplementation(given QuoteContext): Expr[Unit] = {
+   def macroImplementation(using QuoteContext): Expr[Unit] = {
       '{ println("Implementation in Macro") }
    }
 

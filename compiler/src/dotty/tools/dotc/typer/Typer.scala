@@ -1232,8 +1232,8 @@ class Typer extends Namer
 
     val pat1 = typedPattern(tree.pat, wideSelType)(gadtCtx)
     caseRest(pat1)(
-      given Nullables.caseContext(sel, pat1)(
-        given gadtCtx.fresh.setNewScope))
+      using Nullables.caseContext(sel, pat1)(
+        using gadtCtx.fresh.setNewScope))
   }
 
   def typedLabeled(tree: untpd.Labeled)(implicit ctx: Context): Labeled = {
@@ -2345,7 +2345,7 @@ class Typer extends Namer
             // in preceding statements (unless the DefTree is completed ahead of time,
             // then it is impossible).
             sym.info = Completer(completer.original)(
-              given completer.creationContext.withNotNullInfos(ctx.notNullInfos))
+              using completer.creationContext.withNotNullInfos(ctx.notNullInfos))
           true
         case _ =>
           // If it has been completed, then it must be because there is a forward reference

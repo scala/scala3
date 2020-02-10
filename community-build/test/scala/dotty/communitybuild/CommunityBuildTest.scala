@@ -47,7 +47,7 @@ sealed trait CommunityProject:
   /** Is this project running in the test or update mode in the
    *  context of the given suite? @see `run` for more details.
    */
-  final def isUpdateMode(given suite: CommunityBuildTest) =
+  final def isUpdateMode(using suite: CommunityBuildTest) =
     suite.isInstanceOf[CommunityBuildUpdate]
 
   /** Depending on the mode of operation, either
@@ -60,7 +60,7 @@ sealed trait CommunityProject:
    *  and avoid network overhead. See https://github.com/lampepfl/dotty-drone
    *  for more infrastructural details.
    */
-  final def run()(given suite: CommunityBuildTest) =
+  final def run()(using suite: CommunityBuildTest) =
     val runCmd = if isUpdateMode then updateCommand else testCommand
     if !isUpdateMode then dependencies.foreach(_.publish())
     suite.test(project, binaryName, runCommandsArgs :+ runCmd)

@@ -863,7 +863,7 @@ trait Applications extends Compatibility {
                 new ApplyToTyped(tree, fun1, funRef, proto.typedArgs(), pt)
               else
                 new ApplyToUntyped(tree, fun1, funRef, proto, pt)(
-                  given fun1.nullableInArgContext(using argCtx(tree)))
+                  using fun1.nullableInArgContext(using argCtx(tree)))
             convertNewGenericArray(
               postProcessByNameArgs(funRef, app.result).computeNullable())
           case _ =>

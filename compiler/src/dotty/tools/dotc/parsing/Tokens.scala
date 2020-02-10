@@ -257,7 +257,7 @@ object Tokens extends TokensCommon {
     AT, CASE)
 
   final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(
-    TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT)
+    TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT) // TODO: remove GIVEN once old import syntax is dropped
 
   /** Tokens that stop a lookahead scan search for a `<-`, `then`, or `do`.
    *  Used for disambiguating between old and new syntax.
@@ -279,12 +279,6 @@ object Tokens extends TokensCommon {
    *  tokens determine it's a formal parameter.
    */
   final val startParamTokens: BitSet = modifierTokens | BitSet(VAL, VAR, AT)
-
-  /** Faced with the choice of a type `(...)` or a parameter or given type list
-   *  in `(...)`, the following tokens after the opening `(` determine it's
-   *  a parameter or given type list.
-   */
-  final val startParamOrGivenTypeTokens: BitSet = startParamTokens | BitSet(GIVEN, ERASED)
 
   final val scala3keywords = BitSet(ENUM, ERASED, GIVEN)
 

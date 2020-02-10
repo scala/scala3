@@ -22,7 +22,7 @@ object Flags {
 
   type Flag = opaques.Flag
 
-  given extension (x: FlagSet) with
+  extension on (x: FlagSet) {
 
     def bits: Long = opaques.toBits(x)
 
@@ -150,7 +150,7 @@ object Flags {
 
     /** The string representation of the given flag set */
     def flagsString: String = x.flagStrings("").mkString(" ")
-  end given
+  }
 
   def termFlagSet(x: Long) = FlagSet(TERMS | x)
 
