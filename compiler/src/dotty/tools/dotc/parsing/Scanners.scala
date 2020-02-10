@@ -749,17 +749,22 @@ object Scanners {
             if (token == INTERPOLATIONID) {
               nextRawChar()
               if (ch == '\"') {
-                nextRawChar()
-                if (ch == '\"') {
+                if (lookaheadChar() == '\"') {
+                  nextRawChar()
+                  //offset += 3   // first part is positioned at the quote
                   nextRawChar()
                   stringPart(multiLine = true)
                 }
                 else {
+                  nextChar()
                   token = STRINGLIT
                   strVal = ""
                 }
               }
-              else stringPart(multiLine = false)
+              else {
+                //offset += 1   // first part is positioned at the quote
+                stringPart(multiLine = false)
+              }
             }
             else {
               nextChar()
