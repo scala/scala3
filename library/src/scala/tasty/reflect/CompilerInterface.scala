@@ -162,11 +162,14 @@ trait CompilerInterface {
   /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
   def Context_requiredMethod(self: Context)(path: String): Symbol
 
-  /** Get Java class name if we've accidentally tried to reflect on a Java class.  None returned if TASTy class. */
-  def Context_javaCompilationUnitClassname(self: Context): Option[String]
+  /** Returns true if we've tried to reflect on a Java class. */
+  def Context_isJavaCompilationUnit(self: Context): Boolean
 
-  /** Get Scala class name if attempted reflection is performed on an older Scala file w/o Tasty information present. */
-  def Context_nonTastyScalaCompilationUnitClassname(self: Context): Option[String]
+  /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
+  def Context_isScala2CompilationUnit(self: Context): Boolean
+
+  /** Class name of the current CompilationUnit */
+  def Context_compilationUnitClassname(self: Context): String
 
 
   ///////////////

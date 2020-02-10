@@ -65,15 +65,13 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Context_requiredClass(self: Context)(path: String): Symbol = self.requiredClass(path)
   def Context_requiredModule(self: Context)(path: String): Symbol = self.requiredModule(path)
   def Context_requiredMethod(self: Context)(path: String): Symbol = self.requiredMethod(path)
-  def Context_javaCompilationUnitClassname(self: Context): Option[String] = 
+  def Context_isJavaCompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.JavaCompilationUnit]
+  def Context_isScala2CompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.Scala2CompilationUnit]
+  def Context_compilationUnitClassname(self: Context): String = 
     self.compilationUnit match {
-      case j: fromtasty.JavaCompilationUnit => Some(j.className)
-      case _ => None
-    }
-  def Context_nonTastyScalaCompilationUnitClassname(self: Context): Option[String] = 
-    self.compilationUnit match {
-      case s: fromtasty.NonTastyScalaCompilationUnit => Some(s.className)
-      case _ => None
+      case cu: fromtasty.JavaCompilationUnit => cu.className
+      case cu: fromtasty.Scala2CompilationUnit => cu.className
+      case cu => ""
     }
 
 

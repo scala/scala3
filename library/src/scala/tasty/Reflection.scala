@@ -473,11 +473,14 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
     def requiredMethod(path: String): Symbol = internal.Context_requiredMethod(self)(path)
 
-    /** Get Java class name if we've accidentally tried to reflect on a Java class.  None returned if TASTy class. */
-    def javaCompilationUnitClassname(): Option[String] = internal.Context_javaCompilationUnitClassname(self)
+    /** Returns true if we've tried to reflect on a Java class. */
+    def isJavaCompilationUnit(): Boolean = internal Context_isJavaCompilationUnit(self)
 
-    /** Get Scala class name if attempted reflection is performed on an older Scala file w/o Tasty information present. */
-    def nonTastyScalaCompilationUnitClassname(): Option[String] = internal.Context_nonTastyScalaCompilationUnitClassname(self)
+    /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
+    def isScala2CompilationUnit(): Boolean = internal Context_isScala2CompilationUnit(self)
+
+    /** Class name of the current CompilationUnit */
+    def compilationUnitClassname(): String = internal.Context_compilationUnitClassname(self)
   }
 
 
