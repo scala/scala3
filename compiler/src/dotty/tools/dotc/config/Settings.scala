@@ -150,7 +150,8 @@ object Settings {
             update(output, args)
           }
         case (StringTag, arg2 :: args2) =>
-          update(arg2, args2)
+          if (arg2 startsWith "-") missingArg
+          else update(arg2, args2)
         case (IntTag, arg2 :: args2) =>
           try {
             val x = arg2.toInt
