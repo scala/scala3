@@ -452,7 +452,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   //////////////
 
   /** Context of the macro expansion */
-  given rootContext: Context = internal.rootContext // TODO: Use given // TODO: Should this be moved to QuoteContext?
+  given rootContext as Context = internal.rootContext // TODO: Use given // TODO: Should this be moved to QuoteContext?
 
   extension ContextOps on (self: Context) {
     /** Returns the owner of the context */

@@ -43,10 +43,10 @@ affect implicits on the language level.
     Example:
     ```scala
     package p
-    given a : A
+    given a as A
 
     object o {
-      given b : B
+      given b as B
       type C
     }
     ```

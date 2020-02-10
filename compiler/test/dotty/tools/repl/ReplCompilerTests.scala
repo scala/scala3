@@ -151,7 +151,7 @@ class ReplCompilerTests extends ReplTest {
         |  def (x: T) > (y: T) = compare(x, y) > 0
         |}
         |
-        |given IntOrd : Ord[Int] {
+        |given IntOrd as Ord[Int] {
         |  def compare(x: Int, y: Int) =
         |  if (x < y) -1 else if (x > y) +1 else 0
         |}

@@ -11,7 +11,7 @@ object opaques:
   private[scala] type Sup[A] >: IArray[A] <: Array[_ <: A]
 
   /** Defines extension methods for immutable arrays */
-  given arrayOps: Object {
+  given arrayOps as Object {
 
     /** The selection operation on an immutable array.
       *

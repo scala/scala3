@@ -26,7 +26,7 @@ package p1 {
       val co_x : Position[CharSequence] = 'x'
 
       {
-        given XXX : Conversion[Char, Position[CharSequence]] = co_i
+        given XXX as Conversion[Char, Position[CharSequence]] = co_i
         val co_y : Position[CharSequence] = 'x'
       }
     }

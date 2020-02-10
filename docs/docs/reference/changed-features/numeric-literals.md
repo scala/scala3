@@ -156,7 +156,7 @@ object BigFloat {
 To accept `BigFloat` literals, all that's needed in addition is a given instance of type
 `FromDigits.Floating[BigFloat]`:
 ```scala
-  given FromDigits : FromDigits.Floating[BigFloat] {
+  given FromDigits as FromDigits.Floating[BigFloat] {
     def fromDigits(digits: String) = apply(digits)
   }
 } // end BigFloat

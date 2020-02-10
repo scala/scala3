@@ -8,7 +8,7 @@ object AsObject {
   final class LineNo(val lineNo: Int)
   object LineNo {
     def unsafe(i: Int): LineNo = new LineNo(i)
-    inline given x : LineNo = ${impl}
+    inline given x as LineNo = ${impl}
     private def impl(using qctx: QuoteContext) : Expr[LineNo] = {
       import qctx.tasty.{_, given _}
       '{unsafe(${rootPosition.startLine})}
