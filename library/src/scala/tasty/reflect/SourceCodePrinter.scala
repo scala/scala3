@@ -4,7 +4,6 @@ package reflect
 import scala.annotation.switch
 import scala.quoted.show.SyntaxHighlight
 
-/** Printer for fully elaborated representation of the source code */
 class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlight: SyntaxHighlight) extends Printer[R] {
   import tasty.{_, given}
   import syntaxHighlight._
@@ -383,15 +382,10 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         this += "}"
 
       case Apply(fn, args) =>
-        var argsPrefix = ""
         fn match {
           case Select(This(_), "<init>") => this += "this" // call to constructor inside a constructor
-          case Select(qual, "apply") =>
-            if qual.tpe.isContextFunctionType then
-              argsPrefix += "using "
-            if qual.tpe.isErasedFunctionType then
-              argsPrefix += "erased "
-            printQualTree(fn)
+          case Select(qual, "apply") if qual.tpe.isContextFunctionType =>
+            printTree(qual) += " given "
           case _ => printQualTree(fn)
         }
         val args1 = args match {
@@ -399,10 +393,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
           case _ => args
         }
 
-        inParens {
-          this += argsPrefix
-          printTrees(args1, ", ")
-        }
+        inParens(printTrees(args1, ", "))
 
       case TypeApply(fn, args) =>
         printQualTree(fn)
@@ -455,10 +446,10 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         this += " = "
         printTree(rhs)
 
-      case tree @ Lambda(params, body) =>  // must come before `Block`
+      case Lambda(params, body) =>  // must come before `Block`
         inParens {
           printArgsDefs(params)
-          this += (if tree.tpe.isContextFunctionType then " ?=> " else  " => ")
+          this += " => "
           printTree(body)
         }
 
