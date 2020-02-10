@@ -26,7 +26,6 @@ import Decorators._
 import scala.internal.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
-import config.Config.silentTemplateIndent
 
 object Parsers {
 
@@ -1319,7 +1318,6 @@ object Parsers {
         if in.token != LBRACE && in.token != INDENT then
           syntaxError(i"indented definitions or `{` expected")
       else
-        if silentTemplateIndent && !isNew then in.observeIndented()
         newLineOptWhenFollowedBy(LBRACE)
 
     def endMarkerScope[T](pid: Tree)(op: => T): T = pid match {

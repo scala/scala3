@@ -1,12 +1,12 @@
 package a
 package b
 
-object Givens
+object Givens:
 
-  given extension [A](any: A)
+  extension on [A](any: A):
     def sayHello = s"Hello, I am $any"
 
-  given extension [B](any: B)
+  extension on [B](any: B):
     def sayGoodbye = s"Goodbye, from $any"
     def saySoLong = s"So Long, from $any"
 
@@ -14,11 +14,11 @@ object Givens
   val goodbye1 = 1.sayGoodbye
   val soLong1 = 1.saySoLong
 
-  trait Monoid[A]
+  trait Monoid[A]:
     def empty: A
     def (x: A).combine(y: A): A
 
-  given Monoid[String]
+  given Monoid[String]:
     def empty = ""
     def (x: String).combine(y: String) = x + y
 

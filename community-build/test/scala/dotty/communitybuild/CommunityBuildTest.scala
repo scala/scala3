@@ -31,7 +31,7 @@ def exec(projectDir: Path, binary: String, arguments: String*): Int =
   exitCode
 
 
-sealed trait CommunityProject
+sealed trait CommunityProject:
   private var published = false
 
   val project: String
@@ -77,17 +77,23 @@ sealed trait CommunityProject
       published = true
 end CommunityProject
 
-final case class MillCommunityProject(project: String, baseCommand: String,
-  dependencies: List[CommunityProject] = Nil) extends CommunityProject
+final case class MillCommunityProject(
+    project: String,
+    baseCommand: String,
+    dependencies: List[CommunityProject] = Nil) extends CommunityProject:
   override val binaryName: String = "./mill"
   override val updateCommand = s"$baseCommand.compileClasspath"
   override val testCommand = s"$baseCommand.test"
   override val publishCommand = s"$baseCommand.publishLocal"
   override val runCommandsArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
 
-final case class SbtCommunityProject(project: String, sbtTestCommand: String,
-  sbtUpdateCommand: String, extraSbtArgs: List[String] = Nil,
-  dependencies: List[CommunityProject] = Nil, sbtPublishCommand: String = null) extends CommunityProject
+final case class SbtCommunityProject(
+    project: String,
+    sbtTestCommand: String,
+    sbtUpdateCommand: String,
+    extraSbtArgs: List[String] = Nil,
+    dependencies: List[CommunityProject] = Nil,
+    sbtPublishCommand: String = null) extends CommunityProject:
   override val binaryName: String = "sbt"
   private val baseCommand = s";clean ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! "
   override val testCommand = s"$baseCommand$sbtTestCommand"
@@ -103,7 +109,7 @@ final case class SbtCommunityProject(project: String, sbtTestCommand: String,
       "-sbt-version", "1.3.6",
       s"--addPluginSbtFile=$sbtPluginFilePath")
 
-object projects
+object projects:
   lazy val utest = MillCommunityProject(
     project = "utest",
     baseCommand = s"utest.jvm[$compilerVersion]",
@@ -265,7 +271,7 @@ object projects
 end projects
 
 @Category(Array(classOf[TestCategory]))
-class CommunityBuildTest {
+class CommunityBuildTest:
   given CommunityBuildTest = this
 
   /** Build the given project with the published local compiler and sbt plugin.
@@ -335,7 +341,7 @@ class CommunityBuildTest {
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
   @Test def effpi = projects.effpi.run()
   @Test def sconfig = projects.sconfig.run()
-}
+end CommunityBuildTest
 
 class TestCategory
 class UpdateCategory
