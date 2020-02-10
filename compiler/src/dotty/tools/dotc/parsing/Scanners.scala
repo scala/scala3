@@ -256,13 +256,6 @@ object Scanners {
       case _ => false
     }
 
-    /** Are we in a `${ }` block? such that RBRACE exits back into multiline string. */
-    private def inMultiLineInterpolatedExpression =
-      currentRegion match {
-        case InBraces(_, InString(true, _)) => true
-        case _ => false
-      }
-
     /** read next token and return last offset
      */
     def skipToken(): Offset = {
@@ -749,22 +742,17 @@ object Scanners {
             if (token == INTERPOLATIONID) {
               nextRawChar()
               if (ch == '\"') {
-                if (lookaheadChar() == '\"') {
-                  nextRawChar()
-                  //offset += 3   // first part is positioned at the quote
+                nextRawChar()
+                if (ch == '\"') {
                   nextRawChar()
                   stringPart(multiLine = true)
                 }
                 else {
-                  nextChar()
                   token = STRINGLIT
                   strVal = ""
                 }
               }
-              else {
-                //offset += 1   // first part is positioned at the quote
-                stringPart(multiLine = false)
-              }
+              else stringPart(multiLine = false)
             }
             else {
               nextChar()
@@ -818,8 +806,7 @@ object Scanners {
         case ')' =>
           nextChar(); token = RPAREN
         case '}' =>
-          if (inMultiLineInterpolatedExpression) nextRawChar() else nextChar()
-          token = RBRACE
+          nextChar(); token = RBRACE
         case '[' =>
           nextChar(); token = LBRACKET
         case ']' =>
