@@ -52,7 +52,7 @@ To get rid of the `summon[...]` we can define a `Monoid` object as follows:
 
 ```scala
 object Monoid {
-  def apply[T] with (m: Monoid[T]) = m
+  def apply[T](using m: Monoid[T]) = m
 }
 ```
 
