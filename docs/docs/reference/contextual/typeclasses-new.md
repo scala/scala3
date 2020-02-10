@@ -27,7 +27,7 @@ trait Monoid[T] extends SemiGroup[T] {
 An implementation of this `Monoid` typeclass for the type `String` can be the following: 
 
 ```scala
-givenMonoid[String] {
+given Monoid[String] {
   def (x: String) combine (y: String): String = x.concat(y)
   def unit: String = ""
 }
@@ -35,7 +35,7 @@ givenMonoid[String] {
 
 Whereas for the type `Int` one could write the following:
 ```scala
-givenMonoid[Int] {
+given Monoid[Int] {
   def (x: Int) combine (y: Int): Int = x + y
   def unit: Int = 0
 }
@@ -98,7 +98,7 @@ Which could read as follows: "A `Functor` for the type constructor `F[_]` repres
 This way, we could define an instance of `Functor` for the `List` type: 
 
 ```scala
-givenFunctor[List] {
+given Functor[List] {
   def map[A, B](original: List[A], mapper: A => B): List[B] =
     original.map(mapper) // List already has a `map` method
 }
@@ -130,7 +130,7 @@ trait Functor[F[_]] {
 The instance of `Functor` for `List` now becomes:
 
 ```scala
-givenFunctor[List] {
+given Functor[List] {
   def [A, B](original: List[A]).map(mapper: A => B): List[B] =
     original.map(mapper) // List already has a `map` method
 }
@@ -174,7 +174,7 @@ trait Monad[F[_]] extends Functor[F] { // "A `Monad` for type `F[_]` is a `Funct
 
 Let us declare the `Monad` ability for type `List`  
 ```scala
-given listMonad as Monad[List] {
+given listMonad: Monad[List] {
   def pure[A](x: A): List[A] =
     List(x)
   def [A, B](xs: List[A]).flatMap(f: A => List[B]): List[B] =
@@ -192,7 +192,7 @@ given listMonad as Monad[List] {
 * the `pure` ability turning `A` into `Option[A]`
 
 ```scala
-given optionMonad as Monad[Option] {
+given optionMonad: Monad[Option] {
   def pure[A](x: A): Option[A] =
     Option(x)
   def [A, B](xs: Option[A]).flatMap(f: A => Option[B]): Option[B] =
