@@ -129,12 +129,11 @@ object Scanners {
 
     @inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
-    @inline def removeNumberSeparators(s: String): String =
-      if (s.indexOf('_') > 0) s.replaceAllLiterally("_", "") else s
+    @inline def removeNumberSeparators(s: String): String = if (s.indexOf('_') == -1) s else s.replace("_", "")
 
     // disallow trailing numeric separator char, but continue lexing
     def checkNoTrailingSeparator(): Unit =
-      if (isNumberSeparator(litBuf.last))
+      if (!litBuf.isEmpty && isNumberSeparator(litBuf.last))
         errorButContinue("trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
@@ -713,28 +712,18 @@ object Scanners {
             getOperatorRest()
           }
         case '0' =>
-          def fetchZero() = {
-            putChar(ch)
+          def fetchLeadingZero(): Unit = {
             nextChar()
-            if (ch == 'x' || ch == 'X') {
-              nextChar()
-              base = 16
-              if (isNumberSeparator(ch))
-                errorButContinue("leading separator is not allowed", offset + 2)
+            ch match {
+              case 'x' | 'X' => base = 16 ; nextChar()
+              //case 'b' | 'B' => base = 2  ; nextChar()
+              case _         => base = 10 ; putChar('0')
             }
-            else {
-              /**
-               * What should leading 0 be in the future? It is potentially dangerous
-               *  to let it be base-10 because of history.  Should it be an error? Is
-               *  there a realistic situation where one would need it?
-               */
-              if (isDigit(ch) || (isNumberSeparator(ch) && isDigit(lookaheadChar())))
-                error("Numbers may not have a leading zero.")
-              base = 10
-            }
-            getNumber()
+            if (base != 10 && !isNumberSeparator(ch) && digit2int(ch, base) < 0)
+              error("invalid literal number")
           }
-          fetchZero()
+          fetchLeadingZero()
+          getNumber()
         case '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' =>
           base = 10
           getNumber()
