@@ -440,18 +440,20 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           (tp1.widenSingletons ne tp1) &&
           recur(tp1.widenSingletons, tp2)
 
-        if (tp2.atoms().nonEmpty && canCompare(tp2.atoms()))
-          val atoms1 = tp1.atoms(widenOK = true)
-          atoms1.nonEmpty && atoms1.subsetOf(tp2.atoms())
-        else
-          widenOK
-          || joinOK
-          || recur(tp11, tp2) && recur(tp12, tp2)
-          || containsAnd(tp1) && recur(tp1.join, tp2)
-              // An & on the left side loses information. Compensate by also trying the join.
-              // This is less ad-hoc than it looks since we produce joins in type inference,
-              // and then need to check that they are indeed supertypes of the original types
-              // under -Ycheck. Test case is i7965.scala.
+        tp2.atoms() match
+          case Some(ts2) if canCompare(ts2) =>
+            tp1.atoms(widenOK = true) match
+              case Some(ts1) => ts1.subsetOf(ts2)
+              case none => false
+          case _ =>
+            widenOK
+            || joinOK
+            || recur(tp11, tp2) && recur(tp12, tp2)
+            || containsAnd(tp1) && recur(tp1.join, tp2)
+                // An & on the left side loses information. Compensate by also trying the join.
+                // This is less ad-hoc than it looks since we produce joins in type inference,
+                // and then need to check that they are indeed supertypes of the original types
+                // under -Ycheck. Test case is i7965.scala.
 
       case tp1: MatchType =>
         val reduced = tp1.reduced
@@ -613,9 +615,13 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         }
         compareTypeLambda
       case OrType(tp21, tp22) =>
-        if (tp2.atoms().nonEmpty && canCompare(tp2.atoms()))
-          val atoms1 = tp1.atoms(widenOK = true)
-          return atoms1.nonEmpty && atoms1.subsetOf(tp2.atoms()) || isSubType(tp1, NothingType)
+        tp2.atoms() match
+          case Some(ts2) if canCompare(ts2) =>
+            val atomsFit = tp1.atoms(widenOK = true) match
+              case Some(ts1) => ts1.subsetOf(ts2)
+              case none => false
+            return atomsFit || isSubType(tp1, NothingType)
+          case none =>
 
         // The next clause handles a situation like the one encountered in i2745.scala.
         // We have:
@@ -1787,15 +1793,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || tp1.isRef(NothingClass) then tp2
     else
       def mergedLub(tp1: Type, tp2: Type): Type = {
-        val atoms1 = tp1.atoms(widenOK = true)
-        if (atoms1.nonEmpty && !widenInUnions) {
-          val atoms2 = tp2.atoms(widenOK = true)
-          if (atoms2.nonEmpty) {
-            if (atoms1.subsetOf(atoms2)) return tp2
-            if (atoms2.subsetOf(atoms1)) return tp1
-            if ((atoms1 & atoms2).isEmpty) return orType(tp1, tp2)
-          }
-        }
+        tp1.atoms(widenOK = true) match
+          case Some(ts1) if !widenInUnions =>
+            tp2.atoms(widenOK = true) match
+              case Some(ts2) =>
+                if ts1.subsetOf(ts2) then return tp2
+                if ts2.subsetOf(ts1) then return tp1
+                if (ts1 & ts2).isEmpty then return orType(tp1, tp2)
+              case none =>
+          case none =>
         val t1 = mergeIfSuper(tp1, tp2, canConstrain)
         if (t1.exists) return t1
 
