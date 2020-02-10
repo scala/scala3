@@ -1805,4 +1805,38 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("class", kind)
         assertEquals("Any", name.toString)
       }
+
+  @Test def unexpectedPatternForSummonFrom =
+    checkMessagesAfter(RefChecks.name) {
+      """import compiletime.summonFrom
+        |inline def a = summonFrom {
+        |  case x => ???
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val UnexpectedPatternForSummonFrom(x) :: Nil = messages
+        assertEquals("Unexpected pattern for summonFrom. Expected `x: T` or `_`", errorMsg)
+        assertEquals("x", x.show)
+      }
+
+  @Test def unexpectedPatternForSummonWithPatternBinder =
+    checkMessagesAfter(RefChecks.name) {
+      """import compiletime.summonFrom
+        |inline def a = summonFrom {
+        |  case x@String => ???
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val UnexpectedPatternForSummonFrom(x) :: Nil = messages
+        assertEquals("Unexpected pattern for summonFrom. Expected `x: T` or `_`", errorMsg)
+        assertEquals("given x @ String", x.show)
+      }
 }

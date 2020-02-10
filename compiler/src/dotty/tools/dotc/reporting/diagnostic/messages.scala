@@ -2469,4 +2469,25 @@ object messages {
            | Please choose a different name to avoid conflicts
            |""".stripMargin
   }
+
+  case class UnexpectedPatternForSummonFrom(tree: Tree[_])(implicit ctx: Context)
+    extends Message(UnexpectedPatternForSummonFromID) {
+    val kind: String = "Syntax"
+    val msg: String = em"Unexpected pattern for summonFrom. Expected ${hl("`x: T`")} or ${hl("`_`")}"
+
+    val explanation: String =
+      em"""|The pattern "${tree.show}" provided in the ${hl("case")} expression of the ${hl("summonFrom")},
+           | needs to be of the form ${hl("`x: T`")} or ${hl("`_`")}.
+           |
+           | Example usage:
+           | inline def a = summonFrom {
+           |  case x: T => ???
+           | }
+           |
+           | or
+           | inline def a = summonFrom {
+           |  case _ => ???
+           | }
+           |""".stripMargin
+  }
 }
