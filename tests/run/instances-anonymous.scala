@@ -63,7 +63,7 @@ object Test extends App {
     val minimum: T
   }
 
-  given Ord[Int] {
+  given as Ord[Int] {
     def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue

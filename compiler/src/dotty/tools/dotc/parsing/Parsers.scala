@@ -3495,7 +3495,7 @@ object Parsers {
           then paramClauses(givenOnly = true)
           else Nil
         newLinesOpt()
-        if !name.isEmpty || !tparams.isEmpty || !vparamss.isEmpty then
+        if isIdent(nme.as) || !name.isEmpty || !tparams.isEmpty || !vparamss.isEmpty then
           accept(nme.as)
         def givenAlias(tpt: Tree) =
           accept(EQUALS)
