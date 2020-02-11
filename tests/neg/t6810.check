@@ -1,0 +1,24 @@
+-- Error: tests/neg/t6810.scala:5:10 -----------------------------------------------------------------------------------
+5 |  val y = '
+  |          ^
+  |          unclosed character literal
+-- Error: tests/neg/t6810.scala:12:10 ----------------------------------------------------------------------------------
+12 |  val Y = "
+   |          ^
+   |          unclosed string literal
+-- Error: tests/neg/t6810.scala:13:0 -----------------------------------------------------------------------------------
+13 |"                     // error obviously not
+   |^
+   |unclosed string literal
+-- Error: tests/neg/t6810.scala:24:6 -----------------------------------------------------------------------------------
+24 |  val `
+   |      ^
+   |      unclosed quoted identifier
+-- Error: tests/neg/t6810.scala:25:0 -----------------------------------------------------------------------------------
+25 |` = EOL               // error not raw string literals aka triple-quoted, multiline strings
+   |^
+   |unclosed quoted identifier
+-- Error: tests/neg/t6810.scala:30:10 ----------------------------------------------------------------------------------
+30 |  val b = '
+   |          ^
+   |          unclosed character literal

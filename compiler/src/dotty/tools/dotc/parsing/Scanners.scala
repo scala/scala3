@@ -804,19 +804,25 @@ object Scanners {
             }
           fetchDoubleQuote()
         case '\'' =>
-          def fetchSingleQuote() = {
+          def fetchSingleQuote(): Unit = {
             nextChar()
-            if (isIdentifierStart(ch))
+            if isIdentifierStart(ch) then
               charLitOr { getIdentRest(); QUOTEID }
-            else if (isOperatorPart(ch) && (ch != '\\'))
+            else if isOperatorPart(ch) && ch != '\\' then
               charLitOr { getOperatorRest(); QUOTEID }
             else ch match {
               case '{' | '[' | ' ' | '\t' if lookaheadChar() != '\'' =>
                 token = QUOTE
-              case _ =>
+              case _ if !isAtEnd && (ch != SU && ch != CR && ch != LF || isUnicodeEscape) =>
+                val isEmptyCharLit = (ch == '\'')
                 getLitChar()
-                if (ch == '\'') finishCharLit()
+                if ch == '\'' then
+                  if isEmptyCharLit then error("empty character literal (use '\\'' for single quote)")
+                  else finishCharLit()
+                else if isEmptyCharLit then error("empty character literal")
                 else error("unclosed character literal")
+              case _ =>
+                error("unclosed character literal")
             }
           }
           fetchSingleQuote()
