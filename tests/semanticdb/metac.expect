@@ -1361,10 +1361,10 @@ Occurrences:
 [22:43..22:44): + -> java/lang/String#`+`().
 [22:45..22:46): y -> a/b/Givens.given_Monoid_String.combine().(y)
 [24:15..24:25): int2String <- a/b/Givens.int2String().
-[24:27..24:37): Conversion -> scala/Conversion#
-[24:38..24:41): Int -> scala/Int#
-[24:43..24:49): String -> scala/Predef.String#
-[24:55..24:63): toString -> scala/Any#toString().
+[24:29..24:39): Conversion -> scala/Conversion#
+[24:40..24:43): Int -> scala/Int#
+[24:45..24:51): String -> scala/Predef.String#
+[24:57..24:65): toString -> scala/Any#toString().
 [26:6..26:9): foo <- a/b/Givens.foo().
 [26:10..26:11): A <- a/b/Givens.foo().[A]
 [26:19..26:20): A <- a/b/Givens.foo().(A)

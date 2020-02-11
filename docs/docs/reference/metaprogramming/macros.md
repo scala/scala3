@@ -289,7 +289,7 @@ given Liftable[Int] {
 Since `Liftable` is a type class, its instances can be conditional. For example,
 a `List` is liftable if its element type is:
 ```scala
-given [T: Liftable : Type] : Liftable[List[T]] {
+given [T: Liftable : Type] as Liftable[List[T]] {
   def toExpr(xs: List[T]) = xs match {
     case head :: tail => '{ ${ Expr(head) } :: ${ toExpr(tail) } }
     case Nil => '{ Nil: List[T] }

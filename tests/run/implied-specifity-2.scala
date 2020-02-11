@@ -35,24 +35,24 @@ given Arg
 
 class Bam(val str: String)
 
-given lo(using Low): Bam("lo")
+given lo(using Low) as Bam("lo")
 
-given hi(using High)(using Arg): Bam("hi")
+given hi(using High)(using Arg) as Bam("hi")
 
 class Bam2(val str: String)
 
-given lo2(using Low) : Bam2("lo")
+given lo2(using Low) as Bam2("lo")
 
-given mid2(using High)(using Arg) : Bam2("mid")
+given mid2(using High)(using Arg) as Bam2("mid")
 
-given hi2 : Bam2("hi")
+given hi2 as Bam2("hi")
 
 class Arg2
 class Red(val str: String)
 
-given normal(using Arg2) : Red("normal")
+given normal(using Arg2) as Red("normal")
 
-given reduced(using ev: Arg2 | Low) : Red("reduced")
+given reduced(using ev: Arg2 | Low) as Red("reduced")
 
 object Test extends App {
   assert(Foo[Int] == 0)

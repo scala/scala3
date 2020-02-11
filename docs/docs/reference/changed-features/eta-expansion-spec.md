@@ -50,11 +50,11 @@ val bar = foo // val bar: Int => Float = ...
 
 ## Automatic Eta-Expansion and query types
 
-A method with inferable parameters can be expanded to a value of query type by writing the expected query type explicitly.
+A method with context parameters can be expanded to a value of a context type by writing the expected context type explicitly.
 
 ```scala
-def foo(x: Int) given (p: Double): Float = ???
-val bar: given Double => Float = foo(3) // val bar: given Double => Float = ...
+def foo(x: Int)(using p: Double): Float = ???
+val bar: Double ?=> Float = foo(3)
 ```
 
 ## Rules

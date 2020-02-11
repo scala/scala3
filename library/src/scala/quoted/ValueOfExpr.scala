@@ -16,16 +16,16 @@ trait ValueOfExpr[T] {
 
 object ValueOfExpr {
 
-  given ValueOfExpr_Unit_delegate: ValueOfExpr[Unit] = new PrimitiveValueOfExpr
-  given ValueOfExpr_Boolean_delegate: ValueOfExpr[Boolean] = new PrimitiveValueOfExpr
-  given ValueOfExpr_Byte_delegate: ValueOfExpr[Byte] = new PrimitiveValueOfExpr
-  given ValueOfExpr_Short_delegate: ValueOfExpr[Short] = new PrimitiveValueOfExpr
-  given ValueOfExpr_Int_delegate: ValueOfExpr[Int] = new PrimitiveValueOfExpr
-  given ValueOfExpr_Long_delegate: ValueOfExpr[Long] = new PrimitiveValueOfExpr
-  given ValueOfExpr_Float_delegate: ValueOfExpr[Float] = new PrimitiveValueOfExpr
-  given ValueOfExpr_Double_delegate: ValueOfExpr[Double] = new PrimitiveValueOfExpr
-  given ValueOfExpr_Char_delegate: ValueOfExpr[Char] = new PrimitiveValueOfExpr
-  given ValueOfExpr_String_delegate: ValueOfExpr[String] = new PrimitiveValueOfExpr
+  given ValueOfExpr_Unit_delegate as ValueOfExpr[Unit] = new PrimitiveValueOfExpr
+  given ValueOfExpr_Boolean_delegate as ValueOfExpr[Boolean] = new PrimitiveValueOfExpr
+  given ValueOfExpr_Byte_delegate as ValueOfExpr[Byte] = new PrimitiveValueOfExpr
+  given ValueOfExpr_Short_delegate as ValueOfExpr[Short] = new PrimitiveValueOfExpr
+  given ValueOfExpr_Int_delegate as ValueOfExpr[Int] = new PrimitiveValueOfExpr
+  given ValueOfExpr_Long_delegate as ValueOfExpr[Long] = new PrimitiveValueOfExpr
+  given ValueOfExpr_Float_delegate as ValueOfExpr[Float] = new PrimitiveValueOfExpr
+  given ValueOfExpr_Double_delegate as ValueOfExpr[Double] = new PrimitiveValueOfExpr
+  given ValueOfExpr_Char_delegate as ValueOfExpr[Char] = new PrimitiveValueOfExpr
+  given ValueOfExpr_String_delegate as ValueOfExpr[String] = new PrimitiveValueOfExpr
 
   private class PrimitiveValueOfExpr[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends ValueOfExpr[T] {
     /** Lift a quoted primitive value `'{ n }` into `n` */
@@ -42,7 +42,7 @@ object ValueOfExpr {
     override def toString(): String = "scala.quoted.ValueOfExpr.Option_delegate"
   }
 
-  given StringContext_delegate: ValueOfExpr[StringContext] = new {
+  given StringContext_delegate as ValueOfExpr[StringContext] = new {
     def apply(x: Expr[StringContext])(using qctx: QuoteContext): Option[StringContext] = x match {
       case '{ new StringContext(${ConstSeq(args)}: _*) } => Some(StringContext(args: _*))
       case '{     StringContext(${ConstSeq(args)}: _*) } => Some(StringContext(args: _*))

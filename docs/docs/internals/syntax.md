@@ -296,7 +296,7 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypeParamClause] 
                        SubtypeBounds
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
-ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’ 
+ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
                     |  [nl] ‘(’ ‘using’ (ClsParams | Types) ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var

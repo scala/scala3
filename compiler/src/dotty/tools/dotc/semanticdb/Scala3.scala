@@ -212,7 +212,7 @@ object Scala3 with
   // end RangeOps
 
   /** Sort symbol occurrences by their start position. */
-  given OccurrenceOrdering: Ordering[SymbolOccurrence] = (x, y) =>
+  given OccurrenceOrdering as Ordering[SymbolOccurrence] = (x, y) =>
     x.range -> y.range match
     case None -> _ | _ -> None => 0
     case Some(a) -> Some(b) =>

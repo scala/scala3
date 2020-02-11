@@ -25,13 +25,13 @@ we need to implement a method `Eq.derived` on the companion object of `Eq` that
 produces a quoted instance for `Eq[T]`. Here is a possible signature,
 
 ```scala
-given derived[T: Type](using qctx: QuoteContext): Expr[Eq[T]]
+given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]]
 ```
 
 and for comparison reasons we give the same signature we had with `inline`:
 
 ```scala
-inline given derived[T]: (m: Mirror.Of[T]) => Eq[T] = ???
+inline given derived[T] as (m: Mirror.Of[T]) => Eq[T] = ???
 ```
 
 Note, that since a type is used in a subsequent stage it will need to be lifted
@@ -41,7 +41,7 @@ from the signature. The body of the `derived` method is shown below:
 
 
 ```scala
-given derived[T: Type](using qctx: QuoteContext): Expr[Eq[T]] = {
+given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
   import qctx.tasty.{_, given}
 
   val ev: Expr[Mirror.Of[T]] = summonExpr(using '[Mirror.Of[T]]).get
@@ -175,7 +175,7 @@ object Eq {
     case '[Unit] => Nil
   }
 
-  given derived[T: Type](using qctx: QuoteContext): Expr[Eq[T]] = {
+  given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
     import qctx.tasty.{_, given}
 
     val ev: Expr[Mirror.Of[T]] = summonExpr(using '[Mirror.Of[T]]).get

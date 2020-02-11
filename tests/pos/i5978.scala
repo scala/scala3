@@ -13,7 +13,10 @@ package p1 {
       (using TokenParser[Char, Position[CharSequence]]) = ???
 
     given FromCharToken(using T: TokenParser[Char, Position[CharSequence]])
-      : Conversion[Char, Position[CharSequence]] = ???
+
+      // skipping newlines is OK here
+
+      as Conversion[Char, Position[CharSequence]] = ???
   }
 
   object Testcase {
@@ -26,7 +29,7 @@ package p1 {
       val co_x : Position[CharSequence] = 'x'
 
       {
-        given XXX : Conversion[Char, Position[CharSequence]] = co_i
+        given XXX as Conversion[Char, Position[CharSequence]] = co_i
         val co_y : Position[CharSequence] = 'x'
       }
     }

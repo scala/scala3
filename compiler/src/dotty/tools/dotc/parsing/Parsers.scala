@@ -910,28 +910,6 @@ object Parsers {
         followedByToken(LARROW) // `<-` comes before possible statement starts
     }
 
-    /** Are the next tokens a prefix of a formal parameter or given type?
-     *  @pre: current token is LPAREN
-     *  TODO: Drop once syntax has stabilized
-     */
-    def followingIsParamOrGivenType() =
-      val lookahead = in.LookaheadScanner()
-      lookahead.nextToken()
-      if startParamTokens.contains(lookahead.token)
-         || lookahead.isIdent(nme.using)
-      then true
-      else if lookahead.token == IDENTIFIER then
-        if lookahead.name == nme.inline then
-          lookahead.nextToken()
-        if lookahead.token == IDENTIFIER then
-          lookahead.nextToken()
-          if lookahead.token == COLON then
-            lookahead.nextToken()
-            !lookahead.isAfterLineEnd
-          else false
-        else false
-      else false
-
     /** Are the next token the "GivenSig" part of a given definition,
      *  i.e. an identifier followed by type and value parameters, followed by `:`?
      *  @pre  The current token is an identifier
@@ -940,14 +918,15 @@ object Parsers {
       val lookahead = in.LookaheadScanner()
       if lookahead.isIdent then
         lookahead.nextToken()
-      while lookahead.token == LPAREN || lookahead.token == LBRACKET do
-        lookahead.skipParens()
-      if lookahead.token == COLON then // TODO: remove
-        lookahead.nextToken()
-        !lookahead.isAfterLineEnd
-      else
-        lookahead.token == SUBTYPE  // TODO: remove
-        || lookahead.isIdent(nme.as)
+      def skipParams(): Unit =
+        if lookahead.token == LPAREN || lookahead.token == LBRACKET then
+          lookahead.skipParens()
+          skipParams()
+        else if lookahead.isNewLine then
+          lookahead.nextToken()
+          skipParams()
+      skipParams()
+      lookahead.isIdent(nme.as)
 
     def followingIsExtension() =
       val lookahead = in.LookaheadScanner()
@@ -3502,57 +3481,44 @@ object Parsers {
      *                      |  [GivenSig] ConstrApps [TemplateBody]
      *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘as’
      */
-    def givenDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
-      var mods1 = addMod(mods, instanceMod)
+    def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
+      var mods1 = addMod(mods, givenMod)
       val hasGivenSig = followingIsGivenSig()
       val nameStart = in.offset
       val name = if isIdent && hasGivenSig then ident() else EmptyTermName
 
       val gdef = in.endMarkerScope(if name.isEmpty then GIVEN else name) {
-        val hasLabel = !name.isEmpty && in.token == COLON || isIdent(nme.as)
-        if hasLabel then in.nextToken()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val paramsStart = in.offset
+        newLineOpt()
         val vparamss =
-          if in.token == LPAREN && followingIsParamOrGivenType()
-          then paramClauses()
+          if in.token == LPAREN && in.lookaheadIn(nme.using)
+          then paramClauses(givenOnly = true)
           else Nil
-        def checkAllGivens(vparamss: List[List[ValDef]], what: String) =
-          vparamss.foreach(_.foreach(vparam =>
-            if !vparam.mods.is(Given) then syntaxError(em"$what must be preceded by `using`", vparam.span)))
-        checkAllGivens(vparamss, "parameter of given instance")
-        val parents =
-          if in.token == SUBTYPE && !hasLabel then
-            if !mods.is(Inline) then
-              syntaxError("`<:` is only allowed for given with `inline` modifier")
-            in.nextToken()
-            TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
-          else
-            if !hasLabel && !(name.isEmpty && tparams.isEmpty && vparamss.isEmpty) then
-              if in.token == COLON then in.nextToken()
-              else accept(nme.as)
-            if in.token == USCORE then
-              in.nextToken()
-              accept(SUBTYPE)
-              TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
-            else
-              constrApps(commaOK = true, templateCanFollow = true)
-
-        if in.token == EQUALS && parents.length == 1 && parents.head.isType then
-          in.nextToken()
+        newLinesOpt()
+        if isIdent(nme.as) || !name.isEmpty || !tparams.isEmpty || !vparamss.isEmpty then
+          accept(nme.as)
+        def givenAlias(tpt: Tree) =
+          accept(EQUALS)
           mods1 |= Final
-          DefDef(name, tparams, vparamss, parents.head, subExpr())
+          DefDef(name, tparams, vparamss, tpt, subExpr())
+        if in.token == USCORE then
+          if !mods.is(Inline) then
+            syntaxError("`_ <:` is only allowed for given with `inline` modifier")
+          in.nextToken()
+          accept(SUBTYPE)
+          givenAlias(TypeBoundsTree(EmptyTree, toplevelTyp()))
         else
-          parents match
-            case (_: TypeBoundsTree) :: _ => syntaxError("`=` expected")
-            case _ =>
-          possibleTemplateStart()
-          val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
-          val vparamss1 = vparamss.map(_.map(vparam =>
-            vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
-          val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
-          if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
-          else TypeDef(name.toTypeName, templ)
+          val parents = constrApps(commaOK = true, templateCanFollow = true)
+          if in.token == EQUALS && parents.length == 1 && parents.head.isType then
+            givenAlias(parents.head)
+          else
+            possibleTemplateStart()
+            val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
+            val vparamss1 = vparamss.map(_.map(vparam =>
+              vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
+            val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
+            if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
+            else TypeDef(name.toTypeName, templ)
       }
       finalizeDef(gdef, mods1, start)
     }

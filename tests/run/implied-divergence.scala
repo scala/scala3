@@ -2,7 +2,7 @@
 // recursions.
 case class E(x: E | Null)
 
-given e : E(null)
+given e as E(null)
 
 object Test extends App {
 

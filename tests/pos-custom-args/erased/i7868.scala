@@ -11,13 +11,14 @@ object Coproduct {
 
   object At {
 
-    given atHead[Head, Tail]: At[Head +: Tail, Head, 0] {
+    given atHead[Head, Tail] as At[Head +: Tail, Head, 0] {
       def cast: Head <:< Head +: Tail = summon[Head <:< Head +: Tail]
     }
 
-    given atTail[Head, Tail, Value, NextIndex <: Int](using atNext: At[Tail, Value, NextIndex]) as At[Head +: Tail, Value, S[NextIndex]] {
+    given atTail[Head, Tail, Value, NextIndex <: Int]
+          (using atNext: At[Tail, Value, NextIndex])
+          as At[Head +: Tail, Value, S[NextIndex]]:
       val cast: Value <:< Head +: Tail = atNext.cast
-    }
 
     given [A](using A) as (() => A)= { () => summon[A]}
   }
