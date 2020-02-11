@@ -257,7 +257,7 @@ object Tokens extends TokensCommon {
     AT, CASE)
 
   final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(
-    TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT) // TODO: remove GIVEN once old import syntax is dropped
+    TYPE, RPAREN, RBRACE, RBRACKET, OUTDENT) // TODO: remove GIVEN once old import syntax is dropped
 
   /** Tokens that stop a lookahead scan search for a `<-`, `then`, or `do`.
    *  Used for disambiguating between old and new syntax.
@@ -272,7 +272,7 @@ object Tokens extends TokensCommon {
   final val closingRegionTokens = BitSet(RBRACE, CASE) | statCtdTokens
 
   final val canStartIndentTokens: BitSet =
-    statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR, IF, WITH)
+    statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR, IF)
       // `if` is excluded because it often comes after `else` which makes for awkward indentation rules  TODO: try to do without the exception
 
   /** Faced with the choice between a type and a formal parameter, the following
