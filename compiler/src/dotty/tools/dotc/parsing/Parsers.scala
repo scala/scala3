@@ -918,8 +918,14 @@ object Parsers {
       val lookahead = in.LookaheadScanner()
       if lookahead.isIdent then
         lookahead.nextToken()
-      while lookahead.token == LPAREN || lookahead.token == LBRACKET do
-        lookahead.skipParens()
+      def skipParams(): Unit =
+        if lookahead.token == LPAREN || lookahead.token == LBRACKET then
+          lookahead.skipParens()
+          skipParams()
+        else if lookahead.isNewLine then
+          lookahead.nextToken()
+          skipParams()
+      skipParams()
       lookahead.isIdent(nme.as)
 
     def followingIsExtension() =
@@ -3483,7 +3489,12 @@ object Parsers {
 
       val gdef = in.endMarkerScope(if name.isEmpty then GIVEN else name) {
         val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = paramClauses(givenOnly = true)
+        newLineOpt()
+        val vparamss =
+          if in.token == LPAREN && in.lookaheadIn(nme.using)
+          then paramClauses(givenOnly = true)
+          else Nil
+        newLinesOpt()
         if !name.isEmpty || !tparams.isEmpty || !vparamss.isEmpty then
           accept(nme.as)
         def givenAlias(tpt: Tree) =
@@ -3491,6 +3502,8 @@ object Parsers {
           mods1 |= Final
           DefDef(name, tparams, vparamss, tpt, subExpr())
         if in.token == USCORE then
+          if !mods.is(Inline) then
+            syntaxError("`_ <:` is only allowed for given with `inline` modifier")
           in.nextToken()
           accept(SUBTYPE)
           givenAlias(TypeBoundsTree(EmptyTree, toplevelTyp()))
