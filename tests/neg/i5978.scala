@@ -11,7 +11,6 @@ object TextParser {
     as Conversion[Char, Position[CharSequence]] = ???
 }
 
-
 object Testcase {
   def main(args: Array[String]): Unit = {
     import TextParser._

@@ -32,7 +32,7 @@ object Eq {
     case '[Unit] => Nil
   }
 
-  given derived[T: Type](using qctx: QuoteContext): Expr[Eq[T]] = {
+  given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
     import qctx.tasty.{_, given}
 
     val ev: Expr[Mirror.Of[T]] = summonExpr(using '[Mirror.Of[T]]).get
