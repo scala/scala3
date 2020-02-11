@@ -15,9 +15,9 @@ import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 import scala.annotation.internal.sharable
 import scala.annotation.switch
 
-object Scala3 with
+object Scala3:
   import Symbols._
-  import core.NameOps.given
+  import core.NameOps.{given _}
 
   @sharable private val unicodeEscape = raw"\$$u(\p{XDigit}{4})".r
   @sharable private val locals        = raw"local(\d+)".r
@@ -25,7 +25,7 @@ object Scala3 with
 
   private val WILDCARDTypeName = nme.WILDCARD.toTypeName
 
-  enum SymbolKind derives Eql with
+  enum SymbolKind derives Eql:
     kind =>
 
     case Val, Var, Setter, Abstract
@@ -38,13 +38,13 @@ object Scala3 with
 
   end SymbolKind
 
-  object SymbolKind with
+  object SymbolKind:
     val ValSet   = Set(Val)
     val VarSet   = Set(Var)
     val emptySet = Set.empty[SymbolKind]
   end SymbolKind
 
-  object Symbols with
+  object Symbols:
 
     val RootPackage: String = "_root_/"
     val EmptyPackage: String = "_empty_/"
@@ -67,7 +67,7 @@ object Scala3 with
 
   end Symbols
 
-  extension NameOps on (name: Name) with
+  extension NameOps on (name: Name):
 
     def isWildcard = name match
       case nme.WILDCARD | WILDCARDTypeName => true
@@ -89,7 +89,7 @@ object Scala3 with
 
   // end NameOps
 
-  extension SymbolOps on (sym: Symbol) with
+  extension SymbolOps on (sym: Symbol):
 
     def ifExists(using Context): Option[Symbol] = if sym.exists then Some(sym) else None
 
@@ -128,7 +128,7 @@ object Scala3 with
 
   // end SymbolOps
 
-  object LocalSymbol with
+  object LocalSymbol:
 
     def unapply(symbolInfo: SymbolInformation): Option[Int] = symbolInfo.symbol match
       case locals(ints) =>
@@ -146,7 +146,7 @@ object Scala3 with
     case '/' | '.' | '#' | ']' | ')' => true
     case _                           => false
 
-  extension StringOps on (symbol: String) with
+  extension StringOps on (symbol: String):
 
     def isSymbol: Boolean = !symbol.isEmpty
     def isRootPackage: Boolean = RootPackage == symbol
@@ -171,7 +171,7 @@ object Scala3 with
 
   // end StringOps
 
-  extension InfoOps on (info: SymbolInformation) with
+  extension InfoOps on (info: SymbolInformation):
 
     def isAbstract: Boolean = (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
     def isFinal: Boolean = (info.properties & SymbolInformation.Property.FINAL.value) != 0
@@ -207,7 +207,7 @@ object Scala3 with
 
   // end InfoOps
 
-  extension RangeOps on (range: Range) with
+  extension RangeOps on (range: Range):
     def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
   // end RangeOps
 
@@ -236,7 +236,7 @@ object Scala3 with
     *
     * taken from https://github.com/scalameta/scalameta/blob/master/semanticdb/metap/src/main/scala/scala/meta/internal/metap/IdentifierOrdering.scala
     */
-  private class IdentifierOrdering[T <: CharSequence] extends Ordering[T] with
+  private class IdentifierOrdering[T <: CharSequence] extends Ordering[T]:
 
     override def compare(o1: T, o2: T): Int =
       val len = math.min(o1.length(), o2.length())

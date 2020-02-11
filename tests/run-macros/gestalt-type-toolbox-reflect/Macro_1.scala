@@ -43,7 +43,7 @@ object TypeToolbox {
 
   inline def fieldIn[T](inline mem: String): String = ${fieldInImpl('[T], 'mem)}
   private def fieldInImpl(t: Type[_], mem: Expr[String])(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     val field = t.unseal.symbol.field(mem.value)
     Expr(if field.isNoSymbol then "" else field.name)
   }
@@ -57,7 +57,7 @@ object TypeToolbox {
 
   inline def methodIn[T](inline mem: String): Seq[String] = ${methodInImpl('[T], 'mem)}
   private def methodInImpl(t: Type[_], mem: Expr[String])(using qctx: QuoteContext) : Expr[Seq[String]] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     Expr(t.unseal.symbol.classMethod(mem.value).map(_.name))
   }
 
@@ -69,7 +69,7 @@ object TypeToolbox {
 
   inline def method[T](inline mem: String): Seq[String] = ${methodImpl('[T], 'mem)}
   private def methodImpl(t: Type[_], mem: Expr[String])(using qctx: QuoteContext) : Expr[Seq[String]] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     Expr(t.unseal.symbol.method(mem.value).map(_.name))
   }
 

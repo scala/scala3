@@ -370,7 +370,7 @@ object Nullables:
   def assignmentSpans(using Context): Map[Int, List[Span]] =
     import ast.untpd._
 
-    object populate extends UntypedTreeTraverser with
+    object populate extends UntypedTreeTraverser:
 
       /** The name offsets of variables that are tracked */
       var tracked: Map[Int, List[Span]] = Map.empty
@@ -468,7 +468,7 @@ object Nullables:
       if mt.paramInfos.exists(_.isInstanceOf[ExprType]) && !fn.symbol.is(Inline) =>
         app match
           case Apply(fn, args) =>
-            val dropNotNull = new TreeMap with
+            val dropNotNull = new TreeMap:
               override def transform(t: Tree)(using Context) = t match
                 case AssertNotNull(t0) if t0.symbol.is(Mutable) =>
                   nullables.println(i"dropping $t")
@@ -481,7 +481,7 @@ object Nullables:
                   t
                 case _ => super.transform(t)
 
-            object retyper extends ReTyper with
+            object retyper extends ReTyper:
               override def typedUnadapted(t: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree = t match
                 case t: ValDef if !t.symbol.is(Lazy) => super.typedUnadapted(t, pt, locked)
                 case t: MemberDef => promote(t)

@@ -21,7 +21,7 @@ class TestInspector() extends TastyInspector:
     inspectClass(reflect)(root)
 
   private def inspectClass(reflect: Reflection)(tree: reflect.Tree): Unit =
-    import reflect.{given,_}
+    import reflect.{given _, _}
     tree match {
       case t: reflect.PackageClause =>
         t.stats.map( m => inspectClass(reflect)(m) )

@@ -18,7 +18,7 @@ object Test extends App {
 
   object Copier {
     val printer = new Printer
-    export printer.{given, _}
+    export printer.{given _, _}
     export Scanner.{scan => scanIt, _}
 
     val config2 = summon[Config]
