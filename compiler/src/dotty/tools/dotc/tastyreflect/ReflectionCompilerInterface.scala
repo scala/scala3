@@ -2050,17 +2050,17 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     }}
     val argVals = argVals0.reverse
     val argRefs = argRefs0.reverse
-    def rec(fn: Tree, topAscription: Option[TypeTree]): Tree = fn match {
+    val expectedSig = Signature.NotAMethod.prependTermParams(argRefs.map(_.tpe), false)
+    def rec(fn: Tree, topAscription: Option[TypeTree]): Option[Tree] = fn match {
       case Typed(expr, tpt) =>
-        // we need to retain any type ascriptions we see and:
-        // a) if we succeed, ascribe the result type of the ascription to the inlined body
-        // b) if we fail, re-ascribe the same type to whatever it was we couldn't inline
+        // we need to retain any type ascriptions we see and if we succeed,
+        // ascribe the result type of the ascription to the inlined body
         // note: if you see many nested ascriptions, keep the top one as that's what the enclosing expression expects
         rec(expr, topAscription.orElse(Some(tpt)))
       case Inlined(call, bindings, expansion) =>
         // this case must go before closureDef to avoid dropping the inline node
-        cpy.Inlined(fn)(call, bindings, rec(expansion, topAscription))
-      case closureDef(ddef) =>
+        rec(expansion, topAscription).map(cpy.Inlined(fn)(call, bindings, _))
+      case cl @ closureDef(ddef) if defn.isFunctionType(cl.tpe) =>
         val paramSyms = ddef.vparamss.head.map(param => param.symbol)
         val paramToVals = paramSyms.zip(argRefs).toMap
         val result = new TreeTypeMap(
@@ -2070,24 +2070,26 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
         ).transform(ddef.rhs)
         topAscription match {
           case Some(tpt) =>
-            // we assume the ascribed type has an apply that has a MethodType with a single param list (there should be no polys)
-            val methodType = tpt.tpe.member(nme.apply).info.asInstanceOf[MethodType]
+            // we checked that this is a plain Function closure, so there will be an apply method with a MethodType
+            // and the expected signature based on param types
+            val methodType = tpt.tpe.member(nme.apply).atSignature(expectedSig).info.asInstanceOf[MethodType]
             // result might contain paramrefs, so we substitute them with arg termrefs
             val resultTypeWithSubst = methodType.resultType.substParams(methodType, argRefs.map(_.tpe))
-            Typed(result, TypeTree(resultTypeWithSubst).withSpan(fn.span)).withSpan(fn.span)
+            Some(Typed(result, TypeTree(resultTypeWithSubst).withSpan(fn.span)).withSpan(fn.span))
           case None =>
-            result
+            Some(result)
         }
       case tpd.Block(stats, expr) =>
-        seq(stats, rec(expr, topAscription)).withSpan(fn.span)
+        rec(expr, topAscription).map(seq(stats, _).withSpan(fn.span))
       case _ =>
-        val maybeAscribed = topAscription match {
-          case Some(tpt) => Typed(fn, tpt).withSpan(fn.span)
-          case None => fn
-        }
-        maybeAscribed.select(nme.apply).appliedToArgs(argRefs).withSpan(fn.span)
+        None
     }
-    seq(argVals, rec(fn, None))
+    rec(fn, None) match {
+      case Some(result) => seq(argVals, result)
+      case None =>
+        val expectedSig = Signature.NotAMethod.prependTermParams(args.map(_.tpe), false)
+        fn.selectWithSig(nme.apply, expectedSig).appliedToArgs(args).withSpan(fn.span)
+    }
   }
 
   /////////////
