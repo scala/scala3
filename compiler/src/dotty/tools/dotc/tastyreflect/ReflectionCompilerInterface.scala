@@ -2050,24 +2050,44 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     }}
     val argVals = argVals0.reverse
     val argRefs = argRefs0.reverse
-    def rec(fn: Tree): Tree = fn match {
+    def rec(fn: Tree, topAscription: Option[TypeTree]): Tree = fn match {
+      case Typed(expr, tpt) =>
+        // we need to retain any type ascriptions we see and:
+        // a) if we succeed, ascribe the result type of the ascription to the inlined body
+        // b) if we fail, re-ascribe the same type to whatever it was we couldn't inline
+        // note: if you see many nested ascriptions, keep the top one as that's what the enclosing expression expects
+        rec(expr, topAscription.orElse(Some(tpt)))
       case Inlined(call, bindings, expansion) =>
         // this case must go before closureDef to avoid dropping the inline node
-        cpy.Inlined(fn)(call, bindings, rec(expansion))
+        cpy.Inlined(fn)(call, bindings, rec(expansion, topAscription))
       case closureDef(ddef) =>
         val paramSyms = ddef.vparamss.head.map(param => param.symbol)
         val paramToVals = paramSyms.zip(argRefs).toMap
-        new TreeTypeMap(
+        val result = new TreeTypeMap(
           oldOwners = ddef.symbol :: Nil,
           newOwners = ctx.owner :: Nil,
           treeMap = tree => paramToVals.get(tree.symbol).map(_.withSpan(tree.span)).getOrElse(tree)
         ).transform(ddef.rhs)
+        topAscription match {
+          case Some(tpt) =>
+            // we assume the ascribed type has an apply that has a MethodType with a single param list (there should be no polys)
+            val methodType = tpt.tpe.member(nme.apply).info.asInstanceOf[MethodType]
+            // result might contain paramrefs, so we substitute them with arg termrefs
+            val resultTypeWithSubst = methodType.resultType.substParams(methodType, argRefs.map(_.tpe))
+            Typed(result, TypeTree(resultTypeWithSubst).withSpan(fn.span)).withSpan(fn.span)
+          case None =>
+            result
+        }
       case tpd.Block(stats, expr) =>
-        seq(stats, rec(expr)).withSpan(fn.span)
+        seq(stats, rec(expr, topAscription)).withSpan(fn.span)
       case _ =>
-        fn.select(nme.apply).appliedToArgs(argRefs).withSpan(fn.span)
+        val maybeAscribed = topAscription match {
+          case Some(tpt) => Typed(fn, tpt).withSpan(fn.span)
+          case None => fn
+        }
+        maybeAscribed.select(nme.apply).appliedToArgs(argRefs).withSpan(fn.span)
     }
-    seq(argVals, rec(fn))
+    seq(argVals, rec(fn, None))
   }
 
   /////////////
