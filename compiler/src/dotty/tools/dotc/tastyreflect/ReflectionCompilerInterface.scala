@@ -35,10 +35,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   // QUOTE UNPICKLING //
   //////////////////////
 
-  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): scala.quoted.Expr[?] =
+  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): scala.quoted.Expr[?] =
     new TastyTreeExpr(PickledQuotes.unpickleExpr(repr, args), compilerId)
 
-  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[?] =
+  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): scala.quoted.Type[?] =
     new TreeType(PickledQuotes.unpickleType(repr, args), compilerId)
 
 
@@ -67,7 +67,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Context_requiredMethod(self: Context)(path: String): Symbol = self.requiredMethod(path)
   def Context_isJavaCompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.JavaCompilationUnit]
   def Context_isScala2CompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.Scala2CompilationUnit]
-  def Context_compilationUnitClassname(self: Context): String = 
+  def Context_compilationUnitClassname(self: Context): String =
     self.compilationUnit match {
       case cu: fromtasty.JavaCompilationUnit => cu.className
       case cu: fromtasty.Scala2CompilationUnit => cu.className
