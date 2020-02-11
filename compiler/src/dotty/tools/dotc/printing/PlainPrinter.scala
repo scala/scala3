@@ -61,8 +61,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp.info)
         case tp: LazyRef =>
           homogenize(tp.ref)
-        case AppliedType(tycon, args) =>
-          tycon.dealias.appliedTo(args)
+        case tp@AppliedType(tycon, args) =>
+          if (defn.isCompiletimeAppliedType(tycon.typeSymbol)) tp.tryCompiletimeConstantFold
+          else tycon.dealias.appliedTo(args)
         case _ =>
           tp
       }
