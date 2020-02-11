@@ -7,7 +7,7 @@ package reflect
  *  ```
  *  class MyTreeMap[R <: scala.tasty.Reflection & Singleton](val reflect: R)
  *      extends scala.tasty.reflect.TreeMap {
- *    import reflect.{given, _}
+ *    import reflect.{given _, _}
  *    override def transformTree(tree: Tree)(using ctx: Context): Tree = ...
  *  }
  *  ```
@@ -15,7 +15,7 @@ package reflect
 trait TreeMap {
 
   val reflect: Reflection
-  import reflect.{given, _}
+  import reflect.{given _, _}
 
   def transformTree(tree: Tree)(using ctx: Context): Tree = {
     tree match {

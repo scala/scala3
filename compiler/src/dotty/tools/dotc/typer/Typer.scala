@@ -40,7 +40,7 @@ import dotty.tools.dotc.transform.{PCPCheckAndHeal, Staging, TreeMapWithStages}
 import transform.SymUtils._
 import transform.TypeUtils._
 import reporting.trace
-import Nullables.{NotNullInfo, given}
+import Nullables.{NotNullInfo, given _}
 import NullOpsDecorator._
 
 object Typer {

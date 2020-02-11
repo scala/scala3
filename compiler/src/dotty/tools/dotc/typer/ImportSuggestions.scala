@@ -16,7 +16,7 @@ import collection.mutable
 /** This trait defines the method `importSuggestionAddendum` that adds an addendum
  *  to error messages suggesting additional imports.
  */
-trait ImportSuggestions with
+trait ImportSuggestions:
   this: Typer =>
 
   import tpd._
@@ -167,7 +167,7 @@ trait ImportSuggestions with
     def deepTest(ref: TermRef): Boolean =
       System.currentTimeMillis < deadLine
       && {
-        val task = new TimerTask with
+        val task = new TimerTask:
           def run() =
             println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
             ctx.run.isCancelled = true

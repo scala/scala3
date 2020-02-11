@@ -19,14 +19,14 @@ import org.junit.experimental.categories.Category
 
 import dotty.BootstrappedOnlyTests
 import dotty.tools.dotc.Main
-import dotty.tools.dotc.semanticdb.Scala3.given
+import dotty.tools.dotc.semanticdb.Scala3.{given _}
 import dotty.tools.dotc.util.SourceFile
 
 @main def updateExpect =
   SemanticdbTests().runExpectTest(updateExpectFiles = true)
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
-class SemanticdbTests with
+class SemanticdbTests:
   val javaFile = FileSystems.getDefault.getPathMatcher("glob:**.java")
   val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   val expectFile = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
