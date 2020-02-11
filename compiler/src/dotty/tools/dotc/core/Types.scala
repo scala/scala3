@@ -3780,22 +3780,22 @@ object Types {
 
     def tryCompiletimeConstantFold(implicit ctx: Context): Type = tycon match {
       case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
-        def constValue(tp: Type): Option[Any] = tp match {
+        def constValue(tp: Type): Option[Any] = tp.dealias match {
           case ConstantType(Constant(n)) => Some(n)
           case _ => None
         }
 
-        def boolValue(tp: Type): Option[Boolean] = tp match {
+        def boolValue(tp: Type): Option[Boolean] = tp.dealias match {
           case ConstantType(Constant(n: Boolean)) => Some(n)
           case _ => None
         }
 
-        def intValue(tp: Type): Option[Int] = tp match {
+        def intValue(tp: Type): Option[Int] = tp.dealias match {
           case ConstantType(Constant(n: Int)) => Some(n)
           case _ => None
         }
 
-        def stringValue(tp: Type): Option[String] = tp match {
+        def stringValue(tp: Type): Option[String] = tp.dealias match {
           case ConstantType(Constant(n: String)) => Some(n)
           case _ => None
         }
