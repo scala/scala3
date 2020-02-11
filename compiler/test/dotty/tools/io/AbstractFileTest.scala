@@ -4,6 +4,7 @@ import org.junit.Test
 
 import dotty.tools.io.AbstractFile
 import java.nio.file.Files._
+import java.nio.file.attribute.PosixFilePermissions
 
 class AbstractFileTest {
   //
@@ -15,7 +16,11 @@ class AbstractFileTest {
   //
   private def exerciseSymbolicLinks(temp: Directory): Unit = {
     val base = {
-      val target = createTempDirectory(temp.jpath, "real")
+      val permissions = PosixFilePermissions.fromString("rwxrwxrwx")
+      val attributes = PosixFilePermissions.asFileAttribute(permissions)
+      // Specifying the 'attributes' parameter on Windows prevents a
+      // FileSystemException "A required privilege is not held by the client".
+      val target = createTempDirectory(temp.jpath, "real", attributes)
       val link   = temp.jpath.resolve("link")
       createSymbolicLink(link, target)     // may bail early if unsupported
       AbstractFile.getDirectory(link)
