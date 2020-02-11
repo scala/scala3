@@ -646,15 +646,13 @@ object Parsers {
         else body()
       case _ => body()
 
-    /** If indentation is not significant, check that this is not the start of a
-     *  statement that's indented relative to the current region.
-     *  TODO: Drop if `with` is required before indented template definitions.
+    /** Check that this is not the start of a statement that's indented relative to the current region.
      */
     def checkNextNotIndented(): Unit = in.currentRegion match
       case r: IndentSignificantRegion if in.isNewLine =>
         val nextIndentWidth = in.indentWidth(in.next.offset)
         if r.indentWidth < nextIndentWidth then
-          warning(i"Line is indented too far to the right, or a `{` is missing", in.next.offset)
+          warning(i"Line is indented too far to the right, or a `{` or `:` is missing", in.next.offset)
       case _ =>
 
 /* -------- REWRITES ----------------------------------------------------------- */
@@ -1292,10 +1290,6 @@ object Parsers {
         in.nextToken()
         if in.token != INDENT then
           syntaxError(i"indented definitions expected")
-      else if in.token == WITH then
-        in.nextToken()
-        if in.token != LBRACE && in.token != INDENT then
-          syntaxError(i"indented definitions or `{` expected")
       else
         newLineOptWhenFollowedBy(LBRACE)
 

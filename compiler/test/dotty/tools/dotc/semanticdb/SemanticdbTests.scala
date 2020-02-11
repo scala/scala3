@@ -121,7 +121,7 @@ class SemanticdbTests:
 
 end SemanticdbTests
 
-object SemanticdbTests with
+object SemanticdbTests:
   /** Prettyprint a text document with symbol occurrences next to each resolved identifier.
    *
    * Useful for testing purposes to ensure that SymbolOccurrence values make sense and are correct.
