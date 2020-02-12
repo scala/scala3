@@ -803,11 +803,12 @@ trait Implicits { self: Typer =>
       def canComparePredefinedClasses(cls1: ClassSymbol, cls2: ClassSymbol): Boolean = {
         def cmpWithBoxed(cls1: ClassSymbol, cls2: ClassSymbol) =
           cls2 == defn.boxedType(cls1.typeRef).symbol ||
-          cls1.isNumericValueClass && cls2.derivesFrom(defn.BoxedNumberClass)
+          (!strictEquality && cls1.isNumericValueClass && cls2.derivesFrom(defn.BoxedNumberClass))
 
         if (cls1.isPrimitiveValueClass)
           if (cls2.isPrimitiveValueClass)
-            cls1 == cls2 || cls1.isNumericValueClass && cls2.isNumericValueClass
+            cls1 == cls2 ||
+            (!strictEquality && cls1.isNumericValueClass && cls2.isNumericValueClass)
           else
             cmpWithBoxed(cls1, cls2)
         else if (cls2.isPrimitiveValueClass)

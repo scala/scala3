@@ -23,7 +23,6 @@ object Eql {
   def eqlAny[L, R]: Eql[L, R] = derived
 
   // Instances of `Eql` for common Java types
-  given eqlNumber as Eql[Number, Number] = derived
   given eqlString as Eql[String, String] = derived
 
   // The next three definitions can go into the companion objects of classes

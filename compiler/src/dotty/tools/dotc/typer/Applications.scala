@@ -975,7 +975,9 @@ trait Applications extends Compatibility {
         app match {
           case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
             val op = fn.symbol
-            if (op == defn.Any_== || op == defn.Any_!=)
+            if op == defn.Any_== ||
+                op == defn.Any_!= ||
+                (defn.ScalaNumericValueTypeList.contains(left.tpe.widen) && (op.name == nme.EQ || op.name == nme.NE)) then
               checkCanEqual(left.tpe.widen, right.tpe.widen, app.span)
           case _ =>
         }
