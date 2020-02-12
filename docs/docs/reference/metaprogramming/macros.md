@@ -223,7 +223,7 @@ The compiler takes an environment that maps variable names to Scala `Expr`s.
 ```scala
 import scala.quoted.{given, _}
 
-def compile(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
+def compile(e: Exp, env: Map[String, Expr[Int]])(using QuoteContext): Expr[Int] = e match {
   case Num(n) =>
     Expr(n)
   case Plus(e1, e2) =>
