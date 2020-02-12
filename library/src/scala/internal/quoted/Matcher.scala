@@ -13,7 +13,7 @@ private[quoted] object Matcher {
     // TODO use flag from qctx.tasty.rootContext. Maybe -debug or add -debug-macros
     private final val debug = false
 
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     import Matching._
 
     /** A map relating equivalent symbols from the scrutinee and the pattern

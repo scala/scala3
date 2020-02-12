@@ -1483,7 +1483,7 @@ trait Implicits { self: Typer =>
           if diff == 0 then
             // Fall back: if both results are extension method applications,
             // compare the extension methods instead of their wrappers.
-            object extMethodApply with
+            object extMethodApply:
               def unapply(t: Tree): Option[Type] = t match
                 case t: Applications.ExtMethodApply => Some(methPart(stripApply(t.app)).tpe)
                 case _ => None

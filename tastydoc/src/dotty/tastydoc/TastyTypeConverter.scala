@@ -7,7 +7,7 @@ import dotty.tastydoc.references._
 trait TastyTypeConverter {
 
   def convertTypeOrBoundsToReference(reflect: Reflection)(typeOrBounds: reflect.TypeOrBounds): Reference = {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     def anyOrNothing(reference: Reference): Boolean = reference match {
       case TypeReference("Any", "/scala", _, _) => true
@@ -30,7 +30,7 @@ trait TastyTypeConverter {
   }
 
   def convertTypeToReference(reflect: Reflection)(tp: reflect.Type): Reference = {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     //Inner method to avoid passing the reflection each time
     def inner(tp: reflect.Type): Reference = tp match {

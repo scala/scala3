@@ -8,14 +8,14 @@ import dotty.tastydoc.representations._
 /** A trait containing useful methods for extracting information from the reflect API */
 trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentCleaner{
   def extractPath(reflect: Reflection)(symbol: reflect.Symbol) : List[String] = {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     val pathArray = symbol.show.split("\\.") // NOTE: this should print w/o colors, inspect afterwards
     pathArray.iterator.slice(0, pathArray.length - 1).toList
   }
 
   def extractModifiers(reflect: Reflection)(flags: reflect.Flags, privateWithin: Option[reflect.Type], protectedWithin: Option[reflect.Type]) : (List[String], Option[Reference], Option[Reference]) = {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     (((if(flags.is(Flags.Override)) "override" else "") ::
     (if(flags.is(Flags.Private)) "private" else "")::
@@ -40,7 +40,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
   }
 
   def extractComments(reflect: Reflection)(comment: Option[reflect.Comment], rep: Representation) : (Map[String, EmulatedPackageRepresentation], String) => Option[Comment] = {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     comment match {
       case Some(com) =>
@@ -59,7 +59,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
   }
 
   def extractClassMembers(reflect: Reflection)(body: List[reflect.Statement], symbol: reflect.Symbol, parentRepresentation: Some[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) : List[Representation with Modifiers] = {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     /** Filter fields which shouldn't be displayed in the doc
      */
@@ -99,7 +99,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
   }
 
   def extractParents(reflect: Reflection)(parents: List[reflect.Tree]): List[Reference] = {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     val parentsReferences = parents.map{
       case c: TypeTree => convertTypeToReference(reflect)(c.tpe)
@@ -118,7 +118,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
   * @return (is case, is a trait, is an object, the kind as a String)
   */
   def extractKind(reflect: Reflection)(flags: reflect.Flags): (Boolean, Boolean, Boolean, String) = {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     val isCase = flags.is(reflect.Flags.Case)
     val isTrait = flags.is(reflect.Flags.Trait)
@@ -143,7 +143,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
   }
 
   def extractCompanion(reflect: Reflection)(companionModule: Option[reflect.Symbol], companionClass: Option[reflect.Symbol], companionIsObject: Boolean): Option[CompanionReference] = {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     if(companionIsObject){
       companionModule match {
@@ -165,7 +165,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
   }
 
   def extractAnnotations(reflect: Reflection)(annots: List[reflect.Term]): List[TypeReference] = {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     def keepAnnot(label: String, link: String): Boolean = {
       !(label == "SourceFile" && link == "/internal") &&

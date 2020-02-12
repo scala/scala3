@@ -18,7 +18,7 @@ A `Denotation` is the result of a name lookup during a given period
   may be `NoSymbol` (the two variants have symbols).
 * Non-overloaded denotations have an `info`
 
-Denotations of methods have a signature ([Signature.scala:7]), which
+Denotations of methods have a signature ([Signature1]), which
 uniquely identifies overloaded methods.
 
 #### Denotation vs. SymDenotation ####
@@ -55,7 +55,7 @@ if (sym is Flags.PackageClass)  // dotc (*)
 ```
 
 `(*)` Symbols are implicitly converted to their denotation, see above. Each
-`SymDeotation` has flags that can be queried using the `is` method.
+`SymDenotation` has flags that can be queried using the `is` method.
 
 ### Flags ###
 * Flags are instances of the value class `FlagSet`, which encapsulates a

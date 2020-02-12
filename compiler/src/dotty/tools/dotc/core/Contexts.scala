@@ -16,7 +16,7 @@ import ast.untpd
 import Flags.GivenOrImplicit
 import util.{NoSource, SimpleIdentityMap, SourceFile}
 import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
-import Nullables.{NotNullInfo, given}
+import Nullables.{NotNullInfo, given _}
 import Implicits.ContextualImplicits
 import config.Settings._
 import config.Config
@@ -599,7 +599,7 @@ object Contexts {
     def setDebug: this.type = setSetting(base.settings.Ydebug, true)
   }
 
-  extension ops on (c: Context) with
+  extension ops on (c: Context):
     def addNotNullInfo(info: NotNullInfo) =
       c.withNotNullInfos(c.notNullInfos.extendWith(info))
 

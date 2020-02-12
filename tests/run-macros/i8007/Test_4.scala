@@ -12,7 +12,7 @@ enum Opt[+T] {
 
 @main def Test() = {
   import Opt._
-  import Eq.{given, _}
+  import Eq.{given _, _}
 
   val t1 = test1(Person("Test", 23))
   println(t1)

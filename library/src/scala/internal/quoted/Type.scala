@@ -26,7 +26,7 @@ object Type {
    */
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: scala.quoted.Type[_])(using patternType: scala.quoted.Type[_],
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     new Matcher.QuoteMatcher[qctx.type].typeTreeMatch(scrutineeType.unseal, patternType.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
   }
 
