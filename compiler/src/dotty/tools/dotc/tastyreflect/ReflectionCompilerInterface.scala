@@ -67,7 +67,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Context_requiredMethod(self: Context)(path: String): Symbol = self.requiredMethod(path)
   def Context_isJavaCompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.JavaCompilationUnit]
   def Context_isScala2CompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.Scala2CompilationUnit]
-  def Context_compilationUnitClassname(self: Context): String = 
+  def Context_compilationUnitClassname(self: Context): String =
     self.compilationUnit match {
       case cu: fromtasty.JavaCompilationUnit => cu.className
       case cu: fromtasty.Scala2CompilationUnit => cu.className
@@ -1758,10 +1758,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Symbol_of(fullName: String)(using ctx: Context): Symbol =
     ctx.requiredClass(fullName)
 
-  def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol = {
-    val computedFlags = flags | Flags.Method
-    ctx.newSymbol(parent, name.toTermName, computedFlags, tpe, privateWithin)
-  }
+  def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol =
+    ctx.newSymbol(parent, name.toTermName, flags | Flags.Method, tpe, privateWithin)
+
+  def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol =
+    ctx.newSymbol(parent, name.toTermName, flags, tpe, privateWithin)
 
   def Symbol_isTypeParam(self: Symbol)(using ctx: Context): Boolean =
     self.isTypeParam

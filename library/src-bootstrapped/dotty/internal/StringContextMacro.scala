@@ -9,7 +9,7 @@ import reflect._
 object StringContextMacro {
 
   /** Implementation of scala.StringContext.f used in Dotty */
-  inline def f(sc: => StringContext)(args: Any*): String = ${ interpolate('sc, 'args) }
+  inline def f(inline sc: StringContext)(inline args: Any*): String = ${ interpolate('sc, 'args) }
 
   /** This trait defines a tool to report errors/warnings that do not depend on Position. */
   trait Reporter {
@@ -53,45 +53,6 @@ object StringContextMacro {
     def restoreReported() : Unit
   }
 
-  /** Retrieves the parts from a StringContext, given inside an Expr, and returns them as a list of Expr of String
-   *
-   *  @param strCtxExpr the Expr containing the StringContext
-   *  @return a list of Expr containing Strings, each corresponding to one parts of the given StringContext
-   *  quotes an error if the given Expr does not correspond to a StringContext
-   */
-  def getPartsExprs(strCtxExpr: Expr[scala.StringContext])(using qctx: QuoteContext): Option[(List[Expr[String]], List[String])] = {
-    def notStatic = {
-      qctx.error("Expected statically known String Context", strCtxExpr)
-      None
-    }
-    def splitParts(seq: Expr[Seq[String]]) = (seq, seq) match {
-      case (ExprSeq(p1), ConstSeq(p2)) => Some((p1.toList, p2.toList))
-      case (_, _) => notStatic
-    }
-    strCtxExpr match {
-      case '{ StringContext($parts: _*) } => splitParts(parts)
-      case '{ new StringContext($parts: _*) } => splitParts(parts)
-      case _ => notStatic
-    }
-  }
-
-  /** Retrieves a list of Expr, each containing an argument, from an Expr of list of arguments
-   *
-   *  @param argsExpr the Expr containing the list of arguments
-   *  @return a list of Expr containing arguments
-   *  quotes an error if the given Expr does not contain a list of arguments
-   */
-  def getArgsExprs(argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Option[List[Expr[Any]]] = {
-    import qctx.tasty.{_, given _}
-    argsExpr.unseal.underlyingArgument match {
-      case Typed(Repeated(args, _), _) =>
-        Some(args.map(_.seal))
-      case tree =>
-        qctx.error("Expected statically known argument list", argsExpr)
-        None
-    }
-  }
-
   /** Interpolates the arguments to the formatting String given inside a StringContext
    *
    *  @param strCtxExpr the Expr that holds the StringContext which contains all the chunks of the formatting string
@@ -102,13 +63,21 @@ object StringContextMacro {
     import qctx.tasty.{_, given _}
     val sourceFile = strCtxExpr.unseal.pos.sourceFile
 
-    val (partsExpr, parts) = getPartsExprs(strCtxExpr) match {
-      case Some(x) => x
-      case None => return '{""}
+    def notStatic =
+      qctx.throwError("Expected statically known String Context", strCtxExpr)
+    def splitParts(seq: Expr[Seq[String]]) = (seq, seq) match {
+      case (ExprSeq(p1), ConstSeq(p2)) => (p1.toList, p2.toList)
+      case (_, _) => notStatic
     }
-    val args = getArgsExprs(argsExpr) match {
-      case Some(args) => args
-      case None => return '{""}
+    val (partsExpr, parts) = strCtxExpr match {
+      case '{ StringContext($parts: _*) } => splitParts(parts)
+      case '{ new StringContext($parts: _*) } => splitParts(parts)
+      case _ => notStatic
+    }
+
+    val args = argsExpr match {
+      case ExprSeq(args) => args
+      case _ => qctx.throwError("Expected statically known argument list", argsExpr)
     }
 
     val reporter = new Reporter{
@@ -164,7 +133,7 @@ object StringContextMacro {
    *  @param reporter the reporter to return any error/warning when a problem is encountered
    *  @return the Expr containing the formatted and interpolated String or an error/warning report if the parameters are not correct
    */
-  def interpolate(parts0 : List[String], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(using qctx: QuoteContext) : Expr[String] = {
+  def interpolate(parts0 : List[String], args : Seq[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(using qctx: QuoteContext) : Expr[String] = {
     import qctx.tasty.{_, given _}
 
     /** Checks if the number of arguments are the same as the number of formatting strings

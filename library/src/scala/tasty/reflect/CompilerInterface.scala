@@ -1309,6 +1309,8 @@ trait CompilerInterface {
 
   def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol
 
+  def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol
+
   def Symbol_isTypeParam(self: Symbol)(using ctx: Context): Boolean
 
   def Symbol_isPackageDef(symbol: Symbol)(using ctx: Context): Boolean

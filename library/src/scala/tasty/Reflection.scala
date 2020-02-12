@@ -2109,6 +2109,22 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def newMethod(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol)(using ctx: Context): Symbol =
       internal.Symbol_newMethod(parent, name, flags, tpe, privateWithin)
 
+    /** Generates a new val/var/lazy val symbol with the given parent, name and type.
+     *
+     *  This symbol starts without an accompanying definition.
+     *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+     *  this symbol to the ValDef constructor.
+     *
+     *  Note: Also see Reflection.let
+     *
+     *  @param flags extra flags to with which the symbol should be constructed
+     *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
+     *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+     *        direct or indirect children of the reflection context's owner.
+     */
+    def newVal(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol)(using ctx: Context): Symbol =
+      internal.Symbol_newVal(parent, name, flags, tpe, privateWithin)
+
     /** Definition not available */
     def noSymbol(using ctx: Context): Symbol =
       internal.Symbol_noSymbol
@@ -2772,19 +2788,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   /** Bind the `rhs` to a `val` and use it in `body` */
   def let(rhs: Term)(body: Ident => Term)(using ctx: Context): Term = {
-    import scala.quoted.QuoteContext
-    given QuoteContext = new QuoteContext(this)
-    val expr = (rhs.seal: @unchecked) match {
-      case '{ $rhsExpr: $t } =>
-        '{
-          val x = $rhsExpr
-          ${
-            val id = ('x).unseal.asInstanceOf[Ident]
-            body(id).seal
-          }
-        }
-    }
-    expr.unseal
+    val sym = Symbol.newVal(ctx.owner, "x", rhs.tpe.widen, Flags.EmptyFlags, Symbol.noSymbol)
+    Block(List(ValDef(sym, Some(rhs))), body(Ref(sym).asInstanceOf[Ident]))
   }
 
   /** Bind the given `terms` to names and use them in the `body` */
