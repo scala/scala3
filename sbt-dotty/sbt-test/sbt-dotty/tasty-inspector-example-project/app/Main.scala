@@ -7,7 +7,7 @@ object Main extends App {
 
   val inspector = new TastyInspector {
     protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = {
-      import reflect.{given, _}
+      import reflect.{given _, _}
       val tastyStr = root.show
       println(tastyStr)
     }

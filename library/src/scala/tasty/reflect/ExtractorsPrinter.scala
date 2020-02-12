@@ -2,7 +2,7 @@ package scala.tasty
 package reflect
 
 class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Printer[R] {
-  import tasty.{_, given}
+  import tasty.{_, given _}
 
   def showTree(tree: Tree)(using ctx: Context): String =
     new Buffer().visitTree(tree).result()

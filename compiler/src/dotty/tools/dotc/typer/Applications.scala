@@ -22,7 +22,7 @@ import NameKinds.DefaultGetterName
 import ProtoTypes._
 import Inferencing._
 import transform.TypeUtils._
-import Nullables.{postProcessByNameArgs, given}
+import Nullables.{postProcessByNameArgs, given _}
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}

@@ -83,7 +83,7 @@ object representations extends TastyExtractor {
   }
 
   class PackageRepresentation(reflect: Reflection, internal: reflect.PackageClause, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     override val (name, path) = extractPackageNameAndPath(internal.pid.show)
     override val members = internal.stats.map(convertToRepresentation(reflect)(_, Some(this)))
@@ -93,7 +93,7 @@ object representations extends TastyExtractor {
   }
 
   class ImportRepresentation(reflect: Reflection, internal: reflect.Import, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     override val name = if (internal.selectors.size > 1){
         internal.selectors.map(_.toString).mkString("{", ", ", "}")
@@ -107,7 +107,7 @@ object representations extends TastyExtractor {
   }
 
   class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     override val path = extractPath(reflect)(internal.symbol)
     override val parents = extractParents(reflect)(internal.parents)
@@ -143,7 +143,7 @@ object representations extends TastyExtractor {
   }
 
   class DefRepresentation(reflect: Reflection, internal: reflect.DefDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
@@ -162,7 +162,7 @@ object representations extends TastyExtractor {
   }
 
   class ValRepresentation(reflect: Reflection, internal: reflect.ValDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with ReturnValue {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
@@ -175,7 +175,7 @@ object representations extends TastyExtractor {
   }
 
   class TypeRepresentation(reflect: Reflection, internal: reflect.TypeDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
@@ -192,7 +192,7 @@ object representations extends TastyExtractor {
   }
 
   def convertToRepresentation(reflect: Reflection)(tree: reflect.Tree, parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]): Representation = {
-    import reflect.{given, _}
+    import reflect.{given _, _}
 
     tree match {
       case t: reflect.PackageClause =>

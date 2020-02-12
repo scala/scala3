@@ -34,7 +34,7 @@ object Expr {
    */
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: scala.quoted.Expr[_])(using patternExpr: scala.quoted.Expr[_],
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     new Matcher.QuoteMatcher[qctx.type].termMatch(scrutineeExpr.unseal, patternExpr.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
   }
 

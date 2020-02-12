@@ -17,7 +17,7 @@ object ExprSeq {
    *  ```
    */
   def unapply[T](expr: Expr[Seq[T]])(using qctx: QuoteContext): Option[Seq[Expr[T]]] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     def rec(tree: Term): Option[Seq[Expr[T]]] = tree match {
       case Typed(Repeated(elems, _), _) => Some(elems.map(x => x.seal.asInstanceOf[Expr[T]]))
       case Block(Nil, e) => rec(e)

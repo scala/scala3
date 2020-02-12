@@ -646,15 +646,13 @@ object Parsers {
         else body()
       case _ => body()
 
-    /** If indentation is not significant, check that this is not the start of a
-     *  statement that's indented relative to the current region.
-     *  TODO: Drop if `with` is required before indented template definitions.
+    /** Check that this is not the start of a statement that's indented relative to the current region.
      */
     def checkNextNotIndented(): Unit = in.currentRegion match
       case r: IndentSignificantRegion if in.isNewLine =>
         val nextIndentWidth = in.indentWidth(in.next.offset)
         if r.indentWidth < nextIndentWidth then
-          warning(i"Line is indented too far to the right, or a `{` is missing", in.next.offset)
+          warning(i"Line is indented too far to the right, or a `{` or `:` is missing", in.next.offset)
       case _ =>
 
 /* -------- REWRITES ----------------------------------------------------------- */
@@ -1292,10 +1290,6 @@ object Parsers {
         in.nextToken()
         if in.token != INDENT then
           syntaxError(i"indented definitions expected")
-      else if in.token == WITH then
-        in.nextToken()
-        if in.token != LBRACE && in.token != INDENT then
-          syntaxError(i"indented definitions or `{` expected")
       else
         newLineOptWhenFollowedBy(LBRACE)
 
@@ -3022,11 +3016,8 @@ object Parsers {
      */
     def importExpr(mkTree: ImportConstr): () => Tree = {
 
-      /** '_' | 'given'
-       */
-      def wildcardSelectorId() =
-        val name = if in.token == GIVEN then nme.EMPTY else nme.WILDCARD
-        atSpan(in.skipToken()) { Ident(name) }
+      /** '_' */
+      def wildcardSelectorId(name: TermName) = atSpan(in.skipToken()) { Ident(name) }
 
       /** ImportSelectors  ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
        *                     |  WildCardSelector {‘,’ WildCardSelector}
@@ -3034,31 +3025,28 @@ object Parsers {
        *                     |  ‘_'
        */
       def importSelectors(idOK: Boolean): List[ImportSelector] =
-        val selToken = in.token
-        val isWildcard = selToken == USCORE || selToken == GIVEN
-        val selector =
-          if isWildcard then
-            val id = wildcardSelectorId()
-            if selToken == USCORE then ImportSelector(id)
-            else atSpan(startOffset(id)) {
+        val isWildcard = in.token == USCORE || in.token == GIVEN
+        val selector = atSpan(in.offset) {
+          in.token match
+            case USCORE =>
+              ImportSelector(wildcardSelectorId(nme.WILDCARD))
+            case GIVEN =>
+              val id = wildcardSelectorId(nme.EMPTY)
               if in.token == USCORE then
                 in.nextToken()
                 ImportSelector(id)
-              else if in.token != RBRACE && in.token != COMMA then
-                ImportSelector(id, bound = infixType())
               else
-                ImportSelector(id)  // TODO: drop
-            }
-          else
-            val from = termIdent()
-            if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
-            if in.token == ARROW then
-              atSpan(startOffset(from), in.skipToken()) {
-                val to = if in.token == USCORE then wildcardIdent() else termIdent()
-                ImportSelector(from, if to.name == nme.ERROR then EmptyTree else to)
-              }
-            else ImportSelector(from)
-
+                ImportSelector(id, bound = infixType())
+            case _ =>
+              val from = termIdent()
+              if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
+              if in.token == ARROW then
+                atSpan(startOffset(from), in.skipToken()) {
+                  val to = if in.token == USCORE then wildcardIdent() else termIdent()
+                  ImportSelector(from, if to.name == nme.ERROR then EmptyTree else to)
+                }
+              else ImportSelector(from)
+        }
         val rest =
           if in.token == COMMA then
             in.nextToken()
@@ -3069,8 +3057,8 @@ object Parsers {
 
       val handleImport: Tree => Tree = tree =>
         in.token match
-          case USCORE | GIVEN =>
-            mkTree(tree, ImportSelector(wildcardSelectorId()) :: Nil)
+          case USCORE =>
+            mkTree(tree, ImportSelector(wildcardSelectorId(nme.WILDCARD)) :: Nil)
           case LBRACE =>
             mkTree(tree, inBraces(importSelectors(idOK = true)))
           case _ =>

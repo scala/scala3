@@ -1,4 +1,4 @@
-import scala.quoted.{given, _}
+import scala.quoted.{given _, _}
 
 abstract class Test {
   type T
@@ -13,7 +13,7 @@ abstract class Test {
 
     {
       val t: Test = this
-      import t.{given}
+      import t.{given _}
       println(summon[Type[t.T]].show)
       // val r = '{Option.empty[t.T]} // access to value t from wrong staging level
       val r2 = '{Option.empty[${t.T}]} // works

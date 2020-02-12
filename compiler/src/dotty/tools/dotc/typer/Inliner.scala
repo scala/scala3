@@ -24,7 +24,7 @@ import ErrorReporting.errorTree
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, SourceFile, SourcePosition}
 import dotty.tools.dotc.parsing.Parsers.Parser
-import Nullables.given
+import Nullables.{given _}
 
 import collection.mutable
 import reporting.trace

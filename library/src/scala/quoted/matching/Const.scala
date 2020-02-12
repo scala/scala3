@@ -15,7 +15,7 @@ package matching
 object Const {
 
   def unapply[T](expr: Expr[T])(using qctx: QuoteContext): Option[T] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     def rec(tree: Term): Option[T] = tree match {
       case Literal(c) => Some(c.value.asInstanceOf[T])
       case Block(Nil, e) => rec(e)
