@@ -2115,6 +2115,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
      *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
      *  this symbol to the ValDef constructor.
      *
+     *  Note: Also see Reflection.let
+     *
      *  @param flags extra flags to with which the symbol should be constructed
      *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
      *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
