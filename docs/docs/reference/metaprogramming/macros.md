@@ -626,8 +626,8 @@ In `scala.quoted.matching` contains object that can help extract values from `Ex
 
 These could be used in the following way to optimize any call to `sum` that has statically known values.
 ```scala
-inline def sum(args: =>Int*): Int = ${ sumExpr('args) }
-private def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr.underlyingArgument match {
+inline def sum(inline args: Int*): Int = ${ sumExpr('args) }
+private def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match {
   case ConstSeq(args) => // args is of type Seq[Int]
     Expr(args.sum) // precompute result of sum
   case ExprSeq(argExprs) => // argExprs is of type Seq[Expr[Int]]
@@ -705,7 +705,7 @@ This might be used to then perform an implicit search as in:
 
 
 ```scala
-inline def (sc: StringContext).showMe(args: =>Any*): String = ${ showMeExpr('sc, 'args) }
+inline def (sc: StringContext).showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
   argsExpr match {
