@@ -24,7 +24,7 @@ Conversely, if the expected type of an expression `E` is a context function type
 `(T_1, ..., T_n) ?=> U` and `E` is not already an
 context function literal, `E` is converted to an context function literal by rewriting to
 ```scala
-  (x_1: T1, ..., x_n: Tn) ?=> E
+  (using x_1: T1, ..., x_n: Tn) => E
 ```
 where the names `x_1`, ..., `x_n` are arbitrary. This expansion is performed
 before the expression `E` is typechecked, which means that `x_1`, ..., `x_n`
@@ -36,11 +36,11 @@ For example, continuing with the previous definitions,
 ```scala
   def g(arg: Executable[Int]) = ...
 
-  g(22)      // is expanded to g((ev: ExecutionContext) ?=> 22)
+  g(22)      // is expanded to g((using ev: ExecutionContext) => 22)
 
-  g(f(2))    // is expanded to g((ev: ExecutionContext) ?=> f(2)(using ev))
+  g(f(2))    // is expanded to g((using ev: ExecutionContext) => f(2)(using ev))
 
-  g((ctx: ExecutionContext) ?=> f(22)(using ctx)) // is left as it is
+  g((using ctx: ExecutionContext) => f(22)(using ctx)) // is left as it is
 ```
 ### Example: Builder Pattern
 
@@ -97,14 +97,14 @@ that would otherwise be necessary.
 ```
 With that setup, the table construction code above compiles and expands to:
 ```scala
-  table { ($t: Table) ?=>
+  table { (using $t: Table) =>
 
-    row { ($r: Row) ?=>
+    row { (using $r: Row) =>
       cell("top left")(using $r)
       cell("top right")(using $r)
     }(using $t)
 
-    row { ($r: Row) ?=>
+    row { (using $r: Row) =>
       cell("bottom left")(using $r)
       cell("bottom right")(using $r)
     }(using $t)

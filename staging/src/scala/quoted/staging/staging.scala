@@ -23,7 +23,7 @@ package object staging {
    *
    *  Usage:
    *  ```
-   *  val e: T = withQuoteContext { // (qctx: QuoteContext) ?=>
+   *  val e: T = withQuoteContext { // (using qctx: QuoteContext) =>
    *    thunk
    *  }
    *  ```
