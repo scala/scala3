@@ -1,18 +1,27 @@
 // Compile with -strict -Xfatal-warnings -deprecation
 import scala.annotation.infix
-class C {
+class C:
   @infix def op(x: Int): Int = ???
   def meth(x: Int): Int = ???
   def matching(x: Int => Int) = ???
   def +(x: Int): Int = ???
-}
+
+object C:
+  given AnyRef:
+    def (x: C) iop (y: Int) = ???
+    def (x: C).mop (y: Int) = ???
+    def (x: C) ++ (y: Int) = ???
 
 val c = C()
 def test() = {
   c op 2
+  c iop 2
   c.meth(2)
+  c ++ 2
 
   c.op(2)
+  c.iop(2)
+  c mop 2     // error: should not be used as infix operator
   c meth 2    // error: should not be used as infix operator
   c `meth` 2  // OK, sincd `meth` is backquoted
   c + 3       // OK, since `+` is symbolic

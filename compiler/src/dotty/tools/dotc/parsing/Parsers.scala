@@ -3205,24 +3205,32 @@ object Parsers {
         makeConstructor(Nil, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
       }
       else {
+        var mods1 = addFlag(mods, Method)
+        var isInfix = false
         def extParamss() =
           try paramClause(0, prefix = true) :: Nil
           finally
+            mods1 = addFlag(mods, Extension)
             if in.token == DOT then in.nextToken()
-            else newLineOpt()
-        val (leadingTparams, leadingVparamss, flags) =
+            else
+              isInfix = true
+              newLineOpt()
+        val (leadingTparams, leadingVparamss) =
           if in.token == LBRACKET then
-            (typeParamClause(ParamOwner.Def), extParamss(), Method | Extension)
+            (typeParamClause(ParamOwner.Def), extParamss())
           else if in.token == LPAREN then
-            (Nil, extParamss(), Method | Extension)
+            (Nil, extParamss())
           else
-            (Nil, Nil, Method)
-        val mods1 = addFlag(mods, flags)
+            (Nil, Nil)
         val ident = termIdent()
         val name = ident.name.asTermName
+        if isInfix && !name.isOperatorName then
+          val infixAnnot = Apply(wrapNew(ref(defn.InfixAnnot.typeRef)), Nil)
+              .withSpan(Span(start, start))
+          mods1 = mods1.withAddedAnnotation(infixAnnot)
         val tparams =
           if in.token == LBRACKET then
-            if flags.is(Extension) then
+            if mods1.is(Extension) then
               if leadingTparams.isEmpty then
                 deprecationWarning("type parameters in extension methods should be written after `def`")
               else

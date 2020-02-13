@@ -277,7 +277,7 @@ object Checking {
   def checkValidOperator(sym: Symbol)(implicit ctx: Context): Unit =
     sym.name.toTermName match {
       case name: SimpleName
-      if name.exists(isOperatorPart)
+      if name.isOperatorName
          && !name.isSetterName
          && !name.isConstructorName
          && !sym.getAnnotation(defn.AlphaAnnot).isDefined
@@ -754,7 +754,7 @@ trait Checking {
         name.toTermName match {
           case name: SimpleName
           if !untpd.isBackquoted(id) &&
-             !name.exists(isOperatorPart) &&
+             !name.isOperatorName &&
              !isInfix(meth) &&
              !meth.maybeOwner.is(Scala2x) &&
              !infixOKSinceFollowedBy(tree.right) &&
