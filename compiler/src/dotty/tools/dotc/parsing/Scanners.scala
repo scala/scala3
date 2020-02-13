@@ -12,10 +12,41 @@ import config.Config
 import config.Printers.lexical
 import config.Settings.Setting
 import Tokens._
-import scala.annotation.{ switch, tailrec }
+import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.collection.immutable.{SortedMap, BitSet}
 import rewrites.Rewrites.patch
+
+object Cbufs {
+  import java.lang.StringBuilder
+
+  private final val TargetCapacity = 256
+
+  opaque type Cbuf = StringBuilder
+  object Cbuf:
+    def apply(): Cbuf = new StringBuilder(TargetCapacity)
+
+  extension StringBuilderOps on (buf: Cbuf):
+    def clear(): Unit = {
+      if buf.capacity() > TargetCapacity then
+        buf.setLength(TargetCapacity)
+        buf.trimToSize()
+      end if
+      buf.setLength(0)
+    }
+    def toCharArray: Array[Char] = {
+      val n = buf.length()
+      val res = new Array[Char](n)
+      buf.getChars(0, n, res, 0)
+      res
+    }
+    def append(c: Char): buf.type = { buf.append(c) ; buf }
+    def isEmpty: Boolean = buf.length() == 0
+    def length: Int = buf.length()
+    def last: Char = buf.charAt(buf.length() - 1)
+}
+
+import Cbufs._
 
 object Scanners {
 
@@ -99,14 +130,14 @@ object Scanners {
 
     /** A character buffer for literals
       */
-    protected val litBuf = new mutable.StringBuilder
+    protected val litBuf = Cbuf()
 
     /** append Unicode character to "litBuf" buffer
       */
     protected def putChar(c: Char): Unit = litBuf.append(c)
 
     /** Return buffer contents and clear */
-    def flushBuf(buf: StringBuilder): String = {
+    def flushBuf(buf: Cbuf): String = {
       val str = buf.toString
       buf.clear()
       str
@@ -198,7 +229,7 @@ object Scanners {
     def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
-    private val commentBuf = new mutable.StringBuilder
+    private val commentBuf = Cbuf()
 
     private def handleMigration(keyword: Token): Token =
       if (keyword == ERASED && !ctx.settings.YerasedTerms.value) IDENTIFIER
