@@ -2064,7 +2064,7 @@ object Parsers {
     /** FunParams         ::=  Bindings
      *                     |   id
      *                     |   `_'
-     *  Bindings          ::=  `(' [[using] [‘erased’] Binding {`,' Binding}] `)'
+     *  Bindings          ::=  `(' [[‘using’] [‘erased’] Binding {`,' Binding}] `)'
      */
     def funParams(mods: Modifiers, location: Location.Value): List[Tree] =
       if in.token == LPAREN then
