@@ -39,16 +39,15 @@ Context bounds remain supported as a shorthand for one-parameter typeclass const
 def max[T: Ordering](x: T, y: T): T = ...
 given [T: Ordering] as Ordering[List[T]] { ... }
 ```
-
-## Context Functions
-
-Implicit function types `implicit A => B` have been replaced with context function types, which are written `A ?=> B`. The syntax `(given A) => B` that was used in earlier Dotty versions is no longer supported.
-
-The same change applies to context function values. It's now
+Parameters of context function values are also written with `using`. So it is
 ```scala
-(x: A) ?=> E
+(using x: A) => E
 ```
 instead of `(implicit x: A) => E` or `(given x: A) => E`.
+
+## Context Functions Types
+
+Implicit function types `implicit A => B` have been replaced with context function types, which are written `A ?=> B`. The syntax `(given A) => B` that was used in earlier Dotty versions is no longer supported.
 
 ## Given Imports
 
