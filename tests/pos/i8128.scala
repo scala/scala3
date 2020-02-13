@@ -1,5 +1,5 @@
 object Test {
-  def id: (x: 1 | 0) => x.type = ??? // x => x does not work yet
+  def id: (x: 1 | 0) => x.type = x => x
   id(0): 0   // ok
 
   def id2: Function1[1 | 0, 1 | 0] {

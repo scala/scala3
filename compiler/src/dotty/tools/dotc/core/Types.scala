@@ -1167,38 +1167,36 @@ object Types {
         this
     }
 
-    /** If this type is an alias of a disjunction of stable singleton types,
-     *  these types as a set, otherwise the empty set.
+    /** The singleton types that must or may be in this type. @see Atoms.
      *  Overridden and cached in OrType.
-     *  @param widenOK  If type proxies that are upperbounded by types with atoms
-     *                  have the same atoms.
      */
-    def atoms(widenOK: Boolean = false)(implicit ctx: Context): Option[Set[Type]] =
-      dealias match
+    def atoms(using Context): Atoms = dealias match
       case tp: SingletonType =>
-        def normalize(tp: Type): Type = tp match {
+        def normalize(tp: Type): Type = tp match
           case tp: SingletonType =>
-            tp.underlying.dealias match {
+            tp.underlying.dealias match
               case tp1: SingletonType => normalize(tp1)
               case _ =>
-                tp match {
+                tp match
                   case tp: TermRef => tp.derivedSelect(normalize(tp.prefix))
                   case _ => tp
-                }
-            }
           case _ => tp
-        }
-        tp.underlying.atoms(widenOK) match
-          case None if tp.isStable => Some(Set.empty + normalize(tp))
-          case s @ Some(ts) if ts.size == 1 || widenOK => s
-          case _ => None
-      case tp: ExprType => tp.resType.atoms(widenOK)
-      case tp: OrType => tp.atoms(widenOK) // `atoms` overridden in OrType
-      case tp: AndType =>
-        for ts1 <- tp.tp1.atoms(widenOK); ts2 <- tp.tp2.atoms(widenOK)
-        yield ts1 & ts2
-      case tp: TypeProxy if widenOK => tp.underlying.atoms(widenOK)
-      case _ => None
+        tp.underlying.atoms match
+          case as @ Atoms.Range(lo, hi) =>
+            if hi.size == 1 then as else Atoms.Range(Set.empty, hi)
+          case Atoms.Unknown =>
+            if tp.isStable then
+              val single = Set.empty + normalize(tp)
+              Atoms.Range(single, single)
+            else Atoms.Unknown
+      case tp: ExprType => tp.resType.atoms
+      case tp: OrType => tp.atoms // `atoms` overridden in OrType
+      case tp: AndType => tp.tp1.atoms & tp.tp2.atoms
+      case tp: TypeProxy =>
+        tp.underlying.atoms match
+          case Atoms.Range(_, hi) => Atoms.Range(Set.empty, hi)
+          case Atoms.Unknown => Atoms.Unknown
+      case _ => Atoms.Unknown
 
     private def dealias1(keep: AnnotatedType => Context => Boolean)(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
@@ -2922,26 +2920,20 @@ object Types {
     }
 
     private var atomsRunId: RunId = NoRunId
-    private var myAtoms: Option[Set[Type]] = _
-    private var myWidenedAtoms: Option[Set[Type]] = _
+    private var myAtoms: Atoms = _
     private var myWidened: Type = _
 
     private def ensureAtomsComputed()(implicit ctx: Context): Unit =
       if atomsRunId != ctx.runId then
-        myAtoms =
-          for ts1 <- tp1.atoms(); ts2 <- tp2.atoms()
-          yield ts1 | ts2
-        myWidenedAtoms =
-          for ts1 <- tp1.atoms(widenOK = true); ts2 <- tp2.atoms(widenOK = true)
-          yield ts1 | ts2
+        myAtoms = tp1.atoms | tp2.atoms
         val tp1w = tp1.widenSingletons
         val tp2w = tp2.widenSingletons
         myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
         atomsRunId = ctx.runId
 
-    override def atoms(widenOK: Boolean)(implicit ctx: Context): Option[Set[Type]] =
+    override def atoms(using Context): Atoms =
       ensureAtomsComputed()
-      if widenOK then myAtoms else myWidenedAtoms
+      myAtoms
 
     override def widenSingletons(implicit ctx: Context): Type = {
       ensureAtomsComputed()
