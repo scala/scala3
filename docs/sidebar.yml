@@ -107,6 +107,8 @@ sidebar:
               url: docs/reference/other-new-features/indentation.html
             - title: Explicit Nulls
               url: docs/reference/other-new-features/explicit-nulls.html
+            - title: Safe Initialization
+              url: docs/reference/other-new-features/safe-initialization.html
         - title: Other Changed Features
           subsection:
             - title: Numeric Literals
