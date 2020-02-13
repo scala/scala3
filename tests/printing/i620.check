@@ -11,7 +11,7 @@ package O {
         protected[A] def f: Int = 0
         def g: Int = 0
         def g1(t: Int): Int = 0
-        def (c: D.this.C) g1: Int = 0
+        @_root_.scala.annotation.infix() def (c: D.this.C) g1: Int = 0
       }
       private[D] class E() extends Object() {}
       private[this] class F() extends Object() {}

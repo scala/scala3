@@ -3217,7 +3217,7 @@ object Parsers {
         val ident = termIdent()
         val name = ident.name.asTermName
         if isInfix && !name.isOperatorName then
-          val infixAnnot = Apply(wrapNew(ref(defn.InfixAnnot.typeRef)), Nil)
+          val infixAnnot = Apply(wrapNew(scalaAnnotationDot(tpnme.infix)), Nil)
               .withSpan(Span(start, start))
           mods1 = mods1.withAddedAnnotation(infixAnnot)
         val tparams =
