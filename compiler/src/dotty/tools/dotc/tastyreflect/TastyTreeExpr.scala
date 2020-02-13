@@ -18,5 +18,5 @@ final class TastyTreeExpr(val tree: Tree, val scopeId: Int) extends scala.intern
     case _ => false
   }
   override def hashCode: Int = tree.hashCode
-  override def toString: String = s"Expr(<tasty tree>)"
+  override def toString: String = "'{ ... }"
 }

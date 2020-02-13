@@ -12,5 +12,5 @@ final class TreeType(val typeTree: Tree, val scopeId: Int) extends scala.interna
     case _ => false
   }
   override def hashCode: Int = typeTree.hashCode
-  override def toString: String = s"Type(<tasty tree>)"
+  override def toString: String = "'[ ... ]"
 }
