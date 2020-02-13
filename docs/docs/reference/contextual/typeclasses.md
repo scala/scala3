@@ -11,7 +11,7 @@ with canonical implementations defined by given instances. Here are some example
 
 ```scala
 trait SemiGroup[T] {
-  @infix def (x: T) combine (y: T): T
+  def (x: T) combine (y: T): T
 }
 
 trait Monoid[T] extends SemiGroup[T] {

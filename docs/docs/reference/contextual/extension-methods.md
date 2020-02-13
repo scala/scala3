@@ -3,15 +3,12 @@ layout: doc-page
 title: "Extension Methods"
 ---
 
-**Note:** The syntax of extension methods is about to change. Here is the
-[doc page with the new syntax](./extension-methods-new.html), supported from Dotty 0.22 onwards.
-
 Extension methods allow one to add methods to a type after the type is defined. Example:
 
 ```scala
 case class Circle(x: Double, y: Double, radius: Double)
 
-def (c: Circle) circumference: Double = c.radius * math.Pi * 2
+def (c: Circle).circumference: Double = c.radius * math.Pi * 2
 ```
 
 Like regular methods, extension methods can be invoked with infix `.`:
@@ -72,8 +69,8 @@ Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type ar
 and where `T` is the expected type. The following two rewritings are tried in order:
 
  1. The selection is rewritten to `m[Ts](e)`.
- 2. If the first rewriting does not typecheck with expected type `T`, and there is a given `g`
-    in either the current scope or in the context scope of `T` such that `g` defines an extension
+ 2. If the first rewriting does not typecheck with expected type `T`, and there is a given instance `g`
+    in either the current scope or in the context scope of `T`, and `g` defines an extension
     method named `m`, then selection is expanded to `g.m[Ts](e)`.
     This second rewriting is attempted at the time where the compiler also tries an implicit conversion
     from `T` to a type containing `m`. If there is more than one way of rewriting, an ambiguity error results.
@@ -84,8 +81,7 @@ So `circle.circumference` translates to `CircleOps.circumference(circle)`, provi
 ### Operators
 
 The extension method syntax also applies to the definition of operators.
-In this case it is allowed and preferable to omit the period between the leading parameter list
-and the operator. In each case the definition syntax mirrors the way the operator is applied.
+This case is indicated by omitting the period between the leading parameter list and the operator. In each case the definition syntax mirrors the way the operator is applied.
 Examples:
 ```scala
 def (x: String) < (y: String) = ...
@@ -96,6 +92,8 @@ def (x: Number) min (y: Number) = ...
 1 +: List(2, 3)
 x min 3
 ```
+For alphanumeric extension operators like `min` an `@infix` annotation is implied.
+
 The three definitions above translate to
 ```scala
 def < (x: String)(y: String) = ...
@@ -105,6 +103,7 @@ def min(x: Number)(y: Number) = ...
 Note the swap of the two parameters `x` and `xs` when translating
 the right-binding operator `+:` to an extension method. This is analogous
 to the implementation of right binding operators as normal methods.
+
 
 ### Generic Extensions
 
@@ -170,15 +169,14 @@ given extension_largest_List_T as AnyRef {
 ### Syntax
 
 Here are the syntax changes for extension methods and collective extensions relative
-to the [current syntax](../../internals/syntax.md). `extension` is a soft keyword, recognized only
-in tandem with `on`. It can be used as an identifier everywhere else.
+to the [current syntax](../../internals/syntax.md). `extension` is a soft keyword, recognized only in tandem with `on`. It can be used as an identifier everywhere else.
+
 ```
 DefSig            ::=  ...
                     |  ExtParamClause [nl] [‘.’] id DefParamClauses
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
 TmplDef           ::=  ...
                     |  ‘extension’ ExtensionDef
-ExtensionDef      ::=  [id] ‘on’ ExtParamClause {GivenParamClause} ‘with’ ExtMethods
+ExtensionDef      ::=  [id] ‘on’ ExtParamClause {GivenParamClause} ExtMethods
 ExtMethods        ::=  ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ```
-
