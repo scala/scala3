@@ -52,7 +52,8 @@ object PickledQuotes {
   private def dealiasTypeTags(tp: Type)(implicit ctx: Context): Type = new TypeMap() {
     override def apply(tp: Type): Type = {
       val tp1 = tp match {
-        case tp: TypeRef if tp.typeSymbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) => tp.dealias
+        case tp: TypeRef if tp.typeSymbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) =>
+          tp.symbol.info.hiBound
         case _ => tp
       }
       mapOver(tp1)

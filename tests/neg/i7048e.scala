@@ -9,7 +9,7 @@ abstract class Test {
 
   def foo(using QuoteContext): Expr[Any] = {
 
-    val r = '{Option.empty[T]} // error
+    val r = '{Option.empty[T]} // error: is not stable
 
     {
       val t: Test = this
@@ -22,14 +22,14 @@ abstract class Test {
     {
       val r1 = '{Option.empty[${T}]} // works
       val r2 = '{Option.empty[List[${T}]]} // works
-      // val r3 = '{summon[Type[${T}]]} // access to Test.this from wrong staging level
-      val r4 = '{summon[${T} <:< Any]} // error
+      val r3 = '{summon[Type[${T}]]} // error: is not stable
+      val r4 = '{summon[${T} <:< Any]} // error: is not stable
     }
 
     {
-      val s = '{Option.empty[${T}]}
+      val s = '{Option.empty[${T}]} // works
       val r = '{identity($s)} // works
-      val r2 = '{identity(${s: Expr[Option[T]]})} // error // error
+      val r2 = '{identity(${s: Expr[Option[T]]})} // error // error : is not stable
     }
 
     r
