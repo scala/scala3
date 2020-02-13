@@ -212,7 +212,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextInfixType(tpnme.raw.BAR, tp1, tp2) { toText(tpnme.raw.BAR) }
       case EtaExpansion(tycon) if !printDebug =>
         toText(tycon)
-      case tp: RefinedType if defn.isFunctionType(tp) =>
+      case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
         toTextDependentFunction(tp.refinedInfo.asInstanceOf[MethodType])
       case tp: TypeRef =>
         if (tp.symbol.isAnonymousClass && !ctx.settings.uniqid.value)
