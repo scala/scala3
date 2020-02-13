@@ -486,6 +486,7 @@ object StdNames {
     val implicitly: N           = "implicitly"
     val in: N                   = "in"
     val inline: N               = "inline"
+    val infix: N                = "infix"
     val info: N                 = "info"
     val inlinedEquals: N        = "inlinedEquals"
     val internal: N             = "internal"
