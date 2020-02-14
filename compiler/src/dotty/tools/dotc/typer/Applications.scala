@@ -1064,6 +1064,11 @@ trait Applications extends Compatibility {
       if (!tree.tpe.isError && tree.tpe.isErroneous) tree
       else errorTree(tree, NotAnExtractor(qual))
 
+    def reportErrors(tree: Tree, state: TyperState) =
+      assert(state.reporter.hasErrors)
+      state.reporter.flush()
+      tree
+
     /** If this is a term ref tree, try to typecheck with its type name.
      *  If this refers to a type alias, follow the alias, and if
      *  one finds a class, reference the class companion module.
@@ -1097,12 +1102,15 @@ trait Applications extends Compatibility {
      *  overloaded unapply does *not* need to be applicable to its argument
      *  whereas overloaded variants need to have a conforming variant.
      */
-    def trySelectUnapply(qual: untpd.Tree)(fallBack: Tree => Tree): Tree = {
+    def trySelectUnapply(qual: untpd.Tree)(fallBack: (Tree, TyperState) => Tree): Tree = {
       // try first for non-overloaded, then for overloaded ocurrences
-      def tryWithName(name: TermName)(fallBack: Tree => Tree)(implicit ctx: Context): Tree = {
+      def tryWithName(name: TermName)(fallBack: (Tree, TyperState) => Tree)(implicit ctx: Context): Tree = {
         def tryWithProto(pt: Type)(implicit ctx: Context) = {
           val result = typedExpr(untpd.Select(qual, name), new UnapplyFunProto(pt, this))
-          if (!result.symbol.exists || result.symbol.name == name) result
+          if !result.symbol.exists
+             || result.symbol.name == name
+             || ctx.reporter.hasErrors
+          then result
           else notAnExtractor(result)
           	// It might be that the result of typedExpr is an `apply` selection or implicit conversion.
           	// Reject in this case.
@@ -1110,29 +1118,36 @@ trait Applications extends Compatibility {
         tryEither {
           tryWithProto(selType)
         } {
-          (sel, _) =>
+          (sel, state) =>
             tryEither {
               tryWithProto(WildcardType)
             } {
-              (_, _) => fallBack(sel)
+              (_, _) => fallBack(sel, state)
             }
         }
       }
 
       // try first for unapply, then for unapplySeq
       tryWithName(nme.unapply) {
-        sel => tryWithName(nme.unapplySeq)(_ => fallBack(sel)) // for backwards compatibility; will be dropped
+        (sel, state) =>
+          tryWithName(nme.unapplySeq) {
+            (_, _) => fallBack(sel, state)
+          }
       }
     }
 
     /** Produce a typed qual.unapply or qual.unapplySeq tree, or
      *  else if this fails follow a type alias and try again.
      */
-    var unapplyFn = trySelectUnapply(qual) { sel =>
-      val qual1 = followTypeAlias(qual)
-      if (qual1.isEmpty) notAnExtractor(sel)
-      else trySelectUnapply(qual1)(_ => notAnExtractor(sel))
-    }
+    var unapplyFn =
+      trySelectUnapply(qual) {
+        (sel, state) =>
+          val qual1 = followTypeAlias(qual)
+          if (qual1.isEmpty) reportErrors(sel, state)
+          else trySelectUnapply(qual1) {
+            (_, state) => reportErrors(sel, state)
+          }
+      }
 
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
     def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
