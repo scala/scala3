@@ -4,7 +4,7 @@ package typer
 
 import core._
 import Contexts._, Types._, Symbols._, Names._, Decorators._, ProtoTypes._
-import Flags._
+import Flags._, SymDenotations._
 import NameKinds.FlatName
 import config.Printers.implicits
 import util.Spans.Span
@@ -82,8 +82,11 @@ trait ImportSuggestions:
               || refSym == defn.JavaLangPackageClass // ... or java.lang.
           then Nil
           else refSym.info.decls.filter(lookInside)
+        else if refSym.infoOrCompleter.isInstanceOf[StubInfo] then
+          Nil // Don't chase roots that do not exist
         else
-          if !refSym.is(Touched) then refSym.ensureCompleted() // JavaDefined is reliably known only after completion
+          if !refSym.is(Touched) then
+            refSym.ensureCompleted() // JavaDefined is reliably known only after completion
           if refSym.is(JavaDefined) then Nil
           else nestedRoots(site)
       nested
