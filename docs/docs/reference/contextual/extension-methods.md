@@ -188,40 +188,34 @@ extension on [T](xs: List[T])(using Ordering[T]) {
 ```
 Collective extensions like these are a shorthand for extension instances where
 the parameters following the `on` are repeated for each implemented method.
-Furthermore, each method's body starts with a synthesized import that
-imports all other names of methods defined in the same extension. This lets
-one use co-defined extension methods without the repeated prefix parameter,
-as is shown in the body of the `longestString` method above.
-
-For instance, the collective extensions above are equivalent to the following extension instances:
+For instance, the collective extensions above expand to the following extension instances:
 ```scala
 extension stringOps {
   def (ss: Seq[String]).longestStrings: Seq[String] = {
-    import ss.{longestStrings, longestString}
     val maxLength = ss.map(_.length).max
     ss.filter(_.length == maxLength)
   }
-  def (ss: Seq[String]).longestString: String = {
-    import ss.{longestStrings, longestString}
-    longestStrings.head
-  }
+  def (ss: Seq[String]).longestString: String =
+    ss.longestStrings.head
 }
 extension listOps {
-  def [T](xs: List[T]).second: T = {
-    import xs.{second, third}
-    xs.tail.head
-  }
-  def [T](xs: List[T]).third: T = {
-    import xs.{second, third}
-    xs.tail.second
-  }
+  def [T](xs: List[T]).second: T = xs.tail.head
+  def [T](xs: List[T]).third: T = xs.tail.second
 }
 extension {
-  def [T](xs: List[T]).largest(using Ordering[T])(n: Int) = {
-    import xs.largest
+  def [T](xs: List[T]).largest(using Ordering[T])(n: Int) =
     xs.sorted.takeRight(n)
-  }
 }
+```
+One special tweak is shown in the `longestString` method of the `stringOps` extension. It's original definition was
+```scala
+def longestString: String = longestStrings.head
+```
+This uses `longestStrings` as an implicit extension method call on the joint
+parameter `ss`. The usage is made explicit when translating the method:
+```scala
+def (ss: Seq[String]).longestString: String =
+  ss.longestStrings.head
 ```
 
 ### Syntax
