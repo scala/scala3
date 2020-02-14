@@ -8,7 +8,7 @@ import vulpix.TestConfiguration
 import reporting.TestReporter
 
 import java.io._
-import java.nio.file.{Files, Path => JPath, Paths}
+import java.nio.file.{Path => JPath}
 import java.lang.System.{lineSeparator => EOL}
 
 import interfaces.Diagnostic.INFO
@@ -26,10 +26,6 @@ class PrintingTest {
     val checkFilePath = baseFilePath + ".check"
     val byteStream    = new ByteArrayOutputStream()
     val reporter = TestReporter.reporter(new PrintStream(byteStream), INFO)
-
-    val jOutFilePath = Paths.get(baseFilePath + ".check.out")
-    if (Files.exists(jOutFilePath))
-      try { Files.delete(jOutFilePath) } catch { case _: Exception => () }
 
     try {
       Main.process((path.toString::options).toArray, reporter, null)
