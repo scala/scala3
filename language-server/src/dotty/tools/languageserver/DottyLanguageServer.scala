@@ -709,7 +709,7 @@ object DottyLanguageServer {
         }
       }
 
-      val message = mc.contained()
+      val message = mc.contained
       if (displayMessage(message, mc.pos.source)) {
         val code = message.errorId.errorNumber.toString
         range(mc.pos).map(r =>
