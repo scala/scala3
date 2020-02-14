@@ -1,0 +1,177 @@
+name: Dotty CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: akmetiuk/dotty:2020-02-12
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Cache Ivy
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.ivy2/cache
+          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-ivy-
+
+      - name: Cache SBT
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.sbt
+          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+          restore-keys: ${{ runner.os }}-sbt-
+
+      - name: Cache Coursier and Mill
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.cache
+          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-general-
+
+      - name: Test
+        run: |
+          ./project/scripts/sbt ";compile ;test"
+          ./project/scripts/cmdTests
+
+  test_bootstrapped:
+    runs-on: ubuntu-latest
+    container: akmetiuk/dotty:2020-02-12
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Cache Ivy
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.ivy2/cache
+          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-ivy-
+
+      - name: Cache SBT
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.sbt
+          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+          restore-keys: ${{ runner.os }}-sbt-
+
+      - name: Cache Coursier and Mill
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.cache
+          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-general-
+
+      - name: Test
+        run: |
+          ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test ;configureIDE"
+          ./project/scripts/bootstrapCmdTests
+
+  # community_build:
+  #   runs-on: ubuntu-latest
+  #   container: akmetiuk/dotty:2020-02-12
+
+  #   steps:
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
+
+  #     - name: Cache Ivy
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.ivy2/cache
+  #         key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-ivy-
+
+  #     - name: Cache SBT
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.sbt
+  #         key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+  #         restore-keys: ${{ runner.os }}-sbt-
+
+  #     - name: Cache Coursier and Mill
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.cache
+  #         key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-general-
+
+  #     - name: Test
+  #       run: |
+  #         git submodule sync
+  #         git submodule update --init --recursive --jobs 7
+  #         ./project/scripts/sbt community-build/test
+
+  test_sbt:
+    runs-on: ubuntu-latest
+    container: akmetiuk/dotty:2020-02-12
+    if: github.event_name == 'push' &&
+        startsWith(github.event.ref, 'refs/tags/')
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Cache Ivy
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.ivy2/cache
+          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-ivy-
+
+      - name: Cache SBT
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.sbt
+          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+          restore-keys: ${{ runner.os }}-sbt-
+
+      - name: Cache Coursier and Mill
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.cache
+          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-general-
+
+      - name: Test
+        run: ./project/scripts/sbt sbt-dotty/scripted
+
+  test_java11:
+    runs-on: ubuntu-latest
+    container: akmetiuk/dotty:2020-02-12
+    if: github.event_name == 'push' &&
+        startsWith(github.event.ref, 'refs/tags/')
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Cache Ivy
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.ivy2/cache
+          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-ivy-
+
+      - name: Cache SBT
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.sbt
+          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+          restore-keys: ${{ runner.os }}-sbt-
+
+      - name: Cache Coursier and Mill
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.cache
+          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-general-
+
+      - name: Test
+        run: |
+          export PATH="/usr/lib/jvm/java-11-openjdk-amd64/bin:$PATH"
+          ./project/scripts/sbt ";compile ;test"
