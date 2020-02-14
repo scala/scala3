@@ -1846,9 +1846,13 @@ object Parsers {
 
     def expr(location: Location.Value): Tree = {
       val start = in.offset
+      def isSpecialClosureStart =
+        val lookahead = in.LookaheadScanner()
+        lookahead.nextToken()
+        lookahead.isIdent(nme.using) || lookahead.token == ERASED
       if in.token == IMPLICIT then
         closure(start, location, modifiers(BitSet(IMPLICIT)))
-      else if in.token == LPAREN && in.lookaheadIn(funTypeArgMods) then
+      else if in.token == LPAREN && isSpecialClosureStart then
         closure(start, location, Modifiers())
       else {
         val saved = placeholderParams
@@ -2060,7 +2064,7 @@ object Parsers {
     /** FunParams         ::=  Bindings
      *                     |   id
      *                     |   `_'
-     *  Bindings          ::=  `(' [[‘given’] [‘erased’] Binding {`,' Binding}] `)'
+     *  Bindings          ::=  `(' [[‘using’] [‘erased’] Binding {`,' Binding}] `)'
      */
     def funParams(mods: Modifiers, location: Location.Value): List[Tree] =
       if in.token == LPAREN then
@@ -2069,8 +2073,12 @@ object Parsers {
           Nil
         else
           openParens.change(LPAREN, 1)
-          val mods1 = if mods.flags.isEmpty then modifiers(funTypeArgMods) else mods
-          try commaSeparated(() => binding(mods1))
+          var mods1 = mods
+          if mods.flags.isEmpty then
+            if isIdent(nme.using) then mods1 = addMod(mods1, atSpan(in.skipToken()) { Mod.Given() })
+            if in.token == ERASED then mods1 = addModifier(mods1)
+          try
+            commaSeparated(() => binding(mods1))
           finally
             accept(RPAREN)
             openParens.change(LPAREN, -1)
@@ -3197,24 +3205,32 @@ object Parsers {
         makeConstructor(Nil, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
       }
       else {
+        var mods1 = addFlag(mods, Method)
+        var isInfix = false
         def extParamss() =
           try paramClause(0, prefix = true) :: Nil
           finally
+            mods1 = addFlag(mods, Extension)
             if in.token == DOT then in.nextToken()
-            else newLineOpt()
-        val (leadingTparams, leadingVparamss, flags) =
+            else
+              isInfix = true
+              newLineOpt()
+        val (leadingTparams, leadingVparamss) =
           if in.token == LBRACKET then
-            (typeParamClause(ParamOwner.Def), extParamss(), Method | Extension)
+            (typeParamClause(ParamOwner.Def), extParamss())
           else if in.token == LPAREN then
-            (Nil, extParamss(), Method | Extension)
+            (Nil, extParamss())
           else
-            (Nil, Nil, Method)
-        val mods1 = addFlag(mods, flags)
+            (Nil, Nil)
         val ident = termIdent()
         val name = ident.name.asTermName
+        if isInfix && !name.isOperatorName then
+          val infixAnnot = Apply(wrapNew(scalaAnnotationDot(tpnme.infix)), Nil)
+              .withSpan(Span(start, start))
+          mods1 = mods1.withAddedAnnotation(infixAnnot)
         val tparams =
           if in.token == LBRACKET then
-            if flags.is(Extension) then
+            if mods1.is(Extension) then
               if leadingTparams.isEmpty then
                 deprecationWarning("type parameters in extension methods should be written after `def`")
               else

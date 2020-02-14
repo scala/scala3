@@ -459,7 +459,7 @@ and allow for undefined compiler behavior if they are not. This is analogous to
 the status of pattern guards in Scala, which are also required, but not
 verified, to be pure.
 
-[Multi-Stage Programming](./staging.md) introduces one additional methods where
+[Multi-Stage Programming](./staging.md) introduces one additional method where
 you can expand code at runtime with a method `run`. There is also a problem with
 that invokation of `run` in splices. Consider the following expression:
 
@@ -475,7 +475,7 @@ the splice will reduce the expression `run('x)` to `x`. But then the result
 
 is no longer phase correct. To prevent this soundness hole it seems easiest to
 classify `run` as a side-effecting operation. It would thus be prevented from
-appearing in splices. In a base language with side-effects we'd have to do this
+appearing in splices. In a base language with side effects we would have to do this
 anyway: Since `run` runs arbitrary code it can always produce a side effect if
 the code it runs produces one.
 

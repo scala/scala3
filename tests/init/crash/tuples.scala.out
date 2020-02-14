@@ -1,0 +1,12 @@
+-- Error: /Users/fliu/Documents/scala-init-checker/tests/crash/tuples.scala:3:7 ----------------------------------------
+3 |object Test extends App {
+  |       ^
+  |       Leaking of this. Calling trace:
+  |        -> object Test extends App {	[ /Users/fliu/Documents/scala-init-checker/tests/crash/tuples.scala:3 ]
+-- Error: /Users/fliu/Documents/scala-init-checker/tests/crash/tuples.scala:4:36 ---------------------------------------
+4 |  var xyz: (Int, String, Boolean) = _  // error
+  |                                    ^
+  |             Access non-initialized field Test.xyz. Calling trace:
+  |              -> object Test extends App {	[ /Users/fliu/Documents/scala-init-checker/tests/crash/tuples.scala:3 ]
+  |               -> Console.println(xyz)	[ /Users/fliu/Documents/scala-init-checker/tests/crash/tuples.scala:6 ]
+two errors found
