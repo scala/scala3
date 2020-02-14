@@ -33,7 +33,7 @@ prints it again in an error message if it evaluates to `false`.
 ```scala
 import scala.quoted._
 
-inline def assert(expr: => Boolean): Unit =
+inline def assert(inline expr: Boolean): Unit =
   ${ assertImpl('expr) }
 
 def assertImpl(expr: Expr[Boolean])(using QuoteContext) = '{
