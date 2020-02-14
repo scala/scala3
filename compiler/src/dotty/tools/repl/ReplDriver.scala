@@ -381,7 +381,7 @@ class ReplDriver(settings: Array[String],
 
   /** Render messages using the `MessageRendering` trait */
   private def renderMessage(cont: MessageContainer): Context => String =
-    messageRenderer.messageAndPos(cont.contained(), cont.pos, messageRenderer.diagnosticLevel(cont))(_)
+    messageRenderer.messageAndPos(cont.contained, cont.pos, messageRenderer.diagnosticLevel(cont))(_)
 
   /** Output errors to `out` */
   private def displayErrors(errs: Seq[MessageContainer])(implicit state: State): State = {

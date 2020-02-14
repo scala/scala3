@@ -28,7 +28,7 @@ import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
-import reporting.diagnostic.Message
+import reporting.diagnostic.{Message, messages}
 import reporting.trace
 import Constants.{Constant, IntTag, LongTag}
 import dotty.tools.dotc.reporting.diagnostic.messages.{UnapplyInvalidReturnType, NotAnExtractor, UnapplyInvalidNumberOfArguments}
@@ -1058,15 +1058,27 @@ trait Applications extends Compatibility {
     record("typedUnApply")
     val Apply(qual, args) = tree
 
-    def notAnExtractor(tree: Tree) =
+    def notAnExtractor(tree: Tree): Tree =
       // prefer inner errors
       // e.g. report not found ident instead of not an extractor in tests/neg/i2950.scala
       if (!tree.tpe.isError && tree.tpe.isErroneous) tree
       else errorTree(tree, NotAnExtractor(qual))
 
-    def reportErrors(tree: Tree, state: TyperState) =
+    /** Report errors buffered in state.
+     *  @pre state has errors to report
+     *  If there is a single error stating that "unapply" is not a member, print
+     *  the more informative "notAnExtractor" message instead.
+     */
+    def reportErrors(tree: Tree, state: TyperState): Tree =
       assert(state.reporter.hasErrors)
-      state.reporter.flush()
+      val msgs = state.reporter.removeBufferedMessages
+      msgs match
+        case msg :: Nil =>
+          msg.contained match
+            case messages.NotAMember(_, nme.unapply, _, _) => return notAnExtractor(tree)
+            case _ =>
+        case _ =>
+      msgs.foreach(ctx.reporter.report)
       tree
 
     /** If this is a term ref tree, try to typecheck with its type name.
