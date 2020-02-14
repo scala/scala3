@@ -56,14 +56,25 @@ object ExtMethods:
   extension on [T](xs: List[T])(using Ordering[T]):
     def largest(n: Int) = xs.sorted.takeRight(n)
 
-  given stringOps1 as AnyRef {
+  extension ops:
+    def (xs: Seq[String]).longestStrings: Seq[String] =
+      val maxLength = xs.map(_.length).max
+      xs.filter(_.length == maxLength)
+    def (xs: Seq[String]).longestString: String = xs.longestStrings.head
+    def [T](xs: List[T]).second: T = xs.tail.head
+
+  extension:
+    def [T](xs: List[T]) longest (using Ordering[T])(n: Int) =
+      xs.sorted.takeRight(n)
+
+  given stringOps2 as AnyRef {
     def (xs: Seq[String]).longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  given listOps1 as AnyRef {
+  given listOps2 as AnyRef {
     def [T](xs: List[T]) second = xs.tail.head
     def [T](xs: List[T]) third: T = xs.tail.tail.head
   }

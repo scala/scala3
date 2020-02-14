@@ -931,7 +931,11 @@ object Parsers {
       lookahead.nextToken()
       if lookahead.isIdent && !lookahead.isIdent(nme.on) then
         lookahead.nextToken()
+      if lookahead.isNewLine then
+        lookahead.nextToken()
       lookahead.isIdent(nme.on)
+      || lookahead.token == LBRACE
+      || lookahead.token == COLON
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -3470,6 +3474,20 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
+    def checkExtensionMethod(tparams: List[Tree],
+        vparamss: List[List[Tree]], stat: Tree): Unit = stat match {
+      case stat: DefDef =>
+        if stat.mods.is(Extension) && vparamss.nonEmpty then
+          syntaxError(i"no extension method allowed here since leading parameter was already given", stat.span)
+        else if !stat.mods.is(Extension) && vparamss.isEmpty then
+          syntaxError(i"an extension method is required here", stat.span)
+        else if tparams.nonEmpty && stat.tparams.nonEmpty then
+          syntaxError(i"extension method cannot have type parameters since some were already given previously",
+            stat.tparams.head.span)
+      case stat =>
+        syntaxError(i"extension clause can only define methods", stat.span)
+    }
+
     /** GivenDef          ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
      *                      |  [GivenSig] ConstrApps [TemplateBody]
      *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘as’
@@ -3516,20 +3534,25 @@ object Parsers {
       finalizeDef(gdef, mods1, start)
     }
 
-    /** ExtensionDef  ::=  [id] ‘on’ ExtParamClause {UsingParamClause} ExtMethods
+    /** ExtensionDef  ::=  [id] [‘on’ ExtParamClause {UsingParamClause}] TemplateBody
      */
     def extensionDef(start: Offset, mods: Modifiers): ModuleDef =
       in.nextToken()
       val name = if isIdent && !isIdent(nme.on) then ident() else EmptyTermName
       in.endMarkerScope(if name.isEmpty then nme.extension else name) {
-        if !isIdent(nme.on) then syntaxErrorOrIncomplete("`on` expected")
-        if isIdent(nme.on) then in.nextToken()
-        val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val extParams = paramClause(0, prefix = true)
-        val givenParamss = paramClauses(givenOnly = true)
+        val (tparams, vparamss) =
+          if isIdent(nme.on) then
+            in.nextToken()
+            val tparams = typeParamClauseOpt(ParamOwner.Def)
+            val extParams = paramClause(0, prefix = true)
+            val givenParamss = paramClauses(givenOnly = true)
+            (tparams, extParams :: givenParamss)
+          else
+            (Nil, Nil)
         possibleTemplateStart()
         if !in.isNestedStart then syntaxError("Extension without extension methods")
-        val templ = templateBodyOpt(makeConstructor(tparams, extParams :: givenParamss), Nil, Nil)
+        val templ = templateBodyOpt(makeConstructor(tparams, vparamss), Nil, Nil)
+        templ.body.foreach(checkExtensionMethod(tparams, vparamss, _))
         val edef = ModuleDef(name, templ)
         finalizeDef(edef, addFlag(mods, Given), start)
       }

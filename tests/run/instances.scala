@@ -31,10 +31,8 @@ object Test extends App {
   extension listListOps on [T](xs: List[List[T]]):
     def flattened = xs.foldLeft[List[T]](Nil)(_ ++ _)
 
-  // A right associative op. Note: can't use given extension for this!
-  given prepend as AnyRef {
+  extension prepend:
     def [T](x: T) :: (xs: Seq[T]) = x +: xs
-  }
 
   val ss: Seq[Int] = List(1, 2, 3)
   val ss1 = 0 :: ss
