@@ -3542,21 +3542,21 @@ object Parsers {
       in.nextToken()
       val name = if isIdent && !isIdent(nme.on) then ident() else EmptyTermName
       in.endMarkerScope(if name.isEmpty then nme.extension else name) {
-        val (tparams, vparamss) =
+        val (tparams, vparamss, extensionFlag) =
           if isIdent(nme.on) then
             in.nextToken()
             val tparams = typeParamClauseOpt(ParamOwner.Def)
             val extParams = paramClause(0, prefix = true)
             val givenParamss = paramClauses(givenOnly = true)
-            (tparams, extParams :: givenParamss)
+            (tparams, extParams :: givenParamss, Extension)
           else
-            (Nil, Nil)
+            (Nil, Nil, EmptyFlags)
         possibleTemplateStart()
         if !in.isNestedStart then syntaxError("Extension without extension methods")
         val templ = templateBodyOpt(makeConstructor(tparams, vparamss), Nil, Nil)
         templ.body.foreach(checkExtensionMethod(tparams, vparamss, _))
         val edef = ModuleDef(name, templ)
-        finalizeDef(edef, addFlag(mods, Given), start)
+        finalizeDef(edef, addFlag(mods, Given | extensionFlag), start)
       }
 
 /* -------- TEMPLATES ------------------------------------------- */

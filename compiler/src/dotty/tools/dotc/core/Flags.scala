@@ -301,7 +301,7 @@ object Flags {
   /** A method that has default params */
   val (_, DefaultParameterized @ _, _) = newFlags(27, "<defaultparam>")
 
-  /** An extension method */
+  /** An extension method, or a collective extension instance */
   val (_, Extension @ _, _) = newFlags(28, "<extension>")
 
   /** An inferable (`given`) parameter */
@@ -506,7 +506,7 @@ object Flags {
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
   /** Flags retained in export forwarders */
-  val RetainedExportFlags = Given | Implicit | Extension | Inline
+  val RetainedExportFlags = Given | Implicit | Inline
 
   /** Flags that apply only to classes */
   val ClassOnlyFlags = Sealed | Open | Abstract.toTypeFlags

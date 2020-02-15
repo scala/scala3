@@ -394,9 +394,9 @@ object RefChecks {
         overrideError("is erased, cannot override non-erased member")
       else if (other.is(Erased) && !member.isOneOf(Erased | Inline)) // (1.9.1)
         overrideError("is not erased, cannot override erased member")
-      else if (member.is(Extension) && !other.is(Extension)) // (1.9.2)
+      else if (member.isAllOf(ExtensionMethod) && !other.isAllOf(ExtensionMethod)) // (1.9.2)
         overrideError("is an extension method, cannot override a normal method")
-      else if (other.is(Extension) && !member.is(Extension)) // (1.9.2)
+      else if (other.isAllOf(ExtensionMethod) && !member.isAllOf(ExtensionMethod)) // (1.9.2)
         overrideError("is a normal method, cannot override an extension method")
       else if ((member.isInlineMethod || member.isScala2Macro) && other.is(Deferred) &&
                  member.extendedOverriddenSymbols.forall(_.is(Deferred))) // (1.10)
