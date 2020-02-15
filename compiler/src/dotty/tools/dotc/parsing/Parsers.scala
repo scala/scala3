@@ -3484,6 +3484,8 @@ object Parsers {
         else if tparams.nonEmpty && stat.tparams.nonEmpty then
           syntaxError(i"extension method cannot have type parameters since some were already given previously",
             stat.tparams.head.span)
+        else if stat.rhs.isEmpty then
+          syntaxError(i"extension method cannot be abstract", stat.span)
       case stat =>
         syntaxError(i"extension clause can only define methods", stat.span)
     }
