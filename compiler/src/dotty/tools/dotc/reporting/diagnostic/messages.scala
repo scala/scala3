@@ -2470,6 +2470,42 @@ object messages {
            |""".stripMargin
   }
 
+ case class NoExtensionMethodAllowed(mdef: untpd.DefDef)(implicit ctx: Context)
+    extends Message(NoExtensionMethodAllowedID) {
+    val kind: String = "Syntax"
+    val msg: String = em"No extension method allowed here, since collective parameters are given"
+
+    val explanation: String =
+      em"""|Extension method:
+           |  `${mdef}`
+           |is defined inside an extension clause which has collective parameters.
+           |""".stripMargin
+  }
+
+ case class ExtensionMethodCannotHaveTypeParams(mdef: untpd.DefDef)(implicit ctx: Context)
+    extends Message(ExtensionMethodCannotHaveTypeParamsID) {
+    val kind: String = "Syntax"
+    val msg: String = i"Extension method cannot have type parameters since some were already given previously"
+
+    val explanation: String =
+      em"""|Extension method:
+           |  `${mdef}`
+           |has type parameters `[${mdef.tparams.map(_.show).mkString(",")}]`, while the extension clause has
+           |it's own type parameters. Please consider moving these to the extension clause's type parameter list.
+           |""".stripMargin
+  }
+
+ case class ExtensionCanOnlyHaveDefs(mdef: untpd.Tree)(implicit ctx: Context)
+    extends Message(ExtensionCanOnlyHaveDefsID) {
+    val kind: String = "Syntax"
+    val msg: String = em"Only methods allowed here, since collective parameters are given"
+
+    val explanation: String =
+      em"""Extension clauses can only have `def`s
+          | `${mdef.show}` is not a valid expression here.
+          |""".stripMargin
+  }
+
   case class UnexpectedPatternForSummonFrom(tree: Tree[_])(implicit ctx: Context)
     extends Message(UnexpectedPatternForSummonFromID) {
     val kind: String = "Syntax"

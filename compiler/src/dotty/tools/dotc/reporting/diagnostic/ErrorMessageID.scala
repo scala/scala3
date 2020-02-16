@@ -158,6 +158,9 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     ModifierRedundantForObjectsID,
     TypedCaseDoesNotExplicitlyExtendTypedEnumID,
     IllegalRedefinitionOfStandardKindID,
+    NoExtensionMethodAllowedID,
+    ExtensionMethodCannotHaveTypeParamsID,
+    ExtensionCanOnlyHaveDefsID,
     UnexpectedPatternForSummonFromID
 
   def errorNumber = ordinal - 2

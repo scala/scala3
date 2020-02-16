@@ -3470,17 +3470,6 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
-    def checkExtensionMethod(tparams: List[Tree], stat: Tree): Unit = stat match {
-      case stat: DefDef =>
-        if stat.mods.is(Extension) then
-          syntaxError(i"no extension method allowed here since leading parameter was already given", stat.span)
-        else if tparams.nonEmpty && stat.tparams.nonEmpty then
-          syntaxError(i"extension method cannot have type parameters since some were already given previously",
-            stat.tparams.head.span)
-      case stat =>
-        syntaxError(i"extension clause can only define methods", stat.span)
-    }
-
     /** GivenDef          ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
      *                      |  [GivenSig] ConstrApps [TemplateBody]
      *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘as’
@@ -3541,7 +3530,6 @@ object Parsers {
         possibleTemplateStart()
         if !in.isNestedStart then syntaxError("Extension without extension methods")
         val templ = templateBodyOpt(makeConstructor(tparams, extParams :: givenParamss), Nil, Nil)
-        templ.body.foreach(checkExtensionMethod(tparams, _))
         val edef = ModuleDef(name, templ)
         finalizeDef(edef, addFlag(mods, Given), start)
       }

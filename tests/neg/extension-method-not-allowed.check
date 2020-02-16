@@ -1,0 +1,6 @@
+-- [E150] Syntax Error: tests/neg/extension-method-not-allowed.scala:3:8 -----------------------------------------------
+3 |    def (c: T).f: T = ??? // error : No extension method allowed here
+  |    ^^^^^^^^^^^^^^^^^^^^^
+  |    No extension method allowed here, since collective parameters are given
+
+longer explanation available when compiling with `-explain`

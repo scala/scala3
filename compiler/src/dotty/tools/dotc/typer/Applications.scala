@@ -1076,7 +1076,7 @@ trait Applications extends Compatibility {
       msgs match
         case msg :: Nil =>
           msg.contained match
-            case messages.NotAMember(_, nme.unapply, _, _) => return notAnExtractor(tree)
+            case NotAMember(_, nme.unapply, _, _) => return notAnExtractor(tree)
             case _ =>
         case _ =>
       msgs.foreach(ctx.reporter.report)

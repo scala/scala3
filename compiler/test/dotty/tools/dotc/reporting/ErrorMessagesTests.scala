@@ -1839,4 +1839,58 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("Unexpected pattern for summonFrom. Expected `x: T` or `_`", errorMsg)
         assertEquals("given x @ String", x.show)
       }
+
+  @Test def extensionMethodsNotAllowed =
+    checkMessagesAfter(RefChecks.name) {
+      """object Test {
+        |  extension on[T] (t: T) {
+        |    def (c: T).f: T = ???
+        |  }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val NoExtensionMethodAllowed(x) :: Nil = messages
+        assertEquals("No extension method allowed here, since collective parameters are given", errorMsg)
+        assertEquals("def (c: T) f: T = ???", x.show)
+      }
+
+  @Test def extensionMethodTypeParamsNotAllowed =
+    checkMessagesAfter(RefChecks.name) {
+      """object Test {
+        |  extension on[T] (t: T) {
+        |    def f[U](u: U): T = ???
+        |  }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val ExtensionMethodCannotHaveTypeParams(x) :: Nil = messages
+        assertEquals("Extension method cannot have type parameters since some were already given previously", errorMsg)
+        assertEquals("def f[U](u: U): T = ???", x.show)
+      }
+
+  @Test def extensionMethodCanOnlyHaveDefs =
+    checkMessagesAfter(RefChecks.name) {
+      """object Test {
+        |  extension on[T] (t: T) {
+        |    val v: T = t
+        |  }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val ExtensionCanOnlyHaveDefs(x) :: Nil = messages
+        assertEquals("Only methods allowed here, since collective parameters are given", errorMsg)
+        assertEquals("val v: T = t", x.show)
+      }
 }

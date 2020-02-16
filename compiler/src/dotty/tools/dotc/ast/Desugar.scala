@@ -930,21 +930,24 @@ object desugar {
 
   def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef],
                        givenParamss: List[List[ValDef]])(using ctx: Context): Tree = {
-    val allowed = "allowed here, since collective parameters are given"
     mdef match {
       case mdef: DefDef =>
         if (mdef.mods.is(Extension)) {
-          ctx.error(em"No extension method $allowed", mdef.sourcePos)
+          ctx.error(NoExtensionMethodAllowed(mdef), mdef.sourcePos)
           mdef
+        } else {
+          if (tparams.nonEmpty && mdef.tparams.nonEmpty) then
+            ctx.error(ExtensionMethodCannotHaveTypeParams(mdef), mdef.tparams.head.sourcePos)
+            mdef
+          else cpy.DefDef(mdef)(
+            tparams = tparams ++ mdef.tparams,
+            vparamss = leadingParams :: givenParamss ::: mdef.vparamss
+          ).withMods(mdef.mods | Extension)
         }
-        else cpy.DefDef(mdef)(
-          tparams = tparams ++ mdef.tparams,
-          vparamss = leadingParams :: givenParamss ::: mdef.vparamss
-        ).withMods(mdef.mods | Extension)
       case mdef: Import =>
         mdef
       case mdef =>
-        ctx.error(em"Only methods $allowed", mdef.sourcePos)
+        ctx.error(ExtensionCanOnlyHaveDefs(mdef), mdef.sourcePos)
         mdef
     }
   }
