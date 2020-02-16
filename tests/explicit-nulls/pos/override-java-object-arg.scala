@@ -2,7 +2,7 @@
 // When we load a Java class file, if a java method has an argument with type
 // 'Object', it (the method argument) gets loaded by Dotty as 'Any' (as opposed to 'AnyRef').
 // This is pre-explicit-nulls behaviour.
-// There is special logic in the type comparer that allows that method to be overriden
+// There is special logic in the type comparer that allows that method to be overridden
 // with a corresponding argument with type 'AnyRef'.
 // This test verifies that we can continue to override such methods, except that in
 // the explicit nulls world we override with 'AnyRef|Null'.

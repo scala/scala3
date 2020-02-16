@@ -18,7 +18,7 @@ object Test {
     assert(3 == (1, 2, 3, 4, 5).apply(2))
     assert(4 == (1, 2, 3, 4, 5).apply(3))
     assert(5 == (1, 2, 3, 4, 5).apply(4))
-    // TODO improve performace
+    // TODO improve performance
 //    assert(1 == (1, 2, 3, 4, 5, 6).apply(0))
 //    assert(2 == (1, 2, 3, 4, 5, 6).apply(1))
 //    assert(3 == (1, 2, 3, 4, 5, 6).apply(2))
@@ -119,7 +119,7 @@ object Test {
     assert(1 == (1 *: 2 *: 3 *: 4 *: 5 *: ()).apply(0))
     assert(1 == (1 *: 2 *: 3 *: 4 *: 5 *: 6 *: ()).apply(0))
     assert(1 == (1 *: 2 *: 3 *: 4 *: 5 *: 6 *: 7 *: ()).apply(0))
-    // FIXME performace
+    // FIXME performance
 //    assert(1 == (1 *: 2 *: 3 *: 4 *: 5 *: 6 *: 7 *: 8 *: ()).apply(0))
 //    assert(1 == (1 *: 2 *: 3 *: 4 *: 5 *: 6 *: 7 *: 8 *: 9 *: ()).apply(0))
 //    assert(1 == (1 *: 2 *: 3 *: 4 *: 5 *: 6 *: 7 *: 8 *: 9 *: 10 *: ()).apply(0))
@@ -146,7 +146,7 @@ object Test {
     assert(5 == (1 *: 2 *: 3 *: 4 *: 5 *: ()).apply(4))
     assert(6 == (1 *: 2 *: 3 *: 4 *: 5 *: 6 *: ()).apply(5))
     assert(7 == (1 *: 2 *: 3 *: 4 *: 5 *: 6 *: 7 *: ()).apply(6))
-    // FIXME performace
+    // FIXME performance
 //    assert(8 == (1 *: 2 *: 3 *: 4 *: 5 *: 6 *: 7 *: 8 *: ()).apply(7))
 //    assert(9 == (1 *: 2 *: 3 *: 4 *: 5 *: 6 *: 7 *: 8 *: 9 *: ()).apply(8))
 //    assert(10 == (1 *: 2 *: 3 *: 4 *: 5 *: 6 *: 7 *: 8 *: 9 *: 10 *: ()).apply(9))

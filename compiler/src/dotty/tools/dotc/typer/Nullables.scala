@@ -238,7 +238,7 @@ object Nullables:
         && s != refOwner
         && (s.isOneOf(Lazy | Method) // not at the rhs of lazy ValDef or in a method (or lambda)
           || s.isClass // not in a class
-          // TODO: need to check by-name paramter
+          // TODO: need to check by-name parameter
           || recur(s.owner))
 
       refSym.is(Mutable) // if it is immutable, we don't need to check the rest conditions

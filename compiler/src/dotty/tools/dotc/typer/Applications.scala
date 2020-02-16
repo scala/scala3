@@ -916,7 +916,7 @@ trait Applications extends Compatibility {
                   case CaseDef(Bind(_, Typed(_: Ident, _)), _, _) => // OK
                   case CaseDef(Ident(name), _, _) if name == nme.WILDCARD => // Ok
                   case CaseDef(pat, _, _) =>
-                    ctx.error("Unexpected pattern for summonFrom. Expeced `x: T` or `_`", pat.sourcePos)
+                    ctx.error("Unexpected pattern for summonFrom. Expected `x: T` or `_`", pat.sourcePos)
                 }
                 typed(untpd.InlineMatch(EmptyTree, cases).withSpan(arg.span), pt)
               case _ =>

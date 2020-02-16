@@ -63,7 +63,7 @@ trait Deriving {
      *  (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
      *
      *  (2) It must belong to one of the following three categories:
-     *      (a) a single paramter type class with a parameter which matches the kind of
+     *      (a) a single parameter type class with a parameter which matches the kind of
      *          the deriving ADT
      *      (b) a single parameter type class with a parameter of kind * and an ADT with
      *          one or more type parameter of kind *

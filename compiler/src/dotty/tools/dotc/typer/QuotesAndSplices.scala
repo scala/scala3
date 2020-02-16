@@ -305,7 +305,7 @@ trait QuotesAndSplices {
    *  case '{ type ${given t: Type[$t @ _]}; ${ls: Expr[List[$t]]} } => ...
    *  ```
    *
-   *  Then the pattern is _split_ into the expression containd in the pattern replacing the splices by holes,
+   *  Then the pattern is _split_ into the expression contained in the pattern replacing the splices by holes,
    *  and the patterns in the splices. All these are recombined into a call to `Matcher.unapply`.
    *
    *  ```
@@ -315,7 +315,7 @@ trait QuotesAndSplices {
    *        ](
    *          Tuple2.unapply
    *            [Type[$t], Expr[List[$t]]] //Propagated from the tuple above
-   *            (implict t @ _, ls @ _: Expr[List[$t]]) // from the spliced patterns
+   *            (implicit t @ _, ls @ _: Expr[List[$t]]) // from the spliced patterns
    *        )(
    *         '{ // Runtime quote Matcher.unapply uses to mach against. Expression directly inside the quoted pattern without the splices
    *            @scala.internal.Quoted.patternBindHole type $t

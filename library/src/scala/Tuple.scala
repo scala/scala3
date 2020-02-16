@@ -173,7 +173,7 @@ object Tuple {
     val xs2: IArray[Object] = xs match {
       case xs: IArray[Object] => xs
       case xs =>
-        // TODO suport IArray.map
+        // TODO support IArray.map
         xs.asInstanceOf[Array[T]].map(_.asInstanceOf[Object]).asInstanceOf[IArray[Object]]
     }
     DynamicTuple.dynamicFromIArray[Tuple](xs2)

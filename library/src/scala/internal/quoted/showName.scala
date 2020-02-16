@@ -15,7 +15,7 @@ package scala.internal.quoted
  *  ```scala
  *  let("myVal")('{4})(x => '{ $x + 1}).show
  *  ```
- *  will retuns the code
+ *  will returns the code
  *  ```scala
  *  val myVal = 4
  *  myVal + 1

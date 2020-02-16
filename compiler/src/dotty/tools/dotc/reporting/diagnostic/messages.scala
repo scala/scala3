@@ -37,7 +37,7 @@ object messages {
   ) extends MessageContainer(msgFn, pos, ERROR)
 
   /** A sticky error is an error that should not be hidden by backtracking and
-   *  trying some alternative path. Typcially, errors issued after catching
+   *  trying some alternative path. Typically, errors issued after catching
    *  a TypeError exception are sticky.
    */
   class StickyError(

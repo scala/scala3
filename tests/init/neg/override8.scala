@@ -27,7 +27,7 @@ trait Yun {
 class Tao {
   private val m = "hello"
 
-  private def msg = "can be overriden"
+  private def msg = "can be overridden"
 
   def foo(n: Int) =  m + msg
 }
