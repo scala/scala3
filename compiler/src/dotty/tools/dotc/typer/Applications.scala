@@ -1865,7 +1865,7 @@ trait Applications extends Compatibility {
                 if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, WildcardType)
                 else defn.FunctionOf(commonParamTypes, WildcardType)
               overload.println(i"pretype arg $arg with expected type $commonFormal")
-              if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.noBottom)))
+              if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.flipBottom)))
                 pt.typedArg(arg, commonFormal)(ctx.addMode(Mode.ImplicitsEnabled))
             }
           case None =>

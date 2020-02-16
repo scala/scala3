@@ -612,7 +612,7 @@ class Typer extends Namer
         var templ1 = templ
         def isEligible(tp: Type) = tp.exists && !tp.typeSymbol.is(Final) && !tp.isRef(defn.AnyClass)
         if (templ1.parents.isEmpty &&
-            isFullyDefined(pt, ForceDegree.noBottom) &&
+            isFullyDefined(pt, ForceDegree.flipBottom) &&
             isSkolemFree(pt) &&
             isEligible(pt.underlyingClassRef(refinementOK = false)))
           templ1 = cpy.Template(templ)(parents = untpd.TypeTree(pt) :: Nil)
@@ -1009,16 +1009,20 @@ class Typer extends Namer
           yield param.name -> idx
         }.toMap
         if (paramIndex.size == params.length)
-          expr match {
+          expr match
             case untpd.TypedSplice(expr1) =>
               expr1.tpe
             case _ =>
+              given nestedCtx as Context = ctx.fresh.setNewTyperState()
               val protoArgs = args map (_ withType WildcardType)
               val callProto = FunProto(protoArgs, WildcardType)(this, app.isGivenApply)
               val expr1 = typedExpr(expr, callProto)
-              fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
-              expr1.tpe
-          }
+              if nestedCtx.reporter.hasErrors then NoType
+              else
+                given Context = ctx
+                nestedCtx.typerState.commit()
+                fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
+                expr1.tpe
         else NoType
       case _ =>
         NoType
@@ -1030,34 +1034,45 @@ class Typer extends Namer
         // try to instantiate `pt` if this is possible. If it does not
         // work the error will be reported later in `inferredParam`,
         // when we try to infer the parameter type.
-        isFullyDefined(pt, ForceDegree.noBottom)
+        isFullyDefined(pt, ForceDegree.flipBottom)
       case _ =>
     }
 
     val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length)
 
-    /** Two attempts: First, if expected type is fully defined pick this one.
-      *  Second, if function is of the form
-      *      (x1, ..., xN) => f(... x1, ..., XN, ...)
-      *  where each `xi` occurs exactly once in the argument list of `f` (in
-      *  any order), and f has a method type MT, pick the corresponding parameter
-      *  type in MT, if this one is fully defined.
-      *  If both attempts fail, issue a "missing parameter type" error.
-      */
-    def inferredParamType(param: untpd.ValDef, formal: Type): Type = {
-      if (isFullyDefined(formal, ForceDegree.noBottom)) return formal
-      calleeType.widen match {
+    /** The inferred parameter type for a parameter in a lambda that does
+     *  not have an explicit type given.
+     *  An inferred parameter type I has two possible sources:
+     *   - the type S known from the context
+     *   - the "target type" T known from the callee `f` if the lambda is of a form like `x => f(x)`
+     *  If `T` exists, we know that `S <: I <: T`.
+     *
+     *  The inference makes three attempts:
+     *
+     *    1. If the expected type `S` is already fully defined under ForceDegree.failBottom
+     *       pick this one.
+     *    2. Compute the target type `T` and make it known that `S <: T`.
+     *       If the expected type `S` can be fully defined under ForceDegree.flipBottom,
+     *       pick this one (this might use the fact that S <: T for an upper approximation).
+     *    3. Otherwise, if the target type `T` can be fully defined under ForceDegree.flipBottom,
+     *       pick this one.
+     *
+     *  If all attempts fail, issue a "missing parameter type" error.
+     */
+    def inferredParamType(param: untpd.ValDef, formal: Type): Type =
+      if isFullyDefined(formal, ForceDegree.failBottom) then return formal
+      val target = calleeType.widen match
         case mtpe: MethodType =>
           val pos = paramIndex(param.name)
-          if (pos < mtpe.paramInfos.length) {
+          if pos < mtpe.paramInfos.length then
             val ptype = mtpe.paramInfos(pos)
-            if (isFullyDefined(ptype, ForceDegree.noBottom) && !ptype.isRepeatedParam)
-              return ptype
-          }
-        case _ =>
-      }
-      errorType(AnonymousFunctionMissingParamType(param, params, tree, formal), param.sourcePos)
-    }
+            if ptype.isRepeatedParam then NoType else ptype
+          else NoType
+        case _ => NoType
+      if target.exists then formal <:< target
+      if isFullyDefined(formal, ForceDegree.flipBottom) then formal
+      else if target.exists && isFullyDefined(target, ForceDegree.flipBottom) then target
+      else errorType(AnonymousFunctionMissingParamType(param, params, tree, formal), param.sourcePos)
 
     def protoFormal(i: Int): Type =
       if (protoFormals.length == params.length) protoFormals(i)
@@ -1065,7 +1080,7 @@ class Typer extends Namer
 
     /** Is `formal` a product type which is elementwise compatible with `params`? */
     def ptIsCorrectProduct(formal: Type) =
-      isFullyDefined(formal, ForceDegree.noBottom) &&
+      isFullyDefined(formal, ForceDegree.flipBottom) &&
       (defn.isProductSubType(formal) || formal.derivesFrom(defn.PairClass)) &&
       productSelectorTypes(formal, tree.sourcePos).corresponds(params) {
         (argType, param) =>
@@ -1379,7 +1394,7 @@ class Typer extends Namer
         }
       case _ =>
         tree.withType(
-          if (isFullyDefined(pt, ForceDegree.noBottom)) pt
+          if (isFullyDefined(pt, ForceDegree.flipBottom)) pt
           else if (ctx.reporter.errorsReported) UnspecifiedErrorType
           else errorType(i"cannot infer type; expected type $pt is not fully defined", tree.sourcePos))
     }
@@ -3054,7 +3069,7 @@ class Typer extends Namer
           pt match {
             case SAMType(sam)
             if wtp <:< sam.toFunctionType() =>
-              // was ... && isFullyDefined(pt, ForceDegree.noBottom)
+              // was ... && isFullyDefined(pt, ForceDegree.flipBottom)
               // but this prevents case blocks from implementing polymorphic partial functions,
               // since we do not know the result parameter a priori. Have to wait until the
               // body is typechecked.

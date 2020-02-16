@@ -19,6 +19,7 @@ import typer.Applications._
 import typer.ProtoTypes._
 import typer.ForceDegree
 import typer.Inferencing.isFullyDefined
+import typer.IfBottom
 
 import scala.annotation.internal.sharable
 
@@ -644,7 +645,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       tvar =>
         !(ctx.typerState.constraint.entry(tvar.origin) `eq` tvar.origin.underlying) ||
         (tvar `eq` removeThisType.prefixTVar),
-      allowBottom = false
+      IfBottom.flip
     )
 
     // If parent contains a reference to an abstract type, then we should
