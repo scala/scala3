@@ -28,8 +28,8 @@ final class TupleXXL private (es: IArray[Object]) extends Product {
   def toArray: Array[Object] = es.asInstanceOf[Array[Object]].clone // TODO use IArray.toArray
 }
 object TupleXXL {
-  def fromIterator(elems: Iterator[Any]) = new TupleXXL(elems.map(_.asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use Iterator.toIArray
-  def fromIArray(elems: IArray[Object]) = new TupleXXL(elems)
-  def apply(elems: Any*) = new TupleXXL(IArray(elems.asInstanceOf[Seq[AnyRef]]: _*))
+  def fromIterator(elems: Iterator[Any]): TupleXXL = new TupleXXL(elems.map(_.asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use Iterator.toIArray
+  def fromIArray(elems: IArray[Object]): TupleXXL = new TupleXXL(elems)
+  def apply(elems: Any*): TupleXXL = new TupleXXL(IArray(elems.asInstanceOf[Seq[AnyRef]]: _*))
   def unapplySeq(x: TupleXXL): Option[Seq[Any]] = Some(x.elems.asInstanceOf[Array[Object]].toSeq) // TODO use IArray.toSeq
 }

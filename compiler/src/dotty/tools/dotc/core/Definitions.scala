@@ -758,12 +758,12 @@ class Definitions {
   @tu lazy val DynamicTupleModuleClass: Symbol = DynamicTupleModule.moduleClass
     lazy val DynamicTuple_consIterator: Symbol = DynamicTupleModule.requiredMethod("consIterator")
     lazy val DynamicTuple_concatIterator: Symbol = DynamicTupleModule.requiredMethod("concatIterator")
-    lazy val DynamicTuple_dynamicApply: Symbol = DynamicTupleModule.requiredMethod("dynamicApply")
-    lazy val DynamicTuple_dynamicCons: Symbol = DynamicTupleModule.requiredMethod("dynamicCons")
-    lazy val DynamicTuple_dynamicSize: Symbol = DynamicTupleModule.requiredMethod("dynamicSize")
-    lazy val DynamicTuple_dynamicTail: Symbol = DynamicTupleModule.requiredMethod("dynamicTail")
-    lazy val DynamicTuple_dynamicConcat: Symbol = DynamicTupleModule.requiredMethod("dynamicConcat")
-    lazy val DynamicTuple_dynamicToArray: Symbol = DynamicTupleModule.requiredMethod("dynamicToArray")
+    lazy val DynamicTuple_apply: Symbol = DynamicTupleModule.requiredMethod("apply")
+    lazy val DynamicTuple_cons: Symbol = DynamicTupleModule.requiredMethod("cons")
+    lazy val DynamicTuple_size: Symbol = DynamicTupleModule.requiredMethod("size")
+    lazy val DynamicTuple_tail: Symbol = DynamicTupleModule.requiredMethod("tail")
+    lazy val DynamicTuple_concat: Symbol = DynamicTupleModule.requiredMethod("concat")
+    lazy val DynamicTuple_toArray: Symbol = DynamicTupleModule.requiredMethod("toArray")
     lazy val DynamicTuple_productToArray: Symbol = DynamicTupleModule.requiredMethod("productToArray")
 
   @tu lazy val TupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.TupledFunction")

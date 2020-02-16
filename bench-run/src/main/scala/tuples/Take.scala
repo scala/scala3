@@ -24,7 +24,7 @@ class Take {
 
   @Benchmark
   def tupleTake(): Tuple = {
-    DynamicTuple.dynamicTake(tuple, half)
+    DynamicTuple.take(tuple, half)
   }
 
   @Benchmark

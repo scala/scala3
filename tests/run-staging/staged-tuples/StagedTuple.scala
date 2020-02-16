@@ -27,8 +27,6 @@ object StagedTuple {
         tup.as[Tuple3[Object, Object, Object]].bind(t => '{Array($t._1, $t._2, $t._3)})
       case Some(4) =>
         tup.as[Tuple4[Object, Object, Object, Object]].bind(t => '{Array($t._1, $t._2, $t._3, $t._4)})
-      case Some(n) if n <= MaxSpecialized =>
-        '{to$Array($tup, ${ Expr(n) })}
       case Some(n) =>
         '{ ${tup.as[TupleXXL]}.toArray }
       case None =>
@@ -201,8 +199,6 @@ object StagedTuple {
         self.as[Tuple3[_, _, _]].bind(t => '{Tuple4($x, $t._1, $t._2, $t._3)})
       case Some(4) =>
         self.as[Tuple4[_, _, _, _]].bind(t => '{Tuple5($x, $t._1, $t._2, $t._3, $t._4)})
-      case Some(n) =>
-        fromArrayStaged[H *: T]('{cons$Array($x, ${ toArrayStaged(self, tailSize) })}, Some(n + 1))
       case _ =>
         '{dynamicCons[H, T]($x, $self)}
     }

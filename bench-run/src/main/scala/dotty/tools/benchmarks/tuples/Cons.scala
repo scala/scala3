@@ -24,7 +24,7 @@ class Cons {
 
   @Benchmark
   def tupleCons(): Tuple = {
-    DynamicTuple.dynamicCons("elem", tuple)
+    DynamicTuple.cons("elem", tuple)
   }
 
   @Benchmark

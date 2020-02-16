@@ -1,36 +1,22 @@
 package scala.runtime
 
-import scala.Tuple.{ Concat, Size, Head, Tail, Elem, Zip, Map, Take, Drop, Split }
-
+// TODO: Rename to scala.runtime.Tuple
 object DynamicTuple {
   inline val MaxSpecialized = 22
-  inline private val XXL = MaxSpecialized + 1
 
-  def to$Array(xs: Tuple, n: Int) = {
-    val arr = new Array[Object](n)
-    var i = 0
-    var it = xs.asInstanceOf[Product].productIterator
-    while (i < n) {
-      arr(i) = it.next().asInstanceOf[Object]
-      i += 1
-    }
-    arr
-  }
+  @deprecated("use toArray", "")
+  def dynamicToArray(self: Tuple): Array[Object] = toArray(self)
 
-  def cons$Array[H](x: H, elems: Array[Object]): Array[Object] = {
-    val elems1 = new Array[Object](elems.length + 1)
-    elems1(0) = x.asInstanceOf[Object]
-    System.arraycopy(elems, 0, elems1, 1, elems.length)
-    elems1
-  }
-
-  def dynamicToArray(self: Tuple): Array[Object] = (self: Any) match {
+  def toArray(self: Tuple): Array[Object] = (self: Any) match {
     case self: TupleXXL => self.toArray
     case self: Product => productToArray(self)
     case self: Unit => Array.emptyObjectArray
   }
 
-  def dynamicToIArray(self: Tuple): IArray[Object] = (self: Any) match {
+  @deprecated("use toIArray", "")
+  def dynamicToIArray(self: Tuple): IArray[Object] = toIArray(self)
+
+  def toIArray(self: Tuple): IArray[Object] = (self: Any) match {
     case self: TupleXXL => self.elems
     case self: Product => productToArray(self).asInstanceOf[IArray[Object]]
     case self: Unit => Array.emptyObjectArray.asInstanceOf[IArray[Object]]
@@ -46,38 +32,47 @@ object DynamicTuple {
     arr
   }
 
-  def dynamicFromArray[T <: Tuple](xs: Array[Object]): T = xs.length match {
-    case 0  => ().asInstanceOf[T]
-    case 1  => Tuple1(xs(0)).asInstanceOf[T]
-    case 2  => Tuple2(xs(0), xs(1)).asInstanceOf[T]
-    case 3  => Tuple3(xs(0), xs(1), xs(2)).asInstanceOf[T]
-    case 4  => Tuple4(xs(0), xs(1), xs(2), xs(3)).asInstanceOf[T]
-    case 5  => Tuple5(xs(0), xs(1), xs(2), xs(3), xs(4)).asInstanceOf[T]
-    case 6  => Tuple6(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5)).asInstanceOf[T]
-    case 7  => Tuple7(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6)).asInstanceOf[T]
-    case 8  => Tuple8(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7)).asInstanceOf[T]
-    case 9  => Tuple9(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8)).asInstanceOf[T]
-    case 10 => Tuple10(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9)).asInstanceOf[T]
-    case 11 => Tuple11(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10)).asInstanceOf[T]
-    case 12 => Tuple12(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11)).asInstanceOf[T]
-    case 13 => Tuple13(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12)).asInstanceOf[T]
-    case 14 => Tuple14(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13)).asInstanceOf[T]
-    case 15 => Tuple15(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14)).asInstanceOf[T]
-    case 16 => Tuple16(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15)).asInstanceOf[T]
-    case 17 => Tuple17(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16)).asInstanceOf[T]
-    case 18 => Tuple18(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17)).asInstanceOf[T]
-    case 19 => Tuple19(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18)).asInstanceOf[T]
-    case 20 => Tuple20(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19)).asInstanceOf[T]
-    case 21 => Tuple21(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20)).asInstanceOf[T]
-    case 22 => Tuple22(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20), xs(21)).asInstanceOf[T]
-    case _ => TupleXXL.fromIArray(xs.clone().asInstanceOf[IArray[Object]]).asInstanceOf[T]
+  @deprecated("Use fromArray")
+  def dynamicFromArray[T <: Tuple](xs: Array[Object]): T = fromArray(xs).asInstanceOf[T]
+
+  def fromArray(xs: Array[Object]): Tuple = xs.length match {
+    case 0  => ()
+    case 1  => Tuple1(xs(0))
+    case 2  => Tuple2(xs(0), xs(1))
+    case 3  => Tuple3(xs(0), xs(1), xs(2))
+    case 4  => Tuple4(xs(0), xs(1), xs(2), xs(3))
+    case 5  => Tuple5(xs(0), xs(1), xs(2), xs(3), xs(4))
+    case 6  => Tuple6(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5))
+    case 7  => Tuple7(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6))
+    case 8  => Tuple8(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7))
+    case 9  => Tuple9(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8))
+    case 10 => Tuple10(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9))
+    case 11 => Tuple11(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10))
+    case 12 => Tuple12(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11))
+    case 13 => Tuple13(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12))
+    case 14 => Tuple14(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13))
+    case 15 => Tuple15(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14))
+    case 16 => Tuple16(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15))
+    case 17 => Tuple17(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16))
+    case 18 => Tuple18(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17))
+    case 19 => Tuple19(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18))
+    case 20 => Tuple20(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19))
+    case 21 => Tuple21(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20))
+    case 22 => Tuple22(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20), xs(21))
+    case _ => TupleXXL.fromIArray(xs.clone().asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
   }
 
-  def dynamicFromIArray[T <: Tuple](xs: IArray[Object]): T =
-    if (xs.length <= 22) dynamicFromArray(xs.asInstanceOf[Array[Object]])
-    else TupleXXL.fromIArray(xs).asInstanceOf[T]
+  @deprecated("Use fromIArray", "")
+  def dynamicFromIArray[T <: Tuple](xs: IArray[Object]): T = fromIArray(xs).asInstanceOf[T]
 
-  def dynamicFromProduct[T <: Tuple](xs: Product): T = (xs.productArity match {
+  def fromIArray(xs: IArray[Object]): Tuple =
+    if (xs.length <= 22) fromArray(xs.asInstanceOf[Array[Object]])
+    else TupleXXL.fromIArray(xs).asInstanceOf[Tuple]
+
+  @deprecated("Use fromProduct", "")
+  def dynamicFromProduct[T <: Tuple](xs: Product): T = fromProduct(xs).asInstanceOf[T]
+
+  def fromProduct(xs: Product): Tuple = (xs.productArity match {
     case 1 =>
       xs match {
         case xs: Tuple1[_] => xs
@@ -189,15 +184,15 @@ object DynamicTuple {
         case xs => Tuple22(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16), xs.productElement(17), xs.productElement(18), xs.productElement(19), xs.productElement(20), xs.productElement(21))
       }
     case _ =>
-      xs match {
+      (xs match {
         case xs: TupleXXL => xs
         case xs => TupleXXL.fromIArray(xs.productIterator.map(_.asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use Iterator.toIArray
-      }
-  }).asInstanceOf[T]
+      }).asInstanceOf[Tuple]
+  })
 
   // Cons for Tuple1 to Tuple22
-  def specialCaseCons[H, This <: Tuple](x: H, self: This): H *: This = {
-    val res = (self: Any) match {
+  private def specialCaseCons(x: Any, self: Tuple): Tuple = {
+    (self: Any) match {
       case self: Unit =>
         Tuple1(x)
       case self: Tuple1[_] =>
@@ -253,35 +248,38 @@ object DynamicTuple {
           self._18.asInstanceOf[Object], self._19.asInstanceOf[Object], self._20.asInstanceOf[Object],
           self._21.asInstanceOf[Object], self._22.asInstanceOf[Object],
         )
-        TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
+        TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
     }
-    res.asInstanceOf[H *: This]
   }
 
   // Cons for TupleXXL
-  def xxlCons[H, This <: Tuple](x: H, xxl: TupleXXL): H *: This = {
+  private def xxlCons(x: Any, xxl: TupleXXL): TupleXXL = {
     val arr = new Array[Object](xxl.productArity + 1)
-    System.arraycopy(xxl.elems, 0, arr, 1, xxl.productArity)
     arr(0) = x.asInstanceOf[Object]
-    TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[H *: This]
+    System.arraycopy(xxl.elems, 0, arr, 1, xxl.productArity)
+    TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
   }
 
-  def dynamicCons[H, This <: Tuple](x: H, self: This): H *: This = (self: Any) match {
-    case xxl: TupleXXL => xxlCons(x, xxl)
+  @deprecated("Use cons", "")
+  def dynamicCons[H, This <: Tuple](x: H, self: This): H *: This = cons(x, self).asInstanceOf[H *: This]
+
+  def cons(x: Any, self: Tuple): Tuple = (self: Any) match {
+    case xxl: TupleXXL => xxlCons(x, xxl).asInstanceOf[Tuple]
     case _ => specialCaseCons(x, self)
   }
 
-  def dynamicConcat[This <: Tuple, That <: Tuple](self: This, that: That): Concat[This, That] = {
-    type Result = Concat[This, That]
+  @deprecated("Use concat", "")
+  def dynamicConcat[This <: Tuple, That <: Tuple](self: This, that: That): scala.Tuple.Concat[This, That] =  concat(self, that).asInstanceOf[scala.Tuple.Concat[This, That]]
 
+  def concat[This <: Tuple, That <: Tuple](self: This, that: That): Tuple = {
     val selfSize: Int = self.size
     // If one of the tuples is empty, we can leave early
     if selfSize == 0 then
-      return that.asInstanceOf[Result]
+      return that
 
     val thatSize: Int = that.size
     if thatSize == 0 then
-      return self.asInstanceOf[Result]
+      return self
 
     val arr = new Array[Object](selfSize + thatSize)
 
@@ -297,17 +295,20 @@ object DynamicTuple {
     // In the general case, we copy the two tuples to an array, and convert it back to a tuple
     copyToArray(self, selfSize, arr, 0)
     copyToArray(that, thatSize, arr, selfSize)
-    dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]])
+    fromIArray(arr.asInstanceOf[IArray[Object]])
   }
 
-  def dynamicSize[This <: Tuple](self: This): Size[This] = (self: Any) match {
-    case self: Unit => 0.asInstanceOf[Size[This]]
-    case self: Product => self.productArity.asInstanceOf[Size[This]]
+  @deprecated("Use size", "")
+  def dynamicSize[This <: Tuple](self: This): scala.Tuple.Size[This] = size(self).asInstanceOf[scala.Tuple.Size[This]]
+
+  def size(self: Tuple): Int = (self: Any) match {
+    case self: Unit => 0
+    case self: Product => self.productArity
   }
 
   // Tail for Tuple1 to Tuple22
-  def specialCaseTail[This <: NonEmptyTuple] (self: This): Tail[This] = {
-    val res = (self: Any) match {
+  private def specialCaseTail(self: Tuple): Tuple = {
+    (self: Any) match {
       case self: Tuple1[_] =>
         ()
       case self: Tuple2[_, _] =>
@@ -353,11 +354,10 @@ object DynamicTuple {
       case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
         Tuple21(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21, self._22)
     }
-    res.asInstanceOf[Tail[This]]
   }
 
   // Tail for TupleXXL
-  def xxlTail[This <: NonEmptyTuple](xxl: TupleXXL): Tail[This] = {
+  private def xxlTail(xxl: TupleXXL): Tuple = {
     if (xxl.productArity == 23) {
       val elems = xxl.elems
       Tuple22(
@@ -365,30 +365,34 @@ object DynamicTuple {
         elems(8), elems(9), elems(10), elems(11), elems(12), elems(13), elems(14),
         elems(15), elems(16), elems(17), elems(18), elems(19), elems(20),
         elems(21), elems(22)
-      ).asInstanceOf[Tail[This]]
+      )
     } else {
       val arr = new Array[Object](xxl.elems.length - 1)
       System.arraycopy(xxl.elems, 1, arr, 0, xxl.elems.length - 1)
-      TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Tail[This]]
+      TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
     }
   }
 
-  def dynamicTail[This <: NonEmptyTuple](self: This): Tail[This] = (self: Any) match {
+  @deprecated("Use tail", "")
+  def dynamicTail[This <: NonEmptyTuple](self: This): scala.Tuple.Tail[This] = tail(self).asInstanceOf[scala.Tuple.Tail[This]]
+
+  def tail(self: NonEmptyTuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlTail(xxl)
     case _ => specialCaseTail(self)
   }
 
-  def dynamicApply[This <: NonEmptyTuple, N <: Int] (self: This, n: N): Elem[This, N] = {
-    type Result = Elem[This, N]
-    val res = (self: Any) match {
-      case self: Unit => throw new IndexOutOfBoundsException(n.toString)
+  @deprecated("Use apply", "")
+  def dynamicApply[This <: NonEmptyTuple, N <: Int](self: This, n: N): scala.Tuple.Elem[This, N] = apply(self, n).asInstanceOf[scala.Tuple.Elem[This, N]]
+
+  def apply(self: NonEmptyTuple, n: Int): Any = {
+    (self: Any) match {
+      // case self: Unit => throw new IndexOutOfBoundsException(n.toString)
       case self: Product => self.productElement(n)
     }
-    res.asInstanceOf[Result]
   }
 
   // Benchmarks showed that this is faster than doing (it1 zip it2).copyToArray(...)
-  def zipIterators(it1: Iterator[Any], it2: Iterator[Any], size: Int): IArray[Object] = {
+  private def zipIterators(it1: Iterator[Any], it2: Iterator[Any], size: Int): IArray[Object] = {
     val arr = new Array[Object](size)
     var i = 0
     while (i < size) {
@@ -398,89 +402,40 @@ object DynamicTuple {
     arr.asInstanceOf[IArray[Object]]
   }
 
-  def dynamicZip[This <: Tuple, T2 <: Tuple](t1: This, t2: T2): Zip[This, T2] = {
+  @deprecated("Use zip", "")
+  def dynamicZip[This <: Tuple, T2 <: Tuple](t1: This, t2: T2): scala.Tuple.Zip[This, T2] = zip(t1, t2).asInstanceOf[scala.Tuple.Zip[This, T2]]
+
+  def zip(t1: Tuple, t2: Tuple): Tuple = {
     val t1Size: Int = t1.size
     val t2Size: Int = t2.size
     val size = Math.min(t1Size, t2Size)
-    if size == 0 then ().asInstanceOf[Zip[This, T2]]
+    if size == 0 then ()
     else Tuple.fromIArray(
       zipIterators(
         t1.asInstanceOf[Product].productIterator,
         t2.asInstanceOf[Product].productIterator,
         size
       )
-    ).asInstanceOf[Zip[This, T2]]
+    )
   }
 
-  // Map for Tuple1 to Tuple22
-  def specialCaseMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): Map[This, F] = {
-    type Result = Map[This, F]
-    val res = (self: Any) match {
-      case sekf: Unit =>
-        ()
-      case self: Tuple1[_] =>
-        Tuple1(f[Object](self._1.asInstanceOf[Object]))
-      case self: Tuple2[_, _] =>
-        Tuple2(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]))
-      case self: Tuple3[_, _, _] =>
-        Tuple3(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]))
-      case self: Tuple4[_, _, _, _] =>
-        Tuple4(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]))
-      case self: Tuple5[_, _, _, _, _] =>
-        Tuple5(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]))
-      case self: Tuple6[_, _, _, _, _, _] =>
-        Tuple6(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]))
-      case self: Tuple7[_, _, _, _, _, _, _] =>
-        Tuple7(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]))
-      case self: Tuple8[_, _, _, _, _, _, _, _] =>
-        Tuple8(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]))
-      case self: Tuple9[_, _, _, _, _, _, _, _, _] =>
-        Tuple9(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]))
-      case self: Tuple10[_, _, _, _, _, _, _, _, _, _] =>
-        Tuple10(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]))
-      case self: Tuple11[_, _, _, _, _, _, _, _, _, _, _] =>
-        Tuple11(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]), f[Object](self._11.asInstanceOf[Object]))
-      case self: Tuple12[_, _, _, _, _, _, _, _, _, _, _, _] =>
-        Tuple12(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]), f[Object](self._11.asInstanceOf[Object]), f[Object](self._12.asInstanceOf[Object]))
-      case self: Tuple13[_, _, _, _, _, _, _, _, _, _, _, _, _] =>
-        Tuple13(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]), f[Object](self._11.asInstanceOf[Object]), f[Object](self._12.asInstanceOf[Object]), f[Object](self._13.asInstanceOf[Object]))
-      case self: Tuple14[_, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
-        Tuple14(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]), f[Object](self._11.asInstanceOf[Object]), f[Object](self._12.asInstanceOf[Object]), f[Object](self._13.asInstanceOf[Object]), f[Object](self._14.asInstanceOf[Object]))
-      case self: Tuple15[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
-        Tuple15(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]), f[Object](self._11.asInstanceOf[Object]), f[Object](self._12.asInstanceOf[Object]), f[Object](self._13.asInstanceOf[Object]), f[Object](self._14.asInstanceOf[Object]), f[Object](self._15.asInstanceOf[Object]))
-      case self: Tuple16[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
-        Tuple16(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]), f[Object](self._11.asInstanceOf[Object]), f[Object](self._12.asInstanceOf[Object]), f[Object](self._13.asInstanceOf[Object]), f[Object](self._14.asInstanceOf[Object]), f[Object](self._15.asInstanceOf[Object]), f[Object](self._16.asInstanceOf[Object]))
-      case self: Tuple17[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
-        Tuple17(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]), f[Object](self._11.asInstanceOf[Object]), f[Object](self._12.asInstanceOf[Object]), f[Object](self._13.asInstanceOf[Object]), f[Object](self._14.asInstanceOf[Object]), f[Object](self._15.asInstanceOf[Object]), f[Object](self._16.asInstanceOf[Object]), f[Object](self._17.asInstanceOf[Object]))
-      case self: Tuple18[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
-        Tuple18(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]), f[Object](self._11.asInstanceOf[Object]), f[Object](self._12.asInstanceOf[Object]), f[Object](self._13.asInstanceOf[Object]), f[Object](self._14.asInstanceOf[Object]), f[Object](self._15.asInstanceOf[Object]), f[Object](self._16.asInstanceOf[Object]), f[Object](self._17.asInstanceOf[Object]), f[Object](self._18.asInstanceOf[Object]))
-      case self: Tuple19[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
-        Tuple19(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]), f[Object](self._11.asInstanceOf[Object]), f[Object](self._12.asInstanceOf[Object]), f[Object](self._13.asInstanceOf[Object]), f[Object](self._14.asInstanceOf[Object]), f[Object](self._15.asInstanceOf[Object]), f[Object](self._16.asInstanceOf[Object]), f[Object](self._17.asInstanceOf[Object]), f[Object](self._18.asInstanceOf[Object]), f[Object](self._19.asInstanceOf[Object]))
-      case self: Tuple20[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
-        Tuple20(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]), f[Object](self._11.asInstanceOf[Object]), f[Object](self._12.asInstanceOf[Object]), f[Object](self._13.asInstanceOf[Object]), f[Object](self._14.asInstanceOf[Object]), f[Object](self._15.asInstanceOf[Object]), f[Object](self._16.asInstanceOf[Object]), f[Object](self._17.asInstanceOf[Object]), f[Object](self._18.asInstanceOf[Object]), f[Object](self._19.asInstanceOf[Object]), f[Object](self._20.asInstanceOf[Object]))
-      case self: Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
-        Tuple21(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]), f[Object](self._11.asInstanceOf[Object]), f[Object](self._12.asInstanceOf[Object]), f[Object](self._13.asInstanceOf[Object]), f[Object](self._14.asInstanceOf[Object]), f[Object](self._15.asInstanceOf[Object]), f[Object](self._16.asInstanceOf[Object]), f[Object](self._17.asInstanceOf[Object]), f[Object](self._18.asInstanceOf[Object]), f[Object](self._19.asInstanceOf[Object]), f[Object](self._20.asInstanceOf[Object]), f[Object](self._21.asInstanceOf[Object]))
-      case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
-        Tuple22(f[Object](self._1.asInstanceOf[Object]), f[Object](self._2.asInstanceOf[Object]), f[Object](self._3.asInstanceOf[Object]), f[Object](self._4.asInstanceOf[Object]), f[Object](self._5.asInstanceOf[Object]), f[Object](self._6.asInstanceOf[Object]), f[Object](self._7.asInstanceOf[Object]), f[Object](self._8.asInstanceOf[Object]), f[Object](self._9.asInstanceOf[Object]), f[Object](self._10.asInstanceOf[Object]), f[Object](self._11.asInstanceOf[Object]), f[Object](self._12.asInstanceOf[Object]), f[Object](self._13.asInstanceOf[Object]), f[Object](self._14.asInstanceOf[Object]), f[Object](self._15.asInstanceOf[Object]), f[Object](self._16.asInstanceOf[Object]), f[Object](self._17.asInstanceOf[Object]), f[Object](self._18.asInstanceOf[Object]), f[Object](self._19.asInstanceOf[Object]), f[Object](self._20.asInstanceOf[Object]), f[Object](self._21.asInstanceOf[Object]), f[Object](self._22.asInstanceOf[Object]))
-    }
-    res.asInstanceOf[Result]
+  @deprecated("Use map", "")
+  def dynamicMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): scala.Tuple.Map[This, F] = map(self, f).asInstanceOf[scala.Tuple.Map[This, F]]
+
+  def map[F[_]](self: Tuple, f: [t] => t => F[t]): Tuple = (self: Any) match {
+    case self: Unit => ()
+    case _ => Tuple.fromArray(self.asInstanceOf[Product].productIterator.map(f(_)).toArray) // TODO use toIArray of Object to avoid double/triple array copy
   }
 
-  def dynamicMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): Map[This, F] = (self: Any) match {
-    case self: Unit => ().asInstanceOf[Map[This, F]]
-    case _ =>
-      Tuple.fromArray(self.asInstanceOf[Product].productIterator.map(f(_)).toArray) // TODO use toIArray of Object to avoid double/triple array copy
-        .asInstanceOf[Map[This, F]]
-  }
+  @deprecated("Use take", "")
+  def dynamicTake[This <: Tuple, N <: Int](self: This, n: N): scala.Tuple.Take[This, N] = take(self, n).asInstanceOf[scala.Tuple.Take[This, N]]
 
-  def dynamicTake[This <: Tuple, N <: Int](self: This, n: N): Take[This, N] = {
+  def take(self: Tuple, n: Int): Tuple = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
     val selfSize: Int = self.size
     val actualN = Math.min(n, selfSize)
 
-    type Result = Take[This, N]
-
-    if (actualN == 0) ().asInstanceOf[Result]
+    if (actualN == 0) ()
     else {
       val arr = (self: Any) match {
         case xxl: TupleXXL =>
@@ -492,19 +447,20 @@ object DynamicTuple {
           arr
       }
 
-      dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+      fromIArray(arr.asInstanceOf[IArray[Object]])
     }
   }
 
-  def dynamicDrop[This <: Tuple, N <: Int](self: This, n: N): Drop[This, N] = {
+  @deprecated("Use drop", "")
+  def dynamicDrop[This <: Tuple, N <: Int](self: This, n: N): scala.Tuple.Drop[This, N] = drop(self, n).asInstanceOf[scala.Tuple.Drop[This, N]]
+
+  def drop(self: Tuple, n: Int): Tuple = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
     val size = self.size
     val actualN = Math.min(n, size)
     val rem = size - actualN
 
-    type Result = Drop[This, N]
-
-    if (rem == 0) ().asInstanceOf[Result]
+    if (rem == 0) ()
     else {
       val arr = (self: Any) match {
         case xxl: TupleXXL =>
@@ -516,17 +472,17 @@ object DynamicTuple {
           arr
       }
 
-      dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+      fromIArray(arr.asInstanceOf[IArray[Object]])
     }
   }
 
-  def dynamicSplitAt[This <: Tuple, N <: Int](self: This, n: N): Split[This, N] = {
+  @deprecated("Use splitAt", "")
+  def dynamicSplitAt[This <: Tuple, N <: Int](self: This, n: N): scala.Tuple.Split[This, N] = splitAt(self, n).asInstanceOf[scala.Tuple.Split[This, N]]
+
+  def splitAt(self: Tuple, n: Int): (Tuple, Tuple) = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
     val size = self.size
     val actualN = Math.min(n, size)
-
-    type Result = Split[This, N]
-
     val (arr1, arr2) = (self: Any) match {
       case () => (Array.empty[Object], Array.empty[Object])
       case xxl: TupleXXL =>
@@ -541,9 +497,9 @@ object DynamicTuple {
     }
 
     (
-      dynamicFromIArray(arr1.asInstanceOf[IArray[Object]]),
-      dynamicFromIArray(arr2.asInstanceOf[IArray[Object]])
-    ).asInstanceOf[Result]
+      fromIArray(arr1.asInstanceOf[IArray[Object]]),
+      fromIArray(arr2.asInstanceOf[IArray[Object]])
+    )
   }
 
   def consIterator(head: Any, tail: Tuple): Iterator[Any] =
@@ -551,4 +507,5 @@ object DynamicTuple {
 
   def concatIterator(tup1: Tuple, tup2: Tuple): Iterator[Any] =
     tup1.asInstanceOf[Product].productIterator ++ tup2.asInstanceOf[Product].productIterator
+
 }

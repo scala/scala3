@@ -11,27 +11,27 @@ sealed trait Tuple extends Any {
 
   /** Create a copy this tuple as an Array */
   inline def toArray: Array[Object] =
-    DynamicTuple.dynamicToArray(this)
+    DynamicTuple.toArray(this)
 
   /** Create a copy this tuple as an IArray */
   inline def toIArray: IArray[Object] =
-    DynamicTuple.dynamicToIArray(this)
+    DynamicTuple.toIArray(this)
 
   /** Return a new tuple by prepending the element to `this` tuple.
    *  This opteration is O(this.size)
    */
   inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This =
-    DynamicTuple.dynamicCons[H, This](x, this)
+    DynamicTuple.cons(x, this).asInstanceOf[H *: This]
 
   /** Return a new tuple by concatenating `this` tuple with `that` tuple.
    *  This opteration is O(this.size + that.size)
    */
   inline def ++ [This >: this.type <: Tuple](that: Tuple): Concat[This, that.type] =
-    DynamicTuple.dynamicConcat[This, that.type](this, that)
+    DynamicTuple.concat(this, that).asInstanceOf[Concat[This, that.type]]
 
   /** Return the size (or arity) of the tuple */
   inline def size[This >: this.type <: Tuple]: Size[This] =
-    DynamicTuple.dynamicSize(this)
+    DynamicTuple.size(this).asInstanceOf[Size[This]]
 
   /** Given two tuples, `(a1, ..., an)` and `(a1, ..., an)`, returns a tuple
    *  `((a1, b1), ..., (an, bn))`. If the two tuples have different sizes,
@@ -41,7 +41,7 @@ sealed trait Tuple extends Any {
    *  `(A1, B1) *: ... *: (Ai, Bi) *: Tuple`
    */
   inline def zip[This >: this.type <: Tuple, T2 <: Tuple](t2: T2): Zip[This, T2] =
-    DynamicTuple.dynamicZip(this, t2)
+    DynamicTuple.zip(this, t2).asInstanceOf[Zip[This, T2]]
 
   /** Called on a tuple `(a1, ..., an)`, returns a new tuple `(f(a1), ..., f(an))`.
    *  The result is typed as `(F[A1], ..., F[An])` if the tuple type is fully known.
@@ -49,27 +49,27 @@ sealed trait Tuple extends Any {
    *  to be the cons type.
    */
   inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
-    DynamicTuple.dynamicMap(this, f)
+    DynamicTuple.map(this, f).asInstanceOf[Map[this.type, F]]
 
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(a1, ..., an)` consisting
    *  of its first n elements.
    */
   inline def take[This >: this.type <: Tuple](n: Int): Take[This, n.type] =
-    DynamicTuple.dynamicTake[This, n.type](this, n)
+    DynamicTuple.take(this, n).asInstanceOf[Take[This, n.type]]
 
 
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(an+1, ..., am)` consisting
    *  all its elements except the first n ones.
    */
   inline def drop[This >: this.type <: Tuple](n: Int): Drop[This, n.type] =
-    DynamicTuple.dynamicDrop[This, n.type](this, n)
+    DynamicTuple.drop(this, n).asInstanceOf[Drop[This, n.type]]
 
   /** Given a tuple `(a1, ..., am)`, returns a pair of the tuple `(a1, ..., an)`
    *  consisting of the first n elements, and the tuple `(an+1, ..., am)` consisting
    *  of the remaining elements.
    */
   inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
-    DynamicTuple.dynamicSplitAt[This, n.type](this, n)
+    DynamicTuple.splitAt(this, n).asInstanceOf[Split[This, n.type]]
 }
 
 object Tuple {
@@ -165,7 +165,7 @@ object Tuple {
       case xs: Array[Object] => xs
       case xs => xs.map(_.asInstanceOf[Object])
     }
-    DynamicTuple.dynamicFromArray[Tuple](xs2)
+    DynamicTuple.fromArray(xs2).asInstanceOf[Tuple]
   }
 
   /** Convert an immutable array into a tuple of unknown arity and types */
@@ -176,12 +176,12 @@ object Tuple {
         // TODO suport IArray.map
         xs.asInstanceOf[Array[T]].map(_.asInstanceOf[Object]).asInstanceOf[IArray[Object]]
     }
-    DynamicTuple.dynamicFromIArray[Tuple](xs2)
+    DynamicTuple.fromIArray(xs2).asInstanceOf[Tuple]
   }
 
   /** Convert a Product into a tuple of unknown arity and types */
   def fromProduct(product: Product): Tuple =
-    runtime.DynamicTuple.dynamicFromProduct[Tuple](product)
+    runtime.DynamicTuple.fromProduct(product)
 
   def fromProductTyped[P <: Product](p: P)(using m: scala.deriving.Mirror.ProductOf[P]): m.MirroredElemTypes =
     Tuple.fromArray(p.productIterator.toArray).asInstanceOf[m.MirroredElemTypes] // TODO use toIArray of Object to avoid double/triple array copy
@@ -195,17 +195,17 @@ sealed trait NonEmptyTuple extends Tuple {
    *  Equivalent to productElement but with a precise return type.
    */
   inline def apply[This >: this.type <: NonEmptyTuple](n: Int): Elem[This, n.type] =
-    DynamicTuple.dynamicApply[This, n.type](this, n)
+    DynamicTuple.apply(this, n).asInstanceOf[Elem[This, n.type]]
 
   /** Get the head of this tuple */
   inline def head[This >: this.type <: NonEmptyTuple]: Head[This] =
-    DynamicTuple.dynamicApply[This, 0](this, 0)
+    DynamicTuple.apply(this, 0).asInstanceOf[Head[This]]
 
   /** Get the tail of this tuple.
    *  This opteration is O(this.size)
    */
   inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
-    DynamicTuple.dynamicTail[This](this)
+    DynamicTuple.tail(this).asInstanceOf[Tail[This]]
 
 }
 

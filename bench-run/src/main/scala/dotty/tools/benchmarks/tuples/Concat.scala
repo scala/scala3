@@ -28,6 +28,6 @@ class Concat {
 
   @Benchmark
   def tupleConcat(): Tuple = {
-    DynamicTuple.dynamicConcat(tuple1, tuple2)
+    DynamicTuple.concat(tuple1, tuple2)
   }
 }
