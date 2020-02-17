@@ -142,6 +142,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextRef(tp) ~ ".type"
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
+      case tp: AppliedTermRef =>
+        "{" ~ toTextRef(tp) ~ "}"
       case tp: TypeRef =>
         if (printWithoutPrefix.contains(tp.symbol))
           toText(tp.name)
@@ -291,8 +293,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TermRef =>
         toTextPrefix(tp.prefix) ~ selectionString(tp)
       case AppliedTermRef(fn, args) =>
-        // TODO(gsps): Print AppliedTermRef as in surface syntax (using curly braces)
-        (toTextRef(fn) ~ "(" ~ Text(args map argText, ", ") ~ ")").close
+        val argTexts = args.map {
+          case arg: SingletonType => toTextRef(arg)
+          case arg => argText(arg)
+        }
+        (toTextRef(fn) ~ "(" ~ Text(argTexts, ", ") ~ ")").close
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
