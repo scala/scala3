@@ -45,8 +45,7 @@ object FileDiff {
         false
       case _ =>
         val jOutFilePath = Paths.get(outFilePath)
-        if (Files.exists(jOutFilePath))
-          try { Files.delete(jOutFilePath) } catch { case _: Exception => () }
+        Files.deleteIfExists(jOutFilePath)
         true
     }
   }
