@@ -1239,7 +1239,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             if (leftRoot.isStable || (ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
                 && leftRoot.member(tparam.name).exists) {
               val captured = TypeRef(leftRoot, tparam)
-              isSubArg(captured, arg2)
+              try isSubArg(captured, arg2)
+              catch case ex: TypeError =>
+                // The captured reference could be illegal and cause a
+                // TypeError to be thrown in argDenot
+                false
             }
             else if (v > 0)
               isSubType(paramBounds(tparam).hi, arg2)
