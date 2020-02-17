@@ -699,6 +699,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             false
         }
         compareTypeBounds
+      case tp2: AppliedTermRef =>
+        // TODO(gsps): Check whether rule or position thereof should change
+        def compareAppliedTerm = tp1 match {
+          case tp1: AppliedTermRef =>
+            sameLength(tp1.args, tp2.args) && isSubType(tp1.fn, tp2.fn) &&
+              tp1.args.zip(tp2.args).forall((arg1, arg2) => isSubType(arg1, arg2))
+          case _ => fourthTry
+        }
+        compareAppliedTerm
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || defn.isBottomType(tp1)) &&
         recur(tp1, tp2.parent)

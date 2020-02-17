@@ -2627,9 +2627,12 @@ object Types {
 
     def underlying(implicit ctx: Context): Type = resType
 
+    /** Compute the derived AppliedTermRef, widening to the result type if any of its
+     *  components is unstable.
+     */
     def derivedAppliedTermRef(fn: Type, args: List[Type])(implicit ctx: Context): Type =
       if ((this.fn eq fn) && (this.args eq args)) this
-      else AppliedTermRef(fn, args)
+      else AppliedTermRef.make(fn, args)
 
     override def computeHash(bs: Binders) = doHash(bs, fn, args)
     override def hashIsStable: Boolean = fn.hashIsStable && args.forall(_.hashIsStable)
@@ -2645,17 +2648,31 @@ object Types {
   final class CachedAppliedTermRef(fn: SingletonType, args: List[Type]) extends AppliedTermRef(fn, args)
 
   object AppliedTermRef {
-    def apply(fn: Type, args: List[Type])(implicit ctx: Context): Type = {
+    def apply(fn: SingletonType, args: List[Type])(implicit ctx: Context): AppliedTermRef = {
       assertUnerased()
+      assert(fn.isStable, args.forall(_.isStable))
+      unique(new CachedAppliedTermRef(fn, args))
+    }
+
+    def make(fn: Type, args: List[Type])(implicit ctx: Context): Type = {
+      def fallbackToResult(): Type =
+        fn.widenDealias match {
+          case methTpe: MethodType => ctx.typer.applicationResultType(methTpe, args)
+          case _: WildcardType => WildcardType
+          case tp => throw new AssertionError(i"Don't know how to apply $tp.")
+        }
+      def complete(fn: SingletonType): Type =
+        if (!ctx.erasedTypes && fn.isStable && args.forall(_.isStable))
+          AppliedTermRef(fn, args)
+        else
+          fallbackToResult()
       fn.dealias match {
-        case fn: TermRef => unique(new CachedAppliedTermRef(fn, args))
-        case fn: AppliedTermRef => unique(new CachedAppliedTermRef(fn, args))
+        case fn: TermRef =>
+          complete(fn)
+        case fn: AppliedTermRef =>
+          complete(fn)
         case _ =>
-          fn.widenDealias match {
-            case methTpe: MethodType => ctx.typer.applicationResultType(methTpe, args)
-            case _: WildcardType => WildcardType
-            case tp => throw new AssertionError(i"Don't know how to apply $tp.")
-          }
+          fallbackToResult()
       }
     }
   }

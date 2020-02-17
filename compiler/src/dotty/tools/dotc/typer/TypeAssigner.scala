@@ -424,13 +424,9 @@ trait TypeAssigner {
     val fnTpe = fn.tpe
     val ownType = fnTpe.widen match {
       case methTp: MethodType =>
-        if (sameLength(methTp.paramInfos, args) || ctx.phase.prev.relaxedTyping) {
-          val argTpes = args.tpes
-          if (!ctx.erasedTypes && fnTpe.isStable && argTpes.forall(_.isStable))
-            AppliedTermRef(fnTpe, argTpes)
-          else
-            applicationResultType(methTp, argTpes)
-        } else
+        if (sameLength(methTp.paramInfos, args) || ctx.phase.prev.relaxedTyping)
+          AppliedTermRef.make(fnTpe, args.tpes)
+        else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $methTp: $fnTpe, expected: ${methTp.paramInfos.length}, found: ${args.length}", tree.sourcePos)
       case t =>
         if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
