@@ -2526,4 +2526,34 @@ object messages {
            | }
            |""".stripMargin
   }
+
+  case class AnonymousInstanceCannotBeEmpty(impl:  untpd.Template)(implicit ctx: Context)
+    extends Message(AnonymousInstanceCannotBeEmptyID) {
+    val kind: String = "Syntax"
+    val msg: String = i"anonymous instance must implement a type or have at least one extension method"
+
+    val explanation: String =
+      em"""|Anonymous instances cannot be defined with an empty body. The block
+           |`${impl.show}` should either contain an implemented type or at least one extension method.
+           |""".stripMargin
+  }
+
+  case class TypeSpliceInValPattern(expr:  untpd.Tree)(implicit ctx: Context)
+    extends Message(TypeSpliceInValPatternID) {
+    val kind: String = "Syntax"
+    val msg: String = "Type splices cannot be used in val patterns. Consider using `match` instead."
+
+    val explanation: String =
+      em"""|Type splice: `$$${expr.show}` cannot be used in a `val` pattern. Consider rewriting the `val` pattern
+           |as a `match` with a corresponding `case` to replace the `val`.
+           |""".stripMargin
+  }
+
+  case class ModifierNotAllowedForDefinition(flag: Flag)(implicit ctx: Context)
+    extends Message(ModifierNotAllowedForDefinitionID) {
+    val kind: String = "Syntax"
+    val msg: String = s"Modifier `${flag.flagsString}` is not allowed for this definition"
+
+    val explanation: String = ""
+  }
 }

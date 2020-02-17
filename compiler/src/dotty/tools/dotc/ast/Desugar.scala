@@ -946,9 +946,11 @@ object desugar {
         }
       case mdef: Import =>
         mdef
-      case mdef =>
+      case mdef if !mdef.isEmpty => {
         ctx.error(ExtensionCanOnlyHaveDefs(mdef), mdef.sourcePos)
         mdef
+      }
+      case mdef => mdef
     }
   }
 
@@ -1001,7 +1003,7 @@ object desugar {
             case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
               s"extension_${name}_${inventTypeName(vparam.tpt)}"
             case _ =>
-              ctx.error(i"anonymous instance must implement a type or have at least one extension method", impl.sourcePos)
+              ctx.error(AnonymousInstanceCannotBeEmpty(impl), impl.sourcePos)
               nme.ERROR.toString
         else
           impl.parents.map(inventTypeName(_)).mkString("given_", "_", "")
@@ -1173,10 +1175,9 @@ object desugar {
   def checkModifiers(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: MemberDef =>
       var tested: MemberDef = tree
-      def fail(msg: String) = ctx.error(msg, tree.sourcePos)
       def checkApplicable(flag: Flag, test: MemberDefTest): Unit =
         if (tested.mods.is(flag) && !test.applyOrElse(tree, (md: MemberDef) => false)) {
-          fail(i"modifier `${flag.flagsString}` is not allowed for this definition")
+          ctx.error(ModifierNotAllowedForDefinition(flag), tree.sourcePos)
           tested = tested.withMods(tested.mods.withoutFlags(flag))
         }
       checkApplicable(Opaque, legalOpaque)
@@ -1798,7 +1799,7 @@ object desugar {
           def traverse(tree: untpd.Tree)(implicit ctx: Context): Unit = tree match {
             case Splice(expr) => collect(expr)
             case TypSplice(expr) =>
-              ctx.error("Type splices cannot be used in val patterns. Consider using `match` instead.", tree.sourcePos)
+              ctx.error(TypeSpliceInValPattern(expr), tree.sourcePos)
             case _ => traverseChildren(tree)
           }
         }.traverse(expr)

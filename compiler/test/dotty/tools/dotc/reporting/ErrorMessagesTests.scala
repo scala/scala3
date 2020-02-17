@@ -1893,4 +1893,54 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("Only methods allowed here, since collective parameters are given", errorMsg)
         assertEquals("val v: T = t", x.show)
       }
+
+  @Test def anonymousInstanceMustImplementAType =
+    checkMessagesAfter(RefChecks.name) {
+      """object Test {
+        |  extension on[T] (t: T) { }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        assertEquals("anonymous instance must implement a type or have at least one extension method", errorMsg)
+      }
+
+  @Test def typeSplicesInValPatterns =
+    checkMessagesAfter(RefChecks.name) {
+      s"""import scala.quoted._
+         |object Foo {
+         |  def f(using q: QuoteContext) = {
+         |      val t: Type[Int] = ???
+         |      val '[ *:[$$t] ] = ???
+         |  }
+         |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val TypeSpliceInValPattern(x) :: Nil = messages
+        assertEquals("Type splices cannot be used in val patterns. Consider using `match` instead.", errorMsg)
+        assertEquals("t", x.show)
+      }
+
+  @Test def modifierNotAllowedForDefinition =
+    checkMessagesAfter(RefChecks.name) {
+      """object Test {
+        |  opaque def o: Int = 3
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val ModifierNotAllowedForDefinition(x) :: Nil = messages
+        assertEquals("Modifier `opaque` is not allowed for this definition", errorMsg)
+        assertEquals("opaque", x.flagsString)
+      }
 }
