@@ -167,6 +167,9 @@ class TreePickler(pickler: TastyPickler) {
     case AppliedType(tycon, args) =>
       writeByte(APPLIEDtype)
       withLength { pickleType(tycon); args.foreach(pickleType(_)) }
+    case AppliedTermRef(fn, args) =>
+      writeByte(APPLIEDTERMREF)
+      withLength { pickleType(fn); args.foreach(pickleType(_)) }
     case ConstantType(value) =>
       pickleConstant(value)
     case tpe: NamedType =>

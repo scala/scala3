@@ -126,6 +126,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   THIS                  clsRef_Type                                -- cls.this
                   RECthis               recType_ASTRef                             -- The `this` in a recursive refined type `recType`.
                   SHAREDtype            path_ASTRef                                -- link to previously serialized path
+                  APPLIEDTERMREF Length fn_Type arg_Type*                          -- The stable result of `fn` applied to `arg`s
 
   Constant      = UNITconst                                                        -- ()
                   FALSEconst                                                       -- false
@@ -254,7 +255,7 @@ object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
   val MajorVersion: Int = 20
-  val MinorVersion: Int = 0
+  val MinorVersion: Int = 1
 
   /** Tags used to serialize names, should update [[nameTagToString]] if a new constant is added */
   class NameTags {
@@ -453,6 +454,7 @@ object TastyFormat {
   final val ANNOTATION = 173
   final val TERMREFin = 174
   final val TYPEREFin = 175
+  final val APPLIEDTERMREF = 176
 
   final val METHODtype = 180
   final val ERASEDMETHODtype = 181
@@ -660,6 +662,7 @@ object TastyFormat {
     case SUPERtype => "SUPERtype"
     case TERMREFin => "TERMREFin"
     case TYPEREFin => "TYPEREFin"
+    case APPLIEDTERMREF => "APPLIEDTERMREF"
 
     case REFINEDtype => "REFINEDtype"
     case REFINEDtpt => "REFINEDtpt"

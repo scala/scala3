@@ -64,6 +64,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case tp @ AppliedType(tycon, args) =>
           if (defn.isCompiletimeAppliedType(tycon.typeSymbol)) tp.tryCompiletimeConstantFold
           else tycon.dealias.appliedTo(args)
+        case tp @ AppliedTermRef(fn, args) =>
+          tp.derivedAppliedTermRef(homogenize(tp), args.mapConserve(homogenize))
         case _ =>
           tp
       }
@@ -288,6 +290,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     tp match {
       case tp: TermRef =>
         toTextPrefix(tp.prefix) ~ selectionString(tp)
+      case AppliedTermRef(fn, args) =>
+        // TODO(gsps): Print AppliedTermRef as in surface syntax (using curly braces)
+        (toTextRef(fn) ~ "(" ~ Text(args map argText, ", ") ~ ")").close
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
