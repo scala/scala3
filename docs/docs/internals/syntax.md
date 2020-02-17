@@ -160,6 +160,7 @@ SimpleType        ::=  SimpleType TypeArgs                                      
                     |  ‘(’ ArgTypes ‘)’                                         Tuple(ts)
                     |  ‘?’ SubtypeBounds
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
+                    |  `{` PostfixExpr `}`                                      SingletonTypeTree(expr)
                     |  SimpleLiteral                                            SingletonTypeTree(l)
                     |  ‘$’ ‘{’ Block ‘}’
 ArgTypes          ::=  Type {‘,’ Type}

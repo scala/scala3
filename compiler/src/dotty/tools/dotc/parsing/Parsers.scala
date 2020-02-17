@@ -1536,6 +1536,7 @@ object Parsers {
      *                     |  `(' ArgTypes `)'
      *                     |  `_' TypeBounds
      *                     |  Refinement
+     *                     |  `{` PostfixExpr `}`
      *                     |  Literal
      *                     |  ‘$’ ‘{’ Block ‘}’
      */
@@ -1545,7 +1546,7 @@ object Parsers {
           makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true)))
         }
       else if (in.token == LBRACE)
-        atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
+        atSpan(in.offset) { inBraces(emptyRefinementOrSingletonExpr()) }
       else if (isSimpleLiteral) { SingletonTypeTree(literal(inType = true)) }
       else if (isIdent(nme.raw.MINUS) && in.lookaheadIn(numericLitTokens)) {
         val start = in.offset
@@ -1573,6 +1574,11 @@ object Parsers {
         case r @ SingletonTypeTree(_) => r
         case r => convertToTypeId(r)
       }
+    }
+
+    def emptyRefinementOrSingletonExpr(): Tree = {
+      if (!isStatSeqEnd && !isDclIntro) SingletonTypeTree(postfixExpr())
+      else RefinedTypeTree(EmptyTree, refineStatSeq())
     }
 
     val handleSingletonType: Tree => Tree = t =>
