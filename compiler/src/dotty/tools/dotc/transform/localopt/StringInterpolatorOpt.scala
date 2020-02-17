@@ -101,7 +101,7 @@ class StringInterpolatorOpt extends MiniPhase {
           val elemi = elems.iterator
           var result: Tree = stri.next
           def concat(tree: Tree): Unit = {
-            result = result.select(defn.String_+).appliedTo(tree)
+            result = result.select(defn.String_+).appliedTo(tree).withSpan(tree.span)
           }
           while (elemi.hasNext) {
             concat(elemi.next)
