@@ -1079,9 +1079,15 @@ object SymDenotations {
     final def lexicallyEnclosingClass(implicit ctx: Context): Symbol =
       if (!exists || isClass) symbol else owner.lexicallyEnclosingClass
 
+    /** A class is extensible if it is not final, nor a module class,
+     *  nor an anonymous class.
+     */
+    final def isExtensibleClass(using Context): Boolean =
+      isClass && !isOneOf(FinalOrModuleClass) && !isAnonymousClass
+
     /** A symbol is effectively final if it cannot be overridden in a subclass */
     final def isEffectivelyFinal(implicit ctx: Context): Boolean =
-      isOneOf(EffectivelyFinalFlags) || !owner.isClass || owner.isOneOf(FinalOrModuleClass) || owner.isAnonymousClass
+      isOneOf(EffectivelyFinalFlags) || !owner.isExtensibleClass
 
     /** A class is effectively sealed if has the `final` or `sealed` modifier, or it
      *  is defined in Scala 3 and is neither abstract nor open.

@@ -23,6 +23,8 @@ object LambdaLift {
   import ast.tpd._
   private class NoPath extends Exception
 
+  val name: String = "lambdaLift"
+
   /** The core lambda lift functionality. */
   class Lifter(thisPhase: MiniPhase with DenotTransformer)(implicit ctx: Context) {
 
@@ -500,7 +502,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
   /** the following two members override abstract members in Transform */
-  val phaseName: String = "lambdaLift"
+  val phaseName: String = LambdaLift.name
 
   override def relaxedTypingInGroup: Boolean = true
     // Because it adds free vars as additional proxy parameters
