@@ -231,7 +231,7 @@ trait FullParameterization {
     else {
       // this type could have changed on forwarding. Need to insert a cast.
       originalDef.vparamss.foldLeft(fun)((acc, vparams) => {
-        val meth = acc.tpe.asInstanceOf[MethodType]
+        val meth = acc.tpe.stripPoly.asInstanceOf[MethodType]
         val paramTypes = meth.instantiateParamInfos(vparams.map(_.tpe))
         acc.appliedToArgs(
           vparams.lazyZip(paramTypes).map((vparam, paramType) => {

@@ -1044,9 +1044,11 @@ object Types {
       case _ => this
     }
 
-    /** Strip PolyType prefixes */
+    /** Strip PolyType and AppliedTermRef prefixes */
+    // TODO(gsps): Rename this to also reflect the removal of AppliedTermRefs
     def stripPoly(implicit ctx: Context): Type = this match {
       case tp: PolyType => tp.resType.stripPoly
+      case tp: AppliedTermRef => tp.resType.stripPoly
       case _ => this
     }
 
@@ -2606,6 +2608,56 @@ object Types {
     override def toString: String = s"LazyRef(${if (computed) myRef else "..."})"
     override def equals(other: Any): Boolean = this.eq(other.asInstanceOf[AnyRef])
     override def hashCode: Int = System.identityHashCode(this)
+  }
+
+  // --- AppliedTermRef -------------------------------------------------------
+
+  /** A precise representation of a term-level application `fn(... args)`. **/
+  abstract case class AppliedTermRef(fn: /*TermRef | AppliedTermRef*/ SingletonType, args: List[Type])
+    extends CachedProxyType with SingletonType
+  {
+    private[this] var myResType: Type = _
+    def resType(implicit ctx: Context): Type = {
+      if (myResType == null)
+        fn.widen match {
+          case methTpe: MethodType => myResType = ctx.typer.applicationResultType(methTpe, args)
+        }
+      myResType
+    }
+
+    def underlying(implicit ctx: Context): Type = resType
+
+    def derivedAppliedTermRef(fn: Type, args: List[Type])(implicit ctx: Context): Type =
+      if ((this.fn eq fn) && (this.args eq args)) this
+      else AppliedTermRef(fn, args)
+
+    override def computeHash(bs: Binders) = doHash(bs, fn, args)
+    override def hashIsStable: Boolean = fn.hashIsStable && args.forall(_.hashIsStable)
+
+    override def eql(that: Type) = that match {
+      case that: AppliedTermRef => (this.fn eq that.fn) && this.args.eqElements(that.args)
+      case _ => false
+    }
+
+    // TODO(gsps): AppliedTermRef#iso?
+  }
+
+  final class CachedAppliedTermRef(fn: SingletonType, args: List[Type]) extends AppliedTermRef(fn, args)
+
+  object AppliedTermRef {
+    def apply(fn: Type, args: List[Type])(implicit ctx: Context): Type = {
+      assertUnerased()
+      fn.dealias match {
+        case fn: TermRef => unique(new CachedAppliedTermRef(fn, args))
+        case fn: AppliedTermRef => unique(new CachedAppliedTermRef(fn, args))
+        case _ =>
+          fn.widenDealias match {
+            case methTpe: MethodType => ctx.typer.applicationResultType(methTpe, args)
+            case _: WildcardType => WildcardType
+            case tp => throw new AssertionError(i"Don't know how to apply $tp.")
+          }
+      }
+    }
   }
 
   // --- Refined Type and RecType ------------------------------------------------
@@ -4800,6 +4852,8 @@ object Types {
       tp.derivedSuperType(thistp, supertp)
     protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
       tp.derivedAppliedType(tycon, args)
+    protected def derivedAppliedTermRef(tp: AppliedTermRef, fn: Type, args: List[Type]): Type =
+      tp.derivedAppliedTermRef(fn, args)
     protected def derivedAndType(tp: AndType, tp1: Type, tp2: Type): Type =
       tp.derivedAndType(tp1, tp2)
     protected def derivedOrType(tp: OrType, tp1: Type, tp2: Type): Type =
@@ -4858,6 +4912,9 @@ object Types {
               nil
           }
           derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tp.tyconTypeParams))
+
+        case tp: AppliedTermRef =>
+          derivedAppliedTermRef(tp, this(tp.fn), tp.args.mapConserve(this))
 
         case tp: RefinedType =>
           derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
@@ -5173,6 +5230,26 @@ object Types {
           else tp.derivedAppliedType(tycon, args)
       }
 
+    // TODO(gsps): Double-check for changes in similar derivations
+    override protected def derivedAppliedTermRef(tp: AppliedTermRef, fn: Type, args: List[Type]): Type =
+      fn match {
+        case Range(fnLo, fnHi) =>
+          range(derivedAppliedTermRef(tp, fnLo, args), derivedAppliedTermRef(tp, fnHi, args))
+        case _ =>
+          if (fn.isBottomType) {
+            fn
+          } else if (args.exists(isRange)) {
+            val loBuf, hiBuf = new mutable.ListBuffer[Type]
+            args foreach {
+              case Range(lo, hi) => loBuf += lo; hiBuf += hi
+              case arg => loBuf += arg; hiBuf += arg
+            }
+            range(tp.derivedAppliedTermRef(fn, loBuf.toList), tp.derivedAppliedTermRef(fn, hiBuf.toList))
+          } else {
+            tp.derivedAppliedTermRef(fn, args)
+          }
+      }
+
     override protected def derivedAndType(tp: AndType, tp1: Type, tp2: Type): Type =
       if (isRange(tp1) || isRange(tp2)) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
       else tp.derivedAndType(tp1, tp2)
@@ -5274,6 +5351,9 @@ object Types {
             foldArgs(acc, tparams.tail, args.tail)
           }
         foldArgs(this(x, tycon), tp.tyconTypeParams, args)
+
+      case tp: AppliedTermRef =>
+        foldOver(this(x, tp.fn), tp.args)
 
       case _: BoundType | _: ThisType => x
 

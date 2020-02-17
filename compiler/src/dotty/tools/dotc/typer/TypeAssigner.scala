@@ -416,14 +416,22 @@ trait TypeAssigner {
       tp
   }
 
+  def applicationResultType(methTp: MethodType, args: List[Type])(implicit ctx: Context): Type =
+    if (methTp.isResultDependent) safeSubstParams(methTp.resultType, methTp.paramRefs, args)
+    else methTp.resultType
+
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
-    val ownType = fn.tpe.widen match {
-      case fntpe: MethodType =>
-        if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping)
-          if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
-          else fntpe.resultType
-        else
-          errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.sourcePos)
+    val fnTpe = fn.tpe
+    val ownType = fnTpe.widen match {
+      case methTp: MethodType =>
+        if (sameLength(methTp.paramInfos, args) || ctx.phase.prev.relaxedTyping) {
+          val argTpes = args.tpes
+          if (!ctx.erasedTypes && fnTpe.isStable && argTpes.forall(_.isStable))
+            AppliedTermRef(fnTpe, argTpes)
+          else
+            applicationResultType(methTp, argTpes)
+        } else
+          errorType(i"wrong number of arguments at ${ctx.phase.prev} for $methTp: $fnTpe, expected: ${methTp.paramInfos.length}, found: ${args.length}", tree.sourcePos)
       case t =>
         if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
         errorType(err.takesNoParamsStr(fn, ""), tree.sourcePos)
