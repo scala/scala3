@@ -39,7 +39,7 @@ trait ErrorMessagesTest extends DottyTest {
     if (!runCtx.reporter.hasErrors) new EmptyReport
     else {
       val rep = runCtx.reporter.asInstanceOf[StoreReporter]
-      val msgs = rep.removeBufferedMessages(runCtx).map(_.contained()).reverse
+      val msgs = rep.removeBufferedMessages(runCtx).map(_.contained).reverse
       new Report(msgs, runCtx)
     }
   }
