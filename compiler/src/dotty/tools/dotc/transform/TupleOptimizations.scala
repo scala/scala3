@@ -25,17 +25,17 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree =
     if (!tree.symbol.exists || tree.symbol.owner != defn.DynamicTupleModuleClass) tree
-    else if (tree.symbol == defn.DynamicTuple_dynamicCons) transformTupleCons(tree)
-    else if (tree.symbol == defn.DynamicTuple_dynamicTail) transformTupleTail(tree)
-    else if (tree.symbol == defn.DynamicTuple_dynamicSize) transformTupleSize(tree)
-    else if (tree.symbol == defn.DynamicTuple_dynamicConcat) transformTupleConcat(tree)
-    else if (tree.symbol == defn.DynamicTuple_dynamicApply) transformTupleApply(tree)
-    else if (tree.symbol == defn.DynamicTuple_dynamicToArray) transformTupleToArray(tree)
+    else if (tree.symbol == defn.DynamicTuple_cons) transformTupleCons(tree)
+    else if (tree.symbol == defn.DynamicTuple_tail) transformTupleTail(tree)
+    else if (tree.symbol == defn.DynamicTuple_size) transformTupleSize(tree)
+    else if (tree.symbol == defn.DynamicTuple_concat) transformTupleConcat(tree)
+    else if (tree.symbol == defn.DynamicTuple_apply) transformTupleApply(tree)
+    else if (tree.symbol == defn.DynamicTuple_toArray) transformTupleToArray(tree)
     else tree
 
   private def transformTupleCons(tree: tpd.Apply)(implicit ctx: Context): Tree = {
     val head :: tail :: Nil = tree.args
-    defn.tupleTypes(tree.tpe) match {
+    defn.tupleTypes(tree.tpe.widenTermRefExpr.dealias) match {
       case Some(tpes) =>
         // Generate a the tuple directly with TupleN+1.apply
         val size = tpes.size
@@ -56,14 +56,14 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         }
       case _ =>
         // No optimization, keep:
-        // DynamicTuple.dynamicCons:(tail, head)
+        // DynamicTuple.cons(tail, head)
         tree
     }
   }
 
   private def transformTupleTail(tree: tpd.Apply)(implicit ctx: Context): Tree = {
-    val Apply(TypeApply(_, tpt :: Nil), tup :: Nil) = tree
-    defn.tupleTypes(tpt.tpe, MaxTupleArity + 1) match {
+    val Apply(_, tup :: Nil) = tree
+    defn.tupleTypes(tup.tpe.widenTermRefExpr.dealias, MaxTupleArity + 1) match {
       case Some(tpes) =>
         // Generate a the tuple directly with TupleN-1.apply
         val size = tpes.size
@@ -93,7 +93,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           tup.asInstance(defn.TupleXXLClass.typeRef).select("tailXXL".toTermName)
       case None =>
         // No optimization, keep:
-        // DynamicTuple.dynamicTail(tup)
+        // DynamicTuple.tail(tup)
         tree
     }
   }
@@ -105,9 +105,8 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     }
 
   private def transformTupleConcat(tree: tpd.Apply)(implicit ctx: Context): Tree = {
-    val Apply(TypeApply(_, selfTp :: thatTp :: Nil), self :: that :: Nil) = tree
-
-    (defn.tupleTypes(selfTp.tpe), defn.tupleTypes(that.tpe.widenTermRefExpr)) match {
+    val Apply(_, self :: that :: Nil) = tree
+    (defn.tupleTypes(self.tpe.widenTermRefExpr.dealias), defn.tupleTypes(that.tpe.widenTermRefExpr.dealias)) match {
       case (Some(tpes1), Some(tpes2)) =>
         // Generate a the tuple directly with TupleN+M.apply
         val n = tpes1.size
@@ -135,14 +134,14 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         }
       case _ =>
         // No optimization, keep:
-        // DynamicTuple.dynamicCons[This, that.type](self, that)
+        // DynamicTuple.cons(self, that)
         tree
     }
   }
 
   private def transformTupleApply(tree: tpd.Apply)(implicit ctx: Context): Tree = {
-    val Apply(TypeApply(_, tpt :: nTpt :: Nil), tup :: nTree :: Nil) = tree
-    (defn.tupleTypes(tpt.tpe), nTpt.tpe) match {
+    val Apply(_, tup :: nTree :: Nil) = tree
+    (defn.tupleTypes(tup.tpe.widenTermRefExpr.dealias), nTree.tpe) match {
       case (Some(tpes), nTpe: ConstantType) =>
         // Get the element directly with TupleM._n+1 or TupleXXL.productElement(n)
         val size = tpes.size
@@ -162,7 +161,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         tree
       case _ =>
         // No optimization, keep:
-        // DynamicTuple.dynamicApply(tup, n)
+        // DynamicTuple.apply(tup, n)
         tree
     }
   }
@@ -183,7 +182,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           tup.asInstance(defn.TupleXXLClass.typeRef).select(nme.toArray)
       case None =>
         // No optimization, keep:
-        // DynamicTuple.dynamicToArray(tup)
+        // DynamicTuple.toArray(tup)
         tree
     }
   }
@@ -205,7 +204,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
 
       // TODO outline this code for the 22 alternatives (or less, may not need the smallest ones)?
       // This would yield smaller bytecode at the cost of an extra (easily JIT inlinable) call.
-      // def dynamicTupleN(it: Iterator[Any]): TupleN[Any, ..., Any] = Tuple(it.next(), ..., it.next())
+      // def tupleN(it: Iterator[Any]): TupleN[Any, ..., Any] = Tuple(it.next(), ..., it.next())
       val tpes = List.fill(size)(defn.AnyType)
       val elements = (0 until size).map(_ => it.select(nme.next)).toList
       knownTupleFromElements(tpes, elements)
