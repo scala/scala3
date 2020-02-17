@@ -169,7 +169,7 @@ object RefChecks {
    *  TODO This still needs to be cleaned up; the current version is a straight port of what was there
    *       before, but it looks too complicated and method bodies are far too large.
    */
-  private def checkAllOverrides(clazz: Symbol)(implicit ctx: Context): Unit = {
+  private def checkAllOverrides(clazz: ClassSymbol)(implicit ctx: Context): Unit = {
     val self = clazz.thisType
     val upwardsSelf = upwardsThisType(clazz)
     var hasErrors = false
@@ -470,33 +470,52 @@ object RefChecks {
             }
         }
 
-      def ignoreDeferred(member: SingleDenotation) =
-        member.isType || {
-          val mbr = member.symbol
-          mbr.isSuperAccessor || // not yet synthesized
-          ShortcutImplicits.isImplicitShortcut(mbr) || // only synthesized when referenced, see Note in ShortcutImplicits
-          mbr.is(JavaDefined) && hasJavaErasedOverriding(mbr)
-        }
+       def ignoreDeferred(mbr: Symbol) =
+        mbr.isType
+        || mbr.isSuperAccessor // not yet synthesized
+        || ShortcutImplicits.isImplicitShortcut(mbr) // only synthesized when referenced, see Note in ShortcutImplicits
+        || mbr.is(JavaDefined) && hasJavaErasedOverriding(mbr)
+
+      def isImplemented(mbr: Symbol) =
+        val mbrType = clazz.thisType.memberInfo(mbr)
+        def (sym: Symbol).isConcrete = sym.exists && !sym.is(Deferred)
+        clazz.nonPrivateMembersNamed(mbr.name)
+          .filterWithPredicate(
+            impl => impl.symbol.isConcrete && mbrType.matchesLoosely(impl.info))
+          .exists
+
+      /** The term symbols in this class and its baseclasses that are
+       *  abstract in this class. We can't use memberNames for that since
+       *  a concrete member might have the same signature as an abstract
+       *  member in a base class, yet might not override it.
+       */
+      def missingTermSymbols: List[Symbol] =
+        val buf = new mutable.ListBuffer[Symbol]
+        for bc <- clazz.baseClasses
+            sym <- bc.info.decls.toList
+            if sym.is(DeferredTerm) && !isImplemented(sym) && !ignoreDeferred(sym)
+        do buf += sym
+        buf.toList
 
       // 2. Check that only abstract classes have deferred members
       def checkNoAbstractMembers(): Unit = {
         // Avoid spurious duplicates: first gather any missing members.
-        val missing = clazz.thisType.abstractTermMembers.filterNot(ignoreDeferred)
+        val missing = missingTermSymbols
         // Group missing members by the name of the underlying symbol,
         // to consolidate getters and setters.
-        val grouped = missing.groupBy(_.symbol.underlyingSymbol.name)
+        val grouped = missing.groupBy(_.underlyingSymbol.name)
 
         val missingMethods = grouped.toList flatMap {
           case (name, syms) =>
-            val withoutSetters = syms filterNot (_.symbol.isSetter)
+            val withoutSetters = syms filterNot (_.isSetter)
             if (withoutSetters.nonEmpty) withoutSetters else syms
         }
 
         def stubImplementations: List[String] = {
           // Grouping missing methods by the declaring class
-          val regrouped = missingMethods.groupBy(_.symbol.owner).toList
-          def membersStrings(members: List[SingleDenotation]) =
-            members.sortBy(_.symbol.name.toString).map(_.showDcl + " = ???")
+          val regrouped = missingMethods.groupBy(_.owner).toList
+          def membersStrings(members: List[Symbol]) =
+            members.sortBy(_.name.toString).map(_.showDcl + " = ???")
 
           if (regrouped.tail.isEmpty)
             membersStrings(regrouped.head._2)
@@ -520,10 +539,9 @@ object RefChecks {
         }
 
         for (member <- missing) {
-          val memberSym = member.symbol
           def undefined(msg: String) =
             abstractClassError(false, s"${member.showDcl} is not defined $msg")
-          val underlying = memberSym.underlyingSymbol
+          val underlying = member.underlyingSymbol
 
           // Give a specific error message for abstract vars based on why it fails:
           // It could be unimplemented, have only one accessor, or be uninitialized.
@@ -531,11 +549,11 @@ object RefChecks {
             val isMultiple = grouped.getOrElse(underlying.name(ctx), Nil).size > 1
 
             // If both getter and setter are missing, squelch the setter error.
-            if (memberSym.isSetter && isMultiple) ()
+            if (member.isSetter && isMultiple) ()
             else undefined(
-              if (memberSym.isSetter) "\n(Note that an abstract var requires a setter in addition to the getter)"
-              else if (memberSym.isGetter && !isMultiple) "\n(Note that an abstract var requires a getter in addition to the setter)"
-              else err.abstractVarMessage(memberSym))
+              if (member.isSetter) "\n(Note that an abstract var requires a setter in addition to the getter)"
+              else if (member.isGetter && !isMultiple) "\n(Note that an abstract var requires a getter in addition to the setter)"
+              else err.abstractVarMessage(member))
           }
           else if (underlying.is(Method)) {
             // If there is a concrete method whose name matches the unimplemented
@@ -961,7 +979,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   }
 
   override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = try {
-    val cls = ctx.owner
+    val cls = ctx.owner.asClass
     checkOverloadedRestrictions(cls)
     checkParents(cls)
     if (cls.is(Trait)) tree.parents.foreach(checkParentPrefix(cls, _))
