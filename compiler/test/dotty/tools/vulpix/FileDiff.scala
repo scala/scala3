@@ -3,6 +3,7 @@ package dotty.tools.vulpix
 import scala.io.Source
 import java.io.File
 import java.lang.System.{lineSeparator => EOL}
+import java.nio.file.{Files, Paths}
 
 object FileDiff {
   def diffMessage(expectFile: String, actualFile: String): String =
@@ -34,15 +35,20 @@ object FileDiff {
     outFile.writeAll(content.mkString("", EOL, EOL))
   }
 
-  def checkAndDump(sourceTitle: String, actualLines: Seq[String], checkFilePath: String): Boolean =
+  def checkAndDump(sourceTitle: String, actualLines: Seq[String], checkFilePath: String): Boolean = {
+    val outFilePath = checkFilePath + ".out"
     FileDiff.check(sourceTitle, actualLines, checkFilePath) match {
       case Some(msg) =>
-        val outFilePath = checkFilePath + ".out"
         FileDiff.dump(outFilePath, actualLines)
         println(msg)
         println(FileDiff.diffMessage(checkFilePath, outFilePath))
         false
       case _ =>
+        val jOutFilePath = Paths.get(outFilePath)
+        if (Files.exists(jOutFilePath))
+          try { Files.delete(jOutFilePath) } catch { case _: Exception => () }
         true
     }
+  }
+
 }
