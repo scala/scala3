@@ -139,7 +139,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
   type ClassDef = internal.ClassDef
 
-  /** Tree representing a type (paramter or member) definition in the source code */
+  /** Tree representing a type (parameter or member) definition in the source code */
   type TypeDef = internal.TypeDef
 
   /** Tree representing a method definition in the source code */
@@ -495,7 +495,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     /** Position in the source code */
     def pos(using ctx: Context): Position = internal.Tree_pos(tree)
 
-    /** Symbol of defined or refered by this tree */
+    /** Symbol of defined or referred by this tree */
     def symbol(using ctx: Context): Symbol = internal.Tree_symbol(tree)
 
     /** Shows the tree as extractors */

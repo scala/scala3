@@ -626,7 +626,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   }
 
   abstract class Primitives {
-    def getPrimitive(app: Apply, reciever: Type): Int
+    def getPrimitive(app: Apply, receiver: Type): Int
     def isPrimitive(fun: Tree): Boolean
     def getPrimitive(sym: Symbol): Int
   }
@@ -722,7 +722,7 @@ abstract class BackendInterfaceDefinitions { self: BackendInterface =>
   val DoubleClass: Symbol
 
   // Class symbols used in backend.
-  // Vals becouse they are to frequent in scala programs so that they are already loaded by backend
+  // Vals because they are to frequent in scala programs so that they are already loaded by backend
 
   lazy val NativeAttr: Symbol = requiredClass[scala.native]
   lazy val TransientAttr = requiredClass[scala.transient]

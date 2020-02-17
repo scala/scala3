@@ -2,7 +2,7 @@ Input: Nat(1)
  Type: NatType
 Result: Nat(1)
 
-Failed to type Nat(-1) at level 0 with enviroment Set()
+Failed to type Nat(-1) at level 0 with environment Set()
 Failed to typechecks: Nat(-1)
 
 Input: Box(Nat(2))
@@ -73,9 +73,9 @@ Step: Box(Splice(Box(Nat(4))))
 Step: Box(Nat(4))
 Result: Box(Nat(4))
 
-Failed to type Lambda(`x0`,NatType,Ref(`x0`)) at level 1 with enviroment Set(EnvVar(`x0`,1,NatType))
-Failed to type Lambda(`x0`,NatType,Lambda(`x0`,NatType,Ref(`x0`))) at level 1 with enviroment Set()
-Failed to type Box(Lambda(`x0`,NatType,Lambda(`x0`,NatType,Ref(`x0`)))) at level 0 with enviroment Set()
+Failed to type Lambda(`x0`,NatType,Ref(`x0`)) at level 1 with environment Set(EnvVar(`x0`,1,NatType))
+Failed to type Lambda(`x0`,NatType,Lambda(`x0`,NatType,Ref(`x0`))) at level 1 with environment Set()
+Failed to type Box(Lambda(`x0`,NatType,Lambda(`x0`,NatType,Ref(`x0`)))) at level 0 with environment Set()
 Failed to typechecks: Box(Lambda(`x0`,NatType,Lambda(`x0`,NatType,Ref(`x0`))))
 
 Input: Fix(Lambda(`x0`,NatType,Nat(1)))

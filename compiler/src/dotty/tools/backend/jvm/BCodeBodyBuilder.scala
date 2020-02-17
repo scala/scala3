@@ -324,7 +324,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           if (!fun.symbol.isStaticMember) {
             // load receiver of non-static implementation of lambda
 
-            // darkdimius: I haven't found in spec `this` refference should go
+            // darkdimius: I haven't found in spec `this` reference should go
             // but I was able to derrive it by reading
             // AbstractValidatingLambdaMetafactory.validateMetafactoryArgs
 
@@ -1035,7 +1035,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         (args zip params) filterNot isTrivial
       }
 
-      // first push *all* arguments. This makes sure muliple uses of the same labelDef-var will all denote the (previous) value.
+      // first push *all* arguments. This makes sure multiple uses of the same labelDef-var will all denote the (previous) value.
       aps foreach { case (arg, param) => genLoad(arg, locals(param).tk) } // `locals` is known to contain `param` because `genDefDef()` visited `labelDefsAtOrUnder`
 
       // second assign one by one to the LabelDef's variables.

@@ -859,7 +859,7 @@ object desugar {
    *     given object name extends parents { self => body' }
    *
    *  where every definition in `body` is expanded to an extension method
-   *  taking type parameters `tparams` and a leading paramter `(x: T)`.
+   *  taking type parameters `tparams` and a leading parameter `(x: T)`.
    *  See: makeExtensionDef
    */
   def moduleDef(mdef: ModuleDef)(implicit ctx: Context): Tree = {

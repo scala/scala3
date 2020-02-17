@@ -1,4 +1,4 @@
-// Test that we don't track variables which is refered in another closure.
+// Test that we don't track variables which is referred in another closure.
 
 object VarRef {
   locally {

@@ -21,7 +21,7 @@ private[quoted] object Matcher {
      *  ```
      *  '{val a = 4; a * a} match case '{ val x = 4; x * x }
      *  ```
-     *  when matching `a * a` with `x * x` the enviroment will contain `Map(a -> x)`.
+     *  when matching `a * a` with `x * x` the environment will contain `Map(a -> x)`.
      */
     private type Env = Map[Symbol, Symbol]
 
@@ -35,10 +35,10 @@ private[quoted] object Matcher {
         val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
         given Context = ctx
         val matchings = scrutineeTerm.underlyingArgument =?= patternTerm.underlyingArgument
-        // After matching and doing all subtype checks, we have to aproximate all the type bindings
+        // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
-          Tuple.fromArray(tup.toArray.map { // TODO improve performace
+          Tuple.fromArray(tup.toArray.map { // TODO improve performance
             case x: SymBinding => internal.Context_GADT_approximation(summon[Context])(x.sym, !x.fromAbove).seal
             case x => x
           })
@@ -56,10 +56,10 @@ private[quoted] object Matcher {
         val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
         given Context = ctx
         val matchings = scrutineeTypeTree =?= patternTypeTree
-        // After matching and doing all subtype checks, we have to aproximate all the type bindings
+        // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
-          Tuple.fromArray(tup.toArray.map { // TODO improve performace
+          Tuple.fromArray(tup.toArray.map { // TODO improve performance
             case x: SymBinding => internal.Context_GADT_approximation(summon[Context])(x.sym, !x.fromAbove).seal
             case x => x
           })
@@ -437,7 +437,7 @@ private[quoted] object Matcher {
 
     def (self: Matching) asOptionOfTuple: Option[Tuple] = self
 
-    /** Concatenates the contents of two sucessful matchings or return a `notMatched` */
+    /** Concatenates the contents of two successful matchings or return a `notMatched` */
     def (self: Matching) && (that: => Matching): Matching = self match {
       case Some(x) =>
         that match {

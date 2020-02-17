@@ -267,7 +267,7 @@ trait CompilerInterface {
 
   def ClassDef_copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(using ctx: Context): ClassDef
 
-  /** Tree representing a type (paramter or member) definition in the source code */
+  /** Tree representing a type (parameter or member) definition in the source code */
   type TypeDef <: Definition
 
   def isInstanceOfTypeDef(using ctx: Context): IsInstanceOf[TypeDef]

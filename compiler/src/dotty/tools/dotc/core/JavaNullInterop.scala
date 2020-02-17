@@ -118,7 +118,7 @@ object JavaNullInterop {
       case tp: TypeRef if needsNull(tp) => OrUncheckedNull(tp)
       case appTp @ AppliedType(tycon, targs) =>
         val oldOutermostNullable = outermostLevelAlreadyNullable
-        // We don't make the outmost levels of type arguements nullable if tycon is Java-defined.
+        // We don't make the outmost levels of type arguments nullable if tycon is Java-defined.
         // This is because Java classes are _all_ nullified, so both `java.util.List[String]` and
         // `java.util.List[String|Null]` contain nullable elements.
         outermostLevelAlreadyNullable = tp.classSymbol.is(JavaDefined)
