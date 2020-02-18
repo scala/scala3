@@ -65,7 +65,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           if (defn.isCompiletimeAppliedType(tycon.typeSymbol)) tp.tryCompiletimeConstantFold
           else tycon.dealias.appliedTo(args)
         case tp @ AppliedTermRef(fn, args) =>
-          tp.derivedAppliedTermRef(homogenize(tp), args.mapConserve(homogenize))
+          tp.derivedAppliedTermRef(homogenize(fn), args.mapConserve(homogenize))
         case _ =>
           tp
       }

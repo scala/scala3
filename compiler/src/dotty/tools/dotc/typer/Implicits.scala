@@ -869,6 +869,7 @@ trait Implicits { self: Typer =>
               success(Literal(Constant(())))
             case n: TermRef =>
               success(ref(n))
+            // TODO(gsps): Handle AppliedTermRef
             case tp =>
               EmptyTree
           }
