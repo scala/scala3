@@ -754,17 +754,17 @@ class Definitions {
 
     def TupleXXL_fromIterator(implicit ctx: Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")
 
-  @tu lazy val DynamicTupleModule: Symbol = ctx.requiredModule("scala.runtime.DynamicTuple")
-  @tu lazy val DynamicTupleModuleClass: Symbol = DynamicTupleModule.moduleClass
-    lazy val DynamicTuple_consIterator: Symbol = DynamicTupleModule.requiredMethod("consIterator")
-    lazy val DynamicTuple_concatIterator: Symbol = DynamicTupleModule.requiredMethod("concatIterator")
-    lazy val DynamicTuple_apply: Symbol = DynamicTupleModule.requiredMethod("apply")
-    lazy val DynamicTuple_cons: Symbol = DynamicTupleModule.requiredMethod("cons")
-    lazy val DynamicTuple_size: Symbol = DynamicTupleModule.requiredMethod("size")
-    lazy val DynamicTuple_tail: Symbol = DynamicTupleModule.requiredMethod("tail")
-    lazy val DynamicTuple_concat: Symbol = DynamicTupleModule.requiredMethod("concat")
-    lazy val DynamicTuple_toArray: Symbol = DynamicTupleModule.requiredMethod("toArray")
-    lazy val DynamicTuple_productToArray: Symbol = DynamicTupleModule.requiredMethod("productToArray")
+  @tu lazy val RuntimeTupleModule: Symbol = ctx.requiredModule("scala.runtime.Tuple")
+  @tu lazy val RuntimeTupleModuleClass: Symbol = RuntimeTupleModule.moduleClass
+    lazy val RuntimeTuple_consIterator: Symbol = RuntimeTupleModule.requiredMethod("consIterator")
+    lazy val RuntimeTuple_concatIterator: Symbol = RuntimeTupleModule.requiredMethod("concatIterator")
+    lazy val RuntimeTuple_apply: Symbol = RuntimeTupleModule.requiredMethod("apply")
+    lazy val RuntimeTuple_cons: Symbol = RuntimeTupleModule.requiredMethod("cons")
+    lazy val RuntimeTuple_size: Symbol = RuntimeTupleModule.requiredMethod("size")
+    lazy val RuntimeTuple_tail: Symbol = RuntimeTupleModule.requiredMethod("tail")
+    lazy val RuntimeTuple_concat: Symbol = RuntimeTupleModule.requiredMethod("concat")
+    lazy val RuntimeTuple_toArray: Symbol = RuntimeTupleModule.requiredMethod("toArray")
+    lazy val RuntimeTuple_productToArray: Symbol = RuntimeTupleModule.requiredMethod("productToArray")
 
   @tu lazy val TupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.TupledFunction")
   def TupledFunctionClass(implicit ctx: Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass

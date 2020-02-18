@@ -28,7 +28,7 @@ class Zip {
 
   @Benchmark
   def tupleZip(): Tuple = {
-    DynamicTuple.zip(tuple1, tuple2)
+    runtime.Tuple.zip(tuple1, tuple2)
   }
 
   @Benchmark

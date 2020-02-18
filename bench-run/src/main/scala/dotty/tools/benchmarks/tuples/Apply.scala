@@ -22,7 +22,7 @@ class Apply {
 
   @Benchmark
   def tupleApply(): Any = {
-    DynamicTuple.apply(tuple, index)
+    runtime.Tuple.apply(tuple, index)
   }
 
   @Benchmark

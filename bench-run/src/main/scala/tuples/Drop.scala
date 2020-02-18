@@ -24,7 +24,7 @@ class Drop {
 
   @Benchmark
   def tupleDrop(): Tuple = {
-    DynamicTuple.drop(tuple, half)
+    runtime.Tuple.drop(tuple, half)
   }
 
   @Benchmark

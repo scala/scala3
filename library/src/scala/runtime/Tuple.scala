@@ -1,20 +1,14 @@
 package scala.runtime
 
-// TODO: Rename to scala.runtime.Tuple
-object DynamicTuple {
-  inline val MaxSpecialized = 22
+object Tuple {
 
-  @deprecated("use toArray", "")
-  def dynamicToArray(self: Tuple): Array[Object] = toArray(self)
+  inline val MaxSpecialized = 22
 
   def toArray(self: Tuple): Array[Object] = (self: Any) match {
     case self: TupleXXL => self.toArray
     case self: Product => productToArray(self)
     case self: Unit => Array.emptyObjectArray
   }
-
-  @deprecated("use toIArray", "")
-  def dynamicToIArray(self: Tuple): IArray[Object] = toIArray(self)
 
   def toIArray(self: Tuple): IArray[Object] = (self: Any) match {
     case self: TupleXXL => self.elems
@@ -31,9 +25,6 @@ object DynamicTuple {
     }
     arr
   }
-
-  @deprecated("Use fromArray")
-  def dynamicFromArray[T <: Tuple](xs: Array[Object]): T = fromArray(xs).asInstanceOf[T]
 
   def fromArray(xs: Array[Object]): Tuple = xs.length match {
     case 0  => ()
@@ -62,15 +53,9 @@ object DynamicTuple {
     case _ => TupleXXL.fromIArray(xs.clone().asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
   }
 
-  @deprecated("Use fromIArray", "")
-  def dynamicFromIArray[T <: Tuple](xs: IArray[Object]): T = fromIArray(xs).asInstanceOf[T]
-
   def fromIArray(xs: IArray[Object]): Tuple =
     if (xs.length <= 22) fromArray(xs.asInstanceOf[Array[Object]])
     else TupleXXL.fromIArray(xs).asInstanceOf[Tuple]
-
-  @deprecated("Use fromProduct", "")
-  def dynamicFromProduct[T <: Tuple](xs: Product): T = fromProduct(xs).asInstanceOf[T]
 
   def fromProduct(xs: Product): Tuple = (xs.productArity match {
     case 1 =>
@@ -260,16 +245,10 @@ object DynamicTuple {
     TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
   }
 
-  @deprecated("Use cons", "")
-  def dynamicCons[H, This <: Tuple](x: H, self: This): H *: This = cons(x, self).asInstanceOf[H *: This]
-
   def cons(x: Any, self: Tuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlCons(x, xxl).asInstanceOf[Tuple]
     case _ => specialCaseCons(x, self)
   }
-
-  @deprecated("Use concat", "")
-  def dynamicConcat[This <: Tuple, That <: Tuple](self: This, that: That): scala.Tuple.Concat[This, That] =  concat(self, that).asInstanceOf[scala.Tuple.Concat[This, That]]
 
   def concat[This <: Tuple, That <: Tuple](self: This, that: That): Tuple = {
     val selfSize: Int = self.size
@@ -297,9 +276,6 @@ object DynamicTuple {
     copyToArray(that, thatSize, arr, selfSize)
     fromIArray(arr.asInstanceOf[IArray[Object]])
   }
-
-  @deprecated("Use size", "")
-  def dynamicSize[This <: Tuple](self: This): scala.Tuple.Size[This] = size(self).asInstanceOf[scala.Tuple.Size[This]]
 
   def size(self: Tuple): Int = (self: Any) match {
     case self: Unit => 0
@@ -373,16 +349,10 @@ object DynamicTuple {
     }
   }
 
-  @deprecated("Use tail", "")
-  def dynamicTail[This <: NonEmptyTuple](self: This): scala.Tuple.Tail[This] = tail(self).asInstanceOf[scala.Tuple.Tail[This]]
-
   def tail(self: NonEmptyTuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlTail(xxl)
     case _ => specialCaseTail(self)
   }
-
-  @deprecated("Use apply", "")
-  def dynamicApply[This <: NonEmptyTuple, N <: Int](self: This, n: N): scala.Tuple.Elem[This, N] = apply(self, n).asInstanceOf[scala.Tuple.Elem[This, N]]
 
   def apply(self: NonEmptyTuple, n: Int): Any = {
     (self: Any) match {
@@ -402,9 +372,6 @@ object DynamicTuple {
     arr.asInstanceOf[IArray[Object]]
   }
 
-  @deprecated("Use zip", "")
-  def dynamicZip[This <: Tuple, T2 <: Tuple](t1: This, t2: T2): scala.Tuple.Zip[This, T2] = zip(t1, t2).asInstanceOf[scala.Tuple.Zip[This, T2]]
-
   def zip(t1: Tuple, t2: Tuple): Tuple = {
     val t1Size: Int = t1.size
     val t2Size: Int = t2.size
@@ -419,16 +386,10 @@ object DynamicTuple {
     )
   }
 
-  @deprecated("Use map", "")
-  def dynamicMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): scala.Tuple.Map[This, F] = map(self, f).asInstanceOf[scala.Tuple.Map[This, F]]
-
   def map[F[_]](self: Tuple, f: [t] => t => F[t]): Tuple = (self: Any) match {
     case self: Unit => ()
-    case _ => Tuple.fromArray(self.asInstanceOf[Product].productIterator.map(f(_)).toArray) // TODO use toIArray of Object to avoid double/triple array copy
+    case _ => fromIArray(self.asInstanceOf[Product].productIterator.map(f(_).asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use toIArray
   }
-
-  @deprecated("Use take", "")
-  def dynamicTake[This <: Tuple, N <: Int](self: This, n: N): scala.Tuple.Take[This, N] = take(self, n).asInstanceOf[scala.Tuple.Take[This, N]]
 
   def take(self: Tuple, n: Int): Tuple = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
@@ -451,9 +412,6 @@ object DynamicTuple {
     }
   }
 
-  @deprecated("Use drop", "")
-  def dynamicDrop[This <: Tuple, N <: Int](self: This, n: N): scala.Tuple.Drop[This, N] = drop(self, n).asInstanceOf[scala.Tuple.Drop[This, N]]
-
   def drop(self: Tuple, n: Int): Tuple = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
     val size = self.size
@@ -475,9 +433,6 @@ object DynamicTuple {
       fromIArray(arr.asInstanceOf[IArray[Object]])
     }
   }
-
-  @deprecated("Use splitAt", "")
-  def dynamicSplitAt[This <: Tuple, N <: Int](self: This, n: N): scala.Tuple.Split[This, N] = splitAt(self, n).asInstanceOf[scala.Tuple.Split[This, N]]
 
   def splitAt(self: Tuple, n: Int): (Tuple, Tuple) = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)

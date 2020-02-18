@@ -24,7 +24,7 @@ class Split {
 
   @Benchmark
   def tupleSplit(): (Tuple, Tuple) = {
-    DynamicTuple.splitAt(tuple, half)
+    runtime.Tuple.splitAt(tuple, half)
   }
 
   @Benchmark
