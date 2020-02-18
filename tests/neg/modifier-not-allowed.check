@@ -1,0 +1,4 @@
+-- [E156] Syntax Error: tests/neg/modifier-not-allowed.scala:2:13 ------------------------------------------------------
+2 |  opaque def o: Int = 3 // error
+  |  ^^^^^^^^^^^^^^^^^^^^^
+  |  Modifier `opaque` is not allowed for this definition

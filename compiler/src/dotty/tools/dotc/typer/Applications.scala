@@ -28,7 +28,8 @@ import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
-import reporting.diagnostic.{Message, messages}
+import reporting.diagnostic.Message
+import reporting.diagnostic.messages.{UnexpectedPatternForSummonFrom, NotAMember}
 import reporting.trace
 import Constants.{Constant, IntTag, LongTag}
 import dotty.tools.dotc.reporting.diagnostic.messages.{UnapplyInvalidReturnType, NotAnExtractor, UnapplyInvalidNumberOfArguments}
@@ -916,7 +917,7 @@ trait Applications extends Compatibility {
                   case CaseDef(Bind(_, Typed(_: Ident, _)), _, _) => // OK
                   case CaseDef(Ident(name), _, _) if name == nme.WILDCARD => // Ok
                   case CaseDef(pat, _, _) =>
-                    ctx.error("Unexpected pattern for summonFrom. Expected `x: T` or `_`", pat.sourcePos)
+                    ctx.error(UnexpectedPatternForSummonFrom(pat), pat.sourcePos)
                 }
                 typed(untpd.InlineMatch(EmptyTree, cases).withSpan(arg.span), pt)
               case _ =>
@@ -1075,7 +1076,7 @@ trait Applications extends Compatibility {
       msgs match
         case msg :: Nil =>
           msg.contained match
-            case messages.NotAMember(_, nme.unapply, _, _) => return notAnExtractor(tree)
+            case NotAMember(_, nme.unapply, _, _) => return notAnExtractor(tree)
             case _ =>
         case _ =>
       msgs.foreach(ctx.reporter.report)

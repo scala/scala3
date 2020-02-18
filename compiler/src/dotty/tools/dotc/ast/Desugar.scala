@@ -558,7 +558,7 @@ object desugar {
       else if (originalTparams.isEmpty)
         appliedRef(enumClassRef)
       else {
-        ctx.error(i"explicit extends clause needed because both enum case and enum class have type parameters"
+        ctx.error(TypedCaseDoesNotExplicitlyExtendTypedEnum(enumClass, cdef)
             , cdef.sourcePos.startPos)
         appliedTypeTree(enumClassRef, constrTparams map (_ => anyRef))
       }
@@ -930,22 +930,27 @@ object desugar {
 
   def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef],
                        givenParamss: List[List[ValDef]])(using ctx: Context): Tree = {
-    val allowed = "allowed here, since collective parameters are given"
     mdef match {
       case mdef: DefDef =>
         if (mdef.mods.is(Extension)) {
-          ctx.error(em"No extension method $allowed", mdef.sourcePos)
+          ctx.error(NoExtensionMethodAllowed(mdef), mdef.sourcePos)
           mdef
+        } else {
+          if (tparams.nonEmpty && mdef.tparams.nonEmpty) then
+            ctx.error(ExtensionMethodCannotHaveTypeParams(mdef), mdef.tparams.head.sourcePos)
+            mdef
+          else cpy.DefDef(mdef)(
+            tparams = tparams ++ mdef.tparams,
+            vparamss = leadingParams :: givenParamss ::: mdef.vparamss
+          ).withMods(mdef.mods | Extension)
         }
-        else cpy.DefDef(mdef)(
-          tparams = tparams ++ mdef.tparams,
-          vparamss = leadingParams :: givenParamss ::: mdef.vparamss
-        ).withMods(mdef.mods | Extension)
       case mdef: Import =>
         mdef
-      case mdef =>
-        ctx.error(em"Only methods $allowed", mdef.sourcePos)
+      case mdef if !mdef.isEmpty => {
+        ctx.error(ExtensionCanOnlyHaveDefs(mdef), mdef.sourcePos)
         mdef
+      }
+      case mdef => mdef
     }
   }
 
@@ -979,7 +984,7 @@ object desugar {
     if (name.isEmpty) name = name.likeSpaced(inventGivenOrExtensionName(impl))
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
       def kind = if (name.isTypeName) "class" else "object"
-      ctx.error(em"illegal redefinition of standard $kind $name", mdef.sourcePos)
+      ctx.error(IllegalRedefinitionOfStandardKind(kind, name), mdef.sourcePos)
       name = name.errorName
     }
     name
@@ -998,7 +1003,7 @@ object desugar {
             case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
               s"extension_${name}_${inventTypeName(vparam.tpt)}"
             case _ =>
-              ctx.error(i"anonymous instance must implement a type or have at least one extension method", impl.sourcePos)
+              ctx.error(AnonymousInstanceCannotBeEmpty(impl), impl.sourcePos)
               nme.ERROR.toString
         else
           impl.parents.map(inventTypeName(_)).mkString("given_", "_", "")
@@ -1170,10 +1175,9 @@ object desugar {
   def checkModifiers(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: MemberDef =>
       var tested: MemberDef = tree
-      def fail(msg: String) = ctx.error(msg, tree.sourcePos)
       def checkApplicable(flag: Flag, test: MemberDefTest): Unit =
         if (tested.mods.is(flag) && !test.applyOrElse(tree, (md: MemberDef) => false)) {
-          fail(i"modifier `${flag.flagsString}` is not allowed for this definition")
+          ctx.error(ModifierNotAllowedForDefinition(flag), tree.sourcePos)
           tested = tested.withMods(tested.mods.withoutFlags(flag))
         }
       checkApplicable(Opaque, legalOpaque)
@@ -1795,7 +1799,7 @@ object desugar {
           def traverse(tree: untpd.Tree)(implicit ctx: Context): Unit = tree match {
             case Splice(expr) => collect(expr)
             case TypSplice(expr) =>
-              ctx.error("Type splices cannot be used in val patterns. Consider using `match` instead.", tree.sourcePos)
+              ctx.error(TypeSpliceInValPattern(expr), tree.sourcePos)
             case _ => traverseChildren(tree)
           }
         }.traverse(expr)

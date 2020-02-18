@@ -1770,4 +1770,177 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("sealed modifier is redundant for objects", errorMsg)
         assertEquals("Foo", mdef.name.toString)
       }
+
+  @Test def enumAndCaseWithTypesNeedExplicitExtends =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |enum E[T,U,V] {
+        |  case C[X,Y,Z](x: X, y: Y, z: Z)
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val TypedCaseDoesNotExplicitlyExtendTypedEnum(enumDef, caseDef) :: Nil = messages
+        assertEquals("explicit extends clause needed because both enum case and enum class have type parameters", errorMsg)
+        assertEquals("E", enumDef.name.toString)
+        assertEquals("C", caseDef.name.toString)
+      }
+
+  @Test def illegalRedefinitionOfStandardKind =
+    checkMessagesAfter(RefChecks.name) {
+      """ package scala {
+        |   class Any()
+        | }
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val IllegalRedefinitionOfStandardKind(kind, name) :: Nil = messages
+        assertEquals("illegal redefinition of standard class Any", errorMsg)
+        assertEquals("class", kind)
+        assertEquals("Any", name.toString)
+      }
+
+  @Test def unexpectedPatternForSummonFrom =
+    checkMessagesAfter(RefChecks.name) {
+      """import compiletime.summonFrom
+        |inline def a = summonFrom {
+        |  case x => ???
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val UnexpectedPatternForSummonFrom(x) :: Nil = messages
+        assertEquals("Unexpected pattern for summonFrom. Expected `x: T` or `_`", errorMsg)
+        assertEquals("x", x.show)
+      }
+
+  @Test def unexpectedPatternForSummonWithPatternBinder =
+    checkMessagesAfter(RefChecks.name) {
+      """import compiletime.summonFrom
+        |inline def a = summonFrom {
+        |  case x@String => ???
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val UnexpectedPatternForSummonFrom(x) :: Nil = messages
+        assertEquals("Unexpected pattern for summonFrom. Expected `x: T` or `_`", errorMsg)
+        assertEquals("given x @ String", x.show)
+      }
+
+  @Test def extensionMethodsNotAllowed =
+    checkMessagesAfter(RefChecks.name) {
+      """object Test {
+        |  extension on[T] (t: T) {
+        |    def (c: T).f: T = ???
+        |  }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val NoExtensionMethodAllowed(x) :: Nil = messages
+        assertEquals("No extension method allowed here, since collective parameters are given", errorMsg)
+        assertEquals("def (c: T) f: T = ???", x.show)
+      }
+
+  @Test def extensionMethodTypeParamsNotAllowed =
+    checkMessagesAfter(RefChecks.name) {
+      """object Test {
+        |  extension on[T] (t: T) {
+        |    def f[U](u: U): T = ???
+        |  }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val ExtensionMethodCannotHaveTypeParams(x) :: Nil = messages
+        assertEquals("Extension method cannot have type parameters since some were already given previously", errorMsg)
+        assertEquals("def f[U](u: U): T = ???", x.show)
+      }
+
+  @Test def extensionMethodCanOnlyHaveDefs =
+    checkMessagesAfter(RefChecks.name) {
+      """object Test {
+        |  extension on[T] (t: T) {
+        |    val v: T = t
+        |  }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val ExtensionCanOnlyHaveDefs(x) :: Nil = messages
+        assertEquals("Only methods allowed here, since collective parameters are given", errorMsg)
+        assertEquals("val v: T = t", x.show)
+      }
+
+  @Test def anonymousInstanceMustImplementAType =
+    checkMessagesAfter(RefChecks.name) {
+      """object Test {
+        |  extension on[T] (t: T) { }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        assertEquals("anonymous instance must implement a type or have at least one extension method", errorMsg)
+      }
+
+  @Test def typeSplicesInValPatterns =
+    checkMessagesAfter(RefChecks.name) {
+      s"""import scala.quoted._
+         |object Foo {
+         |  def f(using q: QuoteContext) = {
+         |      val t: Type[Int] = ???
+         |      val '[ *:[$$t] ] = ???
+         |  }
+         |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val TypeSpliceInValPattern(x) :: Nil = messages
+        assertEquals("Type splices cannot be used in val patterns. Consider using `match` instead.", errorMsg)
+        assertEquals("t", x.show)
+      }
+
+  @Test def modifierNotAllowedForDefinition =
+    checkMessagesAfter(RefChecks.name) {
+      """object Test {
+        |  opaque def o: Int = 3
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head.msg
+        val ModifierNotAllowedForDefinition(x) :: Nil = messages
+        assertEquals("Modifier `opaque` is not allowed for this definition", errorMsg)
+        assertEquals("opaque", x.flagsString)
+      }
 }

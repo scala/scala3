@@ -2443,4 +2443,117 @@ object messages {
            | ${hl("object")} ${mdef.name} { }
            |""".stripMargin
   }
+
+  case class TypedCaseDoesNotExplicitlyExtendTypedEnum(enumDef: Symbol, caseDef: untpd.TypeDef)(implicit ctx: Context)
+    extends Message(TypedCaseDoesNotExplicitlyExtendTypedEnumID) {
+    val kind: String = "Syntax"
+    val msg: String = i"explicit extends clause needed because both enum case and enum class have type parameters"
+
+    val explanation: String =
+      em"""Enumerations where the enum class as well as the enum case have type parameters need
+          |an explicit extends.
+          |for example:
+          | ${hl("enum")} ${enumDef.name}[T] {
+          |  ${hl("case")} ${caseDef.name}[U](u: U) ${hl("extends")} ${enumDef.name}[U]
+          | }
+          |""".stripMargin
+  }
+
+  case class IllegalRedefinitionOfStandardKind(kindType: String, name: Name)(implicit ctx: Context)
+    extends Message(IllegalRedefinitionOfStandardKindID) {
+    val kind: String = "Syntax"
+    val msg: String = em"illegal redefinition of standard $kindType $name"
+
+    val explanation: String =
+      em"""| "$name" is a standard Scala core `$kindType`
+           | Please choose a different name to avoid conflicts
+           |""".stripMargin
+  }
+
+ case class NoExtensionMethodAllowed(mdef: untpd.DefDef)(implicit ctx: Context)
+    extends Message(NoExtensionMethodAllowedID) {
+    val kind: String = "Syntax"
+    val msg: String = em"No extension method allowed here, since collective parameters are given"
+
+    val explanation: String =
+      em"""|Extension method:
+           |  `${mdef}`
+           |is defined inside an extension clause which has collective parameters.
+           |""".stripMargin
+  }
+
+ case class ExtensionMethodCannotHaveTypeParams(mdef: untpd.DefDef)(implicit ctx: Context)
+    extends Message(ExtensionMethodCannotHaveTypeParamsID) {
+    val kind: String = "Syntax"
+    val msg: String = i"Extension method cannot have type parameters since some were already given previously"
+
+    val explanation: String =
+      em"""|Extension method:
+           |  `${mdef}`
+           |has type parameters `[${mdef.tparams.map(_.show).mkString(",")}]`, while the extension clause has
+           |it's own type parameters. Please consider moving these to the extension clause's type parameter list.
+           |""".stripMargin
+  }
+
+ case class ExtensionCanOnlyHaveDefs(mdef: untpd.Tree)(implicit ctx: Context)
+    extends Message(ExtensionCanOnlyHaveDefsID) {
+    val kind: String = "Syntax"
+    val msg: String = em"Only methods allowed here, since collective parameters are given"
+
+    val explanation: String =
+      em"""Extension clauses can only have `def`s
+          | `${mdef.show}` is not a valid expression here.
+          |""".stripMargin
+  }
+
+  case class UnexpectedPatternForSummonFrom(tree: Tree[_])(implicit ctx: Context)
+    extends Message(UnexpectedPatternForSummonFromID) {
+    val kind: String = "Syntax"
+    val msg: String = em"Unexpected pattern for summonFrom. Expected ${hl("`x: T`")} or ${hl("`_`")}"
+
+    val explanation: String =
+      em"""|The pattern "${tree.show}" provided in the ${hl("case")} expression of the ${hl("summonFrom")},
+           | needs to be of the form ${hl("`x: T`")} or ${hl("`_`")}.
+           |
+           | Example usage:
+           | inline def a = summonFrom {
+           |  case x: T => ???
+           | }
+           |
+           | or
+           | inline def a = summonFrom {
+           |  case _ => ???
+           | }
+           |""".stripMargin
+  }
+
+  case class AnonymousInstanceCannotBeEmpty(impl:  untpd.Template)(implicit ctx: Context)
+    extends Message(AnonymousInstanceCannotBeEmptyID) {
+    val kind: String = "Syntax"
+    val msg: String = i"anonymous instance must implement a type or have at least one extension method"
+
+    val explanation: String =
+      em"""|Anonymous instances cannot be defined with an empty body. The block
+           |`${impl.show}` should either contain an implemented type or at least one extension method.
+           |""".stripMargin
+  }
+
+  case class TypeSpliceInValPattern(expr:  untpd.Tree)(implicit ctx: Context)
+    extends Message(TypeSpliceInValPatternID) {
+    val kind: String = "Syntax"
+    val msg: String = "Type splices cannot be used in val patterns. Consider using `match` instead."
+
+    val explanation: String =
+      em"""|Type splice: `$$${expr.show}` cannot be used in a `val` pattern. Consider rewriting the `val` pattern
+           |as a `match` with a corresponding `case` to replace the `val`.
+           |""".stripMargin
+  }
+
+  case class ModifierNotAllowedForDefinition(flag: Flag)(implicit ctx: Context)
+    extends Message(ModifierNotAllowedForDefinitionID) {
+    val kind: String = "Syntax"
+    val msg: String = s"Modifier `${flag.flagsString}` is not allowed for this definition"
+
+    val explanation: String = ""
+  }
 }

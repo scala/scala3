@@ -1,0 +1,6 @@
+-- [E152] Syntax Error: tests/neg/extensions-can-only-have-defs.scala:3:8 ----------------------------------------------
+3 |    val v: T = ??? // error : extensions can only have defs
+  |    ^^^^^^^^^^^^^^
+  |    Only methods allowed here, since collective parameters are given
+
+longer explanation available when compiling with `-explain`

@@ -1,0 +1,6 @@
+-- [E148] Syntax Error: tests/neg/enumWithType.scala:2:2 ---------------------------------------------------------------
+2 |  case C[U](u: U) // error
+  |  ^
+  |  explicit extends clause needed because both enum case and enum class have type parameters
+
+longer explanation available when compiling with `-explain`
