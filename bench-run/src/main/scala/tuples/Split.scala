@@ -1,7 +1,6 @@
 package dotty.tools.benchmarks.tuples
 
 import org.openjdk.jmh.annotations._
-import scala.runtime.DynamicTuple
 
 @State(Scope.Thread)
 class Split {
@@ -24,7 +23,7 @@ class Split {
 
   @Benchmark
   def tupleSplit(): (Unit | Product, Unit | Product) = {
-    DynamicTuple.splitAt(tuple.asInstanceOf, half)
+    runtime.Tuple.splitAt(tuple.asInstanceOf, half)
   }
 
   @Benchmark

@@ -2,7 +2,6 @@ package dotty.tools.benchmarks.tuples
 
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
-import scala.runtime.DynamicTuple
 
 @State(Scope.Thread)
 class Concat {
@@ -28,6 +27,6 @@ class Concat {
 
   @Benchmark
   def tupleConcat(): Unit | Product = {
-    DynamicTuple.concat(tuple1.asInstanceOf[Unit | Product], tuple2.asInstanceOf[Unit | Product])
+    runtime.Tuple.concat(tuple1.asInstanceOf[Unit | Product], tuple2.asInstanceOf[Unit | Product])
   }
 }

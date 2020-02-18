@@ -1,7 +1,6 @@
 package dotty.tools.benchmarks.tuples
 
 import org.openjdk.jmh.annotations._
-import scala.runtime.DynamicTuple
 
 @State(Scope.Thread)
 class Take {
@@ -24,7 +23,7 @@ class Take {
 
   @Benchmark
   def tupleTake(): Unit | Product = {
-    DynamicTuple.take(tuple.asInstanceOf, half)
+    runtime.Tuple.take(tuple.asInstanceOf, half)
   }
 
   @Benchmark

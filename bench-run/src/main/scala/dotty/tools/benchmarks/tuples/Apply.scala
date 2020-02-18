@@ -1,7 +1,6 @@
 package dotty.tools.benchmarks.tuples
 
 import org.openjdk.jmh.annotations._
-import scala.runtime.DynamicTuple
 
 @State(Scope.Thread)
 class Apply {
@@ -22,7 +21,7 @@ class Apply {
 
   @Benchmark
   def tupleApply(): Any = {
-    DynamicTuple.apply(tuple.asInstanceOf[Product], index)
+    runtime.Tuple.apply(tuple.asInstanceOf[Product], index)
   }
 
   @Benchmark

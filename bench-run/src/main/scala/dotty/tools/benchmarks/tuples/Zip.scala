@@ -1,7 +1,6 @@
 package dotty.tools.benchmarks.tuples
 
 import org.openjdk.jmh.annotations._
-import scala.runtime.DynamicTuple
 
 @State(Scope.Thread)
 class Zip {
@@ -28,7 +27,7 @@ class Zip {
 
   @Benchmark
   def tupleZip(): Unit | Product = {
-    DynamicTuple.zip(tuple1.asInstanceOf, tuple2.asInstanceOf)
+    runtime.Tuple.zip(tuple1.asInstanceOf, tuple2.asInstanceOf)
   }
 
   @Benchmark

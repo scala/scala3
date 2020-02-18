@@ -1,7 +1,6 @@
 package dotty.tools.benchmarks.tuples
 
 import org.openjdk.jmh.annotations._
-import scala.runtime.DynamicTuple
 
 @State(Scope.Thread)
 class Cons {
@@ -24,7 +23,7 @@ class Cons {
 
   @Benchmark
   def tupleCons(): Unit | Product = {
-    DynamicTuple.cons("elem", tuple.asInstanceOf[Unit | Product])
+    runtime.Tuple.cons("elem", tuple.asInstanceOf[Unit | Product])
   }
 
   @Benchmark
