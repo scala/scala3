@@ -23,8 +23,8 @@ class Take {
   }
 
   @Benchmark
-  def tupleTake(): Tuple = {
-    DynamicTuple.take(tuple, half)
+  def tupleTake(): Unit | Product = {
+    DynamicTuple.take(tuple.asInstanceOf, half)
   }
 
   @Benchmark

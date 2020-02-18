@@ -23,8 +23,8 @@ class Drop {
   }
 
   @Benchmark
-  def tupleDrop(): Tuple = {
-    DynamicTuple.drop(tuple, half)
+  def tupleDrop(): Unit | Product = {
+    DynamicTuple.drop(tuple.asInstanceOf, half)
   }
 
   @Benchmark

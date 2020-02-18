@@ -29,8 +29,8 @@ class Map {
   type Id[X] = X
 
   @Benchmark
-  def tupleMap(): Tuple = {
-    DynamicTuple.map[Id](tuple, [T] => (x:T) => x.asInstanceOf[String].updated(0, 'a').asInstanceOf[T])
+  def tupleMap(): Unit | Product = {
+    DynamicTuple.map[Id](tuple.asInstanceOf[Unit | Product], (x: Any) => x.asInstanceOf[String].updated(0, 'a'))
   }
 
   @Benchmark

@@ -21,8 +21,8 @@ class Tail {
   }
 
   @Benchmark
-  def tupleTail(): Tuple = {
-    DynamicTuple.tail(tuple)
+  def tupleTail(): Unit | Product = {
+    DynamicTuple.tail(tuple.asInstanceOf[Product])
   }
 
   @Benchmark

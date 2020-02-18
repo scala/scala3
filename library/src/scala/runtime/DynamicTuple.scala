@@ -5,18 +5,18 @@ object DynamicTuple {
   inline val MaxSpecialized = 22
 
   @deprecated("use toArray", "")
-  def dynamicToArray(self: Tuple): Array[Object] = toArray(self)
+  def dynamicToArray(self: Tuple): Array[Object] = toArray(self.asInstanceOf)
 
-  def toArray(self: Tuple): Array[Object] = (self: Any) match {
+  def toArray(self: Unit | Product): Array[Object] = self match {
     case self: TupleXXL => self.toArray
     case self: Product => productToArray(self)
     case self: Unit => Array.emptyObjectArray
   }
 
   @deprecated("use toIArray", "")
-  def dynamicToIArray(self: Tuple): IArray[Object] = toIArray(self)
+  def dynamicToIArray(self: Tuple): IArray[Object] = toIArray(self.asInstanceOf)
 
-  def toIArray(self: Tuple): IArray[Object] = (self: Any) match {
+  def toIArray(self: Unit | Product): IArray[Object] = self match {
     case self: TupleXXL => self.elems
     case self: Product => productToArray(self).asInstanceOf[IArray[Object]]
     case self: Unit => Array.emptyObjectArray.asInstanceOf[IArray[Object]]
@@ -35,7 +35,7 @@ object DynamicTuple {
   @deprecated("Use fromArray")
   def dynamicFromArray[T <: Tuple](xs: Array[Object]): T = fromArray(xs).asInstanceOf[T]
 
-  def fromArray(xs: Array[Object]): Tuple = xs.length match {
+  def fromArray(xs: Array[Object]): Unit | Product = xs.length match {
     case 0  => ()
     case 1  => Tuple1(xs(0))
     case 2  => Tuple2(xs(0), xs(1))
@@ -59,15 +59,15 @@ object DynamicTuple {
     case 20 => Tuple20(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19))
     case 21 => Tuple21(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20))
     case 22 => Tuple22(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20), xs(21))
-    case _ => TupleXXL.fromIArray(xs.clone().asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
+    case _ => TupleXXL.fromIArray(xs.clone().asInstanceOf[IArray[Object]])
   }
 
   @deprecated("Use fromIArray", "")
   def dynamicFromIArray[T <: Tuple](xs: IArray[Object]): T = fromIArray(xs).asInstanceOf[T]
 
-  def fromIArray(xs: IArray[Object]): Tuple =
+  def fromIArray(xs: IArray[Object]): Unit | Product =
     if (xs.length <= 22) fromArray(xs.asInstanceOf[Array[Object]])
-    else TupleXXL.fromIArray(xs).asInstanceOf[Tuple]
+    else TupleXXL.fromIArray(xs)
 
   @deprecated("Use fromProduct", "")
   def dynamicFromProduct[T <: Tuple](xs: Product): T = fromProduct(xs).asInstanceOf[T]
@@ -191,8 +191,8 @@ object DynamicTuple {
   })
 
   // Cons for Tuple1 to Tuple22
-  private def specialCaseCons(x: Any, self: Tuple): Tuple = {
-    (self: Any) match {
+  private def specialCaseCons(x: Any, self: Unit | Product): Product = {
+    (self: @unchecked) match {
       case self: Unit =>
         Tuple1(x)
       case self: Tuple1[_] =>
@@ -248,7 +248,7 @@ object DynamicTuple {
           self._18.asInstanceOf[Object], self._19.asInstanceOf[Object], self._20.asInstanceOf[Object],
           self._21.asInstanceOf[Object], self._22.asInstanceOf[Object],
         )
-        TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
+        TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
     }
   }
 
@@ -261,54 +261,54 @@ object DynamicTuple {
   }
 
   @deprecated("Use cons", "")
-  def dynamicCons[H, This <: Tuple](x: H, self: This): H *: This = cons(x, self).asInstanceOf[H *: This]
+  def dynamicCons[H, This <: Tuple](x: H, self: This): H *: This = cons(x, self.asInstanceOf).asInstanceOf[H *: This]
 
-  def cons(x: Any, self: Tuple): Tuple = (self: Any) match {
-    case xxl: TupleXXL => xxlCons(x, xxl).asInstanceOf[Tuple]
+  def cons(x: Any, self: Unit | Product): Product = self match {
+    case xxl: TupleXXL => xxlCons(x, xxl)
     case _ => specialCaseCons(x, self)
   }
 
   @deprecated("Use concat", "")
-  def dynamicConcat[This <: Tuple, That <: Tuple](self: This, that: That): scala.Tuple.Concat[This, That] =  concat(self, that).asInstanceOf[scala.Tuple.Concat[This, That]]
+  def dynamicConcat[This <: Tuple, That <: Tuple](self: This, that: That): scala.Tuple.Concat[This, That] =  concat(self.asInstanceOf, that.asInstanceOf).asInstanceOf[scala.Tuple.Concat[This, That]]
 
-  def concat[This <: Tuple, That <: Tuple](self: This, that: That): Tuple = {
-    val selfSize: Int = self.size
+  def concat(self: Unit | Product, that: Unit | Product): Unit | Product = {
+    val selfSize: Int = size(self)
     // If one of the tuples is empty, we can leave early
     if selfSize == 0 then
       return that
 
-    val thatSize: Int = that.size
+    val thatSize: Int = size(that)
     if thatSize == 0 then
       return self
 
     val arr = new Array[Object](selfSize + thatSize)
 
     // Copies the tuple to an array, at the given offset
-    inline def copyToArray[T <: Tuple](tuple: T, size: Int, array: Array[Object], offset: Int): Unit = (tuple: Any) match {
+    inline def copyToArray(tuple: Product, size: Int, array: Array[Object], offset: Int): Unit = (tuple: Any) match {
       case xxl: TupleXXL =>
         System.arraycopy(xxl.elems, 0, array, offset, size)
       case _ =>
-        tuple.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+        tuple.productIterator.asInstanceOf[Iterator[Object]]
           .copyToArray(array, offset, size)
     }
 
     // In the general case, we copy the two tuples to an array, and convert it back to a tuple
-    copyToArray(self, selfSize, arr, 0)
-    copyToArray(that, thatSize, arr, selfSize)
+    copyToArray(self.asInstanceOf[Product], selfSize, arr, 0)
+    copyToArray(that.asInstanceOf[Product], thatSize, arr, selfSize)
     fromIArray(arr.asInstanceOf[IArray[Object]])
   }
 
   @deprecated("Use size", "")
-  def dynamicSize[This <: Tuple](self: This): scala.Tuple.Size[This] = size(self).asInstanceOf[scala.Tuple.Size[This]]
+  def dynamicSize[This <: Tuple](self: This): scala.Tuple.Size[This] = size(self.asInstanceOf).asInstanceOf[scala.Tuple.Size[This]]
 
-  def size(self: Tuple): Int = (self: Any) match {
+  def size(self: Unit | Product): Int = self match {
     case self: Unit => 0
     case self: Product => self.productArity
   }
 
   // Tail for Tuple1 to Tuple22
-  private def specialCaseTail(self: Tuple): Tuple = {
-    (self: Any) match {
+  private def specialCaseTail(self: Product): Unit | Product = {
+    self match {
       case self: Tuple1[_] =>
         ()
       case self: Tuple2[_, _] =>
@@ -357,7 +357,7 @@ object DynamicTuple {
   }
 
   // Tail for TupleXXL
-  private def xxlTail(xxl: TupleXXL): Tuple = {
+  private def xxlTail(xxl: TupleXXL): Product = {
     if (xxl.productArity == 23) {
       val elems = xxl.elems
       Tuple22(
@@ -369,27 +369,23 @@ object DynamicTuple {
     } else {
       val arr = new Array[Object](xxl.elems.length - 1)
       System.arraycopy(xxl.elems, 1, arr, 0, xxl.elems.length - 1)
-      TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
+      TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
     }
   }
 
   @deprecated("Use tail", "")
-  def dynamicTail[This <: NonEmptyTuple](self: This): scala.Tuple.Tail[This] = tail(self).asInstanceOf[scala.Tuple.Tail[This]]
+  def dynamicTail[This <: NonEmptyTuple](self: This): scala.Tuple.Tail[This] = tail(self.asInstanceOf).asInstanceOf[scala.Tuple.Tail[This]]
 
-  def tail(self: NonEmptyTuple): Tuple = (self: Any) match {
+  def tail(self: Product): Unit | Product = self match {
     case xxl: TupleXXL => xxlTail(xxl)
-    case _ => specialCaseTail(self)
+    case self => specialCaseTail(self)
   }
 
   @deprecated("Use apply", "")
-  def dynamicApply[This <: NonEmptyTuple, N <: Int](self: This, n: N): scala.Tuple.Elem[This, N] = apply(self, n).asInstanceOf[scala.Tuple.Elem[This, N]]
+  def dynamicApply[This <: NonEmptyTuple, N <: Int](self: This, n: N): scala.Tuple.Elem[This, N] = apply(self.asInstanceOf, n).asInstanceOf[scala.Tuple.Elem[This, N]]
 
-  def apply(self: NonEmptyTuple, n: Int): Any = {
-    (self: Any) match {
-      // case self: Unit => throw new IndexOutOfBoundsException(n.toString)
-      case self: Product => self.productElement(n)
-    }
-  }
+  def apply(self: Product, n: Int): Any =
+    self.productElement(n)
 
   // Benchmarks showed that this is faster than doing (it1 zip it2).copyToArray(...)
   private def zipIterators(it1: Iterator[Any], it2: Iterator[Any], size: Int): IArray[Object] = {
@@ -403,41 +399,41 @@ object DynamicTuple {
   }
 
   @deprecated("Use zip", "")
-  def dynamicZip[This <: Tuple, T2 <: Tuple](t1: This, t2: T2): scala.Tuple.Zip[This, T2] = zip(t1, t2).asInstanceOf[scala.Tuple.Zip[This, T2]]
+  def dynamicZip[This <: Tuple, T2 <: Tuple](t1: This, t2: T2): scala.Tuple.Zip[This, T2] = zip(t1.asInstanceOf, t2.asInstanceOf).asInstanceOf[scala.Tuple.Zip[This, T2]]
 
-  def zip(t1: Tuple, t2: Tuple): Tuple = {
-    val t1Size: Int = t1.size
-    val t2Size: Int = t2.size
-    val size = Math.min(t1Size, t2Size)
-    if size == 0 then ()
-    else Tuple.fromIArray(
+  def zip(t1: Unit | Product, t2: Unit | Product): Unit | Product = {
+    val t1Size: Int = size(t1)
+    val t2Size: Int = size(t2)
+    val resSize = Math.min(t1Size, t2Size)
+    if resSize == 0 then ()
+    else fromIArray(
       zipIterators(
         t1.asInstanceOf[Product].productIterator,
         t2.asInstanceOf[Product].productIterator,
-        size
+        resSize
       )
     )
   }
 
   @deprecated("Use map", "")
-  def dynamicMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): scala.Tuple.Map[This, F] = map(self, f).asInstanceOf[scala.Tuple.Map[This, F]]
+  def dynamicMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): scala.Tuple.Map[This, F] = map(self.asInstanceOf, f[Any]).asInstanceOf[scala.Tuple.Map[This, F]]
 
-  def map[F[_]](self: Tuple, f: [t] => t => F[t]): Tuple = (self: Any) match {
+  def map[F[_]](self: Unit | Product, f: Any => Any): Unit | Product = self match {
     case self: Unit => ()
-    case _ => Tuple.fromArray(self.asInstanceOf[Product].productIterator.map(f(_)).toArray) // TODO use toIArray of Object to avoid double/triple array copy
+    case self: Product => fromIArray(self.productIterator.map(f(_).asInstanceOf[Object]).toArray[Object].asInstanceOf[IArray[Object]]) // TODO use toIArray
   }
 
   @deprecated("Use take", "")
-  def dynamicTake[This <: Tuple, N <: Int](self: This, n: N): scala.Tuple.Take[This, N] = take(self, n).asInstanceOf[scala.Tuple.Take[This, N]]
+  def dynamicTake[This <: Tuple, N <: Int](self: This, n: N): scala.Tuple.Take[This, N] = take(self.asInstanceOf, n).asInstanceOf[scala.Tuple.Take[This, N]]
 
-  def take(self: Tuple, n: Int): Tuple = {
+  def take(self: Unit | Product , n: Int): Unit | Product = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
-    val selfSize: Int = self.size
+    val selfSize: Int = size(self)
     val actualN = Math.min(n, selfSize)
 
     if (actualN == 0) ()
     else {
-      val arr = (self: Any) match {
+      val arr = self match {
         case xxl: TupleXXL =>
           xxl.elems.asInstanceOf[Array[Object]].take(actualN)
         case _ =>
@@ -452,17 +448,17 @@ object DynamicTuple {
   }
 
   @deprecated("Use drop", "")
-  def dynamicDrop[This <: Tuple, N <: Int](self: This, n: N): scala.Tuple.Drop[This, N] = drop(self, n).asInstanceOf[scala.Tuple.Drop[This, N]]
+  def dynamicDrop[This <: Tuple, N <: Int](self: This, n: N): scala.Tuple.Drop[This, N] = drop(self.asInstanceOf, n).asInstanceOf[scala.Tuple.Drop[This, N]]
 
-  def drop(self: Tuple, n: Int): Tuple = {
+  def drop(self: Unit | Product, n: Int): Unit | Product = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
-    val size = self.size
-    val actualN = Math.min(n, size)
-    val rem = size - actualN
+    val selfSize = size(self)
+    val actualN = Math.min(n, selfSize)
+    val rem = selfSize - actualN
 
     if (rem == 0) ()
     else {
-      val arr = (self: Any) match {
+      val arr = self match {
         case xxl: TupleXXL =>
           xxl.elems.asInstanceOf[Array[Object]].drop(actualN)
         case _ =>
@@ -477,22 +473,22 @@ object DynamicTuple {
   }
 
   @deprecated("Use splitAt", "")
-  def dynamicSplitAt[This <: Tuple, N <: Int](self: This, n: N): scala.Tuple.Split[This, N] = splitAt(self, n).asInstanceOf[scala.Tuple.Split[This, N]]
+  def dynamicSplitAt[This <: Tuple, N <: Int](self: This, n: N): scala.Tuple.Split[This, N] = splitAt(self.asInstanceOf, n).asInstanceOf[scala.Tuple.Split[This, N]]
 
-  def splitAt(self: Tuple, n: Int): (Tuple, Tuple) = {
+  def splitAt(self: Unit | Product, n: Int): (Unit | Product, Unit | Product) = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
-    val size = self.size
-    val actualN = Math.min(n, size)
-    val (arr1, arr2) = (self: Any) match {
+    val selfSize = size(self)
+    val actualN = Math.min(n, selfSize)
+    val (arr1, arr2) = self match {
       case () => (Array.empty[Object], Array.empty[Object])
       case xxl: TupleXXL =>
         xxl.elems.asInstanceOf[Array[Object]].splitAt(actualN)
       case _ =>
         val arr1 = new Array[Object](actualN)
-        val arr2 = new Array[Object](size - actualN)
+        val arr2 = new Array[Object](selfSize - actualN)
         val it = self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
         it.copyToArray(arr1, 0, actualN)
-        it.copyToArray(arr2, 0, size - actualN)
+        it.copyToArray(arr2, 0, selfSize - actualN)
         (arr1, arr2)
     }
 
@@ -502,10 +498,10 @@ object DynamicTuple {
     )
   }
 
-  def consIterator(head: Any, tail: Tuple): Iterator[Any] =
+  def consIterator(head: Any, tail: Unit | Product): Iterator[Any] =
     Iterator.single(head) ++ tail.asInstanceOf[Product].productIterator
 
-  def concatIterator(tup1: Tuple, tup2: Tuple): Iterator[Any] =
+  def concatIterator(tup1: Unit | Product, tup2: Unit | Product): Iterator[Any] =
     tup1.asInstanceOf[Product].productIterator ++ tup2.asInstanceOf[Product].productIterator
 
 }

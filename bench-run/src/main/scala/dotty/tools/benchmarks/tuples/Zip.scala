@@ -27,8 +27,8 @@ class Zip {
   }
 
   @Benchmark
-  def tupleZip(): Tuple = {
-    DynamicTuple.zip(tuple1, tuple2)
+  def tupleZip(): Unit | Product = {
+    DynamicTuple.zip(tuple1.asInstanceOf, tuple2.asInstanceOf)
   }
 
   @Benchmark

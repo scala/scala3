@@ -23,8 +23,8 @@ class Cons {
   }
 
   @Benchmark
-  def tupleCons(): Tuple = {
-    DynamicTuple.cons("elem", tuple)
+  def tupleCons(): Unit | Product = {
+    DynamicTuple.cons("elem", tuple.asInstanceOf[Unit | Product])
   }
 
   @Benchmark

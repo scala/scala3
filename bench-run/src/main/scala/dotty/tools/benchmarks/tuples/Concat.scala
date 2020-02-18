@@ -27,7 +27,7 @@ class Concat {
   }
 
   @Benchmark
-  def tupleConcat(): Tuple = {
-    DynamicTuple.concat(tuple1, tuple2)
+  def tupleConcat(): Unit | Product = {
+    DynamicTuple.concat(tuple1.asInstanceOf[Unit | Product], tuple2.asInstanceOf[Unit | Product])
   }
 }

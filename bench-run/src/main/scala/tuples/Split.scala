@@ -23,8 +23,8 @@ class Split {
   }
 
   @Benchmark
-  def tupleSplit(): (Tuple, Tuple) = {
-    DynamicTuple.splitAt(tuple, half)
+  def tupleSplit(): (Unit | Product, Unit | Product) = {
+    DynamicTuple.splitAt(tuple.asInstanceOf, half)
   }
 
   @Benchmark
