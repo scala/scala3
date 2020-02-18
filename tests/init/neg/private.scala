@@ -1,5 +1,5 @@
 class A(a: Int) {
-  a + 3
+  val _ = a + 3
   def foo() = a * 2
 }
 
