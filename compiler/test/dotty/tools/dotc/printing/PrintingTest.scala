@@ -21,12 +21,6 @@ class PrintingTest {
   val testsDir = "tests/printing"
   val options = List("-Xprint:typer", "-color:never", "-classpath", TestConfiguration.basicClasspath)
 
-  private def fileContent(filePath: String): List[String] =
-    if (new File(filePath).exists)
-      Source.fromFile(filePath, "UTF-8").getLines().toList
-    else Nil
-
-
   private def compileFile(path: JPath): Boolean = {
     val baseFilePath  = path.toString.stripSuffix(".scala")
     val checkFilePath = baseFilePath + ".check"
@@ -42,8 +36,20 @@ class PrintingTest {
     }
 
     val actualLines = byteStream.toString("UTF-8").split("\\r?\\n")
+    // 'options' includes option '-Xprint:typer' so the first output line
+    // looks similar to "result of tests/printing/i620.scala after typer:";
+    // check files use slashes as file separators (Unix) but running tests
+    // on Windows produces backslashes.
+    // NB. option '-Xprint:<..>' can specify several phases.
+    val filteredLines =
+      if (config.Properties.isWin)
+        actualLines.map(line =>
+          if (line.startsWith("result of")) line.replaceAll("\\\\", "/") else line
+        )
+      else
+        actualLines
 
-    FileDiff.checkAndDump(path.toString, actualLines.toIndexedSeq, checkFilePath)
+    FileDiff.checkAndDump(path.toString, filteredLines.toIndexedSeq, checkFilePath)
   }
 
   @Test
