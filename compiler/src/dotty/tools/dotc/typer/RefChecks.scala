@@ -362,6 +362,8 @@ object RefChecks {
             s"$clazz inherits conflicting members:\n  "
               + infoStringWithLocation(other) + "  and\n  " + infoStringWithLocation(member)
               + "\n(Note: this can be resolved by declaring an override in " + clazz + ".)")
+        else if member.is(Exported) then
+          overrideError("cannot override since it comes from an export")
         else
           overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
