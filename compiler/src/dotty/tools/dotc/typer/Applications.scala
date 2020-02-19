@@ -339,7 +339,7 @@ trait Applications extends Compatibility {
       else
         args
 
-    protected def init(): Unit = methType match {
+    protected def initWith(mt: Type): Unit = mt match {
       case methType: MethodType =>
         // apply the result type constraint, unless method type is dependent
         val resultApprox = resultTypeApprox(methType)
@@ -357,6 +357,28 @@ trait Applications extends Compatibility {
         if (methType.isError) ok = false
         else fail(s"$methString does not take parameters")
     }
+
+    protected def reset(): Unit =
+      ok = true
+
+    /**
+     * This function tests whether a given method is applicable to the
+     * given arguments. Context parameters that precede the normal parameters
+     * pose problems for such a test. E.g.:
+
+     *   def f(using String)(g: Int => String): Int
+     *   f(x => "2")
+     *   f(using summon[String])(x => "2")
+
+     * At the first call site, the context parameter is omitted. For the
+     * applicability test to pass in that case, we should also test
+     * the function `f` with its context parameters dropped.
+     */
+    protected def init(): Unit =
+      initWith(methType)
+      if !success then
+        reset()
+        initWith(stripImplicit(methType))
 
     /** The application was successful */
     def success: Boolean = ok
@@ -688,6 +710,12 @@ trait Applications extends Compatibility {
     private var typedArgBuf = new mutable.ListBuffer[Tree]
     private var liftedDefs: mutable.ListBuffer[Tree] = null
     private var myNormalizedFun: Tree = fun
+    override protected def reset(): Unit =
+      super.reset()
+      typedArgBuf = new mutable.ListBuffer[Tree]
+      liftedDefs = null
+      myNormalizedFun = fun
+
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =
@@ -1299,6 +1327,16 @@ trait Applications extends Compatibility {
     }
   }
 
+  /** Drop any implicit parameter section */
+  def stripImplicit(tp: Type)(using Context): Type = tp match {
+    case mt: MethodType if mt.isImplicitMethod =>
+      stripImplicit(resultTypeApprox(mt))
+    case pt: PolyType =>
+      pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
+    case _ =>
+      tp
+  }
+
   /** Compare owner inheritance level.
     *  @param    sym1 The first owner
     *  @param    sym2 The second owner
@@ -1464,16 +1502,6 @@ trait Applications extends Compatibility {
       case _ =>
         if (alt.symbol.isAllOf(SyntheticGivenMethod)) tp.widenToParents
         else tp
-    }
-
-    /** Drop any implicit parameter section */
-    def stripImplicit(tp: Type): Type = tp match {
-      case mt: MethodType if mt.isImplicitMethod =>
-        stripImplicit(resultTypeApprox(mt))
-      case pt: PolyType =>
-        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
-      case _ =>
-        tp
     }
 
     def compareWithTypes(tp1: Type, tp2: Type) = {
@@ -1901,7 +1929,7 @@ trait Applications extends Compatibility {
         recur(altFormals.map(_.tail), args1)
       case _ =>
     }
-    recur(alts.map(_.widen.firstParamTypes), pt.args)
+    recur(alts.map(alt => stripImplicit(alt.widen).firstParamTypes), pt.args)
   }
 
   private def harmonizeWith[T <: AnyRef](ts: List[T])(tpe: T => Type, adapt: (T, Type) => T)(implicit ctx: Context): List[T] = {
