@@ -616,10 +616,10 @@ It is possible to deconstruct or extract values out of `Expr` using pattern matc
 
 #### scala.quoted.matching
 
-In `scala.quoted.matching` contains object that can help extract values from `Expr`.
+`scala.quoted.matching` contains objects that can help extracting values from `Expr`.
 
-* `scala.quoted.matching.Const`: matches an expression a literal value and returns the value.
-* `scala.quoted.matching.Value`: matches an expression a value and returns the value.
+* `scala.quoted.matching.Const`: matches an expression of a literal value and returns the value.
+* `scala.quoted.matching.Value`: matches an expression of a value and returns the value.
 * `scala.quoted.matching.ExprSeq`: matches an explicit sequence of expresions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
 * `scala.quoted.matching.ConstSeq`:  matches an explicit sequence of literal values and returns them.
 * `scala.quoted.matching.ValueSeq`:  matches an explicit sequence of values and returns them.
@@ -666,7 +666,7 @@ private def optimizeExpr(body: Expr[Int])(using QuoteContext): Expr[Int] = body 
   // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
   case '{ sum($n) } => n
   // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
-  case '{ sum(${ExprSeq(args)}: _*) } => sumExpr(args)
+  case '{ sum(${ExprSeq(args)}: _*) } => sumExpr(Expr(args.map(_.value)))
   case body => body
 }
 private def sumExpr(args1: Seq[Expr[Int]])(using QuoteContext): Expr[Int] = {
