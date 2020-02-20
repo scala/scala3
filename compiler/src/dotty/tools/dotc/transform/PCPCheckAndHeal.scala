@@ -68,11 +68,11 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
   protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree = {
     val body1 = transform(body)(spliceContext)
     splice match {
-      case Apply(fun: TypeApply, _) if splice.isTerm =>
+      case Apply(fun @ TypeApply(_, _ :: qctx :: Nil), _) if splice.isTerm =>
         // Type of the splice itsel must also be healed
         // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
         val tp = checkType(splice.sourcePos).apply(splice.tpe.widenTermRefExpr)
-        cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
+        cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: qctx :: Nil), body1 :: Nil)
       case splice: Select => cpy.Select(splice)(body1, splice.name)
     }
   }

@@ -125,12 +125,12 @@ trait CompilerInterface {
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): scala.quoted.Expr[_]
+  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): scala.quoted.Expr[_]
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[_]
+  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): scala.quoted.Type[_]
 
 
   /////////////

@@ -60,7 +60,7 @@ object PickledQuotes {
   }.apply(tp)
 
   /** Unpickle the tree contained in the TastyExpr */
-  def unpickleExpr(tasty: PickledQuote, args: PickledExprArgs)(implicit ctx: Context): Tree = {
+  def unpickleExpr(tasty: PickledQuote, args: PickledArgs)(implicit ctx: Context): Tree = {
     val tastyBytes = TastyString.unpickle(tasty)
     val unpickled = unpickle(tastyBytes, args, isType = false)(ctx.addMode(Mode.ReadPositions))
     /** Force unpickling of the tree, removes the spliced type `@quotedTypeTag type` definitions and dealiases references to `@quotedTypeTag type` */
@@ -76,7 +76,7 @@ object PickledQuotes {
   }
 
   /** Unpickle the tree contained in the TastyType */
-  def unpickleType(tasty: PickledQuote, args: PickledTypeArgs)(implicit ctx: Context): Tree = {
+  def unpickleType(tasty: PickledQuote, args: PickledArgs)(implicit ctx: Context): Tree = {
     val tastyBytes = TastyString.unpickle(tasty)
     val unpickled = unpickle(tastyBytes, args, isType = true)(ctx.addMode(Mode.ReadPositions))
     val tpt = unpickled match {
