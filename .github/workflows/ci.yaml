@@ -2,6 +2,9 @@ name: Dotty CI
 
 on: [push, pull_request]
 
+env:
+  DOTTY_CI_RUN: true
+
 jobs:
   test:
     runs-on: self-hosted

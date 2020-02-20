@@ -417,21 +417,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  if it did, the test should automatically fail.
      */
     protected def tryCompile(testSource: TestSource)(op: => Unit): Unit =
-      try {
-        val testing = s"Testing ${testSource.title}"
-        summaryReport.echoToLog(testing)
-        if (!isInteractive) realStdout.println(testing)
-        op
-      } catch {
-        case e: Throwable => {
+      try op
+      catch
+        case e: Throwable =>
           // if an exception is thrown during compilation, the complete test
           // run should fail
           failTestSource(testSource)
           e.printStackTrace()
           registerCompletion()
           throw e
-        }
-      }
 
     protected def compile(files0: Array[JFile], flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
       val flags = flags0.and("-d", targetDir.getPath)
