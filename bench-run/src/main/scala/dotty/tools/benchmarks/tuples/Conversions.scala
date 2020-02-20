@@ -24,27 +24,27 @@ class Conversions {
 
   @Benchmark
   def tupleToArray(): Array[Object] = {
-    DynamicTuple.toArray(tuple)
+    runtime.Tuple.toArray(tuple)
   }
 
   @Benchmark
   def tupleToIArray(): IArray[Object] = {
-    DynamicTuple.toIArray(tuple)
+    runtime.Tuple.toIArray(tuple)
   }
 
   @Benchmark
   def tupleFromArray(): Tuple = {
-    DynamicTuple.fromArray(array)
+    runtime.Tuple.fromArray(array)
   }
 
   @Benchmark
   def tupleFromIArray(): Tuple = {
-    DynamicTuple.fromIArray(iarray)
+    runtime.Tuple.fromIArray(iarray)
   }
 
   @Benchmark
   def productToArray(): Array[Object] = {
-    DynamicTuple.productToArray(tuple.asInstanceOf[Product])
+    runtime.Tuple.productToArray(tuple.asInstanceOf[Product])
   }
 
   @Benchmark

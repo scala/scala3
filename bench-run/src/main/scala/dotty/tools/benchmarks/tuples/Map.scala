@@ -30,7 +30,7 @@ class Map {
 
   @Benchmark
   def tupleMap(): Tuple = {
-    DynamicTuple.map[Id](tuple, [T] => (x:T) => x.asInstanceOf[String].updated(0, 'a').asInstanceOf[T])
+    runtime.Tuple.map[Id](tuple, [T] => (x:T) => x.asInstanceOf[String].updated(0, 'a').asInstanceOf[T])
   }
 
   @Benchmark

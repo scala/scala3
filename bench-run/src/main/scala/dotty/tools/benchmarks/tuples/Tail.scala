@@ -22,7 +22,7 @@ class Tail {
 
   @Benchmark
   def tupleTail(): Tuple = {
-    DynamicTuple.tail(tuple)
+    runtime.Tuple.tail(tuple)
   }
 
   @Benchmark

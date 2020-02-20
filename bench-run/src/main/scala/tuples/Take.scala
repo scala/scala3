@@ -24,7 +24,7 @@ class Take {
 
   @Benchmark
   def tupleTake(): Tuple = {
-    DynamicTuple.take(tuple, half)
+    runtime.Tuple.take(tuple, half)
   }
 
   @Benchmark
