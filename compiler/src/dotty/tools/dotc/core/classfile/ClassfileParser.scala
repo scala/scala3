@@ -518,8 +518,8 @@ class ClassfileParser(
         else {
           val elems = arr.toList
           val elemType =
-            if (elems.isEmpty) defn.ObjectType
-            else ctx.typeComparer.lub(elems.tpes).widen
+            if (elems.isEmpty) WildcardType // No way to figure out the element type without forcing the annotation constructor
+            else elems.head.tpe.widen
           Some(JavaSeqLiteral(elems, TypeTree(elemType)))
         }
       case ANNOTATION_TAG =>
