@@ -1152,8 +1152,18 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
+  /** Construct the application `$receiver.$method[$targs]($args)` using overloading resolution
+   *  to find a matching overload of `$method` if necessary.
+   *  This is useful when overloading resolution needs to be performed in a phase after typer.
+   *  Note that this will not perform any kind of implicit search.
+   *
+   *  @param expectedType  An expected type of the application used to guide overloading resolution
+   *  @param isContextual  Is this a contextual application (i.e., one that would be written using `.using(...)`) ?
+   */
   def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type],
-                      expectedType: Type, isContextual: Boolean = false)(implicit ctx: Context): Tree = {
+                      expectedType: Type, isContextual: Boolean = false)(implicit parentCtx: Context): Tree = {
+    given ctx as Context = parentCtx.retractMode(Mode.ImplicitsEnabled)
+
     val typer = ctx.typer
     val proto = FunProtoTyped(args, expectedType)(typer, isContextual)
     val denot = receiver.tpe.member(method)
