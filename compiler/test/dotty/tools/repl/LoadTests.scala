@@ -1,9 +1,10 @@
 package dotty.tools.repl
 
-import java.nio.file.{ Path, Files }
+import java.nio.file.{Path, Files}
 import java.util.Comparator
+import java.util.regex.Pattern
 
-import org.junit.{ Test, BeforeClass, AfterClass }
+import org.junit.{Test, BeforeClass, AfterClass}
 import org.junit.Assert.assertEquals
 
 class LoadTests extends ReplTest {
@@ -55,9 +56,9 @@ class LoadTests extends ReplTest {
 
   def loadTest(file: String, defs: String, runCode: String, output: String) =
     eval(s":load ${writeFile(file)}").andThen { implicit s =>
-      assertEquals(defs, storedOutput())
+      assertMultiLineEquals(defs, storedOutput())
       run(runCode)
-      assertEquals(output, storedOutput())
+      assertMultiLineEquals(output, storedOutput())
     }
 
   private def eval(code: String): State =
@@ -80,6 +81,15 @@ object LoadTests {
     val file = Files.createTempFile(dir, "repl_test", ".scala")
     Files.write(file, contents.getBytes)
     file
+  }
+
+  private val pattern = Pattern.compile("\\r[\\n]?|\\n");
+
+  // Ensure 'expected' and 'actual' contain the same line separator(s).
+  private def assertMultiLineEquals(expected: String, actual: String): Unit = {
+    val expected0 = pattern.matcher(expected).replaceAll(System.lineSeparator)
+    val actual0 = pattern.matcher(actual).replaceAll(System.lineSeparator)
+    assertEquals(expected0, actual0)
   }
 
 }
