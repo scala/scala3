@@ -190,7 +190,7 @@ object ReplCompilerTests {
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");
 
   // Ensure 'expected' and 'actual' contain the same line separator(s).
-  private def assertMultiLineEquals(expected: String, actual: String): Unit = {
+  def assertMultiLineEquals(expected: String, actual: String): Unit = {
     val expected0 = pattern.matcher(expected).replaceAll(System.lineSeparator)
     val actual0 = pattern.matcher(actual).replaceAll(System.lineSeparator)
     assertEquals(expected0, actual0)

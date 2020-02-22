@@ -8,7 +8,7 @@ import org.junit.{Test, BeforeClass, AfterClass}
 import org.junit.Assert.assertEquals
 
 class LoadTests extends ReplTest {
-  import LoadTests._
+  import LoadTests._, ReplCompilerTests._
 
   @Test def helloworld = loadTest(
     file    = """|def helloWorld = "Hello, World!"
@@ -81,15 +81,6 @@ object LoadTests {
     val file = Files.createTempFile(dir, "repl_test", ".scala")
     Files.write(file, contents.getBytes)
     file
-  }
-
-  private val pattern = Pattern.compile("\\r[\\n]?|\\n");
-
-  // Ensure 'expected' and 'actual' contain the same line separator(s).
-  private def assertMultiLineEquals(expected: String, actual: String): Unit = {
-    val expected0 = pattern.matcher(expected).replaceAll(System.lineSeparator)
-    val actual0 = pattern.matcher(actual).replaceAll(System.lineSeparator)
-    assertEquals(expected0, actual0)
   }
 
 }
