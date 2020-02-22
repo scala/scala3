@@ -2383,7 +2383,7 @@ object SymDenotations {
     /** is the cache valid in current run at given phase? */
     def isValidAt(phase: Phase)(implicit ctx: Context): Boolean
 
-    /** Render invalid this cache and all cache that depend on it */
+    /** Render invalid this cache and all caches that depend on it */
     def invalidate(): Unit
   }
 

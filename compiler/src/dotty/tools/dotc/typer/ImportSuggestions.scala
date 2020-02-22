@@ -6,7 +6,7 @@ import core._
 import Contexts._, Types._, Symbols._, Names._, Decorators._, ProtoTypes._
 import Flags._, SymDenotations._
 import NameKinds.FlatName
-import config.Printers.implicits
+import config.Printers.{implicits, implicitsDetailed}
 import util.Spans.Span
 import ast.{untpd, tpd}
 import Implicits.{hasExtMethod, Candidate}
@@ -97,7 +97,7 @@ trait ImportSuggestions:
     def rootsIn(ref: TermRef)(using Context): List[TermRef] =
       if seen.contains(ref) then Nil
       else
-        implicits.println(i"search for suggestions in ${ref.symbol.fullName}")
+        implicitsDetailed.println(i"search for suggestions in ${ref.symbol.fullName}")
         seen += ref
         ref :: rootsStrictlyIn(ref)
 
