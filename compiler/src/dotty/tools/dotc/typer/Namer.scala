@@ -265,6 +265,49 @@ class Namer { typer: Typer =>
     sym
   }
 
+  /** Check that a new definition with given name and privacy status
+   *  in current context would not conflict with existing currently
+   *  compiled definitions.
+   *  The logic here is very subtle and fragile due to the fact that
+   *  we are not allowed to force anything.
+   */
+  def checkNoConflict(name: Name, isPrivate: Boolean, span: Span)(using ctx: Context): Name =
+    val owner = ctx.owner
+    var conflictsDetected = false
+
+    def conflict(conflicting: Symbol) =
+      val where: String =
+        if conflicting.owner == owner then ""
+        else if conflicting.owner.isPackageObject then i" in ${conflicting.associatedFile}"
+        else i" in ${conflicting.owner}"
+      ctx.error(i"$name is already defined as $conflicting$where", ctx.source.atSpan(span))
+      conflictsDetected = true
+
+    def checkNoConflictIn(owner: Symbol) =
+      val preExisting = owner.unforcedDecls.lookup(name)
+      if (preExisting.isDefinedInCurrentRun || preExisting.lastKnownDenotation.is(Package))
+          && (!preExisting.lastKnownDenotation.is(Private) || preExisting.owner.is(Package))
+      then conflict(preExisting)
+
+    def pkgObjs(pkg: Symbol) =
+      pkg.denot.asInstanceOf[PackageClassDenotation].packageObjs.map(_.symbol)
+
+    if owner.is(PackageClass) then
+      checkNoConflictIn(owner)
+      for pkgObj <- pkgObjs(owner) do
+        checkNoConflictIn(pkgObj)
+    else
+      def preExisting = ctx.effectiveScope.lookup(name)
+      if (!owner.isClass || name.isTypeName) && preExisting.exists then
+        conflict(preExisting)
+      else if owner.isPackageObject && !isPrivate && name != nme.CONSTRUCTOR then
+        checkNoConflictIn(owner.owner)
+        for pkgObj <- pkgObjs(owner.owner) if pkgObj != owner do
+          checkNoConflictIn(pkgObj)
+
+    if conflictsDetected then name.freshened else name
+  end checkNoConflict
+
   /** If this tree is a member def or an import, create a symbol of it
    *  and store in symOfTree map.
    */
@@ -302,49 +345,6 @@ class Namer { typer: Typer =>
 
     typr.println(i"creating symbol for $tree in ${ctx.mode}")
 
-    /** Check that a new definition with given name and privacy status
-     *  in current context would not conflict with existing currently
-     *  compiled definitions.
-     *  The logic here is very subtle and fragile due to the fact that
-     *  we are not allowed to force anything.
-     */
-    def checkNoConflict(name: Name, isPrivate: Boolean): Name =
-      val owner = ctx.owner
-      var conflictsDetected = false
-
-      def conflict(conflicting: Symbol) =
-        val where: String =
-          if conflicting.owner == owner then ""
-          else if conflicting.owner.isPackageObject then i" in ${conflicting.associatedFile}"
-          else i" in ${conflicting.owner}"
-        ctx.error(i"$name is already defined as $conflicting$where", tree.sourcePos)
-        conflictsDetected = true
-
-      def checkNoConflictIn(owner: Symbol) =
-        val preExisting = owner.unforcedDecls.lookup(name)
-        if (preExisting.isDefinedInCurrentRun || preExisting.lastKnownDenotation.is(Package))
-           && (!preExisting.lastKnownDenotation.is(Private) || preExisting.owner.is(Package))
-        then conflict(preExisting)
-
-      def pkgObjs(pkg: Symbol) =
-        pkg.denot.asInstanceOf[PackageClassDenotation].packageObjs.map(_.symbol)
-
-      if owner.is(PackageClass) then
-        checkNoConflictIn(owner)
-        for pkgObj <- pkgObjs(owner) do
-          checkNoConflictIn(pkgObj)
-      else
-        def preExisting = ctx.effectiveScope.lookup(name)
-        if (!owner.isClass || name.isTypeName) && preExisting.exists then
-          conflict(preExisting)
-        else if owner.isPackageObject && !isPrivate && name != nme.CONSTRUCTOR then
-          checkNoConflictIn(owner.owner)
-          for pkgObj <- pkgObjs(owner.owner) if pkgObj != owner do
-            checkNoConflictIn(pkgObj)
-
-      if conflictsDetected then name.freshened else name
-    end checkNoConflict
-
     /** Create new symbol or redefine existing symbol under lateCompile. */
     def createOrRefine[S <: Symbol](
         tree: MemberDef, name: Name, flags: FlagSet, owner: Symbol, infoFn: S => Type,
@@ -376,7 +376,7 @@ class Namer { typer: Typer =>
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         val flags = checkFlags(tree.mods.flags &~ GivenOrImplicit)
-        val name = checkNoConflict(tree.name, flags.is(Private)).asTypeName
+        val name = checkNoConflict(tree.name, flags.is(Private), tree.span).asTypeName
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
@@ -385,7 +385,7 @@ class Namer { typer: Typer =>
         cls
       case tree: MemberDef =>
         var flags = checkFlags(tree.mods.flags)
-        val name = checkNoConflict(tree.name, flags.is(Private))
+        val name = checkNoConflict(tree.name, flags.is(Private), tree.span)
         tree match
           case tree: ValOrDefDef =>
             if tree.unforcedRhs == EmptyTree
@@ -1079,9 +1079,10 @@ class Namer { typer: Typer =>
           if (whyNoForwarder(mbr) == "") {
             val sym = mbr.symbol
             val forwarder =
-              if (mbr.isType)
+              if mbr.isType then
+                val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
                 ctx.newSymbol(
-                  cls, alias.toTypeName,
+                  cls, forwarderName,
                   Exported | Final,
                   TypeAlias(path.tpe.select(sym)),
                   coord = span)
@@ -1096,7 +1097,8 @@ class Namer { typer: Typer =>
                   else
                     (EmptyFlags, mbr.info.ensureMethodic)
                 val mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
-                ctx.newSymbol(cls, alias, mbrFlags, mbrInfo, coord = span)
+                val forwarderName = checkNoConflict(alias, isPrivate = false, span)
+                ctx.newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
               }
             forwarder.info = avoidPrivateLeaks(forwarder)
             val forwarderDef =
@@ -1146,9 +1148,9 @@ class Namer { typer: Typer =>
         forwarders
       }
 
-      val forwarderss =
-        for (exp @ Export(_, _) <- rest) yield exportForwarders(exp)
-      forwarderss.foreach(_.foreach(fwdr => fwdr.symbol.entered))
+      for case exp @ Export(_, _) <- rest do
+        for forwarder <- exportForwarders(exp) do
+          forwarder.symbol.entered
     }
 
     /** Ensure constructor is completed so that any parameter accessors
