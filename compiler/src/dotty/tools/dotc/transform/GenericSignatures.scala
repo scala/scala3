@@ -9,7 +9,7 @@ import core.Flags._
 import core.Names.{DerivedName, Name, SimpleName, TypeName}
 import core.Symbols._
 import core.TypeApplications.TypeParamInfo
-import core.TypeErasure.erasure
+import core.TypeErasure.{erasure, isUnboundedGeneric}
 import core.Types._
 import core.classfile.ClassfileConstants
 import ast.Trees._
@@ -182,15 +182,16 @@ object GenericSignatures {
         case ref @ TypeParamRef(_: PolyType, _) =>
           typeParamSig(ref.paramName.lastPart)
 
+        case defn.ArrayOf(elemtp) =>
+          if (isUnboundedGeneric(elemtp))
+            jsig(defn.ObjectType)
+          else {
+            builder.append(ClassfileConstants.ARRAY_TAG)
+            jsig(elemtp)
+          }
+
         case RefOrAppliedType(sym, pre, args) =>
-          // If args isEmpty, Array is being used as a type constructor
-          if (sym == defn.ArrayClass && args.nonEmpty)
-            if (unboundedGenericArrayLevel(tp) == 1) jsig(defn.ObjectType)
-            else {
-              builder.append(ClassfileConstants.ARRAY_TAG)
-              args.foreach(jsig(_))
-            }
-          else if (sym == defn.PairClass && tp.tupleArity > Definitions.MaxTupleArity)
+          if (sym == defn.PairClass && tp.tupleArity > Definitions.MaxTupleArity)
             jsig(defn.TupleXXLClass.typeRef)
           else if (isTypeParameterInSig(sym, sym0)) {
             assert(!sym.isAliasType, "Unexpected alias type: " + sym)
@@ -368,17 +369,6 @@ object GenericSignatures {
     case tp => tp :: Nil
   }
 
-  /** Arrays despite their finality may turn up as refined type parents,
-    *  e.g. with "tagged types" like Array[Int] with T.
-    */
-  private def unboundedGenericArrayLevel(tp: Type)(implicit ctx: Context): Int = tp match {
-    case GenericArray(core, level) if !(core <:< defn.AnyRefType) =>
-      level
-    case AndType(tp1, tp2) =>
-      unboundedGenericArrayLevel(tp1) max unboundedGenericArrayLevel(tp2)
-    case _ =>
-      0
-  }
 
   // only refer to type params that will actually make it into the sig, this excludes:
   // * higher-order type parameters
@@ -419,53 +409,6 @@ object GenericSignatures {
     val owner = cls.owner
     if (owner.is(PackageClass) || owner.isTerm) pre else cls.owner.info /* .tpe_* */
   }
-
-  object GenericArray {
-
-    /** Is `tp` an unbounded generic type (i.e. which could be instantiated
-      *  with primitive as well as class types)?.
-      */
-    private def genericCore(tp: Type)(implicit ctx: Context): Type = tp.widenDealias match {
-      /* A Java Array<T> is erased to Array[Object] (T can only be a reference type), where as a Scala Array[T] is
-       * erased to Object. However, there is only symbol for the Array class. So to make the distinction between
-       * a Java and a Scala array, we check if the owner of T comes from a Java class.
-       * This however caused issue scala/bug#5654. The additional test for EXISTENTIAL fixes it, see the ticket comments.
-       * In short, members of an existential type (e.g. `T` in `forSome { type T }`) can have pretty arbitrary
-       * owners (e.g. when computing lubs, <root> is used). All packageClass symbols have `isJavaDefined == true`.
-       */
-      case RefOrAppliedType(sym, tp, _) =>
-        if (sym.isAbstractOrParamType && (!sym.owner.is(JavaDefined) || sym.is(Scala2Existential)))
-          tp
-        else
-          NoType
-
-      case bounds: TypeBounds =>
-        bounds
-
-      case _ =>
-        NoType
-    }
-
-    /** If `tp` is of the form Array[...Array[T]...] where `T` is an abstract type
-      *  then Some((N, T)) where N is the number of Array constructors enclosing `T`,
-      *  otherwise None. Existentials on any level are ignored.
-      */
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp.widenDealias match {
-      case defn.ArrayOf(arg) =>
-        genericCore(arg) match {
-          case NoType =>
-            arg match {
-              case GenericArray(core, level) => Some((core, level + 1))
-              case _ => None
-            }
-          case core =>
-            Some((core, 1))
-        }
-      case _ =>
-        None
-    }
-  }
-
 
   private object RefOrAppliedType {
     def unapply(tp: Type)(implicit ctx: Context): Option[(Symbol, Type, List[Type])] = tp match {
