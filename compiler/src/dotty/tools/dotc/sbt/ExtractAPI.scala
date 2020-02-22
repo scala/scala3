@@ -595,12 +595,11 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     if (!inlineBody.isEmpty) {
       // FIXME: If the body of an inlineable method changes, all the reverse
       // dependencies of this method need to be recompiled. sbt has no way
-      // of tracking method bodies, so as a hack we include the pretty-printed
-      // typed tree of the method as part of the signature we send to sbt.
+      // of tracking method bodies, so as a hack we include the printed
+      // tree of the method as part of the signature we send to sbt.
       // To do this properly we would need a way to hash trees and types in
       // dotty itself.
-      val printTypesCtx = ctx.fresh.setSetting(ctx.settings.XprintTypes, true)
-      annots += marker(inlineBody.show(printTypesCtx))
+      annots += marker(inlineBody.toString)
     }
 
     // In the Scala2 ExtractAPI phase we only extract annotations that extend
@@ -618,12 +617,12 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // FIXME: To faithfully extract an API we should extract the annotation tree,
     // sbt instead wants us to extract the annotation type and its arguments,
     // to do this properly we would need a way to hash trees and types in dotty itself,
-    // instead we pretty-print the annotation tree.
+    // instead we use the raw string representation of the annotation tree.
     // However, we still need to extract the annotation type in the way sbt expect
     // because sbt uses this information to find tests to run (for example
     // junit tests are annotated @org.junit.Test).
     api.Annotation.of(
       apiType(annot.tree.tpe), // Used by sbt to find tests to run
-      Array(api.AnnotationArgument.of("FULLTREE", annot.tree.show)))
+      Array(api.AnnotationArgument.of("FULLTREE", annot.tree.toString)))
   }
 }
