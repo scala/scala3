@@ -1,13 +1,14 @@
 package dotty.tools.repl
 
-import java.nio.file.{ Path, Files }
+import java.nio.file.{Path, Files}
 import java.util.Comparator
+import java.util.regex.Pattern
 
-import org.junit.{ Test, BeforeClass, AfterClass }
+import org.junit.{Test, BeforeClass, AfterClass}
 import org.junit.Assert.assertEquals
 
 class LoadTests extends ReplTest {
-  import LoadTests._
+  import LoadTests._, ReplCompilerTests._
 
   @Test def helloworld = loadTest(
     file    = """|def helloWorld = "Hello, World!"
@@ -55,9 +56,9 @@ class LoadTests extends ReplTest {
 
   def loadTest(file: String, defs: String, runCode: String, output: String) =
     eval(s":load ${writeFile(file)}").andThen { implicit s =>
-      assertEquals(defs, storedOutput())
+      assertMultiLineEquals(defs, storedOutput())
       run(runCode)
-      assertEquals(output, storedOutput())
+      assertMultiLineEquals(output, storedOutput())
     }
 
   private def eval(code: String): State =

@@ -1,9 +1,12 @@
 package dotty.tools.repl
 
+import java.util.regex.Pattern
+
 import org.junit.Assert.{assertTrue => assert, _}
 import org.junit.{Ignore, Test}
 
 class ReplCompilerTests extends ReplTest {
+  import ReplCompilerTests._
 
   private def lines() =
     storedOutput().trim.linesIterator.toList
@@ -157,7 +160,7 @@ class ReplCompilerTests extends ReplTest {
         |}
       """.stripMargin) }
     .andThen         { implicit state =>
-      assertEquals(
+      assertMultiLineEquals(
         """// defined trait Ord
           |// defined object IntOrd""".stripMargin,
         storedOutput().trim
@@ -173,11 +176,24 @@ class ReplCompilerTests extends ReplTest {
 
   @Test def testSingletonPrint = fromInitialState { implicit state =>
     run("""val a = "hello"; val x: a.type = a""")
-    assertEquals("val a: String = hello\nval x: a.type = hello", storedOutput().trim)
+    assertMultiLineEquals("val a: String = hello\nval x: a.type = hello", storedOutput().trim)
   }
 
   @Test def i6574 = fromInitialState { implicit state =>
     run("val a: 1 | 0 = 1")
     assertEquals("val a: 1 | 0 = 1", storedOutput().trim)
   }
+}
+
+object ReplCompilerTests {
+
+  private val pattern = Pattern.compile("\\r[\\n]?|\\n");
+
+  // Ensure 'expected' and 'actual' contain the same line separator(s).
+  def assertMultiLineEquals(expected: String, actual: String): Unit = {
+    val expected0 = pattern.matcher(expected).replaceAll(System.lineSeparator)
+    val actual0 = pattern.matcher(actual).replaceAll(System.lineSeparator)
+    assertEquals(expected0, actual0)
+  }
+
 }
