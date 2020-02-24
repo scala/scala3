@@ -84,9 +84,9 @@ It will create a project with the necessary dependencies and some examples.
 ## Example
 
 Now take exactly the same example as in [Macros](./macros.md). Assume that we
-do not want to pass an array statically but generated code at run-time and pass
+do not want to pass an array statically but generate code at run-time and pass
 the value, also at run-time. Note, how we make a future-stage function of type
-`Expr[Array[Int] => Int]` in line 4 below. Using `run { ... }` we can evaluate an
+`Expr[Array[Int] => Int]` in line 6 below. Using `run { ... }` we can evaluate an
 expression at runtime. Within the scope of `run` we can also invoke `show` on an expression
 to get a source-like representation of the expression.
 
@@ -106,7 +106,7 @@ f.apply(Array(1, 2, 3)) // Returns 6
 ```
 
 Note that if we need to run the main (in an object called `Test`) after
-compilation we need make available the compiler to the runtime:
+compilation we need to make available the compilation to the runtime:
 
 ```shell
 dotc -with-compiler -d out Test.scala
