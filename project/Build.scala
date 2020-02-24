@@ -62,7 +62,7 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "0.22.0-RC1"
+  val referenceVersion = "0.23.0-bin-20200222-811dc19-NIGHTLY"
 
   val baseVersion = "0.23.0"
   val baseSbtDottyVersion = "0.4.0"
