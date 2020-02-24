@@ -10,6 +10,8 @@ Furthermore, a syntax change allows infix operators to be written on the left in
 
 An `@alpha` annotation on a method definition defines an alternate name for the implementation of that method: Example:
 ```scala
+import scala.annotation.alpha
+
 object VecOps {
   @alpha("append") def (xs: Vec[T]) ++= [T] (ys: Vec[T]): Vec[T] = ...
 }
@@ -47,7 +49,7 @@ The `@alpha` annotation serves a dual purpose:
  5. Definitions with names in backticks that are not legal host platform names
     should have an `@alpha` annotation. Lack of such an annotation will raise a deprecation warning.
 
- 6. @alpha annotations must agree: If two definitions are members of an object or class with the same name and matching types, then either none of them has an `@alpha` annotation, or both have `@alpha` annotations with the same name.
+ 6. `@alpha` annotations must agree: If two definitions are members of an object or class with the same name and matching types, then either none of them has an `@alpha` annotation, or both have `@alpha` annotations with the same name.
 
  7. There must be a one-to-one relationship between external and internal names:
  If two definitions are members of an object or class with matching types and both have `@alpha` annotations with the same external name, then their internal method names must also be the same.
@@ -56,6 +58,8 @@ The `@alpha` annotation serves a dual purpose:
 
 An `@infix` annotation on a method definition allows using the method as an infix operation. Example:
 ```scala
+import scala.annotation.alpha
+
 trait MultiSet[T] {
 
   @infix
@@ -70,6 +74,7 @@ trait MultiSet[T] {
 val s1, s2: MultiSet[Int]
 
 s1 union s2         // OK
+s1 `union` s2       // also OK but unusual
 s1.union(s2)        // also OK
 
 s1.difference(s2)   // OK
@@ -77,6 +82,7 @@ s1 `difference` s2  // OK
 s1 difference s2    // gives a deprecation warning
 
 s1 * s2             // OK
+s1 `*` s2           // also OK, but unusual
 s1.*(s2)            // also OK, but unusual
 ```
 Infix operations involving alphanumeric operators are deprecated, unless
@@ -118,7 +124,7 @@ The purpose of the `@infix` annotation is to achieve consistency across a code b
     @infix def (x: A) op (y1: B, y2: B): R  // error: two parameters
     ```
 
- 4. @infix annotations can also be given to type, trait or class definitions that have exactly two type parameters. An infix type like
+ 4. `@infix` annotations can also be given to type, trait or class definitions that have exactly two type parameters. An infix type like
 
     ```scala
     @infix type op[X, Y]
