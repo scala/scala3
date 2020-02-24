@@ -8,13 +8,13 @@ multi-staging programming. We can think of compile-time meta-programming as a
 two stage compilation process: one that we write the code in top-level splices,
 that will be used for code generation (macros) and one that will perform all
 necessecary evaluations at compile-time and an object program that we will run
-as usual. What if we could synthesize code at runtime and offer one extra stage
-to the programmer? Then we can have a value of type `Expr[T]` at runtime that we
+as usual. What if we could synthesize code at run-time and offer one extra stage
+to the programmer? Then we can have a value of type `Expr[T]` at run-time that we
 can essentially treat as a typed-syntax tree that we can either _show_ as a
 string (pretty-print) or compile and run. If the number of quotes exceeds the
-number of splices more than one (effectively handling at run-time values of type
-`Expr[Expr[T]]`, `Expr[Expr[Expr[T]]]`, ... we talk about Multi-Stage
-Programming).
+number of splices by more than one (effectively handling at run-time values of type
+`Expr[Expr[T]]`, `Expr[Expr[Expr[T]]]`, ...) then we talk about Multi-Stage
+Programming.
 
 The motivation behind this _paradigm_ is to let runtime information affect or
 guide code-generation.
@@ -22,11 +22,11 @@ guide code-generation.
 Intuition: The phase in which code is run is determined by the difference
 between the number of splice scopes and quote scopes in which it is embedded.
 
- - If there are more splices than quotes, the code is run at "compile-time" i.e.
+ - If there are more splices than quotes, the code is run at compile-time i.e.
    as a macro. In the general case, this means running an interpreter that
    evaluates the code, which is represented as a typed abstract syntax tree. The
    interpreter can fall back to reflective calls when evaluating an application
-   of a previously compiled method.  If the splice excess is more than one, it
+   of a previously compiled method. If the splice excess is more than one, it
    would mean that a macro’s implementation code (as opposed to the code it
    expands to) invokes other macros. If macros are realized by interpretation,
    this would lead to towers of interpreters, where the first interpreter would
@@ -61,7 +61,7 @@ to be executed at a later stage. To run that code, there is another method
 in class `Expr` called `run`. Note that `$` and `run` both map from `Expr[T]`
 to `T` but only `$` is subject to the PCP, whereas `run` is just a normal method.
 Run provides a `QuoteContext` that can be used to show the expression in the scope of `run`.
-On the other hand `withQuoteContext` provides a `QuoteContext` without evauating the expression.
+On the other hand `withQuoteContext` provides a `QuoteContext` without evaluating the expression.
 
 ```scala
 package scala.quoted.staging
