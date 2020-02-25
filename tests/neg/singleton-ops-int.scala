@@ -72,4 +72,34 @@ object Test {
   val t49: ToString[-1] = "-1"
   val t50: ToString[0] = "-0" // error
   val t51: ToString[200] = "100" // error
+
+  val t52: 1 ^ 2 = 3
+  val t53: 1 ^ 3 = 3 // error
+  val t54: -1 ^ -2 = 1
+  val t55: -1 ^ -3 = 1 // error
+
+  val t56: 1 | 2 = 3
+  val t57: 10 | 12 = 13 // error
+  val t58: -11 | 12 = -3
+  val t59: -111 | -10 = 0 // error
+
+  val t60: 1 & 1 = 1
+  val t61: 1 & 2 = 0
+  val t62: -1 & -3 = 3 // error
+  val t63: -1 & -1 = 1 // error
+
+  val t64: 1 << 1 = 2
+  val t65: 1 << 2 = 4
+  val t66: 1 << 3 = 8
+  val t67: 1 << 4 = 0 // error
+
+  val t68: 100 >> 2 = 25
+  val t69: 123456789 >> 71 = 964506
+  val t70: -7 >> 3 = -1
+  val t71: -7 >> 3 = 0 // error
+
+  val t72: -1 >>> 10000 = 65535
+  val t73: -7 >>> 3 = 536870911
+  val t74: -7 >>> 3 = -1 // error
+
 }

@@ -3842,6 +3842,12 @@ object Types {
               case tpnme.Gt  if nArgs == 2 => constantFold2(intValue, _ > _)
               case tpnme.Ge  if nArgs == 2 => constantFold2(intValue, _ >= _)
               case tpnme.Le  if nArgs == 2 => constantFold2(intValue, _ <= _)
+              case tpnme.Xor if nArgs == 2 => constantFold2(intValue, _ ^ _)
+              case tpnme.AND if nArgs == 2 => constantFold2(intValue, _ & _)
+              case tpnme.OR  if nArgs == 2 => constantFold2(intValue, _ | _)
+              case tpnme.ASR if nArgs == 2 => constantFold2(intValue, _ >> _)
+              case tpnme.LSL if nArgs == 2 => constantFold2(intValue, _ << _)
+              case tpnme.LSR if nArgs == 2 => constantFold2(intValue, _ >>> _)
               case tpnme.Min if nArgs == 2 => constantFold2(intValue, _ min _)
               case tpnme.Max if nArgs == 2 => constantFold2(intValue, _ max _)
               case _ => None
