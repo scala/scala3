@@ -88,11 +88,11 @@ libraryDependencies += "ch.epfl.lamp" %% "dotty-staging" % scalaVersion.value
 ```
 
 and in case you use `dotc`/`dotr` directly, then use the `-with-compiler` flag for both:
+
 ```shell
 dotc -with-compiler -d out Test.scala
 dotr -with-compiler -classpath out Test
 ```
-
 
 ## Example
 
