@@ -81,6 +81,19 @@ From [lampepfl/dotty-staging.g8](https://github.com/lampepfl/dotty-staging.g8).
 
 It will create a project with the necessary dependencies and some examples.
 
+In case you prefer to create the project on your own, make sure to define the following dependency in your build.sbt
+
+```scala
+libraryDependencies += "ch.epfl.lamp" %% "dotty-staging" % scalaVersion.value
+```
+
+and in case you use `dotc`/`dotr` directly, then use the `-with-compiler` flag for both:
+```shell
+dotc -with-compiler -d out Test.scala
+dotr -with-compiler -classpath out Test
+```
+
+
 ## Example
 
 Now take exactly the same example as in [Macros](./macros.md). Assume that we
@@ -104,24 +117,3 @@ val f: Array[Int] => Int = run {
 
 f.apply(Array(1, 2, 3)) // Returns 6
 ```
-
-Note that if we need to run the main (in an object called `Test`) after
-compilation we need to make available the compilation to the runtime:
-
-```shell
-dotc -with-compiler -d out Test.scala
-dotr -with-compiler -classpath out Test
-```
-
-Or, from SBT:
-
-```scala
-libraryDependencies += "ch.epfl.lamp" %% "dotty-staging" % scalaVersion.value
-```
-
-## Template project
-Using sbt version `1.1.5+`, do:
-```
-sbt new lampepfl/dotty-staging.g8
-```
-in the folder where you want to clone the template.
