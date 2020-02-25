@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core.Phases._
@@ -299,9 +300,9 @@ object Erasure {
      *    e -> unbox(e, PT)  if `PT` is a primitive type and `e` is not of primitive type
      *    e -> cast(e, PT)   otherwise
      */
-    def adaptToType(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
-      if (pt.isInstanceOf[FunProto]) tree
-      else tree.tpe.widen match {
+    def adaptToType(tree: Tree, pt: Type)(implicit ctx: Context): Tree = pt match
+      case _: FunProto | AnyFunctionProto => tree
+      case _ => tree.tpe.widen match {
         case MethodType(Nil) if tree.isTerm =>
           adaptToType(tree.appliedToNone, pt)
         case tpw =>
@@ -461,7 +462,7 @@ object Erasure {
 
       def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
         if erasedPre.isAnyRef then
-          runtimeCallWithProtoArgs(tree.name.genericArrayOp, pt, qual)
+          runtimeCall(tree.name.genericArrayOp, qual :: Nil)
         else if !(qual.tpe <:< erasedPre) then
           selectArrayMember(cast(qual, erasedPre), erasedPre)
         else
@@ -507,20 +508,9 @@ object Erasure {
         outer.path(toCls = tree.symbol)
       }
 
-    private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
+    private def runtimeCall(name: Name, args: List[Tree])(implicit ctx: Context): Tree =
       val meth = defn.runtimeMethodRef(name)
-      val followingParams = meth.symbol.info.firstParamTypes.drop(args.length)
-      val followingArgs = protoArgs(pt, meth.widen).zipWithConserve(followingParams)(typedExpr).asInstanceOf[List[tpd.Tree]]
-      ref(meth).appliedToArgs(args.toList ++ followingArgs)
-    }
-
-    private def protoArgs(pt: Type, methTp: Type): List[untpd.Tree] = (pt, methTp) match {
-      case (pt: FunProto, methTp: MethodType) if methTp.isErasedMethod =>
-        protoArgs(pt.resType, methTp.resType)
-      case (pt: FunProto, methTp: MethodType) =>
-        pt.args ++ protoArgs(pt.resType, methTp.resType)
-      case _ => Nil
-    }
+      untpd.Apply(ref(meth), args.toList).withType(applyResultType(meth.widen.asInstanceOf[MethodType], args))
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = {
       val ntree = interceptTypeApply(tree.asInstanceOf[TypeApply])(ctx.withPhase(ctx.erasurePhase)).withSpan(tree.span)
@@ -538,36 +528,51 @@ object Erasure {
       }
     }
 
-	/** Besides normal typing, this method collects all arguments
-	 *  to a compacted function into a single argument of array type.
-	 */
-    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
+    private def applyResultType(mt: MethodType, args: List[Tree], bunchArgs: Boolean = false)(using Context): Type =
+      if bunchArgs || mt.paramNames.length <= args.length then
+        mt.resultType
+      else
+        MethodType(mt.paramInfos.drop(args.length), mt.resultType)
+
+    /** Besides normal typing, this method does uncurrying and collects parameters
+     *  to anonymous functions of arity > 22.
+     *
+	   */
+    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree =
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
-      else typedExpr(fun, FunProto(args, pt)(this, isUsingApply = false)) match {
-        case fun1: Apply => // arguments passed in prototype were already passed
-          fun1
-        case fun1 =>
-          fun1.tpe.widen match {
-            case mt: MethodType =>
-              val outers = outer.args(fun.asInstanceOf[tpd.Tree]) // can't use fun1 here because its type is already erased
-              val ownArgs = if (mt.paramNames.nonEmpty && !mt.isErasedMethod) args else Nil
-              var args0 = outers ::: ownArgs ::: protoArgs(pt, tree.typeOpt)
-
-              if (args0.length > MaxImplementedFunctionArity && mt.paramInfos.length == 1) {
-                val bunchedArgs = untpd.JavaSeqLiteral(args0, TypeTree(defn.ObjectType))
-                  .withType(defn.ArrayOf(defn.ObjectType))
-                args0 = bunchedArgs :: Nil
-              }
-              assert(args0 hasSameLengthAs mt.paramInfos)
-              val args1 = args0.zipWithConserve(mt.paramInfos)(typedExpr)
-              untpd.cpy.Apply(tree)(fun1, args1) withType mt.resultType
-            case _ =>
-              throw new MatchError(i"tree $tree has unexpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
-          }
-      }
-    }
+      else
+        val origFun = fun.asInstanceOf[tpd.Tree]
+        val origFunType = origFun.tpe.widen(using preErasureCtx)
+        val outers = outer.args(origFun)
+        val ownArgs = if origFunType.isErasedMethod then Nil else args
+        val args0 = outers ::: ownArgs
+        val fun1 = typedExpr(fun, AnyFunctionProto)
+        fun1.tpe.widen match
+          case mt: MethodType =>
+            val bunchArgs = mt.paramInfos match
+              case JavaArrayType(elemType) :: Nil => // pre-test for efficiency
+                elemType.isRef(defn.ObjectClass)     // pre-test for efficiency
+                && origFunType.paramInfoss.flatten.length > MaxImplementedFunctionArity //
+              case _ => false
+            val args1 =
+              if bunchArgs then args0.map(typedExpr(_, defn.ObjectType))
+              else args0.zipWithConserve(mt.paramInfos)(typedExpr).asInstanceOf[List[Tree]]
+            val (fun2, args2) = fun1 match
+              case Apply(fun2, SeqLiteral(prevArgs, argTpt) :: _) if bunchArgs =>
+                (fun2, JavaSeqLiteral(prevArgs ++ args1, argTpt) :: Nil)
+              case Apply(fun2, prevArgs) =>
+                (fun2, prevArgs ++ args1)
+              case _ if bunchArgs =>
+                (fun1, JavaSeqLiteral(args1, TypeTree(defn.ObjectType)) :: Nil)
+              case _ =>
+                (fun1, args1)
+            untpd.cpy.Apply(tree)(fun2, args2).withType(applyResultType(mt, args1, bunchArgs))
+          case t =>
+            if args0.isEmpty then fun1
+            else throw new MatchError(i"tree $tree has unexpected type of function $fun1: $t, was $origFunType, args = $args0")
+    end typedApply
 
     // The following four methods take as the proto-type the erasure of the pre-existing type,
     // if the original proto-type is not a value type.

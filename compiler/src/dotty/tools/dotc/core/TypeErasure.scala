@@ -129,7 +129,7 @@ object TypeErasure {
     erasures(erasureIdx(isJava, semiEraseVCs, isConstructor, wildcardOK))
 
   /** The current context with a phase no later than erasure */
-  private def erasureCtx(implicit ctx: Context) =
+  def preErasureCtx(implicit ctx: Context) =
     if (ctx.erasedTypes) ctx.withPhase(ctx.erasurePhase) else ctx
 
   /** The standard erasure of a Scala type. Value classes are erased as normal classes.
@@ -137,7 +137,7 @@ object TypeErasure {
    *  @param tp            The type to erase.
   */
   def erasure(tp: Type)(implicit ctx: Context): Type =
-    erasureFn(isJava = false, semiEraseVCs = false, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
+    erasureFn(isJava = false, semiEraseVCs = false, isConstructor = false, wildcardOK = false)(tp)(preErasureCtx)
 
   /** The value class erasure of a Scala type, where value classes are semi-erased to
    *  ErasedValueType (they will be fully erased in [[ElimErasedValueType]]).
@@ -145,7 +145,7 @@ object TypeErasure {
    *  @param tp            The type to erase.
    */
   def valueErasure(tp: Type)(implicit ctx: Context): Type =
-    erasureFn(isJava = false, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
+    erasureFn(isJava = false, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(preErasureCtx)
 
   /** Like value class erasure, but value classes erase to their underlying type erasure */
   def fullErasure(tp: Type)(implicit ctx: Context): Type =
@@ -156,7 +156,7 @@ object TypeErasure {
   def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
     val normTp = tp.underlyingIfRepeated(isJava)
     val erase = erasureFn(isJava, semiEraseVCs = false, isConstructor = false, wildcardOK = true)
-    erase.sigName(normTp)(erasureCtx)
+    erase.sigName(normTp)(preErasureCtx)
   }
 
   /** The erasure of a top-level reference. Differs from normal erasure in that
@@ -195,9 +195,9 @@ object TypeErasure {
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
-    else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
-    else if (sym.is(Label)) erase.eraseResult(sym.info)(erasureCtx)
-    else erase.eraseInfo(tp, sym)(erasureCtx) match {
+    else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(preErasureCtx))
+    else if (sym.is(Label)) erase.eraseResult(sym.info)(preErasureCtx)
+    else erase.eraseInfo(tp, sym)(preErasureCtx) match {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
           MethodType(Nil, defn.BoxedUnitClass.typeRef)
