@@ -33,6 +33,11 @@ steps:
   - cp -R . /tmp/1/ && cd /tmp/1/
   - ./project/scripts/sbt ";compile ;test"
   - ./project/scripts/cmdTests
+  when:
+    event:
+    - tag
+    - promote
+
 
 - name: test_bootstrapped
   pull: default
@@ -42,6 +47,10 @@ steps:
   - cp -R . /tmp/2/ && cd /tmp/2/
   - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test ;configureIDE"
   - ./project/scripts/bootstrapCmdTests
+  when:
+    event:
+    - tag
+    - promote
 
 - name: community_build
   pull: default
@@ -52,6 +61,10 @@ steps:
   - git submodule sync
   - git submodule update --init --recursive --jobs 7
   - ./project/scripts/sbt community-build/test
+  when:
+    event:
+    - tag
+    - promote
 
 - name: test_sbt
   pull: default
