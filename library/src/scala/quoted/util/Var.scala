@@ -17,6 +17,7 @@ object Var {
   /** Create a variable initialized with `init` and used in `body`.
    *  `body` receives a `Var[T]` argument which exposes `get` and `update`.
    *
+   *  ```
    *  Var('{7}) {
    *    x => '{
    *      while(0 < ${x.get})
@@ -33,6 +34,7 @@ object Var {
    *      x = x - 1
    *    x
    *  }
+   *  ```
    */
   def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U])(using qctx: QuoteContext): Expr[U] = '{
     var x = $init
