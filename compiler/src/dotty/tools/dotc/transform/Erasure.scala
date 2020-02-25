@@ -536,19 +536,18 @@ object Erasure {
 
     /** Besides normal typing, this method does uncurrying and collects parameters
      *  to anonymous functions of arity > 22.
-     *
-	   */
+     */
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree =
       val Apply(fun, args) = tree
-      if (fun.symbol == defn.cbnArg)
+      if fun.symbol == defn.cbnArg then
         typedUnadapted(args.head, pt)
       else
         val origFun = fun.asInstanceOf[tpd.Tree]
         val origFunType = origFun.tpe.widen(using preErasureCtx)
-        val outers = outer.args(origFun)
+        val fun1 = typedExpr(fun, AnyFunctionProto)
+        val outers = if fun1.isInstanceOf[Apply] then Nil else outer.args(origFun)
         val ownArgs = if origFunType.isErasedMethod then Nil else args
         val args0 = outers ::: ownArgs
-        val fun1 = typedExpr(fun, AnyFunctionProto)
         fun1.tpe.widen match
           case mt: MethodType =>
             val bunchArgs = mt.paramInfos match
