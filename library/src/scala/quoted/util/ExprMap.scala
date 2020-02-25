@@ -64,9 +64,11 @@ trait ExprMap {
           val tp = tpt.tpe match
             // TODO improve code
             case AppliedType(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "<repeated>"), List(tp0: Type)) =>
+              // TODO rewrite without using quotes
               type T
-              val a = tp0.seal.asInstanceOf[quoted.Type[T]]
-              '[Seq[$a]].unseal.tpe
+              val qtp: quoted.Type[T] = tp0.seal.asInstanceOf[quoted.Type[T]]
+              given qtp.type = qtp
+              '[Seq[T]].unseal.tpe
             case tp => tp
           Typed.copy(tree)(transformTerm(expr, tp), transformTypeTree(tpt))
         case tree: NamedArg =>

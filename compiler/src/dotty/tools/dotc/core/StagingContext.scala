@@ -1,8 +1,13 @@
 package dotty.tools.dotc.core
 
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.util.Property
+import dotty.tools.dotc.transform.PCPCheckAndHeal
 
 import scala.collection.mutable
 
@@ -15,6 +20,8 @@ object StagingContext {
    *  Stack containing the QuoteContext references recieved by the surrounding quotes.
    */
   private val QuoteContextStack = new Property.Key[List[tpd.Tree]]
+
+  private val TaggedTypes = new Property.Key[PCPCheckAndHeal.QuoteTypeTags]
 
   /** All enclosing calls that are currently inlined, from innermost to outermost. */
   def level(implicit ctx: Context): Int =
@@ -33,6 +40,12 @@ object StagingContext {
   /** Context with a decremented quotation level. */
   def spliceContext(implicit ctx: Context): Context =
     ctx.fresh.setProperty(QuotationLevel, level - 1)
+
+  def contextWithQuoteTypeTags(taggedTypes: PCPCheckAndHeal.QuoteTypeTags)(implicit ctx: Context) =
+    ctx.fresh.setProperty(TaggedTypes, taggedTypes)
+
+  def getQuoteTypeTags(implicit ctx: Context): PCPCheckAndHeal.QuoteTypeTags =
+    ctx.property(TaggedTypes).get
 
   /** Context with a decremented quotation level and pops the Some of top of the quote context stack or None if the stack is empty.
    *  The quotation stack could be empty if we are in a top level splice or an eroneous splice directly witin a top level splice.
