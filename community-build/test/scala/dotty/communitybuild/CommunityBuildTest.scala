@@ -298,6 +298,17 @@ class CommunityBuildTest:
    *  @param arguments  Arguments to pass to the testing program
    */
   def test(project: String, command: String, arguments: Seq[String]): Unit = {
+    @annotation.tailrec
+    def execTimes(task: => Int, timesToRerun: Int): Boolean =
+      val exitCode = task
+      if exitCode == 0
+      then true
+      else if timesToRerun == 0
+        then false
+        else
+          log(s"Rerunning tests in $project because of a previous run failure.")
+          execTimes(task, timesToRerun - 1)
+
     log(s"Building $project with dotty-bootstrapped $compilerVersion...")
 
     val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
@@ -312,9 +323,9 @@ class CommunityBuildTest:
         |""".stripMargin)
     }
 
-    val exitCode = exec(projectDir, command, arguments: _*)
+    val testsCompletedSuccessfully = execTimes(exec(projectDir, command, arguments: _*), 3)
 
-    if (exitCode != 0) {
+    if (!testsCompletedSuccessfully) {
       fail(s"""
           |
           |$command exited with an error code. To reproduce without JUnit, use:
