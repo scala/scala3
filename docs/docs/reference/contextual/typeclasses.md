@@ -174,7 +174,7 @@ trait Monad[F[_]] extends Functor[F] { // "A `Monad` for type `F[_]` is a `Funct
 
 Let us declare the `Monad` ability for type `List`  
 ```scala
-given listMonad: Monad[List] {
+given listMonad as Monad[List] {
   def pure[A](x: A): List[A] =
     List(x)
   def [A, B](xs: List[A]).flatMap(f: A => List[B]): List[B] =
@@ -192,7 +192,7 @@ given listMonad: Monad[List] {
 * the `pure` ability turning `A` into `Option[A]`
 
 ```scala
-given optionMonad: Monad[Option] {
+given optionMonad as Monad[Option] {
   def pure[A](x: A): Option[A] =
     Option(x)
   def [A, B](xs: Option[A]).flatMap(f: A => Option[B]): Option[B] =
@@ -209,6 +209,7 @@ Let us have a `Config` type, and two functions using it:
 
 ```scala
 trait Config
+// ...
 def compute(i: Int)(config: Config): String = ???
 def show(str: String)(config: Config): Unit = ???
 ```
@@ -230,11 +231,12 @@ type ConfigDependent[Result] = Config => Result
 The monad will look like this:
 
 ```scala
-given configDependentMonad as Monad[ConfigDependent]
+given configDependentMonad as Monad[ConfigDependent] {
   def [A, B](r: ConfigDependent[A]).flatMap(f: A => ConfigDependent[B]): ConfigDependent[B] =
     config => f(r(config))(config)
   def pure[A](x: A): ConfigDependent[A] =
     config => x
+}
 ```
 
 The type `ConfigDependent` can be written using [type lambdas](../new-types/type-lambdas.html):
