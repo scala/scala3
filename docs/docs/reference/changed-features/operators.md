@@ -97,7 +97,7 @@ any unicode character `c` for which `java.lang.Character.isIdentifierPart(c)` re
 
 Infix operations involving symbolic operators are always allowed, so `@infix` is redundant for methods with symbolic names.
 
-The @infix annotation can also be given to a type:
+The `@infix` annotation can also be given to a type:
 ```
 @infix type or[X, Y]
 val x: String or Int = ...
@@ -132,7 +132,7 @@ The purpose of the `@infix` annotation is to achieve consistency across a code b
 
     can be applied using infix syntax, i.e. `A op B`.
 
- 5. To smooth migration to Scala 3.0, alphanumeric operations will only be deprecated from Scala 3.1 onwards,
+ 5. To smooth migration to Scala 3.0, alphanumeric operators will only be deprecated from Scala 3.1 onwards,
 or if the `-strict` option is given in Dotty/Scala 3.
 
 ## Syntax Change
