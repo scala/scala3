@@ -58,7 +58,7 @@ of one of the following forms:
 
 A member is _eligible_ if all of the following holds:
 
- - its owner is not a base class of the class(\*) containing the export clause,
+ - its owner is not a base class of the class[(\*)](#note_class) containing the export clause,
  - the member does not override a concrete definition that has as owner
    a base class of the class containing the export clause.
  - it is accessible at the export clause,
@@ -87,6 +87,7 @@ def f: c.T = ...
 
 Export clauses can appear in classes or they can appear at the top-level. An export clause cannot appear as a statement in a block.
 
+<a id="note_class"></a>
 (\*) Note: Unless otherwise stated, the term "class" in this discussion also includes object and trait definitions.
 
 ### Motivation
