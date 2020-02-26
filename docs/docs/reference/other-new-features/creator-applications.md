@@ -13,13 +13,13 @@ class StringBuilder(s: String) {
 StringBuilder("abc")  // same as new StringBuilder("abc")
 StringBuilder()       // same as new StringBuilder()
 ```
-Creator applications generalize a functionality provided so far only for case classes, but the mechanism how this is achieved is different. Instead generating an apply method, the compiler adds a new possible interpretation to a function call `f(args)`. The previous rules are:
+Creator applications generalize a functionality provided so far only for case classes, but the mechanism how this is achieved is different. Instead of generating an apply method, the compiler adds a new possible interpretation to a function call `f(args)`. The previous rules are:
 
 Given a function call `f(args)`,
 
  - if `f` is a method applicable to `args`, typecheck `f(args)` unchanged,
  - otherwise, if `f` has an `apply` method applicable to `args` as a member, continue with `f.apply(args)`,
- - otherwise, if `f` is of the form `p.m` and there is an implicit conversion `c` applicable to `p` so that `c(p).m` is applicable to `args`, continue with  `c(p).m(args)`
+ - otherwise, if `f` is of the form `p.m` and there is an implicit conversion `c` applicable to `p` so that `c(p).m` is applicable to `args`, continue with `c(p).m(args)`
 
 There's now a fourth rule following these rules:
 
