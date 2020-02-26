@@ -528,6 +528,7 @@ object Erasure {
       }
     }
 
+    /** The type of an Apply node which might still be missing some arguments */
     private def applyResultType(mt: MethodType, args: List[Tree], bunchArgs: Boolean = false)(using Context): Type =
       if bunchArgs || mt.paramNames.length <= args.length then
         mt.resultType
@@ -551,9 +552,9 @@ object Erasure {
         fun1.tpe.widen match
           case mt: MethodType =>
             val bunchArgs = mt.paramInfos match
-              case JavaArrayType(elemType) :: Nil => // pre-test for efficiency
-                elemType.isRef(defn.ObjectClass)     // pre-test for efficiency
-                && origFunType.paramInfoss.flatten.length > MaxImplementedFunctionArity //
+              case JavaArrayType(elemType) :: Nil =>
+                elemType.isRef(defn.ObjectClass)
+                && origFunType.paramInfoss.flatten.length > MaxImplementedFunctionArity
               case _ => false
             val args1 =
               if bunchArgs then args0.map(typedExpr(_, defn.ObjectType))
