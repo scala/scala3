@@ -123,7 +123,7 @@ object PostConditions {
 
   def result[T](using r: WrappedResult[T]): T = r
 
-  def (x: T).ensuring[T](condition: WrappedResult[T] ?=> Boolean): T = {
+  def [T] (x: T).ensuring(condition: WrappedResult[T] ?=> Boolean): T = {
     assert(condition(using x))
     x
   }
