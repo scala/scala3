@@ -377,7 +377,7 @@ val program = {
   ${ Macros.assertImpl('{ x != 0) } }
 }
 ```
-The example is only phase correct because Macros is a global value and
+The example is only phase correct because `Macros` is a global value and
 as such not subject to phase consistency checking. Conceptually that’s
 a bit unsatisfactory. If the PCP is so fundamental, it should be
 applicable without the global value exception. But in the example as
@@ -529,7 +529,7 @@ val arr: Array[Int] = Array.apply(1, [2,3 : Int]:Int*)
 
 var sum = 0
 val f = x => '{sum += $x}
-${ _root_.Macros.map(arr,  '[Int], 'f)}
+${ _root_.Macros.map(arr, 'f)('[Int])}
 sum
 ```
 
@@ -616,10 +616,10 @@ It is possible to deconstruct or extract values out of `Expr` using pattern matc
 
 #### scala.quoted.matching
 
-In `scala.quoted.matching` contains object that can help extract values from `Expr`.
+`scala.quoted.matching` contains objects that can help extracting values from `Expr`.
 
-* `scala.quoted.matching.Const`: matches an expression a literal value and returns the value.
-* `scala.quoted.matching.Value`: matches an expression a value and returns the value.
+* `scala.quoted.matching.Const`: matches an expression of a literal value and returns the value.
+* `scala.quoted.matching.Value`: matches an expression of a value and returns the value.
 * `scala.quoted.matching.ExprSeq`: matches an explicit sequence of expresions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
 * `scala.quoted.matching.ConstSeq`:  matches an explicit sequence of literal values and returns them.
 * `scala.quoted.matching.ValueSeq`:  matches an explicit sequence of values and returns them.
