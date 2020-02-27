@@ -11,7 +11,7 @@ type Executable[T] = ExecutionContext ?=> T
 ```
 Context function are written using `?=>` as the "arrow" sign.
 They are applied to synthesized arguments, in
-the same way methods with context parameters is applied. For instance:
+the same way methods with context parameters are applied. For instance:
 ```scala
   given ec as ExecutionContext = ...
 
