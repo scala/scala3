@@ -559,19 +559,19 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     def issueError() = callValueArgss match {
       case (msgArg :: Nil) :: Nil =>
-        msgArg.tpe match {
-          case ConstantType(Constant(msg: String)) =>
-            // Usually `error` is called from within a rewrite method. In this
-            // case we need to report the error at the point of the outermost enclosing inline
-            // call. This way, a defensively written rewrite methid can always
-            // report bad inputs at the point of call instead of revealing its internals.
-            val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
-            val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(_).nonEmpty).next
-            def issueInCtx(implicit ctx: Context) =
-              ctx.error(msg, callToReport.sourcePos)
-            issueInCtx(ctxToReport)
-          case _ =>
+        val message = msgArg.tpe match {
+          case ConstantType(Constant(msg: String)) => msg
+          case _ => s"A literal string is expected as an argument to `compiletime.error`. Got ${msgArg.show}"
         }
+        // Usually `error` is called from within a rewrite method. In this
+        // case we need to report the error at the point of the outermost enclosing inline
+        // call. This way, a defensively written rewrite methid can always
+        // report bad inputs at the point of call instead of revealing its internals.
+        val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
+        val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(_).nonEmpty).next
+        def issueInCtx(implicit ctx: Context) =
+          ctx.error(message, callToReport.sourcePos)
+        issueInCtx(ctxToReport)
       case _ =>
     }
 
@@ -1316,4 +1316,3 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         }
     }.apply(Nil, tree)
 }
-
