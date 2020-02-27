@@ -26,7 +26,7 @@ class D extends C with Greeting("Bill") // error: parameter passed twice
 ```
 
 Should this print "Bob" or "Bill"? In fact this program is illegal,
-because it violates one of the following rules for trait parameters:
+because it violates the second rule of the following for trait parameters:
 
  1. If a class `C` extends a parameterized trait `T`, and its superclass does not, `C` _must_ pass arguments to `T`.
 
