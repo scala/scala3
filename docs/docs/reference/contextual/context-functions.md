@@ -84,7 +84,7 @@ with context function types as parameters to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
   def table(init: Table ?=> Unit) = {
-    given t as Table
+    given t as Table // note the use of a creator application; same as: given t as new Table
     init
     t
   }
