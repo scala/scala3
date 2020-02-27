@@ -17,7 +17,7 @@ val extractor: (e: Entry) => e.Key = extractKey  // a dependent function value
 ```
 Scala already has _dependent methods_, i.e. methods where the result
 type refers to some of the parameters of the method. Method
-`extractKey` is an example. Its result type, `e.Key` refers its
+`extractKey` is an example. Its result type, `e.Key` refers to its
 parameter `e` (we also say, `e.Key` _depends_ on `e`). But so far it
 was not possible to turn such methods into function values, so that
 they can be passed as parameters to other functions, or returned as
