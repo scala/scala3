@@ -11,9 +11,9 @@ trait Entry { type Key; val key: Key }
 def extractKey(e: Entry): e.Key = e.key          // a dependent method
 val extractor: (e: Entry) => e.Key = extractKey  // a dependent function value
 //            ║   ⇓ ⇓ ⇓ ⇓ ⇓ ⇓ ⇓   ║
-//            ║     Dependent    ║
-//            ║   Function Type  ║
-//            ╚═══════════════╝
+//            ║     Dependent     ║
+//            ║   Function Type   ║
+//            ╚═══════════════════╝
 ```
 Scala already has _dependent methods_, i.e. methods where the result
 type refers to some of the parameters of the method. Method
