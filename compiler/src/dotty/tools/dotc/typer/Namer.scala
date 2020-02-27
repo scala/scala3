@@ -1135,7 +1135,8 @@ class Namer { typer: Typer =>
             if sel.isWildcard then
               addWildcardForwarders(seen, sel.span)
             else
-              addForwardersNamed(sel.name, sel.rename, sel.span)
+              if sel.rename != nme.WILDCARD then
+                addForwardersNamed(sel.name, sel.rename, sel.span)
               addForwarders(sels1, sel.name :: seen)
           case _ =>
 

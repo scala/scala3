@@ -7,17 +7,13 @@
    |                     ^^^^^^^^^^^^^^
    |                     no eligible member scanAll at this.scanUnit
    |                     this.scanUnit.scanAll cannot be exported because it is not accessible
--- Error: tests/neg/exports.scala:23:27 --------------------------------------------------------------------------------
-23 |    export printUnit.{stat => _, _} // error: double definition // error: double definition
-   |                      ^^^^^^^^^
-   |                      no eligible member stat at this.printUnit
 -- Error: tests/neg/exports.scala:25:21 --------------------------------------------------------------------------------
 25 |    export printUnit.bitmap         // error: no eligible member
    |                     ^
    |                     non-private method bitmap in class Copier refers to private value printUnit
    |                     in its type signature => Copier.this.printUnit.bitmap.type
 -- [E120] Duplicate Symbol Error: tests/neg/exports.scala:23:33 --------------------------------------------------------
-23 |    export printUnit.{stat => _, _} // error: double definition // error: double definition
+23 |    export printUnit.{stat => _, _} // error: double definition
    |                                 ^
    |                                 Double definition:
    |                                 def status: => List[String] in class Copier at line 28 and
