@@ -9,20 +9,23 @@ Their types are _context function types_. Here is an example of a context functi
 ```scala
 type Executable[T] = ExecutionContext ?=> T
 ```
-Context function are written using `?=>` as the "arrow" sign.
+Context functions are written using `?=>` as the "arrow" sign.
 They are applied to synthesized arguments, in
-the same way methods with context parameters is applied. For instance:
+the same way methods with context parameters are applied. For instance:
 ```scala
   given ec as ExecutionContext = ...
 
-  def f(x: Int): Executable[Int] = ...
+  def f(x: Int): ExecutionContext ?=> Int = ...
+  
+  // could be written as follows with the type alias from above
+  // def f(x: Int): Executable[Int] = ...
 
   f(2)(using ec)   // explicit argument
   f(2)             // argument is inferred
 ```
 Conversely, if the expected type of an expression `E` is a context function type
 `(T_1, ..., T_n) ?=> U` and `E` is not already an
-context function literal, `E` is converted to an context function literal by rewriting to
+context function literal, `E` is converted to a context function literal by rewriting it to
 ```scala
   (using x_1: T1, ..., x_n: Tn) => E
 ```
@@ -59,7 +62,7 @@ the aim is to construct tables like this:
     }
   }
 ```
-The idea is to define classes for `Table` and `Row` that allow
+The idea is to define classes for `Table` and `Row` that allow the
 addition of elements via `add`:
 ```scala
   class Table {
