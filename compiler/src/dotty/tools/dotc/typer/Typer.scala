@@ -558,9 +558,15 @@ class Typer extends Namer
           case _ =>
         }
       else if (target.isRef(defn.FloatClass))
-        return lit(floatFromDigits(digits))
+        tree.kind match {
+          case Whole(16) => // cant parse hex literal as float
+          case _         => return lit(floatFromDigits(digits))
+        }
       else if (target.isRef(defn.DoubleClass))
-        return lit(doubleFromDigits(digits))
+        tree.kind match {
+          case Whole(16) => // cant parse hex literal as double
+          case _         => return lit(doubleFromDigits(digits))
+        }
       else if (target.isValueType && isFullyDefined(target, ForceDegree.none)) {
         // If expected type is defined with a FromDigits instance, use that one
         val fromDigitsCls = tree.kind match {
