@@ -3146,14 +3146,20 @@ object Parsers {
         }
         else emptyType
       val rhs =
-        if (tpt.isEmpty || in.token == EQUALS)
+        if tpt.isEmpty || in.token == EQUALS then
           endMarkerScope(first) {
             accept(EQUALS)
-            if (in.token == USCORE && !tpt.isEmpty && mods.is(Mutable) &&
-                (lhs.toList forall (_.isInstanceOf[Ident])))
-              wildcardIdent()
+            val rhs0 = subExpr()
+            val defaultOK = !tpt.isEmpty && mods.is(Mutable) && lhs.forall(_.isInstanceOf[Ident])
+            def isDefaultSyntax(t: Tree) = t match {
+              case Ident(name) => placeholderParams.nonEmpty && name == placeholderParams.head.name
+              case _           => false
+            }
+            if defaultOK && isDefaultSyntax(rhs0) then
+              placeholderParams = placeholderParams.tail
+              atSpan(rhs0.span) { Ident(nme.WILDCARD) }
             else
-              subExpr()
+              rhs0
           }
         else EmptyTree
       lhs match {
