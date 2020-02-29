@@ -1183,7 +1183,8 @@ object Types {
           case _ => tp
         tp.underlying.atoms match
           case as @ Atoms.Range(lo, hi) =>
-            if hi.size == 1 then as else Atoms.Range(Set.empty, hi)
+            if hi.size == 1 then as // if there's just one atom, there's no uncertainty which one it is
+            else Atoms.Range(Set.empty, hi)
           case Atoms.Unknown =>
             if tp.isStable then
               val single = Set.empty + normalize(tp)

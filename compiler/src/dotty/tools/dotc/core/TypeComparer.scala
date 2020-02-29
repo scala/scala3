@@ -1172,16 +1172,20 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     else None
   }
 
-  /** Check whether we can compare the given set of atoms with another to determine
-   *  a subtype test between OrTypes. There is one situation where this is not
-   *  the case, which has to do with SkolemTypes. TreeChecker sometimes expects two
-   *  types to be equal that have different skolems. To account for this, we identify
-   *  two different skolems in all phases `p`, where `p.isTyper` is false.
-   *  But in that case comparing two sets of atoms that contain skolems
-   *  for equality would give the wrong result, so we should not use the sets
-   *  for comparisons.
+  /** If both `tp1` and `tp2` have atoms information, compare the atoms
+   *  in a Some, otherwise None.
    */
   def compareAtoms(tp1: Type, tp2: Type): Option[Boolean] =
+
+    /** Check whether we can compare the given set of atoms with another to determine
+     *  a subtype test between OrTypes. There is one situation where this is not
+     *  the case, which has to do with SkolemTypes. TreeChecker sometimes expects two
+     *  types to be equal that have different skolems. To account for this, we identify
+     *  two different skolems in all phases `p`, where `p.isTyper` is false.
+     *  But in that case comparing two sets of atoms that contain skolems
+     *  for equality would give the wrong result, so we should not use the sets
+     *  for comparisons.
+     */
     def canCompare(ts: Set[Type]) = ctx.phase.isTyper || {
       val hasSkolems = new ExistsAccumulator(_.isInstanceOf[SkolemType]) {
         override def stopAtStatic = true
@@ -1189,7 +1193,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       !ts.exists(hasSkolems(false, _))
     }
     def verified(result: Boolean): Boolean =
-      if Config.checkAtomsComparisons && false then
+      if Config.checkAtomsComparisons then
         try
           canCompareAtoms = false
           val regular = recur(tp1, tp2)
@@ -1201,16 +1205,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         finally canCompareAtoms = true
       result
 
-    def falseUnlessBottom = Some(verified(recur(tp1, NothingType)))
-
     tp2.atoms match
       case Atoms.Range(lo2, hi2) if canCompareAtoms && canCompare(hi2) =>
         tp1.atoms match
           case Atoms.Range(lo1, hi1) =>
             if hi1.subsetOf(lo2) then Some(verified(true))
-            else if !lo1.subsetOf(hi2) then falseUnlessBottom
+            else if !lo1.subsetOf(hi2) then Some(verified(false))
             else None
-          case _ => falseUnlessBottom
+          case _ => Some(verified(recur(tp1, NothingType)))
       case _ => None
 
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
