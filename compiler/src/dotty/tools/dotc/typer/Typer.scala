@@ -1015,7 +1015,7 @@ class Typer extends Namer
             case _ =>
               given nestedCtx as Context = ctx.fresh.setNewTyperState()
               val protoArgs = args map (_ withType WildcardType)
-              val callProto = FunProto(protoArgs, WildcardType)(this, app.isGivenApply)
+              val callProto = FunProto(protoArgs, WildcardType)(this, app.isUsingApply)
               val expr1 = typedExpr(expr, callProto)
               if nestedCtx.reporter.hasErrors then NoType
               else
@@ -2626,7 +2626,7 @@ class Typer extends Namer
             errorTree(tree, NoMatchingOverload(altDenots, pt)(err))
           def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
           pt match {
-            case pt: FunOrPolyProto if !pt.isGivenApply =>
+            case pt: FunOrPolyProto if !pt.isUsingApply =>
               // insert apply or convert qualifier, but only for a regular application
               tryInsertApplyOrImplicit(tree, pt, locked)(noMatches)
             case _ =>
@@ -2777,7 +2777,7 @@ class Typer extends Namer
             }
             tryEither {
               val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
-              if (wtp.isContextualMethod) app.setGivenApply()
+              if (wtp.isContextualMethod) app.setUsingApply()
               typr.println(i"try with default implicit args $app")
               typed(app, pt, locked)
             } { (_, _) =>
@@ -2794,7 +2794,7 @@ class Typer extends Namer
         }
       }
       pt.revealIgnored match {
-        case pt: FunProto if pt.isGivenApply =>
+        case pt: FunProto if pt.isUsingApply =>
           // We can end up here if extension methods are called with explicit given arguments.
           // See for instance #7119.
           tree
@@ -3216,8 +3216,8 @@ class Typer extends Namer
    *  Overridden in `ReTyper`, where all applications are treated the same
    */
   protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(implicit ctx: Context): Boolean =
-    methType.isContextualMethod == pt.isGivenApply ||
-    methType.isImplicitMethod && pt.isGivenApply // for a transition allow `with` arguments for regular implicit parameters
+    methType.isContextualMethod == pt.isUsingApply ||
+    methType.isImplicitMethod && pt.isUsingApply // for a transition allow `with` arguments for regular implicit parameters
 
   /** Check that `tree == x: pt` is typeable. Used when checking a pattern
    *  against a selector of type `pt`. This implementation accounts for

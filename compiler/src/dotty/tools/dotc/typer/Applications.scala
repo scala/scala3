@@ -833,7 +833,7 @@ trait Applications extends Compatibility {
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
     def realApply(implicit ctx: Context): Tree = {
-      val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this, tree.isGivenApply)(argCtx(tree))
+      val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this, tree.isUsingApply)(argCtx(tree))
       record("typedApply")
       val fun1 = typedFunPart(tree.fun, originalProto)
 
@@ -1763,7 +1763,7 @@ trait Applications extends Compatibility {
             alts2
         }
 
-        if pt.isGivenApply then
+        if pt.isUsingApply then
           val alts0 = alts.filterConserve { alt =>
             val mt = alt.widen.stripPoly
             mt.isImplicitMethod || mt.isContextualMethod
