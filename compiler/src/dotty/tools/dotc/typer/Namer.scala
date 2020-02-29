@@ -1098,6 +1098,7 @@ class Namer { typer: Typer =>
                     (EmptyFlags, mbr.info.ensureMethodic)
                 var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
                 if sym.isAllOf(ExtensionMethod) then mbrFlags |= Extension
+                val forwarderName = checkNoConflict(alias, isPrivate = false, span)
                 ctx.newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
               }
             forwarder.info = avoidPrivateLeaks(forwarder)
