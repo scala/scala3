@@ -11,6 +11,7 @@ import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
 import Decorators._
 import Symbols._, SymUtils._
+import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import reporting.diagnostic.messages._
 
@@ -262,6 +263,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processMemberDef(super.transform(tree1))
         case tree: DefDef =>
+          annotateContextResults(tree)
           val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processMemberDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>

@@ -81,9 +81,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def seq(stats: List[Tree], expr: Tree)(implicit ctx: Context): Tree =
     if (stats.isEmpty) expr
     else expr match {
+      case Block(_, _: Closure) =>
+        Block(stats, expr)  // leave closures in their own block
       case Block(estats, eexpr) =>
         cpy.Block(expr)(stats ::: estats, eexpr).withType(ta.avoidingType(eexpr, stats))
-      case _ => Block(stats, expr)
+      case _ =>
+        Block(stats, expr)
     }
 
   def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =

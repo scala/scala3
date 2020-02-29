@@ -5,9 +5,10 @@ package core
 import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._
 import Flags.JavaDefined
 import Uniques.unique
-import dotc.transform.ExplicitOuter._
-import dotc.transform.ValueClasses._
+import transform.ExplicitOuter._
+import transform.ValueClasses._
 import transform.TypeUtils._
+import transform.ContextFunctionResults._
 import Decorators._
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
@@ -526,21 +527,25 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *  `PolyType`s are treated. `eraseInfo` maps them them to method types, whereas `apply` maps them
    *  to the underlying type.
    */
-  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
-    case ExprType(rt) =>
-      if (sym.is(Param)) apply(tp)
-        // Note that params with ExprTypes are eliminated by ElimByName,
-        // but potentially re-introduced by ResolveSuper, when we add
-        // forwarders to mixin methods.
-        // See doc comment for ElimByName for speculation how we could improve this.
-      else MethodType(Nil, Nil, eraseResult(sym.info.finalResultType.underlyingIfRepeated(isJava)))
-    case tp: PolyType =>
-      eraseResult(tp.resultType) match {
-        case rt: MethodType => rt
-        case rt => MethodType(Nil, Nil, rt)
-      }
-    case tp => this(tp)
-  }
+  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
+    val tp1 = tp match
+      case tp: MethodicType => integrateContextResults(tp, contextResultCount(sym))
+      case _ => tp
+    tp1 match
+      case ExprType(rt) =>
+        if sym.is(Param) then apply(tp1)
+            // Note that params with ExprTypes are eliminated by ElimByName,
+            // but potentially re-introduced by ResolveSuper, when we add
+            // forwarders to mixin methods.
+            // See doc comment for ElimByName for speculation how we could improve this.
+        else
+          MethodType(Nil, Nil,
+            eraseResult(sym.info.finalResultType.underlyingIfRepeated(isJava)))
+      case tp1: PolyType =>
+        eraseResult(tp1.resultType) match
+          case rt: MethodType => rt
+          case rt => MethodType(Nil, Nil, rt)
+      case tp1 => this(tp1)
 
   private def eraseDerivedValueClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass

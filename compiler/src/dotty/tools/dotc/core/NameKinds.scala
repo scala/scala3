@@ -354,7 +354,7 @@ object NameKinds {
   val InlineAccessorName: PrefixNameKind = new PrefixNameKind(INLINEACCESSOR, "inline$")
 
   val AvoidClashName: SuffixNameKind = new SuffixNameKind(AVOIDCLASH, "$_avoid_name_clash_$")
-  val DirectMethodName: SuffixNameKind = new SuffixNameKind(DIRECT, "$direct") { override def definesNewName = true }
+  val CacheName = new SuffixNameKind(CACHE, "$_cache")
   val FieldName: SuffixNameKind = new SuffixNameKind(FIELD, "$$local") {
       override def mkString(underlying: TermName, info: ThisInfo) = underlying.toString
   }
