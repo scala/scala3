@@ -1783,32 +1783,35 @@ trait Applications extends Compatibility {
         else compat
     }
 
-    /** For each candidate `C`, a proxy termref paired with `C`.
-     *  The proxy termref has as symbol a copy of the original candidate symbol,
-     *  with an info that strips the first value parameter list away.
-     *  @param  argTypes  The types of the arguments of the FunProto `pt`.
+    /** Resolve overloading by mapping to a different problem where each alternative's
+     *  type is mapped with `f`, alternatives with non-existing types are dropped, and the
+     *  expected type is `pt`. Map the results back to the original alternatives.
      */
-    def advanceCandidates(argTypes: List[Type]): List[(TermRef, TermRef)] = {
-      def strippedType(tp: Type): Type = tp match {
+    def resolveMapped(alts: List[TermRef], f: TermRef => Type, pt: Type): List[TermRef] =
+      val reverseMapping = alts.flatMap { alt =>
+        val t = f(alt)
+        if t.exists then
+          Some((TermRef(NoPrefix, alt.symbol.asTerm.copy(info = t)), alt))
+        else
+          None
+      }
+      val mapped = reverseMapping.map(_._1)
+      overload.println(i"resolve mapped: $mapped")
+      resolveOverloaded(mapped, pt, targs).map(reverseMapping.toMap)
+
+    /** The type of alternative `alt` after instantiating its first parameter
+     *  clause with `argTypes`.
+     */
+    def skipParamClause(argTypes: List[Type])(alt: TermRef): Type =
+      def skip(tp: Type): Type = tp match
         case tp: PolyType =>
-          val rt = strippedType(tp.resultType)
-          if (rt.exists) tp.derivedLambdaType(resType = rt) else rt
+          val rt = skip(tp.resultType)
+          if rt.exists then tp.derivedLambdaType(resType = rt) else rt
         case tp: MethodType =>
           tp.instantiate(argTypes)
         case _ =>
           NoType
-      }
-      def cloneCandidate(cand: TermRef): List[(TermRef, TermRef)] = {
-        val strippedInfo = strippedType(cand.widen)
-        if (strippedInfo.exists) {
-          val sym = cand.symbol.asTerm.copy(info = strippedInfo)
-          (TermRef(NoPrefix, sym), cand) :: Nil
-        }
-        else Nil
-      }
-      overload.println(i"look at more params: ${candidates.head.symbol}: ${candidates.map(_.widen)}%, % with $pt, [$targs%, %]")
-      candidates.flatMap(cloneCandidate)
-    }
+      skip(alt.widen)
 
     def resultIsMethod(tp: Type): Boolean = tp.widen.stripPoly match
       case tp: MethodType => tp.resultType.isInstanceOf[MethodType]
@@ -1821,9 +1824,7 @@ trait Applications extends Compatibility {
       deepPt match
         case pt @ FunProto(_, resType: FunProto) =>
           // try to narrow further with snd argument list
-          val advanced = advanceCandidates(pt.typedArgs().tpes)
-          resolveOverloaded(advanced.map(_._1), resType, Nil) // resolve with candidates where first params are stripped
-            .map(advanced.toMap) // map surviving result(s) back to original candidates
+          resolveMapped(candidates, skipParamClause(pt.typedArgs().tpes), resType)
         case _ =>
           // prefer alternatives that need no eta expansion
           val noCurried = alts.filter(!resultIsMethod(_))
