@@ -3311,7 +3311,6 @@ object Types {
       companion.eq(ContextualMethodType) ||
       companion.eq(ErasedContextualMethodType)
 
-
     def computeSignature(implicit ctx: Context): Signature = {
       val params = if (isErasedMethod) Nil else paramInfos
       resultSignature.prependTermParams(params, isJavaMethod)

@@ -1299,6 +1299,16 @@ trait Applications extends Compatibility {
     }
   }
 
+  /** Drop any implicit parameter section */
+  def stripImplicit(tp: Type)(using Context): Type = tp match {
+    case mt: MethodType if mt.isImplicitMethod =>
+      stripImplicit(resultTypeApprox(mt))
+    case pt: PolyType =>
+      pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
+    case _ =>
+      tp
+  }
+
   /** Compare owner inheritance level.
     *  @param    sym1 The first owner
     *  @param    sym2 The second owner
@@ -1464,16 +1474,6 @@ trait Applications extends Compatibility {
       case _ =>
         if (alt.symbol.isAllOf(SyntheticGivenMethod)) tp.widenToParents
         else tp
-    }
-
-    /** Drop any implicit parameter section */
-    def stripImplicit(tp: Type): Type = tp match {
-      case mt: MethodType if mt.isImplicitMethod =>
-        stripImplicit(resultTypeApprox(mt))
-      case pt: PolyType =>
-        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
-      case _ =>
-        tp
     }
 
     def compareWithTypes(tp1: Type, tp2: Type) = {
@@ -1707,6 +1707,22 @@ trait Applications extends Compatibility {
       case _ => arg
     end normArg
 
+    /** Resolve overloading by mapping to a different problem where each alternative's
+     *  type is mapped with `f`, alternatives with non-existing types are dropped, and the
+     *  expected type is `pt`. Map the results back to the original alternatives.
+     */
+    def resolveMapped(alts: List[TermRef], f: TermRef => Type, pt: Type): List[TermRef] =
+      val reverseMapping = alts.flatMap { alt =>
+        val t = f(alt)
+        if t.exists then
+          Some((TermRef(NoPrefix, alt.symbol.asTerm.copy(info = t)), alt))
+        else
+          None
+      }
+      val mapped = reverseMapping.map(_._1)
+      overload.println(i"resolve mapped: $mapped")
+      resolveOverloaded(mapped, pt, targs).map(reverseMapping.toMap)
+
     val candidates = pt match {
       case pt @ FunProto(args, resultType) =>
         val numArgs = args.length
@@ -1747,6 +1763,15 @@ trait Applications extends Compatibility {
             alts2
         }
 
+        if pt.isGivenApply then
+          val alts0 = alts.filterConserve { alt =>
+            val mt = alt.widen.stripPoly
+            mt.isImplicitMethod || mt.isContextualMethod
+          }
+          if alts0 ne alts then return resolveOverloaded(alts0, pt, targs)
+        else if alts.exists(_.widen.stripPoly.isContextualMethod) then
+          return resolveMapped(alts, alt => stripImplicit(alt.widen), pt)
+
         val alts1 = narrowBySize(alts)
         //ctx.log(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
         if isDetermined(alts1) then alts1
@@ -1783,34 +1808,19 @@ trait Applications extends Compatibility {
         else compat
     }
 
-    /** Resolve overloading by mapping to a different problem where each alternative's
-     *  type is mapped with `f`, alternatives with non-existing types are dropped, and the
-     *  expected type is `pt`. Map the results back to the original alternatives.
-     */
-    def resolveMapped(alts: List[TermRef], f: TermRef => Type, pt: Type): List[TermRef] =
-      val reverseMapping = alts.flatMap { alt =>
-        val t = f(alt)
-        if t.exists then
-          Some((TermRef(NoPrefix, alt.symbol.asTerm.copy(info = t)), alt))
-        else
-          None
-      }
-      val mapped = reverseMapping.map(_._1)
-      overload.println(i"resolve mapped: $mapped")
-      resolveOverloaded(mapped, pt, targs).map(reverseMapping.toMap)
-
     /** The type of alternative `alt` after instantiating its first parameter
      *  clause with `argTypes`.
      */
     def skipParamClause(argTypes: List[Type])(alt: TermRef): Type =
-      def skip(tp: Type): Type = tp match
+      def skip(tp: Type): Type = tp match {
         case tp: PolyType =>
           val rt = skip(tp.resultType)
-          if rt.exists then tp.derivedLambdaType(resType = rt) else rt
+          if (rt.exists) tp.derivedLambdaType(resType = rt) else rt
         case tp: MethodType =>
           tp.instantiate(argTypes)
         case _ =>
           NoType
+      }
       skip(alt.widen)
 
     def resultIsMethod(tp: Type): Boolean = tp.widen.stripPoly match
