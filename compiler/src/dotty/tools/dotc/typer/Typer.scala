@@ -1585,6 +1585,7 @@ class Typer extends Namer
                                          // compiles only if the bound variable is Array[Float]. If
                                          // it is Array[T] we get an implicit not found. To avoid fragility
                                          // wrt to operand order for `&`, we include the explicit subtype test here.
+                                         // See also #5649.
             then body1.tpe
             else pt1 & body1.tpe
           val sym = ctx.newPatternBoundSymbol(name, symTp, tree.span)
