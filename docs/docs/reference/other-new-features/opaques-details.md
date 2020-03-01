@@ -20,7 +20,7 @@ The general form of a (monomorphic) opaque type alias is
 ```scala
 opaque type T >: L <: U = R
 ```
-where the lower bound `L` and the upper bound `U` may be missing, in which case they are assumed to be `scala.Nothing` and `scala.Any`, respectively. If bounds are given, it is checked that the right hand side `R` conforms to them, i.e. `L <: R` and `R <: U`.
+where the lower bound `L` and the upper bound `U` may be missing, in which case they are assumed to be `scala.Nothing` and `scala.Any`, respectively. If bounds are given, it is checked that the right hand side `R` conforms to them, i.e. `L <: R` and `R <: U`. F-bounds are not supported for opaque types: `T` is not allowed to appear in `L` or `U`.
 
 Inside the scope of the alias definition, the alias is transparent: `T` is treated
 as a normal alias of `R`. Outside its scope, the alias is treated as the abstract type
