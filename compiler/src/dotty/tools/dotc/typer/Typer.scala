@@ -1552,8 +1552,9 @@ class Typer extends Namer
   }
 
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Tree = {
-    val pt1 = fullyDefinedType(pt, "pattern variable", tree.span)
-    val body1 = typed(tree.body, pt1)
+    if !isFullyDefined(pt, ForceDegree.all) then
+      return errorTree(tree, i"expected type of $tree is not fully defined")
+    val body1 = typed(tree.body, pt)
     body1 match {
       case UnApply(fn, Nil, arg :: Nil)
       if fn.symbol.exists && fn.symbol.owner == defn.ClassTagClass && !body1.tpe.isError =>
@@ -1573,13 +1574,13 @@ class Typer extends Namer
           // for a singleton pattern like `x @ Nil`, `x` should get the type from the scrutinee
           // see tests/neg/i3200b.scala and SI-1503
           val symTp =
-            if body1.tpe.isInstanceOf[TermRef] then pt1
+            if body1.tpe.isInstanceOf[TermRef] then pt
             else if isWildcardStarArg(body1)
-                    || pt1 == defn.ImplicitScrutineeTypeRef
+                    || pt == defn.ImplicitScrutineeTypeRef
                     || body1.tpe <:< pt  // There is some strange interaction with gadt matching.
                                          // and implicit scopes.
                                          // run/t2755.scala fails to compile if this subtype test is omitted
-                                         // and the else clause is changed to `body1.tpe & pt1`. What
+                                         // and the else clause is changed to `body1.tpe & pt`. What
                                          // happens is that we get either an Array[Float] or an Array[T]
                                          // where T is GADT constrained to := Float. But the case body
                                          // compiles only if the bound variable is Array[Float]. If
@@ -1587,7 +1588,7 @@ class Typer extends Namer
                                          // wrt to operand order for `&`, we include the explicit subtype test here.
                                          // See also #5649.
             then body1.tpe
-            else pt1 & body1.tpe
+            else pt & body1.tpe
           val sym = ctx.newPatternBoundSymbol(name, symTp, tree.span)
           if (pt == defn.ImplicitScrutineeTypeRef || tree.mods.is(Given)) sym.setFlag(Given)
           if (ctx.mode.is(Mode.InPatternAlternative))
