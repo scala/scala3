@@ -141,6 +141,12 @@ object Config {
    */
   final val checkUnerased = false
 
+  /** Check that atoms-based comparisons match regular comparisons that do not
+   *  take atoms into account. The two have to give the same results, since
+   *  atoms comparison is intended to be just an optimization.
+   */
+  final val checkAtomsComparisons = false
+
   /** In `derivedSelect`, rewrite
    *
    *      (S & T)#A  -->  S#A & T#A

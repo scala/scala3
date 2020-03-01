@@ -932,27 +932,21 @@ class Typer extends Namer
         isContextual = funFlags.is(Given), isErased = funFlags.is(Erased))
 
     /** Typechecks dependent function type with given parameters `params` */
-    def typedDependent(params: List[ValDef])(implicit ctx: Context): Tree = {
-      completeParams(params)
-      val params1 = params.map(typedExpr(_).asInstanceOf[ValDef])
-      if (!funFlags.isEmpty)
-        params1.foreach(_.symbol.setFlag(funFlags))
-      val resultTpt = typed(body)
-      val companion = MethodType.companion(
-          isContextual = funFlags.is(Given), isErased = funFlags.is(Erased))
-      val mt = companion.fromSymbols(params1.map(_.symbol), resultTpt.tpe)
+    def typedDependent(params: List[ValDef])(implicit ctx: Context): Tree =
+      val params1 =
+        if funFlags.is(Given) then params.map(_.withAddedFlags(Given))
+        else params
+      val appDef0 = untpd.DefDef(nme.apply, Nil, List(params1), body, EmptyTree).withSpan(tree.span)
+      index(appDef0 :: Nil)
+      val appDef = typed(appDef0).asInstanceOf[DefDef]
+      val mt = appDef.symbol.info.asInstanceOf[MethodType]
       if (mt.isParamDependent)
         ctx.error(i"$mt is an illegal function type because it has inter-parameter dependencies", tree.sourcePos)
       val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
-      val typeArgs = params1.map(_.tpt) :+ resTpt
+      val typeArgs = appDef.vparamss.head.map(_.tpt) :+ resTpt
       val tycon = TypeTree(funCls.typeRef)
-      val core = assignType(cpy.AppliedTypeTree(tree)(tycon, typeArgs), tycon, typeArgs)
-      val appMeth = ctx.newSymbol(ctx.owner, nme.apply, Synthetic | Method | Deferred, mt, coord = body.span)
-      val appDef = assignType(
-        untpd.DefDef(appMeth.name, Nil, List(params1), resultTpt, EmptyTree),
-        appMeth).withSpan(body.span)
+      val core = AppliedTypeTree(tycon, typeArgs)
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
-    }
 
     args match {
       case ValDef(_, _, _) :: _ =>

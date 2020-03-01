@@ -146,7 +146,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else
           toTextPrefix(tp.prefix) ~ selectionString(tp)
       case tp: TermParamRef =>
-        ParamRefNameString(tp) ~ ".type"
+        ParamRefNameString(tp) ~ lambdaHash(tp.binder) ~ ".type"
       case tp: TypeParamRef =>
         ParamRefNameString(tp) ~ lambdaHash(tp.binder)
       case tp: SingletonType =>
@@ -237,9 +237,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextSingleton(tp: SingletonType): Text =
     "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
 
-  protected def paramsText(tp: LambdaType): Text = {
-    def paramText(name: Name, tp: Type) = toText(name) ~ toTextRHS(tp)
-    Text(tp.paramNames.lazyZip(tp.paramInfos).map(paramText), ", ")
+  protected def paramsText(lam: LambdaType): Text = {
+    def paramText(name: Name, tp: Type) =
+      toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp)
+    Text(lam.paramNames.lazyZip(lam.paramInfos).map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = name.toString

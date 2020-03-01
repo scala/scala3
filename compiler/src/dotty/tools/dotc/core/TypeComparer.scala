@@ -42,6 +42,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
   private var needsGc = false
 
+  private var canCompareAtoms: Boolean = true // used for internal consistency checking
+
   /** Is a subtype check in progress? In that case we may not
    *  permanently instantiate type variables, because the corresponding
    *  constraint might still be retracted and the instantiation should
@@ -418,6 +420,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         if (tp11.stripTypeVar eq tp12.stripTypeVar) recur(tp11, tp2)
         else thirdTry
       case tp1 @ OrType(tp11, tp12) =>
+        compareAtoms(tp1, tp2) match
+          case Some(b) => return b
+          case None =>
 
         def joinOK = tp2.dealiasKeepRefiningAnnots match {
           case tp2: AppliedType if !tp2.tycon.typeSymbol.isClass =>
@@ -440,19 +445,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           (tp1.widenSingletons ne tp1) &&
           recur(tp1.widenSingletons, tp2)
 
-        if (tp2.atoms().nonEmpty && canCompare(tp2.atoms()))
-          val atoms1 = tp1.atoms(widenOK = true)
-          atoms1.nonEmpty && atoms1.subsetOf(tp2.atoms())
-        else
-          widenOK
-          || joinOK
-          || recur(tp11, tp2) && recur(tp12, tp2)
-          || containsAnd(tp1) && recur(tp1.join, tp2)
-              // An & on the left side loses information. Compensate by also trying the join.
-              // This is less ad-hoc than it looks since we produce joins in type inference,
-              // and then need to check that they are indeed supertypes of the original types
-              // under -Ycheck. Test case is i7965.scala.
-
+        widenOK
+        || joinOK
+        || recur(tp11, tp2) && recur(tp12, tp2)
+        || containsAnd(tp1) && recur(tp1.join, tp2)
+            // An & on the left side loses information. Compensate by also trying the join.
+            // This is less ad-hoc than it looks since we produce joins in type inference,
+            // and then need to check that they are indeed supertypes of the original types
+            // under -Ycheck. Test case is i7965.scala.
       case tp1: MatchType =>
         val reduced = tp1.reduced
         if (reduced.exists) recur(reduced, tp2) else thirdTry
@@ -613,9 +613,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         }
         compareTypeLambda
       case OrType(tp21, tp22) =>
-        if (tp2.atoms().nonEmpty && canCompare(tp2.atoms()))
-          val atoms1 = tp1.atoms(widenOK = true)
-          return atoms1.nonEmpty && atoms1.subsetOf(tp2.atoms()) || isSubType(tp1, NothingType)
+        compareAtoms(tp1, tp2) match
+          case Some(b) => return b
+          case _ =>
 
         // The next clause handles a situation like the one encountered in i2745.scala.
         // We have:
@@ -1172,22 +1172,48 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     else None
   }
 
-  /** Check whether we can compare the given set of atoms with another to determine
-   *  a subtype test between OrTypes. There is one situation where this is not
-   *  the case, which has to do with SkolemTypes. TreeChecker sometimes expects two
-   *  types to be equal that have different skolems. To account for this, we identify
-   *  two different skolems in all phases `p`, where `p.isTyper` is false.
-   *  But in that case comparing two sets of atoms that contain skolems
-   *  for equality would give the wrong result, so we should not use the sets
-   *  for comparisons.
+  /** If both `tp1` and `tp2` have atoms information, compare the atoms
+   *  in a Some, otherwise None.
    */
-  def canCompare(atoms: Set[Type]): Boolean =
-    ctx.phase.isTyper || {
+  def compareAtoms(tp1: Type, tp2: Type): Option[Boolean] =
+
+    /** Check whether we can compare the given set of atoms with another to determine
+     *  a subtype test between OrTypes. There is one situation where this is not
+     *  the case, which has to do with SkolemTypes. TreeChecker sometimes expects two
+     *  types to be equal that have different skolems. To account for this, we identify
+     *  two different skolems in all phases `p`, where `p.isTyper` is false.
+     *  But in that case comparing two sets of atoms that contain skolems
+     *  for equality would give the wrong result, so we should not use the sets
+     *  for comparisons.
+     */
+    def canCompare(ts: Set[Type]) = ctx.phase.isTyper || {
       val hasSkolems = new ExistsAccumulator(_.isInstanceOf[SkolemType]) {
         override def stopAtStatic = true
       }
-      !atoms.exists(hasSkolems(false, _))
+      !ts.exists(hasSkolems(false, _))
     }
+    def verified(result: Boolean): Boolean =
+      if Config.checkAtomsComparisons then
+        try
+          canCompareAtoms = false
+          val regular = recur(tp1, tp2)
+          assert(result == regular,
+            i"""Atoms inconsistency for $tp1 <:< $tp2
+              |atoms predicted $result
+              |atoms1 = ${tp1.atoms}
+              |atoms2 = ${tp2.atoms}""")
+        finally canCompareAtoms = true
+      result
+
+    tp2.atoms match
+      case Atoms.Range(lo2, hi2) if canCompareAtoms && canCompare(hi2) =>
+        tp1.atoms match
+          case Atoms.Range(lo1, hi1) =>
+            if hi1.subsetOf(lo2) then Some(verified(true))
+            else if !lo1.subsetOf(hi2) then Some(verified(false))
+            else None
+          case _ => Some(verified(recur(tp1, NothingType)))
+      case _ => None
 
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
    *  variances in type parameters `tparams2`.
@@ -1787,15 +1813,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || tp1.isRef(NothingClass) then tp2
     else
       def mergedLub(tp1: Type, tp2: Type): Type = {
-        val atoms1 = tp1.atoms(widenOK = true)
-        if (atoms1.nonEmpty && !widenInUnions) {
-          val atoms2 = tp2.atoms(widenOK = true)
-          if (atoms2.nonEmpty) {
-            if (atoms1.subsetOf(atoms2)) return tp2
-            if (atoms2.subsetOf(atoms1)) return tp1
-            if ((atoms1 & atoms2).isEmpty) return orType(tp1, tp2)
-          }
-        }
+        tp1.atoms match
+          case Atoms.Range(lo1, hi1) if !widenInUnions =>
+            tp2.atoms match
+              case Atoms.Range(lo2, hi2) =>
+                if hi1.subsetOf(lo2) then return tp2
+                if hi2.subsetOf(lo1) then return tp1
+                if (hi1 & hi2).isEmpty then return orType(tp1, tp2)
+              case none =>
+          case none =>
         val t1 = mergeIfSuper(tp1, tp2, canConstrain)
         if (t1.exists) return t1
 
