@@ -2596,8 +2596,8 @@ object Types {
     /** Update the value of the lazyref, discarding the compute function `refFn`
      *  Can be called only as long as the ref is still undefined.
      */
-    def update(tp: Type) =
-      assert(myRef == null)
+    def update(tp: Type)(using ctx: Context) =
+      assert(myRef == null || ctx.reporter.errorsReported)
       myRef = tp
       computed = true
       refFn = null
