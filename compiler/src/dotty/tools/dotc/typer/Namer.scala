@@ -1088,8 +1088,11 @@ class Namer { typer: Typer =>
                 // allow such type aliases. If we forbid them at some point (requiring the referred type to be
                 // fully applied), we'd have to change the scheme here as well.
               else {
+                def refersToPrivate(tp: Type): Boolean = tp match
+                  case tp: TermRef => tp.termSymbol.is(Private) || refersToPrivate(tp.prefix)
+                  case _ => false
                 val (maybeStable, mbrInfo) =
-                  if (sym.isStableMember && sym.isPublic)
+                  if sym.isStableMember && sym.isPublic && !refersToPrivate(path.tpe) then
                     (StableRealizable, ExprType(path.tpe.select(sym)))
                   else
                     (EmptyFlags, mbr.info.ensureMethodic)
