@@ -509,7 +509,10 @@ trait ImplicitRunInfo {
     /** Is `sym` an anchor type for which givens may exist? Anchor types are classes,
      *  opaque type aliases, and abstract types, but not type parameters
      */
-    def isAnchor(sym: Symbol) = sym.isClass && !sym.is(Package) || sym.isOpaqueAlias
+    def isAnchor(sym: Symbol) =
+      sym.isClass && !sym.is(Package)
+      || sym.isOpaqueAlias
+      || sym.is(Deferred, butNot = Param)
 
     def anchors(tp: Type): List[Type] = tp match {
       case tp: NamedType if isAnchor(tp.symbol) => tp :: Nil
