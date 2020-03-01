@@ -606,6 +606,8 @@ class TreePickler(pickler: TastyPickler) {
           }
       }
       catch {
+        case ex: TypeError =>
+          ctx.error(ex.toMessage, tree.sourcePos.focus)
         case ex: AssertionError =>
           println(i"error when pickling tree $tree")
           throw ex
