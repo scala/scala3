@@ -39,9 +39,17 @@ object Test extends App {
     1.scanned
   }
   test()
+
+  val _: Int = B.x
 }
 
 final class Foo {
   lazy val foo : Foo = new Foo
   export foo._ // nothing is exported
 }
+
+class A:
+  val x: Int = 1
+class B(a: A):
+  export a.x
+object B extends B(A())
