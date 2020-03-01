@@ -1129,7 +1129,7 @@ trait Checking {
         val preExisting = ctx.effectiveScope.lookup(ename)
         if (preExisting.exists || seen.contains(ename))
           ctx.error(em"@alpha annotation ${'"'}$ename${'"'} clashes with other definition is same scope", stat.sourcePos)
-        seen += ename
+        if stat.isDef then seen += ename
       }
     }
   }
