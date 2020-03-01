@@ -510,8 +510,8 @@ object Checking {
           var tp1 =
             if (isLeaked(tp.symbol)) {
               errors =
-                (() => em"non-private ${sym.showLocated} refers to private ${tp.symbol}\nin its type signature ${sym.info}") ::
-                errors
+                (() => em"non-private ${sym.showLocated} refers to private ${tp.symbol}\nin its type signature ${sym.info}")
+                :: errors
               tp
             }
             else mapOver(tp)
