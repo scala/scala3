@@ -3508,7 +3508,7 @@ object Parsers {
             possibleTemplateStart()
             val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
             val vparamss1 = vparamss.map(_.map(vparam =>
-              vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
+              vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
             val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
             if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
             else TypeDef(name.toTypeName, templ)
