@@ -23,8 +23,8 @@ First, please have a look at and follow the [Pull Request Policy](https://github
 In order for a Pull Request to be considered, it has to meet these requirements:
 
 1. Live up to the current code standard:
-   - Not violate [DRY](http://programmer.97things.oreilly.com/wiki/index.php/Don%27t_Repeat_Yourself).
-   - [Boy Scout Rule](http://programmer.97things.oreilly.com/wiki/index.php/The_Boy_Scout_Rule) should be applied.
+   - Not violate [DRY](https://www.oreilly.com/library/view/97-things-every/9780596809515/ch30.html).
+   - [Boy Scout Rule](https://www.oreilly.com/library/view/97-things-every/9780596809515/ch08.html) should be applied.
 2. Tests are of paramount importance.
 3. The code must be well documented in the project's standard documentation format (see the ‘Documentation’ section below).
 
