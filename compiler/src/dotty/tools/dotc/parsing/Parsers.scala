@@ -3486,6 +3486,7 @@ object Parsers {
             stat.tparams.head.span)
         else if stat.rhs.isEmpty then
           syntaxError(i"extension method cannot be abstract", stat.span)
+      case EmptyTree =>
       case stat =>
         syntaxError(i"extension clause can only define methods", stat.span)
     }
