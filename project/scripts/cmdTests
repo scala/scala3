@@ -39,7 +39,7 @@ grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tm
 
 echo "testing sbt dotc with suspension"
 clear_out "$OUT"
-"$SBT" "dotc -d $OUT tests/pos-macros/macros-in-same-project-1/Bar.scala tests/pos-macros/macros-in-same-project-1/Foo.scala"  > "$tmp"
+"$SBT" "dotty-compiler-bootstrapped/dotc -d $OUT tests/pos-macros/macros-in-same-project-1/Bar.scala tests/pos-macros/macros-in-same-project-1/Foo.scala"  > "$tmp"
 
 # check that missing source file does not crash message rendering
 echo "testing that missing source file does not crash message rendering"
