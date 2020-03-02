@@ -44,7 +44,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/pos-special/sourcepath/outer/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
       compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFilesInDir("tests/pos-special/spec-t5545", defaultOptions),
-      compileFilesInDir("tests/pos-special/strawman-collections", defaultOptions),
+      compileFilesInDir("tests/pos-special/strawman-collections", allowDeepSubtypes),
       compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")),
       compileFilesInDir("tests/new", defaultOptions),
       compileFilesInDir("tests/pos-scala2", scala2CompatMode),

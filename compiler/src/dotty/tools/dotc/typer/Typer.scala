@@ -1573,8 +1573,21 @@ class Typer extends Namer
           // for a singleton pattern like `x @ Nil`, `x` should get the type from the scrutinee
           // see tests/neg/i3200b.scala and SI-1503
           val symTp =
-            if (body1.tpe.isInstanceOf[TermRef]) pt1
-            else body1.tpe.underlyingIfRepeated(isJava = false)
+            if body1.tpe.isInstanceOf[TermRef] then pt1
+            else if isWildcardStarArg(body1)
+                    || pt1 == defn.ImplicitScrutineeTypeRef
+                    || body1.tpe <:< pt  // There is some strange interaction with gadt matching.
+                                         // and implicit scopes.
+                                         // run/t2755.scala fails to compile if this subtype test is omitted
+                                         // and the else clause is changed to `body1.tpe & pt1`. What
+                                         // happens is that we get either an Array[Float] or an Array[T]
+                                         // where T is GADT constrained to := Float. But the case body
+                                         // compiles only if the bound variable is Array[Float]. If
+                                         // it is Array[T] we get an implicit not found. To avoid fragility
+                                         // wrt to operand order for `&`, we include the explicit subtype test here.
+                                         // See also #5649.
+            then body1.tpe
+            else pt1 & body1.tpe
           val sym = ctx.newPatternBoundSymbol(name, symTp, tree.span)
           if (pt == defn.ImplicitScrutineeTypeRef || tree.mods.is(Given)) sym.setFlag(Given)
           if (ctx.mode.is(Mode.InPatternAlternative))
