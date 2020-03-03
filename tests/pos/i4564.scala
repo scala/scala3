@@ -46,17 +46,9 @@ object NoClashOverload {
 case class NoClashOverload private (x: Int)
 
 class BaseNCP[T] {
-  // error: overloaded method apply needs result type
   def apply(x: T): NoClashPoly = if (???) NoClashPoly(1) else ???
 }
 
 object NoClashPoly extends BaseNCP[Boolean]
 case class NoClashPoly (x: Int)
 
-
-class BaseCP[T] {
-  // error: overloaded method apply needs result type
-  def apply(x: T): ClashPoly = if (???) ClashPoly(1) else ???
-}
-object ClashPoly extends BaseCP[Int]
-case class ClashPoly private(x: Int)
