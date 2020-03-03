@@ -20,11 +20,10 @@ The syntactical precedence of match expressions has been changed.
  2. `match` may follow a period:
 
      ```scala
-     if xsDefined
-        && xs.match {
-             case Nil => false
-             case _ => true
-           }
+     if xs.match {
+       case Nil => false
+       case _ => true
+     }
      then "nonempty"
      else "empty"
 
