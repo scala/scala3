@@ -6,4 +6,4 @@ E <: int[]
 F <: long[]
 G <: short[]
 H <: boolean[]
-I <: java.lang.Object
+I <: byte[]

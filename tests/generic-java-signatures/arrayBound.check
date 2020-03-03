@@ -3,3 +3,6 @@ U <: T[]
 V <: java.util.List<T[]>
 W <: java.util.List<? extends java.util.Date>
 X <: java.util.HashMap<java.lang.Object, java.util.ArrayList<? extends java.util.Date>>
+T1 <: java.lang.Object
+U1 <: java.lang.Object
+V1 <: java.lang.Object[]
