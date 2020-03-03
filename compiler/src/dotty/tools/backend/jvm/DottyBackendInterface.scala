@@ -796,11 +796,16 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       for (f <- toDenot(sym).info.decls.toList if f.isMethod && f.isTerm && !f.isModule) yield f
     def serialVUID: Option[Long] =
       sym.getAnnotation(defn.SerialVersionUIDAnnot).flatMap { annot =>
-        val vuid = annot.argumentConstant(0).map(_.longValue)
-        if (vuid.isEmpty)
-          ctx.error("The argument passed to @SerialVersionUID must be a constant",
-            annot.argument(0).getOrElse(annot.tree).sourcePos)
-        vuid
+        if (sym.is(Flags.Trait)) {
+          ctx.error("@SerialVersionUID does nothing on a trait", annot.tree.sourcePos)
+          None
+        } else {
+          val vuid = annot.argumentConstant(0).map(_.longValue)
+          if (vuid.isEmpty)
+            ctx.error("The argument passed to @SerialVersionUID must be a constant",
+              annot.argument(0).getOrElse(annot.tree).sourcePos)
+          vuid
+        }
       }
 
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
