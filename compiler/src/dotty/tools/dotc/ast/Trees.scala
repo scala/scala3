@@ -439,8 +439,8 @@ object Trees {
     extends GenericApply[T] {
     type ThisTree[-T >: Untyped] = Apply[T]
 
-    def isGivenApply = hasAttachment(untpd.ApplyGiven)
-    def setGivenApply() = { putAttachment(untpd.ApplyGiven, ()); this }
+    def isUsingApply = hasAttachment(untpd.ApplyGiven)
+    def setUsingApply() = { putAttachment(untpd.ApplyGiven, ()); this }
   }
 
   /** fun[args] */

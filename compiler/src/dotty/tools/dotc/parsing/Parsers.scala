@@ -2293,7 +2293,7 @@ object Parsers {
 
     def mkApply(fn: Tree, args: (List[Tree], Boolean)): Tree =
       val res = Apply(fn, args._1)
-      if args._2 then res.setGivenApply()
+      if args._2 then res.setUsingApply()
       res
 
     val argumentExpr: () => Tree = () => exprInParens() match {

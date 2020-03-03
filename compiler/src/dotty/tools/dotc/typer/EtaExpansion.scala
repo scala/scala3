@@ -233,7 +233,7 @@ object EtaExpansion extends LiftImpure {
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     val app = Apply(lifted, ids)
-    if (mt.isContextualMethod) app.setGivenApply()
+    if (mt.isContextualMethod) app.setUsingApply()
     val body = if (isLastApplication) app else PostfixOp(app, Ident(nme.WILDCARD))
     val fn =
       if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given))

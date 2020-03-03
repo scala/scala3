@@ -574,7 +574,7 @@ object desugar {
       val nu = vparamss.foldLeft(makeNew(classTypeRef)) { (nu, vparams) =>
         val app = Apply(nu, vparams.map(refOfDef))
         vparams match {
-          case vparam :: _ if vparam.mods.is(Given) => app.setGivenApply()
+          case vparam :: _ if vparam.mods.is(Given) => app.setUsingApply()
           case _ => app
         }
       }
