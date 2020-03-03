@@ -124,59 +124,121 @@ If an extension method has type parameters, they come immediately after the `def
 ```scala
 List(1, 2, 3).second[Int]
 ```
-### Collective Extensions
 
-A collective extension defines one or more concrete methods that have the same type parameters
-and prefix parameter. Examples:
+### Extension Instances
 
+It is quite common to wrap one or more extension methods in a given instance,
+in order to make them available as methods without needing to be imported explicitly.
+This pattern is supported by a special `extension` syntax. Example:
 ```scala
-extension stringOps on (xs: Seq[String]) {
-  def longestStrings: Seq[String] = {
+extension ops {
+  def (xs: Seq[String]).longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
+  def (xs: Seq[String]).longestString: String = xs.longestStrings.head
+  def [T](xs: List[T]).second: T = xs.tail.head
+}
+```
+An extension instance can only contain extension methods. Other definitions are not allowed. The name `ops`
+of the extension is optional. It can be left out:
+```scala
+extension {
+  def (xs: Seq[String]).longestStrings: Seq[String] = ...
+  def [T](xs: List[T]).second: T = ...
+}
+```
+If the name of an extension is not explicitly given, it is synthesized from the name and type of the first implemented extension method.
+
+Extension instances map directly to given instances. The `ops` extension above
+would expand to
+```scala
+given ops as AnyRef {
+  def (xs: Seq[String]).longestStrings: Seq[String] = ...
+  def (xs: Seq[String]).longestString: String = ...
+  def [T](xs: List[T]).second: T = ...
+}
+```
+The type "implemented" by this given instance is `AnyRef`, which
+is not a type one can summon by itself. This means that the instance can
+only be used for its extension methods.
+
+### Collective Extensions
+
+Sometimes, one wants to define several extension methods that share the same
+left-hand parameter type. In this case one can "pull out" the common parameters
+into the extension instance itself. Examples:
+```scala
+extension stringOps on (ss: Seq[String]) {
+  def longestStrings: Seq[String] = {
+    val maxLength = ss.map(_.length).max
+    ss.filter(_.length == maxLength)
+  }
+  def longestString: String = longestStrings.head
 }
 
 extension listOps on [T](xs: List[T]) {
-  def second = xs.tail.head
-  def third: T = xs.tail.tail.head
+  def second: T = xs.tail.head
+  def third: T = xs.tail.second
 }
 
 extension on [T](xs: List[T])(using Ordering[T]) {
   def largest(n: Int) = xs.sorted.takeRight(n)
 }
 ```
-If an extension is anonymous (as in the last clause), its name is synthesized from the name of the first defined extension method.
-
-The extensions above are equivalent to the following regular given instances where the implemented parent is `AnyRef` and the leading parameters are repeated in each extension method definition:
+Collective extensions like these are a shorthand for extension instances where
+the parameters following the `on` are repeated for each implemented method.
+For instance, the collective extensions above expand to the following extension instances:
 ```scala
-given stringOps as AnyRef {
-  def (xs: Seq[String]).longestStrings: Seq[String] = {
-    val maxLength = xs.map(_.length).max
-    xs.filter(_.length == maxLength)
+extension stringOps {
+  def (ss: Seq[String]).longestStrings: Seq[String] = {
+    val maxLength = ss.map(_.length).max
+    ss.filter(_.length == maxLength)
   }
+  def (ss: Seq[String]).longestString: String =
+    ss.longestStrings.head
 }
-given listOps as AnyRef {
-  def [T](xs: List[T]).second = xs.tail.head
-  def [T](xs: List[T]).third: T = xs.tail.tail.head
+extension listOps {
+  def [T](xs: List[T]).second: T = xs.tail.head
+  def [T](xs: List[T]).third: T = xs.tail.second
 }
-given extension_largest_List_T as AnyRef {
+extension {
   def [T](xs: List[T]).largest(using Ordering[T])(n: Int) =
     xs.sorted.takeRight(n)
 }
+```
+One special tweak is shown in the `longestString` method of the `stringOps` extension. It's original definition was
+```scala
+def longestString: String = longestStrings.head
+```
+This uses `longestStrings` as an implicit extension method call on the joint
+parameter `ss`. The usage is made explicit when translating the method:
+```scala
+def (ss: Seq[String]).longestString: String =
+  ss.longestStrings.head
 ```
 
 ### Syntax
 
 Here are the syntax changes for extension methods and collective extensions relative
-to the [current syntax](../../internals/syntax.md). `extension` is a soft keyword, recognized only in tandem with `on`. It can be used as an identifier everywhere else.
-
+to the [current syntax](../../internals/syntax.md).
 ```
 DefSig            ::=  ...
                     |  ExtParamClause [nl] [‘.’] id DefParamClauses
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
 TmplDef           ::=  ...
                     |  ‘extension’ ExtensionDef
-ExtensionDef      ::=  [id] ‘on’ ExtParamClause {GivenParamClause} ExtMethods
-ExtMethods        ::=  ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
+ExtensionDef      ::=  [id] [‘on’ ExtParamClause {GivenParamClause}] TemplateBody
+```
+The template body of an extension must consist only of extension method definitions for a regular
+extension instance, and only of normal method definitions for a collective extension instance.
+It must not be empty.
+
+`extension` and `on` are soft keywords, recognized only when they appear at the start of a
+statement in one of the patterns
+```scala
+extension on ...
+extension <ident> on ...
+extension { ...
+extension <ident> { ...
 ```

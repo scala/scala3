@@ -170,7 +170,7 @@ object Nullables:
       case info :: infos1 =>
         if info.asserted.contains(ref) then true
         else if info.retracted.contains(ref) then false
-        else impliesNotNull(infos1)(ref)
+        else infos1.impliesNotNull(ref)
       case _ =>
         false
 

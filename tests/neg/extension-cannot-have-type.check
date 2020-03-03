@@ -1,6 +1,4 @@
--- [E151] Syntax Error: tests/neg/extension-cannot-have-type.scala:3:10 ------------------------------------------------
+-- Error: tests/neg/extension-cannot-have-type.scala:3:10 --------------------------------------------------------------
 3 |    def f[U](u: U): T = ??? // error : extension method cannot have type params
   |          ^
-  |          Extension method cannot have type parameters since some were already given previously
-
-longer explanation available when compiling with `-explain`
+  |          extension method cannot have type parameters since some were already given previously

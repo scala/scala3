@@ -205,7 +205,7 @@ trait ImportSuggestions:
         .alternatives
         .map(mbr => TermRef(site, mbr.symbol))
         .filter(ref =>
-          ref.symbol.is(Extension)
+          ref.symbol.isAllOf(ExtensionMethod)
           && isApplicableMethodRef(ref, argType :: Nil, WildcardType))
         .headOption
 

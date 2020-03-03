@@ -386,7 +386,8 @@ EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   
 GivenDef          ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
                     |  [GivenSig] ConstrApps [TemplateBody]
 GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘as’
-ExtensionDef      ::=  [id] ‘on’ ExtParamClause {WithParamsOrTypes} ExtMethods
+ExtensionDef      ::=  [id] [‘on’ ExtParamClause {UsingParamClause}]
+                       TemplateBody
 ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)

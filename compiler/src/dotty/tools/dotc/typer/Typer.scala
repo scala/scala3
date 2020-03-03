@@ -401,6 +401,19 @@ class Typer extends Namer
     if (name == nme.ROOTPKG)
       return tree.withType(defn.RootPackage.termRef)
 
+    /** Convert a reference `f` to an extension method in a collective extension
+     *  on parameter `x` to `x.f`
+     */
+    def extensionMethodSelect(xmethod: Symbol): untpd.Tree =
+      val leadParamName = xmethod.info.paramNamess.head.head
+      def isLeadParam(sym: Symbol) =
+        sym.is(Param) && sym.owner.owner == xmethod.owner && sym.name == leadParamName
+      def leadParam(ctx: Context): Symbol =
+        ctx.scope.lookupAll(leadParamName).find(isLeadParam) match
+          case Some(param) => param
+          case None => leadParam(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next)
+      untpd.cpy.Select(tree)(untpd.ref(leadParam(ctx).termRef), name)
+
     val rawType = {
       val saved1 = unimported
       val saved2 = foundUnderScala2
@@ -441,8 +454,14 @@ class Typer extends Namer
         errorType(new MissingIdent(tree, kind, name.show), tree.sourcePos)
 
     val tree1 = ownType match {
-      case ownType: NamedType if !prefixIsElidable(ownType) =>
-        ref(ownType).withSpan(tree.span)
+      case ownType: NamedType =>
+        val sym = ownType.symbol
+        if sym.isAllOf(ExtensionMethod)
+            && sym.owner.isCollectiveExtensionClass
+            && ctx.owner.isContainedIn(sym.owner)
+        then typed(extensionMethodSelect(sym), pt)
+        else if prefixIsElidable(ownType) then tree.withType(ownType)
+        else ref(ownType).withSpan(tree.span)
       case _ =>
         tree.withType(ownType)
     }
