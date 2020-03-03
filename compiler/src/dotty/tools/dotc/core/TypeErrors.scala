@@ -17,12 +17,14 @@ import config.Printers.cyclicErrors
 
 class TypeError(msg: String) extends Exception(msg) {
   def this() = this("")
-  def toMessage(implicit ctx: Context): Message = super.getMessage
+  final def toMessage(implicit ctx: Context): Message =
+    produceMessage(using ctx.addMode(Mode.Printing))
+  def produceMessage(using Context): Message = super.getMessage
   override def getMessage: String = super.getMessage
 }
 
 class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name]) extends TypeError {
-  override def toMessage(implicit ctx: Context): Message =
+  override def produceMessage(implicit ctx: Context): Message =
     i"malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}"
 }
 
@@ -33,7 +35,7 @@ class MissingType(pre: Type, name: Name) extends TypeError {
     case _ => ""
   }
 
-  override def toMessage(implicit ctx: Context): Message = {
+  override def produceMessage(implicit ctx: Context): Message = {
     if (ctx.debug) printStackTrace()
     i"""cannot resolve reference to type $pre.$name
        |the classfile defining the type might be missing from the classpath${otherReason(pre)}"""
@@ -67,7 +69,7 @@ class RecursionOverflow(val op: String, details: => String, val previous: Throwa
       (rs.map(_.explanation): List[String]).mkString("\n  ", "\n|  ", "")
   }
 
-  override def toMessage(implicit ctx: Context): Message = {
+  override def produceMessage(implicit ctx: Context): Message = {
     val mostCommon = recursions.groupBy(_.op).toList.maxBy(_._2.map(_.weight).sum)._2.reverse
     s"""Recursion limit exceeded.
        |Maybe there is an illegal cyclic reference?
@@ -109,7 +111,7 @@ object handleRecursive {
 class CyclicReference private (val denot: SymDenotation) extends TypeError {
   var inImplicitSearch: Boolean = false
 
-  override def toMessage(implicit ctx: Context): Message = {
+  override def produceMessage(implicit ctx: Context): Message = {
     val cycleSym = denot.symbol
 
     // cycleSym.flags would try completing denot and would fail, but here we can use flagsUNSAFE to detect flags
@@ -182,7 +184,7 @@ class MergeError(val sym1: Symbol, val sym2: Symbol, val tp1: Type, val tp2: Typ
       s"\nas members of $owner"
     }
 
-  override def toMessage(implicit ctx: Context): Message = {
+  override def produceMessage(implicit ctx: Context): Message = {
     if (ctx.debug) printStackTrace()
     i"""cannot merge
        |  ${showSymbol(sym1)} of type ${showType(tp1)}  and

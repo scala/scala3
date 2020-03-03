@@ -124,7 +124,7 @@ class NoExplanation(val msg: String) extends Message(ErrorMessageID.NoExplanatio
   val explanation: String = ""
   val kind: String = ""
 
-  override def toString(): String = s"NoExplanation($msg)"
+  override def toString(): String = msg
 }
 
 /** The extractor for `NoExplanation` can be used to check whether any error
