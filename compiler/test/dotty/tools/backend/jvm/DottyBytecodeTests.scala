@@ -8,6 +8,8 @@ import asm._
 import asm.tree._
 
 import scala.tools.asm.Opcodes
+import scala.jdk.CollectionConverters._
+
 
 class TestBCode extends DottyBytecodeTest {
   import ASMConverters._
@@ -783,4 +785,134 @@ class TestBCode extends DottyBytecodeTest {
       assertParamName(b2, "evidence$2")
     }
   }
+
+  @Test
+  def invocationReceivers(): Unit = {
+    import Opcodes._
+
+    checkBCode(List(invocationReceiversTestCode.definitions("Object"))) { dir =>
+      val c1 = loadClassNode(dir.lookupName("C1.class", directory = false).input)
+      val c2 = loadClassNode(dir.lookupName("C2.class", directory = false).input)
+      // Scala 2 uses "invokestatic T.clone$" here, see https://github.com/lampepfl/dotty/issues/5928
+      assertSameCode(getMethod(c1, "clone"), List(VarOp(ALOAD, 0), Invoke(INVOKESPECIAL, "T", "clone", "()Ljava/lang/Object;", true), Op(ARETURN)))
+      assertInvoke(getMethod(c1, "f1"), "T", "clone")
+      assertInvoke(getMethod(c1, "f2"), "T", "clone")
+      assertInvoke(getMethod(c1, "f3"), "C1", "clone")
+      assertInvoke(getMethod(c2, "f1"), "T", "clone")
+      assertInvoke(getMethod(c2, "f2"), "T", "clone")
+      assertInvoke(getMethod(c2, "f3"), "C1", "clone")
+    }
+    checkBCode(List(invocationReceiversTestCode.definitions("String"))) { dir =>
+      val c1b = loadClassNode(dir.lookupName("C1.class", directory = false).input)
+      val c2b = loadClassNode(dir.lookupName("C2.class", directory = false).input)
+      val tb = loadClassNode(dir.lookupName("T.class", directory = false).input)
+      val ub = loadClassNode(dir.lookupName("U.class", directory = false).input)
+
+      def ms(c: ClassNode, n: String) = c.methods.asScala.toList.filter(_.name == n)
+      assert(ms(tb, "clone").length == 1)
+      assert(ms(ub, "clone").isEmpty)
+      val List(c1Clone) = ms(c1b, "clone").filter(_.desc == "()Ljava/lang/Object;")
+      assert((c1Clone.access | Opcodes.ACC_BRIDGE) != 0)
+      assertSameCode(c1Clone, List(VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "C1", "clone", "()Ljava/lang/String;", false), Op(ARETURN)))
+
+      def iv(m: MethodNode) = getInstructions(c1b, "f1").collect({case i: Invoke => i})
+      assertSameCode(iv(getMethod(c1b, "f1")), List(Invoke(INVOKEINTERFACE, "T", "clone", "()Ljava/lang/String;", true)))
+      assertSameCode(iv(getMethod(c1b, "f2")), List(Invoke(INVOKEINTERFACE, "T", "clone", "()Ljava/lang/String;", true)))
+      // invokeinterface T.clone in C1 is OK here because it is not an override of Object.clone (different signature)
+      assertSameCode(iv(getMethod(c1b, "f3")), List(Invoke(INVOKEINTERFACE, "T", "clone", "()Ljava/lang/String;", true)))
+    }
+  }
+
+  @Test
+  def invocationReceiversProtected(): Unit = {
+    // http://lrytz.github.io/scala-aladdin-bugtracker/displayItem.do%3Fid=455.html / 9954eaf
+    // also https://github.com/scala/bug/issues/1430 / 0bea2ab (same but with interfaces)
+    val aC =
+      """package a;
+        |/*package private*/ abstract class A {
+        |  public int f() { return 1; }
+        |  public int t;
+        |}
+      """.stripMargin
+    val bC =
+      """package a;
+        |public class B extends A { }
+      """.stripMargin
+    val iC =
+      """package a;
+        |/*package private*/ interface I { int f(); }
+      """.stripMargin
+    val jC =
+      """package a;
+        |public interface J extends I { }
+      """.stripMargin
+    val cC =
+      """package b
+        |class C {
+        |  def f1(b: a.B) = b.f
+        |  def f2(b: a.B) = { b.t = b.t + 1 }
+        |  def f3(j: a.J) = j.f
+        |}
+      """.stripMargin
+
+    checkBCode(scalaSources = List(cC), javaSources = List(aC, bC, iC, jC)) { dir =>
+      val clsIn   = dir.subdirectoryNamed("b").lookupName("C.class", directory = false).input
+      val c = loadClassNode(clsIn)
+
+      assertInvoke(getMethod(c, "f1"), "a/B", "f") // receiver needs to be B (A is not accessible in class C, package b)
+      assertInvoke(getMethod(c, "f3"), "a/J", "f") // receiver needs to be J
+    }
+  }
+
+  @Test
+  def specialInvocationReceivers(): Unit = {
+    val code =
+      """class C {
+        |  def f1(a: Array[String]) = a.clone()
+        |  def f2(a: Array[Int]) = a.hashCode()
+        |  def f3(n: Nothing) = n.hashCode()
+        |  def f4(n: Null) = n.toString()
+        |
+        |}
+      """.stripMargin
+    checkBCode(List(code)) { dir =>
+      val c = loadClassNode(dir.lookupName("C.class", directory = false).input)
+
+      assertInvoke(getMethod(c, "f1"), "[Ljava/lang/String;", "clone") // array descriptor as receiver
+      assertInvoke(getMethod(c, "f2"), "java/lang/Object", "hashCode") // object receiver
+      assertInvoke(getMethod(c, "f3"), "java/lang/Object", "hashCode")
+      assertInvoke(getMethod(c, "f4"), "java/lang/Object", "toString")
+    }
+  }
+}
+
+object invocationReceiversTestCode {
+  // if cloneType is more specific than Object (e.g., String), a bridge method is generated.
+  def definitions(cloneType: String): String =
+    s"""trait T { override def clone(): $cloneType = "hi" }
+        |trait U extends T
+        |class C1 extends U with Cloneable {
+        |  // The comments below are true when `cloneType` is Object.
+        |  // C1 gets a forwarder for clone that invokes T.clone. this is needed because JVM method
+        |  // resolution always prefers class members, so it would resolve to Object.clone, even if
+        |  // C1 is a subtype of the interface T which has an overriding default method for clone.
+        |
+        |  // invokeinterface T.clone
+        |  def f1 = (this: T).clone()
+        |
+        |  // cannot invokeinterface U.clone (NoSuchMethodError). Object.clone would work here, but
+        |  // not in the example in C2 (illegal access to protected). T.clone works in all cases and
+        |  // resolves correctly.
+        |  def f2 = (this: U).clone()
+        |
+        |  // invokevirtual C1.clone()
+        |  def f3 = (this: C1).clone()
+        |}
+        |
+        |class C2 {
+        |  def f1(t: T) = t.clone()  // invokeinterface T.clone
+        |  def f2(t: U) = t.clone()  // invokeinterface T.clone -- Object.clone would be illegal (protected, explained in C1)
+        |  def f3(t: C1) = t.clone() // invokevirtual C1.clone -- Object.clone would be illegal
+        |}
+    """.stripMargin
 }

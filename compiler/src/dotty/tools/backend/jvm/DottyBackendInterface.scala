@@ -627,6 +627,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper {
+    def exists: Boolean = sym.exists
+
     // names
     def showFullName: String = sym.showFullName
     def javaSimpleName: String = toDenot(sym).name.mangledString // addModuleSuffix(simpleName.dropLocal)
@@ -680,7 +682,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       (sym.is(Flags.JavaStatic) || toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot))
       // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
-    def isBottomClass: Boolean = (sym ne defn.NullClass) && (sym ne defn.NothingClass)
+    def isBottomClass: Boolean = (sym eq defn.NullClass) || (sym eq defn.NothingClass)
     def isBridge: Boolean = sym.is(Flags.Bridge)
     def isArtifact: Boolean = sym.is(Flags.Artifact)
     def hasEnumFlag: Boolean = sym.isAllOf(Flags.JavaEnumTrait)
@@ -759,12 +761,14 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         toDenot(sym)(shiftedContext).lexicallyEnclosingClass(shiftedContext)
       } else NoSymbol
     def nextOverriddenSymbol: Symbol = toDenot(sym).nextOverriddenSymbol
+    def allOverriddenSymbols: List[Symbol] = toDenot(sym).allOverriddenSymbols.toList
 
     // members
     def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
 
     /** For currently compiled classes: All locally defined classes including local classes.
      *  The empty list for classes that are not currently compiled.
+
      */
     def nestedClasses: List[Symbol] = definedClasses(ctx.flattenPhase)
 
@@ -875,6 +879,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def <:<(other: Type): Boolean = tp <:< other
 
     def memberInfo(s: Symbol): Type = tp.memberInfo(s)
+
+    def decl(name: Name): Symbol = tp.decl(name).symbol
 
     def decls: List[Symbol] = tp.decls.toList
 

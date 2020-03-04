@@ -6,6 +6,7 @@ import scala.tools.asm
 import scala.annotation.switch
 import scala.collection.mutable
 import Primitives.{NE, EQ, TestOp, ArithmeticOp}
+import scala.tools.asm.tree.MethodInsnNode
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -104,7 +105,7 @@ trait BCodeIdiomatic {
    */
   abstract class JCodeMethodN {
 
-    def jmethod: asm.MethodVisitor
+    def jmethod: asm.tree.MethodNode
 
     import asm.Opcodes;
 
@@ -394,20 +395,26 @@ trait BCodeIdiomatic {
 
     // can-multi-thread
     final def invokespecial(owner: String, name: String, desc: String, itf: Boolean): Unit = {
-      jmethod.visitMethodInsn(Opcodes.INVOKESPECIAL, owner, name, desc, itf)
+      emitInvoke(Opcodes.INVOKESPECIAL, owner, name, desc, itf)
     }
     // can-multi-thread
     final def invokestatic(owner: String, name: String, desc: String, itf: Boolean): Unit = {
-      jmethod.visitMethodInsn(Opcodes.INVOKESTATIC, owner, name, desc, itf)
+      emitInvoke(Opcodes.INVOKESTATIC, owner, name, desc, itf)
     }
     // can-multi-thread
     final def invokeinterface(owner: String, name: String, desc: String): Unit = {
-      jmethod.visitMethodInsn(Opcodes.INVOKEINTERFACE, owner, name, desc, true)
+      emitInvoke(Opcodes.INVOKEINTERFACE, owner, name, desc, itf = true)
     }
     // can-multi-thread
     final def invokevirtual(owner: String, name: String, desc: String): Unit = {
-      jmethod.visitMethodInsn(Opcodes.INVOKEVIRTUAL, owner, name, desc, false)
+      emitInvoke(Opcodes.INVOKEVIRTUAL, owner, name, desc, itf = false)
     }
+
+    def emitInvoke(opcode: Int, owner: String, name: String, desc: String, itf: Boolean): Unit = {
+      val node = new MethodInsnNode(opcode, owner, name, desc, itf)
+      jmethod.instructions.add(node)
+    }
+
 
     // can-multi-thread
     final def goTo(label: asm.Label): Unit = { jmethod.visitJumpInsn(Opcodes.GOTO, label) }

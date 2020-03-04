@@ -442,6 +442,8 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   }
 
   abstract class SymbolHelper {
+    def exists: Boolean
+
     // names
     def showFullName: String
     def javaSimpleName: String
@@ -534,6 +536,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def enclosingClassSym: Symbol
     def originalLexicallyEnclosingClass: Symbol
     def nextOverriddenSymbol: Symbol
+    def allOverriddenSymbols: List[Symbol]
 
 
     // members
@@ -603,6 +606,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
      */
     def sortedMembersBasedOnFlags(required: Flags, excluded: Flags): List[Symbol]
     def members: List[Symbol]
+    def decl(name: Name): Symbol
     def decls: List[Symbol]
     def underlying: Type
     def parents: List[Type]
