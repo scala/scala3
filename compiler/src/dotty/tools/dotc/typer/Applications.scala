@@ -1824,7 +1824,7 @@ trait Applications extends Compatibility {
       skip(alt.widen)
 
     def resultIsMethod(tp: Type): Boolean = tp.widen.stripPoly match
-      case tp: MethodType => tp.resultType.isInstanceOf[MethodType]
+      case tp: MethodType => stripImplicit(tp.resultType).isInstanceOf[MethodType]
       case _ => false
 
     val found = narrowMostSpecific(candidates)
