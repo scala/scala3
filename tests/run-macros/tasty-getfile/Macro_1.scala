@@ -8,8 +8,8 @@ object SourceFiles {
     ${getThisFileImpl}
 
   private def getThisFileImpl(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty.{_, given _}
-    rootContext.source.getFileName.toString
+    import qctx.tasty._
+    summon[Context].source.getFileName.toString
   }
 
 }
