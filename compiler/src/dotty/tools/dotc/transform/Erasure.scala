@@ -710,7 +710,7 @@ object Erasure {
       if (sym.isEffectivelyErased) erasedDef(sym)
       else
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
-        var vparams = outer.paramDefs(sym)
+        var vparams = outerParamDefs(sym)
             ::: ddef.vparamss.flatten.filterConserve(!_.symbol.is(Flags.Erased))
 
         def skipContextClosures(rhs: Tree, crCount: Int)(using Context): Tree =
@@ -745,6 +745,28 @@ object Erasure {
           rhs = rhs1)
         super.typedDefDef(ddef1, sym)
     end typedDefDef
+
+    /** The outer parameter definition of a constructor if it needs one */
+    private def outerParamDefs(constr: Symbol)(using ctx: Context): List[ValDef] =
+      if constr.isConstructor && hasOuterParam(constr.owner.asClass) then
+        constr.info match
+          case MethodTpe(outerName :: _, outerType :: _, _) =>
+            val outerSym = ctx.newSymbol(constr, outerName, Flags.Param, outerType)
+            ValDef(outerSym) :: Nil
+          case _ =>
+            // There's a possible race condition that a constructor was looked at
+            // after erasure before we had a chance to run ExplicitOuter on its class
+            // If furthermore the enclosing class does not always have constructors,
+            // but needs constructors in this particular case, we miss the constructor
+            // accessor that's produced with an `enteredAfter` in ExplicitOuter, so
+            // `tranformInfo` of the constructor in erasure yields a method type without
+            // an outer parameter. We fix this problem by adding the missing outer
+            // parameter here. 
+            constr.copySymDenotation(
+              info = outer.addParam(constr.owner.asClass, constr.info)
+            ).installAfter(erasurePhase)
+            outerParamDefs(constr)
+      else Nil
 
     override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context): Tree = {
       val xxl = defn.isXXLFunctionClass(tree.typeOpt.typeSymbol)
