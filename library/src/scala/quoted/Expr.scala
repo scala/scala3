@@ -37,6 +37,14 @@ class Expr[+T] private[scala] {
   final def matches(that: Expr[Any])(using qctx: QuoteContext): Boolean =
     !scala.internal.quoted.Expr.unapply[Unit, Unit](this)(using that, false, qctx).isEmpty
 
+  /** Checked cast to a `quoted.Expr[U]` */
+  def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] =
+    qctx.tasty.internal.QuotedExpr_cast[U](this)(using tp, qctx.tasty.rootContext)
+
+  /** View this expression `quoted.Expr[T]` as a `Term` */
+  def unseal(using qctx: QuoteContext): qctx.tasty.Term =
+    qctx.tasty.internal.QuotedExpr_unseal(this)(using qctx.tasty.rootContext)
+
 }
 
 object Expr {
@@ -108,7 +116,7 @@ object Expr {
    */
   def ofSeq[T](xs: Seq[Expr[T]])(using tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = {
     import qctx.tasty.{_, given _}
-    Repeated(xs.map(_.unseal).toList, tp.unseal).seal.asInstanceOf[Expr[Seq[T]]]
+    Repeated(xs.map[Term](_.unseal).toList, tp.unseal).seal.asInstanceOf[Expr[Seq[T]]]
   }
 
 

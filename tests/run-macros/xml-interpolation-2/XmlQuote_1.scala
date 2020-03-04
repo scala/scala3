@@ -15,7 +15,7 @@ object XmlQuote {
   implicit inline def SCOps(ctx: => StringContext): SCOps = new SCOps(ctx)
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(using qctx: QuoteContext) : Expr[Xml] = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
 
     // for debugging purpose
     def pp(tree: Tree): Unit = {

@@ -29,22 +29,19 @@ import scala.quoted._
 inline def natConst(x: => Int): Int = ${natConstImpl('{x})}
 
 def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
-  import qctx.tasty.{_, given _}
+  import qctx.tasty._
   ...
 }
 ```
 
-### Sealing and Unsealing
+### Extractors
 
-`import qctx.tasty.{_, given _}` will provide an `unseal` extension method on `quoted.Expr`
-and `quoted.Type` which returns a `qctx.tasty.Term` that represents the tree of
-the expression and `qctx.tasty.TypeTree` that represents the tree of the type
-respectively. It will also import all extractors and methods on TASTy Reflect
+`import qctx.tasty._` will provide all extractors and methods on TASTy Reflect
 trees. For example the `Literal(_)` extractor used below.
 
 ```scala
 def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
-  import qctx.tasty.{_, given _}
+  import qctx.tasty._
   val xTree: Term = x.unseal
   xTree match {
     case Inlined(_, _, Literal(Constant(n: Int))) =>
@@ -81,7 +78,7 @@ operation expression passed while calling the `macro` below.
 inline def macro(param: => Boolean): Unit = ${ macroImpl('param) }
 
 def macroImpl(param: Expr[Boolean])(using qctx: QuoteContext): Expr[Unit] = {
-  import qctx.tasty.{_, given _}
+  import qctx.tasty._
   import util._
 
   param.unseal.underlyingArgument match {
@@ -103,7 +100,7 @@ point.
 
 ```scala
 def macroImpl()(qctx: QuoteContext): Expr[Unit] = {
-  import qctx.tasty.{_, given _}
+  import qctx.tasty._
   val pos = rootPosition
 
   val path = pos.sourceFile.jpath.toString

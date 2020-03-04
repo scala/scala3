@@ -7,7 +7,7 @@ object Macro {
   inline def (sc: => StringContext).foo(args: String*): Unit = ${ impl('sc) }
 
   def impl(sc: Expr[StringContext])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     sc match {
       case '{ StringContext(${ExprSeq(parts)}: _*) } =>
         for (part @ Const(s) <- parts)

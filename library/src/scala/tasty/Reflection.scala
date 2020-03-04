@@ -415,26 +415,6 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   type AmbiguousImplicits = internal.AmbiguousImplicits
 
 
-  ////////////////
-  //   QUOTES   //
-  ////////////////
-
-  extension QuotedExprOps on (expr: scala.quoted.Expr[?]) {
-    /** View this expression `quoted.Expr[T]` as a `Term` */
-    def unseal(using ctx: Context): Term =
-      internal.QuotedExpr_unseal(expr)
-
-    /** Checked cast to a `quoted.Expr[U]` */
-    def cast[U](using tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U] =
-      internal.QuotedExpr_cast[U](expr)
-  }
-
-  extension QuotedTypeOps on [T <: AnyKind](tpe: scala.quoted.Type[T]) {
-    /** View this expression `quoted.Type[T]` as a `TypeTree` */
-    def unseal(using ctx: Context): TypeTree =
-      internal.QuotedType_unseal(tpe)
-  }
-
   //////////////
   // CONTEXTS //
   //////////////
@@ -1592,7 +1572,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   ///////////////
 
   /** Returns the type (Type) of T */
-  def typeOf[T](using qtype: scala.quoted.Type[T], ctx: Context): Type = qtype.unseal.tpe
+  def typeOf[T](using qtype: scala.quoted.Type[T], ctx: Context): Type =
+    internal.QuotedType_unseal(qtype).tpe
 
   /** Members of `TypeOrBounds` */
   extension TypeOrBoundsOps on (tpe: TypeOrBounds) {

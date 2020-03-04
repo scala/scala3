@@ -18,7 +18,7 @@ object Macros {
 
   implicit def intIsEvalable: Valuable[Int] = new Valuable[Int] {
     override def value(e: Expr[Int])(using qctx: QuoteContext) : Option[Int] = {
-      import qctx.tasty.{_, given _}
+      import qctx.tasty._
 
       e.unseal.tpe match {
         case pre: TermRef if pre.termSymbol.isValDef =>
