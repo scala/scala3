@@ -5,10 +5,11 @@ title: "Intersection Types - More Details"
 
 ## Syntax
 
-Syntactically, an intersection type `S & T` is similar to an infix type, where
-the infix operator is `&`. `&` is treated as a soft keyword. That is, it is a
-normal identifier with the usual precedence. But a type of the form `A & B` is
-always recognized as an intersection type, without trying to resolve `&`.
+Syntactically, the type `S & T` is an infix type, where the infix operator is `&`.
+The operator `&` is a normal identifier
+with the usual precedence and subject to usual resolving rules.
+Unless shadowed by another definition, it resolves to the type `scala.&`,
+which acts as a type alias to an internal representation of intersection types.
 
 ```
 Type              ::=  ...| InfixType
