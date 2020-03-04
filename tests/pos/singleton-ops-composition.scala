@@ -6,5 +6,5 @@ object Test {
   val t1: (2 * 7 + 1) % 10 = 5
   val t3: 1 * 1 + 2 * 2 + 3 * 3 + 4 * 4 = 30
   val t4: true && false || true && true || false ^ false = true
-  val t5: 100 << 2 >>> 2 >> 2 ^^ 3 | (7 & 7) = 31
+  val t5: BitwiseOr[100 << 2 >>> 2 >> 2 ^^ 3, BitwiseAnd[7, 7]] = 31
 }

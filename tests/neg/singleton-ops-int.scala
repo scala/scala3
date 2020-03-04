@@ -78,15 +78,15 @@ object Test {
   val t54: -1 ^ -2 = 1
   val t55: -1 ^ -3 = 1 // error
 
-  val t56: 1 | 2 = 3
-  val t57: 10 | 12 = 13 // error
-  val t58: -11 | 12 = -3
-  val t59: -111 | -10 = 0 // error
+  val t56: BitwiseOr[1, 2] = 3
+  val t57: BitwiseOr[10, 12] = 13 // error
+  val t58: BitwiseOr[-11, 12] = -3
+  val t59: BitwiseOr[-111, -10] = 0 // error
 
-  val t60: 1 & 1 = 1
-  val t61: 1 & 2 = 0
-  val t62: -1 & -3 = 3 // error
-  val t63: -1 & -1 = 1 // error
+  val t60: BitwiseAnd[1, 1] = 1
+  val t61: BitwiseAnd[1, 2] = 0
+  val t62: BitwiseAnd[-1, -3] = 3 // error
+  val t63: BitwiseAnd[-1, -1] = 1 // error
 
   val t64: 1 << 1 = 2
   val t65: 1 << 2 = 4

@@ -89,21 +89,6 @@ package object ops {
      */
     @infix type >>>[X <: Int, Y <: Int] <: Int
 
-    /** Bitwise and of `X` and `Y`.
-     *  ```scala
-     *  val and1: 4 & 4 = 4
-     *  val and2: 10 & 5 = 0
-     *  ```
-     */
-    @infix type &[X <: Int, Y <: Int] <: Int
-
-    /** Bitwise or of `X` and `Y`.
-     *  ```scala
-     *  val or: 10 | 11 = 11
-     *  ```
-     */
-    @infix type |[X <: Int, Y <: Int] <: Int
-
     /** Bitwise xor of `X` and `Y`.
      *  ```scala
      *  val xor: 10 ^ 30 = 20
@@ -142,6 +127,21 @@ package object ops {
      *  ```
      */
     @infix type <=[X <: Int, Y <: Int] <: Boolean
+
+    /** Bitwise and of `X` and `Y`.
+     *  ```scala
+     *  val and1: BitwiseAnd[4, 4] = 4
+     *  val and2: BitwiseAnd[10, 5] = 0
+     *  ```
+     */
+    type BitwiseAnd[X <: Int, Y <: Int] <: Int
+
+    /** Bitwise or of `X` and `Y`.
+     *  ```scala
+     *  val or: BitwiseOr[10, 11] = 11
+     *  ```
+     */
+    type BitwiseOr[X <: Int, Y <: Int] <: Int
 
     /** Absolute value of an `Int` singleton type.
      *  ```scala

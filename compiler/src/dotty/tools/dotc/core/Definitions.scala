@@ -955,7 +955,7 @@ class Definitions {
     tpnme.Plus, tpnme.Minus, tpnme.Times, tpnme.Div, tpnme.Mod,
     tpnme.Lt, tpnme.Gt, tpnme.Ge, tpnme.Le,
     tpnme.Abs, tpnme.Negate, tpnme.Min, tpnme.Max, tpnme.ToString,
-    tpnme.Xor, tpnme.AND, tpnme.OR, tpnme.ASR, tpnme.LSL, tpnme.LSR
+    tpnme.Xor, tpnme.BitwiseAnd, tpnme.BitwiseOr, tpnme.ASR, tpnme.LSL, tpnme.LSR
   )
   private val compiletimePackageBooleanTypes: Set[Name] = Set(tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or)
   private val compiletimePackageStringTypes: Set[Name] = Set(tpnme.Plus)
