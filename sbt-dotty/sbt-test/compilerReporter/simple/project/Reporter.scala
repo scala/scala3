@@ -29,9 +29,18 @@ object Reporter {
       println(problems.toList)
       assert(problems.size == 1)
 
-      // Assert disabled because we don't currently pass positions to sbt
-      // See https://github.com/lampepfl/dotty/pull/2107
-      // assert(problems.forall(_.position.offset.isDefined))
+      // make sure position reported by zinc are proper
+      val mainProblem = problems.head
+
+      val line = mainProblem.position().line() 
+      assert(line.isPresent() == true)
+      assert(line.get() == 9)
+
+      val pointer = mainProblem.position().pointer() 
+      assert(pointer.isPresent() == true)
+      assert(pointer.get() == 10)
+
+      assert(problems.forall(_.position.offset.isPresent))
 
       assert(problems.count(_.severity == Severity.Error) == 1) // not found: er1,
     }).value
