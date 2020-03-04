@@ -71,21 +71,32 @@ object Access {
 
   def (x: Permissions) & (y: Permissions): Permissions = x | y
   def (x: PermissionChoice) | (y: PermissionChoice): PermissionChoice = x | y
-  def (x: Permissions).is(y: Permissions) = (x & y) == y
-  def (x: Permissions).isOneOf(y: PermissionChoice) = (x & y) != 0
+  def (granted: Permissions).is(required: Permissions) = (granted & required) == required
+  def (granted: Permissions).isOneOf(required: PermissionChoice) = (granted & required) != 0
 
   val NoPermission: Permission = 0
-  val ReadOnly: Permission = 1
-  val WriteOnly: Permission = 2
-  val ReadWrite: Permissions = ReadOnly & WriteOnly
-  val ReadOrWrite: PermissionChoice = ReadOnly | WriteOnly
+  val Read: Permission = 1
+  val Write: Permission = 2
+  val ReadWrite: Permissions = Read | Write
+  val ReadOrWrite: PermissionChoice = Read | Write
 }
 ```
 The `Access` object defines three opaque types:
 
  - `Permission`, representing a single permission,
- - `Permissions`, representing a conjunction (logical "and") of permissions,
- - `PermissionChoice`, representing a disjunction (logical "or") of permissions.
+ - `Permissions`, representing a set of permissions with the meaning "all of these permissions granted",
+ - `PermissionChoice`, representing a set of permissions with the meaning "at least one of these permissions granted".
+
+Outside the `Access` object, values of type `Permissions` may be combined using the `&` operator,
+where `x & y` means "all permissions in `x` *and* in `y` granted".
+Values of type `PermissionChoice` may be combined using the `|` operator,
+where `x | y` means "a permission in `x` *or* in `y` granted".
+
+Note that inside the `Access` object, the `&` and `|` operators always resolve to the corresponding methods of `Int`,
+because members always take precedence over extension methods.
+Because of that, the `|` extension method in `Access` does not cause infinite recursion.
+Also, the definition of `ReadWrite` must use `|`,
+even though an equivalent definition outside `Access` would use `&`.
 
 All three opaque types have the same underlying representation type `Int`. The
 `Permission` type has an upper bound `Permissions & PermissionChoice`. This makes
@@ -97,13 +108,21 @@ object User {
 
   case class Item(rights: Permissions)
 
-  val x = Item(ReadOnly)  // OK, since Permission <: Permissions
+  val roItem = Item(Read)  // OK, since Permission <: Permissions
+  val rwItem = Item(ReadWrite)
+  val noItem = Item(NoPermission)
 
-  assert( x.rights.is(ReadWrite) == false )
-  assert( x.rights.isOneOf(ReadOrWrite) == true )
+  assert( roItem.rights.is(ReadWrite) == false )
+  assert( roItem.rights.isOneOf(ReadOrWrite) == true )
+
+  assert( rwItem.rights.is(ReadWrite) == true )
+  assert( rwItem.rights.isOneOf(ReadOrWrite) == true )
+
+  assert( noItem.rights.is(ReadWrite) == false )
+  assert( noItem.rights.isOneOf(ReadOrWrite) == false )
 }
 ```
-On the other hand, the call `x.rights.isOneOf(ReadWrite)` would give a type error
+On the other hand, the call `roItem.rights.isOneOf(ReadWrite)` would give a type error
 since `Permissions` and `PermissionChoice` are different, unrelated types outside `Access`.
 
 [More details](opaques-details.md)
