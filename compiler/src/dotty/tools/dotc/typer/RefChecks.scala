@@ -472,7 +472,7 @@ object RefChecks {
             }
         }
 
-       def ignoreDeferred(mbr: Symbol) =
+      def ignoreDeferred(mbr: Symbol) =
         mbr.isType
         || mbr.isSuperAccessor // not yet synthesized
         || mbr.is(JavaDefined) && hasJavaErasedOverriding(mbr)
@@ -619,15 +619,16 @@ object RefChecks {
       // (3) is violated but not (2).
       def checkNoAbstractDecls(bc: Symbol): Unit = {
         for (decl <- bc.info.decls)
-          if (decl.is(Deferred) && !ignoreDeferred(decl)) {
+          if (decl.is(Deferred)) {
             val impl = decl.matchingMember(clazz.thisType)
-            if (impl == NoSymbol || (decl.owner isSubClass impl.owner)) {
+            if (impl == NoSymbol || decl.owner.isSubClass(impl.owner))
+               && !ignoreDeferred(decl)
+            then
               val impl1 = clazz.thisType.nonPrivateMember(decl.name) // DEBUG
               ctx.log(i"${impl1}: ${impl1.info}") // DEBUG
               ctx.log(i"${clazz.thisType.memberInfo(decl)}") // DEBUG
               abstractClassError(false, "there is a deferred declaration of " + infoString(decl) +
                 " which is not implemented in a subclass" + err.abstractVarMessage(decl))
-            }
           }
         if (bc.asClass.superClass.is(Abstract))
           checkNoAbstractDecls(bc.asClass.superClass)
