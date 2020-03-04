@@ -429,7 +429,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       internal.QuotedExpr_cast[U](expr)
   }
 
-  extension QuotedTypeAPI on [T <: AnyKind](tpe: scala.quoted.Type[T]) {
+  extension QuotedTypeOps on [T <: AnyKind](tpe: scala.quoted.Type[T]) {
     /** View this expression `quoted.Type[T]` as a `TypeTree` */
     def unseal(using ctx: Context): TypeTree =
       internal.QuotedType_unseal(tpe)
