@@ -932,11 +932,19 @@ class Typer extends Namer
         isContextual = funFlags.is(Given), isErased = funFlags.is(Erased))
 
     /** Typechecks dependent function type with given parameters `params` */
-    def typedDependent(params: List[ValDef])(implicit ctx: Context): Tree =
+    def typedDependent(params: List[untpd.ValDef])(implicit ctx: Context): Tree =
+      val fixThis = new untpd.UntypedTreeMap:
+        // pretype all references of this in outer context,
+        // so that they do not refer to the refined type being constructed
+        override def transform(tree: untpd.Tree)(using Context): untpd.Tree = tree match
+          case This(id) => untpd.TypedSplice(typedExpr(tree)(using ctx.outer))
+          case _ => super.transform(tree)
+
       val params1 =
         if funFlags.is(Given) then params.map(_.withAddedFlags(Given))
         else params
-      val appDef0 = untpd.DefDef(nme.apply, Nil, List(params1), body, EmptyTree).withSpan(tree.span)
+      val params2 = params1.map(fixThis.transformSub)
+      val appDef0 = untpd.DefDef(nme.apply, Nil, List(params2), body, EmptyTree).withSpan(tree.span)
       index(appDef0 :: Nil)
       val appDef = typed(appDef0).asInstanceOf[DefDef]
       val mt = appDef.symbol.info.asInstanceOf[MethodType]
@@ -947,10 +955,11 @@ class Typer extends Namer
       val tycon = TypeTree(funCls.typeRef)
       val core = AppliedTypeTree(tycon, typeArgs)
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
+    end typedDependent
 
     args match {
       case ValDef(_, _, _) :: _ =>
-        typedDependent(args.asInstanceOf[List[ValDef]])(
+        typedDependent(args.asInstanceOf[List[untpd.ValDef]])(
           ctx.fresh.setOwner(ctx.newRefinedClassSymbol(tree.span)).setNewScope)
       case _ =>
         typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt)
