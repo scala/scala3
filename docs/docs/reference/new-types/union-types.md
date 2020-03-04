@@ -40,7 +40,7 @@ val either: Password | UserName = UserName(Eve)
 ```
 
 The type of `res2` is `Object & Product`, which is a supertype of
-`UserName` and `Product`, but not the least supertype `Password |
+`UserName` and `Password`, but not the least supertype `Password |
 UserName`.  If we want the least supertype, we have to give it
 explicitly, as is done for the type of `either`.
 
