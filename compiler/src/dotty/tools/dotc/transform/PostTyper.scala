@@ -118,7 +118,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                   // if you would use parent param-name `a` to implement param-field `b`
                   // overriding field `b` will actually override field `a`, that is wrong!
                   typr.println(i"super alias: ${sym.showLocated}")
-                  sym.setFlag(SuperParamAlias)
+                  sym.setFlagFrom(thisPhase, SuperParamAlias)
           case _ =>
       case _ =>
 

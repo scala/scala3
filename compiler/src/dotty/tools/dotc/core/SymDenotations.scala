@@ -1485,6 +1485,11 @@ object SymDenotations {
     override def transformAfter(phase: DenotTransformer, f: SymDenotation => SymDenotation)(implicit ctx: Context): Unit =
       super.transformAfter(phase, f)
 
+    /** Set flag `flags` in current phase and in all phases that follow */
+    def setFlagFrom(phase: DenotTransformer, flags: FlagSet)(using Context): Unit =
+      setFlag(flags)
+      transformAfter(phase, sd => { sd.setFlag(flags); sd })
+
     /** If denotation is private, remove the Private flag and expand the name if necessary */
     def ensureNotPrivate(implicit ctx: Context): SymDenotation =
       if (is(Private))
