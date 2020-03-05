@@ -231,17 +231,27 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       }
     }
 
-    def singleBounds(tp: Type): List[Type] = tp.widenExpr.dealias match
-      case tp1: SingletonType => tp1 :: Nil
-      case AndType(tp11, tp12) => singleBounds(tp1) ::: singleBounds(tp2)
-      case _ => Nil
-
-    def isSingletonAlias(tp: Type): Boolean = tp match
-      case tp: TermRef => singleBounds(tp).nonEmpty || isSingletonAlias(tp.prefix)
-      case _ => false
-
-    // THIS IS STILL PROVISIONAL
-    def canDropAlias(tp: NamedType): Boolean = !isSingletonAlias(tp.prefix)
+    /** Given an alias type `type A = B` where a recursive comparison with `B` yields
+     *  `false`, can we conclude that the comparison is definitely false?
+     *  This could not be the case if `A` overrides some abstract type. Example:
+     *
+     *    class C { type A }
+     *    class D { type A = Int }
+     *    val c: C
+     *    val d: D & c.type
+     *    c.A <:< d.A   ?
+     *
+     *  The test should return true, by performing the logic in the bottom half of
+     *  firstTry (where we check the names of types). But just following the alias
+     *  from d.A to Int reduces the problem to `c.A <:< Int`, which returns `false`.
+     *  So we can't drop the alias here, we need to do the backtracking to the name-
+     *  based tests.
+     */
+    def canDropAlias(tp: NamedType): Boolean =
+      val sym = tp.symbol
+      !sym.canMatchInheritedSymbols
+      || !tp.prefix.baseClasses.exists(
+            _.info.nonPrivateDecl(sym.name).symbol.is(Deferred))
 
     def firstTry: Boolean = tp2 match {
       case tp2: NamedType =>
@@ -258,17 +268,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               tp1.info match {
                 case info1: TypeAlias =>
                   if recur(info1.alias, tp2) then return true
-                  if tp1.prefix.isStable && canDropAlias(tp1) then return false
-                    // If tp1.prefix is stable, the alias does contain all information about the original ref, so
-                    // there's no need to try something else. (This is important for performance).
-                    // To see why we cannot in general stop here, consider:
-                    //
-                    //     trait C { type A }
-                    //     trait D { type A = String }
-                    //     (C & D)#A <: C#A
-                    //
-                    // Following the alias leads to the judgment `String <: C#A` which is false.
-                    // However the original judgment should be true.
+                  if canDropAlias(tp1) then return false
                 case _ =>
               }
               val sym2 = tp2.symbol
