@@ -231,28 +231,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       }
     }
 
-    /** Given an alias type `type A = B` where a recursive comparison with `B` yields
-     *  `false`, can we conclude that the comparison is definitely false?
-     *  This could not be the case if `A` overrides some abstract type. Example:
-     *
-     *    class C { type A }
-     *    class D { type A = Int }
-     *    val c: C
-     *    val d: D & c.type
-     *    c.A <:< d.A   ?
-     *
-     *  The test should return true, by performing the logic in the bottom half of
-     *  firstTry (where we check the names of types). But just following the alias
-     *  from d.A to Int reduces the problem to `c.A <:< Int`, which returns `false`.
-     *  So we can't drop the alias here, we need to do the backtracking to the name-
-     *  based tests.
-     */
-    def canDropAlias(tp: NamedType): Boolean =
-      val sym = tp.symbol
-      !sym.canMatchInheritedSymbols
-      || !tp.prefix.baseClasses.exists(
-            _.info.nonPrivateDecl(sym.name).symbol.is(Deferred))
-
     def firstTry: Boolean = tp2 match {
       case tp2: NamedType =>
         def compareNamed(tp1: Type, tp2: NamedType): Boolean =
@@ -261,14 +239,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           info2 match
             case info2: TypeAlias =>
               if recur(tp1, info2.alias) then return true
-              if canDropAlias(tp2) then return false
+              if tp2.asInstanceOf[TypeRef].canDropAlias then return false
             case _ =>
           tp1 match
             case tp1: NamedType =>
               tp1.info match {
                 case info1: TypeAlias =>
                   if recur(info1.alias, tp2) then return true
-                  if canDropAlias(tp1) then return false
+                  if tp1.asInstanceOf[TypeRef].canDropAlias then return false
                 case _ =>
               }
               val sym2 = tp2.symbol
