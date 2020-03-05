@@ -628,9 +628,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper {
     // names
-    def fullName(sep: Char): String = sym.showFullName
-    def fullName: String = sym.showFullName
-    def simpleName: Name = sym.name
+    def showFullName: String = sym.showFullName
     def javaSimpleName: String = toDenot(sym).name.mangledString // addModuleSuffix(simpleName.dropLocal)
     def javaBinaryName: String = javaClassName.replace('.', '/') // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
     def javaClassName: String = toDenot(sym).fullName.mangledString // addModuleSuffix(fullNameInternal('.')).toString

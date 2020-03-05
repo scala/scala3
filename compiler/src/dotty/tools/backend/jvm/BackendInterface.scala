@@ -443,9 +443,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
 
   abstract class SymbolHelper {
     // names
-    def fullName(sep: Char): String
-    def fullName: String
-    def simpleName: Name
+    def showFullName: String
     def javaSimpleName: String
     def javaBinaryName: String
     def javaClassName: String

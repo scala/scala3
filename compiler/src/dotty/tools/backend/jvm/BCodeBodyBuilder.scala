@@ -114,7 +114,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             case POS => () // nothing
             case NEG => bc.neg(resKind)
             case NOT => bc.genPrimitiveArithmetic(Primitives.NOT, resKind)
-            case _ => abort(s"Unknown unary operation: ${fun.symbol.fullName} code: $code")
+            case _ => abort(s"Unknown unary operation: ${fun.symbol.showFullName} code: $code")
           }
 
         // binary operation
@@ -256,7 +256,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         coercionTo(code)
       }
       else abort(
-        s"Primitive operation not handled yet: ${sym.fullName}(${fun.symbol.simpleName}) at: ${tree.pos}"
+        s"Primitive operation not handled yet: ${sym.showFullName}(${fun.symbol.name}) at: ${tree.pos}"
       )
     }
 
@@ -633,7 +633,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val cast = sym match {
           case Object_isInstanceOf => false
           case Object_asInstanceOf => true
-          case _ => abort(s"Unexpected type application $fun[sym: ${sym.fullName}] in: $t")
+          case _ => abort(s"Unexpected type application $fun[sym: ${sym.showFullName}] in: $t")
         }
 
         val l = tpeTK(obj)
@@ -736,7 +736,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               mkArrayConstructorCall(arr, app, args)
 
             case rt: ClassBType =>
-              assert(classBTypeFromSymbol(ctor.owner) == rt, s"Symbol ${ctor.owner.fullName} is different from $rt")
+              assert(classBTypeFromSymbol(ctor.owner) == rt, s"Symbol ${ctor.owner.showFullName} is different from $rt")
               mnode.visitTypeInsn(asm.Opcodes.NEW, rt.internalName)
               bc dup generatedType
               genLoadArguments(args, paramTKs(app))

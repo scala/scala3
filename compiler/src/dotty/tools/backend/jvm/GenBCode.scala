@@ -207,7 +207,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(implicit val ctx: Context
           if (claszSymbol.companionClass == NoSymbol) {
             mirrorCodeGen.genMirrorClass(claszSymbol, cunit)
           } else {
-            ctx.log(s"No mirror class for module with linked class: ${claszSymbol.fullName}")
+            ctx.log(s"No mirror class for module with linked class: ${claszSymbol.showFullName}")
             null
           }
         } else null
