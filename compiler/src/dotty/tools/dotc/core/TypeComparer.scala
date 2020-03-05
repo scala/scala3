@@ -231,56 +231,69 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       }
     }
 
+    def singleBounds(tp: Type): List[Type] = tp.widenExpr.dealias match
+      case tp1: SingletonType => tp1 :: Nil
+      case AndType(tp11, tp12) => singleBounds(tp1) ::: singleBounds(tp2)
+      case _ => Nil
+
+    def isSingletonAlias(tp: Type): Boolean = tp match
+      case tp: TermRef => singleBounds(tp).nonEmpty || isSingletonAlias(tp.prefix)
+      case _ => false
+
+    // THIS IS STILL PROVISIONAL
+    def canDropAlias(tp: NamedType): Boolean = !isSingletonAlias(tp.prefix)
+
     def firstTry: Boolean = tp2 match {
       case tp2: NamedType =>
-        def compareNamed(tp1: Type, tp2: NamedType): Boolean = {
+        def compareNamed(tp1: Type, tp2: NamedType): Boolean =
           implicit val ctx: Context = this.ctx
-          tp2.info match {
+          val info2 = tp2.info
+          info2 match
             case info2: TypeAlias =>
-              recur(tp1, info2.alias)
-            case _ => tp1 match {
-              case tp1: NamedType =>
-                tp1.info match {
-                  case info1: TypeAlias =>
-                    if (recur(info1.alias, tp2)) return true
-                    if (tp1.prefix.isStable) return false
-                      // If tp1.prefix is stable, the alias does contain all information about the original ref, so
-                      // there's no need to try something else. (This is important for performance).
-                      // To see why we cannot in general stop here, consider:
-                      //
-                      //     trait C { type A }
-                      //     trait D { type A = String }
-                      //     (C & D)#A <: C#A
-                      //
-                      // Following the alias leads to the judgment `String <: C#A` which is false.
-                      // However the original judgment should be true.
-                  case _ =>
-                }
-                val sym2 = tp2.symbol
-                var sym1 = tp1.symbol
-                if (sym1.is(ModuleClass) && sym2.is(ModuleVal))
-                  // For convenience we want X$ <:< X.type
-                  // This is safe because X$ self-type is X.type
-                  sym1 = sym1.companionModule
-                if ((sym1 ne NoSymbol) && (sym1 eq sym2))
-                  ctx.erasedTypes ||
-                  sym1.isStaticOwner ||
-                  isSubType(tp1.prefix, tp2.prefix) ||
-                  thirdTryNamed(tp2)
-                else
-                  (  (tp1.name eq tp2.name)
-                  && tp1.isMemberRef
-                  && tp2.isMemberRef
-                  && isSubType(tp1.prefix, tp2.prefix)
-                  && tp1.signature == tp2.signature
-                  && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
-                  ) ||
-                  thirdTryNamed(tp2)
-              case _ =>
-                secondTry
-            }
-          }
-        }
+              if recur(tp1, info2.alias) then return true
+              if canDropAlias(tp2) then return false
+            case _ =>
+          tp1 match
+            case tp1: NamedType =>
+              tp1.info match {
+                case info1: TypeAlias =>
+                  if recur(info1.alias, tp2) then return true
+                  if tp1.prefix.isStable && canDropAlias(tp1) then return false
+                    // If tp1.prefix is stable, the alias does contain all information about the original ref, so
+                    // there's no need to try something else. (This is important for performance).
+                    // To see why we cannot in general stop here, consider:
+                    //
+                    //     trait C { type A }
+                    //     trait D { type A = String }
+                    //     (C & D)#A <: C#A
+                    //
+                    // Following the alias leads to the judgment `String <: C#A` which is false.
+                    // However the original judgment should be true.
+                case _ =>
+              }
+              val sym2 = tp2.symbol
+              var sym1 = tp1.symbol
+              if (sym1.is(ModuleClass) && sym2.is(ModuleVal))
+                // For convenience we want X$ <:< X.type
+                // This is safe because X$ self-type is X.type
+                sym1 = sym1.companionModule
+              if ((sym1 ne NoSymbol) && (sym1 eq sym2))
+                ctx.erasedTypes ||
+                sym1.isStaticOwner ||
+                isSubType(tp1.prefix, tp2.prefix) ||
+                thirdTryNamed(tp2)
+              else
+                (  (tp1.name eq tp2.name)
+                && tp1.isMemberRef
+                && tp2.isMemberRef
+                && isSubType(tp1.prefix, tp2.prefix)
+                && tp1.signature == tp2.signature
+                && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
+                ) ||
+                thirdTryNamed(tp2)
+            case _ =>
+              secondTry
+        end compareNamed
         compareNamed(tp1, tp2)
       case tp2: ProtoType =>
         isMatchedByProto(tp2, tp1)
@@ -753,20 +766,16 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       case tp1 @ AppliedType(tycon1, args1) =>
         compareAppliedType1(tp1, tycon1, args1)
       case tp1: SingletonType =>
-        /** if `tp2 == p.type` and `p: q.type` then try `tp1 <:< q.type` as a last effort.*/
-        def comparePaths = tp2 match {
+        def comparePaths = tp2 match
           case tp2: TermRef =>
-            tp2.info.widenExpr.dealias match {
-              case tp2i: SingletonType =>
-                recur(tp1, tp2i)
-                  // see z1720.scala for a case where this can arise even in typer.
-                  // Also, i1753.scala, to show why the dealias above is necessary.
-              case _ => false
+            compareAtoms(tp1, tp2, knownSingletons = true).getOrElse(false)
+            || { // needed to make from-tasty work. test cases: pos/i1753.scala, pos/t839.scala
+              tp2.info.widenExpr.dealias match
+                case tp2i: SingletonType => recur(tp1, tp2i)
+                case _ => false
             }
-          case _ =>
-            false
-        }
-        isNewSubType(tp1.underlying.widenExpr) || comparePaths
+          case _ => false
+        comparePaths || isNewSubType(tp1.underlying.widenExpr)
       case tp1: RefinedType =>
         isNewSubType(tp1.parent)
       case tp1: RecType =>
@@ -1174,8 +1183,18 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
   /** If both `tp1` and `tp2` have atoms information, compare the atoms
    *  in a Some, otherwise None.
+   *  @param knownSingletons  If true, we are coming from a comparison of two singleton types
+   *                          This influences the comparison as shown below:
+   *
+   *  Say you have singleton types p.type and q.type the atoms of p.type are `{p.type}..{p.type}`,
+   *  and the atoms of `q.type` are `{}..{p.type}`. Normally the atom comparison between p's
+   *  atoms and q's atoms gives false. But in this case we know that `q.type` is an alias of `p.type`
+   *  so we are still allowed to conclude that `p.type <:< q.type`. A situation where this happens
+   *  is in i6635.scala. Here,
+   *
+   *     p: A, q: B & p.type   and we want to conclude that p.type <: q.type.
    */
-  def compareAtoms(tp1: Type, tp2: Type): Option[Boolean] =
+  def compareAtoms(tp1: Type, tp2: Type, knownSingletons: Boolean = false): Option[Boolean] =
 
     /** Check whether we can compare the given set of atoms with another to determine
      *  a subtype test between OrTypes. There is one situation where this is not
@@ -1209,9 +1228,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       case Atoms.Range(lo2, hi2) if canCompareAtoms && canCompare(hi2) =>
         tp1.atoms match
           case Atoms.Range(lo1, hi1) =>
-            if hi1.subsetOf(lo2) then Some(verified(true))
-            else if !lo1.subsetOf(hi2) then Some(verified(false))
-            else None
+            if hi1.subsetOf(lo2) || knownSingletons && hi2.size == 1 && hi1 == hi2 then
+              Some(verified(true))
+            else if !lo1.subsetOf(hi2) then
+              Some(verified(false))
+            else
+              None
           case _ => Some(verified(recur(tp1, NothingType)))
       case _ => None
 
