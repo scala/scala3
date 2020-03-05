@@ -11,7 +11,7 @@ object SourceFiles {
 
   def getThisFileImpl: Macro[String] = {
     val qctx = tastyContext
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     rootContext.source.getFileName.toString
   }
 
