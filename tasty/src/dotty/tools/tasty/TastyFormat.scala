@@ -207,6 +207,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   STABLE                                                           -- Method that is assumed to be stable, i.e. its applications are legal paths
                   EXTENSION                                                        -- An extension method
                   PARAMsetter                                                      -- The setter part `x_=` of a var parameter `x` which itself is pickled as a PARAM
+                  PARAMalias                                                       -- Parameter is alias of a superclass parameter
                   EXPORTED                                                         -- An export forwarder
                   OPEN                                                             -- an open class
                   Annotation
@@ -355,6 +356,7 @@ object TastyFormat {
   final val EXPORTED = 39
   final val OPEN = 40
   final val PARAMEND = 41
+  final val PARAMalias = 42
 
   // Cat. 2:    tag Nat
 
@@ -481,7 +483,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
-    firstSimpleTreeTag <= tag && tag <= PARAMEND ||
+    firstSimpleTreeTag <= tag && tag <= PARAMalias ||
     firstNatTreeTag <= tag && tag <= RENAMED ||
     firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -524,6 +526,7 @@ object TastyFormat {
        | STABLE
        | EXTENSION
        | PARAMsetter
+       | PARAMalias
        | EXPORTED
        | OPEN
        | ANNOTATION
@@ -588,6 +591,7 @@ object TastyFormat {
     case EXPORTED => "EXPORTED"
     case OPEN => "OPEN"
     case PARAMEND => "PARAMEND"
+    case PARAMalias => "PARAMalias"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"

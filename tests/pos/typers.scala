@@ -99,7 +99,7 @@ object typers {
     }
 
     class B extends A {
-      private def x: Int = 1
+      private val x: Int = 1
     }
 
     val b: B = new B

@@ -11,6 +11,7 @@ import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
 import Decorators._
 import Symbols._, SymUtils._
+import config.Printers.typr
 import reporting.diagnostic.messages._
 
 object PostTyper {
@@ -24,7 +25,7 @@ object PostTyper {
  *  (2) Convert parameter fields that have the same name as a corresponding
  *      public parameter field in a superclass to a forwarder to the superclass
  *      field (corresponding = super class field is initialized with subclass field)
- *      (@see ForwardParamAccessors)
+ *      @see forwardParamAccessors.
  *
  *  (3) Add synthetic members (@see SyntheticMembers)
  *
@@ -72,7 +73,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     new PostTyperTransformer
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
-  val paramFwd: ParamForwarding = new ParamForwarding(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
 
   private def newPart(tree: Tree): Option[New] = methPart(tree) match {
@@ -97,6 +97,30 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     }
 
     def isCheckable(t: New): Boolean = !inJavaAnnot && !noCheckNews.contains(t)
+
+    /** Mark parameter accessors that are aliases of like-named parameters
+     *  in their superclass with SuperParamAlias.
+     *  This info is used in phase ParamForwarding
+     */
+    private def forwardParamAccessors(impl: Template)(using Context): Unit = impl.parents match
+      case superCall @ Apply(fn, superArgs) :: _ if superArgs.nonEmpty =>
+        fn.tpe.widen match
+          case MethodType(superParamNames) =>
+            for case stat: ValDef <- impl.body do
+              val sym = stat.symbol
+              if sym.isAllOf(PrivateParamAccessor, butNot = Mutable)
+                 && !sym.info.isInstanceOf[ExprType] // val-parameters cannot be call-by name, so no need to try to forward to them
+              then
+                val idx = superArgs.indexWhere(_.symbol == sym)
+                if idx >= 0 && superParamNames(idx) == stat.name then
+                  // Supercall to like-named parameter.
+                  // Having it have the same name is needed to maintain correctness in presence of subclassing
+                  // if you would use parent param-name `a` to implement param-field `b`
+                  // overriding field `b` will actually override field `a`, that is wrong!
+                  typr.println(i"super alias: ${sym.showLocated}")
+                  sym.setFlagFrom(thisPhase, SuperParamAlias)
+          case _ =>
+      case _ =>
 
     private def transformAnnot(annot: Tree)(implicit ctx: Context): Tree = {
       val saved = inJavaAnnot
@@ -227,11 +251,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val pos = call.sourcePos
           val callTrace = Inliner.inlineCallTrace(call.symbol, pos)(ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
-        case tree: Template =>
-          withNoCheckNews(tree.parents.flatMap(newPart)) {
-            val templ1 = paramFwd.forwardParamAccessors(tree)
+        case templ: Template =>
+          withNoCheckNews(templ.parents.flatMap(newPart)) {
+            forwardParamAccessors(templ)
             synthMbr.addSyntheticMembers(
-                superAcc.wrapTemplate(templ1)(
+                superAcc.wrapTemplate(templ)(
                   super.transform(_).asInstanceOf[Template]))
           }
         case tree: ValDef =>

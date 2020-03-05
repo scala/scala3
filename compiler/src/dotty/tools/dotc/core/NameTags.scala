@@ -34,7 +34,7 @@ object NameTags extends TastyFormat.NameTags {
   final val IMPLMETH = 32       // Used to define methods in implementation classes
                                 // (can probably be removed).
 
-  final val CACHE = 33          // Used as a cache for the rhs of an alias implicit.
+  final val PARAMACC = 33       // Used for a private parameter alias
 
   def nameTagToString(tag: Int): String = tag match {
     case UTF8 => "UTF8"
@@ -55,6 +55,8 @@ object NameTags extends TastyFormat.NameTags {
     case DIRECT => "DIRECT"
     case FIELD => "FIELD"
     case EXTMETH => "EXTMETH"
+    case IMPLMETH => "IMPLMETH"
+    case PARAMACC => "PARAMACC"
     case ADAPTEDCLOSURE => "ADAPTEDCLOSURE"
     case OBJECTCLASS => "OBJECTCLASS"
 

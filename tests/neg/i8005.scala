@@ -8,5 +8,5 @@ abstract class Buffer {
 class ByteBuffer extends Buffer {  // error: ByteBufer needs to be abstract since `bar` is not defined
   private[nio] val isReadOnly: Boolean = false // error
   protected def foo(): Unit = ()  // error
-  private def bar(): Unit = ()
+  private def bar(): Unit = () // error
 }

@@ -866,6 +866,30 @@ object RefChecks {
     }
   }
 
+  /** Check that we do not "override" anything with a private method
+   *  or something that becomes a private method. According to the Scala
+   *  modeling this is non-sensical since private members don't override.
+   *  But Java and the JVM disagree, if the private member is a method.
+   *  A test case is neg/i7926b.scala.
+   *  Note: The compiler could possibly silently rename the offending private
+   *  instead of flagging it as an error. But that might mean we see some
+   *  surprising names at runtime. E.g. in neg/i4564a.scala, a private
+   *  case class `apply` method would have to be renamed to something else.
+   */
+  def checkNoPrivateOverrides(tree: Tree)(using ctx: Context): Unit =
+    val sym = tree.symbol
+    if sym.owner.isClass
+       && sym.is(Private)
+       && (sym.isOneOf(MethodOrLazyOrMutable) || !sym.is(Local)) // in these cases we'll produce a getter later
+       && !sym.isConstructor
+    then
+      val cls = sym.owner.asClass
+      for bc <- cls.baseClasses.tail do
+        val other = sym.matchingDecl(bc, cls.thisType)
+        if other.exists then
+          ctx.error(i"private $sym cannot override ${other.showLocated}", sym.sourcePos)
+  end checkNoPrivateOverrides
+
   type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
 
   class OptLevelInfo {
@@ -957,6 +981,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     else ctx
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context): ValDef = {
+    checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
     val sym = tree.symbol
     if (sym.exists && sym.owner.isTerm) {
@@ -976,6 +1001,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   }
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): DefDef = {
+    checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
     tree
   }
