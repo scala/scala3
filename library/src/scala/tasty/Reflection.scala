@@ -429,22 +429,10 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       internal.QuotedExpr_cast[U](expr)
   }
 
-  extension QuotedTypeAPI on [T <: AnyKind](tpe: scala.quoted.Type[T]) {
+  extension QuotedTypeOps on [T <: AnyKind](tpe: scala.quoted.Type[T]) {
     /** View this expression `quoted.Type[T]` as a `TypeTree` */
     def unseal(using ctx: Context): TypeTree =
       internal.QuotedType_unseal(tpe)
-  }
-
-  extension TermToQuotedOps on (term: Term) {
-    /** Convert `Term` to an `quoted.Expr[Any]` */
-    def seal(using ctx: Context): scala.quoted.Expr[Any] =
-      internal.QuotedExpr_seal(term)
-  }
-
-  extension TypeToQuotedOps on (tpe: Type) {
-    /** Convert `Type` to an `quoted.Type[_]` */
-    def seal(using ctx: Context): scala.quoted.Type[_] =
-      internal.QuotedType_seal(tpe)
   }
 
   //////////////
@@ -646,6 +634,11 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   // ----- Terms ----------------------------------------------------
 
   extension TermOps on (self: Term) {
+
+    /** Convert `Term` to an `quoted.Expr[Any]` */
+    def seal(using ctx: Context): scala.quoted.Expr[Any] =
+      internal.QuotedExpr_seal(self)
+
     def tpe(using ctx: Context): Type = internal.Term_tpe(self)
     def underlyingArgument(using ctx: Context): Term = internal.Term_underlyingArgument(self)
     def underlying(using ctx: Context): Term = internal.Term_underlying(self)
@@ -1618,6 +1611,10 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   // ----- Types ----------------------------------------------------
 
   extension TypeOps on (self: Type) {
+
+    /** Convert `Type` to an `quoted.Type[_]` */
+    def seal(using ctx: Context): scala.quoted.Type[_] =
+      internal.QuotedType_seal(self)
 
     /** Is `self` type the same as `that` type?
      *  This is the case iff `self <:< that` and `that <:< self`.
