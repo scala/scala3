@@ -592,6 +592,17 @@ object Checking {
       stats.foreach(checkValueClassMember)
     }
   }
+
+  /** Check that an enum case extends its enum class */
+  def checkEnumParentOK(cls: Symbol)(using ctx: Context): Unit =
+    val enumCase =
+      if cls.isAllOf(EnumCase) then cls
+      else if cls.isAnonymousClass && cls.owner.isAllOf(EnumCase) then cls.owner
+      else NoSymbol
+    if enumCase.exists then
+      val enumCls = enumCase.owner.linkedClass
+      if !cls.info.parents.exists(_.typeSymbol == enumCls) then
+        ctx.error(i"enum case does not extend its enum $enumCls", enumCase.sourcePos)
 }
 
 trait Checking {
