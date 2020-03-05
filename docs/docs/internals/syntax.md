@@ -105,7 +105,7 @@ yield
 
 ```
 as        derives   extension inline    on        opaque    open      using
-~         *         |         &         +         -
+*         +         -
 ```
 
 ## Context-free Syntax
