@@ -20,8 +20,11 @@ enum Atoms:
     case Range(lo1, hi1) =>
       that match
         case Range(lo2, hi2) => Range(lo1 & lo2, hi1 & hi2)
-        case Unknown => this
-    case Unknown => that
+        case Unknown => Range(Set.empty, hi1)
+    case Unknown =>
+      that match
+        case Range(lo2, hi2) => Range(Set.empty, hi2)
+        case Unknown => Unknown
 
   def | (that: Atoms): Atoms = this match
     case Range(lo1, hi1) =>
