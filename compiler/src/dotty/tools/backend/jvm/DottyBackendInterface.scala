@@ -678,8 +678,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       isPrivate || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
     def isFinal: Boolean = sym.is(Flags.Final)
+    def isScalaStatic: Boolean =
+      toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot)
     def isStaticMember: Boolean = (sym ne NoSymbol) &&
-      (sym.is(Flags.JavaStatic) || toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot))
+      (sym.is(Flags.JavaStatic) || isScalaStatic)
       // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
     def isBottomClass: Boolean = (sym eq defn.NullClass) || (sym eq defn.NothingClass)

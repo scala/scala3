@@ -491,6 +491,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def getsJavaPrivateFlag: Boolean
     def isFinal: Boolean
     def getsJavaFinalFlag: Boolean
+    def isScalaStatic: Boolean
     def isStaticMember: Boolean
     def isBottomClass: Boolean
     def isBridge: Boolean
