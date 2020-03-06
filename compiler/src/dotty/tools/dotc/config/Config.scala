@@ -169,6 +169,12 @@ object Config {
   /** If set, prints a trace of all symbol completions */
   final val showCompletions = false
 
+  /** If set, method results that are context functions are flattened by adding
+   *  the parameters of the context function results to the methods themselves.
+   *  This is an optimization that reduces closure allocations.
+   */
+  final val flattenContextFunctionResults = true
+
   /** If set, enables tracing */
   final val tracingEnabled = false
 

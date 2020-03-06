@@ -7,7 +7,6 @@ import Symbols._, Types._, Contexts._, Decorators._, Flags._, Scopes._
 import DenotTransformers._
 import ast.untpd
 import collection.{mutable, immutable}
-import ShortcutImplicits._
 import util.Spans.Span
 import util.SourcePosition
 
@@ -29,9 +28,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     override def parents = Array(root.superClass)
 
     override def exclude(sym: Symbol) =
-      !sym.isOneOf(MethodOrModule) ||
-      isImplicitShortcut(sym) ||
-      super.exclude(sym)
+      !sym.isOneOf(MethodOrModule) || super.exclude(sym)
   }
 
   //val site = root.thisType
@@ -102,9 +99,10 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     }
 
     def bridgeRhs(argss: List[List[Tree]]) = {
+      assert(argss.tail.isEmpty)
       val ref = This(root).select(member)
       if (member.info.isParameterless) ref // can happen if `member` is a module
-      else ref.appliedToArgss(argss)
+      else Erasure.partialApply(ref, argss.head)
     }
 
     bridges += DefDef(bridge, bridgeRhs(_).withSpan(bridge.span))
@@ -113,24 +111,13 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   /** Add all necessary bridges to template statements `stats`, and remove at the same
    *  time deferred methods in `stats` that are replaced by a bridge with the same signature.
    */
-  def add(stats: List[untpd.Tree]): List[untpd.Tree] = {
+  def add(stats: List[untpd.Tree]): List[untpd.Tree] =
     val opc = new BridgesCursor()(preErasureCtx)
     val ectx = ctx.withPhase(thisPhase)
-    while (opc.hasNext) {
-      if (!opc.overriding.is(Deferred)) {
+    while opc.hasNext do
+      if !opc.overriding.is(Deferred) then
         addBridgeIfNeeded(opc.overriding, opc.overridden)
-
-        if (needsImplicitShortcut(opc.overriding)(ectx) && needsImplicitShortcut(opc.overridden)(ectx))
-          // implicit shortcuts do not show up in the Bridges cursor, since they
-          // are created only when referenced. Therefore we need to generate a bridge
-          // for them specifically, if one is needed for the original methods.
-          addBridgeIfNeeded(
-            shortcutMethod(opc.overriding, thisPhase)(ectx),
-            shortcutMethod(opc.overridden, thisPhase)(ectx))
-      }
       opc.next()
-    }
-    if (bridges.isEmpty) stats
+    if bridges.isEmpty then stats
     else stats.filterNot(stat => toBeRemoved contains stat.symbol) ::: bridges.toList
-  }
 }

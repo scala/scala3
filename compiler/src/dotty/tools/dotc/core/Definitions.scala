@@ -783,8 +783,7 @@ class Definitions {
   @tu lazy val AnnotationDefaultAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.AnnotationDefault")
   @tu lazy val BodyAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.Body")
   @tu lazy val ChildAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.Child")
-  @tu lazy val CovariantBetweenAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.CovariantBetween")
-  @tu lazy val ContravariantBetweenAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.ContravariantBetween")
+  @tu lazy val ContextResultCountAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.ContextResultCount")
   @tu lazy val DeprecatedAnnot: ClassSymbol = ctx.requiredClass("scala.deprecated")
   @tu lazy val ImplicitAmbiguousAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.implicitAmbiguous")
   @tu lazy val ImplicitNotFoundAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.implicitNotFound")
@@ -1268,6 +1267,20 @@ class Definitions {
   /** Is `tp` an context function type? */
   def isContextFunctionType(tp: Type)(implicit ctx: Context): Boolean =
     asContextFunctionType(tp).exists
+
+  /** An extractor for context function types `As ?=> B`, possibly with
+   *  dependent refinements. Optionally returns a triple consisting of the argument
+   *  types `As`, the result type `B` and a whether the type is an erased context function.
+   */
+  object ContextFunctionType:
+    def unapply(tp: Type)(using ctx: Context): Option[(List[Type], Type, Boolean)] =
+      if ctx.erasedTypes then unapply(tp)(using ctx.withPhase(ctx.erasurePhase))
+      else
+        val tp1 = tp.dealias
+        if isContextFunctionClass(tp1.typeSymbol) then
+          val args = asContextFunctionType(tp).dropDependentRefinement.argInfos
+          Some((args.init, args.last, tp1.typeSymbol.name.isErasedFunction))
+        else None
 
   def isErasedFunctionType(tp: Type)(implicit ctx: Context): Boolean =
     isFunctionType(tp) && tp.dealias.typeSymbol.name.isErasedFunction

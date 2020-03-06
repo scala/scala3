@@ -475,7 +475,6 @@ object RefChecks {
        def ignoreDeferred(mbr: Symbol) =
         mbr.isType
         || mbr.isSuperAccessor // not yet synthesized
-        || ShortcutImplicits.isImplicitShortcut(mbr) // only synthesized when referenced, see Note in ShortcutImplicits
         || mbr.is(JavaDefined) && hasJavaErasedOverriding(mbr)
 
       def isImplemented(mbr: Symbol) =

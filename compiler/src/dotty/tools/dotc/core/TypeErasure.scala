@@ -5,9 +5,10 @@ package core
 import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._
 import Flags.JavaDefined
 import Uniques.unique
-import dotc.transform.ExplicitOuter._
-import dotc.transform.ValueClasses._
+import transform.ExplicitOuter._
+import transform.ValueClasses._
 import transform.TypeUtils._
+import transform.ContextFunctionResults._
 import Decorators._
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
@@ -129,7 +130,7 @@ object TypeErasure {
     erasures(erasureIdx(isJava, semiEraseVCs, isConstructor, wildcardOK))
 
   /** The current context with a phase no later than erasure */
-  private def erasureCtx(implicit ctx: Context) =
+  def preErasureCtx(implicit ctx: Context) =
     if (ctx.erasedTypes) ctx.withPhase(ctx.erasurePhase) else ctx
 
   /** The standard erasure of a Scala type. Value classes are erased as normal classes.
@@ -137,7 +138,7 @@ object TypeErasure {
    *  @param tp            The type to erase.
   */
   def erasure(tp: Type)(implicit ctx: Context): Type =
-    erasureFn(isJava = false, semiEraseVCs = false, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
+    erasureFn(isJava = false, semiEraseVCs = false, isConstructor = false, wildcardOK = false)(tp)(preErasureCtx)
 
   /** The value class erasure of a Scala type, where value classes are semi-erased to
    *  ErasedValueType (they will be fully erased in [[ElimErasedValueType]]).
@@ -145,7 +146,7 @@ object TypeErasure {
    *  @param tp            The type to erase.
    */
   def valueErasure(tp: Type)(implicit ctx: Context): Type =
-    erasureFn(isJava = false, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
+    erasureFn(isJava = false, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(preErasureCtx)
 
   /** Like value class erasure, but value classes erase to their underlying type erasure */
   def fullErasure(tp: Type)(implicit ctx: Context): Type =
@@ -156,7 +157,7 @@ object TypeErasure {
   def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
     val normTp = tp.underlyingIfRepeated(isJava)
     val erase = erasureFn(isJava, semiEraseVCs = false, isConstructor = false, wildcardOK = true)
-    erase.sigName(normTp)(erasureCtx)
+    erase.sigName(normTp)(preErasureCtx)
   }
 
   /** The erasure of a top-level reference. Differs from normal erasure in that
@@ -195,9 +196,9 @@ object TypeErasure {
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
-    else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
-    else if (sym.is(Label)) erase.eraseResult(sym.info)(erasureCtx)
-    else erase.eraseInfo(tp, sym)(erasureCtx) match {
+    else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(preErasureCtx))
+    else if (sym.is(Label)) erase.eraseResult(sym.info)(preErasureCtx)
+    else erase.eraseInfo(tp, sym)(preErasureCtx) match {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
           MethodType(Nil, defn.BoxedUnitClass.typeRef)
@@ -526,21 +527,25 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *  `PolyType`s are treated. `eraseInfo` maps them them to method types, whereas `apply` maps them
    *  to the underlying type.
    */
-  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
-    case ExprType(rt) =>
-      if (sym.is(Param)) apply(tp)
-        // Note that params with ExprTypes are eliminated by ElimByName,
-        // but potentially re-introduced by ResolveSuper, when we add
-        // forwarders to mixin methods.
-        // See doc comment for ElimByName for speculation how we could improve this.
-      else MethodType(Nil, Nil, eraseResult(sym.info.finalResultType.underlyingIfRepeated(isJava)))
-    case tp: PolyType =>
-      eraseResult(tp.resultType) match {
-        case rt: MethodType => rt
-        case rt => MethodType(Nil, Nil, rt)
-      }
-    case tp => this(tp)
-  }
+  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
+    val tp1 = tp match
+      case tp: MethodicType => integrateContextResults(tp, contextResultCount(sym))
+      case _ => tp
+    tp1 match
+      case ExprType(rt) =>
+        if sym.is(Param) then apply(tp1)
+            // Note that params with ExprTypes are eliminated by ElimByName,
+            // but potentially re-introduced by ResolveSuper, when we add
+            // forwarders to mixin methods.
+            // See doc comment for ElimByName for speculation how we could improve this.
+        else
+          MethodType(Nil, Nil,
+            eraseResult(sym.info.finalResultType.underlyingIfRepeated(isJava)))
+      case tp1: PolyType =>
+        eraseResult(tp1.resultType) match
+          case rt: MethodType => rt
+          case rt => MethodType(Nil, Nil, rt)
+      case tp1 => this(tp1)
 
   private def eraseDerivedValueClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass

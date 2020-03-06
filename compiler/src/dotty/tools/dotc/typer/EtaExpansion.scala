@@ -40,6 +40,9 @@ abstract class Lifter {
   /** The tree of a lifted definition */
   protected def liftedDef(sym: TermSymbol, rhs: Tree)(implicit ctx: Context): MemberDef = ValDef(sym, rhs)
 
+  /** Is lifting performed on erased terms? */
+  protected def isErased = false
+
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(implicit ctx: Context): Tree =
     if (noLift(expr)) expr
     else {
@@ -107,7 +110,10 @@ abstract class Lifter {
    */
   def liftApp(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree = tree match {
     case Apply(fn, args) =>
-      cpy.Apply(tree)(liftApp(defs, fn), liftArgs(defs, fn.tpe, args))
+      val fn1 = liftApp(defs, fn)
+      val args1 = liftArgs(defs, fn.tpe, args)
+      if isErased then untpd.cpy.Apply(tree)(fn1, args1).withType(tree.tpe) // application may be partial
+      else cpy.Apply(tree)(fn1, args1)
     case TypeApply(fn, targs) =>
       cpy.TypeApply(tree)(liftApp(defs, fn), targs)
     case Select(pre, name) if isPureRef(tree) =>
@@ -148,6 +154,9 @@ class LiftComplex extends Lifter {
   override def exprLifter: Lifter = LiftToDefs
 }
 object LiftComplex extends LiftComplex
+
+object LiftErased extends LiftComplex:
+  override def isErased = true
 
 /** Lift all impure or complex arguments to `def`s */
 object LiftToDefs extends LiftComplex {

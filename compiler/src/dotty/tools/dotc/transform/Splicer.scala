@@ -315,13 +315,7 @@ object Splicer {
           (inst, inst.getClass)
         }
 
-      def getDirectName(tp: Type, name: TermName): TermName = tp.widenDealias match {
-        case tp: AppliedType if defn.isContextFunctionType(tp) =>
-          getDirectName(tp.args.last, NameKinds.DirectMethodName(name))
-        case _ => name
-      }
-
-      val name = getDirectName(fn.info.finalResultType, fn.name.asTermName)
+      val name = fn.name.asTermName
       val method = getMethod(clazz, name, paramsSig(fn))
       (args: List[Object]) => stopIfRuntimeException(method.invoke(inst, args: _*), method)
     }
