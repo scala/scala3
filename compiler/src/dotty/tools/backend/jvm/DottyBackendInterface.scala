@@ -702,6 +702,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isEnum = sym.is(Flags.Enum)
 
     def isClassConstructor: Boolean = toDenot(sym).isClassConstructor
+    def isAnnotation: Boolean = toDenot(sym).isAnnotation
     def isSerializable: Boolean = toDenot(sym).isSerializable
 
     /**

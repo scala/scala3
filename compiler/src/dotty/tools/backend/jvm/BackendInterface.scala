@@ -460,10 +460,11 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     /** Does this symbol actually correspond to an interface that will be emitted?
      *  In the backend, this should be preferred over `isInterface` because it
      *  also returns true for the symbols of the fake companion objects we
-     *  create for Java-defined classes.
+     *  create for Java-defined classes as well as for Java annotations
+     *  which we represent as classes.
      */
     final def isEmittedInterface: Boolean = isInterface ||
-      isJavaDefined && isModuleClass && companionClass.isInterface
+      isJavaDefined && (isAnnotation || isModuleClass && companionClass.isInterface)
 
     // tests
     def isClass: Boolean
@@ -509,6 +510,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def shouldEmitForwarders: Boolean
     def isJavaDefaultMethod: Boolean
     def isClassConstructor: Boolean
+    def isAnnotation: Boolean
     def isSerializable: Boolean
     def isEnum: Boolean
 
