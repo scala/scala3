@@ -1155,8 +1155,8 @@ class Typer extends Namer
               case _ =>
                 if (mt.isParamDependent)
                   errorTree(tree,
-                    i"""internal error: cannot turn method type $mt into closure
-                     |because it has internal parameter dependencies""")
+                    i"""cannot turn method type $mt into closure
+                       |because it has internal parameter dependencies""")
                 else if ((tree.tpt `eq` untpd.ContextualEmptyTree) && mt.paramNames.isEmpty)
                   // Note implicitness of function in target type since there are no method parameters that indicate it.
                   TypeTree(defn.FunctionOf(Nil, mt.resType, isContextual = true, isErased = false))
