@@ -32,13 +32,13 @@ class QuoteContext(val tasty: scala.tasty.Reflection) { self =>
   /** Show the fully elaborated source code representation of an expression */
   def show(expr: Expr[_], syntaxHighlight: SyntaxHighlight): String = {
     import tasty.{_, given _}
-    expr.unseal.showWith(syntaxHighlight)
+    expr.unseal(using this).showWith(syntaxHighlight)
   }
 
   /** Show the fully elaborated source code representation of a type */
   def show(tpe: Type[_], syntaxHighlight: SyntaxHighlight): String = {
     import tasty.{_, given _}
-    tpe.unseal.showWith(syntaxHighlight)
+    tpe.unseal(using this).showWith(syntaxHighlight)
   }
 
   /** Report an error at the position of the macro expansion */
@@ -50,7 +50,7 @@ class QuoteContext(val tasty: scala.tasty.Reflection) { self =>
   /** Report an error at the on the position of `expr` */
   def error(msg: => String, expr: Expr[Any]): Unit = {
     import tasty.{_, given _}
-    tasty.error(msg, expr.unseal.pos)
+    tasty.error(msg, expr.unseal(using this).pos)
   }
 
   /** Report an error at the position of the macro expansion and throws a StopQuotedContext */
@@ -73,7 +73,7 @@ class QuoteContext(val tasty: scala.tasty.Reflection) { self =>
   /** Report a warning at the on the position of `expr` */
   def warning(msg: => String, expr: Expr[_]): Unit = {
     import tasty.{_, given _}
-    tasty.warning(msg, expr.unseal.pos)
+    tasty.warning(msg, expr.unseal(using this).pos)
   }
 
 }

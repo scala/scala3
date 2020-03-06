@@ -8,7 +8,7 @@ object Macros {
     ${ impl('t) }
 
   def impl[T](x: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
 
     val tree = x.unseal
     tree.symbol.comment.map(_.raw) match {

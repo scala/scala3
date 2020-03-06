@@ -12,6 +12,10 @@ class Type[T <: AnyKind] private[scala] {
   /** Show a source code like representation of this type */
   def show(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String = qctx.show(this, syntaxHighlight)
 
+  /** View this expression `quoted.Type[T]` as a `TypeTree` */
+  def unseal(using qctx: QuoteContext): qctx.tasty.TypeTree =
+    qctx.tasty.internal.QuotedType_unseal(this)(using qctx.tasty.rootContext)
+
 }
 
 /** Some basic type tags, currently incomplete */

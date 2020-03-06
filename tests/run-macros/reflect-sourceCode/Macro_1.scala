@@ -5,7 +5,7 @@ object api {
     ${ reflImpl('x) }
 
   private def reflImpl[T](x: Expr[T])(implicit qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     Expr(x.unseal.pos.sourceCode)
   }
 }

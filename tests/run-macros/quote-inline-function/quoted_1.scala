@@ -8,7 +8,7 @@ object Macros {
   inline def foreach3(start: Int, end: Int, inline f: Int => Unit): String = ${impl('start, 'end, 'f)}
 
   def impl(start: Expr[Int], end: Expr[Int], f: Expr[Int => Unit])(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     val res = '{
       var i = $start
       val j = $end
