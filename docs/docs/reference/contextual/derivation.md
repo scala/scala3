@@ -129,6 +129,10 @@ Note the following properties of `Mirror` types,
   Scala 2 versions of shapeless). Instead the collection of child types of a data type is represented by an ordinary,
   possibly parameterized, tuple type. Dotty's metaprogramming facilities can be used to work with these tuple types
   as-is, and higher level libraries can be built on top of them.
++ For both product and sum types, the elements of `MirroredElemTypes` are arranged in definition order (i.e. `Branch[T]`
+  precedes `Leaf[T]` in `MirroredElemTypes` for `Tree` because `Branch` is defined before `Leaf` in the source file).
+  This means that `Mirror.Sum` differs in this respect from shapeless's generic representation for ADTs in Scala 2,
+  where the constructors are ordered alphabetically by name.
 + The methods `ordinal` and `fromProduct` are defined in terms of `MirroredMonoType` which is the type of kind-`*`
   which is obtained from `MirroredType` by wildcarding its type parameters.
 
