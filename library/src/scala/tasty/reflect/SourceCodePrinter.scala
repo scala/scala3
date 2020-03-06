@@ -1443,7 +1443,9 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     object Sequence {
       def unapply(tpe: Type)(using ctx: Context): Option[Type] = tpe match {
-        case AppliedType(seq, (tp: Type) :: Nil) if seq.typeSymbol == ctx.requiredClass("scala.collection.Seq") => Some(tp)
+        case AppliedType(seq, (tp: Type) :: Nil)
+            if seq.typeSymbol == ctx.requiredClass("scala.collection.Seq") || seq.typeSymbol == ctx.requiredClass("scala.collection.immutable.Seq") =>
+          Some(tp)
         case _ => None
       }
     }
