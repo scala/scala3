@@ -507,10 +507,10 @@ trait ImplicitRunInfo {
     val incomplete: mutable.Set[Type] = mutable.Set()
 
     /** Is `sym` an anchor type for which givens may exist? Anchor types are classes,
-     *  opaque type aliases, and abstract types, but not type parameters
+     *  opaque type aliases, and abstract types, but not type parameters or package objects.
      */
     def isAnchor(sym: Symbol) =
-      sym.isClass && !sym.is(Package)
+      sym.isClass && !sym.is(Package) && (!sym.isPackageObject || ctx.scala2CompatMode)
       || sym.isOpaqueAlias
       || sym.is(Deferred, butNot = Param)
 
@@ -584,7 +584,7 @@ trait ImplicitRunInfo {
                 addPath(pre.prefix)
               }
             }
-            else {
+            else if (!pre.symbol.isPackageObject || ctx.scala2CompatMode)  {
               comps += pre
               addPath(pre.prefix)
             }
