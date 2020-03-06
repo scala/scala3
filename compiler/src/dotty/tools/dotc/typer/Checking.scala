@@ -84,7 +84,11 @@ object Checking {
     val orderedArgs = if (hasNamedArg(args)) tparams.map(argNamed) else args
     val bounds = tparams.map(_.paramInfoAsSeenFrom(tree.tpe).bounds)
     def instantiate(bound: Type, args: List[Type]) =
-      HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
+      tparams match
+        case LambdaParam(lam, _) :: _ =>
+          HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
+        case _ =>
+          bound // paramInfoAsSeenFrom already took care of instantiation in this case
     if (boundsCheck) checkBounds(orderedArgs, bounds, instantiate, tree.tpe)
 
     def checkWildcardApply(tp: Type): Unit = tp match {
