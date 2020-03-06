@@ -2,7 +2,7 @@ package logs
 
 opaque type Logarithm = Double
 
-implicit object Logarithm {
+object Logarithm {
 
   // These are the ways to lift to the logarithm type
   def apply(d: Double): Logarithm = math.log(d)
@@ -13,10 +13,11 @@ implicit object Logarithm {
   // This is the first way to unlift the logarithm type
   def exponent(l: Logarithm): Double = l
 
-  // Extension methods define opaque types' public APIs
 
-  // This is the second way to unlift the logarithm type
-  def (x: Logarithm).toDouble: Double = math.exp(x)
-  def (x: Logarithm) + (y: Logarithm) = Logarithm(math.exp(x) + math.exp(y))
-  def (x: Logarithm) * (y: Logarithm): Logarithm = Logarithm(x + y)
+  given AnyRef {
+    // This is the second way to unlift the logarithm type
+    def (x: Logarithm).toDouble: Double = math.exp(x)
+    def (x: Logarithm) + (y: Logarithm) = Logarithm(math.exp(x) + math.exp(y))
+    def (x: Logarithm) * (y: Logarithm): Logarithm = Logarithm(x + y)
+  }
 }
