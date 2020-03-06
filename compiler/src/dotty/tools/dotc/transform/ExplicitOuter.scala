@@ -240,7 +240,7 @@ object ExplicitOuter {
     needsOuterIfReferenced(cls) && outerAccessor(cls).exists
 
   /** Class constructor takes an outer argument. Can be called only after phase ExplicitOuter. */
-  private def hasOuterParam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+  def hasOuterParam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     !cls.is(Trait) && needsOuterIfReferenced(cls) && outerAccessor(cls).exists
 
   /** Tree references an outer class of `cls` which is not a static owner.
@@ -412,14 +412,5 @@ object ExplicitOuter {
         loop(start, count)
       catch case ex: ClassCastException =>
         throw new ClassCastException(i"no path exists from ${ctx.owner.enclosingClass} to $toCls")
-
-    /** The outer parameter definition of a constructor if it needs one */
-    def paramDefs(constr: Symbol): List[ValDef] =
-      if (constr.isConstructor && hasOuterParam(constr.owner.asClass)) {
-        val MethodTpe(outerName :: _, outerType :: _, _) = constr.info
-        val outerSym = ctx.newSymbol(constr, outerName, Param, outerType)
-        ValDef(outerSym) :: Nil
-      }
-      else Nil
   }
 }
