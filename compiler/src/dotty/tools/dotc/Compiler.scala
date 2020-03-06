@@ -59,6 +59,7 @@ class Compiler {
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
          new CookComments,           // Cook the comments: expand variables, doc, etc.
          new CheckStatic,            // Check restrictions that apply to @static members
+         new BetaReduce,             // Reduce closure applications
          new init.Checker) ::        // Check initialization of objects
     List(new CompleteJavaEnums,      // Fill in constructors for Java enums
          new ElimRepeated,           // Rewrite vararg parameters and arguments
