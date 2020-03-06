@@ -181,7 +181,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: ErrorType =>
         s"<error ${tp.msg.msg}>"
       case tp: WildcardType =>
-        if (tp.optBounds.exists) "(?" ~ toTextRHS(tp.bounds) ~ ")" else "?"
+        if (tp.optBounds.exists) "<?" ~ toTextRHS(tp.bounds) ~ ">" else "<?>"
       case NoType =>
         "<notype>"
       case NoPrefix =>

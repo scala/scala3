@@ -419,15 +419,17 @@ object Erasure {
 
     /** Check that Java statics and packages can only be used in selections.
       */
-    private def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = {
-      if (!proto.isInstanceOf[SelectionProto] && !proto.isInstanceOf[ApplyingProto]) {
-        val sym = tree.tpe.termSymbol
-        // The check is avoided inside Java compilation units because it always fails
-        // on the singleton type Module.type.
-        if ((sym is Flags.Package) || (sym.isAllOf(Flags.JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(reporting.diagnostic.messages.JavaSymbolIsNotAValue(sym), tree.sourcePos)
-      }
+    private def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type =
+      if (!proto.isInstanceOf[SelectionProto] && !proto.isInstanceOf[ApplyingProto]) then
+        checkValue(tree)
       tree
-    }
+
+    private def checkValue(tree: Tree)(using ctx: Context): Unit =
+      val sym = tree.tpe.termSymbol
+      if (sym is Flags.Package)
+         || (sym.isAllOf(Flags.JavaModule) && !ctx.compilationUnit.isJava)
+      then
+        ctx.error(reporting.diagnostic.messages.JavaSymbolIsNotAValue(sym), tree.sourcePos)
 
     private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {
       if (!ctx.mode.is(Mode.Type)) {
@@ -550,6 +552,8 @@ object Erasure {
       val owner = mapOwner(origSym)
       val sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
       assert(sym.exists, origSym.showLocated)
+
+      if owner == defn.ObjectClass then checkValue(qual1)
 
       def select(qual: Tree, sym: Symbol): Tree =
         untpd.cpy.Select(tree)(qual, sym.name).withType(NamedType(qual.tpe, sym))

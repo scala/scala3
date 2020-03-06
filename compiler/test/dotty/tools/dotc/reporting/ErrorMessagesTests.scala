@@ -984,22 +984,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals(err, ImplicitClassPrimaryConstructorArity())
     }
 
-  @Test def anonymousFunctionMissingParamType =
-    checkMessagesAfter(RefChecks.name) {
-      """
-        |object AnonymousF {
-        |  val f = { case x: Int => x + 1 }
-        |}""".stripMargin
-    }
-    .expect { (ictx, messages) =>
-      implicit val ctx: Context = ictx
-
-      assertMessageCount(1, messages)
-      val AnonymousFunctionMissingParamType(param, args, _, pt) = messages.head
-      assertEquals("x$1", param.show)
-      assertEquals("?", pt.show)
-    }
-
   @Test def superCallsNotAllowedInline =
   checkMessagesAfter(RefChecks.name) {
        """
