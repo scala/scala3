@@ -16,9 +16,11 @@ object Lambda {
    *       body('{3}) // returns '{ println(3) }
    *   ```
    */
-  def unapply[F, Args <: Tuple, Res, G](expr: Expr[F])(using qctx: QuoteContext, tf: TupledFunction[F, Args => Res], tg: TupledFunction[G, Tuple.Map[Args, Expr] => Expr[Res]]): Option[/*QuoteContext ?=>*/ G] = {
+  def unapply[F, Args <: Tuple, Res, G](expr: Expr[F])(using qctx: QuoteContext, tf: TupledFunction[F, Args => Res], tg: TupledFunction[G, Tuple.Map[Args, Expr] => Expr[Res]], functionType: Type[F]): Option[/*QuoteContext ?=>*/ G] = {
     import qctx.tasty.{_, given _ }
-    qctx.tasty.internal.lambdaExtractor(expr.unseal).map { fn =>
+    val argTypes = functionType.unseal.tpe match
+      case AppliedType(_, functionArguments) => functionArguments.init.asInstanceOf[List[Type]]
+    qctx.tasty.internal.lambdaExtractor(expr.unseal, argTypes).map { fn =>
       def f(args: Tuple.Map[Args, Expr]): Expr[Res] =
         fn(args.toArray.map(_.asInstanceOf[Expr[Any]].unseal).toList).seal.asInstanceOf[Expr[Res]]
       tg.untupled(f)

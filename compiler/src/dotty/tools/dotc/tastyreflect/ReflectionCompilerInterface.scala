@@ -2051,23 +2051,33 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     }}
     val argVals = argVals0.reverse
     val argRefs = argRefs0.reverse
-    val reducedBody = lambdaExtractor(fn) match {
+    val reducedBody = lambdaExtractor(fn, argRefs.map(_.tpe)) match {
       case Some(body) => body(argRefs)
       case None => fn.select(nme.apply).appliedToArgs(argRefs)
     }
     seq(argVals, reducedBody).withSpan(fn.span)
   }
 
-  def lambdaExtractor(fn: Term)(using ctx: Context): Option[List[Term] => Term] = {
+  def lambdaExtractor(fn: Term, paramTypes: List[Type])(using ctx: Context): Option[List[Term] => Term] = {
     def rec(fn: Term, transformBody: Term => Term): Option[List[Term] => Term] = {
       fn match {
         case Inlined(call, bindings, expansion) =>
           // this case must go before closureDef to avoid dropping the inline node
           rec(expansion, cpy.Inlined(fn)(call, bindings, _))
         case Typed(expr, tpt) =>
-          val resTpe = tpt.tpe.dropDependentRefinement.argInfos.last
-          rec(expr, Typed(_, TypeTree(resTpe).withSpan(tpt.span)))
-        case closureDef(ddef) =>
+          val tpe = tpt.tpe.dropDependentRefinement
+          // we checked that this is a plain Function closure, so there will be an apply method with a MethodType
+          // and the expected signature based on param types
+          val expectedSig = Signature.NotAMethod.prependTermParams(paramTypes, false)
+          val method = tpt.tpe.member(nme.apply).atSignature(expectedSig)
+          if method.symbol.is(Deferred) then
+            val methodType = method.info.asInstanceOf[MethodType]
+            // result might contain paramrefs, so we substitute them with arg termrefs
+            val resultTypeWithSubst = methodType.resultType.substParams(methodType, paramTypes)
+            rec(expr, Typed(_, TypeTree(resultTypeWithSubst).withSpan(tpt.span)))
+          else
+            None
+        case cl @ closureDef(ddef) =>
           def replace(body: Term, argRefs: List[Term]): Term = {
             val paramSyms = ddef.vparamss.head.map(param => param.symbol)
             val paramToVals = paramSyms.zip(argRefs).toMap
