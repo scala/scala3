@@ -1,0 +1,6 @@
+scala.Predef.identity[scala.Int](1)
+1
+{
+  scala.Predef.println(1)
+  1
+}
