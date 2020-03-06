@@ -2254,6 +2254,10 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     /** Shows the tree as fully typed source code */
     def showWith(syntaxHighlight: SyntaxHighlight)(using ctx: Context): String =
       new SourceCodePrinter[self.type](self)(syntaxHighlight).showSymbol(sym)
+
+    /** Case class or case object children of a sealed trait */
+    def children(using ctx: Context): List[Symbol] =
+      internal.Symbol_children(sym)
   }
 
 
