@@ -21,9 +21,11 @@ circle.circumference
 ### Translation of Extension Methods
 
 Extension methods are methods that have a parameter clause in front of the defined
-identifier. They translate to methods where the leading parameter section is moved
-to after the defined identifier. So, the definition of `circumference` above translates
-to the plain method, and can also be invoked as such:
+identifier. They translate to functions where the leading parameter list is 
+either turned into the first argument list of the function or
+into the last argument list in case of a right-associative identifier.
+So, the definition of `circumference` above translates
+to the following function, and can also be invoked as such:
 ```scala
 def circumference(c: Circle): Double = c.radius * math.Pi * 2
 
@@ -32,37 +34,68 @@ assert(circle.circumference == circumference(circle))
 
 ### Translation of Calls to Extension Methods
 
-When is an extension method applicable? There are two possibilities.
+When is an extension method applicable? There are two possibilities:
 
- - An extension method is applicable if it is visible under a simple name, by being defined
+ 1. An extension method is applicable if it is visible, by being defined
    or inherited or imported in a scope enclosing the application.
- - An extension method is applicable if it is a member of some given instance at the point of the application.
+ 2. An extension method is applicable if it is a member of some given instance at the point of the application.
 
-As an example, consider an extension method `longestStrings` on `Seq[String]` defined in a trait `StringSeqOps`.
+Following an example for the first point:
 
 ```scala
-trait StringSeqOps {
-  def (xs: Seq[String]).longestStrings = {
-    val maxLength = xs.map(_.length).max
-    xs.filter(_.length == maxLength)
-  }
+trait IntOps {
+  def (i: Int).isZero: Boolean = i == 0
+
+  def (i: Int).safeMod(x: Int): Option[Int] =
+    // extension method defined in same scope IntOps
+    if x.isZero then None
+    else Some(i % x)
+}
+
+object IntOpsEx extends IntOps {
+  def (i: Int).safeDiv(x: Int): Option[Int] =
+    // extension method brought into scope via inheritance from IntOps
+    if x.isZero then None
+    else Some(i % x)
+}
+
+trait SafeDiv {
+  import IntOpsEx._
+
+  def divide(i: Int, d: Int) : Option[(Int, Int)] =
+    // extension method imported and thus in scope
+    (i.safeDiv(d), i.safeMod(d)) match {
+      case (Some(d), Some(r)) => Some((d, r))
+      case _ => None
+    }
 }
 ```
-We can make the extension method available by defining a given `StringSeqOps` instance, like this:
-```scala
-given ops1 as StringSeqOps
-```
-Then
-```scala
-List("here", "is", "a", "list").longestStrings
-```
-is legal everywhere `ops1` is available. Alternatively, we can define `longestStrings` as a member of a normal object. But then the method has to be brought into scope to be usable as an extension method.
 
+We build up on the above example to outline the second point.
+We can make an extension method available by defining a given instance containing it, like this:
 ```scala
-object ops2 extends StringSeqOps
-import ops2.longestStrings
-List("here", "is", "a", "list").longestStrings
+given ops1 as IntOps // brings safeMod into scope
+
+1.safeMod(2)
 ```
+
+Then `safeMod` is legal everywhere `ops1` is available. Anonymous givens (and any other form of givens) are supported as well:
+```scala
+given SafeDiv //brings safeMod, safeDiv and divide into scope
+```
+
+In case the extension method is defined in an object as in `IntOpsEx`, then it can also be brought into scope by a given:
+```scala
+import given IntOpsEx.type = IntOpsEx // unusual, brings safeMod and safeDiv into scope
+```
+However importing from an object is most likely the better choice. And also superior regarding selectivety:
+```scala
+import IntOpsEx.safeMod // brings only safeMod into scope
+
+1.safeMod(2)
+2.safeDiv(3) // compile error
+```
+
 The precise rules for resolving a selection to an extension method are as follows.
 
 Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type arguments `[Ts]` are optional,
@@ -94,6 +127,12 @@ x min 3
 ```
 For alphanumeric extension operators like `min` an `@infix` annotation is implied.
 
+<!-- 
+TODO: what about @alpha for the non alphanumeric operators, should be required according to
+http://dotty.epfl.ch/docs/reference/changed-features/operators.html
+"Symbolic methods without @alpha annotations are deprecated"
+-->
+
 The three definitions above translate to
 ```scala
 def < (x: String)(y: String) = ...
@@ -101,13 +140,15 @@ def +: (xs: Seq[Elem])(x: Elem) = ...
 def min(x: Number)(y: Number) = ...
 ```
 Note the swap of the two parameters `x` and `xs` when translating
-the right-binding operator `+:` to an extension method. This is analogous
+the right-associative operator `+:` to an extension method. This is analogous
 to the implementation of right binding operators as normal methods.
 
 
 ### Generic Extensions
 
-The `StringSeqOps` examples extended a specific instance of a generic type. It is also possible to extend a generic type by adding type parameters to an extension method. Examples:
+The `IntOps` examples extended a non generic type. 
+It is also possible to extend a specific instance of a generic type (e.g. Seq[String] -- see `stringOps` further below).
+And also generic types by adding type parameters to an extension method. Examples:
 
 ```scala
 def [T](xs: List[T]) second =
@@ -120,10 +161,12 @@ def [T: Numeric](x: T) + (y: T): T =
   summon[Numeric[T]].plus(x, y)
 ```
 
-If an extension method has type parameters, they come immediately after the `def` and are followed by the extended parameter. When calling a  generic extension method, any explicitly given type arguments follow the method name. So the `second` method can be instantiated as follows:
+If an extension method has type parameters, they come immediately after the `def` and are followed by the extended parameter. 
+When calling a generic extension method, any explicitly given type arguments follow the method name. So the `second` method can be instantiated as follows:
 ```scala
 List(1, 2, 3).second[Int]
 ```
+(it's only a showcase, the compiler could of course infer the type).
 
 ### Extension Instances
 
