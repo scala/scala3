@@ -15,8 +15,8 @@ TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]
 ### Type Checking
 
 A type lambda such as `[X] =>> F[X]` defines a function from types to types. The parameter(s) may carry bounds and variance annotations.
-If a parameter is bounded, as in `[X >: L <: H] =>> F[X]` it is checked that arguments to the parameters conform to the bounds `L` and `H`.
-Only the upper bound `H` can be F-bounded, i.e. `X` can appear in it.
+If a parameter is bounded, as in `[X >: L <: U] =>> F[X]` it is checked that arguments to the parameters conform to the bounds `L` and `U`.
+Only the upper bound `U` can be F-bounded, i.e. `X` can appear in it.
 
 ## Subtyping Rules
 
