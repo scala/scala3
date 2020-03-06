@@ -1948,7 +1948,7 @@ trait Applications extends Compatibility {
   }
 
   /** If `trees` all have numeric value types, and they do not have all the same type,
-   *  pick a common numeric supertype and convert all constant trees to this type.
+   *  pick a common numeric supertype and try to convert all constant Int literals to this type.
    *  If the resulting trees all have the same type, return them instead of the original ones.
    */
   def harmonize(trees: List[Tree])(implicit ctx: Context): List[Tree] = {
