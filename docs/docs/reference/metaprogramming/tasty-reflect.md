@@ -61,7 +61,7 @@ def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
 To easily know which extractors are needed, the `showExtractors` method on a
 `qctx.tasty.Term` returns the string representation of the extractors.
 
-The method `qctx.tasty.Term.seal[T]` provides a way to go back to a
+The method `qctx.tasty.Term.seal` provides a way to go back to a
 `quoted.Expr[Any]`. Note that the type is `Expr[Any]`. Consequently, the type
 must be set explicitly with a checked `cast` call. If the type does not conform
 to it an exception will be thrown. In the code above, we could have replaced
