@@ -62,11 +62,39 @@ package object ops {
     @infix type /[X <: Int, Y <: Int] <: Int
 
     /** Remainder of the division of `X` by `Y`.
-    *  ```scala
+     *  ```scala
      *  val mod: 5 % 2 = 1
      *  ```
      */
     @infix type %[X <: Int, Y <: Int] <: Int
+
+    /** Binary left shift of `X` by `Y`.
+     *  ```scala
+     *  val lshift: 1 << 2 = 4
+     *  ```
+     */
+    @infix type <<[X <: Int, Y <: Int] <: Int
+
+    /** Binary right shift of `X` by `Y`.
+     *  ```scala
+     *  val rshift: 10 >> 1 = 5
+     *  ```
+     */
+    @infix type >>[X <: Int, Y <: Int] <: Int
+
+    /** Binary right shift of `X` by `Y`, filling the left with zeros.
+     *  ```scala
+     *  val rshiftzero: 10 >>> 1 = 5
+     *  ```
+     */
+    @infix type >>>[X <: Int, Y <: Int] <: Int
+
+    /** Bitwise xor of `X` and `Y`.
+     *  ```scala
+     *  val xor: 10 ^ 30 = 20
+     *  ```
+     */
+    @infix type ^[X <: Int, Y <: Int] <: Int
 
     /** Less-than comparison of two `Int` singleton types.
      *  ```scala
@@ -100,6 +128,21 @@ package object ops {
      */
     @infix type <=[X <: Int, Y <: Int] <: Boolean
 
+    /** Bitwise and of `X` and `Y`.
+     *  ```scala
+     *  val and1: BitwiseAnd[4, 4] = 4
+     *  val and2: BitwiseAnd[10, 5] = 0
+     *  ```
+     */
+    type BitwiseAnd[X <: Int, Y <: Int] <: Int
+
+    /** Bitwise or of `X` and `Y`.
+     *  ```scala
+     *  val or: BitwiseOr[10, 11] = 11
+     *  ```
+     */
+    type BitwiseOr[X <: Int, Y <: Int] <: Int
+
     /** Absolute value of an `Int` singleton type.
      *  ```scala
      *  val abs: Abs[-1] = 1
@@ -124,7 +167,7 @@ package object ops {
 
     /** Maximum of two `Int` singleton types.
      *  ```scala
-     *  val abs: Abs[-1] = 1
+     *  val max: Max[-1, 1] = 1
      *  ```
      */
     type Max[X <: Int, Y <: Int] <: Int
