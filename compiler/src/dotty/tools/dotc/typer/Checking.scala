@@ -103,7 +103,10 @@ object Checking {
           HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
         case _ =>
           bound // paramInfoAsSeenFrom already took care of instantiation in this case
-    if !ctx.mode.is(Mode.Pattern) then
+    if !ctx.mode.is(Mode.Pattern)           // no bounds checking in patterns
+       && tycon.symbol != defn.TypeBoxClass // TypeBox types are generated for capture
+                                            // conversion, may contain AnyKind as arguments
+    then
       checkBounds(args, bounds, instantiate, tree.tpe, tpt)
 
     def checkWildcardApply(tp: Type): Unit = tp match {
