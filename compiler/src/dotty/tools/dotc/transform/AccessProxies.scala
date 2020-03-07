@@ -130,6 +130,8 @@ abstract class AccessProxies {
       val accessed = reference.symbol.asTerm
       var accessorClass = hostForAccessorOf(accessed: Symbol)
       if (accessorClass.exists) {
+        if accessorClass.is(Package) then
+          accessorClass = ctx.owner.topLevelClass
         val accessorName = accessorNameKind(accessed.name)
         val accessorInfo =
           accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
@@ -159,8 +161,9 @@ object AccessProxies {
   def hostForAccessorOf(accessed: Symbol)(implicit ctx: Context): Symbol = {
     def recur(cls: Symbol): Symbol =
       if (!cls.exists) NoSymbol
-      else if (cls.derivesFrom(accessed.owner) ||
-               cls.companionModule.moduleClass == accessed.owner) cls
+      else if cls.derivesFrom(accessed.owner)
+              || cls.companionModule.moduleClass == accessed.owner
+      then cls
       else recur(cls.owner)
     recur(ctx.owner)
   }
