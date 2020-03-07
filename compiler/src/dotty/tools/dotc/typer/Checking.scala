@@ -77,11 +77,6 @@ object Checking {
     // If `args` is a list of named arguments, return corresponding type parameters,
     // otherwise return type parameters unchanged
     val tparams = tycon.tpe.typeParams
-    def argNamed(tparam: ParamInfo) = args.find {
-      case NamedArg(name, _) => name == tparam.paramName
-      case _ => false
-    }.getOrElse(TypeTree(tparam.paramRef))
-    val orderedArgs = if (hasNamedArg(args)) tparams.map(argNamed) else args
     val bounds = tparams.map(_.paramInfoAsSeenFrom(tree.tpe).bounds)
     def instantiate(bound: Type, args: List[Type]) =
       tparams match
@@ -89,7 +84,7 @@ object Checking {
           HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
         case _ =>
           bound // paramInfoAsSeenFrom already took care of instantiation in this case
-    if (boundsCheck) checkBounds(orderedArgs, bounds, instantiate, tree.tpe)
+    if (boundsCheck) checkBounds(args, bounds, instantiate, tree.tpe)
 
     def checkWildcardApply(tp: Type): Unit = tp match {
       case tp @ AppliedType(tycon, _) =>
