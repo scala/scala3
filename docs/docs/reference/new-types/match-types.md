@@ -54,7 +54,7 @@ S match { P1 => T1 ... Pn => Tn }
 ```
 is `Match(S, C1, ..., Cn) <: B` where each case `Ci` is of the form
 ```
-[Xs] => P => T
+[Xs] =>> P => T
 ```
 Here, `[Xs]` is a type parameter clause of the variables bound in pattern `Pi`. If there are no bound type variables in a case, the type parameter clause is omitted and only the function type `P => T` is kept. So each case is either a unary function type or a type lambda over a unary function type.
 
