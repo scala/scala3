@@ -31,7 +31,7 @@ Then `TL1 <: TL2`, if
 `L1 <: L2` and `U2 <: U1`),
  - `R1 <: R2`
 
-Here we have relied on alpha renaming to bring match the two bound types `X`.
+Here we have relied on alpha renaming to match the two bound types `X`.
 
 A partially applied type constructor such as `List` is assumed to be equivalent to
 its eta expansion. I.e, `List = [X] =>> List[X]`. This allows type constructors to be compared with type lambdas.
@@ -46,7 +46,7 @@ is regarded as a shorthand for an unparameterized definition with a type lambda 
 ```scala
 type T = [X] =>> R
 ```
-If the a type definition carries `+` or `-` variance annotations,
+If the type definition carries `+` or `-` variance annotations,
 it is checked that the variance annotations are satisfied by the type lambda.
 For instance,
 ```scala
