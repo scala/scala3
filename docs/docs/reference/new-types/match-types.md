@@ -68,7 +68,7 @@ We define match type reduction in terms of an auxiliary relation, `can-reduce`:
 ```
 Match(S, C1, ..., Cn)  can-reduce  i, T'
 ```
-if `Ci = [Xs] => P => T` and there are minimal instantiations `Is` of the type variables `Xs` such that
+if `Ci = [Xs] =>> P => T` and there are minimal instantiations `Is` of the type variables `Xs` such that
 ```
 S <: [Xs := Is] P
 T' = [Xs := Is] T
