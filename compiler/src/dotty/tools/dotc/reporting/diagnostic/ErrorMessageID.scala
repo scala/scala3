@@ -51,7 +51,7 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     ExpectedTokenButFoundID,
     MixedLeftAndRightAssociativeOpsID,
     CantInstantiateAbstractClassOrTraitID,
-    DUMMY_AVAILABLE_1,
+    UnreducibleApplicationID,
     OverloadedOrRecursiveMethodNeedsResultTypeID,
     RecursiveValueNeedsResultTypeID,
     CyclicReferenceInvolvingID,

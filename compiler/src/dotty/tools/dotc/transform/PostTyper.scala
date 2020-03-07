@@ -298,12 +298,15 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           else if (tree.tpt.symbol == defn.orType)
             () // nothing to do
           else
-            Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
+            Checking.checkAppliedType(tree)
           super.transform(tree)
         case SingletonTypeTree(ref) =>
           Checking.checkRealizable(ref.tpe, ref.posd)
           super.transform(tree)
         case tree: TypeTree =>
+          if tree.span.isZeroExtent then
+            // Don't check TypeTrees with non-zero extent; these are derived from explicit types
+            Checking.checkAppliedTypesIn(tree)
           tree.withType(
             tree.tpe match {
               case AnnotatedType(tpe, annot) => AnnotatedType(tpe, transformAnnot(annot))

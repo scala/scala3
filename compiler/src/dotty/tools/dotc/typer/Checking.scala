@@ -42,21 +42,37 @@ import scala.internal.Chars.isOperatorPart
 object Checking {
   import tpd._
 
+  /** Add further information for error messages involving applied types if the
+   *  type is inferred:
+   *   1. the full inferred type in a TypeTree node
+   *   2. the applied type causing the error, if different from (1)
+   */
+  private def showInferred(msg: Message, app: Type, tpt: Tree)(using ctx: Context): Message =
+    if tpt.isInstanceOf[TypeTree] then
+      def subPart = if app eq tpt.tpe then "" else i" subpart $app of"
+      msg.append(i" in$subPart inferred type ${tpt}")
+        .appendExplanation("\n\nTo fix the problem, provide an explicit type.")
+    else msg
+
   /** A general checkBounds method that can be used for TypeApply nodes as
    *  well as for AppliedTypeTree nodes. Also checks that type arguments to
    *  *-type parameters are fully applied.
-   *  See TypeOps.boundsViolations for an explanation of the parameters.
+   *  @param tpt  If bounds are checked for an AppliedType, the type tree representing
+   *              or (in case it is inferred) containing the type.
+   *  See TypeOps.boundsViolations for an explanation of the first four parameters.
    */
-  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type, app: Type = NoType)(implicit ctx: Context): Unit = {
+  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds],
+    instantiate: (Type, List[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(implicit ctx: Context): Unit =
     args.lazyZip(boundss).foreach { (arg, bound) =>
-      if (!bound.isLambdaSub && !arg.tpe.hasSimpleKind)
-        errorTree(arg, MissingTypeParameterInTypeApp(arg.tpe))
+      if !bound.isLambdaSub && !arg.tpe.hasSimpleKind then
+        errorTree(arg,
+          showInferred(MissingTypeParameterInTypeApp(arg.tpe), app, tpt))
     }
-    for ((arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate, app))
+    for (arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate, app) do
       ctx.error(
-          DoesNotConformToBound(arg.tpe, which, bound)(err),
+          showInferred(DoesNotConformToBound(arg.tpe, which, bound)(err),
+              app, tpt),
           arg.sourcePos.focus)
-  }
 
   /** Check that type arguments `args` conform to corresponding bounds in `tl`
    *  Note: This does not check the bounds of AppliedTypeTrees. These
@@ -71,8 +87,11 @@ object Checking {
    *     check that it or one of its supertypes can be reduced to a normal application.
    *     Unreducible applications correspond to general existentials, and we
    *     cannot handle those.
+   *  @param tree The applied type tree to check
+   *  @param tpt  If `tree` is synthesized from a type in a TypeTree,
+   *              the original TypeTree, or EmptyTree otherwise.
    */
-  def checkAppliedType(tree: AppliedTypeTree, boundsCheck: Boolean)(implicit ctx: Context): Unit = {
+  def checkAppliedType(tree: AppliedTypeTree, tpt: Tree = EmptyTree)(using ctx: Context): Unit = {
     val AppliedTypeTree(tycon, args) = tree
     // If `args` is a list of named arguments, return corresponding type parameters,
     // otherwise return type parameters unchanged
@@ -84,13 +103,14 @@ object Checking {
           HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
         case _ =>
           bound // paramInfoAsSeenFrom already took care of instantiation in this case
-    if (boundsCheck) checkBounds(args, bounds, instantiate, tree.tpe)
+    if !ctx.mode.is(Mode.Pattern) then
+      checkBounds(args, bounds, instantiate, tree.tpe, tpt)
 
     def checkWildcardApply(tp: Type): Unit = tp match {
       case tp @ AppliedType(tycon, _) =>
         if (tycon.isLambdaSub && tp.hasWildcardArg)
           ctx.errorOrMigrationWarning(
-            ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
+            showInferred(UnreducibleApplication(tycon), tp, tpt),
             tree.sourcePos)
       case _ =>
     }
@@ -98,6 +118,20 @@ object Checking {
       checkWildcardApply(tycon.tpe.appliedTo(args.map(_.tpe)))
     checkValidIfApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
   }
+
+  /** Check all applied type trees in inferred type `tpt` for well-formedness */
+  def checkAppliedTypesIn(tpt: TypeTree)(implicit ctx: Context): Unit =
+    val checker = new TypeTraverser:
+      def traverse(tp: Type) =
+        tp match
+          case AppliedType(tycon, argTypes) =>
+            checkAppliedType(
+              untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree))
+                .withType(tp).withSpan(tpt.span.toSynthetic),
+              tpt)
+          case _ =>
+        traverseChildren(tp)
+    checker.traverse(tpt.tpe)
 
   def checkNoWildcard(tree: Tree)(implicit ctx: Context): Tree = tree.tpe match {
     case tpe: TypeBounds => errorTree(tree, "no wildcard type allowed here")
