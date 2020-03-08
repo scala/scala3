@@ -11,12 +11,12 @@
 -- [E007] Type Mismatch Error: tests/neg/module-class-name.scala:12:14 -------------------------------------------------
 12 |  val z1: C = z    // error: Found:    object Test.C
    |              ^
-   |              Found:    object Test.C
+   |              Found:    Test.C.type
    |              Required: Test.C
 -- [E007] Type Mismatch Error: tests/neg/module-class-name.scala:13:16 -------------------------------------------------
 13 |  val z2: Int = z  // error: Found:    object Test.C
    |                ^
-   |                Found:    object Test.C
+   |                Found:    Test.C.type
    |                Required: Int
 -- [E008] Member Not Found Error: tests/neg/module-class-name.scala:15:4 -----------------------------------------------
 15 |  C.foo  // error: value foo is not a member of object Test.C

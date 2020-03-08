@@ -6,6 +6,7 @@ import Types._
 import Contexts._
 import Symbols._
 import Decorators._
+import Flags._
 import config.Config
 import config.Printers.{constr, typr}
 import dotty.tools.dotc.reporting.trace
@@ -298,6 +299,9 @@ trait ConstraintHandling[AbstractContext] {
    *      of all common base types, provied the result is a subtype of `bound`.
    *
    *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
+   *  Also, if the result of these widenings is a TypeRef to a module class,
+   *  and this type ref is different from `inst`, replace by a TermRef to
+   *  its source module instead.
    *
    * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
    * as those could leak the annotation to users (see run/inferred-repeated-result).
@@ -314,7 +318,11 @@ trait ConstraintHandling[AbstractContext] {
     val wideInst =
       if (isSubTypeWhenFrozen(bound, defn.SingletonType)) inst
       else widenOr(widenSingle(inst))
-    wideInst.dropRepeatedAnnot
+    wideInst match
+      case wideInst: TypeRef if wideInst.symbol.is(Module) =>
+        TermRef(wideInst.prefix, wideInst.symbol.sourceModule)
+      case _ =>
+        wideInst.dropRepeatedAnnot
   }
 
   /** The instance type of `param` in the current constraint (which contains `param`).
