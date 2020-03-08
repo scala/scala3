@@ -210,9 +210,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           case t: LazyRef =>
             // Dereference a lazyref to detect underlying matching types, but
             // be careful not to get into an infinite recursion. If recursion count
-            // exceeds `DerefLimit`, approximate with `NoType` instead.
+            // exceeds `DerefLimit`, approximate with `t` instead.
             derefCount += 1
-            if (derefCount >= DerefLimit) NoType
+            if t.pending || derefCount >= DerefLimit then t
             else try mapOver(t.ref) finally derefCount -= 1
           case tp: TypeVar =>
             tp
