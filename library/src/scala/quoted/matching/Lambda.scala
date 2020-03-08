@@ -22,7 +22,7 @@ object Lambda {
       case AppliedType(_, functionArguments) => functionArguments.init.asInstanceOf[List[Type]]
     qctx.tasty.internal.lambdaExtractor(expr.unseal, argTypes).map { fn =>
       def f(args: Tuple.Map[Args, Expr]): Expr[Res] =
-        fn(args.toArray.map(_.asInstanceOf[Expr[Any]].unseal).toList).seal.asInstanceOf[Expr[Res]]
+        fn(args.toArray.toList.map(_.asInstanceOf[Expr[Any]].unseal)).seal.asInstanceOf[Expr[Res]]
       tg.untupled(f)
     }
 
