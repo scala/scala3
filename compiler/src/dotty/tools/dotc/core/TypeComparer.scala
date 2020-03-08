@@ -605,7 +605,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             if (tparams1.nonEmpty)
               return recur(tp1.EtaExpand(tparams1), tp2) || fourthTry
             tp2 match {
-              case EtaExpansion(tycon2) if tycon2.symbol.isClass =>
+              case EtaExpansion(tycon2) if tycon2.symbol.isClass && tycon2.symbol.is(JavaDefined) =>
                 return recur(tp1, tycon2)
               case _ =>
             }
@@ -773,7 +773,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         isNewSubType(tp1.parent)
       case tp1: HKTypeLambda =>
         def compareHKLambda = tp1 match {
-          case EtaExpansion(tycon1) => recur(tycon1, tp2)
+          case EtaExpansion(tycon1) if tycon1.symbol.isClass && tycon1.symbol.is(JavaDefined) =>
+            recur(tycon1, tp2)
           case _ => tp2 match {
             case tp2: HKTypeLambda => false // this case was covered in thirdTry
             case _ => tp2.typeParams.hasSameLengthAs(tp1.paramRefs) && isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
@@ -2591,7 +2592,11 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   override def isSubType(tp1: Type, tp2: Type, approx: ApproxState): Boolean =
-    traceIndented(s"${show(tp1)} <:< ${show(tp2)}${if (Config.verboseExplainSubtype) s" ${tp1.getClass} ${tp2.getClass}" else ""} $approx ${if (frozenConstraint) " frozen" else ""}") {
+    def moreInfo =
+      if Config.verboseExplainSubtype || ctx.settings.verbose.value
+      then s" ${tp1.getClass} ${tp2.getClass}"
+      else ""
+    traceIndented(s"${show(tp1)} <:< ${show(tp2)}$moreInfo $approx ${if (frozenConstraint) " frozen" else ""}") {
       super.isSubType(tp1, tp2, approx)
     }
 
