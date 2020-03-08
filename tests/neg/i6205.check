@@ -1,0 +1,6 @@
+-- [E057] Type Mismatch Error: tests/neg/i6205.scala:4:9 ---------------------------------------------------------------
+4 |  def foo =   // error
+  |         ^
+  |         Type argument Nothing does not conform to lower bound Null in inferred type Contra[Nothing]
+
+longer explanation available when compiling with `-explain`
