@@ -4,7 +4,7 @@ package matching
 /** Lambda expression extractor */
 object Lambda {
 
-  /** `case Lambda(body)` matche a lambda and extract the body.
+  /** `case Lambda(fn)` matches a lambda by lifting the function from `S => T` to `Expr[S] => Expr[T]`.
    *   As the body may (will) contain references to the paramter, `body` is a function that recieves those arguments as `Expr`.
    *   Once this function is applied the result will be the body of the lambda with all references to the parameters replaced.
    *   If `body` is of type `(T1, T2, ...) => R` then body will be of type `(Expr[T1], Expr[T2], ...) => Expr[R]`.
