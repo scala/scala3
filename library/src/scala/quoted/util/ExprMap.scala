@@ -28,11 +28,11 @@ trait ExprMap {
         def localCtx(definition: Definition): Context = definition.symbol.localContext
         tree match {
           case tree: ValDef =>
-            implicit val ctx = localCtx(tree)
+            given Context = localCtx(tree)
             val rhs1 = tree.rhs.map(x => transformTerm(x, tree.tpt.tpe))
             ValDef.copy(tree)(tree.name, tree.tpt, rhs1)
           case tree: DefDef =>
-            implicit val ctx = localCtx(tree)
+            given Context = localCtx(tree)
             DefDef.copy(tree)(tree.name, tree.typeParams, tree.paramss, tree.returnTpt, tree.rhs.map(x => transformTerm(x, tree.returnTpt.tpe)))
           case tree: TypeDef =>
             tree
