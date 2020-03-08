@@ -1,20 +1,20 @@
 -- [E007] Type Mismatch Error: tests/neg/module-class-name.scala:7:13 --------------------------------------------------
-7 |  val x: C = C    // error: Found:    Test.C.type
+7 |  val x: C = C    // error
   |             ^
   |             Found:    Test.C.type
   |             Required: Test.C
 -- [E007] Type Mismatch Error: tests/neg/module-class-name.scala:9:15 --------------------------------------------------
-9 |  val y: C = f(C) // error: Found:    Test.C.type
+9 |  val y: C = f(C) // error
   |               ^
   |               Found:    Test.C.type
   |               Required: Test.C
 -- [E007] Type Mismatch Error: tests/neg/module-class-name.scala:12:14 -------------------------------------------------
-12 |  val z1: C = z    // error: Found:    object Test.C
+12 |  val z1: C = z    // error
    |              ^
    |              Found:    Test.C.type
    |              Required: Test.C
 -- [E007] Type Mismatch Error: tests/neg/module-class-name.scala:13:16 -------------------------------------------------
-13 |  val z2: Int = z  // error: Found:    object Test.C
+13 |  val z2: Int = z  // error
    |                ^
    |                Found:    Test.C.type
    |                Required: Int
