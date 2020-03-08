@@ -1543,4 +1543,6 @@ trait CompilerInterface {
    */
   def betaReduce(f: Term, args: List[Term])(using ctx: Context): Term
 
+  def lambdaExtractor(term: Term, paramTypes: List[Type])(using ctx: Context): Option[List[Term] => Term]
+
 }

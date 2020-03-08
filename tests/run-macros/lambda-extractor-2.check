@@ -1,0 +1,5 @@
+1.+(2)
+{
+  scala.Predef.println(1)
+  2
+}
