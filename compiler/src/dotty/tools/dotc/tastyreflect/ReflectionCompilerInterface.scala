@@ -1753,6 +1753,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case sym if sym.is(Flags.CaseAccessor) => sym.asTerm
     }
 
+  def Symbol_children(self: Symbol)(using ctx: Context): List[Symbol] =
+    dotty.tools.dotc.transform.SymUtils(self).children
+
   private def isField(sym: Symbol)(using ctx: Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
 
   def Symbol_of(fullName: String)(using ctx: Context): Symbol =

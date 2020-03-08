@@ -1350,6 +1350,9 @@ trait CompilerInterface {
 
   def Symbol_noSymbol(using ctx: Context): Symbol
 
+  /** Case class or case object children of a sealed trait */
+  def Symbol_children(self: Symbol)(using ctx: Context): List[Symbol]
+
 
   ///////////
   // FLAGS //
