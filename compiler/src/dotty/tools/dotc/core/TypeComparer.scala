@@ -212,7 +212,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             // be careful not to get into an infinite recursion. If recursion count
             // exceeds `DerefLimit`, approximate with `t` instead.
             derefCount += 1
-            if t.pending || derefCount >= DerefLimit then t
+            if t.evaluating || derefCount >= DerefLimit then t
             else try mapOver(t.ref) finally derefCount -= 1
           case tp: TypeVar =>
             tp

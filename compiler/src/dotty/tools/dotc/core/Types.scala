@@ -2578,8 +2578,6 @@ object Types {
     private var myRef: Type = null
     private var computed = false
 
-    def pending(using Context): Boolean = computed && myRef == null
-
     def ref(implicit ctx: Context): Type =
       if computed then
         if myRef == null then
