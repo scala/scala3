@@ -1,6 +1,6 @@
 import scala.deriving._
 import scala.quoted._
-import scala.quoted.matching._
+
 
 object Macro1 {
 
@@ -21,7 +21,7 @@ object Macro1 {
 
     val mirrorTpe = '[Mirror.Of[T]]
 
-    summonExpr(using mirrorTpe).get match {
+    Expr.summon(using mirrorTpe).get match {
       case '{ $m: Mirror.ProductOf[T]{ type MirroredElemLabels = $t } } => {
         Expr(mirrorFields(t))
       }

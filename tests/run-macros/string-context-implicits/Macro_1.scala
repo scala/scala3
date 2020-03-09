@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.matching._
+
 
 inline def (sc: StringContext) showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
 
@@ -9,7 +9,7 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
       val argShowedExprs = argExprs.map {
         case '{ $arg: $tp } =>
           val showTp = '[Show[$tp]]
-          summonExpr(using showTp) match {
+          Expr.summon(using showTp) match {
             case Some(showExpr) => '{ $showExpr.show($arg) }
             case None => qctx.error(s"could not find implicit for ${showTp.show}", arg); '{???}
           }

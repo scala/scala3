@@ -1,6 +1,6 @@
 class Foo {
   import scala.quoted._
-  import scala.quoted.matching._
+
   def f(sc: quoted.Expr[StringContext])(using QuoteContext): Unit = {
 
     val '{ StringContext(${parts}: _*) } = sc

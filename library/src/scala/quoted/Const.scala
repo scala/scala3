@@ -1,5 +1,4 @@
 package scala.quoted
-package matching
 
 /** Matches expressions containing literal constant values and extracts the value.
  *  It may match expressions of type Boolean, Byte, Short, Int, Long,

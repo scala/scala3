@@ -3,8 +3,6 @@
 package dotty.internal
 
 import scala.quoted._
-import scala.quoted.matching._
-import reflect._
 
 object StringContextMacro {
 

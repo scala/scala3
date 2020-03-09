@@ -1,5 +1,4 @@
 package scala.quoted
-package matching
 
 /** Lambda expression extractor */
 object Lambda {

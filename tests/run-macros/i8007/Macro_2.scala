@@ -1,6 +1,6 @@
 import scala.deriving._
 import scala.quoted._
-import scala.quoted.matching._
+
 
 object Macro2 {
 
@@ -46,7 +46,7 @@ object Macro2 {
     import qctx.tasty._
 
     val mirrorTpe = '[Mirror.Of[T]]
-    val mirrorExpr = summonExpr(using mirrorTpe).get
+    val mirrorExpr = Expr.summon(using mirrorTpe).get
     val derivedInstance = JsonEncoder.derived(mirrorExpr)
 
     '{

@@ -1,5 +1,4 @@
 package scala.quoted
-package matching
 
 /** Value expressions */
 object Value {

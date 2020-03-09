@@ -1,7 +1,5 @@
 package scala.quoted
 
-import scala.quoted.matching._
-
 /** A typeclass for types that can be turned from a `quoted.Expr[T]` to a `T` */
 trait ValueOfExpr[T] {
 
@@ -29,7 +27,7 @@ object ValueOfExpr {
 
   private class PrimitiveValueOfExpr[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends ValueOfExpr[T] {
     /** Lift a quoted primitive value `'{ n }` into `n` */
-    def apply(x: Expr[T])(using qctx: QuoteContext): Option[T] = matching.Const.unapply(x)
+    def apply(x: Expr[T])(using qctx: QuoteContext): Option[T] = Const.unapply(x)
   }
 
   given Option_delegate[T](using Type[T], ValueOfExpr[T]) as ValueOfExpr[Option[T]] = new {

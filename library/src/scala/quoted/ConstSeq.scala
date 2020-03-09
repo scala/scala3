@@ -1,5 +1,4 @@
 package scala.quoted
-package matching
 
 /** Literal sequence of literal constant value expressions */
 object ConstSeq {

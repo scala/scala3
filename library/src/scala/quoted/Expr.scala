@@ -100,7 +100,7 @@ object Expr {
   }
 
   /** Lift a value into an expression containing the construction of that value */
-  def apply[T: Liftable](x: T)(using qctx: QuoteContext): Expr[T] = summon[Liftable[T]].toExpr(x)
+  def apply[T](x: T)(using qctx: QuoteContext, lift: Liftable[T]): Expr[T] = lift.toExpr(x)
 
   /** Lifts this sequence of expressions into an expression of a sequence
    *
@@ -195,6 +195,22 @@ object Expr {
     import qctx.tasty.{_, given _}
     val elems: Seq[Expr[_]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[_]]]
     ofTuple(elems).cast[Tuple.InverseMap[T, Expr]]
+  }
+
+  /** Find an implicit of type `T` in the current scope given by `qctx`.
+   *  Return `Some` containing the expression of the implicit or
+   * `None` if implicit resolution failed.
+   *
+   *  @tparam T type of the implicit parameter
+   *  @param tpe quoted type of the implicit parameter
+   *  @param qctx current context
+   */
+  def summon[T](using tpe: Type[T])(using qctx: QuoteContext): Option[Expr[T]] = {
+    import qctx.tasty.{_, given _}
+    searchImplicit(tpe.unseal.tpe) match {
+      case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[Expr[T]])
+      case isf: ImplicitSearchFailure => None
+    }
   }
 
 }

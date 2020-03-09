@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.matching._
+
 import scala.quoted.unsafe._
 
 object Macros {
