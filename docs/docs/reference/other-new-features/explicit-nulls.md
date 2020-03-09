@@ -39,15 +39,14 @@ The unsoundness happens because uninitialized fields in a class start out as `nu
 ```scala
 class C {
   val f: String = foo(f)
-  def foo(f2: String): String = if (f2 == null) "field is null" else f2
+  def foo(f2: String): String = f2
 }
 val c = new C()
 // c.f == "field is null"
 ```
 
-Enforcing sound initialization is a non-goal of this proposal. However, once we have a type
-system where nullability is explicit, we can use a sound initialization scheme like the one
-proposed by @liufengyun and @biboudis in [https://github.com/lampepfl/dotty/pull/4543](https://github.com/lampepfl/dotty/pull/4543) to eliminate this particular source of unsoundness.
+The unsoundness above can be caught by the compiler with the option `-Ycheck-init`.
+More details can be found in [safe initialization](./safe-initializaion.md).
 
 ## Equality
 
