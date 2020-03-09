@@ -14,9 +14,9 @@ object Macro {
 
   def fooErrors(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using QuoteContext): Expr[List[(Boolean, Int, Int, Int, String)]] = {
     (strCtxExpr, argsExpr) match {
-      case ('{ StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
+      case ('{ StringContext(${Exprs(parts)}: _*) }, Exprs(args)) =>
         fooErrorsImpl(parts, args, argsExpr)
-    case ('{ new StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
+    case ('{ new StringContext(${Exprs(parts)}: _*) }, Exprs(args)) =>
       fooErrorsImpl(parts, args, argsExpr)
     }
   }

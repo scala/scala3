@@ -618,7 +618,7 @@ It is possible to deconstruct or extract values out of `Expr` using pattern matc
 
 * `scala.quoted.Const`: matches an expression of a literal value and returns the value.
 * `scala.quoted.Value`: matches an expression of a value and returns the value.
-* `scala.quoted.ExprSeq`: matches an explicit sequence of expresions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
+* `scala.quoted.Exprs`: matches an explicit sequence of expresions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
 * `scala.quoted.ConstSeq`:  matches an explicit sequence of literal values and returns them.
 * `scala.quoted.ValueSeq`:  matches an explicit sequence of values and returns them.
 
@@ -628,7 +628,7 @@ inline def sum(inline args: Int*): Int = ${ sumExpr('args) }
 private def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match {
   case ConstSeq(args) => // args is of type Seq[Int]
     Expr(args.sum) // precompute result of sum
-  case ExprSeq(argExprs) => // argExprs is of type Seq[Expr[Int]]
+  case Exprs(argExprs) => // argExprs is of type Seq[Expr[Int]]
     val staticSum: Int = argExprs.map {
       case Const(arg) => arg
       case _ => 0
@@ -664,12 +664,12 @@ private def optimizeExpr(body: Expr[Int])(using QuoteContext): Expr[Int] = body 
   // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
   case '{ sum($n) } => n
   // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
-  case '{ sum(${ExprSeq(args)}: _*) } => sumExpr(args)
+  case '{ sum(${Exprs(args)}: _*) } => sumExpr(args)
   case body => body
 }
 private def sumExpr(args1: Seq[Expr[Int]])(using QuoteContext): Expr[Int] = {
     def flatSumArgs(arg: Expr[Int]): Seq[Expr[Int]] = arg match {
-      case '{ sum(${ExprSeq(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
+      case '{ sum(${Exprs(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
       case arg => Seq(arg)
     }
     val args2 = args1.flatMap(flatSumArgs)
@@ -707,7 +707,7 @@ inline def (sc: StringContext).showMe(inline args: Any*): String = ${ showMeExpr
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
   argsExpr match {
-    case ExprSeq(argExprs) =>
+    case Exprs(argExprs) =>
       val argShowedExprs = argExprs.map {
         case '{ $arg: $tp } =>
           val showTp = '[Show[$tp]]

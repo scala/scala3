@@ -64,7 +64,7 @@ object StringContextMacro {
     def notStatic =
       qctx.throwError("Expected statically known String Context", strCtxExpr)
     def splitParts(seq: Expr[Seq[String]]) = (seq, seq) match {
-      case (ExprSeq(p1), ConstSeq(p2)) => (p1.toList, p2.toList)
+      case (Exprs(p1), ConstSeq(p2)) => (p1.toList, p2.toList)
       case (_, _) => notStatic
     }
     val (partsExpr, parts) = strCtxExpr match {
@@ -74,7 +74,7 @@ object StringContextMacro {
     }
 
     val args = argsExpr match {
-      case ExprSeq(args) => args
+      case Exprs(args) => args
       case _ => qctx.throwError("Expected statically known argument list", argsExpr)
     }
 

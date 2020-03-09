@@ -14,7 +14,7 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using qctx: QuoteContext) : Expr[I
   UnsafeExpr.underlyingArgument(argsExpr) match {
     case ConstSeq(args) => // args is of type Seq[Int]
       Expr(args.sum) // precompute result of sum
-    case ExprSeq(argExprs) => // argExprs is of type Seq[Expr[Int]]
+    case Exprs(argExprs) => // argExprs is of type Seq[Expr[Int]]
       val staticSum: Int = argExprs.map {
         case Const(arg) => arg
         case _ => 0

@@ -16,7 +16,7 @@ object ValueSeq {
    *  ```
    */
   def unapply[T](expr: Expr[Seq[T]])(using valueOf: ValueOfExpr[T], qctx: QuoteContext): Option[Seq[T]] = expr match {
-    case ExprSeq(elems) =>
+    case Exprs(elems) =>
       elems.foldRight(Option(List.empty[T])) { (elem, acc) =>
         (elem, acc) match {
           case (Value(value), Some(lst)) => Some(value :: lst)

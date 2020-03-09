@@ -21,7 +21,7 @@ object Macro {
 
   def foo(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
     (sc, argsExpr) match {
-      case ('{ StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
+      case ('{ StringContext(${Exprs(parts)}: _*) }, Exprs(args)) =>
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
             import qctx.tasty._
@@ -34,7 +34,7 @@ object Macro {
 
   def fooErrors(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[List[(Int, Int, Int, String)]] = {
     (sc, argsExpr) match {
-      case ('{ StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
+      case ('{ StringContext(${Exprs(parts)}: _*) }, Exprs(args)) =>
         val errors = List.newBuilder[Expr[(Int, Int, Int, String)]]
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {

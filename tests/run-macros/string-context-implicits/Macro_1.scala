@@ -5,7 +5,7 @@ inline def (sc: StringContext) showMe(inline args: Any*): String = ${ showMeExpr
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
   argsExpr match {
-    case ExprSeq(argExprs) =>
+    case Exprs(argExprs) =>
       val argShowedExprs = argExprs.map {
         case '{ $arg: $tp } =>
           val showTp = '[Show[$tp]]

@@ -16,7 +16,7 @@ object ConstSeq {
    *  ```
    */
   def unapply[T](expr: Expr[Seq[T]])(using qctx: QuoteContext): Option[Seq[T]] = expr match {
-    case ExprSeq(elems) =>
+    case Exprs(elems) =>
       elems.foldRight(Option(List.empty[T])) { (elem, acc) =>
         (elem, acc) match {
           case (Const(value), Some(lst)) => Some(value :: lst)
