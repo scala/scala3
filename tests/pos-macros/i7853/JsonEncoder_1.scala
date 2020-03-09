@@ -6,13 +6,11 @@ trait JsonEncoder[T] {
 }
 
 object JsonEncoder {
-  import scala.compiletime.{erasedValue, summonFrom}
+  import scala.compiletime.{erasedValue, summonInline}
   import compiletime._
   import scala.deriving._
 
-  inline def encodeElem[T](elem: T): String = summonFrom {
-    case encoder: JsonEncoder[T] => encoder.encode(elem)
-  }
+  inline def encodeElem[T](elem: T): String = summonInline[JsonEncoder[T]].encode(elem)
 
   inline def encodeElems[Elems <: Tuple](idx: Int)(value: Any): List[String] =
     inline erasedValue[Elems] match {

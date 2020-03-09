@@ -1,7 +1,5 @@
 import scala.deriving._
 import scala.quoted._
-
-import scala.compiletime.{erasedValue, summonFrom}
 import JsonEncoder.{given _, _}
 
 object SummonJsonEncoderTest {

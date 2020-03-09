@@ -91,12 +91,10 @@ trait Eq[T] {
 }
 
 object Eq {
-  import scala.compiletime.{erasedValue, summonFrom}
+  import scala.compiletime.{erasedValue, summonInline}
   import TypeLevel._
 
-  inline def tryEql[T](x: T, y: T) = summonFrom {
-    case eq: Eq[T] => eq.eql(x, y)
-  }
+  inline def tryEql[T](x: T, y: T) = summonInline[Eq[T]].eql(x, y)
 
   inline def eqlElems[Elems <: Tuple](x: Product, y: Product, n: Int): Boolean =
     inline erasedValue[Elems] match {

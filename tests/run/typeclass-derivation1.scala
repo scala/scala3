@@ -38,9 +38,7 @@ object Deriving {
   }
 
   object Eq {
-    inline def tryEq[T](x: T, y: T) = summonFrom {
-      case eq: Eq[T] => eq.equals(x, y)
-    }
+    inline def tryEq[T](x: T, y: T) = summonInline[Eq[T]].equals(x, y)
 
     inline def deriveForSum[Alts <: Tuple](x: Any, y: Any): Boolean = inline erasedValue[Alts] match {
       case _: (alt *: alts1) =>

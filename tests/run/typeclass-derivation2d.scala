@@ -197,11 +197,9 @@ trait Eq[T] {
 }
 
 object Eq {
-  import scala.compiletime.{erasedValue, summonFrom}
+  import scala.compiletime.{erasedValue, summonFrom, summonInline}
 
-  inline def tryEql[T](x: T, y: T) = summonFrom {
-    case eq: Eq[T] => eq.eql(x, y)
-  }
+  inline def tryEql[T](x: T, y: T) = summonInline[Eq[T]].eql(x, y)
 
   inline def eqlElems[Elems <: Tuple](n: Int)(x: Any, y: Any): Boolean =
     inline erasedValue[Elems] match {
@@ -251,13 +249,12 @@ trait Pickler[T] {
 }
 
 object Pickler {
-  import scala.compiletime.{erasedValue, constValue, summonFrom}
+  import scala.compiletime.{erasedValue, constValue, summonFrom, summonInline}
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = summonFrom {
-    case pkl: Pickler[T] => pkl.pickle(buf, x)
-  }
+  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit =
+    summonInline[Pickler[T]].pickle(buf, x)
 
   inline def pickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], x: Any): Unit =
     inline erasedValue[Elems] match {
@@ -278,9 +275,8 @@ object Pickler {
       case _: Unit =>
     }
 
-  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonFrom {
-    case pkl: Pickler[T] => pkl.unpickle(buf)
-  }
+  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T =
+    summonInline[Pickler[T]].unpickle(buf)
 
   inline def unpickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], elems: ArrayProduct): Unit =
     inline erasedValue[Elems] match {
@@ -346,11 +342,9 @@ trait Show[T] {
   def show(x: T): String
 }
 object Show {
-  import scala.compiletime.{erasedValue, constValue, summonFrom}
+  import scala.compiletime.{erasedValue, constValue, summonFrom, summonInline}
 
-  inline def tryShow[T](x: T): String = summonFrom {
-    case s: Show[T] => s.show(x)
-  }
+  inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
 
   inline def showElems[Elems <: Tuple, Labels <: Tuple](n: Int)(x: Any): List[String] =
     inline erasedValue[Elems] match {
