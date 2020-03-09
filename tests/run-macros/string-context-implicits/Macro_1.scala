@@ -14,7 +14,7 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
             case None => qctx.error(s"could not find implicit for ${showTp.show}", arg); '{???}
           }
       }
-      val newArgsExpr = Expr.ofSeq(argShowedExprs)
+      val newArgsExpr = Exprs(argShowedExprs)
       '{ $sc.s($newArgsExpr: _*) }
     case _ =>
       // `new StringContext(...).showMeExpr(args: _*)` not an explicit `showMeExpr"..."`
