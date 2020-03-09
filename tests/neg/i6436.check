@@ -1,6 +1,6 @@
 -- Error: tests/neg/i6436.scala:5:9 ------------------------------------------------------------------------------------
 5 |    case '{ StringContext(${Exprs(parts)}: _*) } => // error
-  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |         no implicit argument of type scala.quoted.QuoteContext was found
 -- [E006] Unbound Identifier Error: tests/neg/i6436.scala:6:34 ---------------------------------------------------------
 6 |      val ps: Seq[Expr[String]] = parts // error
