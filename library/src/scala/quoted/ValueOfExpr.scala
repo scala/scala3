@@ -42,8 +42,8 @@ object ValueOfExpr {
 
   given StringContext_delegate as ValueOfExpr[StringContext] = new {
     def apply(x: Expr[StringContext])(using qctx: QuoteContext): Option[StringContext] = x match {
-      case '{ new StringContext(${ConstSeq(args)}: _*) } => Some(StringContext(args: _*))
-      case '{     StringContext(${ConstSeq(args)}: _*) } => Some(StringContext(args: _*))
+      case '{ new StringContext(${Exprs(Const(args))}: _*) } => Some(StringContext(args: _*))
+      case '{     StringContext(${Exprs(Const(args))}: _*) } => Some(StringContext(args: _*))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple1_delegate"
@@ -270,9 +270,9 @@ object ValueOfExpr {
 
   given Seq_delegate[T](using Type[T], ValueOfExpr[T]) as ValueOfExpr[Seq[T]] = new {
     def apply(x: Expr[Seq[T]])(using qctx: QuoteContext): Option[Seq[T]] = x match {
-      case ValueSeq(elems) => Some(elems)
-      case '{ scala.collection.Seq[T](${ValueSeq(elems)}: _*) } => Some(elems)
-      case '{ scala.collection.immutable.Seq[T](${ValueSeq(elems)}: _*) } => Some(elems)
+      case Exprs(Value(elems)) => Some(elems)
+      case '{ scala.collection.Seq[T](${Exprs(Value(elems))}: _*) } => Some(elems)
+      case '{ scala.collection.immutable.Seq[T](${Exprs(Value(elems))}: _*) } => Some(elems)
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Seq_delegate"

@@ -17,9 +17,6 @@ package object matching {
   @deprecated("use scala.quoted.Const instead", "0.23.0")
   val Const: quoted.Const.type = quoted.Const
 
-  @deprecated("use scala.quoted.ConstSeq instead", "0.23.0")
-  val ConstSeq: quoted.ConstSeq.type = quoted.ConstSeq
-
   @deprecated("use scala.quoted.Exprs instead", "0.23.0")
   val ExprSeq: quoted.Exprs.type = quoted.Exprs
 
@@ -31,8 +28,5 @@ package object matching {
 
   @deprecated("use scala.quoted.ValueOfExpr instead", "0.23.0")
   val ValueOfExpr: quoted.ValueOfExpr.type = quoted.ValueOfExpr
-
-  @deprecated("use scala.quoted.ValueSeq instead", "0.23.0")
-  val ValueSeq: quoted.ValueSeq.type = quoted.ValueSeq
 
 }

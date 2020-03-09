@@ -8,7 +8,7 @@ object Macros {
 
   private def impl(self: Expr[StringContext], args: Expr[Seq[String]])(using QuoteContext): Expr[String] = {
     self match {
-      case '{ StringContext(${ConstSeq(parts)}: _*) } =>
+      case '{ StringContext(${Exprs(Const(parts))}: _*) } =>
         val upprerParts: List[String] = parts.toList.map(_.toUpperCase)
         val upprerPartsExpr: Expr[List[String]] = Expr.ofList(upprerParts.map(Expr(_)))
         '{ StringContext($upprerPartsExpr: _*).s($args: _*) }
