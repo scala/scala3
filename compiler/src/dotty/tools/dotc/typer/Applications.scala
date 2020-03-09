@@ -1544,7 +1544,7 @@ trait Applications extends Compatibility {
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
    *  if the first finds no eligible candidates, with implicits and SAM conversions enabled.
    */
-  def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = {
+  def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] =
     record("resolveOverloaded")
 
     /** Is `alt` a method or polytype whose result type after the first value parameter
@@ -1590,15 +1590,26 @@ trait Applications extends Compatibility {
       case _ => chosen
     }
 
-    def resolve(alts: List[TermRef]) = {
-      var found = resolveOverloaded(alts, pt, Nil)(ctx.retractMode(Mode.ImplicitsEnabled))
-      if (found.isEmpty && ctx.mode.is(Mode.ImplicitsEnabled))
-        found = resolveOverloaded(alts, pt, Nil)
-      found match {
+    def resolve(alts: List[TermRef]): List[TermRef] =
+      pt match
+        case pt: FunProto =>
+          if pt.isUsingApply then
+            val alts0 = alts.filterConserve { alt =>
+              val mt = alt.widen.stripPoly
+              mt.isImplicitMethod || mt.isContextualMethod
+            }
+            if alts0 ne alts then return resolve(alts0)
+          else if alts.exists(_.widen.stripPoly.isContextualMethod) then
+            return resolveMapped(alts, alt => stripImplicit(alt.widen), pt)
+        case _ =>
+
+      var found = resolveOverloaded1(alts, pt)(using ctx.retractMode(Mode.ImplicitsEnabled))
+      if found.isEmpty && ctx.mode.is(Mode.ImplicitsEnabled) then
+        found = resolveOverloaded1(alts, pt)
+      found match
         case alt :: Nil => adaptByResult(alt, alts) :: Nil
         case _ => found
-      }
-    }
+    end resolve
 
     /** Try an apply method, if
      *   - the result is applied to value arguments and alternative is not a method, or
@@ -1634,15 +1645,16 @@ trait Applications extends Compatibility {
       resolve(expanded).map(retract)
     }
     else resolve(alts)
-  }
+  end resolveOverloaded
 
   /** This private version of `resolveOverloaded` does the bulk of the work of
-   *  overloading resolution, but does not do result adaptation. It might be
-   *  called twice from the public `resolveOverloaded` method, once with
+   *  overloading resolution, but does neither result adaptation nor apply insertion.
+   *  It might be called twice from the public `resolveOverloaded` method, once with
    *  implicits and SAM conversions enabled, and once without.
    */
-  private def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type])(implicit ctx: Context): List[TermRef] =
-    record("resolveOverloaded/2")
+  private def resolveOverloaded1(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] =
+    trace(i"resolve over $alts%, %, pt = $pt", typr, show = true) {
+    record("resolveOverloaded1")
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 
@@ -1707,22 +1719,6 @@ trait Applications extends Compatibility {
       case _ => arg
     end normArg
 
-    /** Resolve overloading by mapping to a different problem where each alternative's
-     *  type is mapped with `f`, alternatives with non-existing types are dropped, and the
-     *  expected type is `pt`. Map the results back to the original alternatives.
-     */
-    def resolveMapped(alts: List[TermRef], f: TermRef => Type, pt: Type): List[TermRef] =
-      val reverseMapping = alts.flatMap { alt =>
-        val t = f(alt)
-        if t.exists then
-          Some((TermRef(NoPrefix, alt.symbol.asTerm.copy(info = t)), alt))
-        else
-          None
-      }
-      val mapped = reverseMapping.map(_._1)
-      overload.println(i"resolve mapped: $mapped")
-      resolveOverloaded(mapped, pt, targs).map(reverseMapping.toMap)
-
     val candidates = pt match {
       case pt @ FunProto(args, resultType) =>
         val numArgs = args.length
@@ -1753,24 +1749,15 @@ trait Applications extends Compatibility {
 
         def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] = {
           val alts2 = alts.filter(alt =>
-            isDirectlyApplicableMethodRef(alt, targs, args, resultType)
+            isDirectlyApplicableMethodRef(alt, Nil, args, resultType)
           )
           if (alts2.isEmpty && !ctx.isAfterTyper)
             alts.filter(alt =>
-              isApplicableMethodRef(alt, targs, args, resultType, keepConstraint = false)
+              isApplicableMethodRef(alt, Nil, args, resultType, keepConstraint = false)
             )
           else
             alts2
         }
-
-        if pt.isUsingApply then
-          val alts0 = alts.filterConserve { alt =>
-            val mt = alt.widen.stripPoly
-            mt.isImplicitMethod || mt.isContextualMethod
-          }
-          if alts0 ne alts then return resolveOverloaded(alts0, pt, targs)
-        else if alts.exists(_.widen.stripPoly.isContextualMethod) then
-          return resolveMapped(alts, alt => stripImplicit(alt.widen), pt)
 
         val alts1 = narrowBySize(alts)
         //ctx.log(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
@@ -1783,9 +1770,10 @@ trait Applications extends Compatibility {
             pretypeArgs(alts2, pt)
             narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
 
-      case pt @ PolyProto(targs1, pt1) if targs.isEmpty =>
-        val alts1 = alts.filter(pt.isMatchedBy(_))
-        resolveOverloaded(alts1, pt1, targs1.tpes)
+      case pt @ PolyProto(targs1, pt1) =>
+        val alts1 = alts.filter(pt.canInstantiate)
+        if isDetermined(alts1) then alts1
+        else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
 
       case defn.FunctionOf(args, resultType, _, _) =>
         narrowByTypes(alts, args, resultType)
@@ -1842,7 +1830,7 @@ trait Applications extends Compatibility {
           if noCurriedCount == 1 then
             noCurried
           else if noCurriedCount > 1 && noCurriedCount < alts.length then
-            resolveOverloaded(noCurried, pt, targs)
+            resolveOverloaded1(noCurried, pt)
           else
             // prefer alternatves that match without default parameters
             val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
@@ -1850,13 +1838,30 @@ trait Applications extends Compatibility {
             if noDefaultsCount == 1 then
               noDefaults
             else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
-              resolveOverloaded(noDefaults, pt, targs)
+              resolveOverloaded1(noDefaults, pt)
             else if deepPt ne pt then
               // try again with a deeper known expected type
-              resolveOverloaded(alts, deepPt, targs)
+              resolveOverloaded1(alts, deepPt)
             else
               candidates
-  end resolveOverloaded
+    }
+  end resolveOverloaded1
+
+  /** Resolve overloading by mapping to a different problem where each alternative's
+   *  type is mapped with `f`, alternatives with non-existing types are dropped, and the
+   *  expected type is `pt`. Map the results back to the original alternatives.
+   */
+  def resolveMapped(alts: List[TermRef], f: TermRef => Type, pt: Type)(using Context): List[TermRef] =
+    val reverseMapping = alts.flatMap { alt =>
+      val t = f(alt)
+      if t.exists then
+        Some((TermRef(NoPrefix, alt.symbol.asTerm.copy(info = t)), alt))
+      else
+        None
+    }
+    val mapped = reverseMapping.map(_._1)
+    overload.println(i"resolve mapped: $mapped")
+    resolveOverloaded(mapped, pt).map(reverseMapping.toMap)
 
   /** Try to typecheck any arguments in `pt` that are function values missing a
    *  parameter type. If the formal parameter types corresponding to a closure argument

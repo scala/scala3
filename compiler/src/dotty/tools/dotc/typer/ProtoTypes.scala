@@ -454,13 +454,12 @@ object ProtoTypes {
 
     override def resultType(implicit ctx: Context): Type = resType
 
-    override def isMatchedBy(tp: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean = {
-      def isInstantiatable(tp: Type) = tp.widen match {
-        case tp: PolyType => tp.paramNames.length == targs.length
-        case _ => false
-      }
-      isInstantiatable(tp) || tp.member(nme.apply).hasAltWith(d => isInstantiatable(d.info))
-    }
+    def canInstantiate(tp: Type)(using Context) = tp.widen match
+      case tp: PolyType => tp.paramNames.length == targs.length
+      case _ => false
+
+    override def isMatchedBy(tp: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean =
+      canInstantiate(tp) || tp.member(nme.apply).hasAltWith(d => canInstantiate(d.info))
 
     def derivedPolyProto(targs: List[Tree], resultType: Type): PolyProto =
       if ((targs eq this.targs) && (resType eq this.resType)) this
