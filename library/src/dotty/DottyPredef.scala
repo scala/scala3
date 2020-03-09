@@ -37,6 +37,11 @@ object DottyPredef {
     case ev: ValueOf[T] => ev.value
   }
 
+  /** Summon an given value of type `T`. Usually, the argument is not passed explicitly.
+   *
+   *  @tparam T the type of the value to be summoned
+   *  @return the given value typed as the given parameter
+   */
   inline def summon[T](using x: T): x.type = x
 
   // Extension methods for working with explicit nulls
