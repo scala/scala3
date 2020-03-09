@@ -565,13 +565,13 @@ sum
 ### Find implicits within a macro
 
 Similarly to the `summonFrom` construct, it is possible to make implicit search available
-in a quote context. For this we simply provide `scala.quoted.matching.summonExpr`:
+in a quote context. For this we simply provide `scala.quoted.Expr.summon`:
 
 ```scala
 inline def setFor[T]: Set[T] = ${ setForExpr[T] }
 
 def setForExpr[T: Type](using QuoteContext): Expr[Set[T]] = {
-  summonExpr[Ordering[T]] match {
+  Expr.summon[Ordering[T]] match {
     case Some(ord) => '{ new TreeSet[T]()($ord) }
     case _ => '{ new HashSet[T] }
   }
@@ -614,15 +614,13 @@ In case all files are suspended due to cyclic dependencies the compilation will 
 
 It is possible to deconstruct or extract values out of `Expr` using pattern matching.
 
-#### scala.quoted.matching
+`scala.quoted` contains objects that can help extracting values from `Expr`.
 
-`scala.quoted.matching` contains objects that can help extracting values from `Expr`.
-
-* `scala.quoted.matching.Const`: matches an expression of a literal value and returns the value.
-* `scala.quoted.matching.Value`: matches an expression of a value and returns the value.
-* `scala.quoted.matching.ExprSeq`: matches an explicit sequence of expresions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
-* `scala.quoted.matching.ConstSeq`:  matches an explicit sequence of literal values and returns them.
-* `scala.quoted.matching.ValueSeq`:  matches an explicit sequence of values and returns them.
+* `scala.quoted.Const`: matches an expression of a literal value and returns the value.
+* `scala.quoted.Value`: matches an expression of a value and returns the value.
+* `scala.quoted.ExprSeq`: matches an explicit sequence of expresions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
+* `scala.quoted.ConstSeq`:  matches an explicit sequence of literal values and returns them.
+* `scala.quoted.ValueSeq`:  matches an explicit sequence of values and returns them.
 
 These could be used in the following way to optimize any call to `sum` that has statically known values.
 ```scala
