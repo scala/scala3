@@ -66,7 +66,7 @@ object StringContextMacro {
     def splitParts(seq: Expr[Seq[String]]) = seq match {
       case Varargs(p1) =>
         p1 match
-          case Const(p2) => (p1.toList, p2.toList)
+          case Consts(p2) => (p1.toList, p2.toList)
           case _ => notStatic
       case _ => notStatic
     }

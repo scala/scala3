@@ -20,7 +20,7 @@ object ConstSeq {
   def unapply[T](expr: Expr[Seq[T]])(using qctx: QuoteContext): Option[Seq[T]] =
     import scala.quoted.Const
     expr match
-      case Varargs(Const(elems)) => Some(elems)
+      case Varargs(Consts(elems)) => Some(elems)
       case _ => None
 
 }
