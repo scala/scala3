@@ -238,7 +238,7 @@ Result: Some(List(Expr(((x: scala.Int) => "abc"))))
 
 Scrutinee: ((x: scala.Int) => "abc")
 Pattern: ((x: scala.Int @scala.internal.quoted.CompileTime.patternBindHole) => scala.internal.quoted.CompileTime.patternHole[scala.Predef.String])
-Result: Some(List(Sym(x), Expr("abc")))
+Result: Some(List(String(x), Expr("abc")))
 
 Scrutinee: scala.StringContext.apply("abc", "xyz")
 Pattern: scala.StringContext.apply("abc", "xyz")
@@ -270,7 +270,7 @@ Pattern: {
   @scala.internal.quoted.CompileTime.patternBindHole val a: scala.Int = scala.internal.quoted.CompileTime.patternHole[scala.Int]
   ()
 }
-Result: Some(List(Sym(a), Expr(45)))
+Result: Some(List(String(a), Expr(45)))
 
 Scrutinee: {
   val a: scala.Int = 45
@@ -502,7 +502,7 @@ Pattern: {
   @scala.internal.quoted.CompileTime.patternBindHole def a: scala.Int = scala.internal.quoted.CompileTime.patternHole[scala.Int]
   ()
 }
-Result: Some(List(Sym(a), Expr(45)))
+Result: Some(List(String(a), Expr(45)))
 
 Scrutinee: {
   def a(x: scala.Int): scala.Int = 45
@@ -572,7 +572,7 @@ Pattern: {
   def a(x: scala.Int @scala.internal.quoted.CompileTime.patternBindHole): scala.Int = 45
   ()
 }
-Result: Some(List(Sym(x)))
+Result: Some(List(String(x)))
 
 Scrutinee: {
   def a(x: scala.Int): scala.Int = 45
@@ -582,7 +582,7 @@ Pattern: {
   def a(x: scala.Int @scala.internal.quoted.CompileTime.patternBindHole): scala.Int = 45
   ()
 }
-Result: Some(List(Sym(x)))
+Result: Some(List(String(x)))
 
 Scrutinee: {
   def a(x: scala.Int): scala.Int = x

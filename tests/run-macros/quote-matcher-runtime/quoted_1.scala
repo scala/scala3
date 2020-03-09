@@ -1,6 +1,4 @@
 import scala.quoted._
-import scala.quoted.matching._
-
 
 object Macros {
 
@@ -15,8 +13,8 @@ object Macros {
           s"Expr(${r.unseal.show})"
         case r: quoted.Type[_] =>
           s"Type(${r.unseal.show})"
-        case r: Sym[_] =>
-          s"Sym(${r.name})"
+        case r: String =>
+          s"String($r)"
       }
     }
 
