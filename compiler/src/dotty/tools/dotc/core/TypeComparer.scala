@@ -2219,13 +2219,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   /** Returns last check's debug mode, if explicitly enabled. */
   def lastTrace(): String = ""
 
+  /** Does `tycon` have a field with type `tparam`? Special cased for `scala.*:`
+   *  as that type is artificially added to tuples. */
   private def typeparamCorrespondsToField(tycon: Type, tparam: TypeParamInfo): Boolean =
     productSelectorTypes(tycon, null).exists {
       case tp: TypeRef =>
         tp.designator.eq(tparam) // Bingo!
       case _ =>
         false
-    }
+    } || tycon.derivesFrom(defn.PairClass)
 
   /** Is `tp` an empty type?
    *
