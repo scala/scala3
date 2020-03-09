@@ -762,7 +762,7 @@ class TestBCode extends DottyBytecodeTest {
          |}
       """.stripMargin
 
-    checkBCode(sourceA, sourceB) { dir =>
+    checkBCode(List(sourceA, sourceB)) { dir =>
       val clsNodeA = loadClassNode(dir.lookupName("A.class", directory = false).input, skipDebugInfo = false)
       val clsNodeB = loadClassNode(dir.lookupName("B.class", directory = false).input, skipDebugInfo = false)
       val a1 = getMethod(clsNodeA, "a1")

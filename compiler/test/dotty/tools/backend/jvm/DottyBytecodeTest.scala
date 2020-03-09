@@ -52,13 +52,16 @@ trait DottyBytecodeTest {
     ctx0.setSetting(ctx0.settings.outputDir, outputDir)
   }
 
+  def checkBCode(scalaSource: String)(checkOutput: AbstractFile => Unit): Unit =
+    checkBCode(List(scalaSource))(checkOutput)
+
   /** Checks source code from raw strings */
-  def checkBCode(sources: String*)(checkOutput: AbstractFile => Unit): Unit = {
+  def checkBCode(scalaSources: List[String], javaSources: List[String] = Nil)(checkOutput: AbstractFile => Unit): Unit = {
     implicit val ctx: Context = initCtx
 
     val compiler = new Compiler
     val run = compiler.newRun
-    compiler.newRun.compileFromStrings(sources: _*)
+    compiler.newRun.compileFromStrings(scalaSources, javaSources)
 
     checkOutput(ctx.settings.outputDir.value)
   }

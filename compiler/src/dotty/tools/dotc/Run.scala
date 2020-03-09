@@ -246,15 +246,21 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     }
   }
 
-  def compileFromStrings(sourceCodes: String*): Unit = {
-    val sourceFiles = sourceCodes.map {sourceCode =>
-      val virtualFile = new VirtualFile(s"compileFromString-${java.util.UUID.randomUUID().toString}")
+  def compileFromStrings(scalaSources: List[String], javaSources: List[String] = Nil): Unit = {
+    def sourceFile(source: String, isJava: Boolean): SourceFile = {
+      val uuid = java.util.UUID.randomUUID().toString
+      val ext = if (isJava) ".java" else ".scala"
+      val virtualFile = new VirtualFile(s"compileFromString-$uuid.$ext")
       val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8")) // buffering is still advised by javadoc
-      writer.write(sourceCode)
+      writer.write(source)
       writer.close()
       new SourceFile(virtualFile, Codec.UTF8)
     }
-    compileSources(sourceFiles.toList)
+    val sources =
+      scalaSources.map(sourceFile(_, isJava = false)) ++
+       javaSources.map(sourceFile(_, isJava = true))
+
+    compileSources(sources)
   }
 
   /** Print summary; return # of errors encountered */
