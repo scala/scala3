@@ -337,6 +337,11 @@ trait QuotesAndSplices {
    *  ```
    */
   private def typedQuotePattern(tree: untpd.Quote, pt: Type, qctx: Tree)(implicit ctx: Context): Tree = {
+    if tree.quoted.isTerm && !pt.derivesFrom(defn.QuotedExprClass) then
+      ctx.error("Quote pattern can only match scrutinees of type scala.quoted.Expr", tree.sourcePos)
+    else if tree.quoted.isType && !pt.derivesFrom(defn.QuotedTypeClass) then
+      ctx.error("Quote pattern can only match scrutinees of type scala.quoted.Type", tree.sourcePos)
+
     val quoted = tree.quoted
     val exprPt = pt.baseType(if quoted.isType then defn.QuotedTypeClass else defn.QuotedExprClass)
     val quotedPt = exprPt.argInfos.headOption match {
