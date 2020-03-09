@@ -260,7 +260,7 @@ object ProtoTypes {
       def isPoly(tree: Tree) = tree.tpe.widenSingleton.isInstanceOf[PolyType]
       // See remark in normalizedCompatible for why we can't keep the constraint
       // if one of the arguments has a PolyType.
-      typer.isApplicableType(tp, Nil, args, resultType, keepConstraint && !args.exists(isPoly))
+      typer.isApplicableType(tp, args, resultType, keepConstraint && !args.exists(isPoly))
     }
 
     def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =

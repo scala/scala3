@@ -650,8 +650,8 @@ trait Applications extends Compatibility {
   /** Subclass of Application for applicability tests with type arguments and value
    *  argument trees.
    */
-  class ApplicableToTrees(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context)
-  extends TestApplication(methRef, methRef.widen.appliedTo(targs), args, resultType) {
+  class ApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context)
+  extends TestApplication(methRef, methRef.widenTermRefExpr, args, resultType) {
     def argType(arg: Tree, formal: Type): Type = normalize(arg.tpe, formal)
     def treeToArg(arg: Tree): Tree = arg
     def isVarArg(arg: Tree): Boolean = tpd.isWildcardStarArg(arg)
@@ -662,7 +662,8 @@ trait Applications extends Compatibility {
   /** Subclass of Application for applicability tests with type arguments and value
    * argument trees.
    */
-  class ApplicableToTreesDirectly(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context) extends ApplicableToTrees(methRef, targs, args, resultType)(ctx) {
+  class ApplicableToTreesDirectly(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context)
+  extends ApplicableToTrees(methRef, args, resultType)(ctx) {
     override def argOK(arg: TypedArg, formal: Type): Boolean =
       argType(arg, formal) relaxed_<:< formal.widenExpr
   }
@@ -1240,20 +1241,20 @@ trait Applications extends Compatibility {
   def typedUnApply(tree: untpd.UnApply, selType: Type)(implicit ctx: Context): UnApply =
     throw new UnsupportedOperationException("cannot type check an UnApply node")
 
-  /** Is given method reference applicable to type arguments `targs` and argument trees `args`?
+  /** Is given method reference applicable to argument trees `args`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicableMethodRef(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean = {
+  def isApplicableMethodRef(methRef: TermRef, args: List[Tree], resultType: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean = {
     def isApp(implicit ctx: Context): Boolean =
-      new ApplicableToTrees(methRef, targs, args, resultType).success
+      new ApplicableToTrees(methRef, args, resultType).success
     if (keepConstraint) isApp else ctx.test(isApp)
   }
 
-  /** Is given method reference applicable to type arguments `targs` and argument trees `args` without inferring views?
+  /** Is given method reference applicable to argument trees `args` without inferring views?
     *  @param  resultType   The expected result type of the application
     */
-  def isDirectlyApplicableMethodRef(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
-    ctx.test(new ApplicableToTreesDirectly(methRef, targs, args, resultType).success)
+  def isDirectlyApplicableMethodRef(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
+    ctx.test(new ApplicableToTreesDirectly(methRef, args, resultType).success)
 
   /** Is given method reference applicable to argument types `args`?
    *  @param  resultType   The expected result type of the application
@@ -1261,13 +1262,12 @@ trait Applications extends Compatibility {
   def isApplicableMethodRef(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context): Boolean =
     ctx.test(new ApplicableToTypes(methRef, args, resultType).success)
 
-  /** Is given type applicable to type arguments `targs` and argument trees `args`,
-   *  possibly after inserting an `apply`?
+  /** Is given type applicable to argument trees `args`, possibly after inserting an `apply`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicableType(tp: Type, targs: List[Type], args: List[Tree], resultType: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean =
-    onMethod(tp, targs.nonEmpty || args.nonEmpty) {
-      isApplicableMethodRef(_, targs, args, resultType, keepConstraint)
+  def isApplicableType(tp: Type, args: List[Tree], resultType: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean =
+    onMethod(tp, args.nonEmpty) {
+      isApplicableMethodRef(_, args, resultType, keepConstraint)
     }
 
   /** Is given type applicable to argument types `args`, possibly after inserting an `apply`?
@@ -1538,9 +1538,7 @@ trait Applications extends Compatibility {
     }
   }
 
-  /** Resolve overloaded alternative `alts`, given expected type `pt` and
-   *  possibly also type argument `targs` that need to be applied to each alternative
-   *  to form the method type.
+  /** Resolve overloaded alternative `alts`, given expected type `pt`.
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
    *  if the first finds no eligible candidates, with implicits and SAM conversions enabled.
    */
@@ -1749,11 +1747,11 @@ trait Applications extends Compatibility {
 
         def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] = {
           val alts2 = alts.filter(alt =>
-            isDirectlyApplicableMethodRef(alt, Nil, args, resultType)
+            isDirectlyApplicableMethodRef(alt, args, resultType)
           )
           if (alts2.isEmpty && !ctx.isAfterTyper)
             alts.filter(alt =>
-              isApplicableMethodRef(alt, Nil, args, resultType, keepConstraint = false)
+              isApplicableMethodRef(alt, args, resultType, keepConstraint = false)
             )
           else
             alts2
