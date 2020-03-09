@@ -421,6 +421,7 @@ object Types {
       case tp: ClassInfo => tp.cls
       case tp: SingletonType => NoSymbol
       case tp: TypeProxy => tp.underlying.typeSymbol
+      case  _: JavaArrayType => defn.ArrayClass
       case _ => NoSymbol
     }
 
@@ -448,6 +449,8 @@ object Types {
         else NoSymbol
       case tp: OrType =>
         tp.join.classSymbol
+      case _: JavaArrayType =>
+        defn.ArrayClass
       case _ =>
         NoSymbol
     }
