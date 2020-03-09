@@ -19,6 +19,6 @@ object Macros {
     }
 
     val tps = unpackTuple(typeOf[T])
-    Exprs(tps.map(x => Expr(x.show)))
+    Varargs(tps.map(x => Expr(x.show)))
   }
 }

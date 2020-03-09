@@ -1,7 +1,7 @@
 package scala.quoted
 
 /** Literal sequence of expressions */
-object Exprs {
+object Varargs {
 
   /** Lifts this sequence of expressions into an expression of a sequence
    *
@@ -12,7 +12,7 @@ object Exprs {
    *
    *  Usage:
    *  ```scala
-   *  '{ List(${Exprs(List(1, 2, 3))}: _*) } // equvalent to '{ List(1, 2, 3) }
+   *  '{ List(${Varargs(List(1, 2, 3))}: _*) } // equvalent to '{ List(1, 2, 3) }
    *  ```
    */
   def apply[T](xs: Seq[Expr[T]])(using tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = {
@@ -26,8 +26,8 @@ object Exprs {
    *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match
-   *    case Exprs(argExprs) =>
-   *      // argExprs: Seq[Expr[Int]]
+   *    case Varargs(argVarargs) =>
+   *      // argVarargs: Seq[Expr[Int]]
    *      ...
    *  }
    *  ```

@@ -12,9 +12,9 @@ private def sumExprShow(argsExpr: Expr[Seq[Int]]) (using QuoteContext): Expr[Str
 private def sumExpr(argsExpr: Expr[Seq[Int]])(using qctx: QuoteContext) : Expr[Int] = {
   import qctx.tasty.{given _, _}
   UnsafeExpr.underlyingArgument(argsExpr) match {
-    case Exprs(Const(args)) => // args is of type Seq[Int]
+    case Varargs(Const(args)) => // args is of type Seq[Int]
       Expr(args.sum) // precompute result of sum
-    case Exprs(argExprs) => // argExprs is of type Seq[Expr[Int]]
+    case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
       val staticSum: Int = argExprs.map {
         case Const(arg) => arg
         case _ => 0

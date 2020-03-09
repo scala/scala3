@@ -16,11 +16,11 @@ object ValueSeq {
    *  }
    *  ```
    */
-  @deprecated("use scala.quoted.Exprs(scala.quoted.Value(_)) instead", "0.23.0")
+  @deprecated("use scala.quoted.Varargs(scala.quoted.Value(_)) instead", "0.23.0")
   def unapply[T](expr: Expr[Seq[T]])(using valueOf: ValueOfExpr[T], qctx: QuoteContext): Option[Seq[T]] =
     import scala.quoted.Const
     expr match
-      case Exprs(Value(elems)) => Some(elems)
+      case Varargs(Value(elems)) => Some(elems)
       case _ => None
 
 }

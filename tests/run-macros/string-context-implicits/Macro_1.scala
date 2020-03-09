@@ -5,7 +5,7 @@ inline def (sc: StringContext) showMe(inline args: Any*): String = ${ showMeExpr
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
   argsExpr match {
-    case Exprs(argExprs) =>
+    case Varargs(argExprs) =>
       val argShowedExprs = argExprs.map {
         case '{ $arg: $tp } =>
           val showTp = '[Show[$tp]]
@@ -14,7 +14,7 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
             case None => qctx.error(s"could not find implicit for ${showTp.show}", arg); '{???}
           }
       }
-      val newArgsExpr = Exprs(argShowedExprs)
+      val newArgsExpr = Varargs(argShowedExprs)
       '{ $sc.s($newArgsExpr: _*) }
     case _ =>
       // `new StringContext(...).showMeExpr(args: _*)` not an explicit `showMeExpr"..."`

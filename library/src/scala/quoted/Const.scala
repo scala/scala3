@@ -32,7 +32,7 @@ object Const {
    *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(usingusing QuoteContext): Expr[Int] = argsExpr match
-   *    case Exprs(Const(args)) =>
+   *    case Varargs(Const(args)) =>
    *      // args: Seq[Int]
    *      ...
    *  }

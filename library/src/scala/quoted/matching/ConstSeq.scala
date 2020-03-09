@@ -16,11 +16,11 @@ object ConstSeq {
    *  }
    *  ```
    */
-  @deprecated("use scala.quoted.Exprs(scala.quoted.Const(_)) instead", "0.23.0")
+  @deprecated("use scala.quoted.Varargs(scala.quoted.Const(_)) instead", "0.23.0")
   def unapply[T](expr: Expr[Seq[T]])(using qctx: QuoteContext): Option[Seq[T]] =
     import scala.quoted.Const
     expr match
-      case Exprs(Const(elems)) => Some(elems)
+      case Varargs(Const(elems)) => Some(elems)
       case _ => None
 
 }

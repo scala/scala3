@@ -9,7 +9,7 @@ object Macro {
   def impl(sc: Expr[StringContext])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty._
     sc match {
-      case '{ StringContext(${Exprs(parts)}: _*) } =>
+      case '{ StringContext(${Varargs(parts)}: _*) } =>
         for (part @ Const(s) <- parts)
           error(s, part.unseal.pos)
     }

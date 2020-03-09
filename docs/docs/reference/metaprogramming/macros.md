@@ -624,9 +624,9 @@ These could be used in the following way to optimize any call to `sum` that has 
 ```scala
 inline def sum(inline args: Int*): Int = ${ sumExpr('args) }
 private def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match {
-  case Exprs(Const(args)) => // args is of type Seq[Int]
+  case Varargs(Const(args)) => // args is of type Seq[Int]
     Expr(args.sum) // precompute result of sum
-  case Exprs(argExprs) => // argExprs is of type Seq[Expr[Int]]
+  case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
     val staticSum: Int = argExprs.map {
       case Const(arg) => arg
       case _ => 0
@@ -662,12 +662,12 @@ private def optimizeExpr(body: Expr[Int])(using QuoteContext): Expr[Int] = body 
   // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
   case '{ sum($n) } => n
   // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
-  case '{ sum(${Exprs(args)}: _*) } => sumExpr(args)
+  case '{ sum(${Varargs(args)}: _*) } => sumExpr(args)
   case body => body
 }
 private def sumExpr(args1: Seq[Expr[Int]])(using QuoteContext): Expr[Int] = {
     def flatSumArgs(arg: Expr[Int]): Seq[Expr[Int]] = arg match {
-      case '{ sum(${Exprs(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
+      case '{ sum(${Varargs(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
       case arg => Seq(arg)
     }
     val args2 = args1.flatMap(flatSumArgs)
@@ -705,7 +705,7 @@ inline def (sc: StringContext).showMe(inline args: Any*): String = ${ showMeExpr
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
   argsExpr match {
-    case Exprs(argExprs) =>
+    case Varargs(argExprs) =>
       val argShowedExprs = argExprs.map {
         case '{ $arg: $tp } =>
           val showTp = '[Show[$tp]]
@@ -714,7 +714,7 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
             case None => qctx.error(s"could not find implicit for ${showTp.show}", arg); '{???}
           }
       }
-      val newArgsExpr = Exprs(argShowedExprs)
+      val newArgsExpr = Varargs(argShowedExprs)
       '{ $sc.s($newArgsExpr: _*) }
     case _ =>
       // `new StringContext(...).showMeExpr(args: _*)` not an explicit `showMeExpr"..."`

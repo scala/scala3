@@ -110,7 +110,7 @@ object Expr {
    *    `'{ Seq($e1, $e2, ...) }` typed as an `Expr[Seq[T]]`
    *  ```
    */
-  def ofSeq[T](xs: Seq[Expr[T]])(using tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = Exprs(xs)
+  def ofSeq[T](xs: Seq[Expr[T]])(using tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = Varargs(xs)
 
   /** Lifts this list of expressions into an expression of a list
    *
@@ -120,7 +120,7 @@ object Expr {
    *    `'{ List($e1, $e2, ...) }` typed as an `Expr[List[T]]`
    */
   def  ofList[T](xs: Seq[Expr[T]])(using Type[T], QuoteContext): Expr[List[T]] =
-    if (xs.isEmpty) '{ Nil } else '{ List(${Exprs(xs)}: _*) }
+    if (xs.isEmpty) '{ Nil } else '{ List(${Varargs(xs)}: _*) }
 
   /** Lifts this sequence of expressions into an expression of a tuple
    *
@@ -178,7 +178,7 @@ object Expr {
       case Seq('{ $x1: $t1 }, '{ $x2: $t2 }, '{ $x3: $t3 }, '{ $x4: $t4 }, '{ $x5: $t5 }, '{ $x6: $t6 }, '{ $x7: $t7 }, '{ $x8: $t8 }, '{ $x9: $t9 }, '{ $x10: $t10 }, '{ $x11: $t11 }, '{ $x12: $t12 }, '{ $x13: $t13 }, '{ $x14: $t14 }, '{ $x15: $t15 }, '{ $x16: $t16 }, '{ $x17: $t17 }, '{ $x18: $t18 }, '{ $x19: $t19 }, '{ $x20: $t20 }, '{ $x21: $t21 }, '{ $x22: $t22 }) =>
         '{ Tuple22($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17, $x18, $x19, $x20, $x21, $x22) }
       case _ =>
-        '{ Tuple.fromIArray(IArray(${Exprs(seq)}: _*)) }
+        '{ Tuple.fromIArray(IArray(${Varargs(seq)}: _*)) }
     }
   }
 

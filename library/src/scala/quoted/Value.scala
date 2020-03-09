@@ -21,7 +21,7 @@ object Value {
    *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match
-   *    case Exprs(Value(args)) =>
+   *    case Varargs(Value(args)) =>
    *      // args: Seq[Int]
    *      ...
    *  }
