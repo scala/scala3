@@ -606,10 +606,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               return recur(tp1.EtaExpand(tparams1), tp2) || fourthTry
             tp2 match {
               case EtaExpansion(tycon2) if tycon2.symbol.isClass && tycon2.symbol.is(JavaDefined) =>
-                return recur(tp1, tycon2)
+                recur(tp1, tycon2) || fourthTry
               case _ =>
+                fourthTry
             }
-            fourthTry
         }
         compareTypeLambda
       case OrType(tp21, tp22) =>
@@ -774,6 +774,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       case tp1: HKTypeLambda =>
         def compareHKLambda = tp1 match {
           case EtaExpansion(tycon1) if tycon1.symbol.isClass && tycon1.symbol.is(JavaDefined) =>
+            // It's a raw type that was mistakenly eta-expanded to a hk-type.
+            // This can happen because we do not cook types coming from Java sources
             recur(tycon1, tp2)
           case _ => tp2 match {
             case tp2: HKTypeLambda => false // this case was covered in thirdTry
