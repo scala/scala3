@@ -30,7 +30,7 @@ private[quoted] object Matcher {
     class SymBinding(val sym: Symbol, val fromAbove: Boolean)
 
     def termMatch(scrutineeTerm: Term, patternTerm: Term, hasTypeSplices: Boolean): Option[Tuple] = {
-      implicit val env: Env = Map.empty
+      given Env = Map.empty
       if (hasTypeSplices) {
         val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
         given Context = ctx
@@ -51,7 +51,7 @@ private[quoted] object Matcher {
 
     // TODO factor out common logic with `termMatch`
     def typeTreeMatch(scrutineeTypeTree: TypeTree, patternTypeTree: TypeTree, hasTypeSplices: Boolean): Option[Tuple] = {
-      implicit val env: Env = Map.empty
+      given Env = Map.empty
       if (hasTypeSplices) {
         val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
         given Context = ctx
