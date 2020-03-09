@@ -565,13 +565,13 @@ sum
 ### Find implicits within a macro
 
 Similarly to the `summonFrom` construct, it is possible to make implicit search available
-in a quote context. For this we simply provide `scala.quoted.matching.summonExpr`:
+in a quote context. For this we simply provide `scala.quoted.Expr.summon`:
 
 ```scala
 inline def setFor[T]: Set[T] = ${ setForExpr[T] }
 
 def setForExpr[T: Type](using QuoteContext): Expr[Set[T]] = {
-  summonExpr[Ordering[T]] match {
+  Expr.summon[Ordering[T]] match {
     case Some(ord) => '{ new TreeSet[T]()($ord) }
     case _ => '{ new HashSet[T] }
   }
@@ -614,23 +614,19 @@ In case all files are suspended due to cyclic dependencies the compilation will 
 
 It is possible to deconstruct or extract values out of `Expr` using pattern matching.
 
-#### scala.quoted.matching
+`scala.quoted` contains objects that can help extracting values from `Expr`.
 
-`scala.quoted.matching` contains objects that can help extracting values from `Expr`.
-
-* `scala.quoted.matching.Const`: matches an expression of a literal value and returns the value.
-* `scala.quoted.matching.Value`: matches an expression of a value and returns the value.
-* `scala.quoted.matching.ExprSeq`: matches an explicit sequence of expresions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
-* `scala.quoted.matching.ConstSeq`:  matches an explicit sequence of literal values and returns them.
-* `scala.quoted.matching.ValueSeq`:  matches an explicit sequence of values and returns them.
+* `scala.quoted.Const`/`scala.quoted.Consts`: matches an expression of a literal value (or list of values) and returns the value (or list of values).
+* `scala.quoted.Value`/`scala.quoted.Values`: matches an expression of a value (or list of values) and returns the value (or list of values).
+* `scala.quoted.Varargs`: matches an explicit sequence of expresions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
 
 These could be used in the following way to optimize any call to `sum` that has statically known values.
 ```scala
 inline def sum(inline args: Int*): Int = ${ sumExpr('args) }
 private def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match {
-  case ConstSeq(args) => // args is of type Seq[Int]
+  case Varargs(Consts(args)) => // args is of type Seq[Int]
     Expr(args.sum) // precompute result of sum
-  case ExprSeq(argExprs) => // argExprs is of type Seq[Expr[Int]]
+  case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
     val staticSum: Int = argExprs.map {
       case Const(arg) => arg
       case _ => 0
@@ -666,12 +662,12 @@ private def optimizeExpr(body: Expr[Int])(using QuoteContext): Expr[Int] = body 
   // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
   case '{ sum($n) } => n
   // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
-  case '{ sum(${ExprSeq(args)}: _*) } => sumExpr(args)
+  case '{ sum(${Varargs(args)}: _*) } => sumExpr(args)
   case body => body
 }
 private def sumExpr(args1: Seq[Expr[Int]])(using QuoteContext): Expr[Int] = {
     def flatSumArgs(arg: Expr[Int]): Seq[Expr[Int]] = arg match {
-      case '{ sum(${ExprSeq(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
+      case '{ sum(${Varargs(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
       case arg => Seq(arg)
     }
     val args2 = args1.flatMap(flatSumArgs)
@@ -709,7 +705,7 @@ inline def (sc: StringContext).showMe(inline args: Any*): String = ${ showMeExpr
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
   argsExpr match {
-    case ExprSeq(argExprs) =>
+    case Varargs(argExprs) =>
       val argShowedExprs = argExprs.map {
         case '{ $arg: $tp } =>
           val showTp = '[Show[$tp]]
@@ -718,7 +714,7 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
             case None => qctx.error(s"could not find implicit for ${showTp.show}", arg); '{???}
           }
       }
-      val newArgsExpr = Expr.ofSeq(argShowedExprs)
+      val newArgsExpr = Varargs(argShowedExprs)
       '{ $sc.s($newArgsExpr: _*) }
     case _ =>
       // `new StringContext(...).showMeExpr(args: _*)` not an explicit `showMeExpr"..."`

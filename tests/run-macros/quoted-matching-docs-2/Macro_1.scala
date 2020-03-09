@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.matching._
+
 
 def sum(args: Int*): Int = args.sum
 
@@ -15,13 +15,13 @@ private def optimizeExpr(body: Expr[Int])(using QuoteContext): Expr[Int] = body 
   // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
   case '{ sum($n) } => n
   // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
-  case '{ sum(${ExprSeq(args)}: _*) } => sumExpr(args)
+  case '{ sum(${Varargs(args)}: _*) } => sumExpr(args)
   case body => body
 }
 
 private def sumExpr(args1: Seq[Expr[Int]])(using QuoteContext): Expr[Int] = {
     def flatSumArgs(arg: Expr[Int]): Seq[Expr[Int]] = arg match {
-      case '{ sum(${ExprSeq(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
+      case '{ sum(${Varargs(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
       case arg => Seq(arg)
     }
     val args2 = args1.flatMap(flatSumArgs)

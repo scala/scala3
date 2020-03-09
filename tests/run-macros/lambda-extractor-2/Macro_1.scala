@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.matching._
+
 
 inline def test(inline f: (Int, Int) => Int): String = ${ impl('f) }
 

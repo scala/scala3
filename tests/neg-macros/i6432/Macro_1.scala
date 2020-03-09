@@ -1,7 +1,7 @@
 
 import scala.quoted._
 import scala.quoted.autolift.{given _}
-import scala.quoted.matching._
+
 
 object Macro {
   inline def (sc: => StringContext).foo(args: String*): Unit = ${ impl('sc) }
@@ -9,7 +9,7 @@ object Macro {
   def impl(sc: Expr[StringContext])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty._
     sc match {
-      case '{ StringContext(${ExprSeq(parts)}: _*) } =>
+      case '{ StringContext(${Varargs(parts)}: _*) } =>
         for (part @ Const(s) <- parts)
           error(s, part.unseal.pos)
     }

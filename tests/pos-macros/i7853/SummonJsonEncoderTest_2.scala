@@ -1,6 +1,6 @@
 import scala.deriving._
 import scala.quoted._
-import scala.quoted.matching._
+
 import scala.compiletime.{erasedValue, summonFrom}
 import JsonEncoder.{given _, _}
 
@@ -11,7 +11,7 @@ object SummonJsonEncoderTest {
   def encodeAndMessAroundTypeImpl[T: Type](value: Expr[T])(using qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
 
-    val mirrorExpr = summonExpr[Mirror.Of[T]] match {
+    val mirrorExpr = Expr.summon[Mirror.Of[T]] match {
       case Some(mirror) => mirror
     }
 

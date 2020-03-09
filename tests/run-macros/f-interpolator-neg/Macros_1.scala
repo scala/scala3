@@ -1,6 +1,6 @@
 import scala.quoted._
 import scala.quoted.autolift.{given _}
-import scala.quoted.matching._
+
 
 import scala.language.implicitConversions
 
@@ -14,9 +14,9 @@ object Macro {
 
   def fooErrors(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using QuoteContext): Expr[List[(Boolean, Int, Int, Int, String)]] = {
     (strCtxExpr, argsExpr) match {
-      case ('{ StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
+      case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args)) =>
         fooErrorsImpl(parts, args, argsExpr)
-    case ('{ new StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
+    case ('{ new StringContext(${Varargs(parts)}: _*) }, Varargs(args)) =>
       fooErrorsImpl(parts, args, argsExpr)
     }
   }

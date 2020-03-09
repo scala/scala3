@@ -1,7 +1,5 @@
 package scala.quoted
 
-import scala.quoted.matching._
-
 /** A typeclass for types that can be turned from a `quoted.Expr[T]` to a `T` */
 trait ValueOfExpr[T] {
 
@@ -29,7 +27,7 @@ object ValueOfExpr {
 
   private class PrimitiveValueOfExpr[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends ValueOfExpr[T] {
     /** Lift a quoted primitive value `'{ n }` into `n` */
-    def apply(x: Expr[T])(using qctx: QuoteContext): Option[T] = matching.Const.unapply(x)
+    def apply(x: Expr[T])(using qctx: QuoteContext): Option[T] = Const.unapply(x)
   }
 
   given Option_delegate[T](using Type[T], ValueOfExpr[T]) as ValueOfExpr[Option[T]] = new {
@@ -44,8 +42,8 @@ object ValueOfExpr {
 
   given StringContext_delegate as ValueOfExpr[StringContext] = new {
     def apply(x: Expr[StringContext])(using qctx: QuoteContext): Option[StringContext] = x match {
-      case '{ new StringContext(${ConstSeq(args)}: _*) } => Some(StringContext(args: _*))
-      case '{     StringContext(${ConstSeq(args)}: _*) } => Some(StringContext(args: _*))
+      case '{ new StringContext(${Varargs(Consts(args))}: _*) } => Some(StringContext(args: _*))
+      case '{     StringContext(${Varargs(Consts(args))}: _*) } => Some(StringContext(args: _*))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple1_delegate"
@@ -272,9 +270,9 @@ object ValueOfExpr {
 
   given Seq_delegate[T](using Type[T], ValueOfExpr[T]) as ValueOfExpr[Seq[T]] = new {
     def apply(x: Expr[Seq[T]])(using qctx: QuoteContext): Option[Seq[T]] = x match {
-      case ValueSeq(elems) => Some(elems)
-      case '{ scala.collection.Seq[T](${ValueSeq(elems)}: _*) } => Some(elems)
-      case '{ scala.collection.immutable.Seq[T](${ValueSeq(elems)}: _*) } => Some(elems)
+      case Varargs(Values(elems)) => Some(elems)
+      case '{ scala.collection.Seq[T](${Varargs(Values(elems))}: _*) } => Some(elems)
+      case '{ scala.collection.immutable.Seq[T](${Varargs(Values(elems))}: _*) } => Some(elems)
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Seq_delegate"

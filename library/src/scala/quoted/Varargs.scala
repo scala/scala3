@@ -1,8 +1,24 @@
 package scala.quoted
-package matching
 
 /** Literal sequence of expressions */
-object ExprSeq {
+object Varargs {
+
+  /** Lifts this sequence of expressions into an expression of a sequence
+   *
+   *  Transforms a sequence of expression
+   *    `Seq(e1, e2, ...)` where `ei: Expr[T]`
+   *  to an expression equivalent to
+   *    `'{ Seq($e1, $e2, ...) }` typed as an `Expr[Seq[T]]`
+   *
+   *  Usage:
+   *  ```scala
+   *  '{ List(${Varargs(List(1, 2, 3))}: _*) } // equvalent to '{ List(1, 2, 3) }
+   *  ```
+   */
+  def apply[T](xs: Seq[Expr[T]])(using tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = {
+    import qctx.tasty.{_, given _}
+    Repeated(xs.map[Term](_.unseal).toList, tp.unseal).seal.asInstanceOf[Expr[Seq[T]]]
+  }
 
   /** Matches a literal sequence of expressions and return a sequence of expressions.
    *
@@ -10,8 +26,8 @@ object ExprSeq {
    *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match
-   *    case ExprSeq(argExprs) =>
-   *      // argExprs: Seq[Expr[Int]]
+   *    case Varargs(argVarargs) =>
+   *      // argVarargs: Seq[Expr[Int]]
    *      ...
    *  }
    *  ```

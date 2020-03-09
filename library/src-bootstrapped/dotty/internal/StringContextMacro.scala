@@ -3,8 +3,6 @@
 package dotty.internal
 
 import scala.quoted._
-import scala.quoted.matching._
-import reflect._
 
 object StringContextMacro {
 
@@ -65,9 +63,12 @@ object StringContextMacro {
 
     def notStatic =
       qctx.throwError("Expected statically known String Context", strCtxExpr)
-    def splitParts(seq: Expr[Seq[String]]) = (seq, seq) match {
-      case (ExprSeq(p1), ConstSeq(p2)) => (p1.toList, p2.toList)
-      case (_, _) => notStatic
+    def splitParts(seq: Expr[Seq[String]]) = seq match {
+      case Varargs(p1) =>
+        p1 match
+          case Consts(p2) => (p1.toList, p2.toList)
+          case _ => notStatic
+      case _ => notStatic
     }
     val (partsExpr, parts) = strCtxExpr match {
       case '{ StringContext($parts: _*) } => splitParts(parts)
@@ -76,7 +77,7 @@ object StringContextMacro {
     }
 
     val args = argsExpr match {
-      case ExprSeq(args) => args
+      case Varargs(args) => args
       case _ => qctx.throwError("Expected statically known argument list", argsExpr)
     }
 

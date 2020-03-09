@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.matching._
+
 
 inline def rewrite[T](inline x: T): T = ${ rewriteMacro('x) }
 

@@ -1,19 +1,19 @@
 package scala.quoted
-package matching
 
-/** Matches expressions containing literal constant values and extracts the value.
- *  It may match expressions of type Boolean, Byte, Short, Int, Long,
- *  Float, Double, Char, String, ClassTag, scala.Symbol, Null and Unit.
- *
- *  Usage:
- *  ```
- *  (x: Expr[B]) match {
- *    case Const(value: B) => ...
- *  }
- *  ```
- */
+/** Literal constant values */
 object Const {
 
+  /** Matches expressions containing literal constant values and extracts the value.
+   *  It may match expressions of type Boolean, Byte, Short, Int, Long,
+   *  Float, Double, Char, String, ClassTag, scala.Symbol, Null and Unit.
+   *
+   *  Usage:
+   *  ```
+   *  (x: Expr[B]) match {
+   *    case Const(value: B) => ...
+   *  }
+   *  ```
+   */
   def unapply[T](expr: Expr[T])(using qctx: QuoteContext): Option[T] = {
     import qctx.tasty.{_, given _}
     def rec(tree: Term): Option[T] = tree match {
