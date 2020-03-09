@@ -1,6 +1,6 @@
 package scala.quoted
 
-/** MLiteral constant values */
+/** Literal constant values */
 object Consts {
 
   /** Matches literal sequence of literal constant value expressions and return a sequence of values.

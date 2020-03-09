@@ -1,6 +1,6 @@
 package scala.quoted
 
-/** MLiteral constant values */
+/** Literal constant values */
 object Const {
 
   /** Matches expressions containing literal constant values and extracts the value.
