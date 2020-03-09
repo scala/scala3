@@ -14,6 +14,8 @@ object JavaScanners {
 
   class JavaScanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
 
+    override def decodeUni: Boolean = true
+
     def toToken(name: SimpleName): Token = {
       val idx = name.start
       if (idx >= 0 && idx <= lastKeywordStart) kwArray(idx) else IDENTIFIER
