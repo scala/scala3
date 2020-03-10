@@ -182,13 +182,11 @@ object typeclasses {
     def show(x: T): String
   }
   object Show {
-    import scala.compiletime.{erasedValue, summonFrom}
+    import scala.compiletime.{erasedValue, summonInline}
     import compiletime._
     import deriving._
 
-    inline def tryShow[T](x: T): String = summonFrom {
-      case s: Show[T] => s.show(x)
-    }
+    inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
 
     inline def showElems[Elems <: Tuple, Labels <: Tuple](n: Int)(x: Any): List[String] =
       inline erasedValue[Elems] match {
@@ -214,11 +212,7 @@ object typeclasses {
     inline def showCases[Alts <: Tuple](n: Int)(x: Any, ord: Int): String =
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
-          if (ord == n)
-            summonFrom {
-              case m: Mirror.ProductOf[`alt`] =>
-                showCase(x, m)
-            }
+          if (ord == n) showCase(x, summonInline[Mirror.ProductOf[`alt`]])
           else showCases[alts1](n + 1)(x, ord)
         case _: Unit =>
           throw new MatchError(x)

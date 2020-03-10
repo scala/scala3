@@ -210,12 +210,10 @@ trait Show[T] {
   def show(x: T): String
 }
 object Show {
-  import scala.compiletime.{erasedValue, error, summonFrom}
+  import scala.compiletime.{erasedValue, error, summonInline}
   import TypeLevel._
 
-  inline def tryShow[T](x: T): String = summonFrom {
-    case s: Show[T] => s.show(x)
-  }
+  inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
 
   inline def showElems[Elems <: Tuple](elems: Mirror, n: Int): List[String] =
     inline erasedValue[Elems] match {

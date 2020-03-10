@@ -165,7 +165,7 @@ worked out example of such a library, see [shapeless 3](https://github.com/miles
 #### How to write a type class `derived` method using low level mechanisms
 
 The low-level method we will use to implement a type class `derived` method in this example exploits three new
-type-level constructs in Dotty: inline methods, inline matches, and implicit searches via `summonFrom`. Given this definition of the
+type-level constructs in Dotty: inline methods, inline matches, and implicit searches via  `summonInline` or `summonFrom`. Given this definition of the
 `Eq` type class,
 
 
@@ -194,17 +194,14 @@ call sites (for instance the compiler generated instance definitions in the comp
 
 The body of this method (1) first materializes the `Eq` instances for all the child types of type the instance is
 being derived for. This is either all the branches of a sum type or all the fields of a product type. The
-implementation of `summonAll` is `inline` and uses Dotty's `summonFrom` construct to collect the instances as a
+implementation of `summonAll` is `inline` and uses Dotty's `summonInline` construct to collect the instances as a
 `List`,
 
 ```scala
-inline def summonAll[T]: T = summonFrom {
-  case t: T => t
-}
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
   case _: Unit => Nil
-  case _: (t *: ts) => summon[Eq[t]] :: summonAll[ts]
+  case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
 }
 ```
 
@@ -244,15 +241,11 @@ Pulling this all together we have the following complete implementation,
 
 ```scala
 import scala.deriving._
-import scala.compiletime.{erasedValue, summonFrom}
-
-inline def summon[T]: T = summonFrom {
-  case t: T => t
-}
+import scala.compiletime.{erasedValue, summonInline}
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
   case _: Unit => Nil
-  case _: (t *: ts) => summon[Eq[t]] :: summonAll[ts]
+  case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
 }
 
 trait Eq[T] {
