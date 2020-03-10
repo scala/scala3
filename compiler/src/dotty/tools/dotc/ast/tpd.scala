@@ -1233,10 +1233,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         else defn.NothingType
       ref(defn.InternalQuoted_exprSplice).appliedToTypes(List(argType, defn.QuoteContextClass.typeRef)).appliedTo(tree)
     }
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
-      case Apply(fn, arg :: Nil) if fn.symbol == defn.InternalQuoted_exprSplice => Some(arg)
-      case _ => None
-    }
   }
 
   /** A key to be used in a context property that tracks enclosing inlined calls */
