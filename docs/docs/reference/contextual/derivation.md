@@ -198,7 +198,6 @@ implementation of `summonAll` is `inline` and uses Dotty's `summonInline` constr
 `List`,
 
 ```scala
-inline def summonAll[T]: T = summonInline[T]
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
   case _: Unit => Nil
