@@ -91,53 +91,53 @@ steps:
     - tag
     - promote
 
-- name: publish_nightly
-  pull: default
-  image: lampepfl/dotty:2020-01-22-2
-  depends_on:
-  - test
-  - test_bootstrapped
-  - community_build
-  - test_sbt
-  - test_java11
-  commands:
-  - ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
-  environment:
-    NIGHTLYBUILD: yes
-    PGP_PW:
-      from_secret: pgp_pw
-    PGP_SECRET:
-      from_secret: pgp_secret
-    SONATYPE_PW:
-      from_secret: sonatype_pw
-    SONATYPE_USER:
-      from_secret: sonatype_user
-  when:
-    event:
-    - promote
-    target:
-    - nightly
+# - name: publish_nightly
+#   pull: default
+#   image: lampepfl/dotty:2020-01-22-2
+#   depends_on:
+#   - test
+#   - test_bootstrapped
+#   - community_build
+#   - test_sbt
+#   - test_java11
+#   commands:
+#   - ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+#   environment:
+#     NIGHTLYBUILD: yes
+#     PGP_PW:
+#       from_secret: pgp_pw
+#     PGP_SECRET:
+#       from_secret: pgp_secret
+#     SONATYPE_PW:
+#       from_secret: sonatype_pw
+#     SONATYPE_USER:
+#       from_secret: sonatype_user
+#   when:
+#     event:
+#     - promote
+#     target:
+#     - nightly
 
-- name: nightly_documentation
-  pull: default
-  image: lampepfl/dotty:2020-01-22-2
-  depends_on:
-  - test
-  - test_bootstrapped
-  - community_build
-  - test_java11
-  - publish_nightly
-  commands:
-  - ./project/scripts/genDocs -doc-snapshot
-  environment:
-    BOT_TOKEN:
-      from_secret: bot_token
-    NIGHTLYBUILD: yes
-  when:
-    event:
-    - promote
-    target:
-    - nightly
+# - name: nightly_documentation
+#   pull: default
+#   image: lampepfl/dotty:2020-01-22-2
+#   depends_on:
+#   - test
+#   - test_bootstrapped
+#   - community_build
+#   - test_java11
+#   - publish_nightly
+#   commands:
+#   - ./project/scripts/genDocs -doc-snapshot
+#   environment:
+#     BOT_TOKEN:
+#       from_secret: bot_token
+#     NIGHTLYBUILD: yes
+#   when:
+#     event:
+#     - promote
+#     target:
+#     - nightly
 
 - name: publish_release
   pull: default
