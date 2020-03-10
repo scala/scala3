@@ -343,7 +343,7 @@ class ReifyQuotes extends MacroTransform {
             val body = capturers(tree.symbol).apply(tree)
             val splice: Tree =
               if (tree.isType) body.select(tpnme.splice)
-              else ref(defn.InternalQuoted_exprSplice).appliedToTypes(List(tree.tpe, defn.QuoteContextClass.typeRef)).appliedTo(body)
+              else ref(defn.InternalQuoted_exprSplice).appliedToType(tree.tpe).appliedTo(body)
 
             transformSplice(body, splice)
 

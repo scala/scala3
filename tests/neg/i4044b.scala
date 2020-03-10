@@ -4,13 +4,13 @@ def test(using QuoteContext) = {
 
   '{
     val qctx: QuoteContext = ???
-    given qctx.type = qctx
+    given x1 as qctx.type = qctx
 
     val b = '{3}
 
     '{
       val qctx: QuoteContext = ???
-      given qctx.type = qctx
+      given x2 as qctx.type = qctx
 
       b // error
       ${b}
