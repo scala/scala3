@@ -3,17 +3,23 @@ import scala.quoted._
 def test(using QuoteContext) = {
 
   '{
-    given QuoteContext = ???
+    val qctx: QuoteContext = ???
+    given qctx.type = qctx
 
     val b = '{3}
 
     '{
-      given QuoteContext = ???
+      val qctx: QuoteContext = ???
+      given qctx.type = qctx
 
       b // error
       ${b}
       ${ '{b} } // error
-      '{ given QuoteContext = ???; '{$b} } // error
+      '{
+        val qctx: QuoteContext = ???
+        given qctx.type = qctx
+        '{$b} // error
+      }
     }
 
   }

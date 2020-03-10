@@ -46,8 +46,12 @@ trait QuotesAndSplices {
       case _ =>
     }
     val qctx = inferImplicitArg(defn.QuoteContextClass.typeRef, tree.span)
-    if (level == 0 && qctx.tpe.isInstanceOf[SearchFailureType])
+
+    if qctx.tpe.isInstanceOf[SearchFailureType] then
       ctx.error(missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(tree.span))
+    else if !qctx.tpe.isStable then
+      ctx.error(em"Quotes require stable QuoteContext, but found non stable $qctx", qctx.sourcePos)
+
     val tree1 =
       if ctx.mode.is(Mode.Pattern) && level == 0 then
         typedQuotePattern(tree, pt, qctx)
