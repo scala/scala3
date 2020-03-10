@@ -651,7 +651,7 @@ trait Applications extends Compatibility {
    *  argument trees.
    */
   class ApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context)
-  extends TestApplication(methRef, methRef.widenTermRefExpr, args, resultType) {
+  extends TestApplication(methRef, methRef.widen, args, resultType) {
     def argType(arg: Tree, formal: Type): Type = normalize(arg.tpe, formal)
     def treeToArg(arg: Tree): Tree = arg
     def isVarArg(arg: Tree): Boolean = tpd.isWildcardStarArg(arg)
