@@ -4,11 +4,16 @@ def test(using QuoteContext) = {
 
   val a = '{1}
   '{
-    given QuoteContext = ???
+    val qctx: QuoteContext = ???
+    given qctx.type = qctx
     a // error
     $a
     '{$a} // error
-    '{ given QuoteContext = ???; '{$a} } // error
+    '{
+      val qctx: QuoteContext = ???
+      given qctx.type = qctx
+      '{$a} // error
+    }
   }
 
 }
