@@ -101,7 +101,7 @@ class Erasure extends Phase with DenotTransformer {
 
   def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
-    unit.tpdTree = eraser.typedExpr(unit.tpdTree)(ctx.fresh.setPhase(this.next))
+    unit.tpdTree = eraser.typedExpr(unit.tpdTree)(ctx.fresh.setTyper(eraser).setPhase(this.next))
   }
 
   override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
@@ -354,6 +354,106 @@ object Erasure {
             cast(tree, pt)
     end adaptToType
 
+
+    /** The following code:
+     *
+     *      val f: Function1[Int, Any] = x => ...
+     *
+     *  results in the creation of a closure and a method in the typer:
+     *
+     *      def $anonfun(x: Int): Any = ...
+     *      val f: Function1[Int, Any] = closure($anonfun)
+     *
+     *  Notice that `$anonfun` takes a primitive as argument, but the single abstract method
+     *  of `Function1` after erasure is:
+     *
+     *      def apply(x: Object): Object
+     *
+     *  which takes a reference as argument. Hence, some form of adaptation is required.
+     *
+     *  If we do nothing, the LambdaMetaFactory bootstrap method will
+     *  automatically do the adaptation. Unfortunately, the result does not
+     *  implement the expected Scala semantics: null should be "unboxed" to
+     *  the default value of the value class, but LMF will throw a
+     *  NullPointerException instead. LMF is also not capable of doing
+     *  adaptation for derived value classes.
+     *
+     *  Thus, we need to replace the closure method by a bridge method that
+     *  forwards to the original closure method with appropriate
+     *  boxing/unboxing. For our example above, this would be:
+     *
+     *      def $anonfun1(x: Object): Object = $anonfun(BoxesRunTime.unboxToInt(x))
+     *      val f: Function1 = closure($anonfun1)
+     *
+     *  In general a bridge is needed when, after Erasure, one of the
+     *  parameter type or the result type of the closure method has a
+     *  different type, and we cannot rely on auto-adaptation.
+     *
+     *  Auto-adaptation works in the following cases:
+     *  - If the SAM is replaced by JFunction*mc* in
+     *    [[FunctionalInterfaces]], no bridge is needed: the SAM contains
+     *    default methods to handle adaptation.
+     *  - If a result type of the closure method is a primitive value type
+     *    different from Unit, we can rely on the auto-adaptation done by
+     *    LMF (because it only needs to box, not unbox, so no special
+     *    handling of null is required).
+     *  - If the SAM is replaced by JProcedure* in
+     *    [[DottyBackendInterface]] (this only happens when no explicit SAM
+     *    type is given), no bridge is needed to box a Unit result type:
+     *    the SAM contains a default method to handle that.
+     *
+     *  See test cases lambda-*.scala and t8017/ for concrete examples.
+     */
+    def adaptClosure(tree: tpd.Closure)(using ctx: Context): Tree = {
+      val implClosure @ Closure(_, meth, _) = tree
+
+      implClosure.tpe match {
+        case SAMType(sam) =>
+          val implType = meth.tpe.widen.asInstanceOf[MethodType]
+
+          val implParamTypes = implType.paramInfos
+          val List(samParamTypes) = sam.paramInfoss
+          val implResultType = implType.resultType
+          val samResultType = sam.resultType
+
+          if (!defn.isSpecializableFunction(implClosure.tpe.widen.classSymbol.asClass, implParamTypes, implResultType)) {
+            def autoAdaptedParam(tp: Type) = !tp.isErasedValueType && !tp.isPrimitiveValueType
+            val explicitSAMType = implClosure.tpt.tpe.exists
+            def autoAdaptedResult(tp: Type) = !tp.isErasedValueType &&
+              (!explicitSAMType || tp.typeSymbol != defn.UnitClass)
+            def sameSymbol(tp1: Type, tp2: Type) = tp1.typeSymbol == tp2.typeSymbol
+
+            val paramAdaptationNeeded =
+              implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
+                !sameSymbol(implType, samType) && !autoAdaptedParam(implType))
+            val resultAdaptationNeeded =
+              !sameSymbol(implResultType, samResultType) && !autoAdaptedResult(implResultType)
+
+            if (paramAdaptationNeeded || resultAdaptationNeeded) {
+              val bridgeType =
+                if (paramAdaptationNeeded)
+                  if (resultAdaptationNeeded) sam
+                  else implType.derivedLambdaType(paramInfos = samParamTypes)
+                else implType.derivedLambdaType(resType = samResultType)
+              val bridge = ctx.newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)
+              val bridgeCtx = ctx.withOwner(bridge)
+              Closure(bridge, bridgeParamss => {
+                implicit val ctx = bridgeCtx
+
+                val List(bridgeParams) = bridgeParamss
+                assert(ctx.typer.isInstanceOf[Erasure.Typer])
+                val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(ctx.typer.adapt(_, _)))
+                ctx.typer.adapt(rhs, bridgeType.resultType)
+              }, targetType = implClosure.tpt.tpe)
+            }
+            else implClosure
+          }
+          else implClosure
+        case _ =>
+          implClosure
+      }
+    }
+
     /** Eta expand given `tree` that has the given method type `mt`, so that
      *  it conforms to erased result type `pt`.
      *  To do this correctly, we have to look at the tree's original pre-erasure
@@ -392,14 +492,16 @@ object Erasure {
                   case refs1 => refs1
                 abstracted(args ::: expandedRefs, resTpe, anonFun.info.finalResultType)(
                   using ctx.withOwner(anonFun))
-              Closure(anonFun, lambdaBody)
+
+              val unadapted = Closure(anonFun, lambdaBody)
+              cpy.Block(unadapted)(unadapted.stats, adaptClosure(unadapted.expr.asInstanceOf[Closure]))
           catch case ex: MatchError =>
             println(i"error while abstracting tree = $tree | mt = $mt | args = $args%, % | tp = $tp | pt = $pt")
             throw ex
         else
           assert(args.length == targetLength, i"wrong # args tree = $tree | args = $args%, % | mt = $mt | tree type = ${tree.tpe}")
           val app = untpd.cpy.Apply(tree1)(tree1, args)
-          assert(ctx.typer.isInstanceOf[Typer])
+          assert(ctx.typer.isInstanceOf[Erasure.Typer])
           ctx.typer.typed(app, pt)
             .changeOwnerAfter(origOwner, ctx.owner, ctx.erasurePhase.asInstanceOf[Erasure])
 
@@ -765,7 +867,7 @@ object Erasure {
             // accessor that's produced with an `enteredAfter` in ExplicitOuter, so
             // `tranformInfo` of the constructor in erasure yields a method type without
             // an outer parameter. We fix this problem by adding the missing outer
-            // parameter here. 
+            // parameter here.
             constr.copySymDenotation(
               info = outer.addParam(constr.owner.asClass, constr.info)
             ).installAfter(erasurePhase)
@@ -774,101 +876,9 @@ object Erasure {
 
     override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context): Tree = {
       val xxl = defn.isXXLFunctionClass(tree.typeOpt.typeSymbol)
-      var implClosure @ Closure(_, meth, _) = super.typedClosure(tree, pt)
+      var implClosure = super.typedClosure(tree, pt).asInstanceOf[Closure]
       if (xxl) implClosure = cpy.Closure(implClosure)(tpt = TypeTree(defn.FunctionXXLClass.typeRef))
-      implClosure.tpe match {
-        case SAMType(sam) =>
-          val implType = meth.tpe.widen.asInstanceOf[MethodType]
-
-          val implParamTypes = implType.paramInfos
-          val List(samParamTypes) = sam.paramInfoss
-          val implResultType = implType.resultType
-          val samResultType = sam.resultType
-
-          // The following code:
-          //
-          //     val f: Function1[Int, Any] = x => ...
-          //
-          // results in the creation of a closure and a method in the typer:
-          //
-          //     def $anonfun(x: Int): Any = ...
-          //     val f: Function1[Int, Any] = closure($anonfun)
-          //
-          // Notice that `$anonfun` takes a primitive as argument, but the single abstract method
-          // of `Function1` after erasure is:
-          //
-          //     def apply(x: Object): Object
-          //
-          // which takes a reference as argument. Hence, some form of adaptation is required.
-          //
-          // If we do nothing, the LambdaMetaFactory bootstrap method will
-          // automatically do the adaptation. Unfortunately, the result does not
-          // implement the expected Scala semantics: null should be "unboxed" to
-          // the default value of the value class, but LMF will throw a
-          // NullPointerException instead. LMF is also not capable of doing
-          // adaptation for derived value classes.
-          //
-          // Thus, we need to replace the closure method by a bridge method that
-          // forwards to the original closure method with appropriate
-          // boxing/unboxing. For our example above, this would be:
-          //
-          //     def $anonfun1(x: Object): Object = $anonfun(BoxesRunTime.unboxToInt(x))
-          //     val f: Function1 = closure($anonfun1)
-          //
-          // In general a bridge is needed when, after Erasure, one of the
-          // parameter type or the result type of the closure method has a
-          // different type, and we cannot rely on auto-adaptation.
-          //
-          // Auto-adaptation works in the following cases:
-          // - If the SAM is replaced by JFunction*mc* in
-          //   [[FunctionalInterfaces]], no bridge is needed: the SAM contains
-          //   default methods to handle adaptation.
-          // - If a result type of the closure method is a primitive value type
-          //   different from Unit, we can rely on the auto-adaptation done by
-          //   LMF (because it only needs to box, not unbox, so no special
-          //   handling of null is required).
-          // - If the SAM is replaced by JProcedure* in
-          //   [[DottyBackendInterface]] (this only happens when no explicit SAM
-          //   type is given), no bridge is needed to box a Unit result type:
-          //   the SAM contains a default method to handle that.
-          //
-          // See test cases lambda-*.scala and t8017/ for concrete examples.
-
-          if (!defn.isSpecializableFunction(implClosure.tpe.widen.classSymbol.asClass, implParamTypes, implResultType)) {
-            def autoAdaptedParam(tp: Type) = !tp.isErasedValueType && !tp.isPrimitiveValueType
-            val explicitSAMType = implClosure.tpt.tpe.exists
-            def autoAdaptedResult(tp: Type) = !tp.isErasedValueType &&
-              (!explicitSAMType || tp.typeSymbol != defn.UnitClass)
-            def sameSymbol(tp1: Type, tp2: Type) = tp1.typeSymbol == tp2.typeSymbol
-
-            val paramAdaptationNeeded =
-              implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
-                !sameSymbol(implType, samType) && !autoAdaptedParam(implType))
-            val resultAdaptationNeeded =
-              !sameSymbol(implResultType, samResultType) && !autoAdaptedResult(implResultType)
-
-            if (paramAdaptationNeeded || resultAdaptationNeeded) {
-              val bridgeType =
-                if (paramAdaptationNeeded)
-                  if (resultAdaptationNeeded) sam
-                  else implType.derivedLambdaType(paramInfos = samParamTypes)
-                else implType.derivedLambdaType(resType = samResultType)
-              val bridge = ctx.newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)
-              val bridgeCtx = ctx.withOwner(bridge)
-              Closure(bridge, bridgeParamss => {
-                implicit val ctx = bridgeCtx
-
-                val List(bridgeParams) = bridgeParamss
-                val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(adapt(_, _)))
-                adapt(rhs, bridgeType.resultType)
-              }, targetType = implClosure.tpt.tpe)
-            }
-            else implClosure
-          }
-          else implClosure
-        case _ =>
-          implClosure
-      }
+      adaptClosure(implClosure)
     }
 
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree =
