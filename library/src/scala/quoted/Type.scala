@@ -7,10 +7,12 @@ class Type[T <: AnyKind] private[scala] {
   type `$splice` = T
 
   /** Show a source code like representation of this type without syntax highlight */
-  def show(using qctx: QuoteContext): String = qctx.show(this, SyntaxHighlight.plain)
+  def show(using qctx: QuoteContext): String =
+    this.unseal.showWith(SyntaxHighlight.plain)
 
   /** Show a source code like representation of this type */
-  def show(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String = qctx.show(this, syntaxHighlight)
+  def show(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String =
+    this.unseal.showWith(syntaxHighlight)
 
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
   def unseal(using qctx: QuoteContext): qctx.tasty.TypeTree =

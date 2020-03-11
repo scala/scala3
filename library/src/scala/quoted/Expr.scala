@@ -6,10 +6,12 @@ import scala.quoted.show.SyntaxHighlight
 class Expr[+T] private[scala] {
 
   /** Show a source code like representation of this expression without syntax highlight */
-  def show(using qctx: QuoteContext): String = qctx.show(this, SyntaxHighlight.plain)
+  def show(using qctx: QuoteContext): String =
+    this.unseal.showWith(SyntaxHighlight.plain)
 
   /** Show a source code like representation of this expression */
-  def show(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String = qctx.show(this, syntaxHighlight)
+  def show(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String =
+    this.unseal.showWith(syntaxHighlight)
 
   /** Return the value of this expression.
    *
