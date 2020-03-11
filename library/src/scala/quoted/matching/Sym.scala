@@ -22,7 +22,7 @@ class Sym[T <: AnyKind] private[scala](val name: String, private[Sym] val id: Ob
 object Sym {
 
   def unapply[T](expr: Expr[T])(using qctx: QuoteContext): Option[Sym[T]] = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     expr.unseal match {
       case ref: Ident =>
         val sym = ref.symbol

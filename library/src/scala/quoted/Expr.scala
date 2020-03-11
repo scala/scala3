@@ -61,7 +61,7 @@ object Expr {
    *   ```
    */
   def betaReduce[F, Args <: Tuple, R, G](f: Expr[F])(using tf: TupledFunction[F, Args => R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
   }
 
@@ -74,19 +74,19 @@ object Expr {
    *   ```
    */
   def betaReduceGiven[F, Args <: Tuple, R, G](f: Expr[F])(using tf: TupledFunction[F, Args ?=> R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
   }
 
   /** Returns a null expresssion equivalent to `'{null}` */
   def nullExpr: QuoteContext ?=> Expr[Null] = qctx ?=> {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     Literal(Constant(null)).seal.asInstanceOf[Expr[Null]]
   }
 
   /** Returns a unit expresssion equivalent to `'{}` or `'{()}` */
   def unitExpr: QuoteContext ?=> Expr[Unit] = qctx ?=> {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     Literal(Constant(())).seal.asInstanceOf[Expr[Unit]]
   }
 
@@ -95,7 +95,7 @@ object Expr {
    *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
    */
   def block[T](statements: List[Expr[_]], expr: Expr[T])(using qctx: QuoteContext): Expr[T] = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     Block(statements.map(_.unseal), expr.unseal).seal.asInstanceOf[Expr[T]]
   }
 
@@ -184,7 +184,7 @@ object Expr {
 
   /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
   def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     val elems: Seq[Expr[_]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[_]]]
     ofTuple(elems).cast[Tuple.InverseMap[T, Expr]]
   }
@@ -198,7 +198,7 @@ object Expr {
    *  @param qctx current context
    */
   def summon[T](using tpe: Type[T])(using qctx: QuoteContext): Option[Expr[T]] = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     searchImplicit(tpe.unseal.tpe) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None

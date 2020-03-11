@@ -58,7 +58,7 @@ object StringContextMacro {
    *  @return the Expr containing the formatted and interpolated String or an error/warning if the parameters are not correct
    */
   private def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     val sourceFile = strCtxExpr.unseal.pos.sourceFile
 
     def notStatic =
@@ -135,7 +135,7 @@ object StringContextMacro {
    *  @return the Expr containing the formatted and interpolated String or an error/warning report if the parameters are not correct
    */
   def interpolate(parts0 : List[String], args : Seq[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
 
     /** Checks if the number of arguments are the same as the number of formatting strings
      *
