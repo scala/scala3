@@ -78,7 +78,9 @@ trait QuotesAndSplices {
           if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
         val pat = typedPattern(tree.expr, defn.QuotedExprClass.typeRef.appliedTo(pt))(
           spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
-        Splice(pat)
+        val baseType = pat.tpe.baseType(defn.QuotedExprClass)
+        val argType = if baseType != NoType then baseType.argTypesHi.head else defn.NothingType
+        ref(defn.InternalQuoted_exprSplice).appliedToTypes(List(argType, defn.QuoteContextClass.typeRef)).appliedTo(pat)
       }
       else {
         ctx.error(i"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.sourcePos)
@@ -205,11 +207,15 @@ trait QuotesAndSplices {
       val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
       val typePatBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(implicit ctx: Context) = tree match {
-        case Typed(Splice(pat), tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
+        case Typed(Apply(fn, pat :: Nil), tpt) if fn.symbol == defn.InternalQuoted_exprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           val tpt1 = transform(tpt) // Transform type bindings
           val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), tpt1 :: Nil)
-          transform(Splice(Typed(pat, exprTpt)))
-        case Splice(pat) =>
+          val newSplice =
+            ref(defn.InternalQuoted_exprSplice)
+              .appliedToTypes(List(tpt1.tpe, defn.QuoteContextClass.typeRef))
+              .appliedTo(Typed(pat, exprTpt))
+          transform(newSplice)
+        case Apply(fn, pat :: Nil) if fn.symbol == defn.InternalQuoted_exprSplice =>
           try ref(defn.InternalQuoted_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
           finally {
             val patType = pat.tpe.widen

@@ -1224,21 +1224,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  /** An extractor for typed splices */
-  object Splice {
-    def apply(tree: Tree)(implicit ctx: Context): Tree = {
-      val baseType = tree.tpe.baseType(defn.QuotedExprClass).orElse(tree.tpe.baseType(defn.QuotedTypeClass))
-      val argType =
-        if (baseType != NoType) baseType.argTypesHi.head
-        else defn.NothingType
-      ref(defn.InternalQuoted_exprSplice).appliedToTypes(List(argType, defn.QuoteContextClass.typeRef)).appliedTo(tree)
-    }
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
-      case Apply(fn, arg :: Nil) if fn.symbol == defn.InternalQuoted_exprSplice => Some(arg)
-      case _ => None
-    }
-  }
-
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = Property.Key[List[Tree]]()
 
