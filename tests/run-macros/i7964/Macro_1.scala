@@ -1,6 +1,6 @@
 import scala.quoted._
 
-enum Num { // TODO derive a quoted.ValueOfExpr
+enum Num { // TODO derive a quoted.Unliftable
   case One
   case Two
 }

@@ -9,7 +9,7 @@ object E {
   def impl[T: Type](expr: Expr[E[T]]) (using QuoteContext): Expr[T] =
     expr.value.lift
 
-  implicit def ev1[T: Type]: ValueOfExpr[E[T]] = new ValueOfExpr { // TODO use type class derivation
+  implicit def ev1[T: Type]: Unliftable[E[T]] = new Unliftable { // TODO use type class derivation
     def apply(x: Expr[E[T]]) (using QuoteContext): Option[E[T]] = (x match {
       case '{ I(${Const(n)}) } => Some(I(n))
       case '{ D(${Const(n)}) } => Some(D(n))
@@ -22,7 +22,7 @@ object E {
   }
 
   object Value {
-    def unapply[T, U >: T](expr: Expr[T])(using ValueOfExpr[U], QuoteContext): Option[U] = expr.getValue
+    def unapply[T, U >: T](expr: Expr[T])(using Unliftable[U], QuoteContext): Option[U] = expr.getValue
   }
 
 }

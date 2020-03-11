@@ -15,7 +15,7 @@ object Values {
    *  }
    *  ```
    */
-  def unapply[T](exprs: Seq[Expr[T]])(using valueOf: ValueOfExpr[T], qctx: QuoteContext): Option[Seq[T]] =
+  def unapply[T](exprs: Seq[Expr[T]])(using unlift: Unliftable[T], qctx: QuoteContext): Option[Seq[T]] =
     exprs.foldRight(Option(List.empty[T])) { (elem, acc) =>
       (elem, acc) match {
         case (Value(value), Some(lst)) => Some(value :: lst)
