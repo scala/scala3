@@ -23,10 +23,10 @@ package object matching {
   @deprecated("use scala.quoted.Lambda instead", "0.23.0")
   val Lambda: quoted.Lambda.type = quoted.Lambda
 
-  @deprecated("use scala.quoted.Value instead", "0.23.0")
-  val Value: quoted.Value.type = quoted.Value
+  @deprecated("use scala.quoted.Unlifted instead", "0.23.0")
+  val Value: quoted.Unlifted.type = quoted.Unlifted
 
-  @deprecated("use scala.quoted.Value instead", "0.23.0")
-  val ValueOfExpr: quoted.Value.type = quoted.Value
+  @deprecated("use scala.quoted.Unlifted instead", "0.23.0")
+  val ValueOfExpr: quoted.Unlifted.type = quoted.Unlifted
 
 }

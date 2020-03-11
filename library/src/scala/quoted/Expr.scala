@@ -18,15 +18,32 @@ class Expr[+T] private[scala] {
    *  Returns `None` if the expression does not contain a value or contains side effects.
    *  Otherwise returns the `Some` of the value.
    */
+  @deprecated("Use Expr.unlift", "0.23")
   final def getValue[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): Option[U] = unlift(this)
 
-  /** Return the value of this expression.
+  /** Return the unlifted value of this expression.
+   *
+   *  Returns `None` if the expression does not contain a value or contains side effects.
+   *  Otherwise returns the `Some` of the value.
+   */
+  final def unlift[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): Option[U] =
+    unlift(this)
+
+  /** Return the unlifted value of this expression.
    *
    *  Emits an error error and throws if the expression does not contain a value or contains side effects.
    *  Otherwise returns the value.
    */
-  final def value[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): U =
-    unlift(this).getOrElse(qctx.throwError(s"Expected a known value. \n\nThe value of: $show\ncould not be recovered using $unlift", this))
+  @deprecated("Use Expr.unlifted", "0.23")
+  final def value[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): U = unlifted
+
+  /** Return the unlifted value of this expression.
+   *
+   *  Emits an error error and throws if the expression does not contain a value or contains side effects.
+   *  Otherwise returns the value.
+   */
+  final def unlifted[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): U =
+    unlift(this).getOrElse(qctx.throwError(s"Expected a known value. \n\nThe value of: $show\ncould not be unlifted using $unlift", this))
 
   /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
    *  It does the equivalent of
