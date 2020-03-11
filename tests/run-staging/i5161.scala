@@ -11,7 +11,7 @@ object Test {
   import Exp._
 
   def evalTest(e: Exp)(using QuoteContext): Expr[Option[Int]] = e match {
-    case Int2(x) => '{ Some(${Expr(x)}) }
+    case Int2(x) => '{ Some(${Lifted(x)}) }
     case Add(e1, e2) =>
      '{
         (${evalTest(e1)}, ${evalTest(e2)}) match {

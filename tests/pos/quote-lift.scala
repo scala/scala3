@@ -9,7 +9,7 @@ class Test(using QuoteContext) {
 
     '{ ${summon[Liftable[Int]].toExpr(1)} }
 
-    '{ ${Expr(1)} }
+    '{ ${Lifted(1)} }
 
   }
 

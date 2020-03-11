@@ -5,12 +5,12 @@ object api {
     ${ stripImpl('x) }
 
   private def stripImpl(x: Expr[String])(using qctx: QuoteContext): Expr[String] =
-    Expr(augmentString(x.value).stripMargin)
+    Lifted(augmentString(x.value).stripMargin)
 
   inline def typeChecks(inline x: String): Boolean =
     ${ typeChecksImpl('{scala.compiletime.testing.typeChecks(x)}) }
 
   private def typeChecksImpl(b: Expr[Boolean])(using qctx: QuoteContext): Expr[Boolean] = {
-    if (b.value) Expr(true) else Expr(false)
+    if (b.value) Lifted(true) else Lifted(false)
   }
 }

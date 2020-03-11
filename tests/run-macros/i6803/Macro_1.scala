@@ -10,7 +10,7 @@ object AsObject {
     inline given LineNo = ${impl}
     private def impl(using qctx: QuoteContext): Expr[LineNo] = {
       import qctx.tasty.{given _, _}
-      '{unsafe(${Expr(rootPosition.startLine)})}
+      '{unsafe(${Lifted(rootPosition.startLine)})}
     }
   }
 }
@@ -22,7 +22,7 @@ package AsPackage {
     inline given LineNo = ${impl}
     private def impl(using qctx: QuoteContext): Expr[LineNo] = {
       import qctx.tasty.{given _, _}
-      '{unsafe(${Expr(rootPosition.startLine)})}
+      '{unsafe(${Lifted(rootPosition.startLine)})}
     }
   }
 }

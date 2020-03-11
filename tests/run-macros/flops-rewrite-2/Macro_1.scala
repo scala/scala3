@@ -14,7 +14,7 @@ private def rewriteMacro[T: Type](x: Expr[T])(using QuoteContext): Expr[T] = {
         case '{ plus($x, $y) } =>
           (x, y) match {
             case (Const(0), _) => y
-            case (Const(a), Const(b)) => Expr(a + b)
+            case (Const(a), Const(b)) => Lifted(a + b)
             case (_, Const(_)) =>  '{ $y + $x }
             case _ => '{ $x + $y }
           }
@@ -22,15 +22,15 @@ private def rewriteMacro[T: Type](x: Expr[T])(using QuoteContext): Expr[T] = {
           (x, y) match {
             case (Const(0), _) => '{0}
             case (Const(1), _) => y
-            case (Const(a), Const(b)) => Expr(a * b)
+            case (Const(a), Const(b)) => Lifted(a * b)
             case (_, Const(_)) => '{ $y * $x }
             case _ => '{ $x * $y }
           }
         case '{ power(${Const(x)}, ${Const(y)}) } =>
-          Expr(power(x, y))
+          Lifted(power(x, y))
         case '{ power($x, ${Const(y)}) } =>
           if y == 0 then '{1}
-          else '{ times($x, power($x, ${Expr(y-1)})) }
+          else '{ times($x, power($x, ${Lifted(y-1)})) }
       }),
     fixPoint = true
   )
@@ -38,8 +38,8 @@ private def rewriteMacro[T: Type](x: Expr[T])(using QuoteContext): Expr[T] = {
   val x2 = rewriter.transform(x)
 
   '{
-    println(${Expr(x.show)})
-    println(${Expr(x2.show)})
+    println(${Lifted(x.show)})
+    println(${Lifted(x2.show)})
     println()
     $x2
   }

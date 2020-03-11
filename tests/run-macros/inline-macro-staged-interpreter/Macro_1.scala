@@ -32,11 +32,11 @@ trait E[T] {
 }
 
 case class I(n: Int) extends E[Int] {
-  def lift (using QuoteContext): Expr[Int] = Expr(n)
+  def lift (using QuoteContext): Expr[Int] = Lifted(n)
 }
 
 case class D(n: Double) extends E[Double] {
-  def lift (using QuoteContext): Expr[Double] = Expr(n)
+  def lift (using QuoteContext): Expr[Double] = Lifted(n)
 }
 
 case class Plus[T](x: E[T], y: E[T])(implicit op: Plus2[T]) extends E[T] {

@@ -7,13 +7,13 @@ inline def sum(args: Int*): Int = ${ sumExpr('args) }
 inline def sumShow(args: Int*): String = ${ sumExprShow('args) }
 
 private def sumExprShow(argsExpr: Expr[Seq[Int]]) (using QuoteContext): Expr[String] =
-  Expr(sumExpr(argsExpr).show)
+  Lifted(sumExpr(argsExpr).show)
 
 private def sumExpr(argsExpr: Expr[Seq[Int]])(using qctx: QuoteContext) : Expr[Int] = {
   import qctx.tasty.{given _, _}
   UnsafeExpr.underlyingArgument(argsExpr) match {
     case Varargs(Consts(args)) => // args is of type Seq[Int]
-      Expr(args.sum) // precompute result of sum
+    Lifted(args.sum) // precompute result of sum
     case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
       val staticSum: Int = argExprs.map {
         case Const(arg) => arg
@@ -23,7 +23,7 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using qctx: QuoteContext) : Expr[I
         case Const(_) => false
         case arg => true
       }
-      dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
+      dynamicSum.foldLeft(Lifted(staticSum))((acc, arg) => '{ $acc + $arg })
     case _ =>
       '{ $argsExpr.sum }
   }

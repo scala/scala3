@@ -35,7 +35,7 @@ object BigFloat extends App {
       case Const(ds) =>
         try {
           val BigFloat(m, e) = apply(ds)
-          '{BigFloat(${Expr(m)}, ${Expr(e)})}
+          '{BigFloat(${Lifted(m)}, ${Lifted(e)})}
         }
         catch {
           case ex: FromDigits.FromDigitsException =>
@@ -60,7 +60,7 @@ object BigFloat extends App {
 
   given Liftable[BigInt] {
     def toExpr(x: BigInt) =
-      '{BigInt(${Expr(x.toString)})}
+      '{BigInt(${Lifted(x.toString)})}
   }
 }
 

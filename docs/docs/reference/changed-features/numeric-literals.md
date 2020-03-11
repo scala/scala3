@@ -206,7 +206,7 @@ implementation method `fromDigitsImpl`. Here is its definition:
       case Const(ds) =>
         try {
           val BigFloat(m, e) = apply(ds)
-          '{BigFloat(${Expr(m)}, ${Expr(e)})}
+          '{BigFloat(${Lifted(m)}, ${Lifted(e)})}
         }
         catch {
           case ex: FromDigits.FromDigitsException =>

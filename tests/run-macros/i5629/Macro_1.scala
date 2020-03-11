@@ -14,6 +14,6 @@ object Macros {
 
   def thisLineNumberImpl(using qctx: QuoteContext) : Expr[Int] = {
     import qctx.tasty._
-    Expr(rootPosition.startLine)
+    Lifted(rootPosition.startLine)
   }
 }

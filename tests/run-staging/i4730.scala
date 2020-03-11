@@ -6,7 +6,7 @@ object Test {
   def ret(using QuoteContext): Expr[Int => Int] = '{ (x: Int) =>
     ${
       val z = run('{x + 1}) // throws a RunScopeException
-      Expr(z)
+      Lifted(z)
     }
   }
   def main(args: Array[String]): Unit = {

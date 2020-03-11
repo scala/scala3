@@ -15,7 +15,7 @@ object Test {
   def powerCode(n: Long, idx: Int, x: Expr[Double])(using QuoteContext): Expr[Double] =
     if (n == 0) '{1.0}
     else if (n == 1) x
-    else if (n % 2 == 0) '{ @showName(${Expr("x" + idx)}) val y = $x * $x; ${powerCode(n / 2, idx * 2, '{y})} }
+    else if (n % 2 == 0) '{ @showName(${Lifted("x" + idx)}) val y = $x * $x; ${powerCode(n / 2, idx * 2, '{y})} }
     else '{ $x * ${powerCode(n - 1, idx, x)} }
 
 }

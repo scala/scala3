@@ -10,7 +10,7 @@ private object StringRewriter extends util.ExprMap {
 
   def transform[T](e: Expr[T])(using QuoteContext, Type[T]): Expr[T] = e match
     case Const(s: String) =>
-      Expr(s.reverse) match
+      Lifted(s.reverse) match
         case '{ $x: T } => x
         case _ => e // e had a singlton String type
     case _ => transformChildren(e)

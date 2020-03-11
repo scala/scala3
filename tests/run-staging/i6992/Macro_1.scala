@@ -14,7 +14,7 @@ object macros {
     import ctx.tasty._
     try {
       body match {
-        case '{$x: Foo} => Expr(run(x).x)
+        case '{$x: Foo} => Lifted(run(x).x)
       }
     } catch {
       case ex: scala.quoted.ScopeException =>

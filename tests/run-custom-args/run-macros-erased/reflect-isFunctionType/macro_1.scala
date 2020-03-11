@@ -5,7 +5,7 @@ inline def isFunctionType[T:Type]: Boolean = ${ isFunctionTypeImpl('[T]) }
 
 def isFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[Boolean] = {
   import qctx.tasty._
-  Expr(tp.unseal.tpe.isFunctionType)
+  Lifted(tp.unseal.tpe.isFunctionType)
 }
 
 
@@ -13,7 +13,7 @@ inline def isContextFunctionType[T:Type]: Boolean = ${ isContextFunctionTypeImpl
 
 def isContextFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[Boolean] = {
   import qctx.tasty._
-  Expr(tp.unseal.tpe.isContextFunctionType)
+  Lifted(tp.unseal.tpe.isContextFunctionType)
 }
 
 
@@ -21,13 +21,13 @@ inline def isErasedFunctionType[T:Type]: Boolean = ${ isErasedFunctionTypeImpl('
 
 def isErasedFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[Boolean] = {
   import qctx.tasty._
-  Expr(tp.unseal.tpe.isErasedFunctionType)
+  Lifted(tp.unseal.tpe.isErasedFunctionType)
 }
 
 inline def isDependentFunctionType[T:Type]: Boolean = ${ isDependentFunctionTypeImpl('[T]) }
 
 def isDependentFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[Boolean] = {
   import qctx.tasty._
-  Expr(tp.unseal.tpe.isDependentFunctionType)
+  Lifted(tp.unseal.tpe.isDependentFunctionType)
 }
 

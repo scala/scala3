@@ -97,8 +97,9 @@ object Expr {
     Block(statements.map(_.unseal), expr.unseal).seal.asInstanceOf[Expr[T]]
   }
 
-  /** Lift a value into an expression containing the construction of that value */
-  def apply[T](x: T)(using qctx: QuoteContext, lift: Liftable[T]): Expr[T] = lift.toExpr(x)
+  // /** Lift a value into an expression containing the construction of that value */
+  // @deprecated("Use scala.quoted.Lifted", "0.23")
+  // def apply[T](x: T)(using qctx: QuoteContext, lift: Liftable[T]): Expr[T] = Lifted(x)
 
   /** Lifts this sequence of expressions into an expression of a sequence
    *

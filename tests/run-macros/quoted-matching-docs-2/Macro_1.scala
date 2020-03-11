@@ -7,11 +7,11 @@ inline def showOptimize(arg: Int): String = ${ showOptimizeExpr('arg) }
 inline def optimize(arg: Int): Int = ${ optimizeExpr('arg) }
 
 private def showOptimizeExpr(body: Expr[Int])(using QuoteContext): Expr[String] =
-  Expr(optimizeExpr(body).show)
+  Lifted(optimizeExpr(body).show)
 
 private def optimizeExpr(body: Expr[Int])(using QuoteContext): Expr[Int] = body match {
   // Match a call to sum without any arguments
-  case '{ sum() } => Expr(0)
+  case '{ sum() } => Lifted(0)
   // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
   case '{ sum($n) } => n
   // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
@@ -33,5 +33,5 @@ private def sumExpr(args1: Seq[Expr[Int]])(using QuoteContext): Expr[Int] = {
       case Const(_) => false
       case arg => true
     }
-    dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
+    dynamicSum.foldLeft(Lifted(staticSum))((acc, arg) => '{ $acc + $arg })
 }

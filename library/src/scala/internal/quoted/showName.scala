@@ -6,7 +6,7 @@ package scala.internal.quoted
  *  Usage:
  *  ```scala
  *  def let(name: String)(value: Expr[Int])(in: Expr[Int] => Expr[Int]): Expr[Int] = '{
- *    @showName(${Expr(name)})
+ *    @showName(${Lifted(name)})
  *    val x = $value
  *    ${ in('x) }
  *  }

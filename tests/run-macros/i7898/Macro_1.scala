@@ -7,7 +7,7 @@ object Main {
     val bodyTerm = UnsafeExpr.underlyingArgument(body).unseal
     val showed = bodyTerm.show
     '{
-      println(${Expr(showed)})
+      println(${Lifted(showed)})
       ${bodyTerm.seal}
     }
   }

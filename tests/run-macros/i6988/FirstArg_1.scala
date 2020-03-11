@@ -27,6 +27,6 @@ object Macros {
     val paramss = enclosingParamList(rootContext.owner)
     val firstArg = paramss.flatten.head
     val ref = Select.unique(This(enclosingClass()), firstArg.name)
-    '{ FirstArg(${ref.seal}, ${Expr(firstArg.name)}) }
+    '{ FirstArg(${ref.seal}, ${Lifted(firstArg.name)}) }
   }
 }

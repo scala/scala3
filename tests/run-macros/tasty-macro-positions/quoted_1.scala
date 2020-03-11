@@ -14,7 +14,7 @@ object Macros {
     val code = x.unseal.underlyingArgument.show
     '{
       println(${posStr(qctx)(pos)})
-      println(${Expr(code)})
+      println(${Lifted(code)})
     }
   }
 
@@ -24,13 +24,13 @@ object Macros {
     val code = x.unseal.show
     '{
       println(${posStr(qctx)(pos)})
-      println(${Expr(code)})
+      println(${Lifted(code)})
     }
   }
 
   def posStr(qctx: QuoteContext)(pos: qctx.tasty.Position): Expr[String] = {
     given QuoteContext = qctx
     import qctx.tasty._
-    Expr(s"${pos.sourceFile.jpath.getFileName.toString}:[${pos.start}..${pos.end}]")
+    Lifted(s"${pos.sourceFile.jpath.getFileName.toString}:[${pos.start}..${pos.end}]")
   }
 }

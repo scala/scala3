@@ -17,9 +17,9 @@ object Macros {
     }
 
     '{
-      println("Scrutinee: " + ${Expr(a.unseal.show)})
-      println("Pattern: " + ${Expr(b.unseal.show)})
-      println("Result: " + ${Expr(res.toString)})
+      println("Scrutinee: " + ${Lifted(a.unseal.show)})
+      println("Pattern: " + ${Lifted(b.unseal.show)})
+      println("Result: " + ${Lifted(res.toString)})
       println()
     }
   }

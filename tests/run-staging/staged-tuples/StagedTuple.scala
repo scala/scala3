@@ -72,7 +72,7 @@ object StagedTuple {
     val res =
       if (!specialize) '{dynamicSize($tup)}
       else size match {
-        case Some(n) => Expr(n)
+        case Some(n) => Lifted(n)
         case None => '{dynamicSize($tup)}
       }
     res.as[Res]
@@ -133,7 +133,7 @@ object StagedTuple {
       def fallbackApply(): Expr[Elem[Tup, N]] = nValue match {
         case Some(n) =>
           qctx.error("index out of bounds: " + n, tup)
-          '{ throw new IndexOutOfBoundsException(${Expr(n.toString)}) }
+          '{ throw new IndexOutOfBoundsException(${Lifted(n.toString)}) }
         case None => '{dynamicApply($tup, $n)}
       }
       val res = size match {
@@ -170,13 +170,13 @@ object StagedTuple {
         case Some(s) if s > 4 && s <= MaxSpecialized =>
           val t = tup.as[Product]
           nValue match {
-            case Some(n) if n >= 0 && n < s => '{$t.productElement(${ Expr(n) })}
+            case Some(n) if n >= 0 && n < s => '{$t.productElement(${ Lifted(n) })}
             case _ => fallbackApply()
           }
         case Some(s) if s > MaxSpecialized =>
           val t = tup.as[TupleXXL]
           nValue match {
-            case Some(n) if n >= 0 && n < s => '{$t.elems(${ Expr(n) })}
+            case Some(n) if n >= 0 && n < s => '{$t.elems(${ Lifted(n) })}
             case _ => fallbackApply()
           }
         case _ => fallbackApply()

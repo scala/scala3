@@ -8,7 +8,7 @@ object Test {
 
   def main(args: Array[String]): Unit = run {
     def test[T: Type](clazz: QuoteContext ?=> java.lang.Class[T]) = {
-      val lclazz = Expr(clazz)
+      val lclazz = Lifted(clazz)
       val name = '{ ($lclazz).getCanonicalName }
       println()
       println(name.show)

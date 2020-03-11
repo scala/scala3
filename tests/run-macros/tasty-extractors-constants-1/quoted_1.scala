@@ -12,7 +12,7 @@ object Macros {
     val buff = new StringBuilder
     def stagedPrintln(x: Any): Unit = buff append java.util.Objects.toString(x) append "\n"
 
-    Expr(3) match { case Const(n) => stagedPrintln(n) }
+    Lifted(3) match { case Const(n) => stagedPrintln(n) }
     '{4} match { case Const(n) => stagedPrintln(n) }
     '{"abc"} match { case Const(n) => stagedPrintln(n) }
     '{null} match { case Const(n) => stagedPrintln(n) }

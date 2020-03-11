@@ -34,7 +34,7 @@ object Macro {
     }
 
     def tupleElem(name: String, info: Type): Expr[Any] = {
-      val nameExpr = Expr(name)
+      val nameExpr = Lifted(name)
       info.seal match { case '[$qType] =>
           Expr.ofTuple(Seq(nameExpr, '{ $s.selectDynamic($nameExpr).asInstanceOf[$qType] }))
       }

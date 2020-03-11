@@ -225,7 +225,7 @@ import scala.quoted.{given _, _}
 
 def compile(e: Exp, env: Map[String, Expr[Int]])(using QuoteContext): Expr[Int] = e match {
   case Num(n) =>
-    Expr(n)
+    Lifted(n)
   case Plus(e1, e2) =>
     '{ ${ compile(e1, env) } + ${ compile(e2, env) } }
   case Var(x) =>
@@ -238,19 +238,19 @@ Running `compile(letExp, Map())` would yield the following Scala code:
 ```scala
 '{ val y = 3; (2 + y) + 4 }
 ```
-The body of the first clause, `case Num(n) => Expr(n)`, looks suspicious. `n`
-is declared as an `Int`, yet it is converted to an `Expr[Int]` with `Expr()`.
+The body of the first clause, `case Num(n) => Lifted(n)`, looks suspicious. `n`
+is declared as an `Int`, yet it is converted to an `Expr[Int]` with `Lifted()`.
 Shouldn’t `n` be quoted? In fact this would not
 work since replacing `n` by `'n` in the clause would not be phase
 correct.
 
-The `Expr.apply` method is defined in package `quoted`:
+The `Lifted.apply` method is defined in package `quoted`:
 ```scala
 package quoted
 
-object Expr {
+object Lifted {
   ...
-  def apply[T: Liftable](x: T)(using QuoteContext): Expr[T] = summon[Liftable[T]].toExpr(x)
+  def apply[T](x: T)(using qctx: QuoteContext, lift: Liftable[T]): Expr[T] = lift.toExpr(x)
   ...
 }
 ```
@@ -291,7 +291,7 @@ a `List` is liftable if its element type is:
 ```scala
 given [T: Liftable : Type] as Liftable[List[T]] {
   def toExpr(xs: List[T]) = xs match {
-    case head :: tail => '{ ${ Expr(head) } :: ${ toExpr(tail) } }
+    case head :: tail => '{ ${ Lifted(head) } :: ${ toExpr(tail) } }
     case Nil => '{ Nil: List[T] }
   }
 }
@@ -306,13 +306,13 @@ Using lifting, we can now give the missing definition of `showExpr` in the intro
 ```scala
 def showExpr[T](expr: Expr[T])(using QuoteContext): Expr[String] = {
   val code: String = expr.show
-  Expr(code)
+  Lifted(code)
 }
 ```
 That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts
-the result back to an `Expr[String]` using `Expr.apply`.
+the result back to an `Expr[String]` using `Lifted.apply`.
 
-**Note**: Lifting `String` to `Expr[String]` using `Expr(code)` can be omitted by importing an implicit
+**Note**: Lifting `String` to `Expr[String]` using `Lifted(code)` can be omitted by importing an implicit
 conversion with `import scala.quoted.autolift.given`. The programmer is able to
 declutter slightly the code at the cost of readable _phase distinction_ between
 stages.
@@ -617,7 +617,7 @@ It is possible to deconstruct or extract values out of `Expr` using pattern matc
 `scala.quoted` contains objects that can help extracting values from `Expr`.
 
 * `scala.quoted.Const`/`scala.quoted.Consts`: matches an expression of a literal value (or list of values) and returns the value (or list of values).
-* `scala.quoted.Value`/`scala.quoted.Values`: matches an expression of a value (or list of values) and returns the value (or list of values).
+* `scala.quoted.Unlifted`: matches an expression of a value (or list of values) and returns the value (or list of values).
 * `scala.quoted.Varargs`: matches an explicit sequence of expresions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
 
 These could be used in the following way to optimize any call to `sum` that has statically known values.
@@ -625,7 +625,7 @@ These could be used in the following way to optimize any call to `sum` that has 
 inline def sum(inline args: Int*): Int = ${ sumExpr('args) }
 private def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match {
   case Varargs(Consts(args)) => // args is of type Seq[Int]
-    Expr(args.sum) // precompute result of sum
+    Lifted(args.sum) // precompute result of sum
   case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
     val staticSum: Int = argExprs.map {
       case Const(arg) => arg
@@ -635,7 +635,7 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = a
       case Const(_) => false
       case arg => true
     }
-    dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
+    dynamicSum.foldLeft(Lifted(staticSum))((acc, arg) => '{ $acc + $arg })
   case _ =>
     '{ $argsExpr.sum }
 }
@@ -658,7 +658,7 @@ def sum(args: Int*): Int = args.sum
 inline def optimize(arg: Int): Int = ${ optimizeExpr('arg) }
 private def optimizeExpr(body: Expr[Int])(using QuoteContext): Expr[Int] = body match {
   // Match a call to sum without any arguments
-  case '{ sum() } => Expr(0)
+  case '{ sum() } => Lifted(0)
   // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
   case '{ sum($n) } => n
   // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
@@ -679,7 +679,7 @@ private def sumExpr(args1: Seq[Expr[Int]])(using QuoteContext): Expr[Int] = {
       case Const(_) => false
       case arg => true
     }
-    dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
+    dynamicSum.foldLeft(Lifted(staticSum))((acc, arg) => '{ $acc + $arg })
 }
 ```
 

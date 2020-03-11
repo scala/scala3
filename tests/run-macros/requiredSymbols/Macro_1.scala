@@ -22,6 +22,6 @@ object Macro {
 
       rootContext.requiredMethod("scala.List.empty"),
     )
-    Expr(list.map(_.fullName).mkString("\n"))
+    Lifted(list.map(_.fullName).mkString("\n"))
   }
 }

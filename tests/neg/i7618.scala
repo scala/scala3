@@ -14,7 +14,7 @@ object Compiler {
 
   inline def compile(e: Exp, env: Map[String, Expr[Int]])(using ctx: QuoteContext): Expr[Int] = inline e match {
     case Num(n) =>
-      Expr(n)
+      Lifted(n)
     case Plus(e1, e2) =>
       '{ ${ compile(e1, env) } + ${ compile(e2, env) } }
     case Var(x) =>

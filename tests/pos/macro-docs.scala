@@ -19,14 +19,14 @@ object MacrosMD_Liftable {
 
   given [T: Liftable : Type] as Liftable[List[T]] {
     def toExpr(xs: List[T]) = xs match {
-      case head :: tail => '{ ${ Expr(head) } :: ${ toExpr(tail) } }
+      case head :: tail => '{ ${ Lifted(head) } :: ${ toExpr(tail) } }
       case Nil => '{ Nil: List[T] }
     }
   }
 
   def showExpr[T](expr: Expr[T])(using QuoteContext): Expr[String] = {
     val code: String = expr.show
-    Expr(code)
+    Lifted(code)
   }
 
 }
