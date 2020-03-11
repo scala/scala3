@@ -9,7 +9,7 @@ trait ExprMap {
 
   /** Map subexpressions an expression `e` with a type `tpe` */
   def transformChildren[T](e: Expr[T])(using qctx: QuoteContext, tpe: Type[T]): Expr[T] = {
-    import qctx.tasty.{_, given _}
+    import qctx.tasty._
     final class MapChildren() {
 
       def transformStatement(tree: Statement)(using ctx: Context): Statement = {

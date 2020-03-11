@@ -8,7 +8,7 @@ import scala.quoted.show.SyntaxHighlight
  *  It contains the low-level Typed AST API `tasty` meta-programming API.
  *  This API does not have the static type guarantiees that `Expr` and `Type` provide.
  *
- *  @param tasty Typed AST API. Usage: `def f(qctx: QuoteContext) = { import qctx.tasty.{_, given _}; ... }`.
+ *  @param tasty Typed AST API. Usage: `def f(qctx: QuoteContext) = { import qctx.tasty._; ... }`.
  */
 class QuoteContext(val tasty: scala.tasty.Reflection) { self =>
 
