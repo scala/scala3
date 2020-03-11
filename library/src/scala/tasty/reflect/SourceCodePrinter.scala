@@ -6,7 +6,7 @@ import scala.quoted.show.SyntaxHighlight
 
 /** Printer for fully elaborated representation of the source code */
 class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlight: SyntaxHighlight) extends Printer[R] {
-  import tasty.{_, given _}
+  import tasty._
   import syntaxHighlight._
 
   def showTree(tree: Tree)(using ctx: Context): String =
