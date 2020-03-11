@@ -10,17 +10,16 @@ object ValueSeq {
    *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match
-   *    case ValueSeq(args) =>
+   *    case Unlifted(args) =>
    *      // args: Seq[Int]
    *      ...
    *  }
    *  ```
    */
-  @deprecated("use scala.quoted.Varargs(scala.quoted.Value(_)) instead", "0.23.0")
+  @deprecated("use scala.quoted.Varargs(scala.quoted.Unlifted(_)) instead", "0.23.0")
   def unapply[T](expr: Expr[Seq[T]])(using unlift: Unliftable[T], qctx: QuoteContext): Option[Seq[T]] =
-    import scala.quoted.Const
     expr match
-      case Varargs(Values(elems)) => Some(elems)
+      case Varargs(Unlifted(elems)) => Some(elems)
       case _ => None
 
 }
