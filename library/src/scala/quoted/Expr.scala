@@ -16,15 +16,15 @@ class Expr[+T] private[scala] {
    *  Returns `None` if the expression does not contain a value or contains side effects.
    *  Otherwise returns the `Some` of the value.
    */
-  final def getValue[U >: T](using qctx: QuoteContext, valueOf: ValueOfExpr[U]): Option[U] = valueOf(this)
+  final def getValue[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): Option[U] = unlift(this)
 
   /** Return the value of this expression.
    *
    *  Emits an error error and throws if the expression does not contain a value or contains side effects.
    *  Otherwise returns the value.
    */
-  final def value[U >: T](using qctx: QuoteContext, valueOf: ValueOfExpr[U]): U =
-    valueOf(this).getOrElse(qctx.throwError(s"Expected a known value. \n\nThe value of: $show\ncould not be recovered using $valueOf", this))
+  final def value[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): U =
+    unlift(this).getOrElse(qctx.throwError(s"Expected a known value. \n\nThe value of: $show\ncould not be recovered using $unlift", this))
 
   /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
    *  It does the equivalent of

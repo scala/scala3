@@ -7,7 +7,7 @@ object Test {
 
   def main(args: Array[String]): Unit = withQuoteContext {
 
-    implicit def ValueOfExprInt: ValueOfExpr[Int] = new {
+    implicit def UnliftableInt: Unliftable[Int] = new {
       def apply(n: Expr[Int])(using QuoteContext): Option[Int] = n match {
         case '{ 0 } => Some(0)
         case '{ 1 } => Some(1)
@@ -16,7 +16,7 @@ object Test {
       }
     }
 
-    implicit def ValueOfExprBoolean: ValueOfExpr[Boolean] = new ValueOfExpr[Boolean] {
+    implicit def UnliftableBoolean: Unliftable[Boolean] = new Unliftable[Boolean] {
       def apply(b: Expr[Boolean])(using QuoteContext): Option[Boolean] = b match {
         case '{ true } => Some(true)
         case '{ false } => Some(false)
@@ -24,7 +24,7 @@ object Test {
       }
     }
 
-    implicit def ValueOfExprList[T: ValueOfExpr: Type]: ValueOfExpr[List[T]] = new {
+    implicit def UnliftableList[T: Unliftable: Type]: Unliftable[List[T]] = new {
       def apply(xs: Expr[List[T]])(using QuoteContext): Option[List[T]] = (xs: Expr[Any]) match {
         case '{ ($xs1: List[T]).::($x) } =>
           for { head <- x.getValue; tail <- xs1.getValue }
@@ -34,7 +34,7 @@ object Test {
       }
     }
 
-    implicit def ValueOfExprOption[T: ValueOfExpr: Type]: ValueOfExpr[Option[T]] = new {
+    implicit def UnliftableOption[T: Unliftable: Type]: Unliftable[Option[T]] = new {
       def apply(expr: Expr[Option[T]])(using QuoteContext): Option[Option[T]] = expr match {
         case '{ Some[T]($x) } => for (v <- x.getValue) yield Some(v)
         case '{ None } => Some(None)

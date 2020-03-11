@@ -17,7 +17,7 @@ object ValueSeq {
    *  ```
    */
   @deprecated("use scala.quoted.Varargs(scala.quoted.Value(_)) instead", "0.23.0")
-  def unapply[T](expr: Expr[Seq[T]])(using valueOf: ValueOfExpr[T], qctx: QuoteContext): Option[Seq[T]] =
+  def unapply[T](expr: Expr[Seq[T]])(using unlift: Unliftable[T], qctx: QuoteContext): Option[Seq[T]] =
     import scala.quoted.Const
     expr match
       case Varargs(Values(elems)) => Some(elems)
