@@ -708,7 +708,6 @@ class Definitions {
 
   @tu lazy val QuotedTypeModule: Symbol = QuotedTypeClass.companionModule
 
-  @tu lazy val QuotedMatchingSymClass: ClassSymbol = ctx.requiredClass("scala.quoted.matching.Sym")
   @tu lazy val TastyReflectionClass: ClassSymbol = ctx.requiredClass("scala.tasty.Reflection")
 
   @tu lazy val Unpickler_unpickleExpr: Symbol = ctx.requiredMethod("scala.internal.quoted.Unpickler.unpickleExpr")

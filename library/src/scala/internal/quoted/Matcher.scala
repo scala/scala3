@@ -3,7 +3,6 @@ package scala.internal.quoted
 import scala.annotation.internal.sharable
 
 import scala.quoted._
-import scala.quoted.matching.Sym
 
 private[quoted] object Matcher {
 
@@ -134,7 +133,7 @@ private[quoted] object Matcher {
         }
 
         def bindingMatch(sym: Symbol) =
-          matched(new Sym(sym.name, sym))
+          matched(sym.name)
 
         (scrutinee, pattern) match {
 
