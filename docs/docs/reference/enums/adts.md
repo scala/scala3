@@ -3,8 +3,8 @@ layout: doc-page
 title: "Algebraic Data Types"
 ---
 
-The `enum` concept is general enough to also support algebraic data
-types (ADTs) and their generalized version (GADTs). Here's an example
+The [`enum` concept](./enums.html) is general enough to also support algebraic data
+types (ADTs) and their generalized version (GADTs). Here is an example
 how an `Option` type can be represented as an ADT:
 
 ```scala
@@ -34,7 +34,7 @@ Note that the parent type of the `None` value is inferred as
 `Option[Nothing]`. Generally, all covariant type parameters of the enum
 class are minimized in a compiler-generated extends clause whereas all
 contravariant type parameters are maximized. If `Option` was non-variant,
-you'd need to give the extends clause of `None` explicitly.
+you would need to give the extends clause of `None` explicitly.
 
 As for normal enum values, the cases of an `enum` are all defined in
 the `enum`s companion object. So it's `Option.Some` and `Option.None`
