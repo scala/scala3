@@ -62,10 +62,8 @@ object Expr {
    *   Expr.betaReduce(_): Expr[(T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
    *   ```
    */
-  def betaReduce[F, Args <: Tuple, R, G](f: Expr[F])(using tf: TupledFunction[F, Args => R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G = {
-    import qctx.tasty._
+  def betaReduce[F, Args <: Tuple, R, G](f: Expr[F])(using tf: TupledFunction[F, Args => R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G =
     tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
-  }
 
   /** `Expr.betaReduceGiven(f)(x1, ..., xn)` is functionally the same as `'{($f)(using $x1, ..., $xn)}`, however it optimizes this call
    *   by returning the result of beta-reducing `f(using x1, ..., xn)` if `f` is a known lambda expression.
@@ -75,10 +73,8 @@ object Expr {
    *   Expr.betaReduceGiven(_): Expr[(T1, ..., Tn) ?=> R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
    *   ```
    */
-  def betaReduceGiven[F, Args <: Tuple, R, G](f: Expr[F])(using tf: TupledFunction[F, Args ?=> R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G = {
-    import qctx.tasty._
+  def betaReduceGiven[F, Args <: Tuple, R, G](f: Expr[F])(using tf: TupledFunction[F, Args ?=> R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G =
     tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
-  }
 
   /** Returns a null expresssion equivalent to `'{null}` */
   def nullExpr: QuoteContext ?=> Expr[Null] = qctx ?=> {
@@ -186,7 +182,6 @@ object Expr {
 
   /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
   def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
-    import qctx.tasty._
     val elems: Seq[Expr[_]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[_]]]
     ofTuple(elems).cast[Tuple.InverseMap[T, Expr]]
   }
