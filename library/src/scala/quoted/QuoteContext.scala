@@ -29,18 +29,6 @@ class QuoteContext(val tasty: scala.tasty.Reflection) { self =>
     val tasty: self.tasty.type
   }
 
-  /** Show the fully elaborated source code representation of an expression */
-  def show(expr: Expr[_], syntaxHighlight: SyntaxHighlight): String = {
-    import tasty.{_, given _}
-    expr.unseal(using this).showWith(syntaxHighlight)
-  }
-
-  /** Show the fully elaborated source code representation of a type */
-  def show(tpe: Type[_], syntaxHighlight: SyntaxHighlight): String = {
-    import tasty.{_, given _}
-    tpe.unseal(using this).showWith(syntaxHighlight)
-  }
-
   /** Report an error at the position of the macro expansion */
   def error(msg: => String): Unit = {
     import tasty.{_, given _}
