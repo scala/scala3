@@ -30,22 +30,23 @@ There are nine desugaring rules. Rule (1) desugar enum definitions. Rules
 are missing them. Rules (7) to (9) define how such cases with extends clauses
 map into case classes or vals.
 
-1.  An `enum` definition
-    ```scala
-    enum E ... { <defs> <cases> }
-    ```
-    expands to a `sealed` `abstract` class that extends the `scala.Enum` trait and
-    an associated companion object that contains the defined cases, expanded according
-    to rules (2 - 8). The enum trait starts with a compiler-generated import that imports
-    the names `<caseIds>` of all cases so that they can be used without prefix in the trait.
-    ```scala
-    sealed abstract class E ... extends <parents> with scala.Enum {
-      import E.{ <caseIds> }
+1. An `enum` definition
+   ```scala
+   enum E ... { <defs> <cases> }
+   ```
+   expands to a `sealed` `abstract` class that extends the `scala.Enum` trait and
+   an associated companion object that contains the defined cases, expanded according
+   to rules (2 - 8). The enum trait starts with a compiler-generated import that imports
+   the names `<caseIds>` of all cases so that they can be used without prefix in the trait.
+   ```scala
+   sealed abstract class E ... extends <parents> with scala.Enum {
+     import E.{ <caseIds> }
       <defs>
-    }
-    object E { <cases> }
-    ```
-2.  A simple case consisting of a comma-separated list of enum names
+   }
+   object E { <cases> }
+   ```
+
+2. A simple case consisting of a comma-separated list of enum names
    ```scala
    case C_1, ..., C_n
    ```
