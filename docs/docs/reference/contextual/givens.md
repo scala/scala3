@@ -34,8 +34,8 @@ a given for the type `Ord[Int]` whereas `listOrd[T]` defines givens
 for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]`
 themselves. The `using` clause in `listOrd` defines a condition: There must be a
 given of type `Ord[T]` for a given of type `List[Ord[T]]` to exist.
-Such conditions are expanded by the compiler to context
-parameters, which are explained in the [next section](./using-clauses.html).
+Such conditions are expanded by the compiler to [context
+parameters](./using-clauses.html).
 
 ## Anonymous Givens
 
@@ -57,14 +57,16 @@ given global as ExecutionContext = new ForkJoinPool()
 This creates a given `global` of type `ExecutionContext` that resolves to the right
 hand side `new ForkJoinPool()`.
 The first time `global` is accessed, a new `ForkJoinPool` is created, which is then
-returned for this and all subsequent accesses to `global`.
+returned for this and all subsequent accesses to `global`. This operation is thread-safe.
 
-Alias givens can be anonymous, e.g.
+Alias givens can be anonymous as well, e.g.
 ```scala
 given Position = enclosingTree.position
 given (using outer: Context) as Context = outer.withOwner(currentOwner)
 ```
-An alias given can have type parameters and implicit parameters just like any other given,
+<!-- TODO IMO the above example is very bad as the outer Context will always have precedence over the anonymous one. No? -->
+
+An alias given can have type parameters and context parameters just like any other given,
 but it can only implement a single type.
 
 ## Given Whitebox Macro Instances
