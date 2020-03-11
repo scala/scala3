@@ -7,18 +7,16 @@ object uninjectivity {
       x // error
   }
 
-  def absurd2[F[_], G[_]](eq: EQ[F[Int], G[Int]], fi: F[Int], fs: F[String]): G[Int] = eq match {
+  def absurd2[F[_], G[_]](eq: EQ[F[Int], G[Int]], fs: F[String]) = eq match {
     case Refl() =>
       val gs: G[String] = fs // error
-      // fi
-      ???
+      ()
   }
 
-  def absurd3[F[_], G[_], X, Y](eq: EQ[F[X], G[Y]], fx: F[X]): G[Y] = eq match {
+  def absurd3[F[_], G[_], X, Y](eq: EQ[F[X], G[Y]], fx: F[X]) = eq match {
     case Refl() =>
       val gx: G[X] = fx // error
       val fy: F[Y] = fx // error
-      // fx
-      ???
+      ()
   }
 }
