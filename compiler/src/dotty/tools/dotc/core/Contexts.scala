@@ -636,7 +636,7 @@ object Contexts {
     owner = NoSymbol
     tree = untpd.EmptyTree
     typeAssigner = TypeAssigner
-    moreProperties = Map.empty
+    moreProperties = Map(MessageLimiter -> DefaultMessageLimiter())
     source = NoSource
     store = initialStore
       .updated(settingsStateLoc, settingsGroup.defaultState)
@@ -771,10 +771,6 @@ object Contexts {
     private[core] var nextDenotTransformerId: Array[Int] = _
 
     private[core] var denotTransformers: Array[DenotTransformer] = _
-
-    // Printers state
-    /** Number of recursive invocations of a show method on current stack */
-    private[dotc] var toTextRecursions: Int = 0
 
     // Reporters state
     private[dotc] var indent: Int = 0

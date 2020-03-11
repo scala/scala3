@@ -31,7 +31,9 @@ object Formatting {
           case NonFatal(ex)
           if !ctx.mode.is(Mode.PrintShowExceptions) &&
              !ctx.settings.YshowPrintErrors.value =>
-            val msg = ex match { case te: TypeError => te.toMessage case _ => ex.getMessage }
+            val msg = ex match
+              case te: TypeError => te.toMessage
+              case _ => ex.getMessage
             s"[cannot display due to $msg, raw string = ${arg.toString}]"
         }
       case _ => arg.toString
@@ -69,10 +71,9 @@ object Formatting {
    *  like concatenation, stripMargin etc on the values returned by em"...", and in the current error
    *  message composition methods, this is crucial.
    */
-  class ErrorMessageFormatter(sc: StringContext) extends StringFormatter(sc) {
+  class ErrorMessageFormatter(sc: StringContext) extends StringFormatter(sc):
     override protected def showArg(arg: Any)(implicit ctx: Context): String =
-      wrapNonSensical(arg, super.showArg(arg))
-  }
+      wrapNonSensical(arg, super.showArg(arg)(using errorMessageCtx))
 
   class SyntaxFormatter(sc: StringContext) extends StringFormatter(sc) {
     override protected def showArg(arg: Any)(implicit ctx: Context): String =
@@ -254,12 +255,19 @@ object Formatting {
     if (explainLines.isEmpty) "" else i"where:    $explainLines%\n          %\n"
   }
 
+  private def errorMessageCtx(using ctx: Context): Context =
+    ctx.property(MessageLimiter) match
+      case Some(_: ErrorMessageLimiter) => ctx
+      case _ => ctx.fresh.setProperty(MessageLimiter, ErrorMessageLimiter())
+
   /** Context with correct printer set for explanations */
-  private def explainCtx(seen: Seen)(implicit ctx: Context): Context = ctx.printer match {
-    case dp: ExplainingPrinter =>
-      ctx // re-use outer printer and defer explanation to it
-    case _ => ctx.fresh.setPrinterFn(ctx => new ExplainingPrinter(seen)(ctx))
-  }
+  private def explainCtx(seen: Seen)(implicit ctx: Context): Context =
+    val ectx = errorMessageCtx
+    ectx.printer match
+      case dp: ExplainingPrinter =>
+        ectx // re-use outer printer and defer explanation to it
+      case _ =>
+        ectx.fresh.setPrinterFn(ctx => new ExplainingPrinter(seen)(ctx))
 
   /** Entrypoint for explanation string interpolator:
     *
