@@ -102,6 +102,18 @@ object Expr {
   /** Lift a value into an expression containing the construction of that value */
   def apply[T](x: T)(using qctx: QuoteContext, lift: Liftable[T]): Expr[T] = lift.toExpr(x)
 
+  /** Matches expressions containing values and extracts the value.
+   *
+   *  Usage:
+   *  ```
+   *  (x: Expr[B]) match {
+   *    case Expr(value) => ... // value: B
+   *  }
+   *  ```
+   */
+   def unapply[T](expr: Expr[T])(using valueOf: ValueOfExpr[T], qxtc: QuoteContext): Option[T] =
+    valueOf(expr)
+
   /** Lifts this sequence of expressions into an expression of a sequence
    *
    *  Transforms a sequence of expression

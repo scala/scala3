@@ -33,8 +33,8 @@ object ValueOfExpr {
   given Option_delegate[T](using Type[T], ValueOfExpr[T]) as ValueOfExpr[Option[T]] = new {
     def apply(x: Expr[Option[T]])(using qctx: QuoteContext): Option[Option[T]] = x match {
       case '{ None: Option[T] } => Some(None) // FIXME: remove ascription, Matcher should be able to match this expression
-      case '{ new Some[T](${Value(y)}) } => Some(Some(y))
-      case '{     Some[T](${Value(y)}) } => Some(Some(y))
+      case '{ new Some[T](${Expr(y)}) } => Some(Some(y))
+      case '{     Some[T](${Expr(y)}) } => Some(Some(y))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Option_delegate"
@@ -52,8 +52,8 @@ object ValueOfExpr {
 
   given Tuple1_delegate[T1](using Type[T1], ValueOfExpr[T1]) as ValueOfExpr[Tuple1[T1]] = new {
     def apply(x: Expr[Tuple1[T1]])(using qctx: QuoteContext): Option[Tuple1[T1]] = x match {
-      case '{ new Tuple1[T1](${Value(y)}) } => Some(Tuple1(y))
-      case '{     Tuple1[T1](${Value(y)}) } => Some(Tuple1(y))
+      case '{ new Tuple1[T1](${Expr(y)}) } => Some(Tuple1(y))
+      case '{     Tuple1[T1](${Expr(y)}) } => Some(Tuple1(y))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple1_delegate"
@@ -61,8 +61,8 @@ object ValueOfExpr {
 
   given Tuple2_delegate[T1, T2](using Type[T1], Type[T2], ValueOfExpr[T1], ValueOfExpr[T2]) as ValueOfExpr[Tuple2[T1, T2]] = new {
     def apply(x: Expr[Tuple2[T1, T2]])(using qctx: QuoteContext): Option[Tuple2[T1, T2]] = x match {
-      case '{ new Tuple2[T1, T2](${Value(y1)}, ${Value(y2)}) } => Some(Tuple2(y1, y2))
-      case '{     Tuple2[T1, T2](${Value(y1)}, ${Value(y2)}) } => Some(Tuple2(y1, y2))
+      case '{ new Tuple2[T1, T2](${Expr(y1)}, ${Expr(y2)}) } => Some(Tuple2(y1, y2))
+      case '{     Tuple2[T1, T2](${Expr(y1)}, ${Expr(y2)}) } => Some(Tuple2(y1, y2))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple2_delegate"
@@ -71,8 +71,8 @@ object ValueOfExpr {
 
   given Tuple3_delegate[T1, T2, T3](using Type[T1], Type[T2], Type[T3], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3]) as ValueOfExpr[Tuple3[T1, T2, T3]] = new {
     def apply(x: Expr[Tuple3[T1, T2, T3]])(using qctx: QuoteContext): Option[Tuple3[T1, T2, T3]] = x match {
-      case '{ new Tuple3[T1, T2, T3](${Value(y1)}, ${Value(y2)}, ${Value(y3)}) } => Some(Tuple3(y1, y2, y3))
-      case '{     Tuple3[T1, T2, T3](${Value(y1)}, ${Value(y2)}, ${Value(y3)}) } => Some(Tuple3(y1, y2, y3))
+      case '{ new Tuple3[T1, T2, T3](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}) } => Some(Tuple3(y1, y2, y3))
+      case '{     Tuple3[T1, T2, T3](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}) } => Some(Tuple3(y1, y2, y3))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple3_delegate"
@@ -81,8 +81,8 @@ object ValueOfExpr {
 
   given Tuple4_delegate[T1, T2, T3, T4](using Type[T1], Type[T2], Type[T3], Type[T4], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4]) as ValueOfExpr[Tuple4[T1, T2, T3, T4]] = new {
     def apply(x: Expr[Tuple4[T1, T2, T3, T4]])(using qctx: QuoteContext): Option[Tuple4[T1, T2, T3, T4]] = x match {
-      case '{ new Tuple4[T1, T2, T3, T4](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}) } => Some(Tuple4(y1, y2, y3, y4))
-      case '{     Tuple4[T1, T2, T3, T4](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}) } => Some(Tuple4(y1, y2, y3, y4))
+      case '{ new Tuple4[T1, T2, T3, T4](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}) } => Some(Tuple4(y1, y2, y3, y4))
+      case '{     Tuple4[T1, T2, T3, T4](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}) } => Some(Tuple4(y1, y2, y3, y4))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple4_delegate"
@@ -91,8 +91,8 @@ object ValueOfExpr {
 
   given Tuple5_delegate[T1, T2, T3, T4, T5](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5]) as ValueOfExpr[Tuple5[T1, T2, T3, T4, T5]] = new {
     def apply(x: Expr[Tuple5[T1, T2, T3, T4, T5]])(using qctx: QuoteContext): Option[Tuple5[T1, T2, T3, T4, T5]] = x match {
-      case '{ new Tuple5[T1, T2, T3, T4, T5](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}) } => Some(Tuple5(y1, y2, y3, y4, y5))
-      case '{     Tuple5[T1, T2, T3, T4, T5](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}) } => Some(Tuple5(y1, y2, y3, y4, y5))
+      case '{ new Tuple5[T1, T2, T3, T4, T5](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}) } => Some(Tuple5(y1, y2, y3, y4, y5))
+      case '{     Tuple5[T1, T2, T3, T4, T5](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}) } => Some(Tuple5(y1, y2, y3, y4, y5))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple5_delegate"
@@ -101,8 +101,8 @@ object ValueOfExpr {
 
   given Tuple6_delegate[T1, T2, T3, T4, T5, T6](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6]) as ValueOfExpr[Tuple6[T1, T2, T3, T4, T5, T6]] = new {
     def apply(x: Expr[Tuple6[T1, T2, T3, T4, T5, T6]])(using qctx: QuoteContext): Option[Tuple6[T1, T2, T3, T4, T5, T6]] = x match {
-      case '{ new Tuple6[T1, T2, T3, T4, T5, T6](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}) } => Some(Tuple6(y1, y2, y3, y4, y5, y6))
-      case '{     Tuple6[T1, T2, T3, T4, T5, T6](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}) } => Some(Tuple6(y1, y2, y3, y4, y5, y6))
+      case '{ new Tuple6[T1, T2, T3, T4, T5, T6](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}) } => Some(Tuple6(y1, y2, y3, y4, y5, y6))
+      case '{     Tuple6[T1, T2, T3, T4, T5, T6](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}) } => Some(Tuple6(y1, y2, y3, y4, y5, y6))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple6_delegate"
@@ -111,8 +111,8 @@ object ValueOfExpr {
 
   given Tuple7_delegate[T1, T2, T3, T4, T5, T6, T7](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7]) as ValueOfExpr[Tuple7[T1, T2, T3, T4, T5, T6, T7]] = new {
     def apply(x: Expr[Tuple7[T1, T2, T3, T4, T5, T6, T7]])(using qctx: QuoteContext): Option[Tuple7[T1, T2, T3, T4, T5, T6, T7]] = x match {
-      case '{ new Tuple7[T1, T2, T3, T4, T5, T6, T7](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}) } => Some(Tuple7(y1, y2, y3, y4, y5, y6, y7))
-      case '{     Tuple7[T1, T2, T3, T4, T5, T6, T7](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}) } => Some(Tuple7(y1, y2, y3, y4, y5, y6, y7))
+      case '{ new Tuple7[T1, T2, T3, T4, T5, T6, T7](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}) } => Some(Tuple7(y1, y2, y3, y4, y5, y6, y7))
+      case '{     Tuple7[T1, T2, T3, T4, T5, T6, T7](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}) } => Some(Tuple7(y1, y2, y3, y4, y5, y6, y7))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple7_delegate"
@@ -121,8 +121,8 @@ object ValueOfExpr {
 
   given Tuple8_delegate[T1, T2, T3, T4, T5, T6, T7, T8](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8]) as ValueOfExpr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]] = new {
     def apply(x: Expr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]])(using qctx: QuoteContext): Option[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]] = x match {
-      case '{ new Tuple8[T1, T2, T3, T4, T5, T6, T7, T8](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}) } => Some(Tuple8(y1, y2, y3, y4, y5, y6, y7, y8))
-      case '{     Tuple8[T1, T2, T3, T4, T5, T6, T7, T8](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}) } => Some(Tuple8(y1, y2, y3, y4, y5, y6, y7, y8))
+      case '{ new Tuple8[T1, T2, T3, T4, T5, T6, T7, T8](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}) } => Some(Tuple8(y1, y2, y3, y4, y5, y6, y7, y8))
+      case '{     Tuple8[T1, T2, T3, T4, T5, T6, T7, T8](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}) } => Some(Tuple8(y1, y2, y3, y4, y5, y6, y7, y8))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple8_delegate"
@@ -131,8 +131,8 @@ object ValueOfExpr {
 
   given Tuple9_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9]) as ValueOfExpr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]] = new {
     def apply(x: Expr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]])(using qctx: QuoteContext): Option[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]] = x match {
-      case '{ new Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}) } => Some(Tuple9(y1, y2, y3, y4, y5, y6, y7, y8, y9))
-      case '{     Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}) } => Some(Tuple9(y1, y2, y3, y4, y5, y6, y7, y8, y9))
+      case '{ new Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}) } => Some(Tuple9(y1, y2, y3, y4, y5, y6, y7, y8, y9))
+      case '{     Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}) } => Some(Tuple9(y1, y2, y3, y4, y5, y6, y7, y8, y9))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple9_delegate"
@@ -141,8 +141,8 @@ object ValueOfExpr {
 
   given Tuple10_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10]) as ValueOfExpr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]] = new {
     def apply(x: Expr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]])(using qctx: QuoteContext): Option[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]] = x match {
-      case '{ new Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}) } => Some(Tuple10(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10))
-      case '{     Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}) } => Some(Tuple10(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10))
+      case '{ new Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}) } => Some(Tuple10(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10))
+      case '{     Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}) } => Some(Tuple10(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple10_delegate"
@@ -151,8 +151,8 @@ object ValueOfExpr {
 
   given Tuple11_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10], ValueOfExpr[T11]) as ValueOfExpr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]] = new {
     def apply(x: Expr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]])(using qctx: QuoteContext): Option[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]] = x match {
-      case '{ new Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}) } => Some(Tuple11(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11))
-      case '{     Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}) } => Some(Tuple11(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11))
+      case '{ new Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}) } => Some(Tuple11(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11))
+      case '{     Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}) } => Some(Tuple11(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple11_delegate"
@@ -161,8 +161,8 @@ object ValueOfExpr {
 
   given Tuple12_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10], ValueOfExpr[T11], ValueOfExpr[T12]) as ValueOfExpr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]] = new {
     def apply(x: Expr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]])(using qctx: QuoteContext): Option[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]] = x match {
-      case '{ new Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}) } => Some(Tuple12(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12))
-      case '{     Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}) } => Some(Tuple12(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12))
+      case '{ new Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}) } => Some(Tuple12(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12))
+      case '{     Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}) } => Some(Tuple12(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple12_delegate"
@@ -171,8 +171,8 @@ object ValueOfExpr {
 
   given Tuple13_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10], ValueOfExpr[T11], ValueOfExpr[T12], ValueOfExpr[T13]) as ValueOfExpr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]] = new {
     def apply(x: Expr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]])(using qctx: QuoteContext): Option[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]] = x match {
-      case '{ new Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}) } => Some(Tuple13(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13))
-      case '{     Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}) } => Some(Tuple13(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13))
+      case '{ new Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}) } => Some(Tuple13(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13))
+      case '{     Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}) } => Some(Tuple13(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple13_delegate"
@@ -181,8 +181,8 @@ object ValueOfExpr {
 
   given Tuple14_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10], ValueOfExpr[T11], ValueOfExpr[T12], ValueOfExpr[T13], ValueOfExpr[T14]) as ValueOfExpr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]] = new {
     def apply(x: Expr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]])(using qctx: QuoteContext): Option[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]] = x match {
-      case '{ new Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}) } => Some(Tuple14(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14))
-      case '{     Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}) } => Some(Tuple14(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14))
+      case '{ new Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}) } => Some(Tuple14(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14))
+      case '{     Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}) } => Some(Tuple14(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple14_delegate"
@@ -191,8 +191,8 @@ object ValueOfExpr {
 
   given Tuple15_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10], ValueOfExpr[T11], ValueOfExpr[T12], ValueOfExpr[T13], ValueOfExpr[T14], ValueOfExpr[T15]) as ValueOfExpr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]] = new {
     def apply(x: Expr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]])(using qctx: QuoteContext): Option[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]] = x match {
-      case '{ new Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}) } => Some(Tuple15(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15))
-      case '{     Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}) } => Some(Tuple15(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15))
+      case '{ new Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}) } => Some(Tuple15(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15))
+      case '{     Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}) } => Some(Tuple15(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple15_delegate"
@@ -201,8 +201,8 @@ object ValueOfExpr {
 
   given Tuple16_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10], ValueOfExpr[T11], ValueOfExpr[T12], ValueOfExpr[T13], ValueOfExpr[T14], ValueOfExpr[T15], ValueOfExpr[T16]) as ValueOfExpr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]] = new {
     def apply(x: Expr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]])(using qctx: QuoteContext): Option[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]] = x match {
-      case '{ new Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}) } => Some(Tuple16(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16))
-      case '{     Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}) } => Some(Tuple16(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16))
+      case '{ new Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}) } => Some(Tuple16(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16))
+      case '{     Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}) } => Some(Tuple16(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple16_delegate"
@@ -211,8 +211,8 @@ object ValueOfExpr {
 
   given Tuple17_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10], ValueOfExpr[T11], ValueOfExpr[T12], ValueOfExpr[T13], ValueOfExpr[T14], ValueOfExpr[T15], ValueOfExpr[T16], ValueOfExpr[T17]) as ValueOfExpr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]] = new {
     def apply(x: Expr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]])(using qctx: QuoteContext): Option[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]] = x match {
-      case '{ new Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}) } => Some(Tuple17(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17))
-      case '{     Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}) } => Some(Tuple17(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17))
+      case '{ new Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}) } => Some(Tuple17(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17))
+      case '{     Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}) } => Some(Tuple17(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple17_delegate"
@@ -221,8 +221,8 @@ object ValueOfExpr {
 
   given Tuple18_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10], ValueOfExpr[T11], ValueOfExpr[T12], ValueOfExpr[T13], ValueOfExpr[T14], ValueOfExpr[T15], ValueOfExpr[T16], ValueOfExpr[T17], ValueOfExpr[T18]) as ValueOfExpr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]] = new {
     def apply(x: Expr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]])(using qctx: QuoteContext): Option[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]] = x match {
-      case '{ new Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}) } => Some(Tuple18(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18))
-      case '{     Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}) } => Some(Tuple18(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18))
+      case '{ new Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}) } => Some(Tuple18(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18))
+      case '{     Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}) } => Some(Tuple18(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple18_delegate"
@@ -231,8 +231,8 @@ object ValueOfExpr {
 
   given Tuple19_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], Type[T19], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10], ValueOfExpr[T11], ValueOfExpr[T12], ValueOfExpr[T13], ValueOfExpr[T14], ValueOfExpr[T15], ValueOfExpr[T16], ValueOfExpr[T17], ValueOfExpr[T18], ValueOfExpr[T19]) as ValueOfExpr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]] = new {
     def apply(x: Expr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]])(using qctx: QuoteContext): Option[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]] = x match {
-      case '{ new Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}) } => Some(Tuple19(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19))
-      case '{     Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}) } => Some(Tuple19(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19))
+      case '{ new Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}) } => Some(Tuple19(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19))
+      case '{     Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}) } => Some(Tuple19(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple19_delegate"
@@ -241,8 +241,8 @@ object ValueOfExpr {
 
   given Tuple20_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], Type[T19], Type[T20], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10], ValueOfExpr[T11], ValueOfExpr[T12], ValueOfExpr[T13], ValueOfExpr[T14], ValueOfExpr[T15], ValueOfExpr[T16], ValueOfExpr[T17], ValueOfExpr[T18], ValueOfExpr[T19], ValueOfExpr[T20]) as ValueOfExpr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]] = new {
     def apply(x: Expr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]])(using qctx: QuoteContext): Option[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]] = x match {
-      case '{ new Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}, ${Value(y20)}) } => Some(Tuple20(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20))
-      case '{     Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}, ${Value(y20)}) } => Some(Tuple20(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20))
+      case '{ new Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}, ${Expr(y20)}) } => Some(Tuple20(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20))
+      case '{     Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}, ${Expr(y20)}) } => Some(Tuple20(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple20_delegate"
@@ -251,8 +251,8 @@ object ValueOfExpr {
 
   given Tuple21_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], Type[T19], Type[T20], Type[T21], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10], ValueOfExpr[T11], ValueOfExpr[T12], ValueOfExpr[T13], ValueOfExpr[T14], ValueOfExpr[T15], ValueOfExpr[T16], ValueOfExpr[T17], ValueOfExpr[T18], ValueOfExpr[T19], ValueOfExpr[T20], ValueOfExpr[T21]) as ValueOfExpr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]] = new {
     def apply(x: Expr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]])(using qctx: QuoteContext): Option[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]] = x match {
-      case '{ new Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}, ${Value(y20)}, ${Value(y21)}) } => Some(Tuple21(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21))
-      case '{     Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}, ${Value(y20)}, ${Value(y21)}) } => Some(Tuple21(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21))
+      case '{ new Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}, ${Expr(y20)}, ${Expr(y21)}) } => Some(Tuple21(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21))
+      case '{     Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}, ${Expr(y20)}, ${Expr(y21)}) } => Some(Tuple21(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple21_delegate"
@@ -261,8 +261,8 @@ object ValueOfExpr {
 
   given Tuple22_delegate[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], Type[T19], Type[T20], Type[T21], Type[T22], ValueOfExpr[T1], ValueOfExpr[T2], ValueOfExpr[T3], ValueOfExpr[T4], ValueOfExpr[T5], ValueOfExpr[T6], ValueOfExpr[T7], ValueOfExpr[T8], ValueOfExpr[T9], ValueOfExpr[T10], ValueOfExpr[T11], ValueOfExpr[T12], ValueOfExpr[T13], ValueOfExpr[T14], ValueOfExpr[T15], ValueOfExpr[T16], ValueOfExpr[T17], ValueOfExpr[T18], ValueOfExpr[T19], ValueOfExpr[T20], ValueOfExpr[T21], ValueOfExpr[T22]) as ValueOfExpr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]] = new {
     def apply(x: Expr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]])(using qctx: QuoteContext): Option[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]] = x match {
-      case '{ new Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}, ${Value(y20)}, ${Value(y21)}, ${Value(y22)}) } => Some(Tuple22(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21, y22))
-      case '{     Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}, ${Value(y20)}, ${Value(y21)}, ${Value(y22)}) } => Some(Tuple22(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21, y22))
+      case '{ new Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}, ${Expr(y20)}, ${Expr(y21)}, ${Expr(y22)}) } => Some(Tuple22(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21, y22))
+      case '{     Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}, ${Expr(y20)}, ${Expr(y21)}, ${Expr(y22)}) } => Some(Tuple22(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21, y22))
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Tuple22_delegate"
@@ -270,9 +270,9 @@ object ValueOfExpr {
 
   given Seq_delegate[T](using Type[T], ValueOfExpr[T]) as ValueOfExpr[Seq[T]] = new {
     def apply(x: Expr[Seq[T]])(using qctx: QuoteContext): Option[Seq[T]] = x match {
-      case Varargs(Values(elems)) => Some(elems)
-      case '{ scala.collection.Seq[T](${Varargs(Values(elems))}: _*) } => Some(elems)
-      case '{ scala.collection.immutable.Seq[T](${Varargs(Values(elems))}: _*) } => Some(elems)
+      case Varargs(Exprs(elems)) => Some(elems)
+      case '{ scala.collection.Seq[T](${Varargs(Exprs(elems))}: _*) } => Some(elems)
+      case '{ scala.collection.immutable.Seq[T](${Varargs(Exprs(elems))}: _*) } => Some(elems)
       case _ => None
     }
     override def toString(): String = "scala.quoted.ValueOfExpr.Seq_delegate"

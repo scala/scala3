@@ -617,7 +617,7 @@ It is possible to deconstruct or extract values out of `Expr` using pattern matc
 `scala.quoted` contains objects that can help extracting values from `Expr`.
 
 * `scala.quoted.Const`/`scala.quoted.Consts`: matches an expression of a literal value (or list of values) and returns the value (or list of values).
-* `scala.quoted.Value`/`scala.quoted.Values`: matches an expression of a value (or list of values) and returns the value (or list of values).
+* `scala.quoted.Expr`/`scala.quoted.Exprs`: matches an expression of a value (or list of values) and returns the value (or list of values).
 * `scala.quoted.Varargs`: matches an explicit sequence of expresions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
 
 These could be used in the following way to optimize any call to `sum` that has statically known values.
