@@ -226,7 +226,7 @@ class ClassfileParser(
       if (method) Flags.Method | methodTranslation.flags(jflags)
       else fieldTranslation.flags(jflags)
     val name = pool.getName(in.nextChar)
-    if (!sflags.is(Flags.Private) || name == nme.CONSTRUCTOR) {
+    if (!sflags.isOneOf(Flags.PrivateOrArtifact) || name == nme.CONSTRUCTOR) {
       val member = ctx.newSymbol(
         getOwner(jflags), name, sflags, memberCompleter,
         getPrivateWithin(jflags), coord = start)

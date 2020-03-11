@@ -567,6 +567,7 @@ object Flags {
   val TermParamOrAccessor: FlagSet           = Param | ParamAccessor
   val PrivateParamAccessor: FlagSet          = ParamAccessor | Private
   val PrivateOrSynthetic: FlagSet            = Private | Synthetic
+  val PrivateOrArtifact: FlagSet             = Private | Artifact
   val ClassTypeParam: FlagSet                = Private | TypeParam
   val Scala2Trait: FlagSet                   = Scala2x | Trait
   val SyntheticArtifact: FlagSet             = Synthetic | Artifact
