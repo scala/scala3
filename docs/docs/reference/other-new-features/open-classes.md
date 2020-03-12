@@ -13,7 +13,7 @@ open class Writer[T] {
   /** Sends to stdout, can be overridden */
   def send(x: T) = println(x)
 
-  /** Send all arguments using `send` */
+  /** Sends all arguments using `send` */
   def sendAll(xs: T*) = xs.foreach(send)
 }
 
