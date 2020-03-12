@@ -228,12 +228,12 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
         Nil
       }
       else {
-        if (acc.hasAnnotation(defn.ConstructorOnlyAnnot))
+        val param = acc.subst(accessors, paramSyms)
+        if (param.hasAnnotation(defn.ConstructorOnlyAnnot))
           ctx.error(em"${acc.name} is marked `@constructorOnly` but it is retained as a field in ${acc.owner}", acc.sourcePos)
         val target = if (acc.is(Method)) acc.field else acc
         if (!target.exists) Nil // this case arises when the parameter accessor is an alias
         else {
-          val param = acc.subst(accessors, paramSyms)
           val assigns = Assign(ref(target), ref(param)).withSpan(tree.span) :: Nil
           if (acc.name != nme.OUTER) assigns
           else {
