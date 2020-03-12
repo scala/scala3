@@ -268,7 +268,7 @@ object desugar {
         Nil
     }
 
-    def normalizedVparamss = meth1.vparamss map (_ map (vparam =>
+    def normalizedVparamss = meth1.vparamss.map(_.map(vparam =>
       cpy.ValDef(vparam)(rhs = EmptyTree)))
 
     def defaultGetters(vparamss: List[List[ValDef]], n: Int): List[DefDef] = vparamss match {
@@ -290,7 +290,7 @@ object desugar {
         Nil
     }
 
-    val defGetters = defaultGetters(vparamss, 0)
+    val defGetters = defaultGetters(meth1.vparamss, 0)
     if (defGetters.isEmpty) meth1
     else {
       val meth2 = cpy.DefDef(meth1)(vparamss = normalizedVparamss)
