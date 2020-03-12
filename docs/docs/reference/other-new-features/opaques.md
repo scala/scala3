@@ -33,7 +33,7 @@ This introduces `Logarithm` as a new abstract type, which is implemented as `Dou
 The fact that `Logarithm` is the same as `Double` is only known in the scope where
 `Logarithm` is defined which in the above example corresponds to the object `Logarithms`.
 Or in other words, within the scope it is treated as type alias, but this is opaque to the outside world 
-where in consequence `Logarithm` is treated as own type and has nothing to do with `Double`.
+where in consequence `Logarithm` is seen as an abstract type and has nothing to do with `Double`.
 
 The public API of `Logarithm` consists of the `apply` and `safe` methods defined in the companion object. 
 They convert from `Double`s to `Logarithm` values. Moreover, a collective extension `logarithmOps` provides the extension methods `toDouble` that converts the other way,
