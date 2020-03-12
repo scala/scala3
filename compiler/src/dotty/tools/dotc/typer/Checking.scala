@@ -44,7 +44,7 @@ object Checking {
 
   /** Add further information for error messages involving applied types if the
    *  type is inferred:
-   *   1. the full inferred type in a TypeTree node
+   *   1. the full inferred type is a TypeTree node
    *   2. the applied type causing the error, if different from (1)
    */
   private def showInferred(msg: Message, app: Type, tpt: Tree)(using ctx: Context): Message =
