@@ -135,7 +135,33 @@ expressiveness.
 
 ### From `Expr`s to Functions and Back
 
-The `Expr` companion object contains a `betaReduce` conversion that turns a tree
+It is possible to convert any `Expr[T => R]` into `Expr[T] => Expr[R]` and back.
+These conversions can be implemented as follows:
+
+```scala
+def to[T, R](f: Expr[T] => Expr[R])(using QuoteContext): Expr[T => R] =
+  '{ (x: T) => ${ f('x) } }
+
+def from[T, R](f: Expr[T => R])(using QuoteContext): Expr[T] => Expr[R] =
+  (x: Expr[T]) => '{ $f($x) }
+```
+
+Note how the fundamental phase consistency principle works in two
+different directions here for `f` and `x`.  In the method `to`,  the reference to `f` is
+legal because it is quoted, then spliced, whereas the reference to `x`
+is legal because it is spliced, then quoted.
+
+They can be used as follows:
+
+```scala
+val f1: Expr[Int => String] = to((x: Expr[Int]) => '{ $x.toString }) // '{ (x: Int) => x.toString }
+
+val f2: Expr[Int] => Expr[String] = from('{ (x: Int) => x.toString }) // (x: Expr[Int]) => '{ ((x: Int) => x.toString)($x) }
+f2('{2}) // '{ ((x: Int) => x.toString)(2) }
+```
+
+One limitation of `from` is that it does not β-reduce when a lambda is called immediately, as evidenced in the code `{ ((x: Int) => x.toString)(2) }`.
+In some cases we want to remove the lambda from the code, for this we provide the method `Expr.betaReduce` that turns a tree
 describing a function into a function mapping trees to trees.
 ```scala
 object Expr {
@@ -150,16 +176,6 @@ result of beta-reducing `f(x)` if `f` is a known lambda expression.
 ```scala
 Expr.betaReduce(_): Expr[(T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
 ```
-Its dual, let’s call it `reflect`, can be defined as follows:
-```scala
-def reflect[T, U](f: Expr[T] => Expr[U]): Expr[T => U] = '{
-  (x: T) => ${ f('x) }
-}
-```
-Note how the fundamental phase consistency principle works in two
-different directions here for `f` and `x`.  The reference to `f` is
-legal because it is quoted, then spliced, whereas the reference to `x`
-is legal because it is spliced, then quoted.
 
 ### Lifting Types
 
