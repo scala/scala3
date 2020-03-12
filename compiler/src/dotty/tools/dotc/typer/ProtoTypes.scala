@@ -260,7 +260,7 @@ object ProtoTypes {
       def isPoly(tree: Tree) = tree.tpe.widenSingleton.isInstanceOf[PolyType]
       // See remark in normalizedCompatible for why we can't keep the constraint
       // if one of the arguments has a PolyType.
-      typer.isApplicableType(tp, Nil, args, resultType, keepConstraint && !args.exists(isPoly))
+      typer.isApplicableType(tp, args, resultType, keepConstraint && !args.exists(isPoly))
     }
 
     def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
@@ -454,13 +454,12 @@ object ProtoTypes {
 
     override def resultType(implicit ctx: Context): Type = resType
 
-    override def isMatchedBy(tp: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean = {
-      def isInstantiatable(tp: Type) = tp.widen match {
-        case tp: PolyType => tp.paramNames.length == targs.length
-        case _ => false
-      }
-      isInstantiatable(tp) || tp.member(nme.apply).hasAltWith(d => isInstantiatable(d.info))
-    }
+    def canInstantiate(tp: Type)(using Context) = tp.widen match
+      case tp: PolyType => tp.paramNames.length == targs.length
+      case _ => false
+
+    override def isMatchedBy(tp: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean =
+      canInstantiate(tp) || tp.member(nme.apply).hasAltWith(d => canInstantiate(d.info))
 
     def derivedPolyProto(targs: List[Tree], resultType: Type): PolyProto =
       if ((targs eq this.targs) && (resType eq this.resType)) this
