@@ -25,7 +25,7 @@ where the lower bound `L` and the upper bound `U` may be missing, in which case 
 Inside the scope of the alias definition, the alias is transparent: `T` is treated
 as a normal alias of `R`. Outside its scope, the alias is treated as the abstract type
 ```scala
-type T >: L <: U`
+type T >: L <: U
 ```
 A special case arises if the opaque type is defined in an object. Example:
 ```
