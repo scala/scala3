@@ -166,8 +166,7 @@ only be used for its extension methods.
 ### Collective Extensions
 
 Sometimes, one wants to define several extension methods that share the same
-left-hand parameter type. In this case one can "pull out" the common parameters
-into the extension instance itself. Examples:
+left-hand parameter type. In this case one can "pull out" the common parameters into the extension instance itself. Examples:
 ```scala
 extension stringOps on (ss: Seq[String]) {
   def longestStrings: Seq[String] = {
@@ -186,6 +185,11 @@ extension on [T](xs: List[T])(using Ordering[T]) {
   def largest(n: Int) = xs.sorted.takeRight(n)
 }
 ```
+**Note**: If a collective extension defines type parameters in its prefix
+(as the `listOps` extension above does), the extension methods themselves are not
+allowed to have additional type parameters. This restriction might be lifted in the
+future once we support multiple type parameter clauses in a method.
+
 Collective extensions like these are a shorthand for extension instances where
 the parameters following the `on` are repeated for each implemented method.
 For instance, the collective extensions above expand to the following extension instances:
@@ -216,6 +220,18 @@ parameter `ss`. The usage is made explicit when translating the method:
 ```scala
 def (ss: Seq[String]).longestString: String =
   ss.longestStrings.head
+```
+By contrast, the meaning of `this` in a collective extension is as usual
+a reference to the enclosing object (i.e. the one implementing the extension methods).
+It's not a reference to the shared parameter. So this means that the following
+implementation of `longestString` would be illegal:
+```scala
+def longestString: String = this.longestStrings.head   // error: missing parameter
+```
+But the following version would again be correct, since it calls the `longestString`
+method as a regular non-extension method, passing the prefix parameter `ss` as a regular parameter:
+```scala
+def longestString: String = this.longestStrings(ss).head
 ```
 
 ### Syntax

@@ -100,7 +100,7 @@ The following modifications avoid this hurdle to migration.
 
 These rules mean that library users can use `given _` selectors to access old-style implicits in Scala 3.0,
 and will be gently nudged and then forced to do so in later versions. Libraries can then switch to
-representation clauses once their user base has migrated.
+given instances once their user base has migrated.
 
 ### Syntax
 
