@@ -136,7 +136,7 @@ expressiveness.
 ### From `Expr`s to Functions and Back
 
 It is possible to convert any `Expr[T => R]` into `Expr[T] => Expr[R]` and back.
-These conversions can be written as:
+These conversions can be implemented as follows:
 
 ```scala
 def to[T, R](f: Expr[T] => Expr[R])(using QuoteContext): Expr[T => R] =
@@ -147,7 +147,7 @@ def from[T, R](f: Expr[T => R])(using QuoteContext): Expr[T] => Expr[R] =
 ```
 
 Note how the fundamental phase consistency principle works in two
-different directions here for `f` and `x`.  The reference to `f` is
+different directions here for `f` and `x`.  In the method `to`,  the reference to `f` is
 legal because it is quoted, then spliced, whereas the reference to `x`
 is legal because it is spliced, then quoted.
 
@@ -160,8 +160,8 @@ val f2: Expr[Int] => Expr[String] = from('{ (x: Int) => x.toString }) // (x: Exp
 f2('{2}) // '{ ((x: Int) => x.toString)(2) }
 ```
 
-One limitation of `from` is that it does not β-reduce as evidenced in the code `'{ ((x: Int) => x.toString)(2) }`.
-In some cases we want to remove the lambda from the code, for this we profide `Expr.betaReduce` conversion that turns a tree
+One limitation of `from` is that it does not β-reduce when a lambda is called immediately, as evidenced in the code `{ ((x: Int) => x.toString)(2) }`.
+In some cases we want to remove the lambda from the code, for this we provide the method `Expr.betaReduce` that turns a tree
 describing a function into a function mapping trees to trees.
 ```scala
 object Expr {
