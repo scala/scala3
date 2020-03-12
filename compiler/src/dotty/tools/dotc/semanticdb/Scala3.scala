@@ -123,9 +123,6 @@ object Scala3:
     def isSyntheticWithIdent(using Context): Boolean =
       sym.is(Synthetic) && !sym.isAnonymous && !sym.name.isEmptyNumbered
 
-    def isAnnotation(using Context): Boolean =
-      sym.derivesFrom(defn.AnnotationClass)
-
   // end SymbolOps
 
   object LocalSymbol:

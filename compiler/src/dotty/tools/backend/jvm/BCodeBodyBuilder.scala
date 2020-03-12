@@ -29,14 +29,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     import Primitives.TestOp
 
-    /*  If the selector type has a member with the right name,
-     *  it is the host class; otherwise the symbol's owner.
-     */
-    def findHostClass(selector: Type, sym: Symbol) = selector member sym.name match {
-      case NoSymbol   => debuglog(s"Rejecting $selector as host class for $sym") ; sym.owner
-      case _          => selector.typeSymbol
-    }
-
     /* ---------------- helper utils for generating methods and code ---------------- */
 
     def emit(opc: Int): Unit = { mnode.visitInsn(opc) }
@@ -65,12 +57,14 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
 
       tree match {
-        case Assign(lhs @ Select(_, _), rhs) =>
+        case Assign(lhs @ Select(qual, _), rhs) =>
           val isStatic = lhs.symbol.isStaticMember
           if (!isStatic) { genLoadQualifier(lhs) }
           genLoad(rhs, symInfoTK(lhs.symbol))
           lineNumber(tree)
-          fieldStore(lhs.symbol)
+          // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
+          val receiverClass = qual.tpe.typeSymbol
+          fieldStore(lhs.symbol, receiverClass)
 
         case Assign(lhs, rhs) =>
           val s = lhs.symbol
@@ -114,7 +108,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             case POS => () // nothing
             case NEG => bc.neg(resKind)
             case NOT => bc.genPrimitiveArithmetic(Primitives.NOT, resKind)
-            case _ => abort(s"Unknown unary operation: ${fun.symbol.fullName} code: $code")
+            case _ => abort(s"Unknown unary operation: ${fun.symbol.showFullName} code: $code")
           }
 
         // binary operation
@@ -170,19 +164,12 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         bc.aload(elementType)
       }
       else if (isArraySet(code)) {
-        args match {
-          case a1 :: a2 :: Nil =>
-            genLoad(a1, INT)
-            genLoad(a2)
-            // the following line should really be here, but because of bugs in erasure
-            // we pretend we generate whatever type is expected from us.
-            //generatedType = UNIT
-            bc.astore(elementType)
-          case _ =>
-            abort(s"Too many arguments for array set operation: $tree")
-        }
-      }
-      else {
+        val List(a1, a2) = args
+        genLoad(a1, INT)
+        genLoad(a2)
+        generatedType = UNIT
+        bc.astore(elementType)
+      } else {
         generatedType = INT
         emit(asm.Opcodes.ARRAYLENGTH)
       }
@@ -256,7 +243,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         coercionTo(code)
       }
       else abort(
-        s"Primitive operation not handled yet: ${sym.fullName}(${fun.symbol.simpleName}) at: ${tree.pos}"
+        s"Primitive operation not handled yet: ${sym.showFullName}(${fun.symbol.name}) at: ${tree.pos}"
       )
     }
 
@@ -358,26 +345,24 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           assert(tree.symbol.isModule, s"Selection of non-module from empty package: $tree sym: ${tree.symbol} at: ${tree.pos}")
           genLoadModule(tree)
 
-        case Select(qualifier, selector) =>
+        case Select(qualifier, _) =>
           val sym = tree.symbol
           generatedType = symInfoTK(sym)
-          val hostClass = findHostClass(qualifier.tpe, sym)
-          debuglog(s"Host class of $sym with qual $qualifier (${qualifier.tpe}) is $hostClass")
           val qualSafeToElide = isQualifierSafeToElide(qualifier)
 
           def genLoadQualUnlessElidable(): Unit = { if (!qualSafeToElide) { genLoadQualifier(tree) } }
 
+          // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
+          def receiverClass = qualifier.tpe.typeSymbol
           if (sym.isModule) {
             genLoadQualUnlessElidable()
             genLoadModule(tree)
-          }
-          else if (sym.isStaticMember) {
+          } else if (sym.isStaticMember) {
             genLoadQualUnlessElidable()
-            fieldLoad(sym, hostClass)
-          }
-          else {
+            fieldLoad(sym, receiverClass)
+          } else {
             genLoadQualifier(tree)
-            fieldLoad(sym, hostClass)
+            fieldLoad(sym, receiverClass)
           }
 
         case t @ Ident(name) =>
@@ -444,24 +429,20 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     /*
      * must-single-thread
      */
-    def fieldLoad( field: Symbol, hostClass: Symbol = null): Unit = {
-      fieldOp(field, isLoad = true,  hostClass)
-    }
-    /*
-     * must-single-thread
-     */
-    def fieldStore(field: Symbol, hostClass: Symbol = null): Unit = {
-      fieldOp(field, isLoad = false, hostClass)
-    }
+    def fieldLoad( field: Symbol, hostClass: Symbol = null): Unit = fieldOp(field, isLoad = true,  hostClass)
 
     /*
      * must-single-thread
      */
-    private def fieldOp(field: Symbol, isLoad: Boolean, hostClass: Symbol): Unit = {
-      // LOAD_FIELD.hostClass , CALL_METHOD.hostClass , and #4283
-      val owner      =
-        if (hostClass == null) internalName(field.owner)
-        else                  internalName(hostClass)
+    def fieldStore(field: Symbol, hostClass: Symbol = null): Unit = fieldOp(field, isLoad = false, hostClass)
+
+    /*
+     * must-single-thread
+     */
+    private def fieldOp(field: Symbol, isLoad: Boolean, specificReceiver: Symbol): Unit = {
+      val useSpecificReceiver = specificReceiver != null && !field.isScalaStatic
+
+      val owner      = internalName(if (useSpecificReceiver) specificReceiver else field.owner)
       val fieldJName = field.javaSimpleName.toString
       val fieldDescr = symInfoTK(field).descriptor
       val isStatic   = field.isStaticMember
@@ -633,7 +614,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val cast = sym match {
           case Object_isInstanceOf => false
           case Object_asInstanceOf => true
-          case _ => abort(s"Unexpected type application $fun[sym: ${sym.fullName}] in: $t")
+          case _ => abort(s"Unexpected type application $fun[sym: ${sym.showFullName}] in: $t")
         }
 
         val l = tpeTK(obj)
@@ -706,19 +687,33 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             if (t.symbol ne Object_synchronized) genTypeApply(t)
             else genSynchronized(app, expectedType)
 
-        // 'super' call: Note: since constructors are supposed to
-        // return an instance of what they construct, we have to take
-        // special care. On JVM they are 'void', and Scala forbids (syntactically)
-        // to call super constructors explicitly and/or use their 'returned' value.
-        // therefore, we can ignore this fact, and generate code that leaves nothing
-        // on the stack (contrary to what the type in the AST says).
-        case Apply(fun @ Select(Super(_, mix), _), args) =>
-          val invokeStyle = InvokeStyle.Super
-          // if (fun.symbol.isConstructor) Static(true) else SuperCall(mix);
+        case Apply(fun @ Select(Super(_, _), _), args) =>
+          def initModule(): Unit = {
+            // we initialize the MODULE$ field immediately after the super ctor
+            if (!isModuleInitialized &&
+              jMethodName == INSTANCE_CONSTRUCTOR_NAME &&
+              fun.symbol.javaSimpleName.toString == INSTANCE_CONSTRUCTOR_NAME &&
+              claszSymbol.isStaticModuleClass) {
+              isModuleInitialized = true
+              mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
+              mnode.visitFieldInsn(
+                asm.Opcodes.PUTSTATIC,
+                thisName,
+                MODULE_INSTANCE_FIELD,
+                "L" + thisName + ";"
+              )
+            }
+          }
+          // 'super' call: Note: since constructors are supposed to
+          // return an instance of what they construct, we have to take
+          // special care. On JVM they are 'void', and Scala forbids (syntactically)
+          // to call super constructors explicitly and/or use their 'returned' value.
+          // therefore, we can ignore this fact, and generate code that leaves nothing
+          // on the stack (contrary to what the type in the AST says).
           mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
           genLoadArguments(args, paramTKs(app))
-          genCallMethod(fun.symbol, invokeStyle, pos = app.pos)
-          generatedType = asmMethodType(fun.symbol).returnType
+          generatedType = genCallMethod(fun.symbol, InvokeStyle.Super, app.pos)
+          initModule()
 
         // 'new' constructor call: Note: since constructors are
         // thought to return an instance of what they construct,
@@ -736,11 +731,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               mkArrayConstructorCall(arr, app, args)
 
             case rt: ClassBType =>
-              assert(classBTypeFromSymbol(ctor.owner) == rt, s"Symbol ${ctor.owner.fullName} is different from $rt")
+              assert(classBTypeFromSymbol(ctor.owner) == rt, s"Symbol ${ctor.owner.showFullName} is different from $rt")
               mnode.visitTypeInsn(asm.Opcodes.NEW, rt.internalName)
               bc dup generatedType
               genLoadArguments(args, paramTKs(app))
-              genCallMethod(ctor, InvokeStyle.Special)
+              genCallMethod(ctor, InvokeStyle.Special, app.pos)
 
             case _ =>
               abort(s"Cannot instantiate $tpt of kind: $generatedType")
@@ -763,58 +758,57 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case app @ Apply(fun, args) =>
           val sym = fun.symbol
 
-          if (sym.isLabel) {  // jump to a label
+          if (sym.isLabel) { // jump to a label
             assert(int.hasLabelDefs)
             genLoadLabelArguments(args, labelDef(sym), app.pos)
             bc goTo programPoint(sym)
           } else if (isPrimitive(fun)) { // primitive method call
             generatedType = genPrimitiveOp(app, expectedType)
-          } else {  // normal method call
+          } else { // normal method call
+            val invokeStyle =
+              if (sym.isStaticMember) InvokeStyle.Static
+              else if (sym.isPrivate || sym.isClassConstructor) InvokeStyle.Special
+              else InvokeStyle.Virtual
 
-            def genNormalMethodCall(): Unit = {
+            if (invokeStyle.hasInstance) genLoadQualifier(fun)
+            genLoadArguments(args, paramTKs(app))
 
-              val invokeStyle =
-                if (sym.isStaticMember) InvokeStyle.Static
-                else if (sym.isPrivate || sym.isClassConstructor) InvokeStyle.Special
-                else InvokeStyle.Virtual
-
-              if (invokeStyle.hasInstance) {
-                genLoadQualifier(fun)
+            val Select(qual, _) = fun // fun is a Select, also checked in genLoadQualifier
+            if (isArrayClone(fun)) {
+              // Special-case Array.clone, introduced in 36ef60e. The goal is to generate this call
+              // as "[I.clone" instead of "java/lang/Object.clone". This is consistent with javac.
+              // Arrays have a public method `clone` (jls 10.7).
+              //
+              // The JVMS is not explicit about this, but that receiver type can be an array type
+              // descriptor (instead of a class internal name):
+              //   invokevirtual  #2; //Method "[I".clone:()Ljava/lang/Object
+              //
+              // Note that using `Object.clone()` would work as well, but only because the JVM
+              // relaxes protected access specifically if the receiver is an array:
+              //   http://hg.openjdk.java.net/jdk8/jdk8/hotspot/file/87ee5ee27509/src/share/vm/interpreter/linkResolver.cpp#l439
+              // Example: `class C { override def clone(): Object = "hi" }`
+              // Emitting `def f(c: C) = c.clone()` as `Object.clone()` gives a VerifyError.
+              val target: String = tpeTK(qual).asRefBType.classOrArrayType
+              val methodBType = asmMethodType(sym)
+              bc.invokevirtual(target, sym.javaSimpleName.toString, methodBType.descriptor)
+              generatedType = methodBType.returnType
+            } else {
+              val receiverClass = if (!invokeStyle.isVirtual) null else {
+                // receiverClass is used in the bytecode to as the method receiver. using sym.owner
+                // may lead to IllegalAccessErrors, see 9954eaf / aladdin bug 455.
+                val qualSym = qual.tpe.typeSymbol
+                if (qualSym == ArrayClass) {
+                  // For invocations like `Array(1).hashCode` or `.wait()`, use Object as receiver
+                  // in the bytecode. Using the array descriptor (like we do for clone above) seems
+                  // to work as well, but it seems safer not to change this. Javac also uses Object.
+                  // Note that array apply/update/length are handled by isPrimitive (above).
+                  assert(sym.owner == ObjectClass, s"unexpected array call: $app")
+                  ObjectClass
+                } else qualSym
               }
-
-              genLoadArguments(args, paramTKs(app))
-
-              // In "a couple cases", squirrel away a extra information (hostClass, targetTypeKind). TODO Document what "in a couple cases" refers to.
-              var hostClass:      Symbol = null
-
-              fun match {
-                case Select(qual, _) if isArrayClone(fun) && invokeStyle.isVirtual =>
-                  val targetTypeKind = tpeTK(qual)
-                  val target: String = targetTypeKind.asRefBType.classOrArrayType
-                  bc.invokevirtual(target, "clone", "()Ljava/lang/Object;")
-                  generatedType = targetTypeKind
-
-                case Select(qual, _) =>
-                  val qualSym = findHostClass(qual.tpe, sym)
-
-                  hostClass = qualSym
-                  if (qual.tpe.typeSymbol != qualSym) {
-                      log(s"Precisified host class for $sym from ${qual.tpe.typeSymbol.fullName} to ${qualSym.fullName}")
-                    }
-                  genCallMethod(sym, invokeStyle, hostClass, app.pos)
-                  generatedType = asmMethodType(sym).returnType
-
-                case _ =>
-                  genCallMethod(sym, invokeStyle, hostClass, app.pos)
-                  generatedType = asmMethodType(sym).returnType
-
-              }
-            } // end of genNormalMethodCall()
-
-            genNormalMethodCall()
-
+              generatedType = genCallMethod(sym, invokeStyle, app.pos, receiverClass)
+            }
           }
-
       }
 
       generatedType
@@ -1113,7 +1107,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genStringConcat(tree: Tree): BType = {
       lineNumber(tree)
       liftStringConcat(tree) match {
-
         // Optimization for expressions of the form "" + x.  We can avoid the StringBuilder.
         case List(Literal(Constant("")), arg) =>
           genLoad(arg, ObjectReference)
@@ -1135,77 +1128,80 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             bc.genConcat(elemType)
           }
           bc.genEndConcat
-
       }
-
       StringRef
     }
 
-    def genCallMethod(method: Symbol, style: InvokeStyle, hostClass0: Symbol = null, pos: Position = NoPosition): Unit = {
-
-      val siteSymbol = claszSymbol
-      val hostSymbol = if (hostClass0 == null) method.owner else hostClass0
+    /**
+     * Generate a method invocation. If `specificReceiver != null`, it is used as receiver in the
+     * invocation instruction, otherwise `method.owner`. A specific receiver class is needed to
+     * prevent an IllegalAccessError, (aladdin bug 455).
+     */
+    def genCallMethod(method: Symbol, style: InvokeStyle, pos: Position = NoPosition, specificReceiver: Symbol = null): BType = {
       val methodOwner = method.owner
-      // info calls so that types are up to date; erasure may add lateINTERFACE to traits
-      hostSymbol.info ; methodOwner.info
 
-      def needsInterfaceCall(sym: Symbol) = (
-           sym.isInterface
-        || sym.isJavaDefined && sym.isNonBottomSubClass(ClassfileAnnotationClass)
-      )
+      // the class used in the invocation's method descriptor in the classfile
+      val receiverClass = {
+        if (specificReceiver != null)
+          assert(style.isVirtual || specificReceiver == methodOwner, s"specificReceiver can only be specified for virtual calls. $method - $specificReceiver")
 
-      // whether to reference the type of the receiver or
-      // the type of the method owner
-      val useMethodOwner = (
-           !style.isVirtual
-        || hostSymbol.isBottomClass
-        || methodOwner == ObjectClass
-      )
-      val receiver = if (useMethodOwner) methodOwner else hostSymbol
-      val jowner   = internalName(receiver)
+        val useSpecificReceiver = specificReceiver != null && !specificReceiver.isBottomClass && !method.isScalaStatic
+        val receiver = if (useSpecificReceiver) specificReceiver else methodOwner
+
+        // workaround for a JVM bug: https://bugs.openjdk.java.net/browse/JDK-8154587
+        // when an interface method overrides a member of Object (note that all interfaces implicitly
+        // have superclass Object), the receiver needs to be the interface declaring the override (and
+        // not a sub-interface that inherits it). example:
+        //   trait T { override def clone(): Object = "" }
+        //   trait U extends T
+        //   class C extends U
+        //   class D { def f(u: U) = u.clone() }
+        // The invocation `u.clone()` needs `T` as a receiver:
+        //   - using Object is illegal, as Object.clone is protected
+        //   - using U results in a `NoSuchMethodError: U.clone. This is the JVM bug.
+        // Note that a mixin forwarder is generated, so the correct method is executed in the end:
+        //   class C { override def clone(): Object = super[T].clone() }
+        val isTraitMethodOverridingObjectMember = {
+          receiver != methodOwner && // fast path - the boolean is used to pick either of these two, if they are the same it does not matter
+            style.isVirtual &&
+            receiver.isEmittedInterface &&
+            Object_Type.decl(method.name).exists && { // fast path - compute overrideChain on the next line only if necessary
+              val syms = method.allOverriddenSymbols
+              !syms.isEmpty && syms.last.owner == ObjectClass
+            }
+        }
+        if (isTraitMethodOverridingObjectMember) methodOwner else receiver
+      }
+
+      receiverClass.info // ensure types the type is up to date; erasure may add lateINTERFACE to traits
+      val receiverName = internalName(receiverClass)
+
       val jname    = method.javaSimpleName.toString
       val bmType   = asmMethodType(method)
       val mdescr   = bmType.descriptor
 
-      def initModule(): Unit = {
-        // we initialize the MODULE$ field immediately after the super ctor
-        if (!isModuleInitialized &&
-            jMethodName == INSTANCE_CONSTRUCTOR_NAME &&
-            jname == INSTANCE_CONSTRUCTOR_NAME &&
-          siteSymbol.isStaticModuleClass) {
-          isModuleInitialized = true
-          mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
-          mnode.visitFieldInsn(
-            asm.Opcodes.PUTSTATIC,
-            thisName,
-            MODULE_INSTANCE_FIELD,
-            "L" + thisName + ";"
-          )
+      val isInterface = receiverClass.isEmittedInterface
+      import InvokeStyle._
+      if (style == Super) {
+        // DOTTY: this differ from how super-calls in traits are handled in the scalac backend,
+        // this is intentional but could change in the future, see https://github.com/lampepfl/dotty/issues/5928
+        bc.invokespecial(receiverName, jname, mdescr, isInterface)
+      } else {
+        val opc = style match {
+          case Static => Opcodes.INVOKESTATIC
+          case Special => Opcodes.INVOKESPECIAL
+          case Virtual => if (isInterface) Opcodes.INVOKEINTERFACE else Opcodes.INVOKEVIRTUAL
         }
+        bc.emitInvoke(opc, receiverName, jname, mdescr, isInterface)
       }
 
-      val isInterface = receiver.isEmittedInterface
-      if (style.isStatic)                 { bc.invokestatic   (jowner, jname, mdescr, itf = isInterface) }
-      else if (style.isSpecial)           { bc.invokespecial  (jowner, jname, mdescr, itf = isInterface) }
-      else if (style.isVirtual) {
-        if (needsInterfaceCall(receiver)) { bc.invokeinterface(jowner, jname, mdescr) }
-        else                              { bc.invokevirtual  (jowner, jname, mdescr) }
-      }
-      else {
-        assert(style.isSuper, s"An unknown InvokeStyle: $style")
-        bc.invokespecial(jowner, jname, mdescr, itf = isInterface)
-        initModule()
-      }
-
+      bmType.returnType
     } // end of genCallMethod()
 
     /* Generate the scala ## method. */
     def genScalaHash(tree: Tree): BType = {
-      genLoadModule(ScalaRunTimeModule) // TODO why load ScalaRunTimeModule if ## has InvokeStyle of Static(false) ?
       genLoad(tree, ObjectReference)
       genCallMethod(hashMethodSym, InvokeStyle.Static)
-
-      INT
     }
 
     /*

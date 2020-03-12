@@ -65,7 +65,7 @@ trait DottyTest extends ContextEscapeDetection {
   def checkCompile(checkAfterPhase: String, source: String)(assertion: (tpd.Tree, Context) => Unit): Context = {
     val c = compilerWithChecker(checkAfterPhase)(assertion)
     val run = c.newRun
-    run.compileFromStrings(source)
+    run.compileFromStrings(List(source))
     run.runContext
   }
 

@@ -49,7 +49,7 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
     assert(
       (!primitiveTypeMap.contains(classSym) || isCompilingPrimitive) &&
       (classSym != NothingClass && classSym != NullClass),
-      s"Cannot create ClassBType for special class symbol ${classSym.fullName}")
+      s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
 
     convertedClasses.getOrElse(classSym, {
       val internalName = classSym.javaBinaryName

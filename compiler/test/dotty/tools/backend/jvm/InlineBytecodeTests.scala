@@ -341,7 +341,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
           VarOp(ALOAD, 0),
           Invoke(INVOKEVIRTUAL, "Test", "given_Int", "()I", false),
           Invoke(INVOKESTATIC, "scala/runtime/BoxesRunTime", "boxToInteger", "(I)Ljava/lang/Integer;", false),
-          Invoke(INVOKEINTERFACE, "scala/Function1", "apply", "(Ljava/lang/Object;)Ljava/lang/Object;", true),
+          Invoke(INVOKEINTERFACE, "dotty/runtime/function/JFunction1$mcZI$sp", "apply", "(Ljava/lang/Object;)Ljava/lang/Object;", true),
           Invoke(INVOKESTATIC, "scala/runtime/BoxesRunTime", "unboxToBoolean", "(Ljava/lang/Object;)Z", false),
           Op(IRETURN)
         )
@@ -352,7 +352,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       }
 
       assert(instructions.tail == expected,
-        "`fg was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
+        "`fg was not properly inlined in `test`\n" + diffInstructions(instructions.tail, expected))
 
     }
   }
