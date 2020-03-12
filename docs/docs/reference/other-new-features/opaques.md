@@ -38,10 +38,7 @@ where in consequence `Logarithm` is treated as own type and has nothing to do wi
 The public API of `Logarithm` consists of the `apply` and `safe` methods defined in the companion object. 
 They convert from `Double`s to `Logarithm` values. Moreover, a collective extension `logarithmOps` provides the extension methods `toDouble` that converts the other way,
 and operations `+` and `*` on `Logarithm` values. 
-As a reminder, the implementations of these functions
-type-check because within the object `Logarithms`, the type `Logarithm` is just a type alias of `Double`.
-Outside of its scope, `Logarithm` is treated as a new abstract type. So the
-following operations would be valid because they use functionality implemented in the `Logarithms` object.
+The following operations would be valid because they use functionality implemented in the `Logarithms` object.
 
 ```scala
 import Logarithms.Logarithm
