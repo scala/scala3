@@ -62,9 +62,8 @@ returned for this and all subsequent accesses to `global`. This operation is thr
 Alias givens can be anonymous as well, e.g.
 ```scala
 given Position = enclosingTree.position
-given (using outer: Context) as Context = outer.withOwner(currentOwner)
+given (using config: Config) as Factory = MemoizingFactory(config)
 ```
-<!-- TODO IMO the above example is very bad as the outer Context will always have precedence over the anonymous one. No? -->
 
 An alias given can have type parameters and context parameters just like any other given,
 but it can only implement a single type.
