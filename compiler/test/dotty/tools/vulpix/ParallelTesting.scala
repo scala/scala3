@@ -626,11 +626,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       lazy val (errorMap, expectedErrors) = getErrorMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
       lazy val actualErrors = reporters.foldLeft(0)(_ + _.errorCount)
       def hasMissingAnnotations = getMissingExpectedErrors(errorMap, reporters.iterator.flatMap(_.errors))
+      def showErrors = "-> following the errors:\n" +
+        reporters.flatMap(_.allErrors.map(e => e.pos.toString + ": " + e.message)).mkString(start = "at ", sep = "\n at ", end = "")
 
       if (compilerCrashed) Some(s"Compiler crashed when compiling: ${testSource.title}")
       else if (actualErrors == 0) Some(s"\nNo errors found when compiling neg test $testSource")
-      else if (expectedErrors != actualErrors) Some(s"\nWrong number of errors encountered when compiling $testSource, expected: $expectedErrors, actual: $actualErrors")
-      else if (hasMissingAnnotations) Some(s"\nErrors found on incorrect row numbers when compiling $testSource")
+      else if (expectedErrors == 0) Some(s"\nNo errors expected/defined in $testSource -- use // error or // nopos-error")
+      else if (expectedErrors != actualErrors) Some(s"\nWrong number of errors encountered when compiling $testSource\nexpected: $expectedErrors, actual: $actualErrors " + showErrors)
+      else if (hasMissingAnnotations) Some(s"\nErrors found on incorrect row numbers when compiling $testSource\n$showErrors")
       else if (!errorMap.isEmpty) Some(s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap")
       else None
     }
@@ -654,7 +657,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         Source.fromFile(file, "UTF-8").getLines().zipWithIndex.foreach { case (line, lineNbr) =>
           val errors = line.toSeq.sliding("// error".length).count(_.unwrap == "// error")
           if (errors > 0)
-            errorMap.put(s"${file.getPath}:${lineNbr}", errors)
+            errorMap.put(s"${file.getPath}:$lineNbr", errors)
 
           val noposErrors = line.toSeq.sliding("// nopos-error".length).count(_.unwrap == "// nopos-error")
           if (noposErrors > 0) {
@@ -663,7 +666,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             errorMap.put("nopos", noposErrors + existing)
           }
 
-          val possibleTypos = List("//error" -> "// error" , "//nopos-error" -> "// nopos-error")
+          val possibleTypos = List("//error" -> "// error", "//nopos-error" -> "// nopos-error")
           for ((possibleTypo, expected) <- possibleTypos) {
             if (line.contains(possibleTypo))
               echo(s"Warning: Possible typo in error tag in file ${file.getCanonicalPath}:$lineNbr: found `$possibleTypo` but expected `$expected`")

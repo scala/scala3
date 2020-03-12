@@ -159,7 +159,7 @@ object Build {
       "-unchecked",
       "-Xfatal-warnings",
       "-encoding", "UTF8",
-      "-language:existentials,higherKinds,implicitConversions"
+      "-language:existentials,higherKinds,implicitConversions,postfixOps"
     ),
 
     javacOptions in (Compile, compile) ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),

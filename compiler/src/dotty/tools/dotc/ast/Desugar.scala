@@ -1675,6 +1675,16 @@ object desugar {
         }
         else {
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
+          if (!ctx.featureEnabled(nme.postfixOps)) {
+            ctx.error(
+              s"""postfix operator `${op.name}` needs to be enabled
+                 |by making the implicit value scala.language.postfixOps visible.
+                 |----
+                 |This can be achieved by adding the import clause 'import scala.language.postfixOps'
+                 |or by setting the compiler option -language:postfixOps.
+                 |See the Scaladoc for value scala.language.postfixOps for a discussion
+                 |why the feature needs to be explicitly enabled.""".stripMargin, t.sourcePos)
+          }
           Select(t, op.name)
         }
       case PrefixOp(op, t) =>

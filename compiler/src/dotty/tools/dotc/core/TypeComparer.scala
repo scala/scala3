@@ -2201,6 +2201,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
   /** Show subtype goal that led to an assertion failure */
   def showGoal(tp1: Type, tp2: Type)(implicit ctx: Context): Unit = {
+    //TODO shouldn't this be a ctx.echo as well?
     println(i"assertion failure for ${show(tp1)} <:< ${show(tp2)}, frozen = $frozenConstraint")
     def explainPoly(tp: Type) = tp match {
       case tp: TypeParamRef => ctx.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")

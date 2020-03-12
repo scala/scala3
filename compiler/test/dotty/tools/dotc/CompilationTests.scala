@@ -61,9 +61,10 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/pos-special/i7296.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
       compileFile("tests/pos-special/notNull.scala", defaultOptions.and("-Yexplicit-nulls")),
       compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings")),
-      compileFile("tests/pos-special/i7575.scala", defaultOptions.and("-language:dynamics")),
+      compileFile("tests/pos-special/i7575.scala", defaultOptions.andLanguageFeature("dynamics")),
       compileFile("tests/pos-special/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
       compileFile("tests/run/i5606.scala", defaultOptions.and("-Yretain-trees")),
+      compileFile("tests/pos-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
     ).checkCompile()
   }
 
@@ -128,7 +129,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/i3246.scala", scala2CompatMode),
       compileFile("tests/neg-custom-args/overrideClass.scala", scala2CompatMode),
       compileFile("tests/neg-custom-args/ovlazy.scala", scala2CompatMode.and("-migration", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")),
+      compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.andLanguageFeature("noAutoTupling")),
       compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")),
       compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")),
       compileFile("tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")),
@@ -153,9 +154,10 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/indentRight.scala", defaultOptions.and("-noindent", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/extmethods-tparams.scala", defaultOptions.and("-deprecation", "-Xfatal-warnings")),
       compileDir("tests/neg-custom-args/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings")),
-      compileFile("tests/neg/i7575.scala", defaultOptions.and("-language:_")),
+      compileFile("tests/neg/i7575.scala", defaultOptions.withoutLanguageFeatures.and("-language:_")),
       compileFile("tests/neg-custom-args/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
       compileFile("tests/neg-custom-args/typeclass-derivation2.scala", defaultOptions.and("-Yerased-terms")),
+      compileFile("tests/neg-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
     ).checkExpectedErrors()
   }
 
@@ -223,7 +225,7 @@ class CompilationTests extends ParallelTesting {
         Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
         Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
       ).mkString(File.pathSeparator),
-      Array("-Ycheck-reentrant", "-Yemit-tasty-in-class")
+      Array("-Ycheck-reentrant", "-Yemit-tasty-in-class", "-language:postfixOps")
     )
 
     val libraryDirs = List(Paths.get("library/src"), Paths.get("library/src-bootstrapped"))
