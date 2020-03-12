@@ -370,14 +370,16 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  In fact the current treatment for this sitiuation can so far only be classified as "not obviously wrong",
    *  (maybe it still needs to be revised).
    */
-  def boundsViolations(args: List[Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type, app: Type)(implicit ctx: Context): List[BoundsViolation] = {
+  def boundsViolations(args: List[Tree], boundss: List[TypeBounds],
+      instantiate: (Type, List[Type]) => Type, app: Type)(
+      implicit ctx: Context): List[BoundsViolation] = {
     val argTypes = args.tpes
 
     /** Replace all wildcards in `tps` with `<app>#<tparam>` where `<tparam>` is the
      *  type parameter corresponding to the wildcard.
      */
     def skolemizeWildcardArgs(tps: List[Type], app: Type) = app match {
-      case AppliedType(tycon, args) if tycon.typeSymbol.isClass && !scala2CompatMode =>
+      case AppliedType(tycon: TypeRef, args) if tycon.typeSymbol.isClass && !scala2CompatMode =>
         tps.zipWithConserve(tycon.typeSymbol.typeParams) {
           (tp, tparam) => tp match {
             case _: TypeBounds => app.select(tparam)

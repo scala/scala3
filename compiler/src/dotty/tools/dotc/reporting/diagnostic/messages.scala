@@ -1235,6 +1235,14 @@ object messages {
            |""".stripMargin
   }
 
+  case class UnreducibleApplication(tycon: Type)(using Context) extends Message(UnreducibleApplicationID):
+    val kind = "Type"
+    val msg = em"unreducible application of higher-kinded type $tycon to wildcard arguments"
+    val explanation =
+      em"""|An abstract type constructor cannot be applied to wildcard arguments.
+           |Such applications are equivalent to existential types, which are not
+           |supported in Scala 3."""
+
   case class OverloadedOrRecursiveMethodNeedsResultType(cycleSym: Symbol)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
     val kind: String = "Cyclic"
@@ -1464,13 +1472,13 @@ object messages {
     val parameters = if (numParams == 1) "parameter" else "parameters"
     val msg: String = em"Missing type $parameters for $tpe"
     val kind: String = "Type Mismatch"
-    val explanation: String = em"A fully applied type is expected but $tpe takes $numParams $parameters."
+    val explanation: String = em"A fully applied type is expected but $tpe takes $numParams $parameters"
   }
 
   case class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(
     err: Errors)(implicit ctx: Context)
     extends Message(DoesNotConformToBoundID) {
-    val msg: String = em"Type argument ${tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(tpe, bound)}"
+    val msg: String = em"Type argument ${tpe} does not conform to $which bound $bound${err.whyNoMatchStr(tpe, bound)}"
     val kind: String = "Type Mismatch"
     val explanation: String = ""
   }

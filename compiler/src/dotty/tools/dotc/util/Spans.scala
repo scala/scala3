@@ -95,7 +95,7 @@ object Spans {
     def isSourceDerived: Boolean = !isSynthetic
 
     /** Is this a zero-extent span? */
-    def isZeroExtent: Boolean = start == end
+    def isZeroExtent: Boolean = exists && start == end
 
      /** A span where all components are shifted by a given `offset`
      *  relative to this span.

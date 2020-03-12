@@ -70,6 +70,11 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     val kind        = self.kind
     val explanation = self.explanation
   }
+
+  def appendExplanation(suffix: => String): Message = new Message(errorId):
+    val msg         = self.msg
+    val kind        = self.kind
+    val explanation = self.explanation ++ suffix
 }
 
 /** An extended message keeps the contained message from being evaluated, while
