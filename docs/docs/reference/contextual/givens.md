@@ -48,6 +48,17 @@ given [T](using Ord[T]) as Ord[List[T]] { ... }
 If the name of a given is missing, the compiler will synthesize a name from
 the implemented type(s).
 
+**Note** The name synthesized by the compiler is chosen to be readable and reasonably concise. For instance, the two instances above would get the names:
+```scala
+given_Ord_Int
+given_Ord_List_T
+```
+The precise rules for synthesizing names are found in [./relationship-implicit.html]. These rules do not guarantee absence of name conflicts between
+given instances of types that are "too similar". To avoid conflicts one can
+use named instances.
+
+**Note** To ensure robust binary compatibility, publicly available libraries should prefer named instances.
+
 ## Alias Givens
 
 An alias can be used to define a given instance that is equal to some expression. E.g.:

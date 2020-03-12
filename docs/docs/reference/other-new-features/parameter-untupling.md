@@ -14,7 +14,8 @@ xs map {
   case (x, y) => x + y
 }
 ```
-While correct, this is also inconvenient. Dotty now also allows:
+While correct, this is also inconvenient and confusing, since the `case`
+suggests that the pattern match could fail. As a shorter and clearer alternative Dotty now allows
 ```scala
 xs.map {
   (x, y) => x + y
