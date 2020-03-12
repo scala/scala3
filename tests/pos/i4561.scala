@@ -16,5 +16,5 @@ object abc:
   v(x => x + 1)
 
   w[Int](_ + 1)
-  // w[_ + 1)      // error: `+` is not a member of Any
+  // w(_ + 1)      // error: `+` is not a member of Any
   w[Int]("x")(_ + 1)
