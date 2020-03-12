@@ -39,7 +39,7 @@ type LeafElem[X] = X match {
 ```
 Recursive match type definitions can also be given an upper bound, like this:
 ```scala
-type Concat[+Xs <: Tuple, +Ys <: Tuple] <: Tuple = Xs match {
+type Concat[Xs <: Tuple, +Ys <: Tuple] <: Tuple = Xs match {
   case Unit => Ys
   case x *: xs => x *: Concat[xs, Ys]
 }
