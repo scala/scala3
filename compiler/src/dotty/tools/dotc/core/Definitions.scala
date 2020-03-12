@@ -804,7 +804,7 @@ class Definitions {
   @tu lazy val TASTYLongSignatureAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.TASTYLongSignature")
   @tu lazy val TailrecAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.tailrec")
   @tu lazy val ThreadUnsafeAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.threadUnsafe")
-  @tu lazy val TransientParamAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.constructorOnly")
+  @tu lazy val ConstructorOnlyAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.constructorOnly")
   @tu lazy val CompileTimeOnlyAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.compileTimeOnly")
   @tu lazy val SwitchAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.switch")
   @tu lazy val ThrowsAnnot: ClassSymbol = ctx.requiredClass("scala.throws")
