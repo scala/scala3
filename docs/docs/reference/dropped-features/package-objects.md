@@ -31,7 +31,7 @@ The compiler generates synthetic objects that wrap toplevel definitions falling 
 
  - all pattern, value, method, and type definitions,
  - implicit classes and objects,
- - companion objects of opaque types.
+ - companion objects of opaque type aliases.
 
 If a source file `src.scala` contains such toplevel definitions, they will be put in a synthetic object named `src$package`. The wrapping is transparent, however. The definitions in `src` can still be accessed as members of the enclosing package.
 

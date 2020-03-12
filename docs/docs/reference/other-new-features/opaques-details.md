@@ -20,14 +20,14 @@ The general form of a (monomorphic) opaque type alias is
 ```scala
 opaque type T >: L <: U = R
 ```
-where the lower bound `L` and the upper bound `U` may be missing, in which case they are assumed to be `scala.Nothing` and `scala.Any`, respectively. If bounds are given, it is checked that the right hand side `R` conforms to them, i.e. `L <: R` and `R <: U`. F-bounds are not supported for opaque types: `T` is not allowed to appear in `L` or `U`.
+where the lower bound `L` and the upper bound `U` may be missing, in which case they are assumed to be `scala.Nothing` and `scala.Any`, respectively. If bounds are given, it is checked that the right hand side `R` conforms to them, i.e. `L <: R` and `R <: U`. F-bounds are not supported for opaque type aliases: `T` is not allowed to appear in `L` or `U`.
 
 Inside the scope of the alias definition, the alias is transparent: `T` is treated
 as a normal alias of `R`. Outside its scope, the alias is treated as the abstract type
 ```scala
 type T >: L <: U
 ```
-A special case arises if the opaque type is defined in an object. Example:
+A special case arises if the opaque type alias is defined in an object. Example:
 ```
 object o {
   opaque type T = R
@@ -35,7 +35,7 @@ object o {
 ```
 In this case we have inside the object (also for non-opaque types) that `o.T` is equal to
 `T` or its expanded form `o.this.T`. Equality is understood here as mutual subtyping, i.e.
-`o.T <: o.this.T` and `o.this.T <: T`. Furthermore, we have by the rules of opaque types
+`o.T <: o.this.T` and `o.this.T <: T`. Furthermore, we have by the rules of opaque type aliases
 that `o.this.T` equals `R`. The two equalities compose. That is, inside `o`, it is
 also known that `o.T` is equal to `R`. This means the following code type-checks:
 ```scala
@@ -48,7 +48,7 @@ def id(x: o.T): o.T = x
 
 ### Toplevel Opaque Types
 
-An opaque type on the toplevel is transparent in all other toplevel definitions in the sourcefile where it appears, but is opaque in nested
+An opaque type alias on the toplevel is transparent in all other toplevel definitions in the sourcefile where it appears, but is opaque in nested
 objects and classes and in all other source files. Example:
 ```scala
 // in test1.scala
@@ -69,10 +69,10 @@ object test1$package {
   val x: A = "abc"
 }
 object obj {
-  val y: A = "abc"  // error: cannot assign "abc" to opaque type A
+  val y: A = "abc"  // error: cannot assign "abc" to opaque type alias A
 }
 ```
-The opaque type `A` is transparent in its scope, which includes the definition of `x`, but not the definitions of `obj` and `y`.
+The opaque type alias `A` is transparent in its scope, which includes the definition of `x`, but not the definitions of `obj` and `y`.
 
 
 ### Relationship to SIP 35
