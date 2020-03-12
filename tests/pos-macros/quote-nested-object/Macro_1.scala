@@ -10,7 +10,7 @@ object Macro {
     inline def plus(inline n: Int, m: Int): Int = ${ plus('n, 'm) }
 
     def plus(n: Expr[Int], m: Expr[Int]) (using QuoteContext): Expr[Int] =
-      if (n.value == 0) m
+      if (n.unliftOrError == 0) m
       else '{ ${n} + $m }
 
     object Implementation2 {
@@ -18,7 +18,7 @@ object Macro {
       inline def plus(inline n: Int, m: Int): Int = ${ plus('n, 'm) }
 
       def plus(n: Expr[Int], m: Expr[Int]) (using QuoteContext): Expr[Int] =
-        if (n.value == 0) m
+        if (n.unliftOrError == 0) m
         else '{ ${n} + $m }
     }
   }

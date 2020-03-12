@@ -7,7 +7,7 @@ object E {
 
   inline def eval[T](inline x: E[T]): T = ${ impl('x) }
 
-  def impl[T: Type](x: Expr[E[T]]) (using QuoteContext): Expr[T] = x.value.lift
+  def impl[T: Type](x: Expr[E[T]]) (using QuoteContext): Expr[T] = x.unliftOrError.lift
 
   implicit def ev1[T: Type]: Unliftable[E[T]] = new Unliftable {
     def apply(x: Expr[E[T]]) (using QuoteContext): Option[E[T]] = x match {
@@ -18,7 +18,7 @@ object E {
   }
 
   object Value {
-    def unapply[T, U >: T](expr: Expr[T])(using Unliftable[U], QuoteContext): Option[U] = expr.getValue
+    def unapply[T, U >: T](expr: Expr[T])(using Unliftable[U], QuoteContext): Option[U] = expr.unlift
   }
 }
 

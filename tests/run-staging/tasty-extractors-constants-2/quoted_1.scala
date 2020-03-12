@@ -42,9 +42,8 @@ object Macros {
   }
 
   def power(n: Expr[Int], x: Expr[Double])(using QuoteContext): Expr[Double] = {
-    import quoted.matching.Const
-    n match {
-      case Const(n1) => powerCode(n1, x)
+    n.unlift match {
+      case Some(n1) => powerCode(n1, x)
       case _ => '{ dynamicPower($n, $x) }
     }
   }
