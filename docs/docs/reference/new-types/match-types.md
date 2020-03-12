@@ -124,17 +124,21 @@ The third rule states that a match type conforms to its upper bound
 
 Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count as covariant. By the nature of the cases `Ci` this means that occurrences in pattern position are contravarant (since patterns are represented as function type arguments).
 
-## Typing Rules for Match Expressions
+<!-- TODO revise this section, at least `S` has to be invariant according to the current implementation -->
+
+## Future Typing Rules for Match Expressions
+
+<!-- TODO document the final solution and remove `Future` from `Future Typing Rules...` -->
 
 Typing rules for match expressions are tricky. First, they need some new form of GADT matching for value parameters.
 Second, they have to account for the difference between sequential match on the term level and parallel match on the type level. As a running example consider:
 ```scala
-type M[+X] = X match {
+type M[X] = X match {
   case A => 1
   case B => 2
 }
 ```
-We'd like to be able to typecheck
+We would like to be able to typecheck
 ```scala
 def m[X](x: X): M[X] = x match {
   case _: A => 1 // type error
@@ -144,14 +148,14 @@ def m[X](x: X): M[X] = x match {
 Unfortunately, this goes nowhere. Let's try the first case. We have: `x.type <: A` and `x.type <: X`. This tells
 us nothing useful about `X`, so we cannot reduce `M` in order to show that the right hand side of the case is valid.
 
-The following variant is more promising:
+The following variant is more promising but does not compile either:
 ```scala
 def m(x: Any): M[x.type] = x match {
   case _: A => 1
   case _: B => 2
 }
 ```
-To make this work, we'd need a new form of GADT checking: If the scrutinee is a term variable `s`, we can make use of
+To make this work, we would need a new form of GADT checking: If the scrutinee is a term variable `s`, we can make use of
 the fact that `s.type` must conform to the pattern's type and derive a GADT constraint from that. For the first case above,
 this would be the constraint `x.type <: A`. The new aspect here is that we need GADT constraints over singleton types where
 before we just had constraints over type parameters.
