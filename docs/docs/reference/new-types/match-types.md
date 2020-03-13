@@ -126,9 +126,9 @@ Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count
 
 <!-- TODO revise this section, at least `S` has to be invariant according to the current implementation -->
 
-## Future Typing Rules for Match Expressions
+## Typing Rules for Match Expressions (Work in Progress)
 
-<!-- TODO document the final solution and remove `Future` from `Future Typing Rules...` -->
+<!-- TODO document the final solution and remove (Work in Progress) -->
 
 Typing rules for match expressions are tricky. First, they need some new form of GADT matching for value parameters.
 Second, they have to account for the difference between sequential match on the term level and parallel match on the type level. As a running example consider:
