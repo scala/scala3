@@ -39,4 +39,4 @@ The rules in detail are:
 ### Rewrites
 
 The Dotty compiler can rewrite source code from old syntax and new syntax and back.
-When invoked with options `-rewrite -new-syntax` it will rewrite from old to new syntax, dropping parentheses and braces in conditions and enumerators. When invoked with with options `-rewrite -old-syntax` it will rewrite in the reverse direction, inserting parentheses and braces as needed.
+When invoked with options `-rewrite -new-syntax` it will rewrite from old to new syntax, dropping parentheses and braces in conditions and enumerators. When invoked with options `-rewrite -old-syntax` it will rewrite in the reverse direction, inserting parentheses and braces as needed.
