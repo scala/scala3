@@ -33,7 +33,8 @@ The compiler will synthesize an instance of `TupledFunction[F, G]` if:
 
 Examples
 --------
-`TupledFunction` can be used to generalize the `Function1.tupled`, ... `Function22.tupled` methods to functions of any arities ([full example](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-tupled.scala))
+`TupledFunction` can be used to generalize the `Function1.tupled`, ... `Function22.tupled` methods to functions of any arities.
+The following defines `tupled` as [extension method](../contextual/extension-methods.html) ([full example](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-tupled.scala)).
 
 ```scala
 /** Creates a tupled version of this function: instead of N arguments,
