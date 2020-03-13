@@ -17,7 +17,7 @@ Instead, to mark a type as nullable we use a [type union](https://dotty.epfl.ch/
 val x: String|Null = null // ok
 ```
 
-Explicit nulls are enabled via a `-Yexplicit-nulls` flag, so they're an opt-in feature.
+Explicit nulls are enabled via a `-Yexplicit-nulls` flag.
 
 Read on for details.
 
