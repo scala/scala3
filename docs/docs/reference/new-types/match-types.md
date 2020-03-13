@@ -147,6 +147,37 @@ The third rule states that a match type conforms to its upper bound:
 (S match { P1 => T1 ... Pn => Tn } <: B)  <:  B
 ```
 
+## Termination
+
+Match type definitions can be recursive, which means that it's possible to run
+into an infinite loop while reducing match types.
+
+Since reduction is linked to subtyping, we already have a cycle detection mechanism in place.
+So the following will already give a reasonable error message:
+
+```scala
+type L[X] = X match {
+  case Int => L[X]
+}
+def g[X]: L[X] = ???
+```
+
+```scala
+   |  val x: Int = g[Int]
+   |                ^
+   |Recursion limit exceeded.
+   |Maybe there is an illegal cyclic reference?
+   |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
+   |A recurring operation is (inner to outer):
+   |
+   |  subtype LazyRef(Test.L[Int]) <:< Int
+```
+
+Internally, `dotc` detects these cycles by turning selected stackoverflows
+into type errors. If there is a stackoverflow during subtyping, the exception
+will be caught and turned into a compile-time error that indicates a trace of
+the subtype tests that caused the overflow without showing a full stacktrace.
+
 ## Variance Laws for Match Types
 
 Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count as covariant. By the nature of the cases `Ci` this means that occurrences in pattern position are contravarant (since patterns are represented as function type arguments).
