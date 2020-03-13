@@ -28,7 +28,7 @@ The compiler will synthesize an instance of `TupledFunction[F, G]` if:
 * `F` is a function type of arity `N`
 * `G` is a function with a single tuple argument of size `N` and its types are equal to the arguments of `F`
 * The return type of `F` is equal to the return type of `G`
-* `F` and `G` are the same kind of function (both are `(...) => R` or both are `(...) ?=> R`)
+* `F` and `G` are the same sort of function (both are `(...) => R` or both are `(...) ?=> R`)
 * If only one of `F` or `G` is instantiated the second one is inferred.
 
 Examples
