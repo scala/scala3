@@ -282,7 +282,7 @@ object SymDenotations {
      */
     def effectiveName(implicit ctx: Context): Name =
       if (this.is(ModuleClass)) name.stripModuleClassSuffix
-      else name.exclude(AvoidClashName)
+      else name
 
     /** The privateWithin boundary, NoSymbol if no boundary is given.
      */

@@ -1,6 +1,5 @@
-package scala.annotation.internal
-
-import scala.annotation.Annotation
+package scala.annotation
+package internal
 
 /** An annotation to indicate a child class or object of the annotated class.
  *  E.g. if we have
