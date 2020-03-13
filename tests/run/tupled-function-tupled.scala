@@ -16,7 +16,7 @@ object Test {
   }
 
   /** Creates a tupled version of this function: instead of N arguments,
-    *  it accepts a single [[scala.Tuple]] argument.
+    *  it accepts a single [[scala.Tuple]] with N elements as argument.
     *
     *  This is a generalization of [[scala.FunctionN.tupled]] that work on functions of any arity
     *
