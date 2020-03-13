@@ -38,7 +38,7 @@ The following defines `tupled` as [extension method](../contextual/extension-met
 
 ```scala
 /** Creates a tupled version of this function: instead of N arguments,
- *  it accepts a single [[scala.Tuple]] argument.
+ *  it accepts a single [[scala.Tuple]]N argument.
  *
  *  @tparam F the function type
  *  @tparam Args the tuple type with the same types as the function arguments of F
@@ -47,11 +47,11 @@ The following defines `tupled` as [extension method](../contextual/extension-met
 def [F, Args <: Tuple, R](f: F).tupled(using tf: TupledFunction[F, Args => R]): Args => R = tf.tupled(f)
 ```
 
-`TupledFunction` can be used to generalize the `Function.untupled` methods to functions of any arities ([full example](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-untupled.scala))
+`TupledFunction` can be used to generalize the `Function.untupled` to a function of any arities ([full example](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-untupled.scala))
 
 ```scala
-/** Creates an untupled version of this function: instead of single [[scala.Tuple]] argument,
- *  it accepts a N arguments.
+/** Creates an untupled version of this function: instead of a single [[scala.Tuple]]N argument,
+ *  it accepts N arguments.
  *
  *  This is a generalization of [[scala.Function.untupled]] that work on functions of any arity
  *
@@ -65,7 +65,7 @@ def [F, Args <: Tuple, R](f: Args => R).untupled(using tf: TupledFunction[F, Arg
 `TupledFunction` can also be used to generalize the [`Tuple1.compose`](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-compose.scala) and [`Tuple1.andThen`](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-andThen.scala) methods to compose functions of larger arities and with functions that return tuples.
 
 ```scala
-/** Composes two instances of TupledFunctions in a new TupledFunctions, with this function applied last
+/** Composes two instances of TupledFunction into a new TupledFunction, with this function applied last.
  *
  *  @tparam F a function type
  *  @tparam G a function type
