@@ -4,11 +4,10 @@ package staging
 import scala.annotation.implicitNotFound
 
 @implicitNotFound("Could not find implicit scala.quoted.staging.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `given scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)`\n\n")
-trait Toolbox {
+trait Toolbox:
   def run[T](expr: QuoteContext => Expr[T]): T
-}
 
-object Toolbox {
+object Toolbox:
 
   /** Create a new instance of the toolbox using the the classloader of the application.
    *
@@ -22,28 +21,30 @@ object Toolbox {
    * @param settings toolbox settings
    * @return A new instance of the toolbox
    */
-  def make(appClassloader: ClassLoader)(implicit settings: Settings): Toolbox = new Toolbox {
+  def make(appClassloader: ClassLoader)(implicit settings: Settings): Toolbox =
+    new Toolbox:
 
-    private[this] val driver: QuoteDriver = new QuoteDriver(appClassloader)
+      private[this] val driver: QuoteDriver = new QuoteDriver(appClassloader)
 
-    private[this] var running = false
+      private[this] var running = false
 
-    def run[T](exprBuilder: QuoteContext => Expr[T]): T = synchronized {
-      try {
-        if (running) // detected nested run
-          throw new ScopeException("Cannot call `scala.quoted.staging.run(...)` within a another `run(...)`")
-        running = true
-        driver.run(exprBuilder, settings)
-      } finally {
-        running = false
+      def run[T](exprBuilder: QuoteContext => Expr[T]): T = synchronized {
+        try
+          if (running) // detected nested run
+            throw new ScopeException("Cannot call `scala.quoted.staging.run(...)` within a another `run(...)`")
+          running = true
+          driver.run(exprBuilder, settings)
+        finally
+          running = false
+        end try
       }
-    }
-  }
+
+    end new
 
   /** Setting of the Toolbox instance. */
   case class Settings private (outDir: Option[String], showRawTree: Boolean, compilerArgs: List[String])
 
-  object Settings {
+  object Settings:
 
     implicit def default: Settings = make()
 
@@ -58,6 +59,7 @@ object Toolbox {
       compilerArgs: List[String] = Nil
     ): Settings =
       new Settings(outDir, showRawTree, compilerArgs)
-  }
 
-}
+  end Settings
+
+end Toolbox
