@@ -38,7 +38,7 @@ The following defines `tupled` as [extension method](../contextual/extension-met
 
 ```scala
 /** Creates a tupled version of this function: instead of N arguments,
- *  it accepts a single [[scala.Tuple]]N argument.
+ *  it accepts a single [[scala.Tuple]] with N elements as argument.
  *
  *  @tparam F the function type
  *  @tparam Args the tuple type with the same types as the function arguments of F
@@ -50,7 +50,7 @@ def [F, Args <: Tuple, R](f: F).tupled(using tf: TupledFunction[F, Args => R]): 
 `TupledFunction` can be used to generalize the `Function.untupled` to a function of any arities ([full example](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-untupled.scala))
 
 ```scala
-/** Creates an untupled version of this function: instead of a single [[scala.Tuple]]N argument,
+/** Creates an untupled version of this function: instead of a single argument of type [[scala.Tuple]] with N elements,
  *  it accepts N arguments.
  *
  *  This is a generalization of [[scala.Function.untupled]] that work on functions of any arity
