@@ -4,9 +4,10 @@ title: Optional Braces
 ---
 
 As an experimental feature, Scala 3 enforces some rules on indentation and allows
-some occurrences of braces `{...}` to be optional.
+some occurrences of braces `{...}` to be optional. 
+It can be turned off with the compiler flag `-noindent`.
 
- - First, some badly indented programs are ruled out, which means they are flagged with warnings.
+ - First, some badly indented programs are flagged with warnings.
  - Second, some occurrences of braces `{...}` are made optional. Generally, the rule
    is that adding a pair of optional braces will not change the meaning of a well-indented program.
 
