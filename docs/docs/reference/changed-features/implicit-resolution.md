@@ -99,9 +99,9 @@ affect implicits on the language level.
     buzz(1)   // error: ambiguous
     ```
  7. The rule for picking a _most specific_ alternative among a set of overloaded or implicit
-    alternatives is refined to take inferable parameters into account. All else
-    being equal, an alternative that takes some implicit parameters is taken to be less specific
-    than an alternative that takes none. If both alternatives take implicit parameters, we try
+    alternatives is refined to take context parameters into account. All else
+    being equal, an alternative that takes some context parameters is taken to be less specific
+    than an alternative that takes none. If both alternatives take context parameters, we try
     to choose between them as if they were methods with regular parameters.
     The following paragraph in the SLS is affected by this change:
 
