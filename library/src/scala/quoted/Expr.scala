@@ -39,7 +39,7 @@ class Expr[+T] private[scala] {
 
   /** Return the unlifted value of this expression.
    *
-   *  Emits an error error and throws if the expression does not contain a value or contains side effects.
+   *  Emits an error and throws if the expression does not contain a value or contains side effects.
    *  Otherwise returns the value.
    */
   final def unliftOrError[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): U =
