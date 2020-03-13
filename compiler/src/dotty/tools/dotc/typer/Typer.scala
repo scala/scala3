@@ -1250,6 +1250,24 @@ class Typer extends Namer
             if (bounds != null) sym.info = bounds
           }
           b
+        case t: UnApply if t.symbol.is(Inline) =>
+          // An inline unapply `P.unapply` in a plattern `P(x1,x2,...)` is transformed into
+          // `{ class $anon { def unapply(x1: T1, x2: T2, ...): R = P.unapply(x1, x2, ...) }; new $anon }.unapply`
+          // and the call `P.unapply(x1, x2, ...)` is inlined.
+          val sym = t.symbol
+          val cls = ctx.newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), coord = sym.coord)
+          val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil, coord = sym.coord).entered
+          val unappplySym = ctx.newSymbol(cls, sym.name.toTermName, Synthetic | Method, sym.info, coord = sym.coord).entered
+          val unapply = polyDefDef(unappplySym, targs => argss =>
+            Inliner.inlineCall(ref(sym).appliedToTypes(targs).appliedToArgss(argss).withSpan(t.span))
+          )
+          val cdef = ClassDef(cls, DefDef(constr), List(unapply))
+          val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))
+          val targs = t.fun match
+            case TypeApply(_, targs) => targs
+            case _ => Nil
+          val newFun = newUnapply.select(unappplySym).appliedToTypeTrees(targs).withSpan(t.span)
+          cpy.UnApply(t)(newFun, t.implicits, t.patterns)
         case t => t
       }
   }
