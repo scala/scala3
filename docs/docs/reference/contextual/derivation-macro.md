@@ -9,7 +9,7 @@ implement a type class `derived` method using macros only. We follow the same
 example of deriving `Eq` instances and for simplicity we support a `Product`
 type e.g., a case class `Person`. The low-level method we will use to implement
 the `derived` method exploits quotes, splices of both expressions and types and
-the `scala.quoted.matching.summonExpr` method which is the equivalent of
+the `scala.quoted.Expr.summon` method which is the equivalent of
 `summonFrom`. The former is suitable for use in a quote context, used within
 macros.
 
@@ -44,7 +44,7 @@ from the signature. The body of the `derived` method is shown below:
 given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
   import qctx.tasty._
 
-  val ev: Expr[Mirror.Of[T]] = summonExpr(using '[Mirror.Of[T]]).get
+  val ev: Expr[Mirror.Of[T]] = Expr.summon(using '[Mirror.Of[T]]).get
 
   ev match {
     case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = $elementTypes }} =>
@@ -70,7 +70,7 @@ given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
 
 Note, that in the `inline` case we can merely write
 `summonAll[m.MirroredElemTypes]` inside the inline method but here, since
-`summonExpr` is required, we can extract the element types in a macro fashion.
+`Expr.summon` is required, we can extract the element types in a macro fashion.
 Being inside a macro, our first reaction would be to write the code below. Since
 the path inside the type argument is not stable this cannot be used:
 
@@ -178,7 +178,7 @@ object Eq {
   given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
     import qctx.tasty._
 
-    val ev: Expr[Mirror.Of[T]] = summonExpr(using '[Mirror.Of[T]]).get
+    val ev: Expr[Mirror.Of[T]] = Expr.summon(using '[Mirror.Of[T]]).get
 
     ev match {
       case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = $elementTypes }} =>
