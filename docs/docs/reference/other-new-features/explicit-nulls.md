@@ -23,7 +23,7 @@ Read on for details.
 
 ## New Type Hierarchy
 
-When explicit nulls are enabled, the type hierarchy changes so that `Null` is subtype only of
+When explicit nulls are enabled, the type hierarchy changes so that `Null` is only a subtype of
 `Any`, as opposed to every reference type.
 
 This is the new type hierarchy:
@@ -33,7 +33,7 @@ After erasure, `Null` remains a subtype of all reference types (as forced by the
 
 ## Unsoundness
 
-The new type system is unsound with respect to `null`. This means there are still instances where an expressions has a non-nullable type like `String`, but its value is `null`.
+The new type system is unsound with respect to `null`. This means there are still instances where an expression has a non-nullable type like `String`, but its value is actually `null`.
 
 The unsoundness happens because uninitialized fields in a class start out as `null`:
 ```scala
