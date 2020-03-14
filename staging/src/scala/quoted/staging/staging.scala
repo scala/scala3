@@ -1,6 +1,6 @@
 package scala.quoted
 
-package object staging {
+package object staging:
 
   /** Evaluate the contents of this expression and return the result.
    *  It provides a new QuoteContext that is only valid within the scope the argument.
@@ -32,7 +32,7 @@ package object staging {
    *  This method should not be called in a context where there is already has a `QuoteContext`
    *  such as within a `run` or a `withQuoteContext`.
    */
-  def withQuoteContext[T](thunk: QuoteContext ?=> T)(using toolbox: Toolbox): T = {
+  def withQuoteContext[T](thunk: QuoteContext ?=> T)(using toolbox: Toolbox): T =
     val noResult = new Object
     var result: T = noResult.asInstanceOf[T]
     def dummyRun(using QuoteContext): Expr[Unit] = {
@@ -42,6 +42,6 @@ package object staging {
     toolbox.run(dummyRun(using _))
     assert(result != noResult) // toolbox.run should have thrown an exception
     result
-  }
+  end withQuoteContext
 
-}
+end staging
