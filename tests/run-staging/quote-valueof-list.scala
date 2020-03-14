@@ -27,7 +27,7 @@ object Test {
     implicit def UnliftableList[T: Unliftable: Type]: Unliftable[List[T]] = new {
       def apply(xs: Expr[List[T]])(using QuoteContext): Option[List[T]] = (xs: Expr[Any]) match {
         case '{ ($xs1: List[T]).::($x) } =>
-          for { head <- x.getValue; tail <- xs1.getValue }
+          for { head <- x.unlift; tail <- xs1.unlift }
           yield head :: tail
         case '{ Nil } => Some(Nil)
         case _ => None
@@ -36,25 +36,25 @@ object Test {
 
     implicit def UnliftableOption[T: Unliftable: Type]: Unliftable[Option[T]] = new {
       def apply(expr: Expr[Option[T]])(using QuoteContext): Option[Option[T]] = expr match {
-        case '{ Some[T]($x) } => for (v <- x.getValue) yield Some(v)
+        case '{ Some[T]($x) } => for (v <- x.unlift) yield Some(v)
         case '{ None } => Some(None)
         case _ => None
       }
     }
 
-    println(('{0}).getValue)
-    println(('{1}).getValue)
-    println(('{ println(); 1 }).getValue)
+    println(('{0}).unlift)
+    println(('{1}).unlift)
+    println(('{ println(); 1 }).unlift)
 
-    println(('{true}).getValue)
-    println(('{false}).getValue)
-    println(('{ println(); false }).getValue)
+    println(('{true}).unlift)
+    println(('{false}).unlift)
+    println(('{ println(); false }).unlift)
 
-    println(('{ Nil }: Expr[List[String]]).getValue)
-    println(('{ "a" :: "b" :: "c" :: Nil }: Expr[List[String]]).getValue)
+    println(('{ Nil }: Expr[List[String]]).unlift)
+    println(('{ "a" :: "b" :: "c" :: Nil }: Expr[List[String]]).unlift)
 
-    println(('{ None }: Expr[Option[Int]]).getValue)
-    println(('{ Some("abc") }: Expr[Option[String]]).getValue)
+    println(('{ None }: Expr[Option[Int]]).unlift)
+    println(('{ Some("abc") }: Expr[Option[String]]).unlift)
 
   }
 }

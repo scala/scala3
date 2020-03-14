@@ -34,22 +34,22 @@ class Expr[+T] private[scala] {
    *  Emits an error error and throws if the expression does not contain a value or contains side effects.
    *  Otherwise returns the value.
    */
-  @deprecated("Use Expr.unlifted", "0.23")
-  final def value[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): U = unlifted
+  @deprecated("Use Expr.unliftOrError", "0.23")
+  final def value[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): U = unliftOrError
 
   /** Return the unlifted value of this expression.
    *
-   *  Emits an error error and throws if the expression does not contain a value or contains side effects.
+   *  Emits an error and throws if the expression does not contain a value or contains side effects.
    *  Otherwise returns the value.
    */
-  final def unlifted[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): U =
+  final def unliftOrError[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): U =
     unlift(this).getOrElse(qctx.throwError(s"Expected a known value. \n\nThe value of: $show\ncould not be unlifted using $unlift", this))
 
   /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
    *  It does the equivalent of
    *  ```
    *  this match
-   *    case '{...} => true // where the contens of the pattern are the contents of `that`
+   *    case '{...} => true // where the contents of the pattern are the contents of `that`
    *    case _ => false
    *  ```
    */

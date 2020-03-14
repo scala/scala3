@@ -2,7 +2,7 @@ import scala.quoted._
 
 object PowerMacro {
   def powerCode(x: Expr[Double], n: Expr[Long]) (using QuoteContext): Expr[Double] =
-    powerCode(x, n.value)
+    powerCode(x, n.unliftOrError)
 
   def powerCode(x: Expr[Double], n: Long) (using QuoteContext): Expr[Double] =
     if (n == 0) '{1.0}

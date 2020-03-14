@@ -5,6 +5,6 @@ object api {
     ${ stripImpl('x) }
 
   private def stripImpl(x: Expr[String])(using qctx: QuoteContext): Expr[String] =
-    Expr(x.value.stripMargin)
+    Expr(x.unliftOrError.stripMargin)
 
 }
