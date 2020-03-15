@@ -50,7 +50,7 @@ final implicit def given_Context = ctx
 Anonymous given instances get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `ListOrd` givens above were left out, the following names would be synthesized instead:
 ```scala
 given given_Ord_Int as Ord[Int] { ... }
-given given_Ord_List_T as Ord[List[T]] { ... }
+given given_Ord_List_T[T](using ord: Ord[T]) as Ord[List[T]] { ... }
 ```
 The synthesized type names are formed from
 
