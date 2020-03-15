@@ -33,7 +33,7 @@ private[quoted] object Matcher {
       if (hasTypeSplices) {
         val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
         given Context = ctx
-        val matchings = scrutineeTerm.underlyingArgument =?= patternTerm.underlyingArgument
+        val matchings = scrutineeTerm =?= patternTerm
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
@@ -44,7 +44,7 @@ private[quoted] object Matcher {
         }
       }
       else {
-        scrutineeTerm.underlyingArgument =?= patternTerm.underlyingArgument
+        scrutineeTerm =?= patternTerm
       }
     }
 
@@ -285,6 +285,9 @@ private[quoted] object Matcher {
             tpt =?= pattern
           case (_, Annotated(tpt, _)) =>
             scrutinee =?= tpt
+
+          case (NamedArg(name1, arg1), NamedArg(name2, arg2)) if name1 == name2 =>
+            arg1 =?= arg2
 
           // No Match
           case _ =>
