@@ -1,0 +1,2 @@
+scala> def foo[F[_],A](f:F[A]):F[A] = f
+def foo[F[_$1], A](f: F[A]): F[A]
