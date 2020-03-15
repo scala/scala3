@@ -1,7 +1,7 @@
 
 import scala.quoted._
 import scala.language.implicitConversions
-import scala.quoted.autolift.{given _}
+import scala.quoted.autolift
 
 object Macro {
 
