@@ -671,7 +671,7 @@ optimize {
 
 ```scala
 def sum(args: Int*): Int = args.sum
-inline def optimize(arg: Int): Int = ${ optimizeExpr('arg) }
+inline def optimize(inline arg: Int): Int = ${ optimizeExpr('arg) }
 private def optimizeExpr(body: Expr[Int])(using QuoteContext): Expr[Int] = body match {
   // Match a call to sum without any arguments
   case '{ sum() } => Expr(0)
@@ -717,7 +717,7 @@ This might be used to then perform an implicit search as in:
 
 
 ```scala
-inline def (sc: StringContext).showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
+inline def (inline sc: StringContext).showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
   argsExpr match {
