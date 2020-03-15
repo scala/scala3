@@ -329,7 +329,7 @@ That is, the `showExpr` method converts its `Expr` argument to a string (`code`)
 the result back to an `Expr[String]` using `Expr.apply`.
 
 **Note**: Lifting `String` to `Expr[String]` using `Expr(code)` can be omitted by importing an implicit
-conversion with `import scala.quoted.autolift.given`. The programmer is able to
+conversion with `import scala.quoted.autolift`. The programmer is able to
 declutter slightly the code at the cost of readable _phase distinction_ between
 stages.
 

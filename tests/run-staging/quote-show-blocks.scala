@@ -1,6 +1,6 @@
 import scala.quoted._
 import scala.quoted.staging._
-import scala.quoted.autolift.{given _}
+import scala.quoted.autolift
 
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)

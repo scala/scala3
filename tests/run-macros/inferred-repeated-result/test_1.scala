@@ -1,6 +1,6 @@
 object Macros {
   import scala.quoted._
-  import scala.quoted.autolift.{given _}
+  import scala.quoted.autolift
 
   inline def go[T](inline t: T) = ${ impl('t) }
   def impl[T](expr: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {

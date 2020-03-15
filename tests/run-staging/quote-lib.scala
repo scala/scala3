@@ -1,7 +1,7 @@
 
 import scala.quoted._
 import scala.quoted.staging._
-import scala.quoted.autolift.{given _}
+import scala.quoted.autolift
 
 import liftable.Units._
 import liftable.Lets._

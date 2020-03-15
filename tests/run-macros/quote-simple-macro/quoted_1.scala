@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift.{given _}
+import scala.quoted.autolift
 
 object Macros {
   inline def foo(inline i: Int, dummy: Int, j: Int): Int = ${ bar('i, 'j) }
