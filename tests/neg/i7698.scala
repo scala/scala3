@@ -11,4 +11,4 @@ def showInterpolatorImpl(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(usin
     case '[ Int ] => // error
   ???
 
-inline def (sc: => StringContext) show (args: Any*): String = ${ showInterpolatorImpl('sc, 'args) }
+inline def (inline sc: StringContext) show (args: Any*): String = ${ showInterpolatorImpl('sc, 'args) }

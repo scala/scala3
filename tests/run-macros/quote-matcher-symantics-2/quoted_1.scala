@@ -4,11 +4,11 @@ import scala.quoted.unsafe._
 
 object Macros {
 
-  inline def liftString(a: => DSL): String = ${impl(StringNum, 'a)}
+  inline def liftString(inline a: DSL): String = ${impl(StringNum, 'a)}
 
-  inline def liftCompute(a: => DSL): Int = ${impl(ComputeNum, 'a)}
+  inline def liftCompute(inline a: DSL): Int = ${impl(ComputeNum, 'a)}
 
-  inline def liftAST(a: => DSL): ASTNum = ${impl(ASTNum, 'a)}
+  inline def liftAST(inline a: DSL): ASTNum = ${impl(ASTNum, 'a)}
 
   private def impl[T: Type](sym: Symantics[T], a: Expr[DSL])(using qctx: QuoteContext): Expr[T] = {
 

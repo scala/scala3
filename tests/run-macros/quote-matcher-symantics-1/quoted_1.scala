@@ -4,7 +4,7 @@ import scala.quoted._
 
 object Macros {
 
-  inline def lift[T](sym: Symantics[T])(a: => DSL): T = ${impl[T]('sym, 'a)}
+  inline def lift[T](sym: Symantics[T])(inline a: DSL): T = ${impl[T]('sym, 'a)}
 
   private def impl[T: Type](sym: Expr[Symantics[T]], a: Expr[DSL])(using qctx: QuoteContext): Expr[T] = {
 
