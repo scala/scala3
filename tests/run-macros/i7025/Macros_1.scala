@@ -4,7 +4,7 @@ object Macros {
   inline def debug: Unit = ${Macros.debugImpl}
 
   def debugImpl(using qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty.{given _, _}
+    import qctx.tasty._
 
     def nearestEnclosingDef(owner: Symbol): Symbol =
       if owner.isClassDef then owner

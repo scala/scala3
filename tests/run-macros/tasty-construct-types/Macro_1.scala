@@ -12,7 +12,7 @@ object Macros {
   class TestAnnotation extends scala.annotation.Annotation
 
   def theTestBlockImpl(using qctx : QuoteContext) : Expr[Unit] = {
-    import qctx.tasty.{_,given _}
+    import qctx.tasty._
 
     val x1T = ConstantType(Constant(1))
     val x2T = OrType(ConstantType(Constant(1)), ConstantType(Constant(2)))
