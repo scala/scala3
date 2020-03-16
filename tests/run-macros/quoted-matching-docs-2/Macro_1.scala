@@ -3,8 +3,8 @@ import scala.quoted._
 
 def sum(args: Int*): Int = args.sum
 
-inline def showOptimize(arg: Int): String = ${ showOptimizeExpr('arg) }
-inline def optimize(arg: Int): Int = ${ optimizeExpr('arg) }
+inline def showOptimize(inline arg: Int): String = ${ showOptimizeExpr('arg) }
+inline def optimize(inline arg: Int): Int = ${ optimizeExpr('arg) }
 
 private def showOptimizeExpr(body: Expr[Int])(using QuoteContext): Expr[String] =
   Expr(optimizeExpr(body).show)

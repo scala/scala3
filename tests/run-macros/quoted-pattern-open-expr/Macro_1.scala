@@ -1,6 +1,6 @@
 import scala.quoted._
 
-inline def test(e: Int): String = ${testExpr('e)}
+inline def test(inline e: Int): String = ${testExpr('e)}
 
 private def testExpr(e: Expr[Int])(using QuoteContext): Expr[String] = {
   e match {

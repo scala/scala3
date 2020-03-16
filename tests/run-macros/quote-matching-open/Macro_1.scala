@@ -2,7 +2,7 @@ import scala.quoted._
 import scala.quoted.unsafe._
 object Macro {
 
-  inline def openTest(x: => Any): Any = ${ Macro.impl('x) }
+  inline def openTest(inline x: Any): Any = ${ Macro.impl('x) }
 
   def impl(x: Expr[Any])(using QuoteContext): Expr[Any] = {
     x match {

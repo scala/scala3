@@ -8,7 +8,7 @@ object Macro {
 
   trait SelectableRecordCompanion[T] {
     protected def fromUntypedTuple(elems: (String, Any)*): T
-    inline def fromTuple[T <: Tuple](s: T) <: Any = ${ fromTupleImpl('s, '{ (x: Array[(String, Any)]) => fromUntypedTuple(x: _*) } ) }
+    inline def fromTuple[T <: Tuple](inline s: T) <: Any = ${ fromTupleImpl('s, '{ (x: Array[(String, Any)]) => fromUntypedTuple(x: _*) } ) }
   }
 
   private def toTupleImpl(s: Expr[Selectable])(using qctx:QuoteContext) : Expr[Tuple] = {

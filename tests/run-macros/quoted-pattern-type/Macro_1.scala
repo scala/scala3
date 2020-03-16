@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Lib {
 
-  inline def foo[T](arg: => T): T = ${ impl('arg) }
+  inline def foo[T](inline arg: T): T = ${ impl('arg) }
 
   private def impl[T: Type](arg: Expr[T])(using QuoteContext): Expr[T] = {
     arg match {
