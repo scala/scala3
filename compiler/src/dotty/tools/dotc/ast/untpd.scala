@@ -4,6 +4,7 @@ package ast
 
 import core._
 import Types._, Contexts._, Constants._, Names._, Flags._
+import dotty.tools.dotc.typer.ProtoTypes
 import Symbols._, StdNames._, Trees._
 import util.{Property, SourceFile, NoSource}
 import util.Spans.Span
@@ -756,4 +757,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }
     acc(false, tree)
   }
+
+  protected def FunProto(args: List[Tree], resType: Type)(using ctx: Context) =
+    ProtoTypes.FunProto(args, resType)(ctx.typer, isUsingApply = false)
 }

@@ -142,8 +142,8 @@ object Annotations {
     def deferred(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
       deferred(atp.classSymbol)(New(atp, args))
 
-    def deferredResolve(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
-      deferred(atp.classSymbol)(resolveConstructor(atp, args))
+    def deferredResolve(atp: Type, args: List[ast.untpd.Tree])(implicit ctx: Context): Annotation =
+      deferred(atp.classSymbol)(ast.untpd.resolveConstructor(atp, args))
 
     /** Extractor for child annotations */
     object Child {

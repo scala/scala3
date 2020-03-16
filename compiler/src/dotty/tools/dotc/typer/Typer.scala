@@ -2295,7 +2295,8 @@ class Typer extends Namer
     trace(i"typing $tree, pt = $pt", typr, show = true) {
       record(s"typed $getClass")
       record("typed total")
-      assertPositioned(tree)
+      if (ctx.phase.isTyper)
+        assertPositioned(tree)
       if (tree.source != ctx.source && tree.source.exists)
         typed(tree, pt, locked)(ctx.withSource(tree.source))
       else

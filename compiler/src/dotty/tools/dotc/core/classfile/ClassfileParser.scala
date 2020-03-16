@@ -8,6 +8,7 @@ import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Spans._
 import NameKinds.DefaultGetterName
+import ast.{ tpd, untpd }
 import ast.tpd._, util._
 import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, IOException }
 
@@ -480,18 +481,30 @@ class ClassfileParser(
   }
   // sigToType
 
-  def parseAnnotArg(skip: Boolean = false)(implicit ctx: Context): Option[Tree] = {
+  def parseAnnotArg(skip: Boolean = false)(implicit ctx: Context): Option[untpd.Tree] = {
+
+    // If we encounter an empty array literal, we need the type of the corresponding
+    // parameter to properly type it, but that would require forcing the annotation
+    // early. To avoid this we store annotation arguments as untyped trees
+    import untpd._
+
+    // ... but constants need to actually be typed with a ConstantType, so we
+    // can't rely on type inference, and type them early.
+    def lit(c: Constant): Tree = TypedSplice(ast.tpd.Literal(c))
+
     val tag = in.nextByte.toChar
     val index = in.nextChar
+
+
     tag match {
       case STRING_TAG =>
-        if (skip) None else Some(Literal(Constant(pool.getName(index).toString)))
+        if (skip) None else Some(lit(Constant(pool.getName(index).toString)))
       case BOOL_TAG | BYTE_TAG | CHAR_TAG | SHORT_TAG =>
-        if (skip) None else Some(Literal(pool.getConstant(index, tag)))
+        if (skip) None else Some(lit(pool.getConstant(index, tag)))
       case INT_TAG | LONG_TAG | FLOAT_TAG | DOUBLE_TAG =>
-        if (skip) None else Some(Literal(pool.getConstant(index)))
+        if (skip) None else Some(lit(pool.getConstant(index)))
       case CLASS_TAG =>
-        if (skip) None else Some(Literal(Constant(pool.getType(index))))
+        if (skip) None else Some(lit(Constant(pool.getType(index))))
       case ENUM_TAG =>
         val t = pool.getType(index)
         val n = pool.getName(in.nextChar)
@@ -500,7 +513,7 @@ class ClassfileParser(
         if (skip)
           None
         else if (s != NoSymbol)
-          Some(Literal(Constant(s)))
+          Some(lit(Constant(s)))
         else {
           ctx.warning(s"""While parsing annotations in ${in.file}, could not find $n in enum $module.\nThis is likely due to an implementation restriction: an annotation argument cannot refer to a member of the annotated class (SI-7014).""")
           None
@@ -517,10 +530,7 @@ class ClassfileParser(
         else if (skip) None
         else {
           val elems = arr.toList
-          val elemType =
-            if (elems.isEmpty) WildcardType // No way to figure out the element type without forcing the annotation constructor
-            else elems.head.tpe.widen
-          Some(JavaSeqLiteral(elems, TypeTree(elemType)))
+          Some(untpd.JavaSeqLiteral(elems, TypeTree()))
         }
       case ANNOTATION_TAG =>
         parseAnnotation(index, skip) map (_.tree)
@@ -533,12 +543,12 @@ class ClassfileParser(
   def parseAnnotation(attrNameIndex: Char, skip: Boolean = false)(implicit ctx: Context): Option[Annotation] = try {
     val attrType = pool.getType(attrNameIndex)
     val nargs = in.nextChar
-    val argbuf = new ListBuffer[Tree]
+    val argbuf = new ListBuffer[untpd.Tree]
     var hasError = false
     for (i <- 0 until nargs) {
       val name = pool.getName(in.nextChar)
       parseAnnotArg(skip) match {
-        case Some(arg) => argbuf += NamedArg(name, arg)
+        case Some(arg) => argbuf += untpd.NamedArg(name, arg)
         case None => hasError = !skip
       }
     }

@@ -287,6 +287,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
       val tpdTree = super.typed(tree, pt)
+      Typer.assertPositioned(tree)
       if (ctx.erasedTypes)
         // Can't be checked in earlier phases since `checkValue` is only run in
         // Erasure (because running it in Typer would force too much)

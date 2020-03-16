@@ -860,14 +860,9 @@ trait Applications extends Compatibility {
       def simpleApply(fun1: Tree, proto: FunProto)(implicit ctx: Context): Tree =
         methPart(fun1).tpe match {
           case funRef: TermRef =>
-            val app =
-              if (proto.allArgTypesAreCurrent())
-                new ApplyToTyped(tree, fun1, funRef, proto.typedArgs(), pt)
-              else
-                new ApplyToUntyped(tree, fun1, funRef, proto, pt)(
-                  using fun1.nullableInArgContext(using argCtx(tree)))
+            val app = ApplyTo(tree, fun1, funRef, proto, pt)
             convertNewGenericArray(
-              postProcessByNameArgs(funRef, app.result).computeNullable())
+              postProcessByNameArgs(funRef, app).computeNullable())
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }
@@ -990,6 +985,15 @@ trait Applications extends Compatibility {
         app1
     }
   }
+
+  /** Typecheck an Apply node with a typed function and possibly-typed arguments coming from `proto` */
+  def ApplyTo(app: untpd.Apply, fun: tpd.Tree, methRef: TermRef, proto: FunProto, resultType: Type)(using ctx: Context): tpd.Tree =
+    val typer = ctx.typer
+    if (proto.allArgTypesAreCurrent())
+      typer.ApplyToTyped(app, fun, methRef, proto.typedArgs(), resultType).result
+    else
+      typer.ApplyToUntyped(app, fun, methRef, proto, resultType)(
+        using fun.nullableInArgContext(using argCtx(app))).result
 
   /** Overridden in ReTyper to handle primitive operations that can be generated after erasure */
   protected def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(implicit ctx: Context): Tree =
