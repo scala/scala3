@@ -1,0 +1,14 @@
+scala> class T extends Eql
+1 | class T extends Eql
+  |       ^
+  |       Cannot extend sealed trait Eql in a different source file
+1 | class T extends Eql
+  |                 ^^^
+  |                 Missing type parameter for Eql
+scala> class T extends Eql
+1 | class T extends Eql
+  |       ^
+  |       Cannot extend sealed trait Eql in a different source file
+1 | class T extends Eql
+  |                 ^^^
+  |                 Missing type parameter for Eql

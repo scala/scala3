@@ -117,7 +117,7 @@ trait SymDenotations { this: Context =>
   /** Possibly accept stale symbol with warning if in IDE */
   def acceptStale(denot: SingleDenotation): Boolean =
     staleOK && {
-      ctx.echo(denot.staleSymbolMsg)
+      ctx.debugwarn(denot.staleSymbolMsg)
       true
     }
 }
