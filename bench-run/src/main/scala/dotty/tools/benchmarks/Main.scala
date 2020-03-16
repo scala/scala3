@@ -42,7 +42,6 @@ object Bench {
       .measurementTime(TimeValue.milliseconds(500))
       .forks(forks)
       .include(args1(0))
-      .resultFormat(ResultFormatType.CSV)
 
     if (args1.length > 1 && args1(1) != "--") {
       for ((param, values) <- paramsFromFile("inputs/" ++ args1(1)))
@@ -50,7 +49,7 @@ object Bench {
     }
 
     if (args1.length > 2) {
-      builder = builder.result(args1(2))
+      builder = builder.resultFormat(ResultFormatType.CSV).result(args1(2))
     }
 
     val runner = new Runner(builder.build)
