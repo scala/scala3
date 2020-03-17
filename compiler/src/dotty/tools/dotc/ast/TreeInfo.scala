@@ -191,13 +191,9 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case arg => arg.typeOpt.widen.isRepeatedParam
   }
 
-  /** If this tree has type parameters, those.  Otherwise Nil.
-  def typeParameters(tree: Tree): List[TypeDef] = tree match {
-    case DefDef(_, _, tparams, _, _, _) => tparams
-    case ClassDef(_, _, tparams, _)     => tparams
-    case TypeDef(_, _, tparams, _)      => tparams
-    case _                              => Nil
-  }*/
+  /** All type and value parameter symbols of this DefDef */
+  def allParamSyms(ddef: DefDef)(using Context): List[Symbol] =
+    (ddef.tparams ::: ddef.vparamss.flatten).map(_.symbol)
 
   /** Does this argument list end with an argument of the form <expr> : _* ? */
   def isWildcardStarArgList(trees: List[Tree])(implicit ctx: Context): Boolean =
