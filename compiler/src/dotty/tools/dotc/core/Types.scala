@@ -2406,6 +2406,33 @@ object Types {
     type ThisType = TypeRef
     type ThisName = TypeName
 
+    private var myCanDropAliasPeriod: Period = Nowhere
+    private var myCanDropAlias: Boolean = _
+
+    /** Given an alias type `type A = B` where a recursive comparison with `B` yields
+     *  `false`, can we conclude that the comparison is definitely false?
+     *  This could not be the case if `A` overrides some abstract type. Example:
+     *
+     *    class C { type A }
+     *    class D { type A = Int }
+     *    val c: C
+     *    val d: D & c.type
+     *    c.A <:< d.A   ?
+     *
+     *  The test should return true, by performing the logic in the bottom half of
+     *  firstTry (where we check the names of types). But just following the alias
+     *  from d.A to Int reduces the problem to `c.A <:< Int`, which returns `false`.
+     *  So we can't drop the alias here, we need to do the backtracking to the name-
+     *  based tests.
+     */
+    def canDropAlias(using ctx: Context) =
+      if myCanDropAliasPeriod != ctx.period then
+        myCanDropAlias =
+          !symbol.canMatchInheritedSymbols
+          || !prefix.baseClasses.exists(_.info.decls.lookup(name).is(Deferred))
+        myCanDropAliasPeriod = ctx.period
+      myCanDropAlias
+
     override def designator: Designator = myDesignator
     override protected def designator_=(d: Designator): Unit = myDesignator = d
 
