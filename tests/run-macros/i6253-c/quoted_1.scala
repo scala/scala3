@@ -8,14 +8,10 @@ object Macros {
 
   private def impl(self: Expr[StringContext], args: Expr[Seq[String]])(using QuoteContext): Expr[String] = {
     self match {
-      case '{ StringContext($parts: _*) } =>
-        '{
-          val p: Seq[String] = $parts
-          val a: Seq[Any] = $args ++ Seq("")
-          p.zip(a).map(_ + _.toString).mkString
-        }
+      case '{ StringContext($parts: _*) } => // Should not match as the parameter is not marked as inlined
+        '{ ??? }
       case _ =>
-        '{ "ERROR" }
+        '{ "Ok" }
     }
   }
 }
