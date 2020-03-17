@@ -124,23 +124,17 @@ object Inliner {
       )
   }
 
-  /** For a retained inline method add a RetainedBody annotaton that
-   *  records the tree for which code will be generated at runtime. This is
-   *  the inline expansion of a call to the method itself with its
-   *  parameters as arguments. Given an inline method
+  /** For a retained inline method, another method that keeps track of
+   *  the body that is kept at runtime. For instance, an inline method
    *
-   *    inline def f[Ts](xs: Us) = body
+   *      inline override def f(x: T) = b
    *
-   *  This sets up the call
+   *  is complemented by the body retainer method
    *
-   *    f[Ts'](xs')
+   *      private def f$retainedBody(x: T) = f(x)
    *
-   *  where the 'ed parameters are copies of the original ones. The call is
-   *  then inline processed in a context which has a clone f' of f as owner.
-   *  The cloning of owner and parameters is necessary since otherwise the
-   *  inliner gets confused in various ways. The inlined body is then
-   *  transformed back by replacing cloned versions of parameters with original
-   *  and replacing the cloned owner f' with f.
+   *  where the call `f(x)` is inline-expanded. This body is then transferred
+   *  back to `f` at erasure, using method addRetainedInlineBodies.
    */
   def bodyRetainer(mdef: DefDef)(using ctx: Context): DefDef =
     val meth = mdef.symbol.asTerm

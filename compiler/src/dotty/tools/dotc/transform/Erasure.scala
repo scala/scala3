@@ -892,6 +892,23 @@ object Erasure {
             outerParamDefs(constr)
       else Nil
 
+    /** For all statements in stats: given a retained inline method and
+     *  its retainedBody method such as
+     *
+     *     inline override def f(x: T) = body1
+     *     private def f$retainedBody(x: T) = body2
+     *
+     *  return the runtime version of `f` as
+     *
+     *     override def f(x: T) = body2
+     *
+     *  Here, the owner of body2 is changed to f and all references
+     *  to parameters of f$retainedBody are changed to references of
+     *  corresponding parameters in f.
+     *
+     *  `f$retainedBody` is subseqently mapped to the empty tree in `typedDefDef`
+     *  which is then dropped in `typedStats`.
+     */
     private def addRetainedInlineBodies(stats: List[untpd.Tree])(using ctx: Context): List[untpd.Tree] =
       lazy val retainerDef: Map[Symbol, DefDef] = stats.collect {
         case stat: DefDef if stat.symbol.name.is(BodyRetainerName) =>
