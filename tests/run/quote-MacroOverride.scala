@@ -1,8 +1,8 @@
 object Test {
 
   abstract class A {
-    inline def f1(): String = "A.f1"
-    inline def f2(): String = "A.f2"
+    inline def f1(): String
+    def f2(): String
     def f3(): String = "A.f3"
   }
 
@@ -14,8 +14,7 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     val a: A = B
-    assert(a.f1() == "A.f1")
-    assert(a.f2() == "A.f2")
+    assert(a.f2() == "B.f2")
     assert(a.f3() == "B.f3")
 
     val b: B.type = B
