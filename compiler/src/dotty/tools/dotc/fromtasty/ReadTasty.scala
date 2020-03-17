@@ -32,11 +32,6 @@ class ReadTasty extends Phase {
         None
       }
 
-      def alreadyLoaded(): None.type = {
-        ctx.warning(s"class $className cannot be unpickled because it is already loaded")
-        None
-      }
-
       def compilationUnit(cls: Symbol): Option[CompilationUnit] = cls match {
         case cls: ClassSymbol =>
           (cls.rootTreeOrProvider: @unchecked) match {
@@ -51,7 +46,7 @@ class ReadTasty extends Phase {
               cls.denot.infoOrCompleter match {
                 case _: NoLoader => Some(Scala2CompilationUnit(cls.fullName.toString))
                 case _ if cls.flags.is(Flags.JavaDefined) => Some(JavaCompilationUnit(cls.fullName.toString))
-                case _ => alreadyLoaded()
+                case _ => Some(AlreadyLoadedCompilationUnit(cls.denot.fullName.toString))
               }
             case _ =>
               cannotUnpickle(s"its class file does not have a TASTY attribute")
