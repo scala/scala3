@@ -1094,9 +1094,7 @@ object SymDenotations {
 
     /** A symbol is effectively final if it cannot be overridden in a subclass */
     final def isEffectivelyFinal(implicit ctx: Context): Boolean =
-      isOneOf(EffectivelyFinalFlags)
-      || is(Inline, butNot = Deferred)
-      || !owner.isExtensibleClass
+      isOneOf(EffectivelyFinalFlags) || !owner.isExtensibleClass
 
     /** A class is effectively sealed if has the `final` or `sealed` modifier, or it
      *  is defined in Scala 3 and is neither abstract nor open.
