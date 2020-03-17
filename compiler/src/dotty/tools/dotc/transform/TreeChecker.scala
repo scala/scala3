@@ -80,7 +80,8 @@ class TreeChecker extends Phase with SymTransformer {
     val badDeferredAndPrivate =
       sym.is(Method) && sym.is(Deferred) && sym.is(Private)
       && !sym.hasAnnotation(defn.NativeAnnot)
-      && !sym.is(Erased)
+      && !sym.isEffectivelyErased
+
     assert(!badDeferredAndPrivate, i"$sym is both Deferred and Private")
 
     checkCompanion(symd)

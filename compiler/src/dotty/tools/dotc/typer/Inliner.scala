@@ -15,7 +15,7 @@ import StdNames._
 import transform.SymUtils._
 import Contexts.Context
 import Names.{Name, TermName}
-import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}
+import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName, BodyRetainerName}
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
@@ -123,6 +123,38 @@ object Inliner {
         (tree :: enclosingInlineds).last.sourcePos
       )
   }
+
+  /** For a retained inline method add a RetainedBody annotaton that
+   *  records the tree for which code will be generated at runtime. This is
+   *  the inline expansion of a call to the method itself with its
+   *  parameters as arguments. Given an inline method
+   *
+   *    inline def f[Ts](xs: Us) = body
+   *
+   *  This sets up the call
+   *
+   *    f[Ts'](xs')
+   *
+   *  where the 'ed parameters are copies of the original ones. The call is
+   *  then inline processed in a context which has a clone f' of f as owner.
+   *  The cloning of owner and parameters is necessary since otherwise the
+   *  inliner gets confused in various ways. The inlined body is then
+   *  transformed back by replacing cloned versions of parameters with original
+   *  and replacing the cloned owner f' with f.
+   */
+  def bodyRetainer(mdef: DefDef)(using ctx: Context): DefDef =
+    val meth = mdef.symbol.asTerm
+
+    val retainer = meth.copy(
+      name = BodyRetainerName(meth.name),
+      flags = meth.flags &~ (Inline | Override) | Private,
+      coord = mdef.rhs.span.startPos).asTerm
+    polyDefDef(retainer, targs => prefss =>
+      inlineCall(
+        ref(meth).appliedToTypes(targs).appliedToArgss(prefss)
+          .withSpan(mdef.rhs.span.startPos))(
+        using ctx.withOwner(retainer)))
+    .reporting(i"retainer for $meth: $result", inlining)
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: Inlined)(implicit ctx: Context): Tree =

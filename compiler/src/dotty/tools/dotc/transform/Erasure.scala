@@ -12,10 +12,11 @@ import core.Types._
 import core.Names._
 import core.StdNames._
 import core.NameOps._
-import core.NameKinds.AdaptedClosureName
+import core.NameKinds.{AdaptedClosureName, BodyRetainerName}
 import core.Decorators._
 import core.Constants._
 import core.Definitions._
+import core.Annotations.BodyAnnotation
 import typer.{NoChecking, LiftErased}
 import typer.Inliner
 import typer.ProtoTypes._
@@ -23,6 +24,7 @@ import core.TypeErasure._
 import core.Decorators._
 import dotty.tools.dotc.ast.{tpd, untpd}
 import ast.Trees._
+import ast.TreeTypeMap
 import dotty.tools.dotc.core.{Constants, Flags}
 import ValueClasses._
 import TypeUtils._
@@ -78,17 +80,32 @@ class Erasure extends Phase with DenotTransformer {
         val oldInfo = ref.info
         val newInfo = transformInfo(oldSymbol, oldInfo)
         val oldFlags = ref.flags
-        val newFlags =
+        var newFlags =
           if (oldSymbol.is(Flags.TermParam) && isCompacted(oldSymbol.owner)) oldFlags &~ Flags.Param
           else oldFlags &~ Flags.HasDefaultParamsFlags // HasDefaultParamsFlags needs to be dropped because overriding might become overloading
-
+        val oldAnnotations = ref.annotations
+        var newAnnotations = oldAnnotations
+        if oldSymbol.isInlineMethod && oldSymbol.isInlineRetained then
+          newFlags = newFlags &~ Flags.Inline
+          newAnnotations = newAnnotations.filterConserve(!_.isInstanceOf[BodyAnnotation])
         // TODO: define derivedSymDenotation?
-        if ((oldSymbol eq newSymbol) && (oldOwner eq newOwner) && (oldName eq newName) && (oldInfo eq newInfo) && (oldFlags == newFlags))
+        if (oldSymbol eq newSymbol)
+            && (oldOwner eq newOwner)
+            && (oldName eq newName)
+            && (oldInfo eq newInfo)
+            && (oldFlags == newFlags)
+            && (oldAnnotations eq newAnnotations)
+        then
           ref
-        else {
+        else
           assert(!ref.is(Flags.PackageClass), s"trans $ref @ ${ctx.phase} oldOwner = $oldOwner, newOwner = $newOwner, oldInfo = $oldInfo, newInfo = $newInfo ${oldOwner eq newOwner} ${oldInfo eq newInfo}")
-          ref.copySymDenotation(symbol = newSymbol, owner = newOwner, name = newName, initFlags = newFlags, info = newInfo)
-        }
+          ref.copySymDenotation(
+            symbol = newSymbol,
+            owner = newOwner,
+            name = newName,
+            initFlags = newFlags,
+            info = newInfo,
+            annotations = newAnnotations)
       }
     case ref: JointRefDenotation =>
       new UniqueRefDenotation(
@@ -813,7 +830,8 @@ object Erasure {
      *  parameter of type `[]Object`.
      */
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context): Tree =
-      if (sym.isEffectivelyErased) erasedDef(sym)
+      if sym.isEffectivelyErased || sym.name.is(BodyRetainerName) then
+        erasedDef(sym)
       else
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
         var vparams = outerParamDefs(sym)
@@ -874,6 +892,35 @@ object Erasure {
             outerParamDefs(constr)
       else Nil
 
+    private def addRetainedInlineBodies(stats: List[untpd.Tree])(using ctx: Context): List[untpd.Tree] =
+      lazy val retainerDef: Map[Symbol, DefDef] = stats.collect {
+        case stat: DefDef if stat.symbol.name.is(BodyRetainerName) =>
+          val retainer = stat.symbol
+          val origName = retainer.name.asTermName.exclude(BodyRetainerName)
+          val inlineMeth = ctx.atPhase(ctx.typerPhase) {
+            retainer.owner.info.decl(origName)
+              .matchingDenotation(retainer.owner.thisType, stat.symbol.info)
+              .symbol
+          }
+          (inlineMeth, stat)
+      }.toMap
+      stats.mapConserve {
+        case stat: DefDef if stat.symbol.isInlineMethod && stat.symbol.isInlineRetained =>
+          val rdef = retainerDef(stat.symbol)
+          def allParams(ddef: DefDef) =
+            (ddef.tparams ::: ddef.vparamss.flatten).map(_.symbol)
+          val fromParams = allParams(rdef)
+          val toParams = allParams(stat)
+          assert(fromParams.hasSameLengthAs(toParams))
+          val mapBody = TreeTypeMap(
+            oldOwners = rdef.symbol :: Nil,
+            newOwners = stat.symbol :: Nil,
+            substFrom = fromParams,
+            substTo   = toParams)
+          cpy.DefDef(stat)(rhs = mapBody.transform(rdef.rhs))
+        case stat => stat
+      }
+
     override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context): Tree = {
       val xxl = defn.isXXLFunctionClass(tree.typeOpt.typeSymbol)
       var implClosure = super.typedClosure(tree, pt).asInstanceOf[Closure]
@@ -888,9 +935,10 @@ object Erasure {
       typed(tree.arg, pt)
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): (List[Tree], Context) = {
+      val stats0 = addRetainedInlineBodies(stats)(using preErasureCtx)
       val stats1 =
-        if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats)
-        else stats
+        if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats0)
+        else stats0
       val (stats2, finalCtx) = super.typedStats(stats1, exprOwner)
       (stats2.filter(!_.isEmpty), finalCtx)
     }

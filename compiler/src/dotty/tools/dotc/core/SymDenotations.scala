@@ -938,13 +938,16 @@ object SymDenotations {
     def isInlineMethod(implicit ctx: Context): Boolean =
       isAllOf(InlineMethod, butNot = Accessor)
 
+    def isInlineRetained(using Context): Boolean =
+      !is(Deferred) && allOverriddenSymbols.exists(!_.is(Inline))
+
     /** Is this a Scala 2 macro */
     final def isScala2Macro(implicit ctx: Context): Boolean = is(Macro) && symbol.owner.is(Scala2x)
 
     /** An erased value or an inline method.
      */
     def isEffectivelyErased(implicit ctx: Context): Boolean =
-      is(Erased) || isInlineMethod
+      is(Erased) || isInlineMethod && !isInlineRetained
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,

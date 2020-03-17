@@ -472,7 +472,6 @@ object Checking {
         fail(OnlyClassesCanHaveDeclaredButUndefinedMembers(sym))
       checkWithDeferred(Private)
       checkWithDeferred(Final)
-      checkWithDeferred(Inline)
     }
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
       fail(CannotExtendAnyVal(sym))

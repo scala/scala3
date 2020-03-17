@@ -1699,7 +1699,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   }
   def Symbol_annots(self: Symbol)(using ctx: Context): List[Term] =
     self.annotations.flatMap {
-      case _: core.Annotations.LazyBodyAnnotation => Nil
+      case _: core.Annotations.BodyAnnotation => Nil
       case annot => annot.tree :: Nil
     }
 

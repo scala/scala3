@@ -142,6 +142,44 @@ funkyAssertEquals(computeActual(), computeExpected(), computeDelta())
 //    if (actual - expected).abs > computeDelta() then
 //      throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${computeDelta()}")
 ```
+### Rules for Overriding
+
+Inline methods can override other methods and can themselves be overridden by other inline methods. The rules are as follows:
+
+1. If an inline method `f` implements or overrides another, non-inline method, the inline method can also be invoked at runtime. For instance, consider the scenario:
+```scala
+abstract class A {
+  def f(): Int
+  def g(): Int = f()
+}
+class B extends A {
+  inline def f() = 22
+  override inline def g() = f() + 11
+}
+val b = B()
+val a: A = b
+// inlined invocatons
+assert(b.f() == 22)
+assert(b.g() == 33)
+// dynamic invocations
+assert(a.f() == 22)
+assert(a.g() == 33)
+```
+The inlined invocations and the dynamically dispatched invocations give the same results.
+
+2. Inline methods can override or implement normal methods, as the previous example shows. Inline methods can be overridden only by other inline methods.
+
+3. Inline methods can also be abstract. An abstract inline method can be implemented only by other inline methods. It cannot be invoked directly:
+```scala
+abstract class A {
+  inline def f(): Int
+}
+object B extends A {
+  inline def f(): Int = 22
+}
+B.f()  // OK
+val a: A = B; a.f() // error: cannot inline f() in A.
+```
 
 ### Relationship to @inline
 

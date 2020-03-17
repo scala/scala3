@@ -353,6 +353,7 @@ object NameKinds {
   val ProtectedAccessorName: PrefixNameKind = new PrefixNameKind(PROTECTEDACCESSOR, "protected$")
   val InlineAccessorName: PrefixNameKind = new PrefixNameKind(INLINEACCESSOR, "inline$")
 
+  val BodyRetainerName: SuffixNameKind = new SuffixNameKind(BODYRETAINER, "$retainedBody")
   val FieldName: SuffixNameKind = new SuffixNameKind(FIELD, "$$local") {
       override def mkString(underlying: TermName, info: ThisInfo) = underlying.toString
   }

@@ -774,7 +774,7 @@ class TreeUnpickler(reader: TastyReader,
       def readRhs(implicit ctx: Context): LazyTree =
         if (nothingButMods(end))
           EmptyTree
-        else if (sym.isInlineMethod)
+        else if sym.isInlineMethod && !sym.is(Deferred) then
           // The body of an inline method is stored in an annotation, so no need to unpickle it again
           new Trees.Lazy[Tree] {
             def complete(implicit ctx: Context) = typer.Inliner.bodyToInline(sym)

@@ -30,29 +30,13 @@ object BigFloat extends App {
     BigFloat(BigInt(intPart), exponent)
   }
 
-  private def fromDigitsImpl(digits: Expr[String])(using ctx: QuoteContext): Expr[BigFloat] =
-    digits match {
-      case Const(ds) =>
-        try {
-          val BigFloat(m, e) = apply(ds)
-          '{BigFloat(${Expr(m)}, ${Expr(e)})}
-        }
-        catch {
-          case ex: FromDigits.FromDigitsException =>
-            ctx.error(ex.getMessage)
-            '{BigFloat(0, 0)}
-        }
-      case digits =>
-        '{apply($digits)}
-    }
-
   class BigFloatFromDigits extends FromDigits.Floating[BigFloat] {
     def fromDigits(digits: String) = apply(digits)
   }
 
   given BigFloatFromDigits {
     override inline def fromDigits(digits: String) = ${
-      fromDigitsImpl('digits)
+      BigFloatFromDigitsImpl('digits)
     }
   }
 
