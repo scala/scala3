@@ -1234,12 +1234,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   override def inlineContext(call: Tree)(implicit ctx: Context): Context = {
     // We assume enclosingInlineds is already normalized, and only process the new call with the head.
     val oldIC = enclosingInlineds
-    val newIC = (call, oldIC) match {
-      case (t, t1 :: ts2) if t.isEmpty =>
-        assert(!t1.isEmpty)
-        ts2
-      case _ => call :: oldIC
-    }
+
+    val newIC =
+      if call.isEmpty then
+        oldIC match
+          case t1 :: ts2 => ts2
+          case _ => oldIC
+      else
+        call :: oldIC
+
     ctx.fresh.setProperty(InlinedCalls, newIC)
   }
 
