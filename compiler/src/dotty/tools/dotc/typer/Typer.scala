@@ -2421,7 +2421,7 @@ class Typer extends Namer
    */
   protected def inlineExpansion(mdef: DefDef)(implicit ctx: Context): List[Tree] =
     tpd.cpy.DefDef(mdef)(rhs = Inliner.bodyToInline(mdef.symbol))
-    :: (if mdef.symbol.isInlineRetained then Inliner.bodyRetainer(mdef) :: Nil else Nil)
+    :: (if mdef.symbol.isRetainedInlineMethod then Inliner.bodyRetainer(mdef) :: Nil else Nil)
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx retractMode Mode.PatternOrTypeBits)

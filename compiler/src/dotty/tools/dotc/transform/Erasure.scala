@@ -85,7 +85,7 @@ class Erasure extends Phase with DenotTransformer {
           else oldFlags &~ Flags.HasDefaultParamsFlags // HasDefaultParamsFlags needs to be dropped because overriding might become overloading
         val oldAnnotations = ref.annotations
         var newAnnotations = oldAnnotations
-        if oldSymbol.isInlineMethod && oldSymbol.isInlineRetained then
+        if oldSymbol.isRetainedInlineMethod then
           newFlags = newFlags &~ Flags.Inline
           newAnnotations = newAnnotations.filterConserve(!_.isInstanceOf[BodyAnnotation])
         // TODO: define derivedSymDenotation?
@@ -922,7 +922,7 @@ object Erasure {
           (inlineMeth, stat)
       }.toMap
       stats.mapConserve {
-        case stat: DefDef if stat.symbol.isInlineMethod && stat.symbol.isInlineRetained =>
+        case stat: DefDef if stat.symbol.isRetainedInlineMethod =>
           val rdef = retainerDef(stat.symbol)
           val fromParams = untpd.allParamSyms(rdef)
           val toParams = untpd.allParamSyms(stat)

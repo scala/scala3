@@ -177,8 +177,9 @@ abstract class A {
 object B extends A {
   inline def f(): Int = 22
 }
-B.f()  // OK
-val a: A = B; a.f() // error: cannot inline f() in A.
+B.f()         // OK
+val a: A = B
+a.f()         // error: cannot inline f() in A.
 ```
 
 ### Relationship to @inline
