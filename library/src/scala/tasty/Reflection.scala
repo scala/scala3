@@ -448,6 +448,9 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
     def isScala2CompilationUnit(): Boolean = internal Context_isScala2CompilationUnit(self)
 
+    /** Returns true if we've tried to reflect on a class that's already loaded (e.g. Option). */
+    def isAlreadyLoadedCompilationUnit(): Boolean = internal.Context_isAlreadyLoadedCompilationUnit(self)
+
     /** Class name of the current CompilationUnit */
     def compilationUnitClassname(): String = internal.Context_compilationUnitClassname(self)
   }

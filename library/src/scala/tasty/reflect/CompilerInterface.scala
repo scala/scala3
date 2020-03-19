@@ -168,6 +168,9 @@ trait CompilerInterface {
   /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
   def Context_isScala2CompilationUnit(self: Context): Boolean
 
+  /** Returns true if we've tried to reflect on a class that's already loaded (e.g. Option). */
+  def Context_isAlreadyLoadedCompilationUnit(self: Context): Boolean
+
   /** Class name of the current CompilationUnit */
   def Context_compilationUnitClassname(self: Context): String
 

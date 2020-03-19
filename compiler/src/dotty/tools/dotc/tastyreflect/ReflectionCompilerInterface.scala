@@ -67,10 +67,12 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Context_requiredMethod(self: Context)(path: String): Symbol = self.requiredMethod(path)
   def Context_isJavaCompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.JavaCompilationUnit]
   def Context_isScala2CompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.Scala2CompilationUnit]
+  def Context_isAlreadyLoadedCompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.AlreadyLoadedCompilationUnit]
   def Context_compilationUnitClassname(self: Context): String =
     self.compilationUnit match {
       case cu: fromtasty.JavaCompilationUnit => cu.className
       case cu: fromtasty.Scala2CompilationUnit => cu.className
+      case cu: fromtasty.AlreadyLoadedCompilationUnit => cu.className
       case cu => ""
     }
 
