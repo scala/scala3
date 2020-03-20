@@ -1301,6 +1301,7 @@ class TreeUnpickler(reader: TastyReader,
 
     def readHole(end: Addr, isType: Boolean)(implicit ctx: Context): Tree = {
       val idx = readNat()
+      val tpe = readType()
       val args = until(end)(readTerm())
       val splice = splices(idx)
       def wrap(arg: Tree) =

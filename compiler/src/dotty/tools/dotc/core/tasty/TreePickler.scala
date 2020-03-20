@@ -26,7 +26,7 @@ object TreePickler {
     override def isTerm: Boolean = isTermHole
     override def isType: Boolean = !isTermHole
     override def fallbackToText(printer: Printer): Text =
-      s"[[$idx|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
+      s"[[$idx|" ~~ printer.toTextGlobal(tpe) ~~ "|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
   }
 }
 
@@ -603,6 +603,7 @@ class TreePickler(pickler: TastyPickler) {
           writeByte(HOLE)
           withLength {
             writeNat(idx)
+            pickleType(tree.tpe, richTypes = true)
             args.foreach(pickleTree)
           }
       }

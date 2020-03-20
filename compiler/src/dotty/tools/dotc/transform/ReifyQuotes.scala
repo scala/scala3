@@ -331,7 +331,23 @@ class ReifyQuotes extends MacroTransform {
      */
     private def makeHole(isTermHole: Boolean, body: Tree, splices: List[Tree], tpe: Type)(implicit ctx: Context): Hole = {
       val idx = embedded.addTree(body, NoSymbol)
-      Hole(isTermHole, idx, splices).withType(tpe).asInstanceOf[Hole]
+      val holeType = getHoleType(tpe)
+      Hole(isTermHole, idx, splices).withType(holeType).asInstanceOf[Hole]
+    }
+
+    private def getHoleType(using ctx: Context) = new TypeMap() {
+      override def apply(tp: Type): Type = tp match
+        case tp: TypeRef if tp.typeSymbol.isSplice =>
+          apply(tp.dealias)
+        case tp @ TypeRef(pre, _) if pre == NoPrefix || pre.termSymbol.isLocal =>
+          val hiBound = tp.typeSymbol.info match
+            case info @ ClassInfo(_, _, classParents, _, _) => classParents.reduce(_ & _)
+            case info => info.hiBound
+          apply(hiBound)
+        case tp @ TermRef(NoPrefix, _) =>
+          apply(tp.widenTermRefExpr)
+        case tp =>
+          mapOver(tp)
     }
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
