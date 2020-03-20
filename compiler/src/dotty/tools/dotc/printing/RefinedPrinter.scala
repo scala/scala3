@@ -385,7 +385,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
         else if (!printDebug && fun.hasType && fun.symbol == defn.InternalQuoted_exprQuote)
           keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
-        else if (!printDebug && fun.hasType && fun.symbol == defn.InternalQuoted_exprSplice)
+        else if (!printDebug && fun.hasType && (fun.symbol == defn.InternalQuoted_exprSplice || fun.symbol == defn.InternalQuoted_exprNestedSplice))
           keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else
           toTextLocal(fun)

@@ -80,7 +80,7 @@ trait QuotesAndSplices {
           spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
         val baseType = pat.tpe.baseType(defn.QuotedExprClass)
         val argType = if baseType != NoType then baseType.argTypesHi.head else defn.NothingType
-        ref(defn.InternalQuoted_exprSplice).appliedToTypes(List(argType, defn.QuoteContextClass.typeRef)).appliedTo(pat)
+        ref(defn.InternalQuoted_exprSplice).appliedToType(argType).appliedTo(pat)
       }
       else {
         ctx.error(i"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.sourcePos)
@@ -113,7 +113,12 @@ trait QuotesAndSplices {
       val qctxParam = untpd.makeParameter(qctxParamName, qctxParamTpt, untpd.Modifiers(Given))
       val expr = untpd.Function(List(qctxParam), tree.expr).withSpan(tree.span)
 
-      typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), expr), pt)(ctx1).withSpan(tree.span)
+      val internalSplice =
+        outerQctx match
+          case Some(qctxRef) => untpd.Apply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprNestedSplice.termRef), qctxRef), expr)
+          case _ => untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), expr)
+
+      typedApply(internalSplice, pt)(ctx1).withSpan(tree.span)
     }
   }
 
@@ -210,10 +215,7 @@ trait QuotesAndSplices {
         case Typed(Apply(fn, pat :: Nil), tpt) if fn.symbol == defn.InternalQuoted_exprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           val tpt1 = transform(tpt) // Transform type bindings
           val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), tpt1 :: Nil)
-          val newSplice =
-            ref(defn.InternalQuoted_exprSplice)
-              .appliedToTypes(List(tpt1.tpe, defn.QuoteContextClass.typeRef))
-              .appliedTo(Typed(pat, exprTpt))
+          val newSplice = ref(defn.InternalQuoted_exprSplice).appliedToType(tpt1.tpe).appliedTo(Typed(pat, exprTpt))
           transform(newSplice)
         case Apply(fn, pat :: Nil) if fn.symbol == defn.InternalQuoted_exprSplice =>
           try ref(defn.InternalQuoted_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)

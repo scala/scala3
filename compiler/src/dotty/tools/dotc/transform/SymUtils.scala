@@ -219,7 +219,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   /** Is symbol a splice operation? */
   def isSplice(implicit ctx: Context): Boolean =
-    self == defn.InternalQuoted_exprSplice || self == defn.QuotedType_splice
+    self == defn.InternalQuoted_exprSplice || self == defn.InternalQuoted_exprNestedSplice || self == defn.QuotedType_splice
 
   def isCollectiveExtensionClass(using Context): Boolean =
     self.is(ModuleClass) && self.sourceModule.is(Extension, butNot = Method)
