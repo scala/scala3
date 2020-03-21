@@ -1066,6 +1066,17 @@ trait Applications extends Compatibility {
       if (!tree.tpe.isError && tree.tpe.isErroneous) tree
       else errorTree(tree, NotAnExtractor(qual))
 
+    /** Does `state` contain a single "NotAMember" message as pending error message
+     *  that says `$membername is not a member of ...` ?
+     */
+    def saysNotAMember(state: TyperState, memberName: TermName): Boolean =
+      state.reporter.pendingMessages match
+        case msg :: Nil =>
+          msg.contained match
+            case NotAMember(_, name, _, _) => name == memberName
+            case _ => false
+        case _ => false
+
     /** Report errors buffered in state.
      *  @pre state has errors to report
      *  If there is a single error stating that "unapply" is not a member, print
@@ -1073,15 +1084,10 @@ trait Applications extends Compatibility {
      */
     def reportErrors(tree: Tree, state: TyperState): Tree =
       assert(state.reporter.hasErrors)
-      val msgs = state.reporter.removeBufferedMessages
-      msgs match
-        case msg :: Nil =>
-          msg.contained match
-            case NotAMember(_, nme.unapply, _, _) => return notAnExtractor(tree)
-            case _ =>
-        case _ =>
-      msgs.foreach(ctx.reporter.report)
-      tree
+      if saysNotAMember(state, nme.unapply) then notAnExtractor(tree)
+      else
+        state.reporter.flush()
+        tree
 
     /** If this is a term ref tree, try to typecheck with its type name.
      *  If this refers to a type alias, follow the alias, and if
@@ -1145,7 +1151,12 @@ trait Applications extends Compatibility {
       tryWithName(nme.unapply) {
         (sel, state) =>
           tryWithName(nme.unapplySeq) {
-            (_, _) => fallBack(sel, state)
+            (sel2, state2) =>
+              // if both fail, return unapply error, unless that is simply a
+              // "not a member", and the unapplySeq error is more refined.
+              if saysNotAMember(state, nme.unapply) && !saysNotAMember(state2, nme.unapplySeq)
+              then fallBack(sel2, state2)
+              else fallBack(sel, state)
           }
       }
     }

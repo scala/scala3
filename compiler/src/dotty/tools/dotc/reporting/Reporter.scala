@@ -327,4 +327,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** Issue all error messages in this reporter to next outer one, or make sure they are written. */
   def flush()(implicit ctx: Context): Unit =
     removeBufferedMessages.foreach(ctx.reporter.report)
+
+  /** If this reporter buffers messages, all buffered messages, otherwise Nil */
+  def pendingMessages(using Context): List[MessageContainer] = Nil
 }
