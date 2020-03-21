@@ -676,10 +676,17 @@ object Types {
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
         else
-          pdenot & (
+          val joint = pdenot & (
             new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre),
             pre,
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+          joint match
+            case joint: SingleDenotation
+            if rinfo.isInstanceOf[MethodOrPoly] && rinfo <:< joint.info =>
+              // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
+              joint.derivedSingleDenotation(joint.symbol, rinfo)
+            case _ =>
+              joint
       }
 
       def goApplied(tp: AppliedType, tycon: HKTypeLambda) =
