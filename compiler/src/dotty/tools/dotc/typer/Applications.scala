@@ -1068,7 +1068,7 @@ trait Applications extends Compatibility {
           case NotAMember(_, name, _, _) =>
             memberName.isEmpty || name == memberName
           case MissingIdent(_, _, name) =>
-            memberName.isEmpty || name == memberName.toString
+            memberName.isEmpty || name == memberName
           case _ => false
       case _ => false
 

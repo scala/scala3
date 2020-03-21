@@ -279,7 +279,7 @@ object messages {
     }
   }
 
-  case class MissingIdent(tree: untpd.Ident, treeKind: String, name: String)(implicit ctx: Context)
+  case class MissingIdent(tree: untpd.Ident, treeKind: String, name: Name)(implicit ctx: Context)
   extends Message(MissingIdentID) {
     val kind: String = "Unbound Identifier"
     val msg: String = em"Not found: $treeKind$name"
