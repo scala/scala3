@@ -491,7 +491,7 @@ class Typer extends Namer
         case _ => app
       }
     case qual =>
-      if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos)
+      if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos, "type prefix")
       val select = assignType(cpy.Select(tree)(qual, tree.name), qual)
 
       val select1 = toNotNullTermRef(select, pt)
@@ -1429,7 +1429,7 @@ class Typer extends Namer
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = {
     val ref1 = typedExpr(tree.ref)
-    checkStable(ref1.tpe, tree.sourcePos)
+    checkStable(ref1.tpe, tree.sourcePos, "singleton type")
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
 
