@@ -167,11 +167,6 @@ abstract class Printer {
   def toTextGlobal(elems: Traversable[Showable], sep: String): Text =
     atPrec(GlobalPrec) { toText(elems, sep) }
 
-  /** Perform string or text-producing operation `op` so that only a
-   *  summarized text with given recursion depth is shown
-   */
-  def summarized[T](depth: Int)(op: => T): T
-
   /** A plain printer without any embellishments */
   def plain: Printer
 }

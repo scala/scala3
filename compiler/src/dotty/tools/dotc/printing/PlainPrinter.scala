@@ -11,7 +11,6 @@ import typer.ImportInfo
 import Variances.varianceSign
 import util.SourcePosition
 import java.lang.Integer.toOctalString
-import config.Config.summarizeDepth
 import scala.util.control.NonFatal
 import scala.annotation.switch
 
@@ -23,24 +22,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def maxToTextRecursions: Int = 100
 
-  protected final def controlled(op: => Text): Text =
-    if (ctx.base.toTextRecursions < maxToTextRecursions && ctx.base.toTextRecursions < maxSummarized)
-      try {
-        ctx.base.toTextRecursions += 1
-        op
-      }
-      finally
-        ctx.base.toTextRecursions -= 1
-    else {
-      if (ctx.base.toTextRecursions >= maxToTextRecursions)
-        recursionLimitExceeded()
-      "..."
-    }
+  protected final def limiter: MessageLimiter = ctx.property(MessageLimiter).get
 
-  protected def recursionLimitExceeded(): Unit = {
-    ctx.warning("Exceeded recursion depth attempting to print.")
-    if (ctx.debug) Thread.dumpStack()
-  }
+  protected def controlled(op: => Text): Text = limiter.controlled(op)
+
+  def Str(str: String, lineRange: LineRange = EmptyLineRange): Str =
+    limiter.register(str)
+    Texts.Str(str, lineRange)
+
+  given stringToText as Conversion[String, Text] = Str(_)
 
   /** If true, tweak output so it is the same before and after pickling */
   protected def homogenizedView: Boolean = ctx.settings.YtestPickler.value
@@ -112,7 +102,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** Pretty-print comma-separated type arguments for a constructor to be inserted among parentheses or brackets
     * (hence with `GlobalPrec` precedence).
     */
-  protected def argsText(args: List[Type]): Text = atPrec(GlobalPrec) { Text(args.map(arg => argText(arg) ), ", ") }
+  protected def argsText(args: List[Type]): Text =
+    atPrec(GlobalPrec) { Text(args.map(arg => argText(arg) ), ", ") }
 
   /** The longest sequence of refinement types, starting at given type
    *  and following parents.
@@ -572,17 +563,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if sel.isGiven then "given" else sel.name.show
       case _ => "{...}"
     s"import $exprStr.$selectorStr"
-
-  private var maxSummarized = Int.MaxValue
-
-  def summarized[T](depth: Int)(op: => T): T = {
-    val saved = maxSummarized
-    maxSummarized = ctx.base.toTextRecursions + depth
-    try op
-    finally maxSummarized = saved
-  }
-
-  def summarized[T](op: => T): T = summarized(summarizeDepth)(op)
 
   def plain: PlainPrinter = this
 

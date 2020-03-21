@@ -67,8 +67,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     case _ => false
   }
 
-  override protected def recursionLimitExceeded(): Unit = {}
-
   protected def PrintableFlags(isType: Boolean): FlagSet = {
     val fs =
       if (isType) TypeSourceModifierFlags | Module | Local  // DOTTY problem: cannot merge these two statements
@@ -467,7 +465,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           !homogenizedView && ctx.settings.XprintInline.value) ~
         blockText(bindings :+ body)
       case tpt: untpd.DerivedTypeTree =>
-        "<derived typetree watching " ~ summarized(toText(tpt.watched)) ~ ">"
+        "<derived typetree watching " ~ tpt.watched.showSummary() ~ ">"
       case TypeTree() =>
         typeText(toText(tree.typeOpt))
       case SingletonTypeTree(ref) =>

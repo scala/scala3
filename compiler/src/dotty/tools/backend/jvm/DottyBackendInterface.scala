@@ -981,7 +981,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       }
     }
 
-    def summaryString: String = tp.showSummary
+    def summaryString: String = tp.showSummary()
 
     def params: List[Symbol] =
       Nil // backend uses this to emit annotations on parameter lists of forwarders
