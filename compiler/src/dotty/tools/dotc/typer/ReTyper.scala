@@ -104,7 +104,8 @@ class ReTyper extends Typer with ReChecking {
     fallBack
 
   override def tryNew[T >: Untyped <: Type]
-    (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: => Tree)(implicit ctx: Context): Tree = fallBack
+    (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: TyperState => Tree)(implicit ctx: Context): Tree =
+      fallBack(ctx.typerState)
 
   override def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = ()
 

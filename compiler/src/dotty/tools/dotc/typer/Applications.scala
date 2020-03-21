@@ -29,7 +29,7 @@ import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
 import reporting.diagnostic.Message
-import reporting.diagnostic.messages.{UnexpectedPatternForSummonFrom, NotAMember}
+import reporting.diagnostic.messages.{UnexpectedPatternForSummonFrom, NotAMember, MissingIdent}
 import reporting.trace
 import Constants.{Constant, IntTag, LongTag}
 import dotty.tools.dotc.reporting.diagnostic.messages.{UnapplyInvalidReturnType, NotAnExtractor, UnapplyInvalidNumberOfArguments}
@@ -819,12 +819,13 @@ trait Applications extends Compatibility {
     tryEither {
       typedExpr(fn, pt)
     } { (result, tstate) =>
-      def fallBack = {
-        tstate.commit()
+      def fallBack(nuState: TyperState) =
+        if (nuState ne ctx.typerState) && !saysNotFound(nuState, EmptyTypeName)
+        then nuState.commit() // nuState messages are more interesting that tstate's "not found"
+        else tstate.commit()  // it's "not found" both ways; keep original message
         result
-      }
-      if (untpd.isPath(fn)) tryNew(untpd)(fn, pt, fallBack)
-      else fallBack
+      if untpd.isPath(fn) then tryNew(untpd)(fn, pt, fallBack)
+      else fallBack(ctx.typerState)
     }
 
   /** Typecheck application. Result could be an `Apply` node,
@@ -1056,6 +1057,21 @@ trait Applications extends Compatibility {
       tree
   }
 
+  /** Does `state` contain a single "NotAMember" or "MissingIdent" message as
+   *  pending error message that says `$memberName is not a member of ...` or
+   *  `Not found: $memberName`? If memberName is empty, any name will do.
+   */
+  def saysNotFound(state: TyperState, memberName: Name)(using Context): Boolean =
+    state.reporter.pendingMessages match
+      case msg :: Nil =>
+        msg.contained match
+          case NotAMember(_, name, _, _) =>
+            memberName.isEmpty || name == memberName
+          case MissingIdent(_, _, name) =>
+            memberName.isEmpty || name == memberName.toString
+          case _ => false
+      case _ => false
+
   def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = {
     record("typedUnApply")
     val Apply(qual, args) = tree
@@ -1066,17 +1082,6 @@ trait Applications extends Compatibility {
       if (!tree.tpe.isError && tree.tpe.isErroneous) tree
       else errorTree(tree, NotAnExtractor(qual))
 
-    /** Does `state` contain a single "NotAMember" message as pending error message
-     *  that says `$membername is not a member of ...` ?
-     */
-    def saysNotAMember(state: TyperState, memberName: TermName): Boolean =
-      state.reporter.pendingMessages match
-        case msg :: Nil =>
-          msg.contained match
-            case NotAMember(_, name, _, _) => name == memberName
-            case _ => false
-        case _ => false
-
     /** Report errors buffered in state.
      *  @pre state has errors to report
      *  If there is a single error stating that "unapply" is not a member, print
@@ -1084,7 +1089,7 @@ trait Applications extends Compatibility {
      */
     def reportErrors(tree: Tree, state: TyperState): Tree =
       assert(state.reporter.hasErrors)
-      if saysNotAMember(state, nme.unapply) then notAnExtractor(tree)
+      if saysNotFound(state, nme.unapply) then notAnExtractor(tree)
       else
         state.reporter.flush()
         tree
@@ -1154,7 +1159,7 @@ trait Applications extends Compatibility {
             (sel2, state2) =>
               // if both fail, return unapply error, unless that is simply a
               // "not a member", and the unapplySeq error is more refined.
-              if saysNotAMember(state, nme.unapply) && !saysNotAMember(state2, nme.unapplySeq)
+              if saysNotFound(state, nme.unapply) && !saysNotFound(state2, nme.unapplySeq)
               then fallBack(sel2, state2)
               else fallBack(sel, state)
           }

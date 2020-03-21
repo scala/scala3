@@ -1,0 +1,8 @@
+-- Error: tests/neg/i8569.scala:8:2 ------------------------------------------------------------------------------------
+8 |  outer.Inner(2) // error
+  |  ^^^^^
+  |  (Test.outer : => Outer) is not a valid path
+-- Error: tests/neg/i8569.scala:9:6 ------------------------------------------------------------------------------------
+9 |  new outer.Inner(2) // error
+  |      ^^^^^
+  |      (Test.outer : => Outer) is not a valid path
