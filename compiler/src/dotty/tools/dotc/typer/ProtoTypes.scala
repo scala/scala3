@@ -399,6 +399,8 @@ object ProtoTypes {
    */
   class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, isUsingApply: Boolean)(implicit ctx: Context) extends FunProto(args, resultType)(typer, isUsingApply)(ctx) {
     override def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree)(implicit ctx: Context): List[tpd.Tree] = args
+    override def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): tpd.Tree = arg.asInstanceOf[tpd.Tree]
+    override def allArgTypesAreCurrent()(implicit ctx: Context): Boolean = true
     override def withContext(ctx: Context): FunProtoTyped = this
   }
 

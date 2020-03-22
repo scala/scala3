@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import dotty.tools.dotc.transform.{ExplicitOuter, Erasure}
-import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
+import typer.ProtoTypes
 import transform.SymUtils._
 import transform.TypeUtils._
 import core._
@@ -1152,41 +1152,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type],
-                      expectedType: Type, isContextual: Boolean = false)(implicit ctx: Context): Tree = {
-    val typer = ctx.typer
-    val proto = FunProtoTyped(args, expectedType)(typer, isContextual)
-    val denot = receiver.tpe.member(method)
-    assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
-    val selected =
-      if (denot.isOverloaded) {
-        def typeParamCount(tp: Type) = tp.widen match {
-          case tp: PolyType => tp.paramInfos.length
-          case _ => 0
-        }
-        var allAlts = denot.alternatives
-          .map(denot => TermRef(receiver.tpe, denot.symbol))
-          .filter(tr => typeParamCount(tr) == targs.length)
-          .filter { _.widen match {
-            case MethodTpe(_, _, x: MethodType) => !x.isImplicitMethod
-            case _ => true
-          }}
-        if (targs.isEmpty) allAlts = allAlts.filterNot(_.widen.isInstanceOf[PolyType])
-        val alternatives = ctx.typer.resolveOverloaded(allAlts, proto)
-        assert(alternatives.size == 1,
-          i"${if (alternatives.isEmpty) "no" else "multiple"} overloads available for " +
-          i"$method on ${receiver.tpe.widenDealiasKeepAnnots} with targs: $targs%, %; args: $args%, % of types ${args.tpes.map(_.widenDealiasKeepAnnots)}%, %; expectedType: $expectedType." +
-          i"all alternatives: ${allAlts.map(_.symbol.showDcl).mkString(", ")}\n" +
-          i"matching alternatives: ${alternatives.map(_.symbol.showDcl).mkString(", ")}.") // this is parsed from bytecode tree. there's nothing user can do about it
-        alternatives.head
-      }
-      else TermRef(receiver.tpe, denot.symbol)
-    val fun = receiver.select(selected).appliedToTypes(targs)
-
-    val apply = untpd.Apply(fun, args)
-    typer.ApplyToTyped(apply, fun, selected, args, expectedType).result.asInstanceOf[Tree] // needed to handle varargs
-  }
-
   @tailrec
   def sameTypes(trees: List[tpd.Tree], trees1: List[tpd.Tree]): Boolean =
     if (trees.isEmpty) trees.isEmpty
@@ -1361,11 +1326,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     transformer.transform(tree)
   }
 
-  def resolveConstructor(atp: Type, args:List[Tree])(implicit ctx: Context): Tree = {
-    val targs = atp.argTypes
-    tpd.applyOverloaded(New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)
-  }
-
   /** Convert a list of trees to a vararg-compatible tree.
    *  Used to make arguments for methods that accept varargs.
    */
@@ -1385,4 +1345,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ref(defn.ListModule).select(nme.apply)
       .appliedToTypeTree(tpe)
       .appliedToVarargs(trees, tpe)
+
+
+  protected def FunProto(args: List[Tree], resType: Type)(using ctx: Context) =
+    ProtoTypes.FunProtoTyped(args, resType)(ctx.typer, isUsingApply = false)
 }

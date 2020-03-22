@@ -4,6 +4,7 @@ package ast
 
 import core._
 import Types._, Names._, NameOps._, Flags._, util.Spans._, Contexts._, Constants._
+import typer.ProtoTypes
 import SymDenotations._, Symbols._, Denotations._, StdNames._, Comments._
 import language.higherKinds
 import collection.mutable.ListBuffer
@@ -1505,5 +1506,58 @@ object Trees {
         case tree: TypeDef => cpy.TypeDef(tree)(name = newName.asTypeName)
       }
     }.asInstanceOf[tree.ThisTree[T]]
+
+    /** Delegate to FunProto or FunProtoTyped depending on whether the prefix is `untpd` or `tpd`. */
+    protected def FunProto(args: List[Tree], resType: Type)(using Context): ProtoTypes.FunProto
+
+    /** Construct the application `$receiver.$method[$targs]($args)` using overloading resolution
+     *  to find a matching overload of `$method` if necessary.
+     *  This is useful when overloading resolution needs to be performed in a phase after typer.
+     *  Note that this will not perform any kind of implicit search.
+     *
+     *  @param expectedType  An expected type of the application used to guide overloading resolution
+     */
+    def applyOverloaded(
+        receiver: tpd.Tree, method: TermName, args: List[Tree], targs: List[Type],
+        expectedType: Type)(using parentCtx: Context): tpd.Tree = {
+      given ctx as Context = parentCtx.retractMode(Mode.ImplicitsEnabled)
+
+      val typer = ctx.typer
+      val proto = FunProto(args, expectedType)
+      val denot = receiver.tpe.member(method)
+      assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
+      val selected =
+        if (denot.isOverloaded) {
+          def typeParamCount(tp: Type) = tp.widen match {
+            case tp: PolyType => tp.paramInfos.length
+            case _ => 0
+          }
+          val allAlts = denot.alternatives
+            .map(denot => TermRef(receiver.tpe, denot.symbol))
+            .filter(tr => typeParamCount(tr) == targs.length)
+            .filter { _.widen match {
+              case MethodTpe(_, _, x: MethodType) => !x.isImplicitMethod
+              case _ => true
+            }}
+          val alternatives = ctx.typer.resolveOverloaded(allAlts, proto)
+          assert(alternatives.size == 1,
+            i"${if (alternatives.isEmpty) "no" else "multiple"} overloads available for " +
+              i"$method on ${receiver.tpe.widenDealiasKeepAnnots} with targs: $targs%, %; args: $args%, %; expectedType: $expectedType." +
+              i"all alternatives: ${allAlts.map(_.symbol.showDcl).mkString(", ")}\n" +
+              i"matching alternatives: ${alternatives.map(_.symbol.showDcl).mkString(", ")}.") // this is parsed from bytecode tree. there's nothing user can do about it
+            alternatives.head
+        }
+        else TermRef(receiver.tpe, denot.symbol)
+      val fun = receiver.select(selected).appliedToTypes(targs)
+
+      val apply = untpd.Apply(fun, args)
+      typer.ApplyTo(apply, fun, selected, proto, expectedType)
+    }
+
+
+    def resolveConstructor(atp: Type, args: List[Tree])(implicit ctx: Context): tpd.Tree = {
+      val targs = atp.argTypes
+      applyOverloaded(tpd.New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)
+    }
   }
 }
