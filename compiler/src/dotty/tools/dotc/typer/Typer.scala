@@ -445,10 +445,9 @@ class Typer extends Namer
         return ref(defn.XMLTopScopeModule.termRef)
       else if (name.toTermName == nme.ERROR)
         UnspecifiedErrorType
-      else if (ctx.owner.isConstructor && ctx.mode.is(Mode.InSuperCall) &&
+      else if (ctx.owner.isConstructor && !ctx.owner.isPrimaryConstructor &&
           ctx.owner.owner.unforcedDecls.lookup(tree.name).exists)
-        // When InSuperCall mode and in a constructor we are in the arguments
-        // of a this(...) constructor call
+        // we are in the arguments of a this(...) constructor call
         errorType(ex"$tree is not accessible from constructor arguments", tree.sourcePos)
       else
         errorType(new MissingIdent(tree, kind, name), tree.sourcePos)
@@ -539,10 +538,6 @@ class Typer extends Namer
 
   def typedSuper(tree: untpd.Super, pt: Type)(implicit ctx: Context): Tree = {
     val qual1 = typed(tree.qual)
-    val inConstrCall = pt match {
-      case pt: SelectionProto if pt.name == nme.CONSTRUCTOR => true
-      case _ => false
-    }
     val enclosingInlineable = ctx.owner.ownersIterator.findSymbol(_.isInlineMethod)
     if (enclosingInlineable.exists && !PrepareInlineable.isLocal(qual1.symbol, enclosingInlineable))
       ctx.error(SuperCallsNotAllowedInlineable(enclosingInlineable), tree.sourcePos)
@@ -550,7 +545,7 @@ class Typer extends Namer
       case pt: SelectionProto if pt.name.isTypeName =>
         qual1 // don't do super references for types; they are meaningless anyway
       case _ =>
-        assignType(cpy.Super(tree)(qual1, tree.mix), qual1, inConstrCall)
+        assignType(cpy.Super(tree)(qual1, tree.mix), qual1)
     }
   }
 
@@ -2195,7 +2190,7 @@ class Typer extends Namer
               typer1.typedDefDef(tree, sym)(ctx.localContext(tree, sym).setTyper(typer1))
             case tree: untpd.TypeDef =>
               if (tree.isClassDef)
-                typedClassDef(tree, sym.asClass)(ctx.localContext(tree, sym).setMode(ctx.mode &~ Mode.InSuperCall))
+                typedClassDef(tree, sym.asClass)(ctx.localContext(tree, sym))
               else
                 typedTypeDef(tree, sym)(ctx.localContext(tree, sym).setNewScope)
             case tree: untpd.Labeled => typedLabeled(tree)

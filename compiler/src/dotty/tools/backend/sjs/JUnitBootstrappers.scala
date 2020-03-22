@@ -181,7 +181,7 @@ class JUnitBootstrappers extends MiniPhase {
     val sym = ctx.newDefaultConstructor(owner).entered
     DefDef(sym, {
       Block(
-        Super(This(owner), nme.EMPTY.toTypeName, inConstrCall = true).select(defn.ObjectClass.primaryConstructor).appliedToNone :: Nil,
+        Super(This(owner), tpnme.EMPTY).select(defn.ObjectClass.primaryConstructor).appliedToNone :: Nil,
         unitLiteral
       )
     })

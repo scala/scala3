@@ -30,9 +30,9 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
 
   def superRef(target: Symbol, span: Span = cls.span): Tree = {
     val sup = if (target.isConstructor && !target.owner.is(Trait))
-      Super(This(cls), tpnme.EMPTY, true)
+      Super(This(cls), tpnme.EMPTY)
     else
-      Super(This(cls), target.owner.name.asTypeName, false, target.owner)
+      Super(This(cls), target.owner.name.asTypeName, target.owner)
     //println(i"super ref $target on $sup")
     ast.untpd.Select(sup.withSpan(span), target.name)
       .withType(NamedType(sup.tpe, target))

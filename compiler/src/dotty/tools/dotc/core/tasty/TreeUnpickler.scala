@@ -670,7 +670,7 @@ class TreeUnpickler(reader: TastyReader,
         readByte()
         val end = readEnd()
         val tp = readType()
-        val lazyAnnotTree = readLaterWithOwner(end, rdr => ctx => rdr.readTerm()(ctx))
+        val lazyAnnotTree = readLaterWithOwner(end, rdr => implicit ctx => rdr.readTerm())
 
         owner =>
           Annotation.deferredSymAndTree(tp.typeSymbol)(lazyAnnotTree(owner).complete)
@@ -780,7 +780,7 @@ class TreeUnpickler(reader: TastyReader,
             def complete(implicit ctx: Context) = typer.Inliner.bodyToInline(sym)
           }
         else
-          readLater(end, rdr => ctx => rdr.readTerm()(ctx.retractMode(Mode.InSuperCall)))
+          readLater(end, rdr => implicit ctx => rdr.readTerm())
 
       def ValDef(tpt: Tree) =
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(localCtx)), sym)
@@ -1032,9 +1032,7 @@ class TreeUnpickler(reader: TastyReader,
       }
 
       def completeSelect(name: Name, sig: Signature): Select = {
-        val localCtx =
-          if (name == nme.CONSTRUCTOR) ctx.addMode(Mode.InSuperCall) else ctx
-        val qual = readTerm()(localCtx)
+        val qual = readTerm()(ctx)
         var qualType = qual.tpe.widenIfUnstable
         val denot = accessibleDenot(qualType, name, sig)
         val owner = denot.symbol.maybeOwner
@@ -1098,7 +1096,7 @@ class TreeUnpickler(reader: TastyReader,
             case SUPER =>
               val qual = readTerm()
               val (mixId, mixTpe) = ifBefore(end)(readQualId(), (untpd.EmptyTypeIdent, NoType))
-              tpd.Super(qual, mixId, ctx.mode.is(Mode.InSuperCall), mixTpe.typeSymbol)
+              tpd.Super(qual, mixId, mixTpe.typeSymbol)
             case APPLY =>
               val fn = readTerm()
               tpd.Apply(fn, until(end)(readTerm()))

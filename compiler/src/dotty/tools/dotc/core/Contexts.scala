@@ -353,7 +353,6 @@ object Contexts {
      *  - as owner: The primary constructor of the class
      *  - as outer context: The context enclosing the class context
      *  - as scope: The parameter accessors in the class context
-     *  - with additional mode: InSuperCall
      *
      *  The reasons for this peculiar choice of attributes are as follows:
      *
@@ -394,7 +393,7 @@ object Contexts {
       var classCtx = outersIterator.dropWhile(!_.isClassDefContext).next()
       classCtx.outer.fresh.setOwner(owner)
         .setScope(locals)
-        .setMode(classCtx.mode | Mode.InSuperCall)
+        .setMode(classCtx.mode)
     }
 
     /** The context of expression `expr` seen as a member of a statement sequence */

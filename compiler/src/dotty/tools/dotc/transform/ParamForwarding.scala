@@ -64,7 +64,7 @@ class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
             info = sym.info.ensureMethodic
           ).installAfter(thisPhase)
         val superAcc =
-          Super(This(currentClass), tpnme.EMPTY, inConstrCall = false)
+          Super(This(currentClass), tpnme.EMPTY)
             .withSpan(mdef.span)
             .select(alias)
             .ensureApplied

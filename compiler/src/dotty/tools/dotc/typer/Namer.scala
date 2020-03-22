@@ -1027,7 +1027,7 @@ class Namer { typer: Typer =>
   class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
     withDecls(newScope)
 
-    protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
+    protected implicit val ctx: Context = localContext(cls)
 
     private var localCtx: Context = _
 
