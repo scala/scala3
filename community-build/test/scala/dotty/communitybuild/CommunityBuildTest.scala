@@ -281,6 +281,21 @@ object projects:
     sbtUpdateCommand = "munitJVM/update",
   )
 
+  lazy val scodecBits = SbtCommunityProject(
+    project          = "scodec-bits",
+    sbtTestCommand   = "coreJVM/test",
+    sbtUpdateCommand = "coreJVM/update",
+    sbtPublishCommand = "coreJVM/publishLocal",
+    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck)
+  )
+
+  lazy val scodec = SbtCommunityProject(
+    project          = "scodec",
+    sbtTestCommand   = "unitTests/test",
+    sbtUpdateCommand = ";coreJVM/update; unitTests/update",
+    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, scodecBits)
+  )
+
 end projects
 
 @Category(Array(classOf[TestCategory]))
@@ -367,6 +382,8 @@ class CommunityBuildTest:
   @Test def sconfig = projects.sconfig.run()
   @Test def zio = projects.zio.run()
   @Test def munit = projects.munit.run()
+  @Test def scodecBits = projects.scodecBits.run()
+  @Test def scodec = projects.scodec.run()
 end CommunityBuildTest
 
 class TestCategory
