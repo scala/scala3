@@ -369,7 +369,7 @@ trait TypeAssigner {
         else errorType("not a legal qualifying class for this", tree.sourcePos))
   }
 
-  def assignType(tree: untpd.Super, qual: Tree, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context): Super = {
+  def assignType(tree: untpd.Super, qual: Tree, mixinClass: Symbol = NoSymbol)(implicit ctx: Context): Super = {
     val mix = tree.mix
     qual.tpe match {
       case err: ErrorType => untpd.cpy.Super(tree)(qual, mix).withType(err)
@@ -386,7 +386,7 @@ trait TypeAssigner {
         val owntype =
           if (mixinClass.exists) mixinClass.appliedRef
           else if (!mix.isEmpty) findMixinSuper(cls.info)
-          else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent.typeConstructor
+          else if (ctx.erasedTypes) cls.info.firstParent.typeConstructor
           else {
             val ps = cls.classInfo.parents
             if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)

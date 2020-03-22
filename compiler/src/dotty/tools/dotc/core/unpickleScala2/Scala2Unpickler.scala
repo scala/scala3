@@ -1192,7 +1192,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         setSym()
         val qual = readTreeRef()
         val mix = readTypeNameRef()
-        Super(qual, mix, inConstrCall = false) // todo: revise
+        Super(qual, mix)
 
       case THIStree =>
         setSym()

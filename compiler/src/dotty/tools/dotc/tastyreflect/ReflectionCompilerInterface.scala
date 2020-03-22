@@ -477,7 +477,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Super_id(self: Super)(using ctx: Context): Option[Id] = optional(self.mix)
 
   def Super_apply(qual: Term, mix: Option[Id])(using ctx: Context): Super =
-    withDefaultPos(tpd.Super(qual, mix.getOrElse(untpd.EmptyTypeIdent), false, NoSymbol))
+    withDefaultPos(tpd.Super(qual, mix.getOrElse(untpd.EmptyTypeIdent), NoSymbol))
 
   def Super_copy(original: Tree)(qual: Term, mix: Option[Id])(using ctx: Context): Super =
     tpd.cpy.Super(original)(qual, mix.getOrElse(untpd.EmptyTypeIdent))

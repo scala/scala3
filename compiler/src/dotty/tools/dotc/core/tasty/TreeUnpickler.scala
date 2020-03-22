@@ -1098,7 +1098,7 @@ class TreeUnpickler(reader: TastyReader,
             case SUPER =>
               val qual = readTerm()
               val (mixId, mixTpe) = ifBefore(end)(readQualId(), (untpd.EmptyTypeIdent, NoType))
-              tpd.Super(qual, mixId, ctx.mode.is(Mode.InSuperCall), mixTpe.typeSymbol)
+              tpd.Super(qual, mixId, mixTpe.typeSymbol)
             case APPLY =>
               val fn = readTerm()
               tpd.Apply(fn, until(end)(readTerm()))

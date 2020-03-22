@@ -539,10 +539,6 @@ class Typer extends Namer
 
   def typedSuper(tree: untpd.Super, pt: Type)(implicit ctx: Context): Tree = {
     val qual1 = typed(tree.qual)
-    val inConstrCall = pt match {
-      case pt: SelectionProto if pt.name == nme.CONSTRUCTOR => true
-      case _ => false
-    }
     val enclosingInlineable = ctx.owner.ownersIterator.findSymbol(_.isInlineMethod)
     if (enclosingInlineable.exists && !PrepareInlineable.isLocal(qual1.symbol, enclosingInlineable))
       ctx.error(SuperCallsNotAllowedInlineable(enclosingInlineable), tree.sourcePos)
@@ -550,7 +546,7 @@ class Typer extends Namer
       case pt: SelectionProto if pt.name.isTypeName =>
         qual1 // don't do super references for types; they are meaningless anyway
       case _ =>
-        assignType(cpy.Super(tree)(qual1, tree.mix), qual1, inConstrCall)
+        assignType(cpy.Super(tree)(qual1, tree.mix), qual1)
     }
   }
 
