@@ -409,6 +409,8 @@ object Build {
 
     javaOptions ++= (javaOptions in `dotty-compiler`).value,
 
+    javaOptions += "-Xss3m",
+
     genDocs := Def.inputTaskDyn {
       val dottydocExtraArgs = spaceDelimited("<arg>").parsed
 
