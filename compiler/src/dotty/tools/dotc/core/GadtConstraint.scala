@@ -124,7 +124,7 @@ final class ProperGadtConstraint private(
 
     // The replaced symbols are picked up here.
     addToConstraint(poly1, tvars)
-      .reporting(i"added to constraint: $params%, %\n$debugBoundsDescription", gadts)
+      .reporting(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
   }
 
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = {
@@ -237,8 +237,11 @@ final class ProperGadtConstraint private(
      }
 
    override def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type =
-     constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) {
-       (t, u) => t & externalize(u)
+     constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) { (t, u) =>
+       val eu = externalize(u)
+       // Any as the upper bound means "no bound", but if F is higher-kinded,
+       // Any & F = F[_]; this is wrong for us so we need to short-circuit
+       if t.isAny then eu else t & eu
      }
 
   // ---- Private ----------------------------------------------------------
