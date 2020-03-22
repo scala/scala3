@@ -997,10 +997,16 @@ class Namer { typer: Typer =>
       val rhs1 = typedAheadType(rhs)
       val rhsBodyType: TypeBounds = rhs1.tpe.toBounds
       val unsafeInfo = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
+
+      def opaqueToBounds(info: Type): Type =
+        if sym.isOpaqueAlias && tparamSyms.isEmpty && info.typeParams.nonEmpty then
+          ctx.error(em"opaque type alias must be fully applied", rhs.sourcePos)
+        sym.opaqueToBounds(info, rhs1, tparamSyms)
+
       if (isDerived) sym.info = unsafeInfo
       else {
         sym.info = NoCompleter
-        sym.info = sym.opaqueToBounds(checkNonCyclic(sym, unsafeInfo, reportErrors = true), rhs1)
+        sym.info = opaqueToBounds(checkNonCyclic(sym, unsafeInfo, reportErrors = true))
       }
       if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
       sym.resetFlag(Provisional)

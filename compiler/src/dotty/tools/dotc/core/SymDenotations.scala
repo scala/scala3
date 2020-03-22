@@ -432,11 +432,13 @@ object SymDenotations {
      *  self type of the enclosing class.
      *  Otherwise return `info`
      *
-     *  @param info   Is assumed to be a (lambda-abstracted) right hand side TypeAlias
-     *                of the opaque type definition.
-     *  @param rhs    The right hand side tree of the type definition
+     *  @param info    Is assumed to be a (lambda-abstracted) right hand side TypeAlias
+     *                 of the opaque type definition.
+     *  @param rhs     The right hand side tree of the type definition
+     *  @param tparams The type parameters with which the right-hand side bounds should be abstracted
+     *
      */
-    def opaqueToBounds(info: Type, rhs: tpd.Tree)(using Context): Type =
+    def opaqueToBounds(info: Type, rhs: tpd.Tree, tparams: List[TypeParamInfo])(using Context): Type =
 
       def setAlias(tp: Type) =
         def recur(self: Type): Unit = self match
@@ -449,7 +451,7 @@ object SymDenotations {
       end setAlias
 
       def bounds(t: tpd.Tree): TypeBounds = t match
-        case LambdaTypeTree(_, body) =>
+        case LambdaTypeTree(tparams, body) =>
           bounds(body)
         case TypeBoundsTree(lo, hi, alias) =>
           assert(!alias.isEmpty)
@@ -460,7 +462,7 @@ object SymDenotations {
       info match
         case TypeAlias(alias) if isOpaqueAlias && owner.isClass =>
           setAlias(alias)
-          HKTypeLambda.boundsFromParams(alias.typeParams, bounds(rhs))
+          HKTypeLambda.boundsFromParams(tparams, bounds(rhs))
         case _ =>
           info
     end opaqueToBounds
