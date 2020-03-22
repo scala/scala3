@@ -86,7 +86,7 @@ object ResolveSuper {
       val other = bcs.head.info.nonPrivateDecl(memberName)
         .matchingDenotation(base.thisType, base.thisType.memberInfo(acc))
       ctx.debuglog(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
-      if (other.exists) {
+      if other.exists && !other.symbol.is(Deferred) then
         sym = other.symbol
         // Having a matching denotation is not enough: it should also be a subtype
         // of the superaccessor's type, see i5433.scala for an example where this matters
@@ -94,7 +94,6 @@ object ResolveSuper {
         val accTp = acc.asSeenFrom(base.typeRef).info
         if (!(otherTp.overrides(accTp, matchLoosely = true)))
           ctx.error(IllegalSuperAccessor(base, memberName, acc, accTp, other.symbol, otherTp), base.sourcePos)
-      }
 
       bcs = bcs.tail
     }
