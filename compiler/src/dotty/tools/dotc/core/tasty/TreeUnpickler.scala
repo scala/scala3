@@ -670,7 +670,7 @@ class TreeUnpickler(reader: TastyReader,
         readByte()
         val end = readEnd()
         val tp = readType()
-        val lazyAnnotTree = readLaterWithOwner(end, rdr => ctx => rdr.readTerm()(ctx))
+        val lazyAnnotTree = readLaterWithOwner(end, rdr => implicit ctx => rdr.readTerm())
 
         owner =>
           Annotation.deferredSymAndTree(tp.typeSymbol)(lazyAnnotTree(owner).complete)
@@ -780,7 +780,7 @@ class TreeUnpickler(reader: TastyReader,
             def complete(implicit ctx: Context) = typer.Inliner.bodyToInline(sym)
           }
         else
-          readLater(end, rdr => ctx => rdr.readTerm()(ctx))
+          readLater(end, rdr => implicit ctx => rdr.readTerm())
 
       def ValDef(tpt: Tree) =
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(localCtx)), sym)
