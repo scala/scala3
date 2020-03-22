@@ -451,7 +451,7 @@ class Typer extends Namer
         // of a this(...) constructor call
         errorType(ex"$tree is not accessible from constructor arguments", tree.sourcePos)
       else
-        errorType(new MissingIdent(tree, kind, name.show), tree.sourcePos)
+        errorType(new MissingIdent(tree, kind, name), tree.sourcePos)
 
     val tree1 = ownType match {
       case ownType: NamedType =>
@@ -491,7 +491,7 @@ class Typer extends Namer
         case _ => app
       }
     case qual =>
-      if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos)
+      if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos, "type prefix")
       val select = assignType(cpy.Select(tree)(qual, tree.name), qual)
 
       val select1 = toNotNullTermRef(select, pt)
@@ -1429,7 +1429,7 @@ class Typer extends Namer
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = {
     val ref1 = typedExpr(tree.ref)
-    checkStable(ref1.tpe, tree.sourcePos)
+    checkStable(ref1.tpe, tree.sourcePos, "singleton type")
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
 
@@ -2466,7 +2466,7 @@ class Typer extends Namer
    *  is more efficient since it re-uses the prefix `p` in typed form.
    */
   def tryNew[T >: Untyped <: Type]
-    (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: => Tree)(implicit ctx: Context): Tree = {
+    (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: TyperState => Tree)(implicit ctx: Context): Tree = {
 
     def tryWithType(tpt: untpd.Tree): Tree =
       tryEither {
@@ -2486,7 +2486,7 @@ class Typer extends Namer
             .reporting(i"try new $tree -> $result", typr)
         }
       } { (nu, nuState) =>
-        if (nu.isEmpty) fallBack
+        if (nu.isEmpty) fallBack(nuState)
         else {
           // we found a type constructor, signal the error in its application instead of the original one
           nuState.commit()
@@ -2504,7 +2504,7 @@ class Typer extends Namer
         }
         tryWithType(cpy.Select(tree)(qual1, name.toTypeName))
       case _ =>
-        fallBack
+        fallBack(ctx.typerState)
     }
   }
 
@@ -2550,7 +2550,7 @@ class Typer extends Namer
 
     def tryImplicit(fallBack: => Tree) =
       tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked)
-        .getOrElse(tryNew(tpd)(tree, pt, fallBack))
+        .getOrElse(tryNew(tpd)(tree, pt, _ => fallBack))
 
     if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver))
       // Suppress insertion of apply or implicit conversion on extension method receiver

@@ -279,7 +279,7 @@ object messages {
     }
   }
 
-  case class MissingIdent(tree: untpd.Ident, treeKind: String, name: String)(implicit ctx: Context)
+  case class MissingIdent(tree: untpd.Ident, treeKind: String, name: Name)(implicit ctx: Context)
   extends Message(MissingIdentID) {
     val kind: String = "Unbound Identifier"
     val msg: String = em"Not found: $treeKind$name"
@@ -1701,9 +1701,18 @@ object messages {
   case class SuperCallsNotAllowedInlineable(symbol: Symbol)(implicit ctx: Context)
     extends Message(SuperCallsNotAllowedInlineableID) {
     val kind: String = "Syntax"
-    val msg: String = s"Super call not allowed in inlineable $symbol"
+    val msg: String = em"Super call not allowed in inlineable $symbol"
     val explanation: String = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
   }
+
+  case class NotAPath(tp: Type, usage: String)(using Context) extends Message(NotAPathID):
+    val kind: String = "Type"
+    val msg: String = em"$tp is not a valid $usage, since it is not an immutable path"
+    val explanation: String =
+      i"""An immutable path is
+         | - a reference to an immutable value, or
+         | - a reference to `this`, or
+         | - a selection of an immutable path with an immutable value."""
 
   case class WrongNumberOfParameters(expected: Int)(implicit ctx: Context)
     extends Message(WrongNumberOfParametersID) {

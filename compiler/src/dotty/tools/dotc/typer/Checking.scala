@@ -652,8 +652,8 @@ trait Checking {
     Checking.checkNonCyclicInherited(joint, parents, decls, posd)
 
   /** Check that type `tp` is stable. */
-  def checkStable(tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit =
-    if (!tp.isStable) ctx.error(ex"$tp is not stable", pos)
+  def checkStable(tp: Type, pos: SourcePosition, kind: String)(implicit ctx: Context): Unit =
+    if !tp.isStable then ctx.error(NotAPath(tp, kind), pos)
 
   /** Check that all type members of `tp` have realizable bounds */
   def checkRealizableBounds(cls: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = {
@@ -712,7 +712,7 @@ trait Checking {
 
   /** Check that `path` is a legal prefix for an import or export clause */
   def checkLegalImportPath(path: Tree)(implicit ctx: Context): Unit = {
-    checkStable(path.tpe, path.sourcePos)
+    checkStable(path.tpe, path.sourcePos, "import prefix")
     if (!ctx.isAfterTyper) Checking.checkRealizable(path.tpe, path.posd)
   }
 
@@ -726,7 +726,7 @@ trait Checking {
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
         if (traitReq && !tref.symbol.is(Trait)) ctx.error(TraitIsExpected(tref.symbol), pos)
-        if (stablePrefixReq && ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
+        if (stablePrefixReq && ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos, "class prefix")
         tp
       case _ =>
         ctx.error(ex"$tp is not a class type", pos)
@@ -1194,7 +1194,7 @@ trait NoChecking extends ReChecking {
   import tpd._
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
   override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, posd: Positioned)(implicit ctx: Context): Unit = ()
-  override def checkStable(tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit = ()
+  override def checkStable(tp: Type, pos: SourcePosition, kind: String)(implicit ctx: Context): Unit = ()
   override def checkClassType(tp: Type, pos: SourcePosition, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = ()
   override def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit = ()

@@ -239,7 +239,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
 
     tag.tpe match
       case tp: TermRef =>
-        checkStable(tp, pos)
+        checkStable(tp, pos, "type witness")
         Some(ref(getQuoteTypeTags.getTagRef(tp)))
       case _: SearchFailureType =>
         levelError(sym, tp, pos,
