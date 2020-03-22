@@ -780,7 +780,7 @@ class TreeUnpickler(reader: TastyReader,
             def complete(implicit ctx: Context) = typer.Inliner.bodyToInline(sym)
           }
         else
-          readLater(end, rdr => ctx => rdr.readTerm()(ctx.retractMode(Mode.InSuperCall)))
+          readLater(end, rdr => ctx => rdr.readTerm()(ctx))
 
       def ValDef(tpt: Tree) =
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(localCtx)), sym)
@@ -1032,9 +1032,7 @@ class TreeUnpickler(reader: TastyReader,
       }
 
       def completeSelect(name: Name, sig: Signature): Select = {
-        val localCtx =
-          if (name == nme.CONSTRUCTOR) ctx.addMode(Mode.InSuperCall) else ctx
-        val qual = readTerm()(localCtx)
+        val qual = readTerm()(ctx)
         var qualType = qual.tpe.widenIfUnstable
         val denot = accessibleDenot(qualType, name, sig)
         val owner = denot.symbol.maybeOwner

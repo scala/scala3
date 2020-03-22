@@ -43,9 +43,6 @@ object Mode {
 
   val CheckCyclic: Mode = newMode(5, "CheckCyclic")
 
-  /** We are looking at the arguments of a supercall */
-  val InSuperCall: Mode = newMode(6, "InSuperCall")
-
   /** We are in a pattern alternative */
   val InPatternAlternative: Mode = newMode(7, "InPatternAlternative")
 
