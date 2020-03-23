@@ -235,4 +235,28 @@ object Annotations {
       }
       yield ScalaVersion.parse(arg.stringValue)
   }
+
+  /** Extracts the type of the thrown exception from an annotation.
+   *
+   *  Supports both "old-style" `@throws(classOf[Exception])`
+   *  as well as "new-style" `@throws[Exception]("cause")` annotations.
+   */
+  object ThrownException {
+    def unapply(a: Annotation)(using Context): Option[Type] =
+      if (a.symbol ne defn.ThrowsAnnot)
+        None
+      else a.argumentConstant(0) match {
+        // old-style: @throws(classOf[Exception]) (which is throws[T](classOf[Exception]))
+        case Some(Constant(tpe: Type)) =>
+          Some(tpe)
+        // new-style: @throws[Exception], @throws[Exception]("cause")
+        case _ =>
+          stripApply(a.tree) match {
+            case TypeApply(_, List(tpt)) =>
+              Some(tpt.tpe)
+            case _ =>
+              None
+          }
+      }
+  }
 }

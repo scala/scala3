@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package transform
 
-import core.Annotations.Annotation
+import core.Annotations._
 import core.Contexts.Context
 import core.Definitions
 import core.Flags._
@@ -380,21 +380,6 @@ object GenericSignatures {
       sym.isContainedIn(initialSymbol.topLevelClass) ||
         (initialSymbol.is(Method) && initialSymbol.typeParams.contains(sym))
       )
-
-  /** Extracts the type of the thrown exception from an AnnotationInfo.
-    *
-    * Supports both “old-style” `@throws(classOf[Exception])`
-    * as well as “new-style” `@throws[Exception]("cause")` annotations.
-    */
-  private object ThrownException {
-    def unapply(ann: Annotation)(implicit ctx: Context): Option[Type] =
-      ann.tree match {
-        case Apply(TypeApply(fun, List(tpe)), _) if tpe.isType && fun.symbol.owner == defn.ThrowsAnnot && fun.symbol.isConstructor =>
-          Some(tpe.typeOpt)
-        case _ =>
-          None
-      }
-  }
 
   // @M #2585 when generating a java generic signature that includes
   // a selection of an inner class p.I, (p = `pre`, I = `cls`) must

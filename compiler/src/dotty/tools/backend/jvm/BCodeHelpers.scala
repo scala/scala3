@@ -11,7 +11,7 @@ import scala.collection.mutable
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
-import dotty.tools.dotc.core.Annotations.Annotation
+import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators._
@@ -512,7 +512,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       // TODO needed? for(ann <- m.annotations) { ann.symbol.initialize }
       val jgensig = getStaticForwarderGenericSignature(m, module)
-      val (throws, others) = m.annotations partition (_.tree.symbol == defn.ThrowsAnnot)
+      val (throws, others) = m.annotations.partition(_.symbol eq defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(throws)
 
       val jReturnType = toTypeKind(methodInfo.resultType)
@@ -612,12 +612,9 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     def getExceptions(excs: List[Annotation]): List[String] = {
-      // TODO: implement ThrownException
-      // for (ThrownException(exc) <- excs.distinct)
-      // yield internalName(exc)
-      Nil
+      for (case ThrownException(exc) <- excs.distinct)
+      yield internalName(TypeErasure.erasure(exc).classSymbol)
     }
-
   } // end of trait BCForwardersGen
 
   trait BCClassGen extends BCInnerClassGen {
