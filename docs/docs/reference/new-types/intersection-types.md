@@ -29,6 +29,8 @@ The members of an intersection type `A & B` are all the members of `A` and all
 the members of `B`.  For instance `Resettable & Growable[String]`
 has member methods `reset` and `add`.
 
+`&` is _commutative_: `A & B` is the same type as `B & A`.
+
 If a member appears in both `A` and `B`, its type in `A & B` is the intersection
 of its type in `A` and its type in `B`. For instance, assume the definitions:
 
