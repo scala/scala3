@@ -17,19 +17,21 @@ package object compiletime {
    */
   inline def error(inline msg: String): Nothing = ???
 
-  /** Returns the string representations for code passed in the interpolated values
+  /** Returns the string representation of interpolated values:
+   *
    *  ```scala
    *  inline def logged(p1: => Any) = {
    *    val c = code"code: $p1"
    *    val res = p1
    *    (c, p1)
    *  }
-   *  logged(indentity("foo"))
+   *  logged(identity("foo"))
+   *  // above is equivalent to:
+   *  // ("code: identity("foo")", identity("foo"))
    *  ```
-   *  is equivalent to:
-   *  ```scala
-   *  ("code: indentity("foo")", indentity("foo"))
-   *  ```
+   *
+   * @note only by-name arguments will be displayed as "code".
+   *       Other values may display unintutively.
    */
   inline def (self: => StringContext) code (args: => Any*): String = ???
 
