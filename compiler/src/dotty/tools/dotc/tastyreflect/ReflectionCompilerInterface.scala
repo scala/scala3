@@ -28,7 +28,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def settings: Settings = rootContext.settings
 
   def rootPosition: util.SourcePosition =
-    tastyreflect.MacroExpansion.position.getOrElse(SourcePosition(rootContext.source, Spans.NoSpan))
+    tastyreflect.MacroExpansion.position.getOrElse(SourcePosition(rootContext.source, Spans.Span(0)))
 
 
   //////////////////////

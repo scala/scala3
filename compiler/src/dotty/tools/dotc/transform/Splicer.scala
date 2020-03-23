@@ -396,6 +396,8 @@ object Splicer {
                 ctx.echo(i"suspension triggered by a dependency on $sym", pos)
               ctx.compilationUnit.suspend() // this throws a SuspendException
             case targetException =>
+              if ctx.settings.Ydebug.value then
+                targetException.printStackTrace()
               val sw = new StringWriter()
               sw.write("Exception occurred while executing macro expansion.\n")
               if (!ctx.settings.Ydebug.value) {

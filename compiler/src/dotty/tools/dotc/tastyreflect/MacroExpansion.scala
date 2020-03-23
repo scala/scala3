@@ -14,6 +14,11 @@ object MacroExpansion {
     ctx.property(MacroExpansionPosition)
 
   def context(inlinedFrom: tpd.Tree)(implicit ctx: Context): Context =
-    ctx.fresh.setProperty(MacroExpansionPosition, SourcePosition(inlinedFrom.source, inlinedFrom.span)).setTypeAssigner(new Typer).withSource(inlinedFrom.source)
+    val source = inlinedFrom.source
+    val span = inlinedFrom.span
+    val sourcePos = SourcePosition(source, span)
+    assert(source.exists)
+    assert(span.exists, inlinedFrom.uniqueId)
+    ctx.fresh.setProperty(MacroExpansionPosition, sourcePos).setTypeAssigner(new Typer).withSource(source)
 }
 
