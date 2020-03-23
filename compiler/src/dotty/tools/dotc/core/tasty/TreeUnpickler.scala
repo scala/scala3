@@ -786,9 +786,10 @@ class TreeUnpickler(reader: TastyReader,
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(localCtx)), sym)
 
       def DefDef(tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree) =
-         ta.assignType(
-            untpd.DefDef(sym.name.asTermName, tparams, vparamss, tpt, readRhs(localCtx)),
-            sym)
+        sym.setParamssFromDefs(tparams, vparamss)
+        ta.assignType(
+          untpd.DefDef(sym.name.asTermName, tparams, vparamss, tpt, readRhs(localCtx)),
+          sym)
 
       def TypeDef(rhs: Tree) =
         ta.assignType(untpd.TypeDef(sym.name.asTypeName, rhs), sym)
