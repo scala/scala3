@@ -11,7 +11,7 @@ import Scopes.Scope
 import dotty.tools.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
-import ast.Trees.{LambdaTypeTree, TypeBoundsTree}
+import ast.Trees.{LambdaTypeTree, TypeBoundsTree, ValDef, TypeDef}
 import Trees.Literal
 import Variances.Variance
 import annotation.tailrec
@@ -150,6 +150,7 @@ object SymDenotations {
     private var myFlags: FlagSet = adaptFlags(initFlags)
     private var myPrivateWithin: Symbol = initPrivateWithin
     private var myAnnotations: List[Annotation] = Nil
+    private var myParamss: List[List[Symbol]] = Nil
 
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = maybeOwner
@@ -371,6 +372,20 @@ object SymDenotations {
       case ann :: rest => if (ann matches cls) anns else dropOtherAnnotations(rest, cls)
       case Nil => Nil
     }
+
+    /** If this is a method, the parameter symbols, by section.
+     *  Both type and value parameters are included. Empty sections are skipped.
+     */
+    final def paramss: List[List[Symbol]] = myParamss
+    final def paramss_=(pss: List[List[Symbol]]): Unit =
+      myParamss = pss
+
+    final def setParamss(tparams: List[Symbol], vparamss: List[List[Symbol]])(using Context): Unit =
+      paramss = (if tparams.isEmpty then vparamss else tparams :: vparamss)
+        .filterConserve(!_.isEmpty)
+
+    final def setParamssFromDefs(tparams: List[TypeDef[?]], vparamss: List[List[ValDef[?]]])(using Context): Unit =
+      setParamss(tparams.map(_.symbol), vparamss.map(_.map(_.symbol)))
 
     /** The denotation is completed: info is not a lazy type and attributes have defined values */
     final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
@@ -1450,7 +1465,9 @@ object SymDenotations {
       initFlags: FlagSet = UndefinedFlags,
       info: Type = null,
       privateWithin: Symbol = null,
-      annotations: List[Annotation] = null)(implicit ctx: Context): SymDenotation = {
+      annotations: List[Annotation] = null,
+      paramss: List[List[Symbol]] = null)(
+        using ctx: Context): SymDenotation = {
       // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
       val info1 = if (info != null) info else this.info
@@ -1458,8 +1475,10 @@ object SymDenotations {
         assert(ctx.phase.changesParents, i"undeclared parent change at ${ctx.phase} for $this, was: $info, now: $info1")
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
+      val paramss1 = if paramss != null then paramss else this.paramss
       val d = ctx.SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
       d.annotations = annotations1
+      d.paramss = paramss1
       d.registeredCompanion = registeredCompanion
       d
     }

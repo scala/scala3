@@ -1553,6 +1553,7 @@ class Namer { typer: Typer =>
     vparamss foreach completeParams
     def typeParams = tparams map symbolOfTree
     val termParamss = ctx.normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
+    sym.setParamss(typeParams, termParamss)
     def wrapMethType(restpe: Type): Type = {
       instantiateDependent(restpe, typeParams, termParamss)
       ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods.is(JavaDefined))
