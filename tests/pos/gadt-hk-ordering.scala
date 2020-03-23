@@ -4,11 +4,6 @@ object test {
     case Refl[S[_]]() extends KSUB[S, S]
   }
 
-  enum Thing[+F[_]] {
-    case LBOption() extends Thing[Option];
-    case
-  }
-
   def foo[F[_]](ksub: Option KSUB F) =
     ksub match {
       case KSUB.Refl() =>

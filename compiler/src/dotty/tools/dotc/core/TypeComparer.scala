@@ -872,7 +872,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
                       || byGadtBounds(tycon1sym, tycon2, fromAbove = true)
                       || byGadtBounds(tycon2sym, tycon1, fromAbove = false)
                   ) && {
-                    // check both tycons to deal with the case when they are equal b/c of GADT constraint
+                    // There are two cases in which we can assume injectivity.
+                    // First we check if either sym is a class.
+                    // Then:
+                    // 1) if we didn't touch GADTs, then both symbols are the same
+                    //    (b/c of an earlier condition) and both are the same class
+                    // 2) if we touched GADTs, then the _other_ symbol (class syms
+                    //    cannot have GADT constraints), the one w/ GADT cstrs,
+                    //    must be instantiated, making the two tycons equal
                     val tyconIsInjective =
                       (tycon1sym.isClass || tycon2sym.isClass)
                         && (if touchedGADTs then gadtIsInstantiated else true)
