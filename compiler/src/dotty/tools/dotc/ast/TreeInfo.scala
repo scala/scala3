@@ -9,6 +9,7 @@ import typer.ConstFold
 import reporting.trace
 import dotty.tools.dotc.transform.SymUtils._
 import Decorators._
+import Constants.Constant
 
 import scala.annotation.tailrec
 
@@ -396,7 +397,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case New(_) | Closure(_, _, _) =>
       Pure
     case TypeApply(fn, _) =>
-      if (fn.symbol.is(Erased) || fn.symbol == defn.InternalQuoted_typeQuote) Pure else exprPurity(fn)
+      if (fn.symbol.is(Erased) || fn.symbol == defn.InternalQuoted_typeQuote || fn.symbol == defn.Predef_classOf) Pure else exprPurity(fn)
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass
@@ -517,6 +518,10 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def constToLiteral(tree: Tree)(implicit ctx: Context): Tree = {
     val tree1 = ConstFold(tree)
     tree1.tpe.widenTermRefExpr.dealias.normalized match {
+      case ConstantType(Constant(_: Type)) if tree.isInstanceOf[Block] =>
+        // We can't rewrite `{ class A; classOf[A] }` to `classOf[A]`, so we leave
+        // blocks returning a class literal alone, even if they're idempotent.
+        tree1
       case ConstantType(value) =>
         if (isIdempotentExpr(tree1)) Literal(value).withSpan(tree.span)
         else tree1 match {

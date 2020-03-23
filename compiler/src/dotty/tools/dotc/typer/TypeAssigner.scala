@@ -315,7 +315,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(using Context): TypeApply = {
     def fail = tree.withType(errorType(err.takesNoParamsStr(fn, "type "), tree.sourcePos))
-    fn.tpe.widen match {
+    ConstFold(fn.tpe.widen match {
       case pt: TypeLambda =>
         tree.withType {
           val paramNames = pt.paramNames
@@ -381,7 +381,7 @@ trait TypeAssigner {
       case _ =>
         //println(i"bad type: $fn: ${fn.symbol} / ${fn.symbol.isType} / ${fn.symbol.info}") // DEBUG
         fail
-    }
+    })
   }
 
   def assignType(tree: untpd.Typed, tpt: Tree)(using Context): Typed =

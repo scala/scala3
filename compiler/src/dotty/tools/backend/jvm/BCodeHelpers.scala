@@ -368,14 +368,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
             case StringTag =>
               assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
               av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
-            case ClazzTag => av.visit(name, typeToTypeKind(const.typeValue)(bcodeStore)(innerClasesStore).toASMType)
+            case ClazzTag => av.visit(name, typeToTypeKind(TypeErasure.erasure(const.typeValue))(bcodeStore)(innerClasesStore).toASMType)
             case EnumTag =>
               val edesc = innerClasesStore.typeDescriptor(const.tpe) // the class descriptor of the enumeration class.
               val evalue = const.symbolValue.javaSimpleName // value the actual enumeration value.
               av.visitEnum(name, edesc, evalue)
           }
-        case t: TypeApply if (t.fun.symbol == defn.Predef_classOf) =>
-          av.visit(name, typeToTypeKind(t.args.head.tpe.classSymbol.denot.info)(bcodeStore)(innerClasesStore).toASMType)
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
         case t: tpd.RefTree if t.symbol.denot.owner.isAllOf(JavaEnumTrait) =>
