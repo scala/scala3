@@ -12,7 +12,7 @@ object Message {
     * not yet been ported to the new scheme. Comment out this `implicit def` to
     * see where old errors still exist
     */
-  implicit def toNoExplanation(str: String): Message =
+  implicit def toNoExplanation(str: => String): Message =
     new NoExplanation(str)
 }
 
@@ -125,7 +125,8 @@ class ExtendMessage(_msg: () => Message)(f: String => String) { self =>
 }
 
 /** The fallback `Message` containing no explanation and having no `kind` */
-class NoExplanation(val msg: String) extends Message(ErrorMessageID.NoExplanationID) {
+class NoExplanation(msgFn: => String) extends Message(ErrorMessageID.NoExplanationID) {
+  lazy val msg: String = msgFn
   val explanation: String = ""
   val kind: String = ""
 
