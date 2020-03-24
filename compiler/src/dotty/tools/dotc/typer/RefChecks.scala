@@ -231,7 +231,7 @@ object RefChecks {
               infoStringWithLocation(other),
               infoStringWithLocation(member))
           else if (ctx.settings.Ydebug.value)
-            err.typeMismatchMsg(memberTp(self), otherTp(self))
+            TypeMismatch(memberTp(self), otherTp(self))
           else ""
 
         "error overriding %s;\n  %s %s%s".format(

@@ -29,7 +29,7 @@ import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
 import reporting.diagnostic.Message
-import reporting.diagnostic.messages.{UnexpectedPatternForSummonFrom, NotAMember, MissingIdent}
+import reporting.diagnostic.messages.{UnexpectedPatternForSummonFrom, NotAMember, MissingIdent, TypeMismatch}
 import reporting.trace
 import Constants.{Constant, IntTag, LongTag}
 import dotty.tools.dotc.reporting.diagnostic.messages.{UnapplyInvalidReturnType, NotAnExtractor, UnapplyInvalidNumberOfArguments}
@@ -349,7 +349,7 @@ trait Applications extends Compatibility {
             // it might be healed by an implicit conversion
             ()
           else
-            fail(err.typeMismatchMsg(methType.resultType, resultType))
+            fail(TypeMismatch(methType.resultType, resultType))
 
         // match all arguments with corresponding formal parameters
         matchArgs(orderedArgs, methType.paramInfos, 0)
@@ -1069,10 +1069,10 @@ trait Applications extends Compatibility {
     state.reporter.pendingMessages match
       case msg :: Nil =>
         msg.contained match
-          case NotAMember(_, name, _, _) =>
-            memberName.isEmpty || name == memberName
-          case MissingIdent(_, _, name) =>
-            memberName.isEmpty || name == memberName
+          case msg: NotAMember =>
+            memberName.isEmpty || msg.name == memberName
+          case msg: MissingIdent =>
+            memberName.isEmpty || msg.name == memberName
           case _ => false
       case _ => false
 

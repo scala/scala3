@@ -981,7 +981,7 @@ object desugar {
     var name = mdef.name
     if (name.isEmpty) name = name.likeSpaced(inventGivenOrExtensionName(impl))
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
-      def kind = if (name.isTypeName) "class" else "object"
+      val kind = if (name.isTypeName) "class" else "object"
       ctx.error(IllegalRedefinitionOfStandardKind(kind, name), mdef.sourcePos)
       name = name.errorName
     }

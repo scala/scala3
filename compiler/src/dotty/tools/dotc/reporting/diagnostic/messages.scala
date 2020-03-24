@@ -3,27 +3,23 @@ package dotc
 package reporting
 package diagnostic
 
-import dotc.core._
+import core._
 import Contexts.Context
-import Decorators._
-import Symbols._
-import Names._
-import NameOps._
-import Types._
+import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._
+import Denotations.SingleDenotation
+import SymDenotations.SymDenotation
 import util.SourcePosition
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, INFO, WARNING}
-import dotc.parsing.Scanners.Token
-import dotc.parsing.Tokens
+import parsing.Scanners.Token
+import parsing.Tokens
 import printing.Highlighting._
 import printing.Formatting
 import ErrorMessageID._
-import Denotations.SingleDenotation
-import dotty.tools.dotc.ast.Trees
-import dotty.tools.dotc.config.ScalaVersion
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.SymDenotations.SymDenotation
-import dotty.tools.dotc.typer.ErrorReporting.Errors
+import ast.Trees
+import config.ScalaVersion
+import typer.ErrorReporting.{Errors, err}
+import typer.ProtoTypes.ViewProto
 import scala.util.control.NonFatal
 import StdNames.nme
 import printing.Formatting.hl
@@ -277,7 +273,7 @@ object messages {
     }
   }
 
-  case class MissingIdent(tree: untpd.Ident, treeKind: String, name: Name)(implicit ctx: Context)
+  class MissingIdent(tree: untpd.Ident, treeKind: String, val name: Name)(implicit ctx: Context)
   extends Message(MissingIdentID) {
     val kind: String = "Unbound Identifier"
     lazy val msg: String = em"Not found: $treeKind$name"
@@ -290,21 +286,54 @@ object messages {
     }
   }
 
-  case class TypeMismatch(found: Type, expected: Type, whyNoMatch: String = "", implicitFailure: String = "")(implicit ctx: Context)
-  extends Message(TypeMismatchID) {
+  class TypeMismatch(found: Type, expected: Type, addendum: => String = "")(implicit ctx: Context)
+    extends Message(TypeMismatchID):
     val kind: String = "Type Mismatch"
-    lazy val msg: String = {
-      val (where, printCtx) = Formatting.disambiguateTypes(found, expected)
+
+    // replace constrained TypeParamRefs and their typevars by their bounds where possible
+    // the idea is that if the bounds are also not-subtypes of each other to report
+    // the type mismatch on the bounds instead of the original TypeParamRefs, since
+    // these are usually easier to analyze.
+    object reported extends TypeMap:
+      def setVariance(v: Int) = variance = v
+      val constraint = ctx.typerState.constraint
+      def apply(tp: Type): Type = tp match
+        case tp: TypeParamRef =>
+          constraint.entry(tp) match
+            case bounds: TypeBounds =>
+              if variance < 0 then apply(ctx.typeComparer.fullUpperBound(tp))
+              else if variance > 0 then apply(ctx.typeComparer.fullLowerBound(tp))
+              else tp
+            case NoType => tp
+            case instType => apply(instType)
+        case tp: TypeVar => apply(tp.stripTypeVar)
+        case _ => mapOver(tp)
+
+    lazy val msg: String =
+      val found1 = reported(found)
+      reported.setVariance(-1)
+      val expected1 = reported(expected)
+      val (found2, expected2) =
+        if (found1 frozen_<:< expected1) (found, expected) else (found1, expected1)
+      val postScript =
+        if !addendum.isEmpty
+           || expected.isAny
+           || expected.isAnyRef
+           || expected.isRef(defn.AnyValClass)
+           || defn.isBottomType(found)
+        then addendum
+        else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
+      val (where, printCtx) = Formatting.disambiguateTypes(found2, expected2)
       val whereSuffix = if (where.isEmpty) where else s"\n\n$where"
-      val (fnd, exp) = Formatting.typeDiff(found, expected)(printCtx)
-      s"""|Found:    $fnd
-          |Required: $exp""".stripMargin + whereSuffix + whyNoMatch + implicitFailure
-    }
+      val (foundStr, expectedStr) = Formatting.typeDiff(found2, expected2)(printCtx)
+      s"""|Found:    $foundStr
+          |Required: $expectedStr""".stripMargin
+        + whereSuffix + err.whyNoMatchStr(found, expected) + postScript
 
     lazy val explanation: String = ""
-  }
+  end TypeMismatch
 
-  case class NotAMember(site: Type, name: Name, selected: String, addendum: String = "")(implicit ctx: Context)
+  class NotAMember(site: Type, val name: Name, selected: String, addendum: => String = "")(implicit ctx: Context)
   extends Message(NotAMemberID) {
     val kind: String = "Member Not Found"
 
@@ -843,9 +872,10 @@ object messages {
            |"""
   }
 
-  case class PatternMatchExhaustivity(uncovered: String)(implicit ctx: Context)
+  class PatternMatchExhaustivity(uncoveredFn: => String)(implicit ctx: Context)
   extends Message(PatternMatchExhaustivityID) {
     val kind: String = "Pattern Match Exhaustivity"
+    lazy val uncovered = uncoveredFn
     lazy val msg: String =
       em"""|${hl("match")} may not be exhaustive.
            |
@@ -860,10 +890,10 @@ object messages {
            |"""
   }
 
-  case class UncheckedTypePattern(msg: String)(implicit ctx: Context)
+  class UncheckedTypePattern(msgFn: => String)(implicit ctx: Context)
     extends Message(UncheckedTypePatternID) {
     val kind: String = "Pattern Match Exhaustivity"
-
+    lazy val msg = msgFn
     lazy val explanation: String =
       em"""|Type arguments and type refinements are erased during compile time, thus it's
            |impossible to check them at run-time.
@@ -1993,7 +2023,7 @@ object messages {
     }
   }
 
-  case class CyclicInheritance(symbol: Symbol, addendum: String)(implicit ctx: Context) extends Message(CyclicInheritanceID) {
+  class CyclicInheritance(symbol: Symbol, addendum: => String)(implicit ctx: Context) extends Message(CyclicInheritanceID) {
     val kind: String = "Syntax"
     lazy val msg: String = em"Cyclic inheritance: $symbol extends itself$addendum"
     lazy val explanation: String = {
@@ -2036,7 +2066,7 @@ object messages {
     lazy val explanation: String = "A sealed class or trait can only be extended in the same file as its declaration"
   }
 
-  case class SymbolHasUnparsableVersionNumber(symbol: Symbol, migrationMessage: String)(implicit ctx: Context)
+  class SymbolHasUnparsableVersionNumber(symbol: Symbol, migrationMessage: => String)(implicit ctx: Context)
   extends Message(SymbolHasUnparsableVersionNumberID) {
     val kind: String = "Syntax"
     lazy val msg: String = em"${symbol.showLocated} has an unparsable version number: $migrationMessage"

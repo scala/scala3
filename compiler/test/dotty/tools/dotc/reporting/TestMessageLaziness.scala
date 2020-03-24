@@ -18,10 +18,8 @@ class TestMessageLaziness extends DottyTest {
   }
 
   case class LazyError() extends Message(ErrorMessageID.LazyErrorId) {
-    throw new Error("Didn't stay lazy.")
-
     val kind = "Test"
-    val msg = "Please don't blow up"
+    lazy val msg = throw new Error("Didn't stay lazy.")
     val explanation = ""
   }
 
