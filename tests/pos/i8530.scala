@@ -14,7 +14,7 @@ object MySeqUnapply:
   inline def unapplySeq(x: Int): Seq[Int] = Seq(x, x)
 
 object MyWhiteboxUnapply:
-  inline def unapply(x: Int) <: Option[Any] = Some(x)
+  transparent inline def unapply(x: Int): Option[Any] = Some(x)
 
 def test: Unit =
   val x = 5 match
