@@ -1259,7 +1259,7 @@ class Typer extends Namer
           val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil, coord = sym.coord).entered
           val unappplySym = ctx.newSymbol(cls, sym.name.toTermName, Synthetic | Method, sym.info, coord = sym.coord).entered
           val unapply = polyDefDef(unappplySym, targs => argss =>
-            Inliner.inlineCall(ref(sym).appliedToTypes(targs).appliedToArgss(argss).withSpan(t.span))
+            Inliner.inlineCall(t.fun.appliedToTypes(targs).appliedToArgss(argss).withSpan(t.span))(ctx.withOwner(unappplySym))
           )
           val cdef = ClassDef(cls, DefDef(constr), List(unapply))
           val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))
