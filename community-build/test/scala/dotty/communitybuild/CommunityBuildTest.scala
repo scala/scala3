@@ -95,7 +95,7 @@ final case class SbtCommunityProject(
     dependencies: List[CommunityProject] = Nil,
     sbtPublishCommand: String = null) extends CommunityProject:
   override val binaryName: String = "sbt"
-  private val baseCommand = s";clean ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! "
+  private val baseCommand = s";clean ;set logLevel in Global := Level.Error ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! "
   override val testCommand = s"$baseCommand$sbtTestCommand"
   override val updateCommand = s"$baseCommand$sbtUpdateCommand"
   override val publishCommand = s"$baseCommand$sbtPublishCommand"
@@ -103,7 +103,7 @@ final case class SbtCommunityProject(
   override val runCommandsArgs: List[String] =
     // Run the sbt command with the compiler version and sbt plugin set in the build
     val sbtProps = Option(System.getProperty("sbt.ivy.home")) match
-      case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
+      case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome", "-Dsbt.supershell=false")
       case _ => Nil
     extraSbtArgs ++ sbtProps ++ List(
       "-sbt-version", "1.3.8",
