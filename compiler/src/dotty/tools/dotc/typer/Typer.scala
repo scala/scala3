@@ -1257,16 +1257,21 @@ class Typer extends Namer
           val sym = t.symbol
           val cls = ctx.newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), coord = sym.coord)
           val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil, coord = sym.coord).entered
-          val unappplySym = ctx.newSymbol(cls, sym.name.toTermName, Synthetic | Method, sym.info, coord = sym.coord).entered
-          val unapply = polyDefDef(unappplySym, targs => argss =>
-            Inliner.inlineCall(t.fun.appliedToTypes(targs).appliedToArgss(argss).withSpan(t.span))(ctx.withOwner(unappplySym))
-          )
-          val cdef = ClassDef(cls, DefDef(constr), List(unapply))
-          val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))
+
           val targs = t.fun match
             case TypeApply(_, targs) => targs
             case _ => Nil
-          val newFun = newUnapply.select(unappplySym).appliedToTypeTrees(targs).withSpan(t.span)
+          val unapplyInfo = sym.info match
+            case info: PolyType => info.instantiate(targs.map(_.tpe))
+            case info => info
+
+          val unappplySym = ctx.newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
+          val unapply = DefDef(unappplySym, argss =>
+            Inliner.inlineCall(t.fun.appliedToArgss(argss).withSpan(t.span))(ctx.withOwner(unappplySym))
+          )
+          val cdef = ClassDef(cls, DefDef(constr), List(unapply))
+          val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))
+          val newFun = newUnapply.select(unappplySym).withSpan(t.span)
           cpy.UnApply(t)(newFun, t.implicits, t.patterns)
         case t => t
       }
