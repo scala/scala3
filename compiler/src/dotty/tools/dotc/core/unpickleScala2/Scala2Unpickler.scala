@@ -176,6 +176,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   /** A map from symbols to their associated `decls` scopes */
   private val symScopes = mutable.AnyRefMap[Symbol, Scope]()
 
+  /** A dummy buffer to pass to `readType` when no `paramss` are collected */
+  private val throwAwayBuffer = new ListBuffer[List[Symbol]]
+
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: Context): Nothing = {
     val ex = new BadSignature(
       i"""error reading Scala signature of $classRoot from $source:
@@ -574,7 +577,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if (isSymbolRef(inforef)) inforef = readNat()
 
         // println("reading type for " + denot) // !!! DEBUG
-        val tp = at(inforef, () => readType()(ctx))
+        val paramssBuf =
+          if denot.is(Method) then new ListBuffer[List[Symbol]]
+          else throwAwayBuffer
+        val tp = at(inforef, () => readType(paramssBuf)(ctx))
+        if denot.is(Method) then denot.paramss = paramssBuf.toList
 
         denot match {
           case denot: ClassDenotation if !isRefinementClass(denot.symbol) =>
@@ -721,7 +728,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    *        the flag say that a type of kind * is expected, so that PolyType(tps, restpe) can be disambiguated to PolyType(tps, NullaryMethodType(restpe))
    *        (if restpe is not a ClassInfoType, a MethodType or a NullaryMethodType, which leaves TypeRef/SingletonType -- the latter would make the polytype a type constructor)
    */
-  protected def readType()(implicit ctx: Context): Type = {
+  protected def readType(paramssBuf: ListBuffer[List[Symbol]])(implicit ctx: Context): Type = {
     val tag = readByte()
     val end = readNat() + readIndex
     (tag: @switch) match {
@@ -790,14 +797,18 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeRef()
         val params = until(end, () => readSymbolRef())
+        if params.nonEmpty then paramssBuf += params
         val maker = MethodType.companion(
           isImplicit = tag == IMPLICITMETHODtpe || params.nonEmpty && params.head.is(Implicit))
         maker.fromSymbols(params, restpe)
       case POLYtpe =>
         val restpe = readTypeRef()
         val typeParams = until(end, () => readSymbolRef())
-        if (typeParams.nonEmpty) TempPolyType(typeParams.asInstanceOf[List[TypeSymbol]], restpe.widenExpr)
-        else ExprType(restpe)
+        if typeParams.nonEmpty then
+          paramssBuf += typeParams
+          TempPolyType(typeParams.asInstanceOf[List[TypeSymbol]], restpe.widenExpr)
+        else
+          ExprType(restpe)
       case EXISTENTIALtpe =>
         val restpe = readTypeRef()
         val boundSyms = until(end, () => readSymbolRef())
@@ -881,7 +892,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     at(readNat(), () => readDisambiguatedSymbol(p)())
 
   protected def readNameRef()(implicit ctx: Context): Name = at(readNat(), () => readName())
-  protected def readTypeRef()(implicit ctx: Context): Type = at(readNat(), () => readType()) // after the NMT_TRANSITION period, we can leave off the () => ... ()
+  protected def readTypeRef()(implicit ctx: Context): Type = at(readNat(), () => readType(throwAwayBuffer)) // after the NMT_TRANSITION period, we can leave off the () => ... ()
   protected def readConstantRef()(implicit ctx: Context): Constant = at(readNat(), () => readConstant())
 
   protected def readTypeNameRef()(implicit ctx: Context): TypeName = readNameRef().toTypeName
