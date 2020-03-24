@@ -309,11 +309,6 @@ object Erasure {
       assert(!pt.isInstanceOf[SingletonType], pt)
       if (pt isRef defn.UnitClass) unbox(tree, pt)
       else (tree.tpe.widen, pt) match {
-        case (JavaArrayType(treeElem), JavaArrayType(ptElem))
-        if treeElem.widen.isPrimitiveValueType && !ptElem.isPrimitiveValueType =>
-          // See SI-2386 for one example of when this might be necessary.
-          cast(ref(defn.runtimeMethodRef(nme.toObjectArray)).appliedTo(tree), pt)
-
         // When casting between two EVTs, we need to check which one underlies the other to determine
         // whether u2evt or evt2u should be used.
         case (tp1 @ ErasedValueType(tycon1, underlying1), tp2 @ ErasedValueType(tycon2, underlying2)) =>
