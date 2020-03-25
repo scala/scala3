@@ -806,7 +806,8 @@ object messages {
   }
 
   class PatternMatchExhaustivity(uncoveredFn: => String)(implicit ctx: Context)
-  extends PatternMatchMsg(PatternMatchExhaustivityID) {
+  extends Message(PatternMatchExhaustivityID) {
+    val kind = "Pattern Match Exhaustivity"
     lazy val uncovered = uncoveredFn
     lazy val msg: String =
       em"""|${hl("match")} may not be exhaustive.
@@ -834,7 +835,8 @@ object messages {
   }
 
   class MatchCaseUnreachable()(implicit ctx: Context)
-  extends PatternMatchMsg(MatchCaseUnreachableID) {
+  extends Message(MatchCaseUnreachableID) {
+    val kind = "Match case Unreachable"
     lazy val msg: String = "Unreachable case"
     lazy val explanation: String = ""
   }

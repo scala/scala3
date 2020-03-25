@@ -9,7 +9,7 @@
 37: Match case Unreachable
 38: Match case Unreachable
 39: Match case Unreachable
-40: Only null matched
+40: Pattern Match
 46: Match case Unreachable
 52: Match case Unreachable
-59: Only null matched
+59: Pattern Match
