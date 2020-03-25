@@ -251,6 +251,8 @@ object desugar {
       cpy.DefDef(meth)(name = methName, tparams = tparams1), epbuf.toList)
 
     if (meth1.mods.is(Inline))
+      if !meth1.rhs.isEmpty then
+        meth1 = meth1.withMods(meth1.mods | Final)
       meth1.tpt match {
         case TypeBoundsTree(_, tpt1, _) =>
           meth1 = cpy.DefDef(meth1)(tpt = tpt1)
