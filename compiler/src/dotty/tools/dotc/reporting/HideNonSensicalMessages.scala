@@ -13,7 +13,7 @@ trait HideNonSensicalMessages extends Reporter {
    */
   override def isHidden(dia: Diagnostic)(implicit ctx: Context): Boolean =
     super.isHidden(dia) || {
-        dia.isNonSensical &&
+        dia.msg.isNonSensical &&
         hasErrors && // if there are no errors yet, report even if diagnostic is non-sensical
         !ctx.settings.YshowSuppressedErrors.value
     }

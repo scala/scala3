@@ -170,7 +170,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
             (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
       case tp: ErrorType =>
-        s"<error ${tp.msg.msg}>"
+        s"<error ${tp.msg.rawMessage}>"
       case tp: WildcardType =>
         if (tp.optBounds.exists) "<?" ~ toTextRHS(tp.bounds) ~ ">" else "<?>"
       case NoType =>

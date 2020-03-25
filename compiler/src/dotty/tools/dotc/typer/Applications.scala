@@ -1066,8 +1066,8 @@ trait Applications extends Compatibility {
    */
   def saysNotFound(state: TyperState, memberName: Name)(using Context): Boolean =
     state.reporter.pendingMessages match
-      case msg :: Nil =>
-        msg.contained match
+      case dia :: Nil =>
+        dia.msg match
           case msg: NotFoundMsg => memberName.isEmpty || msg.name == memberName
           case _ => false
       case _ => false

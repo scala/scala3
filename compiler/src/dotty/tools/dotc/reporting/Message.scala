@@ -7,6 +7,9 @@ import util.SourcePosition
 import messages._
 
 object Message {
+  val nonSensicalStartTag: String = "<nonsensical>"
+  val nonSensicalEndTag: String = "</nonsensical>"
+
   /** This implicit conversion provides a fallback for error messages that have
     * not yet been ported to the new scheme. Comment out this `implicit def` to
     * see where old errors still exist
@@ -32,6 +35,7 @@ object Message {
   *                used to reference documentation online
   */
 abstract class Message(val errorId: ErrorMessageID) { self =>
+  import Message._
 
   /** The `msg` contains the diagnostic message e.g:
     *
@@ -39,9 +43,10 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     * > found:    Int
     *
     * This message will be placed underneath the position given by the enclosing
-    * `Diagnostic`
+    * `Diagnostic`. The message is given in raw form, with possible embedded
+    *  <nonsensical> tags.
     */
-  def msg: String
+  protected def msg: String
 
   /** The kind of the error message is something like "Syntax" or "Type
     * Mismatch"
@@ -53,6 +58,35 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     * avoid these errors.
     */
   def explanation: String
+
+  private var myMsg: String | Null = null
+  private var myIsNonSensical: Boolean = false
+
+  /** The message with potential embedded <nonsensical> tags */
+  def rawMessage = message
+
+  /** The message to report. <nonsensical> tags are filtered out */
+  def message: String =
+    if myMsg == null then
+      myMsg =
+        if msg.contains(nonSensicalStartTag) then
+          myIsNonSensical = true
+          // myMsg might be composed of several d"..." invocations -> nested
+          // nonsensical tags possible
+          msg
+            .replaceAllLiterally(nonSensicalStartTag, "")
+            .replaceAllLiterally(nonSensicalEndTag, "")
+        else msg
+    myMsg
+
+  /** A message is non-sensical if it contains references to <nonsensical>
+   *  tags.  Such tags are inserted by the error diagnostic framework if a
+   *  message contains references to internally generated error types. Normally
+   *  we want to suppress error messages referring to types like this because
+   *  they look weird and are normally follow-up errors to something that was
+   *  diagnosed before.
+   */
+   def isNonSensical: Boolean = { message; myIsNonSensical }
 
   /** The implicit `Context` in messages is a large thing that we don't want
     * persisted. This method gets around that by duplicating the message,

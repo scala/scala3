@@ -23,19 +23,19 @@ class ConsoleReporter(
   def doReport(dia: Diagnostic)(implicit ctx: Context): Unit = {
     val didPrint = dia match {
       case dia: Error =>
-        printMessage(messageAndPos(dia.contained, dia.pos, diagnosticLevel(dia)))
+        printMessage(messageAndPos(dia.msg, dia.pos, diagnosticLevel(dia)))
         if (ctx.settings.Xprompt.value) Reporter.displayPrompt(reader, writer)
         true
       case dia: ConditionalWarning if !dia.enablingOption.value =>
         false
       case dia =>
-        printMessage(messageAndPos(dia.contained, dia.pos, diagnosticLevel(dia)))
+        printMessage(messageAndPos(dia.msg, dia.pos, diagnosticLevel(dia)))
         true
     }
 
-    if (didPrint && ctx.shouldExplain(dia))
-      printMessage(explanation(dia.contained))
-    else if (didPrint && dia.contained.explanation.nonEmpty)
+    if (didPrint && shouldExplain(dia))
+      printMessage(explanation(dia.msg))
+    else if (didPrint && dia.msg.explanation.nonEmpty)
       printMessage("\nlonger explanation available when compiling with `-explain`")
   }
 

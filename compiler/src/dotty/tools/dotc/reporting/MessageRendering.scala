@@ -151,10 +151,10 @@ trait MessageRendering {
       val pos1 = pos.nonInlined
       val (srcBefore, srcAfter, offset) = sourceLines(pos1, diagnosticLevel)
       val marker = columnMarker(pos1, offset, diagnosticLevel)
-      val err = errorMsg(pos1, msg.msg, offset)
+      val err = errorMsg(pos1, msg.message, offset)
       sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString(EOL))
     }
-    else sb.append(msg.msg)
+    else sb.append(msg.message)
     sb.toString
   }
 

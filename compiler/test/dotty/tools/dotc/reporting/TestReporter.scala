@@ -54,7 +54,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
 
   /** Prints the message with the given position indication. */
   def printMessageAndPos(dia: Diagnostic, extra: String)(implicit ctx: Context): Unit = {
-    val msg = messageAndPos(dia.contained, dia.pos, diagnosticLevel(dia))
+    val msg = messageAndPos(dia.msg, dia.pos, diagnosticLevel(dia))
     val extraInfo = inlineInfo(dia.pos)
 
     if (dia.level >= logLevel) {
@@ -69,7 +69,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   override def doReport(dia: Diagnostic)(implicit ctx: Context): Unit = {
 
     // Here we add extra information that we should know about the error message
-    val extra = dia.contained match {
+    val extra = dia.msg match {
       case pm: PatternMatchExhaustivity => s": ${pm.uncovered}"
       case _ => ""
     }
@@ -127,7 +127,7 @@ object TestReporter {
       /** Prints the message with the given position indication in a simplified manner */
       override def printMessageAndPos(dia: Diagnostic, extra: String)(implicit ctx: Context): Unit = {
         def report() = {
-          val msg = s"${dia.pos.line + 1}: " + dia.contained.kind + extra
+          val msg = s"${dia.pos.line + 1}: " + dia.msg.kind + extra
           val extraInfo = inlineInfo(dia.pos)
 
           writer.println(msg)

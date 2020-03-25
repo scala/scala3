@@ -10,18 +10,9 @@ import interfaces.Diagnostic.{ERROR, INFO, WARNING}
 import java.util.Optional
 
 object Diagnostic:
-  val nonSensicalStartTag: String = "<nonsensical>"
-  val nonSensicalEndTag: String = "</nonsensical>"
 
-  implicit class MessageContext(val c: Context) extends AnyVal {
-    def shouldExplain(dia: Diagnostic): Boolean = {
-      implicit val ctx = c
-      dia.contained.explanation match {
-        case "" => false
-        case _ => ctx.settings.explain.value
-      }
-    }
-  }
+  def shouldExplain(dia: Diagnostic)(using ctx: Context): Boolean =
+    dia.msg.explanation.nonEmpty && ctx.settings.explain.value
 
   // `Diagnostics to be consumed by `Reporter` ---------------------- //
   class Error(
@@ -86,44 +77,14 @@ object Diagnostic:
   }
 
 class Diagnostic(
-  val contained: Message,
+  val msg: Message,
   val pos: SourcePosition,
   val level: Int
-) extends Exception with interfaces.Diagnostic {
-  import Diagnostic._
-  private var myMsg: String = null
-  private var myIsNonSensical: Boolean = false
-  private var myContained: Message = null
-
+) extends Exception with interfaces.Diagnostic:
   override def position: Optional[interfaces.SourcePosition] =
     if (pos.exists && pos.source.exists) Optional.of(pos) else Optional.empty()
+  override def message: String = msg.message
 
-  /** The message to report */
-  def message: String = {
-    if (myMsg == null) {
-      myMsg = contained.msg.replaceAll("\u001B\\[[;\\d]*m", "")
-      if (myMsg.contains(nonSensicalStartTag)) {
-        myIsNonSensical = true
-        // myMsg might be composed of several d"..." invocations -> nested
-        // nonsensical tags possible
-        myMsg =
-          myMsg
-          .replaceAllLiterally(nonSensicalStartTag, "")
-          .replaceAllLiterally(nonSensicalEndTag, "")
-      }
-    }
-    myMsg
-  }
-
-  /** A message is non-sensical if it contains references to <nonsensical>
-   *  tags.  Such tags are inserted by the error diagnostic framework if a
-   *  message contains references to internally generated error types. Normally
-   *  we want to suppress error messages referring to types like this because
-   *  they look weird and are normally follow-up errors to something that was
-   *  diagnosed before.
-   */
-  def isNonSensical: Boolean = { message; myIsNonSensical }
-
-  override def toString: String = s"$getClass at $pos: ${message}"
+  override def toString: String = s"$getClass at $pos: $message"
   override def getMessage(): String = message
-}
+end Diagnostic

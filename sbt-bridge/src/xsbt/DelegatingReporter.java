@@ -57,9 +57,9 @@ final public class DelegatingReporter extends AbstractReporter {
     delegate.printSummary();
   }
 
-  public void doReport(dotty.tools.dotc.reporting.Diagnostic cont, Context ctx) {
+  public void doReport(dotty.tools.dotc.reporting.Diagnostic dia, Context ctx) {
     Severity severity;
-    switch (cont.level()) {
+    switch (dia.level()) {
       case Diagnostic.ERROR:
         severity = Severity.Error;
         break;
@@ -70,12 +70,12 @@ final public class DelegatingReporter extends AbstractReporter {
         severity = Severity.Info;
         break;
       default:
-        throw new IllegalArgumentException("Bad diagnostic level: " + cont.level());
+        throw new IllegalArgumentException("Bad diagnostic level: " + dia.level());
     }
 
     Position position;
-    if (cont.pos().exists()) {
-      SourcePosition pos = cont.pos();
+    if (dia.pos().exists()) {
+      SourcePosition pos = dia.pos();
       SourceFile src = pos.source();
       position = new Position() {
         public Optional<java.io.File> sourceFile() {
@@ -123,10 +123,10 @@ final public class DelegatingReporter extends AbstractReporter {
       position = noPosition;
     }
 
-    Message message = cont.contained();
+    Message message = dia.msg();
     StringBuilder rendered = new StringBuilder();
-    rendered.append(messageAndPos(message, cont.pos(), diagnosticLevel(cont), ctx));
-    boolean shouldExplain = new dotty.tools.dotc.reporting.Diagnostic.MessageContext(ctx).shouldExplain(cont);
+    rendered.append(messageAndPos(message, dia.pos(), diagnosticLevel(dia), ctx));
+    boolean shouldExplain = dotty.tools.dotc.reporting.Diagnostic.shouldExplain(dia, ctx);
     if (shouldExplain && !message.explanation().isEmpty()) {
       rendered.append(explanation(message, ctx));
     }

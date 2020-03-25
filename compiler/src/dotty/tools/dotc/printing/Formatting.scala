@@ -6,7 +6,7 @@ import Texts._, Types._, Flags._, Symbols._, Contexts._
 import collection.mutable
 import Decorators._
 import scala.util.control.NonFatal
-import reporting.Diagnostic
+import reporting.Message
 import util.DiffUtil
 import Highlighting._
 
@@ -88,7 +88,7 @@ object Formatting {
   }
 
   private def wrapNonSensical(arg: Any, str: String)(implicit ctx: Context): String = {
-    import Diagnostic._
+    import Message._
     def isSensical(arg: Any): Boolean = arg match {
       case tpe: Type =>
         tpe.exists && !tpe.isErroneous
