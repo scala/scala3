@@ -6,7 +6,7 @@ import core.Contexts.Context
 import collection.mutable
 import config.Printers.typr
 import diagnostic.Diagnostic
-import diagnostic.messages._
+import Diagnostic._
 
 /** This class implements a Reporter that stores all messages
   *

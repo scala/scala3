@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.reporting.diagnostic.messages
+import dotty.tools.dotc.reporting.diagnostic.Diagnostic
 import dotty.tools.dotc.transform.{PostTyper, Staging}
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.Spans._
@@ -248,7 +248,7 @@ class ReplCompiler extends Compiler {
           if (errorsAllowed) wrap(trees).result
           else reported.errors
         case _ => List(
-          new messages.Error(
+          new Diagnostic.Error(
             s"Couldn't parse '$expr' to valid scala",
             sourceFile.atSpan(Span(0, expr.length))
           )
@@ -258,7 +258,7 @@ class ReplCompiler extends Compiler {
 
     def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: Context): Result[tpd.ValDef] = {
       def error: Result[tpd.ValDef] =
-        List(new messages.Error(s"Invalid scala expression",
+        List(new Diagnostic.Error(s"Invalid scala expression",
           sourceFile.atSpan(Span(0, sourceFile.content.length)))).errors
 
       import tpd._

@@ -5,7 +5,7 @@ package reporting
 import core.Contexts._
 import java.io.{ BufferedReader, PrintWriter }
 import diagnostic.Diagnostic
-import diagnostic.messages.{ Error, ConditionalWarning }
+import diagnostic.Diagnostic.{ Error, ConditionalWarning }
 
 /**
   * This class implements a Reporter that displays messages on a text console

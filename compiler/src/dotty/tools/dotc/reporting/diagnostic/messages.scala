@@ -9,8 +9,6 @@ import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
 import util.SourcePosition
-import config.Settings.Setting
-import interfaces.Diagnostic.{ERROR, INFO, WARNING}
 import parsing.Scanners.Token
 import parsing.Tokens
 import printing.Highlighting._
@@ -24,82 +22,20 @@ import scala.util.control.NonFatal
 import StdNames.nme
 import printing.Formatting.hl
 
+/**  Messages
+  *  ========
+  *  The role of messages is to provide the necessary details for a simple to
+  *  understand diagnostic event. Each message can be turned into a message
+  *  container (one of the above) by calling the appropriate method on them.
+  *  For instance:
+  *
+  *  ```scala
+  *  EmptyCatchBlock(tree).error(pos)   // res: Error
+  *  EmptyCatchBlock(tree).warning(pos) // res: Warning
+  *  ```
+  */
 object messages {
 
-  // `Diagnostic`s to be consumed by `Reporter` ---------------------- //
-  class Error(
-    msg: Message,
-    pos: SourcePosition
-  ) extends Diagnostic(msg, pos, ERROR)
-
-  /** A sticky error is an error that should not be hidden by backtracking and
-   *  trying some alternative path. Typically, errors issued after catching
-   *  a TypeError exception are sticky.
-   */
-  class StickyError(
-    msg: Message,
-    pos: SourcePosition
-  ) extends Error(msg, pos)
-
-  class Warning(
-    msg: Message,
-    pos: SourcePosition
-  ) extends Diagnostic(msg, pos, WARNING) {
-    def toError: Error = new Error(msg, pos)
-  }
-
-  class Info(
-    msg: Message,
-    pos: SourcePosition
-  ) extends Diagnostic(msg, pos, INFO)
-
-  abstract class ConditionalWarning(
-    msg: Message,
-    pos: SourcePosition
-  ) extends Warning(msg, pos) {
-    def enablingOption(implicit ctx: Context): Setting[Boolean]
-  }
-
-  class FeatureWarning(
-    msg: Message,
-    pos: SourcePosition
-  ) extends ConditionalWarning(msg, pos) {
-    def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.feature
-  }
-
-  class UncheckedWarning(
-    msg: Message,
-    pos: SourcePosition
-  ) extends ConditionalWarning(msg, pos) {
-    def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.unchecked
-  }
-
-  class DeprecationWarning(
-    msg: Message,
-    pos: SourcePosition
-  ) extends ConditionalWarning(msg, pos) {
-    def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.deprecation
-  }
-
-  class MigrationWarning(
-    msg: Message,
-    pos: SourcePosition
-  ) extends ConditionalWarning(msg, pos) {
-    def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.migration
-  }
-
-  /**  Messages
-    *  ========
-    *  The role of messages is to provide the necessary details for a simple to
-    *  understand diagnostic event. Each message can be turned into a message
-    *  container (one of the above) by calling the appropriate method on them.
-    *  For instance:
-    *
-    *  ```scala
-    *  EmptyCatchBlock(tree).error(pos)   // res: Error
-    *  EmptyCatchBlock(tree).warning(pos) // res: Warning
-    *  ```
-    */
   import ast.Trees._
   import ast.untpd
   import ast.tpd
@@ -110,7 +46,6 @@ object messages {
          |${Blue("http://docs.scala-lang.org/overviews/core/implicit-classes.html")}"""
 
 
-  // Syntax Errors ---------------------------------------------------------- //
   abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(implicit ctx: Context)
   extends Message(EmptyCatchOrFinallyBlockID) {
     lazy val explanation: String = {

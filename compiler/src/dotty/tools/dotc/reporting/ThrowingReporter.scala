@@ -4,7 +4,7 @@ package reporting
 
 import core.Contexts.Context
 import diagnostic.Diagnostic
-import diagnostic.messages.Error
+import diagnostic.Diagnostic.Error
 
 /**
  * This class implements a Reporter that throws all errors and sends warnings and other

@@ -14,6 +14,7 @@ import core.Contexts._
 import Reporter._
 import diagnostic.{ Message, Diagnostic, NoExplanation }
 import diagnostic.messages._
+import Diagnostic._
 import interfaces.Diagnostic.{ ERROR, WARNING, INFO }
 
 class TestReporter protected (outWriter: PrintWriter, filePrintln: String => Unit, logLevel: Int)

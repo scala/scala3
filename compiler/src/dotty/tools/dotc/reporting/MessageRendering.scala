@@ -8,8 +8,8 @@ import core.Contexts.Context
 import core.Decorators._
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
-import diagnostic.{ErrorMessageID, Message, Diagnostic}
-import diagnostic.messages._
+import diagnostic.{Diagnostic, Message, ErrorMessageID}
+import Diagnostic._
 import util.SourcePosition
 import scala.internal.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
