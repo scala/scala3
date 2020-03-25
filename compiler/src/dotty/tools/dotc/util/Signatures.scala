@@ -162,14 +162,10 @@ object Signatures {
    */
   private def alternativesFromError(err: ErrorType, params: List[tpd.Tree])(implicit ctx: Context): (Int, List[SingleDenotation]) = {
     val alternatives =
-      err.msg match {
-        case messages.AmbiguousOverload(_, alternatives, _) =>
-          alternatives
-        case messages.NoMatchingOverload(alternatives, _) =>
-          alternatives
-        case _ =>
-          Nil
-      }
+      err.msg match
+        case msg: messages.AmbiguousOverload  => msg.alternatives
+        case msg: messages.NoMatchingOverload => msg.alternatives
+        case _                                => Nil
 
     // If the user writes `foo(bar, <cursor>)`, the typer will insert a synthetic
     // `null` parameter: `foo(bar, null)`. This may influence what's the "best"

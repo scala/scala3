@@ -60,7 +60,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     * forcing its `msg` and `explanation` vals and dropping the implicit context
     * that was captured in the original message.
     */
-  def persist: Message = new Message (errorId) {
+  def persist: Message = new Message(errorId) {
     val kind        = self.kind
     val msg         = self.msg
     val explanation = self.explanation
@@ -77,6 +77,8 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     val kind             = self.kind
     lazy val msg         = self.msg
     lazy val explanation = self.explanation ++ suffix
+
+  override def toString = msg
 }
 
 /** The fallback `Message` containing no explanation and having no `kind` */
