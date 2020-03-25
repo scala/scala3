@@ -1,0 +1,18 @@
+-- Error: tests/neg/missing-implicit3.scala:3:37 -----------------------------------------------------------------------
+3 |val sortedFoos = List(new Foo).sorted // error
+  |                                     ^
+  |                  No implicit Ordering defined for B
+  |
+  |                  where:    B is a type variable with constraint >: Foo
+  |                  ..
+  |                  I found:
+  |
+  |                      scala.math.Ordering.ordered[A](/* missing */implicitly[scala.math.Ordering.AsComparable[B]])
+  |
+  |                  But no implicit values were found that match type scala.math.Ordering.AsComparable[B].
+  |
+  |                  One of the following imports might make progress towards fixing the problem:
+  |
+  |                    import math.Ordering.comparatorToOrdering
+  |                    import math.Ordering.ordered
+  |                           

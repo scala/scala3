@@ -1407,11 +1407,9 @@ trait Implicits { self: Typer =>
         }
       if (ctx.reporter.hasErrors) {
         ctx.reporter.removeBufferedMessages
-        SearchFailure {
-          adapted.tpe match {
-            case _: SearchFailureType => adapted
-            case _ => adapted.withType(new MismatchedImplicit(ref, pt, argument))
-          }
+        adapted.tpe match {
+          case _: SearchFailureType => SearchFailure(adapted)
+          case _ => NoMatchingImplicitsFailure
         }
       }
       else {
