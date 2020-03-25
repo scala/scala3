@@ -1407,11 +1407,15 @@ trait Implicits { self: Typer =>
         }
       if (ctx.reporter.hasErrors) {
         ctx.reporter.removeBufferedMessages
-        SearchFailure {
-          adapted.tpe match {
-            case _: SearchFailureType => adapted
-            case _ => adapted.withType(new MismatchedImplicit(ref, pt, argument))
-          }
+        adapted.tpe match {
+          case _: SearchFailureType => SearchFailure(adapted)
+          case _ =>
+            // Special case for `$conforms` and `<:<.refl`. Showing them to the users brings
+            // no value, so we instead report a `NoMatchingImplicitsFailure`
+            if (adapted.symbol == defn.Predef_conforms || adapted.symbol == defn.SubType_refl)
+              NoMatchingImplicitsFailure
+            else
+              SearchFailure(adapted.withType(new MismatchedImplicit(ref, pt, argument)))
         }
       }
       else {

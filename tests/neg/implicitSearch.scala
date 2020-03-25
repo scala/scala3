@@ -1,7 +1,5 @@
 object Test {
 
-  type T = String
-
   class Ord[T]
   implicit def listOrd[T](implicit o: Ord[T]): Ord[List[T]] = ???
   implicit def intOrd: Ord[Int] = ???
