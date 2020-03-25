@@ -714,8 +714,7 @@ object DottyLanguageServer {
         val code = message.errorId.errorNumber.toString
         range(dia.pos).map(r =>
             new lsp4j.Diagnostic(
-              r, dia.message.replaceAll("\u001B\\[[;\\d]*m", ""),
-              severity(dia.level), /*source =*/ "", code))
+              r, dia.message, severity(dia.level), /*source =*/ "", code))
       } else {
         None
       }

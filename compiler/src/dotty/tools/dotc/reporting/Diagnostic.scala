@@ -83,7 +83,8 @@ class Diagnostic(
 ) extends Exception with interfaces.Diagnostic:
   override def position: Optional[interfaces.SourcePosition] =
     if (pos.exists && pos.source.exists) Optional.of(pos) else Optional.empty()
-  override def message: String = msg.message
+  override def message: String =
+    msg.message.replaceAll("\u001B\\[[;\\d]*m", "")
 
   override def toString: String = s"$getClass at $pos: $message"
   override def getMessage(): String = message
