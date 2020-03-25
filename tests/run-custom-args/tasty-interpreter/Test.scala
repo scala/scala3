@@ -2,7 +2,7 @@ import java.io.{ByteArrayOutputStream, File, PrintStream}
 
 import dotty.tools.dotc.core.Contexts
 import dotty.tools.dotc.reporting.Reporter
-import dotty.tools.dotc.reporting.diagnostic.Diagnostic
+import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.util.DiffUtil
 import dotty.tools.io.Path
 

@@ -1,7 +1,6 @@
 package dotty.tools
 package dotc
 package reporting
-package diagnostic
 
 import core._
 import Contexts.Context

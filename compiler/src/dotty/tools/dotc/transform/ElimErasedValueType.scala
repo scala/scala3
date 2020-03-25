@@ -7,7 +7,7 @@ import MegaPhase._
 import Types._, Contexts._, Flags._, DenotTransformers._
 import Symbols._, StdNames._, Trees._
 import TypeErasure.ErasedValueType, ValueClasses._
-import reporting.diagnostic.messages.DoubleDefinition
+import reporting.messages.DoubleDefinition
 import NameKinds.SuperAccessorName
 
 object ElimErasedValueType {

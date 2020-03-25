@@ -17,7 +17,7 @@ import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Contexts._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath._
-import reporting._, reporting.diagnostic.Diagnostic
+import reporting._
 import util._
 
 /** A Driver subclass designed to be used from IDEs */

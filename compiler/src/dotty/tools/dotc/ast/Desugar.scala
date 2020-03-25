@@ -10,7 +10,7 @@ import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.{FrontEnd, Namer}
 import util.{Property, SourceFile, SourcePosition}
 import collection.mutable.ListBuffer
-import reporting.diagnostic.messages._
+import reporting.messages._
 import reporting.trace
 import annotation.constructorOnly
 import printing.Formatting.hl

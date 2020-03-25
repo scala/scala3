@@ -6,7 +6,7 @@ import Texts._, Types._, Flags._, Symbols._, Contexts._
 import collection.mutable
 import Decorators._
 import scala.util.control.NonFatal
-import reporting.diagnostic.Diagnostic
+import reporting.Diagnostic
 import util.DiffUtil
 import Highlighting._
 

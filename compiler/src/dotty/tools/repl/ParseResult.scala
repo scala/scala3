@@ -7,7 +7,7 @@ import dotc.core.Contexts.Context
 import dotc.core.StdNames.str
 import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
-import dotc.reporting.diagnostic.Diagnostic
+import dotc.reporting.Diagnostic
 import dotc.util.SourceFile
 
 import scala.annotation.internal.sharable

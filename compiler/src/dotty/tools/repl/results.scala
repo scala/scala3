@@ -1,7 +1,7 @@
 package dotty.tools
 package repl
 
-import dotc.reporting.diagnostic.Diagnostic
+import dotc.reporting.Diagnostic
 
 /** Contains the different data and type structures used to model results
  *  in the REPL

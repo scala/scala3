@@ -13,7 +13,7 @@ import Decorators._
 import Symbols._, SymUtils._
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
-import reporting.diagnostic.messages._
+import reporting.messages._
 
 object PostTyper {
   val name: String = "posttyper"
@@ -244,10 +244,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                   else dropInlines.transform(arg)))
             else
               tree
-          def app1 = 
+          def app1 =
    		    	// reverse order of transforming args and fun. This way, we get a chance to see other
    			    // well-formedness errors before reporting errors in possible inferred type args of fun.
-            val args1 = transform(app.args) 
+            val args1 = transform(app.args)
             cpy.Apply(app)(transform(app.fun), args1)
           methPart(app) match
             case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
@@ -258,7 +258,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case _ =>
               app1
         case UnApply(fun, implicits, patterns) =>
-          // Reverse transform order for the same reason as in `app1` above. 
+          // Reverse transform order for the same reason as in `app1` above.
           val patterns1 = transform(patterns)
           cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
         case tree: TypeApply =>

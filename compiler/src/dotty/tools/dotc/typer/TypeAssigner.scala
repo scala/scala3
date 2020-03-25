@@ -13,7 +13,7 @@ import ast.Trees._
 import NameOps._
 import ProtoTypes._
 import collection.mutable
-import reporting.diagnostic.messages._
+import reporting.messages._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 
 import scala.annotation.threadUnsafe

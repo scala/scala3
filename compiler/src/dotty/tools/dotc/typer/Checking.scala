@@ -35,8 +35,8 @@ import transform.patmat.SpaceEngine.isIrrefutableUnapply
 
 
 import collection.mutable
-import reporting.diagnostic.Message
-import reporting.diagnostic.messages._
+import reporting.Message
+import reporting.messages._
 import scala.internal.Chars.isOperatorPart
 
 object Checking {

@@ -11,8 +11,7 @@ import core.Decorators.PhaseListDecorator
 import collection.mutable
 import core.Mode
 import dotty.tools.dotc.core.Symbols.{Symbol, NoSymbol}
-import diagnostic.Diagnostic._
-import diagnostic._
+import Diagnostic._
 import ast.{tpd, Trees}
 import Message._
 import core.Decorators._

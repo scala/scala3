@@ -12,7 +12,7 @@ import DenotTransformers._
 import NameOps._
 import NameKinds._
 import ResolveSuper._
-import reporting.diagnostic.messages.IllegalSuperAccessor
+import reporting.messages.IllegalSuperAccessor
 
 /** This phase implements super accessors in classes that need them.
  *

@@ -14,11 +14,11 @@ import dotty.tools.dotc.interfaces.Diagnostic;
 import dotty.tools.dotc.util.SourceFile;
 import dotty.tools.dotc.util.SourcePosition;
 import dotty.tools.dotc.reporting.*;
-import dotty.tools.dotc.reporting.diagnostic.Message;
-import dotty.tools.dotc.reporting.diagnostic.messages;
+import dotty.tools.dotc.reporting.Message;
+import dotty.tools.dotc.reporting.messages;
 import dotty.tools.dotc.core.Contexts.*;
 
-import static dotty.tools.dotc.reporting.diagnostic.Diagnostic.*;
+import static dotty.tools.dotc.reporting.Diagnostic.*;
 
 final public class DelegatingReporter extends AbstractReporter {
   private final xsbti.Reporter delegate;
@@ -57,7 +57,7 @@ final public class DelegatingReporter extends AbstractReporter {
     delegate.printSummary();
   }
 
-  public void doReport(dotty.tools.dotc.reporting.diagnostic.Diagnostic cont, Context ctx) {
+  public void doReport(dotty.tools.dotc.reporting.Diagnostic cont, Context ctx) {
     Severity severity;
     switch (cont.level()) {
       case Diagnostic.ERROR:
@@ -126,7 +126,7 @@ final public class DelegatingReporter extends AbstractReporter {
     Message message = cont.contained();
     StringBuilder rendered = new StringBuilder();
     rendered.append(messageAndPos(message, cont.pos(), diagnosticLevel(cont), ctx));
-    boolean shouldExplain = new dotty.tools.dotc.reporting.diagnostic.Diagnostic.MessageContext(ctx).shouldExplain(cont);
+    boolean shouldExplain = new dotty.tools.dotc.reporting.Diagnostic.MessageContext(ctx).shouldExplain(cont);
     if (shouldExplain && !message.explanation().isEmpty()) {
       rendered.append(explanation(message, ctx));
     }

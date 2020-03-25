@@ -10,8 +10,8 @@ import Contexts._
 import SymDenotations._
 import Denotations._
 import Decorators._
-import reporting.diagnostic.{Message, NoExplanation}
-import reporting.diagnostic.messages._
+import reporting.{Message, NoExplanation}
+import reporting.messages._
 import ast.untpd
 import config.Printers.cyclicErrors
 

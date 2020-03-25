@@ -5,7 +5,6 @@ package reporting
 import org.junit.Assert._
 import org.junit.Test
 import core.Contexts._
-import diagnostic.{ErrorMessageID, Message, Diagnostic}
 
 class TestMessageLaziness extends DottyTest {
   ctx = ctx.fresh.setReporter(new NonchalantReporter)

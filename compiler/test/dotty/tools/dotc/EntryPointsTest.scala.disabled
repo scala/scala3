@@ -6,7 +6,7 @@ import org.junit.Test
 import org.junit.Assert._
 import interfaces.{CompilerCallback, SourceFile}
 import reporting._
-import reporting.diagnostic.Diagnostic
+import reporting.Diagnostic
 import core.Contexts._
 import java.io.File
 import scala.collection.mutable.ListBuffer

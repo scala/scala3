@@ -20,9 +20,8 @@ import util.Stats
 import java.util.WeakHashMap
 import scala.util.control.NonFatal
 import config.Config
-import reporting.diagnostic.Message
-import reporting.diagnostic.messages.BadSymbolicReference
-import reporting.trace
+import reporting.{Message, trace}
+import reporting.messages.BadSymbolicReference
 import collection.mutable
 import transform.TypeUtils._
 

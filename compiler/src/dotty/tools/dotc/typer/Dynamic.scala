@@ -15,7 +15,7 @@ import util.Spans._
 import core.Symbols._
 import core.Definitions
 import ErrorReporting._
-import dotty.tools.dotc.reporting.diagnostic.messages.ReassignmentToVal
+import dotty.tools.dotc.reporting.messages.ReassignmentToVal
 
 object Dynamic {
   def isDynamicMethod(name: Name): Boolean =

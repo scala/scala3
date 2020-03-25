@@ -3,8 +3,7 @@ package dotc
 package reporting
 
 import core.Contexts.Context
-import diagnostic.Diagnostic
-import diagnostic.Diagnostic.Error
+import Diagnostic.Error
 
 /**
  * This class implements a Reporter that throws all errors and sends warnings and other

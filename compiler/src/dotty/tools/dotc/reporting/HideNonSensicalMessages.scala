@@ -3,7 +3,6 @@ package dotc
 package reporting
 
 import core.Contexts.Context
-import diagnostic.Diagnostic
 
 /**
  * This trait implements `isHidden` so that we avoid reporting non-sensical messages.

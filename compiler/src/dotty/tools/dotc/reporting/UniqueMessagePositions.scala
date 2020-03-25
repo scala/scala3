@@ -5,7 +5,6 @@ package reporting
 import scala.collection.mutable
 import util.SourceFile
 import core.Contexts.Context
-import diagnostic.Diagnostic
 
 /** This trait implements `isHidden` so that multiple messages per position
   * are suppressed, unless they are of increasing severity. */

@@ -21,7 +21,6 @@ import CheckRealizable._
 import Variances.{Variance, varianceFromInt, varianceToInt, setStructuralVariances, Invariant}
 import util.Stats._
 import util.SimpleIdentitySet
-import reporting.diagnostic.Message
 import ast.tpd._
 import ast.TreeTypeMap
 import printing.Texts._
@@ -34,7 +33,7 @@ import annotation.{tailrec, constructorOnly}
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr}
-import reporting.trace
+import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 
 import scala.annotation.internal.sharable

@@ -21,7 +21,7 @@ import Inferencing._
 import transform.ValueClasses._
 import transform.TypeUtils._
 import transform.SymUtils._
-import reporting.diagnostic.messages._
+import reporting.messages._
 
 trait NamerContextOps {
   this: Context =>

@@ -21,7 +21,7 @@ import dotc.core.Contexts._
 import dotc.decompiler
 import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
-import dotc.reporting.diagnostic.Diagnostic
+import dotc.reporting.Diagnostic
 import dotc.util.DiffUtil
 import dotty.tools.vulpix.TestConfiguration.defaultOptions
 

@@ -22,7 +22,7 @@ import core._, core.Decorators._
 import Annotations.AnnotInfo
 import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
-import reporting._, reporting.diagnostic.{Message, Diagnostic, messages}
+import reporting._
 import typer.Typer
 import util.{Set => _, _}
 import interactive._, interactive.InteractiveDriver._

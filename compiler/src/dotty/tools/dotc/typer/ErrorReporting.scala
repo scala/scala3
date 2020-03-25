@@ -9,8 +9,8 @@ import Implicits._, Flags._
 import util.Spans._
 import util.SourcePosition
 import java.util.regex.Matcher.quoteReplacement
-import reporting.diagnostic.Message
-import reporting.diagnostic.messages._
+import reporting.Message
+import reporting.messages._
 
 object ErrorReporting {
 

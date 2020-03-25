@@ -94,8 +94,8 @@ class Typer extends Namer
   import Typer._
   import tpd.{cpy => _, _}
   import untpd.cpy
-  import reporting.diagnostic.Message
-  import reporting.diagnostic.messages._
+  import reporting.Message
+  import reporting.messages._
 
   /** A temporary data item valid for a single typed ident:
    *  The set of all root import symbols that have been

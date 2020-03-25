@@ -30,8 +30,8 @@ import rewrites.Rewrites.{patch, overlapsPatch}
 object Parsers {
 
   import ast.untpd._
-  import reporting.diagnostic.Message
-  import reporting.diagnostic.messages._
+  import reporting.Message
+  import reporting.messages._
 
   case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 

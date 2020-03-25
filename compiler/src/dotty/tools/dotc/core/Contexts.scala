@@ -21,7 +21,6 @@ import Implicits.ContextualImplicits
 import config.Settings._
 import config.Config
 import reporting._
-import reporting.diagnostic.Message
 import io.{AbstractFile, NoAbstractFile, PlainFile, Path}
 import scala.io.Codec
 import collection.mutable

@@ -12,8 +12,7 @@ import Decorators._
 import StdNames._
 import collection.mutable
 import ast.tpd._
-import reporting.trace
-import reporting.diagnostic.Message
+import reporting.{trace, Message}
 import config.Printers.{gadts, typr}
 import typer.Applications._
 import typer.ProtoTypes._

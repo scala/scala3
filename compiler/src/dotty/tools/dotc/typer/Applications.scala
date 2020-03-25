@@ -28,11 +28,10 @@ import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
-import reporting.diagnostic.Message
-import reporting.diagnostic.messages.{UnexpectedPatternForSummonFrom, NotAMember, MissingIdent, TypeMismatch}
-import reporting.trace
+import reporting.messages.{UnexpectedPatternForSummonFrom, NotAMember, MissingIdent, TypeMismatch}
+import reporting.{trace, Message}
 import Constants.{Constant, IntTag, LongTag}
-import dotty.tools.dotc.reporting.diagnostic.messages.{UnapplyInvalidReturnType, NotAnExtractor, UnapplyInvalidNumberOfArguments}
+import dotty.tools.dotc.reporting.messages.{UnapplyInvalidReturnType, NotAnExtractor, UnapplyInvalidNumberOfArguments}
 import Denotations.SingleDenotation
 import annotation.{constructorOnly, threadUnsafe}
 

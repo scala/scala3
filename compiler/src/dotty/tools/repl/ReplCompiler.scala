@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.reporting.diagnostic.Diagnostic
+import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.transform.{PostTyper, Staging}
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.Spans._

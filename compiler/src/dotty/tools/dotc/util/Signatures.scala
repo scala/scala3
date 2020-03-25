@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Flags.Implicit
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.core.Types.{ErrorType, MethodType, PolyType}
-import dotty.tools.dotc.reporting.diagnostic.messages
+import dotty.tools.dotc.reporting.messages
 
 import scala.collection.JavaConverters._
 

@@ -23,7 +23,7 @@ import tpd.{Tree, TreeProvider, TreeOps}
 import ast.TreeTypeMap
 import Constants.Constant
 import Variances.{Variance, varianceFromInt}
-import reporting.diagnostic.Message
+import reporting.Message
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
