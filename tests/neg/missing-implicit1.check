@@ -7,7 +7,7 @@
    |
    |  import testObjectInstance.instances.zipOption
    |         
--- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:19:16 ----------------------------------------------
+-- [E008] Not Found Error: tests/neg/missing-implicit1.scala:19:16 -----------------------------------------------------
 19 |  List(1, 2, 3).traverse(x => Option(x)) // error
    |  ^^^^^^^^^^^^^^^^^^^^^^
    |  value traverse is not a member of List[Int], but could be made available as an extension method.
@@ -25,7 +25,7 @@
    |
    |  import testObjectInstance.instances.zipOption
    |         
--- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:26:16 ----------------------------------------------
+-- [E008] Not Found Error: tests/neg/missing-implicit1.scala:26:16 -----------------------------------------------------
 26 |  List(1, 2, 3).first // error
    |  ^^^^^^^^^^^^^^^^^^^
    |  value first is not a member of List[Int], but could be made available as an extension method.
@@ -34,7 +34,7 @@
    |
    |    import testObjectInstance.instances.first
    |           
--- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:27:16 ----------------------------------------------
+-- [E008] Not Found Error: tests/neg/missing-implicit1.scala:27:16 -----------------------------------------------------
 27 |  List(1, 2, 3).second // error
    |  ^^^^^^^^^^^^^^^^^^^^
    |  value second is not a member of List[Int], but could be made available as an extension method.
@@ -43,7 +43,7 @@
    |
    |    import testObjectInstance.instances.listExtension
    |           
--- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:28:17 ----------------------------------------------
+-- [E008] Not Found Error: tests/neg/missing-implicit1.scala:28:17 -----------------------------------------------------
 28 |  Array(1, 2, 3).first // error, no hint
    |  ^^^^^^^^^^^^^^^^^^^^
    |  value first is not a member of Array[Int]
@@ -56,7 +56,7 @@
    |
    |      import instances.zipOption
    |             
--- [E008] Member Not Found Error: tests/neg/missing-implicit1.scala:46:16 ----------------------------------------------
+-- [E008] Not Found Error: tests/neg/missing-implicit1.scala:46:16 -----------------------------------------------------
 46 |  List(1, 2, 3).traverse(x => Option(x)) // error
    |  ^^^^^^^^^^^^^^^^^^^^^^
    |  value traverse is not a member of List[Int], but could be made available as an extension method.

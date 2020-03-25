@@ -54,11 +54,11 @@
 12 |  def tooSmall = 1.0E-325 // error
    |                 ^^^^^^^^
    |                 number too small
--- [E008] Member Not Found Error: tests/neg/t6124.scala:18:14 ----------------------------------------------------------
+-- [E008] Not Found Error: tests/neg/t6124.scala:18:14 -----------------------------------------------------------------
 18 |  val pi2 = 3._1415F // error
    |            ^^^^^^^^
    |            value _1415F is not a member of Int
--- [E006] Unbound Identifier Error: tests/neg/t6124.scala:21:11 --------------------------------------------------------
+-- [E006] Not Found Error: tests/neg/t6124.scala:21:11 -----------------------------------------------------------------
 21 |  val x1 = _52 // error
    |           ^^^
    |           Not found: _52

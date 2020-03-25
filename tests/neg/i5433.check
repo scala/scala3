@@ -1,4 +1,4 @@
--- [E137] Reference Error: tests/neg/i5433.scala:17:6 ------------------------------------------------------------------
+-- [E137] Declaration Error: tests/neg/i5433.scala:17:6 ----------------------------------------------------------------
 17 |class Fail extends B with C // error
    |      ^
    |      class Fail cannot be defined due to a conflict between its parents when

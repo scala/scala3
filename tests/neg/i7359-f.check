@@ -1,4 +1,4 @@
--- [E120] Duplicate Symbol Error: tests/neg/i7359-f.scala:1:6 ----------------------------------------------------------
+-- [E120] Naming Error: tests/neg/i7359-f.scala:1:6 --------------------------------------------------------------------
 1 |trait SAMTrait: // error
   |      ^
   |      Name clash between inherited members:

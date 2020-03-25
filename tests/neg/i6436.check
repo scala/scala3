@@ -2,7 +2,7 @@
 5 |    case '{ StringContext(${Varargs(parts)}: _*) } => // error
   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |         no implicit argument of type scala.quoted.QuoteContext was found
--- [E006] Unbound Identifier Error: tests/neg/i6436.scala:6:34 ---------------------------------------------------------
+-- [E006] Not Found Error: tests/neg/i6436.scala:6:34 ------------------------------------------------------------------
 6 |      val ps: Seq[Expr[String]] = parts // error
   |                                  ^^^^^
   |                                  Not found: parts

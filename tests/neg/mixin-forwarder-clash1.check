@@ -1,4 +1,4 @@
--- [E120] Duplicate Symbol Error: tests/neg/mixin-forwarder-clash1.scala:15:6 ------------------------------------------
+-- [E120] Naming Error: tests/neg/mixin-forwarder-clash1.scala:15:6 ----------------------------------------------------
 15 |class Bar2 extends Bar1 with Two[Foo] // error
    |      ^
    |      Name clash between inherited members:

@@ -28,7 +28,7 @@ import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
-import reporting.messages.{UnexpectedPatternForSummonFrom, NotAMember, MissingIdent, TypeMismatch}
+import reporting.messages.{UnexpectedPatternForSummonFrom, NotFoundMsg, TypeMismatch}
 import reporting.{trace, Message}
 import Constants.{Constant, IntTag, LongTag}
 import dotty.tools.dotc.reporting.messages.{UnapplyInvalidReturnType, NotAnExtractor, UnapplyInvalidNumberOfArguments}
@@ -1068,10 +1068,7 @@ trait Applications extends Compatibility {
     state.reporter.pendingMessages match
       case msg :: Nil =>
         msg.contained match
-          case msg: NotAMember =>
-            memberName.isEmpty || msg.name == memberName
-          case msg: MissingIdent =>
-            memberName.isEmpty || msg.name == memberName
+          case msg: NotFoundMsg => memberName.isEmpty || msg.name == memberName
           case _ => false
       case _ => false
 

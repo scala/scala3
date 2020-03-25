@@ -19,7 +19,7 @@ longer explanation available when compiling with `-explain`
    |         D cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
 
 longer explanation available when compiling with `-explain`
--- [E050] Reference Error: tests/neg/bad-unapplies.scala:25:9 ----------------------------------------------------------
+-- [E050] Type Error: tests/neg/bad-unapplies.scala:25:9 ---------------------------------------------------------------
 25 |    case E("2") => // error (value unapply in object E does not take parameters)
    |         ^
    |         value unapply in object E does not take parameters
@@ -31,7 +31,7 @@ longer explanation available when compiling with `-explain`
    |         Wrong number of argument patterns for F; expected: ()
 
 longer explanation available when compiling with `-explain`
--- [E006] Unbound Identifier Error: tests/neg/bad-unapplies.scala:27:9 -------------------------------------------------
+-- [E006] Not Found Error: tests/neg/bad-unapplies.scala:27:9 ----------------------------------------------------------
 27 |    case G("2") => // error (Not found: G)
    |         ^
    |         Not found: G

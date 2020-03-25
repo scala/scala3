@@ -450,7 +450,7 @@ class Typer extends Namer
         // we are in the arguments of a this(...) constructor call
         errorType(ex"$tree is not accessible from constructor arguments", tree.sourcePos)
       else
-        errorType(new MissingIdent(tree, kind, name), tree.sourcePos)
+        errorType(MissingIdent(tree, kind, name), tree.sourcePos)
 
     val tree1 = ownType match {
       case ownType: NamedType =>

@@ -1,4 +1,4 @@
--- [E008] Member Not Found Error: tests/neg/missing-implicit.scala:5:25 ------------------------------------------------
+-- [E008] Not Found Error: tests/neg/missing-implicit.scala:5:25 -------------------------------------------------------
 5 |  case x :: xs1 if limit > 0 => consume(xs1, limit - x) // error // error
   |                   ^^^^^^^
   |                   value > is not a member of T, but could be made available as an extension method.
@@ -8,7 +8,7 @@
   |                     import math.Ordered.orderingToOrdered
   |                     import math.Ordering.Implicits.infixOrderingOps
   |                            
--- [E008] Member Not Found Error: tests/neg/missing-implicit.scala:5:51 ------------------------------------------------
+-- [E008] Not Found Error: tests/neg/missing-implicit.scala:5:51 -------------------------------------------------------
 5 |  case x :: xs1 if limit > 0 => consume(xs1, limit - x) // error // error
   |                                             ^^^^^^^
   |                                 value - is not a member of T, but could be made available as an extension method.
@@ -59,7 +59,7 @@
    |
    |                                              import concurrent.duration.pairIntToDuration
    |                                                     
--- [E008] Member Not Found Error: tests/neg/missing-implicit.scala:18:48 -----------------------------------------------
+-- [E008] Not Found Error: tests/neg/missing-implicit.scala:18:48 ------------------------------------------------------
 18 |val d2: scala.concurrent.duration.Duration = 10.days // error
    |                                             ^^^^^^^
    |                          value days is not a member of Int, but could be made available as an extension method.
