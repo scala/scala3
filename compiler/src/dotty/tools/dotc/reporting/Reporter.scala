@@ -25,20 +25,20 @@ object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
   def fromSimpleReporter(simple: interfaces.SimpleReporter): Reporter =
     new Reporter with UniqueMessagePositions with HideNonSensicalMessages {
-      override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = m match {
-        case m: ConditionalWarning if !m.enablingOption.value =>
+      override def doReport(dia: Diagnostic)(implicit ctx: Context): Unit = dia match {
+        case dia: ConditionalWarning if !dia.enablingOption.value =>
         case _ =>
-          simple.report(m)
+          simple.report(dia)
       }
     }
 
   /** A reporter that ignores reports, and doesn't record errors */
   @sharable object NoReporter extends Reporter {
-    def doReport(m: MessageContainer)(implicit ctx: Context): Unit = ()
-    override def report(m: MessageContainer)(implicit ctx: Context): Unit = ()
+    def doReport(dia: Diagnostic)(implicit ctx: Context): Unit = ()
+    override def report(dia: Diagnostic)(implicit ctx: Context): Unit = ()
   }
 
-  type ErrorHandler = (MessageContainer, Context) => Unit
+  type ErrorHandler = (Diagnostic, Context) => Unit
 
   private val defaultIncompleteHandler: ErrorHandler =
     (mc, ctx) => ctx.reporter.report(mc)(ctx)
@@ -192,7 +192,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   import Reporter._
 
   /** Report a diagnostic */
-  def doReport(m: MessageContainer)(implicit ctx: Context): Unit
+  def doReport(dia: Diagnostic)(implicit ctx: Context): Unit
 
   /** Whether very long lines can be truncated.  This exists so important
    *  debugging information (like printing the classpath) is not rendered
@@ -261,25 +261,25 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   var unreportedWarnings: Map[String, Int] = Map.empty
 
-  def report(m: MessageContainer)(implicit ctx: Context): Unit =
-    if (!isHidden(m)) {
-      doReport(m)(ctx.addMode(Mode.Printing))
-      m match {
-        case m: ConditionalWarning if !m.enablingOption.value =>
-          val key = m.enablingOption.name
+  def report(dia: Diagnostic)(implicit ctx: Context): Unit =
+    if (!isHidden(dia)) {
+      doReport(dia)(ctx.addMode(Mode.Printing))
+      dia match {
+        case dia: ConditionalWarning if !dia.enablingOption.value =>
+          val key = dia.enablingOption.name
           unreportedWarnings =
             unreportedWarnings.updated(key, unreportedWarnings.getOrElse(key, 0) + 1)
-        case m: Warning => _warningCount += 1
-        case m: Error =>
-          errors = m :: errors
+        case dia: Warning => _warningCount += 1
+        case dia: Error =>
+          errors = dia :: errors
           _errorCount += 1
-        case m: Info => // nothing to do here
+        case dia: Info => // nothing to do here
         // match error if d is something else
       }
     }
 
-  def incomplete(m: MessageContainer)(implicit ctx: Context): Unit =
-    incompleteHandler(m, ctx)
+  def incomplete(dia: Diagnostic)(implicit ctx: Context): Unit =
+    incompleteHandler(dia, ctx)
 
   /** Summary of warnings and errors */
   def summary: String = {
@@ -307,7 +307,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   }
 
   /** Should this diagnostic not be reported at all? */
-  def isHidden(m: MessageContainer)(implicit ctx: Context): Boolean =
+  def isHidden(dia: Diagnostic)(implicit ctx: Context): Boolean =
     ctx.mode.is(Mode.Printing)
 
   /** Does this reporter contain errors that have yet to be reported by its outer reporter ?
@@ -316,12 +316,12 @@ abstract class Reporter extends interfaces.ReporterResult {
   def hasUnreportedErrors: Boolean = false
 
   /** If this reporter buffers messages, remove and return all buffered messages. */
-  def removeBufferedMessages(implicit ctx: Context): List[MessageContainer] = Nil
+  def removeBufferedMessages(implicit ctx: Context): List[Diagnostic] = Nil
 
   /** Issue all error messages in this reporter to next outer one, or make sure they are written. */
   def flush()(implicit ctx: Context): Unit =
     removeBufferedMessages.foreach(ctx.reporter.report)
 
   /** If this reporter buffers messages, all buffered messages, otherwise Nil */
-  def pendingMessages(using Context): List[MessageContainer] = Nil
+  def pendingMessages(using Context): List[Diagnostic] = Nil
 }

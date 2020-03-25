@@ -12,16 +12,16 @@ import scala.collection.mutable
 import util.SourcePosition
 import core.Contexts._
 import Reporter._
-import diagnostic.{ Message, MessageContainer, NoExplanation }
+import diagnostic.{ Message, Diagnostic, NoExplanation }
 import diagnostic.messages._
 import interfaces.Diagnostic.{ ERROR, WARNING, INFO }
 
 class TestReporter protected (outWriter: PrintWriter, filePrintln: String => Unit, logLevel: Int)
 extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with MessageRendering {
-  import MessageContainer._
+  import Diagnostic._
 
-  protected final val _errorBuf = mutable.ArrayBuffer.empty[MessageContainer]
-  final def errors: Iterator[MessageContainer] = _errorBuf.iterator
+  protected final val _errorBuf = mutable.ArrayBuffer.empty[Diagnostic]
+  final def errors: Iterator[Diagnostic] = _errorBuf.iterator
 
   protected final val _messageBuf = mutable.ArrayBuffer.empty[String]
   final def messages: Iterator[String] = _messageBuf.iterator
@@ -53,11 +53,11 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   }
 
   /** Prints the message with the given position indication. */
-  def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
-    val msg = messageAndPos(m.contained, m.pos, diagnosticLevel(m))
-    val extraInfo = inlineInfo(m.pos)
+  def printMessageAndPos(dia: Diagnostic, extra: String)(implicit ctx: Context): Unit = {
+    val msg = messageAndPos(dia.contained, dia.pos, diagnosticLevel(dia))
+    val extraInfo = inlineInfo(dia.pos)
 
-    if (m.level >= logLevel) {
+    if (dia.level >= logLevel) {
       outWriter.println(msg)
       if (extraInfo.nonEmpty) outWriter.println(extraInfo)
     }
@@ -66,22 +66,22 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
     if (extraInfo.nonEmpty) _messageBuf.append(extraInfo)
   }
 
-  override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
+  override def doReport(dia: Diagnostic)(implicit ctx: Context): Unit = {
 
     // Here we add extra information that we should know about the error message
-    val extra = m.contained match {
+    val extra = dia.contained match {
       case pm: PatternMatchExhaustivity => s": ${pm.uncovered}"
       case _ => ""
     }
 
-    m match {
-      case m: Error => {
-        _errorBuf.append(m)
-        _consoleReporter.doReport(m)
-        printMessageAndPos(m, extra)
+    dia match {
+      case dia: Error => {
+        _errorBuf.append(dia)
+        _consoleReporter.doReport(dia)
+        printMessageAndPos(dia, extra)
       }
-      case m =>
-        printMessageAndPos(m, extra)
+      case dia =>
+        printMessageAndPos(dia, extra)
     }
   }
 }
@@ -125,10 +125,10 @@ object TestReporter {
   def simplifiedReporter(writer: PrintWriter): TestReporter = {
     val rep = new TestReporter(writer, logPrintln, WARNING) {
       /** Prints the message with the given position indication in a simplified manner */
-      override def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
+      override def printMessageAndPos(dia: Diagnostic, extra: String)(implicit ctx: Context): Unit = {
         def report() = {
-          val msg = s"${m.pos.line + 1}: " + m.contained.kind + extra
-          val extraInfo = inlineInfo(m.pos)
+          val msg = s"${dia.pos.line + 1}: " + dia.contained.kind + extra
+          val extraInfo = inlineInfo(dia.pos)
 
           writer.println(msg)
           _messageBuf.append(msg)
@@ -138,9 +138,9 @@ object TestReporter {
             _messageBuf.append(extraInfo)
           }
         }
-        m match {
-          case m: Error => report()
-          case m: Warning => report()
+        dia match {
+          case dia: Error => report()
+          case dia: Warning => report()
           case _ => ()
         }
       }

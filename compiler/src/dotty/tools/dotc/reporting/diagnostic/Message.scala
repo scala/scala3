@@ -13,14 +13,14 @@ object Message {
     * see where old errors still exist
     */
   implicit def toNoExplanation(str: => String): Message =
-    new NoExplanation(str)
+    NoExplanation(str)
 }
 
 /** A `Message` contains all semantic information necessary to easily
   * comprehend what caused the message to be logged. Each message can be turned
-  * into a `MessageContainer` which contains the log level and can later be
+  * into a `Diagnostic` which contains the log level and can later be
   * consumed by a subclass of `Reporter`. However, the error position is only
-  * part of `MessageContainer`, not `Message`.
+  * part of `Diagnostic`, not `Message`.
   *
   * NOTE: you should not be persisting  Most messages take an implicit
   * `Context` and these contexts weigh in at about 4mb per instance, as such
@@ -40,7 +40,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     * > found:    Int
     *
     * This message will be placed underneath the position given by the enclosing
-    * `MessageContainer`
+    * `Diagnostic`
     */
   def msg: String
 

@@ -5,7 +5,7 @@ package reporting
 import core.Contexts.Context
 import collection.mutable
 import config.Printers.typr
-import diagnostic.MessageContainer
+import diagnostic.Diagnostic
 import diagnostic.messages._
 
 /** This class implements a Reporter that stores all messages
@@ -20,12 +20,12 @@ import diagnostic.messages._
   */
 class StoreReporter(outer: Reporter) extends Reporter {
 
-  protected var infos: mutable.ListBuffer[MessageContainer] = null
+  protected var infos: mutable.ListBuffer[Diagnostic] = null
 
-  def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
-    typr.println(s">>>> StoredError: ${m.message}") // !!! DEBUG
+  def doReport(dia: Diagnostic)(implicit ctx: Context): Unit = {
+    typr.println(s">>>> StoredError: ${dia.message}") // !!! DEBUG
     if (infos == null) infos = new mutable.ListBuffer
-    infos += m
+    infos += dia
   }
 
   override def hasUnreportedErrors: Boolean =
@@ -34,11 +34,11 @@ class StoreReporter(outer: Reporter) extends Reporter {
   override def hasStickyErrors: Boolean =
     infos != null && infos.exists(_.isInstanceOf[StickyError])
 
-  override def removeBufferedMessages(implicit ctx: Context): List[MessageContainer] =
+  override def removeBufferedMessages(implicit ctx: Context): List[Diagnostic] =
     if (infos != null) try infos.toList finally infos = null
     else Nil
 
-  override def pendingMessages(using Context): List[MessageContainer] = infos.toList
+  override def pendingMessages(using Context): List[Diagnostic] = infos.toList
 
   override def errorsReported: Boolean = hasErrors || (outer != null && outer.errorsReported)
 }

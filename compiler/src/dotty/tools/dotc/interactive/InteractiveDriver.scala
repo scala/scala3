@@ -17,7 +17,7 @@ import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Contexts._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath._
-import reporting._, reporting.diagnostic.MessageContainer
+import reporting._, reporting.diagnostic.Diagnostic
 import util._
 
 /** A Driver subclass designed to be used from IDEs */
@@ -138,9 +138,9 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     (fromSource ++ fromClassPath).distinct
   }
 
-  def run(uri: URI, sourceCode: String): List[MessageContainer] = run(uri, toSource(uri, sourceCode))
+  def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, toSource(uri, sourceCode))
 
-  def run(uri: URI, source: SourceFile): List[MessageContainer] = {
+  def run(uri: URI, source: SourceFile): List[Diagnostic] = {
     val previousCtx = myCtx
     try {
       val reporter =

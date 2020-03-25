@@ -8,7 +8,7 @@ import core.Contexts.Context
 import core.Decorators._
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
-import diagnostic.{ErrorMessageID, Message, MessageContainer}
+import diagnostic.{ErrorMessageID, Message, Diagnostic}
 import diagnostic.messages._
 import util.SourcePosition
 import scala.internal.Chars.{ LF, CR, FF, SU }
@@ -167,14 +167,14 @@ trait MessageRendering {
       Yellow(str).show
   }
 
-  def diagnosticLevel(cont: MessageContainer): String =
-    cont match {
-      case m: Error => "Error"
-      case m: FeatureWarning => "Feature Warning"
-      case m: DeprecationWarning => "Deprecation Warning"
-      case m: UncheckedWarning => "Unchecked Warning"
-      case m: MigrationWarning => "Migration Warning"
-      case m: Warning => "Warning"
-      case m: Info => "Info"
+  def diagnosticLevel(dia: Diagnostic): String =
+    dia match {
+      case dia: Error => "Error"
+      case dia: FeatureWarning => "Feature Warning"
+      case dia: DeprecationWarning => "Deprecation Warning"
+      case dia: UncheckedWarning => "Unchecked Warning"
+      case dia: MigrationWarning => "Migration Warning"
+      case dia: Warning => "Warning"
+      case dia: Info => "Info"
     }
 }

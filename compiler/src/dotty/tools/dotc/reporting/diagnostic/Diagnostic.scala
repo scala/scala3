@@ -8,14 +8,14 @@ import core.Contexts.Context
 
 import java.util.Optional
 
-object MessageContainer {
+object Diagnostic {
   val nonSensicalStartTag: String = "<nonsensical>"
   val nonSensicalEndTag: String = "</nonsensical>"
 
   implicit class MessageContext(val c: Context) extends AnyVal {
-    def shouldExplain(cont: MessageContainer): Boolean = {
+    def shouldExplain(dia: Diagnostic): Boolean = {
       implicit val ctx = c
-      cont.contained.explanation match {
+      dia.contained.explanation match {
         case "" => false
         case _ => ctx.settings.explain.value
       }
@@ -23,12 +23,12 @@ object MessageContainer {
   }
 }
 
-class MessageContainer(
+class Diagnostic(
   val contained: Message,
   val pos: SourcePosition,
   val level: Int
 ) extends Exception with interfaces.Diagnostic {
-  import MessageContainer._
+  import Diagnostic._
   private var myMsg: String = null
   private var myIsNonSensical: Boolean = false
   private var myContained: Message = null

@@ -7,7 +7,7 @@ import dotc.core.Contexts.Context
 import dotc.core.StdNames.str
 import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
-import dotc.reporting.diagnostic.MessageContainer
+import dotc.reporting.diagnostic.Diagnostic
 import dotc.util.SourceFile
 
 import scala.annotation.internal.sharable
@@ -20,7 +20,7 @@ case class Parsed(source: SourceFile, trees: List[untpd.Tree]) extends ParseResu
 
 /** A parsing result containing syntax `errors` */
 case class SyntaxErrors(sourceCode: String,
-                        errors: List[MessageContainer],
+                        errors: List[Diagnostic],
                         trees: List[untpd.Tree]) extends ParseResult
 
 /** Parsed result is simply a newline */

@@ -26,11 +26,11 @@ import printing.Formatting.hl
 
 object messages {
 
-  // `MessageContainer`s to be consumed by `Reporter` ---------------------- //
+  // `Diagnostic`s to be consumed by `Reporter` ---------------------- //
   class Error(
     msg: Message,
     pos: SourcePosition
-  ) extends MessageContainer(msg, pos, ERROR)
+  ) extends Diagnostic(msg, pos, ERROR)
 
   /** A sticky error is an error that should not be hidden by backtracking and
    *  trying some alternative path. Typically, errors issued after catching
@@ -44,14 +44,14 @@ object messages {
   class Warning(
     msg: Message,
     pos: SourcePosition
-  ) extends MessageContainer(msg, pos, WARNING) {
+  ) extends Diagnostic(msg, pos, WARNING) {
     def toError: Error = new Error(msg, pos)
   }
 
   class Info(
     msg: Message,
     pos: SourcePosition
-  ) extends MessageContainer(msg, pos, INFO)
+  ) extends Diagnostic(msg, pos, INFO)
 
   abstract class ConditionalWarning(
     msg: Message,
