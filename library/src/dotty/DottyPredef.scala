@@ -3,12 +3,12 @@ package dotty
 object DottyPredef {
   import compiletime.summonFrom
 
-  inline final def assert(assertion: => Boolean, message: => Any): Unit = {
+  inline final def assert(inline assertion: Boolean, inline message: => Any): Unit = {
     if (!assertion)
       assertFail(message)
   }
 
-  inline final def assert(inline assertion: => Boolean) <: Unit = {
+  inline final def assert(inline assertion: Boolean) <: Unit = {
     if (!assertion)
       assertFail()
   }

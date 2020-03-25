@@ -42,6 +42,37 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     }
   }
 
+  @Test def inlineAssert = {
+    def mkSource(original: String, expected: String) =
+      s"""
+         |class Foo {
+         |  def meth1: Unit = $original
+         |  def meth2: Unit = $expected
+         |}
+         """.stripMargin
+
+    val sources = List(
+      mkSource("assert(true)", "()"),
+      mkSource("assert(true, ???)", "()"),
+      mkSource("assert(false)", "assertFail()")
+    )
+    for (source <- sources)
+      checkBCode(source) { dir =>
+        val clsIn      = dir.lookupName("Foo.class", directory = false).input
+        val clsNode    = loadClassNode(clsIn)
+        val meth1      = getMethod(clsNode, "meth1")
+        val meth2      = getMethod(clsNode, "meth2")
+
+        val instructions1 = instructionsFromMethod(meth1)
+        val instructions2 = instructionsFromMethod(meth2)
+
+        assert(instructions1 == instructions2,
+          "`assert` was not properly inlined in `meth1`\n" +
+          diffInstructions(instructions1, instructions2))
+
+      }
+  }
+
   @Test def i4947 = {
     val source = """class Foo {
                    |  inline def track[T](inline f: T) <: T = {
