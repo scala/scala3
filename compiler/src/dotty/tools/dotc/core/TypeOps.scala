@@ -516,7 +516,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   def dynamicsEnabled: Boolean =
     featureEnabled(nme.dynamics)
 
-  def testScala2CompatMode(msg: => Message, pos: SourcePosition, replace: => Unit = ()): Boolean = {
+  def testScala2CompatMode(msg: Message, pos: SourcePosition, replace: => Unit = ()): Boolean = {
     if (scala2CompatMode) {
       migrationWarning(msg, pos)
       replace

@@ -131,7 +131,7 @@ object Parsers {
     /** Issue an error at given offset if beyond last error offset
      *  and update lastErrorOffset.
      */
-    def syntaxError(msg: => Message, offset: Int = in.offset): Unit =
+    def syntaxError(msg: Message, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
         val length = if (offset == in.offset && in.name != null) in.name.show.length else 0
         syntaxError(msg, Span(offset, offset + length))
@@ -141,7 +141,7 @@ object Parsers {
     /** Unconditionally issue an error at given span, without
      *  updating lastErrorOffset.
      */
-    def syntaxError(msg: => Message, span: Span): Unit =
+    def syntaxError(msg: Message, span: Span): Unit =
       ctx.error(msg, source.atSpan(span))
 
     def unimplementedExpr(implicit ctx: Context): Select =
@@ -308,23 +308,23 @@ object Parsers {
       }
     }
 
-    def warning(msg: => Message, sourcePos: SourcePosition): Unit =
+    def warning(msg: Message, sourcePos: SourcePosition): Unit =
       ctx.warning(msg, sourcePos)
 
-    def warning(msg: => Message, offset: Int = in.offset): Unit =
+    def warning(msg: Message, offset: Int = in.offset): Unit =
       ctx.warning(msg, source.atSpan(Span(offset)))
 
-    def deprecationWarning(msg: => Message, offset: Int = in.offset): Unit =
+    def deprecationWarning(msg: Message, offset: Int = in.offset): Unit =
       ctx.deprecationWarning(msg, source.atSpan(Span(offset)))
 
     /** Issue an error at current offset that input is incomplete */
-    def incompleteInputError(msg: => Message): Unit =
+    def incompleteInputError(msg: Message): Unit =
       ctx.incompleteInputError(msg, source.atSpan(Span(in.offset)))
 
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
      */
-    def syntaxErrorOrIncomplete(msg: => Message, offset: Int = in.offset): Unit =
+    def syntaxErrorOrIncomplete(msg: Message, offset: Int = in.offset): Unit =
       if (in.token == EOF) incompleteInputError(msg)
       else {
         syntaxError(msg, offset)

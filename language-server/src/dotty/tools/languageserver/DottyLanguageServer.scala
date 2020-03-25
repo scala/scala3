@@ -733,8 +733,8 @@ object DottyLanguageServer {
   private def displayMessage(message: Message, sourceFile: SourceFile)(implicit ctx: Context): Boolean = {
     if (isWorksheet(sourceFile)) {
       message match {
-        case messages.PureExpressionInStatementPosition(_, exprOwner) =>
-          val ownerSym = if (exprOwner.isLocalDummy) exprOwner.owner else exprOwner
+        case msg: messages.PureExpressionInStatementPosition =>
+          val ownerSym = if (msg.exprOwner.isLocalDummy) msg.exprOwner.owner else msg.exprOwner
           !isWorksheetWrapper(ownerSym)
         case _ =>
           true

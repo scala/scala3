@@ -2258,7 +2258,7 @@ object messages {
     lazy val explanation: String = ""
   }
 
-  class PureExpressionInStatementPosition(stat: untpd.Tree, exprOwner: Symbol)(implicit ctx: Context)
+  class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)(implicit ctx: Context)
     extends Message(PureExpressionInStatementPositionID) {
     val kind = "Potential Issue"
     lazy val msg = "A pure expression does nothing in statement position; you may be omitting necessary parentheses"

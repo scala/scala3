@@ -300,7 +300,7 @@ trait Symbols { this: Context =>
    */
   def newSkolem(tp: Type): TermSymbol = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
 
-  def newErrorSymbol(owner: Symbol, name: Name, msg: => Message): Symbol = {
+  def newErrorSymbol(owner: Symbol, name: Name, msg: Message): Symbol = {
     val errType = ErrorType(msg)
     newSymbol(owner, name, SyntheticArtifact,
         if (name.isTypeName) TypeAlias(errType) else errType)
