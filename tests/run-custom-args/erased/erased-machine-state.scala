@@ -4,7 +4,7 @@ sealed trait State
 final class On extends State
 final class Off extends State
 
-@implicitNotFound("State is must be Off")
+@implicitNotFound("State must be Off")
 class IsOff[S <: State]
 object IsOff {
   implicit def isOff: IsOff[Off] = {
@@ -13,7 +13,7 @@ object IsOff {
   }
 }
 
-@implicitNotFound("State is must be On")
+@implicitNotFound("State must be On")
 class IsOn[S <: State]
 object IsOn {
   implicit def isOn: IsOn[On] = {
@@ -48,10 +48,10 @@ object Test {
 
     // m.turnedOff
     //            ^
-    //            State is must be On
+    //            State must be On
 
     // m.turnedOn.turnedOn
     //                    ^
-    //                    State is must be Off
+    //                    State must be Off
   }
 }

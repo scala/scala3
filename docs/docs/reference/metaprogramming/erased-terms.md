@@ -18,7 +18,7 @@ sealed trait State
 final class On extends State
 final class Off extends State
 
-@implicitNotFound("State is must be Off")
+@implicitNotFound("State must be Off")
 class IsOff[S <: State]
 object IsOff {
   implicit def isOff: IsOff[Off] = new IsOff[Off]
@@ -32,7 +32,7 @@ val m = new Machine[Off]
 m.turnedOn
 m.turnedOn.turnedOn // ERROR
 //                 ^
-//                  State is must be Off
+//                  State must be Off
 ```
 
 Note that in the code above the actual context arguments for `IsOff` are never
@@ -118,14 +118,14 @@ sealed trait State
 final class On extends State
 final class Off extends State
 
-@implicitNotFound("State is must be Off")
+@implicitNotFound("State must be Off")
 class IsOff[S <: State]
 object IsOff {
   // will not be called at runtime for turnedOn, the compiler will only require that this evidence exists
   given IsOff[Off] = new IsOff[Off]
 }
 
-@implicitNotFound("State is must be On")
+@implicitNotFound("State must be On")
 class IsOn[S <: State]
 object IsOn {
   // will not exist at runtime, the compiler will only require that this evidence exists at compile time
@@ -150,11 +150,11 @@ object Test {
 
     // m.turnedOff
     //            ^
-    //            State is must be On
+    //            State must be On
 
     // m.turnedOn.turnedOn
     //                    ^
-    //                    State is must be Off
+    //                    State must be Off
   }
 }
 ```
