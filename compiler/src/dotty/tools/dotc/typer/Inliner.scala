@@ -15,7 +15,7 @@ import StdNames._
 import transform.SymUtils._
 import Contexts.Context
 import Names.{Name, TermName}
-import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}
+import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName, BodyRetainerName}
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
@@ -123,6 +123,32 @@ object Inliner {
         (tree :: enclosingInlineds).last.sourcePos
       )
   }
+
+  /** For a retained inline method, another method that keeps track of
+   *  the body that is kept at runtime. For instance, an inline method
+   *
+   *      inline override def f(x: T) = b
+   *
+   *  is complemented by the body retainer method
+   *
+   *      private def f$retainedBody(x: T) = f(x)
+   *
+   *  where the call `f(x)` is inline-expanded. This body is then transferred
+   *  back to `f` at erasure, using method addRetainedInlineBodies.
+   */
+  def bodyRetainer(mdef: DefDef)(using ctx: Context): DefDef =
+    val meth = mdef.symbol.asTerm
+
+    val retainer = meth.copy(
+      name = BodyRetainerName(meth.name),
+      flags = meth.flags &~ (Inline | Override) | Private,
+      coord = mdef.rhs.span.startPos).asTerm
+    polyDefDef(retainer, targs => prefss =>
+      inlineCall(
+        ref(meth).appliedToTypes(targs).appliedToArgss(prefss)
+          .withSpan(mdef.rhs.span.startPos))(
+        using ctx.withOwner(retainer)))
+    .reporting(i"retainer for $meth: $result", inlining)
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: Inlined)(implicit ctx: Context): Tree =

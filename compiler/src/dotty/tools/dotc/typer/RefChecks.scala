@@ -157,8 +157,7 @@ object RefChecks {
    *    1.8.3  M is of type ()S, O is of type []T and S <: T, or
    *    1.9.1  If M is erased, O is erased. If O is erased, M is erased or inline.
    *    1.9.2  If M or O are extension methods, they must both be extension methods.
-   *    1.10   If M is an inline or Scala-2 macro method, O cannot be deferred unless
-   *           there's also a concrete method that M overrides.
+   *    1.10   If O is inline, M must be inline
    *    1.11.  If O is a Scala-2 macro, M must be a Scala-2 macro.
    *  2. Check that only abstract classes have deferred members
    *  3. Check that concrete classes do not have deferred definitions
@@ -398,9 +397,8 @@ object RefChecks {
         overrideError("is an extension method, cannot override a normal method")
       else if (other.isAllOf(ExtensionMethod) && !member.isAllOf(ExtensionMethod)) // (1.9.2)
         overrideError("is a normal method, cannot override an extension method")
-      else if ((member.isInlineMethod || member.isScala2Macro) && other.is(Deferred) &&
-                 member.extendedOverriddenSymbols.forall(_.is(Deferred))) // (1.10)
-        overrideError("is an inline method, must override at least one concrete method")
+      else if other.isInlineMethod && !member.isInlineMethod then // (1.10)
+        overrideError("is not inline, cannot override an inline method")
       else if (other.isScala2Macro && !member.isScala2Macro) // (1.11)
         overrideError("cannot be used here - only Scala-2 macros can override Scala-2 macros")
       else if (!compatibleTypes(memberTp(self), otherTp(self)) &&

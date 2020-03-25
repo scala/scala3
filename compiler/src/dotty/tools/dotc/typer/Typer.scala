@@ -2332,8 +2332,9 @@ class Typer extends Namer
             val newCtx = if (ctx.owner.isTerm && adaptCreationContext(mdef)) ctx
               else ctx.withNotNullInfos(initialNotNullInfos)
             typed(mdef)(using newCtx) match {
-              case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
-                buf += inlineExpansion(mdef1)
+              case mdef1: DefDef
+              if mdef1.symbol.is(Inline, butNot = Deferred) && !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
+                buf ++= inlineExpansion(mdef1)
                   // replace body with expansion, because it will be used as inlined body
                   // from separately compiled files - the original BodyAnnotation is not kept.
               case mdef1: TypeDef if mdef1.symbol.is(Enum, butNot = Case) =>
@@ -2410,11 +2411,13 @@ class Typer extends Namer
     }
 
   /** Given an inline method `mdef`, the method rewritten so that its body
-   *  uses accessors to access non-public members.
+   *  uses accessors to access non-public members. Also, if the inline method
+   *  is retained, add a method to record the retained version of the body.
    *  Overwritten in Retyper to return `mdef` unchanged.
    */
-  protected def inlineExpansion(mdef: DefDef)(implicit ctx: Context): Tree =
+  protected def inlineExpansion(mdef: DefDef)(implicit ctx: Context): List[Tree] =
     tpd.cpy.DefDef(mdef)(rhs = Inliner.bodyToInline(mdef.symbol))
+    :: (if mdef.symbol.isRetainedInlineMethod then Inliner.bodyRetainer(mdef) :: Nil else Nil)
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx retractMode Mode.PatternOrTypeBits)
@@ -2932,9 +2935,13 @@ class Typer extends Namer
                !suppressInline) {
         tree.tpe <:< wildApprox(pt)
         val errorCount = ctx.reporter.errorCount
-        val inlined = Inliner.inlineCall(tree)
-        if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
-        else inlined
+        val meth = methPart(tree).symbol
+        if meth.is(Deferred) then
+          errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
+        else
+          val inlined = Inliner.inlineCall(tree)
+          if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
+          else inlined
       }
       else if (tree.symbol.isScala2Macro &&
                // raw and s are eliminated by the StringInterpolatorOpt phase

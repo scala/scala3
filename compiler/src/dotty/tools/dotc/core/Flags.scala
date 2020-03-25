@@ -519,6 +519,7 @@ object Flags {
   val AbstractSealed: FlagSet                = Abstract | Sealed
   val AbstractOrTrait: FlagSet               = Abstract | Trait
   val EffectivelyOpenFlags                   = Abstract | JavaDefined | Open | Scala2x | Trait
+  val AccessorOrDeferred: FlagSet            = Accessor | Deferred
   val PrivateAccessor: FlagSet               = Accessor | Private
   val AccessorOrSynthetic: FlagSet           = Accessor | Synthetic
   val EnumCase: FlagSet                      = Case | Enum

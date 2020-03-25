@@ -69,7 +69,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         if (constr == cls.primaryConstructor)
           cls.info.decls.filter(d => d.is(TypeParam) || d.is(ParamAccessor))
         else
-          (cdef.tparams ::: cdef.vparamss.flatten).map(_.symbol)
+          allParamSyms(cdef)
 
       /** The parameter references defined by the constructor info */
       def allParamRefs(tp: Type): List[ParamRef] = tp match {

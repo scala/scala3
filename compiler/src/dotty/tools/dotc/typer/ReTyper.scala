@@ -129,7 +129,7 @@ class ReTyper extends Typer with ReChecking {
         throw ex
     }
 
-  override def inlineExpansion(mdef: DefDef)(implicit ctx: Context): Tree = mdef
+  override def inlineExpansion(mdef: DefDef)(implicit ctx: Context): List[Tree] = mdef :: Nil
 
   override def inferView(from: Tree, to: Type)(implicit ctx: Context): Implicits.SearchResult =
     Implicits.NoMatchingImplicitsFailure

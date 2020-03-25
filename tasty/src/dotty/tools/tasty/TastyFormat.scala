@@ -59,8 +59,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEDEF        Length NameRef (type_Term | Template) Modifier*   -- modifiers type name (= type | bounds)  |  moifiers class name template
                   IMPORT         Length qual_Term Selector*                        -- import qual selectors
   ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*      -- modifiers val name : type (= rhs)?
-                  DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
-                                        Modifier*                                  -- modifiers def name [typeparams] paramss : returnType (= rhs)?
+                  DEFDEF         Length NameRef TypeParam* Params* returnType_Term
+                                        rhs_Term? Modifier*                        -- modifiers def name [typeparams] paramss : returnType (= rhs)?
   Selector      = IMPORTED              name_NameRef                               -- name, "_" for normal wildcards, "" for given wildcards
                   RENAMED               to_NameRef                                 -- => name
                   BOUNDED               type_Term                                  -- type bound
@@ -278,6 +278,9 @@ object TastyFormat {
     final val SUPERACCESSOR = 20     // The name of a super accessor `super$name` created by SuperAccesors.
 
     final val INLINEACCESSOR = 21    // The name of an inline accessor `inline$name`
+
+    final val BODYRETAINER = 22      // The name of a synthetic method that retains the runtime
+                                     // body of an inline method
 
     final val OBJECTCLASS = 23       // The name of an object class (or: module class) `<name>$`.
 
