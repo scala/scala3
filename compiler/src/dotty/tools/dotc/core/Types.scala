@@ -4650,19 +4650,16 @@ object Types {
     def msg(implicit ctx: Context): Message
   }
 
-  object ErrorType {
-    def apply(msg: => Message)(implicit ctx: Context): ErrorType = {
-      val et = new ErrorType {
-        def msg(implicit ctx: Context): Message =
-          ctx.base.errorTypeMsg.get(this) match {
-            case Some(msgFun) => msgFun()
+  object ErrorType:
+    def apply(m: Message)(implicit ctx: Context): ErrorType =
+      val et = new ErrorType:
+        def msg(using ctx: Context): Message =
+          ctx.base.errorTypeMsg.get(this) match
+            case Some(m) => m
             case None => "error message from previous run no longer available"
-          }
-      }
-      ctx.base.errorTypeMsg(et) = () => msg
+      ctx.base.errorTypeMsg(et) = m
       et
-    }
-  }
+  end ErrorType
 
   object UnspecifiedErrorType extends ErrorType {
     override def msg(implicit ctx: Context): Message = "unspecified error"

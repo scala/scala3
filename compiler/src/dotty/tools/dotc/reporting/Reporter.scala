@@ -87,16 +87,16 @@ trait Reporting { this: Context =>
         }
       else reporter.report(warning)
 
-  def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def deprecationWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new DeprecationWarning(msg, pos))
 
-  def migrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def migrationWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new MigrationWarning(msg, pos))
 
-  def uncheckedWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def uncheckedWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new UncheckedWarning(msg, pos))
 
-  def featureWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def featureWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new FeatureWarning(msg, pos))
 
   def featureWarning(feature: String, featureDescription: String,
@@ -120,18 +120,14 @@ trait Reporting { this: Context =>
     else reportWarning(new FeatureWarning(msg, pos))
   }
 
-  def warning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def warning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new Warning(msg, addInlineds(pos)))
 
-  def strictWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit = {
-    val fullPos = addInlineds(pos)
-    if (this.settings.strict.value) error(msg, fullPos)
-    else reportWarning(
-      new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)")
-        .warning(fullPos))
-  }
+  def strictWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
+    if (this.settings.strict.value) error(msg, pos)
+    else warning(msg.append("\n(This would be an error under strict mode)"), pos)
 
-  def error(msg: => Message, pos: SourcePosition = NoSourcePosition, sticky: Boolean = false): Unit = {
+  def error(msg: Message, pos: SourcePosition = NoSourcePosition, sticky: Boolean = false): Unit = {
     val fullPos = addInlineds(pos)
     reporter.report(if (sticky) new StickyError(msg, fullPos) else new Error(msg, fullPos))
     if ctx.settings.YdebugError.value then Thread.dumpStack()
@@ -143,15 +139,13 @@ trait Reporting { this: Context =>
       ex.printStackTrace
   }
 
-  def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def errorOrMigrationWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
     if (ctx.scala2CompatMode) migrationWarning(msg, pos) else error(msg, pos)
 
-  def restrictionError(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report {
-      new ExtendMessage(() => msg)(m => s"Implementation restriction: $m").error(addInlineds(pos))
-    }
+  def restrictionError(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
+    error(msg.mapMsg("Implementation restriction: " + _), pos)
 
-  def incompleteInputError(msg: => Message, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
+  def incompleteInputError(msg: Message, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
     reporter.incomplete(new Error(msg, pos))(ctx)
 
   /** Log msg if settings.log contains the current phase.

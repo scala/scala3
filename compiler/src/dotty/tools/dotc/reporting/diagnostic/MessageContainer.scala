@@ -24,7 +24,7 @@ object MessageContainer {
 }
 
 class MessageContainer(
-  msgFn: => Message,
+  val contained: Message,
   val pos: SourcePosition,
   val level: Int
 ) extends Exception with interfaces.Diagnostic {
@@ -51,14 +51,6 @@ class MessageContainer(
       }
     }
     myMsg
-  }
-
-  /** This function forces the contained message and returns it */
-  def contained: Message = {
-    if (myContained == null)
-      myContained = msgFn
-
-    myContained
   }
 
   /** A message is non-sensical if it contains references to <nonsensical>

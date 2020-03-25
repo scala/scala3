@@ -2368,7 +2368,7 @@ object SymDenotations {
   /** A completer for missing references */
   class StubInfo() extends LazyType {
 
-    def initializeToDefaults(denot: SymDenotation, errMsg: => Message)(implicit ctx: Context): Unit = {
+    def initializeToDefaults(denot: SymDenotation, errMsg: Message)(implicit ctx: Context): Unit = {
       denot.info = denot match {
         case denot: ClassDenotation =>
           ClassInfo(denot.owner.thisType, denot.classSymbol, Nil, EmptyScope)
@@ -2380,7 +2380,7 @@ object SymDenotations {
 
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       val sym = denot.symbol
-      def errMsg = BadSymbolicReference(denot)
+      val errMsg = BadSymbolicReference(denot)
       ctx.error(errMsg, sym.sourcePos)
       if (ctx.debug) throw new scala.Error()
       initializeToDefaults(denot, errMsg)

@@ -270,10 +270,10 @@ trait Applications extends Compatibility {
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
 
     /** Signal failure with given message at position of given argument */
-    protected def fail(msg: => Message, arg: Arg): Unit
+    protected def fail(msg: Message, arg: Arg): Unit
 
     /** Signal failure with given message at position of the application itself */
-    protected def fail(msg: => Message): Unit
+    protected def fail(msg: Message): Unit
 
     protected def appPos: SourcePosition
 
@@ -638,9 +638,9 @@ trait Applications extends Compatibility {
     def typedArg(arg: Arg, formal: Type): Arg = arg
     final def addArg(arg: TypedArg, formal: Type): Unit = ok = ok & argOK(arg, formal)
     def makeVarArg(n: Int, elemFormal: Type): Unit = {}
-    def fail(msg: => Message, arg: Arg): Unit =
+    def fail(msg: Message, arg: Arg): Unit =
       ok = false
-    def fail(msg: => Message): Unit =
+    def fail(msg: Message): Unit =
       ok = false
     def appPos: SourcePosition = NoSourcePosition
     @threadUnsafe lazy val normalizedFun:   Tree = ref(methRef)
@@ -705,12 +705,12 @@ trait Applications extends Compatibility {
 
     override def appPos: SourcePosition = app.sourcePos
 
-    def fail(msg: => Message, arg: Trees.Tree[T]): Unit = {
+    def fail(msg: Message, arg: Trees.Tree[T]): Unit = {
       ctx.error(msg, arg.sourcePos)
       ok = false
     }
 
-    def fail(msg: => Message): Unit = {
+    def fail(msg: Message): Unit = {
       ctx.error(msg, app.sourcePos)
       ok = false
     }

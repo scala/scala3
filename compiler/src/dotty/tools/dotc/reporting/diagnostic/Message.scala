@@ -56,72 +56,27 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
   def explanation: String
 
   /** The implicit `Context` in messages is a large thing that we don't want
-    * persisted. This method gets around that by duplicating the message
-    * without the implicit context being passed along.
+    * persisted. This method gets around that by duplicating the message,
+    * forcing its `msg` and `explanation` vals and dropping the implicit context
+    * that was captured in the original message.
     */
   def persist: Message = new Message (errorId) {
-    val msg         = self.msg
     val kind        = self.kind
+    val msg         = self.msg
     val explanation = self.explanation
   }
 
-  def append(suffix: => String): Message = new Message(errorId) {
-    val msg         = self.msg ++ suffix
-    val kind        = self.kind
-    val explanation = self.explanation
-  }
+  def append(suffix: => String): Message = mapMsg(_ ++ suffix)
+
+  def mapMsg(f: String => String): Message = new Message(errorId):
+    val kind             = self.kind
+    lazy val msg         = f(self.msg)
+    lazy val explanation = self.explanation
 
   def appendExplanation(suffix: => String): Message = new Message(errorId):
-    val msg         = self.msg
-    val kind        = self.kind
-    val explanation = self.explanation ++ suffix
-}
-
-/** An extended message keeps the contained message from being evaluated, while
-  * allowing for extension for the `msg` string
-  *
-  * This is useful when we need to add additional information to an existing
-  * message.
-  */
-class ExtendMessage(_msg: () => Message)(f: String => String) { self =>
-  lazy val msg: String = f(_msg().msg)
-  lazy val kind: String = _msg().kind
-  lazy val explanation: String = _msg().explanation
-  lazy val errorId: ErrorMessageID = _msg().errorId
-
-  private def toMessage = new Message(errorId) {
-    val msg = self.msg
-    val kind = self.kind
-    val explanation = self.explanation
-  }
-
-  /** Enclose this message in an `Error` container */
-  def error(pos: SourcePosition): Error =
-    new Error(toMessage, pos)
-
-  /** Enclose this message in an `Warning` container */
-  def warning(pos: SourcePosition): Warning =
-    new Warning(toMessage, pos)
-
-  /** Enclose this message in an `Info` container */
-  def info(pos: SourcePosition): Info =
-    new Info(toMessage, pos)
-
-  /** Enclose this message in an `FeatureWarning` container */
-  def featureWarning(pos: SourcePosition): FeatureWarning =
-    new FeatureWarning(toMessage, pos)
-
-  /** Enclose this message in an `UncheckedWarning` container */
-  def uncheckedWarning(pos: SourcePosition): UncheckedWarning =
-    new UncheckedWarning(toMessage, pos)
-
-  /** Enclose this message in an `DeprecationWarning` container */
-  def deprecationWarning(pos: SourcePosition): DeprecationWarning =
-    new DeprecationWarning(toMessage, pos)
-
-  /** Enclose this message in an `MigrationWarning` container */
-  def migrationWarning(pos: SourcePosition): MigrationWarning =
-    new MigrationWarning(toMessage, pos)
+    val kind             = self.kind
+    lazy val msg         = self.msg
+    lazy val explanation = self.explanation ++ suffix
 }
 
 /** The fallback `Message` containing no explanation and having no `kind` */
