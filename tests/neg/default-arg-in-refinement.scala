@@ -1,0 +1,1 @@
+def foo[T <: AnyRef { def bar(a: Int = 0): Unit }](t: T): Unit = t.bar // error // error
