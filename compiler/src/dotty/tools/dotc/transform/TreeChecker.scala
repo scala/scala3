@@ -16,6 +16,7 @@ import core.Mode
 import typer._
 import typer.ErrorReporting._
 import reporting.ThrowingReporter
+import reporting.messages.TypeMismatch
 import ast.Trees._
 import ast.{tpd, untpd}
 import scala.internal.Chars._
@@ -517,7 +518,7 @@ class TreeChecker extends Phase with SymTransformer {
           !isPrimaryConstructorReturn &&
           !pt.isInstanceOf[FunOrPolyProto])
         assert(tree.tpe <:< pt, {
-          val mismatch = err.typeMismatchMsg(tree.tpe, pt)
+          val mismatch = TypeMismatch(tree.tpe, pt)
           i"""|${mismatch.msg}
               |found: ${infoStr(tree.tpe)}
               |expected: ${infoStr(pt)}

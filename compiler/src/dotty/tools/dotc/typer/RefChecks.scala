@@ -21,7 +21,7 @@ import typer.ErrorReporting._
 
 object RefChecks {
   import tpd._
-  import reporting.diagnostic.messages._
+  import reporting.messages._
 
   val name: String = "refchecks"
 
@@ -231,7 +231,7 @@ object RefChecks {
               infoStringWithLocation(other),
               infoStringWithLocation(member))
           else if (ctx.settings.Ydebug.value)
-            err.typeMismatchMsg(memberTp(self), otherTp(self))
+            TypeMismatch(memberTp(self), otherTp(self))
           else ""
 
         "error overriding %s;\n  %s %s%s".format(
@@ -959,8 +959,8 @@ import RefChecks._
 class RefChecks extends MiniPhase { thisPhase =>
 
   import tpd._
-  import reporting.diagnostic.messages.ForwardReferenceExtendsOverDefinition
-  import dotty.tools.dotc.reporting.diagnostic.messages.UnboundPlaceholderParameter
+  import reporting.messages.ForwardReferenceExtendsOverDefinition
+  import dotty.tools.dotc.reporting.messages.UnboundPlaceholderParameter
 
   override def phaseName: String = RefChecks.name
 

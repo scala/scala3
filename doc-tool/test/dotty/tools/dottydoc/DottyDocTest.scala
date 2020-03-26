@@ -54,7 +54,7 @@ trait DottyDocTest extends MessageRendering {
             System.err.println("reporter had errors:")
             ctx.reporter.removeBufferedMessages.foreach { msg =>
               System.err.println {
-                messageAndPos(msg.contained, msg.pos, diagnosticLevel(msg))
+                messageAndPos(msg.msg, msg.pos, diagnosticLevel(msg))
               }
             }
           }

@@ -548,7 +548,7 @@ object Erasure {
       if (sym is Flags.Package)
          || (sym.isAllOf(Flags.JavaModule) && !ctx.compilationUnit.isJava)
       then
-        ctx.error(reporting.diagnostic.messages.JavaSymbolIsNotAValue(sym), tree.sourcePos)
+        ctx.error(reporting.messages.JavaSymbolIsNotAValue(sym), tree.sourcePos)
 
     private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {
       if (!ctx.mode.is(Mode.Type)) {

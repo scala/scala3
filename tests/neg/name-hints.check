@@ -1,72 +1,72 @@
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:6:15 ------------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:6:15 -------------------------------------------------------------
 6 |  val x1 = Int.maxvalue  // error
   |           ^^^^^^^^^^^^
   |           value maxvalue is not a member of object Int - did you mean Int.MaxValue?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:7:15 ------------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:7:15 -------------------------------------------------------------
 7 |  val x2 = Int.MxValue   // error
   |           ^^^^^^^^^^^
   |           value MxValue is not a member of object Int - did you mean Int.MaxValue?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:8:15 ------------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:8:15 -------------------------------------------------------------
 8 |  val x3 = Int.MaxxValue // error
   |           ^^^^^^^^^^^^^
   |           value MaxxValue is not a member of object Int - did you mean Int.MaxValue?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:10:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:10:13 ------------------------------------------------------------
 10 |  val d1 = O.abcd        // error
    |           ^^^^^^
    |           value abcd is not a member of object O - did you mean O.abcde?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:11:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:11:13 ------------------------------------------------------------
 11 |  val d2 = O.abc         // error
    |           ^^^^^
    |           value abc is not a member of object O - did you mean O.abcde?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:12:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:12:13 ------------------------------------------------------------
 12 |  val d3 = O.ab          // error, no hint since distance = 3 > 2 = length
    |           ^^^^
    |           value ab is not a member of object O
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:13:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:13:13 ------------------------------------------------------------
 13 |  val s1 = O.Abcde       // error
    |           ^^^^^^^
    |           value Abcde is not a member of object O - did you mean O.abcde?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:14:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:14:13 ------------------------------------------------------------
 14 |  val s3 = O.AbCde       // error
    |           ^^^^^^^
    |           value AbCde is not a member of object O - did you mean O.abcde?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:15:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:15:13 ------------------------------------------------------------
 15 |  val s3 = O.AbCdE       // error
    |           ^^^^^^^
    |           value AbCdE is not a member of object O - did you mean O.abcde?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:16:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:16:13 ------------------------------------------------------------
 16 |  val s3 = O.AbCDE       // error, no hint
    |           ^^^^^^^
    |           value AbCDE is not a member of object O
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:17:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:17:13 ------------------------------------------------------------
 17 |  val a1 = O.abcde0      // error
    |           ^^^^^^^^
    |           value abcde0 is not a member of object O - did you mean O.abcde?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:18:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:18:13 ------------------------------------------------------------
 18 |  val a2 = O.abcde00     // error
    |           ^^^^^^^^^
    |           value abcde00 is not a member of object O - did you mean O.abcde?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:19:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:19:13 ------------------------------------------------------------
 19 |  val a3 = O.abcde000    // error
    |           ^^^^^^^^^^
    |           value abcde000 is not a member of object O - did you mean O.abcde?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:20:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:20:13 ------------------------------------------------------------
 20 |  val a4 = O.abcde0000   // error, no hint
    |           ^^^^^^^^^^^
    |           value abcde0000 is not a member of object O
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:22:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:22:13 ------------------------------------------------------------
 22 |  val y1 = O.x           // error, no hint
    |           ^^^
    |           value x is not a member of object O
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:23:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:23:13 ------------------------------------------------------------
 23 |  val y2 = O.xY          // error
    |           ^^^^
    |           value xY is not a member of object O - did you mean O.xy?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:24:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:24:13 ------------------------------------------------------------
 24 |  val y3 = O.xyz         // error
    |           ^^^^^
    |           value xyz is not a member of object O - did you mean O.xy?
--- [E008] Member Not Found Error: tests/neg/name-hints.scala:25:13 -----------------------------------------------------
+-- [E008] Not Found Error: tests/neg/name-hints.scala:25:13 ------------------------------------------------------------
 25 |  val y2 = O.XY          // error, no hint
    |           ^^^^
    |           value XY is not a member of object O

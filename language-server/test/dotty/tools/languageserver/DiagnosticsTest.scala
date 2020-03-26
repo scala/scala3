@@ -2,7 +2,7 @@ package dotty.tools.languageserver
 
 import org.junit.Test
 
-import dotty.tools.dotc.reporting.diagnostic.ErrorMessageID._
+import dotty.tools.dotc.reporting.ErrorMessageID._
 import dotty.tools.languageserver.util.Code._
 import org.eclipse.lsp4j.DiagnosticSeverity._
 

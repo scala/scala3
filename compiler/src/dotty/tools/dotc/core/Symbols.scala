@@ -23,7 +23,7 @@ import tpd.{Tree, TreeProvider, TreeOps}
 import ast.TreeTypeMap
 import Constants.Constant
 import Variances.{Variance, varianceFromInt}
-import reporting.diagnostic.Message
+import reporting.Message
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
@@ -300,7 +300,7 @@ trait Symbols { this: Context =>
    */
   def newSkolem(tp: Type): TermSymbol = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
 
-  def newErrorSymbol(owner: Symbol, name: Name, msg: => Message): Symbol = {
+  def newErrorSymbol(owner: Symbol, name: Name, msg: Message): Symbol = {
     val errType = ErrorType(msg)
     newSymbol(owner, name, SyntheticArtifact,
         if (name.isTypeName) TypeAlias(errType) else errType)

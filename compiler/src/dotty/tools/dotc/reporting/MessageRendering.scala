@@ -8,8 +8,7 @@ import core.Contexts.Context
 import core.Decorators._
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
-import diagnostic.{ErrorMessageID, Message, MessageContainer}
-import diagnostic.messages._
+import Diagnostic._
 import util.SourcePosition
 import scala.internal.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
@@ -152,10 +151,10 @@ trait MessageRendering {
       val pos1 = pos.nonInlined
       val (srcBefore, srcAfter, offset) = sourceLines(pos1, diagnosticLevel)
       val marker = columnMarker(pos1, offset, diagnosticLevel)
-      val err = errorMsg(pos1, msg.msg, offset)
+      val err = errorMsg(pos1, msg.message, offset)
       sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString(EOL))
     }
-    else sb.append(msg.msg)
+    else sb.append(msg.message)
     sb.toString
   }
 
@@ -167,14 +166,14 @@ trait MessageRendering {
       Yellow(str).show
   }
 
-  def diagnosticLevel(cont: MessageContainer): String =
-    cont match {
-      case m: Error => "Error"
-      case m: FeatureWarning => "Feature Warning"
-      case m: DeprecationWarning => "Deprecation Warning"
-      case m: UncheckedWarning => "Unchecked Warning"
-      case m: MigrationWarning => "Migration Warning"
-      case m: Warning => "Warning"
-      case m: Info => "Info"
+  def diagnosticLevel(dia: Diagnostic): String =
+    dia match {
+      case dia: Error => "Error"
+      case dia: FeatureWarning => "Feature Warning"
+      case dia: DeprecationWarning => "Deprecation Warning"
+      case dia: UncheckedWarning => "Unchecked Warning"
+      case dia: MigrationWarning => "Migration Warning"
+      case dia: Warning => "Warning"
+      case dia: Info => "Info"
     }
 }

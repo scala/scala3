@@ -2,7 +2,7 @@ import java.io.{ByteArrayOutputStream, File, PrintStream}
 
 import dotty.tools.dotc.core.Contexts
 import dotty.tools.dotc.reporting.Reporter
-import dotty.tools.dotc.reporting.diagnostic.MessageContainer
+import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.util.DiffUtil
 import dotty.tools.io.Path
 
@@ -78,7 +78,7 @@ object Test {
 
   def compileAndInterpret(testFileName: String) = {
     val reproter = new Reporter {
-      def doReport(m: MessageContainer)(implicit ctx: Contexts.Context): Unit = println(m)
+      def doReport(dia: Diagnostic)(implicit ctx: Contexts.Context): Unit = println(dia)
     }
     val out = java.nio.file.Paths.get("out/interpreted")
     if (!java.nio.file.Files.exists(out))

@@ -21,7 +21,6 @@ import CheckRealizable._
 import Variances.{Variance, varianceFromInt, varianceToInt, setStructuralVariances, Invariant}
 import util.Stats._
 import util.SimpleIdentitySet
-import reporting.diagnostic.Message
 import ast.tpd._
 import ast.TreeTypeMap
 import printing.Texts._
@@ -34,7 +33,7 @@ import annotation.{tailrec, constructorOnly}
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr}
-import reporting.trace
+import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 
 import scala.annotation.internal.sharable
@@ -4650,19 +4649,16 @@ object Types {
     def msg(implicit ctx: Context): Message
   }
 
-  object ErrorType {
-    def apply(msg: => Message)(implicit ctx: Context): ErrorType = {
-      val et = new ErrorType {
-        def msg(implicit ctx: Context): Message =
-          ctx.base.errorTypeMsg.get(this) match {
-            case Some(msgFun) => msgFun()
+  object ErrorType:
+    def apply(m: Message)(implicit ctx: Context): ErrorType =
+      val et = new ErrorType:
+        def msg(using ctx: Context): Message =
+          ctx.base.errorTypeMsg.get(this) match
+            case Some(m) => m
             case None => "error message from previous run no longer available"
-          }
-      }
-      ctx.base.errorTypeMsg(et) = () => msg
+      ctx.base.errorTypeMsg(et) = m
       et
-    }
-  }
+  end ErrorType
 
   object UnspecifiedErrorType extends ErrorType {
     override def msg(implicit ctx: Context): Message = "unspecified error"

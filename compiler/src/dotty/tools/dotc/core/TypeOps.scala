@@ -12,8 +12,7 @@ import Decorators._
 import StdNames._
 import collection.mutable
 import ast.tpd._
-import reporting.trace
-import reporting.diagnostic.Message
+import reporting.{trace, Message}
 import config.Printers.{gadts, typr}
 import typer.Applications._
 import typer.ProtoTypes._
@@ -516,7 +515,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   def dynamicsEnabled: Boolean =
     featureEnabled(nme.dynamics)
 
-  def testScala2CompatMode(msg: => Message, pos: SourcePosition, replace: => Unit = ()): Boolean = {
+  def testScala2CompatMode(msg: Message, pos: SourcePosition, replace: => Unit = ()): Boolean = {
     if (scala2CompatMode) {
       migrationWarning(msg, pos)
       replace

@@ -10,8 +10,8 @@ import Contexts._
 import SymDenotations._
 import Denotations._
 import Decorators._
-import reporting.diagnostic.Message
-import reporting.diagnostic.messages._
+import reporting.{Message, NoExplanation}
+import reporting.messages._
 import ast.untpd
 import config.Printers.cyclicErrors
 
@@ -69,7 +69,7 @@ class RecursionOverflow(val op: String, details: => String, val previous: Throwa
       (rs.map(_.explanation): List[String]).mkString("\n  ", "\n|  ", "")
   }
 
-  override def produceMessage(implicit ctx: Context): Message = {
+  override def produceMessage(implicit ctx: Context): Message = NoExplanation {
     val mostCommon = recursions.groupBy(_.op).toList.maxBy(_._2.map(_.weight).sum)._2.reverse
     s"""Recursion limit exceeded.
        |Maybe there is an illegal cyclic reference?

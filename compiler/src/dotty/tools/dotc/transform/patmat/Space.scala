@@ -18,7 +18,7 @@ import Applications._
 import Inferencing._
 import ProtoTypes._
 import transform.SymUtils._
-import reporting.diagnostic.messages._
+import reporting.messages._
 import reporting.trace
 import config.Printers.{exhaustivity => debug}
 import util.SourcePosition

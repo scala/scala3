@@ -1,4 +1,4 @@
-package dotty.tools.dotc.reporting.diagnostic
+package dotty.tools.dotc.reporting
 
 /** Unique IDs identifying the messages */
 enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {

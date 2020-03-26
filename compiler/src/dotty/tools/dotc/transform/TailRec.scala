@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds.{TailLabelName, TailLocalName, TailTempName}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.reporting.diagnostic.messages.TailrecNotApplicable
+import dotty.tools.dotc.reporting.messages.TailrecNotApplicable
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 import scala.collection.mutable

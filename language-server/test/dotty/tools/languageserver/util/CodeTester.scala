@@ -5,7 +5,7 @@ import dotty.tools.languageserver.util.actions._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.{TestFile, TestServer}
 
-import dotty.tools.dotc.reporting.diagnostic.ErrorMessageID
+import dotty.tools.dotc.reporting.ErrorMessageID
 import dotty.tools.dotc.util.Signatures.Signature
 
 import org.eclipse.lsp4j.{ CompletionItem, CompletionItemKind, DocumentHighlightKind, Diagnostic, DiagnosticSeverity }

@@ -22,7 +22,7 @@ import core._, core.Decorators._
 import Annotations.AnnotInfo
 import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
-import reporting._, reporting.diagnostic.{Message, MessageContainer, messages}
+import reporting._
 import typer.Typer
 import util.{Set => _, _}
 import interactive._, interactive.InteractiveDriver._
@@ -689,10 +689,10 @@ object DottyLanguageServer {
     } yield new lsp4j.Location(uri.toString, r)
 
   /**
-   * Convert a MessageContainer to an lsp4j.Diagnostic.
+   * Convert a Diagnostic to an lsp4j.Diagnostic.
    */
-  def diagnostic(mc: MessageContainer)(implicit ctx: Context): Option[lsp4j.Diagnostic] =
-    if (!mc.pos.exists)
+  def diagnostic(dia: Diagnostic)(implicit ctx: Context): Option[lsp4j.Diagnostic] =
+    if (!dia.pos.exists)
       None // diagnostics without positions are not supported: https://github.com/Microsoft/language-server-protocol/issues/249
     else {
       def severity(level: Int): lsp4j.DiagnosticSeverity = {
@@ -709,12 +709,12 @@ object DottyLanguageServer {
         }
       }
 
-      val message = mc.contained
-      if (displayMessage(message, mc.pos.source)) {
+      val message = dia.msg
+      if (displayMessage(message, dia.pos.source)) {
         val code = message.errorId.errorNumber.toString
-        range(mc.pos).map(r =>
+        range(dia.pos).map(r =>
             new lsp4j.Diagnostic(
-              r, mc.message, severity(mc.level), /*source =*/ "", code))
+              r, dia.message, severity(dia.level), /*source =*/ "", code))
       } else {
         None
       }
@@ -733,8 +733,8 @@ object DottyLanguageServer {
   private def displayMessage(message: Message, sourceFile: SourceFile)(implicit ctx: Context): Boolean = {
     if (isWorksheet(sourceFile)) {
       message match {
-        case messages.PureExpressionInStatementPosition(_, exprOwner) =>
-          val ownerSym = if (exprOwner.isLocalDummy) exprOwner.owner else exprOwner
+        case msg: messages.PureExpressionInStatementPosition =>
+          val ownerSym = if (msg.exprOwner.isLocalDummy) msg.exprOwner.owner else msg.exprOwner
           !isWorksheetWrapper(ownerSym)
         case _ =>
           true

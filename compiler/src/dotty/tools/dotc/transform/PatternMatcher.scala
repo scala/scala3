@@ -14,7 +14,7 @@ import Flags._, Constants._
 import Decorators._
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
 import config.Printers.patmatch
-import reporting.diagnostic.messages._
+import reporting.messages._
 import dotty.tools.dotc.ast._
 import util.Property._
 

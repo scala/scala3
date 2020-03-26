@@ -28,7 +28,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
 import reporting.trace
-import dotty.tools.dotc.reporting.diagnostic.messages.FailureToEliminateExistential
+import dotty.tools.dotc.reporting.messages.FailureToEliminateExistential
 
 object Scala2Unpickler {
 

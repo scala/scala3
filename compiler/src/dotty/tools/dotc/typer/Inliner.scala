@@ -222,7 +222,7 @@ object Inliner {
   }
 
   object Intrinsics {
-    import dotty.tools.dotc.reporting.diagnostic.messages.Error
+    import dotty.tools.dotc.reporting.Diagnostic.Error
     private enum ErrorKind:
       case Parser, Typer
 

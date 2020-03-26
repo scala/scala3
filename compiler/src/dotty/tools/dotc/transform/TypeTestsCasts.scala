@@ -11,7 +11,7 @@ import ValueClasses._
 import SymUtils._
 import core.Flags._
 import util.Spans._
-import reporting.diagnostic.messages.TypeTestAlwaysSucceeds
+import reporting.messages.TypeTestAlwaysSucceeds
 import reporting.trace
 import config.Printers.{ transforms => debug }
 

@@ -20,9 +20,8 @@ import util.Stats
 import java.util.WeakHashMap
 import scala.util.control.NonFatal
 import config.Config
-import reporting.diagnostic.Message
-import reporting.diagnostic.messages.BadSymbolicReference
-import reporting.trace
+import reporting.{Message, trace}
+import reporting.messages.BadSymbolicReference
 import collection.mutable
 import transform.TypeUtils._
 
@@ -2368,7 +2367,7 @@ object SymDenotations {
   /** A completer for missing references */
   class StubInfo() extends LazyType {
 
-    def initializeToDefaults(denot: SymDenotation, errMsg: => Message)(implicit ctx: Context): Unit = {
+    def initializeToDefaults(denot: SymDenotation, errMsg: Message)(implicit ctx: Context): Unit = {
       denot.info = denot match {
         case denot: ClassDenotation =>
           ClassInfo(denot.owner.thisType, denot.classSymbol, Nil, EmptyScope)
@@ -2380,7 +2379,7 @@ object SymDenotations {
 
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       val sym = denot.symbol
-      def errMsg = BadSymbolicReference(denot)
+      val errMsg = BadSymbolicReference(denot)
       ctx.error(errMsg, sym.sourcePos)
       if (ctx.debug) throw new scala.Error()
       initializeToDefaults(denot, errMsg)

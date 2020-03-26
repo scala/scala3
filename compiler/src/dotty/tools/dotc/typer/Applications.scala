@@ -28,11 +28,10 @@ import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
-import reporting.diagnostic.Message
-import reporting.diagnostic.messages.{UnexpectedPatternForSummonFrom, NotAMember, MissingIdent}
-import reporting.trace
+import reporting.messages.{UnexpectedPatternForSummonFrom, NotFoundMsg, TypeMismatch}
+import reporting.{trace, Message}
 import Constants.{Constant, IntTag, LongTag}
-import dotty.tools.dotc.reporting.diagnostic.messages.{UnapplyInvalidReturnType, NotAnExtractor, UnapplyInvalidNumberOfArguments}
+import dotty.tools.dotc.reporting.messages.{UnapplyInvalidReturnType, NotAnExtractor, UnapplyInvalidNumberOfArguments}
 import Denotations.SingleDenotation
 import annotation.{constructorOnly, threadUnsafe}
 
@@ -270,10 +269,10 @@ trait Applications extends Compatibility {
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
 
     /** Signal failure with given message at position of given argument */
-    protected def fail(msg: => Message, arg: Arg): Unit
+    protected def fail(msg: Message, arg: Arg): Unit
 
     /** Signal failure with given message at position of the application itself */
-    protected def fail(msg: => Message): Unit
+    protected def fail(msg: Message): Unit
 
     protected def appPos: SourcePosition
 
@@ -349,7 +348,7 @@ trait Applications extends Compatibility {
             // it might be healed by an implicit conversion
             ()
           else
-            fail(err.typeMismatchMsg(methType.resultType, resultType))
+            fail(TypeMismatch(methType.resultType, resultType))
 
         // match all arguments with corresponding formal parameters
         matchArgs(orderedArgs, methType.paramInfos, 0)
@@ -638,9 +637,9 @@ trait Applications extends Compatibility {
     def typedArg(arg: Arg, formal: Type): Arg = arg
     final def addArg(arg: TypedArg, formal: Type): Unit = ok = ok & argOK(arg, formal)
     def makeVarArg(n: Int, elemFormal: Type): Unit = {}
-    def fail(msg: => Message, arg: Arg): Unit =
+    def fail(msg: Message, arg: Arg): Unit =
       ok = false
-    def fail(msg: => Message): Unit =
+    def fail(msg: Message): Unit =
       ok = false
     def appPos: SourcePosition = NoSourcePosition
     @threadUnsafe lazy val normalizedFun:   Tree = ref(methRef)
@@ -705,12 +704,12 @@ trait Applications extends Compatibility {
 
     override def appPos: SourcePosition = app.sourcePos
 
-    def fail(msg: => Message, arg: Trees.Tree[T]): Unit = {
+    def fail(msg: Message, arg: Trees.Tree[T]): Unit = {
       ctx.error(msg, arg.sourcePos)
       ok = false
     }
 
-    def fail(msg: => Message): Unit = {
+    def fail(msg: Message): Unit = {
       ctx.error(msg, app.sourcePos)
       ok = false
     }
@@ -1067,12 +1066,9 @@ trait Applications extends Compatibility {
    */
   def saysNotFound(state: TyperState, memberName: Name)(using Context): Boolean =
     state.reporter.pendingMessages match
-      case msg :: Nil =>
-        msg.contained match
-          case NotAMember(_, name, _, _) =>
-            memberName.isEmpty || name == memberName
-          case MissingIdent(_, _, name) =>
-            memberName.isEmpty || name == memberName
+      case dia :: Nil =>
+        dia.msg match
+          case msg: NotFoundMsg => memberName.isEmpty || msg.name == memberName
           case _ => false
       case _ => false
 

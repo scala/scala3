@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Flags.Implicit
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.core.Types.{ErrorType, MethodType, PolyType}
-import dotty.tools.dotc.reporting.diagnostic.messages
+import dotty.tools.dotc.reporting.messages
 
 import scala.collection.JavaConverters._
 
@@ -162,14 +162,10 @@ object Signatures {
    */
   private def alternativesFromError(err: ErrorType, params: List[tpd.Tree])(implicit ctx: Context): (Int, List[SingleDenotation]) = {
     val alternatives =
-      err.msg match {
-        case messages.AmbiguousOverload(_, alternatives, _) =>
-          alternatives
-        case messages.NoMatchingOverload(alternatives, _) =>
-          alternatives
-        case _ =>
-          Nil
-      }
+      err.msg match
+        case msg: messages.AmbiguousOverload  => msg.alternatives
+        case msg: messages.NoMatchingOverload => msg.alternatives
+        case _                                => Nil
 
     // If the user writes `foo(bar, <cursor>)`, the typer will insert a synthetic
     // `null` parameter: `foo(bar, null)`. This may influence what's the "best"

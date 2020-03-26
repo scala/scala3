@@ -8,7 +8,7 @@ import Contexts.Context
 import Symbols._
 import dotty.tools.dotc.ast.tpd
 import Decorators._
-import reporting.diagnostic.messages._
+import reporting.messages._
 
 /** A transformer that check that requirements of Static fields\methods are implemented:
   *  1. Only objects can have members annotated with `@static`

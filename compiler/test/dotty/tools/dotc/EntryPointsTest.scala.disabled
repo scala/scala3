@@ -6,7 +6,7 @@ import org.junit.Test
 import org.junit.Assert._
 import interfaces.{CompilerCallback, SourceFile}
 import reporting._
-import reporting.diagnostic.MessageContainer
+import reporting.Diagnostic
 import core.Contexts._
 import java.io.File
 import scala.collection.mutable.ListBuffer
@@ -50,7 +50,7 @@ class EntryPointsTest {
   private class CustomReporter extends Reporter
       with UniqueMessagePositions
       with HideNonSensicalMessages {
-    def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
+    def doReport(m: Diagnostic)(implicit ctx: Context): Unit = {
     }
   }
 

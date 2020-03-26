@@ -24,7 +24,7 @@ import StdNames._
 import Constants._
 import ProtoTypes._
 import ErrorReporting._
-import reporting.diagnostic.Message
+import reporting.Message
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Trees._
 import transform.SymUtils._

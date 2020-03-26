@@ -10,7 +10,7 @@ import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.{FrontEnd, Namer}
 import util.{Property, SourceFile, SourcePosition}
 import collection.mutable.ListBuffer
-import reporting.diagnostic.messages._
+import reporting.messages._
 import reporting.trace
 import annotation.constructorOnly
 import printing.Formatting.hl
@@ -981,7 +981,7 @@ object desugar {
     var name = mdef.name
     if (name.isEmpty) name = name.likeSpaced(inventGivenOrExtensionName(impl))
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
-      def kind = if (name.isTypeName) "class" else "object"
+      val kind = if (name.isTypeName) "class" else "object"
       ctx.error(IllegalRedefinitionOfStandardKind(kind, name), mdef.sourcePos)
       name = name.errorName
     }

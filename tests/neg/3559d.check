@@ -1,4 +1,4 @@
--- [E006] Unbound Identifier Error: tests/neg/3559d.scala:7:9 ----------------------------------------------------------
+-- [E006] Not Found Error: tests/neg/3559d.scala:7:9 -------------------------------------------------------------------
 7 |    this(f)           // error
   |         ^
   |         Not found: f

@@ -14,12 +14,11 @@ import dotty.tools.dotc.interfaces.Diagnostic;
 import dotty.tools.dotc.util.SourceFile;
 import dotty.tools.dotc.util.SourcePosition;
 import dotty.tools.dotc.reporting.*;
-import dotty.tools.dotc.reporting.diagnostic.Message;
-import dotty.tools.dotc.reporting.diagnostic.MessageContainer;
-import dotty.tools.dotc.reporting.diagnostic.messages;
+import dotty.tools.dotc.reporting.Message;
+import dotty.tools.dotc.reporting.messages;
 import dotty.tools.dotc.core.Contexts.*;
 
-import static dotty.tools.dotc.reporting.diagnostic.MessageContainer.*;
+import static dotty.tools.dotc.reporting.Diagnostic.*;
 
 final public class DelegatingReporter extends AbstractReporter {
   private final xsbti.Reporter delegate;
@@ -58,9 +57,9 @@ final public class DelegatingReporter extends AbstractReporter {
     delegate.printSummary();
   }
 
-  public void doReport(MessageContainer cont, Context ctx) {
+  public void doReport(dotty.tools.dotc.reporting.Diagnostic dia, Context ctx) {
     Severity severity;
-    switch (cont.level()) {
+    switch (dia.level()) {
       case Diagnostic.ERROR:
         severity = Severity.Error;
         break;
@@ -71,12 +70,12 @@ final public class DelegatingReporter extends AbstractReporter {
         severity = Severity.Info;
         break;
       default:
-        throw new IllegalArgumentException("Bad diagnostic level: " + cont.level());
+        throw new IllegalArgumentException("Bad diagnostic level: " + dia.level());
     }
 
     Position position;
-    if (cont.pos().exists()) {
-      SourcePosition pos = cont.pos();
+    if (dia.pos().exists()) {
+      SourcePosition pos = dia.pos();
       SourceFile src = pos.source();
       position = new Position() {
         public Optional<java.io.File> sourceFile() {
@@ -124,10 +123,10 @@ final public class DelegatingReporter extends AbstractReporter {
       position = noPosition;
     }
 
-    Message message = cont.contained();
+    Message message = dia.msg();
     StringBuilder rendered = new StringBuilder();
-    rendered.append(messageAndPos(message, cont.pos(), diagnosticLevel(cont), ctx));
-    boolean shouldExplain = new MessageContainer.MessageContext(ctx).shouldExplain(cont);
+    rendered.append(messageAndPos(message, dia.pos(), diagnosticLevel(dia), ctx));
+    boolean shouldExplain = dotty.tools.dotc.reporting.Diagnostic.shouldExplain(dia, ctx);
     if (shouldExplain && !message.explanation().isEmpty()) {
       rendered.append(explanation(message, ctx));
     }

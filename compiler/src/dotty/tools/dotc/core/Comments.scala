@@ -9,7 +9,7 @@ import util.Spans._
 import util.CommentParsing._
 import util.Property.Key
 import parsing.Parsers.Parser
-import reporting.diagnostic.messages.ProperDefinitionNotFound
+import reporting.messages.ProperDefinitionNotFound
 
 object Comments {
   val ContextDoc: Key[ContextDocstrings] = new Key[ContextDocstrings]

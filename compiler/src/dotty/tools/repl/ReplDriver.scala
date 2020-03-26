@@ -16,7 +16,7 @@ import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.MessageRendering
-import dotty.tools.dotc.reporting.diagnostic.{Message, MessageContainer}
+import dotty.tools.dotc.reporting.{Message, Diagnostic}
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
@@ -380,11 +380,11 @@ class ReplDriver(settings: Array[String],
   }
 
   /** Render messages using the `MessageRendering` trait */
-  private def renderMessage(cont: MessageContainer): Context => String =
-    messageRenderer.messageAndPos(cont.contained, cont.pos, messageRenderer.diagnosticLevel(cont))(_)
+  private def renderMessage(dia: Diagnostic): Context => String =
+    messageRenderer.messageAndPos(dia.msg, dia.pos, messageRenderer.diagnosticLevel(dia))(_)
 
   /** Output errors to `out` */
-  private def displayErrors(errs: Seq[MessageContainer])(implicit state: State): State = {
+  private def displayErrors(errs: Seq[Diagnostic])(implicit state: State): State = {
     errs.map(renderMessage(_)(state.context)).foreach(out.println)
     state
   }

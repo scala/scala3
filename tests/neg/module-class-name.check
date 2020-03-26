@@ -18,7 +18,7 @@
    |                ^
    |                Found:    Test.C.type
    |                Required: Int
--- [E008] Member Not Found Error: tests/neg/module-class-name.scala:15:4 -----------------------------------------------
+-- [E008] Not Found Error: tests/neg/module-class-name.scala:15:4 ------------------------------------------------------
 15 |  C.foo  // error: value foo is not a member of object Test.C
    |  ^^^^^
    |  value foo is not a member of object Test.C

@@ -7,7 +7,7 @@ object Test {
   def main(args: Array[String]): Unit =
     try run {returning('{ { (x: Int) => ${ throwReturn('x) }} apply 0 })}
     catch {
-      case ex: dotty.tools.dotc.reporting.diagnostic.messages.Error =>
+      case ex: dotty.tools.dotc.reporting.Diagnostic.Error =>
         assert(ex.getMessage == "While expanding a macro, a reference to value x was used outside the scope where it was defined", ex.getMessage)
     }
 }
