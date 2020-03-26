@@ -48,16 +48,31 @@ object Annotations {
   }
 
   abstract class LazyAnnotation extends Annotation {
-    override def symbol(implicit ctx: Context): Symbol
-    def complete(implicit ctx: Context): Tree
+    protected var mySym: Symbol | (Context => Symbol)
+    override def symbol(using ctx: Context): Symbol =
+      assert(mySym != null)
+      mySym match {
+        case symFn: (Context => Symbol) @unchecked =>
+          mySym = null
+          mySym = symFn(ctx)
+        case sym: Symbol if sym.defRunId != ctx.runId =>
+          mySym = sym.denot.current.symbol
+        case _ =>
+      }
+      mySym.asInstanceOf[Symbol]
 
-    private var myTree: Tree = null
-    def tree(implicit ctx: Context): Tree = {
-      if (myTree == null) myTree = complete(ctx)
-      myTree
-    }
+    protected var myTree: Tree | (Context => Tree)
+    def tree(using ctx: Context): Tree =
+      assert(myTree != null)
+      myTree match {
+        case treeFn: (Context => Tree) @unchecked =>
+          myTree = null
+          myTree = treeFn(ctx)
+        case _ =>
+      }
+      myTree.asInstanceOf[Tree]
 
-    override def isEvaluated: Boolean = myTree != null
+    override def isEvaluated: Boolean = myTree.isInstanceOf[Tree]
   }
 
   /** An annotation indicating the body of a right-hand side,
@@ -120,23 +135,15 @@ object Annotations {
     /** Create an annotation where the tree is computed lazily. */
     def deferred(sym: Symbol)(treeFn: Context ?=> Tree)(implicit ctx: Context): Annotation =
       new LazyAnnotation {
-        override def symbol(implicit ctx: Context): Symbol = sym
-        def complete(implicit ctx: Context) = treeFn(using ctx)
+        protected var myTree: Tree | (Context => Tree) = ctx => treeFn(using ctx)
+        protected var mySym: Symbol | (Context => Symbol) = sym
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
-    def deferredSymAndTree(symf: Context ?=> Symbol)(treeFn: Context ?=> Tree)(implicit ctx: Context): Annotation =
+    def deferredSymAndTree(symFn: Context ?=> Symbol)(treeFn: Context ?=> Tree)(implicit ctx: Context): Annotation =
       new LazyAnnotation {
-        private var mySym: Symbol = _
-
-        override def symbol(implicit ctx: Context): Symbol = {
-          if (mySym == null || mySym.defRunId != ctx.runId) {
-            mySym = symf(using ctx)
-            assert(mySym != null)
-          }
-          mySym
-        }
-        def complete(implicit ctx: Context) = treeFn(using ctx)
+        protected var mySym: Symbol | (Context => Symbol) = ctx => symFn(using ctx)
+        protected var myTree: Tree | (Context => Tree) = ctx => treeFn(using ctx)
       }
 
     def deferred(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
