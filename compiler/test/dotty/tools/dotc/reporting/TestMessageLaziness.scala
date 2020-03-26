@@ -18,8 +18,8 @@ class TestMessageLaziness extends DottyTest {
 
   case class LazyError() extends Message(ErrorMessageID.LazyErrorId) {
     val kind = "Test"
-    lazy val msg = throw new Error("Didn't stay lazy.")
-    val explanation = ""
+    def msg = throw new Error("Didn't stay lazy.")
+    def explain = ""
   }
 
   @Test def assureLazy =

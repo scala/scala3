@@ -48,36 +48,39 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     */
   protected def msg: String
 
-  /** The kind of the error message is something like "Syntax" or "Type
-    * Mismatch"
+  /** The kind of the error message, e.g. "Syntax" or "Type Mismatch".
+    * This will be printed as "$kind Error", "$kind Warning", etc, on the first
+    * line of the message.
     */
   def kind: String
 
   /** The explanation should provide a detailed description of why the error
     * occurred and use examples from the user's own code to illustrate how to
-    * avoid these errors.
+    * avoid these errors. It might contain embedded <nonsensical> tags.
     */
-  def explanation: String
+  protected def explain: String
 
   private var myMsg: String | Null = null
   private var myIsNonSensical: Boolean = false
+
+  private def dropNonSensical(msg: String): String =
+    if msg.contains(nonSensicalStartTag) then
+      myIsNonSensical = true
+      // myMsg might be composed of several d"..." invocations -> nested
+      // nonsensical tags possible
+      msg
+        .replaceAllLiterally(nonSensicalStartTag, "")
+        .replaceAllLiterally(nonSensicalEndTag, "")
+    else msg
 
   /** The message with potential embedded <nonsensical> tags */
   def rawMessage = message
 
   /** The message to report. <nonsensical> tags are filtered out */
-  def message: String =
-    if myMsg == null then
-      myMsg =
-        if msg.contains(nonSensicalStartTag) then
-          myIsNonSensical = true
-          // myMsg might be composed of several d"..." invocations -> nested
-          // nonsensical tags possible
-          msg
-            .replaceAllLiterally(nonSensicalStartTag, "")
-            .replaceAllLiterally(nonSensicalEndTag, "")
-        else msg
-    myMsg
+  lazy val message: String = dropNonSensical(msg)
+
+  /** The explanation to report. <nonsensical> tags are filtered out */
+  lazy val explanation: String = dropNonSensical(explain)
 
   /** A message is non-sensical if it contains references to <nonsensical>
    *  tags.  Such tags are inserted by the error diagnostic framework if a
@@ -94,30 +97,30 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     * that was captured in the original message.
     */
   def persist: Message = new Message(errorId) {
-    val kind        = self.kind
-    val msg         = self.msg
-    val explanation = self.explanation
+    val kind    = self.kind
+    val msg     = self.msg
+    val explain = self.explain
   }
 
   def append(suffix: => String): Message = mapMsg(_ ++ suffix)
 
   def mapMsg(f: String => String): Message = new Message(errorId):
-    val kind             = self.kind
-    lazy val msg         = f(self.msg)
-    lazy val explanation = self.explanation
+    val kind    = self.kind
+    def msg     = f(self.msg)
+    def explain = self.explain
 
   def appendExplanation(suffix: => String): Message = new Message(errorId):
-    val kind             = self.kind
-    lazy val msg         = self.msg
-    lazy val explanation = self.explanation ++ suffix
+    val kind    = self.kind
+    def msg     = self.msg
+    def explain = self.explain ++ suffix
 
   override def toString = msg
 }
 
 /** The fallback `Message` containing no explanation and having no `kind` */
 class NoExplanation(msgFn: => String) extends Message(ErrorMessageID.NoExplanationID) {
-  lazy val msg: String = msgFn
-  val explanation: String = ""
+  def msg: String = msgFn
+  def explain: String = ""
   val kind: String = ""
 
   override def toString(): String = msg
