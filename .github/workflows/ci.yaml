@@ -15,8 +15,14 @@ jobs:
     container: akmetiuk/dotty:2020-02-12
 
     steps:
-      - name: Clean Workspace
-        uses: anatoliykmetyuk/action-clean@1.0.2
+      - name: Cleanup
+        run: |
+          TARGETS="$(pwd) /__w/_temp /github/home"
+          for folder in $TARGETS; do
+            echo "Cleaning $folder"
+            cd $folder
+            rm -rf ..?* .[!.]* *
+          done
 
       - name: Git Checkout
         uses: actions/checkout@v2
@@ -52,8 +58,14 @@ jobs:
     container: akmetiuk/dotty:2020-02-12
 
     steps:
-      - name: Clean Workspace
-        uses: anatoliykmetyuk/action-clean@1.0.2
+      - name: Cleanup
+        run: |
+          TARGETS="$(pwd) /__w/_temp /github/home"
+          for folder in $TARGETS; do
+            echo "Cleaning $folder"
+            cd $folder
+            rm -rf ..?* .[!.]* *
+          done
 
       - name: Git Checkout
         uses: actions/checkout@v2
@@ -89,8 +101,14 @@ jobs:
     container: akmetiuk/dotty:2020-02-12
 
     steps:
-      - name: Clean Workspace
-        uses: anatoliykmetyuk/action-clean@1.0.2
+      - name: Cleanup
+        run: |
+          TARGETS="$(pwd) /__w/_temp /github/home"
+          for folder in $TARGETS; do
+            echo "Cleaning $folder"
+            cd $folder
+            rm -rf ..?* .[!.]* *
+          done
 
       - name: Git Checkout
         uses: actions/checkout@v2
@@ -132,8 +150,14 @@ jobs:
         github.event_name == 'schedule'
 
     steps:
-      - name: Clean Workspace
-        uses: anatoliykmetyuk/action-clean@1.0.2
+      - name: Cleanup
+        run: |
+          TARGETS="$(pwd) /__w/_temp /github/home"
+          for folder in $TARGETS; do
+            echo "Cleaning $folder"
+            cd $folder
+            rm -rf ..?* .[!.]* *
+          done
 
       - name: Git Checkout
         uses: actions/checkout@v2
@@ -172,8 +196,14 @@ jobs:
         github.event_name == 'schedule'
 
     steps:
-      - name: Clean Workspace
-        uses: anatoliykmetyuk/action-clean@1.0.2
+      - name: Cleanup
+        run: |
+          TARGETS="$(pwd) /__w/_temp /github/home"
+          for folder in $TARGETS; do
+            echo "Cleaning $folder"
+            cd $folder
+            rm -rf ..?* .[!.]* *
+          done
 
       - name: Git Checkout
         uses: actions/checkout@v2
@@ -217,8 +247,14 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
 
     steps:
-      - name: Clean Workspace
-        uses: anatoliykmetyuk/action-clean@1.0.2
+      - name: Cleanup
+        run: |
+          TARGETS="$(pwd) /__w/_temp /github/home"
+          for folder in $TARGETS; do
+            echo "Cleaning $folder"
+            cd $folder
+            rm -rf ..?* .[!.]* *
+          done
 
       - name: Git Checkout
         uses: actions/checkout@v2
@@ -260,8 +296,14 @@ jobs:
                                            # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
 
     steps:
-      - name: Clean Workspace
-        uses: anatoliykmetyuk/action-clean@1.0.2
+      - name: Cleanup
+        run: |
+          TARGETS="$(pwd) /__w/_temp /github/home"
+          for folder in $TARGETS; do
+            echo "Cleaning $folder"
+            cd $folder
+            rm -rf ..?* .[!.]* *
+          done
 
       - name: Git Checkout
         uses: actions/checkout@v2
