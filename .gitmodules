@@ -74,3 +74,11 @@
 [submodule "community-build/community-projects/munit"]
 	path = community-build/community-projects/munit
 	url = https://github.com/dotty-staging/munit.git
+[submodule "community-build/community-projects/scodec"]
+	path = community-build/community-projects/scodec
+	url = https://github.com/dotty-staging/scodec.git
+	branch = dotty-community-build
+[submodule "community-build/community-projects/scodec-bits"]
+	path = community-build/community-projects/scodec-bits
+	url = https://github.com/dotty-staging/scodec-bits.git
+	branch = dotty-community-build
