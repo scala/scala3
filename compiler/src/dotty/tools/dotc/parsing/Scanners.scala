@@ -528,7 +528,7 @@ object Scanners {
         case r: Indented =>
           indentIsSignificant = indentSyntax
           lastWidth = r.width
-          newlineIsSeparating = lastWidth <= nextWidth
+          newlineIsSeparating = lastWidth <= nextWidth || r.isOutermost
           indentPrefix = r.prefix
         case r: InBraces =>
           indentIsSignificant = indentSyntax
