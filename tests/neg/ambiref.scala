@@ -17,6 +17,14 @@ object test2:
       println(y)  // error
 
 object test3:
+  def c(y: Float) =
+    class D:
+      val y = 2
+    class E extends D:
+      class F:
+        println(y)  // error
+
+object test4:
 
   class C:
     val x = 0
@@ -26,7 +34,7 @@ object test3:
       def x(y: Int) = 3
       val y: Int = this.x // OK
       val z: Int = x      // OK
-end test3
+end test4
 
 val global = 0
 class C:

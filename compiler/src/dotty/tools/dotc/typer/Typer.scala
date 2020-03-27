@@ -125,9 +125,6 @@ class Typer extends Namer
     val refctx = ctx
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
 
-    def ambiguous(newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: Context)(using Context) =
-      refctx.error(AmbiguousReference(name, newPrec, prevPrec, prevCtx), posd.sourcePos)
-
     /** A symbol qualifies if it really exists and is not a package class.
      *  In addition, if we are in a constructor of a pattern, we ignore all definitions
      *  which are methods and not accessors (note: if we don't do that
@@ -173,7 +170,7 @@ class Typer extends Namer
           found
         else
           if !scala2pkg && !previous.isError && !found.isError then
-            ambiguous(newPrec, prevPrec, prevCtx)
+            refctx.error(AmbiguousReference(name, newPrec, prevPrec, prevCtx), posd.sourcePos)
           previous
 
       /** Recurse in outer context. If final result is same as `previous`, check that it
@@ -317,7 +314,13 @@ class Typer extends Namer
               if scope.lookup(name).exists then
                 val symsMatch = scope.lookupAll(name).exists(denot.containsSym)
                 if !symsMatch then
-                  ambiguous(Definition, Inheritance, prevCtx)(using outer)
+                  refctx.errorOrMigrationWarning(
+                    AmbiguousReference(name, Definition, Inheritance, prevCtx)(using outer),
+                    posd.sourcePos)
+                  if ctx.scala2CompatMode then
+                    patch(Span(posd.span.start),
+                      if prevCtx.owner == refctx.owner.enclosingClass then "this."
+                      else s"${prevCtx.owner.name}.this.")
               else
                 checkNoOuterDefs(denot, outer, prevCtx)
 

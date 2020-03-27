@@ -22,3 +22,11 @@ longer explanation available when compiling with `-explain`
    |              and inherited subsequently in anonymous class D {...}
 
 longer explanation available when compiling with `-explain`
+-- [E049] Reference Error: tests/neg/ambiref.scala:25:16 ---------------------------------------------------------------
+25 |        println(y)  // error
+   |                ^
+   |                Reference to y is ambiguous,
+   |                it is both defined in method c
+   |                and inherited subsequently in class E
+
+longer explanation available when compiling with `-explain`
