@@ -216,12 +216,12 @@ object PrepareInlineable {
       inlined: Symbol, treeExpr: Context => Tree)(implicit ctx: Context): Unit =
     inlined.unforcedAnnotation(defn.BodyAnnot) match {
       case Some(ann: ConcreteBodyAnnotation) =>
-      case Some(ann: LazyBodyAnnotation) if ann.isEvaluated =>
+      case Some(ann: LazyBodyAnnotation) if ann.isEvaluated || ann.isEvaluating =>
       case _ =>
         if (!ctx.isAfterTyper) {
           val inlineCtx = ctx
-          inlined.updateAnnotation(LazyBodyAnnotation { _ =>
-            implicit val ctx = inlineCtx
+          inlined.updateAnnotation(LazyBodyAnnotation {
+            given ctx as Context = inlineCtx
             val initialErrorCount = ctx.reporter.errorCount
             var inlinedBody = treeExpr(ctx)
             if (ctx.reporter.errorCount == initialErrorCount) {
