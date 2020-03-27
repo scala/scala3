@@ -12,7 +12,7 @@ import scala.quoted.show.SyntaxHighlight
  */
 class QuoteContext(val tasty: scala.tasty.Reflection) { self =>
 
-  /** Type of a QuoteContext profided by a splice within a quote that took this context.
+  /** Type of a QuoteContext provided by a splice within a quote that took this context.
    *  It is only required if working with the reflection API.
    *
    *  Usually it is infered by the quotes an splices typing. But sometimes it is necessary
