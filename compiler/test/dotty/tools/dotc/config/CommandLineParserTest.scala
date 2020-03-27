@@ -9,10 +9,11 @@ class CommandLineParserTest:
 
   private def check(tokens: String*)(input: String): Unit = assertEquals(tokens, tokenize(input))
 
-  private def checkFails(input: String): Unit =
-    var failed = false
-    val res = tokenize(input, _ => failed = true)
-    assertTrue(s"Expected bad tokenization for [$input] but result was [$res]", failed)
+  private def checkFails(input: String, output: String): Unit =
+    var txt: String = null
+    val res = tokenize(input, msg => txt = msg)
+    assertTrue(s"Expected bad tokenization for [$input] but result was [$res]", txt ne null)
+    assertEquals(output, txt)
 
   @Test def parserTokenizes() =
     check()("")
@@ -39,5 +40,5 @@ class CommandLineParserTest:
     check("x'y'z")("""x"'y'"z""")
     check("abcxyz")(""""abc"xyz""")
     // missing quotes
-    checkFails(""""x""")         // was assertEquals(List("\"x"), tokenize(""""x"""))
-    checkFails("""x'""")
+    checkFails(""""x""", "Unmatched quote [0](\")")  // was assertEquals(List("\"x"), tokenize(""""x"""))
+    checkFails("""x'""", "Unmatched quote [1](')")
