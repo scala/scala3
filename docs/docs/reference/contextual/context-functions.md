@@ -43,16 +43,9 @@ For example, continuing with the previous definitions,
 
   g(f(2))    // is expanded to g((using ev: ExecutionContext) => f(2)(using ev))
 
-  g(ExecutionContext ?=> f(22)) // is left as it is
+  g(ExecutionContext ?=> f(3))  // is expanded to g((using ev: ExecutionContext) => f(3)(using ev))
+  g((using ctx: ExecutionContext) => f(22)(using ctx)) // is left as it is
 ```
-
-<!-- 
-
-TODO the previous proposed syntax does not compile:
-g((using ctx: ExecutionContext) => f(22)(using ctx)) // is left as it is
-results in `not a legal formal parameter`
-
--->
 
 ### Example: Builder Pattern
 
