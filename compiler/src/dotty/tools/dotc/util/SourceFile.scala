@@ -33,7 +33,7 @@ object ScriptSourceFile {
       }
       else 0
     new SourceFile(file, content drop headerLength) {
-      override val underlying = new SourceFile(file, content)
+      override val underlying = new SourceFile(this.file, this.content)
     }
   }
 }

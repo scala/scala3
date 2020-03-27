@@ -57,7 +57,7 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     CyclicReferenceInvolvingID,
     CyclicReferenceInvolvingImplicitID,
     SuperQualMustBeParentID,
-    AmbiguousImportID,
+    AmbiguousReferenceID,
     MethodDoesNotTakeParametersId,
     AmbiguousOverloadID,
     ReassignmentToValID,

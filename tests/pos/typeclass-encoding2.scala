@@ -95,7 +95,7 @@ object semiGroups {
     def unit: Int = 0
     def inject($this: Int) = new Monoid {
       val commons: IntOps.this.type = IntOps.this
-      def add(that: This): This = $this + that
+      def add(that: this.This): this.This = $this + that
     }
   }
 
@@ -105,7 +105,7 @@ object semiGroups {
     def unit = ""
     def inject($this: String) = new Monoid {
       val commons: StringOps.this.type = StringOps.this
-      def add(that: This): This = $this.concat(that)
+      def add(that: this.This): this.This = $this.concat(that)
     }
   }
 
@@ -199,7 +199,7 @@ object ord {
     def inject($this: Int) = new Ord {
       val commons: IntOrd.this.type = IntOrd.this
       import commons._
-      def compareTo(that: This): Int =
+      def compareTo(that: this.This): Int =
         if (this < that) -1 else if (this > that) +1 else 0
     }
   }

@@ -123,8 +123,8 @@ trait TypeAssigner {
           range(defn.NothingType, apply(classBound(tp.cls.classInfo)))
         case tp: SkolemType if partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
           range(defn.NothingType, apply(tp.info))
-        case tp: TypeVar if ctx.typerState.constraint.contains(tp) =>
-          val lo = ctx.typeComparer.instanceType(
+        case tp: TypeVar if this.ctx.typerState.constraint.contains(tp) =>
+          val lo = this.ctx.typeComparer.instanceType(
             tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp

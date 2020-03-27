@@ -112,7 +112,7 @@ object desugar {
         val originalOwner = sym.owner
         def apply(tp: Type) = tp match {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
-            val defctx = ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next()
+            val defctx = this.ctx.outersIterator.dropWhile(_.scope eq this.ctx.scope).next()
             var local = defctx.denotNamed(tp.name).suchThat(_.isParamOrAccessor).symbol
             if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
             else {
