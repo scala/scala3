@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-## minimized code
+## Minimized code
 
 ```Scala
 println("hello, world")

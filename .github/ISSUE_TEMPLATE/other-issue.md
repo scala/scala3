@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-## minimized example
+## Minimized example
 
 ```Scala
 println("hello, world")
@@ -19,4 +19,4 @@ println("hello, world")
 // TODO add output here
 ```
 
-## expectation
+## Expectation
