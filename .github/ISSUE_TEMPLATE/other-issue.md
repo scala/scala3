@@ -13,10 +13,10 @@ assignees: ''
 println("hello, world")
 ```
 
-## Compilation output
+## Output
 
 ```scala
-// TODO add compilation output here
+// TODO add output here
 ```
 
 ## expectation
