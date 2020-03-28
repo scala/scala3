@@ -2160,13 +2160,13 @@ object Parsers {
      *                 |  ‘$’ ‘{’ Block ‘}’
      *                 |  Quoted
      *                 |  quoteId
-     *                 |  SimpleExpr1 [`_']
+     *                 |  SimpleExpr1 [`_`]
      *  SimpleExpr1   ::= literal
      *                 |  xmlLiteral
      *                 |  Path
-     *                 |  `(' [ExprsInParens] `)'
-     *                 |  SimpleExpr `.' id
-     *                 |  SimpleExpr `.' MatchClause
+     *                 |  `(` [ExprsInParens] `)`
+     *                 |  SimpleExpr `.` id
+     *                 |  SimpleExpr `.` MatchClause
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
