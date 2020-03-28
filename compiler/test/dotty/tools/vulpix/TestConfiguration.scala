@@ -51,7 +51,7 @@ object TestConfiguration {
 
   val yCheckOptions = Array("-Ycheck:all")
 
-  val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
+  val commonOptions = Array("-indent", "-language:postfixOps") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
   val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val withCompilerOptions =
     defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
@@ -69,7 +69,7 @@ object TestConfiguration {
   )
   val picklingWithCompilerOptions =
     picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
-  val scala2CompatMode = defaultOptions and "-language:Scala2Compat"
+  val scala2CompatMode = defaultOptions.andLanguageFeature("Scala2Compat")
   val explicitUTF8 = defaultOptions and ("-encoding", "UTF8")
   val explicitUTF16 = defaultOptions and ("-encoding", "UTF16")
 

@@ -135,7 +135,7 @@ trait Reporting { this: Context =>
   def error(ex: TypeError, pos: SourcePosition): Unit = {
     error(ex.toMessage, pos, sticky = true)
     if (ctx.settings.YdebugTypeError.value)
-      ex.printStackTrace
+      ex.printStackTrace()
   }
 
   def errorOrMigrationWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =

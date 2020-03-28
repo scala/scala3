@@ -21,6 +21,29 @@ final case class TestFlags(
 
   def all: Array[String] = Array("-classpath", defaultClassPath) ++ options
 
+  def withoutLanguageFeatures: TestFlags = copy(options = withoutLanguageFeaturesOptions)
+
+  private val languageFeatureFlag = "-language:"
+  private def withoutLanguageFeaturesOptions = options.filterNot(_.startsWith(languageFeatureFlag))
+
+  // TODO simplify to add `-language:feature` to `options` once
+  //      https://github.com/lampepfl/dotty-feature-requests/issues/107 is implemented
+  def andLanguageFeature(feature: String) = {
+    val (languageFeatures, rest) = options.partition(_.startsWith(languageFeatureFlag))
+    val existingFeatures = if (languageFeatures.isEmpty) languageFeatures.mkString(",") + "," else ""
+    copy(options = rest ++ Array(languageFeatureFlag + existingFeatures + feature))
+  }
+
+  def withoutLanguageFeature(feature: String) = {
+    val (languageFeatures, rest) = options.partition(_.startsWith(languageFeatureFlag))
+    val filteredFeatures = languageFeatures.filter(_ == feature)
+    val newOptions =
+      if (filteredFeatures.isEmpty) rest
+      else rest ++ Array(languageFeatureFlag + filteredFeatures.mkString(","))
+
+    copy(options = newOptions)
+  }
+
   /** Subset of the flags that should be passed to javac. */
   def javacFlags: Array[String] = {
     val flags = all
