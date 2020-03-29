@@ -20,12 +20,10 @@ circle.circumference
 
 ### Translation of Extension Methods
 
-Extension methods are methods that have a parameter clause in front of the defined
-identifier. They translate to functions where the leading parameter list is 
-either turned into the first argument list of the function or
-into the last argument list in case of a right-associative identifier.
-So, the definition of `circumference` above translates
-to the following function, and can also be invoked as such:
+Extension methods are methods that have a parameter clause in front of the defined identifier. 
+They translate to functions where the leading parameter section is turned into the first argument list of the function. 
+So, the definition of `circumference` above translates to the following function, and can also be invoked as such:
+
 ```scala
 def circumference(c: Circle): Double = c.radius * math.Pi * 2
 
