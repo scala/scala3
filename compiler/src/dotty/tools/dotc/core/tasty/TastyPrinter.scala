@@ -86,11 +86,10 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
               printName(); printTree(); printTrees()
             case RETURN | HOLE =>
               printNat(); printTrees()
-            case METHODtype | ERASEDMETHODtype |
-                 GIVENMETHODtype | ERASEDGIVENMETHODtype | IMPLICITMETHODtype |
-                 POLYtype | TYPELAMBDAtype =>
+            case METHODtype | POLYtype | TYPELAMBDAtype =>
               printTree()
-              until(end) { printName(); printTree() }
+              while (currentAddr.index < end.index && !isModifierTag(nextByte)) { printTree(); printName(); }
+              printTrees()
             case PARAMtype =>
               printNat(); printNat()
             case _ =>

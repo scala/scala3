@@ -259,7 +259,7 @@ class TreePickler(pickler: TastyPickler) {
       writeByte(BYNAMEtype)
       pickleType(tpe.underlying)
     case tpe: HKTypeLambda =>
-      pickleMethodic(TYPELAMBDAtype, tpe)
+      pickleMethodic(TYPELAMBDAtype, tpe, EmptyFlags)
     case tpe: MatchType =>
       writeByte(MATCHtype)
       withLength {
@@ -268,26 +268,27 @@ class TreePickler(pickler: TastyPickler) {
         tpe.cases.foreach(pickleType(_))
       }
     case tpe: PolyType if richTypes =>
-      pickleMethodic(POLYtype, tpe)
+      pickleMethodic(POLYtype, tpe, EmptyFlags)
     case tpe: MethodType if richTypes =>
-      val tag = methodTypeTag(
-        isContextual = tpe.isContextualMethod,
-        isImplicit = tpe.isImplicitMethod && !tpe.isContextualMethod,
-        isErased = tpe.isErasedMethod)
-      pickleMethodic(tag, tpe)
+      var mods = EmptyFlags
+      if tpe.isContextualMethod then mods |= Given
+      else if tpe.isImplicitMethod then mods |= Implicit
+      if tpe.isErasedMethod then mods |= Erased
+      pickleMethodic(METHODtype, tpe, mods)
     case tpe: ParamRef =>
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
     case tpe: LazyRef =>
       pickleType(tpe.ref)
   }
 
-  def pickleMethodic(tag: Int, tpe: LambdaType)(implicit ctx: Context): Unit = {
+  def pickleMethodic(tag: Int, tpe: LambdaType, mods: FlagSet)(implicit ctx: Context): Unit = {
     writeByte(tag)
     withLength {
       pickleType(tpe.resultType, richTypes = true)
       tpe.paramNames.lazyZip(tpe.paramInfos).foreach { (name, tpe) =>
-        pickleName(name); pickleType(tpe)
+        pickleType(tpe); pickleName(name)
       }
+      if (mods != EmptyFlags) pickleFlags(mods, tpe.isTermLambda)
     }
   }
 
