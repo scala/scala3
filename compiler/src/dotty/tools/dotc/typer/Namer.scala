@@ -5,7 +5,8 @@ package typer
 import core._
 import ast._
 import Trees._, StdNames._, Scopes._, Denotations._, Comments._
-import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
+import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._
+import Decorators.{given _}
 import NameKinds.DefaultGetterName
 import TypeApplications.TypeParamInfo
 import ast.desugar, ast.desugar._

@@ -5,7 +5,7 @@ package ast
 import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Symbols._, StdNames._, Trees._
-import Decorators._, transform.SymUtils._
+import Decorators.{given _}, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.{FrontEnd, Namer}
 import util.{Property, SourceFile, SourcePosition}
@@ -501,16 +501,11 @@ object desugar {
 
     // Annotations are dropped from the constructor parameters but should be
     // preserved in all derived parameters.
-    val derivedTparams = {
-      val impliedTparamsIt = impliedTparams.iterator
-      constrTparams.map(tparam => derivedTypeParam(tparam)
-        .withAnnotations(impliedTparamsIt.next().mods.annotations))
-    }
-    val derivedVparamss = {
-      val constrVparamsIt = constrVparamss.iterator.flatten
-      constrVparamss.nestedMap(vparam => derivedTermParam(vparam)
-        .withAnnotations(constrVparamsIt.next().mods.annotations))
-    }
+    val derivedTparams =
+      constrTparams.zipWithConserve(impliedTparams)((tparam, impliedParam) =>
+        derivedTypeParam(tparam).withAnnotations(impliedParam.mods.annotations))
+    val derivedVparamss =
+      constrVparamss.nestedMap(vparam => derivedTermParam(vparam))
 
     val arity = constrVparamss.head.length
 

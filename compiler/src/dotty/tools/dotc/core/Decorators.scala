@@ -155,10 +155,13 @@ object Decorators {
     def & (ys: List[T]): List[T] = xs filter (ys contains _)
   }
 
-  implicit class ListOfListDecorator[T](val xss: List[List[T]]) extends AnyVal {
-    def nestedMap[U](f: T => U): List[List[U]] = xss map (_ map f)
-    def nestedMapconserve[U](f: T => U): List[List[U]] = xss mapconserve (_ mapconserve f)
-  }
+  extension ListOfListDecorator on [T, U](xss: List[List[T]]):
+    def nestedMap(f: T => U): List[List[U]] =
+      xss.map(_.map(f))
+    def nestedMapConserve(f: T => U): List[List[U]] =
+      xss.mapconserve(_.mapconserve(f))
+    def nestedZipWithConserve(yss: List[List[U]])(f: (T, U) => T): List[List[T]] =
+      xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
 
   implicit class TextToString(val text: Text) extends AnyVal {
     def show(implicit ctx: Context): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)

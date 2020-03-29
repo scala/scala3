@@ -9,7 +9,7 @@ import transform.TypeUtils._
 import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
-import Decorators._, DenotTransformers._
+import Decorators.{given _}, DenotTransformers._
 import collection.{immutable, mutable}
 import util.{Property, SourceFile, NoSource}
 import NameKinds.{TempResultName, OuterSelectName}
