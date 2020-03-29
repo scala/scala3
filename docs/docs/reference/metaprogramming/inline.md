@@ -228,38 +228,33 @@ constant expressions in the sense defined by the [SLS §
 including _platform-specific_ extensions such as constant folding of pure
 numeric computations.
 
-## Specializing Inline (Whitebox)
+## Transparent Inline Methods
 
-Inline methods support the ` <: T` return type syntax. This means that the return type
-of the inline method is going to be specialized to a more precise type upon
-expansion. Example:
+Inline methods can additionally be declared `transparent`.
+This means that the return type of the inline method can be
+specialized to a more precise type upon expansion. Example:
 
 ```scala
 class A
 class B extends A {
-  def meth() = true
+  def m() = true
 }
 
-inline def choose(b: Boolean) <: A = {
-  if (b) new A()
-  else new B()
-}
+transparent inline def choose(b: Boolean): A =
+  if b then A() else B
 
 val obj1 = choose(true)  // static type is A
 val obj2 = choose(false) // static type is B
 
-// obj1.meth() // compile-time error: `meth` is not defined on `A`
-obj2.meth()    // OK
+// obj1.m() // compile-time error: `m` is not defined on `A`
+obj2.m()    // OK
 ```
-Here, the inline method `choose` returns an object of either of the two dynamic types
-`A` and `B`. If `choose` had been declared with a normal return type `: A`, the result
-of its expansion would always be of type `A`, even though the computed value might be
-of type `B`. The inline method is a "blackbox" in the sense that details of its
-implementation do not leak out. But with the specializing return type `<: A`,
-the type of the expansion is the type of the expanded body. If the argument `b`
+Here, the inline method `choose` returns an object of either of the two types `A` and `B`. If `choose` had been declared with a normal return type `: A`, the result
+of its expansion would always be of type `A`, even though the computed value might be of the subtype `B`. The inline method is a "blackbox" in the sense that details of its implementation do not leak out. But if a `transparent` modifier is given,
+the expansion is the type of the expanded body. If the argument `b`
 is `true`, that type is `A`, otherwise it is `B`. Consequently, calling `meth` on `obj2`
 type-checks since `obj2` has the same type as the expansion of `choose(false)`, which is `B`.
-Inline methods with specializing return types are a "whitebox" in the sense that the type
+Transparent inline methods are "whitebox" in the sense that the type
 of an application of such a method can be more specialized than its declared
 return type, depending on how the method expands.
 
@@ -268,7 +263,7 @@ the singleton type `0` permitting the addition to be ascribed with the correct
 type `1`.
 
 ```scala
-inline def zero() <: Int = 0
+transparent inline def zero(): Int = 0
 
 val one: 1 = zero() + 1
 ```
@@ -313,7 +308,7 @@ The example below defines an inline method with a
 single inline match expression that picks a case based on its static type:
 
 ```scala
-inline def g(x: Any) <: Any = inline x match {
+transparent inline def g(x: Any): Any = inline x match {
   case x: String => (x, x) // Tuple2[String, String](x, x)
   case x: Double => x
 }
@@ -323,8 +318,7 @@ g("test") // Has type (String, String)
 ```
 
 The scrutinee `x` is examined statically and the inline match is reduced
-accordingly returning the corresponding value (with the type specialized due to
-the `<:` in the return type). This example performs a simple type test over the
+accordingly returning the corresponding value (with the type specialized because `g` is declared `transparent`). This example performs a simple type test over the
 scrutinee. The type can have a richer structure like the simple ADT below.
 `toInt` matches the structure of a number in [Church-encoding](https://en.wikipedia.org/wiki/Church_encoding)
 and _computes_ the corresponding integer.
@@ -334,7 +328,7 @@ trait Nat
 case object Zero extends Nat
 case class Succ[N <: Nat](n: N) extends Nat
 
-inline def toInt(n: Nat) <: Int = inline n match {
+transparent inline def toInt(n: Nat): Int = inline n match {
   case Zero => 0
   case Succ(n1) => toInt(n1) + 1
 }
@@ -357,7 +351,7 @@ type.
 ```scala
 import scala.compiletime.{constValue, S}
 
-inline def toIntC[N] <: Int =
+transparent inline def toIntC[N]: Int =
   inline constValue[N] match {
     case 0 => 0
     case _: S[n1] => 1 + toIntC[n1]
@@ -423,10 +417,11 @@ Consider the definitions of numbers as in the _Inline
 Match_ section above. Here is how `toIntT` can be defined:
 
 ```scala
-inline def toIntT[N <: Nat] <: Int = inline scala.compiletime.erasedValue[N] match {
-  case _: Zero.type => 0
-  case _: Succ[n] => toIntT[n] + 1
-}
+transparent inline def toIntT[N <: Nat]: Int =
+  inline scala.compiletime.erasedValue[N] match {
+    case _: Zero.type => 0
+    case _: Succ[n] => toIntT[n] + 1
+  }
 
 final val two = toIntT[Succ[Succ[Zero.type]]]
 ```
@@ -595,7 +590,7 @@ inline def f: Any = summonFrom {
 
 The shorthand `summonInline` provides a simple way to write a `summon` that is delayed until the call is inlined.
 ```scala
-inline def summonInline[T] <: T = summonFrom {
+transparent inline def summonInline[T]: T = summonFrom {
   case t: T => t
 }
 ```

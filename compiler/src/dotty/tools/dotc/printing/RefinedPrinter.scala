@@ -864,7 +864,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val rawFlags = if (sym.exists) sym.flags else mods.flags
     if (rawFlags.is(Param)) flagMask = flagMask &~ Given
     val flags = rawFlags & flagMask
-    val flagsText = toTextFlags(sym, flags)
+    var flagsText = toTextFlags(sym, flags)
+    if mods.hasMod(classOf[untpd.Mod.Transparent]) then
+      flagsText = "transparent " ~ flagsText
     val annotations =
       if (sym.exists) sym.annotations.filterNot(ann => dropAnnotForModText(ann.symbol)).map(_.tree)
       else mods.annotations.filterNot(tree => dropAnnotForModText(tree.symbol))

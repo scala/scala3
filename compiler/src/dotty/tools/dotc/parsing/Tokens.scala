@@ -282,5 +282,5 @@ object Tokens extends TokensCommon {
 
   final val scala3keywords = BitSet(ENUM, ERASED, GIVEN)
 
-  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open)
+  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent)
 }

@@ -1,6 +1,6 @@
 object Test {
 
-  inline def f(x: Int) = inline x match {
+  transparent inline def f(x: Int) = inline x match {
     case 1 => "a"
     case 2 => 22
   }
@@ -9,7 +9,7 @@ object Test {
   val y = f(2)
   val yc: Int = y
 
-  inline def g(x: Any) = inline x match {
+  transparent inline def g(x: Any) = inline x match {
     case x: String => (x, x)
     case x: Double => x
   }

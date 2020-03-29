@@ -79,17 +79,16 @@ given (using config: Config) as Factory = MemoizingFactory(config)
 An alias given can have type parameters and context parameters just like any other given,
 but it can only implement a single type.
 
-## Given Whitebox Macro Instances
+## Given Macros
 
-An `inline` alias given can be marked as a whitebox macro by writing
-`_ <:` in front of the implemented type. Example:
+Given aliases can have the `inline` and `transparent` modifiers.
+Example:
 ```scala
-inline given mkAnnotations[A, T] as _ <: Annotations[A, T] = ${
+transparent inline given mkAnnotations[A, T] as Annotations[A, T] = ${
   // code producing a value of a subtype of Annotations
 }
 ```
-The type of an application of `mkAnnotations` is the type of its right hand side,
-which can be a proper subtype of the declared result type `Annotations[A, T]`.
+Since `mkAnnotations` is `transparent`, the type of an application is the type of its right hand side, which can be a proper subtype of the declared result type `Annotations[A, T]`.
 
 ## Given Instance Initialization
 
@@ -104,7 +103,7 @@ Here is the new syntax for given instances, seen as a delta from the [standard c
 ```
 TmplDef           ::=  ...
                    |   ‘given’ GivenDef
-GivenDef          ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
+GivenDef          ::=  [GivenSig] Type ‘=’ Expr
                    |   [GivenSig] ConstrApp {‘,’ ConstrApp } [TemplateBody]
 GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘as’
 ```

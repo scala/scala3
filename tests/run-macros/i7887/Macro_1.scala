@@ -12,6 +12,6 @@ def myMacroImpl(a: quoted.Expr[_])(using qctx: quoted.QuoteContext) = {
 }
 
 
-inline def myMacro(a: => Any) = ${
+inline transparent def myMacro(a: => Any) = ${
   myMacroImpl('a)
 }
