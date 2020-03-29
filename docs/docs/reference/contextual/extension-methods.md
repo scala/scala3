@@ -146,7 +146,7 @@ to the implementation of right binding operators as normal methods.
 
 The `IntOps` examples extended a non generic type. 
 It is also possible to extend a specific instance of a generic type (e.g. Seq[String] -- see `stringOps` further below).
-And also generic types by adding type parameters to an extension method. Examples:
+Moreover, it is also possible to extend generic types by adding type parameters to an extension method. Examples:
 
 ```scala
 def [T](xs: List[T]) second =
