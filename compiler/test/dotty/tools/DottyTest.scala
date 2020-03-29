@@ -77,7 +77,7 @@ trait DottyTest extends ContextEscapeDetection {
   def checkTypes(source: String, typeStringss: List[List[String]])(assertion: (List[List[Type]], Context) => Unit): Unit = {
     val dummyName = "x_x_x"
     val vals = typeStringss.flatten.zipWithIndex.map{case (s, x)=> s"val ${dummyName}$x: $s = ???"}.mkString("\n")
-    val gatheredSource = s" ${source}\n object A$dummyName {$vals}"
+    val gatheredSource = s"${source}\nobject A$dummyName {$vals}"
     checkCompile("typer", gatheredSource) {
       (tree, context) =>
         implicit val ctx = context
