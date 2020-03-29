@@ -34,11 +34,11 @@ assert(circle.circumference == circumference(circle))
 
 When is an extension method applicable? There are two possibilities:
 
- 1. An extension method is applicable if it is visible, by being defined
+ 1. An extension method is applicable if it is visible under a simple name, by being defined
    or inherited or imported in a scope enclosing the application.
  2. An extension method is applicable if it is a member of some given instance at the point of the application.
 
-Following an example for the first point:
+Here is an example for the first rule:
 
 ```scala
 trait IntOps {
