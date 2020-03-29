@@ -33,6 +33,8 @@ object Parsers {
   import reporting.Message
   import reporting.messages._
 
+  val AllowOldWhiteboxSyntax = true
+
   case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 
   class ParensCounters {
@@ -3253,7 +3255,7 @@ object Parsers {
           case rparamss =>
             leadingVparamss ::: rparamss
         var tpt = fromWithinReturnType {
-          if in.token == SUBTYPE && mods.is(Inline) then
+          if in.token == SUBTYPE && mods.is(Inline) && AllowOldWhiteboxSyntax then
             in.nextToken()
             mods1 = addMod(mods1, Mod.Transparent())
             toplevelTyp()
@@ -3522,7 +3524,7 @@ object Parsers {
           accept(EQUALS)
           mods1 |= Final
           DefDef(name, tparams, vparamss, tpt, subExpr())
-        if in.token == USCORE then
+        if in.token == USCORE && AllowOldWhiteboxSyntax then
           if !mods.is(Inline) then
             syntaxError("`_ <:` is only allowed for given with `inline` modifier")
           in.nextToken()
