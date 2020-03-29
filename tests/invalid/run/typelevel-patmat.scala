@@ -21,7 +21,7 @@ object Test extends App {
   type HNil = HNil.type
   type Z = Z.type
 
-  inline def ToNat(inline n: Int) <: Typed[Nat] =
+  transparent inline def ToNat(inline n: Int): Typed[Nat] =
     if n == 0 then Typed(Z)
     else Typed(S(ToNat(n - 1).value))
 
@@ -35,7 +35,7 @@ object Test extends App {
   println(x1)
   println(x2)
 
-  inline def toInt(n: Nat) <: Int = inline n match {
+  transparent inline def toInt(n: Nat): Int = inline n match {
     case Z => 0
     case S(n1) => toInt(n1) + 1
   }
