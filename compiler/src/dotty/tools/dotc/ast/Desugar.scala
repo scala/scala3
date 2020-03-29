@@ -269,7 +269,9 @@ object desugar {
     }
 
     def normalizedVparamss = meth1.vparamss.map(_.map(vparam =>
-      cpy.ValDef(vparam)(rhs = EmptyTree)))
+      if vparam.rhs.isEmpty then vparam
+      else cpy.ValDef(vparam)(rhs = EmptyTree).withMods(vparam.mods | HasDefault)
+    ))
 
     def defaultGetters(vparamss: List[List[ValDef]], n: Int): List[DefDef] = vparamss match {
       case (vparam :: vparams) :: vparamss1 =>
@@ -713,7 +715,10 @@ object desugar {
               if (restrictedAccess) mods.withPrivateWithin(constr1.mods.privateWithin)
               else mods
             }
-            val app = DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, widenedCreatorExpr)
+            val appParamss =
+              derivedVparamss.nestedZipWithConserve(constrVparamss)((ap, cp) =>
+                ap.withMods(ap.mods | (cp.mods.flags & HasDefault)))
+            val app = DefDef(nme.apply, derivedTparams, appParamss, applyResultTpt, widenedCreatorExpr)
               .withMods(appMods)
             app :: widenDefs
           }
