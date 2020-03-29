@@ -203,13 +203,7 @@ object desugar {
    *      def f$default$1[T] = 1
    *      def f$default$2[T](x: Int) = x + "m"
    *
-   *  3. Convert <: T to : T in specializing inline methods. E.g.
-   *
-   *      inline def f(x: Boolean) <: Any = if (x) 1 else ""
-   *  ==>
-   *      inline def f(x: Boolean): Any = if (x) 1 else ""
-   *
-   *  4. Upcast non-specializing inline methods. E.g.
+   *  3. Upcast non-specializing inline methods. E.g.
    *
    *      inline def f(x: Boolean): Any = if (x) 1 else ""
    *  ==>
