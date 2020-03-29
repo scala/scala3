@@ -210,17 +210,30 @@ class TreeUnpickler(reader: TastyReader,
 
 // ------ Reading types -----------------------------------------------------
 
-    /** Read names in an interleaved sequence of (parameter) names and types/bounds */
-    def readParamNames(end: Addr): List[Name] =
-      until(end) {
-        val name = readName()
-        skipTree()
-        name
-      }
+    /** Read names in an interleaved sequence of types/bounds and (parameter) names,
+     *  possibly followed by a sequence of modifiers.
+     */
+    def readParamNamesAndMods(end: Addr): (List[Name], FlagSet) =
+      val names =
+        collectWhile(currentAddr != end && !isModifierTag(nextByte)) {
+          skipTree()
+          readName()
+        }
+      var mods = EmptyFlags
+      while currentAddr != end do // avoid boxing the mods
+        readByte() match
+          case IMPLICIT => mods |= Implicit
+          case ERASED   => mods |= Erased
+          case GIVEN    => mods |= Given
+      (names, mods)
 
-    /** Read types or bounds in an interleaved sequence of (parameter) names and types/bounds */
-    def readParamTypes[T <: Type](end: Addr)(implicit ctx: Context): List[T] =
-      until(end) { readNat(); readType().asInstanceOf[T] }
+    /** Read `n` parameter types or bounds which are interleaved with names */
+    def readParamTypes[T <: Type](n: Int)(implicit ctx: Context): List[T] =
+      if n == 0 then Nil
+      else
+        val t = readType().asInstanceOf[T]
+        readNat() // skip name
+        t :: readParamTypes(n - 1)
 
     /** Read reference to definition and return symbol created at that definition */
     def readSymRef()(implicit ctx: Context): Symbol = symbolAt(readAddr())
@@ -290,14 +303,14 @@ class TreeUnpickler(reader: TastyReader,
         val end = readEnd()
 
         def readMethodic[N <: Name, PInfo <: Type, LT <: LambdaType]
-            (companion: LambdaTypeCompanion[N, PInfo, LT], nameMap: Name => N): LT = {
+            (companionOp: FlagSet => LambdaTypeCompanion[N, PInfo, LT], nameMap: Name => N): LT = {
           val result = typeAtAddr.getOrElse(start, {
               val nameReader = fork
               nameReader.skipTree() // skip result
               val paramReader = nameReader.fork
-              val paramNames = nameReader.readParamNames(end).map(nameMap)
-              companion(paramNames)(
-                pt => registeringType(pt, paramReader.readParamTypes[PInfo](end)),
+              val (paramNames, mods) = nameReader.readParamNamesAndMods(end)
+              companionOp(mods)(paramNames.map(nameMap))(
+                pt => registeringType(pt, paramReader.readParamTypes[PInfo](paramNames.length)),
                 pt => readType())
             })
           goto(end)
@@ -361,19 +374,17 @@ class TreeUnpickler(reader: TastyReader,
             case MATCHtype =>
               MatchType(readType(), readType(), until(end)(readType()))
             case POLYtype =>
-              readMethodic(PolyType, _.toTypeName)
+              readMethodic(_ => PolyType, _.toTypeName)
             case METHODtype =>
-              readMethodic(MethodType, _.toTermName)
-            case ERASEDMETHODtype =>
-              readMethodic(ErasedMethodType, _.toTermName)
-            case GIVENMETHODtype =>
-              readMethodic(ContextualMethodType, _.toTermName)
-            case ERASEDGIVENMETHODtype =>
-              readMethodic(ErasedContextualMethodType, _.toTermName)
-            case IMPLICITMETHODtype =>
-              readMethodic(ImplicitMethodType, _.toTermName)
+              def methodTypeCompanion(mods: FlagSet): MethodTypeCompanion =
+                if mods.is(Implicit) then ImplicitMethodType
+                else if mods.isAllOf(Erased | Given) then ErasedContextualMethodType
+                else if mods.is(Given) then ContextualMethodType
+                else if mods.is(Erased) then ErasedMethodType
+                else MethodType
+              readMethodic(methodTypeCompanion, _.toTermName)
             case TYPELAMBDAtype =>
-              readMethodic(HKTypeLambda, _.toTypeName)
+              readMethodic(_ => HKTypeLambda, _.toTypeName)
             case PARAMtype =>
               readTypeRef() match {
                 case binder: LambdaType => binder.paramRefs(readNat())

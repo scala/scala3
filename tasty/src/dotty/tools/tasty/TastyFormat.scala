@@ -160,17 +160,12 @@ Standard-Section: "ASTs" TopLevelStat*
                   BIND           Length boundName_NameRef bounds_Type              -- boundName @ bounds,  for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type                            -- => underlying
                   PARAMtype      Length binder_ASTRef paramNum_Nat                 -- A reference to parameter # paramNum in lambda type `binder`
-                  POLYtype       Length result_Type NamesTypes                     -- A polymorphic method type `[NamesTypes]result`, used in refinements
-                  METHODtype     Length result_Type NamesTypes                     -- A method type `(NamesTypes)result`, needed for refinements
-                  ERASEDMETHODtype      Length result_Type NamesTypes              -- A method type `erased (NamesTypes)result`, needed for refinements
-                  GIVENMETHODtype       Length result_Type NamesTypes              -- A method type `(using NamesTypes)result`, needed for refinements
-                  ERASEDGIVENMETHODtype Length result_Type NamesTypes              -- A method type `(using erased NamesTypes)result`, needed for refinements
-                  IMPLICITMETHODtype    Length result_Type NamesTypes              -- A method type `(implicit NamesTypes)result`, needed for refinements
-  // TODO: remove ERASEDIMPLICITMETHODtype
-                  TYPELAMBDAtype Length result_Type NamesTypes                     -- A type lambda `[NamesTypes] => result`
+                  POLYtype       Length result_Type TypesNames                     -- A polymorphic method type `[TypesNames]result`, used in refinements
+                  METHODtype     Length result_Type TypesNames Modifier*           -- A method type `(Modifier* TypesNames)result`, needed for refinements, with optional modifiers for the parameters
+                  TYPELAMBDAtype Length result_Type TypesNames                     -- A type lambda `[TypesNames] => result`
                   SHAREDtype            type_ASTRef                                -- link to previously serialized type
-  NamesTypes    = NameType*
-  NameType      = paramName_NameRef typeOrBounds_ASTRef                            -- `termName : type`  or  `typeName bounds`
+  TypesNames    = TypeName*
+  TypeName      = typeOrBounds_ASTRef paramName_NameRef                            -- (`termName`: `type`)  or  (`typeName` `bounds`)
 
   Modifier      = PRIVATE                                                          -- private
                   INTERNAL                                                         -- package private (not yet used)
@@ -254,7 +249,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 20
+  val MajorVersion: Int = 21
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names, should update [[nameTagToString]] if a new constant is added */
@@ -305,6 +300,7 @@ object TastyFormat {
       case DEFAULTGETTER => "DEFAULTGETTER"
       case SUPERACCESSOR => "SUPERACCESSOR"
       case INLINEACCESSOR => "INLINEACCESSOR"
+      case BODYRETAINER => "BODYRETAINER"
       case OBJECTCLASS => "OBJECTCLASS"
       case SIGNED => "SIGNED"
       case id => s"NotANameTag($id)"
@@ -460,22 +456,9 @@ object TastyFormat {
   final val TYPEREFin = 175
 
   final val METHODtype = 180
-  final val ERASEDMETHODtype = 181
-  final val GIVENMETHODtype = 182
-  final val ERASEDGIVENMETHODtype = 183
-  final val IMPLICITMETHODtype = 184
 
   final val MATCHtype = 190
   final val MATCHtpt = 191
-
-  def methodTypeTag(isContextual: Boolean, isImplicit: Boolean, isErased: Boolean): Int = {
-    val implicitOffset =
-      if (isContextual) 2
-      else if (isImplicit) { assert(!isErased); 4 }
-      else 0
-    val erasedOffset = if (isErased) 1 else 0
-    METHODtype + erasedOffset + implicitOffset
-  }
 
   final val HOLE = 255
 
@@ -680,10 +663,6 @@ object TastyFormat {
     case BYNAMEtpt => "BYNAMEtpt"
     case POLYtype => "POLYtype"
     case METHODtype => "METHODtype"
-    case ERASEDMETHODtype => "ERASEDMETHODtype"
-    case GIVENMETHODtype => "GIVENMETHODtype"
-    case ERASEDGIVENMETHODtype => "ERASEDGIVENMETHODtype"
-    case IMPLICITMETHODtype => "IMPLICITMETHODtype"
     case TYPELAMBDAtype => "TYPELAMBDAtype"
     case LAMBDAtpt => "LAMBDAtpt"
     case MATCHtype => "MATCHtype"
@@ -702,10 +681,7 @@ object TastyFormat {
     case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
          SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | HOLE => 1
     case RENAMED | PARAMtype => 2
-    case POLYtype | TYPELAMBDAtype |
-         METHODtype | ERASEDMETHODtype |
-         GIVENMETHODtype | ERASEDGIVENMETHODtype |
-         IMPLICITMETHODtype => -1
+    case POLYtype | TYPELAMBDAtype | METHODtype => -1
     case _ => 0
   }
 }
