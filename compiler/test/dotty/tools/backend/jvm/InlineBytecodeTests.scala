@@ -356,7 +356,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     val source = """class Test:
                    |  given Int = 0
                    |  def f(): Int ?=> Boolean = true : (Int ?=> Boolean)
-                   |  inline def g(): Int ?=> Boolean = true
+                   |  transparent inline def g(): Int ?=> Boolean = true
                    |  def test = g()
                  """.stripMargin
 
