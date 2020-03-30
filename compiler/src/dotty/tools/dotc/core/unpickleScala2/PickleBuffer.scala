@@ -223,7 +223,7 @@ object PickleBuffer {
       STABLE -> StableRealizable,
       STATIC -> JavaStatic,
       CASEACCESSOR -> CaseAccessor,
-      DEFAULTPARAM -> (DefaultParameterized, Trait),
+      DEFAULTPARAM -> (HasDefault, Trait),
       BRIDGE -> Bridge,
       ACCESSOR -> Accessor,
       SUPERACCESSOR -> Scala2SuperAccessor,

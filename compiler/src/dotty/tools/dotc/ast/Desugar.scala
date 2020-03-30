@@ -268,10 +268,10 @@ object desugar {
         Nil
     }
 
-    def normalizedVparamss = meth1.vparamss.map(_.map(vparam =>
+    def normalizedVparamss = meth1.vparamss.nestedMapConserve(vparam =>
       if vparam.rhs.isEmpty then vparam
       else cpy.ValDef(vparam)(rhs = EmptyTree).withMods(vparam.mods | HasDefault)
-    ))
+    )
 
     def defaultGetters(vparamss: List[List[ValDef]], n: Int): List[DefDef] = vparamss match {
       case (vparam :: vparams) :: vparamss1 =>
@@ -279,7 +279,7 @@ object desugar {
           DefDef(
             name = DefaultGetterName(methName, n),
             tparams = meth.tparams.map(tparam => dropContextBounds(toDefParam(tparam, keepAnnotations = true))),
-            vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam(_, keepAnnotations = true)), n),
+            vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam(_, keepAnnotations = true, keepDefault = false)), n),
             tpt = TypeTree(),
             rhs = vparam.rhs
           )
@@ -296,7 +296,6 @@ object desugar {
     if (defGetters.isEmpty) meth1
     else {
       val meth2 = cpy.DefDef(meth1)(vparamss = normalizedVparamss)
-        .withMods(meth1.mods | DefaultParameterized)
       Thicket(meth2 :: defGetters)
     }
   }
@@ -388,10 +387,11 @@ object desugar {
     if (!keepAnnotations) mods = mods.withAnnotations(Nil)
     tparam.withMods(mods & EmptyFlags | Param)
   }
-  private def toDefParam(vparam: ValDef, keepAnnotations: Boolean): ValDef = {
+  private def toDefParam(vparam: ValDef, keepAnnotations: Boolean, keepDefault: Boolean): ValDef = {
     var mods = vparam.rawMods
     if (!keepAnnotations) mods = mods.withAnnotations(Nil)
-    vparam.withMods(mods & (GivenOrImplicit | Erased) | Param)
+    val hasDefault = if keepDefault then HasDefault else EmptyFlags
+    vparam.withMods(mods & (GivenOrImplicit | Erased | hasDefault) | Param)
   }
 
   /** The expansion of a class definition. See inline comments for what is involved */
@@ -465,7 +465,7 @@ object desugar {
         ctx.error(CaseClassMissingNonImplicitParamList(cdef), namePos)
         ListOfNil
       }
-      else originalVparamss.nestedMap(toDefParam(_, keepAnnotations = false))
+      else originalVparamss.nestedMap(toDefParam(_, keepAnnotations = false, keepDefault = true))
     val constr = cpy.DefDef(constr1)(tparams = constrTparams, vparamss = constrVparamss)
 
     val (normalizedBody, enumCases, enumCompanionRef) = {
@@ -477,7 +477,7 @@ object desugar {
             defDef(
               addEvidenceParams(
                 cpy.DefDef(ddef)(tparams = constrTparams ++ ddef.tparams),
-                evidenceParams(constr1).map(toDefParam(_, keepAnnotations = false)))))
+                evidenceParams(constr1).map(toDefParam(_, keepAnnotations = false, keepDefault = false)))))
         case stat =>
           stat
       }
@@ -709,7 +709,7 @@ object desugar {
         val applyMeths =
           if (mods.is(Abstract)) Nil
           else {
-            val copiedFlagsMask = DefaultParameterized | (copiedAccessFlags & Private)
+            val copiedFlagsMask = copiedAccessFlags & Private
             val appMods = {
               val mods = Modifiers(Synthetic | constr1.mods.flags & copiedFlagsMask)
               if (restrictedAccess) mods.withPrivateWithin(constr1.mods.privateWithin)

@@ -82,7 +82,7 @@ class Erasure extends Phase with DenotTransformer {
         val oldFlags = ref.flags
         var newFlags =
           if (oldSymbol.is(Flags.TermParam) && isCompacted(oldSymbol.owner)) oldFlags &~ Flags.Param
-          else oldFlags &~ Flags.HasDefaultParamsFlags // HasDefaultParamsFlags needs to be dropped because overriding might become overloading
+          else oldFlags
         val oldAnnotations = ref.annotations
         var newAnnotations = oldAnnotations
         if oldSymbol.isRetainedInlineMethod then

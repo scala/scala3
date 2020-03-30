@@ -678,7 +678,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags.is(Mutable)) writeModTag(MUTABLE)
       if (flags.is(Accessor)) writeModTag(FIELDaccessor)
       if (flags.is(CaseAccessor)) writeModTag(CASEaccessor)
-      if (flags.is(DefaultParameterized)) writeModTag(DEFAULTparameterized)
+      if (flags.is(HasDefault)) writeModTag(HASDEFAULT)
       if (flags.is(StableRealizable)) writeModTag(STABLE)
       if (flags.is(Extension)) writeModTag(EXTENSION)
       if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)

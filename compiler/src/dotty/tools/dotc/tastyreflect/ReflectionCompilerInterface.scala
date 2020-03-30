@@ -1852,7 +1852,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Flags_Covariant: Flags = core.Flags.Covariant
   def Flags_Contravariant: Flags = core.Flags.Contravariant
   def Flags_Scala2X: Flags = core.Flags.Scala2x
-  def Flags_DefaultParameterized: Flags = core.Flags.DefaultParameterized
+  def Flags_HasDefault: Flags = core.Flags.HasDefault
   def Flags_StableRealizable: Flags = core.Flags.StableRealizable
   def Flags_Param: Flags = core.Flags.Param
   def Flags_ParamAccessor: Flags = core.Flags.ParamAccessor

@@ -43,7 +43,7 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
     if (flags.is(Flags.Covariant)) flagList += "Flags.Covariant"
     if (flags.is(Flags.Contravariant)) flagList += "Flags.Contravariant"
     if (flags.is(Flags.Scala2X)) flagList += "Flags.Scala2X"
-    if (flags.is(Flags.DefaultParameterized)) flagList += "Flags.DefaultParameterized"
+    if (flags.is(Flags.HasDefault)) flagList += "Flags.HasDefault"
     if (flags.is(Flags.StableRealizable)) flagList += "Flags.StableRealizable"
     if (flags.is(Flags.Param)) flagList += "Flags.Param"
     if (flags.is(Flags.ParamAccessor)) flagList += "Flags.ParamAccessor"

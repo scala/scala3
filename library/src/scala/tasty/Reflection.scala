@@ -2635,8 +2635,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     /** Was this symbol imported from Scala2.x */
     def Scala2X: Flags = internal.Flags_Scala2X
 
-    /** Is this symbol a method with default parameters */
-    def DefaultParameterized: Flags = internal.Flags_DefaultParameterized
+    /** Is this symbol a parameter with a default value? */
+    def HasDefault: Flags = internal.Flags_HasDefault
 
     /** Is this symbol member that is assumed to be stable and realizable */
     def StableRealizable: Flags = internal.Flags_StableRealizable

@@ -249,7 +249,7 @@ object definitions {
     def isCovariant: Boolean             // type parameter marked “+”
     def isContravariant: Boolean         // type parameter marked “-”
     def isScala2X: Boolean               // Imported from Scala2.x
-    def isDefaultParameterized: Boolean  // Method with default parameters
+    def hasDefault: Boolean              // Parameter with default
     def isStable: Boolean                // Method that is assumed to be stable
   }
 

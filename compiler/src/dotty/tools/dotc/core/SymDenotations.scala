@@ -417,9 +417,10 @@ object SymDenotations {
         val allParamss =
           if rawParamss.isEmpty then recurWithoutParamss(info)
           else recurWithParamss(info, rawParamss)
-        info match
-          case info: PolyType => (allParamss.head, allParamss.tail).asInstanceOf
-          case _ => (Nil, allParamss).asInstanceOf
+        val result = info match
+          case info: PolyType => (allParamss.head, allParamss.tail)
+          case _ => (Nil, allParamss)
+        result.asInstanceOf[(List[TypeSymbol], List[List[TermSymbol]])]
       catch case NonFatal(ex) =>
         println(i"paramSymss failure for $symbol, $info, $rawParamss")
         throw ex
@@ -969,15 +970,19 @@ object SymDenotations {
     def isAsConcrete(that: Symbol)(implicit ctx: Context): Boolean =
       !this.is(Deferred) || that.is(Deferred)
 
-    /** Does this symbol have defined or inherited default parameters? */
+    /** Does this symbol have defined or inherited default parameters?
+     *  Default parameters are recognized until erasure.
+     */
     def hasDefaultParams(implicit ctx: Context): Boolean =
-      if (this.isOneOf(HasDefaultParamsFlags)) true
-      else if (this.is(NoDefaultParams)) false
-      else {
-        val result = allOverriddenSymbols exists (_.hasDefaultParams)
-        setFlag(if (result) InheritedDefaultParams else NoDefaultParams)
+      if ctx.erasedTypes then false
+      else if is(HasDefaultParams) then true
+      else if is(NoDefaultParams) then false
+      else
+        val result =
+          rawParamss.exists(_.exists(_.is(HasDefault)))
+          || allOverriddenSymbols.exists(_.hasDefaultParams)
+        setFlag(if result then HasDefaultParams else NoDefaultParams)
         result
-      }
 
     /** Symbol is an owner that would be skipped by effectiveOwner. Skipped are
      *   - package objects

@@ -337,28 +337,17 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   }
 
   def apiDef(sym: TermSymbol): api.Def = {
-    def paramLists(t: Type, start: Int = 0): List[api.ParameterList] = t match {
+    def paramLists(t: Type, paramss: List[List[Symbol]]): List[api.ParameterList] = t match {
       case pt: TypeLambda =>
-        assert(start == 0)
-        paramLists(pt.resultType)
+        paramLists(pt.resultType, paramss)
       case mt @ MethodTpe(pnames, ptypes, restpe) =>
-        // TODO: We shouldn't have to work so hard to find the default parameters
-        // of a method, Dotty should expose a convenience method for that, see #1143
-        val defaults =
-          if (sym.is(DefaultParameterized)) {
-            val qual =
-              if (sym.isClassConstructor)
-                sym.owner.companionModule // default getters for class constructors are found in the companion object
-              else
-                sym.owner
-            pnames.indices.map(i =>
-              qual.info.member(DefaultGetterName(sym.name, start + i)).exists)
-          } else
-            pnames.indices.map(Function.const(false))
-        val params = pnames.lazyZip(ptypes).lazyZip(defaults).map((pname, ptype, isDefault) =>
-          api.MethodParameter.of(pname.toString, apiType(ptype),
-            isDefault, api.ParameterModifier.Plain))
-        api.ParameterList.of(params.toArray, mt.isImplicitMethod) :: paramLists(restpe, params.length)
+        assert(paramss.nonEmpty && paramss.head.hasSameLengthAs(pnames),
+          i"mismatch for $sym, ${sym.info}, ${sym.paramSymss}")
+        val apiParams = paramss.head.lazyZip(ptypes).map((param, ptype) =>
+          api.MethodParameter.of(param.name.toString, apiType(ptype),
+          param.is(HasDefault), api.ParameterModifier.Plain))
+        api.ParameterList.of(apiParams.toArray, mt.isImplicitMethod)
+          :: paramLists(restpe, paramss.tail)
       case _ =>
         Nil
     }
@@ -370,7 +359,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       case _ =>
         Nil
     }
-    val vparamss = paramLists(sym.info)
+    val vparamss = paramLists(sym.info, sym.paramSymss._2)
     val retTp = sym.info.finalResultType.widenExpr
 
     api.Def.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),

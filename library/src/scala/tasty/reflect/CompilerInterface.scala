@@ -1400,7 +1400,7 @@ trait CompilerInterface {
   def Flags_Covariant: Flags
   def Flags_Contravariant: Flags
   def Flags_Scala2X: Flags
-  def Flags_DefaultParameterized: Flags
+  def Flags_HasDefault: Flags
   def Flags_StableRealizable: Flags
   def Flags_Param: Flags
   def Flags_ParamAccessor: Flags
