@@ -296,6 +296,12 @@ object projects:
     dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, scodecBits)
   )
 
+  lazy val scalaParserCombinators = SbtCommunityProject(
+    project          = "scala-parser-combinators",
+    sbtTestCommand   = "parserCombinators/test",
+    sbtUpdateCommand = "parserCombinators/update"
+  )
+
 end projects
 
 @Category(Array(classOf[TestCategory]))
@@ -384,6 +390,7 @@ class CommunityBuildTest:
   @Test def munit = projects.munit.run()
   @Test def scodecBits = projects.scodecBits.run()
   @Test def scodec = projects.scodec.run()
+  @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
 end CommunityBuildTest
 
 class TestCategory

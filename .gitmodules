@@ -82,3 +82,6 @@
 	path = community-build/community-projects/scodec-bits
 	url = https://github.com/dotty-staging/scodec-bits.git
 	branch = dotty-community-build
+[submodule "community-build/community-projects/scala-parser-combinators"]
+	path = community-build/community-projects/scala-parser-combinators
+	url = https://github.com/dotty-staging/scala-parser-combinators.git
