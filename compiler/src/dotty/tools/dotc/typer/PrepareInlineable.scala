@@ -206,7 +206,7 @@ object PrepareInlineable {
 
   /** The type ascription `rhs: tpt`, unless `original` is `transparent`. */
   def wrapRHS(original: untpd.DefDef, tpt: Tree, rhs: Tree)(using Context): Tree =
-    if original.mods.mods.exists(_.isInstanceOf[untpd.Mod.Transparent]) then rhs
+    if original.mods.hasMod(classOf[untpd.Mod.Transparent]) then rhs
     else Typed(rhs, tpt)
 
   /** Register inline info for given inlineable method `sym`.
@@ -228,7 +228,7 @@ object PrepareInlineable {
           inlined.updateAnnotation(LazyBodyAnnotation {
             given ctx as Context = inlineCtx
             val initialErrorCount = ctx.reporter.errorCount
-            var inlinedBody = treeExpr(using ctx)
+            var inlinedBody = treeExpr
             if (ctx.reporter.errorCount == initialErrorCount) {
               inlinedBody = ctx.compilationUnit.inlineAccessors.makeInlineable(inlinedBody)
               checkInlineMethod(inlined, inlinedBody)

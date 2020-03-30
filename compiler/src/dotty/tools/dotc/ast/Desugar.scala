@@ -202,12 +202,6 @@ object desugar {
    *      def f[T](x: Int)(y: String)(implicit evidence$0: B[T]) = ...
    *      def f$default$1[T] = 1
    *      def f$default$2[T](x: Int) = x + "m"
-   *
-   *  3. Upcast non-specializing inline methods. E.g.
-   *
-   *      inline def f(x: Boolean): Any = if (x) 1 else ""
-   *  ==>
-   *      inline def f(x: Boolean): Any = (if (x) 1 else ""): Any
    */
   private def defDef(meth0: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val meth @ DefDef(_, tparams, vparamss, tpt, rhs) = transformQuotedPatternName(meth0)
