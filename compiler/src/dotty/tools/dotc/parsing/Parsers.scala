@@ -1245,12 +1245,12 @@ object Parsers {
               }
             })
 
-      if (in.token == STRINGPART)
-        nextSegment(in.offset + (if (isTripleQuoted) 3 else 1))
+      var offsetCorrection = if isTripleQuoted then 3 else 1
       while (in.token == STRINGPART)
-        nextSegment(in.offset)
+        nextSegment(in.offset + offsetCorrection)
+        offsetCorrection = 0
       if (in.token == STRINGLIT)
-        segmentBuf += literal(inPattern = inPattern, negOffset = in.offset, inStringInterpolation = true)
+        segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
 
       InterpolatedString(interpolator, segmentBuf.toList)
     }
