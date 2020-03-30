@@ -227,21 +227,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** A DefDef with given method symbol `sym`.
    *  @rhsFn  A function from type parameter types and term parameter references
    *          to the method's right-hand side.
-   *  Parameter symbols are taken from the `paramss` field of `sym`, or
-   *  are freshly generated if `paramss` is empty.
+   *  Parameter symbols are taken from the `rawParamss` field of `sym`, or
+   *  are freshly generated if `rawParamss` is empty.
    */
   def polyDefDef(sym: TermSymbol, rhsFn: List[Type] => List[List[Tree]] => Tree)(implicit ctx: Context): DefDef = {
 
     val (tparams, existingParamss, mtp) = sym.info match {
       case tp: PolyType =>
-        val (tparams, existingParamss) = sym.paramss match
+        val (tparams, existingParamss) = sym.rawParamss match
           case tparams :: vparamss =>
             assert(tparams.hasSameLengthAs(tp.paramNames) && tparams.head.isType)
             (tparams.asInstanceOf[List[TypeSymbol]], vparamss)
           case _ =>
             (ctx.newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_)), Nil)
         (tparams, existingParamss, tp.instantiate(tparams map (_.typeRef)))
-      case tp => (Nil, sym.paramss, tp)
+      case tp => (Nil, sym.rawParamss, tp)
     }
 
     def valueParamss(tp: Type, existingParamss: List[List[Symbol]]): (List[List[TermSymbol]], Type) = tp match {

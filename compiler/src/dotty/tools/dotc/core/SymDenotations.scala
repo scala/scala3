@@ -376,16 +376,54 @@ object SymDenotations {
     /** If this is a method, the parameter symbols, by section.
      *  Both type and value parameters are included. Empty sections are skipped.
      */
-    final def paramss: List[List[Symbol]] = myParamss
-    final def paramss_=(pss: List[List[Symbol]]): Unit =
+    final def rawParamss: List[List[Symbol]] = myParamss
+    final def rawParamss_=(pss: List[List[Symbol]]): Unit =
       myParamss = pss
 
     final def setParamss(tparams: List[Symbol], vparamss: List[List[Symbol]])(using Context): Unit =
-      paramss = (if tparams.isEmpty then vparamss else tparams :: vparamss)
+      rawParamss = (if tparams.isEmpty then vparamss else tparams :: vparamss)
         .filterConserve(!_.isEmpty)
 
     final def setParamssFromDefs(tparams: List[TypeDef[?]], vparamss: List[List[ValDef[?]]])(using Context): Unit =
       setParamss(tparams.map(_.symbol), vparamss.map(_.map(_.symbol)))
+
+    /** A pair consistsing of type paremeter symbols and value parameter symbol lists
+     *  of this method definition, or (Nil, Nil) for other symbols.
+     *  Makes use of `rawParamss` when present, or constructs fresh parameter symbols otherwise.
+     *  This method can be allocation-heavy.
+     */
+    final def paramSymss(using ctx: Context): (List[TypeSymbol], List[List[TermSymbol]]) =
+
+      def recurWithParamss(info: Type, paramss: List[List[Symbol]]): List[List[Symbol]] =
+        info match
+          case info: LambdaType =>
+            if info.paramNames.isEmpty then Nil :: recurWithParamss(info.resType, paramss)
+            else paramss.head :: recurWithParamss(info.resType, paramss.tail)
+          case _ =>
+            Nil
+
+      def recurWithoutParamss(info: Type): List[List[Symbol]] = info match
+        case info: LambdaType =>
+          val params = info.paramNames.lazyZip(info.paramInfos).map((pname, ptype) =>
+            ctx.newSymbol(symbol, pname, SyntheticParam, ptype))
+          val prefs = params.map(_.namedType)
+          for param <- params do
+            param.info = param.info.substParams(info, prefs)
+          params :: recurWithoutParamss(info.instantiate(prefs))
+        case _ =>
+          Nil
+
+      try
+        val allParamss =
+          if rawParamss.isEmpty then recurWithoutParamss(info)
+          else recurWithParamss(info, rawParamss)
+        info match
+          case info: PolyType => (allParamss.head, allParamss.tail).asInstanceOf
+          case _ => (Nil, allParamss).asInstanceOf
+      catch case NonFatal(ex) =>
+        println(i"paramSymss failure for $symbol, $info, $rawParamss")
+        throw ex
+    end paramSymss
 
     /** The denotation is completed: info is not a lazy type and attributes have defined values */
     final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
@@ -1466,7 +1504,7 @@ object SymDenotations {
       info: Type = null,
       privateWithin: Symbol = null,
       annotations: List[Annotation] = null,
-      paramss: List[List[Symbol]] = null)(
+      rawParamss: List[List[Symbol]] = null)(
         using ctx: Context): SymDenotation = {
       // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
@@ -1475,10 +1513,10 @@ object SymDenotations {
         assert(ctx.phase.changesParents, i"undeclared parent change at ${ctx.phase} for $this, was: $info, now: $info1")
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
-      val paramss1 = if paramss != null then paramss else this.paramss
+      val rawParamss1 = if rawParamss != null then rawParamss else this.rawParamss
       val d = ctx.SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
       d.annotations = annotations1
-      d.paramss = paramss1
+      d.rawParamss = rawParamss1
       d.registeredCompanion = registeredCompanion
       d
     }

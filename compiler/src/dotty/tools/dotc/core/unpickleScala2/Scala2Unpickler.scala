@@ -176,7 +176,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   /** A map from symbols to their associated `decls` scopes */
   private val symScopes = mutable.AnyRefMap[Symbol, Scope]()
 
-  /** A dummy buffer to pass to `readType` when no `paramss` are collected */
+  /** A dummy buffer to pass to `readType` when no `rawParamss` are collected */
   private val throwAwayBuffer = new ListBuffer[List[Symbol]]
 
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: Context): Nothing = {
@@ -581,7 +581,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           if denot.is(Method) then new ListBuffer[List[Symbol]]
           else throwAwayBuffer
         val tp = at(inforef, () => readType(paramssBuf)(ctx))
-        if denot.is(Method) then denot.paramss = paramssBuf.toList
+        if denot.is(Method) then denot.rawParamss = paramssBuf.toList
 
         denot match {
           case denot: ClassDenotation if !isRefinementClass(denot.symbol) =>

@@ -426,10 +426,10 @@ class TreeChecker extends Phase with SymTransformer {
         (ddef.tparams :: ddef.vparamss).filter(!_.isEmpty).map(_.map(_.symbol))
       def layout(symss: List[List[Symbol]]): String =
         symss.map(syms => i"($syms%, %)").mkString
-      assert(ctx.erasedTypes || sym.paramss == defParamss,
+      assert(ctx.erasedTypes || sym.rawParamss == defParamss,
         i"""param mismatch for ${sym.showLocated}:
            |defined in tree  = ${layout(defParamss)}
-           |stored in symbol = ${layout(sym.paramss)}""")
+           |stored in symbol = ${layout(sym.rawParamss)}""")
       withDefinedSyms(ddef.tparams) {
         withDefinedSyms(ddef.vparamss.flatten) {
           if (!sym.isClassConstructor && !(sym.name eq nme.STATIC_CONSTRUCTOR))
