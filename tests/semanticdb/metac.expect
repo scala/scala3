@@ -1269,7 +1269,7 @@ Uri => Givens.scala
 Text => empty
 Language => Scala
 Symbols => 31 entries
-Occurrences => 75 entries
+Occurrences => 72 entries
 
 Symbols:
 a/b/Givens. => final object Givens
@@ -1313,10 +1313,9 @@ Occurrences:
 [5:19..5:22): any <- a/b/Givens.extension_sayHello_A.sayHello().(any)
 [5:24..5:25): A -> a/b/Givens.extension_sayHello_A.sayHello().[A]
 [6:8..6:16): sayHello <- a/b/Givens.extension_sayHello_A.sayHello().
-[6:25..6:38): o, I am $any" -> scala/StringContext.
+[6:21..6:21): -> scala/StringContext.apply().
 [6:34..6:37): any -> a/b/Givens.extension_sayHello_A.sayHello().(any)
-[6:38..6:38): -> scala/StringContext#s().
-[6:38..6:38): -> scala/StringContext.apply().
+[6:37..6:38): " -> scala/StringContext#s().
 [8:16..9:10): <- a/b/Givens.extension_sayGoodbye_B.
 [8:16..8:17): B <- a/b/Givens.extension_sayGoodbye_B.sayGoodbye().[B]
 [8:16..8:17): B <- a/b/Givens.extension_sayGoodbye_B.saySoLong().[B]
@@ -1325,15 +1324,13 @@ Occurrences:
 [8:24..8:25): B -> a/b/Givens.extension_sayGoodbye_B.sayGoodbye().[B]
 [8:24..8:25): B -> a/b/Givens.extension_sayGoodbye_B.saySoLong().[B]
 [9:8..9:18): sayGoodbye <- a/b/Givens.extension_sayGoodbye_B.sayGoodbye().
-[9:29..9:42): e, from $any" -> scala/StringContext.
+[9:23..9:23): -> scala/StringContext.apply().
 [9:38..9:41): any -> a/b/Givens.extension_sayGoodbye_B.sayGoodbye().(any)
-[9:42..9:42): -> scala/StringContext#s().
-[9:42..9:42): -> scala/StringContext.apply().
+[9:41..9:42): " -> scala/StringContext#s().
 [10:8..10:17): saySoLong <- a/b/Givens.extension_sayGoodbye_B.saySoLong().
-[10:28..10:41): g, from $any" -> scala/StringContext.
+[10:22..10:22): -> scala/StringContext.apply().
 [10:37..10:40): any -> a/b/Givens.extension_sayGoodbye_B.saySoLong().(any)
-[10:41..10:41): -> scala/StringContext#s().
-[10:41..10:41): -> scala/StringContext.apply().
+[10:40..10:41): " -> scala/StringContext#s().
 [12:6..12:12): hello1 <- a/b/Givens.hello1.
 [12:15..12:15): -> a/b/Givens.extension_sayHello_A.sayHello().
 [13:6..13:14): goodbye1 <- a/b/Givens.goodbye1.
@@ -1390,7 +1387,7 @@ Uri => ImplicitConversion.scala
 Text => empty
 Language => Scala
 Symbols => 23 entries
-Occurrences => 64 entries
+Occurrences => 62 entries
 
 Symbols:
 example/ImplicitConversion# => class ImplicitConversion
@@ -1445,17 +1442,15 @@ Occurrences:
 [20:9..20:12): Int -> scala/Int#
 [20:15..20:15): -> example/ImplicitConversion#string2Number().
 [20:15..20:22): message -> example/ImplicitConversion#message.
+[23:4..23:4): -> scala/StringContext.apply().
 [23:11..23:18): message -> example/ImplicitConversion#message.
-[23:14..23:27): sage $number" -> scala/StringContext.
 [23:20..23:26): number -> example/ImplicitConversion#number.
-[23:27..23:27): -> scala/StringContext#s().
-[23:27..23:27): -> scala/StringContext.apply().
+[23:26..23:27): " -> scala/StringContext#s().
 [24:2..24:2): -> scala/Predef.augmentString().
+[24:6..24:6): -> scala/StringContext.apply().
 [25:7..25:14): message -> example/ImplicitConversion#message.
-[26:3..26:16):   |$number""" -> scala/StringContext.
 [26:7..26:13): number -> example/ImplicitConversion#number.
-[26:16..26:16): -> scala/StringContext#s().
-[26:16..26:16): -> scala/StringContext.apply().
+[26:15..26:16): " -> scala/StringContext#s().
 [26:17..26:28): stripMargin -> scala/collection/StringOps#stripMargin(+1).
 [28:6..28:7): a <- example/ImplicitConversion#a.
 [28:9..28:12): Int -> scala/Int#
