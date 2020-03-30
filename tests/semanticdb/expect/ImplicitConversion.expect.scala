@@ -21,10 +21,10 @@ class ImplicitConversion/*<-example::ImplicitConversion#*/ {
   val x/*<-example::ImplicitConversion#x.*/: Int/*->scala::Int#*/ = /*->example::ImplicitConversion#string2Number().*/message/*->example::ImplicitConversion#message.*/
 
   // interpolators
-  s"/*->scala::StringContext.apply().*/Hello $message/*->example::ImplicitConversion#message.*/ $number/*->example::ImplicitConversion#number.*//*->scala::StringContext#s().*/"
-  /*->scala::Predef.augmentString().*/s"""/*->scala::StringContext.apply().*/Hello
+  s"Hello $message/*->example::ImplicitConversion#message.*/ $number"/*->scala::StringContext.*//*->example::ImplicitConversion#number.*//*->scala::StringContext#s().*//*->scala::StringContext.apply().*/
+  /*->scala::Predef.augmentString().*/s"""Hello
      |$message/*->example::ImplicitConversion#message.*/
-     |$number/*->example::ImplicitConversion#number.*//*->scala::StringContext#s().*/""".stripMargin/*->scala::collection::StringOps#stripMargin(+1).*/
+     |$number"""/*->scala::StringContext.*//*->example::ImplicitConversion#number.*//*->scala::StringContext#s().*//*->scala::StringContext.apply().*/.stripMargin/*->scala::collection::StringOps#stripMargin(+1).*/
 
   val a/*<-example::ImplicitConversion#a.*/: Int/*->scala::Int#*/ = /*->scala::Char.char2int().*/char/*->example::ImplicitConversion#char.*/
   val b/*<-example::ImplicitConversion#b.*/: Long/*->scala::Long#*/ = /*->scala::Char.char2long().*/char/*->example::ImplicitConversion#char.*/
