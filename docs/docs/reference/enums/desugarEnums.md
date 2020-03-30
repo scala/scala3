@@ -19,33 +19,34 @@ some terminology and notational conventions:
 
    - _Class cases_ are those cases that are parameterized, either with a type parameter section `[...]` or with one or more (possibly empty) parameter sections `(...)`.
    - _Simple cases_ are cases of a non-generic enum that have neither parameters nor an extends clause or body. That is, they consist of a name only.
-   - _Value cases_ are all cases that do not have a parameter section but that do have a (possibly generated) extends clause and/or a body.
+   - _Value cases_ are all cases that do not have a parameter section but that do have a (possibly generated) `extends` clause and/or a body.
 
   Simple cases and value cases are collectively called _singleton cases_.
 
 The desugaring rules imply that class cases are mapped to case classes, and singleton cases are mapped to `val` definitions.
 
 There are nine desugaring rules. Rule (1) desugar enum definitions. Rules
-(2) and (3) desugar simple cases. Rules (4) to (6) define extends clauses for cases that
-are missing them. Rules (7) to (9) define how such cases with extends clauses
-map into case classes or vals.
+(2) and (3) desugar simple cases. Rules (4) to (6) define `extends` clauses for cases that
+are missing them. Rules (7) to (9) define how such cases with `extends` clauses
+map into `case class`es or `val`s.
 
-1.  An `enum` definition
-    ```scala
-    enum E ... { <defs> <cases> }
-    ```
-    expands to a `sealed` `abstract` class that extends the `scala.Enum` trait and
-    an associated companion object that contains the defined cases, expanded according
-    to rules (2 - 8). The enum trait starts with a compiler-generated import that imports
-    the names `<caseIds>` of all cases so that they can be used without prefix in the trait.
-    ```scala
-    sealed abstract class E ... extends <parents> with scala.Enum {
-      import E.{ <caseIds> }
+1. An `enum` definition
+   ```scala
+   enum E ... { <defs> <cases> }
+   ```
+   expands to a `sealed abstract` class that extends the `scala.Enum` trait and
+   an associated companion object that contains the defined cases, expanded according
+   to rules (2 - 8). The enum trait starts with a compiler-generated import that imports
+   the names `<caseIds>` of all cases so that they can be used without prefix in the trait.
+   ```scala
+   sealed abstract class E ... extends <parents> with scala.Enum {
+     import E.{ <caseIds> }
       <defs>
-    }
-    object E { <cases> }
-    ```
-2.  A simple case consisting of a comma-separated list of enum names
+   }
+   object E { <cases> }
+   ```
+
+2. A simple case consisting of a comma-separated list of enum names
    ```scala
    case C_1, ..., C_n
    ```
@@ -69,7 +70,7 @@ map into case classes or vals.
 
 4. If `E` is an enum with type parameters
    ```scala
-   V1 T1 > L1 <: U1 ,   ... ,    Vn Tn >: Ln <: Un      (n > 0)
+   V1 T1 >: L1 <: U1 ,   ... ,    Vn Tn >: Ln <: Un      (n > 0)
    ```
    where each of the variances `Vi` is either `'+'` or `'-'`, then a simple case
    ```scala
@@ -81,7 +82,7 @@ map into case classes or vals.
    ```
    where `Bi` is `Li` if `Vi = '+'` and `Ui` if `Vi = '-'`. This result is then further
    rewritten with rule (8). Simple cases of enums with non-variant type
-   parameters are not permitted.
+   parameters are not permitted (however value cases with explicit `extends` clause are)
 
 5. A class case without an extends clause
    ```scala

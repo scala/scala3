@@ -95,8 +95,8 @@ object Test {
 
   }
 
-  /** Creates an untupled version of this function: instead of single [[scala.Tuple]] argument,
-    *  it accepts a N arguments.
+  /** Creates an untupled version of this function: instead of a single argument of type [[scala.Tuple]] with N elements,
+    *  it accepts N arguments.
     *
     *  This is a generalization of [[scala.Function.untupled]] that work on functions of any arity
     *
