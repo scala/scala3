@@ -1,0 +1,4 @@
+-- [E008] Not Found Error: tests/neg/i8632.scala:2:15 ------------------------------------------------------------------
+2 |  Nil.toString.foo(1) // error
+  |  ^^^^^^^^^^^^^^^^
+  |  value foo is not a member of String
