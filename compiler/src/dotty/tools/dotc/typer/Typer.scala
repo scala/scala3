@@ -490,10 +490,10 @@ class Typer extends Namer
         case _ => app
       }
     case qual =>
-      if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos, "type prefix")
       val select = assignType(cpy.Select(tree)(qual, tree.name), qual)
-
       val select1 = toNotNullTermRef(select, pt)
+
+      if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos, "type prefix")
 
       if (select1.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select1, pt))
       else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select1
