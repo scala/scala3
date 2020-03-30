@@ -167,7 +167,7 @@ assert(a.g() == 33)
 ```
 The inlined invocations and the dynamically dispatched invocations give the same results.
 
-2. Inline methods are final.
+2. Inline methods are effectively final.
 
 3. Inline methods can also be abstract. An abstract inline method can be implemented only by other inline methods. It cannot be invoked directly:
 ```scala
