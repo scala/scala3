@@ -85,16 +85,16 @@ assert(3 == List(1, 2).combineAll)
 
 A `Functor` for a type provides the ability for its values to be "mapped over", i.e. apply a function that transforms inside a value while remembering its shape. For example, to modify every element of a collection without dropping or adding elements.
 We can represent all types that can be "mapped over" with `F`. It's a type constructor: the type of its values becomes concrete when provided a type argument.
-Therefore we write it `F[_]`, hinting that it is a type with internal details we can inspect.
+Therefore we write it `F[?]`, hinting that it is a type with internal details we can inspect.
 The definition of a generic `Functor` would thus be written as:
 
 ```scala
-trait Functor[F[_]] {
+trait Functor[F[?]] {
   def map[A, B](original: F[A], mapper: A => B): F[B]
 }
 ```
 
-Which could read as follows: "A `Functor` for the type constructor `F[_]` represents the ability to transform `F[A]` to `F[B]` through the application of the `mapper` function whose type is `A => B`". We call the `Functor` definition here a _typeclass_.
+Which could read as follows: "A `Functor` for the type constructor `F[?]` represents the ability to transform `F[A]` to `F[B]` through the application of the `mapper` function whose type is `A => B`". We call the `Functor` definition here a _typeclass_.
 This way, we could define an instance of `Functor` for the `List` type: 
 
 ```scala
@@ -108,7 +108,7 @@ With this `given` instance in scope, everywhere a `Functor` is expected, the com
 
 For instance, we may write such a testing method:
 ```scala
-def assertTransformation[F[_]: Functor, A, B](expected: F[B], original: F[A], mapping: A => B): Unit =
+def assertTransformation[F[?]: Functor, A, B](expected: F[B], original: F[A], mapping: A => B): Unit =
   assert(expected == summon[Functor[F]].map(original, mapping))
 ```
 
@@ -122,7 +122,7 @@ That's a first step, but in practice we probably would like the `map` function t
 As in the previous example of Monoids, [`extension` methods](extension-methods-new.html) help achieving that. Let's re-define the `Functor` _typeclass_ with extension methods.
 
 ```scala
-trait Functor[F[_]] {
+trait Functor[F[?]] {
   def [A, B](original: F[A]).map(mapper: A => B): F[B]
 }
 ```
@@ -139,7 +139,7 @@ given Functor[List] {
 It simplifies the `assertTransformation` method:
 
 ```scala
-def assertTransformation[F[_]: Functor, A, B](expected: F[B], original: F[A], mapping: A => B): Unit =
+def assertTransformation[F[?]: Functor, A, B](expected: F[B], original: F[A], mapping: A => B): Unit =
   assert(expected == original.map(mapping))
 ```
 
@@ -156,14 +156,14 @@ Now, applying the `List.map` ability with the following mapping function as para
 
 To avoid avoid managing lists of lists, we may want to "flatten" the values in a single list.
 
-That's where `Monad` enters the party. A `Monad` for type `F[_]` is a `Functor[F]` with 2 more abilities: 
+That's where `Monad` enters the party. A `Monad` for type `F[?]` is a `Functor[F]` with 2 more abilities: 
 * the flatten ability we just described: turning `F[A]` to `F[B]` when given a `mapping: A => F[B]` function
 * the ability to create `F[A]` from a single value `A`
 
 Here is the translation of this definition in Scala 3:
 
 ```scala
-trait Monad[F[_]] extends Functor[F] { // "A `Monad` for type `F[_]` is a `Functor[F]`" => thus has the `map` ability
+trait Monad[F[?]] extends Functor[F] { // "A `Monad` for type `F[?]` is a `Functor[F]`" => thus has the `map` ability
   def pure[A](x: A): F[A] // `pure` can construct F[A] from a single value A
   def [A, B](x: F[A]).flatMap(f: A => F[B]): F[B] // the flattening ability is named `flatMap`, using extension methods as previous examples
   def [A, B](x: F[A]).map(f: A => B) = x.flatMap(f `andThen` pure) // the `map(f)` ability is simply a combination of applying `f` then turning the result into an `F[A]` then applying `flatMap` to it
