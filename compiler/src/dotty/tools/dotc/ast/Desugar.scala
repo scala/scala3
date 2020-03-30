@@ -1665,7 +1665,7 @@ object desugar {
           case t => t
         }
         // This is a deliberate departure from scalac, where StringContext is not rooted (See #4732)
-        Apply(Select(Apply(scalaDot(nme.StringContext), strs), id), elems)
+        Apply(Select(Apply(scalaDot(nme.StringContext).withSpan(tree.span), strs), id), elems)
       case PostfixOp(t, op) =>
         if ((ctx.mode is Mode.Type) && !isBackquoted(op) && op.name == tpnme.raw.STAR) {
           val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType

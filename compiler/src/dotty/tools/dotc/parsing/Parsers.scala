@@ -1246,15 +1246,11 @@ object Parsers {
             })
 
       var offsetCorrection = if isTripleQuoted then 3 else 1
-      def offset = {
-        val result = in.offset + offsetCorrection
-        offsetCorrection = 0
-        result
-      }
       while (in.token == STRINGPART)
-        nextSegment(offset)
+        nextSegment(in.offset + offsetCorrection)
+        offsetCorrection = 0
       if (in.token == STRINGLIT)
-        segmentBuf += literal(inPattern = inPattern, negOffset = offset, inStringInterpolation = true)
+        segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
 
       InterpolatedString(interpolator, segmentBuf.toList)
     }
