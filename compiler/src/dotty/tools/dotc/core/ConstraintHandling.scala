@@ -484,9 +484,10 @@ trait ConstraintHandling[AbstractContext] {
        *  recording an isLess relationship instead (even though this is not implied
        *  by the bound).
        *
-       *  Narrowing a constraint is better than widening it, because narrowing leads
-       *  to incompleteness (which we face anyway, see for instance eitherIsSubType)
-       *  but widening leads to unsoundness.
+       *  Normally, narrowing a constraint is better than widening it, because
+       *  narrowing leads to incompleteness (which we face anyway, see for
+       *  instance `TypeComparer#either`) but widening leads to unsoundness,
+       *  but note the special handling in `ConstrainResult` mode below.
        *
        *  A test case that demonstrates the problem is i864.scala.
        *  Turn Config.checkConstraintsSeparated on to get an accurate diagnostic
@@ -544,10 +545,23 @@ trait ConstraintHandling[AbstractContext] {
         case bound: TypeParamRef if constraint contains bound =>
           addParamBound(bound)
         case _ =>
+          val savedConstraint = constraint
           val pbound = prune(bound)
-          pbound.exists
-          && kindCompatible(param, pbound)
-          && (if fromBelow then addLowerBound(param, pbound) else addUpperBound(param, pbound))
+          val constraintsNarrowed = constraint ne savedConstraint
+
+          val res =
+            pbound.exists
+            && kindCompatible(param, pbound)
+            && (if fromBelow then addLowerBound(param, pbound) else addUpperBound(param, pbound))
+          // If we're in `ConstrainResult` mode, we don't want to commit to a
+          // set of constraints that would later prevent us from typechecking
+          // arguments, so if `pruneParams` had to narrow the constraints, we
+          // simply do not record any new constraint.
+          // Unlike in `TypeComparer#either`, the same reasoning does not apply
+          // to GADT mode because this code is never run on GADT constraints.
+          if ctx.mode.is(Mode.ConstrainResult) && constraintsNarrowed then
+            constraint = savedConstraint
+          res
       }
       finally addConstraintInvocations -= 1
     }

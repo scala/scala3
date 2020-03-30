@@ -17,7 +17,7 @@ object O {
 
   val x: A = f(new A { }, new A)
 
-  val y1: A | B = f(new A { }, new B) // error
+  val y1: A | B = f(new A { }, new B) // ok
   val y2: A | B = f[A | B](new A { }, new B) // ok
 
   val z = if (???) new A{} else new B

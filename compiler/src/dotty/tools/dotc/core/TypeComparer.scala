@@ -1364,14 +1364,26 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
   /** Returns true iff the result of evaluating either `op1` or `op2` is true and approximates resulting constraints.
    *
-   *  If we're _not_ in GADTFlexible mode, we try to keep the smaller of the two constraints.
-   *  If we're _in_ GADTFlexible mode, we keep the smaller constraint if any, or no constraint at all.
+   *  If we're inferring GADT bounds or constraining a method based on its
+   *  expected type, we infer only the _necessary_ constraints, this means we
+   *  keep the smaller constraint if any, or no constraint at all. This is
+   *  necessary for GADT bounds inference to be sound. When constraining a
+   *  method, this avoid committing of constraints that would later prevent us
+   *  from typechecking method arguments, see or-inf.scala and and-inf.scala for
+   *  examples.
    *
+   *  Otherwise, we infer _sufficient_ constraints: we try to keep the smaller of
+   *  the two constraints, but if never is smaller than the other, we just pick
+   *  the first one.
+   *
+   *  @see [[necessaryEither]] for the GADT / result type case
    *  @see [[sufficientEither]] for the normal case
-   *  @see [[necessaryEither]] for the GADTFlexible case
    */
   protected def either(op1: => Boolean, op2: => Boolean): Boolean =
-    if (ctx.mode.is(Mode.GadtConstraintInference)) necessaryEither(op1, op2) else sufficientEither(op1, op2)
+    if ctx.mode.is(Mode.GadtConstraintInference) || ctx.mode.is(Mode.ConstrainResult) then
+      necessaryEither(op1, op2)
+    else
+      sufficientEither(op1, op2)
 
   /** Returns true iff the result of evaluating either `op1` or `op2` is true,
    *  trying at the same time to keep the constraint as wide as possible.
@@ -1438,8 +1450,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *     T1 & T2 <:< T3
    *     T1 <:< T2 | T3
    *
-   *  Unlike [[sufficientEither]], this method is used in GADTFlexible mode, when we are attempting to infer GADT
-   *  constraints that necessarily follow from the subtyping relationship. For instance, if we have
+   *  Unlike [[sufficientEither]], this method is used in GADTConstraintInference mode, when we are attempting
+   *  to infer GADT constraints that necessarily follow from the subtyping relationship. For instance, if we have
    *
    *     enum Expr[T] {
    *       case IntExpr(i: Int) extends Expr[Int]
@@ -1466,48 +1478,49 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *
    *  then the necessary constraint is { A = Int }, but correctly inferring that is, as far as we know, too expensive.
    *
+   *  This method is also used in ConstrainResult mode
+   *  to avoid inference getting stuck due to lack of backtracking,
+   *  see or-inf.scala and and-inf.scala for examples.
+   *
    *  Method name comes from the notion that we are keeping the constraint which is necessary to satisfy both
    *  subtyping relationships.
    */
-  private def necessaryEither(op1: => Boolean, op2: => Boolean): Boolean = {
+  private def necessaryEither(op1: => Boolean, op2: => Boolean): Boolean =
     val preConstraint = constraint
-
     val preGadt = ctx.gadt.fresh
-    // if GADTflexible mode is on, we expect to always have a ProperGadtConstraint
-    val pre = preGadt.asInstanceOf[ProperGadtConstraint]
-    if (op1) {
-      val leftConstraint = constraint
-      val leftGadt = ctx.gadt.fresh
+
+    def allSubsumes(leftGadt: GadtConstraint, rightGadt: GadtConstraint, left: Constraint, right: Constraint): Boolean =
+      subsumes(left, right, preConstraint) && preGadt.match
+        case preGadt: ProperGadtConstraint =>
+          preGadt.subsumes(leftGadt, rightGadt, preGadt)
+        case _ =>
+          true
+
+    if op1 then
+      val op1Constraint = constraint
+      val op1Gadt = ctx.gadt.fresh
       constraint = preConstraint
       ctx.gadt.restore(preGadt)
-      if (op2)
-        if (pre.subsumes(leftGadt, ctx.gadt, preGadt) && subsumes(leftConstraint, constraint, preConstraint)) {
-          gadts.println(i"GADT CUT - prefer ${ctx.gadt} over $leftGadt")
-          constr.println(i"CUT - prefer $constraint over $leftConstraint")
-          true
-        }
-        else if (pre.subsumes(ctx.gadt, leftGadt, preGadt) && subsumes(constraint, leftConstraint, preConstraint)) {
-          gadts.println(i"GADT CUT - prefer $leftGadt over ${ctx.gadt}")
-          constr.println(i"CUT - prefer $leftConstraint over $constraint")
-          constraint = leftConstraint
-          ctx.gadt.restore(leftGadt)
-          true
-        }
-        else {
+      if op2 then
+        if allSubsumes(op1Gadt, ctx.gadt, op1Constraint, constraint) then
+          gadts.println(i"GADT CUT - prefer ${ctx.gadt} over $op1Gadt")
+          constr.println(i"CUT - prefer $constraint over $op1Constraint")
+        else if allSubsumes(ctx.gadt, op1Gadt, constraint, op1Constraint) then
+          gadts.println(i"GADT CUT - prefer $op1Gadt over ${ctx.gadt}")
+          constr.println(i"CUT - prefer $op1Constraint over $constraint")
+          constraint = op1Constraint
+          ctx.gadt.restore(op1Gadt)
+        else
           gadts.println(i"GADT CUT - no constraint is preferable, reverting to $preGadt")
           constr.println(i"CUT - no constraint is preferable, reverting to $preConstraint")
           constraint = preConstraint
           ctx.gadt.restore(preGadt)
-          true
-        }
-      else {
-        constraint = leftConstraint
-        ctx.gadt.restore(leftGadt)
-        true
-      }
-    }
+      else
+        constraint = op1Constraint
+        ctx.gadt.restore(op1Gadt)
+      true
     else op2
-  }
+  end necessaryEither
 
   /** Does type `tp1` have a member with name `name` whose normalized type is a subtype of
    *  the normalized type of the refinement `tp2`?

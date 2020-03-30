@@ -59,17 +59,14 @@ object ProtoTypes {
       else ctx.test(testCompat)
     }
 
-    private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
-      case _: OrType => true
-        // Don't constrain results with union types, since comparison with a union
-        // type on the right might commit too early into one side.
-      case pt => pt.isRef(defn.UnitClass)
-    }
+    private def disregardProto(pt: Type)(implicit ctx: Context): Boolean =
+      pt.dealias.isRef(defn.UnitClass)
 
     /** Check that the result type of the current method
      *  fits the given expected result type.
      */
-    def constrainResult(mt: Type, pt: Type)(implicit ctx: Context): Boolean = {
+    def constrainResult(mt: Type, pt: Type)(implicit parentCtx: Context): Boolean = {
+      given ctx as Context = parentCtx.addMode(Mode.ConstrainResult)
       val savedConstraint = ctx.typerState.constraint
       val res = pt.widenExpr match {
         case pt: FunProto =>
