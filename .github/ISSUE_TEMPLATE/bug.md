@@ -7,16 +7,16 @@ assignees: ''
 
 ---
 
-## minimized code
+## Minimized code
 
 ```Scala
 println("hello, world")
 ```
 
-## Compilation output
+## Output
 
 ```scala
-// TODO add compilation output here
+// TODO add output here
 ```
 
-## expectation
+## Expectation

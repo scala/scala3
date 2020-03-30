@@ -7,13 +7,13 @@ assignees: ''
 
 ---
 
-## minimized code
+## Minimized code
 
 ```Scala
 println("hello, world")
 ```
 
-## Crash output (click arrow to expand)
+## Output (click arrow to expand)
 <details>
 
 ```scala
