@@ -9,20 +9,23 @@ Their types are _context function types_. Here is an example of a context functi
 ```scala
 type Executable[T] = ExecutionContext ?=> T
 ```
-Context function are written using `?=>` as the "arrow" sign.
+Context functions are written using `?=>` as the "arrow" sign.
 They are applied to synthesized arguments, in
 the same way methods with context parameters are applied. For instance:
 ```scala
   given ec as ExecutionContext = ...
 
-  def f(x: Int): Executable[Int] = ...
+  def f(x: Int): ExecutionContext ?=> Int = ...
+  
+  // could be written as follows with the type alias from above
+  // def f(x: Int): Executable[Int] = ...
 
   f(2)(using ec)   // explicit argument
   f(2)             // argument is inferred
 ```
 Conversely, if the expected type of an expression `E` is a context function type
 `(T_1, ..., T_n) ?=> U` and `E` is not already an
-context function literal, `E` is converted to an context function literal by rewriting to
+context function literal, `E` is converted to a context function literal by rewriting it to
 ```scala
   (using x_1: T1, ..., x_n: Tn) => E
 ```
@@ -40,8 +43,10 @@ For example, continuing with the previous definitions,
 
   g(f(2))    // is expanded to g((using ev: ExecutionContext) => f(2)(using ev))
 
+  g(ExecutionContext ?=> f(3))  // is expanded to g((using ev: ExecutionContext) => f(3)(using ev))
   g((using ctx: ExecutionContext) => f(22)(using ctx)) // is left as it is
 ```
+
 ### Example: Builder Pattern
 
 Context function types have considerable expressive power. For
@@ -59,7 +64,7 @@ the aim is to construct tables like this:
     }
   }
 ```
-The idea is to define classes for `Table` and `Row` that allow
+The idea is to define classes for `Table` and `Row` that allow the
 addition of elements via `add`:
 ```scala
   class Table {
@@ -81,7 +86,7 @@ with context function types as parameters to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
   def table(init: Table ?=> Unit) = {
-    given t as Table
+    given t as Table // note the use of a creator application; same as: given t as Table = new Table
     init
     t
   }
@@ -120,7 +125,7 @@ object PostConditions {
 
   def result[T](using r: WrappedResult[T]): T = r
 
-  def (x: T).ensuring[T](condition: WrappedResult[T] ?=> Boolean): T = {
+  def [T] (x: T).ensuring(condition: WrappedResult[T] ?=> Boolean): T = {
     assert(condition(using x))
     x
   }
