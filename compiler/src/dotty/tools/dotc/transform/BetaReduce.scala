@@ -46,18 +46,38 @@ class BetaReduce extends MiniPhase:
     fn match
       case Typed(expr, _) => betaReduce(tree, expr, args)
       case Block(Nil, expr) => betaReduce(tree, expr, args)
-      case Block((anonFun: DefDef) :: Nil, closure: Closure) =>
-        val argSyms =
-          for arg <- args yield
-            arg.tpe.dealias match
-              case ref @ TermRef(NoPrefix, _) if isPurePath(arg) => ref.symbol
-              case _ => NoSymbol
-        val vparams = anonFun.vparamss.head
-        if argSyms.forall(_.exists) && argSyms.hasSameLengthAs(vparams) then
-          TreeTypeMap(
-            oldOwners = anonFun.symbol :: Nil,
-            newOwners = ctx.owner :: Nil,
-            substFrom = vparams.map(_.symbol),
-            substTo = argSyms).transform(anonFun.rhs)
-        else tree
+      case Block((anonFun: DefDef) :: Nil, closure: Closure) => BetaReduce(tree)(anonFun, args, true)
       case _ => tree
+
+object BetaReduce:
+  import ast.tpd._
+
+  /** Beta-reduces a call to `ddef` with arguments `argSyms` */
+  def apply(tree: Tree)(ddef: DefDef, args: List[Tree], noBindings: Boolean)(using ctx: Context) =
+    val bindings = List.newBuilder[ValDef]
+    val vparams = ddef.vparamss.iterator.flatten.toList
+    val argSyms =
+      for (arg, param) <- args.zip(vparams) yield
+        arg.tpe.dealias match
+          case ref @ TermRef(NoPrefix, _) if isPurePath(arg) =>
+            ref.symbol
+          case _ =>
+            if noBindings then // TODO always generate bindings
+              NoSymbol
+            else
+              val binding = SyntheticValDef(param.name, arg)
+              bindings += binding
+              binding.symbol
+
+    if argSyms.forall(_.exists) && argSyms.hasSameLengthAs(vparams) then // TODO assert rather than fail silently
+      seq(
+        bindings.result(),
+        TreeTypeMap(
+          oldOwners = ddef.symbol :: Nil,
+          newOwners = ctx.owner :: Nil,
+          substFrom = vparams.map(_.symbol),
+          substTo = argSyms
+        ).transform(ddef.rhs)
+      )
+    else
+      tree

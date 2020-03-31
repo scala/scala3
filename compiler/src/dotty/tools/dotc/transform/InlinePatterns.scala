@@ -31,6 +31,8 @@ class InlinePatterns extends MiniPhase:
 
   def phaseName: String = "inlinePatterns"
 
+  // This phase needs to run after because it need to transform trees that are generated
+  // by the pattern matcher but are still not visible in that group of phases.
   override def runsAfterGroupsOf: Set[String] = Set(PatternMatcher.name)
 
   override def transformApply(app: Apply)(using ctx: Context): Tree =
@@ -52,29 +54,8 @@ class InlinePatterns extends MiniPhase:
 
   private def betaReduce(tree: Apply, fn: Tree, name: Name, args: List[Tree])(using ctx: Context): Tree =
     fn match
-      case Block(Nil, expr) => betaReduce(tree, expr, name, args)
       case Block(TypeDef(_, template: Template) :: Nil, Apply(Select(New(_),_), Nil)) if template.constr.rhs.isEmpty =>
         template.body match
-          case List(ddef @ DefDef(`name`, _, _, _, _)) =>
-            val bindings = List.newBuilder[ValDef]
-            val vparams = ddef.vparamss.flatten
-            val argSyms =
-              for (arg, param) <- args.zip(vparams) yield
-                arg.tpe.dealias match
-                  case ref @ TermRef(NoPrefix, _) if isPurePath(arg) =>
-                    ref.symbol
-                  case _ =>
-                    val binding = SyntheticValDef(param.name, arg)
-                    bindings += binding
-                    binding.symbol
-            seq(
-              bindings.result(),
-              TreeTypeMap(
-                oldOwners = ddef.symbol :: Nil,
-                newOwners = ctx.owner :: Nil,
-                substFrom = vparams.map(_.symbol),
-                substTo = argSyms).transform(ddef.rhs)
-            )
-
+          case List(ddef @ DefDef(`name`, _, _, _, _)) => BetaReduce(tree)(ddef, args, false)
           case _ => tree
       case _ => tree
