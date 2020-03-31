@@ -144,7 +144,7 @@ funkyAssertEquals(computeActual(), computeExpected(), computeDelta())
 ```
 ### Rules for Overriding
 
-Inline methods can override other methods and can themselves be overridden by other inline methods. The rules are as follows:
+Inline methods can override other non-inline methods. The rules are as follows:
 
 1. If an inline method `f` implements or overrides another, non-inline method, the inline method can also be invoked at runtime. For instance, consider the scenario:
 ```scala
@@ -167,7 +167,7 @@ assert(a.g() == 33)
 ```
 The inlined invocations and the dynamically dispatched invocations give the same results.
 
-2. Inline methods can override or implement normal methods, as the previous example shows. Inline methods can be overridden only by other inline methods.
+2. Inline methods are effectively final.
 
 3. Inline methods can also be abstract. An abstract inline method can be implemented only by other inline methods. It cannot be invoked directly:
 ```scala
