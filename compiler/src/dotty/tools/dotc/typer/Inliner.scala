@@ -124,6 +124,48 @@ object Inliner {
       )
   }
 
+  /** Try to inline a pattern with an inline unapply method. Fail with error if the maximal
+   *  inline depth is exceeded.
+   *
+   *  @param unapp   The tree of the pattern to inline
+   *  @return   An `Unapply` with a `fun` containing the inlined call to the unapply
+   */
+  def inlinedUnapply(unapp: tpd.UnApply)(using ctx: Context): Tree = {
+    // We cannot inline the unapply directly, since the pattern matcher relies on unapply applications
+    // as signposts what to do. On the other hand, we can do the inlining only in typer, not afterwards.
+    // So the trick is to create a "wrapper" unapply in an anonymous class that has the inlined unapply
+    // as its right hand side. The call to the wrapper unapply serves as the signpost for pattern matching.
+    // After pattern matching, the anonymous class is removed in phase InlinePatterns with a beta reduction step.
+    //
+    // An inline unapply `P.unapply` in a plattern `P(x1,x2,...)` is transformed into
+    // `{ class $anon { def unapply(t0: T0)(using t1: T1, t2: T2, ...): R = P.unapply(t0)(using t1, t2, ...) }; new $anon }.unapply`
+    // and the call `P.unapply(x1, x2, ...)` is inlined.
+    // This serves as a placeholder for the inlined body until the `patternMatcher` phase. After pattern matcher
+    // transforms the patterns into terms, the `inlinePatterns` phase removes this anonymous class by β-reducing
+    // the call to the `unapply`.
+
+    val UnApply(fun, implicits, patterns) = unapp
+    val sym = unapp.symbol
+    val cls = ctx.newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), coord = sym.coord)
+    val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil, coord = sym.coord).entered
+
+    val targs = fun match
+      case TypeApply(_, targs) => targs
+      case _ => Nil
+    val unapplyInfo = sym.info match
+      case info: PolyType => info.instantiate(targs.map(_.tpe))
+      case info => info
+
+    val unappplySym = ctx.newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
+    val unapply = DefDef(unappplySym, argss =>
+      inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(ctx.withOwner(unappplySym))
+    )
+    val cdef = ClassDef(cls, DefDef(constr), List(unapply))
+    val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))
+    val newFun = newUnapply.select(unappplySym).withSpan(unapp.span)
+    cpy.UnApply(unapp)(newFun, implicits, patterns)
+  }
+
   /** For a retained inline method, another method that keeps track of
    *  the body that is kept at runtime. For instance, an inline method
    *
