@@ -204,6 +204,11 @@ object PrepareInlineable {
   def isLocal(sym: Symbol, inlineMethod: Symbol)(implicit ctx: Context): Boolean =
     isLocalOrParam(sym, inlineMethod) && !(sym.is(Param) && sym.owner == inlineMethod)
 
+  /** The type ascription `rhs: tpt`, unless `original` is `transparent`. */
+  def wrapRHS(original: untpd.DefDef, tpt: Tree, rhs: Tree)(using Context): Tree =
+    if original.mods.hasMod(classOf[untpd.Mod.Transparent]) then rhs
+    else Typed(rhs, tpt)
+
   /** Register inline info for given inlineable method `sym`.
    *
    *  @param sym         The symbol denotation of the inlineable method for which info is registered
@@ -213,7 +218,7 @@ object PrepareInlineable {
    *                     to have the inline method as owner.
    */
   def registerInlineInfo(
-      inlined: Symbol, treeExpr: Context => Tree)(implicit ctx: Context): Unit =
+      inlined: Symbol, treeExpr: Context ?=> Tree)(implicit ctx: Context): Unit =
     inlined.unforcedAnnotation(defn.BodyAnnot) match {
       case Some(ann: ConcreteBodyAnnotation) =>
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated || ann.isEvaluating =>
@@ -223,7 +228,7 @@ object PrepareInlineable {
           inlined.updateAnnotation(LazyBodyAnnotation {
             given ctx as Context = inlineCtx
             val initialErrorCount = ctx.reporter.errorCount
-            var inlinedBody = treeExpr(ctx)
+            var inlinedBody = treeExpr
             if (ctx.reporter.errorCount == initialErrorCount) {
               inlinedBody = ctx.compilationUnit.inlineAccessors.makeInlineable(inlinedBody)
               checkInlineMethod(inlined, inlinedBody)

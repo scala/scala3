@@ -601,7 +601,7 @@ inline method that can calculate either a value of type `Int` or a value of type
 `String`.
 
 ```scala
-inline def defaultOf(inline str: String) <: Any = ${ defaultOfImpl('str) }
+transparent inline def defaultOf(inline str: String) = ${ defaultOfImpl('str) }
 
 def defaultOfImpl(strExpr: Expr[String])(using QuoteContext): Expr[Any] =
   strExpr.unliftOrError match

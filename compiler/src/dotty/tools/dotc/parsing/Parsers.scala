@@ -33,6 +33,8 @@ object Parsers {
   import reporting.Message
   import reporting.messages._
 
+  val AllowOldWhiteboxSyntax = true
+
   case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 
   class ParensCounters {
@@ -2692,6 +2694,7 @@ object Parsers {
           case nme.inline => Mod.Inline()
           case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()
+          case nme.transparent => Mod.Transparent()
         }
     }
 
@@ -2748,7 +2751,7 @@ object Parsers {
      *                  |  AccessModifier
      *                  |  override
      *                  |  opaque
-     *  LocalModifier  ::= abstract | final | sealed | open | implicit | lazy | erased | inline
+     *  LocalModifier  ::= abstract | final | sealed | open | implicit | lazy | erased | inline | transparent
      */
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
       @tailrec
@@ -2766,7 +2769,11 @@ object Parsers {
         }
         else
           mods
-      normalize(loop(start))
+      val result = normalize(loop(start))
+      for case mod @ Mod.Transparent() <- result.mods do
+        if !result.is(Inline) then
+          syntaxError(em"`transparent` can only be used in conjunction with `inline`", mod.span)
+      result
     }
 
     val funTypeArgMods: BitSet = BitSet(ERASED)
@@ -3248,9 +3255,10 @@ object Parsers {
           case rparamss =>
             leadingVparamss ::: rparamss
         var tpt = fromWithinReturnType {
-          if in.token == SUBTYPE && mods.is(Inline) then
+          if in.token == SUBTYPE && mods.is(Inline) && AllowOldWhiteboxSyntax then
             in.nextToken()
-            TypeBoundsTree(EmptyTree, toplevelTyp())
+            mods1 = addMod(mods1, Mod.Transparent())
+            toplevelTyp()
           else typedOpt()
         }
         if (in.isScala2CompatMode) newLineOptWhenFollowedBy(LBRACE)
@@ -3516,12 +3524,13 @@ object Parsers {
           accept(EQUALS)
           mods1 |= Final
           DefDef(name, tparams, vparamss, tpt, subExpr())
-        if in.token == USCORE then
+        if in.token == USCORE && AllowOldWhiteboxSyntax then
           if !mods.is(Inline) then
             syntaxError("`_ <:` is only allowed for given with `inline` modifier")
           in.nextToken()
           accept(SUBTYPE)
-          givenAlias(TypeBoundsTree(EmptyTree, toplevelTyp()))
+          mods1 = addMod(mods1, Mod.Transparent())
+          givenAlias(toplevelTyp())
         else
           val parents = constrApps(commaOK = true, templateCanFollow = true)
           if in.token == EQUALS && parents.length == 1 && parents.head.isType then

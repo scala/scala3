@@ -195,6 +195,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Lazy()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Lazy)
 
     case class Inline()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Inline)
+
+    case class Transparent()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.EmptyFlags)
   }
 
   /** Modifiers and annotations for definitions
@@ -326,7 +328,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def derivedTree(originalSym: Symbol)(implicit ctx: Context): tpd.Tree
   }
 
-    /** Property key containing TypeTrees whose type is computed
+  /** Property key containing TypeTrees whose type is computed
    *  from the symbol in this type. These type trees have marker trees
    *  TypeRefOfSym or InfoOfSym as their originals.
    */

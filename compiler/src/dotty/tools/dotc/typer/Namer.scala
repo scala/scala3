@@ -863,10 +863,10 @@ class Namer { typer: Typer =>
 
     private def addInlineInfo(sym: Symbol) = original match {
       case original: untpd.DefDef if sym.isInlineMethod =>
-        PrepareInlineable.registerInlineInfo(
-            sym,
-            implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
-          )(localContext(sym))
+        def rhsToInline(using Context): tpd.Tree =
+          val mdef = typedAheadExpr(original).asInstanceOf[tpd.DefDef]
+          PrepareInlineable.wrapRHS(original, mdef.tpt, mdef.rhs)
+        PrepareInlineable.registerInlineInfo(sym, rhsToInline)(localContext(sym))
       case _ =>
     }
 

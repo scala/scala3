@@ -1735,9 +1735,10 @@ class Typer extends Namer
 
     if (sym.isInlineMethod) rhsCtx.addMode(Mode.InlineableBody)
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(rhsCtx)
+    val rhsToInline = PrepareInlineable.wrapRHS(ddef, tpt1, rhs1)
 
     if (sym.isInlineMethod)
-      PrepareInlineable.registerInlineInfo(sym, _ => rhs1)
+      PrepareInlineable.registerInlineInfo(sym, rhsToInline)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor) {
       val ename = sym.erasedName
