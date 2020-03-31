@@ -1060,13 +1060,14 @@ trait Applications extends Compatibility {
       tree
   }
 
-  /** Does `state` contain a single "NotAMember" or "MissingIdent" message as
-   *  pending error message that says `$memberName is not a member of ...` or
-   *  `Not found: $memberName`? If memberName is empty, any name will do.
+  /** Does `state` contain a  "NotAMember" or "MissingIdent" message as
+   *  first pending error message? That message would be
+   *  `$memberName is not a member of ...` or `Not found: $memberName`.
+   *  If memberName is empty, any name will do.
    */
   def saysNotFound(state: TyperState, memberName: Name)(using Context): Boolean =
     state.reporter.pendingMessages match
-      case dia :: Nil =>
+      case dia :: _ =>
         dia.msg match
           case msg: NotFoundMsg => memberName.isEmpty || msg.name == memberName
           case _ => false
