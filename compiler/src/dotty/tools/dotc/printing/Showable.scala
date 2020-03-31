@@ -26,6 +26,6 @@ trait Showable extends Any {
    *  Recursion depth is limited to some smallish value. Default is
    *  Config.summarizeDepth.
    */
-  def showSummary(depth: Int = summarizeDepth)(using ctx: Context): String =
-    show(using ctx.fresh.setProperty(MessageLimiter, SummarizeMessageLimiter(depth)))
+  def showSummary(depth: Int = summarizeDepth)(using Context): String =
+    show(using curCtx.fresh.setProperty(MessageLimiter, SummarizeMessageLimiter(depth)))
 }

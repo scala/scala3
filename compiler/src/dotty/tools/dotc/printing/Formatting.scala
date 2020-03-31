@@ -255,10 +255,10 @@ object Formatting {
     if (explainLines.isEmpty) "" else i"where:    $explainLines%\n          %\n"
   }
 
-  private def errorMessageCtx(using ctx: Context): Context =
-    ctx.property(MessageLimiter) match
-      case Some(_: ErrorMessageLimiter) => ctx
-      case _ => ctx.fresh.setProperty(MessageLimiter, ErrorMessageLimiter())
+  private def errorMessageCtx(using Context): Context =
+    curCtx.property(MessageLimiter) match
+      case Some(_: ErrorMessageLimiter) => curCtx
+      case _ => curCtx.fresh.setProperty(MessageLimiter, ErrorMessageLimiter())
 
   /** Context with correct printer set for explanations */
   private def explainCtx(seen: Seen)(implicit ctx: Context): Context =

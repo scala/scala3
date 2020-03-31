@@ -421,7 +421,7 @@ object Erasure {
      *
      *  See test cases lambda-*.scala and t8017/ for concrete examples.
      */
-    def adaptClosure(tree: tpd.Closure)(using ctx: Context): Tree = {
+    def adaptClosure(tree: tpd.Closure)(using Context): Tree = {
       val implClosure @ Closure(_, meth, _) = tree
 
       implClosure.tpe match {
@@ -452,16 +452,16 @@ object Erasure {
                   if (resultAdaptationNeeded) sam
                   else implType.derivedLambdaType(paramInfos = samParamTypes)
                 else implType.derivedLambdaType(resType = samResultType)
-              val bridge = ctx.newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)
-              val bridgeCtx = ctx.withOwner(bridge)
+              val bridge = curCtx.newSymbol(curCtx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)
+              val bridgeCtx = curCtx.withOwner(bridge)
               Closure(bridge, bridgeParamss => {
-                implicit val ctx = bridgeCtx
-
-                val List(bridgeParams) = bridgeParamss
-                assert(ctx.typer.isInstanceOf[Erasure.Typer])
-                val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(ctx.typer.adapt(_, _)))
-                ctx.typer.adapt(rhs, bridgeType.resultType)
-              }, targetType = implClosure.tpt.tpe)
+                  given Context = bridgeCtx
+                  val List(bridgeParams) = bridgeParamss
+                  assert(curCtx.typer.isInstanceOf[Erasure.Typer])
+                  val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(curCtx.typer.adapt(_, _)))
+                  curCtx.typer.adapt(rhs, bridgeType.resultType)
+                },
+                targetType = implClosure.tpt.tpe)
             }
             else implClosure
           }
@@ -477,25 +477,25 @@ object Erasure {
      *  type and figure out which context function types in its result are
      *  not yet instantiated.
      */
-    def etaExpand(tree: Tree, mt: MethodType, pt: Type)(using ctx: Context): Tree =
-      ctx.log(i"eta expanding $tree")
+    def etaExpand(tree: Tree, mt: MethodType, pt: Type)(using Context): Tree =
+      curCtx.log(i"eta expanding $tree")
       val defs = new mutable.ListBuffer[Tree]
       val tree1 = LiftErased.liftApp(defs, tree)
       val xmt = if tree.isInstanceOf[Apply] then mt else expandedMethodType(mt, tree)
       val targetLength = xmt.paramInfos.length
-      val origOwner = ctx.owner
+      val origOwner = curCtx.owner
 
       // The original type from which closures should be constructed
       val origType = contextFunctionResultTypeCovering(tree.symbol, targetLength)
 
-      def abstracted(args: List[Tree], tp: Type, pt: Type)(using ctx: Context): Tree =
+      def abstracted(args: List[Tree], tp: Type, pt: Type)(using Context): Tree =
         if args.length < targetLength then
           try
             val defn.ContextFunctionType(argTpes, resTpe, isErased): @unchecked = tp
             if isErased then abstracted(args, resTpe, pt)
             else
-              val anonFun = ctx.newSymbol(
-                ctx.owner, nme.ANON_FUN, Flags.Synthetic | Flags.Method,
+              val anonFun = curCtx.newSymbol(
+                curCtx.owner, nme.ANON_FUN, Flags.Synthetic | Flags.Method,
                 MethodType(argTpes, resTpe), coord = tree.span.endPos)
               anonFun.info = transformInfo(anonFun, anonFun.info)
               def lambdaBody(refss: List[List[Tree]]) =
@@ -508,7 +508,7 @@ object Erasure {
                         .appliedTo(Literal(Constant(n))))
                   case refs1 => refs1
                 abstracted(args ::: expandedRefs, resTpe, anonFun.info.finalResultType)(
-                  using ctx.withOwner(anonFun))
+                  using curCtx.withOwner(anonFun))
 
               val unadapted = Closure(anonFun, lambdaBody)
               cpy.Block(unadapted)(unadapted.stats, adaptClosure(unadapted.expr.asInstanceOf[Closure]))
@@ -518,9 +518,9 @@ object Erasure {
         else
           assert(args.length == targetLength, i"wrong # args tree = $tree | args = $args%, % | mt = $mt | tree type = ${tree.tpe}")
           val app = untpd.cpy.Apply(tree1)(tree1, args)
-          assert(ctx.typer.isInstanceOf[Erasure.Typer])
-          ctx.typer.typed(app, pt)
-            .changeOwnerAfter(origOwner, ctx.owner, ctx.erasurePhase.asInstanceOf[Erasure])
+          assert(curCtx.typer.isInstanceOf[Erasure.Typer])
+          curCtx.typer.typed(app, pt)
+            .changeOwnerAfter(origOwner, curCtx.owner, curCtx.erasurePhase.asInstanceOf[Erasure])
 
       seq(defs.toList, abstracted(Nil, origType, pt))
     end etaExpand
@@ -543,12 +543,12 @@ object Erasure {
         checkValue(tree)
       tree
 
-    private def checkValue(tree: Tree)(using ctx: Context): Unit =
+    private def checkValue(tree: Tree)(using Context): Unit =
       val sym = tree.tpe.termSymbol
       if (sym is Flags.Package)
-         || (sym.isAllOf(Flags.JavaModule) && !ctx.compilationUnit.isJava)
+         || (sym.isAllOf(Flags.JavaModule) && !curCtx.compilationUnit.isJava)
       then
-        ctx.error(reporting.messages.JavaSymbolIsNotAValue(sym), tree.sourcePos)
+        curCtx.error(reporting.messages.JavaSymbolIsNotAValue(sym), tree.sourcePos)
 
     private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {
       if (!ctx.mode.is(Mode.Type)) {
@@ -871,11 +871,11 @@ object Erasure {
     end typedDefDef
 
     /** The outer parameter definition of a constructor if it needs one */
-    private def outerParamDefs(constr: Symbol)(using ctx: Context): List[ValDef] =
+    private def outerParamDefs(constr: Symbol)(using Context): List[ValDef] =
       if constr.isConstructor && hasOuterParam(constr.owner.asClass) then
         constr.info match
           case MethodTpe(outerName :: _, outerType :: _, _) =>
-            val outerSym = ctx.newSymbol(constr, outerName, Flags.Param, outerType)
+            val outerSym = curCtx.newSymbol(constr, outerName, Flags.Param, outerType)
             ValDef(outerSym) :: Nil
           case _ =>
             // There's a possible race condition that a constructor was looked at
@@ -909,12 +909,12 @@ object Erasure {
      *  `f$retainedBody` is subseqently mapped to the empty tree in `typedDefDef`
      *  which is then dropped in `typedStats`.
      */
-    private def addRetainedInlineBodies(stats: List[untpd.Tree])(using ctx: Context): List[untpd.Tree] =
+    private def addRetainedInlineBodies(stats: List[untpd.Tree])(using Context): List[untpd.Tree] =
       lazy val retainerDef: Map[Symbol, DefDef] = stats.collect {
         case stat: DefDef if stat.symbol.name.is(BodyRetainerName) =>
           val retainer = stat.symbol
           val origName = retainer.name.asTermName.exclude(BodyRetainerName)
-          val inlineMeth = ctx.atPhase(ctx.typerPhase) {
+          val inlineMeth = curCtx.atPhase(curCtx.typerPhase) {
             retainer.owner.info.decl(origName)
               .matchingDenotation(retainer.owner.thisType, stat.symbol.info)
               .symbol

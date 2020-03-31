@@ -2431,12 +2431,12 @@ object Types {
      *  So we can't drop the alias here, we need to do the backtracking to the name-
      *  based tests.
      */
-    def canDropAlias(using ctx: Context) =
-      if myCanDropAliasPeriod != ctx.period then
+    def canDropAlias(using Context) =
+      if myCanDropAliasPeriod != curCtx.period then
         myCanDropAlias =
           !symbol.canMatchInheritedSymbols
           || !prefix.baseClasses.exists(_.info.decls.lookup(name).is(Deferred))
-        myCanDropAliasPeriod = ctx.period
+        myCanDropAliasPeriod = curCtx.period
       myCanDropAlias
 
     override def designator: Designator = myDesignator
@@ -2632,8 +2632,8 @@ object Types {
     /** Update the value of the lazyref, discarding the compute function `refFn`
      *  Can be called only as long as the ref is still undefined.
      */
-    def update(tp: Type)(using ctx: Context) =
-      assert(myRef == null || ctx.reporter.errorsReported)
+    def update(tp: Type)(using Context) =
+      assert(myRef == null || curCtx.reporter.errorsReported)
       myRef = tp
       computed = true
       refFn = null
@@ -3011,8 +3011,8 @@ object Types {
   object OrNull {
     def apply(tp: Type)(using Context) =
       OrType(tp, defn.NullType)
-    def unapply(tp: Type)(using ctx: Context): Option[Type] =
-      if (ctx.explicitNulls) {
+    def unapply(tp: Type)(using Context): Option[Type] =
+      if (curCtx.explicitNulls) {
         val tp1 = tp.stripNull()
         if tp1 ne tp then Some(tp1) else None
       }
@@ -3029,8 +3029,8 @@ object Types {
   object OrUncheckedNull {
     def apply(tp: Type)(using Context) =
       OrType(tp, defn.UncheckedNullAliasType)
-    def unapply(tp: Type)(using ctx: Context): Option[Type] =
-      if (ctx.explicitNulls) {
+    def unapply(tp: Type)(using Context): Option[Type] =
+      if (curCtx.explicitNulls) {
         val tp1 = tp.stripUncheckedNull
         if tp1 ne tp then Some(tp1) else None
       }
@@ -4650,13 +4650,13 @@ object Types {
   }
 
   object ErrorType:
-    def apply(m: Message)(implicit ctx: Context): ErrorType =
+    def apply(m: Message)(using Context): ErrorType =
       val et = new ErrorType:
-        def msg(using ctx: Context): Message =
-          ctx.base.errorTypeMsg.get(this) match
+        def msg(using Context): Message =
+          curCtx.base.errorTypeMsg.get(this) match
             case Some(m) => m
             case None => "error message from previous run no longer available"
-      ctx.base.errorTypeMsg(et) = m
+      curCtx.base.errorTypeMsg(et) = m
       et
   end ErrorType
 

@@ -52,13 +52,13 @@ object Annotations {
   }
 
   /** The context to use to evaluate an annotation */
-  private def annotCtx(using ctx: Context): Context =
+  private def annotCtx(using Context): Context =
     // We should always produce the same annotation tree, no matter when the
     // annotation is evaluated. Setting the phase to a pre-transformation phase
-    // seems to be enough to ensure this (note that after erasure, `ctx.typer`
+    // seems to be enough to ensure this (note that after erasure, `curCtx.typer`
     // will be the Erasure typer, but that doesn't seem to affect the annotation
     // trees we create, so we leave it as is)
-    ctx.withPhaseNoLater(ctx.picklerPhase)
+    curCtx.withPhaseNoLater(curCtx.picklerPhase)
 
   abstract class LazyAnnotation extends Annotation {
     protected var mySym: Symbol | (Context => Symbol)
@@ -178,7 +178,7 @@ object Annotations {
 
       /** A deferred annotation to the result of a given child computation */
       def later(delayedSym: Context ?=> Symbol, span: Span)(implicit ctx: Context): Annotation = {
-        def makeChildLater(using ctx: Context) = {
+        def makeChildLater(using Context) = {
           val sym = delayedSym
           New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
             .withSpan(span)

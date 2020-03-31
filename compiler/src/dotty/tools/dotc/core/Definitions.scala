@@ -1274,8 +1274,9 @@ class Definitions {
    *  types `As`, the result type `B` and a whether the type is an erased context function.
    */
   object ContextFunctionType:
-    def unapply(tp: Type)(using ctx: Context): Option[(List[Type], Type, Boolean)] =
-      if ctx.erasedTypes then unapply(tp)(using ctx.withPhase(ctx.erasurePhase))
+    def unapply(tp: Type)(using Context): Option[(List[Type], Type, Boolean)] =
+      if curCtx.erasedTypes then
+        unapply(tp)(using curCtx.withPhase(curCtx.erasurePhase))
       else
         val tp1 = tp.dealias
         if isContextFunctionClass(tp1.typeSymbol) then

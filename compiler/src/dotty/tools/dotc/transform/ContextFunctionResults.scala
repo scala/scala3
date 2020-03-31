@@ -99,8 +99,8 @@ object ContextFunctionResults:
    *  Erased parameters are ignored; they contribute nothing to the
    *  parameter count.
    */
-  def contextFunctionResultTypeCovering(meth: Symbol, paramCount: Int)(using ctx: Context) =
-    given Context = ctx.withPhase(ctx.erasurePhase)
+  def contextFunctionResultTypeCovering(meth: Symbol, paramCount: Int)(using preCtx: Context) =
+    given Context = preCtx.withPhase(preCtx.erasurePhase)
 
     // Recursive instances return pairs of context types and the
     // # of parameters they represent.
@@ -120,9 +120,9 @@ object ContextFunctionResults:
    *  integrated in the  preceding method?
    *  @param `n` the select nodes seen in previous recursive iterations of this method
    */
-  def integrateSelect(tree: untpd.Tree, n: Int = 0)(using ctx: Context): Boolean =
-    if ctx.erasedTypes then
-      integrateSelect(tree, n)(using ctx.withPhase(ctx.erasurePhase))
+  def integrateSelect(tree: untpd.Tree, n: Int = 0)(using Context): Boolean =
+    if curCtx.erasedTypes then
+      integrateSelect(tree, n)(using curCtx.withPhase(curCtx.erasurePhase))
     else tree match
       case Select(qual, name) =>
         if name == nme.apply && defn.isContextFunctionClass(tree.symbol.maybeOwner) then

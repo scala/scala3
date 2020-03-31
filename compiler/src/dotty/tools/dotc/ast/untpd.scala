@@ -249,12 +249,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
      *  describe the core of a construct whereas the existing set are the modifiers
      *  given in the source.
      */
-    def withAddedFlags(flags: FlagSet, span: Span)(using ctx: Context): Modifiers =
+    def withAddedFlags(flags: FlagSet, span: Span)(using Context): Modifiers =
       if this.flags.isAllOf(flags) then this
       else if compatible(this.flags, flags) then this | flags
       else
         val what = if flags.isTermFlags then "values" else "types"
-        ctx.error(em"${(flags & ModifierFlags).flagsString} $what cannot be ${this.flags.flagsString}", ctx.source.atSpan(span))
+        curCtx.error(em"${(flags & ModifierFlags).flagsString} $what cannot be ${this.flags.flagsString}", curCtx.source.atSpan(span))
         Modifiers(flags)
 
     /** Modifiers with given list of Mods. It is checked that
@@ -760,6 +760,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     acc(false, tree)
   }
 
-  protected def FunProto(args: List[Tree], resType: Type)(using ctx: Context) =
-    ProtoTypes.FunProto(args, resType)(ctx.typer, isUsingApply = false)
+  protected def FunProto(args: List[Tree], resType: Type)(using Context) =
+    ProtoTypes.FunProto(args, resType)(curCtx.typer, isUsingApply = false)
 }

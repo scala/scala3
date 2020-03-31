@@ -281,7 +281,7 @@ class ExtractSemanticDB extends Phase:
         tree.nameSpan
 
     /** Add semanticdb name of the given symbol to string builder */
-    private def addSymName(b: StringBuilder, sym: Symbol)(using ctx: Context): Unit =
+    private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
 
       def addName(name: Name) =
         val str = name.toString.unescapeUnicode
@@ -352,14 +352,14 @@ class ExtractSemanticDB extends Phase:
     end addSymName
 
     /** The semanticdb name of the given symbol */
-    private def symbolName(sym: Symbol)(using ctx: Context): String =
+    private def symbolName(sym: Symbol)(using Context): String =
       val b = StringBuilder(20)
       addSymName(b, sym)
       b.toString
 
-    inline private def source(using ctx: Context) = ctx.compilationUnit.source
+    inline private def source(using Context) = curCtx.compilationUnit.source
 
-    private def range(span: Span)(using ctx: Context): Option[Range] =
+    private def range(span: Span)(using Context): Option[Range] =
       def lineCol(offset: Int) = (source.offsetToLine(offset), source.column(offset))
       val (startLine, startCol) = lineCol(span.start)
       val (endLine, endCol) = lineCol(span.end)
@@ -577,14 +577,14 @@ object ExtractSemanticDB:
 
   val name: String = "extractSemanticDB"
 
-  def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using ctx: Context): Unit =
+  def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
     val sourcePath = absolutePath(source.file.jpath)
-    val sourceRoot = absolutePath(Paths.get(ctx.settings.sourceroot.value))
+    val sourceRoot = absolutePath(Paths.get(curCtx.settings.sourceroot.value))
     val semanticdbTarget =
-      val semanticdbTargetSetting = ctx.settings.semanticdbTarget.value
+      val semanticdbTargetSetting = curCtx.settings.semanticdbTarget.value
       absolutePath(
-        if semanticdbTargetSetting.isEmpty then ctx.settings.outputDir.value.jpath
+        if semanticdbTargetSetting.isEmpty then curCtx.settings.outputDir.value.jpath
         else Paths.get(semanticdbTargetSetting)
       )
     val relPath = sourceRoot.relativize(sourcePath)
