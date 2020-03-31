@@ -282,14 +282,7 @@ class ReifyQuotes extends MacroTransform {
 
       val tpe = MethodType(defn.SeqType.appliedTo(defn.AnyType) :: Nil, tree.tpe.widen)
       val meth = ctx.newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
-      val closure = Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth)).withSpan(tree.span)
-
-      enclosingInlineds match {
-        case enclosingInline :: _ =>
-         // In case a tree was inlined inside of the quote and we this closure corresponds to code within it we need to keep the inlined node.
-         Inlined(enclosingInline, Nil, closure)(ctx.withSource(lambdaOwner.topLevelClass.source))
-        case Nil => closure
-      }
+      Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth)).withSpan(tree.span)
     }
 
     private def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(implicit ctx: Context): Tree = {
