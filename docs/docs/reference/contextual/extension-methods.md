@@ -58,10 +58,10 @@ object IntOpsEx extends IntOps {
 }
 
 trait SafeDiv {
-  import IntOpsEx._
+  import IntOpsEx._ // brings safeDiv and safeMod into scope
 
-  def divide(i: Int, d: Int) : Option[(Int, Int)] =
-    // extension method imported and thus in scope
+  def (i: Int) divide(d: Int) : Option[(Int, Int)] =
+     // extension methods imported and thus in scope
     (i.safeDiv(d), i.safeMod(d)) match {
       case (Some(d), Some(r)) => Some((d, r))
       case _ => None
@@ -79,19 +79,9 @@ given ops1 as IntOps // brings safeMod into scope
 
 Then `safeMod` is legal everywhere `ops1` is available. Anonymous givens (and any other form of givens) are supported as well:
 ```scala
-given SafeDiv //brings safeMod, safeDiv and divide into scope
-```
+given SafeDiv //brings divide into scope (safeMod and safeDiv are not automatically exported)
 
-In case the extension method is defined in an object as in `IntOpsEx`, then it can also be brought into scope by a given:
-```scala
-import given IntOpsEx.type = IntOpsEx // unusual, brings safeMod and safeDiv into scope
-```
-However importing from an object is most likely the better choice. And also superior regarding selectivety:
-```scala
-import IntOpsEx.safeMod // brings only safeMod into scope
-
-1.safeMod(2)
-2.safeDiv(3) // compile error
+1.divide(2)
 ```
 
 The precise rules for resolving a selection to an extension method are as follows.
