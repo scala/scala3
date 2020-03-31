@@ -52,6 +52,10 @@ object Contexts {
   /** The current context */
   def ctx(using ctx: Context): Context = ctx
 
+  /** Run `op` with given context */
+  inline def withContext[T](c: Context)(inline op: Context ?=> T): T =
+    op(using c)
+
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
    *  objects that turn into space leaks. To combat this risk, here are some

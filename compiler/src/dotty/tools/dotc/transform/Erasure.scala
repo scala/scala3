@@ -453,9 +453,8 @@ object Erasure {
                   else implType.derivedLambdaType(paramInfos = samParamTypes)
                 else implType.derivedLambdaType(resType = samResultType)
               val bridge = ctx.newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)
-              val bridgeCtx = ctx.withOwner(bridge)
-              Closure(bridge, bridgeParamss => {
-                  given Context = bridgeCtx
+              Closure(bridge, bridgeParamss =>
+                withContext(ctx.withOwner(bridge)) {
                   val List(bridgeParams) = bridgeParamss
                   assert(ctx.typer.isInstanceOf[Erasure.Typer])
                   val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(ctx.typer.adapt(_, _)))

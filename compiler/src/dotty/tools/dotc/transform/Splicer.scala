@@ -37,18 +37,18 @@ object Splicer {
    *
    *  See: `Staging`
    */
-  def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(using ctx: Context): Tree = tree match {
+  def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(using Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
     case _ =>
       val interpreter = new Interpreter(pos, classLoader)
       val macroOwner = ctx.newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
-      try {
-        given Context = ctx.withOwner(macroOwner)
-        // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
-        val interpretedExpr = interpreter.interpret[scala.quoted.QuoteContext => scala.quoted.Expr[Any]](tree)
-        val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContext())))
-        checkEscapedVariables(interpretedTree, macroOwner).changeOwner(macroOwner, ctx.owner)
-      }
+      try
+        withContext(ctx.withOwner(macroOwner)) {
+          // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
+          val interpretedExpr = interpreter.interpret[scala.quoted.QuoteContext => scala.quoted.Expr[Any]](tree)
+          val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContext())))
+          checkEscapedVariables(interpretedTree, macroOwner)
+        }.changeOwner(macroOwner, ctx.owner)
       catch {
         case ex: CompilationUnit.SuspendException =>
           throw ex
@@ -70,7 +70,7 @@ object Splicer {
   }
 
   /** Checks that no symbol that whas generated within the macro expansion has an out of scope reference */
-  def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(using ctx: Context): tree.type =
+  def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(using Context): tree.type =
     new TreeTraverser {
       private[this] var locals = Set.empty[Symbol]
       private def markSymbol(sym: Symbol)(implicit ctx: Context): Unit =
@@ -79,7 +79,7 @@ object Splicer {
         case tree: DefTree => markSymbol(tree.symbol)
         case _ =>
       }
-      def traverse(tree: Tree)(using ctx: Context): Unit =
+      def traverse(tree: Tree)(using Context): Unit =
         def traverseOver(lastEntered: Set[Symbol]) =
           try traverseChildren(tree)
           finally locals = lastEntered
@@ -98,7 +98,7 @@ object Splicer {
           case _ =>
             markDef(tree)
             traverseChildren(tree)
-      private def isEscapedVariable(sym: Symbol)(using ctx: Context): Boolean =
+      private def isEscapedVariable(sym: Symbol)(using Context): Boolean =
         sym.exists && !sym.is(Package)
         && sym.owner.ownersIterator.exists(x =>
           x == expansionOwner || // symbol was generated within this macro expansion
@@ -412,7 +412,7 @@ object Splicer {
       }
 
     private object MissingClassDefinedInCurrentRun {
-      def unapply(targetException: NoClassDefFoundError)(using ctx: Context): Option[Symbol] = {
+      def unapply(targetException: NoClassDefFoundError)(using Context): Option[Symbol] = {
         val className = targetException.getMessage
         if (className eq null) None
         else {

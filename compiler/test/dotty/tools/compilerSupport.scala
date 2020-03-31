@@ -13,7 +13,7 @@ import dotc.core.Comments.{ContextDoc, ContextDocstrings}
 /** Initialize a compiler context with the given classpath and
  *  pass it to `op`.
  */
-def withContext[T](classpath: String)(op: Context ?=> T): T =
+def withCompilerContext[T](classpath: String)(op: Context ?=> T): T =
   val compiler = Compiler()
   val run = compiler.newRun(initCtx(classpath))
   run.compileUnits(Nil) // Initialize phases

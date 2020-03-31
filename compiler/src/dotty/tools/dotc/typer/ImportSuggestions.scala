@@ -149,8 +149,7 @@ trait ImportSuggestions:
      */
     def shallowTest(ref: TermRef): Boolean =
       System.currentTimeMillis < deadLine
-      && {
-        given Context = ctx.fresh.setExploreTyperState()
+      && withContext(ctx.fresh.setExploreTyperState()) {
         def test(pt: Type): Boolean = pt match
           case ViewProto(argType, OrType(rt1, rt2)) =>
             // Union types do not constrain results, since comparison with a union
