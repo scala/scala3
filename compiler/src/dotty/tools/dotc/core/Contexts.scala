@@ -50,7 +50,7 @@ object Contexts {
   private val initialStore = store8
 
   /** The current context */
-  def curCtx(using ctx: Context): Context = ctx
+  def ctx(using ctx: Context): Context = ctx
 
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in

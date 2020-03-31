@@ -980,7 +980,7 @@ object desugar {
             case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
               s"extension_${name}_${inventTypeName(vparam.tpt)}"
             case _ =>
-              curCtx.error(AnonymousInstanceCannotBeEmpty(impl), impl.sourcePos)
+              ctx.error(AnonymousInstanceCannotBeEmpty(impl), impl.sourcePos)
               nme.ERROR.toString
         else
           impl.parents.map(inventTypeName(_)).mkString("given_", "_", "")

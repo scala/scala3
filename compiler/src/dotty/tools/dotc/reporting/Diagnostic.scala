@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import util.SourcePosition
-import core.Contexts.Context
+import core.Contexts.{Context, ctx}
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, INFO, WARNING}
 
@@ -11,7 +11,7 @@ import java.util.Optional
 
 object Diagnostic:
 
-  def shouldExplain(dia: Diagnostic)(using ctx: Context): Boolean =
+  def shouldExplain(dia: Diagnostic)(using Context): Boolean =
     dia.msg.explanation.nonEmpty && ctx.settings.explain.value
 
   // `Diagnostics to be consumed by `Reporter` ---------------------- //

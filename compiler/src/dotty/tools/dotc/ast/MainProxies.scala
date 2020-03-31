@@ -47,7 +47,7 @@ object MainProxies {
 
     def addArgs(call: untpd.Tree, mt: MethodType, idx: Int): untpd.Tree =
       if (mt.isImplicitMethod) {
-        curCtx.error(s"@main method cannot have implicit parameters", pos)
+        ctx.error(s"@main method cannot have implicit parameters", pos)
         call
       }
       else {
@@ -65,7 +65,7 @@ object MainProxies {
         mt.resType match {
           case restpe: MethodType =>
             if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)
-              curCtx.error(s"varargs parameter of @main method must come last", pos)
+              ctx.error(s"varargs parameter of @main method must come last", pos)
             addArgs(call1, restpe, idx + args.length)
           case _ =>
             call1
@@ -74,7 +74,7 @@ object MainProxies {
 
     var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)
-      curCtx.error(s"@main method is not statically accessible", pos)
+      ctx.error(s"@main method is not statically accessible", pos)
     else {
       var call = ref(mainFun.termRef)
       mainFun.info match {
@@ -82,9 +82,9 @@ object MainProxies {
         case mt: MethodType =>
           call = addArgs(call, mt, 0)
         case _: PolyType =>
-          curCtx.error(s"@main method cannot have type parameters", pos)
+          ctx.error(s"@main method cannot have type parameters", pos)
         case _ =>
-          curCtx.error(s"@main can only annotate a method", pos)
+          ctx.error(s"@main can only annotate a method", pos)
       }
       val errVar = Ident(nme.error)
       val handler = CaseDef(
@@ -99,7 +99,7 @@ object MainProxies {
       val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
       val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
         .withFlags(Final)
-      if (!curCtx.reporter.hasErrors) result = mainCls.withSpan(mainAnnotSpan) :: Nil
+      if (!ctx.reporter.hasErrors) result = mainCls.withSpan(mainAnnotSpan) :: Nil
     }
     result
   }

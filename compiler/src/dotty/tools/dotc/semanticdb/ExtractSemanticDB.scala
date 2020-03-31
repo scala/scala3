@@ -357,7 +357,7 @@ class ExtractSemanticDB extends Phase:
       addSymName(b, sym)
       b.toString
 
-    inline private def source(using Context) = curCtx.compilationUnit.source
+    inline private def source(using Context) = ctx.compilationUnit.source
 
     private def range(span: Span)(using Context): Option[Range] =
       def lineCol(offset: Int) = (source.offsetToLine(offset), source.column(offset))
@@ -580,11 +580,11 @@ object ExtractSemanticDB:
   def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
     val sourcePath = absolutePath(source.file.jpath)
-    val sourceRoot = absolutePath(Paths.get(curCtx.settings.sourceroot.value))
+    val sourceRoot = absolutePath(Paths.get(ctx.settings.sourceroot.value))
     val semanticdbTarget =
-      val semanticdbTargetSetting = curCtx.settings.semanticdbTarget.value
+      val semanticdbTargetSetting = ctx.settings.semanticdbTarget.value
       absolutePath(
-        if semanticdbTargetSetting.isEmpty then curCtx.settings.outputDir.value.jpath
+        if semanticdbTargetSetting.isEmpty then ctx.settings.outputDir.value.jpath
         else Paths.get(semanticdbTargetSetting)
       )
     val relPath = sourceRoot.relativize(sourcePath)

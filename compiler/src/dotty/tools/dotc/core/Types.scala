@@ -2432,11 +2432,11 @@ object Types {
      *  based tests.
      */
     def canDropAlias(using Context) =
-      if myCanDropAliasPeriod != curCtx.period then
+      if myCanDropAliasPeriod != ctx.period then
         myCanDropAlias =
           !symbol.canMatchInheritedSymbols
           || !prefix.baseClasses.exists(_.info.decls.lookup(name).is(Deferred))
-        myCanDropAliasPeriod = curCtx.period
+        myCanDropAliasPeriod = ctx.period
       myCanDropAlias
 
     override def designator: Designator = myDesignator
@@ -2633,7 +2633,7 @@ object Types {
      *  Can be called only as long as the ref is still undefined.
      */
     def update(tp: Type)(using Context) =
-      assert(myRef == null || curCtx.reporter.errorsReported)
+      assert(myRef == null || ctx.reporter.errorsReported)
       myRef = tp
       computed = true
       refFn = null
@@ -3012,7 +3012,7 @@ object Types {
     def apply(tp: Type)(using Context) =
       OrType(tp, defn.NullType)
     def unapply(tp: Type)(using Context): Option[Type] =
-      if (curCtx.explicitNulls) {
+      if (ctx.explicitNulls) {
         val tp1 = tp.stripNull()
         if tp1 ne tp then Some(tp1) else None
       }
@@ -3030,7 +3030,7 @@ object Types {
     def apply(tp: Type)(using Context) =
       OrType(tp, defn.UncheckedNullAliasType)
     def unapply(tp: Type)(using Context): Option[Type] =
-      if (curCtx.explicitNulls) {
+      if (ctx.explicitNulls) {
         val tp1 = tp.stripUncheckedNull
         if tp1 ne tp then Some(tp1) else None
       }
@@ -4653,10 +4653,10 @@ object Types {
     def apply(m: Message)(using Context): ErrorType =
       val et = new ErrorType:
         def msg(using Context): Message =
-          curCtx.base.errorTypeMsg.get(this) match
+          ctx.base.errorTypeMsg.get(this) match
             case Some(m) => m
             case None => "error message from previous run no longer available"
-      curCtx.base.errorTypeMsg(et) = m
+      ctx.base.errorTypeMsg(et) = m
       et
   end ErrorType
 

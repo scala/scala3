@@ -135,8 +135,8 @@ object Nullables:
     || { val sym = ref.symbol
          !ref.usedOutOfOrder
          && sym.span.exists
-         && curCtx.compilationUnit != null // could be null under -Ytest-pickler
-         && curCtx.compilationUnit.assignmentSpans.contains(sym.span.start)
+         && ctx.compilationUnit != null // could be null under -Ytest-pickler
+         && ctx.compilationUnit.assignmentSpans.contains(sym.span.start)
       }
 
   /** The nullability context to be used after a case that matches pattern `pat`.
@@ -243,7 +243,7 @@ object Nullables:
 
       refSym.is(Mutable) // if it is immutable, we don't need to check the rest conditions
       && refOwner.isTerm
-      && recur(curCtx.owner)
+      && recur(ctx.owner)
 
   extension treeOps on (tree: Tree):
 
@@ -255,7 +255,7 @@ object Nullables:
     /* The nullability info of `tree` */
     def notNullInfo(using Context): NotNullInfo =
       stripInlined(tree).getAttachment(NNInfo) match
-        case Some(info) if !curCtx.erasedTypes => info
+        case Some(info) if !ctx.erasedTypes => info
         case _ => NotNullInfo.empty
 
     /* The nullability info of `tree`, assuming it is a condition that evaluates to `c` */
@@ -270,13 +270,13 @@ object Nullables:
      */
     def notNullConditional(using Context): NotNullConditional =
       stripBlock(tree).getAttachment(NNConditional) match
-        case Some(cond) if !curCtx.erasedTypes => cond
+        case Some(cond) if !ctx.erasedTypes => cond
         case _ => NotNullConditional.empty
 
     /** The current context augmented with nullability information of `tree` */
     def nullableContext(using Context): Context =
       val info = tree.notNullInfo
-      if info.isEmpty then curCtx else curCtx.addNotNullInfo(info)
+      if info.isEmpty then ctx else ctx.addNotNullInfo(info)
 
     /** The current context augmented with nullability information,
      *  assuming the result of the condition represented by `tree` is the same as
@@ -284,18 +284,18 @@ object Nullables:
      */
     def nullableContextIf(c: Boolean)(using Context): Context =
       val info = tree.notNullInfoIf(c)
-      if info.isEmpty then curCtx else curCtx.addNotNullInfo(info)
+      if info.isEmpty then ctx else ctx.addNotNullInfo(info)
 
     /** The context to use for the arguments of the function represented by `tree`.
      *  This is the current context, augmented with nullability information
      *  of the left argument, if the application is a boolean `&&` or `||`.
      */
     def nullableInArgContext(using Context): Context = tree match
-      case Select(x, _) if !curCtx.erasedTypes =>
+      case Select(x, _) if !ctx.erasedTypes =>
         if tree.symbol == defn.Boolean_&& then x.nullableContextIf(true)
         else if tree.symbol == defn.Boolean_|| then x.nullableContextIf(false)
-        else curCtx
-      case _ => curCtx
+        else ctx
+      case _ => ctx
 
     /** The `tree` augmented with nullability information in an attachment.
      *  The following operations lead to nullability info being recorded:
@@ -307,7 +307,7 @@ object Nullables:
     def computeNullable()(using Context): tree.type =
       def setConditional(ifTrue: Set[TermRef], ifFalse: Set[TermRef]) =
         tree.putAttachment(NNConditional, NotNullConditional(ifTrue, ifFalse))
-      if !curCtx.erasedTypes && analyzedOps.contains(tree.symbol.name.toTermName) then
+      if !ctx.erasedTypes && analyzedOps.contains(tree.symbol.name.toTermName) then
         tree match
           case CompareNull(TrackedRef(ref), testEqual) =>
             if testEqual then setConditional(Set(), Set(ref))
@@ -339,7 +339,7 @@ object Nullables:
     def computeAssignNullable()(using Context): tree.type = tree.lhs match
       case TrackedRef(ref) =>
         val rhstp = tree.rhs.typeOpt
-        if curCtx.explicitNulls && ref.isNullableUnion then
+        if ctx.explicitNulls && ref.isNullableUnion then
           if rhstp.isNullType || rhstp.isNullableUnion then
             // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
             // lhs variable is no longer trackable. We don't need to check whether the type `T`
@@ -413,7 +413,7 @@ object Nullables:
             traverseChildren(tree)
         reachable = savedReachable
 
-    populate.traverse(curCtx.compilationUnit.untpdTree)
+    populate.traverse(ctx.compilationUnit.untpdTree)
     populate.tracked
   end assignmentSpans
 
@@ -448,9 +448,9 @@ object Nullables:
       val sym = ref.symbol
       sym.span.exists
       && assignmentSpans.getOrElse(sym.span.start, Nil).exists(whileSpan.contains(_))
-      && curCtx.notNullInfos.impliesNotNull(ref)
-    val retractedVars = curCtx.notNullInfos.flatMap(_.asserted.filter(isRetracted)).toSet
-    curCtx.addNotNullInfo(NotNullInfo(Set(), retractedVars))
+      && ctx.notNullInfos.impliesNotNull(ref)
+    val retractedVars = ctx.notNullInfos.flatMap(_.asserted.filter(isRetracted)).toSet
+    ctx.addNotNullInfo(NotNullInfo(Set(), retractedVars))
 
   /** Post process all arguments to by-name parameters by removing any not-null
    *  info that was used when typing them. Concretely:

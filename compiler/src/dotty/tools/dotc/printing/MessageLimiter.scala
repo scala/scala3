@@ -3,7 +3,7 @@ package dotc
 package printing
 
 import core._
-import Contexts.{Context, curCtx}
+import Contexts.{Context, ctx}
 import util.Property
 import Texts.Text
 
@@ -31,8 +31,8 @@ object MessageLimiter extends Property.Key[MessageLimiter]
 
 class DefaultMessageLimiter extends MessageLimiter:
   override def recursionLimitExceeded()(using Context): Unit =
-    if curCtx.debug then
-      curCtx.warning("Exceeded recursion depth attempting to print.")
+    if ctx.debug then
+      ctx.warning("Exceeded recursion depth attempting to print.")
       Thread.dumpStack()
 
 class SummarizeMessageLimiter(depth: Int) extends MessageLimiter:

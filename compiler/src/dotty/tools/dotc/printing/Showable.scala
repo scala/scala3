@@ -27,5 +27,5 @@ trait Showable extends Any {
    *  Config.summarizeDepth.
    */
   def showSummary(depth: Int = summarizeDepth)(using Context): String =
-    show(using curCtx.fresh.setProperty(MessageLimiter, SummarizeMessageLimiter(depth)))
+    show(using ctx.fresh.setProperty(MessageLimiter, SummarizeMessageLimiter(depth)))
 }

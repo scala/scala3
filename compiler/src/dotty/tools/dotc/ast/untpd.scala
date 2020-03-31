@@ -254,7 +254,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       else if compatible(this.flags, flags) then this | flags
       else
         val what = if flags.isTermFlags then "values" else "types"
-        curCtx.error(em"${(flags & ModifierFlags).flagsString} $what cannot be ${this.flags.flagsString}", curCtx.source.atSpan(span))
+        ctx.error(em"${(flags & ModifierFlags).flagsString} $what cannot be ${this.flags.flagsString}", ctx.source.atSpan(span))
         Modifiers(flags)
 
     /** Modifiers with given list of Mods. It is checked that
@@ -761,5 +761,5 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   protected def FunProto(args: List[Tree], resType: Type)(using Context) =
-    ProtoTypes.FunProto(args, resType)(curCtx.typer, isUsingApply = false)
+    ProtoTypes.FunProto(args, resType)(ctx.typer, isUsingApply = false)
 }

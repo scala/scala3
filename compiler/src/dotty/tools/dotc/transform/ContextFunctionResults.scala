@@ -121,8 +121,8 @@ object ContextFunctionResults:
    *  @param `n` the select nodes seen in previous recursive iterations of this method
    */
   def integrateSelect(tree: untpd.Tree, n: Int = 0)(using Context): Boolean =
-    if curCtx.erasedTypes then
-      integrateSelect(tree, n)(using curCtx.withPhase(curCtx.erasurePhase))
+    if ctx.erasedTypes then
+      integrateSelect(tree, n)(using ctx.withPhase(ctx.erasurePhase))
     else tree match
       case Select(qual, name) =>
         if name == nme.apply && defn.isContextFunctionClass(tree.symbol.maybeOwner) then

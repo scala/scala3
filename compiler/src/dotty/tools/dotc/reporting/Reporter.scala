@@ -247,7 +247,7 @@ abstract class Reporter extends interfaces.ReporterResult {
    */
   def reportsErrorsFor(op: Context => Unit)(using Context): Boolean = {
     val initial = errorCount
-    op(curCtx)
+    op(ctx)
     errorCount > initial
   }
 

@@ -1352,7 +1352,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  Used to make arguments for methods that accept varargs.
    */
   def repeated(trees: List[Tree], tpt: Tree)(using Context): Tree =
-    curCtx.typeAssigner.arrayToRepeated(JavaSeqLiteral(trees, tpt))
+    ctx.typeAssigner.arrayToRepeated(JavaSeqLiteral(trees, tpt))
 
   /** Create a tree representing a list containing all
    *  the elements of the argument list. A "list of tree to
@@ -1370,5 +1370,5 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
 
   protected def FunProto(args: List[Tree], resType: Type)(using Context) =
-    ProtoTypes.FunProtoTyped(args, resType)(curCtx.typer, isUsingApply = false)
+    ProtoTypes.FunProtoTyped(args, resType)(ctx.typer, isUsingApply = false)
 }

@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 
 import core._
-import Contexts.{Context, curCtx}
+import Contexts.{Context, ctx}
 import SymDenotations.ClassDenotation
 import Symbols._
 import util.{FreshNameCreator, SourceFile, NoSource}
@@ -45,10 +45,10 @@ class CompilationUnit protected (val source: SourceFile) {
 
   def suspend()(using Context): Nothing =
     if !suspended then
-      if (curCtx.settings.XprintSuspension.value)
-        curCtx.echo(i"suspended: $this")
+      if (ctx.settings.XprintSuspension.value)
+        ctx.echo(i"suspended: $this")
       suspended = true
-      curCtx.run.suspendedUnits += this
+      ctx.run.suspendedUnits += this
     throw CompilationUnit.SuspendException()
 
   private var myAssignmentSpans: Map[Int, List[Span]] = null

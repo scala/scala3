@@ -34,7 +34,7 @@ class DropOuterAccessors extends MiniPhase with IdentityDenotTransformer:
   override def changesMembers: Boolean = true // the phase drops outer accessors
 
   override def transformTemplate(impl: Template)(using Context): Tree =
-    val outerAccessCount = curCtx.base.countOuterAccessesPhase
+    val outerAccessCount = ctx.base.countOuterAccessesPhase
       .asInstanceOf[CountOuterAccesses]
       .outerAccessCount
 
@@ -80,7 +80,7 @@ class DropOuterAccessors extends MiniPhase with IdentityDenotTransformer:
         })
     assert(droppedParamAccessors.isEmpty,
       i"""Failed to eliminate: $droppedParamAccessors
-          when dropping outer accessors for ${curCtx.owner} with
+          when dropping outer accessors for ${ctx.owner} with
           $impl""")
     cpy.Template(impl)(constr = constr1, body = body1)
   end transformTemplate
