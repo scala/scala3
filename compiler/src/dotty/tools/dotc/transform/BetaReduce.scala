@@ -3,6 +3,7 @@ package dotc
 package transform
 
 import core._
+import Flags._
 import MegaPhase._
 import Symbols._, Contexts._, Types._, Decorators._
 import StdNames.nme
@@ -46,38 +47,34 @@ class BetaReduce extends MiniPhase:
     fn match
       case Typed(expr, _) => betaReduce(tree, expr, args)
       case Block(Nil, expr) => betaReduce(tree, expr, args)
-      case Block((anonFun: DefDef) :: Nil, closure: Closure) => BetaReduce(tree)(anonFun, args, true)
+      case Block((anonFun: DefDef) :: Nil, closure: Closure) => BetaReduce(anonFun, args)
       case _ => tree
 
 object BetaReduce:
   import ast.tpd._
 
   /** Beta-reduces a call to `ddef` with arguments `argSyms` */
-  def apply(tree: Tree)(ddef: DefDef, args: List[Tree], noBindings: Boolean)(using ctx: Context) =
+  def apply(ddef: DefDef, args: List[Tree])(using ctx: Context) =
     val bindings = List.newBuilder[ValDef]
     val vparams = ddef.vparamss.iterator.flatten.toList
+    assert(args.hasSameLengthAs(vparams))
     val argSyms =
       for (arg, param) <- args.zip(vparams) yield
         arg.tpe.dealias match
           case ref @ TermRef(NoPrefix, _) if isPurePath(arg) =>
             ref.symbol
           case _ =>
-            if noBindings then // TODO always generate bindings
-              NoSymbol
-            else
-              val binding = SyntheticValDef(param.name, arg)
-              bindings += binding
-              binding.symbol
+            val flags = Synthetic | (param.symbol.flags & Erased)
+            val binding = ValDef(ctx.newSymbol(ctx.owner, param.name, flags, arg.tpe.widen, coord = arg.span), arg)
+            bindings += binding
+            binding.symbol
 
-    if argSyms.forall(_.exists) && argSyms.hasSameLengthAs(vparams) then // TODO assert rather than fail silently
-      seq(
-        bindings.result(),
-        TreeTypeMap(
-          oldOwners = ddef.symbol :: Nil,
-          newOwners = ctx.owner :: Nil,
-          substFrom = vparams.map(_.symbol),
-          substTo = argSyms
-        ).transform(ddef.rhs)
-      )
-    else
-      tree
+    val expansion = TreeTypeMap(
+      oldOwners = ddef.symbol :: Nil,
+      newOwners = ctx.owner :: Nil,
+      substFrom = vparams.map(_.symbol),
+      substTo = argSyms
+    ).transform(ddef.rhs)
+
+    seq(bindings.result(), expansion)
+  end apply
