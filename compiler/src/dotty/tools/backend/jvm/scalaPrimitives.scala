@@ -4,7 +4,7 @@ package backend.jvm
 import dotc.ast.Trees.Select
 import dotc.ast.tpd._
 import dotc.core._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Names.TermName, StdNames._
 import Types.{JavaArrayType, UnspecifiedErrorType, Type}
 import Symbols.{Symbol, NoSymbol}
@@ -49,7 +49,7 @@ class DottyPrimitives(ictx: Context) {
    * @param tpe The type of the receiver object. It is used only for array
    *            operations
    */
-  def getPrimitive(app: Apply, tpe: Type)(implicit ctx: Context): Int = {
+  def getPrimitive(app: Apply, tpe: Type)(using Context): Int = {
     val fun = app.fun.symbol
     val defn = ctx.definitions
     val code = app.fun match {
@@ -130,7 +130,7 @@ class DottyPrimitives(ictx: Context) {
       primitives(s) = code
     }
 
-    def addPrimitives(cls: Symbol, method: TermName, code: Int)(implicit ctx: Context): Unit = {
+    def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit = {
       val alts = cls.info.member(method).alternatives.map(_.symbol)
       if (alts.isEmpty)
         ctx.error(s"Unknown primitive method $cls.$method")
