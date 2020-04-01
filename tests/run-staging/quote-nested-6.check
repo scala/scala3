@@ -1,0 +1,7 @@
+{
+  type T[X] = scala.List[X]
+  val x: java.lang.String = "foo"
+  val z: T[scala.Predef.String] = scala.List.apply[java.lang.String](x)
+
+  (x: java.lang.String)
+}

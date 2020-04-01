@@ -42,7 +42,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Super(qual, if (mixName.isEmpty) untpd.EmptyTypeIdent else untpd.Ident(mixName), mixinClass)
 
   def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
-    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply[_]] || fn.isInstanceOf[Inlined])
+    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply[_]] || fn.isInstanceOf[Inlined] || fn.isInstanceOf[tasty.TreePickler.Hole])
     ta.assignType(untpd.Apply(fn, args), fn, args)
   }
 

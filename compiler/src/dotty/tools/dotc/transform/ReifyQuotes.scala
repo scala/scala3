@@ -331,7 +331,37 @@ class ReifyQuotes extends MacroTransform {
      */
     private def makeHole(isTermHole: Boolean, body: Tree, splices: List[Tree], tpe: Type)(implicit ctx: Context): Hole = {
       val idx = embedded.addTree(body, NoSymbol)
-      Hole(isTermHole, idx, splices).withType(tpe).asInstanceOf[Hole]
+
+      /** Remove references to local types that will not be defined in this quote */
+      def getTypeHoleType(using ctx: Context) = new TypeMap() {
+        override def apply(tp: Type): Type = tp match
+          case tp: TypeRef if tp.typeSymbol.isSplice =>
+            apply(tp.dealias)
+          case tp @ TypeRef(pre, _) if pre == NoPrefix || pre.termSymbol.isLocal =>
+            val hiBound = tp.typeSymbol.info match
+              case info @ ClassInfo(_, _, classParents, _, _) => classParents.reduce(_ & _)
+              case info => info.hiBound
+            apply(hiBound)
+          case tp =>
+            mapOver(tp)
+      }
+
+      /** Remove references to local types that will not be defined in this quote */
+      def getTermHoleType(using ctx: Context) = new TypeMap() {
+        override def apply(tp: Type): Type = tp match
+          case tp @ TypeRef(NoPrefix, _) if capturers.contains(tp.symbol) =>
+            // reference to term with a type defined in outer quote
+            getTypeHoleType(tp)
+          case tp @ TermRef(NoPrefix, _) if capturers.contains(tp.symbol) =>
+            // widen term refs to terms defined in outer quote
+            apply(tp.widenTermRefExpr)
+          case tp =>
+            mapOver(tp)
+      }
+
+      val holeType = if isTermHole then getTermHoleType(tpe) else getTypeHoleType(tpe)
+
+      Hole(isTermHole, idx, splices).withType(holeType).asInstanceOf[Hole]
     }
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree =

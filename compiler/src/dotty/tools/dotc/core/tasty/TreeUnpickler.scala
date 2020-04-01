@@ -47,13 +47,11 @@ import scala.annotation.internal.sharable
  *  @param reader              the reader from which to unpickle
  *  @param posUnpicklerOpt     the unpickler for positions, if it exists
  *  @param commentUnpicklerOpt the unpickler for comments, if it exists
- *  @param splices
  */
 class TreeUnpickler(reader: TastyReader,
                     nameAtRef: NameRef => TermName,
                     posUnpicklerOpt: Option[PositionUnpickler],
-                    commentUnpicklerOpt: Option[CommentUnpickler],
-                    splices: Seq[Any]) {
+                    commentUnpicklerOpt: Option[CommentUnpickler]) {
   import TreeUnpickler._
   import tpd._
 
@@ -1224,7 +1222,10 @@ class TreeUnpickler(reader: TastyReader,
               val alias = if currentAddr == end then EmptyTree else readTpt()
               TypeBoundsTree(lo, hi, alias)
             case HOLE =>
-              readHole(end, isType = false)
+              val idx = readNat()
+              val tpe = readType()
+              val args = until(end)(readTerm())
+              TreePickler.Hole(true, idx, args).withType(tpe)
             case _ =>
               readPathTerm()
           }
@@ -1257,7 +1258,10 @@ class TreeUnpickler(reader: TastyReader,
         case HOLE =>
           readByte()
           val end = readEnd()
-          readHole(end, isType = true)
+          val idx = readNat()
+          val tpe = readType()
+          val args = until(end)(readTerm())
+          TreePickler.Hole(false, idx, args).withType(tpe)
         case _ =>
           if (isTypeTreeTag(nextByte)) readTerm()
           else {
@@ -1297,35 +1301,6 @@ class TreeUnpickler(reader: TastyReader,
       val localReader = fork
       goto(end)
       owner => new LazyReader(localReader, owner, ctx.mode, ctx.source, op)
-    }
-
-    def readHole(end: Addr, isType: Boolean)(implicit ctx: Context): Tree = {
-      val idx = readNat()
-      val args = until(end)(readTerm())
-      val splice = splices(idx)
-      def wrap(arg: Tree) =
-        if (arg.isTerm) (qctx: scala.quoted.QuoteContext) ?=> new TastyTreeExpr(arg, QuoteContext.scopeId)
-        else new TreeType(arg, QuoteContext.scopeId)
-      val reifiedArgs = args.map(wrap)
-      val filled = if (isType) {
-        val quotedType = splice.asInstanceOf[Seq[Any] => quoted.Type[?]](reifiedArgs)
-        PickledQuotes.quotedTypeToTree(quotedType)
-      }
-      else {
-        val splice1 = splice.asInstanceOf[Seq[Any] => scala.quoted.QuoteContext ?=> quoted.Expr[?]]
-        val quotedExpr = splice1(reifiedArgs)(using dotty.tools.dotc.quoted.QuoteContext())
-        PickledQuotes.quotedExprToTree(quotedExpr)
-      }
-      // We need to make sure a hole is created with the source file of the surrounding context, even if
-      // it filled with contents a different source file. Otherwise nodes containing holes might end
-      // up without a position. PositionPickler makes sure that holes always get spans assigned,
-      // so we can just return the filler tree with the new source and no span here.
-      if (filled.source == ctx.source) filled
-      else {
-        val filled1 = filled.cloneIn(ctx.source)
-        filled1.span = NoSpan
-        filled1
-      }
     }
 
 // ------ Setting positions ------------------------------------------------
