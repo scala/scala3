@@ -24,7 +24,7 @@ object PathResolver {
    */
   def makeAbsolute(cp: String): String = ClassPath.map(cp, x => Path(x).toAbsolute.path)
 
-  /** pretty print class path 
+  /** pretty print class path
    */
   def ppcp(s: String): String = split(s) match {
     case Nil      => ""
@@ -51,7 +51,7 @@ object PathResolver {
     def scalaHome: String           = propOrEmpty("scala.home")
     def scalaExtDirs: String        = propOrEmpty("scala.ext.dirs")
 
-    /** The java classpath and whether to use it. 
+    /** The java classpath and whether to use it.
      */
     def javaUserClassPath: String   = propOrElse("java.class.path", "")
     def useJavaClassPath: Boolean    = propOrFalse("scala.usejavacp")
@@ -134,7 +134,7 @@ object PathResolver {
   }
 
   /** Show values in Environment and Defaults when no argument is provided.
-   *  Otherwise, show values in Calculated as if those options had been given 
+   *  Otherwise, show values in Calculated as if those options had been given
    *  to a scala runner.
    */
   def main(args: Array[String]): Unit =
@@ -142,8 +142,7 @@ object PathResolver {
       println(Environment)
       println(Defaults)
     }
-    else {
-      implicit val ctx = (new ContextBase).initialCtx
+    else withContext(ContextBase().initialCtx) {
       val ArgsSummary(sstate, rest, errors, warnings) =
         ctx.settings.processArguments(args.toList, true)
       errors.foreach(println)
@@ -165,7 +164,7 @@ class PathResolver(implicit ctx: Context) {
 
   private val classPathFactory = new ClassPathFactory
 
-  private def cmdLineOrElse(name: String, alt: String) = 
+  private def cmdLineOrElse(name: String, alt: String) =
     commandLineFor(name) match {
       case Some("") | None => alt
       case Some(x)         => x

@@ -1445,14 +1445,17 @@ object Trees {
             case UnApply(fun, implicits, patterns) =>
               this(this(this(x, fun), implicits), patterns)
             case tree @ ValDef(_, tpt, _) =>
-              implicit val ctx = localCtx
-              this(this(x, tpt), tree.rhs)
+              withContext(localCtx) {
+                this(this(x, tpt), tree.rhs)
+              }
             case tree @ DefDef(_, tparams, vparamss, tpt, _) =>
-              implicit val ctx = localCtx
-              this(this(vparamss.foldLeft(this(x, tparams))(apply), tpt), tree.rhs)
+              withContext(localCtx) {
+                this(this(vparamss.foldLeft(this(x, tparams))(apply), tpt), tree.rhs)
+              }
             case TypeDef(_, rhs) =>
-              implicit val ctx = localCtx
-              this(x, rhs)
+              withContext(localCtx) {
+                this(x, rhs)
+              }
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
               this(this(this(this(x, constr), parents), self), tree.body)
             case Import(expr, _) =>
