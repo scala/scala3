@@ -20,7 +20,7 @@ object DottyUnpickler {
   class TreeSectionUnpickler(posUnpickler: Option[PositionUnpickler], commentUnpickler: Option[CommentUnpickler])
   extends SectionUnpickler[TreeUnpickler](TreePickler.sectionName) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): TreeUnpickler =
-      new TreeUnpickler(reader, nameAtRef, posUnpickler, commentUnpickler, Seq.empty)
+      new TreeUnpickler(reader, nameAtRef, posUnpickler, commentUnpickler)
   }
 
   class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler]("Positions") {

@@ -13,6 +13,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter }
+import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.quoted.QuoteContext
 import dotty.tools.dotc.tastyreflect.{ReflectionImpl, TastyTreeExpr, TreeType}
@@ -191,7 +192,7 @@ object PickledQuotes {
     quotePickling.println(s"**** unpickling quote from TASTY\n${new TastyPrinter(bytes).printContents()}")
 
     val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
-    val unpickler = new QuoteUnpickler(bytes, splices, mode)
+    val unpickler = new DottyUnpickler(bytes, mode)
     unpickler.enter(Set.empty)
 
     val tree = unpickler.tree
