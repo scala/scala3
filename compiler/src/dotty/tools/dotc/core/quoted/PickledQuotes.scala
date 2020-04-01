@@ -74,7 +74,7 @@ object PickledQuotes {
       override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args) =>
           val reifiedArgs = args.map { arg =>
-            if (arg.isTerm) (qctx: scala.quoted.QuoteContext) ?=> new TastyTreeExpr(arg, QuoteContext.scopeId)
+            if (arg.isTerm) (using qctx: scala.quoted.QuoteContext) => new TastyTreeExpr(arg, QuoteContext.scopeId)
             else new TreeType(arg, QuoteContext.scopeId)
           }
           if isTerm then
