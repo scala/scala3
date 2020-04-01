@@ -13,7 +13,7 @@ import Constants._
 import StagingContext._
 import StdNames._
 import transform.SymUtils._
-import Contexts.{Context, withContext, ctx}
+import Contexts.{Context, inContext, ctx}
 import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName, BodyRetainerName}
 import ProtoTypes.selectionProto
@@ -1341,7 +1341,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           ctx.echo(i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}", call.sourcePos)
       ctx.compilationUnit.suspend() // this throws a SuspendException
 
-    val evaluatedSplice = withContext(tastyreflect.MacroExpansion.context(inlinedFrom)) {
+    val evaluatedSplice = inContext(tastyreflect.MacroExpansion.context(inlinedFrom)) {
       Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)
     }
     val inlinedNormailizer = new TreeMap {

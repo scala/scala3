@@ -1236,7 +1236,7 @@ object Trees {
 
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
       def transform(tree: Tree)(using Context): Tree = {
-        withContext(
+        inContext(
           if tree.source != ctx.source && tree.source.exists
           then ctx.withSource(tree.source)
           else ctx
@@ -1300,7 +1300,7 @@ object Trees {
             case AppliedTypeTree(tpt, args) =>
               cpy.AppliedTypeTree(tree)(transform(tpt), transform(args))
             case LambdaTypeTree(tparams, body) =>
-              withContext(localCtx) {
+              inContext(localCtx) {
                 cpy.LambdaTypeTree(tree)(transformSub(tparams), transform(body))
               }
             case MatchTypeTree(bound, selector, cases) =>
@@ -1318,17 +1318,17 @@ object Trees {
             case EmptyValDef =>
               tree
             case tree @ ValDef(name, tpt, _) =>
-              withContext(localCtx) {
+              inContext(localCtx) {
                 val tpt1 = transform(tpt)
                 val rhs1 = transform(tree.rhs)
                 cpy.ValDef(tree)(name, tpt1, rhs1)
               }
             case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
-              withContext(localCtx) {
+              inContext(localCtx) {
                 cpy.DefDef(tree)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(tree.rhs))
               }
             case tree @ TypeDef(name, rhs) =>
-              withContext(localCtx) {
+              inContext(localCtx) {
                 cpy.TypeDef(tree)(name, transform(rhs))
               }
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
@@ -1429,7 +1429,7 @@ object Trees {
             case AppliedTypeTree(tpt, args) =>
               this(this(x, tpt), args)
             case LambdaTypeTree(tparams, body) =>
-              withContext(localCtx) {
+              inContext(localCtx) {
                 this(this(x, tparams), body)
               }
             case MatchTypeTree(bound, selector, cases) =>
@@ -1445,15 +1445,15 @@ object Trees {
             case UnApply(fun, implicits, patterns) =>
               this(this(this(x, fun), implicits), patterns)
             case tree @ ValDef(_, tpt, _) =>
-              withContext(localCtx) {
+              inContext(localCtx) {
                 this(this(x, tpt), tree.rhs)
               }
             case tree @ DefDef(_, tparams, vparamss, tpt, _) =>
-              withContext(localCtx) {
+              inContext(localCtx) {
                 this(this(vparamss.foldLeft(this(x, tparams))(apply), tpt), tree.rhs)
               }
             case TypeDef(_, rhs) =>
-              withContext(localCtx) {
+              inContext(localCtx) {
                 this(x, rhs)
               }
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>

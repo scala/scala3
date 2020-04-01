@@ -43,7 +43,7 @@ object Splicer {
       val interpreter = new Interpreter(pos, classLoader)
       val macroOwner = ctx.newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
       try
-        withContext(ctx.withOwner(macroOwner)) {
+        inContext(ctx.withOwner(macroOwner)) {
           // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
           val interpretedExpr = interpreter.interpret[scala.quoted.QuoteContext => scala.quoted.Expr[Any]](tree)
           val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContext())))

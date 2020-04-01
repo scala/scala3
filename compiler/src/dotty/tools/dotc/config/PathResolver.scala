@@ -142,7 +142,7 @@ object PathResolver {
       println(Environment)
       println(Defaults)
     }
-    else withContext(ContextBase().initialCtx) {
+    else inContext(ContextBase().initialCtx) {
       val ArgsSummary(sstate, rest, errors, warnings) =
         ctx.settings.processArguments(args.toList, true)
       errors.foreach(println)

@@ -53,7 +53,7 @@ object Contexts {
   def ctx(using ctx: Context): Context = ctx
 
   /** Run `op` with given context */
-  inline def withContext[T](c: Context)(inline op: Context ?=> T): T =
+  inline def inContext[T](c: Context)(inline op: Context ?=> T): T =
     op(using c)
 
   /** A context is passed basically everywhere in dotc.

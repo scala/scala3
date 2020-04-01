@@ -100,7 +100,7 @@ object ContextFunctionResults:
    *  parameter count.
    */
   def contextFunctionResultTypeCovering(meth: Symbol, paramCount: Int)(using Context) =
-    withContext(ctx.withPhase(ctx.erasurePhase)) {
+    inContext(ctx.withPhase(ctx.erasurePhase)) {
       // Recursive instances return pairs of context types and the
       // # of parameters they represent.
       def missingCR(tp: Type, crCount: Int): (Type, Int) =
