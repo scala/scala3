@@ -13,12 +13,19 @@ import Types._
 import Decorators._
 import DenotTransformers._
 import StdNames._
+import Names._
 import NameKinds._
+import NameOps._
 import ast.Trees._
 import collection.mutable
 
 object Mixin {
   val name: String = "mixin"
+
+  def traitSetterName(getter: TermSymbol)(using Context): TermName =
+    getter.ensureNotPrivate.name
+      .expandedName(getter.owner, TraitSetterName)
+      .asTermName.setterName
 }
 
 /** This phase performs the following transformations:
@@ -127,12 +134,27 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         else sym.copySymDenotation(initFlags = sym.flags &~ ParamAccessor | Deferred)
       sym1.ensureNotPrivate
     }
-    else if (sym.isConstructor && (sym.owner.is(Trait, butNot = Scala2x) || (sym.owner.isAllOf(Trait | Scala2x) && ctx.settings.scalajs.value)))
+    else if (sym.isConstructor && sym.owner.is(Trait))
       sym.copySymDenotation(
         name = nme.TRAIT_CONSTRUCTOR,
         info = MethodType(Nil, sym.info.resultType))
+    else if sym.is(Trait) then
+      val classInfo = sym.asClass.classInfo
+      val decls1 = classInfo.decls.cloneScope
+      var modified: Boolean = false
+      for (getter <- classInfo.decls)
+        if needsTraitSetter(getter) then
+          val setter = makeTraitSetter(getter.asTerm)
+          decls1.enter(setter)
+          modified = true
+      if modified then
+        sym.copySymDenotation(
+          info = classInfo.derivedClassInfo(decls = decls1))
+      else
+        sym
     else
       sym
+  end transformSym
 
   private def initializer(sym: Symbol)(using Context): TermSymbol = {
     if (sym.is(Lazy)) sym
@@ -149,32 +171,34 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     }
   }.asTerm
 
+  private def wasOneOf(sym: Symbol, flags: FlagSet)(using Context): Boolean =
+    atPhase(thisPhase) { sym.isOneOf(flags) }
+
+  private def needsTraitSetter(sym: Symbol)(using Context): Boolean =
+    sym.isGetter && !wasOneOf(sym, DeferredOrLazy | ParamAccessor) && !sym.setter.exists
+      && !sym.info.resultType.isInstanceOf[ConstantType]
+
+  private def makeTraitSetter(getter: TermSymbol)(using Context): Symbol =
+    getter.copy(
+      name = Mixin.traitSetterName(getter),
+      flags = Method | Accessor | Deferred,
+      info = MethodType(getter.info.resultType :: Nil, defn.UnitType))
+
   override def transformTemplate(impl: Template)(using Context): Template = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisPhase)
     import ops._
 
     def traitDefs(stats: List[Tree]): List[Tree] = {
-      val initBuf = new mutable.ListBuffer[Tree]
-      stats.flatMap({
-        case stat: DefDef if stat.symbol.isGetter && !stat.rhs.isEmpty && !stat.symbol.is(Lazy) =>
-          // make initializer that has all effects of previous getter,
-          // replace getter rhs with empty tree.
-          val vsym = stat.symbol
-          val isym = initializer(vsym)
-          val rhs = Block(
-            initBuf.toList.map(_.changeOwnerAfter(impl.symbol, isym, thisPhase)),
-            stat.rhs.changeOwnerAfter(vsym, isym, thisPhase).wildcardToDefault)
-          initBuf.clear()
-          cpy.DefDef(stat)(rhs = EmptyTree) :: DefDef(isym, rhs) :: Nil
+      stats.flatMap {
+        case stat: DefDef if needsTraitSetter(stat.symbol) =>
+          // add a trait setter for this getter
+          stat :: DefDef(stat.symbol.traitSetter.asTerm, EmptyTree) :: Nil
         case stat: DefDef if stat.symbol.isSetter =>
           cpy.DefDef(stat)(rhs = EmptyTree) :: Nil
-        case stat: DefTree =>
-          stat :: Nil
         case stat =>
-          initBuf += stat
-          Nil
-      }) ++ initBuf
+          stat :: Nil
+      }
     }
 
     /** Map constructor call to a triple of a supercall, and if the target
@@ -221,9 +245,6 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           //println(i"synth super call ${baseCls.primaryConstructor}: ${baseCls.primaryConstructor.info}")
           transformFollowingDeep(superRef(baseCls.primaryConstructor).appliedToNone) :: Nil
 
-    def wasOneOf(sym: Symbol, flags: FlagSet) =
-      atPhase(thisPhase) { sym.isOneOf(flags) }
-
     def traitInits(mixin: ClassSymbol): List[Tree] = {
       val argsIt = superCallsAndArgs.get(mixin) match
         case Some((_, _, args)) => args.iterator
@@ -241,33 +262,28 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           EmptyTree
 
       for (getter <- mixin.info.decls.toList if getter.isGetter && !wasOneOf(getter, Deferred)) yield {
-        val isScala2x = mixin.is(Scala2x)
-        def default = Underscore(getter.info.resultType)
-        def initial = transformFollowing(superRef(initializer(getter)).appliedToNone)
-
         if (isCurrent(getter) || getter.name.is(ExpandedName)) {
           val rhs =
             if (wasOneOf(getter, ParamAccessor))
               nextArgument()
-            else if (isScala2x)
-              if (getter.is(Lazy, butNot = Module))
-                initial
-              else if (getter.is(Module))
-                New(getter.info.resultType, List(This(cls)))
-              else
-                Underscore(getter.info.resultType)
+            else if (getter.is(Lazy, butNot = Module))
+              transformFollowing(superRef(getter).appliedToNone)
+            else if (getter.is(Module))
+              New(getter.info.resultType, List(This(cls)))
             else
-              initial
+              Underscore(getter.info.resultType)
           // transformFollowing call is needed to make memoize & lazy vals run
           transformFollowing(DefDef(mkForwarderSym(getter.asTerm), rhs))
         }
-        else if (isScala2x || wasOneOf(getter, ParamAccessor | Lazy)) EmptyTree
-        else initial
+        else EmptyTree
       }
     }
 
     def setters(mixin: ClassSymbol): List[Tree] =
-      for (setter <- mixin.info.decls.filter(setr => setr.isSetter && !wasOneOf(setr, Deferred)))
+      val mixinSetters = mixin.info.decls.filter { sym =>
+        sym.isSetter && (!wasOneOf(sym, Deferred) || sym.name.is(TraitSetterName))
+      }
+      for (setter <- mixinSetters)
       yield transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
 
     def mixinForwarders(mixin: ClassSymbol): List[Tree] =

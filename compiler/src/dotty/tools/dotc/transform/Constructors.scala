@@ -205,6 +205,16 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
                 owner = constr.symbol).installAfter(thisPhase)
               constrStats += intoConstr(stat, sym)
             }
+          case stat @ DefDef(name, _, _, tpt, _)
+              if stat.symbol.isGetter && stat.symbol.owner.is(Trait) && !stat.symbol.is(Lazy) =>
+            val sym = stat.symbol
+            assert(isRetained(sym), sym)
+            if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
+              val setter =
+                if (sym.setter.exists) sym.setter
+                else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
+              constrStats += Apply(ref(setter), intoConstr(stat.rhs, sym).withSpan(stat.span) :: Nil)
+            clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
           case DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>
             clsStats += mapOuter(outerParam.symbol).transform(stat)
           case _: DefTree =>
