@@ -18,14 +18,14 @@ import reporting.trace
  */
 object VarianceChecker {
   case class VarianceError(tvar: Symbol, required: Variance)
-  def check(tree: tpd.Tree)(implicit ctx: Context): Unit =
-    new VarianceChecker()(ctx).Traverser.traverse(tree)
+  def check(tree: tpd.Tree)(using Context): Unit =
+    new VarianceChecker(using ctx).Traverser.traverse(tree)
 
   /** Check that variances of type lambda correspond to their occurrences in its body.
    *  Note: this is achieved by a mechanism separate from checking class type parameters.
    *  Question: Can the two mechanisms be combined in one?
    */
-  def checkLambda(tree: tpd.LambdaTypeTree, bounds: TypeBounds)(implicit ctx: Context): Unit =
+  def checkLambda(tree: tpd.LambdaTypeTree, bounds: TypeBounds)(using Context): Unit =
     def checkType(tpe: Type): Unit = tpe match
       case tl: HKTypeLambda if tl.isDeclaredVarianceLambda =>
         val checkOK = new TypeAccumulator[Boolean] {
@@ -72,7 +72,7 @@ object VarianceChecker {
     else "invariant"
 }
 
-class VarianceChecker()(implicit ctx: Context) {
+class VarianceChecker(using Context) {
   import VarianceChecker._
   import tpd._
 
@@ -179,7 +179,7 @@ class VarianceChecker()(implicit ctx: Context) {
       case None =>
     }
 
-    override def traverse(tree: Tree)(implicit ctx: Context) = {
+    override def traverse(tree: Tree)(using Context) = {
       def sym = tree.symbol
       // No variance check for private/protected[this] methods/values.
       def skip = !sym.exists
