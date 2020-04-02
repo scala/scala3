@@ -528,7 +528,7 @@ trait ImplicitRunInfo {
      *  abstract types are eliminated.
      */
     object liftToAnchors extends TypeMap {
-      override implicit protected val ctx: Context = liftingCtx
+      override implicit protected val mapCtx: Context = liftingCtx
       override def stopAtStatic = true
 
       def apply(tp: Type) = tp.widenDealias match {

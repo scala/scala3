@@ -4811,7 +4811,7 @@ object Types {
     }
   }
 
-  abstract class TypeMap(implicit protected val ctx: Context)
+  abstract class TypeMap(implicit protected val mapCtx: Context)
   extends VariantTraversal with (Type => Type) { thisMap =>
 
     protected def stopAtStatic: Boolean = true
@@ -4858,7 +4858,7 @@ object Types {
     def mapOver(tp: Type): Type = {
       record(s"mapOver ${getClass}")
       record("mapOver total")
-      implicit val ctx = this.ctx
+      implicit val ctx = this.mapCtx
       tp match {
         case tp: NamedType =>
           if (stopAtStatic && tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
@@ -4968,7 +4968,7 @@ object Types {
 
     private def treeTypeMap = new TreeTypeMap(typeMap = this)
 
-    def mapOver(syms: List[Symbol]): List[Symbol] = ctx.mapSymbols(syms, treeTypeMap)
+    def mapOver(syms: List[Symbol]): List[Symbol] = mapCtx.mapSymbols(syms, treeTypeMap)
 
     def mapOver(scope: Scope): Scope = {
       val elems = scope.toList
@@ -5271,7 +5271,7 @@ object Types {
 
   // ----- TypeAccumulators ----------------------------------------------------
 
-  abstract class TypeAccumulator[T](implicit protected val ctx: Context)
+  abstract class TypeAccumulator[T](implicit protected val accCtx: Context)
   extends VariantTraversal with ((T, Type) => T) {
 
     protected def stopAtStatic: Boolean = true
