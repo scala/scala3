@@ -79,7 +79,7 @@ object Implicits {
    *  represents a set of references to implicit definitions.
    */
   abstract class ImplicitRefs(initctx: Context) {
-    implicit val ctx: Context =
+    implicit val irefCtx: Context =
       if (initctx == NoContext) initctx else initctx retractMode Mode.ImplicitsEnabled
 
     /** The nesting level of this context. Non-zero only in ContextialImplicits */
@@ -274,9 +274,9 @@ object Implicits {
      */
     override val level: Int =
       if (outerImplicits == null) 1
-      else if (ctx.scala2CompatMode ||
-               (ctx.owner eq outerImplicits.ctx.owner) &&
-               (ctx.scope eq outerImplicits.ctx.scope) &&
+      else if (irefCtx.scala2CompatMode ||
+               (irefCtx.owner eq outerImplicits.irefCtx.owner) &&
+               (irefCtx.scope eq outerImplicits.irefCtx.scope) &&
                !refs.head.implicitName.is(LazyImplicitName)) outerImplicits.level
       else outerImplicits.level + 1
 
@@ -302,7 +302,7 @@ object Implicits {
           if (monitored) record(s"elided eligible refs", elided(this))
           eligibles
         }
-        else if (ctx eq NoContext) Nil
+        else if (irefCtx eq NoContext) Nil
         else {
           val result = computeEligible(tp)
           eligibleCache.put(tp, result)
@@ -311,7 +311,7 @@ object Implicits {
       }
 
     private def computeEligible(tp: Type): List[Candidate] = /*>|>*/ trace(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
-      if (monitored) record(s"check eligible refs in ctx", refs.length)
+      if (monitored) record(s"check eligible refs in irefCtx", refs.length)
       val ownEligible = filterMatching(tp)
       if (isOuterMost) ownEligible
       else ownEligible ::: {
@@ -332,9 +332,9 @@ object Implicits {
       if (this == NoContext.implicits) this
       else {
         val outerExcluded = outerImplicits exclude root
-        if (ctx.importInfo.site.termSymbol == root) outerExcluded
+        if (irefCtx.importInfo.site.termSymbol == root) outerExcluded
         else if (outerExcluded eq outerImplicits) this
-        else new ContextualImplicits(refs, outerExcluded)(ctx)
+        else new ContextualImplicits(refs, outerExcluded)(irefCtx)
       }
   }
 

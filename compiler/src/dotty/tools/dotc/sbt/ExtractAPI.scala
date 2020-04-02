@@ -124,7 +124,7 @@ class ExtractAPI extends Phase {
  *  without going through an intermediate representation, see
  *  http://www.scala-sbt.org/0.13/docs/Understanding-Recompilation.html#Hashing+an+API+representation
  */
-private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder {
+private class ExtractAPICollector(implicit ctx: Context) extends ThunkHolder {
   import tpd._
   import xsbti.api
 
