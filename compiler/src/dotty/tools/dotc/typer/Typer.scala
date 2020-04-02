@@ -770,7 +770,7 @@ class Typer extends Namer
     case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper && !(tref =:= pt) =>
       require(ctx.mode.is(Mode.Pattern))
       inferImplicit(defn.ClassTagClass.typeRef.appliedTo(tref),
-                    EmptyTree, tree.tpt.span)(ctx.retractMode(Mode.Pattern)) match {
+                    EmptyTree, tree.tpt.span)(using ctx.retractMode(Mode.Pattern)) match {
         case SearchSuccess(clsTag, _, _) =>
           typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt)
         case _ =>

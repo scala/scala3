@@ -935,7 +935,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         def searchImplicit(sym: TermSymbol, tpt: Tree) = {
           val evTyper = new Typer
           val evCtx = ctx.fresh.setTyper(evTyper)
-          val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(evCtx)
+          val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(using evCtx)
           evidence.tpe match {
             case fail: Implicits.AmbiguousImplicits =>
               ctx.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.sourcePos)
