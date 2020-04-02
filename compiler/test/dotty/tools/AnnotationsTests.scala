@@ -20,7 +20,6 @@ class AnnotationsTest:
       VirtualJavaSource("A.java",
         "@Annot(values = {}) public class A {}")) { javaOutputDir =>
       inCompilerContext(javaOutputDir.toString + File.pathSeparator + TestConfiguration.basicClasspath) {
-        (using ctx: Context) =>
         val defn = ctx.definitions
         val cls = ctx.requiredClass("A")
         val annotCls = ctx.requiredClass("Annot")
