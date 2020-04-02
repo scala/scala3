@@ -277,8 +277,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
           val pos = call.sourcePos
-          val callTrace = Inliner.inlineCallTrace(call.symbol, pos)(ctx.withSource(pos.source))
-          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
+          val callTrace = Inliner.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
+          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
         case templ: Template =>
           withNoCheckNews(templ.parents.flatMap(newPart)) {
             Checking.checkEnumParentOK(templ.symbol.owner)

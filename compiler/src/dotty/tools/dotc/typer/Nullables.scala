@@ -330,7 +330,7 @@ object Nullables:
     /** Compute nullability information for this tree and all its subtrees */
     def computeNullableDeeply()(using Context): Unit =
       new TreeTraverser {
-        def traverse(tree: Tree)(implicit ctx: Context) =
+        def traverse(tree: Tree)(using Context) =
           traverseChildren(tree)
           tree.computeNullable()
       }.traverse(tree)
@@ -385,7 +385,7 @@ object Nullables:
        */
       var reachable: Set[Name] = Set.empty
 
-      def traverse(tree: Tree)(implicit ctx: Context) =
+      def traverse(tree: Tree)(using Context) =
         val savedReachable = reachable
         tree match
           case Block(stats, expr) =>
@@ -482,7 +482,7 @@ object Nullables:
                 case _ => super.transform(t)
 
             object retyper extends ReTyper:
-              override def typedUnadapted(t: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree = t match
+              override def typedUnadapted(t: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = t match
                 case t: ValDef if !t.symbol.is(Lazy) => super.typedUnadapted(t, pt, locked)
                 case t: MemberDef => promote(t)
                 case _ => super.typedUnadapted(t, pt, locked)
