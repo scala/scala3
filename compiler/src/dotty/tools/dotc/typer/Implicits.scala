@@ -1957,7 +1957,7 @@ final class SearchRoot extends SearchHistory {
             // Substitute dictionary references into dictionary entry RHSs
             val rhsMap = new TreeTypeMap(treeMap = {
               case id: Ident if vsymMap.contains(id.symbol) =>
-                tpd.ref(vsymMap(id.symbol))
+                tpd.ref(vsymMap(id.symbol))(ctx.withSource(id.source)).withSpan(id.span)
               case tree => tree
             })
             val nrhss = rhss.map(rhsMap(_))
@@ -1981,7 +1981,7 @@ final class SearchRoot extends SearchHistory {
 
             val res = resMap(tree)
 
-            val blk = Inliner.reposition(Block(classDef :: inst :: Nil, res), span)
+            val blk = Block(classDef :: inst :: Nil, res).withSpan(span)
 
             success.copy(tree = blk)(success.tstate, success.gstate)
           }
