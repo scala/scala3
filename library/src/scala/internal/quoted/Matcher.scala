@@ -24,7 +24,7 @@ private[quoted] object Matcher {
      */
     private type Env = Map[Symbol, Symbol]
 
-    inline private def withEnv[T](env: Env)(body: => Env ?=> T): T = body(using env)
+    inline private def withEnv[T](env: Env)(inline body: Env ?=> T): T = body(using env)
 
     class SymBinding(val sym: Symbol, val fromAbove: Boolean)
 
