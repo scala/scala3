@@ -3286,7 +3286,7 @@ class Typer extends Namer
   }
 
   // Overridden in InlineTyper
-  def suppressInline(using ctx: Context): Boolean = ctx.isAfterTyper
+  def suppressInline(using Context): Boolean = ctx.isAfterTyper
 
   /** Does the "contextuality" of the method type `methType` match the one of the prototype `pt`?
    *  This is the case if

@@ -874,7 +874,7 @@ object RefChecks {
    *  surprising names at runtime. E.g. in neg/i4564a.scala, a private
    *  case class `apply` method would have to be renamed to something else.
    */
-  def checkNoPrivateOverrides(tree: Tree)(using ctx: Context): Unit =
+  def checkNoPrivateOverrides(tree: Tree)(using Context): Unit =
     val sym = tree.symbol
     if sym.owner.isClass
        && sym.is(Private)

@@ -178,7 +178,7 @@ object Inliner {
    *  where the call `f(x)` is inline-expanded. This body is then transferred
    *  back to `f` at erasure, using method addRetainedInlineBodies.
    */
-  def bodyRetainer(mdef: DefDef)(using ctx: Context): DefDef =
+  def bodyRetainer(mdef: DefDef)(using Context): DefDef =
     val meth = mdef.symbol.asTerm
 
     val retainer = meth.copy(
@@ -264,7 +264,7 @@ object Inliner {
     private enum ErrorKind:
       case Parser, Typer
 
-    private def compileForErrors(tree: Tree, stopAfterParser: Boolean)(using ctx: Context): List[(ErrorKind, Error)] =
+    private def compileForErrors(tree: Tree, stopAfterParser: Boolean)(using Context): List[(ErrorKind, Error)] =
       assert(tree.symbol == defn.CompiletimeTesting_typeChecks || tree.symbol == defn.CompiletimeTesting_typeCheckErrors)
       def stripTyped(t: Tree): Tree = t match {
         case Typed(t2, _) => stripTyped(t2)
@@ -1220,7 +1220,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     override def newLikeThis: Typer = new InlineTyper(initialErrorCount)
 
     /** Suppress further inlining if this inline typer has already issued errors */
-    override def suppressInline(using ctx: Context) =
+    override def suppressInline(using Context) =
       ctx.reporter.errorCount > initialErrorCount || super.suppressInline
   }
 

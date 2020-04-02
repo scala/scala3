@@ -142,7 +142,7 @@ object Nullables:
   /** The nullability context to be used after a case that matches pattern `pat`.
    *  If `pat` is `null`, this will assert that the selector `sel` is not null afterwards.
    */
-  def afterPatternContext(sel: Tree, pat: Tree)(using ctx: Context) = (sel, pat) match
+  def afterPatternContext(sel: Tree, pat: Tree)(using Context) = (sel, pat) match
     case (TrackedRef(ref), Literal(Constant(null))) => ctx.addNotNullRefs(Set(ref))
     case _ => ctx
 
@@ -150,7 +150,7 @@ object Nullables:
    *  given pattern `pat`. If the pattern can only match non-null values, this
    *  will assert that the selector `sel` is not null in these regions.
    */
-  def caseContext(sel: Tree, pat: Tree)(using ctx: Context): Context = sel match
+  def caseContext(sel: Tree, pat: Tree)(using Context): Context = sel match
     case TrackedRef(ref) if matchesNotNull(pat) => ctx.addNotNullRefs(Set(ref))
     case _ => ctx
 
@@ -462,7 +462,7 @@ object Nullables:
    *  flow assumptions about mutable variables and suggest that it is enclosed
    *  in a `byName(...)` call instead.
    */
-  def postProcessByNameArgs(fn: TermRef, app: Tree)(using ctx: Context): Tree =
+  def postProcessByNameArgs(fn: TermRef, app: Tree)(using Context): Tree =
     fn.widen match
       case mt: MethodType
       if mt.paramInfos.exists(_.isInstanceOf[ExprType]) && !fn.symbol.is(Inline) =>

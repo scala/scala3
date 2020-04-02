@@ -272,7 +272,7 @@ class Namer { typer: Typer =>
    *  The logic here is very subtle and fragile due to the fact that
    *  we are not allowed to force anything.
    */
-  def checkNoConflict(name: Name, isPrivate: Boolean, span: Span)(using ctx: Context): Name =
+  def checkNoConflict(name: Name, isPrivate: Boolean, span: Span)(using Context): Name =
     val owner = ctx.owner
     var conflictsDetected = false
 
