@@ -152,10 +152,15 @@ object Inliner {
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: Inlined)(implicit ctx: Context): Tree =
-    if (enclosingInlineds.nonEmpty) inlined // Remove in the outer most inlined call
-    else reposition(inlined, inlined.call.span)
+    val tree1 =
+      if inlined.bindings.isEmpty then inlined.expansion
+      else cpy.Block(inlined)(inlined.bindings, inlined.expansion)
+    // Reposition in the outer most inlined call
+    if (enclosingInlineds.nonEmpty) tree1 else reposition(tree1, inlined.span)
 
   def reposition(tree: Tree, callSpan: Span)(implicit ctx: Context): Tree = {
+    // Reference test tests/run/i4947b
+
     val curSource = ctx.compilationUnit.source
 
     // Tree copier that changes the source of all trees to `curSource`
@@ -183,9 +188,6 @@ object Inliner {
         given as Context = ctx.withSource(curSource)
 
         tree match {
-          case tree: Inlined =>
-            if tree.bindings.isEmpty then transform(tree.expansion)
-            else transform(cpy.Block(tree)(tree.bindings, tree.expansion))
           case tree: Ident => finalize(untpd.Ident(tree.name)(curSource))
           case tree: Literal => finalize(untpd.Literal(tree.const)(curSource))
           case tree: This => finalize(untpd.This(tree.qual)(curSource))
