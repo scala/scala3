@@ -69,7 +69,7 @@ object GenBCode {
   val name: String = "genBCode"
 }
 
-class GenBCodePipeline(val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry {
+class GenBCodePipeline(val int: DottyBackendInterface)(implicit ctx: Context) extends BCodeSyncAndTry {
 
   private var tree: Tree = _
 

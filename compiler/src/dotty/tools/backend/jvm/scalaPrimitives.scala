@@ -1,8 +1,3 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
- * @author  Martin Odersky
- */
-
 package dotty.tools
 package backend.jvm
 
@@ -35,7 +30,7 @@ import scala.collection.immutable
  *
  * Inspired from the `scalac` compiler.
  */
-class DottyPrimitives(ctx: Context) {
+class DottyPrimitives(ictx: Context) {
   import dotty.tools.backend.ScalaPrimitivesOps._
 
   @threadUnsafe private lazy val primitives: immutable.Map[Symbol, Int] = init
@@ -124,7 +119,7 @@ class DottyPrimitives(ctx: Context) {
   /** Initialize the primitive map */
   private def init: immutable.Map[Symbol, Int]  = {
 
-    implicit val ctx = this.ctx
+    given Context = ictx
 
     import Symbols.defn
     val primitives = Symbols.newMutableSymbolMap[Int]
@@ -401,14 +396,14 @@ class DottyPrimitives(ctx: Context) {
     primitives.toMap
   }
 
-  def isPrimitive(fun: Tree): Boolean = {
-    (primitives contains fun.symbol(ctx)) ||
-      (fun.symbol(ctx) == NoSymbol // the only trees that do not have a symbol assigned are array.{update,select,length,clone}}
-       && (fun match {
-        case Select(_, StdNames.nme.clone_) => false // but array.clone is NOT a primitive op.
-        case _ => true
-      }))
-  }
-
+  def isPrimitive(fun: Tree): Boolean =
+    given Context = ictx
+    primitives.contains(fun.symbol)
+    || (fun.symbol == NoSymbol // the only trees that do not have a symbol assigned are array.{update,select,length,clone}}
+        && {
+          fun match
+            case Select(_, StdNames.nme.clone_) => false // but array.clone is NOT a primitive op.
+            case _ => true
+        })
 }
 
