@@ -9,7 +9,7 @@ def (o: Lifted[O]) flatMap [O, U] (f: O => Lifted[U]): Lifted[U] = ???
 val error: Err = Err()
 
 lazy val ok: Lifted[String] = { // ok despite map returning a union
-  point("a").map(_ => if true then "foo" else error) // error
+  point("a").map(_ => if true then "foo" else error) // ok
 }
 
 lazy val bad: Lifted[String] = { // found Lifted[Object]
