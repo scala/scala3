@@ -77,7 +77,7 @@ trait QuotesAndSplices {
         def spliceOwner(ctx: Context): Symbol =
           if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
         val pat = typedPattern(tree.expr, defn.QuotedExprClass.typeRef.appliedTo(pt))(
-          spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
+          using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
         val baseType = pat.tpe.baseType(defn.QuotedExprClass)
         val argType = if baseType != NoType then baseType.argTypesHi.head else defn.NothingType
         ref(defn.InternalQuoted_exprSplice).appliedToType(argType).appliedTo(pat)
@@ -149,10 +149,10 @@ trait QuotesAndSplices {
       val typeSym = ctx.newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.expr.span)
       typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.expr.span)))
       val pat = typedPattern(tree.expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
-          spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
+          using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
       pat.select(tpnme.splice)
     else
-      typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
+      typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(using spliceContext).withSpan(tree.span)
   }
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(implicit ctx: Context): Unit =
@@ -362,8 +362,8 @@ trait QuotesAndSplices {
     val quoted0 = desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt)))
     val quoteCtx = quoteContext.addMode(Mode.QuotedPattern)
     val quoted1 =
-      if quoted.isType then typedType(quoted0, WildcardType)(quoteCtx)
-      else typedExpr(quoted0, WildcardType)(quoteCtx)
+      if quoted.isType then typedType(quoted0, WildcardType)(using quoteCtx)
+      else typedExpr(quoted0, WildcardType)(using quoteCtx)
 
     val (typeBindings, shape, splices) = splitQuotePattern(quoted1)
 

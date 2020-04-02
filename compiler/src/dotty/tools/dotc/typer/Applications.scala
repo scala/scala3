@@ -1104,7 +1104,7 @@ trait Applications extends Compatibility {
         case tree: untpd.RefTree =>
           val nestedCtx = ctx.fresh.setNewTyperState()
           val ttree =
-            typedType(untpd.rename(tree, tree.name.toTypeName))(nestedCtx)
+            typedType(untpd.rename(tree, tree.name.toTypeName))(using nestedCtx)
           ttree.tpe match {
             case alias: TypeRef if alias.info.isTypeAlias && !nestedCtx.reporter.hasErrors =>
               companionRef(alias) match {
@@ -2030,7 +2030,7 @@ trait Applications extends Compatibility {
     val (core, pt1) = integrateTypeArgs(pt)
     val app =
       typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)(
-        ctx.addMode(Mode.SynthesizeExtMethodReceiver))
+        using ctx.addMode(Mode.SynthesizeExtMethodReceiver))
     def isExtension(tree: Tree): Boolean = methPart(tree) match {
       case Inlined(call, _, _) => isExtension(call)
       case tree @ Select(qual, nme.apply) => tree.symbol.is(Extension) || isExtension(qual)

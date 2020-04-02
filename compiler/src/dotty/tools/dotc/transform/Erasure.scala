@@ -118,7 +118,7 @@ class Erasure extends Phase with DenotTransformer {
 
   def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
-    unit.tpdTree = eraser.typedExpr(unit.tpdTree)(ctx.fresh.setTyper(eraser).setPhase(this.next))
+    unit.tpdTree = eraser.typedExpr(unit.tpdTree)(using ctx.fresh.setTyper(eraser).setPhase(this.next))
   }
 
   override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {

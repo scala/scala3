@@ -1323,10 +1323,10 @@ class Namer { typer: Typer =>
   }
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
-    typedAhead(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrTypeBits addMode Mode.Type))
+    typedAhead(tree, typer.typed(_, pt)(using ctx.retractMode(Mode.PatternOrTypeBits).addMode(Mode.Type)))
 
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
-    typedAhead(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrTypeBits))
+    typedAhead(tree, typer.typed(_, pt)(using ctx.retractMode(Mode.PatternOrTypeBits)))
 
   def typedAheadAnnotation(tree: Tree)(implicit ctx: Context): tpd.Tree =
     typedAheadExpr(tree, defn.AnnotationClass.typeRef)

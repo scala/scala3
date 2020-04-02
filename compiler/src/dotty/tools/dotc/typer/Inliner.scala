@@ -283,7 +283,7 @@ object Inliner {
           val parseErrors = ctx2.reporter.allErrors.toList
           res ++= parseErrors.map(e => ErrorKind.Parser -> e)
           if !stopAfterParser || res.isEmpty
-            ctx2.typer.typed(tree2)(ctx2)
+            ctx2.typer.typed(tree2)(using ctx2)
             val typerErrors = ctx2.reporter.allErrors.filterNot(parseErrors.contains)
             res ++= typerErrors.map(e => ErrorKind.Typer -> e)
           res.toList
@@ -684,7 +684,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
 
       // Run a typing pass over the inlined tree. See InlineTyper for details.
-      val expansion1 = inlineTyper.typed(expansion)(inlineCtx)
+      val expansion1 = inlineTyper.typed(expansion)(using inlineCtx)
 
       if (ctx.settings.verbose.value) {
         inlining.println(i"to inline = $rhsToInline")
