@@ -149,7 +149,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case _ =>
       processMemberDef(tree)
 
-    private def checkInferredWellFormed(tree: Tree)(using ctx: Context): Unit = tree match
+    private def checkInferredWellFormed(tree: Tree)(using Context): Unit = tree match
       case tree: TypeTree
       if tree.span.isZeroExtent
           // don't check TypeTrees with non-zero extent;

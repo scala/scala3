@@ -47,7 +47,7 @@ object Checking {
    *   1. the full inferred type is a TypeTree node
    *   2. the applied type causing the error, if different from (1)
    */
-  private def showInferred(msg: Message, app: Type, tpt: Tree)(using ctx: Context): Message =
+  private def showInferred(msg: Message, app: Type, tpt: Tree)(using Context): Message =
     if tpt.isInstanceOf[TypeTree] then
       def subPart = if app eq tpt.tpe then "" else i" subpart $app of"
       msg.append(i" in$subPart inferred type ${tpt}")
@@ -91,7 +91,7 @@ object Checking {
    *  @param tpt  If `tree` is synthesized from a type in a TypeTree,
    *              the original TypeTree, or EmptyTree otherwise.
    */
-  def checkAppliedType(tree: AppliedTypeTree, tpt: Tree = EmptyTree)(using ctx: Context): Unit = {
+  def checkAppliedType(tree: AppliedTypeTree, tpt: Tree = EmptyTree)(using Context): Unit = {
     val AppliedTypeTree(tycon, args) = tree
     // If `args` is a list of named arguments, return corresponding type parameters,
     // otherwise return type parameters unchanged
@@ -629,7 +629,7 @@ object Checking {
   }
 
   /** Check that an enum case extends its enum class */
-  def checkEnumParentOK(cls: Symbol)(using ctx: Context): Unit =
+  def checkEnumParentOK(cls: Symbol)(using Context): Unit =
     val enumCase =
       if cls.isAllOf(EnumCase) then cls
       else if cls.isAnonymousClass && cls.owner.isAllOf(EnumCase) then cls.owner
@@ -1151,7 +1151,7 @@ trait Checking {
   }
 
   /** check that annotation `annot` is applicable to symbol `sym` */
-  def checkAnnotApplicable(annot: Tree, sym: Symbol)(using ctx: Context): Boolean =
+  def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean =
     !ctx.reporter.reportsErrorsFor { implicit ctx =>
       val annotCls = Annotations.annotClass(annot)
       val pos = annot.sourcePos
@@ -1185,7 +1185,7 @@ trait ReChecking extends Checking {
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(implicit ctx: Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = ()
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = ()
-  override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using ctx: Context): Boolean = true
+  override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean = true
 }
 
 trait NoChecking extends ReChecking {

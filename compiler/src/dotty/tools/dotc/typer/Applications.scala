@@ -987,7 +987,7 @@ trait Applications extends Compatibility {
   }
 
   /** Typecheck an Apply node with a typed function and possibly-typed arguments coming from `proto` */
-  def ApplyTo(app: untpd.Apply, fun: tpd.Tree, methRef: TermRef, proto: FunProto, resultType: Type)(using ctx: Context): tpd.Tree =
+  def ApplyTo(app: untpd.Apply, fun: tpd.Tree, methRef: TermRef, proto: FunProto, resultType: Type)(using Context): tpd.Tree =
     val typer = ctx.typer
     if (proto.allArgTypesAreCurrent())
       typer.ApplyToTyped(app, fun, methRef, proto.typedArgs(), resultType).result

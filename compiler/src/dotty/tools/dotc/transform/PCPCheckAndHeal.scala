@@ -270,7 +270,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
 object PCPCheckAndHeal {
   import tpd._
 
-  class QuoteTypeTags(span: Span)(using ctx: Context) {
+  class QuoteTypeTags(span: Span)(using Context) {
 
     private val tags = collection.mutable.LinkedHashMap.empty[Symbol, TypeDef]
 
