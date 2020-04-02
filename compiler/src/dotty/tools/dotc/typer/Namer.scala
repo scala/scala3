@@ -867,7 +867,7 @@ class Namer { typer: Typer =>
         def rhsToInline(using Context): tpd.Tree =
           val mdef = typedAheadExpr(original).asInstanceOf[tpd.DefDef]
           PrepareInlineable.wrapRHS(original, mdef.tpt, mdef.rhs)
-        PrepareInlineable.registerInlineInfo(sym, rhsToInline)(localContext(sym))
+        PrepareInlineable.registerInlineInfo(sym, rhsToInline)(using localContext(sym))
       case _ =>
     }
 
