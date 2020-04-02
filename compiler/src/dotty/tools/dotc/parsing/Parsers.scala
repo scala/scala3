@@ -3784,7 +3784,7 @@ object Parsers {
             i"refinement cannot have default arguments"
           case tree: ValOrDefDef =>
             if tree.rhs.isEmpty then ""
-            else "refinement in cannot have a right-hand side"
+            else "refinement cannot have a right-hand side"
           case tree: TypeDef =>
             if !tree.isClassDef then ""
             else "refinement cannot be a class or trait"

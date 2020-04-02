@@ -49,7 +49,7 @@ object Typer {
    *  accessed by an Ident.
    */
   enum BindingPrec {
-    case NothingBound, PackageClause, WildImport, NamedImport, Definition
+    case NothingBound, PackageClause, WildImport, NamedImport, Inheritance, Definition
 
     def isImportPrec = this == NamedImport || this == WildImport
   }
@@ -135,10 +135,9 @@ class Typer extends Namer
      *  package as a type from source is always an error.
      */
     def qualifies(denot: Denotation): Boolean =
-      reallyExists(denot) &&
-        !(pt.isInstanceOf[UnapplySelectionProto] &&
-          (denot.symbol is (Method, butNot = Accessor))) &&
-        !(denot.symbol.is(PackageClass))
+      reallyExists(denot)
+      && !(pt.isInstanceOf[UnapplySelectionProto] && denot.symbol.is(Method, butNot = Accessor))
+      && !denot.symbol.is(PackageClass)
 
     /** Find the denotation of enclosing `name` in given context `ctx`.
      *  @param previous    A denotation that was found in a more deeply nested scope,
@@ -161,18 +160,18 @@ class Typer extends Namer
        *                   the previous (inner) definition. This models what scalac does.
        */
       def checkNewOrShadowed(found: Type, newPrec: BindingPrec, scala2pkg: Boolean = false)(implicit ctx: Context): Type =
-        if (!previous.exists || ctx.typeComparer.isSameRef(previous, found)) found
-        else if ((prevCtx.scope eq ctx.scope) &&
-                 (newPrec == Definition ||
-                  newPrec == NamedImport && prevPrec == WildImport))
+        if !previous.exists || ctx.typeComparer.isSameRef(previous, found) then
+           found
+        else if (prevCtx.scope eq ctx.scope)
+                && (newPrec == Definition || newPrec == NamedImport && prevPrec == WildImport)
+        then
           // special cases: definitions beat imports, and named imports beat
           // wildcard imports, provided both are in contexts with same scope
           found
-        else {
-          if (!scala2pkg && !previous.isError && !found.isError)
-            refctx.error(AmbiguousImport(name, newPrec, prevPrec, prevCtx), posd.sourcePos)
+        else
+          if !scala2pkg && !previous.isError && !found.isError then
+            refctx.error(AmbiguousReference(name, newPrec, prevPrec, prevCtx), posd.sourcePos)
           previous
-        }
 
       /** Recurse in outer context. If final result is same as `previous`, check that it
        *  is new or shadowed. This order of checking is necessary since an
@@ -192,7 +191,8 @@ class Typer extends Namer
           NoType
         else
           val pre = imp.site
-          var denot = pre.memberBasedOnFlags(name, required, EmptyFlags).accessibleFrom(pre)(refctx)
+          var denot = pre.memberBasedOnFlags(name, required, EmptyFlags)
+            .accessibleFrom(pre)(using refctx)
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the context of the import scope
           if checkBounds && denot.exists then
@@ -290,11 +290,41 @@ class Typer extends Namer
           // with an error on CI which I cannot replicate locally (not even
           // with the exact list of files given).
           val isNewDefScope =
-            if (curOwner.is(Package) && !curOwner.isRoot) curOwner ne ctx.outer.owner
-            else ((ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)) &&
-                  !isTransparentPackageObject
+            if curOwner.is(Package) && !curOwner.isRoot then
+              curOwner ne ctx.outer.owner
+            else
+              ((ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner))
+              && !isTransparentPackageObject
 
-          if (isNewDefScope) {
+          // Does reference `tp` refer only to inherited symbols?
+          def isInherited(denot: Denotation) =
+            def isCurrent(mbr: SingleDenotation): Boolean =
+              !mbr.symbol.exists || mbr.symbol.owner == ctx.owner
+            denot match
+              case denot: SingleDenotation => !isCurrent(denot)
+              case denot => !denot.hasAltWith(isCurrent)
+
+          def checkNoOuterDefs(denot: Denotation, last: Context, prevCtx: Context): Unit =
+            val outer = last.outer
+            val owner = outer.owner
+            if (owner eq last.owner) && (outer.scope eq last.scope) then
+              checkNoOuterDefs(denot, outer, prevCtx)
+            else if !owner.is(Package) then
+              val scope = if owner.isClass then owner.info.decls else outer.scope
+              if scope.lookup(name).exists then
+                val symsMatch = scope.lookupAll(name).exists(denot.containsSym)
+                if !symsMatch then
+                  refctx.errorOrMigrationWarning(
+                    AmbiguousReference(name, Definition, Inheritance, prevCtx)(using outer),
+                    posd.sourcePos)
+                  if ctx.scala2CompatMode then
+                    patch(Span(posd.span.start),
+                      if prevCtx.owner == refctx.owner.enclosingClass then "this."
+                      else s"${prevCtx.owner.name}.this.")
+              else
+                checkNoOuterDefs(denot, outer, prevCtx)
+
+          if isNewDefScope then
             val defDenot = ctx.denotNamed(name, required)
             if (qualifies(defDenot)) {
               val found =
@@ -309,20 +339,22 @@ class Typer extends Namer
                       curOwner
                   effectiveOwner.thisType.select(name, defDenot)
                 }
-              if (!curOwner.is(Package) || isDefinedInCurrentUnit(defDenot))
+              if !curOwner.is(Package) || isDefinedInCurrentUnit(defDenot) then
                 result = checkNewOrShadowed(found, Definition) // no need to go further out, we found highest prec entry
-              else {
+                found match
+                  case found: NamedType if ctx.owner.isClass && isInherited(found.denot) =>
+                    checkNoOuterDefs(found.denot, ctx, ctx)
+                  case _ =>
+              else
                 if (ctx.scala2CompatMode && !foundUnderScala2.exists)
                   foundUnderScala2 = checkNewOrShadowed(found, Definition, scala2pkg = true)
                 if (defDenot.symbol.is(Package))
                   result = checkNewOrShadowed(previous orElse found, PackageClause)
                 else if (prevPrec.ordinal < PackageClause.ordinal)
                   result = findRefRecur(found, PackageClause, ctx)(ctx.outer)
-              }
             }
-          }
 
-          if (result.exists) result
+          if result.exists then result
           else {  // find import
             val outer = ctx.outer
             val curImport = ctx.importInfo

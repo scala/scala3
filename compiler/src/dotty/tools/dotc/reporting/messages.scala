@@ -250,13 +250,13 @@ object messages {
     // these are usually easier to analyze.
     object reported extends TypeMap:
       def setVariance(v: Int) = variance = v
-      val constraint = ctx.typerState.constraint
+      val constraint = this.ctx.typerState.constraint
       def apply(tp: Type): Type = tp match
         case tp: TypeParamRef =>
           constraint.entry(tp) match
             case bounds: TypeBounds =>
-              if variance < 0 then apply(ctx.typeComparer.fullUpperBound(tp))
-              else if variance > 0 then apply(ctx.typeComparer.fullLowerBound(tp))
+              if variance < 0 then apply(this.ctx.typeComparer.fullUpperBound(tp))
+              else if variance > 0 then apply(this.ctx.typeComparer.fullLowerBound(tp))
               else tp
             case NoType => tp
             case instType => apply(instType)
@@ -1244,8 +1244,8 @@ object messages {
 
   import typer.Typer.BindingPrec
 
-  class AmbiguousImport(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: Context)(implicit ctx: Context)
-    extends ReferenceMsg(AmbiguousImportID) {
+  class AmbiguousReference(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: Context)(implicit ctx: Context)
+    extends ReferenceMsg(AmbiguousReferenceID) {
 
     /** A string which explains how something was bound; Depending on `prec` this is either
       *      imported by <tree>
@@ -1254,6 +1254,7 @@ object messages {
     private def bindingString(prec: BindingPrec, whereFound: Context, qualifier: String = "") = {
       val howVisible = prec match {
         case BindingPrec.Definition => "defined"
+        case BindingPrec.Inheritance => "inherited"
         case BindingPrec.NamedImport => "imported by name"
         case BindingPrec.WildImport => "imported"
         case BindingPrec.PackageClause => "found"
@@ -1266,18 +1267,21 @@ object messages {
     }
 
     def msg =
-      i"""|Reference to ${em"$name"} is ambiguous
+      i"""|Reference to ${em"$name"} is ambiguous,
           |it is both ${bindingString(newPrec, ctx)}
           |and ${bindingString(prevPrec, prevCtx, " subsequently")}"""
 
     def explain =
       em"""|The compiler can't decide which of the possible choices you
-           |are referencing with $name.
+           |are referencing with $name: A definition of lower precedence
+           |in an inner scope, or a definition with higher precedence in
+           |an outer scope.
            |Note:
-           |- Definitions take precedence over imports
-           |- Named imports take precedence over wildcard imports
-           |- You may replace a name when imported using
-           |  ${hl("import")} scala.{ $name => ${name.show + "Tick"} }
+           | - Definitions in an enclosing scope take precedence over inherited definitions
+           | - Definitions take precedence over imports
+           | - Named imports take precedence over wildcard imports
+           | - You may replace a name when imported using
+           |   ${hl("import")} scala.{ $name => ${name.show + "Tick"} }
            |"""
   }
 

@@ -22,7 +22,7 @@ object Cats {
   type Scal[f[_[_], _[_, _]]] = f[Trivial, Function1]
 
   implicit val scal: Category[Scal] = new Category[Scal] {
-    def id[A: Obj]: A -> A = a => a
+    def id[A: this.Obj]: A -> A = a => a
     def andThen[A, B, C](ab: A -> B, bc: B -> C): A -> C = ab.andThen(bc)
   }
 

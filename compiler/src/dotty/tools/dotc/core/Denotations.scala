@@ -1243,7 +1243,7 @@ object Denotations {
       throw new MergeError(sym1, sym2, sym1.info, sym2.info, pre) {
         override def addendum(implicit ctx: Context) =
           i"""
-             |they are both defined in ${sym1.effectiveOwner} but have matching signatures
+             |they are both defined in ${this.sym1.effectiveOwner} but have matching signatures
              |  ${denot1.info} and
              |  ${denot2.info}${super.addendum}"""
       }
