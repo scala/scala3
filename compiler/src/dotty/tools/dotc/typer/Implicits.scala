@@ -510,7 +510,7 @@ trait ImplicitRunInfo {
      *  opaque type aliases, and abstract types, but not type parameters or package objects.
      */
     def isAnchor(sym: Symbol) =
-      sym.isClass && !sym.is(Package) && (!sym.isPackageObject || ctx.scala2CompatMode)
+      sym.isClass && !sym.is(Package) && (!sym.isPackageObject || runContext.scala2CompatMode)
       || sym.isOpaqueAlias
       || sym.is(Deferred, butNot = Param)
 
@@ -579,12 +579,12 @@ trait ImplicitRunInfo {
             addPath(pre.cls.sourceModule.termRef)
           case pre: TermRef =>
             if (pre.symbol.is(Package)) {
-              if (ctx.scala2CompatMode) {
+              if (runContext.scala2CompatMode) {
                 addCompanion(pre, pre.member(nme.PACKAGE).symbol)
                 addPath(pre.prefix)
               }
             }
-            else if (!pre.symbol.isPackageObject || ctx.scala2CompatMode)  {
+            else if (!pre.symbol.isPackageObject || runContext.scala2CompatMode)  {
               comps += pre
               addPath(pre.prefix)
             }
@@ -624,7 +624,7 @@ trait ImplicitRunInfo {
           }
           else
             collectCompanions(tp)
-        val result = new OfTypeImplicits(tp, refs)(ctx)
+        val result = new OfTypeImplicits(tp, refs)(runContext)
         if (canCache &&
             ((tp eq rootTp) ||          // first type traversed is always cached
              !incomplete.contains(tp))) // other types are cached if they are not incomplete
