@@ -35,7 +35,7 @@ trait QuotesAndSplices {
   /** Translate `'{ t }` into `scala.quoted.Expr.apply(t)` and `'[T]` into `scala.quoted.Type.apply[T]`
    *  while tracking the quotation level in the context.
    */
-  def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = {
+  def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree = {
     record("typedQuote")
     ctx.compilationUnit.needsStaging = true
     tree.quoted match {
@@ -56,14 +56,14 @@ trait QuotesAndSplices {
       if ctx.mode.is(Mode.Pattern) && level == 0 then
         typedQuotePattern(tree, pt, qctx)
       else if (tree.quoted.isType)
-        typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuote.termRef), tree.quoted :: Nil), pt)(quoteContext)
+        typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuote.termRef), tree.quoted :: Nil), pt)(using quoteContext)
       else
-        typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(pushQuoteContext(qctx)).select(nme.apply).appliedTo(qctx)
+        typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(using pushQuoteContext(qctx)).select(nme.apply).appliedTo(qctx)
     tree1.withSpan(tree.span)
   }
 
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
-  def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = {
+  def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree = {
     record("typedSplice")
     ctx.compilationUnit.needsStaging = true
     checkSpliceOutsideQuote(tree)
@@ -118,12 +118,12 @@ trait QuotesAndSplices {
           case Some(qctxRef) => untpd.Apply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprNestedSplice.termRef), qctxRef), expr)
           case _ => untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), expr)
 
-      typedApply(internalSplice, pt)(ctx1).withSpan(tree.span)
+      typedApply(internalSplice, pt)(using ctx1).withSpan(tree.span)
     }
   }
 
   /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
-  def typedTypSplice(tree: untpd.TypSplice, pt: Type)(implicit ctx: Context): Tree = {
+  def typedTypSplice(tree: untpd.TypSplice, pt: Type)(using Context): Tree = {
     record("typedTypSplice")
     ctx.compilationUnit.needsStaging = true
     checkSpliceOutsideQuote(tree)
@@ -155,7 +155,7 @@ trait QuotesAndSplices {
       typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(using spliceContext).withSpan(tree.span)
   }
 
-  private def checkSpliceOutsideQuote(tree: untpd.Tree)(implicit ctx: Context): Unit =
+  private def checkSpliceOutsideQuote(tree: untpd.Tree)(using Context): Unit =
     if (level == 0 && !ctx.owner.ownersIterator.exists(_.is(Inline)))
       ctx.error("Splice ${...} outside quotes '{...} or inline method", tree.sourcePos)
     else if (level < 0)
@@ -185,7 +185,7 @@ trait QuotesAndSplices {
    *  )
    *  ```
    */
-  private def splitQuotePattern(quoted: Tree)(implicit ctx: Context): (Map[Symbol, Bind], Tree, List[Tree]) = {
+  private def splitQuotePattern(quoted: Tree)(using Context): (Map[Symbol, Bind], Tree, List[Tree]) = {
     val ctx0 = ctx
 
     val typeBindings: collection.mutable.Map[Symbol, Bind] = collection.mutable.Map.empty
@@ -211,7 +211,7 @@ trait QuotesAndSplices {
       val freshTypePatBuf = new mutable.ListBuffer[Tree]
       val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
       val typePatBuf = new mutable.ListBuffer[Tree]
-      override def transform(tree: Tree)(implicit ctx: Context) = tree match {
+      override def transform(tree: Tree)(using Context) = tree match {
         case Typed(Apply(fn, pat :: Nil), tpt) if fn.symbol == defn.InternalQuoted_exprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           val tpt1 = transform(tpt) // Transform type bindings
           val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), tpt1 :: Nil)
@@ -264,7 +264,7 @@ trait QuotesAndSplices {
           super.transform(tree)
       }
 
-      private def transformTypeBindingTypeDef(tdef: TypeDef, buff: mutable.Builder[Tree, List[Tree]])(implicit ctx: Context): Tree = {
+      private def transformTypeBindingTypeDef(tdef: TypeDef, buff: mutable.Builder[Tree, List[Tree]])(using Context): Tree = {
         if (variance == -1)
           tdef.symbol.addAnnotation(Annotation(New(ref(defn.InternalQuoted_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
@@ -347,7 +347,7 @@ trait QuotesAndSplices {
    *        ) => ...
    *  ```
    */
-  private def typedQuotePattern(tree: untpd.Quote, pt: Type, qctx: Tree)(implicit ctx: Context): Tree = {
+  private def typedQuotePattern(tree: untpd.Quote, pt: Type, qctx: Tree)(using Context): Tree = {
     if tree.quoted.isTerm && !pt.derivesFrom(defn.QuotedExprClass) then
       ctx.error("Quote pattern can only match scrutinees of type scala.quoted.Expr", tree.sourcePos)
     else if tree.quoted.isType && !pt.derivesFrom(defn.QuotedTypeClass) then
@@ -382,7 +382,7 @@ trait QuotesAndSplices {
 
     val replaceBindingsInTree = new TreeMap {
       private var bindMap = Map.empty[Symbol, Symbol]
-      override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree =
+      override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
         tree match {
           case tree: Bind =>
             val sym = tree.symbol
