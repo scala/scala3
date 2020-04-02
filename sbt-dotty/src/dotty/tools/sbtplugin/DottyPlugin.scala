@@ -405,15 +405,10 @@ object DottyPlugin extends AutoPlugin {
 
   /** Create a scalaInstance task that uses Dotty based on `moduleName`. */
   def dottyScalaInstanceTask(moduleName: String): Initialize[Task[ScalaInstance]] = Def.task {
-    val ivyConfig0 = Classpaths.mkIvyConfiguration.value
-    // When compiling non-bootstrapped projects in the build of Dotty itself,
-    // dependency resolution might pick a local project which is not what we
-    // want. We avoid this by dropping the inter-project resolver.
-    val ivyConfig1 = ivyConfig0.withResolvers(ivyConfig0.resolvers.filter(_.name != "inter-project"))
     val updateReport =
       fetchArtifactsOf(
         scalaOrganization.value %% moduleName % scalaVersion.value,
-        ivy.IvyDependencyResolution(ivyConfig1),
+        dependencyResolution.value,
         scalaModuleInfo.value,
         updateConfiguration.value,
         (unresolvedWarningConfiguration in update).value,
