@@ -213,19 +213,19 @@ trait TypeAssigner {
           else {
             val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
             var packageAccess = false
-            val what = alts match {
+            val whatCanNot = alts match {
               case Nil =>
-                name.toString
+                em"$name cannot"
               case sym :: Nil =>
-                if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated
+                em"${if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated} cannot"
               case _ =>
-                em"none of the overloaded alternatives named $name"
+                em"none of the overloaded alternatives named $name can"
             }
             val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
             val whyNot = new StringBuffer
             alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
             if (tpe.isError) tpe
-            else errorType(ex"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
+            else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
           }
         }
         else ctx.makePackageObjPrefixExplicit(tpe withDenot d)
