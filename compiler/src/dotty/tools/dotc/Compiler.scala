@@ -79,6 +79,7 @@ class Compiler {
          new StringInterpolatorOpt,  // Optimizes raw and s string interpolators by rewriting them to string concatentations
          new CrossCastAnd) ::        // Normalize selections involving intersection types.
     List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
+         new InlinePatterns,         // Remove placeholders of inlined patterns
          new VCInlineMethods,        // Inlines calls to value class methods
          new SeqLiterals,            // Express vararg arguments as arrays
          new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods

@@ -246,8 +246,6 @@ object PrepareInlineable {
       ctx.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.sourcePos)
     if (ctx.outer.inInlineMethod)
       ctx.error(ex"Implementation restriction: nested inline methods are not supported", inlined.sourcePos)
-    if (inlined.name.isUnapplyName)
-      ctx.error(em"Implementation restriction: inline ${inlined.name} methods are not supported", inlined.sourcePos)
 
     if (inlined.is(Macro) && !ctx.isAfterTyper) {
 

@@ -1250,6 +1250,7 @@ class Typer extends Namer
             if (bounds != null) sym.info = bounds
           }
           b
+        case t: UnApply if t.symbol.is(Inline) => Inliner.inlinedUnapply(t)
         case t => t
       }
   }
