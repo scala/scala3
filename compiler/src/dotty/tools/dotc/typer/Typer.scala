@@ -19,7 +19,7 @@ import Names._
 import NameOps._
 import NameKinds._
 import Flags._
-import Decorators._
+import Decorators.{given _}
 import ErrorReporting._
 import Checking._
 import Inferencing._
@@ -1739,8 +1739,8 @@ class Typer extends Namer
     }
     val DefDef(name, tparams, vparamss, tpt, _) = ddef
     completeAnnotations(ddef, sym)
-    val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
-    val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
+    val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
+    val vparamss1 = vparamss.nestedMapConserve(typed(_).asInstanceOf[ValDef])
     vparamss1.foreach(checkNoForwardDependencies)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))

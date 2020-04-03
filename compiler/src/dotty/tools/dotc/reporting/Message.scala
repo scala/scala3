@@ -89,7 +89,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
    *  they look weird and are normally follow-up errors to something that was
    *  diagnosed before.
    */
-   def isNonSensical: Boolean = { message; myIsNonSensical }
+  def isNonSensical: Boolean = { message; myIsNonSensical }
 
   /** The implicit `Context` in messages is a large thing that we don't want
     * persisted. This method gets around that by duplicating the message,

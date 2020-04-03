@@ -9,7 +9,7 @@ import transform.TypeUtils._
 import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
-import Decorators._, DenotTransformers._
+import Decorators.{given _}, DenotTransformers._
 import collection.{immutable, mutable}
 import util.{Property, SourceFile, NoSource}
 import NameKinds.{TempResultName, OuterSelectName}
@@ -208,6 +208,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def DefDef(sym: TermSymbol, tparams: List[TypeSymbol], vparamss: List[List[TermSymbol]],
              resultType: Type, rhs: Tree)(implicit ctx: Context): DefDef =
+    sym.setParamss(tparams, vparamss)
     ta.assignType(
       untpd.DefDef(
         sym.name,
@@ -223,15 +224,27 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def DefDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Tree)(implicit ctx: Context): DefDef =
     polyDefDef(sym, Function.const(rhsFn))
 
+  /** A DefDef with given method symbol `sym`.
+   *  @rhsFn  A function from type parameter types and term parameter references
+   *          to the method's right-hand side.
+   *  Parameter symbols are taken from the `rawParamss` field of `sym`, or
+   *  are freshly generated if `rawParamss` is empty.
+   */
   def polyDefDef(sym: TermSymbol, rhsFn: List[Type] => List[List[Tree]] => Tree)(implicit ctx: Context): DefDef = {
-    val (tparams, mtp) = sym.info match {
+
+    val (tparams, existingParamss, mtp) = sym.info match {
       case tp: PolyType =>
-        val tparams = ctx.newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_))
-        (tparams, tp.instantiate(tparams map (_.typeRef)))
-      case tp => (Nil, tp)
+        val (tparams, existingParamss) = sym.rawParamss match
+          case tparams :: vparamss =>
+            assert(tparams.hasSameLengthAs(tp.paramNames) && tparams.head.isType)
+            (tparams.asInstanceOf[List[TypeSymbol]], vparamss)
+          case _ =>
+            (ctx.newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_)), Nil)
+        (tparams, existingParamss, tp.instantiate(tparams map (_.typeRef)))
+      case tp => (Nil, sym.rawParamss, tp)
     }
 
-    def valueParamss(tp: Type): (List[List[TermSymbol]], Type) = tp match {
+    def valueParamss(tp: Type, existingParamss: List[List[Symbol]]): (List[List[TermSymbol]], Type) = tp match {
       case tp: MethodType =>
         val isParamDependent = tp.isParamDependent
         val previousParamRefs = if (isParamDependent) mutable.ListBuffer[TermRef]() else null
@@ -254,14 +267,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             makeSym(origInfo)
         }
 
-        val params = tp.paramNames.lazyZip(tp.paramInfos).map(valueParam)
-        val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.termRef)))
+        val (params, existingParamss1) =
+          if tp.paramInfos.isEmpty then (Nil, existingParamss)
+          else existingParamss match
+            case vparams :: existingParamss1 =>
+              assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
+              (vparams.asInstanceOf[List[TermSymbol]], existingParamss1)
+            case _ =>
+              (tp.paramNames.lazyZip(tp.paramInfos).map(valueParam), Nil)
+        val (paramss, rtp) =
+          valueParamss(tp.instantiate(params map (_.termRef)), existingParamss1)
         (params :: paramss, rtp)
       case tp => (Nil, tp.widenExpr)
     }
-    val (vparamss, rtp) = valueParamss(mtp)
+    val (vparamss, rtp) = valueParamss(mtp, existingParamss)
     val targs = tparams map (_.typeRef)
     val argss = vparamss.nestedMap(vparam => Ident(vparam.termRef))
+    sym.setParamss(tparams, vparamss)
     DefDef(sym, tparams, vparamss, rtp, rhsFn(targs)(argss))
   }
 

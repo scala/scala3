@@ -176,6 +176,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   /** A map from symbols to their associated `decls` scopes */
   private val symScopes = mutable.AnyRefMap[Symbol, Scope]()
 
+  /** A mapping from method types to the parameters used in constructing them */
+  private val paramsOfMethodType = new java.util.IdentityHashMap[MethodType, List[Symbol]]
+
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: Context): Nothing = {
     val ex = new BadSignature(
       i"""error reading Scala signature of $classRoot from $source:
@@ -449,12 +452,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val owner = readSymbolRef()
 
     var flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
-    if (flags.isAllOf(DefaultParameter)) {
-      // DefaultParameterized flag now on method, not parameter
-      //assert(flags.is(Param), s"$name0 in $owner")
-      flags = flags &~ DefaultParameterized
-      owner.setFlag(DefaultParameterized)
-    }
 
     name = name.adjustIfModuleClass(flags)
     if (flags.is(Method))
@@ -561,6 +558,15 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   class LocalUnpickler extends LazyType {
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
+
+    def paramssOfType(tp: Type): List[List[Symbol]] = tp match
+      case TempPolyType(tparams, restpe) => tparams :: paramssOfType(restpe)
+      case mt: MethodType =>
+        val params = paramsOfMethodType.remove(mt)
+        val rest = paramssOfType(mt.resType)
+        if params == null then rest else params :: rest
+      case _ => Nil
+
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = try {
       def parseToCompletion(denot: SymDenotation)(implicit ctx: Context) = {
         val tag = readByte()
@@ -575,6 +581,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
         // println("reading type for " + denot) // !!! DEBUG
         val tp = at(inforef, () => readType()(ctx))
+        if denot.is(Method) then denot.rawParamss = paramssOfType(tp)
 
         denot match {
           case denot: ClassDenotation if !isRefinementClass(denot.symbol) =>
@@ -792,12 +799,16 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val params = until(end, () => readSymbolRef())
         val maker = MethodType.companion(
           isImplicit = tag == IMPLICITMETHODtpe || params.nonEmpty && params.head.is(Implicit))
-        maker.fromSymbols(params, restpe)
+        val result = maker.fromSymbols(params, restpe)
+        if params.nonEmpty then paramsOfMethodType.put(result, params)
+        result
       case POLYtpe =>
         val restpe = readTypeRef()
         val typeParams = until(end, () => readSymbolRef())
-        if (typeParams.nonEmpty) TempPolyType(typeParams.asInstanceOf[List[TypeSymbol]], restpe.widenExpr)
-        else ExprType(restpe)
+        if typeParams.nonEmpty then
+          TempPolyType(typeParams.asInstanceOf[List[TypeSymbol]], restpe.widenExpr)
+        else
+          ExprType(restpe)
       case EXISTENTIALtpe =>
         val restpe = readTypeRef()
         val boundSyms = until(end, () => readSymbolRef())

@@ -198,7 +198,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   COVARIANT                                                        -- A type parameter marked “+”
                   CONTRAVARIANT                                                    -- A type parameter marked “-”
                   SCALA2X                                                          -- Imported from Scala2.x
-                  DEFAULTparameterized                                             -- Method with default parameters (default arguments are separate methods with DEFAULTGETTER names)
+                  HASDEFAULT                                                       -- Parameter with default arg; method with default parameters (default arguments are separate methods with DEFAULTGETTER names)
                   STABLE                                                           -- Method that is assumed to be stable, i.e. its applications are legal paths
                   EXTENSION                                                        -- An extension method
                   PARAMsetter                                                      -- The setter part `x_=` of a var parameter `x` which itself is pickled as a PARAM
@@ -344,7 +344,7 @@ object TastyFormat {
   final val COVARIANT = 28
   final val CONTRAVARIANT = 29
   final val SCALA2X = 30
-  final val DEFAULTparameterized = 31
+  final val HASDEFAULT = 31
   final val STABLE = 32
   final val MACRO = 33
   final val ERASED = 34
@@ -508,7 +508,7 @@ object TastyFormat {
        | COVARIANT
        | CONTRAVARIANT
        | SCALA2X
-       | DEFAULTparameterized
+       | HASDEFAULT
        | STABLE
        | EXTENSION
        | PARAMsetter
@@ -569,7 +569,7 @@ object TastyFormat {
     case COVARIANT => "COVARIANT"
     case CONTRAVARIANT => "CONTRAVARIANT"
     case SCALA2X => "SCALA2X"
-    case DEFAULTparameterized => "DEFAULTparameterized"
+    case HASDEFAULT => "HASDEFAULT"
     case STABLE => "STABLE"
     case EXTENSION => "EXTENSION"
     case GIVEN => "GIVEN"

@@ -894,10 +894,9 @@ trait Checking {
           if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }
-        if (decl.isOneOf(HasDefaultParamsFlags) && other.isOneOf(HasDefaultParamsFlags)) {
+        if decl.hasDefaultParams && other.hasDefaultParams then
           ctx.error(em"two or more overloaded variants of $decl have default arguments", decl.sourcePos)
-          decl.resetFlag(HasDefaultParamsFlags)
-        }
+          decl.resetFlag(HasDefaultParams)
       }
       if (!excludeFromDoubleDeclCheck(decl))
         seen(decl.name) = decl :: seen(decl.name)

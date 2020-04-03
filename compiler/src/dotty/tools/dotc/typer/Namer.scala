@@ -5,7 +5,8 @@ package typer
 import core._
 import ast._
 import Trees._, StdNames._, Scopes._, Denotations._, Comments._
-import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
+import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._
+import Decorators.{given _}
 import NameKinds.DefaultGetterName
 import TypeApplications.TypeParamInfo
 import ast.desugar, ast.desugar._
@@ -1553,6 +1554,7 @@ class Namer { typer: Typer =>
     vparamss foreach completeParams
     def typeParams = tparams map symbolOfTree
     val termParamss = ctx.normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
+    sym.setParamss(typeParams, termParamss)
     def wrapMethType(restpe: Type): Type = {
       instantiateDependent(restpe, typeParams, termParamss)
       ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods.is(JavaDefined))

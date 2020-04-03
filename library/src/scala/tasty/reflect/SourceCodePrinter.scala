@@ -48,7 +48,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     if (flags.is(Flags.Covariant)) flagList += "covariant"
     if (flags.is(Flags.Contravariant)) flagList += "contravariant"
     if (flags.is(Flags.Scala2X)) flagList += "scala2x"
-    if (flags.is(Flags.DefaultParameterized)) flagList += "defaultParameterized"
+    if (flags.is(Flags.HasDefault)) flagList += "hasDefault"
     if (flags.is(Flags.StableRealizable)) flagList += "stableRealizable"
     if (flags.is(Flags.Param)) flagList += "param"
     if (flags.is(Flags.ParamAccessor)) flagList += "paramAccessor"

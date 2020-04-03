@@ -299,7 +299,7 @@ object Flags {
   val (SuperParamAliasOrScala2x @ _, SuperParamAlias @ _, Scala2x @ _) = newFlags(26, "<super-param-alias>", "<scala-2.x>")
 
   /** A method that has default params */
-  val (_, DefaultParameterized @ _, _) = newFlags(27, "<defaultparam>")
+  val (_, HasDefault @ _, _) = newFlags(27, "<hasdefault>")
 
   /** An extension method, or a collective extension instance */
   val (_, Extension @ _, _) = newFlags(28, "<extension>")
@@ -391,18 +391,18 @@ object Flags {
 
   /** Translation of Scala2's EXPANDEDNAME flag. This flag is never stored in
    *  symbols, is only used locally when reading the flags of a Scala2 symbol.
-   *  It's therefore safe to share the code with `InheritedDefaultParams` because
+   *  It's therefore safe to share the code with `HasDefaultParams` because
    *  the latter is never present in Scala2 unpickle info.
    *    /
-   *  A method that is known to have inherited default parameters
+   *  A method that is known to have (defined or inherited) default parameters
    */
-  val (Scala2ExpandedName @ _, InheritedDefaultParams @ _, _) = newFlags(59, "<inherited-default-param>")
+  val (Scala2ExpandedName @ _, HasDefaultParams @ _, _) = newFlags(59, "<has-default-params>")
 
   /** A method that is known to have no default parameters
    *    /
    *  A type symbol with provisional empty bounds
    */
-  val (_, NoDefaultParams @ _, Provisional @ _) = newFlags(60, "<no-default-param>", "<provisional>")
+  val (_, NoDefaultParams @ _, Provisional @ _) = newFlags(60, "<no-default-params>", "<provisional>")
 
   /** A denotation that is valid in all run-ids */
   val (Permanent @ _, _, _) = newFlags(61, "<permanent>")
@@ -525,8 +525,7 @@ object Flags {
   val EnumCase: FlagSet                      = Case | Enum
   val CovariantLocal: FlagSet                = Covariant | Local                              // A covariant type parameter
   val ContravariantLocal: FlagSet            = Contravariant | Local                          // A contravariant type parameter
-  val HasDefaultParamsFlags: FlagSet         = DefaultParameterized | InheritedDefaultParams  // Has defined or inherited default parameters
-  val DefaultParameter: FlagSet              = DefaultParameterized | Param                   // A Scala 2x default parameter
+  val DefaultParameter: FlagSet              = HasDefault | Param                             // A Scala 2x default parameter
   val DeferredOrLazy: FlagSet                = Deferred | Lazy
   val DeferredOrLazyOrMethod: FlagSet        = Deferred | Lazy | Method
   val DeferredOrTermParamOrAccessor: FlagSet = Deferred | ParamAccessor | TermParam           // term symbols without right-hand sides
@@ -576,6 +575,7 @@ object Flags {
   val SyntheticGivenMethod: FlagSet          = Synthetic | Given | Method
   val SyntheticModule: FlagSet               = Synthetic | Module
   val SyntheticOpaque: FlagSet               = Synthetic | Opaque
+  val SyntheticParam: FlagSet                = Synthetic | Param
   val SyntheticTermParam: FlagSet            = Synthetic | TermParam
   val SyntheticTypeParam: FlagSet            = Synthetic | TypeParam
 }

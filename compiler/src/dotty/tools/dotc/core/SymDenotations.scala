@@ -11,7 +11,7 @@ import Scopes.Scope
 import dotty.tools.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
-import ast.Trees.{LambdaTypeTree, TypeBoundsTree}
+import ast.Trees.{LambdaTypeTree, TypeBoundsTree, ValDef, TypeDef}
 import Trees.Literal
 import Variances.Variance
 import annotation.tailrec
@@ -150,6 +150,7 @@ object SymDenotations {
     private var myFlags: FlagSet = adaptFlags(initFlags)
     private var myPrivateWithin: Symbol = initPrivateWithin
     private var myAnnotations: List[Annotation] = Nil
+    private var myParamss: List[List[Symbol]] = Nil
 
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = maybeOwner
@@ -371,6 +372,59 @@ object SymDenotations {
       case ann :: rest => if (ann matches cls) anns else dropOtherAnnotations(rest, cls)
       case Nil => Nil
     }
+
+    /** If this is a method, the parameter symbols, by section.
+     *  Both type and value parameters are included. Empty sections are skipped.
+     */
+    final def rawParamss: List[List[Symbol]] = myParamss
+    final def rawParamss_=(pss: List[List[Symbol]]): Unit =
+      myParamss = pss
+
+    final def setParamss(tparams: List[Symbol], vparamss: List[List[Symbol]])(using Context): Unit =
+      rawParamss = (if tparams.isEmpty then vparamss else tparams :: vparamss)
+        .filterConserve(!_.isEmpty)
+
+    final def setParamssFromDefs(tparams: List[TypeDef[?]], vparamss: List[List[ValDef[?]]])(using Context): Unit =
+      setParamss(tparams.map(_.symbol), vparamss.map(_.map(_.symbol)))
+
+    /** A pair consistsing of type paremeter symbols and value parameter symbol lists
+     *  of this method definition, or (Nil, Nil) for other symbols.
+     *  Makes use of `rawParamss` when present, or constructs fresh parameter symbols otherwise.
+     *  This method can be allocation-heavy.
+     */
+    final def paramSymss(using ctx: Context): (List[TypeSymbol], List[List[TermSymbol]]) =
+
+      def recurWithParamss(info: Type, paramss: List[List[Symbol]]): List[List[Symbol]] =
+        info match
+          case info: LambdaType =>
+            if info.paramNames.isEmpty then Nil :: recurWithParamss(info.resType, paramss)
+            else paramss.head :: recurWithParamss(info.resType, paramss.tail)
+          case _ =>
+            Nil
+
+      def recurWithoutParamss(info: Type): List[List[Symbol]] = info match
+        case info: LambdaType =>
+          val params = info.paramNames.lazyZip(info.paramInfos).map((pname, ptype) =>
+            ctx.newSymbol(symbol, pname, SyntheticParam, ptype))
+          val prefs = params.map(_.namedType)
+          for param <- params do
+            param.info = param.info.substParams(info, prefs)
+          params :: recurWithoutParamss(info.instantiate(prefs))
+        case _ =>
+          Nil
+
+      try
+        val allParamss =
+          if rawParamss.isEmpty then recurWithoutParamss(info)
+          else recurWithParamss(info, rawParamss)
+        val result = info match
+          case info: PolyType => (allParamss.head, allParamss.tail)
+          case _ => (Nil, allParamss)
+        result.asInstanceOf[(List[TypeSymbol], List[List[TermSymbol]])]
+      catch case NonFatal(ex) =>
+        println(i"paramSymss failure for $symbol, $info, $rawParamss")
+        throw ex
+    end paramSymss
 
     /** The denotation is completed: info is not a lazy type and attributes have defined values */
     final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
@@ -916,15 +970,19 @@ object SymDenotations {
     def isAsConcrete(that: Symbol)(implicit ctx: Context): Boolean =
       !this.is(Deferred) || that.is(Deferred)
 
-    /** Does this symbol have defined or inherited default parameters? */
+    /** Does this symbol have defined or inherited default parameters?
+     *  Default parameters are recognized until erasure.
+     */
     def hasDefaultParams(implicit ctx: Context): Boolean =
-      if (this.isOneOf(HasDefaultParamsFlags)) true
-      else if (this.is(NoDefaultParams)) false
-      else {
-        val result = allOverriddenSymbols exists (_.hasDefaultParams)
-        setFlag(if (result) InheritedDefaultParams else NoDefaultParams)
+      if ctx.erasedTypes then false
+      else if is(HasDefaultParams) then true
+      else if is(NoDefaultParams) then false
+      else
+        val result =
+          rawParamss.exists(_.exists(_.is(HasDefault)))
+          || allOverriddenSymbols.exists(_.hasDefaultParams)
+        setFlag(if result then HasDefaultParams else NoDefaultParams)
         result
-      }
 
     /** Symbol is an owner that would be skipped by effectiveOwner. Skipped are
      *   - package objects
@@ -1452,7 +1510,9 @@ object SymDenotations {
       initFlags: FlagSet = UndefinedFlags,
       info: Type = null,
       privateWithin: Symbol = null,
-      annotations: List[Annotation] = null)(implicit ctx: Context): SymDenotation = {
+      annotations: List[Annotation] = null,
+      rawParamss: List[List[Symbol]] = null)(
+        using ctx: Context): SymDenotation = {
       // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
       val info1 = if (info != null) info else this.info
@@ -1460,8 +1520,10 @@ object SymDenotations {
         assert(ctx.phase.changesParents, i"undeclared parent change at ${ctx.phase} for $this, was: $info, now: $info1")
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
+      val rawParamss1 = if rawParamss != null then rawParamss else this.rawParamss
       val d = ctx.SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
       d.annotations = annotations1
+      d.rawParamss = rawParamss1
       d.registeredCompanion = registeredCompanion
       d
     }

@@ -5,6 +5,6 @@ object Test {
   }
 
   def test: Unit = {
-    new C()("1") // error: missing argument
+    new C()("1")
   }
 }

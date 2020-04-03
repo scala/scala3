@@ -97,8 +97,10 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): DefDef = {
     val sym = tree.symbol
     if (sym.isConstructor && sym.owner.derivesFromJavaEnum)
-      cpy.DefDef(tree)(
+      val tree1 = cpy.DefDef(tree)(
         vparamss = tree.vparamss.init :+ (tree.vparamss.last ++ addedParams(sym, Param)))
+      sym.setParamssFromDefs(tree1.tparams, tree1.vparamss)
+      tree1
     else if (sym.name == nme.DOLLAR_NEW && sym.owner.linkedClass.derivesFromJavaEnum) {
       val Block((tdef @ TypeDef(tpnme.ANON_CLASS, templ: Template)) :: Nil, call) = tree.rhs
       val args = tree.vparamss.last.takeRight(2).map(param => ref(param.symbol)).reverse

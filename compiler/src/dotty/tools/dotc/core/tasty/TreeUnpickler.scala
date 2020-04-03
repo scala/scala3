@@ -23,7 +23,7 @@ import util.Spans._
 import util.SourceFile
 import ast.{TreeTypeMap, Trees, tpd, untpd}
 import Trees._
-import Decorators._
+import Decorators.{given _}
 import transform.SymUtils._
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
@@ -648,7 +648,7 @@ class TreeUnpickler(reader: TastyReader,
           case COVARIANT => addFlag(Covariant)
           case CONTRAVARIANT => addFlag(Contravariant)
           case SCALA2X => addFlag(Scala2x)
-          case DEFAULTparameterized => addFlag(DefaultParameterized)
+          case HASDEFAULT => addFlag(HasDefault)
           case STABLE => addFlag(StableRealizable)
           case EXTENSION => addFlag(Extension)
           case GIVEN => addFlag(Given)
@@ -795,9 +795,10 @@ class TreeUnpickler(reader: TastyReader,
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(localCtx)), sym)
 
       def DefDef(tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree) =
-         ta.assignType(
-            untpd.DefDef(sym.name.asTermName, tparams, vparamss, tpt, readRhs(localCtx)),
-            sym)
+        sym.setParamssFromDefs(tparams, vparamss)
+        ta.assignType(
+          untpd.DefDef(sym.name.asTermName, tparams, vparamss, tpt, readRhs(localCtx)),
+          sym)
 
       def TypeDef(rhs: Tree) =
         ta.assignType(untpd.TypeDef(sym.name.asTypeName, rhs), sym)
