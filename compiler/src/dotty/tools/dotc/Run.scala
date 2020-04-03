@@ -69,10 +69,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var myCtx = rootContext(ictx)
 
   /** The context created for this run */
-  def runContext: Context = myCtx
-
-  protected implicit def ctx: Context = myCtx
-  assert(ctx.runId <= Periods.MaxPossibleRunId)
+  given runContext[Dummy_so_its_a_def] as Context = myCtx
+  assert(runContext.runId <= Periods.MaxPossibleRunId)
 
   private var myUnits: List[CompilationUnit] = _
   private var myUnitsCached: List[CompilationUnit] = _
@@ -108,12 +106,12 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var finalizeActions = mutable.ListBuffer[() => Unit]()
 
   def compile(fileNames: List[String]): Unit = try {
-    val sources = fileNames.map(ctx.getSource(_))
+    val sources = fileNames.map(runContext.getSource(_))
     compileSources(sources)
   }
   catch {
     case NonFatal(ex) =>
-      ctx.echo(i"exception occurred while compiling $units%, %")
+      runContext.echo(i"exception occurred while compiling $units%, %")
       throw ex
   }
 
@@ -266,7 +264,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** Print summary; return # of errors encountered */
   def printSummary(): Unit = {
     printMaxConstraint()
-    val r = ctx.reporter
+    val r = runContext.reporter
     r.printSummary
   }
 

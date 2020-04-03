@@ -248,7 +248,7 @@ object ProtoTypes {
    *  [](args): resultType
    */
   case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer,
-    override val isUsingApply: Boolean, state: FunProtoState = new FunProtoState)(implicit val ctx: Context)
+    override val isUsingApply: Boolean, state: FunProtoState = new FunProtoState)(implicit protoCtx: Context)
   extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
     override def resultType(implicit ctx: Context): Type = resType
 
@@ -310,18 +310,18 @@ object ProtoTypes {
     def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree = sameTree)(implicit ctx: Context): List[Tree] =
       if (state.typedArgs.size == args.length) state.typedArgs
       else {
-        val prevConstraint = this.ctx.typerState.constraint
+        val prevConstraint = protoCtx.typerState.constraint
 
         try {
-          implicit val ctx = this.ctx
+          implicit val ctx = protoCtx
           val args1 = args.mapWithIndexConserve((arg, idx) =>
             cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false))
           if (!args1.exists(arg => isUndefined(arg.tpe))) state.typedArgs = args1
           args1
         }
         finally
-          if (this.ctx.typerState.constraint ne prevConstraint)
-            ctx.typerState.mergeConstraintWith(this.ctx.typerState)
+          if (protoCtx.typerState.constraint ne prevConstraint)
+            ctx.typerState.mergeConstraintWith(protoCtx.typerState)
       }
 
     /** Type single argument and remember the unadapted result in `myTypedArg`.
@@ -386,7 +386,7 @@ object ProtoTypes {
     override def deepenProto(implicit ctx: Context): FunProto = derivedFunProto(args, resultType.deepenProto, typer)
 
     override def withContext(newCtx: Context): ProtoType =
-      if (newCtx `eq` ctx) this
+      if newCtx `eq` protoCtx then this
       else new FunProto(args, resType)(typer, isUsingApply, state)(newCtx)
   }
 

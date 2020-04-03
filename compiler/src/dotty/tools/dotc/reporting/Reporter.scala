@@ -66,18 +66,18 @@ object Reporter {
   }
 }
 
-trait Reporting { this: Context =>
+trait Reporting { thisCtx: Context =>
 
   /** For sending messages that are printed only if -verbose is set */
   def inform(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    if (this.settings.verbose.value) this.echo(msg, pos)
+    if (thisCtx.settings.verbose.value) thisCtx.echo(msg, pos)
 
   def echo(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new Info(msg, pos))
 
   def reportWarning(warning: Warning): Unit =
-    if (!this.settings.silentWarnings.value)
-      if (this.settings.XfatalWarnings.value)
+    if (!thisCtx.settings.silentWarnings.value)
+      if (thisCtx.settings.XfatalWarnings.value)
         warning match {
           case warning: ConditionalWarning if !warning.enablingOption.value =>
             reporter.report(warning) // conditional warnings that are not enabled are not fatal
@@ -123,23 +123,23 @@ trait Reporting { this: Context =>
     reportWarning(new Warning(msg, addInlineds(pos)))
 
   def strictWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
-    if (this.settings.strict.value) error(msg, pos)
+    if (thisCtx.settings.strict.value) error(msg, pos)
     else warning(msg.append("\n(This would be an error under strict mode)"), pos)
 
   def error(msg: Message, pos: SourcePosition = NoSourcePosition, sticky: Boolean = false): Unit = {
     val fullPos = addInlineds(pos)
     reporter.report(if (sticky) new StickyError(msg, fullPos) else new Error(msg, fullPos))
-    if ctx.settings.YdebugError.value then Thread.dumpStack()
+    if thisCtx.settings.YdebugError.value then Thread.dumpStack()
   }
 
   def error(ex: TypeError, pos: SourcePosition): Unit = {
     error(ex.toMessage, pos, sticky = true)
-    if (ctx.settings.YdebugTypeError.value)
+    if (thisCtx.settings.YdebugTypeError.value)
       ex.printStackTrace()
   }
 
   def errorOrMigrationWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
-    if (ctx.scala2CompatMode) migrationWarning(msg, pos) else error(msg, pos)
+    if (thisCtx.scala2CompatMode) migrationWarning(msg, pos) else error(msg, pos)
 
   def restrictionError(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
     error(msg.mapMsg("Implementation restriction: " + _), pos)
@@ -152,11 +152,11 @@ trait Reporting { this: Context =>
    *  "contains" here.
    */
   def log(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    if (this.settings.Ylog.value.containsPhase(phase))
-      echo(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg", pos)
+    if (thisCtx.settings.Ylog.value.containsPhase(phase))
+      echo(s"[log ${thisCtx.phasesStack.reverse.mkString(" -> ")}] $msg", pos)
 
   def debuglog(msg: => String): Unit =
-    if (ctx.debug) log(msg)
+    if (thisCtx.debug) log(msg)
 
   def informTime(msg: => String, start: Long): Unit = {
     def elapsed = s" in ${currentTimeMillis - start}ms"
@@ -172,7 +172,7 @@ trait Reporting { this: Context =>
   }
 
   def debugwarn(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    if (this.settings.Ydebug.value) warning(msg, pos)
+    if (thisCtx.settings.Ydebug.value) warning(msg, pos)
 
   private def addInlineds(pos: SourcePosition)(implicit ctx: Context) = {
     def recur(pos: SourcePosition, inlineds: List[Trees.Tree[?]]): SourcePosition = inlineds match {

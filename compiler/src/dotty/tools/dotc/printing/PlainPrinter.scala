@@ -15,7 +15,11 @@ import scala.util.control.NonFatal
 import scala.annotation.switch
 
 class PlainPrinter(_ctx: Context) extends Printer {
+  /** The context of all public methods in Printer and subclasses.
+   *  Overridden in RefinedPrinter.
+   */
   protected implicit def ctx: Context = _ctx.addMode(Mode.Printing)
+
   protected def printDebug = ctx.settings.YprintDebug.value
 
   private var openRecs: List[RecType] = Nil

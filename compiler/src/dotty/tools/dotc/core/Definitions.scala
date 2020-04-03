@@ -37,7 +37,8 @@ object Definitions {
 class Definitions {
   import Definitions._
 
-  private implicit var ctx: Context = _
+  private var initCtx: Context = _
+  private given ctx[Dummy_so_its_a_def] as Context = initCtx
 
   private def newSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type) =
     ctx.newSymbol(owner, name, flags | Permanent, info)
@@ -1427,7 +1428,7 @@ class Definitions {
   private var isInitialized = false
 
   def init()(implicit ctx: Context): Unit = {
-    this.ctx = ctx
+    this.initCtx = ctx
     if (!isInitialized) {
       // Enter all symbols from the scalaShadowing package in the scala package
       for (m <- ScalaShadowingPackage.info.decls)

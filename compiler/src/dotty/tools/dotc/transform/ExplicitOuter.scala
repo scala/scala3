@@ -346,6 +346,7 @@ object ExplicitOuter {
    *     no later than erasure.
    */
   class OuterOps(val ictx: Context) extends AnyVal {
+    /** The context of all operations of this class */
     private implicit def ctx: Context = ictx
 
     /** If `cls` has an outer parameter add one to the method type `tp`. */

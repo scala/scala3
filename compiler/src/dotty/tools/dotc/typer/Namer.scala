@@ -24,11 +24,11 @@ import transform.SymUtils._
 import reporting.messages._
 
 trait NamerContextOps {
-  this: Context =>
+  thisCtx: Context =>
 
   import NamerContextOps._
 
-  def typer: Typer = ctx.typeAssigner match {
+  def typer: Typer = this.typeAssigner match {
     case typer: Typer => typer
     case _ => new Typer
   }
@@ -39,9 +39,9 @@ trait NamerContextOps {
    *  finger prints.
    */
   def enter(sym: Symbol): Symbol = {
-    ctx.owner match {
+    thisContext.owner match {
       case cls: ClassSymbol => cls.enter(sym)
-      case _ => this.scope.openForMutations.enter(sym)
+      case _ => thisCtx.scope.openForMutations.enter(sym)
     }
     sym
   }
@@ -105,7 +105,7 @@ trait NamerContextOps {
 
   /** A new context for the interior of a class */
   def inClassContext(selfInfo: TypeOrSymbol): Context = {
-    val localCtx: Context = ctx.fresh.setNewScope
+    val localCtx: Context = thisCtx.fresh.setNewScope
     selfInfo match {
       case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
       case _ =>
@@ -114,8 +114,8 @@ trait NamerContextOps {
   }
 
   def packageContext(tree: untpd.PackageDef, pkg: Symbol): Context =
-    if (pkg.is(Package)) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
-    else ctx
+    if (pkg.is(Package)) thisCtx.fresh.setOwner(pkg.moduleClass).setTree(tree)
+    else thisCtx
 
   /** The given type, unless `sym` is a constructor, in which case the
    *  type of the constructed instance is returned
@@ -1027,7 +1027,7 @@ class Namer { typer: Typer =>
   class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
     withDecls(newScope)
 
-    protected implicit val ctx: Context = localContext(cls)
+    protected implicit val completerCtx: Context = localContext(cls)
 
     private var localCtx: Context = _
 
@@ -1179,7 +1179,7 @@ class Namer { typer: Typer =>
           val moduleType = cls.owner.thisType select sourceModule
           if (self.name == nme.WILDCARD) moduleType
           else recordSym(
-            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.span),
+            completerCtx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.span),
             self)
         }
         else createSymbol(self)
@@ -1187,7 +1187,7 @@ class Namer { typer: Typer =>
       val savedInfo = denot.infoOrCompleter
       denot.info = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
 
-      localCtx = ctx.inClassContext(selfInfo)
+      localCtx = completerCtx.inClassContext(selfInfo)
 
       index(constr)
       index(rest)(localCtx)
@@ -1195,7 +1195,7 @@ class Namer { typer: Typer =>
       symbolOfTree(constr).info.stripPoly match // Completes constr symbol as a side effect
         case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
           // See issue #8073 for background
-          ctx.error(
+          completerCtx.error(
               i"""Implementation restriction: case classes cannot have dependencies between parameters""",
               cls.sourcePos)
         case _ =>
@@ -1241,28 +1241,28 @@ class Namer { typer: Typer =>
        *  (4) If the class is sealed, it is defined in the same compilation unit as the current class
        */
       def checkedParentType(parent: untpd.Tree): Type = {
-        val ptype = parentType(parent)(ctx.superCallContext).dealiasKeepAnnots
+        val ptype = parentType(parent)(completerCtx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
           val pt = checkClassType(ptype, parent.sourcePos,
               traitReq = parent ne parents.head, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
-              case Select(qual: Super, _) if ctx.scala2CompatMode =>
+              case Select(qual: Super, _) if completerCtx.scala2CompatMode =>
                 "\n(Note that inheriting a class of the same name is no longer allowed)"
               case _ => ""
             }
-            ctx.error(CyclicInheritance(cls, addendum), parent.sourcePos)
+            completerCtx.error(CyclicInheritance(cls, addendum), parent.sourcePos)
             defn.ObjectType
           }
           else {
             val pclazz = pt.typeSymbol
             if pclazz.is(Final) then
-              ctx.error(ExtendFinalClass(cls, pclazz), cls.sourcePos)
+              completerCtx.error(ExtendFinalClass(cls, pclazz), cls.sourcePos)
             else if pclazz.isEffectivelySealed && pclazz.associatedFile != cls.associatedFile then
               if pclazz.is(Sealed) then
-                ctx.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
-              else if ctx.settings.strict.value then
+                completerCtx.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
+              else if completerCtx.settings.strict.value then
                 checkFeature(nme.adhocExtensions,
                   i"Unless $pclazz is declared 'open', its extension in a separate file",
                   cls.topLevelClass,

@@ -7,7 +7,7 @@ import Contexts._
  *  run ids represent compiler runs
  *  phase ids represent compiler phases
  */
-abstract class Periods { self: Context =>
+abstract class Periods { thisCtx: Context =>
   import Periods._
 
   /** The current phase identifier */
@@ -18,11 +18,11 @@ abstract class Periods { self: Context =>
 
   /** Execute `op` at given period */
   def atPeriod[T](pd: Period)(op: Context => T): T =
-    op(ctx.fresh.setPeriod(pd))
+    op(thisCtx.fresh.setPeriod(pd))
 
   /** Execute `op` at given phase id */
   def atPhase[T](pid: PhaseId)(op: Context ?=> T): T =
-    op(using ctx.withPhase(pid))
+    op(using thisCtx.withPhase(pid))
 
   /** The period containing the current period where denotations do not change.
    *  We compute this by taking as first phase the first phase less or equal to
@@ -31,19 +31,19 @@ abstract class Periods { self: Context =>
    */
   def stablePeriod: Period = {
     var first = phaseId
-    val nxTrans = ctx.base.nextDenotTransformerId(first)
-    while (first - 1 > NoPhaseId && (ctx.base.nextDenotTransformerId(first - 1) == nxTrans))
+    val nxTrans = thisCtx.base.nextDenotTransformerId(first)
+    while (first - 1 > NoPhaseId && (thisCtx.base.nextDenotTransformerId(first - 1) == nxTrans))
       first -= 1
     Period(runId, first, nxTrans)
   }
 
   /** Are all base types in the current period guaranteed to be the same as in period `p`? */
   def hasSameBaseTypesAs(p: Period): Boolean = {
-    val period = this.period
+    val period = thisCtx.period
     period == p ||
     period.runId == p.runId &&
-      this.phases(period.phaseId).sameBaseTypesStartId ==
-      this.phases(p.phaseId).sameBaseTypesStartId
+      thisCtx.phases(period.phaseId).sameBaseTypesStartId ==
+      thisCtx.phases(p.phaseId).sameBaseTypesStartId
   }
 }
 

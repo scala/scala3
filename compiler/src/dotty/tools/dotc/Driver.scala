@@ -64,17 +64,17 @@ class Driver {
   protected def sourcesRequired: Boolean = true
 
   def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
-    val ctx = rootCtx.fresh
-    val summary = CompilerCommand.distill(args)(ctx)
-    ctx.setSettings(summary.sstate)
-    MacroClassLoader.init(ctx)
-    Positioned.updateDebugPos(ctx)
+    val ictx = rootCtx.fresh
+    val summary = CompilerCommand.distill(args)(ictx)
+    ictx.setSettings(summary.sstate)
+    MacroClassLoader.init(ictx)
+    Positioned.updateDebugPos(ictx)
 
-    if (!ctx.settings.YdropComments.value(ctx) || ctx.mode.is(Mode.ReadComments))
-      ctx.setProperty(ContextDoc, new ContextDocstrings)
+    if (!ictx.settings.YdropComments.value(ictx) || ictx.mode.is(Mode.ReadComments))
+      ictx.setProperty(ContextDoc, new ContextDocstrings)
 
-    val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
-    fromTastySetup(fileNames, ctx)
+    val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ictx)
+    fromTastySetup(fileNames, ictx)
   }
 
   /** Setup extra classpath and figure out class names for tasty file inputs */

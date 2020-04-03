@@ -33,7 +33,7 @@ import scala.annotation.internal.sharable
 import config.Printers.typr
 
 /** Creation methods for symbols */
-trait Symbols { this: Context =>
+trait Symbols { thisCtx: Context =>
 
 // ---- Factory methods for symbol creation ----------------------
 //
@@ -131,7 +131,7 @@ trait Symbols { this: Context =>
   }
 
   def newRefinedClassSymbol(coord: Coord = NoCoord): ClassSymbol =
-    newCompleteClassSymbol(ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, coord = coord)
+    newCompleteClassSymbol(thisCtx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, coord = coord)
 
   /** Create a module symbol with associated module class
    *  from its non-info fields and a function producing the info
@@ -268,7 +268,7 @@ trait Symbols { this: Context =>
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
   def newSelfSym(cls: ClassSymbol, name: TermName = nme.WILDCARD, selfInfo: Type = NoType): TermSymbol =
-    ctx.newSymbol(cls, name, SelfSymFlags, selfInfo orElse cls.classInfo.selfType, coord = cls.coord)
+    newSymbol(cls, name, SelfSymFlags, selfInfo orElse cls.classInfo.selfType, coord = cls.coord)
 
   /** Create new type parameters with given owner, names, and flags.
    *  @param boundsFn  A function that, given type refs to the newly created
