@@ -377,7 +377,7 @@ class CommunityBuildTest:
   @Test def ScalaPB = projects.ScalaPB.run()
   @Test def minitest = projects.minitest.run()
   @Test def fastparse = projects.fastparse.run()
-  //@Test def utest = projects.utest.run()
+  @Test def utest = projects.utest.run()
   //@Test def sourcecode = projects.sourcecode.run()
   //@Test def oslib = projects.oslib.run()
   //@Test def ujson = projects.ujson.run()
