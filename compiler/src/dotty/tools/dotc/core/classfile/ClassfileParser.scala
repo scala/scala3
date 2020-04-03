@@ -314,6 +314,19 @@ class ClassfileParser(
   final def objToAny(tp: Type)(implicit ctx: Context): Type =
     if (tp.isDirectRef(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else tp
 
+  def constantTagToType(tag: Int)(using Context): Type =
+    (tag: @switch) match {
+      case BYTE_TAG   => defn.ByteType
+      case CHAR_TAG   => defn.CharType
+      case DOUBLE_TAG => defn.DoubleType
+      case FLOAT_TAG  => defn.FloatType
+      case INT_TAG    => defn.IntType
+      case LONG_TAG   => defn.LongType
+      case SHORT_TAG  => defn.ShortType
+      case VOID_TAG   => defn.UnitType
+      case BOOL_TAG   => defn.BooleanType
+    }
+
   private def sigToType(sig: SimpleName, owner: Symbol = null)(implicit ctx: Context): Type = {
     var index = 0
     val end = sig.length
@@ -331,15 +344,6 @@ class ClassfileParser(
     def sig2type(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean)(implicit ctx: Context): Type = {
       val tag = sig(index); index += 1
       (tag: @switch) match {
-        case BYTE_TAG   => defn.ByteType
-        case CHAR_TAG   => defn.CharType
-        case DOUBLE_TAG => defn.DoubleType
-        case FLOAT_TAG  => defn.FloatType
-        case INT_TAG    => defn.IntType
-        case LONG_TAG   => defn.LongType
-        case SHORT_TAG  => defn.ShortType
-        case VOID_TAG   => defn.UnitType
-        case BOOL_TAG   => defn.BooleanType
         case 'L' =>
           def processInner(tp: Type): Type = tp match {
             case tp: TypeRef if !tp.symbol.owner.is(Flags.ModuleClass) =>
@@ -417,6 +421,8 @@ class ClassfileParser(
           index += 1
           //assert(tparams contains n, s"classTparams = $classTParams, tparams = $tparams, key = $n")
           if (skiptvs) defn.AnyType else tparams(n).typeRef
+        case tag =>
+          constantTagToType(tag)
       }
     }
     // sig2type(tparams, skiptvs)
@@ -495,12 +501,11 @@ class ClassfileParser(
     val tag = in.nextByte.toChar
     val index = in.nextChar
 
-
     tag match {
       case STRING_TAG =>
         if (skip) None else Some(lit(Constant(pool.getName(index).toString)))
       case BOOL_TAG | BYTE_TAG | CHAR_TAG | SHORT_TAG =>
-        if (skip) None else Some(lit(pool.getConstant(index, tag)))
+        if (skip) None else Some(lit(pool.getConstant(index, constantTagToType(tag))))
       case INT_TAG | LONG_TAG | FLOAT_TAG | DOUBLE_TAG =>
         if (skip) None else Some(lit(pool.getConstant(index)))
       case CLASS_TAG =>
@@ -571,11 +576,6 @@ class ClassfileParser(
   }
 
   def parseAttributes(sym: Symbol, symtype: Type)(implicit ctx: Context): Type = {
-    def convertTo(c: Constant, pt: Type): Constant =
-      if (pt == defn.BooleanType && c.tag == IntTag)
-        Constant(c.value != 0)
-      else
-        c convertTo pt
     var newType = symtype
 
     def parseAttribute(): Unit = {
@@ -597,10 +597,9 @@ class ClassfileParser(
           val since = Literal(Constant(""))
           sym.addAnnotation(Annotation(defn.DeprecatedAnnot, msg, since))
         case tpnme.ConstantValueATTR =>
-          val c = pool.getConstant(in.nextChar)
-          val c1 = convertTo(c, symtype)
-          if (c1 ne null) newType = ConstantType(c1)
-          else println("failure to convert " + c + " to " + symtype); //debug
+          val c = pool.getConstant(in.nextChar, symtype)
+          if (c ne null) newType = ConstantType(c)
+          else ctx.warning(s"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
         case tpnme.AnnotationDefaultATTR =>
           sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil))
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
@@ -1113,7 +1112,7 @@ class ClassfileParser(
       getClassSymbol(index)
     }
 
-    def getConstant(index: Int, tag: Int = -1)(implicit ctx: Context): Constant = {
+    def getConstant(index: Int, pt: Type = WildcardType)(implicit ctx: Context): Constant = {
       if (index <= 0 || len <= index) errorBadIndex(index)
       var value = values(index)
       if (value eq null) {
@@ -1121,20 +1120,6 @@ class ClassfileParser(
         value = (in.buf(start).toInt: @switch) match {
           case CONSTANT_STRING =>
             Constant(getName(in.getChar(start + 1).toInt).toString)
-          case CONSTANT_INTEGER if tag != -1 =>
-            val value = in.getInt(start + 1)
-            (tag: @switch) match {
-              case BOOL_TAG =>
-                Constant(value != 0)
-              case BYTE_TAG =>
-                Constant(value.toByte)
-              case CHAR_TAG =>
-                Constant(value.toChar)
-              case SHORT_TAG =>
-                Constant(value.toShort)
-              case _ =>
-                errorBadTag(tag)
-            }
           case CONSTANT_INTEGER =>
             Constant(in.getInt(start + 1))
           case CONSTANT_FLOAT =>
@@ -1151,7 +1136,21 @@ class ClassfileParser(
         values(index) = value
       }
       value match {
-        case  ct: Constant => ct
+        case ct: Constant =>
+          if pt ne WildcardType then
+            // As specified in https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.7.16.1,
+            // an annotation argument of type boolean, byte, char or short will
+            // be represented as a CONSTANT_INTEGER, so we need to convert it to
+            // produce a correctly-typed tree. We need to do this each time the
+            // constant is accessed instead of storing the result of the
+            // conversion in the `values` cache, because the same constant might
+            // be used for annotation arguments of different type.
+            if (pt eq defn.BooleanType) && ct.tag == IntTag then
+              Constant(ct.value != 0)
+            else
+              ct.convertTo(pt)
+          else
+            ct
         case cls: Symbol   => Constant(cls.typeRef)
         case arr: Type     => Constant(arr)
       }
