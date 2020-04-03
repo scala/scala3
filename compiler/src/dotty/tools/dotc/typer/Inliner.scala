@@ -130,7 +130,7 @@ object Inliner {
    *  @param unapp   The tree of the pattern to inline
    *  @return   An `Unapply` with a `fun` containing the inlined call to the unapply
    */
-  def inlinedUnapply(unapp: tpd.UnApply)(using ctx: Context): Tree = {
+  def inlinedUnapply(unapp: tpd.UnApply)(using Context): Tree = {
     // We cannot inline the unapply directly, since the pattern matcher relies on unapply applications
     // as signposts what to do. On the other hand, we can do the inlining only in typer, not afterwards.
     // So the trick is to create a "wrapper" unapply in an anonymous class that has the inlined unapply
@@ -193,14 +193,14 @@ object Inliner {
     .reporting(i"retainer for $meth: $result", inlining)
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
-  def dropInlined(inlined: Inlined)(implicit ctx: Context): Tree =
+  def dropInlined(inlined: Inlined)(using Context): Tree =
     val tree1 =
       if inlined.bindings.isEmpty then inlined.expansion
       else cpy.Block(inlined)(inlined.bindings, inlined.expansion)
     // Reposition in the outer most inlined call
     if (enclosingInlineds.nonEmpty) tree1 else reposition(tree1, inlined.span)
 
-  def reposition(tree: Tree, callSpan: Span)(implicit ctx: Context): Tree = {
+  def reposition(tree: Tree, callSpan: Span)(using Context): Tree = {
     // Reference test tests/run/i4947b
 
     val curSource = ctx.compilationUnit.source
@@ -222,23 +222,22 @@ object Inliner {
      */
     class Reposition extends TreeMap(cpyWithNewSource) {
 
-      override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+      override def transform(tree: Tree)(using Context): Tree = {
         def finalize(copied: untpd.Tree) =
           val span = if tree.source == curSource then tree.span else callSpan
           copied.withSpan(span).withAttachmentsFrom(tree).withTypeUnchecked(tree.tpe)
 
-        given as Context = ctx.withSource(curSource)
-
-        tree match {
-          case tree: Ident => finalize(untpd.Ident(tree.name)(curSource))
-          case tree: Literal => finalize(untpd.Literal(tree.const)(curSource))
-          case tree: This => finalize(untpd.This(tree.qual)(curSource))
-          case tree: JavaSeqLiteral => finalize(untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-          case tree: SeqLiteral => finalize(untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-          case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(curSource))
-          case tree: TypeTree => finalize(tpd.TypeTree(tree.tpe))
-          case tree: DefTree => super.transform(tree).setDefTree
-          case _ => super.transform(tree)
+        inContext(ctx.withSource(curSource)) {
+          tree match
+            case tree: Ident => finalize(untpd.Ident(tree.name)(curSource))
+            case tree: Literal => finalize(untpd.Literal(tree.const)(curSource))
+            case tree: This => finalize(untpd.This(tree.qual)(curSource))
+            case tree: JavaSeqLiteral => finalize(untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
+            case tree: SeqLiteral => finalize(untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
+            case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(curSource))
+            case tree: TypeTree => finalize(tpd.TypeTree(tree.tpe))
+            case tree: DefTree => super.transform(tree).setDefTree
+            case _ => super.transform(tree)
         }
       }
     }

@@ -2438,7 +2438,7 @@ class Typer extends Namer
             // in preceding statements (unless the DefTree is completed ahead of time,
             // then it is impossible).
             sym.info = Completer(completer.original)(
-              using completer.creationContext.withNotNullInfos(ctx.notNullInfos))
+              completer.creationContext.withNotNullInfos(ctx.notNullInfos))
           true
         case _ =>
           // If it has been completed, then it must be because there is a forward reference
