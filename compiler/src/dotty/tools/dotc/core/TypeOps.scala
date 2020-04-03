@@ -22,7 +22,7 @@ import typer.IfBottom
 
 import scala.annotation.internal.sharable
 
-trait TypeOps { this: Context => // TODO: Make standalone object.
+trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
 
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means.
@@ -134,7 +134,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         }
       case tp: TypeParamRef =>
         if (tp.paramName.is(DepParamName)) {
-          val bounds = ctx.typeComparer.bounds(tp)
+          val bounds = thisCtx.typeComparer.bounds(tp)
           if (bounds.lo.isRef(defn.NothingClass)) bounds.hi else bounds.lo
         }
         else {
@@ -145,9 +145,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         tp
       case tp: AliasingBounds =>
         tp.derivedAlias(simplify(tp.alias, theMap))
-      case AndType(l, r) if !ctx.mode.is(Mode.Type) =>
+      case AndType(l, r) if !thisCtx.mode.is(Mode.Type) =>
         simplify(l, theMap) & simplify(r, theMap)
-      case OrType(l, r) if !ctx.mode.is(Mode.Type) =>
+      case OrType(l, r) if !thisCtx.mode.is(Mode.Type) =>
         simplify(l, theMap) | simplify(r, theMap)
       case _: AppliedType | _: MatchType =>
         val normed = tp.tryNormalize
@@ -192,7 +192,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
       case Nil => // this case can happen because after erasure we do not have a top class anymore
-        assert(ctx.erasedTypes || ctx.reporter.errorsReported)
+        assert(thisCtx.erasedTypes || thisCtx.reporter.errorsReported)
         defn.ObjectClass :: Nil
     }
 
@@ -216,7 +216,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             case AppliedType(tycon2, args2) =>
               tp1.derivedAppliedType(
                 mergeRefinedOrApplied(tycon1, tycon2),
-                ctx.typeComparer.lubArgs(args1, args2, tycon1.typeParams))
+                thisCtx.typeComparer.lubArgs(args1, args2, tycon1.typeParams))
             case _ => fallback
           }
         case tp1 @ TypeRef(pre1, _) =>
@@ -492,15 +492,15 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   def featureEnabled(feature: TermName, owner: Symbol = NoSymbol): Boolean = {
     def hasImport = {
       val owner1 = if (!owner.exists) defn.LanguageModule.moduleClass else owner
-      ctx.importInfo != null &&
-      ctx.importInfo.featureImported(feature, owner1)(ctx.withPhase(ctx.typerPhase))
+      thisCtx.importInfo != null &&
+      thisCtx.importInfo.featureImported(feature, owner1)(thisCtx.withPhase(thisCtx.typerPhase))
     }
     val hasOption = {
       def toPrefix(sym: Symbol): String =
         if (!sym.exists) ""
         else toPrefix(sym.owner) + sym.name + "."
       val featureName = toPrefix(owner) + feature
-      ctx.base.settings.language.value contains featureName
+      thisCtx.base.settings.language.value contains featureName
     }
     hasOption || hasImport
   }
@@ -527,7 +527,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  This test is used when we are too early in the pipeline to consider imports.
    */
   def scala2CompatSetting: Boolean =
-    ctx.settings.language.value.contains(nme.Scala2Compat.toString)
+    thisCtx.settings.language.value.contains(nme.Scala2Compat.toString)
 
   /** Refine child based on parent
    *

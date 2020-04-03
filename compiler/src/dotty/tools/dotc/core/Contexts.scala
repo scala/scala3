@@ -84,7 +84,7 @@ object Contexts {
        with Plugins
        with Cloneable { thiscontext =>
 
-    implicit def ctx: Context = this
+    implicit def thisContext: Context = this
 
     /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
     def outersIterator: Iterator[Context] = new Iterator[Context] {
@@ -284,10 +284,10 @@ object Contexts {
       withPhase(phase.id)
 
     final def withPhaseNoLater(phase: Phase): Context =
-      if (phase.exists && ctx.phase.id > phase.id) withPhase(phase) else ctx
+      if (phase.exists && this.phase.id > phase.id) withPhase(phase) else this
 
     final def withPhaseNoEarlier(phase: Phase): Context =
-      if (phase.exists && ctx.phase.id < phase.id) withPhase(phase) else ctx
+      if (phase.exists && this.phase.id < phase.id) withPhase(phase) else this
 
     // `creationTrace`-related code. To enable, uncomment the code below and the
     // call to `setCreationTrace()` in this file.
@@ -399,7 +399,7 @@ object Contexts {
     def exprContext(stat: Tree[? >: Untyped], exprOwner: Symbol): Context =
       if (exprOwner == this.owner) this
       else if (untpd.isSuperConstrCall(stat) && this.owner.isClass) superCallContext
-      else ctx.fresh.setOwner(exprOwner)
+      else fresh.setOwner(exprOwner)
 
     /** A new context that summarizes an import statement */
     def importContext(imp: Import[?], sym: Symbol): FreshContext = {
@@ -407,7 +407,7 @@ object Contexts {
         case ref: RefTree[?] => Some(ref.name.asTermName)
         case _               => None
       }
-      ctx.fresh.setImportInfo(ImportInfo(sym, imp.selectors, impNameOpt))
+      fresh.setImportInfo(ImportInfo(sym, imp.selectors, impNameOpt))
     }
 
     /** Does current phase use an erased types interpretation? */

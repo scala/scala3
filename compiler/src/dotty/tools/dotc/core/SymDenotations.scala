@@ -27,7 +27,7 @@ import transform.TypeUtils._
 
 import scala.annotation.internal.sharable
 
-trait SymDenotations { this: Context =>
+trait SymDenotations { thisCtx: Context =>
   import SymDenotations._
 
   /** Factory method for SymDenotion creation. All creations
@@ -53,9 +53,9 @@ trait SymDenotations { this: Context =>
     if (denot.isOneOf(ValidForeverFlags) || denot.isRefinementClass || denot.isImport) true
     else {
       val initial = denot.initial
-      val firstPhaseId = initial.validFor.firstPhaseId.max(ctx.typerPhase.id)
-      if ((initial ne denot) || ctx.phaseId != firstPhaseId)
-        ctx.withPhase(firstPhaseId).stillValidInOwner(initial)
+      val firstPhaseId = initial.validFor.firstPhaseId.max(thisCtx.typerPhase.id)
+      if ((initial ne denot) || thisCtx.phaseId != firstPhaseId)
+        thisCtx.withPhase(firstPhaseId).stillValidInOwner(initial)
       else
         stillValidInOwner(denot)
     }
@@ -78,7 +78,7 @@ trait SymDenotations { this: Context =>
   def traceInvalid(denot: Denotation): Boolean = {
     def show(d: Denotation) = s"$d#${d.symbol.id}"
     def explain(msg: String) = {
-      println(s"${show(denot)} is invalid at ${this.period} because $msg")
+      println(s"${show(denot)} is invalid at ${thisCtx.period} because $msg")
       false
     }
     denot match {
@@ -86,7 +86,7 @@ trait SymDenotations { this: Context =>
         def explainSym(msg: String) = explain(s"$msg\ndefined = ${denot.definedPeriodsString}")
         if (denot.isOneOf(ValidForeverFlags) || denot.isRefinementClass) true
         else {
-          implicit val ctx = this
+          implicit val ctx = thisCtx
           val initial = denot.initial
           if ((initial ne denot) || ctx.phaseId != initial.validFor.firstPhaseId)
             ctx.withPhase(initial.validFor.firstPhaseId).traceInvalid(initial)
@@ -116,7 +116,7 @@ trait SymDenotations { this: Context =>
   /** Possibly accept stale symbol with warning if in IDE */
   def acceptStale(denot: SingleDenotation): Boolean =
     staleOK && {
-      ctx.debugwarn(denot.staleSymbolMsg)
+      thisCtx.debugwarn(denot.staleSymbolMsg)
       true
     }
 }

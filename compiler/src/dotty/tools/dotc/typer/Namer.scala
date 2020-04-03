@@ -24,11 +24,11 @@ import transform.SymUtils._
 import reporting.messages._
 
 trait NamerContextOps {
-  this: Context =>
+  thisCtx: Context =>
 
   import NamerContextOps._
 
-  def typer: Typer = ctx.typeAssigner match {
+  def typer: Typer = this.typeAssigner match {
     case typer: Typer => typer
     case _ => new Typer
   }
@@ -39,9 +39,9 @@ trait NamerContextOps {
    *  finger prints.
    */
   def enter(sym: Symbol): Symbol = {
-    ctx.owner match {
+    thisContext.owner match {
       case cls: ClassSymbol => cls.enter(sym)
-      case _ => this.scope.openForMutations.enter(sym)
+      case _ => thisCtx.scope.openForMutations.enter(sym)
     }
     sym
   }
@@ -105,7 +105,7 @@ trait NamerContextOps {
 
   /** A new context for the interior of a class */
   def inClassContext(selfInfo: TypeOrSymbol): Context = {
-    val localCtx: Context = ctx.fresh.setNewScope
+    val localCtx: Context = thisCtx.fresh.setNewScope
     selfInfo match {
       case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
       case _ =>
@@ -114,8 +114,8 @@ trait NamerContextOps {
   }
 
   def packageContext(tree: untpd.PackageDef, pkg: Symbol): Context =
-    if (pkg.is(Package)) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
-    else ctx
+    if (pkg.is(Package)) thisCtx.fresh.setOwner(pkg.moduleClass).setTree(tree)
+    else thisCtx
 
   /** The given type, unless `sym` is a constructor, in which case the
    *  type of the constructed instance is returned
