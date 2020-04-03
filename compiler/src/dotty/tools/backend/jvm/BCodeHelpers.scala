@@ -82,6 +82,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     }
   }
 
+  final def traitSuperAccessorName(sym: Symbol): String = {
+    val nameString = sym.javaSimpleName.toString
+    if (sym.name == nme.TRAIT_CONSTRUCTOR) nameString
+    else nameString + "$"
+  }
+
   // -----------------------------------------------------------------------------------------
   // finding the least upper bound in agreement with the bytecode verifier (given two internal names handed by ASM)
   // Background:
@@ -949,5 +955,11 @@ object BCodeHelpers {
     val Special = new InvokeStyle(2) // InvokeSpecial (private methods, constructors)
     val Super   = new InvokeStyle(3) // InvokeSpecial (super calls)
   }
+
+  /** An attachment on Apply nodes indicating that it should be compiled with
+   *  `invokespecial` instead of `invokevirtual`. This is used for static
+   *  forwarders.
+   */
+  val UseInvokeSpecial = new dotc.util.Property.Key[Unit]
 
 }

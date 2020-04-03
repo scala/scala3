@@ -14,9 +14,9 @@ import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.StdNames.str
+import dotty.tools.dotc.core.StdNames.{nme, str}
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.core.Types.{MethodType, Type}
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.report
 
@@ -496,7 +496,19 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         case ValDef(name, tpt, rhs) => () // fields are added in `genPlainClass()`, via `addClassFields()`
 
-        case dd: DefDef => genDefDef(dd)
+        case dd: DefDef =>
+          val sym = dd.symbol
+
+          def needsStaticImplMethod: Boolean =
+            claszSymbol.isInterface
+              && !dd.rhs.isEmpty
+              && !sym.isPrivate
+              && !sym.isStaticMember
+
+          if needsStaticImplMethod then
+            genStaticForwarderForDefDef(dd)
+
+          genDefDef(dd)
 
         case tree: Template =>
           val body =
@@ -537,6 +549,25 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     } // end of method initJMethod
 
+    private def genStaticForwarderForDefDef(dd: DefDef): Unit =
+      val forwarderDef = makeStaticForwarder(dd, traitSuperAccessorName(dd.symbol))
+      genDefDef(forwarderDef)
+
+    private def makeStaticForwarder(dd: DefDef, name: String): DefDef =
+      val origSym = dd.symbol.asTerm
+      val info = origSym.info match
+        case mt: MethodType =>
+          MethodType(nme.SELF :: mt.paramNames, origSym.owner.typeRef :: mt.paramInfos, mt.resType)
+      val sym = origSym.copy(
+        name = name.toTermName,
+        flags = Method | JavaStatic,
+        info = info
+      )
+      tpd.DefDef(sym.asTerm, { paramss =>
+        val params = paramss.head
+        tpd.Apply(params.head.select(origSym), params.tail)
+          .withAttachment(BCodeHelpers.UseInvokeSpecial, ())
+      })
 
     def genDefDef(dd: DefDef): Unit = {
       val rhs = dd.rhs
