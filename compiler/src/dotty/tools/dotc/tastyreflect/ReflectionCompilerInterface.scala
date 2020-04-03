@@ -1749,6 +1749,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   private def isMethod(sym: Symbol)(using ctx: Context): Boolean =
     sym.isTerm && sym.is(Flags.Method) && !sym.isConstructor
 
+  def Symbol_paramSymss(self: Symbol)(using ctx: Context): (List[Symbol], List[List[Symbol]]) =
+    self.paramSymss
+
   def Symbol_caseFields(self: Symbol)(using ctx: Context): List[Symbol] =
     if (!self.isClass) Nil
     else self.asClass.paramAccessors.collect {

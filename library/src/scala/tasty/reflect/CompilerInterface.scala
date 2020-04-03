@@ -1305,6 +1305,11 @@ trait CompilerInterface {
   /** Get all non-private methods declared or inherited */
   def Symbol_methods(self: Symbol)(using ctx: Context): List[Symbol]
 
+  /** A pair consistsing of type paremeter symbols and value parameter symbol lists
+   *  of this method definition, or (Nil, Nil) for other symbols.
+   */
+  def Symbol_paramSymss(self: Symbol)(using ctx: Context): (List[Symbol], List[List[Symbol]])
+
   /** Fields of a case class type -- only the ones declared in primary constructor */
   def Symbol_caseFields(self: Symbol)(using ctx: Context): List[Symbol]
 

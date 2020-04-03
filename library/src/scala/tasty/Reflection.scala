@@ -2223,6 +2223,12 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def methods(using ctx: Context): List[Symbol] =
       internal.Symbol_methods(sym)
 
+    /** A pair consistsing of type paremeter symbols and value parameter symbol lists
+     *  of this method definition, or (Nil, Nil) for other symbols.
+     */
+    def paramSymss(using ctx: Context): (List[Symbol], List[List[Symbol]]) =
+      internal.Symbol_paramSymss(sym)
+
     /** Fields of a case class type -- only the ones declared in primary constructor */
     def caseFields(using ctx: Context): List[Symbol] =
       internal.Symbol_caseFields(sym)

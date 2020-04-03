@@ -1,0 +1,28 @@
+sym: Test$.a
+tparams: List()
+vparamss: List()
+
+sym: Test$.b
+tparams: List()
+vparamss: List(List(Test$._$i))
+
+sym: Test$.c
+tparams: List()
+vparamss: List(List(Test$._$x), List(Test$._$y), List(Test$._$z))
+
+sym: Test$.d
+tparams: List(Test$._$T)
+vparamss: List()
+
+sym: Test$.c
+tparams: List(Test$._$T, Test$._$U)
+vparamss: List(List(Test$._$x, Test$._$x2), List(Test$._$y), List(Test$._$z))
+
+sym: Test.<init>
+tparams: List(Test._$T)
+vparamss: List(List(Test._$a))
+
+sym: Test.<init>
+tparams: List(Test._$T)
+vparamss: List(List(Test._$a, Test._$b))
+
