@@ -50,7 +50,7 @@ trait Dynamic {
    *    foo.bar(x = bazX, y = bazY, baz, ...)          ~~> foo.applyDynamicNamed("bar")(("x", bazX), ("y", bazY), ("", baz), ...)
    *    foo.bar[T0, ...](x = bazX, y = bazY, baz, ...) ~~> foo.applyDynamicNamed[T0, ...]("bar")(("x", bazX), ("y", bazY), ("", baz), ...)
    */
-  def typedDynamicApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
+  def typedDynamicApply(tree: untpd.Apply, pt: Type)(using Context): Tree = {
     def typedDynamicApply(qual: untpd.Tree, name: Name, selSpan: Span, targs: List[untpd.Tree]): Tree = {
       def isNamedArg(arg: untpd.Tree): Boolean = arg match { case NamedArg(_, _) => true; case _ => false }
       val args = tree.args
@@ -87,13 +87,13 @@ trait Dynamic {
    *  Note: inner part of translation foo.bar(baz) = quux ~~> foo.selectDynamic(bar).update(baz, quux) is achieved
    *  through an existing transformation of in typedAssign [foo.bar(baz) = quux ~~> foo.bar.update(baz, quux)].
    */
-  def typedDynamicSelect(tree: untpd.Select, targs: List[Tree], pt: Type)(implicit ctx: Context): Tree =
+  def typedDynamicSelect(tree: untpd.Select, targs: List[Tree], pt: Type)(using Context): Tree =
     typedApply(coreDynamic(tree.qualifier, nme.selectDynamic, tree.name, tree.span, targs), pt)
 
   /** Translate selection that does not typecheck according to the normal rules into a updateDynamic.
    *    foo.bar = baz ~~> foo.updateDynamic(bar)(baz)
    */
-  def typedDynamicAssign(tree: untpd.Assign, pt: Type)(implicit ctx: Context): Tree = {
+  def typedDynamicAssign(tree: untpd.Assign, pt: Type)(using Context): Tree = {
     def typedDynamicAssign(qual: untpd.Tree, name: Name, selSpan: Span, targs: List[untpd.Tree]): Tree =
       typedApply(untpd.Apply(coreDynamic(qual, nme.updateDynamic, name, selSpan, targs), tree.rhs), pt)
     tree.lhs match {
@@ -106,7 +106,7 @@ trait Dynamic {
     }
   }
 
-  private def coreDynamic(qual: untpd.Tree, dynName: Name, name: Name, selSpan: Span, targs: List[untpd.Tree])(implicit ctx: Context): untpd.Apply = {
+  private def coreDynamic(qual: untpd.Tree, dynName: Name, name: Name, selSpan: Span, targs: List[untpd.Tree])(using Context): untpd.Apply = {
     val select = untpd.Select(qual, dynName).withSpan(selSpan)
     val selectWithTypes =
       if (targs.isEmpty) select
@@ -137,7 +137,7 @@ trait Dynamic {
    *  It's an error if U is neither a value nor a method type, or a dependent method
    *  type.
    */
-  def handleStructural(tree: Tree)(implicit ctx: Context): Tree = {
+  def handleStructural(tree: Tree)(using Context): Tree = {
     val (fun @ Select(qual, name), targs, vargss) = decomposeCall(tree)
 
     def structuralCall(selectorName: TermName, ctags: List[Tree]) = {

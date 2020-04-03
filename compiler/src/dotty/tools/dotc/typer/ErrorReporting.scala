@@ -16,29 +16,29 @@ object ErrorReporting {
 
   import tpd._
 
-  def errorTree(tree: untpd.Tree, msg: Message, pos: SourcePosition)(implicit ctx: Context): tpd.Tree =
+  def errorTree(tree: untpd.Tree, msg: Message, pos: SourcePosition)(using Context): tpd.Tree =
     tree.withType(errorType(msg, pos))
 
-  def errorTree(tree: untpd.Tree, msg: Message)(implicit ctx: Context): tpd.Tree =
+  def errorTree(tree: untpd.Tree, msg: Message)(using Context): tpd.Tree =
     errorTree(tree, msg, tree.sourcePos)
 
-  def errorTree(tree: untpd.Tree, msg: TypeError, pos: SourcePosition)(implicit ctx: Context): tpd.Tree =
+  def errorTree(tree: untpd.Tree, msg: TypeError, pos: SourcePosition)(using Context): tpd.Tree =
     tree.withType(errorType(msg, pos))
 
-  def errorType(msg: Message, pos: SourcePosition)(implicit ctx: Context): ErrorType = {
+  def errorType(msg: Message, pos: SourcePosition)(using Context): ErrorType = {
     ctx.error(msg, pos)
     ErrorType(msg)
   }
 
-  def errorType(ex: TypeError, pos: SourcePosition)(implicit ctx: Context): ErrorType = {
+  def errorType(ex: TypeError, pos: SourcePosition)(using Context): ErrorType = {
     ctx.error(ex, pos)
     ErrorType(ex.toMessage)
   }
 
-  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: SourcePosition)(implicit ctx: Context): ErrorType =
+  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: SourcePosition)(using Context): ErrorType =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual)(ctx), pos)
 
-  class Errors(implicit ctx: Context) {
+  class Errors(using Context) {
 
     /** An explanatory note to be added to error messages
      *  when there's a problem with abstract var defs */
@@ -141,5 +141,5 @@ object ErrorReporting {
       else ""
   }
 
-  def err(implicit ctx: Context): Errors = new Errors
+  def err(using Context): Errors = new Errors
 }
