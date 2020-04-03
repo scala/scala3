@@ -67,23 +67,23 @@ object ProtoTypes {
      */
     def constrainResult(mt: Type, pt: Type)(using Context): Boolean =
       inContext(ctx.addMode(Mode.ConstrainResult)) {
-      val savedConstraint = ctx.typerState.constraint
-      val res = pt.widenExpr match {
-        case pt: FunProto =>
-          mt match {
-            case mt: MethodType => constrainResult(resultTypeApprox(mt), pt.resultType)
-            case _ => true
-          }
-        case _: ValueTypeOrProto if !disregardProto(pt) =>
-          isCompatible(normalize(mt, pt), pt)
-        case pt: WildcardType if pt.optBounds.exists =>
-          isCompatible(normalize(mt, pt), pt)
-        case _ =>
-          true
+        val savedConstraint = ctx.typerState.constraint
+        val res = pt.widenExpr match {
+          case pt: FunProto =>
+            mt match {
+              case mt: MethodType => constrainResult(resultTypeApprox(mt), pt.resultType)
+              case _ => true
+            }
+          case _: ValueTypeOrProto if !disregardProto(pt) =>
+            isCompatible(normalize(mt, pt), pt)
+          case pt: WildcardType if pt.optBounds.exists =>
+            isCompatible(normalize(mt, pt), pt)
+          case _ =>
+            true
+        }
+        if (!res) ctx.typerState.resetConstraintTo(savedConstraint)
+        res
       }
-      if (!res) ctx.typerState.resetConstraintTo(savedConstraint)
-      res
-    }
 
     /** Constrain result with special case if `meth` is an inlineable method in an inlineable context.
      *  In that case, we should always succeed and not constrain type parameters in the expected type,

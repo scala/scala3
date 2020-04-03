@@ -351,7 +351,7 @@ class Typer extends Namer
                 if (defDenot.symbol.is(Package))
                   result = checkNewOrShadowed(previous orElse found, PackageClause)
                 else if (prevPrec.ordinal < PackageClause.ordinal)
-                  result = findRefRecur(found, PackageClause, ctx)(ctx.outer)
+                  result = findRefRecur(found, PackageClause, ctx)(using ctx.outer)
             }
 
           if result.exists then result

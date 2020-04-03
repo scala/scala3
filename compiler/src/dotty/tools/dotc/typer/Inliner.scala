@@ -158,7 +158,7 @@ object Inliner {
 
     val unappplySym = ctx.newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
     val unapply = DefDef(unappplySym, argss =>
-      inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(ctx.withOwner(unappplySym))
+      inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unappplySym))
     )
     val cdef = ClassDef(cls, DefDef(constr), List(unapply))
     val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))

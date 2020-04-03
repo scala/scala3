@@ -39,13 +39,11 @@ trait NamerContextOps {
    *  in order to make sure that updates to class members are reflected in
    *  finger prints.
    */
-  def enter(sym: Symbol): Symbol = {
-    thisContext.owner match {
+  def enter(sym: Symbol): Symbol =
+    thisCtx.owner match
       case cls: ClassSymbol => cls.enter(sym)
       case _ => thisCtx.scope.openForMutations.enter(sym)
-    }
     sym
-  }
 
   /** The denotation with the given `name` and all `required` flags in current context
    */

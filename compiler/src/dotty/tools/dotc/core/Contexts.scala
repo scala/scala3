@@ -88,7 +88,7 @@ object Contexts {
        with Plugins
        with Cloneable { thiscontext =>
 
-    implicit def thisContext: Context = this
+    given Context = this
 
     /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
     def outersIterator: Iterator[Context] = new Iterator[Context] {
