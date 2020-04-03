@@ -138,7 +138,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       tp match {
         case tp: TypeRef if tp.symbol.isSplice =>
           if (tp.isTerm)
-            this.ctx.error(i"splice outside quotes", pos)
+            mapCtx.error(i"splice outside quotes", pos)
           if level > 0 then getQuoteTypeTags.getTagRef(tp.prefix.asInstanceOf[TermRef])
           else tp
         case tp: TypeRef if tp.symbol == defn.QuotedTypeClass.typeParams.head =>

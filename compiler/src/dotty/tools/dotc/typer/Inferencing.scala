@@ -67,7 +67,7 @@ object Inferencing {
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
         case tp: TypeVar
         if !tp.isInstantiated &&
-            this.ctx.typeComparer.bounds(tp.origin)
+            accCtx.typeComparer.bounds(tp.origin)
               .namedPartsWith(ref => params.contains(ref.symbol))
               .nonEmpty =>
           tvars + tp
@@ -172,13 +172,13 @@ object Inferencing {
       def traverse(tp: Type): Unit = {
         tp match {
           case param: TypeParamRef =>
-            val constraint = this.ctx.typerState.constraint
+            val constraint = accCtx.typerState.constraint
             constraint.entry(param) match {
               case TypeBounds(lo, hi)
               if (hi frozen_<:< lo) =>
-                val inst = this.ctx.typeComparer.approximation(param, fromBelow = true)
+                val inst = accCtx.typeComparer.approximation(param, fromBelow = true)
                 typr.println(i"replace singleton $param := $inst")
-                this.ctx.typerState.constraint = constraint.replace(param, inst)
+                accCtx.typerState.constraint = constraint.replace(param, inst)
               case _ =>
             }
           case _ =>
@@ -333,7 +333,7 @@ object Inferencing {
       def setVariance(v: Int) = variance = v
       def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
         case t: TypeVar
-        if !t.isInstantiated && this.ctx.typerState.constraint.contains(t) =>
+        if !t.isInstantiated && accCtx.typerState.constraint.contains(t) =>
           val v = vmap(t)
           if (v == null) vmap.updated(t, variance)
           else if (v == variance || v == 0) vmap

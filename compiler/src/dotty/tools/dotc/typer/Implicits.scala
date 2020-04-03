@@ -414,7 +414,7 @@ object Implicits {
             case t: TypeParamRef =>
               constraint.entry(t) match {
                 case NoType => t
-                case bounds: TypeBounds => this.ctx.typeComparer.fullBounds(t)
+                case bounds: TypeBounds => mapCtx.typeComparer.fullBounds(t)
                 case t1 => t1
               }
             case t: TypeVar =>

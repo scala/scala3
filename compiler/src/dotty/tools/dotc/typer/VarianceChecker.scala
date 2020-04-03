@@ -44,7 +44,7 @@ object VarianceChecker {
               .find(_.name.toTermName == paramName)
               .map(_.sourcePos)
               .getOrElse(tree.sourcePos)
-            this.ctx.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
+            accCtx.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
           }
           def apply(x: Boolean, t: Type) = x && {
             t match {
@@ -115,10 +115,10 @@ class VarianceChecker()(implicit ctx: Context) {
         val required = compose(relative, this.variance)
         def tvar_s = s"$tvar (${varianceLabel(tvar.flags)} ${tvar.showLocated})"
         def base_s = s"$base in ${base.owner}" + (if (base.owner.isClass) "" else " in " + base.owner.enclosingClass)
-        this.ctx.log(s"verifying $tvar_s is ${varianceLabel(required)} at $base_s")
-        this.ctx.log(s"relative variance: ${varianceLabel(relative)}")
-        this.ctx.log(s"current variance: ${this.variance}")
-        this.ctx.log(s"owner chain: ${base.ownersIterator.toList}")
+        accCtx.log(s"verifying $tvar_s is ${varianceLabel(required)} at $base_s")
+        accCtx.log(s"relative variance: ${varianceLabel(relative)}")
+        accCtx.log(s"current variance: ${this.variance}")
+        accCtx.log(s"owner chain: ${base.ownersIterator.toList}")
         if (tvar.isOneOf(required)) None
         else Some(VarianceError(tvar, required))
       }

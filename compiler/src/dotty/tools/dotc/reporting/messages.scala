@@ -250,13 +250,13 @@ object messages {
     // these are usually easier to analyze.
     object reported extends TypeMap:
       def setVariance(v: Int) = variance = v
-      val constraint = this.ctx.typerState.constraint
+      val constraint = mapCtx.typerState.constraint
       def apply(tp: Type): Type = tp match
         case tp: TypeParamRef =>
           constraint.entry(tp) match
             case bounds: TypeBounds =>
-              if variance < 0 then apply(this.ctx.typeComparer.fullUpperBound(tp))
-              else if variance > 0 then apply(this.ctx.typeComparer.fullLowerBound(tp))
+              if variance < 0 then apply(mapCtx.typeComparer.fullUpperBound(tp))
+              else if variance > 0 then apply(mapCtx.typeComparer.fullLowerBound(tp))
               else tp
             case NoType => tp
             case instType => apply(instType)
