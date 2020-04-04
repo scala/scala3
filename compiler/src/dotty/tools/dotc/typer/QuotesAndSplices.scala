@@ -53,7 +53,7 @@ trait QuotesAndSplices {
       ctx.error(em"Quotes require stable QuoteContext, but found non stable $qctx", qctx.sourcePos)
 
     val tree1 =
-      if ctx.mode.is(Mode.Pattern) && level == 0 then
+      if ctx.mode.is(Mode.Pattern) then
         typedQuotePattern(tree, pt, qctx)
       else if (tree.quoted.isType)
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuote.termRef), tree.quoted :: Nil), pt)(using quoteContext)
@@ -72,7 +72,7 @@ trait QuotesAndSplices {
         ctx.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.sourcePos)
       case _ =>
     }
-    if (ctx.mode.is(Mode.QuotedPattern) && level == 1)
+    if (ctx.mode.is(Mode.QuotedPattern))
       if (isFullyDefined(pt, ForceDegree.all)) {
         def spliceOwner(ctx: Context): Symbol =
           if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
