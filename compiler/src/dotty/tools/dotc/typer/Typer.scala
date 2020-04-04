@@ -1396,6 +1396,15 @@ class Typer extends Namer
     assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2)
   }
 
+  def typedTry(tree: untpd.ParsedTry, pt: Type)(using Context): Try =
+    val cases: List[untpd.CaseDef] = tree.handler match
+      case Match(EmptyTree, cases) => cases
+      case EmptyTree => Nil
+      case handler =>
+        val handler1 = typed(handler, defn.FunctionType(1).appliedTo(defn.ThrowableType, pt))
+        desugar.makeTryCase(handler1) :: Nil
+    typedTry(untpd.Try(tree.expr, cases, tree.finalizer).withSpan(tree.span), pt)
+
   def typedThrow(tree: untpd.Throw)(using Context): Tree = {
     val expr1 = typed(tree.expr, defn.ThrowableType)
     Throw(expr1).withSpan(tree.span)
@@ -2277,6 +2286,7 @@ class Typer extends Namer
           case tree: untpd.Tuple => typedTuple(tree, pt)
           case tree: untpd.DependentTypeTree => typed(untpd.TypeTree().withSpan(tree.span), pt)
           case tree: untpd.InfixOp => typedInfixOp(tree, pt)
+          case tree: untpd.ParsedTry => typedTry(tree, pt)
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
           case tree: untpd.Quote => typedQuote(tree, pt)
