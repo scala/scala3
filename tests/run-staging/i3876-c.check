@@ -2,7 +2,7 @@
 {
   val f: scala.Function1[scala.Int, scala.Int] {
     def apply(x: scala.Int): scala.Int
-  } = ((x: scala.Int) => x.+(x))
+  } = ((`x₂`: scala.Int) => `x₂`.+(`x₂`))
 
   (f: scala.Function1[scala.Int, scala.Int] {
     def apply(x: scala.Int): scala.Int

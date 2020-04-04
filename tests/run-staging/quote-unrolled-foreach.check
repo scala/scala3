@@ -33,7 +33,7 @@
   var i: scala.Int = 0
   while (i.<(size)) {
     val element: scala.Int = arr.apply(i)
-    ((i: scala.Int) => java.lang.System.out.println(i)).apply(element)
+    ((`i₂`: scala.Int) => java.lang.System.out.println(`i₂`)).apply(element)
     i = i.+(1)
   }
 })

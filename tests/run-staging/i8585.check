@@ -1,0 +1,22 @@
+The following would not compile:
+((x: scala.Double) => {
+  val y: scala.Double = x.*(x)
+  val `y₂`: scala.Double = y.*(y)
+  `y₂`.*(`y₂`)
+})
+3^8 = 6561.0
+The following would not compile:
+((x: scala.Double) => x.*({
+  val y: scala.Double = x.*(x)
+  y.*({
+    val `y₂`: scala.Double = y.*(y)
+    `y₂`.*({
+      val `y₃`: scala.Double = `y₂`.*(`y₂`)
+      `y₃`.*({
+        val `y₄`: scala.Double = `y₃`.*(`y₃`)
+        `y₄`.*(`y₄`)
+      })
+    })
+  })
+}))
+2^47 = 1.40737488355328E14

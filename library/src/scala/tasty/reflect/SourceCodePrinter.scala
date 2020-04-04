@@ -324,7 +324,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
       case tree: Ident =>
         splicedName(tree.symbol) match {
-          case Some(name) => this += name
+          case Some(name) => this += highlightTypeDef(name)
           case _ => printType(tree.tpe)
         }
 
@@ -834,7 +834,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     }
 
     def printParamDef(arg: ValDef)(using elideThis: Option[Symbol]): Unit = {
-      val name = arg.name
+      val name = splicedName(arg.symbol).getOrElse(arg.symbol.name)
       val sym = arg.symbol.owner
       if sym.isDefDef && sym.name == "<init>" then
         val ClassDef(_, _, _, _, _, body) = sym.owner.tree
@@ -1409,11 +1409,26 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     private def escapedString(str: String): String = str flatMap escapedChar
   }
 
+  private[this] val names = collection.mutable.Map.empty[Symbol, String]
+  private[this] val namesIndex = collection.mutable.Map.empty[String, Int]
+
   private def splicedName(sym: Symbol)(using ctx: Context): Option[String] = {
     sym.annots.find(_.symbol.owner == ctx.requiredClass("scala.internal.quoted.showName")).flatMap {
       case Apply(_, Literal(Constant(c: String)) :: Nil) => Some(c)
       case Apply(_, Inlined(_, _, Literal(Constant(c: String))) :: Nil) => Some(c)
       case annot => None
+    }.orElse {
+      if sym.owner.isClassDef then None
+      else names.get(sym).orElse {
+        val name0 = sym.name
+        val index = namesIndex.getOrElse(name0, 1)
+        namesIndex(name0) = index + 1
+        val name =
+          if index == 1 then name0
+          else s"`$name0${index.toString.toCharArray.map {x => (x - '0' + '₀').toChar}.mkString}`"
+        names(sym) = name
+        Some(name)
+      }
     }
   }
 

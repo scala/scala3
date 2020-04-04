@@ -1,7 +1,7 @@
 scala.Nil.map[scala.Nothing](((x: scala.Nothing) => x))
 scala.Nil
 
-scala.Nil.map[scala.Nothing](((x: scala.Nothing) => x)).++[scala.Nothing](scala.Nil.map[scala.Nothing](((x: scala.Nothing) => x)))
+scala.Nil.map[scala.Nothing](((x: scala.Nothing) => x)).++[scala.Nothing](scala.Nil.map[scala.Nothing](((`x₂`: scala.Nothing) => `x₂`)))
 scala.Nil
 
 scala.Nil.map[scala.Nothing](((x: scala.Nothing) => x)).++[scala.Int](scala.List.apply[scala.Int](3)).++[scala.Int](scala.Nil)
