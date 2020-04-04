@@ -11,7 +11,7 @@ object Macro2 {
     def derived[T: Type](ev: Expr[Mirror.Of[T]])(using qctx: QuoteContext): Expr[TC[T]] = '{
       new TC[T] {
         def encode(): Unit = $ev match {
-          case '{ $m: Mirror.ProductOf[T] } => ??? // error
+          case '{ $m: Mirror.ProductOf[T] } => ??? // error // error
         }
       }
     }

@@ -99,24 +99,10 @@ trait QuotesAndSplices {
 
       val (outerQctx, ctx1) = popQuoteContext()
 
-      // Explicitly provide the given QuoteContext of the splice.
-      //  * Avoids leaking implementation details of scala.internal.quoted.CompileTime.exprSplice,
-      //    such as exprSplice taking a ?=> function argument
-      //  * Provide meaningful names for QuoteContext synthesized by within `${ ... }`
-      //  * If within a quote, provide a QuoteContext is linked typewise with the outer QuoteContext
-      val qctxParamName = NameKinds.UniqueName.fresh(s"qctx${if level > 0 then level - 1 else ""}_".toTermName)
-      val qctxParamTpe = outerQctx match {
-        case Some(qctxRef) => qctxRef.tpe.select("NestedContext".toTypeName)
-        case _ => defn.QuoteContextClass.typeRef // splice at level 0 (or lower)
-      }
-      val qctxParamTpt = untpd.TypedSplice(TypeTree(qctxParamTpe))
-      val qctxParam = untpd.makeParameter(qctxParamName, qctxParamTpt, untpd.Modifiers(Given))
-      val expr = untpd.Function(List(qctxParam), tree.expr).withSpan(tree.span)
-
       val internalSplice =
         outerQctx match
-          case Some(qctxRef) => untpd.Apply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprNestedSplice.termRef), qctxRef), expr)
-          case _ => untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), expr)
+          case Some(qctxRef) => untpd.Apply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprNestedSplice.termRef), qctxRef), tree.expr)
+          case _ => untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), tree.expr)
 
       typedApply(internalSplice, pt)(using ctx1).withSpan(tree.span)
     }
