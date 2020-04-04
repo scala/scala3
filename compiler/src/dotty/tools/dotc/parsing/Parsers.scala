@@ -3036,7 +3036,7 @@ object Parsers {
     def importExpr(mkTree: ImportConstr): () => Tree = {
 
       /** '_' */
-      def wildcardSelectorId(name: TermName) = atSpan(in.skipToken()) { Ident(name) }
+      def wildcardSelectorId() = atSpan(in.skipToken()) { Ident(nme.WILDCARD) }
 
       /** ImportSelectors  ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
        *                     |  WildCardSelector {‘,’ WildCardSelector}
@@ -3048,14 +3048,15 @@ object Parsers {
         val selector = atSpan(in.offset) {
           in.token match
             case USCORE =>
-              ImportSelector(wildcardSelectorId(nme.WILDCARD))
+              ImportSelector(wildcardSelectorId())
             case GIVEN =>
-              val id = wildcardSelectorId(nme.EMPTY)
+              val start = in.skipToken()
+              def givenSelector() = atSpan(start) { Ident(nme.EMPTY) }
               if in.token == USCORE then
                 in.nextToken()
-                ImportSelector(id)
+                ImportSelector(givenSelector()) // Let the selector span all of `given _`; needed for -Ytest-pickler
               else
-                ImportSelector(id, bound = infixType())
+                ImportSelector(givenSelector(), bound = infixType())
             case _ =>
               val from = termIdent()
               if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
@@ -3077,7 +3078,7 @@ object Parsers {
       val handleImport: Tree => Tree = tree =>
         in.token match
           case USCORE =>
-            mkTree(tree, ImportSelector(wildcardSelectorId(nme.WILDCARD)) :: Nil)
+            mkTree(tree, ImportSelector(wildcardSelectorId()) :: Nil)
           case LBRACE =>
             mkTree(tree, inBraces(importSelectors(idOK = true)))
           case _ =>

@@ -3,7 +3,7 @@ package rewrites
 
 import util.{SourceFile, Spans}
 import Spans.Span
-import core.Contexts.Context
+import core.Contexts.{Context, ctx}
 import collection.mutable
 import scala.annotation.tailrec
 import dotty.tools.dotc.reporting.Reporter
@@ -75,7 +75,7 @@ object Rewrites {
     patch(ctx.compilationUnit.source, span, replacement)
 
   /** Does `span` overlap with a patch region of `source`? */
-  def overlapsPatch(source: SourceFile, span: Span)(using ctx: Context): Boolean =
+  def overlapsPatch(source: SourceFile, span: Span)(using Context): Boolean =
     ctx.settings.rewrite.value.exists(rewrites =>
       rewrites.patched.get(source).exists(patches =>
         patches.pbuf.exists(patch => patch.span.overlaps(span))))

@@ -19,8 +19,7 @@ class AnnotationsTest:
         "public @interface Annot { String[] values() default {}; }"),
       VirtualJavaSource("A.java",
         "@Annot(values = {}) public class A {}")) { javaOutputDir =>
-      withContext(javaOutputDir.toString + File.pathSeparator + TestConfiguration.basicClasspath) {
-        (using ctx: Context) =>
+      inCompilerContext(javaOutputDir.toString + File.pathSeparator + TestConfiguration.basicClasspath) {
         val defn = ctx.definitions
         val cls = ctx.requiredClass("A")
         val annotCls = ctx.requiredClass("Annot")

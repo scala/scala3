@@ -18,7 +18,7 @@ abstract class MacroTransform extends Phase {
 
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
-    unit.tpdTree = newTransformer.transform(unit.tpdTree)(ctx.withPhase(transformPhase))
+    unit.tpdTree = newTransformer.transform(unit.tpdTree)(using ctx.withPhase(transformPhase))
   }
 
   protected def newTransformer(implicit ctx: Context): Transformer
@@ -40,18 +40,18 @@ abstract class MacroTransform extends Phase {
     def transformStats(trees: List[Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
       def transformStat(stat: Tree): Tree = stat match {
         case _: Import | _: DefTree => transform(stat)
-        case _ => transform(stat)(ctx.exprContext(stat, exprOwner))
+        case _ => transform(stat)(using ctx.exprContext(stat, exprOwner))
       }
       flatten(trees.mapconserve(transformStat(_)))
     }
 
-    override def transform(tree: Tree)(implicit ctx: Context): Tree =
+    override def transform(tree: Tree)(using Context): Tree =
       try
         tree match {
           case EmptyValDef =>
             tree
           case _: PackageDef | _: MemberDef =>
-            super.transform(tree)(localCtx(tree))
+            super.transform(tree)(using localCtx(tree))
           case impl @ Template(constr, parents, self, _) =>
             cpy.Template(tree)(
               transformSub(constr),

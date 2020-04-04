@@ -99,28 +99,27 @@ object ContextFunctionResults:
    *  Erased parameters are ignored; they contribute nothing to the
    *  parameter count.
    */
-  def contextFunctionResultTypeCovering(meth: Symbol, paramCount: Int)(using ctx: Context) =
-    given Context = ctx.withPhase(ctx.erasurePhase)
-
-    // Recursive instances return pairs of context types and the
-    // # of parameters they represent.
-    def missingCR(tp: Type, crCount: Int): (Type, Int) =
-      if crCount == 0 then (tp, 0)
-      else
-        val defn.ContextFunctionType(formals, resTpe, isErased): @unchecked = tp
-        val result @ (rt, nparams) = missingCR(resTpe, crCount - 1)
-        assert(nparams <= paramCount)
-        if nparams == paramCount || isErased then result
-        else (tp, nparams + formals.length)
-    missingCR(meth.info.finalResultType, contextResultCount(meth))._1
-  end contextFunctionResultTypeCovering
+  def contextFunctionResultTypeCovering(meth: Symbol, paramCount: Int)(using Context) =
+    inContext(ctx.withPhase(ctx.erasurePhase)) {
+      // Recursive instances return pairs of context types and the
+      // # of parameters they represent.
+      def missingCR(tp: Type, crCount: Int): (Type, Int) =
+        if crCount == 0 then (tp, 0)
+        else
+          val defn.ContextFunctionType(formals, resTpe, isErased): @unchecked = tp
+          val result @ (rt, nparams) = missingCR(resTpe, crCount - 1)
+          assert(nparams <= paramCount)
+          if nparams == paramCount || isErased then result
+          else (tp, nparams + formals.length)
+      missingCR(meth.info.finalResultType, contextResultCount(meth))._1
+    }
 
   /** Should selection `tree` be eliminated since it refers to an `apply`
    *  node of a context function type whose parameters will end up being
    *  integrated in the  preceding method?
    *  @param `n` the select nodes seen in previous recursive iterations of this method
    */
-  def integrateSelect(tree: untpd.Tree, n: Int = 0)(using ctx: Context): Boolean =
+  def integrateSelect(tree: untpd.Tree, n: Int = 0)(using Context): Boolean =
     if ctx.erasedTypes then
       integrateSelect(tree, n)(using ctx.withPhase(ctx.erasurePhase))
     else tree match

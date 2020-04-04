@@ -1,18 +1,18 @@
 package dotty.tools
 package dotc
 
-import util.{FreshNameCreator, SourceFile}
+import core._
+import Contexts.{Context, ctx}
+import SymDenotations.ClassDenotation
+import Symbols._
+import util.{FreshNameCreator, SourceFile, NoSource}
+import util.Spans.Span
 import ast.{tpd, untpd}
 import tpd.{Tree, TreeTraverser}
 import typer.PrepareInlineable.InlineAccessors
 import typer.Nullables
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.SymDenotations.ClassDenotation
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.transform.SymUtils._
-import util.{NoSource, SourceFile}
-import util.Spans.Span
-import core.Decorators._
+import transform.SymUtils._
+import core.Decorators.{given _}
 
 class CompilationUnit protected (val source: SourceFile) {
 
@@ -43,7 +43,7 @@ class CompilationUnit protected (val source: SourceFile) {
 
   var suspended: Boolean = false
 
-  def suspend()(using ctx: Context): Nothing =
+  def suspend()(using Context): Nothing =
     if !suspended then
       if (ctx.settings.XprintSuspension.value)
         ctx.echo(i"suspended: $this")

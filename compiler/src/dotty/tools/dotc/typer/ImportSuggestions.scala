@@ -105,7 +105,7 @@ trait ImportSuggestions:
       case ref: TermRef => rootsIn(ref) ::: rootsOnPath(ref.prefix)
       case _ => Nil
 
-    def recur(using ctx: Context): List[TermRef] =
+    def recur(using Context): List[TermRef] =
       if ctx.owner.exists then
         val defined =
           if ctx.owner.isClass then
@@ -140,7 +140,7 @@ trait ImportSuggestions:
    *   return instead a list of all possible references to extension methods named
    *   `name` that are applicable to `T`.
    */
-  private def importSuggestions(pt: Type)(using ctx: Context): (List[TermRef], List[TermRef]) =
+  private def importSuggestions(pt: Type)(using Context): (List[TermRef], List[TermRef]) =
     val timer = new Timer()
     val deadLine = System.currentTimeMillis() + suggestImplicitTimeOut
 
@@ -149,8 +149,7 @@ trait ImportSuggestions:
      */
     def shallowTest(ref: TermRef): Boolean =
       System.currentTimeMillis < deadLine
-      && {
-        given Context = ctx.fresh.setExploreTyperState()
+      && inContext(ctx.fresh.setExploreTyperState()) {
         def test(pt: Type): Boolean = pt match
           case ViewProto(argType, OrType(rt1, rt2)) =>
             // Union types do not constrain results, since comparison with a union
@@ -242,7 +241,7 @@ trait ImportSuggestions:
    *  The addendum suggests given imports that might fix the problem.
    *  If there's nothing to suggest, an empty string is returned.
    */
-  override def importSuggestionAddendum(pt: Type)(using ctx: Context): String =
+  override def importSuggestionAddendum(pt: Type)(using Context): String =
     val (fullMatches, headMatches) =
       importSuggestions(pt)(using ctx.fresh.setExploreTyperState())
     implicits.println(i"suggestions for $pt in ${ctx.owner} = ($fullMatches%, %, $headMatches%, %)")

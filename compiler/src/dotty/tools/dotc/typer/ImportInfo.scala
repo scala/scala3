@@ -21,7 +21,7 @@ object ImportInfo {
   )
 
   /** The import info for a root import from given symbol `sym` */
-  def rootImport(rootRef: RootRef)(implicit ctx: Context): ImportInfo =
+  def rootImport(rootRef: RootRef)(using Context): ImportInfo =
     val (refFn, isPredef) = rootRef
     var selectors =
       untpd.ImportSelector(untpd.Ident(nme.WILDCARD))  // import all normal members...
@@ -30,8 +30,8 @@ object ImportInfo {
     if isPredef then                                   // do not import any2stringadd
       selectors = untpd.ImportSelector(untpd.Ident(nme.any2stringadd), untpd.Ident(nme.WILDCARD))
         :: selectors
-    def expr(implicit ctx: Context) = tpd.Ident(refFn())
-    def imp(implicit ctx: Context) = tpd.Import(expr, selectors)
+    def expr(using Context) = tpd.Ident(refFn())
+    def imp(using Context) = tpd.Import(expr, selectors)
     ImportInfo(imp.symbol, selectors, None, isRootImport = true)
 }
 
@@ -50,7 +50,7 @@ class ImportInfo(symf: Context ?=> Symbol,
 
   // Dotty deviation: we cannot use a lazy val here for the same reason
   // that we cannot use one for `DottyPredefModuleRef`.
-  def sym(implicit ctx: Context): Symbol = {
+  def sym(using Context): Symbol = {
     if (mySym == null) {
       mySym = symf(using ctx)
       assert(mySym != null)
@@ -60,7 +60,7 @@ class ImportInfo(symf: Context ?=> Symbol,
   private var mySym: Symbol = _
 
   /** The (TermRef) type of the qualifier of the import clause */
-  def site(implicit ctx: Context): Type = sym.info match {
+  def site(using Context): Type = sym.info match {
     case ImportType(expr) => expr.tpe
     case _ => NoType
   }
@@ -105,19 +105,19 @@ class ImportInfo(symf: Context ?=> Symbol,
           myReverseMapping = myReverseMapping.updated(sel.rename, sel.name)
 
   /** The upper bound for `given` wildcards, or `Nothing` if there are none */
-  def givenBound(implicit ctx: Context) =
+  def givenBound(using Context) =
     if !myGivenBound.exists then
       myGivenBound = ctx.typer.importBound(selectors, isGiven = true)
     myGivenBound
 
   /** The upper bound for `_` wildcards, or `Nothing` if there are none */
-  def wildcardBound(implicit ctx: Context) =
+  def wildcardBound(using Context) =
     if !myWildcardBound.exists then
       myWildcardBound = ctx.typer.importBound(selectors, isGiven = false)
     myWildcardBound
 
   /** The implicit references imported by this import clause */
-  def importedImplicits(implicit ctx: Context): List[ImplicitRef] =
+  def importedImplicits(using Context): List[ImplicitRef] =
     val pre = site
     if isWildcardImport then
       pre.implicitMembers.flatMap { ref =>
@@ -157,7 +157,7 @@ class ImportInfo(symf: Context ?=> Symbol,
    *      override import Predef.{any2stringAdd => _, StringAdd => _, _} // disables String +
    *      override import java.lang.{}                                   // disables all imports
    */
-  def unimported(implicit ctx: Context): Symbol =
+  def unimported(using Context): Symbol =
     if myUnimported == null then
       lazy val sym = site.termSymbol
       def maybeShadowsRoot = symNameOpt match
@@ -172,7 +172,7 @@ class ImportInfo(symf: Context ?=> Symbol,
   private var myUnimported: Symbol = _
 
   /** Does this import clause or a preceding import clause import `owner.feature`? */
-  def featureImported(feature: TermName, owner: Symbol)(implicit ctx: Context): Boolean =
+  def featureImported(feature: TermName, owner: Symbol)(using Context): Boolean =
 
     def compute =
       val isImportOwner = site.widen.typeSymbol.eq(owner)
@@ -181,7 +181,7 @@ class ImportInfo(symf: Context ?=> Symbol,
       else
         var c = ctx.outer
         while c.importInfo eq ctx.importInfo do c = c.outer
-        (c.importInfo != null) && c.importInfo.featureImported(feature, owner)(c)
+        (c.importInfo != null) && c.importInfo.featureImported(feature, owner)(using c)
 
     if (lastOwner.ne(owner) || !lastResults.contains(feature)) {
       lastOwner = owner

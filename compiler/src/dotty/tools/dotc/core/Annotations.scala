@@ -52,7 +52,7 @@ object Annotations {
   }
 
   /** The context to use to evaluate an annotation */
-  private def annotCtx(using ctx: Context): Context =
+  private def annotCtx(using Context): Context =
     // We should always produce the same annotation tree, no matter when the
     // annotation is evaluated. Setting the phase to a pre-transformation phase
     // seems to be enough to ensure this (note that after erasure, `ctx.typer`
@@ -178,7 +178,7 @@ object Annotations {
 
       /** A deferred annotation to the result of a given child computation */
       def later(delayedSym: Context ?=> Symbol, span: Span)(implicit ctx: Context): Annotation = {
-        def makeChildLater(using ctx: Context) = {
+        def makeChildLater(using Context) = {
           val sym = delayedSym
           New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
             .withSpan(span)

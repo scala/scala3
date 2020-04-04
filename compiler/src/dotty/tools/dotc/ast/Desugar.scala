@@ -919,7 +919,7 @@ object desugar {
    *      <extension> def g[Ts](x: T)(using C)(z: T) = f(z)
    */
   def collectiveExtensionBody(stats: List[Tree],
-      tparams: List[TypeDef], vparamss: List[List[ValDef]])(using ctx: Context): List[Tree] =
+      tparams: List[TypeDef], vparamss: List[List[ValDef]])(using Context): List[Tree] =
     for stat <- stats yield
       stat match
         case mdef: DefDef =>
@@ -968,7 +968,7 @@ object desugar {
   }
 
   /** Invent a name for an anonympus given or extension of type or template `impl`. */
-  def inventGivenOrExtensionName(impl: Tree)(using ctx: Context): SimpleName =
+  def inventGivenOrExtensionName(impl: Tree)(using Context): SimpleName =
     val str = impl match
       case impl: Template =>
         if impl.parents.isEmpty then

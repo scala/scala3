@@ -50,7 +50,11 @@ object Contexts {
   private val initialStore = store8
 
   /** The current context */
-  def curCtx(using ctx: Context): Context = ctx
+  def ctx(using ctx: Context): Context = ctx
+
+  /** Run `op` with given context */
+  inline def inContext[T](c: Context)(inline op: Context ?=> T): T =
+    op(using c)
 
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
@@ -84,7 +88,7 @@ object Contexts {
        with Plugins
        with Cloneable { thiscontext =>
 
-    implicit def thisContext: Context = this
+    given Context = this
 
     /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
     def outersIterator: Iterator[Context] = new Iterator[Context] {

@@ -38,7 +38,7 @@ class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
 
   val phaseName: String = "paramForwarding"
 
-  def transformIfParamAlias(mdef: ValOrDefDef)(using ctx: Context): Tree =
+  def transformIfParamAlias(mdef: ValOrDefDef)(using Context): Tree =
 
     def inheritedAccessor(sym: Symbol)(using Context): Symbol =
       val candidate = sym.owner.asClass.superClass

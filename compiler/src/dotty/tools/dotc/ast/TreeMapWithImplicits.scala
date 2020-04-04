@@ -48,7 +48,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
             case stat: Import => ctx.importContext(stat, stat.symbol)
             case _ => ctx
           }
-          val stat1 = transform(stat)(statCtx)
+          val stat1 = transform(stat)(using statCtx)
           if (stat1 ne stat) recur(stats, stat1, rest)(restCtx)
           else traverse(rest)(restCtx)
         case nil =>
@@ -81,37 +81,37 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     nestedCtx
   }
 
-  override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+  override def transform(tree: Tree)(using Context): Tree = {
     def localCtx =
       if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
     try tree match {
       case tree: Block =>
-        super.transform(tree)(nestedScopeCtx(tree.stats))
+        super.transform(tree)(using nestedScopeCtx(tree.stats))
       case tree: DefDef =>
-        implicit val ctx = localCtx
+        given Context = localCtx
         cpy.DefDef(tree)(
           tree.name,
           transformSub(tree.tparams),
           tree.vparamss mapConserve (transformSub(_)),
           transform(tree.tpt),
-          transform(tree.rhs)(nestedScopeCtx(tree.vparamss.flatten)))
+          transform(tree.rhs)(using nestedScopeCtx(tree.vparamss.flatten)))
       case EmptyValDef =>
         tree
       case _: PackageDef | _: MemberDef =>
-        super.transform(tree)(localCtx)
+        super.transform(tree)(using localCtx)
       case impl @ Template(constr, parents, self, _) =>
         cpy.Template(tree)(
           transformSub(constr),
-          transform(parents)(ctx.superCallContext),
+          transform(parents)(using ctx.superCallContext),
           Nil,
           transformSelf(self),
           transformStats(impl.body, tree.symbol))
       case tree: CaseDef =>
-        val patCtx = patternScopeCtx(tree.pat)(ctx)
+        val patCtx = patternScopeCtx(tree.pat)(using ctx)
         cpy.CaseDef(tree)(
           transform(tree.pat),
-          transform(tree.guard)(patCtx),
-          transform(tree.body)(patCtx)
+          transform(tree.guard)(using patCtx),
+          transform(tree.body)(using patCtx)
         )
       case _ =>
         super.transform(tree)

@@ -19,8 +19,8 @@ private[repl] class REPLFrontEnd extends FrontEnd {
     assert(units.size == 1) // REPl runs one compilation unit at a time
 
     val unitContext = ctx.fresh.setCompilationUnit(units.head)
-    enterSyms(unitContext)
-    typeCheck(unitContext)
+    enterSyms(using unitContext)
+    typeCheck(using unitContext)
     List(unitContext.compilationUnit)
   }
 }

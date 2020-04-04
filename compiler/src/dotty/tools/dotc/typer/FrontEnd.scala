@@ -38,7 +38,7 @@ class FrontEnd extends Phase {
   def stillToBeEntered(name: String): Boolean =
     remaining.exists(_.compilationUnit.toString.endsWith(name + ".scala"))
 
-  def monitor(doing: String)(body: => Unit)(implicit ctx: Context): Unit =
+  def monitor(doing: String)(body: => Unit)(using Context): Unit =
     try body
     catch {
       case NonFatal(ex) =>
@@ -46,7 +46,7 @@ class FrontEnd extends Phase {
         throw ex
     }
 
-  def parse(implicit ctx: Context): Unit = monitor("parsing") {
+  def parse(using Context): Unit = monitor("parsing") {
     val unit = ctx.compilationUnit
 
     unit.untpdTree =
@@ -65,13 +65,13 @@ class FrontEnd extends Phase {
       unit.untpdTree.checkPos(nonOverlapping = !unit.isJava && !ctx.reporter.hasErrors)
   }
 
-  def enterSyms(implicit ctx: Context): Unit = monitor("indexing") {
+  def enterSyms(using Context): Unit = monitor("indexing") {
     val unit = ctx.compilationUnit
     ctx.typer.index(unit.untpdTree)
     typr.println("entered: " + unit.source)
   }
 
-  def typeCheck(implicit ctx: Context): Unit = monitor("typechecking") {
+  def typeCheck(using Context): Unit = monitor("typechecking") {
     try
       val unit = ctx.compilationUnit
       if !unit.suspended then
@@ -83,35 +83,34 @@ class FrontEnd extends Phase {
       case ex: CompilationUnit.SuspendException =>
   }
 
-  private def firstTopLevelDef(trees: List[tpd.Tree])(implicit ctx: Context): Symbol = trees match {
+  private def firstTopLevelDef(trees: List[tpd.Tree])(using Context): Symbol = trees match {
     case PackageDef(_, defs) :: _    => firstTopLevelDef(defs)
     case Import(_, _) :: defs        => firstTopLevelDef(defs)
     case (tree @ TypeDef(_, _)) :: _ => tree.symbol
     case _ => NoSymbol
   }
 
-  protected def discardAfterTyper(unit: CompilationUnit)(implicit ctx: Context): Boolean =
+  protected def discardAfterTyper(unit: CompilationUnit)(using Context): Boolean =
     unit.isJava || unit.suspended
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
-    val unitContexts = for (unit <- units) yield {
-      ctx.inform(s"compiling ${unit.source}")
-      ctx.fresh.setCompilationUnit(unit)
-    }
-    unitContexts.foreach(parse(_))
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
+    val unitContexts =
+      for unit <- units yield
+        ctx.inform(s"compiling ${unit.source}")
+        ctx.fresh.setCompilationUnit(unit)
+    unitContexts.foreach(parse(using _))
     record("parsedTrees", ast.Trees.ntrees)
     remaining = unitContexts
-    while (remaining.nonEmpty) {
-      enterSyms(remaining.head)
+    while remaining.nonEmpty do
+      enterSyms(using remaining.head)
       remaining = remaining.tail
-    }
 
     if (firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists)
       ctx.error("""To support XML literals, your project must depend on scala-xml.
                   |See https://github.com/scala/scala-xml for more information.""".stripMargin,
         firstXmlPos)
 
-    unitContexts.foreach(typeCheck(_))
+    unitContexts.foreach(typeCheck(using _))
     record("total trees after typer", ast.Trees.ntrees)
     val newUnits = unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
     val suspendedUnits = ctx.run.suspendedUnits
@@ -132,7 +131,7 @@ class FrontEnd extends Phase {
     newUnits
   }
 
-  def run(implicit ctx: Context): Unit = unsupported("run")
+  def run(using Context): Unit = unsupported("run")
 }
 
 object FrontEnd {

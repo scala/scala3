@@ -12,7 +12,7 @@ import Types._
 import Decorators._
 import NameKinds._
 import StdNames.nme
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Names.Name
 import NameKinds.{InlineAccessorName, UniqueInlineName}
 import NameOps._
@@ -32,7 +32,7 @@ object PrepareInlineable {
      *  that the inline accessor takes its receiver as first parameter. Such accessors
      *  are created by MakeInlineablePassing.
      */
-    override def passReceiverAsArg(name: Name)(implicit ctx: Context): Boolean = name match {
+    override def passReceiverAsArg(name: Name)(using Context): Boolean = name match {
       case InlineAccessorName(UniqueInlineName(_, _)) => true
       case _ => false
     }
@@ -49,23 +49,23 @@ object PrepareInlineable {
        *  Constant vals don't need accessors since they are inlined in FirstTransform.
        *  Inline methods don't need accessors since they are inlined in Typer.
        */
-      def needsAccessor(sym: Symbol)(implicit ctx: Context): Boolean =
+      def needsAccessor(sym: Symbol)(using Context): Boolean =
         sym.isTerm &&
         (sym.isOneOf(AccessFlags) || sym.privateWithin.exists) &&
         !sym.isContainedIn(inlineSym) &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod
 
-      def preTransform(tree: Tree)(implicit ctx: Context): Tree
+      def preTransform(tree: Tree)(using Context): Tree
 
-      def postTransform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      def postTransform(tree: Tree)(using Context): Tree = tree match {
         case Assign(lhs, rhs) if lhs.symbol.name.is(InlineAccessorName) =>
           cpy.Apply(tree)(useSetter(lhs), rhs :: Nil)
         case _ =>
           tree
       }
 
-      override def transform(tree: Tree)(implicit ctx: Context): Tree =
+      override def transform(tree: Tree)(using Context): Tree =
         postTransform(super.transform(preTransform(tree)))
     }
 
@@ -75,7 +75,7 @@ object PrepareInlineable {
      *  by the test that we can find a host for the accessor.
      */
     class MakeInlineableDirect(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
-      def preTransform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      def preTransform(tree: Tree)(using Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
           if (tree.symbol.isConstructor) {
             ctx.error("Implementation restriction: cannot use private constructors in inlineinline methods", tree.sourcePos)
@@ -85,7 +85,7 @@ object PrepareInlineable {
         case _ =>
           tree
       }
-      override def ifNoHost(reference: RefTree)(implicit ctx: Context): Tree = reference
+      override def ifNoHost(reference: RefTree)(using Context): Tree = reference
     }
 
     /** Fallback approach if the direct approach does not work: Place the accessor method
@@ -119,7 +119,7 @@ object PrepareInlineable {
      */
     class MakeInlineablePassing(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
 
-      def preTransform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      def preTransform(tree: Tree)(using Context): Tree = tree match {
         case _: Apply | _: TypeApply | _: RefTree
         if needsAccessor(tree.symbol) && tree.isTerm && !tree.symbol.isConstructor =>
           val (refPart, targs, argss) = decomposeCall(tree)
@@ -186,7 +186,7 @@ object PrepareInlineable {
      *  @return If there are accessors generated, a thicket consisting of the rewritten `tree`
      *          and all accessors, otherwise the original tree.
      */
-    def makeInlineable(tree: Tree)(implicit ctx: Context): Tree = {
+    def makeInlineable(tree: Tree)(using Context): Tree = {
       val inlineSym = ctx.owner
       if (inlineSym.owner.isTerm)
         // Inlineable methods in local scopes can only be called in the scope they are defined,
@@ -198,10 +198,10 @@ object PrepareInlineable {
     }
   }
 
-  def isLocalOrParam(sym: Symbol, inlineMethod: Symbol)(implicit ctx: Context): Boolean =
+  def isLocalOrParam(sym: Symbol, inlineMethod: Symbol)(using Context): Boolean =
     sym.isContainedIn(inlineMethod) && sym != inlineMethod
 
-  def isLocal(sym: Symbol, inlineMethod: Symbol)(implicit ctx: Context): Boolean =
+  def isLocal(sym: Symbol, inlineMethod: Symbol)(using Context): Boolean =
     isLocalOrParam(sym, inlineMethod) && !(sym.is(Param) && sym.owner == inlineMethod)
 
   /** The type ascription `rhs: tpt`, unless `original` is `transparent`. */
@@ -218,7 +218,7 @@ object PrepareInlineable {
    *                     to have the inline method as owner.
    */
   def registerInlineInfo(
-      inlined: Symbol, treeExpr: Context ?=> Tree)(implicit ctx: Context): Unit =
+      inlined: Symbol, treeExpr: Context ?=> Tree)(using Context): Unit =
     inlined.unforcedAnnotation(defn.BodyAnnot) match {
       case Some(ann: ConcreteBodyAnnotation) =>
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated || ann.isEvaluating =>
@@ -241,7 +241,7 @@ object PrepareInlineable {
         }
     }
 
-  def checkInlineMethod(inlined: Symbol, body: Tree)(implicit ctx: Context): Unit = {
+  def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): Unit = {
     if (inlined.owner.isClass && inlined.owner.seesOpaques)
       ctx.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.sourcePos)
     if (ctx.outer.inInlineMethod)

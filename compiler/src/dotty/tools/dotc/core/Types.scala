@@ -2431,7 +2431,7 @@ object Types {
      *  So we can't drop the alias here, we need to do the backtracking to the name-
      *  based tests.
      */
-    def canDropAlias(using ctx: Context) =
+    def canDropAlias(using Context) =
       if myCanDropAliasPeriod != ctx.period then
         myCanDropAlias =
           !symbol.canMatchInheritedSymbols
@@ -2632,7 +2632,7 @@ object Types {
     /** Update the value of the lazyref, discarding the compute function `refFn`
      *  Can be called only as long as the ref is still undefined.
      */
-    def update(tp: Type)(using ctx: Context) =
+    def update(tp: Type)(using Context) =
       assert(myRef == null || ctx.reporter.errorsReported)
       myRef = tp
       computed = true
@@ -3011,7 +3011,7 @@ object Types {
   object OrNull {
     def apply(tp: Type)(using Context) =
       OrType(tp, defn.NullType)
-    def unapply(tp: Type)(using ctx: Context): Option[Type] =
+    def unapply(tp: Type)(using Context): Option[Type] =
       if (ctx.explicitNulls) {
         val tp1 = tp.stripNull()
         if tp1 ne tp then Some(tp1) else None
@@ -3029,7 +3029,7 @@ object Types {
   object OrUncheckedNull {
     def apply(tp: Type)(using Context) =
       OrType(tp, defn.UncheckedNullAliasType)
-    def unapply(tp: Type)(using ctx: Context): Option[Type] =
+    def unapply(tp: Type)(using Context): Option[Type] =
       if (ctx.explicitNulls) {
         val tp1 = tp.stripUncheckedNull
         if tp1 ne tp then Some(tp1) else None
@@ -4650,9 +4650,9 @@ object Types {
   }
 
   object ErrorType:
-    def apply(m: Message)(implicit ctx: Context): ErrorType =
+    def apply(m: Message)(using Context): ErrorType =
       val et = new ErrorType:
-        def msg(using ctx: Context): Message =
+        def msg(using Context): Message =
           ctx.base.errorTypeMsg.get(this) match
             case Some(m) => m
             case None => "error message from previous run no longer available"

@@ -38,7 +38,7 @@ class Definitions {
   import Definitions._
 
   private var initCtx: Context = _
-  private given ctx[Dummy_so_its_a_def] as Context = initCtx
+  private given currentContext[Dummy_so_its_a_def] as Context = initCtx
 
   private def newSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type) =
     ctx.newSymbol(owner, name, flags | Permanent, info)
@@ -1274,8 +1274,9 @@ class Definitions {
    *  types `As`, the result type `B` and a whether the type is an erased context function.
    */
   object ContextFunctionType:
-    def unapply(tp: Type)(using ctx: Context): Option[(List[Type], Type, Boolean)] =
-      if ctx.erasedTypes then unapply(tp)(using ctx.withPhase(ctx.erasurePhase))
+    def unapply(tp: Type)(using Context): Option[(List[Type], Type, Boolean)] =
+      if ctx.erasedTypes then
+        unapply(tp)(using ctx.withPhase(ctx.erasurePhase))
       else
         val tp1 = tp.dealias
         if isContextFunctionClass(tp1.typeSymbol) then

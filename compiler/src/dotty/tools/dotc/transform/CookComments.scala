@@ -15,10 +15,10 @@ class CookComments extends MegaPhase.MiniPhase {
       val owner = template.self.symbol.orElse(cls)
 
       template.body.foreach { stat =>
-        Docstrings.cookComment(stat.symbol, owner)(cookingCtx)
+        Docstrings.cookComment(stat.symbol, owner)(using cookingCtx)
       }
 
-      Docstrings.cookComment(cls, cls)(cookingCtx)
+      Docstrings.cookComment(cls, cls)(using cookingCtx)
     }
 
     tree

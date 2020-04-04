@@ -85,8 +85,7 @@ trait SymDenotations { thisCtx: Context =>
       case denot: SymDenotation =>
         def explainSym(msg: String) = explain(s"$msg\ndefined = ${denot.definedPeriodsString}")
         if (denot.isOneOf(ValidForeverFlags) || denot.isRefinementClass) true
-        else {
-          implicit val ctx = thisCtx
+        else inContext(thisCtx) {
           val initial = denot.initial
           if ((initial ne denot) || ctx.phaseId != initial.validFor.firstPhaseId)
             ctx.withPhase(initial.validFor.firstPhaseId).traceInvalid(initial)

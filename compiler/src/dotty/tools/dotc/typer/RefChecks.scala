@@ -26,11 +26,11 @@ object RefChecks {
   val name: String = "refchecks"
 
   private val defaultMethodFilter = new NameFilter {
-    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = name.is(DefaultGetterName)
+    def apply(pre: Type, name: Name)(using Context): Boolean = name.is(DefaultGetterName)
   }
 
   /** Only one overloaded alternative is allowed to define default arguments */
-  private def checkOverloadedRestrictions(clazz: Symbol)(implicit ctx: Context): Unit = {
+  private def checkOverloadedRestrictions(clazz: Symbol)(using Context): Unit = {
     // Using the default getters (such as methodName$default$1) as a cheap way of
     // finding methods with default parameters. This way, we can limit the members to
     // those with the DEFAULTPARAM flag, and infer the methods. Looking for the methods
@@ -81,7 +81,7 @@ object RefChecks {
    *  This one used to succeed only if forwarding parameters is on.
    *  (Forwarding tends to hide problems by binding parameter names).
    */
-  private def upwardsThisType(cls: Symbol)(implicit ctx: Context) = cls.info match {
+  private def upwardsThisType(cls: Symbol)(using Context) = cls.info match {
     case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.isOneOf(FinalOrModuleClass) =>
       SkolemType(cls.appliedRef).withName(nme.this_)
     case _ =>
@@ -91,7 +91,7 @@ object RefChecks {
   /** Check that self type of this class conforms to self types of parents.
    *  and required classes.
    */
-  private def checkParents(cls: Symbol)(implicit ctx: Context): Unit = cls.info match {
+  private def checkParents(cls: Symbol)(using Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
       def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
         val otherSelf = other.givenSelfType.asSeenFrom(cls.thisType, other.classSymbol)
@@ -111,7 +111,7 @@ object RefChecks {
    *  The rationale is to ensure outer-related NPE never happen in Scala.
    *  Otherwise, outer NPE may happen, see tests/neg/i5083.scala
    */
-  private def checkParentPrefix(cls: Symbol, parent: Tree)(implicit ctx: Context): Unit =
+  private def checkParentPrefix(cls: Symbol, parent: Tree)(using Context): Unit =
     parent.tpe.typeConstructor match {
       case TypeRef(ref: TermRef, _) =>
         val paramRefs = ref.namedPartsWith(ntp => ntp.symbol.enclosingClass == cls)
@@ -123,7 +123,7 @@ object RefChecks {
   /** Check that a class and its companion object to not both define
    *  a class or module with same name
    */
-  private def checkCompanionNameClashes(cls: Symbol)(implicit ctx: Context): Unit =
+  private def checkCompanionNameClashes(cls: Symbol)(using Context): Unit =
     if (!cls.owner.is(ModuleClass)) {
       def clashes(sym: Symbol) =
         sym.isClass &&
@@ -168,7 +168,7 @@ object RefChecks {
    *  TODO This still needs to be cleaned up; the current version is a straight port of what was there
    *       before, but it looks too complicated and method bodies are far too large.
    */
-  private def checkAllOverrides(clazz: ClassSymbol)(implicit ctx: Context): Unit = {
+  private def checkAllOverrides(clazz: ClassSymbol)(using Context): Unit = {
     val self = clazz.thisType
     val upwardsSelf = upwardsThisType(clazz)
     var hasErrors = false
@@ -828,7 +828,7 @@ object RefChecks {
   // I assume that's a consequence of some code trying to avoid noise by suppressing
   // warnings after the first, but I think it'd be better if we didn't have to
   // arbitrarily choose one as more important than the other.
-  private def checkUndesiredProperties(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = {
+  private def checkUndesiredProperties(sym: Symbol, pos: SourcePosition)(using Context): Unit = {
     // If symbol is deprecated, and the point of reference is not enclosed
     // in either a deprecated member or a scala bridge method, issue a warning.
     if (sym.isDeprecated && !ctx.owner.ownersIterator.exists(_.isDeprecated))
@@ -851,7 +851,7 @@ object RefChecks {
    *  concrete, non-deprecated method.  If it does, then
    *  deprecation is meaningless.
    */
-  private def checkDeprecatedOvers(tree: Tree)(implicit ctx: Context): Unit = {
+  private def checkDeprecatedOvers(tree: Tree)(using Context): Unit = {
     val symbol = tree.symbol
     if (symbol.isDeprecated) {
       val concrOvers =
@@ -874,7 +874,7 @@ object RefChecks {
    *  surprising names at runtime. E.g. in neg/i4564a.scala, a private
    *  case class `apply` method would have to be renamed to something else.
    */
-  def checkNoPrivateOverrides(tree: Tree)(using ctx: Context): Unit =
+  def checkNoPrivateOverrides(tree: Tree)(using Context): Unit =
     val sym = tree.symbol
     if sym.owner.isClass
        && sym.is(Private)
@@ -896,7 +896,7 @@ object RefChecks {
   }
 
   /** A class to help in forward reference checking */
-  class LevelInfo(outerLevelAndIndex: LevelAndIndex, stats: List[Tree])(implicit ctx: Context)
+  class LevelInfo(outerLevelAndIndex: LevelAndIndex, stats: List[Tree])(using Context)
   extends OptLevelInfo {
     override val levelAndIndex: LevelAndIndex =
       stats.foldLeft(outerLevelAndIndex, 0) {(mi, stat) =>
@@ -968,17 +968,17 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
   private var LevelInfo: Store.Location[OptLevelInfo] = _
-  private def currentLevel(implicit ctx: Context): OptLevelInfo = ctx.store(LevelInfo)
+  private def currentLevel(using Context): OptLevelInfo = ctx.store(LevelInfo)
 
   override def initContext(ctx: FreshContext): Unit =
     LevelInfo = ctx.addLocation(NoLevelInfo)
 
-  override def prepareForStats(trees: List[Tree])(implicit ctx: Context): Context =
+  override def prepareForStats(trees: List[Tree])(using Context): Context =
     if (ctx.owner.isTerm)
       ctx.fresh.updateStore(LevelInfo, new LevelInfo(currentLevel.levelAndIndex, trees))
     else ctx
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context): ValDef = {
+  override def transformValDef(tree: ValDef)(using Context): ValDef = {
     checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
     val sym = tree.symbol
@@ -998,13 +998,13 @@ class RefChecks extends MiniPhase { thisPhase =>
     tree
   }
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context): DefDef = {
+  override def transformDefDef(tree: DefDef)(using Context): DefDef = {
     checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
     tree
   }
 
-  override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = try {
+  override def transformTemplate(tree: Template)(using Context): Tree = try {
     val cls = ctx.owner.asClass
     checkOverloadedRestrictions(cls)
     checkParents(cls)
@@ -1019,18 +1019,18 @@ class RefChecks extends MiniPhase { thisPhase =>
       tree
   }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Ident = {
+  override def transformIdent(tree: Ident)(using Context): Ident = {
     checkUndesiredProperties(tree.symbol, tree.sourcePos)
     currentLevel.enterReference(tree.symbol, tree.span)
     tree
   }
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Select = {
+  override def transformSelect(tree: Select)(using Context): Select = {
     checkUndesiredProperties(tree.symbol, tree.sourcePos)
     tree
   }
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Apply = {
+  override def transformApply(tree: Apply)(using Context): Apply = {
     if (isSelfConstrCall(tree)) {
       assert(currentLevel.isInstanceOf[LevelInfo], s"${ctx.owner}/" + i"$tree")
       val level = currentLevel.asInstanceOf[LevelInfo]
@@ -1044,7 +1044,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     tree
   }
 
-  override def transformNew(tree: New)(implicit ctx: Context): New = {
+  override def transformNew(tree: New)(using Context): New = {
     val tpe = tree.tpe
     val sym = tpe.typeSymbol
     checkUndesiredProperties(sym, tree.sourcePos)

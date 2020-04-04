@@ -149,7 +149,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case _ =>
       processMemberDef(tree)
 
-    private def checkInferredWellFormed(tree: Tree)(using ctx: Context): Unit = tree match
+    private def checkInferredWellFormed(tree: Tree)(using Context): Unit = tree match
       case tree: TypeTree
       if tree.span.isZeroExtent
           // don't check TypeTrees with non-zero extent;
@@ -229,7 +229,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree @ Select(qual, name) =>
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.posd)
-            super.transform(tree)(ctx.addMode(Mode.Type))
+            super.transform(tree)(using ctx.addMode(Mode.Type))
           }
           else
             transformSelect(tree, Nil)
@@ -277,8 +277,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
           val pos = call.sourcePos
-          val callTrace = Inliner.inlineCallTrace(call.symbol, pos)(ctx.withSource(pos.source))
-          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
+          val callTrace = Inliner.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
+          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
         case templ: Template =>
           withNoCheckNews(templ.parents.flatMap(newPart)) {
             Checking.checkEnumParentOK(templ.symbol.owner)
@@ -352,7 +352,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             if !sel.isWildcard then checkIdent(sel)
           super.transform(tree)
         case Typed(Ident(nme.WILDCARD), _) =>
-          super.transform(tree)(ctx.addMode(Mode.Pattern))
+          super.transform(tree)(using ctx.addMode(Mode.Pattern))
             // The added mode signals that bounds in a pattern need not
             // conform to selector bounds. I.e. assume
             //     type Tree[T >: Null <: Type]
@@ -363,7 +363,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case m @ MatchTypeTree(bounds, selector, cases) =>
           // Analog to the case above for match types
           def tranformIgnoringBoundsCheck(x: CaseDef): CaseDef =
-            super.transform(x)(ctx.addMode(Mode.Pattern)).asInstanceOf[CaseDef]
+            super.transform(x)(using ctx.addMode(Mode.Pattern)).asInstanceOf[CaseDef]
           cpy.MatchTypeTree(tree)(
             super.transform(bounds),
             super.transform(selector),

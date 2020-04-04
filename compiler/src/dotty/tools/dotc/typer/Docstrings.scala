@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import Contexts._, Symbols._, Decorators._, Comments._
+import Contexts._, Symbols._, Decorators._, Comments.{_, given _}
 import ast.tpd
 
 object Docstrings {
@@ -20,12 +20,12 @@ object Docstrings {
    * @param sym   The symbol for which the comment is being cooked.
    * @param owner The class for which comments are being cooked.
    */
-  def cookComment(sym: Symbol, owner: Symbol)(implicit ctx: Context): Option[Comment] =
+  def cookComment(sym: Symbol, owner: Symbol)(using Context): Option[Comment] =
     ctx.docCtx.flatMap { docCtx =>
-      expand(sym, owner)(ctx, docCtx)
+      expand(sym, owner)(using ctx)(using docCtx)
     }
 
-  private def expand(sym: Symbol, owner: Symbol)(implicit ctx: Context, docCtx: ContextDocstrings): Option[Comment] =
+  private def expand(sym: Symbol, owner: Symbol)(using Context)(using docCtx: ContextDocstrings): Option[Comment] =
     docCtx.docstring(sym).flatMap {
       case cmt if cmt.isExpanded =>
         Some(cmt)
@@ -48,7 +48,7 @@ object Docstrings {
         }
     }
 
-  private def expandComment(sym: Symbol, owner: Symbol, comment: Comment)(implicit ctx: Context, docCtx: ContextDocstrings): Comment = {
+  private def expandComment(sym: Symbol, owner: Symbol, comment: Comment)(using Context)(using docCtx: ContextDocstrings): Comment = {
     val tplExp = docCtx.templateExpander
     tplExp.defineVariables(sym)
     val newComment = comment.expand(tplExp.expandedDocComment(sym, owner, _))

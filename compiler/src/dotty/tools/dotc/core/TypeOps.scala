@@ -493,7 +493,7 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
     def hasImport = {
       val owner1 = if (!owner.exists) defn.LanguageModule.moduleClass else owner
       thisCtx.importInfo != null &&
-      thisCtx.importInfo.featureImported(feature, owner1)(thisCtx.withPhase(thisCtx.typerPhase))
+      thisCtx.importInfo.featureImported(feature, owner1)(using thisCtx.withPhase(thisCtx.typerPhase))
     }
     val hasOption = {
       def toPrefix(sym: Symbol): String =

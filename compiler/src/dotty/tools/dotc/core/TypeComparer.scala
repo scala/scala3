@@ -235,7 +235,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     def firstTry: Boolean = tp2 match {
       case tp2: NamedType =>
         def compareNamed(tp1: Type, tp2: NamedType): Boolean =
-          implicit val ctx: Context = this.ctx
+          val ctx = this.ctx
+          given Context = ctx // optimization for performance
           val info2 = tp2.info
           info2 match
             case info2: TypeAlias =>

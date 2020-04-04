@@ -249,7 +249,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
      *  describe the core of a construct whereas the existing set are the modifiers
      *  given in the source.
      */
-    def withAddedFlags(flags: FlagSet, span: Span)(using ctx: Context): Modifiers =
+    def withAddedFlags(flags: FlagSet, span: Span)(using Context): Modifiers =
       if this.flags.isAllOf(flags) then this
       else if compatible(this.flags, flags) then this | flags
       else
@@ -760,6 +760,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     acc(false, tree)
   }
 
-  protected def FunProto(args: List[Tree], resType: Type)(using ctx: Context) =
+  protected def FunProto(args: List[Tree], resType: Type)(using Context) =
     ProtoTypes.FunProto(args, resType)(ctx.typer, isUsingApply = false)
 }
