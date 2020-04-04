@@ -340,7 +340,7 @@ object Scanners {
       if (next.token == EMPTY) {
         lastOffset = lastCharOffset
         currentRegion match {
-          case InString(multiLine, _) => fetchStringPart(multiLine)
+          case InString(multiLine, _) if lastToken != STRINGPART => fetchStringPart(multiLine)
           case _ => fetchToken()
         }
         if (token == ERROR) adjustSepRegions(STRINGLIT) // make sure we exit enclosing string literal
@@ -1097,13 +1097,7 @@ object Scanners {
         getRawStringLit()
       }
 
-    @annotation.tailrec private def getStringPart(multiLine: Boolean): Unit = {
-      def finishStringPart() = {
-        setStrVal()
-        token = STRINGPART
-        next.lastOffset = charOffset - 1
-        next.offset = charOffset - 1
-      }
+    @annotation.tailrec private def getStringPart(multiLine: Boolean): Unit =
       if (ch == '"')
         if (multiLine) {
           nextRawChar()
@@ -1127,18 +1121,19 @@ object Scanners {
           getStringPart(multiLine)
         }
         else if (ch == '{') {
-          finishStringPart()
-          nextRawChar()
-          next.token = LBRACE
+          setStrVal()
+          token = STRINGPART
         }
         else if (Character.isUnicodeIdentifierStart(ch) || ch == '_') {
-          finishStringPart()
-          while ({
+          setStrVal()
+          token = STRINGPART
+          next.lastOffset = charOffset - 1
+          next.offset = charOffset - 1
+          while
             putChar(ch)
             nextRawChar()
             ch != SU && Character.isUnicodeIdentifierPart(ch)
-          })
-          ()
+          do ()
           finishNamed(target = next)
         }
         else
@@ -1157,7 +1152,7 @@ object Scanners {
           getStringPart(multiLine)
         }
       }
-    }
+    end getStringPart
 
     private def fetchStringPart(multiLine: Boolean) = {
       offset = charOffset - 1
