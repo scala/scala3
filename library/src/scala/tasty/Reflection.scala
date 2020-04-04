@@ -2223,11 +2223,15 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def methods(using ctx: Context): List[Symbol] =
       internal.Symbol_methods(sym)
 
-    /** A pair consistsing of type paremeter symbols and value parameter symbol lists
+    /** A pair consisting of type parameter symbols and value parameter symbol lists
      *  of this method definition, or (Nil, Nil) for other symbols.
      */
     def paramSymss(using ctx: Context): (List[Symbol], List[List[Symbol]]) =
       internal.Symbol_paramSymss(sym)
+
+    /** The primary constructor of a class or trait, `noSymbol` if not applicable. */
+    def primaryConstructor(using Context): Symbol =
+      internal.Symbol_primaryConstructor(sym)
 
     /** Fields of a case class type -- only the ones declared in primary constructor */
     def caseFields(using ctx: Context): List[Symbol] =

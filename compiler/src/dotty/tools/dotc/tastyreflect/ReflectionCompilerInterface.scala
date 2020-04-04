@@ -1752,6 +1752,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Symbol_paramSymss(self: Symbol)(using ctx: Context): (List[Symbol], List[List[Symbol]]) =
     self.paramSymss
 
+  def Symbol_primaryConstructor(self: Symbol)(using Context): Symbol =
+    self.primaryConstructor
+
   def Symbol_caseFields(self: Symbol)(using ctx: Context): List[Symbol] =
     if (!self.isClass) Nil
     else self.asClass.paramAccessors.collect {
