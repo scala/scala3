@@ -689,18 +689,19 @@ trait Implicits { self: Typer =>
     }
   }
 
-  lazy val synthesize = Synthesizer(this)
+  private var synthesizer: Synthesizer | Null = null
 
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
   def inferImplicitArg(formal: Type, span: Span)(using Context): Tree =
-    inferImplicit(formal, EmptyTree, span)(using ctx) match {
+    inferImplicit(formal, EmptyTree, span)(using ctx) match
       case SearchSuccess(arg, _, _) => arg
       case fail @ SearchFailure(failed) =>
         if fail.isAmbiguous then failed
-        else synthesize.tryAll(formal, span).orElse(failed)
-    }
+        else
+          if synthesizer == null then synthesizer = Synthesizer(this)
+          synthesizer.nn.tryAll(formal, span).orElse(failed)
 
   /** Search an implicit argument and report error if not found */
   def implicitArgTree(formal: Type, span: Span)(using Context): Tree = {

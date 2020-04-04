@@ -15,17 +15,17 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import transform.SyntheticMembers._
 import util.Property
-import annotation.tailrec
+import annotation.{tailrec, constructorOnly}
 
 /** Synthesize terms for special classes */
-class Synthesizer(typer: Typer):
+class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   import ast.tpd._
 
   /** Handlers to synthesize implicits for special types */
   type SpecialHandler = (Type, Span) => Context ?=> Tree
-  type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
+  private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
 
-  lazy val synthesizedClassTag: SpecialHandler = (formal, span) =>
+  val synthesizedClassTag: SpecialHandler = (formal, span) =>
     formal.argInfos match
       case arg :: Nil =>
         fullyDefinedType(arg, "ClassTag argument", span) match
@@ -51,7 +51,7 @@ class Synthesizer(typer: Typer):
   /** Synthesize the tree for `'[T]` for an implicit `scala.quoted.Type[T]`.
    *  `T` is deeply dealiased to avoid references to local type aliases.
    */
-  lazy val synthesizedTypeTag: SpecialHandler = (formal, span) =>
+  val synthesizedTypeTag: SpecialHandler = (formal, span) =>
     def quotedType(t: Type) =
       if StagingContext.level == 0 then
         ctx.compilationUnit.needsStaging = true // We will need to run ReifyQuotes
@@ -65,7 +65,7 @@ class Synthesizer(typer: Typer):
         EmptyTree
   end synthesizedTypeTag
 
-  lazy val synthesizedTupleFunction: SpecialHandler = (formal, span) =>
+  val synthesizedTupleFunction: SpecialHandler = (formal, span) =>
     formal match
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
         def functionTypeEqual(baseFun: Type, actualArgs: List[Type],
@@ -112,7 +112,7 @@ class Synthesizer(typer: Typer):
   /** If `formal` is of the form Eql[T, U], try to synthesize an
     *  `Eql.eqlAny[T, U]` as solution.
     */
-  lazy val synthesizedEql: SpecialHandler = (formal, span) =>
+  val synthesizedEql: SpecialHandler = (formal, span) =>
 
     /** Is there an `Eql[T, T]` instance, assuming -strictEquality? */
     def hasEq(tp: Type)(using Context): Boolean =
@@ -183,7 +183,7 @@ class Synthesizer(typer: Typer):
   /** Creates a tree that will produce a ValueOf instance for the requested type.
    * An EmptyTree is returned if materialization fails.
    */
-  lazy val synthesizedValueOf: SpecialHandler = (formal, span) =>
+  val synthesizedValueOf: SpecialHandler = (formal, span) =>
 
     def success(t: Tree) =
       New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
@@ -364,19 +364,19 @@ class Synthesizer(typer: Typer):
   /** An implied instance for a type of the form `Mirror.Product { type MirroredType = T }`
    *  where `T` is a generic product type or a case object or an enum case.
    */
-  lazy val synthesizedProductMirror: SpecialHandler = (formal, span) =>
+  val synthesizedProductMirror: SpecialHandler = (formal, span) =>
     makeMirror(productMirror, formal, span)
 
   /** An implied instance for a type of the form `Mirror.Sum { type MirroredType = T }`
    *  where `T` is a generic sum type.
    */
-  lazy val synthesizedSumMirror: SpecialHandler = (formal, span) =>
+  val synthesizedSumMirror: SpecialHandler = (formal, span) =>
     makeMirror(sumMirror, formal, span)
 
   /** An implied instance for a type of the form `Mirror { type MirroredType = T }`
    *  where `T` is a generic sum or product or singleton type.
    */
-  lazy val synthesizedMirror: SpecialHandler = (formal, span) =>
+  val synthesizedMirror: SpecialHandler = (formal, span) =>
     formal.member(tpnme.MirroredType).info match
       case TypeBounds(mirroredType, _) =>
         if mirroredType.termSymbol.is(CaseVal)
@@ -387,20 +387,15 @@ class Synthesizer(typer: Typer):
           synthesizedSumMirror(formal, span)(using ctx)
       case _ => EmptyTree
 
-  private var mySpecialHandlers: SpecialHandlers = null
-
-  private def specialHandlers(using Context) =
-    if mySpecialHandlers == null then
-      mySpecialHandlers = List(
-        defn.ClassTagClass        -> synthesizedClassTag,
-        defn.QuotedTypeClass      -> synthesizedTypeTag,
-        defn.EqlClass             -> synthesizedEql,
-        defn.TupledFunctionClass  -> synthesizedTupleFunction,
-        defn.ValueOfClass         -> synthesizedValueOf,
-        defn.Mirror_ProductClass  -> synthesizedProductMirror,
-        defn.Mirror_SumClass      -> synthesizedSumMirror,
-        defn.MirrorClass          -> synthesizedMirror)
-    mySpecialHandlers
+  val specialHandlers = List(
+    defn.ClassTagClass        -> synthesizedClassTag,
+    defn.QuotedTypeClass      -> synthesizedTypeTag,
+    defn.EqlClass             -> synthesizedEql,
+    defn.TupledFunctionClass  -> synthesizedTupleFunction,
+    defn.ValueOfClass         -> synthesizedValueOf,
+    defn.Mirror_ProductClass  -> synthesizedProductMirror,
+    defn.Mirror_SumClass      -> synthesizedSumMirror,
+    defn.MirrorClass          -> synthesizedMirror)
 
   def tryAll(formal: Type, span: Span)(using Context): Tree =
     def recur(handlers: SpecialHandlers): Tree = handlers match
