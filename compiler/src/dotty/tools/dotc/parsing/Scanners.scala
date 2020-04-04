@@ -1399,19 +1399,16 @@ object Scanners {
       if knownWidth == null then IndentWidth.Zero else knownWidth
   end Region
 
-  trait NewLineSignificantRegion extends Region
-
   case class InString(multiLine: Boolean, outer: Region) extends Region
   case class InParens(prefix: Token, outer: Region) extends Region
-  case class InBraces(outer: Region) extends NewLineSignificantRegion
+  case class InBraces(outer: Region) extends Region
 
   /** A class describing an indentation region.
    *  @param width   The principal indendation width
    *  @param others  Other indendation widths > width of lines in the same region
    *  @param prefix  The token before the initial <indent> of the region
    */
-  case class Indented(width: IndentWidth, others: Set[IndentWidth], prefix: Token, outer: Region | Null)
-  extends NewLineSignificantRegion:
+  case class Indented(width: IndentWidth, others: Set[IndentWidth], prefix: Token, outer: Region | Null) extends Region:
     knownWidth = width
 
   enum IndentWidth {
