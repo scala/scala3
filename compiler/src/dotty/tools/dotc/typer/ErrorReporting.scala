@@ -5,7 +5,7 @@ package typer
 import ast._
 import core._
 import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
-import Implicits._, Flags._
+import Implicits._, Flags._, Constants.Constant
 import util.Spans._
 import util.SourcePosition
 import java.util.regex.Matcher.quoteReplacement
@@ -98,7 +98,13 @@ object ErrorReporting {
       val normTp = normalize(tree.tpe, pt)
       val treeTp = if (normTp <:< pt) tree.tpe else normTp
         // use normalized type if that also shows an error, original type otherwise
-      errorTree(tree, TypeMismatch(treeTp, pt, implicitFailure.whyNoConversion))
+      def missingElse = tree match
+        case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
+          "\nMaybe you are missing an else part for the conditional?"
+        case _ => ""
+      val addendum = List(implicitFailure.whyNoConversion, missingElse)
+        .find(!_.isEmpty).getOrElse("")
+      errorTree(tree, TypeMismatch(treeTp, pt, addendum))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */

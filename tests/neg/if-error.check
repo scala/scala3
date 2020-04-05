@@ -1,0 +1,6 @@
+-- [E007] Type Mismatch Error: tests/neg/if-error.scala:2:2 ------------------------------------------------------------
+2 |  if ??? then System.in.read()  // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Found:    Unit
+  |  Required: Int
+  |  Maybe you are missing an else part for the conditional?
