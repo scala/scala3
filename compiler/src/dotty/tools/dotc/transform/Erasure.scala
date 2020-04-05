@@ -705,9 +705,9 @@ object Erasure {
           else
             val castTarget = // Avoid inaccessible cast targets, see i8661
               if sym.owner.isAccessibleFrom(qual1.tpe)(using preErasureCtx)
-              then sym.owner
-              else erasure(tree.qualifier.typeOpt.widen).classSymbol
-            recur(cast(qual1, castTarget.typeRef))
+              then sym.owner.typeRef
+              else erasure(tree.qualifier.typeOpt.widen)
+            recur(cast(qual1, castTarget))
         }
       }
 
