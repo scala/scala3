@@ -1,18 +1,18 @@
-Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((x: scala.Int) => x.>(1)))
+Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((`x₂`: scala.Int) => `x₂`.>(1)))
 Optimized: ls.filter(((x: scala.Int) => x.<(3).&&(x.>(1))))
 Result: List(2)
 
-Original: ls2.filter(((x: scala.Char) => x.<('c'))).filter(((x: scala.Char) => x.>('a')))
+Original: ls2.filter(((x: scala.Char) => x.<('c'))).filter(((`x₂`: scala.Char) => `x₂`.>('a')))
 Optimized: ls2.filter(((x: scala.Char) => x.<('c').&&(x.>('a'))))
 Result: List(b)
 
-Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((x: scala.Int) => x.>(1))).filter(((x: scala.Int) => x.==(2)))
+Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((`x₂`: scala.Int) => `x₂`.>(1))).filter(((`x₃`: scala.Int) => `x₃`.==(2)))
 Optimized: ls.filter(((x: scala.Int) => x.<(3).&&(x.>(1).&&(x.==(2)))))
 Result: List(2)
 
 1
 2
-Original: ls.filter(((x: scala.Int) => x.<(3))).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
+Original: ls.filter(((x: scala.Int) => x.<(3))).foreach[scala.Unit](((`x₂`: scala.Int) => scala.Predef.println(`x₂`)))
 Optimized: ls.foreach[scala.Unit](((x: scala.Int) => if (x.<(3)) scala.Predef.println(x) else ()))
 Result: ()
 

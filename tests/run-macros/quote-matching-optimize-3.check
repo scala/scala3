@@ -1,19 +1,19 @@
-Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((x: scala.Int) => x.>(1)))
-Optimized: ls.filter(((x: scala.Int) => ((x: scala.Int) => x.<(3)).apply(x).&&(((x: scala.Int) => x.>(1)).apply(x))))
+Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((`x₂`: scala.Int) => `x₂`.>(1)))
+Optimized: ls.filter(((x: scala.Int) => ((`x₂`: scala.Int) => `x₂`.<(3)).apply(x).&&(((`x₃`: scala.Int) => `x₃`.>(1)).apply(x))))
 Result: List(2)
 
-Original: ls2.filter(((x: scala.Char) => x.<('c'))).filter(((x: scala.Char) => x.>('a')))
-Optimized: ls2.filter(((x: scala.Char) => ((x: scala.Char) => x.<('c')).apply(x).&&(((x: scala.Char) => x.>('a')).apply(x))))
+Original: ls2.filter(((x: scala.Char) => x.<('c'))).filter(((`x₂`: scala.Char) => `x₂`.>('a')))
+Optimized: ls2.filter(((x: scala.Char) => ((`x₂`: scala.Char) => `x₂`.<('c')).apply(x).&&(((`x₃`: scala.Char) => `x₃`.>('a')).apply(x))))
 Result: List(b)
 
-Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((x: scala.Int) => x.>(1))).filter(((x: scala.Int) => x.==(2)))
-Optimized: ls.filter(((x: scala.Int) => ((x: scala.Int) => x.<(3)).apply(x).&&(((x: scala.Int) => ((x: scala.Int) => x.>(1)).apply(x).&&(((x: scala.Int) => x.==(2)).apply(x))).apply(x))))
+Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((`x₂`: scala.Int) => `x₂`.>(1))).filter(((`x₃`: scala.Int) => `x₃`.==(2)))
+Optimized: ls.filter(((x: scala.Int) => ((`x₂`: scala.Int) => `x₂`.<(3)).apply(x).&&(((`x₃`: scala.Int) => ((`x₄`: scala.Int) => `x₄`.>(1)).apply(`x₃`).&&(((`x₅`: scala.Int) => `x₅`.==(2)).apply(`x₃`))).apply(x))))
 Result: List(2)
 
 1
 2
-Original: ls.filter(((x: scala.Int) => x.<(3))).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
-Optimized: ls.foreach[scala.Any](((x: scala.Int) => if (((x: scala.Int) => x.<(3)).apply(x)) ((x: scala.Int) => scala.Predef.println(x)).apply(x) else ()))
+Original: ls.filter(((x: scala.Int) => x.<(3))).foreach[scala.Unit](((`x₂`: scala.Int) => scala.Predef.println(`x₂`)))
+Optimized: ls.foreach[scala.Any](((x: scala.Int) => if (((`x₂`: scala.Int) => `x₂`.<(3)).apply(x)) ((`x₃`: scala.Int) => scala.Predef.println(`x₃`)).apply(x) else ()))
 Result: ()
 
 Original: ls.map[scala.Long](((a: scala.Int) => a.toLong)).map[java.lang.String](((b: scala.Long) => b.toString()))
