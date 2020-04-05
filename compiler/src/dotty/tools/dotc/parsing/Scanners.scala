@@ -289,7 +289,7 @@ object Scanners {
     /** Are we in a `${ }` block? such that RBRACE exits back into multiline string. */
     private def inMultiLineInterpolatedExpression =
       currentRegion match {
-        case InBraces(_, InString(true, _)) => true
+        case InBraces(InString(true, _)) => true
         case _ => false
       }
 
@@ -305,7 +305,7 @@ object Scanners {
       case LPAREN | LBRACKET =>
         currentRegion = InParens(lastToken, currentRegion)
       case LBRACE =>
-        currentRegion = InBraces(null, currentRegion)
+        currentRegion = InBraces(currentRegion)
       case RBRACE =>
         def dropBraces(): Unit = currentRegion match {
           case r: InBraces =>
@@ -340,7 +340,7 @@ object Scanners {
       if (next.token == EMPTY) {
         lastOffset = lastCharOffset
         currentRegion match {
-          case InString(multiLine, _) => fetchStringPart(multiLine)
+          case InString(multiLine, _) if lastToken != STRINGPART => fetchStringPart(multiLine)
           case _ => fetchToken()
         }
         if (token == ERROR) adjustSepRegions(STRINGLIT) // make sure we exit enclosing string literal
@@ -360,6 +360,7 @@ object Scanners {
 
     /** Insert `token` at assumed `offset` in front of current one. */
     def insert(token: Token, offset: Int) = {
+      assert(next.token == EMPTY, next)
       next.copyFrom(this)
       this.offset = offset
       this.token = token
@@ -518,26 +519,24 @@ object Scanners {
      *  I.e. `a <= b` iff `b.startsWith(a)`. If indentation is significant it is considered an error
      *  if the current indentation width and the indentation of the current token are incomparable.
      */
-    def handleNewLine(lastToken: Token) = {
+    def handleNewLine(lastToken: Token) =
       var indentIsSignificant = false
       var newlineIsSeparating = false
       var lastWidth = IndentWidth.Zero
       var indentPrefix = EMPTY
       val nextWidth = indentWidth(offset)
-      currentRegion match {
+      currentRegion match
         case r: Indented =>
           indentIsSignificant = indentSyntax
           lastWidth = r.width
           newlineIsSeparating = lastWidth <= nextWidth || r.isOutermost
           indentPrefix = r.prefix
-        case r: InBraces =>
+        case r =>
           indentIsSignificant = indentSyntax
-          if (r.width == null) r.width = nextWidth
-          lastWidth = r.width
-          newlineIsSeparating = true
-          indentPrefix = LBRACE
-        case _ =>
-      }
+          if (r.knownWidth == null) r.knownWidth = nextWidth
+          lastWidth = r.knownWidth
+          newlineIsSeparating = r.isInstanceOf[InBraces]
+
       if newlineIsSeparating
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
@@ -580,7 +579,7 @@ object Scanners {
             currentRegion = Indented(curWidth, others + nextWidth, prefix, outer)
         case _ =>
       }
-    }
+    end handleNewLine
 
     def spaceTabMismatchMsg(lastWidth: IndentWidth, nextWidth: IndentWidth) =
       i"""Incompatible combinations of tabs and spaces in indentation prefixes.
@@ -597,10 +596,7 @@ object Scanners {
     def observeIndented(): Unit =
       if indentSyntax && isNewLine then
         val nextWidth = indentWidth(next.offset)
-        val lastWidth = currentRegion match
-          case r: IndentSignificantRegion => r.indentWidth
-          case _ => nextWidth
-
+        val lastWidth = currentRegion.indentWidth
         if lastWidth < nextWidth then
           currentRegion = Indented(nextWidth, Set(), COLONEOL, currentRegion)
           offset = next.offset
@@ -650,15 +646,27 @@ object Scanners {
           lookahead()
           if (token != ELSE) reset()
         case COMMA =>
-          lookahead()
-          if (isAfterLineEnd && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)) {
-            /* skip the trailing comma */
-          } else if (token == EOF) { // e.g. when the REPL is parsing "val List(x, y, _*,"
-            /* skip the trailing comma */
-          } else reset()
+          def isEnclosedInParens(r: Region): Boolean = r match
+            case r: Indented => isEnclosedInParens(r.outer)
+            case _: InParens => true
+            case _ => false
+          currentRegion match
+            case r: Indented if isEnclosedInParens(r.outer) =>
+              insert(OUTDENT, offset)
+              currentRegion = r.outer
+            case _ =>
+              lookahead()
+              if isAfterLineEnd
+                 && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
+              then
+                () /* skip the trailing comma */
+              else if token == EOF then // e.g. when the REPL is parsing "val List(x, y, _*,"
+                () /* skip the trailing comma */
+              else
+                reset()
         case COLON =>
           if colonSyntax then observeColonEOL()
-        case EOF | RBRACE =>
+        case EOF | RBRACE | RPAREN | RBRACKET =>
           currentRegion match {
             case r: Indented if !r.isOutermost =>
               insert(OUTDENT, offset)
@@ -1097,13 +1105,7 @@ object Scanners {
         getRawStringLit()
       }
 
-    @annotation.tailrec private def getStringPart(multiLine: Boolean): Unit = {
-      def finishStringPart() = {
-        setStrVal()
-        token = STRINGPART
-        next.lastOffset = charOffset - 1
-        next.offset = charOffset - 1
-      }
+    @annotation.tailrec private def getStringPart(multiLine: Boolean): Unit =
       if (ch == '"')
         if (multiLine) {
           nextRawChar()
@@ -1127,18 +1129,19 @@ object Scanners {
           getStringPart(multiLine)
         }
         else if (ch == '{') {
-          finishStringPart()
-          nextRawChar()
-          next.token = LBRACE
+          setStrVal()
+          token = STRINGPART
         }
         else if (Character.isUnicodeIdentifierStart(ch) || ch == '_') {
-          finishStringPart()
-          while ({
+          setStrVal()
+          token = STRINGPART
+          next.lastOffset = charOffset - 1
+          next.offset = charOffset - 1
+          while
             putChar(ch)
             nextRawChar()
             ch != SU && Character.isUnicodeIdentifierPart(ch)
-          })
-          ()
+          do ()
           finishNamed(target = next)
         }
         else
@@ -1157,7 +1160,7 @@ object Scanners {
           getStringPart(multiLine)
         }
       }
-    }
+    end getStringPart
 
     private def fetchStringPart(multiLine: Boolean) = {
       offset = charOffset - 1
@@ -1379,7 +1382,7 @@ object Scanners {
    *   InBraces    a pair of braces { ... }
    *   Indented    a pair of <indent> ... <outdent> tokens
    */
-  abstract class Region {
+  abstract class Region:
     /** The region enclosing this one, or `null` for the outermost region */
     def outer: Region | Null
 
@@ -1389,32 +1392,24 @@ object Scanners {
     /** The enclosing region, which is required to exist */
     def enclosing: Region = outer.asInstanceOf[Region]
 
-    /** If this is an InBraces or Indented region, its indentation width, or Zero otherwise */
-    def indentWidth: IndentWidth = IndentWidth.Zero
-  }
+    var knownWidth: IndentWidth | Null = null
+
+    /** The indentation width, Zero if not known */
+    final def indentWidth: IndentWidth =
+      if knownWidth == null then IndentWidth.Zero else knownWidth
+  end Region
 
   case class InString(multiLine: Boolean, outer: Region) extends Region
   case class InParens(prefix: Token, outer: Region) extends Region
-
-  abstract class IndentSignificantRegion extends Region
-
-  case class InBraces(var width: IndentWidth | Null, outer: Region)
-  extends IndentSignificantRegion {
-    // The indent width starts out as `null` when the opening brace is encountered
-    // It is then adjusted when the next token on a new line is encountered.
-    override def indentWidth: IndentWidth =
-      if width == null then IndentWidth.Zero else width
-  }
+  case class InBraces(outer: Region) extends Region
 
   /** A class describing an indentation region.
    *  @param width   The principal indendation width
    *  @param others  Other indendation widths > width of lines in the same region
    *  @param prefix  The token before the initial <indent> of the region
    */
-  case class Indented(width: IndentWidth, others: Set[IndentWidth], prefix: Token, outer: Region | Null)
-  extends IndentSignificantRegion {
-    override def indentWidth = width
-  }
+  case class Indented(width: IndentWidth, others: Set[IndentWidth], prefix: Token, outer: Region | Null) extends Region:
+    knownWidth = width
 
   enum IndentWidth {
     case Run(ch: Char, n: Int)

@@ -4,7 +4,7 @@ title: Optional Braces
 ---
 
 As an experimental feature, Scala 3 enforces some rules on indentation and allows
-some occurrences of braces `{...}` to be optional. 
+some occurrences of braces `{...}` to be optional.
 It can be turned off with the compiler flag `-noindent`.
 
  - First, some badly indented programs are flagged with warnings.
@@ -78,10 +78,11 @@ There are two rules:
      If the indentation width of the token on the next line is still less than the new current indentation width, step (2) repeats. Therefore, several `<outdent>` tokens
      may be inserted in a row.
 
-    An `<outdent>` is also inserted if the next statement following a statement sequence starting with an `<indent>` closes an indentation region, i.e. is one of `then`, `else`, `do`, `catch`, `finally`, `yield`, `}` or `case`.
+    An `<outdent>` is also inserted if the next token following a statement sequence starting with an `<indent>` closes an indentation region, i.e. is one of `then`, `else`, `do`, `catch`, `finally`, `yield`, `}`, `)`, `]` or `case`.
 
-It is an error if the indentation width of the token following an `<outdent>` does not
-match the indentation of some previous line in the enclosing indentation region. For instance, the following would be rejected.
+    An `<outdent>` is finally inserted in front of a comma that follows a statement sequence starting with an `<indent>` if the indented region is itself enclosed in parentheses
+
+It is an error if the indentation width of the token following an `<outdent>` does not match the indentation of some previous line in the enclosing indentation region. For instance, the following would be rejected.
 ```scala
 if x < 0
     -x
