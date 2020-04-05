@@ -1339,7 +1339,15 @@ object Build {
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
       nonBootstrappedSettings(
-        addCommandAlias("run", "dotty-compiler/run")
+        addCommandAlias("run", "dotty-compiler/run"),
+        // Clean everything by default
+        addCommandAlias("clean", ";dotty/clean;dotty-bootstrapped/clean"),
+        // `publishLocal` on the non-bootstrapped compiler does not produce a
+        // working distribution (it can't in general, since there's no guarantee
+        // that the non-bootstrapped library is compatible with the
+        // non-bootstrapped compiler), so publish the bootstrapped one by
+        // default.
+        addCommandAlias("publishLocal", "dotty-bootstrapped/publishLocal"),
       )
 
     def asDottyCompiler(implicit mode: Mode): Project = project.withCommonSettings.
