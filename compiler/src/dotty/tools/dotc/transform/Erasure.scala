@@ -639,28 +639,21 @@ object Erasure {
 
       val qual1 = typed(tree.qualifier, AnySelectionProto)
 
-      def mapOwner(sym: Symbol): Symbol = {
-        // PolyFunction apply Selects will not have a symbol, so deduce the owner
-        // from the typed qual.
-        def polyOwner: Symbol =
-          if (sym.exists || tree.name != nme.apply) NoSymbol
-          else {
-            val owner = qual1.tpe.widen.typeSymbol
-            if (defn.isFunctionClass(owner)) owner else NoSymbol
-          }
-
-        polyOwner orElse {
+      def mapOwner(sym: Symbol): Symbol =
+        if !sym.exists && tree.name == nme.apply then
+          // PolyFunction apply Selects will not have a symbol, so deduce the owner
+          // from the typed qual.
+          val owner = qual1.tpe.widen.typeSymbol
+          if defn.isFunctionClass(owner) then owner else NoSymbol
+        else
           val owner = sym.maybeOwner
-          if (defn.specialErasure.contains(owner)) {
+          if defn.specialErasure.contains(owner) then
             assert(sym.isConstructor, s"${sym.showLocated}")
             defn.specialErasure(owner)
-          }
-          else if (defn.isSyntheticFunctionClass(owner))
+          else if defn.isSyntheticFunctionClass(owner)
             defn.erasedFunctionClass(owner)
           else
             owner
-        }
-      }
 
       val origSym = tree.symbol
 
@@ -710,7 +703,11 @@ object Erasure {
           if (qual1.tpe.derivesFrom(sym.owner) || qual1.isInstanceOf[Super])
             select(qual1, sym)
           else
-            recur(cast(qual1, sym.owner.typeRef))
+            val castTarget = // Avoid inaccessible cast targets, see i8661
+              if sym.owner.isAccessibleFrom(qual1.tpe)(using preErasureCtx)
+              then sym.owner.typeRef
+              else erasure(tree.qualifier.typeOpt.widen)
+            recur(cast(qual1, castTarget))
         }
       }
 
