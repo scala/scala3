@@ -74,6 +74,9 @@ object Parsers {
     if source.isSelfContained then new ScriptParser(source)
     else new Parser(source)
 
+  private val InCase: Region => Region = Scanners.InCase
+  private val InCond: Region => Region = Scanners.InBraces
+
   abstract class ParserCommon(val source: SourceFile)(implicit ctx: Context) {
 
     val in: ScannerCommon
@@ -611,10 +614,10 @@ object Parsers {
 
     def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
 
-    def inSepRegion[T](opening: Token, closing: Token)(op: => T): T = {
-      in.adjustSepRegions(opening)
-      try op finally in.adjustSepRegions(closing)
-    }
+    def inSepRegion[T](f: Region => Region)(op: => T): T =
+      val cur = in.currentRegion
+      in.currentRegion = f(cur)
+      try op finally in.currentRegion = cur
 
     /** Parse `body` while checking (under -noindent) that a `{` is not missing before it.
      *  This is done as follows:
@@ -1785,7 +1788,7 @@ object Parsers {
         var t: Tree = atSpan(in.offset) { Parens(inParens(exprInParens())) }
         val enclosedInParens = !toBeContinued(altToken)
         if !enclosedInParens then
-          t = inSepRegion(LBRACE, RBRACE) {
+          t = inSepRegion(InCond) {
             expr1Rest(postfixExprRest(simpleExprRest(t)), Location.ElseWhere)
           }
         if in.token == altToken then
@@ -1803,7 +1806,7 @@ object Parsers {
           if in.isNestedStart then
             try expr() finally newLinesOpt()
           else
-            inSepRegion(LBRACE, RBRACE)(expr())
+            inSepRegion(InCond)(expr())
         if rewriteToOldSyntax(t.span.startPos) then
           revertToParens(t)
         if altToken == THEN && in.isNewLine then
@@ -2470,7 +2473,7 @@ object Parsers {
             if (in.token == INDENT)
               inBracesOrIndented(enumerators())
             else {
-              val ts = inSepRegion(LBRACE, RBRACE)(enumerators())
+              val ts = inSepRegion(InCond)(enumerators())
               if (rewriteToOldSyntax(Span(start)) && ts.nonEmpty)
                 if (ts.head.sourcePos.startLine != ts.last.sourcePos.startLine) {
                   patch(source, Span(forEnd), " {")
@@ -2514,7 +2517,7 @@ object Parsers {
      *  ExprCaseClause    ::=  ‘case’ Pattern [Guard] ‘=>’ Expr
      */
     def caseClause(exprOnly: Boolean = false): CaseDef = atSpan(in.offset) {
-      val (pat, grd) = inSepRegion(LPAREN, RPAREN) {
+      val (pat, grd) = inSepRegion(InCase) {
         accept(CASE)
         (pattern(), guard())
       }
@@ -2526,7 +2529,7 @@ object Parsers {
     /** TypeCaseClause     ::= ‘case’ InfixType ‘=>’ Type [nl]
      */
     def typeCaseClause(): CaseDef = atSpan(in.offset) {
-      val pat = inSepRegion(LPAREN, RPAREN) {
+      val pat = inSepRegion(InCase) {
         accept(CASE)
         infixType()
       }
