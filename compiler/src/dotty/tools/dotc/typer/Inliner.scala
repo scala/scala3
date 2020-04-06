@@ -424,7 +424,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       computeParamBindings(tp.resultType, Nil, argss)
     case tp: MethodType =>
       if argss.isEmpty then
-        ctx.error(i"mising arguments for inline method $inlinedMethod", call.sourcePos)
+        ctx.error(i"missing arguments for inline method $inlinedMethod", call.sourcePos)
         false
       else
         tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head).foreach { (name, paramtp, arg) =>
@@ -476,6 +476,73 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls) ||
     tpe.cls.isContainedIn(inlinedMethod) ||
     tpe.cls.is(Package)
+
+  /** Very similar to TreeInfo.isPureExpr, but with the following inliner-only exceptions:
+   *  - synthetic case class apply methods, when the case class constructor is empty, are
+   *    elideable but not pure. Elsewhere, accessing the apply method might cause the initialization
+   *    of a containing object so they are merely idempotent.
+   */
+  object isElideableExpr {
+    def isStatElideable(tree: Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
+      case EmptyTree
+         | TypeDef(_, _)
+         | Import(_, _)
+         | DefDef(_, _, _, _, _) =>
+        true
+      case vdef @ ValDef(_, _, _) =>
+        if (vdef.symbol.flags is Mutable) false else apply(vdef.rhs)
+      case _ =>
+        false
+    }
+
+    def apply(tree: Tree): Boolean = unsplice(tree) match {
+      case EmptyTree
+         | This(_)
+         | Super(_, _)
+         | Literal(_) =>
+        true
+      case Ident(_) =>
+        isPureRef(tree)
+      case Select(qual, _) =>
+        if (tree.symbol.is(Erased)) true
+        else isPureRef(tree) && apply(qual)
+      case New(_) | Closure(_, _, _) =>
+        true
+      case TypeApply(fn, _) =>
+        if (fn.symbol.is(Erased) || fn.symbol == defn.InternalQuoted_typeQuote) true else apply(fn)
+      case Apply(fn, args) =>
+        def isKnownPureOp(sym: Symbol) =
+          sym.owner.isPrimitiveValueClass
+          || sym.owner == defn.StringClass
+          || defn.pureMethods.contains(sym)
+        val isCaseClassApply = {
+          val cls = tree.tpe.classSymbol
+          val meth = fn.symbol
+          meth.name == nme.apply &&
+          meth.flags.is(Synthetic) &&
+          meth.owner.linkedClass.is(Case) &&
+          cls.isNoInitsClass
+        }
+        if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
+            || (fn.symbol.isStableMember && !fn.symbol.is(Lazy))
+            || fn.symbol.isPrimaryConstructor && fn.symbol.owner.isNoInitsClass) // TODO: include in isStable?
+          apply(fn) && args.forall(apply)
+        else if (isCaseClassApply)
+          args.forall(apply)
+        else if (fn.symbol.is(Erased)) true
+        else false
+      case Typed(expr, _) =>
+        apply(expr)
+      case Block(stats, expr) =>
+        apply(expr) && stats.forall(isStatElideable)
+      case Inlined(_, bindings, expr) =>
+        apply(expr) && bindings.forall(isStatElideable)
+      case NamedArg(_, expr) =>
+        apply(expr)
+      case _ =>
+        false
+      }
+  }
 
   /** Populate `thisProxy` and `paramProxy` as follows:
    *
@@ -739,13 +806,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
                   Some(meth.owner.linkedClass, args, Nil, false)
                 else None
             }
+          case Typed(inner, _) =>
+            // drop the ascribed tpt. We only need it if we can't find a NewInstance
+            unapply(inner)
           case Ident(_) =>
             val binding = tree.symbol.defTree
             for ((cls, reduced, prefix, precomputed) <- unapply(binding))
             yield (cls, reduced, prefix, precomputed || binding.isInstanceOf[ValDef])
           case Inlined(_, bindings, expansion) =>
             unapplyLet(bindings, expansion)
-          case Block(stats, expr) if isPureExpr(tree) =>
+          case Block(stats, expr) if isElideableExpr(tree) =>
             unapplyLet(stats, expr)
           case _ =>
             None
@@ -778,13 +848,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
                 .reporting(i"projecting $tree -> $result", inlining)
             val arg = args(idx)
             if (precomputed)
-              if (isPureExpr(arg)) finish(arg)
+              if (isElideableExpr(arg)) finish(arg)
               else tree // nothing we can do here, projection would duplicate side effect
             else {
               // newInstance is evaluated in place, need to reflect side effects of
               // arguments in the order they were written originally
               def collectImpure(from: Int, end: Int) =
-                (from until end).filterNot(i => isPureExpr(args(i))).toList.map(args)
+                (from until end).filterNot(i => isElideableExpr(args(i))).toList.map(args)
               val leading = collectImpure(0, idx)
               val trailing = collectImpure(idx + 1, args.length)
               val argInPlace =
@@ -1041,7 +1111,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
                   case (Nil, Nil) => true
                   case (pat :: pats1, selector :: selectors1) =>
                     val elem = newSym(InlineBinderName.fresh(), Synthetic, selector.tpe.widenTermRefExpr).asTerm
-                    caseBindingMap += ((NoSymbol, ValDef(elem, constToLiteral(selector)).withSpan(elem.span)))
+                    val rhs = constToLiteral(selector)
+                    elem.defTree = rhs
+                    caseBindingMap += ((NoSymbol, ValDef(elem, rhs).withSpan(elem.span)))
                     reducePattern(caseBindingMap, elem.termRef, pat) &&
                     reduceSubPatterns(pats1, selectors1)
                   case _ => false
@@ -1143,9 +1215,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       assert(tree.hasType, tree)
       val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
-      val res = constToLiteral(untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt))
-      ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.sourcePos)
-      checkStaging(res)
+      val resNoReduce = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
+      val resMaybeReduced = constToLiteral(reducer.reduceProjection(resNoReduce))
+      if (resNoReduce ne resMaybeReduced)
+        typed(resMaybeReduced, pt) // redo typecheck if reduction changed something
+      else
+        val res = resMaybeReduced
+        ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.sourcePos)
+        checkStaging(res)
     }
 
     private def checkStaging(tree: Tree): tree.type =
@@ -1264,8 +1341,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       val bindingOfSym = newMutableSymbolMap[MemberDef]
 
       def isInlineable(binding: MemberDef) = binding match {
-        case ddef @ DefDef(_, Nil, Nil, _, _) => isPureExpr(ddef.rhs)
-        case vdef @ ValDef(_, _, _) => isPureExpr(vdef.rhs)
+        case ddef @ DefDef(_, Nil, Nil, _, _) => isElideableExpr(ddef.rhs)
+        case vdef @ ValDef(_, _, _) => isElideableExpr(vdef.rhs)
         case _ => false
       }
       for (binding <- bindings if isInlineable(binding)) {

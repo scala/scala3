@@ -1,0 +1,25 @@
+compile-time: 3
+run-time: 3
+compile-time: 3
+run-time: 3
+compile-time: 3
+run-time: 3
+compile-time: 3
+run-time: 3
+compile-time: {
+  val $elem9: A = Test.a
+  val $elem10: Int = $elem9.i
+  val i: Int = $elem10
+  i:Int
+}
+run-time: 3
+compile-time: 3
+run-time: 3
+compile-time: 3
+run-time: 3
+compile-time: 3
+run-time: 3
+compile-time: 3
+run-time: 3
+compile-time: 3
+run-time: 3
