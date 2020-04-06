@@ -1676,18 +1676,37 @@ object desugar {
       case PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
-      case ParsedTry(body, handler, finalizer) =>
-        handler match {
-          case Match(EmptyTree, cases) => Try(body, cases, finalizer)
-          case EmptyTree => Try(body, Nil, finalizer)
-          case _ =>
-            Try(body,
-              List(CaseDef(Ident(nme.DEFAULT_EXCEPTION_NAME), EmptyTree, Apply(handler, Ident(nme.DEFAULT_EXCEPTION_NAME)))),
-              finalizer)
-        }
     }
     desugared.withSpan(tree.span)
   }
+
+  /** Turn a fucntion value `handlerFun` into a catch case for a try.
+   *  If `handlerFun` is a partial function, translate to
+   *
+   *    case ex =>
+   *      val ev$1 = handlerFun
+   *      if ev$1.isDefinedAt(ex) then ev$1.apply(ex) else throw ex
+   *
+   *  Otherwise translate to
+   *
+   *     case ex => handlerFun.apply(ex)
+   */
+  def makeTryCase(handlerFun: tpd.Tree)(using Context): CaseDef =
+    val handler = TypedSplice(handlerFun)
+    val excId = Ident(nme.DEFAULT_EXCEPTION_NAME)
+    val rhs =
+      if handlerFun.tpe.widen.isRef(defn.PartialFunctionClass) then
+        val tmpName = UniqueName.fresh()
+        val tmpId = Ident(tmpName)
+        val init = ValDef(tmpName, TypeTree(), handler)
+        val test = If(
+          Apply(Select(tmpId, nme.isDefinedAt), excId),
+          Apply(Select(tmpId, nme.apply), excId),
+          Throw(excId))
+        Block(init :: Nil, test)
+      else
+        Apply(Select(handler, nme.apply), excId)
+    CaseDef(excId, EmptyTree, rhs)
 
   /** Create a class definition with the same info as the refined type given by `parent`
    *  and `refinements`.
