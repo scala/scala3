@@ -241,7 +241,7 @@ object messages {
     }
   }
 
-  class TypeMismatch(found: Type, expected: Type, addendum: => String = "")(implicit ctx: Context)
+  class TypeMismatch(found: Type, expected: Type, addenda: => String*)(implicit ctx: Context)
     extends TypeMismatchMsg(TypeMismatchID):
 
     // replace constrained TypeParamRefs and their typevars by their bounds where possible
@@ -269,14 +269,15 @@ object messages {
       val expected1 = reported(expected)
       val (found2, expected2) =
         if (found1 frozen_<:< expected1) (found, expected) else (found1, expected1)
-      val postScript =
-        if !addendum.isEmpty
-           || expected.isAny
-           || expected.isAnyRef
-           || expected.isRef(defn.AnyValClass)
-           || defn.isBottomType(found)
-        then addendum
-        else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
+      val postScript = addenda.find(!_.isEmpty) match
+        case Some(p) => p
+        case None =>
+          if expected.isAny
+             || expected.isAnyRef
+             || expected.isRef(defn.AnyValClass)
+             || defn.isBottomType(found)
+          then ""
+          else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
       val (where, printCtx) = Formatting.disambiguateTypes(found2, expected2)
       val whereSuffix = if (where.isEmpty) where else s"\n\n$where"
       val (foundStr, expectedStr) = Formatting.typeDiff(found2, expected2)(printCtx)
