@@ -391,6 +391,7 @@ class Definitions {
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
 
   def SubTypeClass(implicit ctx: Context): ClassSymbol = ctx.requiredClass("scala.<:<")
+  @tu lazy val SubType_refl: Symbol = SubTypeClass.companionModule.requiredMethod(nme.refl)
 
   def DummyImplicitClass(implicit ctx: Context): ClassSymbol = ctx.requiredClass("scala.DummyImplicit")
 
