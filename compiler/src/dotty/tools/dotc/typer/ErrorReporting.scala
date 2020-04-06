@@ -102,9 +102,7 @@ object ErrorReporting {
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
           "\nMaybe you are missing an else part for the conditional?"
         case _ => ""
-      def addendum = List(implicitFailure.whyNoConversion, missingElse)
-        .find(!_.isEmpty).getOrElse("")
-      errorTree(tree, TypeMismatch(treeTp, pt, addendum))
+      errorTree(tree, TypeMismatch(treeTp, pt, implicitFailure.whyNoConversion, missingElse))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
