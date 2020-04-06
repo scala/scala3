@@ -1305,10 +1305,10 @@ trait CompilerInterface {
   /** Get all non-private methods declared or inherited */
   def Symbol_methods(self: Symbol)(using ctx: Context): List[Symbol]
 
-  /** A pair consisting of type parameter symbols and value parameter symbol lists
-   *  of this method definition, or (Nil, Nil) for other symbols.
+  /** The symbols of each type parameter list and value parameter list of this
+   *  method, or Nil if this isn't a method.
    */
-  def Symbol_paramSymss(self: Symbol)(using ctx: Context): (List[Symbol], List[List[Symbol]])
+  def Symbol_paramSymss(self: Symbol)(using ctx: Context): List[List[Symbol]]
 
   /** The primary constructor of a class or trait, `noSymbol` if not applicable. */
   def Symbol_primaryConstructor(self: Symbol)(using Context): Symbol

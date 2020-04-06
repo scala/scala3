@@ -1,28 +1,21 @@
 sym: Test$.a
-tparams: List()
-vparamss: List()
+paramSymss: List()
 
 sym: Test$.b
-tparams: List()
-vparamss: List(List(Test$._$i))
+paramSymss: List(List(Test$._$i))
 
 sym: Test$.c
-tparams: List()
-vparamss: List(List(Test$._$x), List(Test$._$y), List(Test$._$z))
+paramSymss: List(List(Test$._$x), List(Test$._$y), List(Test$._$z))
 
 sym: Test$.d
-tparams: List(Test$._$T)
-vparamss: List()
+paramSymss: List(List(Test$._$T))
 
 sym: Test$.c
-tparams: List(Test$._$T, Test$._$U)
-vparamss: List(List(Test$._$x, Test$._$x2), List(Test$._$y), List(Test$._$z))
+paramSymss: List(List(Test$._$T, Test$._$U), List(Test$._$x, Test$._$x2), List(Test$._$y), List(Test$._$z))
 
 sym: Test.<init>
-tparams: List(Test._$T)
-vparamss: List(List(Test._$a))
+paramSymss: List(List(Test._$T), List(Test._$a))
 
 sym: Test.<init>
-tparams: List(Test._$T)
-vparamss: List(List(Test._$a, Test._$b))
+paramSymss: List(List(Test._$T), List(Test._$a, Test._$b))
 

@@ -339,7 +339,7 @@ private class ExtractAPICollector(implicit ctx: Context) extends ThunkHolder {
   def apiDef(sym: TermSymbol): api.Def = {
     def paramLists(t: Type, paramss: List[List[Symbol]]): List[api.ParameterList] = t match {
       case pt: TypeLambda =>
-        paramLists(pt.resultType, paramss)
+        paramLists(pt.resultType, paramss.drop(1))
       case mt @ MethodTpe(pnames, ptypes, restpe) =>
         assert(paramss.nonEmpty && paramss.head.hasSameLengthAs(pnames),
           i"mismatch for $sym, ${sym.info}, ${sym.paramSymss}")
@@ -359,7 +359,7 @@ private class ExtractAPICollector(implicit ctx: Context) extends ThunkHolder {
       case _ =>
         Nil
     }
-    val vparamss = paramLists(sym.info, sym.paramSymss._2)
+    val vparamss = paramLists(sym.info, sym.paramSymss)
     val retTp = sym.info.finalResultType.widenExpr
 
     api.Def.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
