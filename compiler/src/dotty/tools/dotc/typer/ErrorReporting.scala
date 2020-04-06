@@ -102,7 +102,7 @@ object ErrorReporting {
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
           "\nMaybe you are missing an else part for the conditional?"
         case _ => ""
-      val addendum = List(implicitFailure.whyNoConversion, missingElse)
+      def addendum = List(implicitFailure.whyNoConversion, missingElse)
         .find(!_.isEmpty).getOrElse("")
       errorTree(tree, TypeMismatch(treeTp, pt, addendum))
     }
