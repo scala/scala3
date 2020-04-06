@@ -101,7 +101,7 @@ The compiler implements the following reduction algorithm:
 - Sequentially consider each pattern `Pi`
     - If `S <: Pi` reduce to `Ti`.
     - Otherwise, try constructing a proof that `S` and `Pi` are disjoint, or, in other words, that no value `s` of type `S` is also of type `Pi`.
-    - If such proof is found, proceed to the case (`Pi+1`), otherwise, do not reduce.
+    - If such proof is found, proceed to the next case (`Pi+1`), otherwise, do not reduce.
 
 Disjointness proofs rely on the following properties of Scala types:
 
@@ -109,6 +109,9 @@ Disjointness proofs rely on the following properties of Scala types:
 2. Final classes cannot be extended
 3. Constant types with distinct values are nonintersecting
 
+Type parameters in patterns are minimally instantiated when computing `S <: Pi`. An instantiation `Is` is _minimal_ for `Xs` if all type variables in `Xs` that appear covariantly and nonvariantly in `Is` are as small as possible and all type variables in `Xs` that appear contravariantly in `Is` are as large as possible. Here, "small" and "large" are understood with respect to  `<:`.
+
+For simplicity, we have omitted constraint handling so far. The full formulation of subtyping tests describes them as a function from a constraint and a pair of types to either _success_ and a new constraint or _failure_. In the context of reduction, the subtyping test `S <: [Xs := Is] P` is understood to leave the bounds of all variables in the input constraint unchanged, i.e. existing variables in the constraint cannot be instantiated by matching the scrutinee against the patterns.
 
 ## Subtyping Rules for Match Types
 
