@@ -1138,15 +1138,21 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     }
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
-      tryInline(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt)
+      checkStaging(tryInline(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt))
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       assert(tree.hasType, tree)
       val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
       val res = constToLiteral(untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt))
       ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.sourcePos)
-      res
+      checkStaging(res)
     }
+
+    private def checkStaging(tree: Tree): tree.type =
+      val sym = tree.symbol
+      if sym == defn.InternalQuoted_exprQuote || sym == defn.InternalQuoted_typeQuote then
+        ctx.compilationUnit.needsStaging = true
+      tree
 
     override def typedIf(tree: untpd.If, pt: Type)(using Context): Tree =
       typed(tree.cond, defn.BooleanType) match {
