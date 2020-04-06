@@ -104,6 +104,14 @@ class ExtractSemanticDB extends Phase:
       || sym == defn.Any_typeCast
       || qualifier.exists(excludeQual)
 
+    private def traverseAnnotsOf(sym: Symbol)(using Context): Unit =
+      for annot <- sym.annotations do
+        if annot.tree.span.exists
+        && annot.tree.span.hasLength
+          annot.tree match
+            case tree: Typed => () // hack for inline code
+            case tree        => traverse(tree)
+
     override def traverse(tree: Tree)(using Context): Unit =
 
       inline def traverseCtorParamTpt(ctorSym: Symbol, tpt: Tree): Unit =
@@ -115,12 +123,7 @@ class ExtractSemanticDB extends Phase:
         else
           traverse(tpt)
 
-      for annot <- tree.symbol.annotations do
-        if annot.tree.span.exists
-        && annot.tree.span.hasLength
-          annot.tree match
-            case tree: Typed => () // hack for inline code
-            case tree        => traverse(tree)
+      traverseAnnotsOf(tree.symbol)
 
       tree match
         case tree: PackageDef =>
@@ -563,6 +566,7 @@ class ExtractSemanticDB extends Phase:
         vparams <- vparamss
         vparam  <- vparams
       do
+        traverseAnnotsOf(vparam.symbol)
         if !excludeSymbol(vparam.symbol)
           val symkinds =
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>

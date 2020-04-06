@@ -386,7 +386,7 @@ object SymDenotations {
     final def setParamssFromDefs(tparams: List[TypeDef[?]], vparamss: List[List[ValDef[?]]])(using Context): Unit =
       setParamss(tparams.map(_.symbol), vparamss.map(_.map(_.symbol)))
 
-    /** A pair consistsing of type paremeter symbols and value parameter symbol lists
+    /** A pair consisting of type parameter symbols and value parameter symbol lists
      *  of this method definition, or (Nil, Nil) for other symbols.
      *  Makes use of `rawParamss` when present, or constructs fresh parameter symbols otherwise.
      *  This method can be allocation-heavy.

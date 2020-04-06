@@ -433,6 +433,10 @@ object desugar {
         else originalTparams
       }
       else originalTparams
+
+    // Annotations on class _type_ parameters are set on the derived parameters
+    // but not on the constructor parameters. The reverse is true for
+    // annotations on class _value_ parameters.
     val constrTparams = impliedTparams.map(toDefParam(_, keepAnnotations = false))
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
@@ -444,7 +448,14 @@ object desugar {
         ctx.error(CaseClassMissingNonImplicitParamList(cdef), namePos)
         ListOfNil
       }
-      else originalVparamss.nestedMap(toDefParam(_, keepAnnotations = false, keepDefault = true))
+      else originalVparamss.nestedMap(toDefParam(_, keepAnnotations = true, keepDefault = true))
+    val derivedTparams =
+      constrTparams.zipWithConserve(impliedTparams)((tparam, impliedParam) =>
+        derivedTypeParam(tparam).withAnnotations(impliedParam.mods.annotations))
+    val derivedVparamss =
+      constrVparamss.nestedMap(vparam =>
+        derivedTermParam(vparam).withAnnotations(Nil))
+
     val constr = cpy.DefDef(constr1)(tparams = constrTparams, vparamss = constrVparamss)
 
     val (normalizedBody, enumCases, enumCompanionRef) = {
@@ -479,14 +490,6 @@ object desugar {
     }
 
     def anyRef = ref(defn.AnyRefAlias.typeRef)
-
-    // Annotations are dropped from the constructor parameters but should be
-    // preserved in all derived parameters.
-    val derivedTparams =
-      constrTparams.zipWithConserve(impliedTparams)((tparam, impliedParam) =>
-        derivedTypeParam(tparam).withAnnotations(impliedParam.mods.annotations))
-    val derivedVparamss =
-      constrVparamss.nestedMap(vparam => derivedTermParam(vparam))
 
     val arity = constrVparamss.head.length
 
@@ -779,8 +782,10 @@ object desugar {
         val originalVparamsIt = originalVparamss.iterator.flatten
         derivedVparamss match {
           case first :: rest =>
-            first.map(_.withMods(originalVparamsIt.next().mods | caseAccessor)) ++
-            rest.flatten.map(_.withMods(originalVparamsIt.next().mods))
+            // Annotations on the class _value_ parameters are not set on the parameter accessors
+            def mods(vdef: ValDef) = vdef.mods.withAnnotations(Nil)
+            first.map(_.withMods(mods(originalVparamsIt.next()) | caseAccessor)) ++
+            rest.flatten.map(_.withMods(mods(originalVparamsIt.next())))
           case _ =>
             Nil
         }
