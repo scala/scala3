@@ -12,6 +12,7 @@ import SymUtils._
 import Constants._
 import ast.Trees._
 import MegaPhase._
+import NameKinds.TraitSetterName
 import NameOps._
 import Flags._
 import Decorators._
@@ -119,7 +120,8 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     val constantFinalVal = sym.isAllOf(Accessor | Final, butNot = Mutable) && tree.rhs.isInstanceOf[Literal]
 
-    if (sym.is(Accessor, butNot = NoFieldNeeded) && !constantFinalVal) {
+    if (sym.is(Accessor, butNot = NoFieldNeeded) && !constantFinalVal
+        && (!sym.name.is(TraitSetterName) || sym.getter.is(Accessor, butNot = NoFieldNeeded))) {
       val field = sym.field.orElse(newField).asTerm
 
       def adaptToField(tree: Tree): Tree =

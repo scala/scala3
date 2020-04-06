@@ -274,9 +274,13 @@ object NameOps {
     def setterName: TermName = name.exclude(FieldName) ++ str.SETTER_SUFFIX
 
     def getterName: TermName =
-      name.exclude(FieldName).mapLast(n =>
-        if (n.endsWith(str.SETTER_SUFFIX)) n.take(n.length - str.SETTER_SUFFIX.length).asSimpleName
-        else n)
+      if name.is(TraitSetterName) then
+        val TraitSetterName(_, original) = name
+        original.getterName
+      else
+        name.exclude(FieldName).mapLast(n =>
+          if (n.endsWith(str.SETTER_SUFFIX)) n.take(n.length - str.SETTER_SUFFIX.length).asSimpleName
+          else n)
 
     def fieldName: TermName =
       if (name.isSetterName)
