@@ -737,12 +737,10 @@ class Typer extends Namer
           else pt.translateFromRepeated(toArray = false, translateWildcard = true) |
                pt.translateFromRepeated(toArray = true,  translateWildcard = true)
         val tpdExpr = typedExpr(tree.expr, ptArg)
-        tpdExpr.tpe.widenDealias match {
-          case defn.ArrayOf(_) =>
-            arrayToRepeated(tpdExpr)
-          case _ =>
-            seqToRepeated(tpdExpr)
-        }
+        val expr1 = typedExpr(tree.expr, ptArg)
+        val fromCls = if expr1.tpe.derivesFrom(defn.ArrayClass) then defn.ArrayClass else defn.SeqClass
+        val tpt1 = TypeTree(expr1.tpe.widen.translateToRepeated(fromCls)).withSpan(tree.tpt.span)
+        assignType(cpy.Typed(tree)(expr1, tpt1), tpt1)
       }
       cases(
         ifPat = ascription(TypeTree(defn.RepeatedParamType.appliedTo(pt)), isWildcard = true),

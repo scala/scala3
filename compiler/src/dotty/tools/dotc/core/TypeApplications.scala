@@ -378,7 +378,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       self.derivedExprType(tp.translateParameterized(from, to))
     case _ =>
       if (self.derivesFrom(from)) {
-        def elemType(tp: Type): Type = tp match
+        def elemType(tp: Type): Type = tp.widenDealias match
           case tp: AndOrType => tp.derivedAndOrType(elemType(tp.tp1), elemType(tp.tp2))
           case _ => tp.baseType(from).argInfos.head
         val arg = elemType(self)
@@ -403,6 +403,10 @@ class TypeApplications(val self: Type) extends AnyVal {
       // erasure. See `tests/pos/i5140`.
       translateParameterized(defn.RepeatedParamClass, seqClass, wildcardArg = toArray)
     else self
+
+  /** Translate a `From[T]` into a `*T`. */
+  def translateToRepeated(from: ClassSymbol)(using Context): Type =
+    translateParameterized(from, defn.RepeatedParamClass)
 
   /** If this is an encoding of a (partially) applied type, return its arguments,
    *  otherwise return Nil.

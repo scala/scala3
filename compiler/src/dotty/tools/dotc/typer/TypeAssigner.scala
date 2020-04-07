@@ -166,7 +166,7 @@ trait TypeAssigner {
     else sym.info
 
   private def toRepeated(tree: Tree, from: ClassSymbol)(using Context): Tree =
-    Typed(tree, TypeTree(tree.tpe.widen.translateParameterized(from, defn.RepeatedParamClass)))
+    Typed(tree, TypeTree(tree.tpe.widen.translateToRepeated(from)))
 
   def seqToRepeated(tree: Tree)(using Context): Tree = toRepeated(tree, defn.SeqClass)
 
