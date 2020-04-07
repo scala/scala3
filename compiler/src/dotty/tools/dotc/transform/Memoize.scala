@@ -118,10 +118,19 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         EmptyTree
       }
 
+    def traitSetterGetter: Symbol =
+      /* We have to compare SimpleNames here, because the setter name only
+       * embed the original getter's simple name, not its semantic name.
+       */
+      val getterSimpleName = sym.asTerm.name.getterName
+      sym.owner.info.decls.find { getter =>
+        getter.is(Accessor) && getter.asTerm.name.toSimpleName == getterSimpleName
+      }
+
     val constantFinalVal = sym.isAllOf(Accessor | Final, butNot = Mutable) && tree.rhs.isInstanceOf[Literal]
 
     if (sym.is(Accessor, butNot = NoFieldNeeded) && !constantFinalVal
-        && (!sym.name.is(TraitSetterName) || sym.getter.is(Accessor, butNot = NoFieldNeeded))) {
+        && (!sym.name.is(TraitSetterName) || traitSetterGetter.is(Accessor, butNot = NoFieldNeeded))) {
       val field = sym.field.orElse(newField).asTerm
 
       def adaptToField(tree: Tree): Tree =
