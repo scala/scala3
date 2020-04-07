@@ -379,7 +379,7 @@ class CommunityBuildTest:
   @Test def fastparse = projects.fastparse.run()
   @Test def utest = projects.utest.run()
   @Test def sourcecode = projects.sourcecode.run()
-  //@Test def oslib = projects.oslib.run()
+  @Test def oslib = projects.oslib.run()
   //@Test def ujson = projects.ujson.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
   @Test def stdLib213 = projects.stdLib213.run()
