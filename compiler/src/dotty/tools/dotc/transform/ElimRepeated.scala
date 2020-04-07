@@ -99,7 +99,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       ref(defn.DottyArraysModule)
         .select(nme.seqToArray)
         .appliedToType(elemType)
-        .appliedTo(tree, Literal(Constant(elemClass.typeRef)))
+        .appliedTo(tree, clsOf(elemClass.typeRef))
   }
 
   /** Convert Java array argument to Scala Seq */
