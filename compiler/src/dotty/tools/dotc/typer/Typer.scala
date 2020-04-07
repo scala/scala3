@@ -729,7 +729,7 @@ class Typer extends Namer
     if (untpd.isWildcardStarArg(tree)) {
       def typedWildcardStarArgExpr = {
         val ptArg =
-          if (ctx.mode.is(Mode.QuotedPattern)) pt.underlyingIfRepeated(isJava = false)
+          if (ctx.mode.is(Mode.QuotedPattern)) pt.translateFromRepeated(toArray = false)
           else WildcardType
         val tpdExpr = typedExpr(tree.expr, ptArg)
         tpdExpr.tpe.widenDealias match {
@@ -1158,7 +1158,7 @@ class Typer extends Namer
             if (!param.tpt.isEmpty) param
             else cpy.ValDef(param)(
               tpt = untpd.TypeTree(
-                inferredParamType(param, protoFormal(i)).underlyingIfRepeated(isJava = false)))
+                inferredParamType(param, protoFormal(i)).translateFromRepeated(toArray = false)))
         desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual)
       }
     typed(desugared, pt)

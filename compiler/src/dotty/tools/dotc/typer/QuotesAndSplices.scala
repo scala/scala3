@@ -207,7 +207,7 @@ trait QuotesAndSplices {
           try ref(defn.InternalQuoted_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
           finally {
             val patType = pat.tpe.widen
-            val patType1 = patType.underlyingIfRepeated(isJava = false)
+            val patType1 = patType.translateFromRepeated(toArray = false)
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
             patBuf += pat1
           }

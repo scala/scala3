@@ -388,16 +388,16 @@ class TypeApplications(val self: Type) extends AnyVal {
       else self
   }
 
-  /** If this is repeated parameter type, its underlying Seq type,
-   *  or, if isJava is true, Array type, else the type itself.
+  /** If this is a repeated parameter `*T`, translate it to either `Seq[T]` or
+   *  `Array[? <: T]` depending on the value of `toArray`, keep other types as
+   *  they are.
    */
-  def underlyingIfRepeated(isJava: Boolean)(implicit ctx: Context): Type =
-    if (self.isRepeatedParam) {
-      val seqClass = if (isJava) defn.ArrayClass else defn.SeqClass
-      // If `isJava` is set, then we want to turn `RepeatedParam[T]` into `Array[? <: T]`,
-      // since arrays aren't covariant until after erasure. See `tests/pos/i5140`.
-      translateParameterized(defn.RepeatedParamClass, seqClass, wildcardArg = isJava)
-    }
+  def translateFromRepeated(toArray: Boolean)(using Context): Type =
+    if self.isRepeatedParam then
+      val seqClass = if (toArray) defn.ArrayClass else defn.SeqClass
+      // We want `Array[? <: T]` because arrays aren't covariant until after
+      // erasure. See `tests/pos/i5140`.
+      translateParameterized(defn.RepeatedParamClass, seqClass, wildcardArg = toArray)
     else self
 
   /** If this is an encoding of a (partially) applied type, return its arguments,

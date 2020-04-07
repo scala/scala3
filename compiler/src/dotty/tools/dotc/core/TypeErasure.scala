@@ -155,7 +155,7 @@ object TypeErasure {
       case etp => etp
 
   def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
-    val normTp = tp.underlyingIfRepeated(isJava)
+    val normTp = tp.translateFromRepeated(toArray = isJava)
     val erase = erasureFn(isJava, semiEraseVCs = false, isConstructor = false, wildcardOK = true)
     erase.sigName(normTp)(preErasureCtx)
   }
@@ -448,7 +448,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       val tycon = tp.tycon
       if (tycon.isRef(defn.ArrayClass)) eraseArray(tp)
       else if (tycon.isRef(defn.PairClass)) erasePair(tp)
-      else if (tp.isRepeatedParam) apply(tp.underlyingIfRepeated(isJava))
+      else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = isJava))
       else apply(tp.translucentSuperType)
     case _: TermRef | _: ThisType =>
       this(tp.widen)
@@ -540,7 +540,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
             // See doc comment for ElimByName for speculation how we could improve this.
         else
           MethodType(Nil, Nil,
-            eraseResult(sym.info.finalResultType.underlyingIfRepeated(isJava)))
+            eraseResult(sym.info.finalResultType.translateFromRepeated(toArray = isJava)))
       case tp1: PolyType =>
         eraseResult(tp1.resultType) match
           case rt: MethodType => rt
