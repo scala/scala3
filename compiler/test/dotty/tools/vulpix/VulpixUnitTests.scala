@@ -49,6 +49,9 @@ class VulpixUnitTests extends ParallelTesting {
   @Test def negNoPositionAnnot: Unit =
     compileFile("tests/vulpix-tests/unit/negNoPositionAnnots.scala", defaultOptions).expectFailure.checkExpectedErrors()
 
+  @Test def negAnyPositionAnnot: Unit =
+    compileFile("tests/vulpix-tests/unit/negAnyPositionAnnots.scala", defaultOptions).checkExpectedErrors()
+
   @Test def runCompileFail: Unit =
     compileFile("tests/vulpix-tests/unit/posFail1Error.scala", defaultOptions).expectFailure.checkRuns()
 

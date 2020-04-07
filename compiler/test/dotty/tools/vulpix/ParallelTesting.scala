@@ -109,9 +109,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         case source: JointCompilationSource => {
           source.sourceFiles.map(_.getPath).foreach { path =>
             sb.append(delimiter)
-            sb += '''
+            sb += '\''
             sb.append(path)
-            sb += '''
+            sb += '\''
             sb += ' '
           }
           sb.toString + "\n\n"
@@ -123,9 +123,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             files.map(_.getPath).foreach { path =>
               fsb.append(delimiter)
               lineLen = 8
-              fsb += '''
+              fsb += '\''
               fsb.append(path)
-              fsb += '''
+              fsb += '\''
               fsb += ' '
             }
             fsb.append("\n\n")
@@ -666,13 +666,20 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             errorMap.put("nopos", noposErrors + existing)
           }
 
-          val possibleTypos = List("//error" -> "// error", "//nopos-error" -> "// nopos-error")
+          val anyposErrors = line.toSeq.sliding("// anypos-error".length).count(_.unwrap == "// anypos-error")
+          if (anyposErrors > 0) {
+            val anypos = errorMap.get("anypos")
+            val existing: Integer = if (anypos eq null) 0 else anypos
+            errorMap.put("anypos", anyposErrors + existing)
+          }
+
+          val possibleTypos = List("//error" -> "// error", "//nopos-error" -> "// nopos-error", "//anypos-error" -> "// anypos-error")
           for ((possibleTypo, expected) <- possibleTypos) {
             if (line.contains(possibleTypo))
               echo(s"Warning: Possible typo in error tag in file ${file.getCanonicalPath}:$lineNbr: found `$possibleTypo` but expected `$expected`")
           }
 
-          expectedErrors += noposErrors + errors
+          expectedErrors += anyposErrors + noposErrors + errors
         }
       }
 
@@ -691,15 +698,21 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       val errors = errorMap.get(key)
 
+      def missing = { echo(s"Error reported in ${pos1.source}, but no annotation found") ; false }
+
       if (errors ne null) {
         if (errors == 1) errorMap.remove(key)
         else errorMap.put(key, errors - 1)
         true
       }
-      else {
-        echo(s"Error reported in ${pos1.source}, but no annotation found")
-        false
-      }
+      else if key == "nopos" then
+        missing
+      else
+        errorMap.get("anypos") match
+          case null  => missing
+          case 1     => errorMap.remove("anypos") ; true
+          case slack => if slack < 1 then missing
+                        else errorMap.put("anypos", slack - 1) ; true
     }
   }
 
