@@ -386,12 +386,15 @@ object SymDenotations {
     final def setParamssFromDefs(tparams: List[TypeDef[?]], vparamss: List[List[ValDef[?]]])(using Context): Unit =
       setParamss(tparams.map(_.symbol), vparamss.map(_.map(_.symbol)))
 
-    /** A pair consisting of type parameter symbols and value parameter symbol lists
-     *  of this method definition, or (Nil, Nil) for other symbols.
+
+    /** The symbols of each type parameter list and value parameter list of this
+     *  method, or Nil if this isn't a method.
+     *
+     *
      *  Makes use of `rawParamss` when present, or constructs fresh parameter symbols otherwise.
      *  This method can be allocation-heavy.
      */
-    final def paramSymss(using ctx: Context): (List[TypeSymbol], List[List[TermSymbol]]) =
+    final def paramSymss(using ctx: Context): List[List[Symbol]] =
 
       def recurWithParamss(info: Type, paramss: List[List[Symbol]]): List[List[Symbol]] =
         info match
@@ -412,17 +415,8 @@ object SymDenotations {
         case _ =>
           Nil
 
-      try
-        val allParamss =
-          if rawParamss.isEmpty then recurWithoutParamss(info)
-          else recurWithParamss(info, rawParamss)
-        val result = info match
-          case info: PolyType => (allParamss.head, allParamss.tail)
-          case _ => (Nil, allParamss)
-        result.asInstanceOf[(List[TypeSymbol], List[List[TermSymbol]])]
-      catch case NonFatal(ex) =>
-        println(i"paramSymss failure for $symbol, $info, $rawParamss")
-        throw ex
+      if rawParamss.isEmpty then recurWithoutParamss(info)
+      else recurWithParamss(info, rawParamss)
     end paramSymss
 
     /** The denotation is completed: info is not a lazy type and attributes have defined values */
