@@ -120,12 +120,20 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     def traitSetterGetter: Symbol =
       /* We have to compare SimpleNames here, because the setter name only
-       * embed the original getter's simple name, not its semantic name.
+       * embeds the original getter's simple name, not its semantic name.
+       * To mitigate the issue, we first try a fast path where we look up the
+       * simple name itself, which works for public fields.
        */
-      val getterSimpleName = sym.asTerm.name.getterName
-      sym.owner.info.decls.find { getter =>
-        getter.is(Accessor) && getter.asTerm.name.toSimpleName == getterSimpleName
-      }
+      val TraitSetterName(_, original) = sym.name
+      val getterSimpleName = original.getterName
+      val ownerInfo = sym.owner.info
+      val fastPath = ownerInfo.decl(getterSimpleName)
+      if fastPath.exists then
+        fastPath.symbol
+      else
+        ownerInfo.decls.find { getter =>
+          getter.is(Accessor) && getter.asTerm.name.toSimpleName == getterSimpleName
+        }
 
     val constantFinalVal = sym.isAllOf(Accessor | Final, butNot = Mutable) && tree.rhs.isInstanceOf[Literal]
 
