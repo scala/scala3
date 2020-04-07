@@ -351,14 +351,25 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         Typ(c.value.asInstanceOf[Symbol].termRef, false)
       else
         Typ(ConstantType(c), false)
-    case pat: Ident if isBackquoted(pat) => Typ(pat.tpe, false)
+
+    case pat: Ident if isBackquoted(pat) =>
+      Typ(pat.tpe, false)
+
     case Ident(nme.WILDCARD) =>
-      Or(Typ(pat.tpe.stripAnnots, false) :: constantNullSpace :: Nil)
+      Or(Typ(erase(pat.tpe.stripAnnots), false) :: constantNullSpace :: Nil)
+
     case Ident(_) | Select(_, _) =>
       Typ(erase(pat.tpe.stripAnnots), false)
-    case Alternative(trees) => Or(trees.map(project(_)))
-    case Bind(_, pat) => project(pat)
-    case SeqLiteral(pats, _) => projectSeq(pats)
+
+    case Alternative(trees) =>
+      Or(trees.map(project(_)))
+
+    case Bind(_, pat) =>
+      project(pat)
+
+    case SeqLiteral(pats, _) =>
+      projectSeq(pats)
+
     case UnApply(fun, _, pats) =>
       val (fun1, _, _) = decomposeCall(fun)
       val funRef = fun1.tpe.asInstanceOf[TermRef]
@@ -374,15 +385,22 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         }
       else
         Prod(erase(pat.tpe.stripAnnots), funRef, pats.map(project), isIrrefutableUnapply(fun, pats.length))
-    case Typed(pat @ UnApply(_, _, _), _) => project(pat)
+
+    case Typed(pat @ UnApply(_, _, _), _) =>
+      project(pat)
+
     case Typed(expr, _) =>
       Typ(erase(expr.tpe.stripAnnots), true)
+
     case This(_) =>
       Typ(pat.tpe.stripAnnots, false)
+
     case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
       Typ(WildcardType, false)
+
     case Block(Nil, expr) =>
       project(expr)
+
     case _ =>
       // Pattern is an arbitrary expression; assume a skolem (i.e. an unknown value) of the pattern type
       Typ(pat.tpe.narrow, false)
@@ -490,6 +508,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val unappSym = unapp.symbol
     def caseClass = unappSym.owner.linkedClass
 
+    // println("scrutineeTp = " + scrutineeTp.show)
+
     lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
 
     def isSyntheticScala2Unapply(sym: Symbol) =
@@ -503,6 +523,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
           scrutineeTp <:< mt.paramInfos(0)
           instantiateSelected(mt, tvars)
+          // isFullyDefined(mt, ForceDegree.flipBottom)
+          // println("mt = " + mt.show)
           mt
         }
     }
@@ -648,7 +670,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case _ => tp.show
     }
 
-    def refine(tp: Type): String = tp.stripAnnots match {
+    def refine(tp: Type): String = tp.stripAnnots.stripTypeVar match {
       case tp: RefinedType => refine(tp.parent)
       case tp: AppliedType =>
         refine(tp.typeConstructor) + (
@@ -744,7 +766,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           val sym = fun.symbol
           val isUnapplySeq = sym.name.eq(nme.unapplySeq)
           val paramsStr = params.map(doShow(_, flattenList = isUnapplySeq)).mkString("(", ", ", ")")
-          showType(sym.owner.typeRef) + paramsStr
+          showType(fun.prefix) + paramsStr
         }
       case Or(_) =>
         throw new Exception("incorrect flatten result " + s)
