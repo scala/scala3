@@ -1402,6 +1402,7 @@ object Scanners {
   case class InString(multiLine: Boolean, outer: Region) extends Region
   case class InParens(prefix: Token, outer: Region) extends Region
   case class InBraces(outer: Region) extends Region
+  case class InCase(outer: Region) extends Region
 
   /** A class describing an indentation region.
    *  @param width   The principal indendation width
