@@ -175,8 +175,8 @@ private[quoted] object Matcher {
           case (Literal(constant1), Literal(constant2)) if constant1 == constant2 =>
             matched
 
-          case (Typed(expr1, tpt1), Typed(expr2, tpt2)) =>
-            expr1 =?= expr2 && tpt1 =?= tpt2
+          case (Typed(expr1, _), pattern) =>
+            expr1 =?= pattern
 
           case (scrutinee, Typed(expr2, _)) =>
             scrutinee =?= expr2

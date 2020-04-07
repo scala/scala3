@@ -8,7 +8,7 @@ Result: None
 
 Scrutinee: (1: scala.Int)
 Pattern: 1
-Result: None
+Result: Some(List())
 
 Scrutinee: (1: scala.Int)
 Pattern: (1: scala.Int)
