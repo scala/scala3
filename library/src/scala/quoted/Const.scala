@@ -21,7 +21,10 @@ object Const {
       case Block(Nil, e) => rec(e)
       case Typed(e, _) => rec(e)
       case Inlined(_, Nil, e) => rec(e)
-      case _  => None
+      case _  =>
+        tree.tpe.widenTermRefExpr match
+          case ConstantType(c) => Some(c.value.asInstanceOf[T])
+          case _ => None
     }
     rec(expr.unseal)
   }

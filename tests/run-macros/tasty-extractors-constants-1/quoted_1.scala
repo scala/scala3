@@ -16,9 +16,13 @@ object Macros {
     '{4} match { case Const(n) => stagedPrintln(n) }
     '{"abc"} match { case Const(n) => stagedPrintln(n) }
     '{null} match { case Const(n) => stagedPrintln(n) }
+    '{f} match { case Const(n) => stagedPrintln(n) }
 
     '{new Object} match { case Const(n) => println(n); case _ => stagedPrintln("OK") }
 
     '{print(${buff.result()})}
   }
+
+  final val f = 2
+
 }

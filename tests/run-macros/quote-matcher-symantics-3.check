@@ -7,10 +7,10 @@ if (true) 3 else 4
 if (if (true) true else false) 3 else 4
 3
 
-if (3 <= 7) 3 else 4
+if (true) 3 else 4
 3
 
-if (3 <= 7) 3 + 4 else (5) * (2)
+if (true) 7 else 10
 7
 
 (arg1 => arg1 + arg1)(4)
