@@ -521,10 +521,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         inContext(ctx.fresh.setNewTyperState()) {
           val tvars = pt.paramInfos.map(newTypeVar)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
-          // println("mt.paramInfos(0) = " + mt.paramInfos(0))
           scrutineeTp <:< mt.paramInfos(0)
-          isFullyDefined(mt, ForceDegree.flipBottom)
-          // println("mt = " + mt)
+          // force type inference to infer a narrower type: could be singleton
+          // see tests/patmat/i4227.scala
+          mt.paramInfos(0) <:< scrutineeTp
+          isFullyDefined(mt, ForceDegree.all)
           mt
         }
     }
