@@ -69,25 +69,13 @@ private[quoted] object Matcher {
       }
     }
 
-    private def hasBindTypeAnnotation(tpt: TypeTree): Boolean = tpt match {
-      case Annotated(tpt2, annot) => isBindAnnotation(annot) || hasBindTypeAnnotation(tpt2)
-      case _ => false
-    }
-
     private def hasPatternTypeAnnotation(sym: Symbol) = sym.annots.exists(isPatternTypeAnnotation)
-
-    private def hasBindAnnotation(sym: Symbol) = sym.annots.exists(isBindAnnotation)
 
     private def hasFromAboveAnnotation(sym: Symbol) = sym.annots.exists(isFromAboveAnnotation)
 
     private def isPatternTypeAnnotation(tree: Tree): Boolean = tree match {
       case New(tpt) => tpt.symbol == internal.Definitions_InternalQuoted_patternTypeAnnot
       case annot => annot.symbol.owner == internal.Definitions_InternalQuoted_patternTypeAnnot
-    }
-
-    private def isBindAnnotation(tree: Tree): Boolean = tree match {
-      case New(tpt) => tpt.symbol == internal.Definitions_InternalQuoted_patternBindHoleAnnot
-      case annot => annot.symbol.owner == internal.Definitions_InternalQuoted_patternBindHoleAnnot
     }
 
     private def isFromAboveAnnotation(tree: Tree): Boolean = tree match {
@@ -138,9 +126,6 @@ private[quoted] object Matcher {
           val pFlags = pattern.symbol.flags
           sFlags.is(Lazy) == pFlags.is(Lazy) && sFlags.is(Mutable) == pFlags.is(Mutable)
         }
-
-        def bindingMatch(sym: Symbol) =
-          matched(sym.name)
 
         (scrutinee, pattern) match {
 
@@ -254,16 +239,10 @@ private[quoted] object Matcher {
             tycon1 =?= tycon2 && args1 =?= args2
 
           case (ValDef(_, tpt1, rhs1), ValDef(_, tpt2, rhs2)) if checkValFlags() =>
-            val bindMatch =
-              if (hasBindAnnotation(pattern.symbol) || hasBindTypeAnnotation(tpt2)) bindingMatch(scrutinee.symbol)
-              else matched
             def rhsEnv = summon[Env] + (scrutinee.symbol -> pattern.symbol)
-            bindMatch && tpt1 =?= tpt2 && treeOptMatches(rhs1, rhs2)(using summon[Context], rhsEnv)
+            tpt1 =?= tpt2 && treeOptMatches(rhs1, rhs2)(using summon[Context], rhsEnv)
 
           case (DefDef(_, typeParams1, paramss1, tpt1, Some(rhs1)), DefDef(_, typeParams2, paramss2, tpt2, Some(rhs2))) =>
-            val bindMatch =
-              if (hasBindAnnotation(pattern.symbol)) bindingMatch(scrutinee.symbol)
-              else matched
             def rhsEnv =
               val oldEnv: Env = summon[Env]
               val newEnv: List[(Symbol, Symbol)] =
@@ -271,11 +250,10 @@ private[quoted] object Matcher {
                 paramss1.flatten.zip(paramss2.flatten).map((param1, param2) => param1.symbol -> param2.symbol)
               oldEnv ++ newEnv
 
-            bindMatch &&
-              typeParams1 =?= typeParams2 &&
-              matchLists(paramss1, paramss2)(_ =?= _) &&
-              tpt1 =?= tpt2 &&
-              withEnv(rhsEnv)(rhs1 =?= rhs2)
+            typeParams1 =?= typeParams2
+              && matchLists(paramss1, paramss2)(_ =?= _)
+              && tpt1 =?= tpt2
+              && withEnv(rhsEnv)(rhs1 =?= rhs2)
 
           case (Closure(_, tpt1), Closure(_, tpt2)) =>
             // TODO match tpt1 with tpt2?

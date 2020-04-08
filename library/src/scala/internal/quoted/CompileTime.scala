@@ -28,6 +28,7 @@ object CompileTime {
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHole`")
   def patternHole[T]: T = ???
 
+  // TODO remove
   /** A splice of a name in a quoted pattern is desugared by wrapping getting this annotation */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternBindHole`")
   class patternBindHole extends Annotation
