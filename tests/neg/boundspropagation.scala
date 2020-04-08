@@ -25,19 +25,6 @@ object test3 {
   }
 }
 
-// Example contributed by Jason.
-object test4 {
-  class Base {
-    type N
-
-    class Tree[-S, -T >: Option[S]]
-
-    def g(x: Any): Tree[_, _ <: Option[N]] = x match {
-      case y: Tree[_, _] => y                         // error -- used to work (because of capture conversion?)
-    }
-  }
-}
-
 class Test5 {
 "": ({ type U = this.type })#U                        // error
 }

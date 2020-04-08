@@ -29,3 +29,16 @@ object test2 {
   }
 }
 */
+
+// Example contributed by Jason.
+object test2 {
+  class Base {
+    type N
+
+    class Tree[-S, -T >: Option[S]]
+
+    def g(x: Any): Tree[_, _ <: Option[N]] = x match {
+      case y: Tree[_, _] => y
+    }
+  }
+}

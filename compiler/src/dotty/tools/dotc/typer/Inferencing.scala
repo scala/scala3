@@ -19,7 +19,7 @@ import collection.mutable
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
-import config.Printers.debug
+import config.Printers.gadts
 
 object Inferencing {
 
@@ -165,14 +165,16 @@ object Inferencing {
   }
 
   def approximateGADT(tp: Type)(implicit ctx: Context): Type = {
-    val map = new IsFullyDefinedAccumulator2
+    val map = new ApproximateGadtAccumulator
     val res = map(tp)
     assert(!map.failed)
-    debug.println(i"approximateGADT( $tp )  = $res  //  {${tp.toString}}")
     res
   }
 
-  private class IsFullyDefinedAccumulator2(implicit ctx: Context) extends TypeMap {
+  /** This class is mostly based on IsFullyDefinedAccumulator.
+    * It tries to approximate the given type based on the available GADT constraints.
+    */
+  private class ApproximateGadtAccumulator(implicit ctx: Context) extends TypeMap {
 
     var failed = false
 
@@ -200,9 +202,7 @@ object Inferencing {
         val sym = tp.symbol
         val res =
           ctx.gadt.approximation(sym, fromBelow = variance < 0)
-
-        debug.println(i"approximated $tp  ~~  $res")
-
+        gadts.println(i"approximated $tp  ~~  $res")
         res
 
       case _: WildcardType | _: ProtoType =>
@@ -213,21 +213,8 @@ object Inferencing {
         mapOver(tp)
     }
 
-    // private class UpperInstantiator(implicit ctx: Context) extends TypeAccumulator[Unit] {
-    //   def apply(x: Unit, tp: Type): Unit = {
-    //     tp match {
-    //       case tvar: TypeVar if !tvar.isInstantiated =>
-    //         instantiate(tvar, fromBelow = false)
-    //       case _ =>
-    //     }
-    //     foldOver(x, tp)
-    //   }
-    // }
-
     def process(tp: Type): Type = {
-      val res = apply(tp)
-      // if (res && toMaximize) new UpperInstantiator().apply((), tp)
-      res
+      apply(tp)
     }
   }
 
