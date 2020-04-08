@@ -73,7 +73,7 @@ trait QuotesAndSplices {
       case _ =>
     }
     if (ctx.mode.is(Mode.QuotedPattern))
-      if (isFullyDefined(pt, ForceDegree.all)) {
+      if (isFullyDefined(pt, ForceDegree.flipBottom)) {
         def spliceOwner(ctx: Context): Symbol =
           if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
         val pat = typedPattern(tree.expr, defn.QuotedExprClass.typeRef.appliedTo(pt))(
