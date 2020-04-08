@@ -716,21 +716,21 @@ Result: Some(List(Expr(1), Expr(2)))
 
 Scrutinee: scala.List.apply[scala.Int](1, 2, 3).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
 Pattern: {
-  @scala.internal.quoted.CompileTime.patternBindHole type T
+  @scala.internal.quoted.CompileTime.patternType type T
   scala.internal.quoted.CompileTime.patternHole[scala.List[scala.Int]].foreach[T](scala.internal.quoted.CompileTime.patternHole[scala.Function1[scala.Int, T]])
 }
 Result: Some(List(Type(scala.Unit), Expr(scala.List.apply[scala.Int](1, 2, 3)), Expr(((x: scala.Int) => scala.Predef.println(x)))))
 
 Scrutinee: scala.List.apply[scala.Int](1, 2, 3).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
 Pattern: {
-  @scala.internal.quoted.CompileTime.patternBindHole type T = scala.Unit
+  @scala.internal.quoted.CompileTime.patternType type T = scala.Unit
   scala.internal.quoted.CompileTime.patternHole[scala.List[scala.Int]].foreach[T](scala.internal.quoted.CompileTime.patternHole[scala.Function1[scala.Int, T]])
 }
 Result: Some(List(Type(scala.Unit), Expr(scala.List.apply[scala.Int](1, 2, 3)), Expr(((x: scala.Int) => scala.Predef.println(x)))))
 
 Scrutinee: scala.List.apply[scala.Int](1, 2, 3).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
 Pattern: {
-  @scala.internal.quoted.CompileTime.patternBindHole type T <: scala.Predef.String
+  @scala.internal.quoted.CompileTime.patternType type T <: scala.Predef.String
   scala.internal.quoted.CompileTime.patternHole[scala.List[scala.Int]].foreach[T](scala.internal.quoted.CompileTime.patternHole[scala.Function1[scala.Int, T]])
 }
 Result: None
@@ -741,7 +741,7 @@ Scrutinee: {
   ()
 }
 Pattern: {
-  @scala.internal.quoted.CompileTime.patternBindHole type T
+  @scala.internal.quoted.CompileTime.patternType type T
   val a: T = scala.internal.quoted.CompileTime.patternHole[T]
   val b: T = scala.internal.quoted.CompileTime.patternHole[T]
   ()
@@ -754,7 +754,7 @@ Scrutinee: {
   ()
 }
 Pattern: {
-  @scala.internal.quoted.CompileTime.patternBindHole type T
+  @scala.internal.quoted.CompileTime.patternType type T
   val a: T = scala.internal.quoted.CompileTime.patternHole[T]
   val b: T = scala.internal.quoted.CompileTime.patternHole[T]
   ()
@@ -767,7 +767,7 @@ Scrutinee: {
   ()
 }
 Pattern: {
-  @scala.internal.quoted.CompileTime.patternBindHole type T
+  @scala.internal.quoted.CompileTime.patternType type T
   val a: T = scala.internal.quoted.CompileTime.patternHole[T]
   val b: T = scala.internal.quoted.CompileTime.patternHole[T]
   ()
@@ -780,7 +780,7 @@ Scrutinee: {
   ()
 }
 Pattern: {
-  @scala.internal.quoted.CompileTime.patternBindHole type T <: scala.Int
+  @scala.internal.quoted.CompileTime.patternType type T <: scala.Int
   val a: T = scala.internal.quoted.CompileTime.patternHole[T]
   val b: T = scala.internal.quoted.CompileTime.patternHole[T]
   ()
@@ -789,9 +789,9 @@ Result: None
 
 Scrutinee: scala.List.apply[scala.Int](1, 2, 3).map[scala.Double](((x: scala.Int) => x.toDouble./(2))).map[java.lang.String](((y: scala.Double) => y.toString()))
 Pattern: {
-  @scala.internal.quoted.CompileTime.patternBindHole type T
-  @scala.internal.quoted.CompileTime.patternBindHole type U
-  @scala.internal.quoted.CompileTime.patternBindHole type V
+  @scala.internal.quoted.CompileTime.patternType type T
+  @scala.internal.quoted.CompileTime.patternType type U
+  @scala.internal.quoted.CompileTime.patternType type V
 
   (scala.internal.quoted.CompileTime.patternHole[scala.List[T]].map[U](scala.internal.quoted.CompileTime.patternHole[scala.Function1[T, U]]).map[V](scala.internal.quoted.CompileTime.patternHole[scala.Function1[U, V]]): scala.collection.immutable.List[scala.Any])
 }
@@ -799,7 +799,7 @@ Result: Some(List(Type(scala.Int), Type(scala.Double), Type(java.lang.String), E
 
 Scrutinee: ((x: scala.Int) => x)
 Pattern: {
-  @scala.internal.quoted.CompileTime.patternBindHole type T
+  @scala.internal.quoted.CompileTime.patternType type T
 
   (scala.internal.quoted.CompileTime.patternHole[scala.Function1[T, T]]: scala.Function1[scala.Nothing, scala.Any])
 }
@@ -807,7 +807,7 @@ Result: Some(List(Type(scala.Int), Expr(((x: scala.Int) => x))))
 
 Scrutinee: ((x: scala.Int) => x.toString())
 Pattern: {
-  @scala.internal.quoted.CompileTime.patternBindHole type T
+  @scala.internal.quoted.CompileTime.patternType type T
 
   (scala.internal.quoted.CompileTime.patternHole[scala.Function1[T, T]]: scala.Function1[scala.Nothing, scala.Any])
 }
@@ -815,7 +815,7 @@ Result: None
 
 Scrutinee: ((x: scala.Any) => scala.Predef.???)
 Pattern: {
-  @scala.internal.quoted.CompileTime.patternBindHole type T
+  @scala.internal.quoted.CompileTime.patternType type T
 
   (scala.internal.quoted.CompileTime.patternHole[scala.Function1[T, T]]: scala.Function1[scala.Nothing, scala.Any])
 }
@@ -823,7 +823,7 @@ Result: Some(List(Type(scala.Nothing), Expr(((x: scala.Any) => scala.Predef.???)
 
 Scrutinee: ((x: scala.Nothing) => (1: scala.Any))
 Pattern: {
-  @scala.internal.quoted.CompileTime.patternBindHole type T
+  @scala.internal.quoted.CompileTime.patternType type T
 
   (scala.internal.quoted.CompileTime.patternHole[scala.Function1[T, T]]: scala.Function1[scala.Nothing, scala.Any])
 }
