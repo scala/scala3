@@ -53,7 +53,7 @@ the implemented type(s).
 given_Ord_Int
 given_Ord_List_T
 ```
-The precise rules for synthesizing names are found in [./relationship-implicit.html]. These rules do not guarantee absence of name conflicts between
+The precise rules for synthesizing names are found [here](./relationship-implicits.html#anonymous-given-instances). These rules do not guarantee absence of name conflicts between
 given instances of types that are "too similar". To avoid conflicts one can
 use named instances.
 
