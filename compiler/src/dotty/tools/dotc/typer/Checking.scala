@@ -32,7 +32,7 @@ import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import transform.patmat.SpaceEngine.isIrrefutableUnapply
-
+import config.Feature
 
 import collection.mutable
 import reporting.Message
@@ -831,7 +831,7 @@ trait Checking {
                    description: => String,
                    featureUseSite: Symbol,
                    pos: SourcePosition)(using Context): Unit =
-    if (!ctx.featureEnabled(name))
+    if !Feature.enabled(name) then
       ctx.featureWarning(name.toString, description, featureUseSite, required = false, pos)
 
   /** Check that `tp` is a class type and that any top-level type arguments in this type

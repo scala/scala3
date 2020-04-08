@@ -20,12 +20,11 @@ trait LocalResources extends DocDriver {
     else Array()
 
   def withClasspath(files: Array[String]) =
-    "-siteroot" +: "../docs" +:
-    "-project" +: "Dotty" +:
-    "-language:Scala2Compat" +:
-    "-classpath" +:
-    TestConfiguration.basicClasspath +:
-    files
+       "-siteroot" +: "../docs"
+    +: "-project" +: "Dotty"
+    +: "-source" +: "3.0-migration"
+    +: "-classpath" +: TestConfiguration.basicClasspath
+    +: files
 }
 
 object GenDottyDocs extends LocalResources {

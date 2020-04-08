@@ -9,6 +9,7 @@ import Decorators.{given _}, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.{FrontEnd, Namer}
 import util.{Property, SourceFile, SourcePosition}
+import config.Feature
 import collection.mutable.ListBuffer
 import reporting.messages._
 import reporting.trace
@@ -560,7 +561,7 @@ object desugar {
       ensureApplied(nu)
     }
 
-    val copiedAccessFlags = if (ctx.scala2CompatSetting) EmptyFlags else AccessFlags
+    val copiedAccessFlags = if Feature.migrateTo3 then EmptyFlags else AccessFlags
 
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
     //     def _1: T1 = this.p1
@@ -1659,7 +1660,7 @@ object desugar {
         }
         else {
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
-          if (!ctx.featureEnabled(nme.postfixOps)) {
+          if (!Feature.enabled(nme.postfixOps)) {
             ctx.error(
               s"""postfix operator `${op.name}` needs to be enabled
                  |by making the implicit value scala.language.postfixOps visible.

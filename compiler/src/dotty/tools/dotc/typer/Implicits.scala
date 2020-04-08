@@ -30,7 +30,7 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import Hashable._
 import util.{SourceFile, NoSource}
-import config.Config
+import config.{Config, Feature}
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.trace
@@ -74,7 +74,7 @@ object Implicits {
     case _ => false
 
   def strictEquality(using Context): Boolean =
-    ctx.mode.is(Mode.StrictEquality) || ctx.featureEnabled(nme.strictEquality)
+    ctx.mode.is(Mode.StrictEquality) || Feature.enabled(nme.strictEquality)
 
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
@@ -151,9 +151,11 @@ object Implicits {
               // The reason for leaving out `Predef_conforms` is that we know it adds
               // nothing since it only relates subtype with supertype.
               //
-              // We keep the old behavior under -language:Scala2Compat.
+              // We keep the old behavior under -source 3.0-migration.
               val isFunctionInS2 =
-                ctx.scala2CompatMode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
+                Feature.migrateTo3
+                && tpw.derivesFrom(defn.FunctionClass(1))
+                && ref.symbol != defn.Predef_conforms
               val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
               // An implementation of <:< counts as a view
               val isConforms = tpw.derivesFrom(defn.SubTypeClass)
@@ -275,11 +277,12 @@ object Implicits {
      *  Scala2 mode, since we do not want to change the implicit disambiguation then.
      */
     override val level: Int =
-      if (outerImplicits == null) 1
-      else if (irefCtx.scala2CompatMode ||
-               (irefCtx.owner eq outerImplicits.irefCtx.owner) &&
-               (irefCtx.scope eq outerImplicits.irefCtx.scope) &&
-               !refs.head.implicitName.is(LazyImplicitName)) outerImplicits.level
+      if outerImplicits == null then 1
+      else if Feature.migrateTo3(using irefCtx)
+              || (irefCtx.owner eq outerImplicits.irefCtx.owner)
+                 && (irefCtx.scope eq outerImplicits.irefCtx.scope)
+                 && !refs.head.implicitName.is(LazyImplicitName)
+      then outerImplicits.level
       else outerImplicits.level + 1
 
     /** Is this the outermost implicits? This is the case if it either the implicits
@@ -509,7 +512,7 @@ trait ImplicitRunInfo {
      *  opaque type aliases, and abstract types, but not type parameters or package objects.
      */
     def isAnchor(sym: Symbol) =
-      sym.isClass && !sym.is(Package) && (!sym.isPackageObject || runContext.scala2CompatMode)
+      sym.isClass && !sym.is(Package) && (!sym.isPackageObject || Feature.migrateTo3)
       || sym.isOpaqueAlias
       || sym.is(Deferred, butNot = Param)
 
@@ -573,22 +576,19 @@ trait ImplicitRunInfo {
         def addCompanion(pre: Type, companion: Symbol) =
           if (companion.exists && !companion.isAbsent()) comps += TermRef(pre, companion)
 
-        def addPath(pre: Type): Unit = pre.dealias match {
+        def addPath(pre: Type): Unit = pre.dealias match
           case pre: ThisType if pre.cls.is(Module) && pre.cls.isStaticOwner =>
             addPath(pre.cls.sourceModule.termRef)
           case pre: TermRef =>
-            if (pre.symbol.is(Package)) {
-              if (runContext.scala2CompatMode) {
+            if pre.symbol.is(Package) then
+              if Feature.migrateTo3 then
                 addCompanion(pre, pre.member(nme.PACKAGE).symbol)
                 addPath(pre.prefix)
-              }
-            }
-            else if (!pre.symbol.isPackageObject || runContext.scala2CompatMode)  {
+            else if !pre.symbol.isPackageObject || Feature.migrateTo3 then
               comps += pre
               addPath(pre.prefix)
-            }
           case _ =>
-        }
+
         tp.widenDealias match {
           case tp: TypeRef =>
             val sym = tp.symbol
@@ -908,7 +908,7 @@ trait Implicits { self: Typer =>
           case result: SearchFailure if result.isAmbiguous =>
             val deepPt = pt.deepenProto
             if (deepPt ne pt) inferImplicit(deepPt, argument, span)
-            else if (ctx.scala2CompatMode && !ctx.mode.is(Mode.OldOverloadingResolution))
+            else if (Feature.migrateTo3 && !ctx.mode.is(Mode.OldOverloadingResolution))
               inferImplicit(pt, argument, span)(using ctx.addMode(Mode.OldOverloadingResolution)) match {
                 case altResult: SearchSuccess =>
                   ctx.migrationWarning(
@@ -1104,12 +1104,11 @@ trait Implicits { self: Typer =>
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
                 if (fail.isAmbiguous)
-                  if (ctx.scala2CompatMode) {
+                  if Feature.migrateTo3 then
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
                     if (result.isSuccess)
                       warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
                     result
-                  }
                   else healAmbiguous(remaining, fail)
                 else rank(remaining, found, fail :: rfailures)
               case best: SearchSuccess =>

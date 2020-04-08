@@ -5,12 +5,14 @@ import java.nio.file.{Files, Paths}
 import dotty.tools.FatalError
 import config.CompilerCommand
 import core.Comments.{ContextDoc, ContextDocstrings}
-import core.Contexts.{Context, ContextBase}
+import core.Contexts.{Context, ContextBase, inContext, ctx}
 import core.{MacroClassLoader, Mode, TypeError}
+import core.StdNames.nme
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.io.File
 import reporting._
 import core.Decorators._
+import config.Feature
 
 import scala.util.control.NonFatal
 import fromtasty.{TASTYCompiler, TastyFileUtil}
@@ -70,11 +72,14 @@ class Driver {
     MacroClassLoader.init(ictx)
     Positioned.updateDebugPos(ictx)
 
-    if (!ictx.settings.YdropComments.value(ictx) || ictx.mode.is(Mode.ReadComments))
-      ictx.setProperty(ContextDoc, new ContextDocstrings)
-
-    val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ictx)
-    fromTastySetup(fileNames, ictx)
+    inContext(ictx) {
+      if !ctx.settings.YdropComments.value || ctx.mode.is(Mode.ReadComments) then
+        ictx.setProperty(ContextDoc, new ContextDocstrings)
+      if Feature.enabledBySetting(nme.Scala2Compat) then
+        ctx.warning("-language:Scala2Compat will go away; use -source 3.0-migration instead")
+      val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)
+      fromTastySetup(fileNames, ctx)
+    }
   }
 
   /** Setup extra classpath and figure out class names for tasty file inputs */

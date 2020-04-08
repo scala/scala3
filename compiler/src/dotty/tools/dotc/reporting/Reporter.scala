@@ -15,6 +15,8 @@ import Diagnostic._
 import ast.{tpd, Trees}
 import Message._
 import core.Decorators._
+import config.Feature.sourceVersion
+import config.SourceVersion
 
 import java.lang.System.currentTimeMillis
 import java.io.{ BufferedReader, PrintWriter }
@@ -138,8 +140,11 @@ trait Reporting { thisCtx: Context =>
       ex.printStackTrace()
   }
 
-  def errorOrMigrationWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
-    if (thisCtx.scala2CompatMode) migrationWarning(msg, pos) else error(msg, pos)
+  def errorOrMigrationWarning(msg: Message, pos: SourcePosition = NoSourcePosition,
+      from: SourceVersion = SourceVersion.defaultSourceVersion): Unit =
+    if sourceVersion.isAtLeast(from) then
+      if sourceVersion.isMigrating then migrationWarning(msg, pos)
+      else error(msg, pos)
 
   def restrictionError(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
     error(msg.mapMsg("Implementation restriction: " + _), pos)

@@ -14,7 +14,7 @@ import printing.Highlighting._
 import printing.Formatting
 import ErrorMessageID._
 import ast.Trees
-import config.ScalaVersion
+import config.{Feature, ScalaVersion}
 import typer.ErrorReporting.{Errors, err}
 import typer.ProtoTypes.ViewProto
 import scala.util.control.NonFatal
@@ -1810,8 +1810,8 @@ object messages {
     extends DeclarationMsg(UnapplyInvalidReturnTypeID) {
     def msg =
       val addendum =
-        if (ctx.scala2CompatMode && unapplyName == nme.unapplySeq)
-          "\nYou might want to try to rewrite the extractor to use `unapply` instead."
+        if Feature.migrateTo3 && unapplyName == nme.unapplySeq
+        then "\nYou might want to try to rewrite the extractor to use `unapply` instead."
         else ""
       em"""| ${Red(i"$unapplyResult")} is not a valid result type of an $unapplyName method of an ${Magenta("extractor")}.$addendum"""
     def explain = if (unapplyName.show == "unapply")

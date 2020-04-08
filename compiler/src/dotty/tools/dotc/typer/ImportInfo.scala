@@ -9,6 +9,8 @@ import printing.{Printer, Showable}
 import util.SimpleIdentityMap
 import Symbols._, Names._, Types._, Contexts._, StdNames._, Flags._
 import Implicits.RenamedImplicitRef
+import config.SourceVersion
+import StdNames.nme
 import printing.Texts.Text
 import ProtoTypes.NoViewsAllowed.normalizedCompatible
 import Decorators._
@@ -48,8 +50,6 @@ class ImportInfo(symf: Context ?=> Symbol,
                  symNameOpt: Option[TermName],
                  val isRootImport: Boolean = false) extends Showable {
 
-  // Dotty deviation: we cannot use a lazy val here for the same reason
-  // that we cannot use one for `DottyPredefModuleRef`.
   def sym(using Context): Symbol = {
     if (mySym == null) {
       mySym = symf(using ctx)
@@ -169,9 +169,20 @@ class ImportInfo(symf: Context ?=> Symbol,
       assert(myUnimported != null)
     myUnimported
 
+  private def nextOuter(using Context): Context =
+    var c = ctx.outer
+    while c.importInfo eq ctx.importInfo do c = c.outer
+    c
+
   private var myUnimported: Symbol = _
 
-  /** Does this import clause or a preceding import clause import `owner.feature`? */
+  private var myOwner: Symbol = null
+  private var myResults: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.Empty
+  private var mySourceVersion: Option[SourceVersion] | Null = null
+
+  /** Does this import clause or a preceding import clause import `owner.feature`?
+   *  if `feature` is empty, we are looking for a source designator instead.
+   */
   def featureImported(feature: TermName, owner: Symbol)(using Context): Boolean =
 
     def compute =
@@ -179,18 +190,41 @@ class ImportInfo(symf: Context ?=> Symbol,
       if isImportOwner && forwardMapping.contains(feature) then true
       else if isImportOwner && excluded.contains(feature) then false
       else
-        var c = ctx.outer
-        while c.importInfo eq ctx.importInfo do c = c.outer
+        val c = nextOuter
         (c.importInfo != null) && c.importInfo.featureImported(feature, owner)(using c)
 
-    if (lastOwner.ne(owner) || !lastResults.contains(feature)) {
-      lastOwner = owner
-      lastResults = lastResults.updated(feature, compute)
-    }
-    lastResults(feature)
+    if myOwner.ne(owner) || !myResults.contains(feature) then
+      myOwner = owner
+      myResults = myResults.updated(feature, compute)
+    myResults(feature)
+  end featureImported
 
-  private var lastOwner: Symbol = null
-  private var lastResults: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.Empty
+  /** The language source version that's implied by imports. E.g. an import
+    *
+    *      import scala.language.`3.1`
+    *
+    *  would return SourceVersion.`3.1` (unless shadowed by an inner source import).
+    */
+  def sourceVersion(using Context): Option[SourceVersion] =
+    if mySourceVersion == null then
+      val isLanguageImport =
+        symNameOpt match
+          case Some(nme.language) =>
+            mySym == null  // don't force the import, assume it is the right one
+            || site.widen.typeSymbol.eq(defn.LanguageModule.moduleClass)
+          case _ =>
+            false
+      if isLanguageImport then
+        forwardMapping.keys.filter(SourceVersion.allSourceVersionNames.contains) match
+          case src :: rest =>
+            mySourceVersion = Some(SourceVersion.valueOf(src.toString))
+            if rest.nonEmpty then throw TypeError("ambiguous source specifiers in language import")
+          case _ =>
+      if mySourceVersion == null then
+        val c = nextOuter
+        mySourceVersion = if c.importInfo == null then None else c.importInfo.sourceVersion(using c)
+    mySourceVersion
+  end sourceVersion
 
   def toText(printer: Printer): Text = printer.toText(this)
 }

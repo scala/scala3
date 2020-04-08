@@ -7,6 +7,7 @@ import Symbols._
 import Types._
 import Flags._
 import dotty.tools.dotc.reporting.trace
+import config.Feature.migrateTo3
 import config.Printers._
 
 trait PatternTypeConstrainer { self: TypeComparer =>
@@ -199,7 +200,9 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       }
     }
 
-    val widePt = if (ctx.scala2CompatMode || refinementIsInvariant(patternTp)) scrutineeTp else widenVariantParams(scrutineeTp)
+    val widePt =
+      if migrateTo3 || refinementIsInvariant(patternTp) then scrutineeTp
+      else widenVariantParams(scrutineeTp)
     val narrowTp = SkolemType(patternTp)
     trace(i"constraining simple pattern type $narrowTp <:< $widePt", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       isSubType(narrowTp, widePt)

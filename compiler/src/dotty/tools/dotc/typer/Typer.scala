@@ -34,6 +34,8 @@ import annotation.tailrec
 import Implicits._
 import util.Stats.record
 import config.Printers.{gadts, typr}
+import config.Feature
+import config.SourceVersion._
 import rewrites.Rewrites.patch
 import NavigateAST._
 import dotty.tools.dotc.transform.{PCPCheckAndHeal, Staging, TreeMapWithStages}
@@ -314,10 +316,10 @@ class Typer extends Namer
               if scope.lookup(name).exists then
                 val symsMatch = scope.lookupAll(name).exists(denot.containsSym)
                 if !symsMatch then
-                  refctx.errorOrMigrationWarning(
+                  ctx.errorOrMigrationWarning(
                     AmbiguousReference(name, Definition, Inheritance, prevCtx)(using outer),
                     posd.sourcePos)
-                  if ctx.scala2CompatMode then
+                  if Feature.migrateTo3 then
                     patch(Span(posd.span.start),
                       if prevCtx.owner == refctx.owner.enclosingClass then "this."
                       else s"${prevCtx.owner.name}.this.")
@@ -346,7 +348,7 @@ class Typer extends Namer
                     checkNoOuterDefs(found.denot, ctx, ctx)
                   case _ =>
               else
-                if (ctx.scala2CompatMode && !foundUnderScala2.exists)
+                if Feature.migrateTo3 && !foundUnderScala2.exists then
                   foundUnderScala2 = checkNewOrShadowed(found, Definition, scala2pkg = true)
                 if (defDenot.symbol.is(Package))
                   result = checkNewOrShadowed(previous orElse found, PackageClause)
@@ -456,8 +458,8 @@ class Typer extends Namer
         if (foundUnderScala2.exists && !(foundUnderScala2 =:= found)) {
           ctx.migrationWarning(
             ex"""Name resolution will change.
-              | currently selected                           : $foundUnderScala2
-              | in the future, without -language:Scala2Compat: $found""", tree.sourcePos)
+              | currently selected                          : $foundUnderScala2
+              | in the future, without -source 3.0-migration: $found""", tree.sourcePos)
           found = foundUnderScala2
         }
         found
@@ -1932,7 +1934,7 @@ class Typer extends Namer
         ctx.phase.isTyper &&
         cdef1.symbol.ne(defn.DynamicClass) &&
         cdef1.tpe.derivesFrom(defn.DynamicClass) &&
-        !ctx.dynamicsEnabled
+        !Feature.dynamicsEnabled
       if (reportDynamicInheritance) {
         val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
         ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef.sourcePos)
@@ -2101,7 +2103,7 @@ class Typer extends Namer
       case _ =>
         val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
         ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen), tree.sourcePos)
-        if (ctx.scala2CompatMode) {
+        if (Feature.migrateTo3) {
           // Under -rewrite, patch `x _` to `(() => x)`
           patch(Span(tree.span.start), "(() => ")
           patch(Span(qual.span.end, tree.span.end), ")")
@@ -2122,7 +2124,7 @@ class Typer extends Namer
         else s"use `$prefix<function>$suffix` instead"
       ctx.errorOrMigrationWarning(i"""The syntax `<function> _` is no longer supported;
                                      |you can $remedy""", tree.sourcePos)
-      if (ctx.scala2CompatMode) {
+      if (Feature.migrateTo3) {
         patch(Span(tree.span.start), prefix)
         patch(Span(qual.span.end, tree.span.end), suffix)
       }
@@ -2754,7 +2756,7 @@ class Typer extends Namer
       case wtp: MethodOrPoly =>
         def methodStr = methPart(tree).symbol.showLocated
         if (matchingApply(wtp, pt))
-          if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
+          if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && Feature.autoTuplingEnabled)
             adapt(tree, pt.tupled, locked)
           else
             tree
@@ -2924,10 +2926,10 @@ class Typer extends Namer
 
       /** Is reference to this symbol `f` automatically expanded to `f()`? */
       def isAutoApplied(sym: Symbol): Boolean =
-        sym.isConstructor ||
-        sym.matchNullaryLoosely ||
-        ctx.testScala2CompatMode(MissingEmptyArgumentList(sym), tree.sourcePos,
-            patch(tree.span.endPos, "()"))
+        sym.isConstructor
+        || sym.matchNullaryLoosely
+        || Feature.warnOnMigration(MissingEmptyArgumentList(sym), tree.sourcePos)
+           && { patch(tree.span.endPos, "()"); true }
 
       // Reasons NOT to eta expand:
       //  - we reference a constructor
@@ -3264,7 +3266,7 @@ class Typer extends Namer
         case ref: TermRef =>
           pt match {
             case pt: FunProto
-            if pt.args.lengthCompare(1) > 0 && isUnary(ref) && ctx.canAutoTuple =>
+            if pt.args.lengthCompare(1) > 0 && isUnary(ref) && Feature.autoTuplingEnabled =>
               adapt(tree, pt.tupled, locked)
             case _ =>
               adaptOverloaded(ref)

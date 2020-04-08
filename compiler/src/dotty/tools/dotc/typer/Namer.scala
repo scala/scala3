@@ -15,7 +15,7 @@ import util.Spans._
 import util.Property
 import collection.mutable
 import tpd.ListOfTreeDecorator
-import config.Config
+import config.{Config, Feature}
 import config.Printers.typr
 import Annotations._
 import Inferencing._
@@ -1247,7 +1247,7 @@ class Namer { typer: Typer =>
               traitReq = parent ne parents.head, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
-              case Select(qual: Super, _) if completerCtx.scala2CompatMode =>
+              case Select(qual: Super, _) if Feature.migrateTo3 =>
                 "\n(Note that inheriting a class of the same name is no longer allowed)"
               case _ => ""
             }

@@ -8,6 +8,7 @@ import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
 import Implicits._, Flags._, Constants.Constant
 import util.Spans._
 import util.SourcePosition
+import config.Feature
 import java.util.regex.Matcher.quoteReplacement
 import reporting.Message
 import reporting.messages._
@@ -141,7 +142,7 @@ object ErrorReporting {
     }
 
     def rewriteNotice: String =
-      if (ctx.scala2CompatMode) "\nThis patch can be inserted automatically under -rewrite."
+      if Feature.migrateTo3 then "\nThis patch can be inserted automatically under -rewrite."
       else ""
   }
 

@@ -10,6 +10,7 @@ import NameKinds._
 import util.Spans._
 import util.SourcePosition
 import config.Printers.variances
+import config.Feature.migrateTo3
 import reporting.trace
 
 /** Provides `check` method to check that all top-level definitions
@@ -166,7 +167,7 @@ class VarianceChecker(using Context) {
     def checkVariance(sym: Symbol, pos: SourcePosition) = Validator.validateDefinition(sym) match {
       case Some(VarianceError(tvar, required)) =>
         def msg = i"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym"
-        if (ctx.scala2CompatMode &&
+        if (migrateTo3 &&
             (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal))))
           ctx.migrationWarning(
             s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg",

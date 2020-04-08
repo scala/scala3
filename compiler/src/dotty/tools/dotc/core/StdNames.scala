@@ -502,6 +502,7 @@ object StdNames {
     val java: N                 = "java"
     val key: N                  = "key"
     val lang: N                 = "lang"
+    val language: N             = "language"
     val length: N               = "length"
     val lengthCompare: N        = "lengthCompare"
     val macroThis : N           = "_this"
