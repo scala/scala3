@@ -197,7 +197,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   CASEaccessor                                                     -- A getter for a case class parameter
                   COVARIANT                                                        -- A type parameter marked “+”
                   CONTRAVARIANT                                                    -- A type parameter marked “-”
-                  SCALA2X                                                          -- Imported from Scala2.x
                   HASDEFAULT                                                       -- Parameter with default arg; method with default parameters (default arguments are separate methods with DEFAULTGETTER names)
                   STABLE                                                           -- Method that is assumed to be stable, i.e. its applications are legal paths
                   EXTENSION                                                        -- An extension method
@@ -343,7 +342,6 @@ object TastyFormat {
   final val CASEaccessor = 27
   final val COVARIANT = 28
   final val CONTRAVARIANT = 29
-  final val SCALA2X = 30
   final val HASDEFAULT = 31
   final val STABLE = 32
   final val MACRO = 33
@@ -507,7 +505,6 @@ object TastyFormat {
        | CASEaccessor
        | COVARIANT
        | CONTRAVARIANT
-       | SCALA2X
        | HASDEFAULT
        | STABLE
        | EXTENSION
@@ -568,7 +565,6 @@ object TastyFormat {
     case CASEaccessor => "CASEaccessor"
     case COVARIANT => "COVARIANT"
     case CONTRAVARIANT => "CONTRAVARIANT"
-    case SCALA2X => "SCALA2X"
     case HASDEFAULT => "HASDEFAULT"
     case STABLE => "STABLE"
     case EXTENSION => "EXTENSION"

@@ -647,7 +647,6 @@ class TreeUnpickler(reader: TastyReader,
           case CASEaccessor => addFlag(CaseAccessor)
           case COVARIANT => addFlag(Covariant)
           case CONTRAVARIANT => addFlag(Contravariant)
-          case SCALA2X => addFlag(Scala2x)
           case HASDEFAULT => addFlag(HasDefault)
           case STABLE => addFlag(StableRealizable)
           case EXTENSION => addFlag(Extension)
