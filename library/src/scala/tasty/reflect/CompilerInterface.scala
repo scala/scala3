@@ -1500,6 +1500,9 @@ trait CompilerInterface {
   /** Symbol of scala.internal.Quoted.patternBindHole */
   def Definitions_InternalQuoted_patternBindHoleAnnot: Symbol
 
+  /** Symbol of scala.internal.Quoted.patternType */
+  def Definitions_InternalQuoted_patternTypeAnnot: Symbol
+
   /** Symbol of scala.internal.Quoted.fromAbove */
   def Definitions_InternalQuoted_fromAboveAnnot: Symbol
 

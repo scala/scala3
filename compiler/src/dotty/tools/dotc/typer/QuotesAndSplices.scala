@@ -133,7 +133,7 @@ trait QuotesAndSplices {
         case pt: TypeBounds => pt
         case _ => TypeBounds.empty
       val typeSym = ctx.newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.expr.span)
-      typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.expr.span)))
+      typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuoted_patternTypeAnnot.typeRef)).withSpan(tree.expr.span)))
       val pat = typedPattern(tree.expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
           using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
       pat.select(tpnme.splice)
@@ -236,7 +236,7 @@ trait QuotesAndSplices {
             patBuf += Bind(sym, untpd.Ident(nme.WILDCARD).withType(defn.StringType)).withSpan(ddef.span)
           }
           super.transform(tree)
-        case tdef: TypeDef if tdef.symbol.hasAnnotation(defn.InternalQuoted_patternBindHoleAnnot) =>
+        case tdef: TypeDef if tdef.symbol.hasAnnotation(defn.InternalQuoted_patternTypeAnnot) =>
           transformTypeBindingTypeDef(tdef, typePatBuf)
         case tree @ AppliedTypeTree(tpt, args) =>
             val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVarianceSign)) { (arg, v) =>

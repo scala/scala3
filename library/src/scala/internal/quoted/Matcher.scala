@@ -74,9 +74,16 @@ private[quoted] object Matcher {
       case _ => false
     }
 
+    private def hasPatternTypeAnnotation(sym: Symbol) = sym.annots.exists(isPatternTypeAnnotation)
+
     private def hasBindAnnotation(sym: Symbol) = sym.annots.exists(isBindAnnotation)
 
     private def hasFromAboveAnnotation(sym: Symbol) = sym.annots.exists(isFromAboveAnnotation)
+
+    private def isPatternTypeAnnotation(tree: Tree): Boolean = tree match {
+      case New(tpt) => tpt.symbol == internal.Definitions_InternalQuoted_patternTypeAnnot
+      case annot => annot.symbol.owner == internal.Definitions_InternalQuoted_patternTypeAnnot
+    }
 
     private def isBindAnnotation(tree: Tree): Boolean = tree match {
       case New(tpt) => tpt.symbol == internal.Definitions_InternalQuoted_patternBindHoleAnnot
@@ -423,7 +430,7 @@ private[quoted] object Matcher {
     }
 
     private def isTypeBinding(tree: Tree): Boolean = tree match {
-      case tree: TypeDef => hasBindAnnotation(tree.symbol)
+      case tree: TypeDef => hasPatternTypeAnnotation(tree.symbol)
       case _ => false
     }
   }
