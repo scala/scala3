@@ -4,7 +4,7 @@ object Test {
     // then on the Scala side we'll need to pass a nullable array.
     // i.e. with explicit nulls the previously-implicit cast becomes an explicit
     // type annotation.
-    val x = new Array[Int|Null](1)
+    val x = new Array[Integer|Null](1)
     x(0) = 10
     println(JA.get(x))
 
