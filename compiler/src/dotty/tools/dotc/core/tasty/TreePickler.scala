@@ -657,6 +657,7 @@ class TreePickler(pickler: TastyPickler) {
       assert(isModifierTag(tag))
       writeByte(tag)
     }
+    assert(!flags.is(Scala2x))
     if (flags.is(Private)) writeModTag(PRIVATE)
     if (flags.is(Protected)) writeModTag(PROTECTED)
     if (flags.is(Final, butNot = Module)) writeModTag(FINAL)
@@ -671,7 +672,6 @@ class TreePickler(pickler: TastyPickler) {
     if (flags.is(Local)) writeModTag(LOCAL)
     if (flags.is(Synthetic)) writeModTag(SYNTHETIC)
     if (flags.is(Artifact)) writeModTag(ARTIFACT)
-    if (flags.is(Scala2x)) writeModTag(SCALA2X)
     if (isTerm) {
       if (flags.is(Implicit)) writeModTag(IMPLICIT)
       if (flags.is(Given)) writeModTag(GIVEN)
