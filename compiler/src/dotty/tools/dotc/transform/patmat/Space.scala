@@ -521,10 +521,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         inContext(ctx.fresh.setNewTyperState()) {
           val tvars = pt.paramInfos.map(newTypeVar)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
+          // println("mt.paramInfos(0) = " + mt.paramInfos(0))
           scrutineeTp <:< mt.paramInfos(0)
-          instantiateSelected(mt, tvars)
-          // isFullyDefined(mt, ForceDegree.flipBottom)
-          // println("mt = " + mt.show)
+          isFullyDefined(mt, ForceDegree.flipBottom)
+          // println("mt = " + mt)
           mt
         }
     }
@@ -539,16 +539,18 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     // Case unapplySeq:
     // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
 
+    val resTp = mt.finalResultType
+
     val sig =
       if (isSyntheticScala2Unapply(unappSym) && caseAccessors.length == argLen)
         caseAccessors.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widenExpr)
-      else if (mt.finalResultType.isRef(defn.BooleanClass))
+      else if (resTp.isRef(defn.BooleanClass))
         List()
       else {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
 
         if (isUnapplySeq) {
-          val (arity, elemTp, resultTp) = unapplySeqInfo(mt.finalResultType, unappSym.sourcePos)
+          val (arity, elemTp, resultTp) = unapplySeqInfo(resTp, unappSym.sourcePos)
           if (elemTp.exists) scalaListType.appliedTo(elemTp) :: Nil
           else {
             val sels = productSeqSelectors(resultTp, arity, unappSym.sourcePos)
@@ -556,15 +558,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           }
         }
         else {
-          val arity = productArity(mt.finalResultType, unappSym.sourcePos)
+          val arity = productArity(resTp, unappSym.sourcePos)
           if (arity > 0)
-            productSelectors(mt.finalResultType)
-              .map(_.info.asSeenFrom(mt.finalResultType, mt.resultType.classSymbol).widenExpr)
+            productSelectorTypes(resTp, unappSym.sourcePos)
           else {
-            val resTp = mt.finalResultType.select(nme.get).finalResultType.widen
-            val arity = productArity(resTp, unappSym.sourcePos)
-            if (argLen == 1) resTp :: Nil
-            else productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widenExpr)
+            val getTp = resTp.select(nme.get).finalResultType.widen
+            if (argLen == 1) getTp :: Nil
+            else productSelectorTypes(getTp, unappSym.sourcePos)
           }
         }
       }
