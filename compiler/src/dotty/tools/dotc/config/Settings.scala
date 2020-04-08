@@ -135,11 +135,13 @@ object Settings {
         case (ListTag, _) =>
           if (argRest.isEmpty) missingArg
           else update((argRest split ",").toList, args)
-        case (StringTag, _) if choices.nonEmpty =>
-          if (argRest.isEmpty) missingArg
-          else if (!choices.contains(argRest))
+        case (StringTag, _) if choices.nonEmpty && argRest.nonEmpty =>
+          if (!choices.contains(argRest))
             fail(s"$arg is not a valid choice for $name", args)
           else update(argRest, args)
+        case (StringTag, arg2 :: args2) =>
+          if (arg2 startsWith "-") missingArg
+          else update(arg2, args2)
         case (OutputTag, arg :: args) =>
           val path = Directory(arg)
           val isJar = path.extension == "jar"
@@ -149,9 +151,6 @@ object Settings {
             val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
             update(output, args)
           }
-        case (StringTag, arg2 :: args2) =>
-          if (arg2 startsWith "-") missingArg
-          else update(arg2, args2)
         case (IntTag, arg2 :: args2) =>
           try {
             val x = arg2.toInt
