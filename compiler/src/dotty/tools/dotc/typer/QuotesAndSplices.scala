@@ -219,23 +219,6 @@ trait QuotesAndSplices {
             TypeTree(tree.tpe.dealias).withSpan(tree.span)
           else
             tree
-        case ddef: ValOrDefDef =>
-          if (ddef.symbol.hasAnnotation(defn.InternalQuoted_patternBindHoleAnnot)) {
-            val bindingType = ddef.symbol.info match {
-              case t: ExprType => t.resType
-              case t: MethodType => t.toFunctionType()
-              case t: PolyType =>
-                HKTypeLambda(t.paramNames)(
-                    x => t.paramInfos.mapConserve(_.subst(t, x).asInstanceOf[TypeBounds]),
-                    x => t.resType.subst(t, x).toFunctionType())
-              case t => t
-            }
-            assert(ddef.name.startsWith("$"))
-            val bindName = ddef.name.toString.stripPrefix("$").toTermName
-            val sym = ctx0.newPatternBoundSymbol(bindName, defn.StringType, ddef.span)
-            patBuf += Bind(sym, untpd.Ident(nme.WILDCARD).withType(defn.StringType)).withSpan(ddef.span)
-          }
-          super.transform(tree)
         case tdef: TypeDef if tdef.symbol.hasAnnotation(defn.InternalQuoted_patternTypeAnnot) =>
           transformTypeBindingTypeDef(tdef, typePatBuf)
         case tree @ AppliedTypeTree(tpt, args) =>

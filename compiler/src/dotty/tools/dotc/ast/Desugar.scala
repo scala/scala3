@@ -156,7 +156,7 @@ object desugar {
    *    - all package object members
    */
   def valDef(vdef0: ValDef)(implicit ctx: Context): Tree = {
-    val vdef @ ValDef(name, tpt, rhs) = transformQuotedPatternName(vdef0)
+    val vdef @ ValDef(name, tpt, rhs) = vdef0
     val mods = vdef.mods
     val setterNeeded =
       mods.is(Mutable)
@@ -204,7 +204,7 @@ object desugar {
    *      def f$default$2[T](x: Int) = x + "m"
    */
   private def defDef(meth0: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
-    val meth @ DefDef(_, tparams, vparamss, tpt, rhs) = transformQuotedPatternName(meth0)
+    val meth @ DefDef(_, tparams, vparamss, tpt, rhs) = meth0
     val methName = normalizeName(meth, tpt).asTermName
     val mods = meth.mods
     val epbuf = ListBuffer[ValDef]()
@@ -278,26 +278,6 @@ object desugar {
       Thicket(meth2 :: defGetters)
     }
   }
-
-  /** Transforms a definition with a name starting with a `$` in a quoted pattern into a `quoted.binding.Binding` splice.
-   *
-   *  The desugaring consists in adding the `@patternBindHole` annotation. This annotation is used during typing to perform the full transformation.
-   *
-   *  A definition
-   *  ```scala
-   *    case '{ def $a(...) = ...; ... `$a`() ... } => a
-   *  ```
-   *  into
-   *  ```scala
-   *    case '{ @patternBindHole def `$a`(...) = ...; ... `$a`() ... } => a
-   *  ```
-   */
-  def transformQuotedPatternName(tree: ValOrDefDef)(implicit ctx: Context): ValOrDefDef =
-    if (ctx.mode.is(Mode.QuotedPattern) && !isBackquoted(tree) && tree.name != nme.ANON_FUN && tree.name.startsWith("$")) {
-      val mods = tree.mods.withAddedAnnotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.span))
-      tree.withMods(mods)
-    }
-    else tree
 
   /** Add an explicit ascription to the `expectedTpt` to every tail splice.
    *

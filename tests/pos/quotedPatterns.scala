@@ -13,23 +13,17 @@ object Test {
     case '{ ((a: Int) => 3)($y) } => y
     case '{ 1 + ($y: Int)} => y
     case '{ val a = 1 + ($y: Int); 3 } => y
-    case '{ val $y: Int = $z; println(`$y`); 1 } =>
-      val a: String = y
+    case '{ val y: Int = $z; println(y); 1 } =>
       z
-    case '{ (($y: Int) => 1 + `$y` + ($z: Int))(2) } =>
-      val a: String = y
+    case '{ ((y: Int) => 1 + y + ($z: Int))(2) } =>
       z
-    case '{ def $ff: Int = $z; `$ff` } =>
-      val a: String = ff
+    case '{ def ff: Int = $z; ff } =>
       z
-    case '{ def $ff(i: Int): Int = $z; 2 } =>
-      val a: String = ff
+    case '{ def ff(i: Int): Int = $z; 2 } =>
       z
-    case '{ def $ff(i: Int)(j: Int): Int = $z; 2 } =>
-      val a: String = ff
+    case '{ def ff(i: Int)(j: Int): Int = $z; 2 } =>
       z
-    case '{ def $ff[T](i: T): Int = $z; 2 } =>
-      val a: String = ff
+    case '{ def ff[T](i: T): Int = $z; 2 } =>
       z
     case '{ poly[$t]($x); 4 } => ???
     case '{ type $X; poly[`$X`]($x); 4 } => ???
