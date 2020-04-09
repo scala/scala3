@@ -466,9 +466,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case tp @ RefinedType(parent, _, _) =>
         erase(parent)
       case tref: TypeRef if isPatternTypeSymbol(tref.typeSymbol) =>
-        if (inArray) tref.underlying else WildcardType(tref.underlying.bounds)
-      case mt: MethodType =>
-        mt.derivedLambdaType(mt.paramNames, mt.paramInfos.map(info => erase(info)), erase(mt.resType))
+        if (inArray) tref.underlying else WildcardType
       case _ => tp
     }
   }
