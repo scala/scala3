@@ -6,6 +6,8 @@ import Contexts._, Types._, Symbols._, Names._, Flags._
 import Denotations.SingleDenotation
 import Decorators._
 import collection.mutable
+import config.SourceVersion.`3.1`
+import config.Feature.sourceVersion
 
 /** Realizability status */
 object CheckRealizable {
@@ -197,7 +199,7 @@ class CheckRealizable(implicit ctx: Context) {
           realizability(fld.info).mapError(r => new HasProblemField(fld, r))
         }
       }
-    if (ctx.settings.strict.value)
+    if sourceVersion.isAtLeast(`3.1`) then
       // check fields only under strict mode for now.
       // Reason: An embedded field could well be nullable, which means it
       // should not be part of a path and need not be checked; but we cannot recognize

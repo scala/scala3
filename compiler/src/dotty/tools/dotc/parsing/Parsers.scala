@@ -28,6 +28,8 @@ import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting.Message
 import reporting.messages._
+import config.Feature.sourceVersion
+import config.SourceVersion.`3.1`
 
 object Parsers {
 
@@ -1484,7 +1486,7 @@ object Parsers {
         if in.token == LBRACE || in.token == INDENT then
           t
         else
-          if (ctx.settings.strict.value)
+          if sourceVersion.isAtLeast(`3.1`) then
             deprecationWarning(DeprecatedWithOperator(), withOffset)
           makeAndType(t, withType())
       else t
@@ -1545,10 +1547,9 @@ object Parsers {
         SingletonTypeTree(literal(negOffset = start, inType = true))
       }
       else if (in.token == USCORE) {
-        if (ctx.settings.strict.value) {
+        if sourceVersion.isAtLeast(`3.1`) then
           deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
           patch(source, Span(in.offset, in.offset + 1), "?")
-        }
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
       }
@@ -2076,7 +2077,7 @@ object Parsers {
         val name = bindingName()
         val t =
           if (in.token == COLON && location == Location.InBlock) {
-            if (ctx.settings.strict.value)
+            if sourceVersion.isAtLeast(`3.1`)
                 // Don't error in non-strict mode, as the alternative syntax "implicit (x: T) => ... "
                 // is not supported by Scala2.x
               in.errorOrMigrationWarning(s"This syntax is no longer supported; parameter needs to be enclosed in (...)")
@@ -2396,7 +2397,7 @@ object Parsers {
       atSpan(startOffset(pat), accept(LARROW)) {
         val checkMode =
           if (casePat) GenCheckMode.FilterAlways
-          else if (ctx.settings.strict.value) GenCheckMode.Check
+          else if sourceVersion.isAtLeast(`3.1`) then GenCheckMode.Check
           else GenCheckMode.FilterNow  // filter for now, to keep backwards compat
         GenFrom(pat, subExpr(), checkMode)
       }
@@ -2574,7 +2575,7 @@ object Parsers {
         // compatibility for Scala2 `x @ _*` syntax
         infixPattern() match {
           case pt @ Ident(tpnme.WILDCARD_STAR) =>
-            if (ctx.settings.strict.value)
+            if sourceVersion.isAtLeast(`3.1`) then
               in.errorOrMigrationWarning("The syntax `x @ _*` is no longer supported; use `x : _*` instead", Span(startOffset(p)))
             atSpan(startOffset(p), offset) { Typed(p, pt) }
           case pt =>
@@ -2582,7 +2583,7 @@ object Parsers {
         }
       case p @ Ident(tpnme.WILDCARD_STAR) =>
         // compatibility for Scala2 `_*` syntax
-        if (ctx.settings.strict.value)
+        if sourceVersion.isAtLeast(`3.1`) then
           in.errorOrMigrationWarning("The syntax `_*` is no longer supported; use `x : _*` instead", Span(startOffset(p)))
         atSpan(startOffset(p)) { Typed(Ident(nme.WILDCARD), p) }
       case p =>
@@ -2717,7 +2718,7 @@ object Parsers {
           syntaxError(DuplicatePrivateProtectedQualifier())
         inBrackets {
           if in.token == THIS then
-            if ctx.settings.strict.value then
+            if sourceVersion.isAtLeast(`3.1`) then
               deprecationWarning("The [this] qualifier is deprecated in Scala 3.1; it should be dropped.")
             in.nextToken()
             mods | Local

@@ -124,10 +124,6 @@ trait Reporting { thisCtx: Context =>
   def warning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new Warning(msg, addInlineds(pos)))
 
-  def strictWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
-    if (thisCtx.settings.strict.value) error(msg, pos)
-    else warning(msg.append("\n(This would be an error under strict mode)"), pos)
-
   def error(msg: Message, pos: SourcePosition = NoSourcePosition, sticky: Boolean = false): Unit = {
     val fullPos = addInlineds(pos)
     reporter.report(if (sticky) new StickyError(msg, fullPos) else new Error(msg, fullPos))

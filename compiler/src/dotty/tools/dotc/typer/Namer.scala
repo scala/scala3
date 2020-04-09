@@ -23,6 +23,8 @@ import transform.ValueClasses._
 import transform.TypeUtils._
 import transform.SymUtils._
 import reporting.messages._
+import config.Feature.sourceVersion
+import config.SourceVersion._
 
 trait NamerContextOps {
   thisCtx: Context =>
@@ -1261,7 +1263,7 @@ class Namer { typer: Typer =>
             else if pclazz.isEffectivelySealed && pclazz.associatedFile != cls.associatedFile then
               if pclazz.is(Sealed) then
                 completerCtx.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
-              else if completerCtx.settings.strict.value then
+              else if sourceVersion.isAtLeast(`3.1`) then
                 checkFeature(nme.adhocExtensions,
                   i"Unless $pclazz is declared 'open', its extension in a separate file",
                   cls.topLevelClass,
