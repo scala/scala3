@@ -72,7 +72,9 @@ object Feature:
    */
   def warnOnMigration(msg: Message, pos: SourcePosition,
       version: SourceVersion = defaultSourceVersion)(using Context): Boolean =
-    if sourceVersion.isMigrating && sourceVersion.stable == version then
+    if sourceVersion.isMigrating && sourceVersion.stable == version
+       || version == `3.0` && migrateTo3
+    then
       ctx.migrationWarning(msg, pos)
       true
     else
