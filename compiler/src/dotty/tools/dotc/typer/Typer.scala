@@ -1234,7 +1234,55 @@ class Typer extends Namer
         if (tree.isInline) checkInInlineContext("inline match", tree.posd)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.span).widen
-        val result = typedMatchFinish(tree, sel1, selType, tree.cases, pt)
+
+        /** Extractor for match types hidden behind an AppliedType/MatchAlias */
+        object MatchTypeInDisguise {
+          def unapply(tp: AppliedType): Option[MatchType] = tp match {
+            case AppliedType(tycon: TypeRef, args) =>
+              tycon.info match {
+                case MatchAlias(alias) =>
+                  alias.applyIfParameterized(args) match {
+                    case mt: MatchType => Some(mt)
+                    case _ => None
+                  }
+                case _ => None
+              }
+            case _ => None
+          }
+        }
+
+        /** Does `tree` has the same shape as the given match type?
+         *  We only support typed patterns with empty guards, but
+         *  that could potentially be extended in the future.
+         */
+        def isMatchTypeShaped(mt: MatchType): Boolean =
+          mt.cases.size == tree.cases.size
+          && sel1.tpe.frozen_<:<(mt.scrutinee)
+          && tree.cases.forall(_.guard.isEmpty)
+          && tree.cases
+            .map(cas => untpd.unbind(untpd.unsplice(cas.pat)))
+            .zip(mt.cases)
+            .forall {
+              case (pat: Typed, pt) =>
+                // To check that pattern types correspond we need to type
+                // check `pat` here and throw away the result.
+                val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
+                val pat1 = typedPattern(pat, selType)(using gadtCtx)
+                val Typed(_, tpt) = tpd.unbind(tpd.unsplice(pat1))
+                instantiateMatchTypeProto(pat1, pt) match {
+                  case defn.MatchCase(patternTp, _) => tpt.tpe frozen_=:= patternTp
+                  case _ => false
+                }
+              case _ => false
+            }
+
+        val result = pt match {
+          case MatchTypeInDisguise(mt) if isMatchTypeShaped(mt) =>
+            typedDependentMatchFinish(tree, sel1, selType, tree.cases, mt)
+          case _ =>
+            typedMatchFinish(tree, sel1, selType, tree.cases, pt)
+        }
+
         result match {
           case Match(sel, CaseDef(pat, _, _) :: _) =>
             tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
@@ -1249,6 +1297,21 @@ class Typer extends Namer
         }
         result
     }
+
+  /** Special typing of Match tree when the expected type is a MatchType,
+   *  and the patterns of the Match tree and the MatchType correspond.
+   */
+  def typedDependentMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: MatchType)(using Context): Tree = {
+    var caseCtx = ctx
+    val cases1 = tree.cases.zip(pt.cases)
+      .map { case (cas, tpe) =>
+        val case1 = typedCase(cas, sel, wideSelType, tpe)(using caseCtx)
+        caseCtx = Nullables.afterPatternContext(sel, case1.pat)
+        case1
+      }
+      .asInstanceOf[List[CaseDef]]
+    assignType(cpy.Match(tree)(sel, cases1), sel, cases1).cast(pt)
+  }
 
   // Overridden in InlineTyper for inline matches
   def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(using Context): Tree = {
@@ -1290,17 +1353,33 @@ class Typer extends Namer
       }
   }
 
+  /** If the prototype `pt` is the type lambda (when doing a dependent
+   *  typing of a match), instantiate that type lambda with the pattern
+   *  variables found in the pattern `pat`.
+   */
+  def instantiateMatchTypeProto(pat: Tree, pt: Type)(implicit ctx: Context) = pt match {
+    case caseTp: HKTypeLambda =>
+      val bindingsSyms = tpd.patVars(pat).reverse
+      val bindingsTps = bindingsSyms.collect { case sym if sym.isType => sym.typeRef }
+      caseTp.appliedTo(bindingsTps)
+    case pt => pt
+  }
+
   /** Type a case. */
   def typedCase(tree: untpd.CaseDef, sel: Tree, wideSelType: Type, pt: Type)(using Context): CaseDef = {
     val originalCtx = ctx
     val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
 
     def caseRest(pat: Tree)(using Context) = {
+      val pt1 = instantiateMatchTypeProto(pat, pt) match {
+        case defn.MatchCase(_, bodyPt) => bodyPt
+        case pt => pt
+      }
       val pat1 = indexPattern(tree).transform(pat)
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
-      var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt), pt, ctx.scope.toList)
-      if (pt.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
-        body1 = body1.ensureConforms(pt)(originalCtx)
+      var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toList)
+      if (pt1.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
+        body1 = body1.ensureConforms(pt1)(originalCtx)
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
     }
 
