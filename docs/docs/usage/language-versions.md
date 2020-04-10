@@ -14,7 +14,7 @@ The default Scala language version currently supported by the Dotty compiler is 
     - gives some additional warnings where the semantics has changed between Scala 2.13 and 3.0
     - in conjunction with `-rewrite`, offer code rewrites from Scala 2.13 to 3.0.
 
- - `3.1-migration: Same as `3.1` but with additional helps to migrate from `3.0`. The helpers are similar to, but less extensive than, the ones for `3.0-migration`.
+ - `3.1-migration: Same as `3.1` but with additional helpers to migrate from `3.0`. Similarly to the helpers available under `3.0-migration`, these include migration warnings and optional rewrites.
 
 There are two ways to specify a language version.
 

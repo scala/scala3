@@ -200,7 +200,7 @@ class CheckRealizable(implicit ctx: Context) {
         }
       }
     if sourceVersion.isAtLeast(`3.1`) then
-      // check fields only under strict mode for now.
+      // check fields only from version 3.1.
       // Reason: An embedded field could well be nullable, which means it
       // should not be part of a path and need not be checked; but we cannot recognize
       // this situation until we have a typesystem that tracks nullability.
