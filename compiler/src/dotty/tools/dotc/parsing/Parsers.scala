@@ -1891,7 +1891,7 @@ object Parsers {
       case DO =>
         ctx.errorOrMigrationWarning(
           i"""`do <body> while <cond>` is no longer supported,
-             |use `while <body> ; <cond>} do ()` instead.${rewriteNotice()}""",
+             |use `while <body> ; <cond> do ()` instead.${rewriteNotice()}""",
           in.sourcePos())
         val start = in.skipToken()
         atSpan(start) {

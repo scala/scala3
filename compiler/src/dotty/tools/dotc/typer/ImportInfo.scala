@@ -174,9 +174,7 @@ class ImportInfo(symf: Context ?=> Symbol,
   private var myOwner: Symbol = null
   private var myResults: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.Empty
 
-  /** Does this import clause or a preceding import clause import `owner.feature`?
-   *  if `feature` is empty, we are looking for a source designator instead.
-   */
+  /** Does this import clause or a preceding import clause import `owner.feature`? */
   def featureImported(feature: TermName, owner: Symbol)(using Context): Boolean =
 
     def compute =
