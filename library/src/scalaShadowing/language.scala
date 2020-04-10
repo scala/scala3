@@ -213,7 +213,7 @@ object language {
   }
 
   /** Where imported, a backwards compatibility mode for Scala2 is enabled */
-  @deprecated object Scala2Compat
+  object Scala2Compat
 
   /** Where imported, auto-tupling is disabled */
   object noAutoTupling
