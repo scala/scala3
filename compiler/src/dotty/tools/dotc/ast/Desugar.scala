@@ -408,8 +408,8 @@ object desugar {
       case _ => false
     }
     def isScala(tree: Tree): Boolean = tree match {
-      case Ident(nme.scala_) => true
-      case Select(Ident(nme.ROOTPKG), nme.scala_) => true
+      case Ident(nme.scala) => true
+      case Select(Ident(nme.ROOTPKG), nme.scala) => true
       case _ => false
     }
 

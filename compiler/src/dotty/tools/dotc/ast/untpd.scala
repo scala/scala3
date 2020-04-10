@@ -447,7 +447,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     TypedSplice(tpd.ref(tp))
 
   def rootDot(name: Name)(implicit src: SourceFile): Select = Select(Ident(nme.ROOTPKG), name)
-  def scalaDot(name: Name)(implicit src: SourceFile): Select = Select(rootDot(nme.scala_), name)
+  def scalaDot(name: Name)(implicit src: SourceFile): Select = Select(rootDot(nme.scala), name)
   def scalaAnnotationDot(name: Name)(using SourceFile): Select = Select(scalaDot(nme.annotation), name)
   def scalaUnit(implicit src: SourceFile): Select = scalaDot(tpnme.Unit)
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)
