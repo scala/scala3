@@ -149,7 +149,7 @@ object Parsers {
       ctx.error(msg, source.atSpan(span))
 
     def unimplementedExpr(implicit ctx: Context): Select =
-      Select(Select(rootDot(nme.scala_), nme.Predef), nme.???)
+      Select(Select(rootDot(nme.scala), nme.Predef), nme.???)
   }
 
   trait OutlineParserCommon extends ParserCommon {

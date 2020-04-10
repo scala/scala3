@@ -156,8 +156,8 @@ object StdNames {
     final val Short: N   = "Short"
     final val Unit: N    = "Unit"
 
-    final val ScalaValueNames: scala.List[N] =
-      scala.List(Byte, Char, Short, Int, Long, Float, Double, Boolean, Unit)
+    final val ScalaValueNames: _root_.scala.List[N] =
+      _root_.scala.List(Byte, Char, Short, Int, Long, Float, Double, Boolean, Unit)
 
     // some types whose companions we utilize
     final val AnyRef: N     = "AnyRef"
@@ -562,7 +562,7 @@ object StdNames {
     val runtimeMirror: N        = "runtimeMirror"
     val s: N                    = "s"
     val sameElements: N         = "sameElements"
-    val scala_ : N              = "scala"
+    val scala : N               = "scala"
     val scalaShadowing : N      = "scalaShadowing"
     val selectDynamic: N        = "selectDynamic"
     val selectOverloadedMethod: N = "selectOverloadedMethod"
