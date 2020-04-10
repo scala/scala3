@@ -3,7 +3,8 @@ layout: doc-page
 title: "Match Types"
 ---
 
-A match type reduces to one of its right-hand sides, depending on a scrutinee type. Example:
+A match type reduces to one of its right-hand sides, depending on the type of
+its scrutinee. For example:
 
 ```scala
 type Elem[X] = X match {
@@ -22,7 +23,8 @@ Elem[List[Float]]  =:=  Float
 Elem[Nil.type]     =:=  Nothing
 ```
 
-Here `=:=` is understood to mean that left and right hand sides are mutually subtypes of each other.
+Here `=:=` is understood to mean that left and right hand sides are mutually
+subtypes of each other.
 
 In general, a match type is of the form
 
@@ -30,8 +32,8 @@ In general, a match type is of the form
 S match { P1 => T1 ... Pn => Tn }
 ```
 
-where `S`, `T1`, ..., `Tn` are types and `P1`, ..., `Pn` are type patterns. Type variables
-in patterns start as usual with a lower case letter.
+where `S`, `T1`, ..., `Tn` are types and `P1`, ..., `Pn` are type patterns. Type
+variables in patterns start with a lower case letter, as usual.
 
 Match types can form part of recursive type definitions. Example:
 
@@ -53,11 +55,16 @@ type Concat[Xs <: Tuple, +Ys <: Tuple] <: Tuple = Xs match {
 }
 ```
 
-In this definition, every instance of `Concat[A, B]`, whether reducible or not, is known to be a subtype of `Tuple`. This is necessary to make the recursive invocation `x *: Concat[xs, Ys]` type check, since `*:` demands a `Tuple` as its right operand.
+In this definition, every instance of `Concat[A, B]`, whether reducible or not,
+is known to be a subtype of `Tuple`. This is necessary to make the recursive
+invocation `x *: Concat[xs, Ys]` type check, since `*:` demands a `Tuple` as its
+right operand.
 
-## Dependent typing
+## Dependent Typing
 
-Match types can be used to define dependently type methods. For instance, here is value level counterpart to the`LeafElem` defined above (note the use of the match type as return type):
+Match types can be used to define dependently typed methods. For instance, here
+is the value level counterpart to the `LeafElem` type defined above (note the
+use of the match type as the return type):
 
 ```scala
 def leafElem[X](x: X): LeafElem[X] = x match {
@@ -68,12 +75,16 @@ def leafElem[X](x: X): LeafElem[X] = x match {
 }
 ```
 
-This special mode of typing for match expressions is only used when the following conditions are met:
+This special mode of typing for match expressions is only used when the
+following conditions are met:
 
 1. The match expression patterns do not have guards
-2. The match expression scrutinee's type is a subtype of the match type scrutinee's type
+2. The match expression scrutinee's type is a subtype of the match type
+   scrutinee's type
 3. The match expression and the match type have the same number of cases
-4. The match expression patterns are all [Typed Patterns](https://scala-lang.org/files/archive/spec/2.13/08-pattern-matching.html#typed-patterns), and these types are `=:=` to their corresponding type patterns in the match type
+4. The match expression patterns are all [Typed Patterns](https://scala-lang.org/files/archive/spec/2.13/08-pattern-matching.html#typed-patterns),
+   and these types are `=:=` to their corresponding type patterns in the match
+   type
 
 ## Representation of Match Types
 
@@ -86,22 +97,33 @@ is `Match(S, C1, ..., Cn) <: B` where each case `Ci` is of the form
 [Xs] =>> P => T
 ```
 
-Here, `[Xs]` is a type parameter clause of the variables bound in pattern `Pi`. If there are no bound type variables in a case, the type parameter clause is omitted and only the function type `P => T` is kept. So each case is either a unary function type or a type lambda over a unary function type.
+Here, `[Xs]` is a type parameter clause of the variables bound in pattern `Pi`.
+If there are no bound type variables in a case, the type parameter clause is
+omitted and only the function type `P => T` is kept. So each case is either a
+unary function type or a type lambda over a unary function type.
 
-`B` is the declared upper bound of the match type, or `Any` if no such bound is given.
-We will leave it out in places where it does not matter for the discussion. Scrutinee, bound and pattern types must be first-order types.
+`B` is the declared upper bound of the match type, or `Any` if no such bound is
+given.  We will leave it out in places where it does not matter for the
+discussion. The scrutinee, bound, and pattern types must all be first-order
+types.
 
-## Match type reduction
+## Match Type Reduction
 
-Match type reduction follows the semantics of match expression, that is, a match type of the form `S match { P1 => T1 ... Pn => Tn }` reduces to `Ti` if and only if `s: S match { _: P1 => T1 ... _: Pn => Tn }` evaluates to a value of type `Ti` for all `s: S`.
+Match type reduction follows the semantics of match expressions, that is, a
+match type of the form `S match { P1 => T1 ... Pn => Tn }` reduces to `Ti` if
+and only if `s: S match { _: P1 => T1 ... _: Pn => Tn }` evaluates to a value of
+type `Ti` for all `s: S`.
 
 The compiler implements the following reduction algorithm:
 
-- If the scrutinee type `S` is an empty set of values (such as `Nothing` or `String & Int`), do not reduce.
+- If the scrutinee type `S` is an empty set of values (such as `Nothing` or
+  `String & Int`), do not reduce.
 - Sequentially consider each pattern `Pi`
     - If `S <: Pi` reduce to `Ti`.
-    - Otherwise, try constructing a proof that `S` and `Pi` are disjoint, or, in other words, that no value `s` of type `S` is also of type `Pi`.
-    - If such proof is found, proceed to the next case (`Pi+1`), otherwise, do not reduce.
+    - Otherwise, try constructing a proof that `S` and `Pi` are disjoint, or, in
+      other words, that no value `s` of type `S` is also of type `Pi`.
+    - If such proof is found, proceed to the next case (`Pi+1`), otherwise, do
+      not reduce.
 
 Disjointness proofs rely on the following properties of Scala types:
 
@@ -109,54 +131,68 @@ Disjointness proofs rely on the following properties of Scala types:
 2. Final classes cannot be extended
 3. Constant types with distinct values are nonintersecting
 
-Type parameters in patterns are minimally instantiated when computing `S <: Pi`. An instantiation `Is` is _minimal_ for `Xs` if all type variables in `Xs` that appear covariantly and nonvariantly in `Is` are as small as possible and all type variables in `Xs` that appear contravariantly in `Is` are as large as possible. Here, "small" and "large" are understood with respect to  `<:`.
+Type parameters in patterns are minimally instantiated when computing `S <: Pi`.
+An instantiation `Is` is _minimal_ for `Xs` if all type variables in `Xs` that
+appear covariantly and nonvariantly in `Is` are as small as possible and all
+type variables in `Xs` that appear contravariantly in `Is` are as large as
+possible.  Here, "small" and "large" are understood with respect to  `<:`.
 
-For simplicity, we have omitted constraint handling so far. The full formulation of subtyping tests describes them as a function from a constraint and a pair of types to either _success_ and a new constraint or _failure_. In the context of reduction, the subtyping test `S <: [Xs := Is] P` is understood to leave the bounds of all variables in the input constraint unchanged, i.e. existing variables in the constraint cannot be instantiated by matching the scrutinee against the patterns.
+For simplicity, we have omitted constraint handling so far. The full formulation
+of subtyping tests describes them as a function from a constraint and a pair of
+types to either _success_ and a new constraint or _failure_. In the context of
+reduction, the subtyping test `S <: [Xs := Is] P` is understood to leave the
+bounds of all variables in the input constraint unchanged, i.e. existing
+variables in the constraint cannot be instantiated by matching the scrutinee
+against the patterns.
 
 ## Subtyping Rules for Match Types
 
-The following rules apply to match types. For simplicity, we omit environments and constraints.
+The following rules apply to match types. For simplicity, we omit environments
+and constraints.
 
-The first rule is a structural comparison between two match types:
+1. The first rule is a structural comparison between two match types:
 
-```
-S match { P1 => T1 ... Pm => Tm }  <:  T match { Q1 => U1 ... Qn => Un }
-```
+   ```
+   S match { P1 => T1 ... Pm => Tm }  <:  T match { Q1 => U1 ... Qn => Un }
+   ```
 
-if
+   if
 
-```
-S =:= T,  m >= n,  Pi =:= Qi and Ti <: Ui for i in 1..n
-```
+   ```
+   S =:= T,  m >= n,  Pi =:= Qi and Ti <: Ui for i in 1..n
+   ```
 
-I.e. scrutinees and patterns must be equal and the corresponding bodies must be subtypes. No case re-ordering is allowed, but the subtype can have more cases than the supertype.
+   I.e. scrutinees and patterns must be equal and the corresponding bodies must
+   be subtypes. No case re-ordering is allowed, but the subtype can have more
+   cases than the supertype.
 
-The second rule states that a match type and its redux are mutual subtypes
+2. The second rule states that a match type and its redux are mutual subtypes.
 
-```
-S match { P1 => T1 ... Pn => Tn }  <:  U
-U  <:  S match { P1 => T1 ... Pn => Tn }
-```
+   ```
+   S match { P1 => T1 ... Pn => Tn }  <:  U
+   U  <:  S match { P1 => T1 ... Pn => Tn }
+   ```
 
-if
+   if
 
-```
-S match { P1 => T1 ... Pn => Tn }  reduces-to  U
-```
+   ```
+   S match { P1 => T1 ... Pn => Tn }  reduces-to  U
+   ```
 
-The third rule states that a match type conforms to its upper bound:
+3. The third rule states that a match type conforms to its upper bound:
 
-```
-(S match { P1 => T1 ... Pn => Tn } <: B)  <:  B
-```
+   ```
+   (S match { P1 => T1 ... Pn => Tn } <: B)  <:  B
+   ```
 
 ## Termination
 
 Match type definitions can be recursive, which means that it's possible to run
 into an infinite loop while reducing match types.
 
-Since reduction is linked to subtyping, we already have a cycle detection mechanism in place.
-So the following will already give a reasonable error message:
+Since reduction is linked to subtyping, we already have a cycle detection
+mechanism in place. As a result, the following will already give a reasonable
+error message:
 
 ```scala
 type L[X] = X match {
@@ -176,26 +212,38 @@ def g[X]: L[X] = ???
    |  subtype LazyRef(Test.L[Int]) <:< Int
 ```
 
-Internally, `dotc` detects these cycles by turning selected stackoverflows
-into type errors. If there is a stackoverflow during subtyping, the exception
-will be caught and turned into a compile-time error that indicates a trace of
-the subtype tests that caused the overflow without showing a full stacktrace.
+Internally, `dotc` detects these cycles by turning selected stack overflows into
+type errors. If there is a stack overflow during subtyping, the exception will
+be caught and turned into a compile-time error that indicates a trace of the
+subtype tests that caused the overflow without showing a full stack trace.
 
 ## Variance Laws for Match Types
+NOTE: This section does not reflect the current implementation.
 
-Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count as covariant. By the nature of the cases `Ci` this means that occurrences in pattern position are contravarant (since patterns are represented as function type arguments).
+Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count
+as covariant. By the nature of the cases `Ci` this means that occurrences in
+pattern position are contravarant (since patterns are represented as function
+type arguments).
 
 ## Related Work
 
-Match types have similarities with [closed type families](https://wiki.haskell.org/GHC/Type_families) in Haskell. Some differences are:
+Match types have similarities with
+[closed type families](https://wiki.haskell.org/GHC/Type_families) in Haskell.
+Some differences are:
 
-  - Subtyping instead of type equalities.
-  - Match type reduction does not tighten the underlying constraint, whereas type family reduction does unify. This difference in approach mirrors the difference between local type inference in Scala and global type inference in Haskell.
+- Subtyping instead of type equalities.
+- Match type reduction does not tighten the underlying constraint, whereas type
+  family reduction does unify. This difference in approach mirrors the
+  difference between local type inference in Scala and global type inference in
+  Haskell.
 
-Match types are also similar to Typescript's [conditional types](https://github.com/Microsoft/TypeScript/pull/21316). The main differences here are:
+Match types are also similar to Typescript's
+[conditional types](https://github.com/Microsoft/TypeScript/pull/21316). The
+main differences here are:
 
- - Conditional types only reduce if scrutinee and pattern are ground, whereas
-   match types also work for type parameters and abstract types.
+ - Conditional types only reduce if both the scrutinee and pattern are ground,
+   whereas match types also work for type parameters and abstract types.
  - Match types can bind variables in type patterns.
  - Match types support direct recursion.
  - Conditional types distribute through union types.
+
