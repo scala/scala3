@@ -169,16 +169,10 @@ class ImportInfo(symf: Context ?=> Symbol,
       assert(myUnimported != null)
     myUnimported
 
-  private def nextOuter(using Context): Context =
-    var c = ctx.outer
-    while c.importInfo eq ctx.importInfo do c = c.outer
-    c
-
   private var myUnimported: Symbol = _
 
   private var myOwner: Symbol = null
   private var myResults: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.Empty
-  private var mySourceVersion: Option[SourceVersion] | Null = null
 
   /** Does this import clause or a preceding import clause import `owner.feature`?
    *  if `feature` is empty, we are looking for a source designator instead.
@@ -190,7 +184,8 @@ class ImportInfo(symf: Context ?=> Symbol,
       if isImportOwner && forwardMapping.contains(feature) then true
       else if isImportOwner && excluded.contains(feature) then false
       else
-        val c = nextOuter
+        var c = ctx.outer
+        while c.importInfo eq ctx.importInfo do c = c.outer
         (c.importInfo != null) && c.importInfo.featureImported(feature, owner)(using c)
 
     if myOwner.ne(owner) || !myResults.contains(feature) then
@@ -198,33 +193,6 @@ class ImportInfo(symf: Context ?=> Symbol,
       myResults = myResults.updated(feature, compute)
     myResults(feature)
   end featureImported
-
-  /** The language source version that's implied by imports. E.g. an import
-    *
-    *      import scala.language.`3.1`
-    *
-    *  would return SourceVersion.`3.1` (unless shadowed by an inner source import).
-    */
-  def sourceVersion(using Context): Option[SourceVersion] =
-    if mySourceVersion == null then
-      val isLanguageImport =
-        symNameOpt match
-          case Some(nme.language) =>
-            mySym == null  // don't force the import, assume it is the right one
-            || site.widen.typeSymbol.eq(defn.LanguageModule.moduleClass)
-          case _ =>
-            false
-      if isLanguageImport then
-        forwardMapping.keys.filter(SourceVersion.allSourceVersionNames.contains) match
-          case src :: rest =>
-            mySourceVersion = Some(SourceVersion.valueOf(src.toString))
-            if rest.nonEmpty then throw TypeError("ambiguous source specifiers in language import")
-          case _ =>
-      if mySourceVersion == null then
-        val c = nextOuter
-        mySourceVersion = if c.importInfo == null then None else c.importInfo.sourceVersion(using c)
-    mySourceVersion
-  end sourceVersion
 
   def toText(printer: Printer): Text = printer.toText(this)
 }

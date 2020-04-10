@@ -17,8 +17,8 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.collection.immutable.{SortedMap, BitSet}
 import rewrites.Rewrites.patch
-import config.{Feature, SourceVersion}
-import SourceVersion._
+import config.Feature.migrateTo3
+import config.SourceVersion._
 import reporting.Message
 
 object Cbufs {
@@ -181,16 +181,6 @@ object Scanners {
     /** A switch whether operators at the start of lines can be infix operators */
     private[Scanners] var allowLeadingInfixOperators = true
 
-    var sourceVersion: SourceVersion = // TODO: overwrite when parsing language imports
-      if Feature.enabledBySetting(nme.Scala2Compat) then `3.0-migration`
-      else Feature.sourceVersion
-
-    def migrateTo3 = sourceVersion == `3.0-migration`
-
-    def errorOrMigrationWarning(msg: Message, span: Span = Span(offset))(using Context) =
-      if migrateTo3 then ctx.migrationWarning(msg, source.atSpan(span))
-      else ctx.error(msg, source.atSpan(span))
-
     val rewrite = ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
     val newSyntax = ctx.settings.newSyntax.value
@@ -252,7 +242,9 @@ object Scanners {
       else keyword
 
     private def treatAsIdent(): Token =
-      errorOrMigrationWarning(i"$name is now a keyword, write `$name` instead of $name to keep it as an identifier")
+      ctx.errorOrMigrationWarning(
+        i"$name is now a keyword, write `$name` instead of $name to keep it as an identifier",
+        sourcePos())
       patch(source, Span(offset), "`")
       patch(source, Span(offset + name.length), "`")
       IDENTIFIER
@@ -435,9 +427,11 @@ object Scanners {
           val (what, previous) =
             if inConditional then ("Rest of line", "previous expression in parentheses")
             else ("Line", "expression on the previous line")
-          errorOrMigrationWarning(em"""$what starts with an operator;
-                                      |it is now treated as a continuation of the $previous,
-                                      |not as a separate statement.""")
+          ctx.errorOrMigrationWarning(
+            em"""$what starts with an operator;
+                |it is now treated as a continuation of the $previous,
+                |not as a separate statement.""",
+            sourcePos())
         true
       }
     )

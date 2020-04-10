@@ -1,3 +1,5 @@
+import language.`3.0-migration`
+
 class C[+A] {
 
   private[this] var y: A = _

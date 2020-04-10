@@ -1,3 +1,8 @@
+package p
+package q
+import java.lang._
+import language.`3.0-migration`
+
 trait Txn[S <: Sys[S]] {
   def system: S
 
