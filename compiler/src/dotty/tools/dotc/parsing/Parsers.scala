@@ -1278,11 +1278,6 @@ object Parsers {
       if (in.token == COLONEOL) in.nextToken()
     }
 
-    def possibleBracesStart(): Unit = {
-      colonAtEOLOpt()
-      newLineOptWhenFollowedBy(LBRACE)
-    }
-
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL()
       if in.token == COLONEOL then
@@ -1473,7 +1468,7 @@ object Parsers {
     val refinedType: () => Tree = () => refinedTypeRest(withType())
 
     def refinedTypeRest(t: Tree): Tree = {
-      possibleBracesStart()
+      colonAtEOLOpt()
       if (in.isNestedStart)
         refinedTypeRest(atSpan(startOffset(t)) { RefinedTypeTree(rejectWildcardType(t), refinement()) })
       else t
@@ -2227,7 +2222,7 @@ object Parsers {
     }
 
     def simpleExprRest(t: Tree, canApply: Boolean = true): Tree = {
-      if (canApply) possibleBracesStart()
+      if canApply then colonAtEOLOpt()
       in.token match {
         case DOT =>
           in.nextToken()
@@ -2303,7 +2298,7 @@ object Parsers {
     /** ArgumentExprss ::= {ArgumentExprs}
      */
     def argumentExprss(fn: Tree): Tree = {
-      possibleBracesStart()
+      colonAtEOLOpt()
       if (in.token == LPAREN || in.isNestedStart) argumentExprss(mkApply(fn, argumentExprs()))
       else fn
     }
@@ -3328,7 +3323,7 @@ object Parsers {
      */
     def selfInvocation(): Tree =
       atSpan(accept(THIS)) {
-        possibleBracesStart()
+        colonAtEOLOpt()
         argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs()))
       }
 

@@ -15,7 +15,7 @@ object O6891 {
     def beppy[C](c: => C) = {
       () => c
       @tailrec def loop(x: value.type): Unit = loop(x)
-        () => c
+      () => c
       ()
     }
   }

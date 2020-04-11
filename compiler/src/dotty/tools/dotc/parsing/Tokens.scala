@@ -221,8 +221,12 @@ object Tokens extends TokensCommon {
   final val atomicExprTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, QUOTEID, XMLSTART)
 
-  final val canStartExprTokens3: TokenSet = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, LBRACKET, INDENT, QUOTE, IF, WHILE, FOR, NEW, TRY, THROW)
+  final val openParensTokens = BitSet(LBRACE, LPAREN, LBRACKET)
+
+  final val canStartExprTokens3: TokenSet =
+      atomicExprTokens
+    | openParensTokens
+    | BitSet(INDENT, QUOTE, IF, WHILE, FOR, NEW, TRY, THROW)
 
   final val canStartExprTokens2: TokenSet = canStartExprTokens3 | BitSet(DO)
 
