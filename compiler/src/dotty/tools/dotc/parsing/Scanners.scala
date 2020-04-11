@@ -436,7 +436,10 @@ object Scanners {
       }
 
     def isContinuingParens() =
-      openParensTokens.contains(token) && !pastBlankLine && !isScala2CompatMode
+      openParensTokens.contains(token)
+      && !pastBlankLine
+      && !isScala2CompatMode
+      && !noindentSyntax
 
     /** The indentation width of the given offset */
     def indentWidth(offset: Offset): IndentWidth = {
