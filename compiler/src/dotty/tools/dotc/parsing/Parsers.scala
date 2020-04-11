@@ -1278,6 +1278,17 @@ object Parsers {
       if (in.token == COLONEOL) in.nextToken()
     }
 
+    def argumentStart(): Unit =
+      colonAtEOLOpt()
+      if in.isScala2CompatMode && in.isNewLine && in.next.token == LBRACE then
+        in.nextToken()
+        if in.indentWidth(in.offset) == in.currentRegion.indentWidth then
+          in.errorOrMigrationWarning(
+            i"""This opening brace will start a new statement in Scala 3.
+               |It needs to be indented to the right to keep being treated as
+               |an argument to the previous expression.${rewriteNotice()}""")
+          patch(source, Span(in.offset), "  ")
+
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL()
       if in.token == COLONEOL then
@@ -1468,7 +1479,7 @@ object Parsers {
     val refinedType: () => Tree = () => refinedTypeRest(withType())
 
     def refinedTypeRest(t: Tree): Tree = {
-      colonAtEOLOpt()
+      argumentStart()
       if (in.isNestedStart)
         refinedTypeRest(atSpan(startOffset(t)) { RefinedTypeTree(rejectWildcardType(t), refinement()) })
       else t
@@ -2222,7 +2233,7 @@ object Parsers {
     }
 
     def simpleExprRest(t: Tree, canApply: Boolean = true): Tree = {
-      if canApply then colonAtEOLOpt()
+      if (canApply) argumentStart()
       in.token match {
         case DOT =>
           in.nextToken()
@@ -2298,7 +2309,7 @@ object Parsers {
     /** ArgumentExprss ::= {ArgumentExprs}
      */
     def argumentExprss(fn: Tree): Tree = {
-      colonAtEOLOpt()
+      argumentStart()
       if (in.token == LPAREN || in.isNestedStart) argumentExprss(mkApply(fn, argumentExprs()))
       else fn
     }
@@ -3323,7 +3334,7 @@ object Parsers {
      */
     def selfInvocation(): Tree =
       atSpan(accept(THIS)) {
-        colonAtEOLOpt()
+        argumentStart()
         argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs()))
       }
 
