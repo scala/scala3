@@ -812,7 +812,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     if (!exhaustivityCheckable(sel)) return
 
     val patternSpace = cases.map({ x =>
-      val space = project(x.pat)
+      val space = if (x.guard.isEmpty) project(x.pat) else Empty
       debug.println(s"${x.pat.show} ====> ${show(space)}")
       space
     }).reduce((a, b) => Or(List(a, b)))
