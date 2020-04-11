@@ -435,6 +435,9 @@ object Scanners {
         true
       }
 
+    def isContinuingParens() =
+      openParensTokens.contains(token) && !pastBlankLine && !isScala2Mode
+
     /** The indentation width of the given offset */
     def indentWidth(offset: Offset): IndentWidth = {
       import IndentWidth.{Run, Conc}
@@ -532,7 +535,7 @@ object Scanners {
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
          && !isLeadingInfixOperator()
-         && !(openParensTokens.contains(token) && lastWidth < nextWidth && !pastBlankLine)
+         && !(lastWidth < nextWidth && isContinuingParens())
       then
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
         skipEndMarker(nextWidth)
