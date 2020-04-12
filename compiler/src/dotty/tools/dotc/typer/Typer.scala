@@ -1718,10 +1718,16 @@ class Typer extends Namer
         }
         if (name == nme.WILDCARD) body1
         else {
-          // for a singleton pattern like `x @ Nil`, `x` should get the type from the scrutinee
-          // see tests/neg/i3200b.scala and SI-1503
+          // In `x @ Nil`, `Nil` is a _stable identifier pattern_ and will be compiled
+          // to an `==` test, so the type of `x` is unrelated to the type of `Nil`.
+          // Similarly, in `x @ 1`, `1` is a _literal pattern_ and will also be compiled
+          // to an `==` test.
+          // See i3200*.scala and https://github.com/scala/bug/issues/1503.
+          val isStableIdentifierOrLiteral =
+            body1.isInstanceOf[RefTree] && !isWildcardArg(body1)
+            || body1.isInstanceOf[Literal]
           val symTp =
-            if body1.tpe.isInstanceOf[TermRef] then pt
+            if isStableIdentifierOrLiteral then pt
             else if isWildcardStarArg(body1)
                     || pt == defn.ImplicitScrutineeTypeRef
                     || body1.tpe <:< pt  // There is some strange interaction with gadt matching.
