@@ -1280,7 +1280,7 @@ object Parsers {
 
     def argumentStart(): Unit =
       colonAtEOLOpt()
-      if in.isScala2CompatMode && in.isNewLine && in.next.token == LBRACE then
+      if in.isScala2CompatMode && in.token == NEWLINE && in.next.token == LBRACE then
         in.nextToken()
         if in.indentWidth(in.offset) == in.currentRegion.indentWidth then
           in.errorOrMigrationWarning(
