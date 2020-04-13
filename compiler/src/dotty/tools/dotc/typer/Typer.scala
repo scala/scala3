@@ -728,20 +728,19 @@ class Typer extends Namer
 
     if (untpd.isWildcardStarArg(tree)) {
       def typedWildcardStarArgExpr = {
+        // A sequence argument `xs: _*` can be either a `Seq[T]` or an `Array[_ <: T]`,
+        // irrespective of whether the method we're calling is a Java or Scala method,
+        // so the expected type is the union `Seq[T] | Array[_ <: T]`.
         val ptArg =
-          if (ctx.mode.is(Mode.QuotedPattern)) pt.underlyingIfRepeated(isJava = false)
-          else WildcardType
+          // FIXME(#8680): Quoted patterns do not support Array repeated arguments
+          if (ctx.mode.is(Mode.QuotedPattern)) pt.translateFromRepeated(toArray = false, translateWildcard = true)
+          else pt.translateFromRepeated(toArray = false, translateWildcard = true) |
+               pt.translateFromRepeated(toArray = true,  translateWildcard = true)
         val tpdExpr = typedExpr(tree.expr, ptArg)
-        tpdExpr.tpe.widenDealias match {
-          case defn.ArrayOf(_) =>
-            val starType = defn.ArrayType.appliedTo(WildcardType)
-            val exprAdapted = adapt(tpdExpr, starType)
-            arrayToRepeated(exprAdapted)
-          case _ =>
-            val starType = defn.SeqType.appliedTo(defn.AnyType)
-            val exprAdapted = adapt(tpdExpr, starType)
-            seqToRepeated(exprAdapted)
-        }
+        val expr1 = typedExpr(tree.expr, ptArg)
+        val fromCls = if expr1.tpe.derivesFrom(defn.ArrayClass) then defn.ArrayClass else defn.SeqClass
+        val tpt1 = TypeTree(expr1.tpe.widen.translateToRepeated(fromCls)).withSpan(tree.tpt.span)
+        assignType(cpy.Typed(tree)(expr1, tpt1), tpt1)
       }
       cases(
         ifPat = ascription(TypeTree(defn.RepeatedParamType.appliedTo(pt)), isWildcard = true),
@@ -1158,7 +1157,7 @@ class Typer extends Namer
             if (!param.tpt.isEmpty) param
             else cpy.ValDef(param)(
               tpt = untpd.TypeTree(
-                inferredParamType(param, protoFormal(i)).underlyingIfRepeated(isJava = false)))
+                inferredParamType(param, protoFormal(i)).translateFromRepeated(toArray = false)))
         desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual)
       }
     typed(desugared, pt)

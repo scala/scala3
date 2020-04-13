@@ -378,7 +378,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       self.derivedExprType(tp.translateParameterized(from, to))
     case _ =>
       if (self.derivesFrom(from)) {
-        def elemType(tp: Type): Type = tp match
+        def elemType(tp: Type): Type = tp.widenDealias match
           case tp: AndOrType => tp.derivedAndOrType(elemType(tp.tp1), elemType(tp.tp2))
           case _ => tp.baseType(from).argInfos.head
         val arg = elemType(self)
@@ -388,17 +388,25 @@ class TypeApplications(val self: Type) extends AnyVal {
       else self
   }
 
-  /** If this is repeated parameter type, its underlying Seq type,
-   *  or, if isJava is true, Array type, else the type itself.
+  /** If this is a repeated parameter `*T`, translate it to either `Seq[T]` or
+   *  `Array[? <: T]` depending on the value of `toArray`.
+   *  Additionally, if `translateWildcard` is true, a wildcard type
+   *  will be translated to `*<?>`.
+   *  Other types are kept as-is.
    */
-  def underlyingIfRepeated(isJava: Boolean)(implicit ctx: Context): Type =
-    if (self.isRepeatedParam) {
-      val seqClass = if (isJava) defn.ArrayClass else defn.SeqClass
-      // If `isJava` is set, then we want to turn `RepeatedParam[T]` into `Array[? <: T]`,
-      // since arrays aren't covariant until after erasure. See `tests/pos/i5140`.
-      translateParameterized(defn.RepeatedParamClass, seqClass, wildcardArg = isJava)
-    }
+  def translateFromRepeated(toArray: Boolean, translateWildcard: Boolean = false)(using Context): Type =
+    val seqClass = if (toArray) defn.ArrayClass else defn.SeqClass
+    if translateWildcard && self.isInstanceOf[WildcardType] then
+      seqClass.typeRef.appliedTo(WildcardType)
+    else if self.isRepeatedParam then
+      // We want `Array[? <: T]` because arrays aren't covariant until after
+      // erasure. See `tests/pos/i5140`.
+      translateParameterized(defn.RepeatedParamClass, seqClass, wildcardArg = toArray)
     else self
+
+  /** Translate a `From[T]` into a `*T`. */
+  def translateToRepeated(from: ClassSymbol)(using Context): Type =
+    translateParameterized(from, defn.RepeatedParamClass)
 
   /** If this is an encoding of a (partially) applied type, return its arguments,
    *  otherwise return Nil.

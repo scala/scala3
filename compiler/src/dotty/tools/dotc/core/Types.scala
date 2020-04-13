@@ -1607,7 +1607,7 @@ object Types {
           case res => res
         }
         val funType = defn.FunctionOf(
-          formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)),
+          formals1 mapConserve (_.translateFromRepeated(toArray = mt.isJavaMethod)),
           result1, isContextual, isErased)
         if (mt.isResultDependent) RefinedType(funType, nme.apply, mt)
         else funType

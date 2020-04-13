@@ -420,7 +420,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           for ((formal, idx) <- methTpe.paramInfos.zipWithIndex) yield {
             val elem =
               param.select(defn.Product_productElement).appliedTo(Literal(Constant(idx)))
-                .ensureConforms(formal.underlyingIfRepeated(isJava = false))
+                .ensureConforms(formal.translateFromRepeated(toArray = false))
             if (formal.isRepeatedParam) ctx.typer.seqToRepeated(elem) else elem
           }
         New(classRef, elems)
