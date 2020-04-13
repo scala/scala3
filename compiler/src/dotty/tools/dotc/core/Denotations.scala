@@ -17,6 +17,7 @@ import Decorators._
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
+import config.Feature.migrateTo3
 import config.Config
 import util.common._
 import typer.ProtoTypes.NoViewsAllowed
@@ -489,7 +490,7 @@ object Denotations {
                   // things, starting with the return type of this method.
                   if (preferSym(sym2, sym1)) info2
                   else if (preferSym(sym1, sym2)) info1
-                  else if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2CompatMode)
+                  else if (pre.widen.classSymbol.is(Scala2x) || migrateTo3)
                     info1 // follow Scala2 linearization -
                   // compare with way merge is performed in SymDenotation#computeMembersNamed
                   else throw new MergeError(ex.sym1, ex.sym2, ex.tp1, ex.tp2, pre)
@@ -1355,7 +1356,7 @@ object Denotations {
         def isPackageFromCoreLibMissing: Boolean =
           owner.symbol == defn.RootClass &&
           (
-            selector == nme.scala_ || // if the scala package is missing, the stdlib must be missing
+            selector == nme.scala || // if the scala package is missing, the stdlib must be missing
             selector == nme.scalaShadowing // if the scalaShadowing package is missing, the dotty library must be missing
           )
         if (owner.exists) {

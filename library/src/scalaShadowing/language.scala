@@ -238,4 +238,10 @@ object language {
    *  That's why the language import is required for them.
    */
   object adhocExtensions
+
+  /** Source version */
+  object `3.0-migration`
+  object `3.0`
+  object `3.1-migration`
+  object `3.1`
 }

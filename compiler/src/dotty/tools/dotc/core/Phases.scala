@@ -31,7 +31,7 @@ trait Phases {
     }
 
   /** Execute `op` at given phase */
-  def atPhase[T](phase: Phase)(op: Context ?=> T): T =
+  inline def atPhase[T](phase: Phase)(inline op: Context ?=> T): T =
     atPhase(phase.id)(op)
 
   def atNextPhase[T](op: Context ?=> T): T = atPhase(phase.next)(op)

@@ -379,8 +379,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
 
     /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
-    *  Performed to shrink the tree that is known to be erased later.
-    */
+     *  Performed to shrink the tree that is known to be erased later.
+     */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) =
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
   }

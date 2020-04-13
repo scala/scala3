@@ -72,7 +72,7 @@ object Diagnostic:
   class MigrationWarning(
     msg: Message,
     pos: SourcePosition
-  ) extends ConditionalWarning(msg, pos) {
+  ) extends Warning(msg, pos) {
     def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.migration
   }
 

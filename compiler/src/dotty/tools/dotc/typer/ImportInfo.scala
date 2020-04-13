@@ -9,6 +9,8 @@ import printing.{Printer, Showable}
 import util.SimpleIdentityMap
 import Symbols._, Names._, Types._, Contexts._, StdNames._, Flags._
 import Implicits.RenamedImplicitRef
+import config.SourceVersion
+import StdNames.nme
 import printing.Texts.Text
 import ProtoTypes.NoViewsAllowed.normalizedCompatible
 import Decorators._
@@ -48,8 +50,6 @@ class ImportInfo(symf: Context ?=> Symbol,
                  symNameOpt: Option[TermName],
                  val isRootImport: Boolean = false) extends Showable {
 
-  // Dotty deviation: we cannot use a lazy val here for the same reason
-  // that we cannot use one for `DottyPredefModuleRef`.
   def sym(using Context): Symbol = {
     if (mySym == null) {
       mySym = symf(using ctx)
@@ -171,6 +171,9 @@ class ImportInfo(symf: Context ?=> Symbol,
 
   private var myUnimported: Symbol = _
 
+  private var myOwner: Symbol = null
+  private var myResults: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.Empty
+
   /** Does this import clause or a preceding import clause import `owner.feature`? */
   def featureImported(feature: TermName, owner: Symbol)(using Context): Boolean =
 
@@ -183,14 +186,11 @@ class ImportInfo(symf: Context ?=> Symbol,
         while c.importInfo eq ctx.importInfo do c = c.outer
         (c.importInfo != null) && c.importInfo.featureImported(feature, owner)(using c)
 
-    if (lastOwner.ne(owner) || !lastResults.contains(feature)) {
-      lastOwner = owner
-      lastResults = lastResults.updated(feature, compute)
-    }
-    lastResults(feature)
-
-  private var lastOwner: Symbol = null
-  private var lastResults: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.Empty
+    if myOwner.ne(owner) || !myResults.contains(feature) then
+      myOwner = owner
+      myResults = myResults.updated(feature, compute)
+    myResults(feature)
+  end featureImported
 
   def toText(printer: Printer): Text = printer.toText(this)
 }

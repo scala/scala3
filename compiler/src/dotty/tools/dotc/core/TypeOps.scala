@@ -14,6 +14,7 @@ import collection.mutable
 import ast.tpd._
 import reporting.{trace, Message}
 import config.Printers.{gadts, typr}
+import config.Feature
 import typer.Applications._
 import typer.ProtoTypes._
 import typer.ForceDegree
@@ -378,7 +379,8 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
      *  type parameter corresponding to the wildcard.
      */
     def skolemizeWildcardArgs(tps: List[Type], app: Type) = app match {
-      case AppliedType(tycon: TypeRef, args) if tycon.typeSymbol.isClass && !scala2CompatMode =>
+      case AppliedType(tycon: TypeRef, args)
+      if tycon.typeSymbol.isClass && !Feature.migrateTo3 =>
         tps.zipWithConserve(tycon.typeSymbol.typeParams) {
           (tp, tparam) => tp match {
             case _: TypeBounds => app.select(tparam)
@@ -468,66 +470,6 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
 
   /** Are we in a macro? */
   def inMacro: Boolean = owner.ownersIterator.exists(s => s.isInlineMethod && s.is(Macro))
-
-  /** Is `feature` enabled in class `owner`?
-   *  This is the case if one of the following two alternatives holds:
-   *
-   *  1. The feature is imported by a named import
-   *
-   *       import owner.feature
-   *
-   *     and there is no visible nested import that excludes the feature, as in
-   *
-   *       import owner.{ feature => _ }
-   *
-   *  The feature may be bunched with others, or renamed, but wildcard imports don't count.
-   *
-   *  2. The feature is enabled by a compiler option
-   *
-   *       - language:<prefix>feature
-   *
-   *  where <prefix> is the full name of the owner followed by a "." minus
-   *  the prefix "dotty.language.".
-   */
-  def featureEnabled(feature: TermName, owner: Symbol = NoSymbol): Boolean = {
-    def hasImport = {
-      val owner1 = if (!owner.exists) defn.LanguageModule.moduleClass else owner
-      thisCtx.importInfo != null &&
-      thisCtx.importInfo.featureImported(feature, owner1)(using thisCtx.withPhase(thisCtx.typerPhase))
-    }
-    val hasOption = {
-      def toPrefix(sym: Symbol): String =
-        if (!sym.exists) ""
-        else toPrefix(sym.owner) + sym.name + "."
-      val featureName = toPrefix(owner) + feature
-      thisCtx.base.settings.language.value contains featureName
-    }
-    hasOption || hasImport
-  }
-
-  /** Is auto-tupling enabled? */
-  def canAutoTuple: Boolean =
-    !featureEnabled(nme.noAutoTupling)
-
-  def scala2CompatMode: Boolean =
-    featureEnabled(nme.Scala2Compat)
-
-  def dynamicsEnabled: Boolean =
-    featureEnabled(nme.dynamics)
-
-  def testScala2CompatMode(msg: Message, pos: SourcePosition, replace: => Unit = ()): Boolean = {
-    if (scala2CompatMode) {
-      migrationWarning(msg, pos)
-      replace
-    }
-    scala2CompatMode
-  }
-
-  /** Is option -language:Scala2Compat set?
-   *  This test is used when we are too early in the pipeline to consider imports.
-   */
-  def scala2CompatSetting: Boolean =
-    thisCtx.settings.language.value.contains(nme.Scala2Compat.toString)
 
   /** Refine child based on parent
    *

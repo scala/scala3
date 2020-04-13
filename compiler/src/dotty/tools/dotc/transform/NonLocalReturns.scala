@@ -5,6 +5,8 @@ import core._
 import Contexts._, Symbols._, Types._, Flags._, StdNames._
 import MegaPhase._
 import NameKinds.NonLocalReturnKeyName
+import config.Feature.sourceVersion
+import config.SourceVersion._
 
 object NonLocalReturns {
   import ast.tpd._
@@ -87,10 +89,9 @@ class NonLocalReturns extends MiniPhase {
     }
 
   override def transformReturn(tree: Return)(implicit ctx: Context): Tree =
-    if (isNonLocalReturn(tree)) {
-      if (!ctx.scala2CompatMode)
-        ctx.strictWarning("Non local returns are deprecated; use scala.util.control.NonLocalReturns instead", tree.sourcePos)
+    if isNonLocalReturn(tree) then
+      if sourceVersion.isAtLeast(`3.1`) then
+        ctx.errorOrMigrationWarning("Non local returns are no longer supported; use scala.util.control.NonLocalReturns instead", tree.sourcePos)
       nonLocalReturnThrow(tree.expr, tree.from.symbol).withSpan(tree.span)
-    }
     else tree
 }

@@ -9,6 +9,8 @@ import Decorators.{given _}, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.{FrontEnd, Namer}
 import util.{Property, SourceFile, SourcePosition}
+import config.Feature.{sourceVersion, migrateTo3, enabled}
+import config.SourceVersion._
 import collection.mutable.ListBuffer
 import reporting.messages._
 import reporting.trace
@@ -210,7 +212,7 @@ object desugar {
     val epbuf = ListBuffer[ValDef]()
     def desugarContextBounds(rhs: Tree): Tree = rhs match {
       case ContextBounds(tbounds, cxbounds) =>
-        val iflag = if ctx.settings.strict.value then Given else Implicit
+        val iflag = if sourceVersion.isAtLeast(`3.1`) then Given else Implicit
         epbuf ++= makeImplicitParameters(cxbounds, iflag, forPrimaryConstructor = isPrimaryConstructor)
         tbounds
       case LambdaTypeTree(tparams, body) =>
@@ -386,8 +388,8 @@ object desugar {
       case _ => false
     }
     def isScala(tree: Tree): Boolean = tree match {
-      case Ident(nme.scala_) => true
-      case Select(Ident(nme.ROOTPKG), nme.scala_) => true
+      case Ident(nme.scala) => true
+      case Select(Ident(nme.ROOTPKG), nme.scala) => true
       case _ => false
     }
 
@@ -540,7 +542,7 @@ object desugar {
       ensureApplied(nu)
     }
 
-    val copiedAccessFlags = if (ctx.scala2CompatSetting) EmptyFlags else AccessFlags
+    val copiedAccessFlags = if migrateTo3 then EmptyFlags else AccessFlags
 
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
     //     def _1: T1 = this.p1
@@ -1639,7 +1641,7 @@ object desugar {
         }
         else {
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
-          if (!ctx.featureEnabled(nme.postfixOps)) {
+          if (!enabled(nme.postfixOps)) {
             ctx.error(
               s"""postfix operator `${op.name}` needs to be enabled
                  |by making the implicit value scala.language.postfixOps visible.

@@ -15,6 +15,8 @@ import Diagnostic._
 import ast.{tpd, Trees}
 import Message._
 import core.Decorators._
+import config.Feature.sourceVersion
+import config.SourceVersion
 
 import java.lang.System.currentTimeMillis
 import java.io.{ BufferedReader, PrintWriter }
@@ -122,10 +124,6 @@ trait Reporting { thisCtx: Context =>
   def warning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new Warning(msg, addInlineds(pos)))
 
-  def strictWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
-    if (thisCtx.settings.strict.value) error(msg, pos)
-    else warning(msg.append("\n(This would be an error under strict mode)"), pos)
-
   def error(msg: Message, pos: SourcePosition = NoSourcePosition, sticky: Boolean = false): Unit = {
     val fullPos = addInlineds(pos)
     reporter.report(if (sticky) new StickyError(msg, fullPos) else new Error(msg, fullPos))
@@ -138,8 +136,11 @@ trait Reporting { thisCtx: Context =>
       ex.printStackTrace()
   }
 
-  def errorOrMigrationWarning(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
-    if (thisCtx.scala2CompatMode) migrationWarning(msg, pos) else error(msg, pos)
+  def errorOrMigrationWarning(msg: Message, pos: SourcePosition = NoSourcePosition,
+      from: SourceVersion = SourceVersion.defaultSourceVersion): Unit =
+    if sourceVersion.isAtLeast(from) then
+      if sourceVersion.isMigrating then migrationWarning(msg, pos)
+      else error(msg, pos)
 
   def restrictionError(msg: Message, pos: SourcePosition = NoSourcePosition): Unit =
     error(msg.mapMsg("Implementation restriction: " + _), pos)

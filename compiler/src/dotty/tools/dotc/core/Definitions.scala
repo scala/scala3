@@ -116,7 +116,7 @@ class Definitions {
         val cls = denot.asClass.classSymbol
         val decls = newScope
         val arity = name.functionArity
-        val paramNamePrefix = tpnme.scala_ ++ str.NAME_JOIN ++ name ++ str.EXPAND_SEPARATOR
+        val paramNamePrefix = tpnme.scala ++ str.NAME_JOIN ++ name ++ str.EXPAND_SEPARATOR
         val argParamRefs = List.tabulate(arity) { i =>
           enterTypeParam(cls, paramNamePrefix ++ "T" ++ (i + 1).toString, Contravariant, decls).typeRef
         }
@@ -199,7 +199,7 @@ class Definitions {
   @tu lazy val OpsPackageVal: TermSymbol = ctx.newCompletePackageSymbol(RootClass, nme.OPS_PACKAGE).entered
   @tu lazy val OpsPackageClass: ClassSymbol = OpsPackageVal.moduleClass.asClass
 
-  @tu lazy val ScalaPackageVal: TermSymbol = ctx.requiredPackage(nme.scala_)
+  @tu lazy val ScalaPackageVal: TermSymbol = ctx.requiredPackage(nme.scala)
   @tu lazy val ScalaMathPackageVal: TermSymbol = ctx.requiredPackage("scala.math")
   @tu lazy val ScalaPackageClass: ClassSymbol = {
     val cls = ScalaPackageVal.moduleClass.asClass
@@ -1370,7 +1370,7 @@ class Definitions {
 
 //  /** The `Class[?]` of a primitive value type name */
 //  def valueTypeNameToJavaType(name: TypeName)(implicit ctx: Context): Option[Class[?]] =
-//    valueTypeNamesToJavaType.get(if (name.firstPart eq nme.scala_) name.lastPart.toTypeName else name)
+//    valueTypeNamesToJavaType.get(if (name.firstPart eq nme.scala) name.lastPart.toTypeName else name)
 
   type PrimitiveClassEnc = Int
 

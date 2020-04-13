@@ -26,12 +26,15 @@ import Decorators._
 import scala.internal.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
+import reporting.Message
+import reporting.messages._
+import config.Feature.{sourceVersion, migrateTo3}
+import config.SourceVersion._
+import config.SourceVersion
 
 object Parsers {
 
   import ast.untpd._
-  import reporting.Message
-  import reporting.messages._
 
   val AllowOldWhiteboxSyntax = true
 
@@ -117,13 +120,10 @@ object Parsers {
     def nameStart: Offset =
       if (in.token == BACKQUOTED_IDENT) in.offset + 1 else in.offset
 
-    def sourcePos(off: Int = in.offset): SourcePosition =
-      source.atSpan(Span(off))
-
     /** in.offset, except if this is at a new line, in which case `lastOffset` is preferred. */
     def expectedOffset: Int = {
-      val current = sourcePos(in.offset)
-      val last = sourcePos(in.lastOffset)
+      val current = in.sourcePos()
+      val last = in.sourcePos(in.lastOffset)
       if (current.line != last.line) in.lastOffset else in.offset
     }
 
@@ -150,7 +150,7 @@ object Parsers {
       ctx.error(msg, source.atSpan(span))
 
     def unimplementedExpr(implicit ctx: Context): Select =
-      Select(Select(rootDot(nme.scala_), nme.Predef), nme.???)
+      Select(Select(rootDot(nme.scala), nme.Predef), nme.???)
   }
 
   trait OutlineParserCommon extends ParserCommon {
@@ -382,17 +382,6 @@ object Parsers {
             accept(SEMI)
         }
 
-    /** Under -language:Scala2Compat or -old-syntax, flag
-     *
-     *    extends p1 with       new p1 with      t1 with
-     *            p2                p2           t2
-     *
-     *  as a migration warning or error since that means something else under significant indentation.
-     */
-    def checkNotWithAtEOL(): Unit =
-      if (in.isScala2CompatMode || in.oldSyntax) && in.isAfterLineEnd then
-        in.errorOrMigrationWarning("`with` cannot be followed by new line, place at beginning of next line instead")
-
     def rewriteNotice(additionalOption: String = "") = {
       val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
       i"\nThis construct can be rewritten automatically under$optionStr -rewrite."
@@ -466,11 +455,12 @@ object Parsers {
       case Tuple(ts) =>
         ts.map(convertToParam(_, mods))
       case t: Typed =>
-        in.errorOrMigrationWarning(
-          em"parentheses are required around the parameter of a lambda${rewriteNotice("-language:Scala2Compat")}",
-          t.span)
-        patch(source, t.span.startPos, "(")
-        patch(source, t.span.endPos, ")")
+        ctx.errorOrMigrationWarning(
+          em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
+          in.sourcePos())
+        if migrateTo3 then
+          patch(source, t.span.startPos, "(")
+          patch(source, t.span.endPos, ")")
         convertToParam(t, mods) :: Nil
       case t =>
         convertToParam(t, mods) :: Nil
@@ -1200,13 +1190,14 @@ object Parsers {
             Quote(t)
           }
           else {
-            in.errorOrMigrationWarning(em"""symbol literal '${in.name} is no longer supported,
-                                           |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
-                                           |or enclose in braces '{${in.name}} if you want a quoted expression.""")
-            if (in.isScala2CompatMode) {
+            ctx.errorOrMigrationWarning(
+              em"""symbol literal '${in.name} is no longer supported,
+                  |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
+                  |or enclose in braces '{${in.name}} if you want a quoted expression.""",
+              in.sourcePos())
+            if migrateTo3 then
               patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
               patch(source, Span(in.charOffset - 1), "\")")
-            }
             atSpan(in.skipToken()) { SymbolLit(in.strVal) }
           }
         else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
@@ -1499,8 +1490,7 @@ object Parsers {
         if in.token == LBRACE || in.token == INDENT then
           t
         else
-          checkNotWithAtEOL()
-          if (ctx.settings.strict.value)
+          if sourceVersion.isAtLeast(`3.1`) then
             deprecationWarning(DeprecatedWithOperator(), withOffset)
           makeAndType(t, withType())
       else t
@@ -1561,10 +1551,9 @@ object Parsers {
         SingletonTypeTree(literal(negOffset = start, inType = true))
       }
       else if (in.token == USCORE) {
-        if (ctx.settings.strict.value) {
+        if sourceVersion.isAtLeast(`3.1`) then
           deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
           patch(source, Span(in.offset, in.offset + 1), "?")
-        }
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
       }
@@ -1744,7 +1733,9 @@ object Parsers {
           AppliedTypeTree(toplevelTyp(), Ident(pname))
         } :: contextBounds(pname)
       case VIEWBOUND =>
-        in.errorOrMigrationWarning("view bounds `<%' are deprecated, use a context bound `:' instead")
+        ctx.errorOrMigrationWarning(
+          "view bounds `<%' are deprecated, use a context bound `:' instead",
+          in.sourcePos())
         atSpan(in.skipToken()) {
           Function(Ident(pname) :: Nil, toplevelTyp())
         } :: contextBounds(pname)
@@ -1774,7 +1765,7 @@ object Parsers {
      *  the initially parsed (...) region?
      */
     def toBeContinued(altToken: Token): Boolean =
-      if in.token == altToken || in.isNewLine || in.isScala2CompatMode then
+      if in.token == altToken || in.isNewLine || migrateTo3 then
         false // a newline token means the expression is finished
       else if !in.canStartStatTokens.contains(in.token)
               || in.isLeadingInfixOperator(inConditional = true)
@@ -1898,11 +1889,10 @@ object Parsers {
           }
         }
       case DO =>
-        in.errorOrMigrationWarning(
+        ctx.errorOrMigrationWarning(
           i"""`do <body> while <cond>` is no longer supported,
-             |use `while ({<body> ; <cond>}) ()` instead.
-             |${rewriteNotice("-language:Scala2Compat")}
-           """)
+             |use `while <body> ; <cond> do ()` instead.${rewriteNotice()}""",
+          in.sourcePos())
         val start = in.skipToken()
         atSpan(start) {
           val body = expr()
@@ -1910,7 +1900,7 @@ object Parsers {
           val whileStart = in.offset
           accept(WHILE)
           val cond = expr()
-          if (in.isScala2CompatMode) {
+          if migrateTo3 then
             patch(source, Span(start, start + 2), "while ({")
             patch(source, Span(whileStart, whileStart + 5), ";")
             cond match {
@@ -1920,7 +1910,6 @@ object Parsers {
               case _ =>
             }
             patch(source, cond.span.endPos, "}) ()")
-          }
           WhileDo(Block(body, cond), Literal(Constant(())))
         }
       case TRY =>
@@ -2095,13 +2084,15 @@ object Parsers {
         val name = bindingName()
         val t =
           if (in.token == COLON && location == Location.InBlock) {
-            if (ctx.settings.strict.value)
+            if sourceVersion.isAtLeast(`3.1`)
                 // Don't error in non-strict mode, as the alternative syntax "implicit (x: T) => ... "
                 // is not supported by Scala2.x
-              in.errorOrMigrationWarning(s"This syntax is no longer supported; parameter needs to be enclosed in (...)")
+              ctx.errorOrMigrationWarning(
+                s"This syntax is no longer supported; parameter needs to be enclosed in (...)",
+                in.sourcePos())
             in.nextToken()
             val t = infixType()
-            if (false && in.isScala2CompatMode) {
+            if (false && migrateTo3) {
               patch(source, Span(start), "(")
               patch(source, Span(in.lastOffset), ")")
             }
@@ -2415,7 +2406,7 @@ object Parsers {
       atSpan(startOffset(pat), accept(LARROW)) {
         val checkMode =
           if (casePat) GenCheckMode.FilterAlways
-          else if (ctx.settings.strict.value) GenCheckMode.Check
+          else if sourceVersion.isAtLeast(`3.1`) then GenCheckMode.Check
           else GenCheckMode.FilterNow  // filter for now, to keep backwards compat
         GenFrom(pat, subExpr(), checkMode)
       }
@@ -2593,16 +2584,20 @@ object Parsers {
         // compatibility for Scala2 `x @ _*` syntax
         infixPattern() match {
           case pt @ Ident(tpnme.WILDCARD_STAR) =>
-            if (ctx.settings.strict.value)
-              in.errorOrMigrationWarning("The syntax `x @ _*` is no longer supported; use `x : _*` instead", Span(startOffset(p)))
+            if sourceVersion.isAtLeast(`3.1`) then
+              ctx.errorOrMigrationWarning(
+                "The syntax `x @ _*` is no longer supported; use `x : _*` instead",
+                in.sourcePos(startOffset(p)))
             atSpan(startOffset(p), offset) { Typed(p, pt) }
           case pt =>
             atSpan(startOffset(p), 0) { Bind(name, pt) }
         }
       case p @ Ident(tpnme.WILDCARD_STAR) =>
         // compatibility for Scala2 `_*` syntax
-        if (ctx.settings.strict.value)
-          in.errorOrMigrationWarning("The syntax `_*` is no longer supported; use `x : _*` instead", Span(startOffset(p)))
+        if sourceVersion.isAtLeast(`3.1`) then
+          ctx.errorOrMigrationWarning(
+            "The syntax `_*` is no longer supported; use `x : _*` instead",
+            in.sourcePos(startOffset(p)))
         atSpan(startOffset(p)) { Typed(Ident(nme.WILDCARD), p) }
       case p =>
         p
@@ -2736,7 +2731,7 @@ object Parsers {
           syntaxError(DuplicatePrivateProtectedQualifier())
         inBrackets {
           if in.token == THIS then
-            if ctx.settings.strict.value then
+            if sourceVersion.isAtLeast(`3.1`) then
               deprecationWarning("The [this] qualifier is deprecated in Scala 3.1; it should be dropped.")
             in.nextToken()
             mods | Local
@@ -3030,6 +3025,25 @@ object Parsers {
       }
     }
 
+    /** Create an import node and handle source version imports */
+    def mkImport(outermost: Boolean = false): ImportConstr = (tree, selectors) =>
+      val isLanguageImport = tree match
+        case Ident(nme.language) => true
+        case Select(Ident(nme.scala), nme.language) => true
+        case _ => false
+      if isLanguageImport then
+        for
+          case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
+          if allSourceVersionNames.contains(imported)
+        do
+          if !outermost then
+            syntaxError(i"source version import is only allowed at the toplevel", id.span)
+          else if ctx.compilationUnit.sourceVersion.isDefined then
+            syntaxError(i"duplicate source version import", id.span)
+          else
+            ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
+      Import(tree, selectors)
+
     /**  ImportExpr ::= StableId ‘.’ ImportSpec
      *   ImportSpec  ::=  id
      *                 | ‘_’
@@ -3194,15 +3208,20 @@ object Parsers {
      *            |  ExtParamClause [nl] [‘.’] id DefParamClauses
      */
     def defDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
-      def scala2ProcedureSyntax(resultTypeStr: String) = {
-        val toInsert =
-          if (in.token == LBRACE) s"$resultTypeStr ="
+
+      def scala2ProcedureSyntax(resultTypeStr: String) =
+        def toInsert =
+          if in.token == LBRACE then s"$resultTypeStr ="
           else ": Unit "  // trailing space ensures that `def f()def g()` works.
-        in.testScala2CompatMode(s"Procedure syntax no longer supported; `$toInsert` should be inserted here") && {
+        if migrateTo3 then
+          ctx.errorOrMigrationWarning(
+            s"Procedure syntax no longer supported; `$toInsert` should be inserted here",
+            in.sourcePos())
           patch(source, Span(in.lastOffset), toInsert)
           true
-        }
-      }
+        else
+          false
+
       if (in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses()
@@ -3212,7 +3231,7 @@ object Parsers {
             case EOF        => incompleteInputError(AuxConstructorNeedsNonImplicitParameter())
             case _          => syntaxError(AuxConstructorNeedsNonImplicitParameter(), nameStart)
           }
-        if (in.isScala2CompatMode) newLineOptWhenFollowedBy(LBRACE)
+        if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs = {
           if (!(in.token == LBRACE && scala2ProcedureSyntax(""))) accept(EQUALS)
           atSpan(in.offset) { subPart(constrExpr) }
@@ -3264,7 +3283,7 @@ object Parsers {
             toplevelTyp()
           else typedOpt()
         }
-        if (in.isScala2CompatMode) newLineOptWhenFollowedBy(LBRACE)
+        if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
           if (in.token == EQUALS)
             in.endMarkerScope(name) {
@@ -3594,7 +3613,6 @@ object Parsers {
           if templateCanFollow && (in.token == LBRACE || in.token == INDENT) then
             Nil
           else
-            checkNotWithAtEOL()
             constrApps(commaOK, templateCanFollow)
         else if commaOK && in.token == COMMA then
           in.nextToken()
@@ -3610,7 +3628,9 @@ object Parsers {
         if (in.token == EXTENDS) {
           in.nextToken()
           if (in.token == LBRACE || in.token == COLONEOL) {
-            in.errorOrMigrationWarning("`extends` must be followed by at least one parent")
+            ctx.errorOrMigrationWarning(
+              "`extends` must be followed by at least one parent",
+              in.sourcePos())
             Nil
           }
           else constrApps(commaOK = true, templateCanFollow = true)
@@ -3691,7 +3711,7 @@ object Parsers {
      *            | package object objectDef
      *            |
      */
-    def topStatSeq(): List[Tree] = {
+    def topStatSeq(outermost: Boolean = false): List[Tree] = {
       val stats = new ListBuffer[Tree]
       while (!isStatSeqEnd) {
         setLastStatOffset()
@@ -3704,7 +3724,7 @@ object Parsers {
           else stats += packaging(start)
         }
         else if (in.token == IMPORT)
-          stats ++= importClause(IMPORT, Import)
+          stats ++= importClause(IMPORT, mkImport(outermost))
         else if (in.token == EXPORT)
           stats ++= importClause(EXPORT, Export.apply)
         else if (in.token == AT || isDefIntro(modifierTokens))
@@ -3755,7 +3775,7 @@ object Parsers {
       while (!isStatSeqEnd && !exitOnError) {
         setLastStatOffset()
         if (in.token == IMPORT)
-          stats ++= importClause(IMPORT, Import)
+          stats ++= importClause(IMPORT, mkImport())
         else if (in.token == EXPORT)
           stats ++= importClause(EXPORT, Export.apply)
         else if (isDefIntro(modifierTokensOrCase))
@@ -3832,7 +3852,7 @@ object Parsers {
       while (!isStatSeqEnd && in.token != CASE && !exitOnError) {
         setLastStatOffset()
         if (in.token == IMPORT)
-          stats ++= importClause(IMPORT, Import)
+          stats ++= importClause(IMPORT, mkImport())
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if in.token == IMPLICIT && !in.inModifierPosition() then
@@ -3884,7 +3904,7 @@ object Parsers {
               ts ++= topStatSeq()
         }
         else
-          ts ++= topStatSeq()
+          ts ++= topStatSeq(outermost = true)
 
         ts.toList
       }
@@ -3896,7 +3916,6 @@ object Parsers {
       }
     }
   }
-
 
   /** OutlineParser parses top-level declarations in `source` to find declared classes, ignoring their bodies (which
    *  must only have balanced braces). This is used to map class names to defining sources.

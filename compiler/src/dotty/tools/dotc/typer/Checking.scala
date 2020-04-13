@@ -32,7 +32,8 @@ import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import transform.patmat.SpaceEngine.isIrrefutableUnapply
-
+import config.Feature._
+import config.SourceVersion._
 
 import collection.mutable
 import reporting.Message
@@ -309,7 +310,8 @@ object Checking {
     }
   }
 
-  /** If `sym` has an operator name, check that it has an @alpha annotation under -strict */
+  /** If `sym` has an operator name, check that it has an @alpha annotation in 3.1 and later
+   */
   def checkValidOperator(sym: Symbol)(using Context): Unit =
     sym.name.toTermName match {
       case name: SimpleName
@@ -318,7 +320,7 @@ object Checking {
          && !name.isConstructorName
          && !sym.getAnnotation(defn.AlphaAnnot).isDefined
          && !sym.is(Synthetic)
-         && ctx.settings.strict.value =>
+         && sourceVersion.isAtLeast(`3.1`) =>
         ctx.deprecationWarning(
           i"$sym has an operator name; it should come with an @alpha annotation", sym.sourcePos)
       case _ =>
@@ -683,7 +685,7 @@ trait Checking {
     def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt)
 
     def recur(pat: Tree, pt: Type): Boolean =
-      !ctx.settings.strict.value || // only in -strict mode for now since mitigations work only after this PR
+      !sourceVersion.isAtLeast(`3.1`) || // only for 3.1 for now since mitigations work only after this PR
       pat.tpe.widen.hasAnnotation(defn.UncheckedAnnot) || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
         pat match {
@@ -804,7 +806,7 @@ trait Checking {
              !isInfix(meth) &&
              !meth.maybeOwner.is(Scala2x) &&
              !infixOKSinceFollowedBy(tree.right) &&
-             ctx.settings.strict.value =>
+             sourceVersion.isAtLeast(`3.1`) =>
             val (kind, alternative) =
               if (ctx.mode.is(Mode.Type))
                 ("type", (n: Name) => s"prefix syntax $n[...]")
@@ -831,7 +833,7 @@ trait Checking {
                    description: => String,
                    featureUseSite: Symbol,
                    pos: SourcePosition)(using Context): Unit =
-    if (!ctx.featureEnabled(name))
+    if !enabled(name) then
       ctx.featureWarning(name.toString, description, featureUseSite, required = false, pos)
 
   /** Check that `tp` is a class type and that any top-level type arguments in this type

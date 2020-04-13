@@ -34,6 +34,8 @@ import annotation.tailrec
 import Implicits._
 import util.Stats.record
 import config.Printers.{gadts, typr}
+import config.Feature._
+import config.SourceVersion._
 import rewrites.Rewrites.patch
 import NavigateAST._
 import dotty.tools.dotc.transform.{PCPCheckAndHeal, Staging, TreeMapWithStages}
@@ -314,10 +316,10 @@ class Typer extends Namer
               if scope.lookup(name).exists then
                 val symsMatch = scope.lookupAll(name).exists(denot.containsSym)
                 if !symsMatch then
-                  refctx.errorOrMigrationWarning(
+                  ctx.errorOrMigrationWarning(
                     AmbiguousReference(name, Definition, Inheritance, prevCtx)(using outer),
                     posd.sourcePos)
-                  if ctx.scala2CompatMode then
+                  if migrateTo3 then
                     patch(Span(posd.span.start),
                       if prevCtx.owner == refctx.owner.enclosingClass then "this."
                       else s"${prevCtx.owner.name}.this.")
@@ -346,7 +348,7 @@ class Typer extends Namer
                     checkNoOuterDefs(found.denot, ctx, ctx)
                   case _ =>
               else
-                if (ctx.scala2CompatMode && !foundUnderScala2.exists)
+                if migrateTo3 && !foundUnderScala2.exists then
                   foundUnderScala2 = checkNewOrShadowed(found, Definition, scala2pkg = true)
                 if (defDenot.symbol.is(Package))
                   result = checkNewOrShadowed(previous orElse found, PackageClause)
@@ -456,8 +458,8 @@ class Typer extends Namer
         if (foundUnderScala2.exists && !(foundUnderScala2 =:= found)) {
           ctx.migrationWarning(
             ex"""Name resolution will change.
-              | currently selected                           : $foundUnderScala2
-              | in the future, without -language:Scala2Compat: $found""", tree.sourcePos)
+              | currently selected                          : $foundUnderScala2
+              | in the future, without -source 3.0-migration: $found""", tree.sourcePos)
           found = foundUnderScala2
         }
         found
@@ -2017,7 +2019,7 @@ class Typer extends Namer
         ctx.phase.isTyper &&
         cdef1.symbol.ne(defn.DynamicClass) &&
         cdef1.tpe.derivesFrom(defn.DynamicClass) &&
-        !ctx.dynamicsEnabled
+        !dynamicsEnabled
       if (reportDynamicInheritance) {
         val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
         ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef.sourcePos)
@@ -2186,7 +2188,7 @@ class Typer extends Namer
       case _ =>
         val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
         ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen), tree.sourcePos)
-        if (ctx.scala2CompatMode) {
+        if (migrateTo3) {
           // Under -rewrite, patch `x _` to `(() => x)`
           patch(Span(tree.span.start), "(() => ")
           patch(Span(qual.span.end, tree.span.end), ")")
@@ -2194,7 +2196,7 @@ class Typer extends Namer
         }
     }
     nestedCtx.typerState.commit()
-    if (ctx.settings.strict.value) {
+    if sourceVersion.isAtLeast(`3.1`) then
       lazy val (prefix, suffix) = res match {
         case Block(mdef @ DefDef(_, _, vparams :: Nil, _, _) :: Nil, _: Closure) =>
           val arity = vparams.length
@@ -2206,12 +2208,11 @@ class Typer extends Namer
         if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
         else s"use `$prefix<function>$suffix` instead"
       ctx.errorOrMigrationWarning(i"""The syntax `<function> _` is no longer supported;
-                                     |you can $remedy""", tree.sourcePos)
-      if (ctx.scala2CompatMode) {
+                                     |you can $remedy""", tree.sourcePos, `3.1`)
+      if sourceVersion.isMigrating then
         patch(Span(tree.span.start), prefix)
         patch(Span(qual.span.end, tree.span.end), suffix)
-      }
-    }
+    end if
     res
   }
 
@@ -2839,7 +2840,7 @@ class Typer extends Namer
       case wtp: MethodOrPoly =>
         def methodStr = methPart(tree).symbol.showLocated
         if (matchingApply(wtp, pt))
-          if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
+          if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && autoTuplingEnabled)
             adapt(tree, pt.tupled, locked)
           else
             tree
@@ -2847,9 +2848,8 @@ class Typer extends Namer
           def isContextBoundParams = wtp.stripPoly match
             case MethodType(EvidenceParamName(_) :: _) => true
             case _ => false
-          if ctx.settings.migration.value && ctx.settings.strict.value
-             && isContextBoundParams
-          then // Under 3.1 and -migration, don't infer implicit arguments yet for parameters
+          if sourceVersion == `3.1-migration` && isContextBoundParams
+          then // Under 3.1-migration, don't infer implicit arguments yet for parameters
                // coming from context bounds. Issue a warning instead and offer a patch.
             ctx.migrationWarning(
               em"""Context bounds will map to context parameters.
@@ -3009,10 +3009,10 @@ class Typer extends Namer
 
       /** Is reference to this symbol `f` automatically expanded to `f()`? */
       def isAutoApplied(sym: Symbol): Boolean =
-        sym.isConstructor ||
-        sym.matchNullaryLoosely ||
-        ctx.testScala2CompatMode(MissingEmptyArgumentList(sym), tree.sourcePos,
-            patch(tree.span.endPos, "()"))
+        sym.isConstructor
+        || sym.matchNullaryLoosely
+        || warnOnMigration(MissingEmptyArgumentList(sym), tree.sourcePos)
+           && { patch(tree.span.endPos, "()"); true }
 
       // Reasons NOT to eta expand:
       //  - we reference a constructor
@@ -3349,7 +3349,7 @@ class Typer extends Namer
         case ref: TermRef =>
           pt match {
             case pt: FunProto
-            if pt.args.lengthCompare(1) > 0 && isUnary(ref) && ctx.canAutoTuple =>
+            if pt.args.lengthCompare(1) > 0 && isUnary(ref) && autoTuplingEnabled =>
               adapt(tree, pt.tupled, locked)
             case _ =>
               adaptOverloaded(ref)

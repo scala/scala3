@@ -154,7 +154,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   enum GenCheckMode {
     case Ignore       // neither filter nor check since filtering was done before
     case Check        // check that pattern is irrefutable
-    case FilterNow    //filter out non-matching elements since we are not in -strict
+    case FilterNow    // filter out non-matching elements since we are not yet in 3.1
     case FilterAlways // filter out non-matching elements since pattern is prefixed by `case`
   }
 
@@ -447,7 +447,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     TypedSplice(tpd.ref(tp))
 
   def rootDot(name: Name)(implicit src: SourceFile): Select = Select(Ident(nme.ROOTPKG), name)
-  def scalaDot(name: Name)(implicit src: SourceFile): Select = Select(rootDot(nme.scala_), name)
+  def scalaDot(name: Name)(implicit src: SourceFile): Select = Select(rootDot(nme.scala), name)
   def scalaAnnotationDot(name: Name)(using SourceFile): Select = Select(scalaDot(nme.annotation), name)
   def scalaUnit(implicit src: SourceFile): Select = scalaDot(tpnme.Unit)
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)

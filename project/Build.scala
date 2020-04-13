@@ -785,7 +785,7 @@ object Build {
   lazy val tastyCoreSettings = Seq(
     scalacOptions ~= { old =>
       val (language, other) = old.partition(_.startsWith("-language:"))
-      other :+ (language.headOption.map(_ + ",Scala2Compat").getOrElse("-language:Scala2Compat"))
+      other :+ (language.headOption.map(_ + ",Scala2Compat").getOrElse("-source:3.0-migration"))
     }
   )
 

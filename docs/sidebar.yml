@@ -11,6 +11,8 @@ sidebar:
           url: docs/usage/ide-support.html
         - title: Worksheet mode in Dotty IDE
           url: docs/usage/worksheet-mode.html
+        - title: Language Versions
+          url: docs/usage/language-versions.html
         - title: cbt-projects
           url: docs/usage/cbt-projects.html
         - title: Dottydoc

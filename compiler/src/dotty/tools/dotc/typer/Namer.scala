@@ -15,7 +15,7 @@ import util.Spans._
 import util.Property
 import collection.mutable
 import tpd.ListOfTreeDecorator
-import config.Config
+import config.{Config, Feature}
 import config.Printers.typr
 import Annotations._
 import Inferencing._
@@ -23,6 +23,8 @@ import transform.ValueClasses._
 import transform.TypeUtils._
 import transform.SymUtils._
 import reporting.messages._
+import config.Feature.sourceVersion
+import config.SourceVersion._
 
 trait NamerContextOps {
   thisCtx: Context =>
@@ -1247,7 +1249,7 @@ class Namer { typer: Typer =>
               traitReq = parent ne parents.head, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
-              case Select(qual: Super, _) if completerCtx.scala2CompatMode =>
+              case Select(qual: Super, _) if Feature.migrateTo3 =>
                 "\n(Note that inheriting a class of the same name is no longer allowed)"
               case _ => ""
             }
@@ -1261,7 +1263,7 @@ class Namer { typer: Typer =>
             else if pclazz.isEffectivelySealed && pclazz.associatedFile != cls.associatedFile then
               if pclazz.is(Sealed) then
                 completerCtx.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
-              else if completerCtx.settings.strict.value then
+              else if sourceVersion.isAtLeast(`3.1`) then
                 checkFeature(nme.adhocExtensions,
                   i"Unless $pclazz is declared 'open', its extension in a separate file",
                   cls.topLevelClass,

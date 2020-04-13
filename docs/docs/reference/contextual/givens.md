@@ -104,6 +104,6 @@ Here is the new syntax for given instances, seen as a delta from the [standard c
 TmplDef           ::=  ...
                    |   ‘given’ GivenDef
 GivenDef          ::=  [GivenSig] Type ‘=’ Expr
-                   |   [GivenSig] ConstrApp {‘,’ ConstrApp } [TemplateBody]
+                   |   [GivenSig] ConstrApps [TemplateBody]
 GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘as’
 ```
