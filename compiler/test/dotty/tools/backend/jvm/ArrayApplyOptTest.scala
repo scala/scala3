@@ -56,14 +56,14 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
 
   @Test def testArrayApplyByte = {
     val init = List(Op(DUP), Op(ICONST_0), Op(ICONST_1), Op(BASTORE), Op(DUP), Op(ICONST_1), Op(ICONST_2), Op(BASTORE))
-    test("Array[Byte](1, 2)", newArray2Opcodes(T_BYTE, init))
-    test("IArray[Byte](1, 2)", newArray2Opcodes(T_BYTE, init :+ TypeOp(CHECKCAST, "[B")))
+    test("Array(1: Byte, 2: Byte)", newArray2Opcodes(T_BYTE, init))
+    test("IArray(1: Byte, 2: Byte)", newArray2Opcodes(T_BYTE, init))
   }
 
   @Test def testArrayApplyShort = {
     val init = List(Op(DUP), Op(ICONST_0), Op(ICONST_1), Op(SASTORE), Op(DUP), Op(ICONST_1), Op(ICONST_2), Op(SASTORE))
-    test("Array[Short](1, 2)", newArray2Opcodes(T_SHORT, init))
-    test("IArray[Short](1, 2)", newArray2Opcodes(T_SHORT, init :+ TypeOp(CHECKCAST, "[S")))
+    test("Array(1: Short, 2: Short)", newArray2Opcodes(T_SHORT, init))
+    test("IArray(1: Short, 2: Short)", newArray2Opcodes(T_SHORT, init))
   }
 
   @Test def testArrayApplyInt = {
@@ -71,9 +71,9 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
     test("Array(1, 2)", newArray2Opcodes(T_INT, init))
     test("IArray(1, 2)", newArray2Opcodes(T_INT, init))
 
-    val init2 = List(Op(DUP), Op(ICONST_0), Field(GETSTATIC, "Foo$", "MODULE$", "LFoo$;"), Invoke(INVOKEVIRTUAL, "Foo$", "t", "()I", false), Op(IASTORE), Op(DUP), Op(ICONST_1), Field(GETSTATIC, "Foo$", "MODULE$", "LFoo$;"), Invoke(INVOKEVIRTUAL, "Foo$", "t", "()I", false), Op(IASTORE))
-    test("""Array[T](t, t)""", newArray2Opcodes(T_INT, init2))
-    test("""IArray[T](t, t)""", newArray2Opcodes(T_INT, init2 :+ TypeOp(CHECKCAST, "[I")))
+    val init2 = List(Op(DUP), Op(ICONST_0), Field(GETSTATIC, "Foo$", "MODULE$", "LFoo$;"), Invoke(INVOKEVIRTUAL, "Foo$", "t", "()I", false), Op(IASTORE), Op(DUP), Op(ICONST_1), Field(GETSTATIC, "Foo$", "MODULE$", "LFoo$;"), Invoke(INVOKEVIRTUAL, "Foo$", "t", "()I", false), Op(IASTORE), TypeOp(CHECKCAST, "[I"))
+    test("""Array[T](t, t): Array[T]""", newArray2Opcodes(T_INT, init2))
+    test("""IArray[T](t, t): IArray[T]""", newArray2Opcodes(T_INT, init2))
   }
 
   @Test def testArrayApplyLong = {
