@@ -53,7 +53,7 @@ object TypeTestsCasts {
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
    */
-  def checkable(X: Type, P: Type, span: Span)(implicit ctx: Context): Boolean = {
+  def checkable(X: Type, P: Type, span: Span)(using Context): Boolean = {
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
     def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 
@@ -155,7 +155,7 @@ object TypeTestsCasts {
     res
   }
 
-  def interceptTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = trace(s"transforming ${tree.show}", show = true) {
+  def interceptTypeApply(tree: TypeApply)(using Context): Tree = trace(s"transforming ${tree.show}", show = true) {
     /** Intercept `expr.xyz[XYZ]` */
     def interceptWith(expr: Tree): Tree =
       if (expr.isEmpty) tree
@@ -172,7 +172,9 @@ object TypeTestsCasts {
           else if tp.isRef(defn.AnyValClass) then defn.AnyClass
           else tp.classSymbol
 
-        def foundCls = effectiveClass(expr.tpe.widen)
+        def foundClasses(tp: Type, acc: List[Symbol]): List[Symbol] = tp match
+          case OrType(tp1, tp2) => foundClasses(tp2, foundClasses(tp1, acc))
+          case _ => effectiveClass(tp) :: acc
 
         def inMatch =
           tree.fun.symbol == defn.Any_typeTest ||  // new scheme
@@ -181,7 +183,7 @@ object TypeTestsCasts {
         def transformIsInstanceOf(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = {
           def testCls = effectiveClass(testType.widen)
 
-          def unreachable(why: => String): Boolean = {
+          def unreachable(why: => String)(using ctx: Context): Boolean = {
             if (flagUnrelated)
               if (inMatch) ctx.error(em"this case is unreachable since $why", expr.sourcePos)
               else ctx.warning(em"this will always yield false since $why", expr.sourcePos)
@@ -191,7 +193,7 @@ object TypeTestsCasts {
           /** Are `foundCls` and `testCls` classes that allow checks
            *  whether a test would be always false?
            */
-          def isCheckable =
+          def isCheckable(foundCls: Symbol) =
             foundCls.isClass && testCls.isClass &&
             !(testCls.isPrimitiveValueClass && !foundCls.isPrimitiveValueClass) &&
                // if `test` is primitive but `found` is not, we might have a case like
@@ -203,8 +205,8 @@ object TypeTestsCasts {
           /** Check whether a runtime test that a value of `foundCls` can be a `testCls`
            *  can be true in some cases. Issues a warning or an error otherwise.
            */
-          def checkSensical: Boolean =
-            if (!isCheckable) true
+          def checkSensical(foundCls: Symbol)(using Context): Boolean =
+            if (!isCheckable(foundCls)) true
             else if (foundCls.isPrimitiveValueClass && !testCls.isPrimitiveValueClass) {
               ctx.error("cannot test if value types are references", tree.sourcePos)
               false
@@ -214,38 +216,49 @@ object TypeTestsCasts {
                 testCls.is(Final) || !testCls.is(Trait) && !foundCls.is(Trait)
               )
               if (foundCls.is(Final))
-                unreachable(i"$foundCls is not a subclass of $testCls")
+                unreachable(i"type ${expr.tpe.widen} is not a subclass of $testCls")
               else if (unrelated)
-                unreachable(i"$foundCls and $testCls are unrelated")
+                unreachable(i"type ${expr.tpe.widen} and $testCls are unrelated")
               else true
             }
             else true
 
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
-              if (!inMatch) ctx.warning(TypeTestAlwaysSucceeds(foundCls, testCls), tree.sourcePos)
+              if (!inMatch) ctx.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.sourcePos)
               constant(expr, Literal(Constant(true)))
             }
             else expr.testNotNull
-          else if (!checkSensical)
-            constant(expr, Literal(Constant(false)))
-          else if (testCls.isPrimitiveValueClass)
-            if (foundCls.isPrimitiveValueClass)
-              constant(expr, Literal(Constant(foundCls == testCls)))
+          else {
+            val nestedCtx = ctx.fresh.setNewTyperState()
+            val foundClsSyms = foundClasses(expr.tpe.widen, Nil)
+            val sensical = foundClsSyms.exists(sym => checkSensical(sym)(using nestedCtx))
+            if (!sensical) {
+              nestedCtx.typerState.commit()
+              constant(expr, Literal(Constant(false)))
+            }
+            else if (testCls.isPrimitiveValueClass )
+              if (foundClsSyms.size == 1 && foundClsSyms.head.isPrimitiveValueClass)
+                constant(expr, Literal(Constant(foundClsSyms.head == testCls)))
+              else
+                transformIsInstanceOf(expr, defn.boxedType(testCls.typeRef), flagUnrelated)
             else
-              transformIsInstanceOf(expr, defn.boxedType(testCls.typeRef), flagUnrelated)
-          else
-            derivedTree(expr, defn.Any_isInstanceOf, testType)
+              derivedTree(expr, defn.Any_isInstanceOf, testType)
+          }
         }
 
         def transformAsInstanceOf(testType: Type): Tree = {
-          def testCls = testType.widen.classSymbol
+          def testCls = effectiveClass(testType.widen)
+          def foundClsSymPrimitive = {
+            val foundClsSyms = foundClasses(expr.tpe.widen, Nil)
+            foundClsSyms.size == 1 && foundClsSyms.head.isPrimitiveValueClass
+          }
           if (erasure(expr.tpe) <:< testType)
             Typed(expr, tree.args.head) // Replace cast by type ascription (which does not generate any bytecode)
           else if (testCls eq defn.BoxedUnitClass)
             // as a special case, casting to Unit always successfully returns Unit
             Block(expr :: Nil, Literal(Constant(()))).withSpan(expr.span)
-          else if (foundCls.isPrimitiveValueClass)
+          else if (foundClsSymPrimitive)
             if (testCls.isPrimitiveValueClass) primitiveConversion(expr, testCls)
             else derivedTree(box(expr), defn.Any_asInstanceOf, testType)
           else if (testCls.isPrimitiveValueClass)
