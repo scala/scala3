@@ -51,53 +51,53 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
   @Test def testArrayApplyBoolean = {
     val init = List(Op(DUP), Op(ICONST_0), Op(ICONST_1), Op(BASTORE), Op(DUP), Op(ICONST_1), Op(ICONST_0), Op(BASTORE))
     test("Array(true, false)", newArray2Opcodes(T_BOOLEAN, init))
-    test("IArray(true, false)", newArray2Opcodes(T_BOOLEAN, init :+ TypeOp(CHECKCAST, "[Z")))
+    test("IArray(true, false)", newArray2Opcodes(T_BOOLEAN, init))
   }
 
   @Test def testArrayApplyByte = {
     val init = List(Op(DUP), Op(ICONST_0), Op(ICONST_1), Op(BASTORE), Op(DUP), Op(ICONST_1), Op(ICONST_2), Op(BASTORE))
-    test("Array[Byte](1, 2)", newArray2Opcodes(T_BYTE, init))
-    test("IArray[Byte](1, 2)", newArray2Opcodes(T_BYTE, init :+ TypeOp(CHECKCAST, "[B")))
+    test("Array(1: Byte, 2: Byte)", newArray2Opcodes(T_BYTE, init))
+    test("IArray(1: Byte, 2: Byte)", newArray2Opcodes(T_BYTE, init))
   }
 
   @Test def testArrayApplyShort = {
     val init = List(Op(DUP), Op(ICONST_0), Op(ICONST_1), Op(SASTORE), Op(DUP), Op(ICONST_1), Op(ICONST_2), Op(SASTORE))
-    test("Array[Short](1, 2)", newArray2Opcodes(T_SHORT, init))
-    test("IArray[Short](1, 2)", newArray2Opcodes(T_SHORT, init :+ TypeOp(CHECKCAST, "[S")))
+    test("Array(1: Short, 2: Short)", newArray2Opcodes(T_SHORT, init))
+    test("IArray(1: Short, 2: Short)", newArray2Opcodes(T_SHORT, init))
   }
 
   @Test def testArrayApplyInt = {
     val init = List(Op(DUP), Op(ICONST_0), Op(ICONST_1), Op(IASTORE), Op(DUP), Op(ICONST_1), Op(ICONST_2), Op(IASTORE))
     test("Array(1, 2)", newArray2Opcodes(T_INT, init))
-    test("IArray(1, 2)", newArray2Opcodes(T_INT, init :+ TypeOp(CHECKCAST, "[I")))
+    test("IArray(1, 2)", newArray2Opcodes(T_INT, init))
 
-    val init2 = List(Op(DUP), Op(ICONST_0), Field(GETSTATIC, "Foo$", "MODULE$", "LFoo$;"), Invoke(INVOKEVIRTUAL, "Foo$", "t", "()I", false), Op(IASTORE), Op(DUP), Op(ICONST_1), Field(GETSTATIC, "Foo$", "MODULE$", "LFoo$;"), Invoke(INVOKEVIRTUAL, "Foo$", "t", "()I", false), Op(IASTORE))
-    test("""Array[T](t, t)""", newArray2Opcodes(T_INT, init2))
-    test("""IArray[T](t, t)""", newArray2Opcodes(T_INT, init2 :+ TypeOp(CHECKCAST, "[I")))
+    val init2 = List(Op(DUP), Op(ICONST_0), Field(GETSTATIC, "Foo$", "MODULE$", "LFoo$;"), Invoke(INVOKEVIRTUAL, "Foo$", "t", "()I", false), Op(IASTORE), Op(DUP), Op(ICONST_1), Field(GETSTATIC, "Foo$", "MODULE$", "LFoo$;"), Invoke(INVOKEVIRTUAL, "Foo$", "t", "()I", false), Op(IASTORE), TypeOp(CHECKCAST, "[I"))
+    test("""Array[T](t, t): Array[T]""", newArray2Opcodes(T_INT, init2))
+    test("""IArray[T](t, t): IArray[T]""", newArray2Opcodes(T_INT, init2))
   }
 
   @Test def testArrayApplyLong = {
     val init = List(Op(DUP), Op(ICONST_0), Ldc(LDC, 2), Op(LASTORE), Op(DUP), Op(ICONST_1), Ldc(LDC, 3), Op(LASTORE))
     test("Array(2L, 3L)", newArray2Opcodes(T_LONG, init))
-    test("IArray(2L, 3L)", newArray2Opcodes(T_LONG, init :+ TypeOp(CHECKCAST, "[J")))
+    test("IArray(2L, 3L)", newArray2Opcodes(T_LONG, init))
   }
 
   @Test def testArrayApplyFloat = {
     val init = List(Op(DUP), Op(ICONST_0), Ldc(LDC, 2.1f), Op(FASTORE), Op(DUP), Op(ICONST_1), Ldc(LDC, 3.1f), Op(FASTORE))
     test("Array(2.1f, 3.1f)", newArray2Opcodes(T_FLOAT, init))
-    test("IArray(2.1f, 3.1f)", newArray2Opcodes(T_FLOAT, init :+ TypeOp(CHECKCAST, "[F")))
+    test("IArray(2.1f, 3.1f)", newArray2Opcodes(T_FLOAT, init))
   }
 
   @Test def testArrayApplyDouble = {
     val init = List(Op(DUP), Op(ICONST_0), Ldc(LDC, 2.2d), Op(DASTORE), Op(DUP), Op(ICONST_1), Ldc(LDC, 3.2d), Op(DASTORE))
     test("Array(2.2d, 3.2d)", newArray2Opcodes(T_DOUBLE, init))
-    test("IArray(2.2d, 3.2d)", newArray2Opcodes(T_DOUBLE, init :+ TypeOp(CHECKCAST, "[D")))
+    test("IArray(2.2d, 3.2d)", newArray2Opcodes(T_DOUBLE, init))
   }
 
   @Test def testArrayApplyChar = {
     val init = List(Op(DUP), Op(ICONST_0), IntOp(BIPUSH, 120), Op(CASTORE), Op(DUP), Op(ICONST_1), IntOp(BIPUSH, 121), Op(CASTORE))
     test("Array('x', 'y')", newArray2Opcodes(T_CHAR, init))
-    test("IArray('x', 'y')", newArray2Opcodes(T_CHAR, init :+ TypeOp(CHECKCAST, "[C")))
+    test("IArray('x', 'y')", newArray2Opcodes(T_CHAR, init))
   }
 
   @Test def testArrayApplyUnit = {
