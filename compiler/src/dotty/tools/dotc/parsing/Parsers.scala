@@ -3573,6 +3573,7 @@ object Parsers {
      */
     def extensionDef(start: Offset, mods: Modifiers): ModuleDef =
       in.nextToken()
+      val nameOffset = in.offset
       val name = if isIdent && !isIdent(nme.on) then ident() else EmptyTermName
       in.endMarkerScope(if name.isEmpty then nme.extension else name) {
         val (tparams, vparamss, extensionFlag) =
@@ -3588,7 +3589,7 @@ object Parsers {
         if !in.isNestedStart then syntaxError("Extension without extension methods")
         val templ = templateBodyOpt(makeConstructor(tparams, vparamss), Nil, Nil)
         templ.body.foreach(checkExtensionMethod(tparams, vparamss, _))
-        val edef = ModuleDef(name, templ)
+        val edef = atSpan(start, nameOffset, in.offset)(ModuleDef(name, templ))
         finalizeDef(edef, addFlag(mods, Given | extensionFlag), start)
       }
 
