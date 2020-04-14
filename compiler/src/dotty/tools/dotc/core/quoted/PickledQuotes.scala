@@ -144,7 +144,7 @@ object PickledQuotes {
               case tp: TypeRef =>
                 typeSpliceMap.get(tp.symbol) match
                   case Some(t) if tp.typeSymbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) => t
-                  case None => tp
+                  case _ => tp
               case _ => tp
             }
             mapOver(tp1)
