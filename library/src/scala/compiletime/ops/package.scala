@@ -11,7 +11,7 @@ package object ops {
      * val eq3: "1" == "1" = true
      * ```
      */
-    @infix type ==[X <: AnyVal, Y <: AnyVal] <: Boolean
+    @infix type ==[X, Y] <: Boolean
 
     /** Inequality comparison of two singleton types.
      * ```scala
@@ -20,7 +20,7 @@ package object ops {
      * val eq3: "1" != "1" = false
      * ```
      */
-    @infix type !=[X <: AnyVal, Y <: AnyVal] <: Boolean
+    @infix type !=[X, Y] <: Boolean
   }
 
   object string {
