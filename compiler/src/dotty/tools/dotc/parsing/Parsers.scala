@@ -2804,7 +2804,7 @@ object Parsers {
       }
 
     def annotations(skipNewLines: Boolean = false): List[Tree] = {
-      if (skipNewLines) newLineOptWhenFollowedBy(AT)
+      if (skipNewLines) newLinesOptWhenFollowedBy(AT)
       if (in.token == AT) annot() :: annotations(skipNewLines)
       else Nil
     }
