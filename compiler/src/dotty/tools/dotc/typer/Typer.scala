@@ -1803,8 +1803,7 @@ class Typer extends Namer
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     checkSignatureRepeatedParam(sym)
-    if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
-      checkInlineConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of inline $sym")
+    checkInlineConformant(tpt1, rhs1, sym)
     patchFinalVals(vdef1)
     vdef1.setDefTree
   }
