@@ -862,15 +862,14 @@ trait Checking {
   }
 
   /** Check that `tree` can be right hand-side or argument to `inline` value or parameter. */
-  def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(using Context): Unit = {
-    // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
-    val purityLevel = if (isFinal) Idempotent else Pure
-    tree.tpe.widenTermRefExpr match {
-      case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
-      case _ =>
-        if (!ctx.erasedTypes && !ctx.inInlineMethod)
-          ctx.error(em"$what must be a known value", tree.sourcePos)
-    }
+  def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = {
+    if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !ctx.inInlineMethod then
+      // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
+      val purityLevel = if (sym.is(Final)) Idempotent else Pure
+      tpt.tpe.widenTermRefExpr match
+        case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
+        case _ =>
+          ctx.error(em"type of inline must be a known value", tree.sourcePos)
   }
 
   /** A hook to exclude selected symbols from double declaration check */
@@ -1199,7 +1198,7 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SourcePosition, where: => String = "")(using Context): Type = tp
-  override def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(using Context): Unit = ()
+  override def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = ()
   override def checkNoAlphaConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
