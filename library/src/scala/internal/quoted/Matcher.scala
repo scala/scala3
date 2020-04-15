@@ -316,12 +316,7 @@ private[quoted] object Matcher {
             qual1 =?= qual2
 
           /* Match reference */
-          // TODO could be subsumed by the next case
-          case (Ident(_), Ident(_)) if scrutinee.symbol == pattern.symbol || summon[Env].get(scrutinee.symbol).contains(pattern.symbol) =>
-            matched
-
-          /* Match reference */
-          case (_: Ref, _: Ref) if scrutinee.symbol == pattern.symbol =>
+          case (_: Ref, _: Ref) if scrutinee.symbol == pattern.symbol || summon[Env].get(scrutinee.symbol).contains(pattern.symbol) =>
             matched
 
           /* Match application */
