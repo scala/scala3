@@ -67,7 +67,7 @@ import scala.quoted._
  *   '{ while e0 do e1 } =?= '{ while p0 do p1 }   ===>  '{e0} =?= '{p0} &&& '{e1} =?= '{p1}
  *
  *   /* Match assign */
- *   '{ e0 = e1 } =?= '{ p0 = p1 } && '{e0} =?= '{p0}   ===>   '{e1} =?= '{p1}
+ *   '{ e0 = e1 } =?= '{ p0 = p1 }   ==>   '{e0} =?= '{p0} &&& '{e1} =?= '{p1}
  *
  *   /* Match new */
  *   '{ new T } =?= '{ new T }   ===>   matched
@@ -316,22 +316,15 @@ private[quoted] object Matcher {
             qual1 =?= qual2
 
           /* Match reference */
-          // TODO could be subsumed by the next case
-          case (Ident(_), Ident(_)) if scrutinee.symbol == pattern.symbol || summon[Env].get(scrutinee.symbol).contains(pattern.symbol) =>
-            matched
-
-          /* Match reference */
-          case (_: Ref, _: Ref) if scrutinee.symbol == pattern.symbol =>
+          case (_: Ref, _: Ref) if scrutinee.symbol == pattern.symbol || summon[Env].get(scrutinee.symbol).contains(pattern.symbol) =>
             matched
 
           /* Match application */
-          // TODO may not need to check the symbol (done in fn1 =?= fn2)
-          case (Apply(fn1, args1), Apply(fn2, args2)) if fn1.symbol == fn2.symbol || summon[Env].get(fn1.symbol).contains(fn2.symbol) =>
+          case (Apply(fn1, args1), Apply(fn2, args2)) =>
             fn1 =?= fn2 &&& args1 =?= args2
 
           /* Match type application */
-          // TODO may not need to check the symbol (done in fn1 =?= fn2)
-          case (TypeApply(fn1, args1), TypeApply(fn2, args2)) if fn1.symbol == fn2.symbol || summon[Env].get(fn1.symbol).contains(fn2.symbol) =>
+          case (TypeApply(fn1, args1), TypeApply(fn2, args2)) =>
             fn1 =?= fn2 &&& args1 =?= args2
 
           case (Block(stats1, expr1), Block(binding :: stats2, expr2)) if isTypeBinding(binding) =>
@@ -365,11 +358,7 @@ private[quoted] object Matcher {
 
           /* Match assign */
           case (Assign(lhs1, rhs1), Assign(lhs2, rhs2)) =>
-            val lhsMatch =
-              if ((lhs1 =?= lhs2).isMatch) matched
-              else notMatched
-            // TODO lhs1 =?= lhs2 &&& rhs1 =?= rhs2
-            lhsMatch &&& rhs1 =?= rhs2
+            lhs1 =?= lhs2 &&& rhs1 =?= rhs2
 
           /* Match new */
           case (New(tpt1), New(tpt2)) if tpt1.tpe.typeSymbol == tpt2.tpe.typeSymbol =>
