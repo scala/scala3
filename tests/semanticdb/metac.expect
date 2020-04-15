@@ -1308,7 +1308,7 @@ Occurrences:
 [0:8..0:9): a <- a/
 [1:8..1:9): b <- a/b/
 [3:7..3:13): Givens <- a/b/Givens.
-[5:16..6:8): <- a/b/Givens.extension_sayHello_A.
+[5:12..6:4): <- a/b/Givens.extension_sayHello_A.
 [5:16..5:17): A <- a/b/Givens.extension_sayHello_A.sayHello().[A]
 [5:19..5:22): any <- a/b/Givens.extension_sayHello_A.sayHello().(any)
 [5:24..5:25): A -> a/b/Givens.extension_sayHello_A.sayHello().[A]
@@ -1316,7 +1316,7 @@ Occurrences:
 [6:21..6:21): -> scala/StringContext.apply().
 [6:34..6:37): any -> a/b/Givens.extension_sayHello_A.sayHello().(any)
 [6:37..6:38): " -> scala/StringContext#s().
-[8:16..9:10): <- a/b/Givens.extension_sayGoodbye_B.
+[8:12..9:6): <- a/b/Givens.extension_sayGoodbye_B.
 [8:16..8:17): B <- a/b/Givens.extension_sayGoodbye_B.sayGoodbye().[B]
 [8:16..8:17): B <- a/b/Givens.extension_sayGoodbye_B.saySoLong().[B]
 [8:19..8:22): any <- a/b/Givens.extension_sayGoodbye_B.sayGoodbye().(any)
