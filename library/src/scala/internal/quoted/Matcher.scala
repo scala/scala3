@@ -73,7 +73,7 @@ import scala.quoted._
  *   '{ new T } =?= '{ new T }   ===>   matched
  *
  *   /* Match this */
- *   '{ this } =?= '{ this }   ===>   matched
+ *   '{ C.this } =?= '{ C.this }   ===>   matched
  *
  *   /* Match super */
  *   '{ e.super } =?= '{ p.super }   ===>   '{e} =?= '{p}
