@@ -320,13 +320,11 @@ private[quoted] object Matcher {
             matched
 
           /* Match application */
-          // TODO may not need to check the symbol (done in fn1 =?= fn2)
-          case (Apply(fn1, args1), Apply(fn2, args2)) if fn1.symbol == fn2.symbol || summon[Env].get(fn1.symbol).contains(fn2.symbol) =>
+          case (Apply(fn1, args1), Apply(fn2, args2)) =>
             fn1 =?= fn2 &&& args1 =?= args2
 
           /* Match type application */
-          // TODO may not need to check the symbol (done in fn1 =?= fn2)
-          case (TypeApply(fn1, args1), TypeApply(fn2, args2)) if fn1.symbol == fn2.symbol || summon[Env].get(fn1.symbol).contains(fn2.symbol) =>
+          case (TypeApply(fn1, args1), TypeApply(fn2, args2)) =>
             fn1 =?= fn2 &&& args1 =?= args2
 
           case (Block(stats1, expr1), Block(binding :: stats2, expr2)) if isTypeBinding(binding) =>
