@@ -67,7 +67,7 @@ import scala.quoted._
  *   '{ while e0 do e1 } =?= '{ while p0 do p1 }   ===>  '{e0} =?= '{p0} &&& '{e1} =?= '{p1}
  *
  *   /* Match assign */
- *   '{ e0 = e1 } =?= '{ p0 = p1 } && '{e0} =?= '{p0}   ===>   '{e1} =?= '{p1}
+ *   '{ e0 = e1 } =?= '{ p0 = p1 }   ==>   '{e0} =?= '{p0} &&& '{e1} =?= '{p1}
  *
  *   /* Match new */
  *   '{ new T } =?= '{ new T }   ===>   matched
@@ -365,11 +365,7 @@ private[quoted] object Matcher {
 
           /* Match assign */
           case (Assign(lhs1, rhs1), Assign(lhs2, rhs2)) =>
-            val lhsMatch =
-              if ((lhs1 =?= lhs2).isMatch) matched
-              else notMatched
-            // TODO lhs1 =?= lhs2 &&& rhs1 =?= rhs2
-            lhsMatch &&& rhs1 =?= rhs2
+            lhs1 =?= lhs2 &&& rhs1 =?= rhs2
 
           /* Match new */
           case (New(tpt1), New(tpt2)) if tpt1.tpe.typeSymbol == tpt2.tpe.typeSymbol =>
