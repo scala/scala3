@@ -1,4 +1,4 @@
-scala> case class Foo[M[?]](x: M[Int])
+scala> case class Foo[M[_]](x: M[Int])
 // defined case class Foo
 scala> Foo(Option(1))
 val res0: Foo[Option] = Foo(Some(1))

@@ -1,0 +1,60 @@
+-- Error: tests/neg/type-qmark.scala:1:10 ------------------------------------------------------------------------------
+1 |class Foo[?] // error
+  |          ^
+  |          `?` is not a valid type name
+-- Error: tests/neg/type-qmark.scala:2:12 ------------------------------------------------------------------------------
+2 |class Bar[M[?]] // error
+  |            ^
+  |            `?` is not a valid type name, use `_` to denote a higher-kinded type parameter
+-- Error: tests/neg/type-qmark.scala:13:7 ------------------------------------------------------------------------------
+13 |  case ?() // error
+   |       ^
+   |       `?` is not a valid type name
+-- Error: tests/neg/type-qmark.scala:16:8 ------------------------------------------------------------------------------
+16 |  class ? { val x = 1 } // error
+   |        ^
+   |        `?` is not a valid type name
+-- Error: tests/neg/type-qmark.scala:19:8 ------------------------------------------------------------------------------
+19 |  trait ? // error
+   |        ^
+   |        `?` is not a valid type name
+-- Error: tests/neg/type-qmark.scala:22:7 ------------------------------------------------------------------------------
+22 |  type ? = Int // error
+   |       ^
+   |       `?` is not a valid type name
+-- Error: tests/neg/type-qmark.scala:25:7 ------------------------------------------------------------------------------
+25 |  enum ? { // error
+   |       ^
+   |       `?` is not a valid type name
+-- Error: tests/neg/type-qmark.scala:31:8 ------------------------------------------------------------------------------
+31 |  given ?[T] as Foo[T] {} // error
+   |        ^
+   |        `?` is not a valid type name
+-- Error: tests/neg/type-qmark.scala:3:8 -------------------------------------------------------------------------------
+3 |def foo[?] = {} // error
+  |        ^
+  |        `?` is not a valid type name
+-- Error: tests/neg/type-qmark.scala:4:10 ------------------------------------------------------------------------------
+4 |def bar[M[?]] = {} // error
+  |          ^
+  |          `?` is not a valid type name, use `_` to denote a higher-kinded type parameter
+-- Error: tests/neg/type-qmark.scala:6:7 -------------------------------------------------------------------------------
+6 |type A[?] = Int // error
+  |       ^
+  |       `?` is not a valid type name
+-- Error: tests/neg/type-qmark.scala:7:10 ------------------------------------------------------------------------------
+7 |type B = [?] =>> Int // error
+  |          ^
+  |          `?` is not a valid type name
+-- Error: tests/neg/type-qmark.scala:8:10 ------------------------------------------------------------------------------
+8 |type C = [?] => Int => Int // error
+  |          ^
+  |          `?` is not a valid type name
+-- Error: tests/neg/type-qmark.scala:9:12 ------------------------------------------------------------------------------
+9 |type D = [X[?]] =>> Int // error
+  |            ^
+  |            `?` is not a valid type name, use `_` to denote a higher-kinded type parameter
+-- Error: tests/neg/type-qmark.scala:10:12 -----------------------------------------------------------------------------
+10 |type E = [X[?]] => Int => Int // error
+   |            ^
+   |            `?` is not a valid type name, use `_` to denote a higher-kinded type parameter

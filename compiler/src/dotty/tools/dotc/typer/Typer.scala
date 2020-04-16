@@ -2321,10 +2321,20 @@ class Typer extends Namer
               val typer1 = localTyper(sym)
               typer1.typedDefDef(tree, sym)(using ctx.localContext(tree, sym).setTyper(typer1))
             case tree: untpd.TypeDef =>
-              if (tree.isClassDef)
-                typedClassDef(tree, sym.asClass)(using ctx.localContext(tree, sym))
-              else
-                typedTypeDef(tree, sym)(using ctx.localContext(tree, sym).setNewScope)
+              // separate method to keep dispatching method `typedNamed` short which might help the JIT
+              def typedTypeOrClassDef: Tree =
+                if tree.name eq tpnme.? then
+                  val addendum = if sym.owner.is(TypeParam)
+                    then ", use `_` to denote a higher-kinded type parameter"
+                    else ""
+                  val namePos = tree.sourcePos.withSpan(tree.nameSpan)
+                  ctx.errorOrMigrationWarning(s"`?` is not a valid type name$addendum", namePos)
+                if tree.isClassDef then
+                  typedClassDef(tree, sym.asClass)(using ctx.localContext(tree, sym))
+                else
+                  typedTypeDef(tree, sym)(using ctx.localContext(tree, sym).setNewScope)
+
+              typedTypeOrClassDef
             case tree: untpd.Labeled => typedLabeled(tree)
             case _ => typedUnadapted(desugar(tree), pt, locked)
           }
