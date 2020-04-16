@@ -445,6 +445,14 @@ object Parsers {
       finally staged = saved
     }
 
+    private var argmentPatterns = false
+    private def withinArgmentPatterns[T](in: Boolean)(body: => T): T = {
+      val saved = argmentPatterns
+      argmentPatterns = in
+      try body
+      finally argmentPatterns = saved
+    }
+
 /* ---------- TREE CONSTRUCTION ------------------------------------------- */
 
     /** Convert tree to formal parameter list
@@ -2009,7 +2017,7 @@ object Parsers {
           val uscoreStart = in.skipToken()
           if (isIdent(nme.raw.STAR)) {
             in.nextToken()
-            if (in.token != RPAREN) syntaxError(SeqWildcardPatternPos(), uscoreStart)
+            if (in.token != RPAREN || !argmentPatterns) syntaxError(SeqWildcardPatternPos(), uscoreStart)
             Typed(t, atSpan(uscoreStart) { Ident(tpnme.WILDCARD_STAR) })
           }
           else {
@@ -2632,12 +2640,16 @@ object Parsers {
         // `x: _*' is parsed in `ascription'
         if (isIdent(nme.raw.STAR)) {
           in.nextToken()
-          if (in.token != RPAREN) syntaxError(SeqWildcardPatternPos(), wildIdent.span)
+          if (in.token != RPAREN || !argmentPatterns) syntaxError(SeqWildcardPatternPos(), wildIdent.span)
           atSpan(wildIdent.span) { Ident(tpnme.WILDCARD_STAR) }
         }
         else wildIdent
       case LPAREN =>
-        atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
+        atSpan(in.offset) {
+          withinArgmentPatterns(in = false) {
+            makeTupleOrParens(inParens(patternsOpt()))
+          }
+        }
       case QUOTE =>
         simpleExpr()
       case XMLSTART =>
@@ -2671,7 +2683,7 @@ object Parsers {
      *                      |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
      */
     def argumentPatterns(): List[Tree] =
-      inParens(patternsOpt())
+      withinArgmentPatterns(in = true) { inParens(patternsOpt()) }
 
 /* -------- MODIFIERS and ANNOTATIONS ------------------------------------------- */
 
