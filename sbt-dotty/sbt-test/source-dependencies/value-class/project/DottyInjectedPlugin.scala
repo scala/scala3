@@ -7,6 +7,6 @@ object DottyInjectedPlugin extends AutoPlugin {
 
   override val projectSettings = Seq(
     scalaVersion := sys.props("plugin.scalaVersion"),
-    scalacOptions += "-source:3.0-migration
+    scalacOptions += "-source:3.0-migration"
   )
 }
