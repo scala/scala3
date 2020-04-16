@@ -2017,7 +2017,14 @@ object Parsers {
           val uscoreStart = in.skipToken()
           if (isIdent(nme.raw.STAR)) {
             in.nextToken()
-            if (in.token != RPAREN || !inArguments) syntaxError(SeqWildcardPatternPos(), uscoreStart)
+            if in.token != RPAREN || !inArguments && sourceVersion.isAtLeast(`3.1`) then
+              syntaxError(SeqWildcardPatternPos(), uscoreStart)
+            else if !inArguments then
+              ctx.errorOrMigrationWarning(
+                "`_*` may only be used for last argument. Possibly using it inside non-method call parenthesis?",
+                in.sourcePos(uscoreStart)
+              )
+
             Typed(t, atSpan(uscoreStart) { Ident(tpnme.WILDCARD_STAR) })
           }
           else {
