@@ -445,12 +445,12 @@ object Parsers {
       finally staged = saved
     }
 
-    private var argmentPatterns = false
-    private def withinArgmentPatterns[T](in: Boolean)(body: => T): T = {
-      val saved = argmentPatterns
-      argmentPatterns = in
+    private var inArguments = false
+    private def withinArguments[T](in: Boolean)(body: => T): T = {
+      val saved = inArguments
+      inArguments = in
       try body
-      finally argmentPatterns = saved
+      finally inArguments = saved
     }
 
 /* ---------- TREE CONSTRUCTION ------------------------------------------- */
@@ -2017,7 +2017,7 @@ object Parsers {
           val uscoreStart = in.skipToken()
           if (isIdent(nme.raw.STAR)) {
             in.nextToken()
-            if (in.token != RPAREN || !argmentPatterns) syntaxError(SeqWildcardPatternPos(), uscoreStart)
+            if (in.token != RPAREN || !inArguments) syntaxError(SeqWildcardPatternPos(), uscoreStart)
             Typed(t, atSpan(uscoreStart) { Ident(tpnme.WILDCARD_STAR) })
           }
           else {
@@ -2193,7 +2193,9 @@ object Parsers {
           placeholderParams = param :: placeholderParams
           atSpan(start) { Ident(pname) }
         case LPAREN =>
-          atSpan(in.offset) { makeTupleOrParens(inParens(exprsInParensOpt())) }
+          withinArguments(in = false) {
+            atSpan(in.offset) { makeTupleOrParens(inParens(exprsInParensOpt())) }
+          }
         case LBRACE | INDENT =>
           canApply = false
           blockExpr()
@@ -2282,14 +2284,16 @@ object Parsers {
     /** ParArgumentExprs ::= `(' [‘using’] [ExprsInParens] `)'
      *                    |  `(' [ExprsInParens `,'] PostfixExpr `:' `_' `*' ')'
      */
-    def parArgumentExprs(): (List[Tree], Boolean) = inParens {
-      if in.token == RPAREN then
-        (Nil, false)
-      else if isIdent(nme.using) then
-        in.nextToken()
-        (commaSeparated(argumentExpr), true)
-      else
-        (commaSeparated(argumentExpr), false)
+    def parArgumentExprs(): (List[Tree], Boolean) = withinArguments(in = true) {
+      inParens {
+        if in.token == RPAREN then
+          (Nil, false)
+        else if isIdent(nme.using) then
+          in.nextToken()
+          (commaSeparated(argumentExpr), true)
+        else
+          (commaSeparated(argumentExpr), false)
+      }
     }
 
     /** ArgumentExprs ::= ParArgumentExprs
@@ -2640,13 +2644,13 @@ object Parsers {
         // `x: _*' is parsed in `ascription'
         if (isIdent(nme.raw.STAR)) {
           in.nextToken()
-          if (in.token != RPAREN || !argmentPatterns) syntaxError(SeqWildcardPatternPos(), wildIdent.span)
+          if (in.token != RPAREN || !inArguments) syntaxError(SeqWildcardPatternPos(), wildIdent.span)
           atSpan(wildIdent.span) { Ident(tpnme.WILDCARD_STAR) }
         }
         else wildIdent
       case LPAREN =>
         atSpan(in.offset) {
-          withinArgmentPatterns(in = false) {
+          withinArguments(in = false) {
             makeTupleOrParens(inParens(patternsOpt()))
           }
         }
@@ -2683,7 +2687,7 @@ object Parsers {
      *                      |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
      */
     def argumentPatterns(): List[Tree] =
-      withinArgmentPatterns(in = true) { inParens(patternsOpt()) }
+      withinArguments(in = true) { inParens(patternsOpt()) }
 
 /* -------- MODIFIERS and ANNOTATIONS ------------------------------------------- */
 
