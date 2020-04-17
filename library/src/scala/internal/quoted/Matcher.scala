@@ -476,20 +476,6 @@ private[quoted] object Matcher {
       case _ => None
     }
 
-    /** Is this matching the result of a successful match */
-    def (self: Matching) isMatch: Boolean = self.isDefined
-
-    /** Joins the mattchings into a single matching. If any matching is `None` the result is `None`.
-     *  Otherwise the result is `Some` of the concatenation of the tupples.
-     */
-    def foldMatchings(matchings: Matching*): Matching = {
-      // TODO improve performance
-      matchings.foldLeft[Matching](Some(())) {
-        case (Some(acc), Some(holes)) => Some(acc ++ holes)
-        case (_, _) => None
-      }
-    }
-
   }
 
 }
