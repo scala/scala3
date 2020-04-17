@@ -237,7 +237,7 @@ object TypeTestsCasts {
               nestedCtx.typerState.commit()
               constant(expr, Literal(Constant(false)))
             }
-            else if (testCls.isPrimitiveValueClass )
+            else if (testCls.isPrimitiveValueClass)
               if (foundClsSyms.size == 1 && foundClsSyms.head.isPrimitiveValueClass)
                 constant(expr, Literal(Constant(foundClsSyms.head == testCls)))
               else
