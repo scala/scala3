@@ -722,7 +722,7 @@ object Erasure {
       }
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
-      val ntree = interceptTypeApply(tree.asInstanceOf[TypeApply])(ctx.withPhase(ctx.erasurePhase)).withSpan(tree.span)
+      val ntree = interceptTypeApply(tree.asInstanceOf[TypeApply])(using ctx.withPhase(ctx.erasurePhase)).withSpan(tree.span)
 
       ntree match {
         case TypeApply(fun, args) =>

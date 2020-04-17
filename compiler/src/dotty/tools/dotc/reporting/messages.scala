@@ -2062,12 +2062,12 @@ object messages {
     def explain = ""
   }
 
-  class TypeTestAlwaysSucceeds(foundCls: Symbol, testCls: Symbol)(implicit ctx: Context) extends SyntaxMsg(TypeTestAlwaysSucceedsID) {
+  class TypeTestAlwaysSucceeds(scrutTp: Type, testTp: Type)(implicit ctx: Context) extends SyntaxMsg(TypeTestAlwaysSucceedsID) {
     def msg = {
       val addendum =
-        if (foundCls != testCls) s" is a subtype of $testCls"
+        if (scrutTp != testTp) s" is a subtype of ${testTp.show}"
         else " is the same as the tested type"
-      s"The highlighted type test will always succeed since the scrutinee type ($foundCls)" + addendum
+      s"The highlighted type test will always succeed since the scrutinee type ($scrutTp.show)" + addendum
     }
     def explain = ""
   }
