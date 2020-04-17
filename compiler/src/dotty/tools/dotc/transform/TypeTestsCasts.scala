@@ -238,10 +238,11 @@ object TypeTestsCasts {
               constant(expr, Literal(Constant(false)))
             }
             else if (testCls.isPrimitiveValueClass)
-              if (foundClsSyms.size == 1 && foundClsSyms.head.isPrimitiveValueClass)
-                constant(expr, Literal(Constant(foundClsSyms.head == testCls)))
-              else
-                transformIsInstanceOf(expr, defn.boxedType(testCls.typeRef), flagUnrelated)
+              foundClsSyms match
+                case List(cls) if cls.isPrimitiveValueClass =>
+                  constant(expr, Literal(Constant(foundClsSyms.head == testCls)))
+                case _ =>
+                  transformIsInstanceOf(expr, defn.boxedType(testCls.typeRef), flagUnrelated)
             else
               derivedTree(expr, defn.Any_isInstanceOf, testType)
           }
