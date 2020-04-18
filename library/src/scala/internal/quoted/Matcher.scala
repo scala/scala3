@@ -92,14 +92,6 @@ import scala.quoted._
  *   /* Match type */
  *   '[T] =?= '[P] && T <:< P   ===>   matched
  *
- *   /* Match applied type */
- *   '[ T0[T1, ..., Tn] ] =?= '[ P0[P1, ..., Pn] ]   ===>   '[T0] =?= '[P0] &&& ... &&& '[Tn] =?= '[Pn]
- *
- *   /* Match annot (a) */
- *   '[T @annot] =?= '[P]   ===>   '[T] =?= '[P]
- *
- *   /* Match annot (b) */
- *   '[T] =?= '[P @annot]   ===>   '[T] =?= '[P]
  *   ```
  */
 private[quoted] object Matcher {
@@ -350,11 +342,6 @@ private[quoted] object Matcher {
           case (scrutinee: TypeTree, pattern: TypeTree) if scrutinee.tpe <:< pattern.tpe =>
             matched
 
-          /* Match applied type */
-          // TODO remove this?
-          case (Applied(tycon1, args1), Applied(tycon2, args2)) =>
-            tycon1 =?= tycon2 &&& args1 =?= args2
-
           /* Match val */
           case (ValDef(_, tpt1, rhs1), ValDef(_, tpt2, rhs2)) if checkValFlags() =>
             def rhsEnv = summon[Env] + (scrutinee.symbol -> pattern.symbol)
@@ -377,15 +364,6 @@ private[quoted] object Matcher {
           case (Closure(_, tpt1), Closure(_, tpt2)) =>
             // TODO match tpt1 with tpt2?
             matched
-
-          // Ignore type annotations
-          // TODO remove this
-          /* Match annot (a) */
-          case (Annotated(tpt, _), _) =>
-            tpt =?= pattern
-          /* Match annot (b) */
-          case (_, Annotated(tpt, _)) =>
-            scrutinee =?= tpt
 
           case (NamedArg(name1, arg1), NamedArg(name2, arg2)) if name1 == name2 =>
             arg1 =?= arg2
