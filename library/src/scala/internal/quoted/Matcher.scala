@@ -87,13 +87,6 @@ import scala.quoted._
  *   /* Match def */
  *   '{ def x0(x1: T1, ..., xn: Tn): T0 = e1; e2 } =?= '{ def y0(y1: P1, ..., yn: Pn): P0 = p1; p2 }   ===>   withEnv(x0 -> y0, ..., xn -> yn)('[T0] =?= '[P0] &&& ... &&& '[Tn] =?= '[Pn] &&& '{e1} =?= '{p1} &&& '{e2} =?= '{p2})
  *
- *   /* Match match */
- *   '{ e0 match { case u1 => e1; ...; case un => en } } =?= '{ p0 match { case q1 => p1; ...; case qn => pn } }   ===>
- *     '{e0} =?= '{p0} &&& ... &&& '{en} =?= '{pn} &&& '⟨u1⟩ =?= '⟨q1⟩ &&& ... &&& '⟨un⟩ =?= '⟨qn⟩
- *
- *   /* Match try */
- *   '{ try e0 catch { case u1 => e1; ...; case un => en } finally ef } =?= '{ try p0 catch { case q1 => p1; ...; case qn => pn } finally pf }   ===>   '{e0} =?= '{p0} &&& ... &&& '{en} =?= '{pn} &&& '⟨u1⟩ =?= '⟨q1⟩ &&& ... &&& '⟨un⟩ =?= '⟨qn⟩ &&& '{ef} =?= '{pf}
- *
  *   // Types
  *
  *   /* Match type */
@@ -107,30 +100,6 @@ import scala.quoted._
  *
  *   /* Match annot (b) */
  *   '[T] =?= '[P @annot]   ===>   '[T] =?= '[P]
- *
- *   // Patterns
- *
- *   /* Match pattern whildcard */
- *   '⟨ _ ⟩ =?= '⟨ _ ⟩   ===>   matched
- *
- *   /* Match pattern bind */
- *   '⟨ x @ e ⟩ =?= '⟨ y @ p ⟩   ===>   withEnv(x -> y)('⟨e⟩ =?= '⟨p⟩)
- *
- *   /* Match pattern unapply */
- *   '⟨ e0(e1, ..., en)(using i1, ..., im ) ⟩ =?= '⟨ p0(p1, ..., pn)(using q1, ..., 1m) ⟩   ===>   '⟨e0⟩ =?= '⟨p0⟩ &&& ... &&& '⟨en⟩ =?= '⟨pn⟩ &&& '{i1} =?= '{q1} &&& ... &&& '{im} =?= '{qm}
- *
- *   /* Match pattern alternatives */
- *   '⟨ e1 | ... | en ⟩ =?= '⟨ p1 | ... | pn ⟩   ===>   '⟨e1⟩ =?= '⟨p1⟩ &&& ... &&& '⟨en⟩ =?= '⟨pn⟩
- *
- *   /* Match pattern type test */
- *   '⟨ e: T ⟩ =?= '⟨ p: U ⟩   ===>   '⟨e⟩ =?= '⟨p⟩ &&& '[T] =?= [U]
- *
- *   /* Match pattern ref */
- *   '⟨ `x` ⟩ =?= '⟨ `x` ⟩   ===>   matched
- *
- *   /* Match pattern ref splice */
- *   '⟨ `x` ⟩ =?= '⟨ hole ⟩   ===>   matched('{`x`})
- *
  *   ```
  */
 private[quoted] object Matcher {
@@ -409,14 +378,6 @@ private[quoted] object Matcher {
             // TODO match tpt1 with tpt2?
             matched
 
-          /* Match match */
-          case (Match(scru1, cases1), Match(scru2, cases2)) =>
-            scru1 =?= scru2 &&& matchLists(cases1, cases2)(caseMatches)
-
-          /* Match try */
-          case (Try(body1, cases1, finalizer1), Try(body2, cases2, finalizer2)) =>
-            body1 =?= body2 &&& matchLists(cases1, cases2)(caseMatches) &&& treeOptMatches(finalizer1, finalizer2)
-
           // Ignore type annotations
           // TODO remove this
           /* Match annot (a) */
@@ -488,86 +449,6 @@ private[quoted] object Matcher {
       }
     }
 
-    private def caseMatches(scrutinee: CaseDef, pattern: CaseDef)(using Context, Env): Matching = {
-      val (caseEnv, patternMatch) = patternsMatches(scrutinee.pattern, pattern.pattern)
-      withEnv(caseEnv) {
-        patternMatch
-        &&& treeOptMatches(scrutinee.guard, pattern.guard)
-        &&& scrutinee.rhs =?= pattern.rhs
-      }
-    }
-
-
-    /** Check that the pattern trees match and return the contents from the pattern holes.
-      *  Return a tuple with the new environment containing the bindings defined in this pattern and a matching.
-      *  The matching is None if the pattern trees do not match otherwise return Some of a tuple containing all the contents in the holes.
-      *
-      *  @param scrutinee The pattern tree beeing matched
-      *  @param pattern The pattern tree that the scrutinee should match. Contains `patternHole` holes.
-      *  @param `summon[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
-      *  @return The new environment containing the bindings defined in this pattern tuppled with
-      *          `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
-      */
-    private def patternsMatches(scrutinee: Tree, pattern: Tree)(using Context, Env): (Env, Matching) = (scrutinee, pattern) match {
-      /* Match pattern ref splice */
-      case (v1: Term, Unapply(TypeApply(Select(patternHole @ Ident("patternHole"), "unapply"), List(tpt)), Nil, Nil))
-          if patternHole.symbol.owner == summon[Context].requiredModule("scala.runtime.quoted.Matcher") =>
-        (summon[Env], matched(v1.seal))
-
-      /* Match pattern whildcard */
-      case (Ident("_"), Ident("_")) =>
-        (summon[Env], matched)
-
-      /* Match pattern bind */
-      case (Bind(name1, body1), Bind(name2, body2)) =>
-        val bindEnv = summon[Env] + (scrutinee.symbol -> pattern.symbol)
-        patternsMatches(body1, body2)(using summon[Context], bindEnv)
-
-      /* Match pattern unapply */
-      case (Unapply(fun1, implicits1, patterns1), Unapply(fun2, implicits2, patterns2)) =>
-        val (patEnv, patternsMatch) = foldPatterns(patterns1, patterns2)
-        (patEnv, patternsMatches(fun1, fun2)._2 &&& implicits1 =?= implicits2 &&& patternsMatch)
-
-      /* Match pattern alternatives */
-      case (Alternatives(patterns1), Alternatives(patterns2)) =>
-        foldPatterns(patterns1, patterns2)
-
-      /* Match pattern type test */
-      case (Typed(Ident("_"), tpt1), Typed(Ident("_"), tpt2)) =>
-        (summon[Env], tpt1 =?= tpt2)
-
-      case (v1: Term, v2: Term) =>
-        (summon[Env], v1 =?= v2)
-
-      case _ =>
-        if (debug)
-          println(
-            s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                |Scrutinee
-                |  ${scrutinee.show}
-                |
-                |${scrutinee.showExtractors}
-                |
-                |did not match pattern
-                |  ${pattern.show}
-                |
-                |${pattern.showExtractors}
-                |
-                |with environment: ${summon[Env]}
-                |
-                |
-                |""".stripMargin)
-        (summon[Env], notMatched)
-    }
-
-    private def foldPatterns(patterns1: List[Tree], patterns2: List[Tree])(using Context, Env): (Env, Matching) = {
-      if (patterns1.size != patterns2.size) (summon[Env], notMatched)
-      else patterns1.zip(patterns2).foldLeft((summon[Env], matched)) { (acc, x) =>
-        val (env, res) = patternsMatches(x._1, x._2)(using summon[Context], acc._1)
-        (env, acc._2 &&& res)
-      }
-    }
-
     private def isTypeBinding(tree: Tree): Boolean = tree match {
       case tree: TypeDef => hasPatternTypeAnnotation(tree.symbol)
       case _ => false
@@ -593,20 +474,6 @@ private[quoted] object Matcher {
           case _ => None
         }
       case _ => None
-    }
-
-    /** Is this matching the result of a successful match */
-    def (self: Matching) isMatch: Boolean = self.isDefined
-
-    /** Joins the mattchings into a single matching. If any matching is `None` the result is `None`.
-     *  Otherwise the result is `Some` of the concatenation of the tupples.
-     */
-    def foldMatchings(matchings: Matching*): Matching = {
-      // TODO improve performance
-      matchings.foldLeft[Matching](Some(())) {
-        case (Some(acc), Some(holes)) => Some(acc ++ holes)
-        case (_, _) => None
-      }
     }
 
   }
