@@ -33,7 +33,7 @@ These constructs replace existing constructs with the aim of making the language
  - [Trait Parameters](other-new-features/trait-parameters.md) replace [early initializers](dropped-features/early-initializers.md) with a more generally useful construct.
  - [Given Instances](contextual/delegates.md)
    replace implicit objects and defs, focussing on intent over mechanism.
- - [Given Clauses](contextual/given-clauses.md) replace implicit parameters, avoiding their ambiguities.
+ - [Using Clauses](contextual/using-clauses.md) replace implicit parameters, avoiding their ambiguities.
  - [Extension Methods](contextual/extension-methods.md) replace implicit classes with a clearer and simpler mechanism.
  - [Opaque Type Aliases](other-new-features/opaques.md) replace most uses
    of value classes while guaranteeing absence of boxing.

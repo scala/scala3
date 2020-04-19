@@ -25,8 +25,6 @@ object Names {
     def toTermName: TermName
   }
 
-  implicit def eqName: Eql[Name, Name] = Eql.derived
-
   /** A common superclass of Name and Symbol. After bootstrap, this should be
    *  just the type alias Name | Symbol
    */
@@ -37,7 +35,7 @@ object Names {
    *  in a name table. A derived term name adds a tag, and possibly a number
    *  or a further simple name to some other name.
    */
-  abstract class Name extends Designator with PreName {
+  abstract class Name extends Designator, PreName derives Eql {
 
     /** A type for names of the same kind as this name */
     type ThisName <: Name
