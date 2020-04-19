@@ -198,15 +198,21 @@ def largeMethod(...) =
     ... // more code
 end largeMethod
 ```
-An `end` marker consists of the identifier `end` which follows an `<outdent>` token, and is in turn followed on the same line by exactly one other token, which is either an identifier or one of the reserved words
+An `end` marker consists of the identifier `end` and a follow-on specifier token that together constitute all the tokes of a line. Possible specifier tokens are
+identifiers or one of the following keywords
 ```scala
-if  while  for  match  try  new  given  extension
+if   while    for    match    try    new    this    val   given
 ```
-If `end` is followed by a reserved word, the compiler checks that the marker closes an indentation region belonging to a construct that starts with the reserved word. If it is followed by an identifier _id_, the compiler checks that the marker closes a definition
-that defines _id_ or a package clause that refers to _id_.
+End markers are allowed in statement sequences. The specifier token `s` of an end marker must correspond to the statement that precedes it. This means:
 
-`end` itself is a soft keyword. It is only treated as an `end` marker if it
-occurs at the start of a line and is followed by an identifier or one of the reserved words above.
+ - If the statement defines a member `x` then `s` must be the same identifier `x`.
+ - If the statement defines a constructor then `s` must be `this`.
+ - If the statement defines an anonymous given, then `s` must be `given`.
+ - If the statement defines an anonymous extension, then `s` must be `extension`.
+ - If the statement defines an anonymous class, then `s` must be `new`.
+ - If the statement is a `val` definition binding a pattern, then `s` must be `val`.
+ - If the statement is a package clause that refers to package `p`, then `s` must be the same identifier `p`.
+ - If the statement is an `if`, `while`, `for`, `try`, or `match` statement, then `s` must be that same token.
 
 It is recommended that `end` markers are used for code where the extent of an indentation region is not immediately apparent "at a glance". Typically this is the case if an indentation region spans 20 lines or more.
 
