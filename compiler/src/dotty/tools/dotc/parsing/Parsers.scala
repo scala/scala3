@@ -365,18 +365,16 @@ object Parsers {
 
     def acceptStatSepUnlessAtEnd(stats: ListBuffer[Tree], altEnd: Token = EOF): Unit =
       in.observeOutdented()
-      if (!isStatSeqEnd)
-        in.token match {
-          case EOF =>
-          case `altEnd` =>
-          case SEMI | NEWLINE | NEWLINES =>
-            in.nextToken()
-            checkEndMarker(stats)
-          case _ =>
+      in.token match
+        case SEMI | NEWLINE | NEWLINES =>
+          in.nextToken()
+          checkEndMarker(stats)
+        case `altEnd` =>
+        case _ =>
+          if !isStatSeqEnd then
             syntaxError(i"end of statement expected but ${showToken(in.token)} found")
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
             accept(SEMI)
-        }
 
     def rewriteNotice(additionalOption: String = "") = {
       val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
@@ -1327,6 +1325,7 @@ object Parsers {
           in.nextToken()
           if stats.isEmpty || !matches(stats.last) then
             syntaxError("misaligned end marker", Span(start, in.lastCharOffset))
+          in.token = IDENTIFIER
           in.nextToken()
     end checkEndMarker
 
@@ -3891,7 +3890,7 @@ object Parsers {
             in.nextToken()
             ts += objectDef(start, Modifiers(Package))
             if (in.token != EOF) {
-              acceptStatSep()
+              acceptStatSepUnlessAtEnd(ts)
               ts ++= topStatSeq()
             }
           }
