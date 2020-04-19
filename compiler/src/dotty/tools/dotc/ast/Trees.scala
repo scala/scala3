@@ -369,6 +369,8 @@ object Trees {
       comment.map(putAttachment(DocComment, _))
       this
     }
+
+    def name: Name
   }
 
   /** A ValDef or DefDef tree */

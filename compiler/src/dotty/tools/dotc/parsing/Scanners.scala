@@ -89,9 +89,6 @@ object Scanners {
     /** the base of a number */
     var base: Int = 0
 
-    /** Set to false to disable end marker alignment checks, used for outline parsing. */
-    var checkEndMarker: Boolean = true
-
     def copyFrom(td: TokenData): Unit = {
       this.token = td.token
       this.offset = td.offset
@@ -181,6 +178,8 @@ object Scanners {
     /** A switch whether operators at the start of lines can be infix operators */
     private[Scanners] var allowLeadingInfixOperators = true
 
+    var debugTokenStream = false
+
     val rewrite = ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
     val newSyntax = ctx.settings.newSyntax.value
@@ -265,9 +264,6 @@ object Scanners {
     /** The current region. This is initially an Indented region with indentation width. */
     var currentRegion: Region = Indented(IndentWidth.Zero, Set(), EMPTY, null)
 
-    /** The number of open end marker scopes */
-    var openEndMarkers: List[(EndMarkerTag, IndentWidth)] = Nil
-
 // Get next token ------------------------------------------------------------
 
     /** Are we directly in a multiline string interpolation expression?
@@ -344,11 +340,11 @@ object Scanners {
 
       if (isAfterLineEnd) handleNewLine(lastToken)
       postProcessToken()
-      //printState()
+      printState()
     }
 
-    protected def printState() =
-      print("[" + show + "]")
+    final def printState() =
+      if debugTokenStream then print("[" + show + "]")
 
     /** Insert `token` at assumed `offset` in front of current one. */
     def insert(token: Token, offset: Int) = {
@@ -357,51 +353,6 @@ object Scanners {
       this.offset = offset
       this.token = token
     }
-
-    /** What can be referred to in an end marker */
-    type EndMarkerTag = TermName | Token
-
-    /** Establish a scope for a passible end-marker with given tag, parsed by `op` */
-    def endMarkerScope[T](tag: EndMarkerTag)(op: => T): T =
-      val saved = openEndMarkers
-      openEndMarkers = (tag, currentRegion.indentWidth) :: openEndMarkers
-      try op
-      finally openEndMarkers = saved
-
-    /** If this token and the next constitute an end marker, skip them and check they
-     *  align with an opening construct with the same end marker tag,
-     *  unless `checkEndMarker` is false.
-     */
-    protected def skipEndMarker(width: IndentWidth): Unit =
-      if next.token == IDENTIFIER && next.name == nme.end then
-        val lookahead = LookaheadScanner()
-        val start = lookahead.offset
-
-        def handle(tag: EndMarkerTag) =
-          def checkAligned(): Unit = openEndMarkers match
-            case (etag, ewidth) :: rest if width <= ewidth =>
-              if width < ewidth || tag != etag then
-                openEndMarkers = rest
-                checkAligned()
-            case _ =>
-              if checkEndMarker
-                lexical.println(i"misaligned end marker $tag, $width, $openEndMarkers")
-                errorButContinue("misaligned end marker", start)
-
-          val skipTo = lookahead.charOffset
-          lookahead.nextToken()
-          if lookahead.isAfterLineEnd || lookahead.token == EOF then
-            checkAligned()
-            next.token = EMPTY
-            while charOffset < skipTo do nextChar()
-        end handle
-
-        lookahead.nextToken() // skip the `end`
-        lookahead.token match
-          case IDENTIFIER | BACKQUOTED_IDENT => handle(lookahead.name)
-          case IF | WHILE | FOR | MATCH | TRY | NEW | GIVEN => handle(lookahead.token)
-          case _ =>
-    end skipEndMarker
 
     /** A leading symbolic or backquoted identifier is treated as an infix operator if
       *   - it does not follow a blank line, and
@@ -535,7 +486,6 @@ object Scanners {
          && !isLeadingInfixOperator()
       then
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
-        skipEndMarker(nextWidth)
       else if indentIsSignificant then
         if nextWidth < lastWidth
            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
@@ -546,7 +496,6 @@ object Scanners {
               case r: Indented =>
                 currentRegion = r.enclosing
                 insert(OUTDENT, offset)
-                skipEndMarker(nextWidth)
               case r: InBraces if !closingRegionTokens.contains(token) =>
                 ctx.warning("Line is indented too far to the left, or a `}` is missing",
                   source.atSpan(Span(offset)))
@@ -934,13 +883,7 @@ object Scanners {
 
 // Lookahead ---------------------------------------------------------------
 
-    class LookaheadScanner() extends Scanner(source, offset) {
-      override def skipEndMarker(width: IndentWidth) = ()
-      override protected def printState() = {
-        print("la:")
-        super.printState()
-      }
-    }
+    class LookaheadScanner() extends Scanner(source, offset)
 
     /** Skip matching pairs of `(...)` or `[...]` parentheses.
      *  @pre  The current token is `(` or `[`
@@ -1343,8 +1286,8 @@ object Scanners {
     def show: String = token match {
       case IDENTIFIER | BACKQUOTED_IDENT => s"id($name)"
       case CHARLIT => s"char($strVal)"
-      case INTLIT => s"int($strVal, $base)"
-      case LONGLIT => s"long($strVal, $base)"
+      case INTLIT => s"int($strVal, base = $base)"
+      case LONGLIT => s"long($strVal, base = $base)"
       case FLOATLIT => s"float($strVal)"
       case DOUBLELIT => s"double($strVal)"
       case STRINGLIT => s"string($strVal)"

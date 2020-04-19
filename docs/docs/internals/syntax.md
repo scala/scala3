@@ -104,9 +104,8 @@ yield
 ### Soft keywords
 
 ```
-as        derives   extension inline    on        opaque    open      transparent
-using
-*         +         -
+as  derives  end  extension  inline  on  opaque  open  transparent  using
+*  +  -
 ```
 
 ## Context-free Syntax
@@ -241,6 +240,7 @@ BlockStat         ::=  Import
                     |  {Annotation [nl]} [‘implicit’ | ‘lazy’] Def
                     |  {Annotation [nl]} {LocalModifier} TmplDef
                     |  Expr1
+                    |  EndMarker
 
 ForExpr           ::=  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’)        ForYield(enums, expr)
                        {nl} [‘yield’] Expr
@@ -344,6 +344,10 @@ ImportSelectors   ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelect
 WildCardSelector  ::=  ‘given’ (‘_' | InfixType)
                     |  ‘_'
 Export            ::=  ‘export’ [‘given’] ImportExpr {‘,’ ImportExpr}
+
+EndMarker         ::=  ‘end’ EndMarkerTag    -- when followed by EOL
+EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | ‘try’
+                    |  ‘new’ | ‘this’ | ‘given’ | ‘extension’ | ‘val’
 ```
 
 ### Declarations and Definitions
@@ -406,6 +410,7 @@ TemplateStat      ::=  Import
                     |  {Annotation [nl]} {Modifier} Def
                     |  {Annotation [nl]} {Modifier} Dcl
                     |  Expr1
+                    |  EndMarker
                     |
 SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)
                     |  ‘this’ ‘:’ InfixType ‘=>’
@@ -422,6 +427,7 @@ TopStat           ::=  Import
                     |  {Annotation [nl]} {Modifier} Def
                     |  Packaging
                     |  PackageObject
+                    |  EndMarker
                     |
 Packaging         ::=  ‘package’ QualId [nl | colonEol] ‘{’ TopStatSeq ‘}’      Package(qid, stats)
 PackageObject     ::=  ‘package’ ‘object’ ObjectDef                             object with package in mods.
