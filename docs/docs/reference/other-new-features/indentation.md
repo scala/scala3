@@ -187,7 +187,7 @@ println(".")
 
 Indentation-based syntax has many advantages over other conventions. But one possible problem is that it makes it hard to discern when a large indentation region ends, since there is no specific token that delineates the end. Braces are not much better since a brace by itself also contains no information about what region is closed.
 
-To solve this problem, Scala 3 offers an optional `end` marker. Example
+To solve this problem, Scala 3 offers an optional `end` marker. Example:
 ```scala
 def largeMethod(...) =
     ...
@@ -214,9 +214,66 @@ End markers are allowed in statement sequences. The specifier token `s` of an en
  - If the statement is a package clause that refers to package `p`, then `s` must be the same identifier `p`.
  - If the statement is an `if`, `while`, `for`, `try`, or `match` statement, then `s` must be that same token.
 
-It is recommended that `end` markers are used for code where the extent of an indentation region is not immediately apparent "at a glance". Typically this is the case if an indentation region spans 20 lines or more.
+For instance, the following end markers are all legal:
+ ```scala
+  package p1.p2:
 
-**Syntax**
+    abstract class C():
+
+      def this(x: Int) =
+        this()
+        if x > 0 then
+          val a :: b =
+            x :: Nil
+          end val
+          var y =
+            x
+          end y
+          while y > 0 do
+            println(y)
+            y -= 1
+          end while
+          try
+            x match
+              case 0 => println("0")
+              case _ =>
+            end match
+          finally
+            println("done")
+          end try
+        end if
+      end this
+
+      def f: String
+    end C
+
+    object C:
+      given C =
+        new C:
+          def f = "!"
+          end f
+        end new
+      end given
+    end C
+
+    extension on (x: C):
+      def ff: String = x.f ++ x.f
+    end extension
+
+  end p2
+```
+
+#### When to Use End Markers
+
+It is recommended that `end` markers are used for code where the extent of an indentation region is not immediately apparent "at a glance". People will have different preferences what this means, but one can nevertheless give some guidelines that stem from experience. An end marker makes sense if
+
+ - the construct contains blank lines, or
+ - the construct is long, say 15-20 lines or more,
+ - the construct ends heavily indented, say 4 indentation levels or more.
+
+If none of these criteria apply, it's often better to not use an end marker since the code will be just as clear and more concise. If there are several ending regions that satisfy one of the criteria above, we usually need an end marker only for the outermost closed reason. So cascades of end markers as in the example above are usually better avoided.
+
+#### Syntax
 
 ```
 EndMarker         ::=  ‘end’ EndMarkerTag    -- when followed by EOL
