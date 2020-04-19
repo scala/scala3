@@ -216,6 +216,17 @@ End markers are allowed in statement sequences. The specifier token `s` of an en
 
 It is recommended that `end` markers are used for code where the extent of an indentation region is not immediately apparent "at a glance". Typically this is the case if an indentation region spans 20 lines or more.
 
+**Syntax**
+
+```
+EndMarker         ::=  ‘end’ EndMarkerTag    -- when followed by EOL
+EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | ‘try’
+                    |  ‘new’ | ‘this’ | ‘given’ | ‘extension’ | ‘val’
+BlockStat         ::=  ... | EndMarker
+TemplateStat      ::=  ... | EndMarker
+TopStat           ::=  ... | EndMarker
+```
+
 ### Example
 
 Here is a (somewhat meta-circular) example of code using indentation. It provides a concrete representation of indentation widths as defined above together with efficient operations for constructing and comparing indentation widths.

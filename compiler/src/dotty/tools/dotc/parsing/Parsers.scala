@@ -1325,7 +1325,7 @@ object Parsers {
           in.nextToken()
           if stats.isEmpty || !matches(stats.last) then
             syntaxError("misaligned end marker", Span(start, in.lastCharOffset))
-          in.token = IDENTIFIER
+          in.token = IDENTIFIER // Leaving it as the original token can confuse newline insertion
           in.nextToken()
     end checkEndMarker
 
