@@ -190,12 +190,12 @@ Indentation-based syntax has many advantages over other conventions. But one pos
 To solve this problem, Scala 3 offers an optional `end` marker. Example:
 ```scala
 def largeMethod(...) =
-    ...
-    if ... then ...
-    else
-        ... // a large block
-    end if
-    ... // more code
+  ...
+  if ... then ...
+  else
+      ... // a large block
+  end if
+  ... // more code
 end largeMethod
 ```
 An `end` marker consists of the identifier `end` and a follow-on specifier token that together constitute all the tokes of a line. Possible specifier tokens are
