@@ -357,10 +357,53 @@ jobs:
           key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
           restore-keys: ${{ runner.os }}-general-
 
-      - name: Publish Nightly
+      - name: Publish Release
         run: |
           ./project/scripts/sbt dist-bootstrapped/packArchive
+          sha256sum dist-bootstrapped/target/dotty-* > dist-bootstrapped/target/sha256sum.txt
           ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+
+      - name: Create GitHub Release
+        id: create_gh_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body:
+          draft: false
+          prerelease: ${{ endsWith(github.ref, "RC-1") }}
+
+      - name: Upload zip archive to GitHub Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
+          asset_path: ./dist-bootstrapped/target/dotty-${{ github.ref }}.zip
+          asset_name: dotty-${{ github.ref }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload tar.gz archive to GitHub Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
+          asset_path: ./dist-bootstrapped/target/dotty-${{ github.ref }}.tar.gz
+          asset_name: dotty-${{ github.ref }}.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload SHA256 sum of the release artefacts to GitHub Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
+          asset_path: ./dist-bootstrapped/target/sha256sum.txt
+          asset_name: sha256sum.txt
+          asset_content_type: text/plain
 
   release_documentation:
     runs-on: self-hosted
@@ -408,3 +451,4 @@ jobs:
       - name: Nightly Documentation
         run: |
           ./project/scripts/genDocs -doc-snapshot
+

@@ -185,22 +185,22 @@ steps:
 #     event:
 #     - tag
 
-- name: github_release
-  pull: default
-  image: plugins/github-release
-  depends_on: [ publish_release ]
-  settings:
-    checksum:
-    - sha256
-    draft: true
-    files:
-    - dist-bootstrapped/target/dotty-*
-  environment:
-    GITHUB_TOKEN:
-      from_secret: github_token
-  when:
-    event:
-    - tag
+# - name: github_release
+#   pull: default
+#   image: plugins/github-release
+#   depends_on: [ publish_release ]
+#   settings:
+#     checksum:
+#     - sha256
+#     draft: true
+#     files:
+#     - dist-bootstrapped/target/dotty-*
+#   environment:
+#     GITHUB_TOKEN:
+#       from_secret: github_token
+#   when:
+#     event:
+#     - tag
 
 - name: publish_sbt_release
   pull: default
