@@ -3278,6 +3278,7 @@ object Parsers {
             leadingVparamss ::: rparamss
         var tpt = fromWithinReturnType {
           if in.token == SUBTYPE && mods.is(Inline) && AllowOldWhiteboxSyntax then
+            deprecationWarning("`<:` return type will no longer be suported. Use transparent modifier insead.")
             in.nextToken()
             mods1 = addMod(mods1, Mod.Transparent())
             toplevelTyp()
@@ -3547,6 +3548,7 @@ object Parsers {
           mods1 |= Final
           DefDef(name, tparams, vparamss, tpt, subExpr())
         if in.token == USCORE && AllowOldWhiteboxSyntax then
+          deprecationWarning("`<:` return type will no longer be suported. Use transparent modifier insead.")
           if !mods.is(Inline) then
             syntaxError("`_ <:` is only allowed for given with `inline` modifier")
           in.nextToken()
