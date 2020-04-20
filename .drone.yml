@@ -139,51 +139,51 @@ steps:
 #     target:
 #     - nightly
 
-- name: publish_release
-  pull: default
-  image: lampepfl/dotty:2020-01-22-2
-  depends_on:
-  - test
-  - test_bootstrapped
-  - community_build
-  - test_sbt
-  - test_java11
-  commands:
-  - ./project/scripts/sbt dist-bootstrapped/packArchive
-  - ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
-  environment:
-    PGP_PW:
-      from_secret: pgp_pw
-    PGP_SECRET:
-      from_secret: pgp_secret
-    RELEASEBUILD: yes
-    SONATYPE_PW:
-      from_secret: sonatype_pw
-    SONATYPE_USER:
-      from_secret: sonatype_user
-  when:
-    event:
-    - tag
+# - name: publish_release
+#   pull: default
+#   image: lampepfl/dotty:2020-01-22-2
+#   depends_on:
+#   - test
+#   - test_bootstrapped
+#   - community_build
+#   - test_sbt
+#   - test_java11
+#   commands:
+#   - ./project/scripts/sbt dist-bootstrapped/packArchive
+#   - ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+#   environment:
+#     PGP_PW:
+#       from_secret: pgp_pw
+#     PGP_SECRET:
+#       from_secret: pgp_secret
+#     RELEASEBUILD: yes
+#     SONATYPE_PW:
+#       from_secret: sonatype_pw
+#     SONATYPE_USER:
+#       from_secret: sonatype_user
+#   when:
+#     event:
+#     - tag
 
-- name: release_documentation
-  pull: default
-  image: lampepfl/dotty:2020-01-22-2
-  depends_on:
-  - test
-  - test_bootstrapped
-  - community_build
-  - test_java11
-  - publish_release
-  - github_release
-  commands:
-  - ./project/scripts/genDocs -doc-snapshot
-  environment:
-    BOT_TOKEN:
-      from_secret: bot_token
-    RELEASEBUILD: yes
-  when:
-    event:
-    - tag
+# - name: release_documentation
+#   pull: default
+#   image: lampepfl/dotty:2020-01-22-2
+#   depends_on:
+#   - test
+#   - test_bootstrapped
+#   - community_build
+#   - test_java11
+#   - publish_release
+#   - github_release
+#   commands:
+#   - ./project/scripts/genDocs -doc-snapshot
+#   environment:
+#     BOT_TOKEN:
+#       from_secret: bot_token
+#     RELEASEBUILD: yes
+#   when:
+#     event:
+#     - tag
 
 - name: github_release
   pull: default

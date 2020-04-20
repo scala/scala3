@@ -311,3 +311,100 @@ jobs:
       - name: Nightly Documentation
         run: |
           ./project/scripts/genDocs -doc-snapshot
+
+  publish_release:
+    runs-on: self-hosted
+    container: akmetiuk/dotty:2020-02-12
+    needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
+    if: github.event_name == 'push' &&
+        startsWith(github.event.ref, 'refs/tags/')
+
+    env:
+      RELEASEBUILD: yes
+      PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
+      PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
+      SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
+      SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+
+    steps:
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Cache Ivy
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.ivy2/cache
+          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-ivy-
+
+      - name: Cache SBT
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.sbt
+          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+          restore-keys: ${{ runner.os }}-sbt-
+
+      - name: Cache Coursier and Mill
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.cache
+          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-general-
+
+      - name: Publish Nightly
+        run: |
+          ./project/scripts/sbt dist-bootstrapped/packArchive
+          ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+
+  release_documentation:
+    runs-on: self-hosted
+    container: akmetiuk/dotty:2020-02-12
+    needs: [publish_release]
+    if: github.event_name == 'push' &&
+        startsWith(github.event.ref, 'refs/tags/')
+    env:
+      RELEASEBUILD: yes
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
+                                           # Generate one at https://github.com/settings/tokens
+                                           # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
+
+    steps:
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Cache Ivy
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.ivy2/cache
+          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-ivy-
+
+      - name: Cache SBT
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.sbt
+          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+          restore-keys: ${{ runner.os }}-sbt-
+
+      - name: Cache Coursier and Mill
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.cache
+          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-general-
+
+      - name: Nightly Documentation
+        run: |
+          ./project/scripts/genDocs -doc-snapshot
