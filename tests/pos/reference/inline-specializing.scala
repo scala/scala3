@@ -6,7 +6,7 @@ object Test{
   def meth() = true
   }
 
-  inline def choose(b: Boolean) <: A = {
+  transparent inline def choose(b: Boolean): A = {
   if (b) new A()
   else new B()
   }

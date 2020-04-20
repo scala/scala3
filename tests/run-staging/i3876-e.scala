@@ -13,5 +13,5 @@ object Test {
     println(withQuoteContext(Expr.betaReduce(f4)(x).show))
   }
 
-  inline def inlineLambda <: Int => Int = x => x + x
+  transparent inline def inlineLambda: Int => Int = x => x + x
 }

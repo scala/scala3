@@ -21,7 +21,7 @@ implicit object FooAssoc extends Assoc[Foo] {
 
 import compiletime.summonFrom
 
-inline def link[T] <: Any =
+transparent inline def link[T]: Any =
   summonFrom {
     case _: Link[T, s] =>
       summonFrom {

@@ -12,7 +12,7 @@ object Main {
     }
   }
 
-  inline def myMacro(body: => Any) <: Any = ${
+  transparent inline def myMacro(body: => Any): Any = ${
     myMacroImpl('body)
   }
 }

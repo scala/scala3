@@ -4,17 +4,17 @@ trait HList {
   def head: Any
   def tail: HList
 
-  inline def isEmpty <: Boolean = length == 0
+  transparent inline def isEmpty: Boolean = length == 0
 }
 
 case object HNil extends HList {
-  inline override def length <: Int = 0
+  transparent inline override def length: Int = 0
   def head: Nothing = ???
   def tail: Nothing = ???
 }
 
 case class :: [H, T <: HList] (hd: H, tl: T) extends HList {
-  inline override def length <: Int = 1 + tl.length
+  transparent inline override def length: Int = 1 + tl.length
   inline def head: H = this.hd
   inline def tail: T = this.tl
 }
@@ -32,7 +32,7 @@ object Test extends App {
 
   // Does not work since it infers `Any` as a type argument for `::`
   // and we cannot undo that without a typing from untyped.
-  inline def concat[T1, T2](xs: HList, ys: HList) <: HList =
+  transparent inline def concat[T1, T2](xs: HList, ys: HList): HList =
     inline if xs.isEmpty then ys
     else new ::(xs.head, concat(xs.tail, ys))
 

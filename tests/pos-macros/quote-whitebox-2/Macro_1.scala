@@ -3,7 +3,7 @@ import scala.quoted._
 
 object Macro {
 
-  inline def charOrString(inline str: String) <: Any = ${ impl('str) }
+  transparent inline def charOrString(inline str: String): Any = ${ impl('str) }
 
   def impl(strExpr: Expr[String]) (using QuoteContext)=
     val str = strExpr.unliftOrError

@@ -1,12 +1,12 @@
 object Test {
-  inline def not(x: Boolean) <: Boolean = {
+  transparent inline def not(x: Boolean): Boolean = {
     !x
   }
 
   final val a = not(true)
   val b: false = a
 
-  inline def add(x: Int, y: Int) <: Int = {
+  transparent inline def add(x: Int, y: Int): Int = {
     x + y
   }
 
