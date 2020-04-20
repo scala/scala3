@@ -175,10 +175,16 @@ object Checking {
         if (cls.isOneOf(AbstractOrTrait))
           ctx.error(CantInstantiateAbstractClassOrTrait(cls, isTrait = cls.is(Trait)), posd.sourcePos)
         if (!cls.is(Module)) {
+          def (tp: Type).stripOpaques: Type = tp match
+            case RefinedType(parent, name, _) if cls.info.decl(name).symbol.isOpaqueAlias =>
+              parent.stripOpaques
+            case _ =>
+              tp
           // Create a synthetic singleton type instance, and check whether
           // it conforms to the self type of the class as seen from that instance.
           val stp = SkolemType(tp)
-          val selfType = cls.asClass.givenSelfType.asSeenFrom(stp, cls)
+          val selfType =
+            cls.asClass.givenSelfType.stripOpaques.asSeenFrom(stp, cls)
           if (selfType.exists && !(stp <:< selfType))
             ctx.error(DoesNotConformToSelfTypeCantBeInstantiated(tp, selfType), posd.sourcePos)
         }
