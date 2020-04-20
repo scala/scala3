@@ -1998,7 +1998,8 @@ object Parsers {
         t match
           case Ident(_) | Select(_, _) | Apply(_, _) =>
             atSpan(startOffset(t), in.skipToken()) {
-              Assign(t, subPart(() => expr(location)))
+              val loc = if location.inArgs then location else Location.ElseWhere
+              Assign(t, subPart(() => expr(loc)))
             }
           case _ =>
             t
