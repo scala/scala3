@@ -48,9 +48,13 @@ object Parsers {
     def nonePositive: Boolean = parCounts forall (_ <= 0)
   }
 
-  @sharable object Location extends Enumeration {
-    val InParens, InBlock, InPattern, ElseWhere: Value = Value
-  }
+  enum Location(val inParens: Boolean, val inPattern: Boolean, val inArgs: Boolean):
+    case InParens      extends Location(true, false, false)
+    case InArgs        extends Location(true, false, true)
+    case InPattern     extends Location(false, true, false)
+    case InPatternArgs extends Location(false, true, true) // InParens not true, since it might be an alternative
+    case InBlock       extends Location(false, false, false)
+    case ElseWhere     extends Location(false, false, false)
 
   @sharable object ParamOwner extends Enumeration {
     val Class, Type, TypeParam, Def: Value = Value
@@ -1754,9 +1758,9 @@ object Parsers {
       else TypeTree().withSpan(Span(in.lastOffset))
     }
 
-    def typeDependingOn(location: Location.Value): Tree =
-      if (location == Location.InParens) typ()
-      else if (location == Location.InPattern) refinedType()
+    def typeDependingOn(location: Location): Tree =
+      if location.inParens then typ()
+      else if location.inPattern then refinedType()
       else infixType()
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
@@ -1843,7 +1847,7 @@ object Parsers {
 
     def subExpr() = subPart(expr)
 
-    def expr(location: Location.Value): Tree = {
+    def expr(location: Location): Tree = {
       val start = in.offset
       def isSpecialClosureStart =
         val lookahead = in.LookaheadScanner()
@@ -1876,7 +1880,7 @@ object Parsers {
       }
     }
 
-    def expr1(location: Location.Value = Location.ElseWhere): Tree = in.token match
+    def expr1(location: Location = Location.ElseWhere): Tree = in.token match
       case IF =>
         in.endMarkerScope(IF) { ifExpr(in.offset, If) }
       case WHILE =>
@@ -1989,11 +1993,13 @@ object Parsers {
         else expr1Rest(postfixExpr(), location)
     end expr1
 
-    def expr1Rest(t: Tree, location: Location.Value): Tree = in.token match
+    def expr1Rest(t: Tree, location: Location): Tree = in.token match
       case EQUALS =>
         t match
           case Ident(_) | Select(_, _) | Apply(_, _) =>
-            atSpan(startOffset(t), in.skipToken()) { Assign(t, subExpr()) }
+            atSpan(startOffset(t), in.skipToken()) {
+              Assign(t, subPart(() => expr(location)))
+            }
           case _ =>
             t
       case COLON =>
@@ -2003,24 +2009,29 @@ object Parsers {
         t
     end expr1Rest
 
-    def ascription(t: Tree, location: Location.Value): Tree = atSpan(startOffset(t)) {
+    def ascription(t: Tree, location: Location): Tree = atSpan(startOffset(t)) {
       in.token match {
         case USCORE =>
           val uscoreStart = in.skipToken()
-          if (isIdent(nme.raw.STAR)) {
+          if isIdent(nme.raw.STAR) then
             in.nextToken()
-            if (in.token != RPAREN) syntaxError(SeqWildcardPatternPos(), uscoreStart)
+            if !(location.inArgs && in.token == RPAREN) then
+              if opStack.nonEmpty
+                ctx.errorOrMigrationWarning(
+                  em"""`_*` can be used only for last argument of method application.
+                      |It is no longer allowed in operands of infix operations.""",
+                  in.sourcePos(uscoreStart))
+              else
+                syntaxError(SeqWildcardPatternPos(), uscoreStart)
             Typed(t, atSpan(uscoreStart) { Ident(tpnme.WILDCARD_STAR) })
-          }
-          else {
+          else
             syntaxErrorOrIncomplete(IncorrectRepeatedParameterSyntax())
             t
-          }
-        case AT if location != Location.InPattern =>
+        case AT if !location.inPattern =>
           annotations().foldLeft(t)(Annotated)
         case _ =>
           val tpt = typeDependingOn(location)
-          if (isWildcard(t) && location != Location.InPattern) {
+          if (isWildcard(t) && !location.inPattern) {
             val vd :: rest = placeholderParams
             placeholderParams =
               cpy.ValDef(vd)(tpt = tpt).withSpan(vd.span.union(tpt.span)) :: rest
@@ -2063,7 +2074,7 @@ object Parsers {
      *                     |   `_'
      *  Bindings          ::=  `(' [[‘using’] [‘erased’] Binding {`,' Binding}] `)'
      */
-    def funParams(mods: Modifiers, location: Location.Value): List[Tree] =
+    def funParams(mods: Modifiers, location: Location): List[Tree] =
       if in.token == LPAREN then
         in.nextToken()
         if in.token == RPAREN then
@@ -2117,10 +2128,10 @@ object Parsers {
     /** Expr         ::= [‘implicit’] FunParams `=>' Expr
      *  BlockResult  ::= implicit id [`:' InfixType] `=>' Block // Scala2 only
      */
-    def closure(start: Int, location: Location.Value, implicitMods: Modifiers): Tree =
+    def closure(start: Int, location: Location, implicitMods: Modifiers): Tree =
       closureRest(start, location, funParams(implicitMods, location))
 
-    def closureRest(start: Int, location: Location.Value, params: List[Tree]): Tree =
+    def closureRest(start: Int, location: Location, params: List[Tree]): Tree =
       atSpan(start, in.offset) {
         if in.token == CTXARROW then in.nextToken() else accept(ARROW)
         Function(params, if (location == Location.InBlock) block() else expr())
@@ -2295,10 +2306,9 @@ object Parsers {
       if args._2 then res.setUsingApply()
       res
 
-    val argumentExpr: () => Tree = () => exprInParens() match {
+    val argumentExpr: () => Tree = () => expr(Location.InArgs) match
       case arg @ Assign(Ident(id), rhs) => cpy.NamedArg(arg)(id, rhs)
       case arg => arg
-    }
 
     /** ArgumentExprss ::= {ArgumentExprs}
      */
@@ -2535,21 +2545,20 @@ object Parsers {
 
     /**  Pattern           ::=  Pattern1 { `|' Pattern1 }
      */
-    val pattern: () => Tree = () => {
-      val pat = pattern1()
+    def pattern(location: Location = Location.InPattern): Tree =
+      val pat = pattern1(location)
       if (isIdent(nme.raw.BAR))
-        atSpan(startOffset(pat)) { Alternative(pat :: patternAlts()) }
+        atSpan(startOffset(pat)) { Alternative(pat :: patternAlts(location)) }
       else pat
-    }
 
-    def patternAlts(): List[Tree] =
-      if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1() :: patternAlts() }
+    def patternAlts(location: Location): List[Tree] =
+      if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1(location) :: patternAlts(location) }
       else Nil
 
     /**  Pattern1     ::= Pattern2 [Ascription]
      *                  | ‘given’ PatVar ‘:’ RefinedType
      */
-    def pattern1(): Tree =
+    def pattern1(location: Location = Location.InPattern): Tree =
       if (in.token == GIVEN) {
         val givenMod = atSpan(in.skipToken())(Mod.Given())
         atSpan(in.offset) {
@@ -2558,7 +2567,7 @@ object Parsers {
               val name = in.name
               in.nextToken()
               accept(COLON)
-              val typed = ascription(Ident(nme.WILDCARD), Location.InPattern)
+              val typed = ascription(Ident(nme.WILDCARD), location)
               Bind(name, typed).withMods(addMod(Modifiers(), givenMod))
             case _ =>
               syntaxErrorOrIncomplete("pattern variable expected")
@@ -2570,7 +2579,7 @@ object Parsers {
         val p = pattern2()
         if (in.token == COLON) {
           in.nextToken()
-          ascription(p, Location.InPattern)
+          ascription(p, location)
         }
         else p
       }
@@ -2661,17 +2670,17 @@ object Parsers {
 
     /** Patterns          ::=  Pattern [`,' Pattern]
      */
-    def patterns(): List[Tree] = commaSeparated(pattern)
+    def patterns(location: Location = Location.InPattern): List[Tree] =
+      commaSeparated(() => pattern(location))
 
-    def patternsOpt(): List[Tree] =
-      if (in.token == RPAREN) Nil else patterns()
-
+    def patternsOpt(location: Location = Location.InPattern): List[Tree] =
+      if (in.token == RPAREN) Nil else patterns(location)
 
     /** ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
      *                      |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
      */
     def argumentPatterns(): List[Tree] =
-      inParens(patternsOpt())
+      inParens(patternsOpt(Location.InPatternArgs))
 
 /* -------- MODIFIERS and ANNOTATIONS ------------------------------------------- */
 
