@@ -318,7 +318,7 @@ jobs:
     needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
-        !startsWith(github.ref, "sbt-dotty-")
+        !startsWith(github.ref, 'sbt-dotty-')
 
     env:
       RELEASEBUILD: yes
@@ -374,7 +374,7 @@ jobs:
           release_name: ${{ github.ref }}
           body:
           draft: false
-          prerelease: ${{ endsWith(github.ref, "RC-1") }}
+          prerelease: ${{ endsWith(github.ref, 'RC1') }}
 
       - name: Upload zip archive to GitHub Release
         uses: actions/upload-release-asset@v1
@@ -412,7 +412,7 @@ jobs:
     needs: [publish_release]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
-        !startsWith(github.ref, "sbt-dotty-")
+        !startsWith(github.ref, 'sbt-dotty-')
 
     env:
       RELEASEBUILD: yes
@@ -461,7 +461,7 @@ jobs:
     needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
-        startsWith(github.ref, "sbt-dotty-")
+        startsWith(github.ref, 'sbt-dotty-')
 
     env:
       RELEASEBUILD: yes
