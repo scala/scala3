@@ -318,7 +318,7 @@ jobs:
     needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
-        !startsWith(github.ref, 'sbt-dotty-')
+        !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
 
     env:
       RELEASEBUILD: yes
@@ -363,6 +363,7 @@ jobs:
           ./project/scripts/sbt dist-bootstrapped/packArchive
           sha256sum dist-bootstrapped/target/dotty-* > dist-bootstrapped/target/sha256sum.txt
           ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+          echo "::set-env name=RELEASE_TAG::${GITHUB_REF#*refs/tags/}"
 
       - name: Create GitHub Release
         id: create_gh_release
@@ -374,7 +375,7 @@ jobs:
           release_name: ${{ github.ref }}
           body:
           draft: false
-          prerelease: ${{ endsWith(github.ref, 'RC1') }}
+          prerelease: ${{ contains(env.RELEASE_TAG, 'RC') }}
 
       - name: Upload zip archive to GitHub Release
         uses: actions/upload-release-asset@v1
@@ -382,8 +383,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist-bootstrapped/target/dotty-${{ github.ref }}.zip
-          asset_name: dotty-${{ github.ref }}.zip
+          asset_path: ./dist-bootstrapped/target/dotty-${{ env.RELEASE_TAG }}.zip
+          asset_name: dotty-${{ env.RELEASE_TAG }}.zip
           asset_content_type: application/zip
 
       - name: Upload tar.gz archive to GitHub Release
@@ -392,8 +393,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist-bootstrapped/target/dotty-${{ github.ref }}.tar.gz
-          asset_name: dotty-${{ github.ref }}.tar.gz
+          asset_path: ./dist-bootstrapped/target/dotty-${{ env.RELEASE_TAG }}.tar.gz
+          asset_name: dotty-${{ env.RELEASE_TAG }}.tar.gz
           asset_content_type: application/gzip
 
       - name: Upload SHA256 sum of the release artefacts to GitHub Release
@@ -412,7 +413,7 @@ jobs:
     needs: [publish_release]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
-        !startsWith(github.ref, 'sbt-dotty-')
+        !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
 
     env:
       RELEASEBUILD: yes
@@ -460,8 +461,7 @@ jobs:
     container: akmetiuk/dotty:2020-02-12
     needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
     if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/') &&
-        startsWith(github.ref, 'sbt-dotty-')
+        startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
 
     env:
       RELEASEBUILD: yes
