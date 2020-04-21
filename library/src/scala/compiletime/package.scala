@@ -52,7 +52,7 @@ package object compiletime {
    *
    *  the returned value would be `2`.
    */
-  inline def summonFrom[T](f: Nothing => T) <: T = ???
+  transparent inline def summonFrom[T](f: Nothing => T): T = ???
 
 
   /** Summon a given value of type `T`. Usually, the argument is not passed explicitly.
@@ -61,7 +61,7 @@ package object compiletime {
    *  @tparam T the type of the value to be summoned
    *  @return the given value typed as the provided type parameter
    */
-  inline def summonInline[T] <: T = summonFrom {
+  transparent inline def summonInline[T]: T = summonFrom {
     case t: T => t
   }
 

@@ -3,12 +3,12 @@ import scala.quoted._
 object Macro {
 
   trait SelectableRecord extends Selectable {
-    inline def toTuple <: Tuple = ${ toTupleImpl('this)}
+    transparent inline def toTuple: Tuple = ${ toTupleImpl('this)}
   }
 
   trait SelectableRecordCompanion[T] {
     protected def fromUntypedTuple(elems: (String, Any)*): T
-    inline def fromTuple[T <: Tuple](inline s: T) <: Any = ${ fromTupleImpl('s, '{ (x: Array[(String, Any)]) => fromUntypedTuple(x: _*) } ) }
+    transparent inline def fromTuple[T <: Tuple](inline s: T): Any = ${ fromTupleImpl('s, '{ (x: Array[(String, Any)]) => fromUntypedTuple(x: _*) } ) }
   }
 
   private def toTupleImpl(s: Expr[Selectable])(using qctx:QuoteContext) : Expr[Tuple] = {

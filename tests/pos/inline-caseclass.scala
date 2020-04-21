@@ -5,7 +5,7 @@ case class S[N <: Nat](n: N) extends Nat
 object Test {
   type Z = Z.type
 
-  inline def add(x: Nat, y: Int) <: Int = inline x match {
+  transparent inline def add(x: Nat, y: Int): Int = inline x match {
     case Z => y
     case S(x1) => add(x1, y) + 1
   }

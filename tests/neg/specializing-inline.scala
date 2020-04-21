@@ -4,7 +4,7 @@ object Test {
   val z = h(true)
   val zc: Int = z // error
 
-  inline def g <: Any = 1
+  transparent inline def g: Any = 1
   val y = g
   val yc: Int = y // OK
 

@@ -3,7 +3,7 @@
 class Test {
   import scala.collection.immutable.{TreeSet, HashSet}
 
-  inline def trySummon[S, T](f: PartialFunction[S, T]) <: T = ???
+  transparent inline def trySummon[S, T](f: PartialFunction[S, T]): T = ???
 
   inline def setFor[T]: Set[T] = trySummon {
     case given ord: Ordering[T] => new TreeSet[T]

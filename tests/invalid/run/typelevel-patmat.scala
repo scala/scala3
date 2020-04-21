@@ -45,7 +45,7 @@ object Test extends App {
   inline val i2 = toInt(y2)
   val j2: 2 = i2
 
-  inline def concat(xs: HList, ys: HList) <: HList = inline xs match {
+  transparent inline def concat(xs: HList, ys: HList): HList = inline xs match {
     case HNil => ys
     case HCons(x, xs1) => HCons(x, concat(xs1, ys))
   }
@@ -68,7 +68,7 @@ object Test extends App {
   val r6 = concat(HCons(1, HCons("a", HNil)), HCons(true, HCons(1.0, HNil)))
   val c6: HCons[Int, HCons[String, HCons[Boolean, HCons[Double, HNil]]]] = r6
 
-  inline def nth(xs: HList, n: Int) <: Any = inline xs match {
+  transparent inline def nth(xs: HList, n: Int): Any = inline xs match {
     case HCons(x, _)   if n == 0 => x
     case HCons(_, xs1) if n > 0  => nth(xs1, n - 1)
   }

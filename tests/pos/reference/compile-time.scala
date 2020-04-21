@@ -7,7 +7,7 @@ class Test:
   case object Zero extends Nat
   case class Succ[N <: Nat](n: N) extends Nat
 
-  inline def toIntC[N] <: Int =
+  transparent inline def toIntC[N]: Int =
     inline constValue[N] match
       case 0 => 0
       case _: S[n1] => 1 + toIntC[n1]
@@ -31,10 +31,10 @@ class Test:
   val dBoolean: Some[Boolean] = defaultValue[Boolean]
   val dAny: None.type = defaultValue[Any]
 
-  inline def toIntT[N <: Nat] <: Int = inline scala.compiletime.erasedValue[N] match
+  transparent inline def toIntT[N <: Nat]: Int = inline scala.compiletime.erasedValue[N] match
     case _: Zero.type => 0
     case _: Succ[n] => toIntT[n] + 1
 
-  inline def summonFrom(f: Nothing => Any) <: Any = ???
+  transparent inline def summonFrom(f: Nothing => Any): Any = ???
 
   final val two = toIntT[Succ[Succ[Zero.type]]]

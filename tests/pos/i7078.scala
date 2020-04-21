@@ -1,7 +1,7 @@
 trait A
 class B extends A
 
-inline given tc as _ <: A = B()
+transparent inline given tc as A = B()
 
 val x: B = summon[A]
 
