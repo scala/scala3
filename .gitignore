@@ -26,6 +26,7 @@ node_modules
 
 # VS Code
 .vscode/
+.metals/
 
 # Scala-IDE specific
 .scala_dependencies
