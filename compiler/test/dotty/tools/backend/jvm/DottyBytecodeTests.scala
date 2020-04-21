@@ -9,7 +9,7 @@ import asm.tree._
 
 import scala.tools.asm.Opcodes
 import scala.jdk.CollectionConverters._
-
+import Opcodes._
 
 class TestBCode extends DottyBytecodeTest {
   import ASMConverters._
@@ -783,6 +783,42 @@ class TestBCode extends DottyBytecodeTest {
       assertParamName(a2, "evidence$2")
       assertParamName(b1, "evidence$1")
       assertParamName(b2, "evidence$2")
+    }
+  }
+
+
+  @Test // wrong local variable table for methods containing while loops
+  def t9179(): Unit = {
+    val code =
+      """class C {
+        |  def t(): Unit = {
+        |    var x = ""
+        |    while (x != null) {
+        |      foo()
+        |      x = null
+        |    }
+        |    bar()
+        |  }
+        |  def foo(): Unit = ()
+        |  def bar(): Unit = ()
+        |}
+      """.stripMargin
+    checkBCode(code) { dir =>
+      val c = loadClassNode(dir.lookupName("C.class", directory = false).input, skipDebugInfo = false)
+      val t = getMethod(c, "t")
+      val instructions = instructionsFromMethod(t)
+      val isFrameLine = (x: Instruction) => x.isInstanceOf[FrameEntry] || x.isInstanceOf[LineNumber]
+      // TODO: The same test in scalac uses different labels because their LineNumberTable isn't the same as ours,
+      // this should be investigated.
+      assertSameCode(instructions.filterNot(isFrameLine), List(
+        Label(0), Ldc(LDC, ""), VarOp(ASTORE, 1),
+        Label(5), VarOp(ALOAD, 1), Jump(IFNULL, Label(19)),
+        Label(10), VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "C", "foo", "()V", false), Label(14), Op(ACONST_NULL), VarOp(ASTORE, 1), Jump(GOTO, Label(5)),
+        Label(19), VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "C", "bar", "()V", false), Label(24), Op(RETURN), Label(26)))
+      val labels = instructions collect { case l: Label => l }
+      val x = convertMethod(t).localVars.find(_.name == "x").get
+      assertEquals(x.start, labels(1))
+      assertEquals(x.end, labels(5))
     }
   }
 
