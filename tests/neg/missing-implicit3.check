@@ -7,8 +7,3 @@
    |    ord.Ord.ordered[A](/* missing */implicitly[ord.Foo => Comparable[? >: ord.Foo]])
    |
    |But no implicit values were found that match type ord.Foo => Comparable[? >: ord.Foo].
-   |
-   |The following import might make progress towards fixing the problem:
-   |
-   |  import ord.Ord.ordered
-   |         

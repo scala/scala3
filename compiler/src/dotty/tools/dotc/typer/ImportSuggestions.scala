@@ -144,6 +144,17 @@ trait ImportSuggestions:
     val timer = new Timer()
     val deadLine = System.currentTimeMillis() + suggestImplicitTimeOut
 
+    // Candidates that are already available without explicit import because they
+    // are already provided by the context (imported or inherited) or because they
+    // are in the implicit scope of `pt`.
+    val alreadyAvailableCandidates: Set[Symbol] = {
+      val wildProto = wildApprox(pt)
+      val contextualCandidates = ctx.implicits.eligible(wildProto)
+      val implicitScopeCandidates = ctx.run.implicitScope(wildProto, ctx).eligible
+      val allCandidates = contextualCandidates ++ implicitScopeCandidates
+      allCandidates.map(_.implicitRef.underlyingRef.symbol).toSet
+    }
+
     /** Test whether the head of a given instance matches the expected type `pt`,
      *  ignoring any dependent implicit arguments.
      */
@@ -220,7 +231,9 @@ trait ImportSuggestions:
           Nil
 
       roots
-        .flatMap(_.implicitMembers.filter(shallowTest))
+        .flatMap(_.implicitMembers.filter { ref =>
+          !alreadyAvailableCandidates(ref.symbol) && shallowTest(ref)
+        })
           // filter whether the head of the implicit can match
         .partition(deepTest)
           // partition into full matches and head matches
