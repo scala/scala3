@@ -18,7 +18,7 @@ end MainAnnotation
 
 //Sample main class, can be freely implemented:
 
-class _main(progName: String, args: Array[String], docComment: String) extends MainAnnotation:
+class main(progName: String, args: Array[String], docComment: String) extends MainAnnotation:
 
   def this() = this("", Array(), "")
 
@@ -102,7 +102,7 @@ class _main(progName: String, args: Array[String], docComment: String) extends M
       else
         true
   end done
-end _main
+end main
 
 // Sample main method
 
@@ -118,7 +118,7 @@ end myProgram
 
 object add:
   def main(args: Array[String]) =
-    val cmd = new _main("add", args, "Adds two numbers")
+    val cmd = new main("add", args, "Adds two numbers")
     val arg1 = cmd.getArg[Int]("num", summon[cmd.ArgumentParser[Int]])
     val arg2 = cmd.getArg[Int]("inc", summon[cmd.ArgumentParser[Int]], Some(1))
     if cmd.done() then myProgram.add(arg1(), arg2())
