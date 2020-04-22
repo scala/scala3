@@ -271,13 +271,17 @@ private[quoted] object Matcher {
           case (scrutinee, Typed(expr2, _)) =>
             scrutinee =?= expr2
 
-
           /* Match selection */
-          case (Select(qual1, _), Select(qual2, _)) if scrutinee.symbol == pattern.symbol =>
-            qual1 =?= qual2
+          case (ref: Ref, Select(qual2, _)) if scrutinee.symbol == pattern.symbol =>
+            ref match
+              case ref: Select => ref.qualifier =?= qual2
+              case _ =>
+                ref.tpe match
+                  case TermRef(qual: TermRef, _) => Ref.term(qual) =?= qual2
+                  case _ => matched
 
           /* Match reference */
-          case (_: Ref, _: Ref) if scrutinee.symbol == pattern.symbol || summon[Env].get(scrutinee.symbol).contains(pattern.symbol) =>
+          case (_: Ref, _: Ident) if scrutinee.symbol == pattern.symbol || summon[Env].get(scrutinee.symbol).contains(pattern.symbol) =>
             matched
 
           /* Match application */

@@ -673,6 +673,10 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   object Ref {
 
+    /** A tree representing the same reference as the given type */
+    def term(tp: TermRef)(using ctx: Context): Ref =
+      internal.Ref_term(tp)
+
     /** Create a reference tree from a symbol
      *
      *  If `sym` refers to a class member `foo` in class `C`,
