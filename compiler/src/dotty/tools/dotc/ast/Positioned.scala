@@ -45,7 +45,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
   span = envelope(src)
 
   def source: SourceFile = SourceFile.fromId(uniqueId)
-  def sourcePos(implicit ctx: Context): SourcePosition = source.atSpan(span)
+  def sourcePos: SourcePosition = source.atSpan(span)
 
   /** A positioned item like this one with given `span`.
    *  If the positioned item is source-derived, a clone is returned.
