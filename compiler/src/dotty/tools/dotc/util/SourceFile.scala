@@ -48,6 +48,10 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     myContent
   }
 
+  private var _maybeInComplete: Boolean = false
+  
+  def maybeIncomplete: Boolean = _maybeInComplete
+
   def this(file: AbstractFile, codec: Codec) = this(file, new String(file.toByteArray, codec.charSet).toCharArray)
 
   /** Tab increment; can be overridden */
@@ -200,7 +204,10 @@ object SourceFile {
 
   def fromId(id: Int): SourceFile = sourceOfChunk(id >> ChunkSizeLog)
 
-  def virtual(name: String, content: String) = new SourceFile(new VirtualFile(name, content.getBytes), scala.io.Codec.UTF8)
+  def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
+    val src = new SourceFile(new VirtualFile(name, content.getBytes), scala.io.Codec.UTF8)
+    src._maybeInComplete = maybeIncomplete
+    src
 
   private final val ChunkSizeLog = 10
   private final val ChunkSize = 1 << ChunkSizeLog

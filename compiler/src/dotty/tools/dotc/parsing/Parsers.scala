@@ -1288,7 +1288,7 @@ object Parsers {
       if in.token == COLONEOL then
         in.nextToken()
         if in.token != INDENT then
-          syntaxError(i"indented definitions expected")
+          syntaxErrorOrIncomplete(i"indented definitions expected")
       else
         newLineOptWhenFollowedBy(LBRACE)
 
