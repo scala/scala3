@@ -353,6 +353,12 @@ object Trees {
         }
       }
       else span
+
+    /** The source position of the name defined by this definition.
+     *  This is a point position if the definition is synthetic, or a range position
+     *  if the definition comes from source.
+     */
+    def namePos: SourcePosition = source.atSpan(nameSpan)
   }
 
   /** Tree defines a new symbol and carries modifiers.
