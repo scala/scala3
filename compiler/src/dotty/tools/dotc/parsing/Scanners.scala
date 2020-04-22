@@ -530,7 +530,7 @@ object Scanners {
     def observeColonEOL(): Unit =
       if token == COLON then
         lookahead()
-        val atEOL = isAfterLineEnd
+        val atEOL = isAfterLineEnd || token == EOF
         reset()
         if atEOL then token = COLONEOL
 
@@ -566,6 +566,12 @@ object Scanners {
       next.copyFrom(this)
       this.copyFrom(prev)
     }
+
+    def closeIndented() = currentRegion match
+      case r: Indented if !r.isOutermost =>
+        insert(OUTDENT, offset)
+        currentRegion = r.outer
+      case _ =>
 
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
      *  - Insert missing OUTDENTs at EOF
@@ -607,13 +613,10 @@ object Scanners {
                 reset()
         case COLON =>
           if colonSyntax then observeColonEOL()
-        case EOF | RBRACE | RPAREN | RBRACKET =>
-          currentRegion match {
-            case r: Indented if !r.isOutermost =>
-              insert(OUTDENT, offset)
-              currentRegion = r.outer
-            case _ =>
-          }
+        case RBRACE | RPAREN | RBRACKET =>
+          closeIndented()
+        case EOF if !source.maybeIncomplete =>
+          closeIndented()
         case _ =>
       }
     }

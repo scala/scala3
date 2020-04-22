@@ -147,7 +147,7 @@ object ParseResult {
   }
 
   def apply(sourceCode: String)(implicit state: State): ParseResult =
-    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode))
+    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode, maybeIncomplete = true))
 
   /** Check if the input is incomplete.
    *
@@ -159,7 +159,7 @@ object ParseResult {
       case CommandExtract(_) | "" => false
       case _ => {
         val reporter = newStoreReporter
-        val source   = SourceFile.virtual("<incomplete-handler>", sourceCode)
+        val source   = SourceFile.virtual("<incomplete-handler>", sourceCode, maybeIncomplete = true)
         val unit     = CompilationUnit(source, mustExist = false)
         val localCtx = ctx.fresh
                           .setCompilationUnit(unit)
