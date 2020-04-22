@@ -9,7 +9,7 @@ object Test:
       x += 1
       x < 10
     do ()
-  end while      // error: misaligned end marker
+  end while      // warning: line indented too far to the left
   }
 
   def f(x: Int): Int =

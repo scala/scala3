@@ -164,17 +164,12 @@ object Parsers {
     def skipBraces(): Unit = {
       accept(if (in.token == INDENT) INDENT else LBRACE)
       var openBraces = 1
-      val savedCheckEndMarker = in.checkEndMarker
-      try
-        in.checkEndMarker = false
-        while (in.token != EOF && openBraces > 0)
-          skipBracesHook() getOrElse {
-            if (in.token == LBRACE || in.token == INDENT) openBraces += 1
-            else if (in.token == RBRACE || in.token == OUTDENT) openBraces -= 1
-            in.nextToken()
-          }
-      finally
-        in.checkEndMarker = savedCheckEndMarker
+      while (in.token != EOF && openBraces > 0)
+        skipBracesHook() getOrElse {
+          if (in.token == LBRACE || in.token == INDENT) openBraces += 1
+          else if (in.token == RBRACE || in.token == OUTDENT) openBraces -= 1
+          in.nextToken()
+        }
     }
   }
 
@@ -372,19 +367,18 @@ object Parsers {
     def acceptStatSep(): Unit =
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
-    def acceptStatSepUnlessAtEnd(altEnd: Token = EOF): Unit =
+    def acceptStatSepUnlessAtEnd(stats: ListBuffer[Tree], altEnd: Token = EOF): Unit =
       in.observeOutdented()
-      if (!isStatSeqEnd)
-        in.token match {
-          case EOF =>
-          case `altEnd` =>
-          case NEWLINE | NEWLINES => in.nextToken()
-          case SEMI => in.nextToken()
-          case _ =>
+      in.token match
+        case SEMI | NEWLINE | NEWLINES =>
+          in.nextToken()
+          checkEndMarker(stats)
+        case `altEnd` =>
+        case _ =>
+          if !isStatSeqEnd then
             syntaxError(i"end of statement expected but ${showToken(in.token)} found")
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
             accept(SEMI)
-        }
 
     def rewriteNotice(additionalOption: String = "") = {
       val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
@@ -1296,10 +1290,48 @@ object Parsers {
       else
         newLineOptWhenFollowedBy(LBRACE)
 
-    def endMarkerScope[T](pid: Tree)(op: => T): T = pid match {
-      case pid: RefTree => in.endMarkerScope(pid.name.toTermName)(op)
-      case _ => op
-    }
+    def checkEndMarker(stats: ListBuffer[Tree]): Unit =
+
+      def matches(stat: Tree): Boolean = stat match
+        case stat: MemberDef if !stat.name.isEmpty =>
+          if stat.name == nme.CONSTRUCTOR then in.token == THIS
+          else in.isIdent && in.name == stat.name.toTermName
+        case ModuleDef(name, Template(_, Nil, _, _)) =>
+          in.token == IDENTIFIER && in.name == nme.extension
+        case PackageDef(pid: RefTree, _) =>
+          in.isIdent && in.name == pid.name
+        case PatDef(_, IdPattern(id, _) :: Nil, _, _) =>
+         in.isIdent && in.name == id.name
+        case stat: MemberDef if stat.mods.is(Given) => in.token == GIVEN
+        case _: PatDef => in.token == VAL
+        case _: If => in.token == IF
+        case _: WhileDo => in.token == WHILE
+        case _: ParsedTry => in.token == TRY
+        case _: Match => in.token == MATCH
+        case _: New => in.token == NEW
+        case _: (ForYield | ForDo) => in.token == FOR
+        case _ => false
+
+      if isIdent(nme.end) then
+        val start = in.offset
+        val isEndMarker =
+          val endLine = source.offsetToLine(start)
+          val lookahead = in.LookaheadScanner()
+          lookahead.nextToken()
+          source.offsetToLine(lookahead.offset) == endLine
+          && endMarkerTokens.contains(in.token)
+          && {
+            lookahead.nextToken()
+            lookahead.token == EOF
+            || source.offsetToLine(lookahead.offset) > endLine
+          }
+        if isEndMarker then
+          in.nextToken()
+          if stats.isEmpty || !matches(stats.last) then
+            syntaxError("misaligned end marker", Span(start, in.lastCharOffset))
+          in.token = IDENTIFIER // Leaving it as the original token can confuse newline insertion
+          in.nextToken()
+    end checkEndMarker
 
 /* ------------- TYPES ------------------------------------------------------ */
 
@@ -1882,15 +1914,13 @@ object Parsers {
 
     def expr1(location: Location = Location.ElseWhere): Tree = in.token match
       case IF =>
-        in.endMarkerScope(IF) { ifExpr(in.offset, If) }
+        ifExpr(in.offset, If)
       case WHILE =>
-        in.endMarkerScope(WHILE) {
-          atSpan(in.skipToken()) {
-            val cond = condExpr(DO)
-            newLinesOpt()
-            val body = subExpr()
-            WhileDo(cond, body)
-          }
+        atSpan(in.skipToken()) {
+          val cond = condExpr(DO)
+          newLinesOpt()
+          val body = subExpr()
+          WhileDo(cond, body)
         }
       case DO =>
         ctx.errorOrMigrationWarning(
@@ -1917,40 +1947,38 @@ object Parsers {
           WhileDo(Block(body, cond), Literal(Constant(())))
         }
       case TRY =>
-        in.endMarkerScope(TRY) {
-          val tryOffset = in.offset
-          atSpan(in.skipToken()) {
-            val body = expr()
-            val (handler, handlerStart) =
-              if in.token == CATCH then
-                val span = in.offset
-                in.nextToken()
-                (if in.token == CASE then Match(EmptyTree, caseClause(exprOnly = true) :: Nil)
-                 else subExpr(),
-                 span)
-              else (EmptyTree, -1)
+        val tryOffset = in.offset
+        atSpan(in.skipToken()) {
+          val body = expr()
+          val (handler, handlerStart) =
+            if in.token == CATCH then
+              val span = in.offset
+              in.nextToken()
+              (if in.token == CASE then Match(EmptyTree, caseClause(exprOnly = true) :: Nil)
+                else subExpr(),
+                span)
+            else (EmptyTree, -1)
 
-            handler match {
-              case Block(Nil, EmptyTree) =>
-                assert(handlerStart != -1)
-                syntaxError(
-                  EmptyCatchBlock(body),
-                  Span(handlerStart, endOffset(handler))
-                )
-              case _ =>
-            }
-
-            val finalizer =
-              if (in.token == FINALLY) { in.nextToken(); subExpr() }
-              else {
-                if (handler.isEmpty) warning(
-                  EmptyCatchAndFinallyBlock(body),
-                  source.atSpan(Span(tryOffset, endOffset(body)))
-                )
-                EmptyTree
-              }
-            ParsedTry(body, handler, finalizer)
+          handler match {
+            case Block(Nil, EmptyTree) =>
+              assert(handlerStart != -1)
+              syntaxError(
+                EmptyCatchBlock(body),
+                Span(handlerStart, endOffset(handler))
+              )
+            case _ =>
           }
+
+          val finalizer =
+            if (in.token == FINALLY) { in.nextToken(); subExpr() }
+            else {
+              if (handler.isEmpty) warning(
+                EmptyCatchAndFinallyBlock(body),
+                source.atSpan(Span(tryOffset, endOffset(body)))
+              )
+              EmptyTree
+            }
+          ParsedTry(body, handler, finalizer)
         }
       case THROW =>
         atSpan(in.skipToken()) { Throw(expr()) }
@@ -2057,10 +2085,8 @@ object Parsers {
     /**    MatchClause ::= `match' `{' CaseClauses `}'
      */
     def matchClause(t: Tree): Match =
-      in.endMarkerScope(MATCH) {
-        atSpan(t.span.start, in.skipToken()) {
-          Match(t, inBracesOrIndented(caseClauses(() => caseClause())))
-        }
+      atSpan(t.span.start, in.skipToken()) {
+        Match(t, inBracesOrIndented(caseClauses(() => caseClause())))
       }
 
     /**    `match' `{' TypeCaseClauses `}'
@@ -2261,21 +2287,19 @@ object Parsers {
      *                  |  ‘new’ TemplateBody
      */
     def newExpr(): Tree =
-      in.endMarkerScope(NEW) {
-        val start = in.skipToken()
-        def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
-        possibleTemplateStart()
-        val parents =
-          if in.isNestedStart then Nil
-          else constrApps(commaOK = false, templateCanFollow = true)
-        colonAtEOLOpt()
-        possibleTemplateStart(isNew = true)
-        parents match {
-          case parent :: Nil if !in.isNestedStart =>
-            reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
-          case _ =>
-            New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
-        }
+      val start = in.skipToken()
+      def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
+      possibleTemplateStart()
+      val parents =
+        if in.isNestedStart then Nil
+        else constrApps(commaOK = false, templateCanFollow = true)
+      colonAtEOLOpt()
+      possibleTemplateStart(isNew = true)
+      parents match {
+        case parent :: Nil if !in.isNestedStart =>
+          reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
+        case _ =>
+          New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
       }
 
     /**   ExprsInParens     ::=  ExprInParens {`,' ExprInParens}
@@ -2426,7 +2450,7 @@ object Parsers {
      *                {nl} [`yield'] Expr
      *            |  `for' Enumerators (`do' Expr | `yield' Expr)
      */
-    def forExpr(): Tree = in.endMarkerScope(FOR) {
+    def forExpr(): Tree =
       atSpan(in.skipToken()) {
         var wrappedEnums = true
         val start = in.offset
@@ -2503,7 +2527,6 @@ object Parsers {
           ForDo(enums, expr())
         }
       }
-    }
 
     /** CaseClauses         ::= CaseClause {CaseClause}
      *  TypeCaseClauses     ::= TypeCaseClause {TypeCaseClause}
@@ -3185,15 +3208,13 @@ object Parsers {
         else emptyType
       val rhs =
         if tpt.isEmpty || in.token == EQUALS then
-          endMarkerScope(first) {
-            accept(EQUALS)
-            subExpr() match
-              case rhs0 @ Ident(name) if placeholderParams.nonEmpty && name == placeholderParams.head.name
-                  && !tpt.isEmpty && mods.is(Mutable) && lhs.forall(_.isInstanceOf[Ident]) =>
-                placeholderParams = placeholderParams.tail
-                atSpan(rhs0.span) { Ident(nme.WILDCARD) }
-              case rhs0 => rhs0
-          }
+          accept(EQUALS)
+          subExpr() match
+            case rhs0 @ Ident(name) if placeholderParams.nonEmpty && name == placeholderParams.head.name
+                && !tpt.isEmpty && mods.is(Mutable) && lhs.forall(_.isInstanceOf[Ident]) =>
+              placeholderParams = placeholderParams.tail
+              atSpan(rhs0.span) { Ident(nme.WILDCARD) }
+            case rhs0 => rhs0
         else EmptyTree
       lhs match {
         case IdPattern(id, t) :: Nil if t.isEmpty =>
@@ -3297,10 +3318,8 @@ object Parsers {
         if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
           if (in.token == EQUALS)
-            in.endMarkerScope(name) {
-              in.nextToken()
-              subExpr()
-            }
+            in.nextToken()
+            subExpr()
           else if (!tpt.isEmpty)
             EmptyTree
           else if (scala2ProcedureSyntax(": Unit")) {
@@ -3429,11 +3448,9 @@ object Parsers {
     }
 
     def classDefRest(start: Offset, mods: Modifiers, name: TypeName): TypeDef =
-      in.endMarkerScope(name.toTermName) {
-        val constr = classConstr(isCaseClass = mods.is(Case))
-        val templ = templateOpt(constr)
-        finalizeDef(TypeDef(name, templ), mods, start)
-      }
+      val constr = classConstr(isCaseClass = mods.is(Case))
+      val templ = templateOpt(constr)
+      finalizeDef(TypeDef(name, templ), mods, start)
 
     /** ClassConstr ::= [ClsTypeParamClause] [ConstrMods] ClsParamClauses
      */
@@ -3453,10 +3470,8 @@ object Parsers {
      */
     def objectDef(start: Offset, mods: Modifiers): ModuleDef = atSpan(start, nameStart) {
       val name = ident()
-      in.endMarkerScope(name) {
-        val templ = templateOpt(emptyConstructor)
-        finalizeDef(ModuleDef(name, templ), mods, start)
-      }
+      val templ = templateOpt(emptyConstructor)
+      finalizeDef(ModuleDef(name, templ), mods, start)
     }
 
     private def checkAccessOnly(mods: Modifiers, where: String): Modifiers =
@@ -3470,12 +3485,10 @@ object Parsers {
     def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
       val mods1 = checkAccessOnly(mods, "definitions")
       val modulName = ident()
-      in.endMarkerScope(modulName) {
-        val clsName = modulName.toTypeName
-        val constr = classConstr()
-        val templ = template(constr, isEnum = true)
-        finalizeDef(TypeDef(clsName, templ), mods1, start)
-      }
+      val clsName = modulName.toTypeName
+      val constr = classConstr()
+      val templ = template(constr, isEnum = true)
+      finalizeDef(TypeDef(clsName, templ), mods1, start)
     }
 
     /** EnumCase = `case' (id ClassConstr [`extends' ConstrApps] | ids)
@@ -3543,7 +3556,7 @@ object Parsers {
       val nameStart = in.offset
       val name = if isIdent && hasGivenSig then ident() else EmptyTermName
 
-      val gdef = in.endMarkerScope(if name.isEmpty then GIVEN else name) {
+      val gdef =
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         newLineOpt()
         val vparamss =
@@ -3577,7 +3590,7 @@ object Parsers {
             val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
             if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
             else TypeDef(name.toTypeName, templ)
-      }
+      end gdef
       finalizeDef(gdef, mods1, start)
     }
 
@@ -3587,23 +3600,21 @@ object Parsers {
       in.nextToken()
       val nameOffset = in.offset
       val name = if isIdent && !isIdent(nme.on) then ident() else EmptyTermName
-      in.endMarkerScope(if name.isEmpty then nme.extension else name) {
-        val (tparams, vparamss, extensionFlag) =
-          if isIdent(nme.on) then
-            in.nextToken()
-            val tparams = typeParamClauseOpt(ParamOwner.Def)
-            val extParams = paramClause(0, prefix = true)
-            val givenParamss = paramClauses(givenOnly = true)
-            (tparams, extParams :: givenParamss, Extension)
-          else
-            (Nil, Nil, EmptyFlags)
-        possibleTemplateStart()
-        if !in.isNestedStart then syntaxError("Extension without extension methods")
-        val templ = templateBodyOpt(makeConstructor(tparams, vparamss), Nil, Nil)
-        templ.body.foreach(checkExtensionMethod(tparams, vparamss, _))
-        val edef = atSpan(start, nameOffset, in.offset)(ModuleDef(name, templ))
-        finalizeDef(edef, addFlag(mods, Given | extensionFlag), start)
-      }
+      val (tparams, vparamss, extensionFlag) =
+        if isIdent(nme.on) then
+          in.nextToken()
+          val tparams = typeParamClauseOpt(ParamOwner.Def)
+          val extParams = paramClause(0, prefix = true)
+          val givenParamss = paramClauses(givenOnly = true)
+          (tparams, extParams :: givenParamss, Extension)
+        else
+          (Nil, Nil, EmptyFlags)
+      possibleTemplateStart()
+      if !in.isNestedStart then syntaxError("Extension without extension methods")
+      val templ = templateBodyOpt(makeConstructor(tparams, vparamss), Nil, Nil)
+      templ.body.foreach(checkExtensionMethod(tparams, vparamss, _))
+      val edef = atSpan(start, nameOffset, in.offset)(ModuleDef(name, templ))
+      finalizeDef(edef, addFlag(mods, Given | extensionFlag), start)
 
 /* -------- TEMPLATES ------------------------------------------- */
 
@@ -3707,14 +3718,11 @@ object Parsers {
 
     /** Packaging ::= package QualId [nl] `{' TopStatSeq `}'
      */
-    def packaging(start: Int): Tree = {
+    def packaging(start: Int): Tree =
       val pkg = qualId()
-      endMarkerScope(pkg) {
-        possibleTemplateStart()
-        val stats = inDefScopeBraces(topStatSeq())
-        makePackaging(start, pkg, stats)
-      }
-    }
+      possibleTemplateStart()
+      val stats = inDefScopeBraces(topStatSeq())
+      makePackaging(start, pkg, stats)
 
     /** TopStatSeq ::= TopStat {semi TopStat}
      *  TopStat ::= Import
@@ -3747,7 +3755,7 @@ object Parsers {
             syntaxErrorOrIncomplete(OnlyCaseClassOrCaseObjectAllowed())
           else
             syntaxErrorOrIncomplete(ExpectedToplevelDef())
-        acceptStatSepUnlessAtEnd()
+        acceptStatSepUnlessAtEnd(stats)
       }
       stats.toList
     }
@@ -3781,7 +3789,7 @@ object Parsers {
         }
         else {
           stats += first
-          acceptStatSepUnlessAtEnd()
+          acceptStatSepUnlessAtEnd(stats)
         }
       }
       var exitOnError = false
@@ -3799,7 +3807,7 @@ object Parsers {
           exitOnError = mustStartStat
           syntaxErrorOrIncomplete("illegal start of definition")
         }
-        acceptStatSepUnlessAtEnd()
+        acceptStatSepUnlessAtEnd(stats)
       }
       (self, if (stats.isEmpty) List(EmptyTree) else stats.toList)
     }
@@ -3837,7 +3845,7 @@ object Parsers {
             "illegal start of declaration" +
             (if (inFunReturnType) " (possible cause: missing `=` in front of current method body)"
              else ""))
-        acceptStatSepUnlessAtEnd()
+        acceptStatSepUnlessAtEnd(stats)
       }
       stats.toList
     }
@@ -3876,7 +3884,7 @@ object Parsers {
           exitOnError = mustStartStat
           syntaxErrorOrIncomplete(IllegalStartOfStatement(isModifier))
         }
-        acceptStatSepUnlessAtEnd(CASE)
+        acceptStatSepUnlessAtEnd(stats, CASE)
       }
       stats.toList
     }
@@ -3894,26 +3902,24 @@ object Parsers {
             in.nextToken()
             ts += objectDef(start, Modifiers(Package))
             if (in.token != EOF) {
-              acceptStatSep()
+              acceptStatSepUnlessAtEnd(ts)
               ts ++= topStatSeq()
             }
           }
           else
             val pkg = qualId()
             var continue = false
-            endMarkerScope(pkg) {
-              possibleTemplateStart()
-              if in.token == EOF then
-                ts += makePackaging(start, pkg, List())
-              else if in.isNestedStart then
-                ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()))
-                continue = true
-              else
-                acceptStatSep()
-                ts += makePackaging(start, pkg, topstats())
-            }
+            possibleTemplateStart()
+            if in.token == EOF then
+              ts += makePackaging(start, pkg, List())
+            else if in.isNestedStart then
+              ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()))
+              continue = true
+            else
+              acceptStatSep()
+              ts += makePackaging(start, pkg, topstats())
             if continue then
-              acceptStatSepUnlessAtEnd()
+              acceptStatSepUnlessAtEnd(ts)
               ts ++= topStatSeq()
         }
         else

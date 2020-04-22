@@ -53,6 +53,7 @@ class FrontEnd extends Phase {
       if (unit.isJava) new JavaParser(unit.source).parse()
       else {
         val p = new Parser(unit.source)
+       //  p.in.debugTokenStream = true
         val tree = p.parse()
         if (p.firstXmlPos.exists && !firstXmlPos.exists)
           firstXmlPos = p.firstXmlPos

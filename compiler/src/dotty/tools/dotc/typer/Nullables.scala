@@ -189,7 +189,7 @@ object Nullables:
       val mutables = infos.foldLeft(Set[TermRef]())((ms, info) =>
         ms.union(info.asserted.filter(_.symbol.is(Mutable))))
       infos.extendWith(NotNullInfo(Set(), mutables))
-  // end notNullInfoOps
+  end notNullInfoOps
 
   extension refOps on (ref: TermRef):
 
@@ -244,6 +244,7 @@ object Nullables:
       refSym.is(Mutable) // if it is immutable, we don't need to check the rest conditions
       && refOwner.isTerm
       && recur(ctx.owner)
+  end refOps
 
   extension treeOps on (tree: Tree):
 
@@ -334,6 +335,7 @@ object Nullables:
           traverseChildren(tree)
           tree.computeNullable()
       }.traverse(tree)
+  end treeOps
 
   extension assignOps on (tree: Assign):
     def computeAssignNullable()(using Context): tree.type = tree.lhs match
@@ -351,6 +353,7 @@ object Nullables:
             tree.withNotNullInfo(NotNullInfo(Set(ref), Set()))
         else tree
       case _ => tree
+  end assignOps
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)
 
@@ -444,13 +447,16 @@ object Nullables:
    *       xs = xs.next
    */
   def whileContext(whileSpan: Span)(using Context): Context =
+
     def isRetracted(ref: TermRef): Boolean =
       val sym = ref.symbol
       sym.span.exists
       && assignmentSpans.getOrElse(sym.span.start, Nil).exists(whileSpan.contains(_))
       && ctx.notNullInfos.impliesNotNull(ref)
+
     val retractedVars = ctx.notNullInfos.flatMap(_.asserted.filter(isRetracted)).toSet
     ctx.addNotNullInfo(NotNullInfo(Set(), retractedVars))
+  end whileContext
 
   /** Post process all arguments to by-name parameters by removing any not-null
    *  info that was used when typing them. Concretely:

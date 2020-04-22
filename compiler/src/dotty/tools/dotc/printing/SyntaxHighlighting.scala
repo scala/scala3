@@ -50,9 +50,7 @@ object SyntaxHighlighting {
         else
           highlightRange(span.start, span.end, color)
 
-      val scanner = new Scanner(source) {
-        override protected def printState() = ()
-      }
+      val scanner = new Scanner(source)
       while (scanner.token != EOF) {
         val start = scanner.offset
         val token = scanner.token
