@@ -1280,13 +1280,14 @@ object Parsers {
 
     def argumentStart(): Unit =
       colonAtEOLOpt()
-      if in.isScala2CompatMode && in.token == NEWLINE && in.next.token == LBRACE then
+      if migrateTo3 && in.token == NEWLINE && in.next.token == LBRACE then
         in.nextToken()
         if in.indentWidth(in.offset) == in.currentRegion.indentWidth then
-          in.errorOrMigrationWarning(
+          ctx.errorOrMigrationWarning(
             i"""This opening brace will start a new statement in Scala 3.
                |It needs to be indented to the right to keep being treated as
-               |an argument to the previous expression.${rewriteNotice()}""")
+               |an argument to the previous expression.${rewriteNotice()}""",
+            in.sourcePos())
           patch(source, Span(in.offset), "  ")
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =

@@ -14,3 +14,10 @@ def f: Int => Int =
   { (x: Int) =>
     x + 1
   }
+
+val x =
+    true &&          // newline inserted here but skipped because of trailing &&
+    {
+      val xyz = true
+      xyz && false
+    }
