@@ -272,13 +272,12 @@ private[quoted] object Matcher {
             scrutinee =?= expr2
 
           /* Match selection */
-          case (ref: Ref, Select(qual2, _)) if scrutinee.symbol == pattern.symbol =>
-            ref match
-              case ref: Select => ref.qualifier =?= qual2
-              case _ =>
-                ref.tpe match
-                  case TermRef(qual: TermRef, _) => Ref.term(qual) =?= qual2
-                  case _ => matched
+          case (Select(qual1, _), Select(qual2, _)) if scrutinee.symbol == pattern.symbol =>
+            qual1 =?= qual2
+          case (ref: Ident, Select(qual2, _)) if scrutinee.symbol == pattern.symbol =>
+            Ref.desugarIdent(ref) match
+              case Select(qual1, _) => qual1 =?= qual2
+              case _ => matched
 
           /* Match reference */
           case (_: Ref, _: Ident) if scrutinee.symbol == pattern.symbol || summon[Env].get(scrutinee.symbol).contains(pattern.symbol) =>

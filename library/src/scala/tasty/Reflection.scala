@@ -677,6 +677,10 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def term(tp: TermRef)(using ctx: Context): Ref =
       internal.Ref_term(tp)
 
+    /** Desugar identifier into a select node. Return the tree itself if not possible */
+    def desugarIdent(tree: Ident)(using ctx: Context): Ref =
+      internal.Ref_desugarIdent(tree)
+
     /** Create a reference tree from a symbol
      *
      *  If `sym` refers to a class member `foo` in class `C`,

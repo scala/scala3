@@ -309,6 +309,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Ref_term(tp: TermRef)(using ctx: Context): Ref =
     withDefaultPos(tpd.ref(tp).asInstanceOf[tpd.RefTree])
 
+  def Ref_desugarIdent(tree: Ident)(using ctx: Context): Ref =
+    tpd.desugarIdent(tree).asInstanceOf[tpd.RefTree]
+
   def Ref_apply(sym: Symbol)(using ctx: Context): Ref = {
     assert(sym.isTerm)
     withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.RefTree])
