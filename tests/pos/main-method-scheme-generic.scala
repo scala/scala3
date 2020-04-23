@@ -1,49 +1,62 @@
 import annotation.{Annotation, StaticAnnotation}
 import collection.mutable
 
-/** MainAnnotation provides the functionality for a compiler-generated wrapper class.
- *  It links a compiler-generated main method (call it compiler-main) to a user
- *  written main method (user-main).
- *  The protocol of calls from compiler-main is as follows:
+/** This class provides a framework for compiler-generated wrappers
+ *  of "entry-point" methods. It routes and transforms parameters and results
+ *  between a compiler-generated wrapper method that has calling conventions
+ *  fixed by a framework and a user-written entry-point method that can have
+ *  flexible argument lists. It allows the wrapper to provide help and usage
+ *  information as well as customised error messages if the actual wrapper arguments
+ *  do not match the expected entry-point parameters.
  *
- *    - create a `command` with the command line arguments,
- *    - for each parameter of user-main, a call to `command.nextArgGetter`,
- *      or `command.finalArgsGetter` if is a final varargs parameter,
- *    - a call to `command.run` with the closure of user-main applied to all arguments.
+ *  The protocol of calls from the wrapper method is as follows:
+ *
+ *    1. Create a `call` instance with the wrapper argument.
+ *    2. For each parameter of the entry-point, invoke `call.nextArgGetter`,
+ *       or `call.finalArgsGetter` if is a final varargs parameter.
+ *    3. Invoke `call.run` with the closure of entry-point applied to all arguments.
  *
  *  The wrapper class has this outline:
  *
  *     object <wrapperClass>:
- *       def <wrapperMethod>(args: <CommandLineArgs>) =
+ *       @WrapperAnnotation def <wrapperMethod>(args: <WrapperArgs>) =
  *         ...
  *
- *  Here the `<wrapperClass>` name is the result of an inline call to `wrapperClassName`
- *  and `<wrapperMethod>` is the result of an inline call to `wrapperMethodName`
- *
- *  The result type of `<main>` is the same as the result type of `run`
- *  in the concrete implementation of `MainAnnotation`.
+ *  Here `<wrapperClass>` and `<wrapperMethod>` are obtained from an
+ *  inline call to the `wrapperName` method.
  */
-trait MainAnnotation extends StaticAnnotation:
+trait EntryPointAnnotation extends StaticAnnotation:
 
-  /** The class used for argument string parsing. E.g. `scala.util.FromString`,
-   *  but could be something else
+  /** The class used for argument parsing. E.g. `scala.util.FromString`, if
+   *  arguments are strings, but it could be something else.
    */
   type ArgumentParser[T]
 
   /** The required result type of the user-defined main function */
-  type MainResultType
+  type EntryPointResult
 
-  /** The type of the command line arguments. E.g., for Java main methods: `Array[String]` */
-  type CommandLineArgs
+  /** The type of the wrapper argument. E.g., for Java main methods: `Array[String]` */
+  type WrapperArgs
 
-  /** The return type of the generated command. E.g., for Java main methods: `Unit` */
-  type CommandResult
+  /** The return type of the generated wrapper. E.g., for Java main methods: `Unit` */
+  type WrapperResult
 
-  /** A new command with arguments from `args` */
-  def command(args: CommandLineArgs): Command
+  /** An annotation type with which the wrapper method is decorated.
+   *  No annotation is generated if the type is left abstract.
+   */
+  type WrapperAnnotation <: Annotation
 
-  /** A class representing a command to run */
-  abstract class Command:
+  /** The fully qualified name (relative to enclosing package) to
+   *  use for the static wrapper method.
+   *  @param mainName the fully qualified name of the user-defined main method
+   */
+  inline def wrapperName(mainName: String): String
+
+  /** A new wrapper call with arguments from `args` */
+  def call(args: WrapperArgs): Call
+
+  /** A class representing a wrapper call */
+  abstract class Call:
 
     /** The getter for the next argument of type `T` */
     def nextArgGetter[T](argName: String, fromString: ArgumentParser[T], defaultValue: Option[T] = None): () => T
@@ -51,37 +64,26 @@ trait MainAnnotation extends StaticAnnotation:
     /** The getter for a final varargs argument of type `T*` */
     def finalArgsGetter[T](argName: String, fromString: ArgumentParser[T]): () => Seq[T]
 
-    /** Run `program` if all arguments are valid,
+    /** Run `entryPoint` if all arguments are valid,
      *  or print usage information and/or error messages.
-     *  @param program    the program to run
-     *  @param mainName   the fully qualified name of the user-defined main method
-     *  @param docComment the doc comment of the user-defined main method
+     *  @param entryPointApply the applied entry-point to run
+     *  @param entryPointName  the fully qualified name of the entry-point method
+     *  @param docComment      the doc comment of the entry-point method
      */
-    def run(program: => MainResultType, mainName: String, docComment: String): CommandResult
-  end Command
-
-  /** The fully qualified name to use for the static wrapper method
-   *  @param mainName the fully qualified name of the user-defined main method
-   */
-  inline def wrapperName(mainName: String): String
-
-  /** An annotation type with which the wrapper method is decorated.
-   *  No annotation is generated if the type is left abstract.
-   */
-  type WrapperAnnotation <: Annotation
-
-end MainAnnotation
+    def run(entryPointApply: => EntryPointResult, entryPointName: String, docComment: String): WrapperResult
+  end Call
+end EntryPointAnnotation
 
 //Sample main class, can be freely implemented:
 
-class main extends MainAnnotation:
+class main extends EntryPointAnnotation:
 
   type ArgumentParser[T] = util.FromString[T]
-  type MainResultType = Any
-  type CommandLineArgs = Array[String]
-  type CommandResult = Unit
+  type EntryPointResult  = Unit
+  type WrapperArgs       = Array[String]
+  type WrapperResult     = Unit
 
-  def command(args: Array[String]) = new Command:
+  def call(args: Array[String]) = new Call:
 
     /** A buffer of demanded argument names, plus
      *   "?"  if it has a default
@@ -133,9 +135,9 @@ class main extends MainAnnotation:
       val getters = remainingArgGetters()
       () => getters.map(_())
 
-    def run(f: => MainResultType, mainName: String, docComment: String): Unit =
+    def run(entryPointApply: => EntryPointResult, entryPointName: String, docComment: String): Unit =
       def usage(): Unit =
-        val cmd = mainName.dropRight(".main".length)
+        val cmd = entryPointName.dropRight(".main".length)
         val params = argInfos.map(_ + _).mkString(" ")
         println(s"Usage: java $cmd $params")
 
@@ -162,11 +164,9 @@ class main extends MainAnnotation:
         if errors.nonEmpty then
           for msg <- errors do println(s"Error: $msg")
           usage()
-        else f match
-          case n: Int if n < 0 => System.exit(-n)
-          case _ =>
+        else f
     end run
-  end command
+  end call
 
   inline def wrapperName(mainName: String): String =
     s"${mainName.drop(mainName.lastIndexOf('.') + 1)}.main"
@@ -174,8 +174,6 @@ class main extends MainAnnotation:
   override type WrapperAnnotation = EntryPoint
 
 end main
-
-class EntryPoint extends Annotation
 
 // Sample main method
 
@@ -190,11 +188,11 @@ end myProgram
 //  Compiler generated code:
 
 object add extends main:
-  @EntryPoint def main(args: Array[String]) =
-    val cmd = command(args)
-    val arg1 = cmd.nextArgGetter[Int]("num", summon[ArgumentParser[Int]])
-    val arg2 = cmd.nextArgGetter[Int]("inc", summon[ArgumentParser[Int]], Some(1))
-    cmd.run(myProgram.add(arg1(), arg2()), "add", "Adds two numbers")
+  def main(args: Array[String]) =
+    val cll = call(args)
+    val arg1 = cll.nextArgGetter[Int]("num", summon[ArgumentParser[Int]])
+    val arg2 = cll.nextArgGetter[Int]("inc", summon[ArgumentParser[Int]], Some(1))
+    cll.run(myProgram.add(arg1(), arg2()), "add", "Adds two numbers")
 end add
 
 /** --- Some scenarios ----------------------------------------
