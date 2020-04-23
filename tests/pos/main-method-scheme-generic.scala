@@ -1,4 +1,4 @@
-import annotation.StaticAnnotation
+import annotation.{Annotation, StaticAnnotation}
 import collection.mutable
 
 /** MainAnnotation provides the functionality for a compiler-generated wrapper class.
@@ -60,17 +60,15 @@ trait MainAnnotation extends StaticAnnotation:
     def run(program: => MainResultType, mainName: String, docComment: String): CommandResult
   end Command
 
-  // Compile-time abstractions to control wrapper class:
-
-  /** The name to use for the static wrapper class
+  /** The fully qualified name to use for the static wrapper method
    *  @param mainName the fully qualified name of the user-defined main method
    */
-  inline def wrapperClassName(mainName: String): String
+  inline def wrapperName(mainName: String): String
 
-  /** The name to use for the main method in the static wrapper class
-   *  @param mainName the fully qualified name of the user-defined main method
+  /** An annotation type with which the wrapper method is decorated.
+   *  No annotation is generated of the type is left abstract.
    */
-  inline def wrapperMethodName(mainName: String): String
+  type WrapperAnnotation <: Annotation
 
 end MainAnnotation
 
@@ -137,7 +135,9 @@ class main extends MainAnnotation:
 
     def run(f: => MainResultType, mainName: String, docComment: String): Unit =
       def usage(): Unit =
-        println(s"Usage: java ${wrapperClassName(mainName)} ${argInfos.map(_ + _).mkString(" ")}")
+        val cmd = mainName.dropRight(".main".length)
+        val params = argInfos.map(_ + _).mkString(" ")
+        println(s"Usage: java $cmd $params")
 
       def explain(): Unit =
         if docComment.nonEmpty then println(docComment)  // todo: process & format doc comment
@@ -168,12 +168,14 @@ class main extends MainAnnotation:
     end run
   end command
 
-  inline def wrapperClassName(mainName: String): String =
-    mainName.drop(mainName.lastIndexOf('.') + 1)
+  inline def wrapperName(mainName: String): String =
+    s"${mainName.drop(mainName.lastIndexOf('.') + 1)}.main"
 
-  inline def wrapperMethodName(mainName: String): String = "main"
+  override type WrapperAnnotation = EntryPoint
 
 end main
+
+class EntryPoint extends Annotation
 
 // Sample main method
 
@@ -188,7 +190,7 @@ end myProgram
 //  Compiler generated code:
 
 object add extends main:
-  def main(args: Array[String]) =
+  @EntryPoint def main(args: Array[String]) =
     val cmd = command(args)
     val arg1 = cmd.argGetter[Int]("num", summon[ArgumentParser[Int]])
     val arg2 = cmd.argGetter[Int]("inc", summon[ArgumentParser[Int]], Some(1))
