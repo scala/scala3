@@ -90,7 +90,6 @@ class StringInterpolatorOpt extends MiniPhase {
           else { // tree.symbol == defn.StringContextS
             import dotty.tools.dotc.util.SourcePosition
             var stringPosition: SourcePosition = null
-            var offset: Int = 0
             try {
               val escapedStrs = strs.map(str => {
                 stringPosition = str.sourcePos
