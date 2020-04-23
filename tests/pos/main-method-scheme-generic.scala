@@ -7,8 +7,8 @@ import collection.mutable
  *  The protocol of calls from compiler-main is as follows:
  *
  *    - create a `command` with the command line arguments,
- *    - for each parameter of user-main, a call to `command.argGetter`,
- *      or `command.argsGetter` if is a final varargs parameter,
+ *    - for each parameter of user-main, a call to `command.nextArgGetter`,
+ *      or `command.finalArgsGetter` if is a final varargs parameter,
  *    - a call to `command.run` with the closure of user-main applied to all arguments.
  *
  *  The wrapper class has this outline:
@@ -46,10 +46,10 @@ trait MainAnnotation extends StaticAnnotation:
   abstract class Command:
 
     /** The getter for the next argument of type `T` */
-    def argGetter[T](argName: String, fromString: ArgumentParser[T], defaultValue: Option[T] = None): () => T
+    def nextArgGetter[T](argName: String, fromString: ArgumentParser[T], defaultValue: Option[T] = None): () => T
 
     /** The getter for a final varargs argument of type `T*` */
-    def argsGetter[T](argName: String, fromString: ArgumentParser[T]): () => Seq[T]
+    def finalArgsGetter[T](argName: String, fromString: ArgumentParser[T]): () => Seq[T]
 
     /** Run `program` if all arguments are valid,
      *  or print usage information and/or error messages.
@@ -66,7 +66,7 @@ trait MainAnnotation extends StaticAnnotation:
   inline def wrapperName(mainName: String): String
 
   /** An annotation type with which the wrapper method is decorated.
-   *  No annotation is generated of the type is left abstract.
+   *  No annotation is generated if the type is left abstract.
    */
   type WrapperAnnotation <: Annotation
 
@@ -115,7 +115,7 @@ class main extends MainAnnotation:
         case Some(t) => () => t
         case None => error(s"invalid argument for $argName: $arg")
 
-    def argGetter[T](argName: String, p: ArgumentParser[T], defaultValue: Option[T] = None): () => T =
+    def nextArgGetter[T](argName: String, p: ArgumentParser[T], defaultValue: Option[T] = None): () => T =
       argInfos += ((argName, if defaultValue.isDefined then "?" else ""))
       val idx = args.indexOf(s"--$argName")
       val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
@@ -125,7 +125,7 @@ class main extends MainAnnotation:
           case Some(t) => () => t
           case None => error(s"missing argument for $argName")
 
-    def argsGetter[T](argName: String, p: ArgumentParser[T]): () => Seq[T] =
+    def finalArgsGetter[T](argName: String, p: ArgumentParser[T]): () => Seq[T] =
       argInfos += ((argName, "*"))
       def remainingArgGetters(): List[() => T] = nextPositionalArg() match
         case Some(arg) => convert(arg, argName, p) :: remainingArgGetters()
@@ -192,8 +192,8 @@ end myProgram
 object add extends main:
   @EntryPoint def main(args: Array[String]) =
     val cmd = command(args)
-    val arg1 = cmd.argGetter[Int]("num", summon[ArgumentParser[Int]])
-    val arg2 = cmd.argGetter[Int]("inc", summon[ArgumentParser[Int]], Some(1))
+    val arg1 = cmd.nextArgGetter[Int]("num", summon[ArgumentParser[Int]])
+    val arg2 = cmd.nextArgGetter[Int]("inc", summon[ArgumentParser[Int]], Some(1))
     cmd.run(myProgram.add(arg1(), arg2()), "add", "Adds two numbers")
 end add
 
