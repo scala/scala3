@@ -21,6 +21,9 @@ trait MainAnnotation extends StaticAnnotation:
   /** The required result type of the main function */
   type ResultType
 
+  /** A new command with arguments from `args` */
+  def command(args: Array[String]): Command
+
   /** A class representing a command to run */
   abstract class Command:
 
@@ -35,9 +38,6 @@ trait MainAnnotation extends StaticAnnotation:
      */
     def run(f: => ResultType, progName: String, docComment: String): Unit
   end Command
-
-  /** A new command with arguments from `args` */
-  def command(args: Array[String]): Command
 end MainAnnotation
 
 //Sample main class, can be freely implemented:
