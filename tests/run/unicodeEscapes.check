@@ -1,0 +1,10 @@
+chars...OK
+char delim...OK
+string...OK
+string delim...OK
+back-quoted identifier...OK
+triple quoted string...OK
+single quoted s interpolation...OK
+triple quoted s interpolation...OK
+single quoted raw interpolation...OK
+triple quoted raw interpolation...OK

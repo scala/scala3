@@ -63,6 +63,20 @@ class StringInterpolatorOpt extends MiniPhase {
     }
   }
 
+  //Extract the position from InvalidUnicodeEscapeException
+  //which due to bincompat reasons is unaccessible.
+  //TODO: remove once there is less restrictive bincompat
+  private object InvalidEscapePosition {
+    def unapply(t: Throwable): Option[Int] = t match {
+      case iee: StringContext.InvalidEscapeException => Some(iee.index)
+      case il: IllegalArgumentException => il.getMessage() match {
+          case s"""invalid unicode escape at index $index of $_""" => index.toIntOption
+          case _ => None
+      }
+      case _ => None
+    }
+  }
+
   /**
     * Match trees that resemble s and raw string interpolations. In the case of the s
     * interpolator, escapes the string constants. Exposes the string constants as well as
@@ -74,14 +88,22 @@ class StringInterpolatorOpt extends MiniPhase {
         case SOrRawInterpolator(strs, elems) =>
           if (tree.symbol == defn.StringContext_raw) Some(strs, elems)
           else { // tree.symbol == defn.StringContextS
+            import dotty.tools.dotc.util.SourcePosition
+            var stringPosition: SourcePosition = null
             try {
-              val escapedStrs = strs.map { str =>
-                val escapedValue = StringContext.processEscapes(str.const.stringValue)
-                cpy.Literal(str)(Constant(escapedValue))
-              }
+              val escapedStrs = strs.map(str => {
+                stringPosition = str.sourcePos
+                val escaped = StringContext.processEscapes(str.const.stringValue)
+                cpy.Literal(str)(Constant(escaped))
+              })
               Some(escapedStrs, elems)
             } catch {
-              case _: StringContext.InvalidEscapeException => None
+              case t @ InvalidEscapePosition(p) => {
+                val errorSpan = stringPosition.span.startPos.shift(p)
+                val errorPosition = stringPosition.withSpan(errorSpan)
+                ctx.error(t.getMessage() + "\n", errorPosition)
+                None
+              }
             }
           }
         case _ => None

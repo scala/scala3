@@ -1,0 +1,28 @@
+-- Error: tests/neg/unicodeEscapes.scala:3:25 --------------------------------------------------------------------------
+3 |  val badsingle = "foo \unope that's wrong" // error
+  |                         ^
+  |                         invalid character in unicode escape sequence
+-- Error: tests/neg/unicodeEscapes.scala:4:26 --------------------------------------------------------------------------
+4 |  val caretPos = "foo \u12x3 pos @ x" // error
+  |                          ^
+  |                          invalid character in unicode escape sequence
+-- Error: tests/neg/unicodeEscapes.scala:5:33 --------------------------------------------------------------------------
+5 |  val caretPos2 = "foo \uuuuuuu12x3 pos @ x" // error
+  |                                 ^
+  |                                 invalid character in unicode escape sequence
+-- Error: tests/neg/unicodeEscapes.scala:6:29 --------------------------------------------------------------------------
+6 |  val carPosTerm = "foo \u123" // error
+  |                             ^
+  |                             invalid character in unicode escape sequence
+-- Error: tests/neg/unicodeEscapes.scala:7:30 --------------------------------------------------------------------------
+7 |  val halfAnEscape = "foo \u12" // error
+  |                              ^
+  |                              invalid character in unicode escape sequence
+-- Error: tests/neg/unicodeEscapes.scala:8:30 --------------------------------------------------------------------------
+8 |  val halfAnEscapeChar = '\u45' // error
+  |                              ^
+  |                              invalid character in unicode escape sequence
+-- Error: tests/neg/unicodeEscapes.scala:9:29 --------------------------------------------------------------------------
+9 |  val `half An Identifier\u45` = "nope" // error
+  |                             ^
+  |                             invalid character in unicode escape sequence

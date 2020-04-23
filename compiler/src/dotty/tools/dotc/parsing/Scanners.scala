@@ -1137,6 +1137,26 @@ object Scanners {
      *  and advance to next character.
      */
     protected def getLitChar(): Unit =
+      def invalidUnicodeEscape() = {
+        error("invalid character in unicode escape sequence", charOffset - 1)
+        putChar(ch)
+      }
+      def putUnicode(): Unit = {
+        while ch == 'u' || ch == 'U' do nextChar()
+        var i = 0
+        var cp = 0
+        while (i < 4) {
+          val shift = (3 - i) * 4
+          val d = digit2int(ch, 16)
+          if(d < 0) {
+            return invalidUnicodeEscape()
+          }
+          cp += (d << shift)
+          nextChar()
+          i += 1
+        }
+        putChar(cp.asInstanceOf[Char])
+      }
       if (ch == '\\') {
         nextChar()
         if ('0' <= ch && ch <= '7') {
@@ -1152,6 +1172,9 @@ object Scanners {
             }
           }
           putChar(oct.toChar)
+        }
+        else if (ch == 'u' || ch == 'U') {
+          putUnicode()
         }
         else {
           ch match {

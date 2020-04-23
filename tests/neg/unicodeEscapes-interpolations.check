@@ -1,0 +1,48 @@
+-- Error: tests/neg/unicodeEscapes-interpolations.scala:2:27 -----------------------------------------------------------
+2 |  val badInters1 = s"foo \unope that's wrong" // error
+  |                           ^
+  |                           invalid unicode escape at index 6 of foo \unope that's wrong
+-- Error: tests/neg/unicodeEscapes-interpolations.scala:3:32 -----------------------------------------------------------
+3 |  val badIntersEnd1 = s"foo \u12" // error
+  |                                ^
+  |                                invalid unicode escape at index 8 of foo \u12
+-- Error: tests/neg/unicodeEscapes-interpolations.scala:4:29 -----------------------------------------------------------
+4 |  val badInters3 = s"""foo \unope that's wrong""" // error
+  |                             ^
+  |                             invalid unicode escape at index 6 of foo \unope that's wrong
+-- Error: tests/neg/unicodeEscapes-interpolations.scala:5:28 -----------------------------------------------------------
+5 |  val caretPos1 = s"foo \u12x3 pos @ x" // error
+  |                            ^
+  |                            invalid unicode escape at index 8 of foo \u12x3 pos @ x
+-- Error: tests/neg/unicodeEscapes-interpolations.scala:6:34 -----------------------------------------------------------
+6 |  val caretPos2 = s"foo \uuuuuuu12x3 pos @ x" // error
+  |                                  ^
+  |                                  invalid unicode escape at index 14 of foo \uuuuuuu12x3 pos @ x
+-- Error: tests/neg/unicodeEscapes-interpolations.scala:7:30 -----------------------------------------------------------
+7 |  val caretPos3 = s"""foo \u12x3 pos @ x""" // error
+  |                              ^
+  |                              invalid unicode escape at index 8 of foo \u12x3 pos @ x
+-- Error: tests/neg/unicodeEscapes-interpolations.scala:8:36 -----------------------------------------------------------
+8 |  val caretPos4 = s"""foo \uuuuuuu12x3 pos @ x""" // error
+  |                                    ^
+  |                                    invalid unicode escape at index 14 of foo \uuuuuuu12x3 pos @ x
+-- Error: tests/neg/unicodeEscapes-interpolations.scala:10:53 ----------------------------------------------------------
+10 |  val badIntersmultiAfter = s"foo $placeholder bar \unope that's wrong" // error
+   |                                                     ^
+   |                                                   invalid unicode escape at index 7 of  bar \unope that's wrong
+-- Error: tests/neg/unicodeEscapes-interpolations.scala:11:37 ----------------------------------------------------------
+11 |  val badIntersmultiBefore = s"foo \unope $placeholder that's wrong" // error
+   |                                     ^
+   |                                     invalid unicode escape at index 6 of foo \unope 
+-- Error: tests/neg/unicodeEscapes-interpolations.scala:12:56 ----------------------------------------------------------
+12 |  val badInterstmultiAfter = s"""foo $placeholder bar \unope that's wrong""" // error
+   |                                                        ^
+   |                                                   invalid unicode escape at index 7 of  bar \unope that's wrong
+-- Error: tests/neg/unicodeEscapes-interpolations.scala:13:40 ----------------------------------------------------------
+13 |  val badInterstmultiBefore = s"""foo \unope $placeholder that's wrong""" // error
+   |                                        ^
+   |                                        invalid unicode escape at index 6 of foo \unope 
+-- Error: tests/neg/unicodeEscapes-interpolations.scala:14:29 ----------------------------------------------------------
+14 |  val badInterother = s"this \p ain't legal either" // error
+   |                             ^
+   |invalid escape '\p' not one of [\b, \t, \n, \f, \r, \\, \", \', \uxxxx] at index 5 in "this \p ain't legal either". Use \\ for literal \.
