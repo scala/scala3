@@ -276,8 +276,8 @@ private[quoted] object Matcher {
             ref match
               case Select(qual1, _) => qual1 =?= qual2
               case ref: Ident =>
-                Ref.desugarIdent(ref) match
-                  case Select(qual1, _) => qual1 =?= qual2
+                ref.tpe match
+                  case TermRef(qual: TermRef, _) => Ref.term(qual) =?= qual2
                   case _ => matched
 
           /* Match reference */
