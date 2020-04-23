@@ -69,8 +69,8 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
       // myMsg might be composed of several d"..." invocations -> nested
       // nonsensical tags possible
       msg
-        .replaceAllLiterally(nonSensicalStartTag, "")
-        .replaceAllLiterally(nonSensicalEndTag, "")
+        .replace(nonSensicalStartTag, "")
+        .replace(nonSensicalEndTag, "")
     else msg
 
   /** The message with potential embedded <nonsensical> tags */

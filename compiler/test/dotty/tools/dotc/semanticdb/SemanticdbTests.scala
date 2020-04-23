@@ -61,7 +61,7 @@ class SemanticdbTests:
         .resolve("semanticdb")
         .resolve(relpath)
         .resolveSibling(filename + ".semanticdb")
-      val expectPath = source.resolveSibling(filename.replaceAllLiterally(".scala", ".expect.scala"))
+      val expectPath = source.resolveSibling(filename.replace(".scala", ".expect.scala"))
       val doc = Tools.loadTextDocument(source, relpath, semanticdbPath)
       Tools.metac(doc, rootSrc.relativize(source))(using metacSb)
       val obtained = trimTrailingWhitespace(SemanticdbTests.printTextDocument(doc))

@@ -198,7 +198,7 @@ object Comments {
           // SI-8210 - The warning would be false negative when this symbol is a setter
           if (ownComment.indexOf("@inheritdoc") != -1 && ! sym.isSetter)
             dottydoc.println(s"${sym.span}: the comment for ${sym} contains @inheritdoc, but no parent comment is available to inherit from.")
-          ownComment.replaceAllLiterally("@inheritdoc", "<invalid inheritdoc annotation>")
+          ownComment.replace("@inheritdoc", "<invalid inheritdoc annotation>")
         case Some(sc) =>
           if (ownComment == "") sc
           else expandInheritdoc(sc, merge(sc, ownComment, sym), sym)
@@ -295,7 +295,7 @@ object Comments {
           if (childSection.indexOf("@inheritdoc") == -1)
             childSection
           else
-            childSection.replaceAllLiterally("@inheritdoc", parentSection)
+            childSection.replace("@inheritdoc", parentSection)
 
         def getParentSection(section: (Int, Int)): String = {
 
@@ -391,7 +391,7 @@ object Comments {
 
       // We suppressed expanding \$ throughout the recursion, and now we
       // need to replace \$ with $ so it looks as intended.
-      expandInternal(initialStr, 0).replaceAllLiterally("""\$""", "$")
+      expandInternal(initialStr, 0).replace("""\$""", "$")
     }
 
     def defineVariables(sym: Symbol)(implicit ctx: Context): Unit = {
