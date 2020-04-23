@@ -229,6 +229,10 @@ trait QuotesAndSplices {
               }
             }
             cpy.AppliedTypeTree(tree)(transform(tpt), args1)
+        case tree: NamedDefTree =>
+          if tree.name.isTermName && !tree.nameSpan.isSynthetic && tree.name.startsWith("$") then
+            ctx.error("Names cannot start with $ quote pattern ", tree.namePos)
+          super.transform(tree)
         case _ =>
           super.transform(tree)
       }
