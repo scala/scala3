@@ -319,6 +319,9 @@ trait CompilerInterface {
 
   def isInstanceOfRef(using ctx: Context): IsInstanceOf[Ref]
 
+  /** A tree representing the same reference as the given type */
+  def Ref_term(tp: TermRef)(using ctx: Context): Ref
+
   def Ref_apply(sym: Symbol)(using ctx: Context): Ref
 
   /** Tree representing a reference to definition with a given name */
