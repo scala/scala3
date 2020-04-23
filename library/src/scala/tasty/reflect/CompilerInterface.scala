@@ -322,9 +322,6 @@ trait CompilerInterface {
   /** A tree representing the same reference as the given type */
   def Ref_term(tp: TermRef)(using ctx: Context): Ref
 
-  /** Desugar identifier into a select node. Return the tree itself if not possible */
-  def Ref_desugarIdent(tree: Ident)(using ctx: Context): Ref
-
   def Ref_apply(sym: Symbol)(using ctx: Context): Ref
 
   /** Tree representing a reference to definition with a given name */
