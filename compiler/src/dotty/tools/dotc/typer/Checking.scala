@@ -451,7 +451,8 @@ object Checking {
           || sym.is(TermParam) && !sym.owner.isInlineMethod
           ))
       fail(ParamsNoInline(sym.owner))
-
+    if sym.isInlineMethod && !sym.is(Deferred) && sym.allOverriddenSymbols.nonEmpty then
+      checkInlineOverrideParameters(sym)
     if (sym.isOneOf(GivenOrImplicit)) {
       if (sym.owner.is(Package))
         fail(TopLevelCantBeImplicit(sym))
@@ -646,6 +647,18 @@ object Checking {
       val enumCls = enumCase.owner.linkedClass
       if !cls.info.parents.exists(_.typeSymbol == enumCls) then
         ctx.error(i"enum case does not extend its enum $enumCls", enumCase.sourcePos)
+
+  /** Check the inline override methods only use inline parameteres if they override an inline parameter. */
+  def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
+    val params = sym.paramSymss.flatten
+    if params.exists(_.is(Inline)) then
+      for
+        sym2 <- sym.allOverriddenSymbols
+        (p1, p2) <- params.lazyZip(sym2.paramSymss.flatten)
+        if p1.is(Inline) && !p2.is(Inline)
+      do
+        ctx.error("Cannot override non-inline parameter with and inline parameter", p1.sourcePos)
+
 }
 
 trait Checking {

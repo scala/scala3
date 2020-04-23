@@ -7,7 +7,7 @@ object Printers {
   }
 
   object noPrinter extends Printer {
-    inline override def println(inline msg: => String): Unit = ()
+    inline override def println(msg: => String): Unit = ()
   }
 
   val default = new Printer
