@@ -109,7 +109,7 @@ end main
 object myProgram:
 
   /** Adds two numbers */
-  @_main def add(num: Int, inc: Int = 1) =
+  @main def add(num: Int, inc: Int = 1) =
     println(s"$num + $inc = ${num + inc}")
 
 end myProgram

@@ -19,7 +19,7 @@ trait MainAnnotation extends StaticAnnotation:
   type ArgumentParser[T]
 
   /** The required result type of the main function */
-  type ResultType
+  type MainResultType
 
   /** A new command with arguments from `args` */
   def command(args: Array[String]): Command
@@ -27,16 +27,16 @@ trait MainAnnotation extends StaticAnnotation:
   /** A class representing a command to run */
   abstract class Command:
 
-    /** The getter for the next simple argument */
+    /** The getter for the next argument of type `T` */
     def argGetter[T](argName: String, fromString: ArgumentParser[T], defaultValue: Option[T] = None): () => T
 
-    /** The getter for a final varargs argument */
-    def argsGetter[T](argName: String, fromString: ArgumentParser[T]): () => List[T]
+    /** The getter for a final varargs argument of type `T*` */
+    def argsGetter[T](argName: String, fromString: ArgumentParser[T]): () => Seq[T]
 
-    /** Run function `f()` if all arguments are valid,
+    /** Run `program` if all arguments are valid,
      *  or print usage information and/or error messages.
      */
-    def run(f: => ResultType, progName: String, docComment: String): Unit
+    def run(program: => MainResultType, progName: String, docComment: String): Unit
   end Command
 end MainAnnotation
 
@@ -45,7 +45,7 @@ end MainAnnotation
 class main extends MainAnnotation:
 
   type ArgumentParser[T] = util.FromString[T]
-  type ResultType = Any
+  type MainResultType = Any
 
   def command(args: Array[String]): Command = new Command:
 
@@ -54,29 +54,29 @@ class main extends MainAnnotation:
      *   "*"  if it is a vararg
      *   ""   otherwise
      */
-    var argInfos = new mutable.ListBuffer[(String, String)]
+    private var argInfos = new mutable.ListBuffer[(String, String)]
 
     /** A buffer for all errors */
-    var errors = new mutable.ListBuffer[String]
+    private var errors = new mutable.ListBuffer[String]
 
     /** Issue an error, and return an uncallable getter */
-    def error(msg: String): () => Nothing =
+    private def error(msg: String): () => Nothing =
       errors += msg
       () => assertFail("trying to get invalid argument")
 
     /** The next argument index */
-    var argIdx: Int = 0
+    private var argIdx: Int = 0
 
-    def argAt(idx: Int): Option[String] =
+    private def argAt(idx: Int): Option[String] =
       if idx < args.length then Some(args(idx)) else None
 
-    def nextPositionalArg(): Option[String] =
+    private def nextPositionalArg(): Option[String] =
       while argIdx < args.length && args(argIdx).startsWith("--") do argIdx += 2
       val result = argAt(argIdx)
       argIdx += 1
       result
 
-    def convert[T](argName: String, arg: String, p: ArgumentParser[T]): () => T =
+    private def convert[T](argName: String, arg: String, p: ArgumentParser[T]): () => T =
       p.fromStringOption(arg) match
         case Some(t) => () => t
         case None => error(s"invalid argument for $argName: $arg")
@@ -91,15 +91,15 @@ class main extends MainAnnotation:
           case Some(t) => () => t
           case None => error(s"missing argument for $argName")
 
-    def argsGetter[T](argName: String, fromString: ArgumentParser[T]): () => List[T] =
+    def argsGetter[T](argName: String, p: ArgumentParser[T]): () => Seq[T] =
       argInfos += ((argName, "*"))
-      def recur(): List[() => T] = nextPositionalArg() match
-        case Some(arg) => convert(arg, argName, fromString) :: recur()
+      def remainingArgGetters(): List[() => T] = nextPositionalArg() match
+        case Some(arg) => convert(arg, argName, p) :: remainingArgGetters()
         case None => Nil
-      val fns = recur()
-      () => fns.map(_())
+      val getters = remainingArgGetters()
+      () => getters.map(_())
 
-    def run(f: => ResultType, progName: String, docComment: String): Unit =
+    def run(f: => MainResultType, progName: String, docComment: String): Unit =
       def usage(): Unit =
         println(s"Usage: $progName ${argInfos.map(_ + _).mkString(" ")}")
 
