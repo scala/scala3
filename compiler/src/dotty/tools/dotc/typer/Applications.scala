@@ -150,7 +150,10 @@ object Applications {
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SourcePosition)(using Context): List[Type] = {
 
-    val unapplyName = unapplyFn.asInstanceOf[RefTree].name
+    val unapplyName = unapplyFn match
+      case TypeApply(fn: RefTree, _) => fn.name
+      case fn: RefTree => fn.name
+
     def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
     def fail = {
