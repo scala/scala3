@@ -269,11 +269,12 @@ trait ImportSuggestions:
     val top = new Array[TermRef](n)
     var filled = 0
     val rest = new mutable.ListBuffer[TermRef]
+    val noImplicitsCtx = ctx.retractMode(Mode.ImplicitsEnabled)
     for ref <- refs do
       var i = 0
       var diff = 0
       while i < filled && diff == 0 do
-        diff = compare(ref, top(i))(using ctx.retractMode(Mode.ImplicitsEnabled))
+        diff = compare(ref, top(i))(using noImplicitsCtx)
         if diff > 0 then
           rest += top(i)
           top(i) = ref
