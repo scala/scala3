@@ -79,8 +79,13 @@ trait SpaceLogic {
   /** Is `tp1` a subtype of `tp2`? */
   def isSubType(tp1: Type, tp2: Type): Boolean
 
-  /** Is `tp1` the same type as `tp2`? */
-  def isEqualType(tp1: Type, tp2: Type): Boolean
+  /** Whether we may assume the two Unapply the same?
+   *  That is, given the same parameter, returns the same result.
+   *
+   *  This is more general than purity, as the same `unapply` method may
+   *  take different prefix, thus behaves differently.
+   */
+  def isSameUnapply(tp1: TermRef, tp2: TermRef): Boolean
 
   /** Return a space containing the values of both types.
    *
@@ -179,7 +184,7 @@ trait SpaceLogic {
         // approximation: a type can never be fully matched by a partial extractor
         full && isSubType(tp1, tp2) && isSubspace(Prod(tp2, fun, signature(fun, tp2, ss.length).map(Typ(_, false)), full), b)
       case (Prod(_, fun1, ss1, _), Prod(_, fun2, ss2, _)) =>
-        isEqualType(fun1, fun2) && ss1.zip(ss2).forall((isSubspace _).tupled)
+        isSameUnapply(fun1, fun2) && ss1.zip(ss2).forall((isSubspace _).tupled)
     }
   }
 
@@ -217,7 +222,7 @@ trait SpaceLogic {
         else if (canDecompose(tp2)) tryDecompose2(tp2)
         else Empty
       case (Prod(tp1, fun1, ss1, full), Prod(tp2, fun2, ss2, _)) =>
-        if (!isEqualType(fun1, fun2)) Empty
+        if (!isSameUnapply(fun1, fun2)) Empty
         else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) Empty
         else Prod(tp1, fun1, ss1.zip(ss2).map((intersect _).tupled), full)
     }
@@ -257,7 +262,7 @@ trait SpaceLogic {
       case (Typ(tp1, _), Prod(tp2, _, _, false)) =>
         a  // approximation
       case (Prod(tp1, fun1, ss1, full), Prod(tp2, fun2, ss2, _)) =>
-        if (!isEqualType(fun1, fun2)) a
+        if (!isSameUnapply(fun1, fun2)) a
         else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) a
         else if (ss1.zip(ss2).forall((isSubspace _).tupled)) Empty
         else
@@ -499,7 +504,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     res
   }
 
-  def isEqualType(tp1: Type, tp2: Type): Boolean = tp1 =:= tp2
+  def isSameUnapply(tp1: TermRef, tp2: TermRef): Boolean =
+    tp1.prefix.isStable && tp2.prefix.isStable && tp1 =:= tp2
 
   /** Parameter types of the case class type `tp`. Adapted from `unapplyPlan` in patternMatcher  */
   def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int): List[Type] = {
