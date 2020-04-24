@@ -1276,10 +1276,17 @@ object Parsers {
       if (in.token == COLONEOL) in.nextToken()
     }
 
-    def possibleBracesStart(): Unit = {
+    def argumentStart(): Unit =
       colonAtEOLOpt()
-      newLineOptWhenFollowedBy(LBRACE)
-    }
+      if migrateTo3 && in.token == NEWLINE && in.next.token == LBRACE then
+        in.nextToken()
+        if in.indentWidth(in.offset) == in.currentRegion.indentWidth then
+          ctx.errorOrMigrationWarning(
+            i"""This opening brace will start a new statement in Scala 3.
+               |It needs to be indented to the right to keep being treated as
+               |an argument to the previous expression.${rewriteNotice()}""",
+            in.sourcePos())
+          patch(source, Span(in.offset), "  ")
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL()
@@ -1509,7 +1516,7 @@ object Parsers {
     val refinedType: () => Tree = () => refinedTypeRest(withType())
 
     def refinedTypeRest(t: Tree): Tree = {
-      possibleBracesStart()
+      argumentStart()
       if (in.isNestedStart)
         refinedTypeRest(atSpan(startOffset(t)) { RefinedTypeTree(rejectWildcardType(t), refinement()) })
       else t
@@ -2265,7 +2272,7 @@ object Parsers {
     }
 
     def simpleExprRest(t: Tree, canApply: Boolean = true): Tree = {
-      if (canApply) possibleBracesStart()
+      if (canApply) argumentStart()
       in.token match {
         case DOT =>
           in.nextToken()
@@ -2338,7 +2345,7 @@ object Parsers {
     /** ArgumentExprss ::= {ArgumentExprs}
      */
     def argumentExprss(fn: Tree): Tree = {
-      possibleBracesStart()
+      argumentStart()
       if (in.token == LPAREN || in.isNestedStart) argumentExprss(mkApply(fn, argumentExprs()))
       else fn
     }
@@ -2831,7 +2838,7 @@ object Parsers {
       }
 
     def annotations(skipNewLines: Boolean = false): List[Tree] = {
-      if (skipNewLines) newLineOptWhenFollowedBy(AT)
+      if (skipNewLines) newLinesOptWhenFollowedBy(AT)
       if (in.token == AT) annot() :: annotations(skipNewLines)
       else Nil
     }
@@ -3358,7 +3365,7 @@ object Parsers {
      */
     def selfInvocation(): Tree =
       atSpan(accept(THIS)) {
-        possibleBracesStart()
+        argumentStart()
         argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs()))
       }
 

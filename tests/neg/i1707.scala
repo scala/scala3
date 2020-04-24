@@ -16,7 +16,7 @@ object DepBug {
     import d._
     a m (b)
   }
-  {   // error: Null does not take parameters (follow on)
+  {
     import dep._
     a m (b) // error: not found: a
   }

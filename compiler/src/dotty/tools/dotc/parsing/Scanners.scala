@@ -360,7 +360,7 @@ object Scanners {
       *     and a token that can start an expression.
       *  If a leading infix operator is found and the source version is `3.0-migration`, emit a change warning.
       */
-    def isLeadingInfixOperator(inConditional: Boolean = true) = (
+    def isLeadingInfixOperator(inConditional: Boolean = true) =
       allowLeadingInfixOperators
       && (  token == BACKQUOTED_IDENT
          || token == IDENTIFIER && isOperatorPart(name(name.length - 1)))
@@ -385,7 +385,12 @@ object Scanners {
             sourcePos())
         true
       }
-    )
+
+    def isContinuingParens() =
+      openParensTokens.contains(token)
+      && !pastBlankLine
+      && !migrateTo3
+      && !noindentSyntax
 
     /** The indentation width of the given offset */
     def indentWidth(offset: Offset): IndentWidth = {
@@ -484,6 +489,7 @@ object Scanners {
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
          && !isLeadingInfixOperator()
+         && !(lastWidth < nextWidth && isContinuingParens())
       then
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
       else if indentIsSignificant then

@@ -233,12 +233,12 @@ ExprInParens      ::=  PostfixExpr ‘:’ Type                                 
 ParArgumentExprs  ::=  ‘(’ [‘using’] ExprsInParens ‘)’                          exprs
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’      exprs :+ Typed(expr, Ident(wildcardStar))
 ArgumentExprs     ::=  ParArgumentExprs
-                    |  [nl] BlockExpr
+                    |  BlockExpr
 BlockExpr         ::=  ‘{’ (CaseClauses | Block) ‘}’
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
-                    |  {Annotation [nl]} [‘implicit’ | ‘lazy’] Def
-                    |  {Annotation [nl]} {LocalModifier} TmplDef
+                    |  {Annotation {nl}} [‘implicit’ | ‘lazy’] Def
+                    |  {Annotation {nl}} {LocalModifier} TmplDef
                     |  Expr1
                     |  EndMarker
 
@@ -362,7 +362,7 @@ ValDcl            ::=  ids ‘:’ Type                                         
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig ‘:’ Type                                          DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  id [DefTypeParamClause] DefParamClauses
-                    |  ExtParamClause [nl] [‘.’] id DefParamClauses
+                    |  ExtParamClause {nl} [‘.’] id DefParamClauses
 TypeDcl           ::=  id [TypeParamClause] SubtypeBounds [‘=’ Type]           TypeDefTree(_, name, tparams, bound
 
 Def               ::=  ‘val’ PatDef

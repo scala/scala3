@@ -129,6 +129,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/i3246.scala", scala2CompatMode),
       compileFile("tests/neg-custom-args/overrideClass.scala", scala2CompatMode),
       compileFile("tests/neg-custom-args/ovlazy.scala", scala2CompatMode.and("-migration", "-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/newline-braces.scala", scala2CompatMode.and("-migration", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.andLanguageFeature("noAutoTupling")),
       compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")),
       compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")),

@@ -18,6 +18,7 @@ class Pouring(capacity: Vector[Int]):
 
   val moves =
     val glasses = 0 until capacity.length
+
        (for g <- glasses yield Move.Empty(g))
     ++ (for g <- glasses yield Move.Fill(g))
     ++ (for g1 <- glasses; g2 <- glasses if g1 != g2 yield Move.Pour(g1, g2))
