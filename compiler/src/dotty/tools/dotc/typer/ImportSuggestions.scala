@@ -19,6 +19,9 @@ import collection.mutable
 trait ImportSuggestions:
   this: Typer =>
 
+  /** The maximal number of suggested imports to make */
+  inline val MaxSuggestions = 10
+
   import tpd._
 
   /** Timeout to test a single implicit value as a suggestion, in ms */
@@ -249,6 +252,46 @@ trait ImportSuggestions:
     finally timer.cancel()
   end importSuggestions
 
+  /** The `ref` parts of this list of pairs, discarding subsequent elements that
+   *  have the same String part. Elements are sorted by their String parts.
+   */
+  def (refs: List[(TermRef, String)]).distinctRefs(using Context): List[TermRef] = refs match
+    case (ref, str) :: refs1 =>
+      ref :: refs1.dropWhile(_._2 == str).distinctRefs
+    case Nil =>
+      Nil
+
+  /** The best `n` references in `refs`, according to `compare`
+   *  `compare` is a partial order. If there's a tie, we take elements
+   *  in the order thy appear in the list.
+   */
+  def (refs: List[TermRef]).best(n: Int)(using Context): List[TermRef] =
+    val top = new Array[TermRef](n)
+    var filled = 0
+    val rest = new mutable.ListBuffer[TermRef]
+    val noImplicitsCtx = ctx.retractMode(Mode.ImplicitsEnabled)
+    for ref <- refs do
+      var i = 0
+      var diff = 0
+      while i < filled && diff == 0 do
+        diff = compare(ref, top(i))(using noImplicitsCtx)
+        if diff > 0 then
+          rest += top(i)
+          top(i) = ref
+        i += 1
+      end while
+      if diff == 0 && filled < n then
+        top(filled) = ref
+        filled += 1
+      else if diff <= 0 then
+        rest += ref
+    end for
+    val remaining =
+      if filled < n && rest.nonEmpty then rest.toList.best(n - filled)
+      else Nil
+    top.take(filled).toList ++ remaining
+  end best
+
   /** An addendum to an error message where the error might be fixed
    *  by some implicit value of type `pt` that is however not found.
    *  The addendum suggests given imports that might fix the problem.
@@ -265,15 +308,11 @@ trait ImportSuggestions:
       s"  import ${ctx.printer.toTextRef(ref).show}"
     val suggestions = suggestedRefs
       .zip(suggestedRefs.map(importString))
-      .filter((ref, str) => str.contains('.'))
-      .sortWith { (x, y) =>
-          // sort by specificity first, alphabetically second
-          val ((ref1, str1), (ref2, str2)) = (x, y)
-          val diff = compare(ref1, ref2)
-          diff > 0 || diff == 0 && str1 < str2
-      }
-      .map((ref, str) => str)
-      .distinct  // TermRefs might be different but generate the same strings
+      .filter((ref, str) => str.contains('.')) // must be a real import with `.`
+      .sortBy(_._2)         // sort first alphabetically for stability
+      .distinctRefs         // TermRefs might be different but generate the same strings
+      .best(MaxSuggestions) // take MaxSuggestions best references according to specificity
+      .map(importString)
     if suggestions.isEmpty then ""
     else
       val fix =
