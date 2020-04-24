@@ -377,6 +377,24 @@ object PatternMatcher {
             // Generate a throwaway but type-correct plan.
             // This plan will never execute because it'll be guarded by a `NonNullTest`.
             ResultPlan(tpd.Throw(tpd.nullLiteral))
+          else if (!extractor.symbol.exists) { // structural unapply
+            val selectable :: ctags :: implicits2 = implicits
+            val mt @ MethodType(_) = extractor.tpe.widen
+            val dynName = Literal(Constant(extractor.asInstanceOf[RefTree].name.toString))
+            val unapp =
+              selectable
+                .select(nme.applyDynamic)
+                .appliedTo(dynName, ctags)
+                .appliedTo(
+                  seqRepeated(
+                    ref(scrutinee).ensureConforms(mt.paramInfos.head) :: implicits2,
+                    TypeTree(defn.AnyType)
+                  )
+                )
+                .asInstance(mt.finalResultType)
+
+            unapplyPlan(unapp, args)
+          }
           else {
             val mt @ MethodType(_) = extractor.tpe.widen
             var unapp = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))

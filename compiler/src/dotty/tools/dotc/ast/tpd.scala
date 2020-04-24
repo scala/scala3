@@ -1354,6 +1354,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def repeated(trees: List[Tree], tpt: Tree)(using Context): Tree =
     ctx.typeAssigner.arrayToRepeated(JavaSeqLiteral(trees, tpt))
 
+  def seqRepeated(trees: List[Tree], tpt: Tree)(using Context): Tree =
+    ctx.typeAssigner.seqToRepeated(SeqLiteral(trees, tpt))
+
   /** Create a tree representing a list containing all
    *  the elements of the argument list. A "list of tree to
    *  tree of list" conversion.

@@ -150,7 +150,7 @@ object Applications {
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SourcePosition)(using Context): List[Type] = {
 
-    val unapplyName = unapplyFn.symbol.name
+    val unapplyName = unapplyFn.asInstanceOf[RefTree].name
     def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
     def fail = {
@@ -171,7 +171,7 @@ object Applications {
         else fail
       }
     else {
-      assert(unapplyName == nme.unapply)
+      assert(unapplyName == nme.unapply, "expected `unapply`, found = " + unapplyName)
       if (isProductMatch(unapplyResult, args.length, pos))
         productSelectorTypes(unapplyResult, pos)
       else if (isGetMatch(unapplyResult, pos))
@@ -1225,6 +1225,7 @@ trait Applications extends Compatibility {
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
           case Apply(unapply, `dummyArg` :: Nil) => Nil
           case Inlined(u, _, _) => unapplyImplicits(u)
+          case DynamicUnapply(args) => args
           case _ => Nil.assertingErrorsReported
         }
 
