@@ -31,7 +31,29 @@ import scala.annotation.constructorOnly
 
 /** Checks that the Phase Consistency Principle (PCP) holds and heals types.
  *
- *  Type healing consists in transforming a phase inconsistent type `T` into a splice of `implicitly[Type[T]]`.
+ *  Local term references are phase consistent if and only if they are used at the same level as their definition.
+ *
+ *  Local type references can be used at the level of their definition or lower. If used used at a higher level,
+ *  it will be healed if possible, otherwise it is inconsistent.
+ *
+ *  Type healing consists in transforming a phase inconsistent type `T` into a splice of `${summon[Type[T]]}`.
+ *
+ *  As references to types do not necessarely have an assosiated tree it is not always possible to replace the types in place.
+ *  Instead we always generate a type alias for it and palce it at the start of the surounding quote. This also avoids duplication.
+ *  For example:
+ *    '{
+ *      val x: List[T] = List[T]()
+ *      ()
+ *    }
+ *
+ *  is transformed to
+ *
+ *    '{
+ *      type t$1 = ${summon[Type[T]]}
+ *      val x: List[t$1] = List[t$1]();
+ *      ()
+ *     }
+ *
  */
 class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) with Checking {
   import tpd._
@@ -41,16 +63,40 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
   override def transform(tree: Tree)(implicit ctx: Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(ctx.withSource(tree.source))
+    else if !isInQuoteOrSplice then
+      checkAnnotations(tree)
+      super.transform(tree)
     else tree match {
-      case tree: DefDef if tree.symbol.is(Inline) && level > 0 => EmptyTree
-      case tree: DefTree =>
-        lazy val annotCtx = ctx.fresh.setProperty(InAnnotation, true).withOwner(tree.symbol)
-        for (annot <- tree.symbol.annotations) annot match {
-          case annot: BodyAnnotation => annot // already checked in PrepareInlineable before the creation of the BodyAnnotation
-          case annot => transform(annot.tree)(using annotCtx)
-        }
-        checkLevel(super.transform(tree))
-      case _ => checkLevel(super.transform(tree))
+
+      case _: TypeTree | _: RefTree if tree.isType  =>
+        val healedType = healType(tree.sourcePos)(tree.tpe)
+        if healedType == tree.tpe then tree
+        else TypeTree(healedType).withSpan(tree.span)
+      case _: AppliedTypeTree =>
+        super.transform(tree) match
+          case tree1: AppliedTypeTree if tree1 ne tree =>
+            // propagate healed types
+            tree1.withType(tree1.tpt.tpe.appliedTo(tree1.args.map(_.tpe)))
+          case tree1 => tree1
+
+      case _: Ident | _: This =>
+        tree.withType(healTermType(tree.sourcePos)(tree.tpe))
+
+      // Remove inline defs in quoted code. Already fully inlined.
+      case tree: DefDef if tree.symbol.is(Inline) && level > 0 =>
+        EmptyTree
+
+      case tree: ValOrDefDef =>
+        checkAnnotations(tree)
+        healInfo(tree, tree.tpt.sourcePos)
+        super.transform(tree)
+      case tree: Bind =>
+        checkAnnotations(tree)
+        healInfo(tree, tree.sourcePos)
+        super.transform(tree)
+
+      case _ =>
+        super.transform(tree)
     }
 
   /** Transform quoted trees while maintaining phase correctness */
@@ -83,12 +129,12 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       case Apply(fun @ TypeApply(_, _ :: Nil), _) if splice.isTerm =>
         // Type of the splice itsel must also be healed
         // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
-        val tp = checkType(splice.sourcePos).apply(splice.tpe.widenTermRefExpr)
+        val tp = healType(splice.sourcePos)(splice.tpe.widenTermRefExpr)
         cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
       case Apply(f @ Apply(fun @ TypeApply(_, _), qctx :: Nil), _) if splice.isTerm =>
         // Type of the splice itsel must also be healed
         // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
-        val tp = checkType(splice.sourcePos).apply(splice.tpe.widenTermRefExpr)
+        val tp = healType(splice.sourcePos)(splice.tpe.widenTermRefExpr)
         cpy.Apply(splice)(cpy.Apply(f)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), qctx :: Nil), body1 :: Nil)
       case splice: Select =>
         val tagRef = getQuoteTypeTags.getTagRef(splice.qualifier.tpe.asInstanceOf[TermRef])
@@ -96,175 +142,109 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     }
   }
 
-  /** If `tree` refers to a locally defined symbol (either directly, or in a pickled type),
-   *  check that its staging level matches the current level. References to types
-   *  that are phase-incorrect can still be healed as follows:
+  /** Check that annotations do not contain quotes and and that splices are valid */
+  private def checkAnnotations(tree: Tree)(using Context): Unit =
+    tree match
+      case tree: DefTree =>
+        lazy val annotCtx = ctx.fresh.setProperty(InAnnotation, true).withOwner(tree.symbol)
+        for (annot <- tree.symbol.annotations) annot match
+          case annot: BodyAnnotation => annot // already checked in PrepareInlineable before the creation of the BodyAnnotation
+          case annot => transform(annot.tree)(using annotCtx)
+      case _ =>
+
+  /** Heal types in the info of the given tree */
+  private def healInfo(tree: Tree, pos: SourcePosition)(using Context): Unit =
+    tree.symbol.info = healType(pos)(tree.symbol.info)
+
+  /** If the refers to a locally defined symbol (either directly, or in a pickled type),
+   *  check that its staging level matches the current level.
+   *  - Static types and term are allowed at any level.
+   *  - If a type reference is used a higher level, then it is insosistent. Will atempt to heal before failing.
+   *  - If a term reference is used a different level, then it is insosistent.
    *
    *  If `T` is a reference to a type at the wrong level, try to heal it by replacing it with
-   *  `${implicitly[quoted.Type[T]]}`.
+   *  a type tag of type `quoted.Type[T]`.
+   *  The tag is generated by an instance of `QuoteTypeTags` directly if the splice is explicit
+   *  or indirectly by `tryHeal`.
    */
-  protected def checkLevel(tree: Tree)(implicit ctx: Context): Tree = {
-    def checkTp(tp: Type): Type = checkType(tree.sourcePos).apply(tp)
-    tree match {
-      case Quoted(_) | Spliced(_)  =>
-        tree
-      case _: This =>
-        assert(checkSymLevel(tree.symbol, tree.tpe, tree.sourcePos).isEmpty)
-        tree
-      case Ident(name) =>
-        if (name == nme.WILDCARD)
-          untpd.Ident(name).withType(checkType(tree.sourcePos).apply(tree.tpe)).withSpan(tree.span)
-        else
-          checkSymLevel(tree.symbol, tree.tpe, tree.sourcePos) match {
-            case Some(tpRef) => tpRef
-            case _ => tree
-          }
-      case _: TypeTree | _: AppliedTypeTree | _: Apply | _: TypeApply | _: UnApply | Select(_, OuterSelectName(_, _)) =>
-        tree.withType(checkTp(tree.tpe))
-      case _: ValOrDefDef | _: Bind =>
-        tree.symbol.info = checkTp(tree.symbol.info)
-        tree
-      case _: Template =>
-        checkTp(tree.symbol.owner.asClass.givenSelfType)
-        tree
-      case _ =>
-        tree
-    }
-  }
-
-  /** Check and heal all named types and this-types in a given type for phase consistency. */
-  private def checkType(pos: SourcePosition)(implicit ctx: Context): TypeMap = new TypeMap {
-    def apply(tp: Type): Type = reporting.trace(i"check type level $tp at $level") {
-      tp match {
-        case tp: TypeRef if tp.symbol.isSplice =>
-          if (tp.isTerm)
-            mapCtx.error(i"splice outside quotes", pos)
-          if level > 0 then getQuoteTypeTags.getTagRef(tp.prefix.asInstanceOf[TermRef])
-          else tp
-        case tp: TypeRef if tp.symbol == defn.QuotedTypeClass.typeParams.head =>
-          if level > 0 then
-            // Adapt direct references to the type of the type parameter T of a quoted.Type[T].
-            // Replace it with a properly encoded type splice. This is the normal form expected for type splices.
-            getQuoteTypeTags.getTagRef(tp.prefix.asInstanceOf[TermRef])
-          else tp
-        case tp: NamedType =>
-          checkSymLevel(tp.symbol, tp, pos) match {
-            case Some(tpRef) => tpRef.tpe
-            case _ =>
-              if (tp.symbol.is(Param)) tp
-              else mapOver(tp)
-          }
-        case tp: ThisType =>
-          assert(checkSymLevel(tp.cls, tp, pos).isEmpty)
-          mapOver(tp)
-        case tp: AnnotatedType =>
-          derivedAnnotatedType(tp, apply(tp.parent), tp.annot)
-        case _ =>
-          mapOver(tp)
-      }
-    }
-  }
-
-  /** Check reference to `sym` for phase consistency, where `tp` is the underlying type
-   *  by which we refer to `sym`. If it is an inconsistent type try construct a healed type for it.
-   *
-   *  @return `None` if the phase is correct or cannot be healed
-   *          `Some(tree)` with the `tree` of the healed type tree for `${implicitly[quoted.Type[T]]}`
-   */
-  private def checkSymLevel(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[Tree] = {
-    /** Is a reference to a class but not `this.type` */
-    def isClassRef = sym.isClass && !tp.isInstanceOf[ThisType]
-
-    /** Is this a static path or a type porjection with a static prefix */
-    def isStaticPathOK(tp1: Type): Boolean =
-      tp1.stripTypeVar match
-        case tp1: TypeRef => tp1.symbol.is(Package) || isStaticPathOK(tp1.prefix)
-        case tp1: TermRef =>
-          def isStaticTermPathOK(sym: Symbol): Boolean =
-            (sym.is(Module) && sym.isStatic) ||
-            (sym.isStableMember && isStaticTermPathOK(sym.owner))
-          isStaticTermPathOK(tp1.symbol)
-        case tp1: ThisType => tp1.cls.isStaticOwner
-        case tp1: AppliedType => isStaticPathOK(tp1.tycon)
-        case tp1: SkolemType => isStaticPathOK(tp1.info)
-        case _ => false
-
-    /* Is a reference to an `<init>` method on a class with a static path */
-    def isStaticNew(tp1: Type): Boolean = tp1 match
-      case tp1: TermRef => tp1.symbol.isConstructor && isStaticPathOK(tp1.prefix)
-      case _ => false
-
-    if (!sym.exists || levelOK(sym) || isStaticPathOK(tp) || isStaticNew(tp))
-      None
-    else if (!sym.isStaticOwner && !isClassRef)
+  private def healType(pos: SourcePosition)(using Context) = new TypeMap {
+    def apply(tp: Type): Type =
       tp match
         case tp: TypeRef =>
-          if levelOf(sym).getOrElse(0) < level then tryHeal(sym, tp, pos)
-          else None
+          tp.prefix match
+            case NoPrefix if level > levelOf(tp.symbol) =>
+              tryHeal(tp.symbol, tp, pos)
+            case prefix: ThisType if !tp.symbol.isStatic && level > levelOf(prefix.cls) =>
+              tryHeal(tp.symbol, tp, pos)
+            case prefix: TermRef if tp.symbol.isSplice =>
+              // Heal explice type splice in the code
+              if level > 0 then getQuoteTypeTags.getTagRef(prefix) else tp
+            case prefix: TermRef if !prefix.symbol.isStatic && level > levelOf(prefix.symbol) =>
+              tryHeal(prefix.symbol, tp, pos)
+            case _ =>
+              mapOver(tp)
+        case tp: ThisType if level != -1 && level != levelOf(tp.cls) =>
+          levelError(tp.cls, tp, pos, "")
+        case tp: AnnotatedType =>
+          val newAnnotTree = transform(tp.annot.tree)
+          derivedAnnotatedType(tp, apply(tp.parent), tp.annot.derivedAnnotation(newAnnotTree))
         case _ =>
-          levelError(sym, tp, pos, "")
-    else if (!sym.owner.isStaticOwner) // non-top level class reference that is phase inconsistent
-      levelError(sym, tp, pos, "")
-    else
-      None
+          mapOver(tp)
   }
 
-  /** Does the level of `sym` match the current level?
-   *  An exception is made for inline vals in macros. These are also OK if their level
-   *  is one higher than the current level, because on execution such values
-   *  are constant expression trees and we can pull out the constant from the tree.
-   */
-  private def levelOK(sym: Symbol)(implicit ctx: Context): Boolean = levelOf(sym) match {
-    case Some(l) =>
-      l == level ||
-        level == -1 && (
-            // here we assume that Splicer.checkValidMacroBody was true before going to level -1,
-            // this implies that all arguments are quoted.
-            sym.isClass // reference to this in inline methods
-          )
-    case None =>
-      sym.is(Package) || sym.owner.isStaticOwner ||
-      (sym.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) && level > 0) ||
-      levelOK(sym.owner)
+  /** Check phase consistency of terms and heal incosistent type references. */
+  private def healTermType(pos: SourcePosition)(using Context) = new TypeMap {
+    def apply(tp: Type): Type =
+      tp match
+        case tp @ TypeRef(NoPrefix, _) if level > levelOf(tp.symbol) =>
+          tryHeal(tp.symbol, tp, pos)
+        case tp @ TermRef(NoPrefix, _) if !tp.symbol.isStatic && level != levelOf(tp.symbol) =>
+          levelError(tp.symbol, tp, pos, "")
+        case tp: ThisType if level != -1 && level != levelOf(tp.cls) =>
+          levelError(tp.cls, tp, pos, "")
+        case _ =>
+          if tp.typeSymbol.is(Package) then tp
+          else mapOver(tp)
   }
 
   /** Try to heal reference to type `T` used in a higher level than its definition.
-   *  @return None      if successful
-   *  @return Some(msg) if unsuccessful where `msg` is a potentially empty error message
-   *                    to be added to the "inconsistent phase" message.
+   *  Returns a reference to a type tag generated by `QuoteTypeTags` that contains a
+   *  refercence to a type alias containing the equivalent of `${summon[quoted.Type[T]]}`.
+   *  Emits and error if `T` cannot be healed and returns `T`.
    */
-  protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(implicit ctx: Context): Option[Tree] = {
+  protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(implicit ctx: Context): TypeRef = {
     val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
     val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
-
     tag.tpe match
+
       case tp: TermRef =>
         checkStable(tp, pos, "type witness")
-        Some(ref(getQuoteTypeTags.getTagRef(tp)))
+        getQuoteTypeTags.getTagRef(tp)
       case _: SearchFailureType =>
         levelError(sym, tp, pos,
-                    i"""
-                      |
-                      | The access would be accepted with the right type tag, but
-                      | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
+            i"""
+                |
+                | The access would be accepted with the right type tag, but
+                | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
       case _ =>
         levelError(sym, tp, pos,
-                    i"""
-                      |
-                      | The access would be accepted with a given $reqType""")
+            i"""
+                |
+                | The access would be accepted with a given $reqType""")
   }
 
-  private def levelError(sym: Symbol, tp: Type, pos: SourcePosition, errMsg: String)(using Context) = {
+  private def levelError(sym: Symbol, tp: Type, pos: SourcePosition, errMsg: String)(using Context): tp.type = {
     def symStr =
       if (!tp.isInstanceOf[ThisType]) sym.show
       else if (sym.is(ModuleClass)) sym.sourceModule.show
       else i"${sym.name}.this"
-    summon[Context].error(
+    ctx.error(
       em"""access to $symStr from wrong staging level:
-          | - the definition is at level ${levelOf(sym).getOrElse(0)},
+          | - the definition is at level ${levelOf(sym)},
           | - but the access is at level $level.$errMsg""", pos)
-    None
+    tp
   }
+
 }
 
 object PCPCheckAndHeal {

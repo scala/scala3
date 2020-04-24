@@ -38,7 +38,6 @@ import config.Feature._
 import config.SourceVersion._
 import rewrites.Rewrites.patch
 import NavigateAST._
-import dotty.tools.dotc.transform.{PCPCheckAndHeal, Staging, TreeMapWithStages}
 import transform.SymUtils._
 import transform.TypeUtils._
 import reporting.trace
