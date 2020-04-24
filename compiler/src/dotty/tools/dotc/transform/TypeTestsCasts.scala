@@ -199,29 +199,38 @@ object TypeTestsCasts {
                // if `test` is primitive but `found` is not, we might have a case like
                // found = java.lang.Integer, test = Int, which could be true
                // (not sure why that is so, but scalac behaves the same way)
+            !(!testCls.isPrimitiveValueClass && foundCls.isPrimitiveValueClass) &&
+               // foundCls can be `Boolean`, while testCls is `Integer`
+               // it can happen in `(3: Boolean | Int).isInstanceOf[Int]`
             !isDerivedValueClass(foundCls) && !isDerivedValueClass(testCls)
                // we don't have the logic to handle derived value classes
 
           /** Check whether a runtime test that a value of `foundCls` can be a `testCls`
            *  can be true in some cases. Issues a warning or an error otherwise.
            */
-          def checkSensical(foundCls: Symbol)(using Context): Boolean =
-            if (!isCheckable(foundCls)) true
-            else if (foundCls.isPrimitiveValueClass && !testCls.isPrimitiveValueClass) {
+          def checkSensical(foundClasses: List[Symbol])(using Context): Boolean =
+            def check(foundCls: Symbol): Boolean =
+              if (!isCheckable(foundCls)) true
+              else if (!foundCls.derivesFrom(testCls)) {
+                val unrelated = !testCls.derivesFrom(foundCls) && (
+                  testCls.is(Final) || !testCls.is(Trait) && !foundCls.is(Trait)
+                )
+                if (foundCls.is(Final))
+                  unreachable(i"type ${expr.tpe.widen} is not a subclass of $testCls")
+                else if (unrelated)
+                  unreachable(i"type ${expr.tpe.widen} and $testCls are unrelated")
+                else true
+              }
+              else true
+            end check
+
+            val foundEffectiveClass = effectiveClass(expr.tpe.widen)
+
+            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
               ctx.error("cannot test if value types are references", tree.sourcePos)
               false
-            }
-            else if (!foundCls.derivesFrom(testCls)) {
-              val unrelated = !testCls.derivesFrom(foundCls) && (
-                testCls.is(Final) || !testCls.is(Trait) && !foundCls.is(Trait)
-              )
-              if (foundCls.is(Final))
-                unreachable(i"type ${expr.tpe.widen} is not a subclass of $testCls")
-              else if (unrelated)
-                unreachable(i"type ${expr.tpe.widen} and $testCls are unrelated")
-              else true
-            }
-            else true
+            else foundClasses.exists(check)
+          end checkSensical
 
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
@@ -232,7 +241,7 @@ object TypeTestsCasts {
           else {
             val nestedCtx = ctx.fresh.setNewTyperState()
             val foundClsSyms = foundClasses(expr.tpe.widen, Nil)
-            val sensical = foundClsSyms.exists(sym => checkSensical(sym)(using nestedCtx))
+            val sensical = checkSensical(foundClsSyms)(using nestedCtx)
             if (!sensical) {
               nestedCtx.typerState.commit()
               constant(expr, Literal(Constant(false)))
