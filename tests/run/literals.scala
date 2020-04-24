@@ -1,24 +1,13 @@
-// scalac: -deprecation
-//
-//############################################################################
-// Literals
-//############################################################################
 
-//############################################################################
+import scala.util.{Failure, Success, Try}
 
 object Test {
 
-  def check_success[A](name: String, closure: => A, expected: A): Unit = {
-    val res: Option[String] =
-      try {
-        val actual: A = closure
-        if (actual == expected) None  //print(" was successful")
-        else Some(s" failed: expected $expected, found $actual")
-      } catch {
-        case exception: Throwable => Some(s" raised exception $exception")
-      }
-    for (e <- res) println(s"test $name $e")
-  }
+  def check_success[A](name: String, closure: => A, expected: A): Unit =
+    Try(closure) match {
+      case Success(actual) => assert(actual == expected, s"test $name failed: expected $expected, found $actual")
+      case Failure(error)  => throw new AssertionError(s"test $name raised exception $error")
+    }
 
   def main(args: Array[String]): Unit = {
     // char
@@ -83,6 +72,7 @@ object Test {
     check_success("01.23f == 1.23f", 01.23f, 1.23f)
     check_success("3.14f == 3.14f", 3.14f, 3.14f)
     check_success("6.022e23f == 6.022e23f", 6.022e23f, 6.022e23f)
+    check_success("9f == 9.0f", 9f, 9.0f)
     check_success("09f == 9.0f", 09f, 9.0f)
     check_success("1.00000017881393421514957253748434595763683319091796875001f == 1.0000001f",
       1.00000017881393421514957253748434595763683319091796875001f,
@@ -114,5 +104,3 @@ object Test {
     check_success("\"\".length()", "\u001a".length(), 1)
   }
 }
-
-//############################################################################
