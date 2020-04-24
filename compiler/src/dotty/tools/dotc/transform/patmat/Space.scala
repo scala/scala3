@@ -79,11 +79,11 @@ trait SpaceLogic {
   /** Is `tp1` a subtype of `tp2`? */
   def isSubType(tp1: Type, tp2: Type): Boolean
 
-  /** Whether we may assume the two Unapply the same?
-   *  That is, given the same parameter, returns the same result.
+  /** True if we can assume that the two unapply methods are the same.
+   *  That is, given the same parameter, they return the same result.
    *
-   *  This is more general than purity, as the same `unapply` method may
-   *  take different prefix, thus behaves differently.
+   *  We assume that unapply methods are pure, but the same method may
+   *  be called with different prefixes, thus behaving differently.
    */
   def isSameUnapply(tp1: TermRef, tp2: TermRef): Boolean
 
