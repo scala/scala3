@@ -201,7 +201,7 @@ object TypeTestsCasts {
                // (not sure why that is so, but scalac behaves the same way)
             !(!testCls.isPrimitiveValueClass && foundCls.isPrimitiveValueClass) &&
                // foundCls can be `Boolean`, while testCls is `Integer`
-               // it can happen in `(3: Boolean | Int).isInstanceOf[Boolean]`
+               // it can happen in `(3: Boolean | Int).isInstanceOf[Int]`
             !isDerivedValueClass(foundCls) && !isDerivedValueClass(testCls)
                // we don't have the logic to handle derived value classes
 
