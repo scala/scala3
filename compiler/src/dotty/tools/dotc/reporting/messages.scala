@@ -2088,7 +2088,7 @@ object messages {
   }
 
   class NotAnExtractor(tree: untpd.Tree)(implicit ctx: Context) extends SyntaxMsg(NotAnExtractorID) {
-    def msg = em"$tree cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method."
+    def msg = em"$tree cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method"
     def explain =
       em"""|An ${hl("unapply")} method should be defined in an ${hl("object")} as follow:
            |  - If it is just a test, return a ${hl("Boolean")}. For example ${hl("case even()")}
