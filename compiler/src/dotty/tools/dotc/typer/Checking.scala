@@ -648,7 +648,7 @@ object Checking {
       if !cls.info.parents.exists(_.typeSymbol == enumCls) then
         ctx.error(i"enum case does not extend its enum $enumCls", enumCase.sourcePos)
 
-  /** Check the inline override methods only use inline parameteres if they override an inline parameter. */
+  /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
     val params = sym.paramSymss.flatten
     if params.exists(_.is(Inline)) then

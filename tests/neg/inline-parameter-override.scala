@@ -13,8 +13,8 @@ class Logger1 extends Logger {
 }
 
 class Logger2 extends Logger {
-  inline def log1(inline msg: String): Unit = () // error: Cannot override non-inline parameter with and inline parameter
-  inline def log2(inline msg: String): Unit = () // error: Cannot override non-inline parameter with and inline parameter
+  inline def log1(inline msg: String): Unit = () // error: Cannot override non-inline parameter with an inline parameter
+  inline def log2(inline msg: String): Unit = () // error: Cannot override non-inline parameter with an inline parameter
   inline def log3(inline msg: String): Unit = ()
 }
 
