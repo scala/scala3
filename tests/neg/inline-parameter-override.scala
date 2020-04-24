@@ -9,7 +9,7 @@ abstract class Logger {
 class Logger1 extends Logger {
   inline def log1(msg: String): Unit = ()
   inline def log2(msg: String): Unit = ()
-  inline def log3(msg: String): Unit = ()
+  inline def log3(msg: String): Unit = () // error: Cannot override inline parameter with a non-inline parameter
 }
 
 class Logger2 extends Logger {

@@ -650,14 +650,16 @@ object Checking {
 
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
-    val params = sym.paramSymss.flatten
-    if params.exists(_.is(Inline)) then
-      for
-        sym2 <- sym.allOverriddenSymbols
-        (p1, p2) <- params.lazyZip(sym2.paramSymss.flatten)
-        if p1.is(Inline) && !p2.is(Inline)
-      do
-        ctx.error("Cannot override non-inline parameter with an inline parameter", p1.sourcePos)
+    lazy val params = sym.paramSymss.flatten
+    for
+      sym2 <- sym.allOverriddenSymbols
+      (p1, p2) <- sym.paramSymss.flatten.lazyZip(sym2.paramSymss.flatten)
+      if p1.is(Inline) != p2.is(Inline)
+    do
+      ctx.error(
+          if p2.is(Inline) then "Cannot override inline parameter with a non-inline parameter"
+          else "Cannot override non-inline parameter with an inline parameter",
+          p1.sourcePos)
 
 }
 
