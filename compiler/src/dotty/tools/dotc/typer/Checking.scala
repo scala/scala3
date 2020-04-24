@@ -657,7 +657,7 @@ object Checking {
         (p1, p2) <- params.lazyZip(sym2.paramSymss.flatten)
         if p1.is(Inline) && !p2.is(Inline)
       do
-        ctx.error("Cannot override non-inline parameter with and inline parameter", p1.sourcePos)
+        ctx.error("Cannot override non-inline parameter with an inline parameter", p1.sourcePos)
 
 }
 
