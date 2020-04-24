@@ -4,7 +4,7 @@ trait Num[T] {
 
 object Num {
   class IntNum extends Num[Int] {
-    inline def plus(inline x: Int, inline y: Int): Int = x + y
+    inline def plus(x: Int, y: Int): Int = x + y
   }
   given IntNum
 
