@@ -1186,8 +1186,6 @@ object Build {
 
   val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{dotty-bootstrapped.version,sbt-dotty-sbt}.")
 
-  val updateCommunityBuild = taskKey[Unit]("Updates the community build.")
-
   lazy val `community-build` = project.in(file("community-build")).
     dependsOn(dottyLibrary(Bootstrapped)).
     settings(commonBootstrappedSettings).
@@ -1210,8 +1208,6 @@ object Build {
         IO.write(baseDirectory.value / "sbt-dotty-sbt", pluginText)
         IO.write(baseDirectory.value / "dotty-bootstrapped.version", dottyVersion)
       },
-      updateCommunityBuild := testOnly.in(Test).toTask(
-        " dotty.communitybuild.CommunityBuildUpdate -- --include-categories=dotty.communitybuild.UpdateCategory").value,
       testOptions in Test += Tests.Argument(
         TestFrameworks.JUnit,
         "--include-categories=dotty.communitybuild.TestCategory",
