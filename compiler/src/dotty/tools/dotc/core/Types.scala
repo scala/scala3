@@ -3075,7 +3075,7 @@ object Types {
     }
   }
 
-  trait MethodicType extends SignatureCachingType {
+  trait MethodicType extends TermType {
     protected def resultSignature(implicit ctx: Context): Signature = try resultType match {
       case rtp: MethodicType => rtp.signature
       case tp =>
@@ -3095,7 +3095,7 @@ object Types {
     override def resultType(implicit ctx: Context): Type = resType
     override def underlying(implicit ctx: Context): Type = resType
 
-    def computeSignature(implicit ctx: Context): Signature = resultSignature
+    override def signature(implicit ctx: Context): Signature = Signature.NotAMethod
 
     def derivedExprType(resType: Type)(implicit ctx: Context): ExprType =
       if (resType eq this.resType) this else ExprType(resType)
@@ -3201,7 +3201,7 @@ object Types {
     final override def equals(that: Any): Boolean = equals(that, null)
   }
 
-  abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType {
+  abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType with SignatureCachingType {
     final override def hashCode: Int = System.identityHashCode(this)
 
     final override def equals(that: Any): Boolean = equals(that, null)

@@ -141,7 +141,7 @@ object Signature {
   export MatchDegree._
 
   /** The signature of everything that's not a method, i.e. that has
-   *  a type different from PolyType, MethodType, or ExprType.
+   *  a type different from PolyType or MethodType.
    */
   val NotAMethod: Signature = Signature(List(), EmptyTypeName)
 
