@@ -35,7 +35,6 @@ sealed trait CommunityProject:
   private var published = false
 
   val project: String
-  val updateCommand: String
   val testCommand: String
   val publishCommand: String
   val dependencies: List[CommunityProject]
@@ -43,12 +42,6 @@ sealed trait CommunityProject:
   val runCommandsArgs: List[String] = Nil
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
-
-  /** Is this project running in the test or update mode in the
-   *  context of the given suite? @see `run` for more details.
-   */
-  final def isUpdateMode(using suite: CommunityBuildTest) =
-    suite.isInstanceOf[CommunityBuildUpdate]
 
   /** Depending on the mode of operation, either
    *  runs the test or updates the project. Updating
@@ -61,9 +54,8 @@ sealed trait CommunityProject:
    *  for more infrastructural details.
    */
   final def run()(using suite: CommunityBuildTest) =
-    val runCmd = if isUpdateMode then updateCommand else testCommand
-    if !isUpdateMode then dependencies.foreach(_.publish())
-    suite.test(project, binaryName, runCommandsArgs :+ runCmd)
+    dependencies.foreach(_.publish())
+    suite.test(project, binaryName, runCommandsArgs :+ testCommand)
 
   /** Publish this project to the local Maven repository */
   final def publish(): Unit =
@@ -82,7 +74,6 @@ final case class MillCommunityProject(
     baseCommand: String,
     dependencies: List[CommunityProject] = Nil) extends CommunityProject:
   override val binaryName: String = "./mill"
-  override val updateCommand = s"$baseCommand.compileClasspath"
   override val testCommand = s"$baseCommand.test"
   override val publishCommand = s"$baseCommand.publishLocal"
   override val runCommandsArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
@@ -90,14 +81,12 @@ final case class MillCommunityProject(
 final case class SbtCommunityProject(
     project: String,
     sbtTestCommand: String,
-    sbtUpdateCommand: String,
     extraSbtArgs: List[String] = Nil,
     dependencies: List[CommunityProject] = Nil,
     sbtPublishCommand: String = null) extends CommunityProject:
   override val binaryName: String = "sbt"
   private val baseCommand = s";clean ;set logLevel in Global := Level.Error ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! "
   override val testCommand = s"$baseCommand$sbtTestCommand"
-  override val updateCommand = s"$baseCommand$sbtUpdateCommand"
   override val publishCommand = s"$baseCommand$sbtPublishCommand"
 
   override val runCommandsArgs: List[String] =
@@ -142,33 +131,28 @@ object projects:
   lazy val intent = SbtCommunityProject(
     project       = "intent",
     sbtTestCommand   = "test",
-    sbtUpdateCommand = "update"
   )
 
   lazy val algebra = SbtCommunityProject(
     project       = "algebra",
     sbtTestCommand   = "coreJVM/compile",
-    sbtUpdateCommand = "coreJVM/update"
   )
 
   lazy val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
     sbtTestCommand   = "jvm/test",
-    sbtUpdateCommand = "jvm/test:update",
     sbtPublishCommand = ";set jvm/publishArtifact in (Compile, packageDoc) := false ;jvm/publishLocal"
   )
 
   lazy val scalatest = SbtCommunityProject(
     project       = "scalatest",
     sbtTestCommand   = ";scalacticDotty/clean;scalacticTestDotty/test;scalatestTestDotty/test",
-    sbtUpdateCommand = "scalatest/update",
     sbtPublishCommand = ";scalacticDotty/publishLocal; scalatestDotty/publishLocal"
   )
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
     project = "scalatestplus-scalacheck",
     sbtTestCommand = "scalatestPlusScalaCheckJVM/test",
-    sbtUpdateCommand = "scalatestPlusScalaCheckJVM/update",
     sbtPublishCommand = "scalatestPlusScalaCheckJVM/publishLocal",
     dependencies = List(scalatest, scalacheck)
   )
@@ -176,68 +160,57 @@ object projects:
   lazy val scalaXml = SbtCommunityProject(
     project       = "scala-xml",
     sbtTestCommand   = "xml/test",
-    sbtUpdateCommand = "xml/update"
   )
 
   lazy val scopt = SbtCommunityProject(
     project       = "scopt",
     sbtTestCommand   = "scoptJVM/compile",
-    sbtUpdateCommand = "scoptJVM/update"
   )
 
   lazy val scalap = SbtCommunityProject(
     project       = "scalap",
     sbtTestCommand   = "scalap/compile",
-    sbtUpdateCommand = "scalap/update"
   )
 
   lazy val squants = SbtCommunityProject(
     project       = "squants",
     sbtTestCommand   = "squantsJVM/compile",
-    sbtUpdateCommand = "squantsJVM/update"
   )
 
   lazy val betterfiles = SbtCommunityProject(
     project       = "betterfiles",
     sbtTestCommand   = "dotty-community-build/compile",
-    sbtUpdateCommand = "dotty-community-build/update"
   )
 
   lazy val ScalaPB = SbtCommunityProject(
     project       = "ScalaPB",
     sbtTestCommand   = "dotty-community-build/compile",
-    sbtUpdateCommand = "dotty-community-build/update"
   )
 
   lazy val minitest = SbtCommunityProject(
     project       = "minitest",
     sbtTestCommand   = "dotty-community-build/compile",
-    sbtUpdateCommand = "dotty-community-build/update"
   )
 
   lazy val fastparse = SbtCommunityProject(
     project       = "fastparse",
     sbtTestCommand   = "dotty-community-build/compile;dotty-community-build/test:compile",
-    sbtUpdateCommand = "dotty-community-build/update"
   )
 
   lazy val stdLib213 = SbtCommunityProject(
     project       = "stdLib213",
     sbtTestCommand   = """;set scalacOptions in Global += "-Yerased-terms" ;library/compile""",
-    sbtUpdateCommand = "library/update",
     extraSbtArgs  = List("-Dscala.build.compileWithDotty=true")
   )
 
   lazy val shapeless = SbtCommunityProject(
     project       = "shapeless",
     sbtTestCommand   = "test",
-    sbtUpdateCommand = "update"
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
     project       = "xml-interpolator",
     sbtTestCommand   = "test",
-    sbtUpdateCommand = "update"
   )
 
   lazy val effpi = SbtCommunityProject(
@@ -251,41 +224,34 @@ object projects:
     // dropped in the 2.13 compatible release
 
     // sbtTestCommand   = ";set ThisBuild / useEffpiPlugin := false; effpi/test:compile; plugin/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
-    // sbtUpdateCommand = ";set ThisBuild / useEffpiPlugin := false; effpi/test:update; plugin/test:update; benchmarks/test:update; examples/test:update; pluginBenchmarks/test:update"
 
     sbtTestCommand   = ";set ThisBuild / useEffpiPlugin := false; effpi/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
-    sbtUpdateCommand = ";set ThisBuild / useEffpiPlugin := false; effpi/test:update; benchmarks/test:update; examples/test:update; pluginBenchmarks/test:update"
   )
 
   // TODO @odersky? It got broken by #5458
   // val pdbp = test(
   //   project       = "pdbp",
   //   sbtTestCommand   = "compile",
-  //   sbtUpdateCommand = "update"
   // )
 
   lazy val sconfig = SbtCommunityProject(
     project       = "sconfig",
     sbtTestCommand   = "sconfigJVM/test",
-    sbtUpdateCommand = "sconfigJVM/update"
   )
 
   lazy val zio = SbtCommunityProject(
     project = "zio",
     sbtTestCommand = "testJVMDotty",
-    sbtUpdateCommand = "update"
   )
 
   lazy val munit = SbtCommunityProject(
     project          = "munit",
     sbtTestCommand   = "testsJVM/test",
-    sbtUpdateCommand = "munitJVM/update",
   )
 
   lazy val scodecBits = SbtCommunityProject(
     project          = "scodec-bits",
     sbtTestCommand   = "coreJVM/test",
-    sbtUpdateCommand = "coreJVM/update",
     sbtPublishCommand = "coreJVM/publishLocal",
     dependencies = List(scalatest, scalacheck, scalatestplusScalacheck)
   )
@@ -293,14 +259,12 @@ object projects:
   lazy val scodec = SbtCommunityProject(
     project          = "scodec",
     sbtTestCommand   = "unitTests/test",
-    sbtUpdateCommand = ";coreJVM/update; unitTests/update",
     dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, scodecBits)
   )
 
   lazy val scalaParserCombinators = SbtCommunityProject(
     project          = "scala-parser-combinators",
     sbtTestCommand   = "parserCombinators/test",
-    sbtUpdateCommand = "parserCombinators/update"
   )
 
 end projects
@@ -395,7 +359,3 @@ class CommunityBuildTest:
 end CommunityBuildTest
 
 class TestCategory
-class UpdateCategory
-
-@Category(Array(classOf[UpdateCategory]))
-class CommunityBuildUpdate extends CommunityBuildTest
