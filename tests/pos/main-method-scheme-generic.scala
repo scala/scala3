@@ -164,14 +164,12 @@ class main extends EntryPointAnnotation:
         if errors.nonEmpty then
           for msg <- errors do println(s"Error: $msg")
           usage()
-        else f
+        else entryPointApply
     end run
   end call
 
   inline def wrapperName(mainName: String): String =
     s"${mainName.drop(mainName.lastIndexOf('.') + 1)}.main"
-
-  override type WrapperAnnotation = EntryPoint
 
 end main
 

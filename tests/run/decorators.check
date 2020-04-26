@@ -1,0 +1,85 @@
+> java add 2 3
+2 + 3 = 5
+
+> java add 4
+4 + 1 = 5
+
+> java add --num 10 --inc -2
+10 + -2 = 8
+
+> java add --num 10
+10 + 1 = 11
+
+> java add --help
+Adds two numbers
+Usage: java add num inc?
+where
+  num   the first number
+  inc   the second number
+
+> java add 
+Error: invalid argument for num: 
+Usage: java add num inc?
+--help gives more information
+
+> java add 1 2 3 4
+Error: unused argument: 3
+Error: unused argument: 4
+Usage: java add num inc?
+--help gives more information
+
+> java add -n 1 -i 2
+Error: invalid argument for num: -n
+Error: unused argument: -i
+Error: unused argument: 2
+Usage: java add num inc?
+--help gives more information
+
+> java add true 10
+Error: invalid argument for num: true
+Usage: java add num inc?
+--help gives more information
+
+> java add true false
+Error: invalid argument for num: true
+Error: invalid argument for inc: false
+Usage: java add num inc?
+--help gives more information
+
+> java add true false 10
+Error: invalid argument for num: true
+Error: invalid argument for inc: false
+Error: unused argument: 10
+Usage: java add num inc?
+--help gives more information
+
+> java add --inc 10 --num 20
+20 + 10 = 30
+
+> java add binary 10 01
+Error: invalid argument for num: binary
+Error: unused argument: 01
+Usage: java add num inc?
+--help gives more information
+
+> java addAll 1 2 3 4 5
+15
+[log] MyProgram.addAll(1 2 3 4 5) -> ()
+
+> java addAll --nums
+0
+[log] MyProgram.addAll(--nums) -> ()
+
+> java addAll --nums 33 44
+44
+[log] MyProgram.addAll(--nums 33 44) -> ()
+
+> java addAll true 1 2 3
+Error: invalid argument for nums: true
+Usage: java addAll --nums <numbers>
+[log] MyProgram.addAll(true 1 2 3) -> ()
+
+> java addAll --help
+Usage: java addAll --nums <numbers>
+[log] MyProgram.addAll(--help) -> ()
+
