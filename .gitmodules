@@ -85,3 +85,6 @@
 [submodule "community-build/community-projects/scala-parser-combinators"]
 	path = community-build/community-projects/scala-parser-combinators
 	url = https://github.com/dotty-staging/scala-parser-combinators.git
+[submodule "community-build/community-projects/dotty-cps-async"]
+	path = community-build/community-projects/dotty-cps-async
+	url = https://github.com/rssh/dotty-cps-async.git

@@ -267,6 +267,11 @@ object projects:
     sbtTestCommand   = "parserCombinators/test",
   )
 
+  lazy val dottyCpsAsync = SbtCommunityProject(
+    project          = "dotty-cps-async",
+    sbtTestCommand   = "test",
+  )
+
 end projects
 
 @Category(Array(classOf[TestCategory]))
@@ -356,6 +361,7 @@ class CommunityBuildTest:
   @Test def scodecBits = projects.scodecBits.run()
   @Test def scodec = projects.scodec.run()
   @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
+  @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
 end CommunityBuildTest
 
 class TestCategory
