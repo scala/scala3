@@ -1904,15 +1904,13 @@ object Types {
      */
     private def currentSignature(implicit ctx: Context): Signature =
       if (ctx.runId == mySignatureRunId) mySignature
-      else {
-        val lastd = lastDenotation
-        if (lastd != null) lastd.signature
-        else {
+      else lastDenotation match
+        case null =>
           val sym = currentSymbol
-          if (sym.exists) sym.asSeenFrom(prefix).signature
+          if (sym.exists) sym.asSeenFrom(prefix).initial.signature
           else Signature.NotAMethod
-        }
-      }
+        case sd: SingleDenotation => sd.initial.signature
+        case d => d.signature
 
     final def symbol(implicit ctx: Context): Symbol =
       // We can rely on checkedPeriod (unlike in the definition of `denot` below)
