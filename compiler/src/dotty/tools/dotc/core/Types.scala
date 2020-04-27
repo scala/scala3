@@ -1892,11 +1892,11 @@ object Types {
     /** The signature of the last known denotation, or if there is none, the
      *  signature of the symbol
      */
-    protected def computeSignature(implicit ctx: Context): Signature = {
-      val lastd = lastDenotation
-      if (lastd != null) lastd.signature
-      else symbol.asSeenFrom(prefix).signature
-    }
+    protected def computeSignature(implicit ctx: Context): Signature =
+      lastDenotation match
+        case null => symbol.asSeenFrom(prefix).signature
+        case sd: SingleDenotation => sd.initial.signature
+        case d => d.signature
 
     /** The signature of the current denotation if it is known without forcing.
      *  Otherwise the signature of the current symbol if it is known without forcing.
