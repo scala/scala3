@@ -20,9 +20,9 @@ object Macros {
 
       case '{ ($x: DSL) * ($y: DSL) } => sym.times(lift(x), lift(y))
 
-      case '{ ($f: DSL => DSL)($x: DSL) } => sym.app(liftFun(f), lift(x))
+      case '{ $f($x: DSL): DSL } => sym.app(liftFun(f), lift(x))
 
-      case '{ val x: DSL = $value; ($bodyFn: DSL => DSL)(x) } =>
+      case '{ val x: DSL = $value; $bodyFn(x): DSL } =>
         UnsafeExpr.open(bodyFn) { (body1, close) =>
           val (i, nEnvVar) = freshEnvVar()
           lift(close(body1)(nEnvVar))(env + (i -> lift(value)))
@@ -37,7 +37,7 @@ object Macros {
     }
 
     def liftFun(e: Expr[DSL => DSL])(implicit env: Map[Int, Expr[T]]): Expr[T => T] = e match {
-      case '{ (x: DSL) => ($bodyFn: DSL => DSL)(x) } =>
+      case '{ (x: DSL) => $bodyFn(x): DSL } =>
         sym.lam((y: Expr[T]) =>
           UnsafeExpr.open(bodyFn) { (body1, close) =>
             val (i, nEnvVar) = freshEnvVar()

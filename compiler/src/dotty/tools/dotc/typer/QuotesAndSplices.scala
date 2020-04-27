@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.reporting._
 import dotty.tools.dotc.typer.Implicits._
 import dotty.tools.dotc.typer.Inferencing._
+import dotty.tools.dotc.typer.ProtoTypes._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Stats.record
 
@@ -106,6 +107,26 @@ trait QuotesAndSplices {
 
       typedApply(internalSplice, pt)(using ctx1).withSpan(tree.span)
     }
+  }
+
+  /** Types a splice applied to some arguments `$f(arg1, ..., argn)` in a quote pattern.
+   *
+   *  The tree is desugared into `$f.apply(arg1, ..., argn)` where the expression `$f`
+   *  is expected to type as a function type `(T1, ..., Tn) => R`.
+   *  `Ti` is the type of the argument `argi` and R if the type of the prototype.
+   *  The prototype must be fully defined to be able to infer the type of `R`.
+   */
+  def typedAppliedSplice(tree: untpd.Apply, pt: Type)(using Context): Tree = {
+    assert(ctx.mode.is(Mode.QuotedPattern))
+    val untpd.Apply(splice: untpd.Splice, args) = tree
+    if (isFullyDefined(pt, ForceDegree.flipBottom)) then
+      val typedArgs = args.map(arg => typedExpr(arg))
+      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
+      val splice1 = typedSplice(splice, defn.FunctionOf(argTypes, pt))
+      Apply(splice1.select(nme.apply), typedArgs).withType(pt).withSpan(tree.span)
+    else
+      ctx.error(i"Type must be fully defined.", splice.sourcePos)
+      tree.withType(UnspecifiedErrorType)
   }
 
   /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
