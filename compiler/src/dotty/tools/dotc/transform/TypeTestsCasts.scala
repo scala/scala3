@@ -47,8 +47,8 @@ object TypeTestsCasts {
    *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
-   *     (b) constrain `Xs` with `pre.F[Xs] <:< X`
-   *     (c) instantiate Xs and check `pre.F[Xs] <:< P`
+   *     (b) check that we can constrain `Xs` such that `pre.F[Xs] <:< X` and `pre.F[Xs] <:< P`
+   *         can both be true at the same time.
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
@@ -105,12 +105,7 @@ object TypeTestsCasts {
       debug.println("P1 : " + P1.show)
       debug.println("X : " + X.show)
 
-      P1 <:< X       // constraint P1
-
-      // use fromScala2x to avoid generating pattern bound symbols
-      maximizeType(P1, span, fromScala2x = true)
-
-      val res = P1 <:< P
+      val res = (P1 <:< X) && (P1 <:< P)
       debug.println("P1 : " + P1.show)
       debug.println("P1 <:< P = " + res)
 
