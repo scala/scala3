@@ -117,7 +117,7 @@ object TypeTestsCasts {
       res
     }
 
-    def recur(X: Type, P: Type): Boolean = (X <:< P) || (P match {
+    def recur(X: Type, P: Type): Boolean = (X <:< P) || (P.dealias match {
       case _: SingletonType     => true
       case _: TypeProxy
       if isAbstract(P)          => false
