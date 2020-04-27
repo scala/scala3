@@ -10,7 +10,7 @@ import MegaPhase.MiniPhase
 import config.Printers.transforms
 
 /** Add accessors for all protected accesses. An accessor is needed if
- *  according to the rules of the JVM a protected class member is not accesissible
+ *  according to the rules of the JVM a protected class member is not accessible
  *  from the point of access, but is accessible if the access is from an enclosing
  *  class. In this point a public access method is placed in that enclosing class.
  */
