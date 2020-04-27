@@ -94,7 +94,7 @@ object DesugarEnums {
    */
   private def enumScaffolding(implicit ctx: Context): List[Tree] = {
     val valuesDef =
-      DefDef(nme.values, Nil, Nil, TypeTree(), Select(valuesDot(nme.values), nme.toArray))
+      DefDef(nme.values, Nil, Nil, TypeTree(defn.ArrayOf(enumClass.typeRef)), Select(valuesDot(nme.values), nme.toArray))
         .withFlags(Synthetic)
     val privateValuesDef =
       ValDef(nme.DOLLAR_VALUES, TypeTree(),
