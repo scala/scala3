@@ -1894,7 +1894,7 @@ object Types {
      */
     protected def computeSignature(implicit ctx: Context): Signature =
       lastDenotation match
-        case null => symbol.asSeenFrom(prefix).signature
+        case null => symbol.asSeenFrom(prefix).initial.signature
         case sd: SingleDenotation => sd.initial.signature
         case d => d.signature
 
