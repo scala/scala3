@@ -479,40 +479,6 @@ Occurrences:
 [30:4..30:9): local -> local3
 [30:10..30:11): + -> scala/Int#`+`(+4).
 
-expect/Definitions.scala
-------------------------
-
-Summary:
-Schema => SemanticDB v4
-Uri => Definitions.scala
-Text => empty
-Language => Scala
-Symbols => 10 entries
-Occurrences => 9 entries
-
-Symbols:
-a/Definitions. => final object Definitions
-a/Definitions.D# => class D
-a/Definitions.D#`<init>`(). => primary ctor <init>
-a/Definitions.E# => trait E
-a/Definitions.E#`<init>`(). => primary ctor <init>
-a/Definitions.`b_=`(). => var method b_=
-a/Definitions.`b_=`().(x$1) => param x$1
-a/Definitions.a. => val method a
-a/Definitions.b(). => var method b
-a/Definitions.c(). => method c
-
-Occurrences:
-[0:8..0:9): a <- a/
-[1:7..1:18): Definitions <- a/Definitions.
-[2:6..2:7): a <- a/Definitions.a.
-[3:6..3:7): b <- a/Definitions.b().
-[4:6..4:7): c <- a/Definitions.c().
-[5:2..5:2): <- a/Definitions.D#`<init>`().
-[5:8..5:9): D <- a/Definitions.D#
-[6:2..6:2): <- a/Definitions.E#`<init>`().
-[6:8..6:9): E <- a/Definitions.E#
-
 expect/Empty.scala
 ------------------
 
@@ -996,153 +962,6 @@ Occurrences:
 [9:33..9:36): Int -> scala/Int#
 [9:37..9:37): -> scala/reflect/ClassTag.apply().
 [9:37..9:37): -> java/lang/Integer#TYPE.
-
-expect/Flags.scala
-------------------
-
-Summary:
-Schema => SemanticDB v4
-Uri => Flags.scala
-Text => empty
-Language => Scala
-Symbols => 50 entries
-Occurrences => 82 entries
-
-Symbols:
-flags/p/package. => final package object p
-flags/p/package.AA# => class AA
-flags/p/package.AA#`<init>`(). => primary ctor <init>
-flags/p/package.AA#`<init>`().(x) => param x
-flags/p/package.AA#`<init>`().(y) => val param y
-flags/p/package.AA#`<init>`().(z) => var param z
-flags/p/package.AA#`z_=`(). => var method z_=
-flags/p/package.AA#`z_=`().(x$1) => param x$1
-flags/p/package.AA#x. => val method x
-flags/p/package.AA#y. => val method y
-flags/p/package.AA#z(). => var method z
-flags/p/package.C# => abstract class C
-flags/p/package.C#[T] => covariant typeparam T
-flags/p/package.C#[U] => contravariant typeparam U
-flags/p/package.C#[V] => typeparam V
-flags/p/package.C#`<init>`(). => primary ctor <init>
-flags/p/package.C#`<init>`().(x) => param x
-flags/p/package.C#`<init>`().(y) => param y
-flags/p/package.C#`<init>`().(z) => param z
-flags/p/package.C#`<init>`(+1). => ctor <init>
-flags/p/package.C#`<init>`(+2). => ctor <init>
-flags/p/package.C#`<init>`(+2).(t) => param t
-flags/p/package.C#w(). => abstract method w
-flags/p/package.C#x. => val method x
-flags/p/package.C#y. => val method y
-flags/p/package.C#z. => val method z
-flags/p/package.S# => class S
-flags/p/package.S#[T] => typeparam T
-flags/p/package.S#`<init>`(). => primary ctor <init>
-flags/p/package.T1# => type T1
-flags/p/package.T2# => type T2
-flags/p/package.T2#[T] => typeparam T
-flags/p/package.U# => type U
-flags/p/package.V# => type V
-flags/p/package.X. => final case object X
-flags/p/package.Y# => final class Y
-flags/p/package.Y#`<init>`(). => primary ctor <init>
-flags/p/package.Z# => sealed trait Z
-flags/p/package.Z#`<init>`(). => primary ctor <init>
-flags/p/package.`y_=`(). => var method y_=
-flags/p/package.`y_=`().(x$1) => param x$1
-flags/p/package.m(). => method m
-flags/p/package.m().[TT] => typeparam TT
-flags/p/package.x. => lazy val method x
-flags/p/package.xs1. => val method xs1
-flags/p/package.y(). => implicit var method y
-flags/p/package.z(). => method z
-flags/p/package.z().(pp) => param pp
-local0 => val local xs2
-local1 => case val method t
-
-Occurrences:
-[0:8..0:13): flags <- flags/
-[2:7..2:12): scala -> scala/
-[2:13..2:21): language -> scalaShadowing/language.
-[2:22..2:34): experimental -> scalaShadowing/language.experimental.
-[2:35..2:41): macros -> scalaShadowing/language.experimental.macros.
-[4:15..5:3): <- flags/p/package.
-[5:2..5:3): p -> flags/p/
-[5:19..5:20): x <- flags/p/package.x.
-[6:25..6:26): y <- flags/p/package.y().
-[6:28..6:31): Int -> scala/Int#
-[7:6..7:7): z <- flags/p/package.z().
-[7:8..7:10): pp <- flags/p/package.z().(pp)
-[7:12..7:15): Int -> scala/Int#
-[8:6..8:7): m <- flags/p/package.m().
-[8:8..8:10): TT <- flags/p/package.m().[TT]
-[8:13..8:16): Int -> scala/Int#
-[8:16..8:16): -> scala/Predef.`???`().
-[9:17..9:18): C <- flags/p/package.C#
-[9:18..9:47): <- flags/p/package.C#`<init>`().
-[9:20..9:21): T <- flags/p/package.C#[T]
-[9:24..9:25): U <- flags/p/package.C#[U]
-[9:27..9:28): V <- flags/p/package.C#[V]
-[9:30..9:31): x <- flags/p/package.C#x.
-[9:33..9:34): T -> flags/p/package.C#[T]
-[9:36..9:37): y <- flags/p/package.C#y.
-[9:39..9:40): U -> flags/p/package.C#[U]
-[9:42..9:43): z <- flags/p/package.C#z.
-[9:45..9:46): V -> flags/p/package.C#[V]
-[10:8..10:14): <- flags/p/package.C#`<init>`(+1).
-[10:22..10:22): -> flags/p/package.C#`<init>`().
-[10:22..10:25): ??? -> scala/Predef.`???`().
-[10:27..10:30): ??? -> scala/Predef.`???`().
-[10:32..10:35): ??? -> scala/Predef.`???`().
-[11:8..11:14): <- flags/p/package.C#`<init>`(+2).
-[11:13..11:14): t <- flags/p/package.C#`<init>`(+2).(t)
-[11:16..11:17): T -> flags/p/package.C#[T]
-[11:26..11:26): -> flags/p/package.C#`<init>`().
-[11:26..11:27): t -> flags/p/package.C#`<init>`(+2).(t)
-[11:29..11:32): ??? -> scala/Predef.`???`().
-[11:34..11:37): ??? -> scala/Predef.`???`().
-[12:8..12:9): w <- flags/p/package.C#w().
-[12:11..12:14): Int -> scala/Int#
-[14:7..14:9): T1 <- flags/p/package.T1#
-[14:12..14:15): Int -> scala/Int#
-[15:7..15:9): T2 <- flags/p/package.T2#
-[15:10..15:11): T <- flags/p/package.T2#[T]
-[15:15..15:16): S -> flags/p/package.S#
-[15:17..15:18): T -> flags/p/package.T2#[T]
-[16:7..16:8): U <- flags/p/package.U#
-[16:12..16:15): Int -> scala/Int#
-[17:7..17:8): V <- flags/p/package.V#
-[17:12..17:15): Int -> scala/Int#
-[18:14..18:15): X <- flags/p/package.X.
-[19:2..19:2): <- flags/p/package.Y#`<init>`().
-[19:14..19:15): Y <- flags/p/package.Y#
-[20:2..20:2): <- flags/p/package.Z#`<init>`().
-[20:15..20:16): Z <- flags/p/package.Z#
-[21:8..21:10): AA <- flags/p/package.AA#
-[21:10..21:42): <- flags/p/package.AA#`<init>`().
-[21:11..21:12): x <- flags/p/package.AA#x.
-[21:14..21:17): Int -> scala/Int#
-[21:23..21:24): y <- flags/p/package.AA#y.
-[21:26..21:29): Int -> scala/Int#
-[21:35..21:36): z <- flags/p/package.AA#z().
-[21:38..21:41): Int -> scala/Int#
-[22:8..22:9): S <- flags/p/package.S#
-[22:9..22:25): <- flags/p/package.S#`<init>`().
-[22:11..22:22): specialized -> scala/specialized#
-[22:23..22:24): T <- flags/p/package.S#[T]
-[23:6..23:10): List -> scala/package.List.
-[23:10..23:10): -> scala/collection/SeqFactory#unapplySeq().
-[23:11..23:14): xs1 <- flags/p/package.xs1.
-[23:18..23:21): ??? -> scala/Predef.`???`().
-[24:2..24:5): ??? -> scala/Predef.`???`().
-[24:19..24:23): List -> scala/package.List.
-[24:23..24:23): -> scala/collection/SeqFactory#unapplySeq().
-[24:24..24:27): xs2 <- local0
-[24:32..24:35): ??? -> scala/Predef.`???`().
-[25:2..25:5): ??? -> scala/Predef.`???`().
-[25:22..25:26): List -> scala/package.List#
-[25:27..25:28): t <- local1
-[25:33..25:36): ??? -> scala/Predef.`???`().
 
 expect/ForComprehension.scala
 -----------------------------
@@ -2717,12 +2536,556 @@ Occurrences:
 [12:10..12:14): self <- local1
 [12:16..12:17): C -> traits/C#
 
-expect/Types.scala
-------------------
+expect/ValPattern.scala
+-----------------------
 
 Summary:
 Schema => SemanticDB v4
-Uri => Types.scala
+Uri => ValPattern.scala
+Text => empty
+Language => Scala
+Symbols => 22 entries
+Occurrences => 63 entries
+
+Symbols:
+example/ValPattern# => class ValPattern
+example/ValPattern#`<init>`(). => primary ctor <init>
+example/ValPattern#`leftVar_=`(). => var method leftVar_=
+example/ValPattern#`leftVar_=`().(x$1) => param x$1
+example/ValPattern#`number1Var_=`(). => var method number1Var_=
+example/ValPattern#`number1Var_=`().(x$1) => param x$1
+example/ValPattern#`rightVar_=`(). => var method rightVar_=
+example/ValPattern#`rightVar_=`().(x$1) => param x$1
+example/ValPattern#app(). => method app
+example/ValPattern#left. => val method left
+example/ValPattern#leftVar(). => var method leftVar
+example/ValPattern#number1. => val method number1
+example/ValPattern#number1Var(). => var method number1Var
+example/ValPattern#q1. => val method q1
+example/ValPattern#right. => val method right
+example/ValPattern#rightVar(). => var method rightVar
+local0 => val local left
+local1 => val local right
+local2 => val local number1
+local3 => var local leftVar
+local4 => var local rightVar
+local5 => var local number1Var
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:16): ValPattern <- example/ValPattern#
+[4:2..4:2): <- example/ValPattern#`<init>`().
+[4:7..4:11): left <- example/ValPattern#left.
+[4:13..4:18): right <- example/ValPattern#right.
+[4:23..4:23): -> scala/Tuple2.apply().
+[5:6..5:10): Some -> scala/Some.
+[5:10..5:10): -> scala/Some.unapply().
+[5:11..5:18): number1 <- example/ValPattern#number1.
+[6:4..6:8): Some -> scala/Some.
+[6:8..6:8): -> scala/Some.apply().
+[8:6..8:10): List -> scala/package.List.
+[8:10..8:10): -> scala/collection/SeqFactory#unapplySeq().
+[8:11..8:15): Some -> scala/Some.
+[8:15..8:15): -> scala/Some.unapply().
+[8:16..8:18): q1 <- example/ValPattern#q1.
+[8:21..8:25): None -> scala/None.
+[8:27..8:31): None -> scala/None.
+[8:38..8:42): None -> scala/None.
+[8:46..8:49): ??? -> scala/Predef.`???`().
+[10:7..10:14): leftVar <- example/ValPattern#leftVar().
+[10:16..10:24): rightVar <- example/ValPattern#rightVar().
+[10:29..10:29): -> scala/Tuple2.apply().
+[11:6..11:10): Some -> scala/Some.
+[11:10..11:10): -> scala/Some.unapply().
+[11:11..11:21): number1Var <- example/ValPattern#number1Var().
+[12:4..12:8): Some -> scala/Some.
+[12:8..12:8): -> scala/Some.apply().
+[14:6..14:9): app <- example/ValPattern#app().
+[14:13..14:17): Unit -> scala/Unit#
+[15:4..15:11): println -> scala/Predef.println(+1).
+[17:8..17:8): -> scala/Tuple6.apply().
+[17:8..17:15): number1 -> example/ValPattern#number1.
+[18:8..18:12): left -> example/ValPattern#left.
+[19:8..19:13): right -> example/ValPattern#right.
+[20:8..20:18): number1Var -> example/ValPattern#number1Var().
+[21:8..21:15): leftVar -> example/ValPattern#leftVar().
+[22:8..22:16): rightVar -> example/ValPattern#rightVar().
+[25:4..25:11): locally -> dotty/DottyPredef.locally().
+[26:11..26:15): left <- local0
+[26:17..26:22): right <- local1
+[26:27..26:27): -> scala/Tuple2.apply().
+[27:10..27:14): Some -> scala/Some.
+[27:14..27:14): -> scala/Some.unapply().
+[27:15..27:22): number1 <- local2
+[28:8..28:12): Some -> scala/Some.
+[28:12..28:12): -> scala/Some.apply().
+[30:11..30:18): leftVar <- local3
+[30:20..30:28): rightVar <- local4
+[30:33..30:33): -> scala/Tuple2.apply().
+[31:10..31:14): Some -> scala/Some.
+[31:14..31:14): -> scala/Some.unapply().
+[31:15..31:25): number1Var <- local5
+[32:8..32:12): Some -> scala/Some.
+[32:12..32:12): -> scala/Some.apply().
+[33:6..33:13): println -> scala/Predef.println(+1).
+[35:10..35:10): -> scala/Tuple6.apply().
+[35:10..35:17): number1 -> local2
+[36:10..36:14): left -> local0
+[37:10..37:15): right -> local1
+[38:10..38:20): number1Var -> local5
+[39:10..39:17): leftVar -> local3
+[40:10..40:18): rightVar -> local4
+
+expect/Vals.scala
+-----------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Vals.scala
+Text => empty
+Language => Scala
+Symbols => 42 entries
+Occurrences => 129 entries
+
+Symbols:
+example/ValUsages. => final object ValUsages
+example/ValUsages.v. => val method v
+example/Vals# => abstract class Vals
+example/Vals#_explicitSetter(). => var method _explicitSetter
+example/Vals#`<init>`(). => primary ctor <init>
+example/Vals#`<init>`().(p) => param p
+example/Vals#`<init>`().(xp) => val param xp
+example/Vals#`<init>`().(yp) => var param yp
+example/Vals#`explicitSetter_=`(). => method explicitSetter_=
+example/Vals#`explicitSetter_=`().(x) => param x
+example/Vals#`yam_=`(). => var method yam_=
+example/Vals#`yam_=`().(x$1) => param x$1
+example/Vals#`yfm_=`(). => final var method yfm_=
+example/Vals#`yfm_=`().(x$1) => param x$1
+example/Vals#`yim_=`(). => var method yim_=
+example/Vals#`yim_=`().(x$1) => param x$1
+example/Vals#`ym_=`(). => var method ym_=
+example/Vals#`ym_=`().(x$1) => param x$1
+example/Vals#`yp_=`(). => var method yp_=
+example/Vals#`yp_=`().(x$1) => param x$1
+example/Vals#explicitSetter(). => method explicitSetter
+example/Vals#m(). => method m
+example/Vals#p. => val method p
+example/Vals#xam. => abstract val method xam
+example/Vals#xfm. => final val method xfm
+example/Vals#xim. => implicit val method xim
+example/Vals#xlm. => val method xlm
+example/Vals#xm. => val method xm
+example/Vals#xp. => val method xp
+example/Vals#xzlm. => lazy val method xzlm
+example/Vals#xzm. => lazy val method xzm
+example/Vals#yam(). => abstract var method yam
+example/Vals#yfm(). => final var method yfm
+example/Vals#yim(). => implicit var method yim
+example/Vals#ylm(). => var method ylm
+example/Vals#ym(). => var method ym
+example/Vals#yp(). => var method yp
+local0 => val local xl
+local1 => lazy val local xzl
+local2 => implicit val local xil
+local3 => var local yl
+local4 => implicit var local yil
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:15..2:19): Vals <- example/Vals#
+[2:19..2:53): <- example/Vals#`<init>`().
+[2:20..2:21): p <- example/Vals#p.
+[2:23..2:26): Int -> scala/Int#
+[2:32..2:34): xp <- example/Vals#xp.
+[2:36..2:39): Int -> scala/Int#
+[2:45..2:47): yp <- example/Vals#yp().
+[2:49..2:52): Int -> scala/Int#
+[3:6..3:8): xm <- example/Vals#xm.
+[3:10..3:13): Int -> scala/Int#
+[3:16..3:19): ??? -> scala/Predef.`???`().
+[4:6..4:9): xam <- example/Vals#xam.
+[4:11..4:14): Int -> scala/Int#
+[5:20..5:23): xlm <- example/Vals#xlm.
+[5:25..5:28): Int -> scala/Int#
+[5:31..5:34): ??? -> scala/Predef.`???`().
+[6:11..6:14): xzm <- example/Vals#xzm.
+[6:16..6:19): Int -> scala/Int#
+[6:22..6:25): ??? -> scala/Predef.`???`().
+[7:25..7:29): xzlm <- example/Vals#xzlm.
+[7:31..7:34): Int -> scala/Int#
+[7:37..7:40): ??? -> scala/Predef.`???`().
+[8:12..8:15): xfm <- example/Vals#xfm.
+[8:17..8:20): Int -> scala/Int#
+[8:23..8:26): ??? -> scala/Predef.`???`().
+[9:15..9:18): xim <- example/Vals#xim.
+[9:20..9:23): Int -> scala/Int#
+[9:26..9:29): ??? -> scala/Predef.`???`().
+[10:6..10:8): ym <- example/Vals#ym().
+[10:10..10:13): Int -> scala/Int#
+[10:16..10:19): ??? -> scala/Predef.`???`().
+[11:6..11:9): yam <- example/Vals#yam().
+[11:11..11:14): Int -> scala/Int#
+[12:20..12:23): ylm <- example/Vals#ylm().
+[12:25..12:28): Int -> scala/Int#
+[12:31..12:34): ??? -> scala/Predef.`???`().
+[13:20..13:35): _explicitSetter <- example/Vals#_explicitSetter().
+[13:37..13:40): Int -> scala/Int#
+[14:6..14:20): explicitSetter <- example/Vals#explicitSetter().
+[14:23..14:38): _explicitSetter -> example/Vals#_explicitSetter().
+[15:6..15:22): explicitSetter_= <- example/Vals#`explicitSetter_=`().
+[15:23..15:24): x <- example/Vals#`explicitSetter_=`().(x)
+[15:26..15:29): Int -> scala/Int#
+[15:32..15:36): Unit -> scala/Unit#
+[15:39..15:54): _explicitSetter -> example/Vals#_explicitSetter().
+[15:57..15:58): x -> example/Vals#`explicitSetter_=`().(x)
+[19:12..19:15): yfm <- example/Vals#yfm().
+[19:17..19:20): Int -> scala/Int#
+[19:23..19:26): ??? -> scala/Predef.`???`().
+[20:15..20:18): yim <- example/Vals#yim().
+[20:20..20:23): Int -> scala/Int#
+[20:26..20:29): ??? -> scala/Predef.`???`().
+[21:6..21:7): m <- example/Vals#m().
+[22:8..22:10): xl <- local0
+[22:12..22:15): Int -> scala/Int#
+[22:18..22:21): ??? -> scala/Predef.`???`().
+[23:13..23:16): xzl <- local1
+[23:18..23:21): Int -> scala/Int#
+[23:24..23:27): ??? -> scala/Predef.`???`().
+[26:17..26:20): xil <- local2
+[26:22..26:25): Int -> scala/Int#
+[26:28..26:31): ??? -> scala/Predef.`???`().
+[27:8..27:10): yl <- local3
+[27:12..27:15): Int -> scala/Int#
+[27:18..27:21): ??? -> scala/Predef.`???`().
+[32:17..32:20): yil <- local4
+[32:22..32:25): Int -> scala/Int#
+[32:28..32:31): ??? -> scala/Predef.`???`().
+[33:4..33:6): yl -> local3
+[33:9..33:11): xl -> local0
+[33:12..33:13): + -> scala/Int#`+`(+4).
+[33:14..33:16): yl -> local3
+[34:4..34:11): println -> scala/Predef.println(+1).
+[34:12..34:15): xzl -> local1
+[35:4..35:7): yil -> local4
+[35:10..35:13): xil -> local2
+[35:14..35:15): + -> scala/Int#`+`(+4).
+[35:16..35:19): yil -> local4
+[37:2..37:9): println -> scala/Predef.println(+1).
+[37:10..37:14): xzlm -> example/Vals#xzlm.
+[38:2..38:5): ylm -> example/Vals#ylm().
+[38:8..38:11): xlm -> example/Vals#xlm.
+[38:12..38:13): + -> scala/Int#`+`(+4).
+[38:14..38:17): ylm -> example/Vals#ylm().
+[41:7..41:16): ValUsages <- example/ValUsages.
+[42:6..42:7): v <- example/ValUsages.v.
+[42:9..42:13): Vals -> example/Vals#
+[42:16..42:19): ??? -> scala/Predef.`???`().
+[43:2..43:3): v -> example/ValUsages.v.
+[43:4..43:6): yp -> example/Vals#`yp_=`().
+[43:9..43:10): v -> example/ValUsages.v.
+[43:11..43:13): xp -> example/Vals#xp.
+[43:14..43:15): + -> scala/Int#`+`(+4).
+[43:16..43:17): v -> example/ValUsages.v.
+[43:18..43:20): yp -> example/Vals#yp().
+[44:2..44:3): v -> example/ValUsages.v.
+[44:4..44:6): ym -> example/Vals#`ym_=`().
+[44:9..44:10): v -> example/ValUsages.v.
+[44:11..44:13): xm -> example/Vals#xm.
+[44:14..44:15): + -> scala/Int#`+`(+4).
+[44:16..44:17): v -> example/ValUsages.v.
+[44:18..44:20): ym -> example/Vals#ym().
+[45:2..45:3): v -> example/ValUsages.v.
+[45:4..45:7): yam -> example/Vals#`yam_=`().
+[45:10..45:11): v -> example/ValUsages.v.
+[45:12..45:15): xam -> example/Vals#xam.
+[45:16..45:17): + -> scala/Int#`+`(+4).
+[45:18..45:19): v -> example/ValUsages.v.
+[45:20..45:23): yam -> example/Vals#yam().
+[46:2..46:9): println -> scala/Predef.println(+1).
+[46:10..46:11): v -> example/ValUsages.v.
+[46:12..46:15): xzm -> example/Vals#xzm.
+[47:2..47:3): v -> example/ValUsages.v.
+[47:4..47:7): yfm -> example/Vals#`yfm_=`().
+[47:10..47:11): v -> example/ValUsages.v.
+[47:12..47:15): xfm -> example/Vals#xfm.
+[47:16..47:17): + -> scala/Int#`+`(+4).
+[47:18..47:19): v -> example/ValUsages.v.
+[47:20..47:23): yfm -> example/Vals#yfm().
+[48:2..48:3): v -> example/ValUsages.v.
+[48:4..48:7): yim -> example/Vals#`yim_=`().
+[48:10..48:11): v -> example/ValUsages.v.
+[48:12..48:15): xim -> example/Vals#xim.
+[48:16..48:17): + -> scala/Int#`+`(+4).
+[48:18..48:19): v -> example/ValUsages.v.
+[48:20..48:23): yim -> example/Vals#yim().
+[49:2..49:3): v -> example/ValUsages.v.
+[49:3..49:18): .explicitSetter -> example/Vals#`explicitSetter_=`().
+
+expect/Vararg.scala
+-------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Vararg.scala
+Text => empty
+Language => Scala
+Symbols => 6 entries
+Occurrences => 11 entries
+
+Symbols:
+example/Vararg# => class Vararg
+example/Vararg#`<init>`(). => primary ctor <init>
+example/Vararg#add1(). => method add1
+example/Vararg#add1().(a) => param a
+example/Vararg#add2(). => method add2
+example/Vararg#add2().(a) => param a
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:12): Vararg <- example/Vararg#
+[3:2..3:2): <- example/Vararg#`<init>`().
+[3:6..3:10): add1 <- example/Vararg#add1().
+[3:11..3:12): a <- example/Vararg#add1().(a)
+[3:14..3:17): Int -> scala/Int#
+[4:6..4:10): add2 <- example/Vararg#add2().
+[4:11..4:12): a <- example/Vararg#add2().(a)
+[4:14..4:17): Seq -> scala/package.Seq#
+[4:18..4:21): Int -> scala/Int#
+[4:26..4:30): Unit -> scala/Unit#
+
+expect/filename with spaces.scala
+---------------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => filename with spaces.scala
+Text => empty
+Language => Scala
+Symbols => 2 entries
+Occurrences => 3 entries
+
+Symbols:
+example/FilenameWithSpaces# => class FilenameWithSpaces
+example/FilenameWithSpaces#`<init>`(). => primary ctor <init>
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:0..2:0): <- example/FilenameWithSpaces#`<init>`().
+[2:6..2:24): FilenameWithSpaces <- example/FilenameWithSpaces#
+
+expect/local-file.scala
+-----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => local-file.scala
+Text => empty
+Language => Scala
+Symbols => 3 entries
+Occurrences => 7 entries
+
+Symbols:
+example/`local-file`# => class local-file
+example/`local-file`#`<init>`(). => primary ctor <init>
+local0 => val local local
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:17): local-file <- example/`local-file`#
+[3:2..3:2): <- example/`local-file`#`<init>`().
+[3:2..3:9): locally -> dotty/DottyPredef.locally().
+[4:8..4:13): local <- local0
+[5:4..5:9): local -> local0
+[5:10..5:11): + -> scala/Int#`+`(+4).
+
+expect/semanticdb-Definitions.scala
+-----------------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => semanticdb-Definitions.scala
+Text => empty
+Language => Scala
+Symbols => 10 entries
+Occurrences => 9 entries
+
+Symbols:
+a/Definitions. => final object Definitions
+a/Definitions.D# => class D
+a/Definitions.D#`<init>`(). => primary ctor <init>
+a/Definitions.E# => trait E
+a/Definitions.E#`<init>`(). => primary ctor <init>
+a/Definitions.`b_=`(). => var method b_=
+a/Definitions.`b_=`().(x$1) => param x$1
+a/Definitions.a. => val method a
+a/Definitions.b(). => var method b
+a/Definitions.c(). => method c
+
+Occurrences:
+[0:8..0:9): a <- a/
+[1:7..1:18): Definitions <- a/Definitions.
+[2:6..2:7): a <- a/Definitions.a.
+[3:6..3:7): b <- a/Definitions.b().
+[4:6..4:7): c <- a/Definitions.c().
+[5:2..5:2): <- a/Definitions.D#`<init>`().
+[5:8..5:9): D <- a/Definitions.D#
+[6:2..6:2): <- a/Definitions.E#`<init>`().
+[6:8..6:9): E <- a/Definitions.E#
+
+expect/semanticdb-Flags.scala
+-----------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => semanticdb-Flags.scala
+Text => empty
+Language => Scala
+Symbols => 50 entries
+Occurrences => 82 entries
+
+Symbols:
+flags/p/package. => final package object p
+flags/p/package.AA# => class AA
+flags/p/package.AA#`<init>`(). => primary ctor <init>
+flags/p/package.AA#`<init>`().(x) => param x
+flags/p/package.AA#`<init>`().(y) => val param y
+flags/p/package.AA#`<init>`().(z) => var param z
+flags/p/package.AA#`z_=`(). => var method z_=
+flags/p/package.AA#`z_=`().(x$1) => param x$1
+flags/p/package.AA#x. => val method x
+flags/p/package.AA#y. => val method y
+flags/p/package.AA#z(). => var method z
+flags/p/package.C# => abstract class C
+flags/p/package.C#[T] => covariant typeparam T
+flags/p/package.C#[U] => contravariant typeparam U
+flags/p/package.C#[V] => typeparam V
+flags/p/package.C#`<init>`(). => primary ctor <init>
+flags/p/package.C#`<init>`().(x) => param x
+flags/p/package.C#`<init>`().(y) => param y
+flags/p/package.C#`<init>`().(z) => param z
+flags/p/package.C#`<init>`(+1). => ctor <init>
+flags/p/package.C#`<init>`(+2). => ctor <init>
+flags/p/package.C#`<init>`(+2).(t) => param t
+flags/p/package.C#w(). => abstract method w
+flags/p/package.C#x. => val method x
+flags/p/package.C#y. => val method y
+flags/p/package.C#z. => val method z
+flags/p/package.S# => class S
+flags/p/package.S#[T] => typeparam T
+flags/p/package.S#`<init>`(). => primary ctor <init>
+flags/p/package.T1# => type T1
+flags/p/package.T2# => type T2
+flags/p/package.T2#[T] => typeparam T
+flags/p/package.U# => type U
+flags/p/package.V# => type V
+flags/p/package.X. => final case object X
+flags/p/package.Y# => final class Y
+flags/p/package.Y#`<init>`(). => primary ctor <init>
+flags/p/package.Z# => sealed trait Z
+flags/p/package.Z#`<init>`(). => primary ctor <init>
+flags/p/package.`y_=`(). => var method y_=
+flags/p/package.`y_=`().(x$1) => param x$1
+flags/p/package.m(). => method m
+flags/p/package.m().[TT] => typeparam TT
+flags/p/package.x. => lazy val method x
+flags/p/package.xs1. => val method xs1
+flags/p/package.y(). => implicit var method y
+flags/p/package.z(). => method z
+flags/p/package.z().(pp) => param pp
+local0 => val local xs2
+local1 => case val method t
+
+Occurrences:
+[0:8..0:13): flags <- flags/
+[2:7..2:12): scala -> scala/
+[2:13..2:21): language -> scalaShadowing/language.
+[2:22..2:34): experimental -> scalaShadowing/language.experimental.
+[2:35..2:41): macros -> scalaShadowing/language.experimental.macros.
+[4:15..5:3): <- flags/p/package.
+[5:2..5:3): p -> flags/p/
+[5:19..5:20): x <- flags/p/package.x.
+[6:25..6:26): y <- flags/p/package.y().
+[6:28..6:31): Int -> scala/Int#
+[7:6..7:7): z <- flags/p/package.z().
+[7:8..7:10): pp <- flags/p/package.z().(pp)
+[7:12..7:15): Int -> scala/Int#
+[8:6..8:7): m <- flags/p/package.m().
+[8:8..8:10): TT <- flags/p/package.m().[TT]
+[8:13..8:16): Int -> scala/Int#
+[8:16..8:16): -> scala/Predef.`???`().
+[9:17..9:18): C <- flags/p/package.C#
+[9:18..9:47): <- flags/p/package.C#`<init>`().
+[9:20..9:21): T <- flags/p/package.C#[T]
+[9:24..9:25): U <- flags/p/package.C#[U]
+[9:27..9:28): V <- flags/p/package.C#[V]
+[9:30..9:31): x <- flags/p/package.C#x.
+[9:33..9:34): T -> flags/p/package.C#[T]
+[9:36..9:37): y <- flags/p/package.C#y.
+[9:39..9:40): U -> flags/p/package.C#[U]
+[9:42..9:43): z <- flags/p/package.C#z.
+[9:45..9:46): V -> flags/p/package.C#[V]
+[10:8..10:14): <- flags/p/package.C#`<init>`(+1).
+[10:22..10:22): -> flags/p/package.C#`<init>`().
+[10:22..10:25): ??? -> scala/Predef.`???`().
+[10:27..10:30): ??? -> scala/Predef.`???`().
+[10:32..10:35): ??? -> scala/Predef.`???`().
+[11:8..11:14): <- flags/p/package.C#`<init>`(+2).
+[11:13..11:14): t <- flags/p/package.C#`<init>`(+2).(t)
+[11:16..11:17): T -> flags/p/package.C#[T]
+[11:26..11:26): -> flags/p/package.C#`<init>`().
+[11:26..11:27): t -> flags/p/package.C#`<init>`(+2).(t)
+[11:29..11:32): ??? -> scala/Predef.`???`().
+[11:34..11:37): ??? -> scala/Predef.`???`().
+[12:8..12:9): w <- flags/p/package.C#w().
+[12:11..12:14): Int -> scala/Int#
+[14:7..14:9): T1 <- flags/p/package.T1#
+[14:12..14:15): Int -> scala/Int#
+[15:7..15:9): T2 <- flags/p/package.T2#
+[15:10..15:11): T <- flags/p/package.T2#[T]
+[15:15..15:16): S -> flags/p/package.S#
+[15:17..15:18): T -> flags/p/package.T2#[T]
+[16:7..16:8): U <- flags/p/package.U#
+[16:12..16:15): Int -> scala/Int#
+[17:7..17:8): V <- flags/p/package.V#
+[17:12..17:15): Int -> scala/Int#
+[18:14..18:15): X <- flags/p/package.X.
+[19:2..19:2): <- flags/p/package.Y#`<init>`().
+[19:14..19:15): Y <- flags/p/package.Y#
+[20:2..20:2): <- flags/p/package.Z#`<init>`().
+[20:15..20:16): Z <- flags/p/package.Z#
+[21:8..21:10): AA <- flags/p/package.AA#
+[21:10..21:42): <- flags/p/package.AA#`<init>`().
+[21:11..21:12): x <- flags/p/package.AA#x.
+[21:14..21:17): Int -> scala/Int#
+[21:23..21:24): y <- flags/p/package.AA#y.
+[21:26..21:29): Int -> scala/Int#
+[21:35..21:36): z <- flags/p/package.AA#z().
+[21:38..21:41): Int -> scala/Int#
+[22:8..22:9): S <- flags/p/package.S#
+[22:9..22:25): <- flags/p/package.S#`<init>`().
+[22:11..22:22): specialized -> scala/specialized#
+[22:23..22:24): T <- flags/p/package.S#[T]
+[23:6..23:10): List -> scala/package.List.
+[23:10..23:10): -> scala/collection/SeqFactory#unapplySeq().
+[23:11..23:14): xs1 <- flags/p/package.xs1.
+[23:18..23:21): ??? -> scala/Predef.`???`().
+[24:2..24:5): ??? -> scala/Predef.`???`().
+[24:19..24:23): List -> scala/package.List.
+[24:23..24:23): -> scala/collection/SeqFactory#unapplySeq().
+[24:24..24:27): xs2 <- local0
+[24:32..24:35): ??? -> scala/Predef.`???`().
+[25:2..25:5): ??? -> scala/Predef.`???`().
+[25:22..25:26): List -> scala/package.List#
+[25:27..25:28): t <- local1
+[25:33..25:36): ??? -> scala/Predef.`???`().
+
+expect/semanticdb-Types.scala
+-----------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => semanticdb-Types.scala
 Text => empty
 Language => Scala
 Symbols => 125 entries
@@ -3098,369 +3461,6 @@ Occurrences:
 [112:24..112:31): classOf -> scala/Predef.classOf().
 [112:32..112:38): Option -> scala/Option#
 [112:39..112:42): Int -> scala/Int#
-
-expect/ValPattern.scala
------------------------
-
-Summary:
-Schema => SemanticDB v4
-Uri => ValPattern.scala
-Text => empty
-Language => Scala
-Symbols => 22 entries
-Occurrences => 63 entries
-
-Symbols:
-example/ValPattern# => class ValPattern
-example/ValPattern#`<init>`(). => primary ctor <init>
-example/ValPattern#`leftVar_=`(). => var method leftVar_=
-example/ValPattern#`leftVar_=`().(x$1) => param x$1
-example/ValPattern#`number1Var_=`(). => var method number1Var_=
-example/ValPattern#`number1Var_=`().(x$1) => param x$1
-example/ValPattern#`rightVar_=`(). => var method rightVar_=
-example/ValPattern#`rightVar_=`().(x$1) => param x$1
-example/ValPattern#app(). => method app
-example/ValPattern#left. => val method left
-example/ValPattern#leftVar(). => var method leftVar
-example/ValPattern#number1. => val method number1
-example/ValPattern#number1Var(). => var method number1Var
-example/ValPattern#q1. => val method q1
-example/ValPattern#right. => val method right
-example/ValPattern#rightVar(). => var method rightVar
-local0 => val local left
-local1 => val local right
-local2 => val local number1
-local3 => var local leftVar
-local4 => var local rightVar
-local5 => var local number1Var
-
-Occurrences:
-[0:8..0:15): example <- example/
-[2:6..2:16): ValPattern <- example/ValPattern#
-[4:2..4:2): <- example/ValPattern#`<init>`().
-[4:7..4:11): left <- example/ValPattern#left.
-[4:13..4:18): right <- example/ValPattern#right.
-[4:23..4:23): -> scala/Tuple2.apply().
-[5:6..5:10): Some -> scala/Some.
-[5:10..5:10): -> scala/Some.unapply().
-[5:11..5:18): number1 <- example/ValPattern#number1.
-[6:4..6:8): Some -> scala/Some.
-[6:8..6:8): -> scala/Some.apply().
-[8:6..8:10): List -> scala/package.List.
-[8:10..8:10): -> scala/collection/SeqFactory#unapplySeq().
-[8:11..8:15): Some -> scala/Some.
-[8:15..8:15): -> scala/Some.unapply().
-[8:16..8:18): q1 <- example/ValPattern#q1.
-[8:21..8:25): None -> scala/None.
-[8:27..8:31): None -> scala/None.
-[8:38..8:42): None -> scala/None.
-[8:46..8:49): ??? -> scala/Predef.`???`().
-[10:7..10:14): leftVar <- example/ValPattern#leftVar().
-[10:16..10:24): rightVar <- example/ValPattern#rightVar().
-[10:29..10:29): -> scala/Tuple2.apply().
-[11:6..11:10): Some -> scala/Some.
-[11:10..11:10): -> scala/Some.unapply().
-[11:11..11:21): number1Var <- example/ValPattern#number1Var().
-[12:4..12:8): Some -> scala/Some.
-[12:8..12:8): -> scala/Some.apply().
-[14:6..14:9): app <- example/ValPattern#app().
-[14:13..14:17): Unit -> scala/Unit#
-[15:4..15:11): println -> scala/Predef.println(+1).
-[17:8..17:8): -> scala/Tuple6.apply().
-[17:8..17:15): number1 -> example/ValPattern#number1.
-[18:8..18:12): left -> example/ValPattern#left.
-[19:8..19:13): right -> example/ValPattern#right.
-[20:8..20:18): number1Var -> example/ValPattern#number1Var().
-[21:8..21:15): leftVar -> example/ValPattern#leftVar().
-[22:8..22:16): rightVar -> example/ValPattern#rightVar().
-[25:4..25:11): locally -> dotty/DottyPredef.locally().
-[26:11..26:15): left <- local0
-[26:17..26:22): right <- local1
-[26:27..26:27): -> scala/Tuple2.apply().
-[27:10..27:14): Some -> scala/Some.
-[27:14..27:14): -> scala/Some.unapply().
-[27:15..27:22): number1 <- local2
-[28:8..28:12): Some -> scala/Some.
-[28:12..28:12): -> scala/Some.apply().
-[30:11..30:18): leftVar <- local3
-[30:20..30:28): rightVar <- local4
-[30:33..30:33): -> scala/Tuple2.apply().
-[31:10..31:14): Some -> scala/Some.
-[31:14..31:14): -> scala/Some.unapply().
-[31:15..31:25): number1Var <- local5
-[32:8..32:12): Some -> scala/Some.
-[32:12..32:12): -> scala/Some.apply().
-[33:6..33:13): println -> scala/Predef.println(+1).
-[35:10..35:10): -> scala/Tuple6.apply().
-[35:10..35:17): number1 -> local2
-[36:10..36:14): left -> local0
-[37:10..37:15): right -> local1
-[38:10..38:20): number1Var -> local5
-[39:10..39:17): leftVar -> local3
-[40:10..40:18): rightVar -> local4
-
-expect/Vals.scala
------------------
-
-Summary:
-Schema => SemanticDB v4
-Uri => Vals.scala
-Text => empty
-Language => Scala
-Symbols => 42 entries
-Occurrences => 129 entries
-
-Symbols:
-example/ValUsages. => final object ValUsages
-example/ValUsages.v. => val method v
-example/Vals# => abstract class Vals
-example/Vals#_explicitSetter(). => var method _explicitSetter
-example/Vals#`<init>`(). => primary ctor <init>
-example/Vals#`<init>`().(p) => param p
-example/Vals#`<init>`().(xp) => val param xp
-example/Vals#`<init>`().(yp) => var param yp
-example/Vals#`explicitSetter_=`(). => method explicitSetter_=
-example/Vals#`explicitSetter_=`().(x) => param x
-example/Vals#`yam_=`(). => var method yam_=
-example/Vals#`yam_=`().(x$1) => param x$1
-example/Vals#`yfm_=`(). => final var method yfm_=
-example/Vals#`yfm_=`().(x$1) => param x$1
-example/Vals#`yim_=`(). => var method yim_=
-example/Vals#`yim_=`().(x$1) => param x$1
-example/Vals#`ym_=`(). => var method ym_=
-example/Vals#`ym_=`().(x$1) => param x$1
-example/Vals#`yp_=`(). => var method yp_=
-example/Vals#`yp_=`().(x$1) => param x$1
-example/Vals#explicitSetter(). => method explicitSetter
-example/Vals#m(). => method m
-example/Vals#p. => val method p
-example/Vals#xam. => abstract val method xam
-example/Vals#xfm. => final val method xfm
-example/Vals#xim. => implicit val method xim
-example/Vals#xlm. => val method xlm
-example/Vals#xm. => val method xm
-example/Vals#xp. => val method xp
-example/Vals#xzlm. => lazy val method xzlm
-example/Vals#xzm. => lazy val method xzm
-example/Vals#yam(). => abstract var method yam
-example/Vals#yfm(). => final var method yfm
-example/Vals#yim(). => implicit var method yim
-example/Vals#ylm(). => var method ylm
-example/Vals#ym(). => var method ym
-example/Vals#yp(). => var method yp
-local0 => val local xl
-local1 => lazy val local xzl
-local2 => implicit val local xil
-local3 => var local yl
-local4 => implicit var local yil
-
-Occurrences:
-[0:8..0:15): example <- example/
-[2:15..2:19): Vals <- example/Vals#
-[2:19..2:53): <- example/Vals#`<init>`().
-[2:20..2:21): p <- example/Vals#p.
-[2:23..2:26): Int -> scala/Int#
-[2:32..2:34): xp <- example/Vals#xp.
-[2:36..2:39): Int -> scala/Int#
-[2:45..2:47): yp <- example/Vals#yp().
-[2:49..2:52): Int -> scala/Int#
-[3:6..3:8): xm <- example/Vals#xm.
-[3:10..3:13): Int -> scala/Int#
-[3:16..3:19): ??? -> scala/Predef.`???`().
-[4:6..4:9): xam <- example/Vals#xam.
-[4:11..4:14): Int -> scala/Int#
-[5:20..5:23): xlm <- example/Vals#xlm.
-[5:25..5:28): Int -> scala/Int#
-[5:31..5:34): ??? -> scala/Predef.`???`().
-[6:11..6:14): xzm <- example/Vals#xzm.
-[6:16..6:19): Int -> scala/Int#
-[6:22..6:25): ??? -> scala/Predef.`???`().
-[7:25..7:29): xzlm <- example/Vals#xzlm.
-[7:31..7:34): Int -> scala/Int#
-[7:37..7:40): ??? -> scala/Predef.`???`().
-[8:12..8:15): xfm <- example/Vals#xfm.
-[8:17..8:20): Int -> scala/Int#
-[8:23..8:26): ??? -> scala/Predef.`???`().
-[9:15..9:18): xim <- example/Vals#xim.
-[9:20..9:23): Int -> scala/Int#
-[9:26..9:29): ??? -> scala/Predef.`???`().
-[10:6..10:8): ym <- example/Vals#ym().
-[10:10..10:13): Int -> scala/Int#
-[10:16..10:19): ??? -> scala/Predef.`???`().
-[11:6..11:9): yam <- example/Vals#yam().
-[11:11..11:14): Int -> scala/Int#
-[12:20..12:23): ylm <- example/Vals#ylm().
-[12:25..12:28): Int -> scala/Int#
-[12:31..12:34): ??? -> scala/Predef.`???`().
-[13:20..13:35): _explicitSetter <- example/Vals#_explicitSetter().
-[13:37..13:40): Int -> scala/Int#
-[14:6..14:20): explicitSetter <- example/Vals#explicitSetter().
-[14:23..14:38): _explicitSetter -> example/Vals#_explicitSetter().
-[15:6..15:22): explicitSetter_= <- example/Vals#`explicitSetter_=`().
-[15:23..15:24): x <- example/Vals#`explicitSetter_=`().(x)
-[15:26..15:29): Int -> scala/Int#
-[15:32..15:36): Unit -> scala/Unit#
-[15:39..15:54): _explicitSetter -> example/Vals#_explicitSetter().
-[15:57..15:58): x -> example/Vals#`explicitSetter_=`().(x)
-[19:12..19:15): yfm <- example/Vals#yfm().
-[19:17..19:20): Int -> scala/Int#
-[19:23..19:26): ??? -> scala/Predef.`???`().
-[20:15..20:18): yim <- example/Vals#yim().
-[20:20..20:23): Int -> scala/Int#
-[20:26..20:29): ??? -> scala/Predef.`???`().
-[21:6..21:7): m <- example/Vals#m().
-[22:8..22:10): xl <- local0
-[22:12..22:15): Int -> scala/Int#
-[22:18..22:21): ??? -> scala/Predef.`???`().
-[23:13..23:16): xzl <- local1
-[23:18..23:21): Int -> scala/Int#
-[23:24..23:27): ??? -> scala/Predef.`???`().
-[26:17..26:20): xil <- local2
-[26:22..26:25): Int -> scala/Int#
-[26:28..26:31): ??? -> scala/Predef.`???`().
-[27:8..27:10): yl <- local3
-[27:12..27:15): Int -> scala/Int#
-[27:18..27:21): ??? -> scala/Predef.`???`().
-[32:17..32:20): yil <- local4
-[32:22..32:25): Int -> scala/Int#
-[32:28..32:31): ??? -> scala/Predef.`???`().
-[33:4..33:6): yl -> local3
-[33:9..33:11): xl -> local0
-[33:12..33:13): + -> scala/Int#`+`(+4).
-[33:14..33:16): yl -> local3
-[34:4..34:11): println -> scala/Predef.println(+1).
-[34:12..34:15): xzl -> local1
-[35:4..35:7): yil -> local4
-[35:10..35:13): xil -> local2
-[35:14..35:15): + -> scala/Int#`+`(+4).
-[35:16..35:19): yil -> local4
-[37:2..37:9): println -> scala/Predef.println(+1).
-[37:10..37:14): xzlm -> example/Vals#xzlm.
-[38:2..38:5): ylm -> example/Vals#ylm().
-[38:8..38:11): xlm -> example/Vals#xlm.
-[38:12..38:13): + -> scala/Int#`+`(+4).
-[38:14..38:17): ylm -> example/Vals#ylm().
-[41:7..41:16): ValUsages <- example/ValUsages.
-[42:6..42:7): v <- example/ValUsages.v.
-[42:9..42:13): Vals -> example/Vals#
-[42:16..42:19): ??? -> scala/Predef.`???`().
-[43:2..43:3): v -> example/ValUsages.v.
-[43:4..43:6): yp -> example/Vals#`yp_=`().
-[43:9..43:10): v -> example/ValUsages.v.
-[43:11..43:13): xp -> example/Vals#xp.
-[43:14..43:15): + -> scala/Int#`+`(+4).
-[43:16..43:17): v -> example/ValUsages.v.
-[43:18..43:20): yp -> example/Vals#yp().
-[44:2..44:3): v -> example/ValUsages.v.
-[44:4..44:6): ym -> example/Vals#`ym_=`().
-[44:9..44:10): v -> example/ValUsages.v.
-[44:11..44:13): xm -> example/Vals#xm.
-[44:14..44:15): + -> scala/Int#`+`(+4).
-[44:16..44:17): v -> example/ValUsages.v.
-[44:18..44:20): ym -> example/Vals#ym().
-[45:2..45:3): v -> example/ValUsages.v.
-[45:4..45:7): yam -> example/Vals#`yam_=`().
-[45:10..45:11): v -> example/ValUsages.v.
-[45:12..45:15): xam -> example/Vals#xam.
-[45:16..45:17): + -> scala/Int#`+`(+4).
-[45:18..45:19): v -> example/ValUsages.v.
-[45:20..45:23): yam -> example/Vals#yam().
-[46:2..46:9): println -> scala/Predef.println(+1).
-[46:10..46:11): v -> example/ValUsages.v.
-[46:12..46:15): xzm -> example/Vals#xzm.
-[47:2..47:3): v -> example/ValUsages.v.
-[47:4..47:7): yfm -> example/Vals#`yfm_=`().
-[47:10..47:11): v -> example/ValUsages.v.
-[47:12..47:15): xfm -> example/Vals#xfm.
-[47:16..47:17): + -> scala/Int#`+`(+4).
-[47:18..47:19): v -> example/ValUsages.v.
-[47:20..47:23): yfm -> example/Vals#yfm().
-[48:2..48:3): v -> example/ValUsages.v.
-[48:4..48:7): yim -> example/Vals#`yim_=`().
-[48:10..48:11): v -> example/ValUsages.v.
-[48:12..48:15): xim -> example/Vals#xim.
-[48:16..48:17): + -> scala/Int#`+`(+4).
-[48:18..48:19): v -> example/ValUsages.v.
-[48:20..48:23): yim -> example/Vals#yim().
-[49:2..49:3): v -> example/ValUsages.v.
-[49:3..49:18): .explicitSetter -> example/Vals#`explicitSetter_=`().
-
-expect/Vararg.scala
--------------------
-
-Summary:
-Schema => SemanticDB v4
-Uri => Vararg.scala
-Text => empty
-Language => Scala
-Symbols => 6 entries
-Occurrences => 11 entries
-
-Symbols:
-example/Vararg# => class Vararg
-example/Vararg#`<init>`(). => primary ctor <init>
-example/Vararg#add1(). => method add1
-example/Vararg#add1().(a) => param a
-example/Vararg#add2(). => method add2
-example/Vararg#add2().(a) => param a
-
-Occurrences:
-[0:8..0:15): example <- example/
-[2:6..2:12): Vararg <- example/Vararg#
-[3:2..3:2): <- example/Vararg#`<init>`().
-[3:6..3:10): add1 <- example/Vararg#add1().
-[3:11..3:12): a <- example/Vararg#add1().(a)
-[3:14..3:17): Int -> scala/Int#
-[4:6..4:10): add2 <- example/Vararg#add2().
-[4:11..4:12): a <- example/Vararg#add2().(a)
-[4:14..4:17): Seq -> scala/package.Seq#
-[4:18..4:21): Int -> scala/Int#
-[4:26..4:30): Unit -> scala/Unit#
-
-expect/filename with spaces.scala
----------------------------------
-
-Summary:
-Schema => SemanticDB v4
-Uri => filename with spaces.scala
-Text => empty
-Language => Scala
-Symbols => 2 entries
-Occurrences => 3 entries
-
-Symbols:
-example/FilenameWithSpaces# => class FilenameWithSpaces
-example/FilenameWithSpaces#`<init>`(). => primary ctor <init>
-
-Occurrences:
-[0:8..0:15): example <- example/
-[2:0..2:0): <- example/FilenameWithSpaces#`<init>`().
-[2:6..2:24): FilenameWithSpaces <- example/FilenameWithSpaces#
-
-expect/local-file.scala
------------------------
-
-Summary:
-Schema => SemanticDB v4
-Uri => local-file.scala
-Text => empty
-Language => Scala
-Symbols => 3 entries
-Occurrences => 7 entries
-
-Symbols:
-example/`local-file`# => class local-file
-example/`local-file`#`<init>`(). => primary ctor <init>
-local0 => val local local
-
-Occurrences:
-[0:8..0:15): example <- example/
-[2:7..2:17): local-file <- example/`local-file`#
-[3:2..3:2): <- example/`local-file`#`<init>`().
-[3:2..3:9): locally -> dotty/DottyPredef.locally().
-[4:8..4:13): local <- local0
-[5:4..5:9): local -> local0
-[5:10..5:11): + -> scala/Int#`+`(+4).
 
 expect/semanticdb-extract.scala
 -------------------------------
