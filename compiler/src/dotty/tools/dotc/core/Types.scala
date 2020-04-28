@@ -1897,29 +1897,31 @@ object Types {
     }
 
     /** The signature of the last known denotation, or if there is none, the
-     *  signature of the symbol
+     *  signature of the symbol. Signatures are always computed before erasure, since
+     *  some symbols change their signature at erasure.
      */
-    protected def computeSignature(implicit ctx: Context): Signature = {
+    protected def computeSignature(implicit ctx: Context): Signature =
       val lastd = lastDenotation
-      if (lastd != null) lastd.signature
+      val isErased = ctx.erasedTypes
+      if lastd != null && !isErased then lastd.signature
+      else if isErased then computeSignature(using ctx.withPhase(ctx.erasurePhase))
       else symbol.asSeenFrom(prefix).signature
-    }
 
     /** The signature of the current denotation if it is known without forcing.
      *  Otherwise the signature of the current symbol if it is known without forcing.
      *  Otherwise NotAMethod.
      */
     private def currentSignature(implicit ctx: Context): Signature =
-      if (ctx.runId == mySignatureRunId) mySignature
-      else {
+      if ctx.runId == mySignatureRunId then mySignature
+      else
         val lastd = lastDenotation
-        if (lastd != null) lastd.signature
-        else {
+        val isErased = ctx.erasedTypes
+        if lastd != null && !isErased then lastd.signature
+        else if isErased then currentSignature(using ctx.withPhase(ctx.erasurePhase))
+        else
           val sym = currentSymbol
-          if (sym.exists) sym.asSeenFrom(prefix).signature
+          if sym.exists then sym.asSeenFrom(prefix).signature
           else Signature.NotAMethod
-        }
-      }
 
     final def symbol(implicit ctx: Context): Symbol =
       // We can rely on checkedPeriod (unlike in the definition of `denot` below)
