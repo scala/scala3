@@ -17,6 +17,7 @@ import util.Spans._
 import DenotTransformers._
 import StdNames._
 import NameOps._
+import transform.SymUtils._
 import NameKinds.LazyImplicitName
 import ast.tpd
 import tpd.{Tree, TreeProvider, TreeOps}
@@ -351,6 +352,8 @@ trait Symbols { thisCtx: Context =>
           info = completer,
           privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
           annotations = odenot.annotations)
+        copy.registeredCompanion =
+          copy.registeredCompanion.subst(originals, copies)
       }
 
       copies.foreach(_.ensureCompleted()) // avoid memory leak
