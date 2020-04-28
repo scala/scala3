@@ -2796,8 +2796,9 @@ class Typer extends Namer
 
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
-      println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%\n\n %")
-      val alts = altDenots.map(TermRef(ref.prefix, ref.name, _))
+      typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%\n\n %")
+      def altRef(alt: SingleDenotation) = TermRef(ref.prefix, ref.name, alt)
+      val alts = altDenots.map(altRef)
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
           readaptSimplified(tree.withType(alt))
@@ -2823,11 +2824,20 @@ class Typer extends Namer
                     noMatches
               }
           }
-        case alts =>
+        case ambiAlts =>
           if (tree.tpe.isErroneous || pt.isErroneous) tree.withType(UnspecifiedErrorType)
           else {
-            val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
-            errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt))
+            val remainingDenots = altDenots.filter(denot => ambiAlts.contains(altRef(denot)))
+            val addendum =
+              if ambiAlts.toSet.size != ambiAlts.size then
+                // Several variants have the same signature. This can happen for structural
+                // type selections. See i8736.scala
+                """|
+                   |
+                   |Note: this happens because one or more alternatives have the same erasure,
+                   |      so they cannot be distinguished by overloading resolution""".stripMargin
+              else ""
+            errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt, addendum))
           }
       }
     }

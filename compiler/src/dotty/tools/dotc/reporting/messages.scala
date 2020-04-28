@@ -1308,13 +1308,13 @@ object messages {
 
   }
 
-  class AmbiguousOverload(tree: tpd.Tree, val alternatives: List[SingleDenotation], pt: Type)(
+  class AmbiguousOverload(tree: tpd.Tree, val alternatives: List[SingleDenotation], pt: Type, addendum: String = "")(
     implicit ctx: Context)
   extends ReferenceMsg(AmbiguousOverloadID) {
     private def all = if (alternatives.length == 2) "both" else "all"
     def msg =
-      s"""|Ambiguous overload. The ${err.overloadedAltsStr(alternatives)}
-          |$all match ${err.expectedTypeStr(pt)}""".stripMargin
+      em"""|Ambiguous overload. The ${err.overloadedAltsStr(alternatives)}
+           |$all match ${err.expectedTypeStr(pt)}$addendum""".stripMargin
     def explain =
       em"""|There are ${alternatives.length} methods that could be referenced as the compiler knows too little
            |about the expected type.
