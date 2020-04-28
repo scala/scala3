@@ -503,7 +503,7 @@ object Trees {
     type ThisTree[-T >: Untyped] = If[T]
     def isInline = false
   }
-  class InlineIf[T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])(implicit @constructorOnly src: SourceFile)
+  class InlineIf[-T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends If(cond, thenp, elsep) {
     override def isInline = true
     override def toString = s"InlineIf($cond, $thenp, $elsep)"
@@ -529,7 +529,7 @@ object Trees {
     type ThisTree[-T >: Untyped] = Match[T]
     def isInline = false
   }
-  class InlineMatch[T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
+  class InlineMatch[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
     extends Match(selector, cases) {
     override def isInline = true
     override def toString = s"InlineMatch($selector, $cases)"
@@ -579,7 +579,7 @@ object Trees {
   }
 
   /** Array(elems) */
-  class JavaSeqLiteral[T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])(implicit @constructorOnly src: SourceFile)
+  class JavaSeqLiteral[-T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends SeqLiteral(elems, elemtpt) {
     override def toString: String = s"JavaSeqLiteral($elems, $elemtpt)"
   }
