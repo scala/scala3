@@ -534,7 +534,7 @@ object ProtoTypes {
     newTypeVar(TypeBounds.upper(AndType(tp.widenExpr, defn.SingletonClass.typeRef)))
 
   /** The result type of `mt`, where all references to parameters of `mt` are
-   *  replaced by either wildcards (if typevarsMissContext) or TypeParamRefs.
+   *  replaced by either wildcards or TypeParamRefs.
    */
   def resultTypeApprox(mt: MethodType, wildcardOnly: Boolean = false)(using Context): Type =
     if mt.isResultDependent then
