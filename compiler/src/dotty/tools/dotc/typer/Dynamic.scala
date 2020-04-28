@@ -22,6 +22,17 @@ object Dynamic {
     name == nme.applyDynamic || name == nme.selectDynamic || name == nme.updateDynamic || name == nme.applyDynamicNamed
 }
 
+object DynamicUnapply {
+  def unapply(tree: tpd.Tree): Option[List[tpd.Tree]] = tree match
+    case TypeApply(Select(qual, name), _) if name == nme.asInstanceOfPM =>
+      unapply(qual)
+    case Apply(Apply(Select(selectable, fname), Literal(Constant(name)) :: ctag :: Nil), _ :: implicits)
+    if fname == nme.applyDynamic && (name == "unapply" || name == "unapplySeq") =>
+      Some(selectable :: ctag :: implicits)
+    case _ =>
+      None
+}
+
 /** Handles programmable member selections of `Dynamic` instances and values
  *  with structural types. Two functionalities:
  *

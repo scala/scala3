@@ -150,7 +150,10 @@ object Applications {
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SourcePosition)(using Context): List[Type] = {
 
-    val unapplyName = unapplyFn.symbol.name
+    val unapplyName = unapplyFn match            // tolerate structural `unapply`, which does not have a symbol
+      case TypeApply(fn: RefTree, _) => fn.name
+      case fn: RefTree => fn.name
+
     def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
     def fail = {
@@ -1227,6 +1230,9 @@ trait Applications extends Compatibility {
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
           case Apply(unapply, `dummyArg` :: Nil) => Nil
           case Inlined(u, _, _) => unapplyImplicits(u)
+          case DynamicUnapply(_) =>
+            ctx.error("Structural unapply is not supported", unapplyFn.sourcePos)
+            Nil
           case _ => Nil.assertingErrorsReported
         }
 
