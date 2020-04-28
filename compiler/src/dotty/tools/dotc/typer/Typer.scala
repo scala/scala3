@@ -2834,7 +2834,7 @@ class Typer extends Namer
                 // type selections. See i8736.scala
                 """|
                    |
-                   |Note: this happens because one or more alternatives have the same erasure,
+                   |Note: this happens because two or more alternatives have the same erasure,
                    |      so they cannot be distinguished by overloading resolution""".stripMargin
               else ""
             errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt, addendum))

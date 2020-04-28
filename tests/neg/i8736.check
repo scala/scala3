@@ -17,7 +17,7 @@
    |                 (k: ("z" : String)): Boolean
    |                all match arguments (("z" : String))
    |
-   |                Note: this happens because one or more alternatives have the same erasure,
-   |                      so they cannot be distinguised by overloading resolution
+   |                Note: this happens because two or more alternatives have the same erasure,
+   |                      so they cannot be distinguished by overloading resolution
 
 longer explanation available when compiling with `-explain`
