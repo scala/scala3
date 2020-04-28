@@ -15,7 +15,7 @@ import printing.Formatting
 import ErrorMessageID._
 import ast.Trees
 import config.{Feature, ScalaVersion}
-import typer.ErrorReporting.{Errors, err}
+import typer.ErrorReporting.err
 import typer.ProtoTypes.ViewProto
 import scala.util.control.NonFatal
 import StdNames.nme
@@ -1309,7 +1309,6 @@ object messages {
   }
 
   class AmbiguousOverload(tree: tpd.Tree, val alternatives: List[SingleDenotation], pt: Type)(
-    err: Errors)(
     implicit ctx: Context)
   extends ReferenceMsg(AmbiguousOverloadID) {
     private def all = if (alternatives.length == 2) "both" else "all"
@@ -1389,8 +1388,7 @@ object messages {
     def explain = em"A fully applied type is expected but $tpe takes $numParams $parameters"
   }
 
-  class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(
-    err: Errors)(implicit ctx: Context)
+  class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(implicit ctx: Context)
     extends TypeMismatchMsg(DoesNotConformToBoundID) {
     def msg = em"Type argument ${tpe} does not conform to $which bound $bound${err.whyNoMatchStr(tpe, bound)}"
     def explain = ""
@@ -2141,8 +2139,7 @@ object messages {
           |Refinements cannot contain overloaded definitions.""".stripMargin
   }
 
-  class NoMatchingOverload(val alternatives: List[SingleDenotation], pt: Type)(
-    err: Errors)(using ctx: Context)
+  class NoMatchingOverload(val alternatives: List[SingleDenotation], pt: Type)(using ctx: Context)
     extends TypeMismatchMsg(NoMatchingOverloadID) {
     def msg =
       em"""None of the ${err.overloadedAltsStr(alternatives)}

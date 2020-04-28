@@ -71,7 +71,7 @@ object Checking {
     }
     for (arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate, app) do
       ctx.error(
-          showInferred(DoesNotConformToBound(arg.tpe, which, bound)(err),
+          showInferred(DoesNotConformToBound(arg.tpe, which, bound),
               app, tpt),
           arg.sourcePos.focus)
 

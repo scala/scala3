@@ -2796,7 +2796,7 @@ class Typer extends Namer
 
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
-      typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
+      println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%\n\n %")
       val alts = altDenots.map(TermRef(ref.prefix, ref.name, _))
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
@@ -2807,7 +2807,7 @@ class Typer extends Namer
           //  2. If context is not an application, pick a alternative that does
           //     not take parameters.
           def noMatches =
-            errorTree(tree, NoMatchingOverload(altDenots, pt)(err))
+            errorTree(tree, NoMatchingOverload(altDenots, pt))
           def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
           pt match {
             case pt: FunOrPolyProto if !pt.isUsingApply =>
@@ -2827,7 +2827,7 @@ class Typer extends Namer
           if (tree.tpe.isErroneous || pt.isErroneous) tree.withType(UnspecifiedErrorType)
           else {
             val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
-            errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
+            errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt))
           }
       }
     }
