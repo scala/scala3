@@ -86,7 +86,7 @@ object Annotations {
       myTree.asInstanceOf[Tree]
 
     override def isEvaluating: Boolean = myTree == null
-    override def isEvaluated: Boolean = myTree.isInstanceOf[Tree]
+    override def isEvaluated: Boolean = myTree.isInstanceOf[Tree @unchecked]
   }
 
   /** An annotation indicating the body of a right-hand side,
@@ -119,7 +119,7 @@ object Annotations {
       myTree.asInstanceOf[Tree]
 
     override def isEvaluating: Boolean = myTree == null
-    override def isEvaluated: Boolean = myTree.isInstanceOf[Tree]
+    override def isEvaluated: Boolean = myTree.isInstanceOf[Tree @unchecked]
   }
 
   object LazyBodyAnnotation {
