@@ -135,7 +135,7 @@ object TypeTestsCasts {
             // See TypeComparer#either
             recur(tp1, P) && recur(tp2, P)
           case _ =>
-            // first try withou striping type parameters for performance
+            // first try without striping type parameters for performance
             X.classSymbol.exists && P.classSymbol.exists && !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass) ||
             isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState().setFreshGADTBounds) ||
             isClassDetermined(stripTypeParam(X), tpe)(ctx.fresh.setNewTyperState().setFreshGADTBounds)
