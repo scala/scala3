@@ -481,8 +481,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def projectSeq(pats: List[Tree]): Space = {
     if (pats.isEmpty) return Typ(scalaNilType, false)
 
-    val (items, zero) = if (pats.last.tpe.isRepeatedParam)
-      (pats.init, Typ(scalaListType.appliedTo(pats.last.tpe.argTypes.head), false))
+    val (items, zero) = if (isWildcardStarArg(pats.last))
+      (pats.init, Typ(scalaListType.appliedTo(pats.last.tpe.elemType), false))
     else
       (pats, Typ(scalaNilType, false))
 
