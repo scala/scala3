@@ -268,6 +268,12 @@ object IArray {
   // A convenience to avoid having to cast everything by hand
   private given [A] as Conversion[Array[A], IArray[A]] = identity[Sub[A]]
 
+  /** Convert an array into an immutable array without copying, the original array
+   *   must _not_ be mutated after this or the guaranteed immutablity of IArray will
+   *   be violated.
+   */
+  def unsafeFromArray[T](s: Array[T]): IArray[T] = s
+
   /** An immutable array of length 0. */
   def empty[T: ClassTag]: IArray[T] = new Array[T](0)
 
