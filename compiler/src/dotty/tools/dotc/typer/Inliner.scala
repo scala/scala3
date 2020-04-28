@@ -183,7 +183,7 @@ object Inliner {
 
     val retainer = meth.copy(
       name = BodyRetainerName(meth.name),
-      flags = meth.flags &~ (Inline | Override) | Private,
+      flags = meth.flags &~ (Inline | Macro | Override) | Private,
       coord = mdef.rhs.span.startPos).asTerm
     polyDefDef(retainer, targs => prefss =>
       inlineCall(
