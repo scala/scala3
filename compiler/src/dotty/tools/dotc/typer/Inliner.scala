@@ -1253,7 +1253,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
         case res: Apply if res.symbol == defn.InternalQuoted_exprSplice
                         && level == 0
-                        && call.symbol.is(Macro)
                         && !suppressInline =>
           expandMacro(res.args.head, tree.span)
         case res => res
