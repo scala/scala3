@@ -534,22 +534,23 @@ object ProtoTypes {
     newTypeVar(TypeBounds.upper(AndType(tp.widenExpr, defn.SingletonClass.typeRef)))
 
   /** The result type of `mt`, where all references to parameters of `mt` are
-   *  replaced by either wildcards (if typevarsMissContext) or TypeParamRefs.
+   *  replaced by either wildcards or TypeParamRefs.
    */
-  def resultTypeApprox(mt: MethodType)(using Context): Type =
-    if (mt.isResultDependent) {
+  def resultTypeApprox(mt: MethodType, wildcardOnly: Boolean = false)(using Context): Type =
+    if mt.isResultDependent then
       def replacement(tp: Type) =
-        if (ctx.mode.is(Mode.TypevarsMissContext) ||
-            !tp.widenExpr.isValueTypeOrWildcard) WildcardType
+        if wildcardOnly
+           || ctx.mode.is(Mode.TypevarsMissContext)
+           || !tp.widenExpr.isValueTypeOrWildcard
+        then WildcardType
         else newDepTypeVar(tp)
       mt.resultType.substParams(mt, mt.paramInfos.map(replacement))
-    }
     else mt.resultType
 
   /** The normalized form of a type
    *   - unwraps polymorphic types, tracking their parameters in the current constraint
    *   - skips implicit parameters of methods and functions;
-   *     if result type depends on implicit parameter, replace with fresh type dependent parameter.
+   *     if result type depends on implicit parameter, replace with wildcard.
    *   - converts non-dependent method types to the corresponding function types
    *     unless the expected type is an ApplyingProto or IgnoredProto.
    *   - dereferences parameterless method types
@@ -568,7 +569,7 @@ object ProtoTypes {
       case poly: PolyType =>
         normalize(constrained(poly).resultType, pt)
       case mt: MethodType =>
-        if (mt.isImplicitMethod) normalize(resultTypeApprox(mt), pt)
+        if (mt.isImplicitMethod) normalize(resultTypeApprox(mt, wildcardOnly = true), pt)
         else if (mt.isResultDependent) tp
         else {
           val rt = normalize(mt.resultType, pt)
