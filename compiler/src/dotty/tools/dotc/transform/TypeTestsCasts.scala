@@ -48,7 +48,7 @@ object TypeTestsCasts {
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
    *     (b) constrain `Xs` with `pre.F[Xs] <:< X`
-   *     (c) instantiate Xs and check `pre.F[Xs] <:< P`
+   *     (c) maximize `pre.F[Xs]` and check `pre.F[Xs] <:< P`
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
@@ -105,8 +105,17 @@ object TypeTestsCasts {
       debug.println("P1 : " + P1.show)
       debug.println("X : " + X.show)
 
+      // It does not matter if P1 is not a subtype of X.
+      // It just tries to infer type arguments of P1 from X if the value x
+      // conforms to the type skeleton pre.F[_]. Then it goes on to check
+      // if P1 <: P, which means the type arguments in P are trivial,
+      // thus no runtime checks are needed for them.
       P1 <:< X
 
+      // Maximization of the type means we try to cover all possible values
+      // which conform to the skeleton pre.F[_] and X. Then we have to make
+      // sure all of them are actually of the type P, which implies that the
+      // type arguments in P are trivial (no runtime check needed).
       maximizeType(P1, span, fromScala2x = false)
 
       val res = P1 <:< P
