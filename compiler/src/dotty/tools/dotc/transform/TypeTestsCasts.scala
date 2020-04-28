@@ -105,7 +105,11 @@ object TypeTestsCasts {
       debug.println("P1 : " + P1.show)
       debug.println("X : " + X.show)
 
-      val res = (P1 <:< X) && (P1 <:< P)
+      P1 <:< X
+
+      maximizeType(P1, span, fromScala2x = false)
+
+      val res = P1 <:< P
       debug.println("P1 : " + P1.show)
       debug.println("P1 <:< P = " + res)
 
@@ -133,8 +137,8 @@ object TypeTestsCasts {
           case _ =>
             // first try withou striping type parameters for performance
             X.classSymbol.exists && P.classSymbol.exists && !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass) ||
-            isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState()) ||
-            isClassDetermined(stripTypeParam(X), tpe)(ctx.fresh.setNewTyperState())
+            isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState().setFreshGADTBounds) ||
+            isClassDetermined(stripTypeParam(X), tpe)(ctx.fresh.setNewTyperState().setFreshGADTBounds)
         }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)

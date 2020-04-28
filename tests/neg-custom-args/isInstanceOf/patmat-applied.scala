@@ -7,3 +7,5 @@ object Test {
     case _ =>
   }
 }
+
+def bar[T](x: List[T]) = x.isInstanceof[List[Int]] // error
