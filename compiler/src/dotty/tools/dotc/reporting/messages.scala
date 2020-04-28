@@ -1806,7 +1806,7 @@ object messages {
         |""".stripMargin
   }
 
-  class UnapplyInvalidReturnType(unapplyResult: Type, unapplyName: Symbol#ThisName)(implicit ctx: Context)
+  class UnapplyInvalidReturnType(unapplyResult: Type, unapplyName: Name)(implicit ctx: Context)
     extends DeclarationMsg(UnapplyInvalidReturnTypeID) {
     def msg =
       val addendum =
