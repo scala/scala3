@@ -47,8 +47,8 @@ object TypeTestsCasts {
    *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
-   *     (b) check that we can constrain `Xs` such that `pre.F[Xs] <:< X` and `pre.F[Xs] <:< P`
-   *         can both be true at the same time.
+   *     (b) constrain `Xs` with `pre.F[Xs] <:< X`
+   *     (c) instantiate Xs and check `pre.F[Xs] <:< P`
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
