@@ -468,9 +468,6 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
   /** Are we in an inline method body? */
   def inInlineMethod: Boolean = owner.ownersIterator.exists(_.isInlineMethod)
 
-  /** Are we in a macro? */
-  def inMacro: Boolean = owner.ownersIterator.exists(s => s.isInlineMethod && s.is(Macro))
-
   /** Refine child based on parent
    *
    *  In child class definition, we have:

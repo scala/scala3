@@ -183,7 +183,7 @@ object Inliner {
 
     val retainer = meth.copy(
       name = BodyRetainerName(meth.name),
-      flags = meth.flags &~ (Inline | Override) | Private,
+      flags = meth.flags &~ (Inline | Macro | Override) | Private,
       coord = mdef.rhs.span.startPos).asTerm
     polyDefDef(retainer, targs => prefss =>
       inlineCall(
@@ -1253,7 +1253,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
         case res: Apply if res.symbol == defn.InternalQuoted_exprSplice
                         && level == 0
-                        && call.symbol.is(Macro)
                         && !suppressInline =>
           expandMacro(res.args.head, tree.span)
         case res => res
