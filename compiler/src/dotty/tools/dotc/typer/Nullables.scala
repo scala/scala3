@@ -489,8 +489,8 @@ object Nullables:
 
             object retyper extends ReTyper:
               override def typedUnadapted(t: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = t match
-                case t: ValDef if !t.symbol.is(Lazy) => super.typedUnadapted(t, pt, locked)
-                case t: MemberDef => promote(t)
+                case t: untpd.ValDef if !t.symbol.is(Lazy) => super.typedUnadapted(t, pt, locked)
+                case t: untpd.MemberDef => promote(t)
                 case _ => super.typedUnadapted(t, pt, locked)
 
             def postProcess(formal: Type, arg: Tree): Tree =

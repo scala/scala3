@@ -910,8 +910,8 @@ trait Applications extends Compatibility {
             tree.args match {
               case (arg @ Match(EmptyTree, cases)) :: Nil =>
                 cases.foreach {
-                  case CaseDef(Typed(_: Ident, _), _, _) => // OK
-                  case CaseDef(Bind(_, Typed(_: Ident, _)), _, _) => // OK
+                  case CaseDef(Typed(_: untpd.Ident, _), _, _) => // OK
+                  case CaseDef(Bind(_, Typed(_: untpd.Ident, _)), _, _) => // OK
                   case CaseDef(Ident(name), _, _) if name == nme.WILDCARD => // Ok
                   case CaseDef(pat, _, _) =>
                     ctx.error(UnexpectedPatternForSummonFrom(pat), pat.sourcePos)

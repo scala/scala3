@@ -89,7 +89,7 @@ object Completion {
           completionPrefix(selector :: Nil, pos)
         }.getOrElse("")
 
-      case (ref: RefTree) :: _ =>
+      case (ref: untpd.RefTree) :: _ =>
         if (ref.name == nme.ERROR) ""
         else ref.name.toString.take(pos.span.point - ref.span.point)
 

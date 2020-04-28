@@ -907,7 +907,7 @@ object Erasure {
      */
     private def addRetainedInlineBodies(stats: List[untpd.Tree])(using Context): List[untpd.Tree] =
       lazy val retainerDef: Map[Symbol, DefDef] = stats.collect {
-        case stat: DefDef if stat.symbol.name.is(BodyRetainerName) =>
+        case stat: DefDef @unchecked if stat.symbol.name.is(BodyRetainerName) =>
           val retainer = stat.symbol
           val origName = retainer.name.asTermName.exclude(BodyRetainerName)
           val inlineMeth = ctx.atPhase(ctx.typerPhase) {
@@ -918,7 +918,7 @@ object Erasure {
           (inlineMeth, stat)
       }.toMap
       stats.mapConserve {
-        case stat: DefDef if stat.symbol.isRetainedInlineMethod =>
+        case stat: DefDef @unchecked if stat.symbol.isRetainedInlineMethod =>
           val rdef = retainerDef(stat.symbol)
           val fromParams = untpd.allParamSyms(rdef)
           val toParams = untpd.allParamSyms(stat)
