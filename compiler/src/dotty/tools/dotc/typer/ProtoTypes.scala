@@ -550,7 +550,7 @@ object ProtoTypes {
   /** The normalized form of a type
    *   - unwraps polymorphic types, tracking their parameters in the current constraint
    *   - skips implicit parameters of methods and functions;
-   *     if result type depends on implicit parameter, replace with fresh type dependent parameter.
+   *     if result type depends on implicit parameter, replace with wildcard.
    *   - converts non-dependent method types to the corresponding function types
    *     unless the expected type is an ApplyingProto or IgnoredProto.
    *   - dereferences parameterless method types
