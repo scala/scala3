@@ -12,6 +12,6 @@ lazy val ok: Lifted[String] = { // ok despite map returning a union
   point("a").map(_ => if true then "foo" else error) // ok
 }
 
-lazy val bad: Lifted[String] = { // found Lifted[Object]
-  point("a").flatMap(_ => point("b").map(_ => if true then "foo" else error)) // error
+lazy val nowAlsoOK: Lifted[String] = {
+  point("a").flatMap(_ => point("b").map(_ => if true then "foo" else error))
 }

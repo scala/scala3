@@ -495,30 +495,31 @@ trait ConstraintHandling[AbstractContext] {
        *
        *  @return The pruned type if all `addLess` calls succeed, `NoType` otherwise.
        */
-      def prune(bound: Type): Type = bound match {
-        case bound: AndType =>
-          val p1 = prune(bound.tp1)
-          val p2 = prune(bound.tp2)
-          if (p1.exists && p2.exists) bound.derivedAndType(p1, p2)
+      def prune(bnd: Type): Type = bnd match {
+        case bnd: AndType if !fromBelow =>
+          val p1 = prune(bnd.tp1)
+          val p2 = prune(bnd.tp2)
+          if (p1.exists && p2.exists) bnd.derivedAndType(p1, p2)
           else NoType
-        case bound: OrType =>
-          val p1 = prune(bound.tp1)
-          val p2 = prune(bound.tp2)
-          if (p1.exists && p2.exists) bound.derivedOrType(p1, p2)
+        case bnd: OrType if fromBelow =>
+          val p1 = prune(bnd.tp1)
+          val p2 = prune(bnd.tp2)
+          if (p1.exists && p2.exists) bnd.derivedOrType(p1, p2)
           else NoType
-        case bound: TypeVar if constraint contains bound.origin =>
-          prune(bound.underlying)
-        case bound: TypeParamRef =>
-          constraint.entry(bound) match {
-            case NoType => pruneLambdaParams(bound)
+        case bnd: TypeVar if constraint contains bnd.origin =>
+          prune(bnd.underlying)
+        case bnd: TypeParamRef if bnd ne param =>
+          constraint.entry(bnd) match {
+            case NoType => pruneLambdaParams(bnd)
             case _: TypeBounds =>
-              if (!addParamBound(bound)) NoType
+              assertFail(i"pruning $param $bound $fromBelow $bnd")
+              if (!addParamBound(bnd)) NoType
               else if (fromBelow) defn.NothingType
               else defn.AnyType
             case inst =>
               prune(inst)
           }
-        case bound: ExprType =>
+        case bnd: ExprType =>
           // ExprTypes are not value types, so type parameters should not
           // be instantiated to ExprTypes. A scenario where such an attempted
           // instantiation can happen is if we unify (=> T) => () with A => ()
@@ -530,7 +531,7 @@ trait ConstraintHandling[AbstractContext] {
           // the resulting types down) and is largely unknown terrain.
           NoType
         case _ =>
-          pruneLambdaParams(bound)
+          pruneLambdaParams(bnd)
       }
 
       def kindCompatible(tp1: Type, tp2: Type): Boolean =
