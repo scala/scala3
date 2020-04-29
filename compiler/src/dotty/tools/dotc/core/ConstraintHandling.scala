@@ -418,98 +418,99 @@ trait ConstraintHandling[AbstractContext] {
    *  not be AndTypes and lower bounds may not be OrTypes. This is assured by the
    *  way isSubType is organized.
    */
-  protected def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit actx: AbstractContext): Boolean = {
+  protected def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit actx: AbstractContext): Boolean =
+
+    /** When comparing lambdas we might get constraints such as
+     *  `A <: X0` or `A = List[X0]` where `A` is a constrained parameter
+     *  and `X0` is a lambda parameter. The constraint for `A` is not allowed
+     *  to refer to such a lambda parameter because the lambda parameter is
+     *  not visible where `A` is defined. Consequently, we need to
+     *  approximate the bound so that the lambda parameter does not appear in it.
+     *  If `tp` is an upper bound, we need to approximate with something smaller,
+     *  otherwise something larger.
+     *  Test case in pos/i94-nada.scala. This test crashes with an illegal instance
+     *  error in Test2 when the rest of the SI-2712 fix is applied but `pruneLambdaParams` is
+     *  missing.
+     */
+    def pruneLambdaParams(tp: Type) =
+      if (comparedTypeLambdas.nonEmpty) {
+        val approx = new ApproximatingTypeMap {
+          if (!fromBelow) variance = -1
+          def apply(t: Type): Type = t match {
+            case t @ TypeParamRef(tl: TypeLambda, n) if comparedTypeLambdas contains tl =>
+              val bounds = tl.paramInfos(n)
+              range(bounds.lo, bounds.hi)
+            case _ =>
+              mapOver(t)
+          }
+        }
+        approx(tp)
+      }
+      else tp
+
+    def addParamBound(bound: TypeParamRef) =
+      constraint.entry(param) match {
+        case _: TypeBounds =>
+          if (fromBelow) addLess(bound, param) else addLess(param, bound)
+        case tp =>
+          if (fromBelow) isSubType(bound, tp) else isSubType(tp, bound)
+      }
+
+    /** Normalize the bound `bnd` in the following ways:
+     *
+     *   1. Any toplevel occurrences of the compared parameter `param` are
+     *      replaced by `Nothing` if bound is from below or `Any` otherwise.
+     *   2. Toplevel occurrences of TypeVars over TypeRefs in the current
+     *      constraint are dereferenced.
+     *   3. Toplevel occurrences of TypeRefs that are instantiated in the current
+     *      constraint are also referenced.
+     *   4. Toplevel occurrences of ExprTypes lead to a `NoType` return, which
+     *      causes the addConstraint operation to fail.
+     *
+     *   An occurrence is toplevel if it is the bound itself,
+     *   or the bound is a union or intersection, and the ocurrence is
+     *   toplevel in one of the operands of the `&` or `|`.
+     */
+    def prune(bnd: Type): Type = bnd match
+      case bnd: AndOrType =>
+        val p1 = prune(bnd.tp1)
+        val p2 = prune(bnd.tp2)
+        if (p1.exists && p2.exists) bnd.derivedAndOrType(p1, p2)
+        else NoType
+      case bnd: TypeVar if constraint contains bnd.origin => // (2)
+        prune(bnd.underlying)
+      case bnd: TypeParamRef =>
+        if bnd eq param then // (1)
+          if fromBelow then defn.NothingType else defn.AnyType
+        else constraint.entry(bnd) match
+          case _: TypeBounds => bnd
+          case inst => prune(inst) // (3)
+      case bnd: ExprType => // (4)
+        // ExprTypes are not value types, so type parameters should not
+        // be instantiated to ExprTypes. A scenario where such an attempted
+        // instantiation can happen is if we unify (=> T) => () with A => ()
+        // where A is a TypeParamRef. See the comment on EtaExpansion.etaExpand
+        // why types such as (=> T) => () can be constructed and i7969.scala
+        // as a test where this happens.
+        // Note that scalac by contrast allows such instantiations. But letting
+        // type variables be ExprTypes has its own problems (e.g. you can't write
+        // the resulting types down) and is largely unknown terrain.
+        NoType
+      case _ =>
+        bnd
+
+    def kindCompatible(tp1: Type, tp2: Type): Boolean =
+      val tparams1 = tp1.typeParams
+      val tparams2 = tp2.typeParams
+      tparams1.corresponds(tparams2)((p1, p2) => kindCompatible(p1.paramInfo, p2.paramInfo))
+      && (tparams1.isEmpty || kindCompatible(tp1.hkResult, tp2.hkResult))
+      || tp1.hasAnyKind
+      || tp2.hasAnyKind
+
     def description = i"constr $param ${if (fromBelow) ">:" else "<:"} $bound:\n$constraint"
+
     //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
-
-      /** When comparing lambdas we might get constraints such as
-       *  `A <: X0` or `A = List[X0]` where `A` is a constrained parameter
-       *  and `X0` is a lambda parameter. The constraint for `A` is not allowed
-       *  to refer to such a lambda parameter because the lambda parameter is
-       *  not visible where `A` is defined. Consequently, we need to
-       *  approximate the bound so that the lambda parameter does not appear in it.
-       *  If `tp` is an upper bound, we need to approximate with something smaller,
-       *  otherwise something larger.
-       *  Test case in pos/i94-nada.scala. This test crashes with an illegal instance
-       *  error in Test2 when the rest of the SI-2712 fix is applied but `pruneLambdaParams` is
-       *  missing.
-       */
-      def pruneLambdaParams(tp: Type) =
-        if (comparedTypeLambdas.nonEmpty) {
-          val approx = new ApproximatingTypeMap {
-            if (!fromBelow) variance = -1
-            def apply(t: Type): Type = t match {
-              case t @ TypeParamRef(tl: TypeLambda, n) if comparedTypeLambdas contains tl =>
-                val bounds = tl.paramInfos(n)
-                range(bounds.lo, bounds.hi)
-              case _ =>
-                mapOver(t)
-            }
-          }
-          approx(tp)
-        }
-        else tp
-
-      def addParamBound(bound: TypeParamRef) =
-        constraint.entry(param) match {
-          case _: TypeBounds =>
-            if (fromBelow) addLess(bound, param) else addLess(param, bound)
-          case tp =>
-            if (fromBelow) isSubType(bound, tp) else isSubType(tp, bound)
-        }
-
-      /** Normalize the bound `bnd` in the following ways:
-       *
-       *   1. Any toplevel occurrences of the compared parameter `param` are
-       *      replaced by `Nothing` if bound is from below or `Any` otherwise.
-       *   2. Toplevel occurrences of TypeVars over TypeRefs in the current
-       *      constraint are dereferenced.
-       *   3. Toplevel occurrences of TypeRefs that are instantiated in the current
-       *      constraint are also referenced.
-       *   4. Toplevel occurrences of ExprTypes lead to a `NoType` return, which
-       *      causes the addConstraint operation to fail.
-       *
-       *   An occurrence is toplevel if it is the bound itself,
-       *   or the bound is a union or intersection, and the ocurrence is
-       *   toplevel in one of the operands of the `&` or `|`.
-       */
-      def prune(bnd: Type): Type = bnd match
-        case bnd: AndOrType =>
-          val p1 = prune(bnd.tp1)
-          val p2 = prune(bnd.tp2)
-          if (p1.exists && p2.exists) bnd.derivedAndOrType(p1, p2)
-          else NoType
-        case bnd: TypeVar if constraint contains bnd.origin => // (2)
-          prune(bnd.underlying)
-        case bnd: TypeParamRef =>
-          if bnd eq param then // (1)
-            if fromBelow then defn.NothingType else defn.AnyType
-          else constraint.entry(bnd) match
-            case _: TypeBounds => bnd
-            case inst => prune(inst) // (3)
-        case bnd: ExprType => // (4)
-          // ExprTypes are not value types, so type parameters should not
-          // be instantiated to ExprTypes. A scenario where such an attempted
-          // instantiation can happen is if we unify (=> T) => () with A => ()
-          // where A is a TypeParamRef. See the comment on EtaExpansion.etaExpand
-          // why types such as (=> T) => () can be constructed and i7969.scala
-          // as a test where this happens.
-          // Note that scalac by contrast allows such instantiations. But letting
-          // type variables be ExprTypes has its own problems (e.g. you can't write
-          // the resulting types down) and is largely unknown terrain.
-          NoType
-        case _ =>
-          bnd
-
-      def kindCompatible(tp1: Type, tp2: Type): Boolean =
-        val tparams1 = tp1.typeParams
-        val tparams2 = tp2.typeParams
-        tparams1.corresponds(tparams2)((p1, p2) => kindCompatible(p1.paramInfo, p2.paramInfo))
-        && (tparams1.isEmpty || kindCompatible(tp1.hkResult, tp2.hkResult))
-        || tp1.hasAnyKind
-        || tp2.hasAnyKind
-
       addConstraintInvocations += 1
       try bound match
         case bound: TypeParamRef if constraint contains bound =>
@@ -521,7 +522,7 @@ trait ConstraintHandling[AbstractContext] {
           && (if fromBelow then addLowerBound(param, pbound) else addUpperBound(param, pbound))
       finally addConstraintInvocations -= 1
     }
-  }
+  end addConstraint
 
   /** Check that constraint is fully propagated. See comment in Config.checkConstraintsPropagated */
   def checkPropagated(msg: => String)(result: Boolean)(implicit actx: AbstractContext): Boolean = {
