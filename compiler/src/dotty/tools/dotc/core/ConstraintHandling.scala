@@ -460,66 +460,36 @@ trait ConstraintHandling[AbstractContext] {
             if (fromBelow) isSubType(bound, tp) else isSubType(tp, bound)
         }
 
-      /** Drop all constrained parameters that occur at the toplevel in `bound` and
-       *  handle them by `addLess` calls.
-       *  The preconditions make sure that such parameters occur only
-       *  in one of two ways:
+      /** Normalize the bound `bnd` in the following ways:
        *
-       *  1.
+       *   1. Any toplevel occurrences of the compared parameter `param` are
+       *      replaced by `Nothing` if bound is from below or `Any` otherwise.
+       *   2. Toplevel occurrences of TypeVars over TypeRefs in the current
+       *      constraint are dereferenced.
+       *   3. Toplevel occurrences of TypeRefs that are instantiated in the current
+       *      constraint are also referenced.
+       *   4. Toplevel occurrences of ExprTypes lead to a `NoType` return, which
+       *      causes the addConstraint operation to fail.
        *
-       *    P <: Ts1 | ... | Tsm   (m > 0)
-       *    Tsi = T1 & ... Tn      (n >= 0)
-       *    Some of the Ti are constrained parameters
-       *
-       *  2.
-       *
-       *    Ts1 & ... & Tsm <: P   (m > 0)
-       *    Tsi = T1 | ... | Tn    (n >= 0)
-       *    Some of the Ti are constrained parameters
-       *
-       *  In each case we cannot leave the parameter in place,
-       *  because that would risk making a parameter later a subtype or supertype
-       *  of a bound where the parameter occurs again at toplevel, which leads to cycles
-       *  in the subtyping test. So we intentionally narrow the constraint by
-       *  recording an isLess relationship instead (even though this is not implied
-       *  by the bound).
-       *
-       *  Normally, narrowing a constraint is better than widening it, because
-       *  narrowing leads to incompleteness (which we face anyway, see for
-       *  instance `TypeComparer#either`) but widening leads to unsoundness,
-       *  but note the special handling in `ConstrainResult` mode below.
-       *
-       *  A test case that demonstrates the problem is i864.scala.
-       *  Turn Config.checkConstraintsSeparated on to get an accurate diagnostic
-       *  of the cycle when it is created.
-       *
-       *  @return The pruned type if all `addLess` calls succeed, `NoType` otherwise.
+       *   An occurrence is toplevel if it is the bound itself,
+       *   or the bound is a union or intersection, and the ocurrence is
+       *   toplevel in one of the operands of the `&` or `|`.
        */
-      def prune(bnd: Type): Type = bnd match {
-        case bnd: AndType if !fromBelow =>
+      def prune(bnd: Type): Type = bnd match
+        case bnd: AndOrType =>
           val p1 = prune(bnd.tp1)
           val p2 = prune(bnd.tp2)
-          if (p1.exists && p2.exists) bnd.derivedAndType(p1, p2)
+          if (p1.exists && p2.exists) bnd.derivedAndOrType(p1, p2)
           else NoType
-        case bnd: OrType if fromBelow =>
-          val p1 = prune(bnd.tp1)
-          val p2 = prune(bnd.tp2)
-          if (p1.exists && p2.exists) bnd.derivedOrType(p1, p2)
-          else NoType
-        case bnd: TypeVar if constraint contains bnd.origin =>
+        case bnd: TypeVar if constraint contains bnd.origin => // (2)
           prune(bnd.underlying)
-        case bnd: TypeParamRef if bnd ne param =>
-          constraint.entry(bnd) match {
-            case NoType => pruneLambdaParams(bnd)
-            case _: TypeBounds =>
-              assertFail(i"pruning $param $bound $fromBelow $bnd")
-              if (!addParamBound(bnd)) NoType
-              else if (fromBelow) defn.NothingType
-              else defn.AnyType
-            case inst =>
-              prune(inst)
-          }
-        case bnd: ExprType =>
+        case bnd: TypeParamRef =>
+          if bnd eq param then // (1)
+            if fromBelow then defn.NothingType else defn.AnyType
+          else constraint.entry(bnd) match
+            case _: TypeBounds => bnd
+            case inst => prune(inst) // (3)
+        case bnd: ExprType => // (4)
           // ExprTypes are not value types, so type parameters should not
           // be instantiated to ExprTypes. A scenario where such an attempted
           // instantiation can happen is if we unify (=> T) => () with A => ()
@@ -531,8 +501,7 @@ trait ConstraintHandling[AbstractContext] {
           // the resulting types down) and is largely unknown terrain.
           NoType
         case _ =>
-          pruneLambdaParams(bnd)
-      }
+          bnd
 
       def kindCompatible(tp1: Type, tp2: Type): Boolean =
         val tparams1 = tp1.typeParams
@@ -547,7 +516,8 @@ trait ConstraintHandling[AbstractContext] {
           addParamBound(bound)
         case _ =>
           val savedConstraint = constraint
-          val pbound = prune(bound)
+          val pbound = prune(pruneLambdaParams(bound))
+          assert(constraint eq savedConstraint)
           val constraintsNarrowed = constraint ne savedConstraint
 
           val res =
