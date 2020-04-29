@@ -90,7 +90,8 @@ object TypeTestsCasts {
       }
     }.apply(tp)
 
-    def isClassDetermined(X: Type, P: AppliedType)(implicit ctx: Context) = {
+    /** Returns true if the type arguments of `P` can be determined from `X` */
+    def typeArgsTrivial(X: Type, P: AppliedType)(implicit ctx: Context) = {
       val AppliedType(tycon, _) = P
 
       def underlyingLambda(tp: Type): TypeLambda = tp.ensureLambdaSub match {
@@ -147,8 +148,8 @@ object TypeTestsCasts {
             // always false test warnings are emitted elsewhere
             X.classSymbol.exists && P.classSymbol.exists && !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass) ||
             // first try without striping type parameters for performance
-            isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState().setFreshGADTBounds) ||
-            isClassDetermined(stripTypeParam(X), tpe)(ctx.fresh.setNewTyperState().setFreshGADTBounds)
+            typeArgsTrivial(X, tpe)(ctx.fresh.setNewTyperState().setFreshGADTBounds) ||
+            typeArgsTrivial(stripTypeParam(X), tpe)(ctx.fresh.setNewTyperState().setFreshGADTBounds)
         }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
