@@ -308,9 +308,17 @@ jobs:
           key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
           restore-keys: ${{ runner.os }}-general-
 
-      - name: Nightly Documentation
+      - name: Generate Website
         run: |
           ./project/scripts/genDocs -doc-snapshot
+
+      - name: Deploy Website
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token: ${{ secrets.BOT_TOKEN }}
+          publish_dir: docs/_site
+          external_repository: lampepfl/dotty-website
+          publish_branch: gh-pages
 
   publish_release:
     runs-on: self-hosted
@@ -452,9 +460,17 @@ jobs:
           key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
           restore-keys: ${{ runner.os }}-general-
 
-      - name: Nightly Documentation
+      - name: Generate Website
         run: |
           ./project/scripts/genDocs -doc-snapshot
+
+      - name: Deploy Website
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token: ${{ secrets.BOT_TOKEN }}
+          publish_dir: docs/_site
+          external_repository: lampepfl/dotty-website
+          publish_branch: gh-pages
 
   publish_sbt_release:
     runs-on: self-hosted
