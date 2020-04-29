@@ -91,7 +91,7 @@ object TypeTestsCasts {
     }.apply(tp)
 
     /** Returns true if the type arguments of `P` can be determined from `X` */
-    def typeArgsTrivial(X: Type, P: AppliedType)(implicit ctx: Context) = {
+    def typeArgsTrivial(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
       val AppliedType(tycon, _) = P
 
       def underlyingLambda(tp: Type): TypeLambda = tp.ensureLambdaSub match {
@@ -146,10 +146,11 @@ object TypeTestsCasts {
             recur(tp1, P) && recur(tp2, P)
           case _ =>
             // always false test warnings are emitted elsewhere
-            X.classSymbol.exists && P.classSymbol.exists && !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass) ||
+            X.classSymbol.exists && P.classSymbol.exists &&
+              !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass) ||
             // first try without striping type parameters for performance
-            typeArgsTrivial(X, tpe)(ctx.fresh.setNewTyperState().setFreshGADTBounds) ||
-            typeArgsTrivial(stripTypeParam(X), tpe)(ctx.fresh.setNewTyperState().setFreshGADTBounds)
+            typeArgsTrivial(X, tpe) ||
+            typeArgsTrivial(stripTypeParam(X), tpe)
         }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
