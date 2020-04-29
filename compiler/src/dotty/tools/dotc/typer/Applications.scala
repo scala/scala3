@@ -1370,7 +1370,6 @@ trait Applications extends Compatibility {
    */
   def compare(alt1: TermRef, alt2: TermRef)(using Context): Int = trace(i"compare($alt1, $alt2)", overload) {
     record("compare")
-    assert(alt1 ne alt2)
 
     /** Is alternative `alt1` with type `tp1` as specific as alternative
      *  `alt2` with type `tp2` ?
