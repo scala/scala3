@@ -308,9 +308,6 @@ trait ConstraintHandling[AbstractContext] {
             //  from above  | hi  lo  lo
             //
             if (variance == 0 || fromBelow == (variance < 0)) bounds.lo else bounds.hi
-          case `param` =>
-            if variance == 0 || fromBelow == (variance < 0) then defn.AnyType
-            else defn.NothingType
           case _ => tp
         }
       }
