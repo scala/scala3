@@ -109,10 +109,12 @@ trait ConstraintHandling[AbstractContext] {
         val p2 = adjust(tp.tp2)
         if p1.exists && p2.exists then tp.derivedAndOrType(p1, p2) else NoType
       case tp: TypeParamRef =>
+        if constraint.contains(tp) then
+          constr.println(i"${if tp eq param then "stripping" else "keeping"} $tp from $rawBound, upper = $isUpper in $constraint")
         if tp eq param then // (1)
-          //println(i"stripping $tp from $rawBound, upper = $isUpper in $constraint")
           if isUpper then defn.AnyType else defn.NothingType
         else constraint.entry(tp) match  // (3)
+          case NoType => tp
           case TypeBounds(lo, hi) => if lo eq hi then adjust(lo) else tp
           case inst => adjust(inst)
       case tp: TypeVar => // (2)
