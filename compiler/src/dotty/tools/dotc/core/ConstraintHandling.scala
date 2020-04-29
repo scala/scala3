@@ -86,22 +86,24 @@ trait ConstraintHandling[AbstractContext] {
   def fullBounds(param: TypeParamRef)(implicit actx: AbstractContext): TypeBounds =
     nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
-  protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit actx: AbstractContext): Boolean =
+  protected def addOneBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(implicit actx: AbstractContext): Boolean =
     !constraint.contains(param) || {
-      def occursIn(bound: Type): Boolean = {
-        val b = bound.dealias
-        (b eq param) || {
-          b match {
-            case b: AndType => occursIn(b.tp1) || occursIn(b.tp2)
-            case b: OrType  => occursIn(b.tp1) || occursIn(b.tp2)
-            case b: TypeVar => occursIn(b.origin)
-            case b: TermRef => occursIn(b.underlying)
-            case _ => false
-          }
-        }
-      }
-      if (Config.checkConstraintsSeparated)
-        assert(!occursIn(bound), s"$param occurs in $bound")
+      def avoidCycle(tp: Type): Type = tp match
+        case tp: AndOrType =>
+          tp.derivedAndOrType(avoidCycle(tp.tp1), avoidCycle(tp.tp2))
+        case tp: TypeParamRef =>
+          if tp eq param then
+            //println(i"stripping $tp from $rawBound, upper = $isUpper in $constraint")
+            if isUpper then defn.AnyType else defn.NothingType
+          else constraint.entry(tp) match
+            case TypeBounds(lo, hi) => if lo eq hi then avoidCycle(lo) else tp
+            case inst => avoidCycle(inst)
+        case tp: TypeVar =>
+          val underlying1 = avoidCycle(tp.underlying)
+          if underlying1 eq tp.underlying then tp else underlying1
+        case _ =>
+          tp
+      val bound = avoidCycle(rawBound)
 
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
       val equalBounds = isUpper && (lo eq bound) || !isUpper && (bound eq hi)
@@ -275,6 +277,9 @@ trait ConstraintHandling[AbstractContext] {
             //  from above  | hi  lo  lo
             //
             if (variance == 0 || fromBelow == (variance < 0)) bounds.lo else bounds.hi
+          case `param` =>
+            if variance == 0 || fromBelow == (variance < 0) then defn.AnyType
+            else defn.NothingType
           case _ => tp
         }
       }
@@ -483,7 +488,7 @@ trait ConstraintHandling[AbstractContext] {
         if bnd eq param then // (1)
           if fromBelow then defn.NothingType else defn.AnyType
         else constraint.entry(bnd) match
-          case _: TypeBounds => bnd
+          case TypeBounds(lo, hi) => if lo eq hi then prune(lo) else bnd
           case inst => prune(inst) // (3)
       case bnd: ExprType => // (4)
         // ExprTypes are not value types, so type parameters should not
