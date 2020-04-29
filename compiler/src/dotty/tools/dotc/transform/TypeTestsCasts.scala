@@ -48,7 +48,7 @@ object TypeTestsCasts {
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
    *     (b) constrain `Xs` with `pre.F[Xs] <:< X`
-   *     (c) instantiate Xs and check `pre.F[Xs] <:< P`
+   *     (c) maximize `pre.F[Xs]` and check `pre.F[Xs] <:< P`
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
@@ -90,7 +90,8 @@ object TypeTestsCasts {
       }
     }.apply(tp)
 
-    def isClassDetermined(X: Type, P: AppliedType)(implicit ctx: Context) = {
+    /** Returns true if the type arguments of `P` can be determined from `X` */
+    def typeArgsTrivial(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
       val AppliedType(tycon, _) = P
 
       def underlyingLambda(tp: Type): TypeLambda = tp.ensureLambdaSub match {
@@ -105,10 +106,18 @@ object TypeTestsCasts {
       debug.println("P1 : " + P1.show)
       debug.println("X : " + X.show)
 
-      P1 <:< X       // constraint P1
+      // It does not matter if P1 is not a subtype of X.
+      // It just tries to infer type arguments of P1 from X if the value x
+      // conforms to the type skeleton pre.F[_]. Then it goes on to check
+      // if P1 <: P, which means the type arguments in P are trivial,
+      // thus no runtime checks are needed for them.
+      P1 <:< X
 
-      // use fromScala2x to avoid generating pattern bound symbols
-      maximizeType(P1, span, fromScala2x = true)
+      // Maximization of the type means we try to cover all possible values
+      // which conform to the skeleton pre.F[_] and X. Then we have to make
+      // sure all of them are actually of the type P, which implies that the
+      // type arguments in P are trivial (no runtime check needed).
+      maximizeType(P1, span, fromScala2x = false)
 
       val res = P1 <:< P
       debug.println("P1 : " + P1.show)
@@ -117,7 +126,7 @@ object TypeTestsCasts {
       res
     }
 
-    def recur(X: Type, P: Type): Boolean = (X <:< P) || (P match {
+    def recur(X: Type, P: Type): Boolean = (X <:< P) || (P.dealias match {
       case _: SingletonType     => true
       case _: TypeProxy
       if isAbstract(P)          => false
@@ -136,10 +145,12 @@ object TypeTestsCasts {
             // See TypeComparer#either
             recur(tp1, P) && recur(tp2, P)
           case _ =>
-            // first try withou striping type parameters for performance
-            X.classSymbol.exists && P.classSymbol.exists && !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass) ||
-            isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState()) ||
-            isClassDetermined(stripTypeParam(X), tpe)(ctx.fresh.setNewTyperState())
+            // always false test warnings are emitted elsewhere
+            X.classSymbol.exists && P.classSymbol.exists &&
+              !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass) ||
+            // first try without striping type parameters for performance
+            typeArgsTrivial(X, tpe) ||
+            typeArgsTrivial(stripTypeParam(X), tpe)
         }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)

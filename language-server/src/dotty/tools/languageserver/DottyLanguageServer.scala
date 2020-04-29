@@ -392,7 +392,7 @@ class DottyLanguageServer extends LanguageServer
     val refs =
       path match {
         // Selected a renaming in an import node
-        case untpd.ImportSelector(_, rename: Ident, _) :: (_: Import) :: rest if rename.span.contains(pos.span) =>
+        case untpd.ImportSelector(_, rename: untpd.Ident, _) :: (_: Import) :: rest if rename.span.contains(pos.span) =>
           findRenamedReferences(uriTrees, syms, rename.name)
 
         // Selected a reference that has been renamed

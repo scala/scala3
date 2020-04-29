@@ -1264,7 +1264,7 @@ class Typer extends Namer
             .map(cas => untpd.unbind(untpd.unsplice(cas.pat)))
             .zip(mt.cases)
             .forall {
-              case (pat: Typed, pt) =>
+              case (pat: untpd.Typed, pt) =>
                 // To check that pattern types correspond we need to type
                 // check `pat` here and throw away the result.
                 val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
