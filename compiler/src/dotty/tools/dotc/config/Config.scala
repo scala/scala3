@@ -15,13 +15,6 @@ object Config {
    */
   final val checkConstraintsNonCyclic = false
 
-  /** Make sure none of the bounds of a parameter in an OrderingConstraint
-   *  contains this parameter at its toplevel (i.e. as an operand of a
-   *  combination of &'s and |'s.). The check is performed each time a new bound
-   *  is added to the constraint.
-   */
-  final val checkConstraintsSeparated = false
-
   /** Check that each constraint resulting from a subtype test
    *  is satisfiable.
    */
