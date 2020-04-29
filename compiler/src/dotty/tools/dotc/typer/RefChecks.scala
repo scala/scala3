@@ -398,7 +398,7 @@ object RefChecks {
         overrideError("is an extension method, cannot override a normal method")
       else if (other.isAllOf(ExtensionMethod) && !member.isAllOf(ExtensionMethod)) // (1.9.2)
         overrideError("is a normal method, cannot override an extension method")
-      else if other.isInlineMethod && !member.isInlineMethod then // (1.10)
+      else if other.is(Inline) && !member.is(Inline) then // (1.10)
         overrideError("is not inline, cannot implement an inline method")
       else if (other.isScala2Macro && !member.isScala2Macro) // (1.11)
         overrideError("cannot be used here - only Scala-2 macros can override Scala-2 macros")

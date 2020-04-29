@@ -3082,18 +3082,17 @@ class Typer extends Namer
         checkEqualityEvidence(tree, pt)
         tree
       }
+      else if (methPart(tree).symbol.isAllOf(Inline | Deferred) && !ctx.inInlineMethod) then
+        errorTree(tree, i"Deferred inline ${methPart(tree).symbol.showLocated} cannot be invoked")
       else if (Inliner.isInlineable(tree) &&
                !ctx.settings.YnoInline.value &&
                !suppressInline) {
         tree.tpe <:< wildApprox(pt)
         val errorCount = ctx.reporter.errorCount
         val meth = methPart(tree).symbol
-        if meth.is(Deferred) then
-          errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
-        else
-          val inlined = Inliner.inlineCall(tree)
-          if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
-          else inlined
+        val inlined = Inliner.inlineCall(tree)
+        if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
+        else inlined
       }
       else if (tree.symbol.isScala2Macro &&
                // raw and s are eliminated by the StringInterpolatorOpt phase
