@@ -422,7 +422,6 @@ trait ConstraintHandling[AbstractContext] {
     def description = i"constr $param ${if (fromBelow) ">:" else "<:"} $bound:\n$constraint"
     //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
-      addConstraintInvocations += 1
 
       /** When comparing lambdas we might get constraints such as
        *  `A <: X0` or `A = List[X0]` where `A` is a constrained parameter
@@ -511,29 +510,15 @@ trait ConstraintHandling[AbstractContext] {
         || tp1.hasAnyKind
         || tp2.hasAnyKind
 
-      try bound match {
+      addConstraintInvocations += 1
+      try bound match
         case bound: TypeParamRef if constraint contains bound =>
           addParamBound(bound)
         case _ =>
-          val savedConstraint = constraint
           val pbound = prune(pruneLambdaParams(bound))
-          assert(constraint eq savedConstraint)
-          val constraintsNarrowed = constraint ne savedConstraint
-
-          val res =
-            pbound.exists
-            && kindCompatible(param, pbound)
-            && (if fromBelow then addLowerBound(param, pbound) else addUpperBound(param, pbound))
-          // If we're in `ConstrainResult` mode, we don't want to commit to a
-          // set of constraints that would later prevent us from typechecking
-          // arguments, so if `pruneParams` had to narrow the constraints, we
-          // simply do not record any new constraint.
-          // Unlike in `TypeComparer#either`, the same reasoning does not apply
-          // to GADT mode because this code is never run on GADT constraints.
-          if ctx.mode.is(Mode.ConstrainResult) && constraintsNarrowed then
-            constraint = savedConstraint
-          res
-      }
+          pbound.exists
+          && kindCompatible(param, pbound)
+          && (if fromBelow then addLowerBound(param, pbound) else addUpperBound(param, pbound))
       finally addConstraintInvocations -= 1
     }
   }
