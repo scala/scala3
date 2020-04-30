@@ -26,6 +26,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def maxToTextRecursions: Int = 100
 
+  protected def showUniqueIds = ctx.settings.uniqid.value || Printer.debugPrintUnique
+
   protected final def limiter: MessageLimiter = ctx.property(MessageLimiter).get
 
   protected def controlled(op: => Text): Text = limiter.controlled(op)
@@ -248,14 +250,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** If -uniqid is set, the hashcode of the lambda type, after a # */
   protected def lambdaHash(pt: LambdaType): Text =
-    if (ctx.settings.uniqid.value)
+    if (showUniqueIds)
       try "#" + pt.hashCode
       catch { case ex: NullPointerException => "" }
     else ""
 
   /** If -uniqid is set, the unique id of symbol, after a # */
   protected def idString(sym: Symbol): String =
-    if (ctx.settings.uniqid.value || Printer.debugPrintUnique) "#" + sym.id else ""
+    if (showUniqueIds || Printer.debugPrintUnique) "#" + sym.id else ""
 
   def nameString(sym: Symbol): String =
     simpleNameString(sym) + idString(sym) // + "<" + (if (sym.exists) sym.owner else "") + ">"
