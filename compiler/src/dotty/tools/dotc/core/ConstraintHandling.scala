@@ -90,39 +90,22 @@ trait ConstraintHandling[AbstractContext] {
 
     /** Adjust the bound `tp` in the following ways:
      *
-     *   1. Any toplevel occurrences of the compared parameter `param` are
-     *      replaced by `Nothing` if bound is from below or `Any` otherwise.
-     *   2. Toplevel occurrences of TypeVars over TypeRefs in the current
-     *      constraint are dereferenced.
-     *   3. Toplevel occurrences of TypeRefs that are instantiated in the current
+     *   1. Toplevel occurrences of TypeRefs that are instantiated in the current
      *      constraint are also dereferenced.
-     *   4. Toplevel occurrences of ExprTypes lead to a `NoType` return, which
+     *   2. Toplevel occurrences of ExprTypes lead to a `NoType` return, which
      *      causes the addOneBound operation to fail.
      *
-     *   An occurrence is toplevel if it is the bound itself,
-     *   or the bound is a union or intersection, and the ocurrence is
-     *   toplevel in one of the operands of the `&` or `|`.
+     *   An occurrence is toplevel if it is the bound itself, or a term in some
+     *   combination of `&` or `|` types.
      */
     def adjust(tp: Type): Type = tp match
       case tp: AndOrType =>
         val p1 = adjust(tp.tp1)
         val p2 = adjust(tp.tp2)
         if p1.exists && p2.exists then tp.derivedAndOrType(p1, p2) else NoType
-      case tp: TypeParamRef =>
-        if constraint.contains(tp) then
-          constr.println(i"${if tp eq param then "stripping" else "keeping"} $tp from $rawBound, upper = $isUpper in $constraint")
-        if tp eq param then // (1)
-          if isUpper then defn.AnyType else defn.NothingType
-        else constraint.entry(tp) match  // (3)
-          case NoType => tp
-          case TypeBounds(lo, hi) => if lo eq hi then adjust(lo) else tp
-          case inst => adjust(inst)
-      case tp: TypeVar => // (2)
-        val underlying1 = adjust(tp.underlying)
-        if (underlying1 ne tp.underlying) || constraint.contains(tp.origin)
-        then underlying1
-        else tp
-      case tp: ExprType => // (4)
+      case tp: TypeVar if constraint.contains(tp.origin) =>
+        adjust(tp.underlying)
+      case tp: ExprType =>
         // ExprTypes are not value types, so type parameters should not
         // be instantiated to ExprTypes. A scenario where such an attempted
         // instantiation can happen is if we unify (=> T) => () with A => ()
@@ -468,7 +451,7 @@ trait ConstraintHandling[AbstractContext] {
      *  missing.
      */
     def avoidLambdaParams(tp: Type) =
-      if (comparedTypeLambdas.nonEmpty) {
+      if comparedTypeLambdas.nonEmpty then
         val approx = new ApproximatingTypeMap {
           if (!fromBelow) variance = -1
           def apply(t: Type): Type = t match {
@@ -480,7 +463,6 @@ trait ConstraintHandling[AbstractContext] {
           }
         }
         approx(tp)
-      }
       else tp
 
     def addParamBound(bound: TypeParamRef) =
