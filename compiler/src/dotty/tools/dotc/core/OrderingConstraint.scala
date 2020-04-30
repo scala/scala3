@@ -323,7 +323,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           case NoType => tp
           case TypeBounds(lo, hi) => if lo eq hi then recur(lo, fromBelow) else tp
           case inst => recur(inst, fromBelow)
-      case tp: TypeVar if false => // TODO: needed?
+      case tp: TypeVar =>
         val underlying1 = recur(tp.underlying, fromBelow)
         if underlying1 ne tp.underlying then underlying1 else tp
       case _ => tp
@@ -399,7 +399,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    */
   def replace(param: TypeParamRef, tp: Type)(implicit ctx: Context): OrderingConstraint =
     val replacement = tp.dealiasKeepAnnots.stripTypeVar
-    if param == replacement then this
+    if param == replacement then this.checkNonCyclic()
     else
       assert(replacement.isValueTypeOrLambda)
       var current =
@@ -518,7 +518,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       val TypeParamRef(binder, n) = tvar.origin
       if (binder eq tl) tvar.setOrigin(tl1.paramRefs(n))
     }
-    constr.println(i"renamd $this to $current")
+    constr.println(i"renamed $this to $current")
     current.checkNonCyclic()
   }
 
@@ -602,6 +602,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           case NoType =>
           case TypeBounds(lo, hi) => if lo eq hi then recur(lo)
           case inst => recur(inst)
+      case tp: TypeVar =>
+        recur(tp.underlying)
       case TypeBounds(lo, hi) =>
         recur(lo)
         recur(hi)
