@@ -887,7 +887,7 @@ trait Checking {
     if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !ctx.inInlineMethod then
       // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
       val purityLevel = if (sym.is(Final)) Idempotent else Pure
-      tpt.tpe.widenTermRefExpr match
+      tpt.tpe.widenTermRefExpr.dealias match
         case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
         case _ =>
           ctx.error(em"type of inline must be a known value", tree.sourcePos)
