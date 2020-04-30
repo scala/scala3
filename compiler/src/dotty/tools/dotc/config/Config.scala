@@ -13,7 +13,7 @@ object Config {
   /** When updating a constraint bound, check that the constrained parameter
    *  does not appear at the top-level of either of its bounds.
    */
-  final val checkConstraintsNonCyclic = false
+  final val checkConstraintsNonCyclic = true
 
   /** Check that each constraint resulting from a subtype test
    *  is satisfiable.
