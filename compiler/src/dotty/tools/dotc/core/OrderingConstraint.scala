@@ -263,7 +263,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private def normalizedType(tp: Type, paramBuf: mutable.ListBuffer[TypeParamRef],
       isUpper: Boolean)(implicit ctx: Context): Type =
     stripParams(tp, paramBuf, isUpper)
-      .orElse(if (isUpper) defn.AnyType else defn.NothingType)
+      .orElse(if (isUpper) defn.AnyKindType else defn.NothingType)
 
   def add(poly: TypeLambda, tvars: List[TypeVar])(implicit ctx: Context): This = {
     assert(!contains(poly))
