@@ -228,6 +228,25 @@ constant expressions in the sense defined by the [SLS §
 including _platform-specific_ extensions such as constant folding of pure
 numeric computations.
 
+An inline value must have a literal type such as `1` or `true`.
+```scala
+inline val four = 4
+// equivalent to
+inline val four: 4 = 4
+```
+
+It is also possible to have inline vals of types that do not have a syntax, such as `Short(4)`.
+
+```scala
+trait InlineConstants {
+  inline val myShort: Short
+}
+
+object Constants extends InlineConstants {
+  inline val myShort/*: Short(4)*/ = 4
+}
+```
+
 ## Transparent Inline Methods
 
 Inline methods can additionally be declared `transparent`.
