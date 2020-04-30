@@ -151,7 +151,7 @@ abstract class Constraint extends Showable {
   def & (other: Constraint, otherHasErrors: Boolean)(implicit ctx: Context): Constraint
 
   /** Check that no constrained parameter contains itself as a bound */
-  def checkNonCyclic()(implicit ctx: Context): Unit
+  def checkNonCyclic()(implicit ctx: Context): this.type
 
   /** Check that constraint only refers to TypeParamRefs bound by itself */
   def checkClosed()(implicit ctx: Context): Unit

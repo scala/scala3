@@ -26,7 +26,6 @@ object OrderingConstraint {
   /** A new constraint with given maps */
   private def newConstraint(boundsMap: ParamBounds, lowerMap: ParamOrdering, upperMap: ParamOrdering)(implicit ctx: Context) : OrderingConstraint = {
     val result = new OrderingConstraint(boundsMap, lowerMap, upperMap)
-    if (Config.checkConstraintsNonCyclic) result.checkNonCyclic()
     ctx.run.recordConstraintSize(result, result.boundsMap.size)
     result
   }
@@ -207,20 +206,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
 // ---------- Adding TypeLambdas --------------------------------------------------
 
-  /** The list of parameters P such that, for a fresh type parameter Q:
-   *
-   *    Q <: tp  implies  Q <: P      and isUpper = true, or
-   *    tp <: Q  implies  P <: Q      and isUpper = false
-   */
-  def dependentParams(tp: Type, isUpper: Boolean): List[TypeParamRef] = tp match {
-    case param: TypeParamRef if contains(param) =>
-      param :: (if (isUpper) upper(param) else lower(param))
-    case tp: AndType => dependentParams(tp.tp1, isUpper) | (dependentParams(tp.tp2, isUpper))
-    case tp: OrType  => dependentParams(tp.tp1, isUpper).intersect(dependentParams(tp.tp2, isUpper))
-    case _ =>
-      Nil
-  }
-
   /** The bound type `tp` without constrained parameters which are clearly
    *  dependent. A parameter in an upper bound is clearly dependent if it appears
    *  in a hole of a context H given by:
@@ -271,6 +256,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   /** The bound type `tp` without clearly dependent parameters.
    *  A top or bottom type if type consists only of dependent parameters.
+   *  TODO: try to do without normalization? It would mean it is more efficient
+   *  to pull out full bounds from a constraint.
    *  @param isUpper   If true, `bound` is an upper bound, else a lower bound.
    */
   private def normalizedType(tp: Type, paramBuf: mutable.ListBuffer[TypeParamRef],
@@ -307,11 +294,48 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       hiBuf.clear()
       i += 1
     }
-    if (Config.checkConstraintsNonCyclic) checkNonCyclic()
-    current
+    current.checkNonCyclic()
   }
 
 // ---------- Updates ------------------------------------------------------------
+
+  /** If `inst` is a TypeBounds, make sure it does not contain toplevel
+   *  references to `param`. Toplevel means: the term itself or a factor in some
+   *  combination of `&` or `|` types.
+   *  Any such references are replace by `Nothing` in the lower bound and `Any`
+   *  in the upper bound.
+   *  References can be direct or indirect through instantiations of other
+   *  parameters in the constraint.
+   */
+  private def ensureNonCyclic(param: TypeParamRef, inst: Type)(using Context): Type =
+
+    def recur(tp: Type, fromBelow: Boolean): Type = tp match
+      case tp: AndOrType =>
+        val r1 = recur(tp.tp1, fromBelow)
+        val r2 = recur(tp.tp2, fromBelow)
+        if (r1 eq tp.tp1) && (r2 eq tp.tp2) then tp
+        else if tp.isAnd then r1 & r2
+        else r1 | r2
+      case tp: TypeParamRef =>
+        if tp eq param then
+          if fromBelow then defn.NothingType else defn.AnyType
+        else entry(tp) match
+          case NoType => tp
+          case TypeBounds(lo, hi) => if lo eq hi then recur(lo, fromBelow) else tp
+          case inst => recur(inst, fromBelow)
+      case tp: TypeVar if false => // TODO: needed?
+        val underlying1 = recur(tp.underlying, fromBelow)
+        if underlying1 ne tp.underlying then underlying1 else tp
+      case _ => tp
+
+    inst match
+      case bounds: TypeBounds =>
+        bounds.derivedTypeBounds(
+          recur(bounds.lo, fromBelow = true),
+          recur(bounds.hi, fromBelow = false))
+      case _ =>
+        inst
+  end ensureNonCyclic
 
   /** Add the fact `param1 <: param2` to the constraint `current` and propagate
    *  `<:<` relationships between parameters ("edges") but not bounds.
@@ -328,115 +352,72 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       current2
     }
 
-  def addLess(param1: TypeParamRef, param2: TypeParamRef)(implicit ctx: Context): This =
-    order(this, param1, param2)
+  /** The list of parameters P such that, for a fresh type parameter Q:
+   *
+   *    Q <: tp  implies  Q <: P      and isUpper = true, or
+   *    tp <: Q  implies  P <: Q      and isUpper = false
+   */
+  private def dependentParams(tp: Type, isUpper: Boolean): List[TypeParamRef] = tp match
+    case param: TypeParamRef if contains(param) =>
+      param :: (if (isUpper) upper(param) else lower(param))
+    case tp: AndType if isUpper  =>
+      dependentParams(tp.tp1, isUpper) | (dependentParams(tp.tp2, isUpper))
+    case tp: OrType if !isUpper =>
+      dependentParams(tp.tp1, isUpper).intersect(dependentParams(tp.tp2, isUpper))
+    case _ =>
+      Nil
 
-  def updateEntry(current: This, param: TypeParamRef, tp: Type)(implicit ctx: Context): This = {
+  private def updateEntry(current: This, param: TypeParamRef, tp: Type)(implicit ctx: Context): This = {
     var current1 = boundsLens.update(this, current, param, tp)
     tp match {
       case TypeBounds(lo, hi) =>
-        for (p <- dependentParams(lo, isUpper = false))
+        for p <- dependentParams(lo, isUpper = false) do
           current1 = order(current1, p, param)
-        for (p <- dependentParams(hi, isUpper = true))
+        for p <- dependentParams(hi, isUpper = true) do
           current1 = order(current1, param, p)
       case _ =>
     }
     current1
   }
 
+  /** The public version of `updateEntry`. Guarantees that there are no cycles */
   def updateEntry(param: TypeParamRef, tp: Type)(implicit ctx: Context): This =
-    updateEntry(this, param, tp)
+    updateEntry(this, param, ensureNonCyclic(param, tp)).checkNonCyclic()
 
-  def unify(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: Context): This = {
+  def addLess(param1: TypeParamRef, param2: TypeParamRef)(implicit ctx: Context): This =
+    order(this, param1, param2).checkNonCyclic()
+
+  def unify(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: Context): This =
     val p1Bounds = (nonParamBounds(p1) & nonParamBounds(p2)).substParam(p2, p1)
     updateEntry(p1, p1Bounds).replace(p2, p1)
-  }
 
-// ---------- Removals ------------------------------------------------------------
+// ---------- Replacements and Removals -------------------------------------
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all top-level occurrences
-   *  of the parameter elsewhere in the constraint by type `tp`, or a conservative
-   *  approximation of it if that is needed to avoid cycles.
-   *  Occurrences nested inside a refinement or prefix are not affected.
-   *
-   *  The reason we need to substitute top-level occurrences of the parameter
-   *  is to deal with situations like the following. Say we have in the constraint
-   *
-   *      P <: Q & String
-   *      Q
-   *
-   *  and we replace Q with P. Then substitution gives
-   *
-   *      P <: P & String
-   *
-   *  this would be a cyclic constraint is therefore changed by `normalize` and
-   *  `recombine` below to
-   *
-   *      P <: String
-   *
-   *  approximating the RHS occurrence of P with Any. Without the substitution we
-   *  would not find out where we need to approximate. Occurrences of parameters
-   *  that are not top-level are not affected.
+   *  of the parameter elsewhere in the constraint by type `tp`.
    */
-  def replace(param: TypeParamRef, tp: Type)(implicit ctx: Context): OrderingConstraint = {
+  def replace(param: TypeParamRef, tp: Type)(implicit ctx: Context): OrderingConstraint =
     val replacement = tp.dealiasKeepAnnots.stripTypeVar
-    if (param == replacement) this
-    else {
+    if param == replacement then this
+    else
       assert(replacement.isValueTypeOrLambda)
-      val poly = param.binder
-      val idx = param.paramNum
-
-      def removeParam(ps: List[TypeParamRef]) =
-        ps.filterNot(p => p.binder.eq(poly) && p.paramNum == idx)
-
-      def replaceParam(tp: Type, atPoly: TypeLambda, atIdx: Int): Type = tp match {
-        case bounds @ TypeBounds(lo, hi) =>
-
-          def recombineAnd(and: AndType, op: (Type, Boolean) => Type, isUpper: Boolean): Type = {
-            val tp1 = op(and.tp1, isUpper)
-            val tp2 = op(and.tp2, isUpper)
-            if (tp1.eq(and.tp1) && tp2.eq(and.tp2)) and
-            else tp1 & tp2
-          }
-
-          def recombineOr(or: OrType, op: (Type, Boolean) => Type, isUpper: Boolean): Type = {
-            val tp1 = op(or.tp1, isUpper)
-            val tp2 = op(or.tp2, isUpper)
-            if (tp1.eq(or.tp1) && tp2.eq(or.tp2)) or
-            else tp1 | tp2
-          }
-
-          def normalize(tp: Type, isUpper: Boolean): Type = tp match {
-            case p: TypeParamRef if p.binder == atPoly && p.paramNum == atIdx =>
-              if (isUpper) defn.AnyType else defn.NothingType
-            case tp: AndType if isUpper  => recombineAnd(tp, normalize, isUpper)
-            case tp: OrType  if !isUpper => recombineOr (tp, normalize, isUpper)
-            case _ => tp
-          }
-
-          def replaceIn(tp: Type, isUpper: Boolean): Type = tp match {
-            case `param` => normalize(replacement, isUpper)
-            case tp: AndType if isUpper  => recombineAnd(tp, replaceIn, isUpper)
-            case tp: OrType  if !isUpper => recombineOr (tp, replaceIn, isUpper)
-            case _ => tp.substParam(param, replacement)
-          }
-
-          bounds.derivedTypeBounds(replaceIn(lo, isUpper = false), replaceIn(hi, isUpper = true))
-        case _ =>
-          tp.substParam(param, replacement)
-      }
-
       var current =
-        if (isRemovable(poly)) remove(poly) else updateEntry(param, replacement)
-      current.foreachParam {(p, i) =>
+        if isRemovable(param.binder) then remove(param.binder)
+        else updateEntry(this, param, replacement)
+
+      def removeParam(ps: List[TypeParamRef]) = ps.filter(param ne _)
+
+      def replaceParam(tp: Type, atPoly: TypeLambda, atIdx: Int): Type =
+        current.ensureNonCyclic(atPoly.paramRefs(atIdx), tp.substParam(param, replacement))
+
+      current.foreachParam { (p, i) =>
         current = boundsLens.map(this, current, p, i, replaceParam(_, p, i))
         current = lowerLens.map(this, current, p, i, removeParam)
         current = upperLens.map(this, current, p, i, removeParam)
       }
-      current
-    }
-  }
+      current.checkNonCyclic()
+  end replace
 
   def remove(pt: TypeLambda)(implicit ctx: Context): This = {
     def removeFromOrdering(po: ParamOrdering) = {
@@ -447,6 +428,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       po.remove(pt).mapValuesNow(removeFromBoundss)
     }
     newConstraint(boundsMap.remove(pt), removeFromOrdering(lowerMap), removeFromOrdering(upperMap))
+      .checkNonCyclic()
   }
 
   def isRemovable(pt: TypeLambda): Boolean = {
@@ -460,36 +442,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     allRemovable(paramCount(entries) - 1)
   }
 
-// ---------- Exploration --------------------------------------------------------
-
-  def domainLambdas: List[TypeLambda] = boundsMap.keys
-
-  def domainParams: List[TypeParamRef] =
-    for {
-      (poly, entries) <- boundsMap.toList
-      n <- 0 until paramCount(entries)
-      if entries(n).exists
-    }
-    yield poly.paramRefs(n)
-
-  def forallParams(p: TypeParamRef => Boolean): Boolean =
-    boundsMap.forallBinding { (poly, entries) =>
-      !0.until(paramCount(entries)).exists(i => isBounds(entries(i)) && !p(poly.paramRefs(i)))
-    }
-
-  def foreachParam(p: (TypeLambda, Int) => Unit): Unit =
-    boundsMap.foreachBinding { (poly, entries) =>
-      0.until(poly.paramNames.length).foreach(p(poly, _))
-    }
-
-  def foreachTypeVar(op: TypeVar => Unit): Unit =
-    boundsMap.foreachBinding { (poly, entries) =>
-      for (i <- 0 until paramCount(entries))
-        typeVar(entries, i) match {
-          case tv: TypeVar if !tv.inst.exists => op(tv)
-          case _ =>
-        }
-    }
+// ----------- Joins -----------------------------------------------------
 
   def & (other: Constraint, otherHasErrors: Boolean)(implicit ctx: Context): OrderingConstraint = {
 
@@ -566,7 +519,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       if (binder eq tl) tvar.setOrigin(tl1.paramRefs(n))
     }
     constr.println(i"renamd $this to $current")
-    current
+    current.checkNonCyclic()
   }
 
   def ensureFresh(tl: TypeLambda)(implicit ctx: Context): TypeLambda =
@@ -582,18 +535,36 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     }
     else tl
 
-  override def checkClosed()(implicit ctx: Context): Unit = {
-    def isFreeTypeParamRef(tp: Type) = tp match {
-      case TypeParamRef(binder: TypeLambda, _) => !contains(binder)
-      case _ => false
+// ---------- Exploration --------------------------------------------------------
+
+  def domainLambdas: List[TypeLambda] = boundsMap.keys
+
+  def domainParams: List[TypeParamRef] =
+    for {
+      (poly, entries) <- boundsMap.toList
+      n <- 0 until paramCount(entries)
+      if entries(n).exists
     }
-    def checkClosedType(tp: Type, where: String) =
-      if (tp != null)
-        assert(!tp.existsPart(isFreeTypeParamRef), i"unclosed constraint: $this refers to $tp in $where")
-    boundsMap.foreachBinding((_, tps) => tps.foreach(checkClosedType(_, "bounds")))
-    lowerMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "lower"))))
-    upperMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "upper"))))
-  }
+    yield poly.paramRefs(n)
+
+  def forallParams(p: TypeParamRef => Boolean): Boolean =
+    boundsMap.forallBinding { (poly, entries) =>
+      !0.until(paramCount(entries)).exists(i => isBounds(entries(i)) && !p(poly.paramRefs(i)))
+    }
+
+  def foreachParam(p: (TypeLambda, Int) => Unit): Unit =
+    boundsMap.foreachBinding { (poly, entries) =>
+      0.until(poly.paramNames.length).foreach(p(poly, _))
+    }
+
+  def foreachTypeVar(op: TypeVar => Unit): Unit =
+    boundsMap.foreachBinding { (poly, entries) =>
+      for (i <- 0 until paramCount(entries))
+        typeVar(entries, i) match {
+          case tv: TypeVar if !tv.inst.exists => op(tv)
+          case _ =>
+        }
+    }
 
   private var myUninstVars: mutable.ArrayBuffer[TypeVar] = _
 
@@ -612,13 +583,47 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     myUninstVars
   }
 
-// ---------- Cyclic checking -------------------------------------------
+// ---------- Checking -----------------------------------------------
 
-  def checkNonCyclic()(implicit ctx: Context): Unit =
-    domainParams.foreach(checkNonCyclic)
+  def checkNonCyclic()(implicit ctx: Context): this.type =
+    if Config.checkConstraintsNonCyclic then domainParams.foreach(checkNonCyclic)
+    this
 
   private def checkNonCyclic(param: TypeParamRef)(implicit ctx: Context): Unit =
-    assert(!isLess(param, param), i"cyclic constraint involving $param in $this")
+    assert(!isLess(param, param), i"cyclic ordering involving $param in $this, upper = ${upper(param)}")
+
+    def recur(tp: Type)(using Context): Unit = tp match
+      case tp: AndOrType =>
+        recur(tp.tp1)
+        recur(tp.tp2)
+      case tp: TypeParamRef =>
+        assert(tp ne param, i"cyclic bound for $param: ${entry(param)} in $this")
+        entry(tp) match
+          case NoType =>
+          case TypeBounds(lo, hi) => if lo eq hi then recur(lo)
+          case inst => recur(inst)
+      case TypeBounds(lo, hi) =>
+        recur(lo)
+        recur(hi)
+      case _ =>
+
+    recur(entry(param))
+  end checkNonCyclic
+
+  override def checkClosed()(using Context): Unit =
+
+    def isFreeTypeParamRef(tp: Type) = tp match
+      case TypeParamRef(binder: TypeLambda, _) => !contains(binder)
+      case _ => false
+
+    def checkClosedType(tp: Type, where: String) =
+      if tp != null then
+        assert(!tp.existsPart(isFreeTypeParamRef), i"unclosed constraint: $this refers to $tp in $where")
+
+    boundsMap.foreachBinding((_, tps) => tps.foreach(checkClosedType(_, "bounds")))
+    lowerMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "lower"))))
+    upperMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "upper"))))
+  end checkClosed
 
 // ---------- Invalidation -------------------------------------------
 
@@ -631,6 +636,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 // ---------- toText -----------------------------------------------------
 
   override def toText(printer: Printer): Text = {
+    //Printer.debugPrintUnique = true
     def entryText(tp: Type) = tp match {
       case tp: TypeBounds =>
         tp.toText(printer)
@@ -663,6 +669,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
               Text(ups.map(_.toText(printer)), ", ")
         Text(deps, "\n")
       }
+    //Printer.debugPrintUnique = false
     Text.lines(List(header, uninstVarsText, constrainedText, boundsText, orderingText, ")"))
   }
 
