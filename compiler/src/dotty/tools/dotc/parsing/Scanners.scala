@@ -900,7 +900,10 @@ object Scanners {
 // Lookahead ---------------------------------------------------------------
 
     /** The next token after this one.
+     *  The token is computed via fetchToken, so complex two word
+     *  tokens such as CASECLASS are not recognized.
      *  Newlines and indent/unindent tokens are skipped.
+     *
      */
      def lookahead: TokenData =
       if next.token == EMPTY then

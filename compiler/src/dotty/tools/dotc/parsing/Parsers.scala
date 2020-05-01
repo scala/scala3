@@ -1045,6 +1045,9 @@ object Parsers {
         if in.token == MATCH then matchClause(t) else Select(t, ident())
       }
 
+    def idSelector(t: Tree): Tree =
+      atSpan(startOffset(t), in.offset) { Select(t, ident()) }
+
     /** Selectors ::= id { `.' id }
      *
      *  Accept `.' separated identifiers acting as a selectors on given tree `t`.
@@ -1066,58 +1069,52 @@ object Parsers {
       if (in.token == DOT) { in.nextToken(); selectors(t, finish) }
       else t
 
+    def dotSelections(t: Tree): Tree =
+      if (in.token == DOT) { in.nextToken(); dotSelections(t) }
+      else t
+
     private val id: Tree => Tree = x => x
 
-    /** Path       ::= StableId
-     *              |  [id `.'] this
-     *
-     *  @param thisOK   If true, the path can end with the keyword `this`.
-     *                  If false, another selection is required after the `this`.
-     *  @param finish   An alternative parse in case the token following a `.' is not an identifier.
-     *                  If the alternative does not apply, its tree argument is returned unchanged.
+    /** SimpleRef  ::= id
+     *              |  [id ‘.’] ‘this’
+     *              |  [id ‘.’] ‘super’ [ClassQualifier] ‘.’ id
      */
-    def path(thisOK: Boolean, finish: Tree => Tree = id): Tree = {
+    def simpleRef(): Tree =
       val start = in.offset
-      def handleThis(qual: Ident) = {
+
+      def handleThis(qual: Ident) =
         in.nextToken()
-        val t = atSpan(start) { This(qual) }
-        if (!thisOK && in.token != DOT) syntaxError(DanglingThisInPath(), t.span)
-        dotSelectors(t, finish)
-      }
-      def handleSuper(qual: Ident) = {
+        atSpan(start) { This(qual) }
+
+      def handleSuper(qual: Ident) =
         in.nextToken()
         val mix = mixinQualifierOpt()
         val t = atSpan(start) { Super(This(qual), mix) }
         accept(DOT)
-        dotSelectors(selector(t), finish)
-      }
-      if (in.token == THIS) handleThis(EmptyTypeIdent)
-      else if (in.token == SUPER) handleSuper(EmptyTypeIdent)
-      else {
+        idSelector(t)
+
+      if in.token == THIS then handleThis(EmptyTypeIdent)
+      else if in.token == SUPER then handleSuper(EmptyTypeIdent)
+      else
         val t = termIdent()
-        if (in.token == DOT) {
+        if in.token == DOT then
           def qual = cpy.Ident(t)(t.name.toTypeName)
-          in.nextToken()
-          if (in.token == THIS) handleThis(qual)
-          else if (in.token == SUPER) handleSuper(qual)
-          else selectors(t, finish)
-        }
+          in.lookahead.token match
+            case THIS =>
+              in.nextToken()
+              handleThis(qual)
+            case SUPER =>
+              in.nextToken()
+              handleSuper(qual)
+            case _ => t
         else t
-      }
-    }
+    end simpleRef
 
     /** MixinQualifier ::= `[' id `]'
     */
     def mixinQualifierOpt(): Ident =
       if (in.token == LBRACKET) inBrackets(atSpan(in.offset) { typeIdent() })
       else EmptyTypeIdent
-
-    /** StableId ::= id
-     *            |  Path `.' id
-     *            |  [id '.'] super [`[' id `]']`.' id
-     */
-    def stableId(): Tree =
-      path(thisOK = false)
 
     /** QualId ::= id {`.' id}
     */
@@ -1577,8 +1574,8 @@ object Parsers {
 
     /** SimpleType       ::=  SimpleType TypeArgs
      *                     |  SimpleType `#' id
-     *                     |  StableId
-     *                     |  Path `.' type
+     *                     |  Singleton `.' id
+     *                     |  Singleton `.' type
      *                     |  `(' ArgTypes `)'
      *                     |  `_' TypeBounds
      *                     |  Refinement
@@ -1613,18 +1610,22 @@ object Parsers {
       }
       else if (isSplice)
         splice(isType = true)
-      else path(thisOK = false, handleSingletonType) match {
-        case r @ SingletonTypeTree(_) => r
-        case r => convertToTypeId(r)
-      }
+      else
+        singletonCompletion(simpleRef())
     }
 
-    val handleSingletonType: Tree => Tree = t =>
-      if (in.token == TYPE) {
+    /** Singleton ::=  SimpleRef
+     *              |  Singleton ‘.’ id
+     */
+    def singletonCompletion(t: Tree): Tree =
+      if in.token == DOT then
         in.nextToken()
-        atSpan(startOffset(t)) { SingletonTypeTree(t) }
-      }
-      else t
+        if in.token == TYPE then
+          in.nextToken()
+          atSpan(startOffset(t)) { SingletonTypeTree(t) }
+        else
+          singletonCompletion(idSelector(t))
+      else convertToTypeId(t)
 
     private def simpleTypeRest(t: Tree): Tree = in.token match {
       case HASH => simpleTypeRest(typeProjection(t))
@@ -2207,7 +2208,7 @@ object Parsers {
      *                 |  SimpleExpr1 [`_`]
      *  SimpleExpr1   ::= literal
      *                 |  xmlLiteral
-     *                 |  Path
+     *                 |  SimpleRef
      *                 |  `(` [ExprsInParens] `)`
      *                 |  SimpleExpr `.` id
      *                 |  SimpleExpr `.` MatchClause
@@ -2223,9 +2224,9 @@ object Parsers {
           xmlLiteral()
         case IDENTIFIER =>
           if (isSplice) splice(isType = false)
-          else path(thisOK = true)
+          else simpleRef()
         case BACKQUOTED_IDENT | THIS | SUPER =>
-          path(thisOK = true)
+          simpleRef()
         case USCORE =>
           val start = in.skipToken()
           val pname = WildcardParamName.fresh()
@@ -2658,17 +2659,16 @@ object Parsers {
      *                    |  XmlPattern
      *                    |  `(' [Patterns] `)'
      *                    |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
-     *  SimplePattern1   ::= Path
+     *  SimplePattern1   ::= SimpleRef
      *                    |  SimplePattern1 `.' id
      *  PatVar           ::= id
      *                    |  `_'
      */
     val simplePattern: () => Tree = () => in.token match {
-      case IDENTIFIER | BACKQUOTED_IDENT | THIS =>
-        path(thisOK = true) match {
+      case IDENTIFIER | BACKQUOTED_IDENT | THIS | SUPER =>
+        simpleRef() match
           case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(startOffset(id))
           case t => simplePatternRest(t)
-        }
       case USCORE =>
         val wildIdent = wildcardIdent()
 
@@ -2694,14 +2694,17 @@ object Parsers {
         }
     }
 
-    def simplePatternRest(t: Tree): Tree = {
-      var p = t
-      if (in.token == LBRACKET)
-        p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false)) }
-      if (in.token == LPAREN)
-        p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
-      p
-    }
+    def simplePatternRest(t: Tree): Tree =
+      if in.token == DOT then
+        in.nextToken()
+        simplePatternRest(idSelector(t))
+      else
+        var p = t
+        if (in.token == LBRACKET)
+          p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false)) }
+        if (in.token == LPAREN)
+          p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
+        p
 
     /** Patterns          ::=  Pattern [`,' Pattern]
      */
@@ -3088,7 +3091,7 @@ object Parsers {
             ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
       Import(tree, selectors)
 
-    /**  ImportExpr ::= StableId ‘.’ ImportSpec
+    /**  ImportExpr ::= SimpleRef {‘.’ id} ‘.’ ImportSpec
      *   ImportSpec  ::=  id
      *                 | ‘_’
      *                 | ‘{’ ImportSelectors) ‘}’
@@ -3135,26 +3138,24 @@ object Parsers {
             Nil
         selector :: rest
 
-      val handleImport: Tree => Tree = tree =>
+      def importSelection(qual: Tree): Tree =
+        accept(DOT)
         in.token match
           case USCORE =>
-            mkTree(tree, ImportSelector(wildcardSelectorId()) :: Nil)
+            mkTree(qual, ImportSelector(wildcardSelectorId()) :: Nil)
           case LBRACE =>
-            mkTree(tree, inBraces(importSelectors(idOK = true)))
+            mkTree(qual, inBraces(importSelectors(idOK = true)))
           case _ =>
-            tree
+            val start = in.offset
+            val name = ident()
+            if in.token == DOT then
+              importSelection(atSpan(startOffset(qual), start) { Select(qual, name) })
+            else
+              atSpan(startOffset(qual)) {
+                mkTree(qual, ImportSelector(atSpan(start) { Ident(name) }) :: Nil)
+              }
 
-      () => {
-        val p = path(thisOK = false, handleImport)
-        p match
-          case _: Import | _: Export => p
-          case sel @ Select(qual, name) =>
-            val selector = ImportSelector(atSpan(pointOffset(sel)) { Ident(name) })
-            mkTree(qual, selector :: Nil).withSpan(sel.span)
-          case t =>
-            accept(DOT)
-            mkTree(t, ImportSelector(Ident(nme.WILDCARD)) :: Nil)
-      }
+      () => importSelection(simpleRef())
     }
 
     def posMods(start: Int, mods: Modifiers): Modifiers = {
