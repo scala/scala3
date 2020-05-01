@@ -155,8 +155,7 @@ final class ProperGadtConstraint private(
           else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
           else addLess(boundTvar.origin, symTvar.origin)
         case bound =>
-          if (isUpper) addUpperBound(symTvar.origin, bound)
-          else addLowerBound(symTvar.origin, bound)
+          addBoundTransitively(symTvar.origin, bound, isUpper)
       }
     ).reporting({
       val descr = if (isUpper) "upper" else "lower"
@@ -271,7 +270,7 @@ final class ProperGadtConstraint private(
 
   // ---- Debug ------------------------------------------------------------
 
-  override def constr_println(msg: => String): Unit = gadtsConstr.println(msg)
+  override def constr = gadtsConstr
 
   override def toText(printer: Printer): Texts.Text = constraint.toText(printer)
 

@@ -8,7 +8,7 @@ import Symbols._
 import Decorators._
 import Flags._
 import config.Config
-import config.Printers.{constr, typr}
+import config.Printers.typr
 import dotty.tools.dotc.reporting.trace
 
 /** Methods for adding constraints and solving them.
@@ -24,8 +24,7 @@ import dotty.tools.dotc.reporting.trace
  */
 trait ConstraintHandling[AbstractContext] {
 
-  def constr_println(msg: => String): Unit = constr.println(msg)
-  def typr_println(msg: => String): Unit = typr.println(msg)
+  def constr: config.Printers.Printer = config.Printers.constr
 
   implicit def ctx(implicit ac: AbstractContext): Context
 
@@ -86,7 +85,41 @@ trait ConstraintHandling[AbstractContext] {
   def fullBounds(param: TypeParamRef)(implicit actx: AbstractContext): TypeBounds =
     nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
-  protected def addOneBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(implicit actx: AbstractContext): Boolean =
+  protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using AbstractContext): Boolean =
+    if !constraint.contains(param) then true
+    else
+      val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
+      val equalBounds = (if isUpper then lo else hi) eq bound
+      if equalBounds
+        && !bound.existsPart(bp => bp.isInstanceOf[WildcardType] || (bp eq param))
+      then
+        // The narrowed bounds are equal and do not contain wildcards,
+        // so we can remove `param` from the constraint.
+        // (Handling wildcards requires choosing a bound, but we don't know which
+        // bound to choose here, this is handled in `ConstraintHandling#approximation`)
+        constraint = constraint.replace(param, bound)
+        true
+      else
+        // Narrow one of the bounds of type parameter `param`
+        // If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
+        // that `param >: bound`.
+        val narrowedBounds =
+          val saved = homogenizeArgs
+          homogenizeArgs = Config.alignArgsInAnd
+          try
+            if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
+            else oldBounds.derivedTypeBounds(lo | bound, hi)
+          finally homogenizeArgs = saved
+        val c1 = constraint.updateEntry(param, narrowedBounds)
+        (c1 eq constraint)
+        || {
+          constraint = c1
+          val TypeBounds(lo, hi) = constraint.entry(param)
+          isSubType(lo, hi)
+        }
+  end addOneBound
+
+  protected def addBoundTransitively(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(implicit actx: AbstractContext): Boolean =
 
     /** Adjust the bound `tp` in the following ways:
      *
@@ -119,69 +152,19 @@ trait ConstraintHandling[AbstractContext] {
       case _ =>
         tp
 
-    if !constraint.contains(param) then true
-    else
-      val bound = adjust(rawBound)
-
-      val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
-      val equalBounds = isUpper && (lo eq bound) || !isUpper && (bound eq hi)
-      if !bound.exists then false
-      else if equalBounds
-        && !bound.existsPart(bp => bp.isInstanceOf[WildcardType] || (bp eq param))
-      then
-        // The narrowed bounds are equal and do not contain wildcards,
-        // so we can remove `param` from the constraint.
-        // (Handling wildcards requires choosing a bound, but we don't know which
-        // bound to choose here, this is handled in `ConstraintHandling#approximation`)
-        constraint = constraint.replace(param, bound)
-        true
-      else
-        // Narrow one of the bounds of type parameter `param`
-        // If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
-        // that `param >: bound`.
-        val narrowedBounds =
-          val saved = homogenizeArgs
-          homogenizeArgs = Config.alignArgsInAnd
-          try
-            if (isUpper) oldBounds.derivedTypeBounds(lo, hi & bound)
-            else oldBounds.derivedTypeBounds(lo | bound, hi)
-          finally homogenizeArgs = saved
-        val c1 = constraint.updateEntry(param, narrowedBounds)
-        (c1 eq constraint) || {
-          constraint = c1
-          val TypeBounds(lo, hi) = constraint.entry(param)
-          isSubType(lo, hi)
-        }
-  end addOneBound
-
-  private def location(implicit ctx: Context) = "" // i"in ${ctx.typerState.stateChainStr}" // use for debugging
-
-  protected def addUpperBound(param: TypeParamRef, bound: Type)(implicit actx: AbstractContext): Boolean = {
-    def description = i"constraint $param <: $bound to\n$constraint"
-    if (bound.isRef(defn.NothingClass) && ctx.typerState.isGlobalCommittable) {
-      def msg = s"!!! instantiated to Nothing: $param, constraint = ${constraint.show}"
-      if (Config.failOnInstantiationToNothing) assert(false, msg)
+    def description = i"constraint $param ${if isUpper then "<:" else ":>"} $rawBound to\n$constraint"
+    constr.println(i"adding $description$location")
+    if isUpper && rawBound.isRef(defn.NothingClass) && ctx.typerState.isGlobalCommittable then
+      def msg = i"!!! instantiated to Nothing: $param, constraint = $constraint"
+      if Config.failOnInstantiationToNothing
+      then assert(false, msg)
       else ctx.log(msg)
-    }
-    constr_println(i"adding $description$location")
-    val lower = constraint.lower(param)
-    val res =
-      addOneBound(param, bound, isUpper = true) &&
-      lower.forall(addOneBound(_, bound, isUpper = true))
-    constr_println(i"added $description = $res$location")
-    res
-  }
-
-  protected def addLowerBound(param: TypeParamRef, bound: Type)(implicit actx: AbstractContext): Boolean = {
-    def description = i"constraint $param >: $bound to\n$constraint"
-    constr_println(i"adding $description")
-    val upper = constraint.upper(param)
-    val res =
-      addOneBound(param, bound, isUpper = false) &&
-      upper.forall(addOneBound(_, bound, isUpper = false))
-    constr_println(i"added $description = $res$location")
-    res
-  }
+    def others = if isUpper then constraint.lower(param) else constraint.upper(param)
+    val bound = adjust(rawBound)
+    bound.exists
+    && addOneBound(param, bound, isUpper) && others.forall(addOneBound(_, bound, isUpper))
+        .reporting(i"added $description = $result$location", constr)
+  end addBoundTransitively
 
   protected def addLess(p1: TypeParamRef, p2: TypeParamRef)(implicit actx: AbstractContext): Boolean = {
     def description = i"ordering $p1 <: $p2 to\n$constraint"
@@ -192,20 +175,22 @@ trait ConstraintHandling[AbstractContext] {
         val up2 = p2 :: constraint.exclusiveUpper(p2, p1)
         val lo1 = constraint.nonParamBounds(p1).lo
         val hi2 = constraint.nonParamBounds(p2).hi
-        constr_println(i"adding $description down1 = $down1, up2 = $up2$location")
+        constr.println(i"adding $description down1 = $down1, up2 = $up2$location")
         constraint = constraint.addLess(p1, p2)
         down1.forall(addOneBound(_, hi2, isUpper = true)) &&
         up2.forall(addOneBound(_, lo1, isUpper = false))
       }
-    constr_println(i"added $description = $res$location")
+    constr.println(i"added $description = $res$location")
     res
   }
+
+  def location(implicit ctx: Context) = "" // i"in ${ctx.typerState.stateChainStr}" // use for debugging
 
   /** Make p2 = p1, transfer all bounds of p2 to p1
    *  @pre  less(p1)(p2)
    */
   private def unify(p1: TypeParamRef, p2: TypeParamRef)(implicit actx: AbstractContext): Boolean = {
-    constr_println(s"unifying $p1 $p2")
+    constr.println(s"unifying $p1 $p2")
     assert(constraint.isLess(p1, p2))
     val down = constraint.exclusiveLower(p2, p1)
     val up = constraint.exclusiveUpper(p1, p2)
@@ -301,7 +286,7 @@ trait ConstraintHandling[AbstractContext] {
       case _: TypeBounds =>
         val bound = if (fromBelow) fullLowerBound(param) else fullUpperBound(param)
         val inst = avoidParam(bound)
-        typr_println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
+        typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
         inst
       case inst =>
         assert(inst.exists, i"param = $param\nconstraint = $constraint")
@@ -407,7 +392,7 @@ trait ConstraintHandling[AbstractContext] {
             val upper = constraint.upper(param)
             if lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass)
                || upper.nonEmpty && !bounds.hi.isAny
-            then constr_println(i"INIT*** $tl")
+            then constr.println(i"INIT*** $tl")
             lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
               upper.forall(addOneBound(_, bounds.lo, isUpper = false))
           case _ =>
@@ -491,8 +476,7 @@ trait ConstraintHandling[AbstractContext] {
           addParamBound(bound)
         case _ =>
           val pbound = avoidLambdaParams(bound)
-          kindCompatible(param, pbound)
-          && (if fromBelow then addLowerBound(param, pbound) else addUpperBound(param, pbound))
+          kindCompatible(param, pbound) && addBoundTransitively(param, pbound, !fromBelow)
       finally addConstraintInvocations -= 1
     }
   end addConstraint
