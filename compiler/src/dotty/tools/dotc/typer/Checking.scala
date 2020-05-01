@@ -887,17 +887,20 @@ trait Checking {
    */
   def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Tree = {
     if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !ctx.inInlineMethod then
-      tree.tpe.widenTermRefExpr.dealias match
-        case tp: ConstantType =>
-          // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
-          val purityLevel = if (sym.is(Final)) Idempotent else Pure
-          if !(exprPurity(tree) >= purityLevel) then
-            ctx.error("inline value must be pure", tree.sourcePos)
-          if tree.tpe =:= tpt.tpe then tpt
-          else TypeTree(tree.tpe).withSpan(tpt.span)
+      // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
+      val purityLevel = if (sym.is(Final)) Idempotent else Pure
+      if !(exprPurity(tree) >= purityLevel) then
+        ctx.error("inline value must be pure", tree.sourcePos)
+        tpt
+      else tpt.tpe.widenTermRefExpr.dealias match
+        case tp: ConstantType => tpt
         case _ =>
-          ctx.error("inline value must have a literal constant type", tree.sourcePos)
-          tpt
+          if sym.is(Transparent)  then
+            TypeTree(tree.tpe).withSpan(tpt.span)
+          else
+            val pos = if tpt.span.isZeroExtent then tree.sourcePos else tpt.sourcePos
+            ctx.error("inline value must have a literal constant type", pos)
+            tpt
     else
       tpt
   }
