@@ -7,6 +7,7 @@ import DenotTransformers.SymTransformer
 import Flags._
 import SymDenotations._
 import Symbols._
+import Types._
 import typer.RefChecks
 import MegaPhase.MiniPhase
 import ast.tpd
@@ -34,19 +35,26 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
 
   override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
     if (tree.fun.tpe.widen.isErasedMethod)
-      cpy.Apply(tree)(tree.fun, tree.args.map(arg => ref(defn.Predef_undefined)))
+      cpy.Apply(tree)(tree.fun, tree.args.map(trivialErasedTree))
     else tree
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
     if (tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty)
-      cpy.ValDef(tree)(rhs = ref(defn.Predef_undefined))
+      cpy.ValDef(tree)(rhs = trivialErasedTree(tree))
     else tree
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree =
     if (tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty)
-      cpy.DefDef(tree)(rhs = ref(defn.Predef_undefined))
+      cpy.DefDef(tree)(rhs = trivialErasedTree(tree))
     else tree
+
+  private def trivialErasedTree(tree: Tree)(using Context): Tree =
+    tree.tpe.widenTermRefExpr.dealias match
+      case ConstantType(c) => Literal(c)
+      case _ => ref(defn.Predef_undefined)
+
 }
+
 object PruneErasedDefs {
   val name: String = "pruneErasedDefs"
 }
