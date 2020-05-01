@@ -1572,60 +1572,61 @@ object Parsers {
         if (isType) TypSplice(expr) else Splice(expr)
       }
 
-    /** SimpleType       ::=  SimpleType TypeArgs
-     *                     |  SimpleType `#' id
-     *                     |  Singleton `.' id
-     *                     |  Singleton `.' type
-     *                     |  `(' ArgTypes `)'
-     *                     |  `_' TypeBounds
-     *                     |  Refinement
-     *                     |  Literal
-     *                     |  ‘$’ ‘{’ Block ‘}’
+    /**  SimpleType      ::=  SimpleLiteral
+     *                     |  ‘?’ SubtypeBounds
+     *                     |  SimpleType1
      */
-    def simpleType(): Tree = simpleTypeRest {
-      if (in.token == LPAREN)
-        atSpan(in.offset) {
-          makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true)))
-        }
-      else if (in.token == LBRACE)
-        atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
-      else if (isSimpleLiteral) { SingletonTypeTree(literal(inType = true)) }
+    def simpleType(): Tree =
+      if isSimpleLiteral then
+        SingletonTypeTree(literal(inType = true))
       else if isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token) then
         val start = in.offset
         in.nextToken()
         SingletonTypeTree(literal(negOffset = start, inType = true))
-      else if (in.token == USCORE) {
+      else if in.token == USCORE then
         if sourceVersion.isAtLeast(`3.1`) then
           deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
           patch(source, Span(in.offset, in.offset + 1), "?")
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
-      }
-      else if (isIdent(nme.?)) {
+      else if isIdent(nme.?) then
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
-      }
-      else if (isIdent(nme.*) && ctx.settings.YkindProjector.value) {
+      else if isIdent(nme.*) && ctx.settings.YkindProjector.value then
         typeIdent()
-      }
+      else
+        simpleType1()
+
+    /** SimpleType1      ::=  id
+     *                     |  Singleton `.' id
+     *                     |  Singleton `.' type
+     *                     |  ‘(’ ArgTypes ‘)’
+     *                     |  Refinement
+     *                     |  ‘$’ ‘{’ Block ‘}’
+     *                     |  SimpleType1 TypeArgs
+     *                     |  SimpleType1 `#' id
+     */
+    def simpleType1() = simpleTypeRest {
+      if in.token == LPAREN then
+        atSpan(in.offset) {
+          makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true)))
+        }
+      else if in.token == LBRACE then
+        atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
       else if (isSplice)
         splice(isType = true)
       else
+        def singletonCompletion(t: Tree): Tree =
+          if in.token == DOT then
+            in.nextToken()
+            if in.token == TYPE then
+              in.nextToken()
+              atSpan(startOffset(t)) { SingletonTypeTree(t) }
+            else
+              singletonCompletion(idSelector(t))
+          else convertToTypeId(t)
         singletonCompletion(simpleRef())
     }
-
-    /** Singleton ::=  SimpleRef
-     *              |  Singleton ‘.’ id
-     */
-    def singletonCompletion(t: Tree): Tree =
-      if in.token == DOT then
-        in.nextToken()
-        if in.token == TYPE then
-          in.nextToken()
-          atSpan(startOffset(t)) { SingletonTypeTree(t) }
-        else
-          singletonCompletion(idSelector(t))
-      else convertToTypeId(t)
 
     private def simpleTypeRest(t: Tree): Tree = in.token match {
       case HASH => simpleTypeRest(typeProjection(t))
@@ -3630,13 +3631,13 @@ object Parsers {
 
 /* -------- TEMPLATES ------------------------------------------- */
 
-    /** SimpleConstrApp  ::=  AnnotType {ParArgumentExprs}
+    /** ConstrApp  ::=  SimpleType1 {Annotation} {ParArgumentExprs}
      */
-    val constrApp: () => Tree = () => {
-      val t = rejectWildcardType(annotType(), fallbackTree = Ident(nme.ERROR))
-        // Using Ident(nme.ERROR) to avoid causing cascade errors on non-user-written code
+    val constrApp: () => Tree = () =>
+      val t = rejectWildcardType(annotTypeRest(simpleType1()),
+        fallbackTree = Ident(tpnme.ERROR))
+        // Using Ident(tpnme.ERROR) to avoid causing cascade errors on non-user-written code
       if in.token == LPAREN then parArgumentExprss(wrapNew(t)) else t
-    }
 
     /** ConstrApps  ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
      */
