@@ -1002,14 +1002,9 @@ object SymDenotations {
     /** Is this a Scala 2 macro */
     final def isScala2Macro(implicit ctx: Context): Boolean = is(Macro) && symbol.owner.is(Scala2x)
 
-    /** An erased value or an inline method.
-     */
+    /** An erased value or an erased inline method or field */
     def isEffectivelyErased(implicit ctx: Context): Boolean =
       is(Erased) || is(Inline) && !isRetainedInline && !hasAnnotation(defn.ScalaStaticAnnot)
-      // Do not mark local inline vals as erased. Currently some inline val references do not get
-      // fully inlined and then would fail the erased check.
-      // TODO: remove this condition when #8842 and #8843 are fixed
-      && (owner.isClass || is(Method))
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,
