@@ -1847,6 +1847,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Flags_Lazy: Flags = core.Flags.Lazy
   def Flags_Override: Flags = core.Flags.Override
   def Flags_Inline: Flags = core.Flags.Inline
+  def Flags_Transparent: Flags = core.Flags.Transparent
   def Flags_Macro: Flags = core.Flags.Macro
   def Flags_Static: Flags = core.Flags.JavaStatic
   def Flags_JavaDefined: Flags = core.Flags.JavaDefined

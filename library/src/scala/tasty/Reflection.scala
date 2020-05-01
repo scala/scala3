@@ -2607,6 +2607,9 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     /** Is this symbol `inline` */
     def Inline: Flags = internal.Flags_Inline
 
+    /** Is this symbol a `transparent` */
+    def Transparent: Flags = internal.Flags_Transparent
+
     /** Is this symbol marked as a macro. An inline method containing toplevel splices */
     def Macro: Flags = internal.Flags_Macro
 

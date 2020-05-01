@@ -204,9 +204,9 @@ object PrepareInlineable {
   def isLocal(sym: Symbol, inlineMethod: Symbol)(using Context): Boolean =
     isLocalOrParam(sym, inlineMethod) && !(sym.is(Param) && sym.owner == inlineMethod)
 
-  /** The type ascription `rhs: tpt`, unless `original` is `transparent`. */
-  def wrapRHS(original: untpd.DefDef, tpt: Tree, rhs: Tree)(using Context): Tree =
-    if original.mods.hasMod(classOf[untpd.Mod.Transparent]) then rhs
+  /** The type ascription `rhs: tpt`, unless `sym` is `transparent`. */
+  def wrapRHS(sym: Symbol, tpt: Tree, rhs: Tree)(using Context): Tree =
+    if sym.is(Transparent) then rhs
     else Typed(rhs, tpt)
 
   /** Register inline info for given inlineable method `sym`.

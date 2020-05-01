@@ -34,6 +34,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     if (flags.is(Flags.Lazy)) flagList += "lazy"
     if (flags.is(Flags.Override)) flagList += "override"
     if (flags.is(Flags.Inline)) flagList += "inline"
+    if (flags.is(Flags.Transparent)) flagList += "transparent"
     if (flags.is(Flags.Macro)) flagList += "macro"
     if (flags.is(Flags.JavaDefined)) flagList += "javaDefined"
     if (flags.is(Flags.Static)) flagList += "javaStatic"

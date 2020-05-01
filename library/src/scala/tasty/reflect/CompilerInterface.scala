@@ -1397,6 +1397,7 @@ trait CompilerInterface {
   def Flags_Lazy: Flags
   def Flags_Override: Flags
   def Flags_Inline: Flags
+  def Flags_Transparent: Flags
   def Flags_Macro: Flags
   def Flags_Static: Flags
   def Flags_JavaDefined: Flags

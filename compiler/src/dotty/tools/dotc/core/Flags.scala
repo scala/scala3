@@ -347,8 +347,11 @@ object Flags {
   /** Labeled with `erased` modifier (erased value)  */
   val (_, Erased @ _, _) = newFlags(42, "erased")
 
+  /** Labelled with `transparent` modifier */
+  val (Transparent @ _, _, _) = newFlags(43, "transparent")
+
   /** An opaque type alias or a class containing one */
-  val (Opaque @ _, _, _) = newFlags(43, "opaque")
+  val (Opaque @ _, _, _) = newFlags(44, "opaque")
 
 
   // ------------ Flags following this one are not pickled ----------------------------------
