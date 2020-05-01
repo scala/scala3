@@ -326,7 +326,15 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       case tp: TypeVar =>
         val underlying1 = recur(tp.underlying, fromBelow)
         if underlying1 ne tp.underlying then underlying1 else tp
-      case _ => tp
+      case tp: AnnotatedType =>
+        val parent1 = recur(tp.parent, fromBelow)
+        if parent1 ne tp.parent then tp.derivedAnnotatedType(parent1, tp.annot) else tp
+      case _ =>
+        val tp1 = tp.dealiasKeepAnnots
+        if tp1 ne tp then
+          val tp2 = recur(tp1, fromBelow)
+          if tp2 ne tp1 then tp2 else tp
+        else tp
 
     inst match
       case bounds: TypeBounds =>
@@ -608,6 +616,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         recur(lo)
         recur(hi)
       case _ =>
+        val tp1 = tp.dealias
+        if tp1 ne tp then recur(tp1)
 
     recur(entry(param))
   end checkNonCyclic
