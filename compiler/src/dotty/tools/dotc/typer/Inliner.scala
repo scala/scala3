@@ -705,41 +705,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       case _ =>
     }
 
-    def issueCode()(using Context): Literal = {
-      def decompose(arg: Tree): String = arg match {
-        case Typed(arg, _) => decompose(arg)
-        case SeqLiteral(elems, _) => elems.map(decompose).mkString(", ")
-        case Block(Nil, expr) => decompose(expr)
-        case Inlined(_, Nil, expr) => decompose(expr)
-        case arg =>
-          arg.tpe.widenTermRefExpr match {
-            case ConstantType(Constant(c)) => c.toString
-            case _ => arg.show
-          }
-      }
-
-      def malformedString(): String = {
-        ctx.error("Malformed part `code` string interpolator", call.sourcePos)
-        ""
-      }
-
-      callValueArgss match {
-        case List(List(Apply(_,List(Typed(SeqLiteral(Literal(headConst) :: parts,_),_)))), List(Typed(SeqLiteral(interpolatedParts,_),_)))
-            if parts.size == interpolatedParts.size =>
-          val constantParts = parts.map {
-            case Literal(const) => const.stringValue
-            case _ => malformedString()
-          }
-          val decomposedInterpolations = interpolatedParts.map(decompose)
-          val constantString = decomposedInterpolations.zip(constantParts)
-              .foldLeft(headConst.stringValue) { case (acc, (p1, p2)) => acc + p1 + p2 }
-
-          Literal(Constant(constantString)).withSpan(call.span)
-        case _ =>
-          Literal(Constant(malformedString()))
-      }
-    }
-
     trace(i"inlining $call", inlining, show = true) {
 
       // The normalized bindings collected in `bindingsBuf`
@@ -763,12 +728,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
       if (inlinedMethod == defn.Compiletime_error) issueError()
 
-      if (inlinedMethod == defn.Compiletime_code)
-        issueCode()(using ctx.fresh.setSetting(ctx.settings.color, "never"))
-      else
-        // Take care that only argument bindings go into `bindings`, since positions are
-        // different for bindings from arguments and bindings from body.
-        tpd.Inlined(call, finalBindings, finalExpansion)
+      // Take care that only argument bindings go into `bindings`, since positions are
+      // different for bindings from arguments and bindings from body.
+      tpd.Inlined(call, finalBindings, finalExpansion)
     }
   }
 
