@@ -147,25 +147,25 @@ funkyAssertEquals(computeActual(), computeExpected(), computeDelta())
 Inline methods can override other non-inline methods. The rules are as follows:
 
 1. If an inline method `f` implements or overrides another, non-inline method, the inline method can also be invoked at runtime. For instance, consider the scenario:
-```scala
-abstract class A {
-  def f(): Int
-  def g(): Int = f()
-}
-class B extends A {
-  inline def f() = 22
-  override inline def g() = f() + 11
-}
-val b = B()
-val a: A = b
-// inlined invocatons
-assert(b.f() == 22)
-assert(b.g() == 33)
-// dynamic invocations
-assert(a.f() == 22)
-assert(a.g() == 33)
-```
-The inlined invocations and the dynamically dispatched invocations give the same results.
+    ```scala
+    abstract class A {
+      def f(): Int
+      def g(): Int = f()
+    }
+    class B extends A {
+      inline def f() = 22
+      override inline def g() = f() + 11
+    }
+    val b = B()
+    val a: A = b
+    // inlined invocatons
+    assert(b.f() == 22)
+    assert(b.g() == 33)
+    // dynamic invocations
+    assert(a.f() == 22)
+    assert(a.g() == 33)
+    ```
+    The inlined invocations and the dynamically dispatched invocations give the same results.
 
 2. Inline methods are effectively final.
 
