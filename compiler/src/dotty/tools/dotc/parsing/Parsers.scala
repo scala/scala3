@@ -206,7 +206,9 @@ object Parsers {
     def isBindingIntro: Boolean = {
       in.token match {
         case USCORE => true
-        case IDENTIFIER | BACKQUOTED_IDENT => in.lookaheadIn(BitSet(ARROW, CTXARROW))
+        case IDENTIFIER | BACKQUOTED_IDENT =>
+          val nxt = in.lookahead.token
+          nxt == ARROW || nxt == CTXARROW
         case LPAREN =>
           val lookahead = in.LookaheadScanner()
           lookahead.skipParens()
@@ -235,7 +237,7 @@ object Parsers {
      */
     def isSplice: Boolean =
       in.token == IDENTIFIER && in.name(0) == '$' && {
-        if (in.name.length == 1) in.lookaheadIn(BitSet(LBRACE))
+        if in.name.length == 1 then in.lookahead.token == LBRACE
         else (staged & StageKind.Quoted) != 0
       }
 
@@ -1506,7 +1508,10 @@ object Parsers {
 
     /** Is current ident a `*`, and is it followed by a `)` or `,`? */
     def isPostfixStar: Boolean =
-      in.name == nme.raw.STAR && in.lookaheadIn(BitSet(RPAREN, COMMA))
+      in.name == nme.raw.STAR && {
+        val nxt = in.lookahead.token
+        nxt == RPAREN || nxt == COMMA
+      }
 
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
@@ -1588,11 +1593,10 @@ object Parsers {
       else if (in.token == LBRACE)
         atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
       else if (isSimpleLiteral) { SingletonTypeTree(literal(inType = true)) }
-      else if (isIdent(nme.raw.MINUS) && in.lookaheadIn(numericLitTokens)) {
+      else if isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token) then
         val start = in.offset
         in.nextToken()
         SingletonTypeTree(literal(negOffset = start, inType = true))
-      }
       else if (in.token == USCORE) {
         if sourceVersion.isAtLeast(`3.1`) then
           deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
@@ -2012,7 +2016,7 @@ object Parsers {
       case _ =>
         if isIdent(nme.inline)
            && !in.inModifierPosition()
-           && in.lookaheadIn(in.canStartExprTokens)
+           && in.canStartExprTokens.contains(in.lookahead.token)
         then
           val start = in.skipToken()
           in.token match
@@ -3005,7 +3009,7 @@ object Parsers {
               val isParams =
                 !impliedMods.is(Given)
                 || startParamTokens.contains(in.token)
-                || isIdent && (in.name == nme.inline || in.lookaheadIn(BitSet(COLON)))
+                || isIdent && (in.name == nme.inline || in.lookahead.token == COLON)
               if isParams then commaSeparated(() => param())
               else contextTypes(ofClass, nparams)
           checkVarArgsRules(clause)
@@ -3567,7 +3571,7 @@ object Parsers {
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         newLineOpt()
         val vparamss =
-          if in.token == LPAREN && in.lookaheadIn(nme.using)
+          if in.token == LPAREN && in.lookahead.isIdent(nme.using)
           then paramClauses(givenOnly = true)
           else Nil
         newLinesOpt()
