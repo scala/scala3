@@ -1,66 +1,38 @@
 #!/usr/bin/env bash
 
-# Usage:
-# BOT_TOKEN=<dotty-bot password> ./genDocs [-doc-snapshot]
-
 set -e
-GENDOC_EXTRA_ARGS=$@
-
-# set extended glob, needed for rm everything but x
-shopt -s extglob
-
-# make sure that BOT_TOKEN is set
-if [ -z "$BOT_TOKEN" ]; then
-    echo "Error: BOT_TOKEN env unset, unable to push without password" 1>&2
-    exit 1
-fi
-
+shopt -s extglob # needed for rm everything but x
 echo "Working directory: $PWD"
 
+GENDOC_EXTRA_ARGS=$@
+GIT_HEAD=$(git rev-parse HEAD) # save current head for commit message in gh-pages
+PREVIOUS_SNAPSHOTS_DIR="$PWD/../prev_snapshots"
+SCRIPT_DIR="(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)"
+SITE_OUT_DIR="$PWD/docs/_site"
+
+### Obtain the previous versions of the website ###
+if [ -d "$PREVIOUS_SNAPSHOTS_DIR" ]; then
+  rm -rf "$PREVIOUS_SNAPSHOTS_DIR"
+fi
+
+mkdir -pv "$PREVIOUS_SNAPSHOTS_DIR"
+git remote add doc-remote "https://github.com/lampepfl/dotty-website.git"
+git fetch doc-remote gh-pages
+git checkout gh-pages
+(cp -vr 0.*/ "$PREVIOUS_SNAPSHOTS_DIR"; true)  # Don't fail if no `0.*` found to copy
+git checkout "$GIT_HEAD"
+
+### Generate the current snapshot of the website ###
 # this command will generate docs in $PWD/docs/_site
-SBT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/sbt"
+SBT="$SCRIPT_DIR/sbt"
 "$SBT" "dotty-bootstrapped/genDocs $GENDOC_EXTRA_ARGS"
 
 # make sure that the previous command actually succeeded
-if [ ! -d "$PWD/docs/_site" ]; then
-    echo "Output directory did not exist: $PWD/docs/_site" 1>&2
-    exit 1
+if [ ! -d "$SITE_OUT_DIR" ]; then
+  echo "Output directory did not exist: $SITE_OUT_DIR" 1>&2
+  exit 1
 fi
 
-# save current head for commit message in gh-pages
-GIT_HEAD=$(git rev-parse HEAD)
-
-
-# set up remote and github credentials
-git remote add doc-remote "https://dotty-bot:$BOT_TOKEN@github.com/lampepfl/dotty-website.git"
-git config user.name "dotty-bot"
-git config user.email "dotty-bot@d-d.me"
-
-# check out correct branch
-git fetch doc-remote gh-pages
-git checkout gh-pages
-
-# save the old snapshots to the newly generated site
-# This command must never fail since failures short-circuit the script
-# The reason for failure is that no folder matches "0.*" pattern
-# because snapshots may not be generated yet
-(mv 0.*/ $PWD/docs/_site; true)
-
-# move newly generated _site dir to $PWD
-mv $PWD/docs/_site .
-
-# remove everything BUT _site dir
-rm -rf !(_site)
-
-# copy new contents to $PWD
-mv _site/* .
-
-# remove now empty _site dir
-rm -rf _site
-
-# add all contents of $PWD to commit
-git add -A
-git commit -m "Update gh-pages site for $GIT_HEAD" || echo "nothing new to commit"
-
-# push to doc-remote
-git push doc-remote || echo "couldn't push, since nothing was added"
+### Move previous versions' snapshots to _site ###
+mv -v "$PREVIOUS_SNAPSHOTS_DIR"/* "$SITE_OUT_DIR"
+rm -rf "$PREVIOUS_SNAPSHOTS_DIR"
