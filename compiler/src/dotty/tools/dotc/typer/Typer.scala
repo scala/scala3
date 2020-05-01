@@ -1801,9 +1801,9 @@ class Typer extends Namer
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
       case rhs => typedExpr(rhs, tpt1.tpe.widenExpr)
     }
-    val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
+    val tpt2 = checkInlineConformant(tpt1, rhs1, sym)
+    val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt2, rhs1), sym)
     checkSignatureRepeatedParam(sym)
-    checkInlineConformant(tpt1, rhs1, sym)
     patchFinalVals(vdef1)
     vdef1.setDefTree
   }

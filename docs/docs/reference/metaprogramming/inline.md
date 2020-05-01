@@ -235,18 +235,6 @@ inline val four = 4
 inline val four: 4 = 4
 ```
 
-It is also possible to have inline vals of types that do not have a syntax, such as `Short(4)`.
-
-```scala
-trait InlineConstants {
-  inline val myShort: Short
-}
-
-object Constants extends InlineConstants {
-  inline val myShort/*: Short(4)*/ = 4
-}
-```
-
 ## Transparent Inline Methods
 
 Inline methods can additionally be declared `transparent`.
@@ -286,6 +274,15 @@ transparent inline def zero(): Int = 0
 
 val one: 1 = zero() + 1
 ```
+
+All `inline val`s effectively are transparent. This allows any `inline val` to be costant folded.
+
+```scala
+inline val one: Int = 1
+
+val two: 2 = one + one
+```
+
 
 ## Inline Conditionals
 

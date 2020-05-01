@@ -21,3 +21,15 @@ object Constants extends InlineConstants {
   inline val myInlinedChar = 'a'
   inline val myInlinedString = "abc"
 }
+
+class Constants2 {
+  inline val myInlinedBoolean: Boolean = true
+  inline val myInlinedByte: Byte = 1
+  inline val myInlinedShort: Short = 2
+  inline val myInlinedInt: Int = 3
+  inline val myInlinedLong: Long = 4
+  inline val myInlinedFloat: Float = 5
+  inline val myInlinedDouble: Double = 6
+  inline val myInlinedChar: Char = 'a'
+  inline val myInlinedString: String = "abc"
+}

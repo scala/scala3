@@ -882,18 +882,24 @@ trait Checking {
     }
   }
 
-  /** Check that `tree` can be right hand-side or argument to `inline` value or parameter. */
-  def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = {
+  /** Check that `tree` can be right hand-side or argument to `inline` value.
+   *  Returns the type (tpt) of the val, possibly adapted.
+   */
+  def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Tree = {
     if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !ctx.inInlineMethod then
-      // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
-      val purityLevel = if (sym.is(Final)) Idempotent else Pure
-      tpt.tpe.widenTermRefExpr.dealias match
+      tree.tpe.widenTermRefExpr.dealias match
         case tp: ConstantType =>
+          // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
+          val purityLevel = if (sym.is(Final)) Idempotent else Pure
           if !(exprPurity(tree) >= purityLevel) then
-            ctx.error(em"inline value must be pure", tree.sourcePos)
+            ctx.error("inline value must be pure", tree.sourcePos)
+          if tree.tpe =:= tpt.tpe then tpt
+          else TypeTree(tree.tpe).withSpan(tpt.span)
         case _ =>
-          val pos = if tpt.span.isZeroExtent then tree.sourcePos else tpt.sourcePos
-          ctx.error(em"inline value must have a literal constant type", pos)
+          ctx.error("inline value must have a literal constant type", tree.sourcePos)
+          tpt
+    else
+      tpt
   }
 
   /** A hook to exclude selected symbols from double declaration check */
@@ -1222,7 +1228,7 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SourcePosition, where: => String = "")(using Context): Type = tp
-  override def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = ()
+  override def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Tree = tpt
   override def checkNoAlphaConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
