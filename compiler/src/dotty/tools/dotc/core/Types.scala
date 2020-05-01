@@ -4728,6 +4728,8 @@ object Types {
         zeroParamClass(tp.underlying)
       case tp: TypeVar =>
         zeroParamClass(tp.underlying)
+      case tp: AnnotatedType =>
+        zeroParamClass(tp.underlying)
       case _ =>
         NoType
     }
