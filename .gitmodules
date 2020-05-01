@@ -88,3 +88,6 @@
 [submodule "community-build/community-projects/dotty-cps-async"]
 	path = community-build/community-projects/dotty-cps-async
 	url = https://github.com/dotty-staging/dotty-cps-async.git
+[submodule "community-build/community-projects/geny"]
+	path = community-build/community-projects/geny
+	url = https://github.com/dotty-staging/geny.git
