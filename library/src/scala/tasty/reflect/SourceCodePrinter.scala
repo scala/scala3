@@ -296,6 +296,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
         val flags = ddef.symbol.flags
         if (flags.is(Flags.Implicit)) this += highlightKeyword("implicit ")
+        if (flags.is(Flags.Transparent)) this += highlightKeyword("transparent ")
         if (flags.is(Flags.Inline)) this += highlightKeyword("inline ")
         if (flags.is(Flags.Override)) this += highlightKeyword("override ")
         if (flags.is(Flags.Final) && !flags.is(Flags.Object)) this += highlightKeyword("final ")

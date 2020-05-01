@@ -182,6 +182,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   LAZY                                                             -- lazy
                   OVERRIDE                                                         -- override
                   OPAQUE                                                           -- opaque, also used for classes containing opaque aliases
+                  TRANSPARENT                                                      -- transparent
                   INLINE                                                           -- inline
                   MACRO                                                            -- Inline method containing toplevel splices
                   INLINEPROXY                                                      -- Symbol of binding with an argument to an inline method as rhs (TODO: do we still need this?)
@@ -354,6 +355,7 @@ object TastyFormat {
   final val OPEN = 40
   final val PARAMEND = 41
   final val PARAMalias = 42
+  final val TRANSPARENT = 43
 
   // Cat. 2:    tag Nat
 
@@ -467,7 +469,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
-    firstSimpleTreeTag <= tag && tag <= PARAMalias ||
+    firstSimpleTreeTag <= tag && tag <= TRANSPARENT ||
     firstNatTreeTag <= tag && tag <= RENAMED ||
     firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -493,6 +495,7 @@ object TastyFormat {
        | INLINEPROXY
        | MACRO
        | OPAQUE
+       | TRANSPARENT
        | STATIC
        | OBJECT
        | TRAIT
@@ -553,6 +556,7 @@ object TastyFormat {
     case INLINEPROXY => "INLINEPROXY"
     case MACRO => "MACRO"
     case OPAQUE => "OPAQUE"
+    case TRANSPARENT => "TRANSPARENT"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
     case TRAIT => "TRAIT"

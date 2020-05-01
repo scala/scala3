@@ -664,6 +664,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags.is(Case)) writeModTag(CASE)
     if (flags.is(Override)) writeModTag(OVERRIDE)
     if (flags.is(Inline)) writeModTag(INLINE)
+    if (flags.is(Transparent)) writeModTag(TRANSPARENT)
     if (flags.is(InlineProxy)) writeModTag(INLINEPROXY)
     if (flags.is(Macro)) writeModTag(MACRO)
     if (flags.is(JavaStatic)) writeModTag(STATIC)
