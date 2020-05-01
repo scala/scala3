@@ -888,9 +888,12 @@ trait Checking {
       // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
       val purityLevel = if (sym.is(Final)) Idempotent else Pure
       tpt.tpe.widenTermRefExpr.dealias match
-        case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
+        case tp: ConstantType =>
+          if !(exprPurity(tree) >= purityLevel) then
+            ctx.error(em"inline value must be pure", tree.sourcePos)
         case _ =>
-          ctx.error(em"type of inline must be a known value", tree.sourcePos)
+          val pos = if tpt.span.isZeroExtent then tree.sourcePos else tpt.sourcePos
+          ctx.error(em"inline value must have a literal constant type", pos)
   }
 
   /** A hook to exclude selected symbols from double declaration check */

@@ -1,0 +1,12 @@
+-- Error: tests/neg/i8841.scala:2:20 -----------------------------------------------------------------------------------
+2 |  inline val log1 : Boolean = false // error
+  |                    ^^^^^^^
+  |                    inline value must have a literal constant type
+-- Error: tests/neg/i8841.scala:3:20 -----------------------------------------------------------------------------------
+3 |  inline val log2 = true: Boolean // error
+  |                    ^^^^^^^^^^^^^
+  |                    inline value must have a literal constant type
+-- Error: tests/neg/i8841.scala:4:28 -----------------------------------------------------------------------------------
+4 |  inline val log3: false  = { println(); false } // error
+  |                            ^^^^^^^^^^^^^^^^^^^^
+  |                            inline value must be pure
