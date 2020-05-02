@@ -1040,37 +1040,17 @@ object Parsers {
       atSpan(accept(USCORE)) { Ident(nme.WILDCARD) }
 
     /** Accept identifier or match clause acting as a selector on given tree `t` */
-    def selector(t: Tree): Tree =
+    def selectorOrMatch(t: Tree): Tree =
       atSpan(startOffset(t), in.offset) {
         if in.token == MATCH then matchClause(t) else Select(t, ident())
       }
 
-    def idSelector(t: Tree): Tree =
+    def selector(t: Tree): Tree =
       atSpan(startOffset(t), in.offset) { Select(t, ident()) }
 
-    /** Selectors ::= id { `.' id }
-     *
-     *  Accept `.' separated identifiers acting as a selectors on given tree `t`.
-     *  @param finish   An alternative parse in case the next token is not an identifier.
-     *                  If the alternative does not apply, its tree argument is returned unchanged.
-     */
-    def selectors(t: Tree, finish: Tree => Tree): Tree = {
-      val t1 = finish(t)
-      if (t1 ne t) t1 else dotSelectors(selector(t), finish)
-    }
-
-    /** DotSelectors ::= { `.' id }
-     *
-     *  Accept `.' separated identifiers acting as a selectors on given tree `t`.
-     *  @param finish   An alternative parse in case the token following a `.' is not an identifier.
-     *                  If the alternative does not apply, its tree argument is returned unchanged.
-     */
-    def dotSelectors(t: Tree, finish: Tree => Tree = id): Tree =
-      if (in.token == DOT) { in.nextToken(); selectors(t, finish) }
-      else t
-
-    def dotSelections(t: Tree): Tree =
-      if (in.token == DOT) { in.nextToken(); dotSelections(t) }
+    /** DotSelectors ::= { `.' id } */
+    def dotSelectors(t: Tree): Tree =
+      if (in.token == DOT) { in.nextToken(); dotSelectors(selector(t)) }
       else t
 
     private val id: Tree => Tree = x => x
@@ -1091,7 +1071,7 @@ object Parsers {
         val mix = mixinQualifierOpt()
         val t = atSpan(start) { Super(This(qual), mix) }
         accept(DOT)
-        idSelector(t)
+        selector(t)
 
       if in.token == THIS then handleThis(EmptyTypeIdent)
       else if in.token == SUPER then handleSuper(EmptyTypeIdent)
@@ -1623,7 +1603,7 @@ object Parsers {
               in.nextToken()
               atSpan(startOffset(t)) { SingletonTypeTree(t) }
             else
-              singletonCompletion(idSelector(t))
+              singletonCompletion(selector(t))
           else convertToTypeId(t)
         singletonCompletion(simpleRef())
     }
@@ -2282,7 +2262,7 @@ object Parsers {
       in.token match {
         case DOT =>
           in.nextToken()
-          simpleExprRest(selector(t), canApply = true)
+          simpleExprRest(selectorOrMatch(t), canApply = true)
         case LBRACKET =>
           val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
           simpleExprRest(tapp, canApply = true)
@@ -2698,7 +2678,7 @@ object Parsers {
     def simplePatternRest(t: Tree): Tree =
       if in.token == DOT then
         in.nextToken()
-        simplePatternRest(idSelector(t))
+        simplePatternRest(selector(t))
       else
         var p = t
         if (in.token == LBRACKET)
