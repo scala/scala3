@@ -139,13 +139,15 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 ```ebnf
 Type              ::=  FunType
                     |  HkTypeParamClause ‘=>>’ Type                             TypeLambda(ps, t)
+                    |  ‘(’ TypedFunParams ‘)’ ‘=>>’ Type                        TypeLambda(ps, t)
                     |  MatchType
                     |  InfixType
 FunType           ::=  FunArgTypes (‘=>’ | ‘?=>’) Type                          Function(ts, t)
                     |  HKTypeParamClause '=>' Type                              PolyFunction(ps, t)
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
-                    |  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+                    |  ‘(’ TypedFunParams ‘)’
+TypedFunParams    ::=  TypedFunParam {‘,’ TypedFunParam }
 TypedFunParam     ::=  id ‘:’ Type
 MatchType         ::=  InfixType `match` ‘{’ TypeCaseClauses ‘}’
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
@@ -155,8 +157,7 @@ AnnotType         ::=  SimpleType {Annotation}                                  
 
 SimpleType        ::=  SimpleLiteral                                            SingletonTypeTree(l)
                     |  ‘?’ SubtypeBounds
-                    |  SimpleType ‘(’ Singletons ‘)’
-                    |  SimpleType1
+                    |  SimpleType1 { ‘(’ Singletons ‘)’ }
 SimpleType1       ::=  id                                                       Ident(name)
                     |  Singleton ‘.’ id                                         Select(t, name)
                     |  Singleton ‘.’ ‘type’                                     SingletonTypeTree(p)
@@ -166,6 +167,7 @@ SimpleType1       ::=  id                                                       
                     |  SimpleType1 TypeArgs                                     AppliedTypeTree(t, args)
                     |  SimpleType1 ‘#’ id                                       Select(t, name)
 Singleton         ::=  SimpleRef
+                    |  SimpleLiteral
                     |  Singleton ‘.’ id
 -- not yet          |  Singleton ‘(’ Singletons ‘)’
 -- not yet          |  Singleton ‘[’ ArgTypes ‘]’
