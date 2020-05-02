@@ -49,7 +49,7 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
     else tree
 
   private def trivialErasedTree(tree: Tree)(using Context): Tree =
-    tree.tpe.widenTermRefExpr.dealias match
+    tree.tpe.widenTermRefExpr.dealias.normalized match
       case ConstantType(c) => Literal(c)
       case _ => ref(defn.Predef_undefined)
 
