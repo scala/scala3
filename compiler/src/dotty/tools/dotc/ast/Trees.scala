@@ -669,6 +669,11 @@ object Trees {
     type ThisTree[-T >: Untyped] = LambdaTypeTree[T]
   }
 
+  case class TermLambdaTypeTree[-T >: Untyped] private[ast] (params: List[ValDef[T]], body: Tree[T])(implicit @constructorOnly src: SourceFile)
+    extends TypTree[T] {
+    type ThisTree[-T >: Untyped] = TermLambdaTypeTree[T]
+  }
+
   /** [bound] selector match { cases } */
   case class MatchTypeTree[-T >: Untyped] private[ast] (bound: Tree[T], selector: Tree[T], cases: List[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
     extends TypTree[T] {
@@ -964,6 +969,7 @@ object Trees {
     type RefinedTypeTree = Trees.RefinedTypeTree[T]
     type AppliedTypeTree = Trees.AppliedTypeTree[T]
     type LambdaTypeTree = Trees.LambdaTypeTree[T]
+    type TermLambdaTypeTree = Trees.TermLambdaTypeTree[T]
     type MatchTypeTree = Trees.MatchTypeTree[T]
     type ByNameTypeTree = Trees.ByNameTypeTree[T]
     type TypeBoundsTree = Trees.TypeBoundsTree[T]
@@ -1135,6 +1141,10 @@ object Trees {
         case tree: LambdaTypeTree if (tparams eq tree.tparams) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.LambdaTypeTree(tparams, body)(sourceFile(tree)))
       }
+      def TermLambdaTypeTree(tree: Tree)(params: List[ValDef], body: Tree)(implicit ctx: Context): TermLambdaTypeTree = tree match {
+        case tree: TermLambdaTypeTree if (params eq tree.params) && (body eq tree.body) => tree
+        case _ => finalize(tree, untpd.TermLambdaTypeTree(params, body)(sourceFile(tree)))
+      }
       def MatchTypeTree(tree: Tree)(bound: Tree, selector: Tree, cases: List[CaseDef])(implicit ctx: Context): MatchTypeTree = tree match {
         case tree: MatchTypeTree if (bound eq tree.bound) && (selector eq tree.selector) && (cases eq tree.cases) => tree
         case _ => finalize(tree, untpd.MatchTypeTree(bound, selector, cases)(sourceFile(tree)))
@@ -1293,6 +1303,10 @@ object Trees {
               inContext(localCtx) {
                 cpy.LambdaTypeTree(tree)(transformSub(tparams), transform(body))
               }
+            case TermLambdaTypeTree(params, body) =>
+              inContext(localCtx) {
+                cpy.TermLambdaTypeTree(tree)(transformSub(params), transform(body))
+              }
             case MatchTypeTree(bound, selector, cases) =>
               cpy.MatchTypeTree(tree)(transform(bound), transform(selector), transformSub(cases))
             case ByNameTypeTree(result) =>
@@ -1421,6 +1435,10 @@ object Trees {
             case LambdaTypeTree(tparams, body) =>
               inContext(localCtx) {
                 this(this(x, tparams), body)
+              }
+            case TermLambdaTypeTree(params, body) =>
+              inContext(localCtx) {
+                this(this(x, params), body)
               }
             case MatchTypeTree(bound, selector, cases) =>
               this(this(this(x, bound), selector), cases)

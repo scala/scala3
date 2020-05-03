@@ -1360,6 +1360,7 @@ object Parsers {
 
     /** Type        ::=  FunType
      *                |  HkTypeParamClause ‘=>>’ Type
+     *                |  ‘(’ TypedFunParams ‘)’ ‘=>>’ Type
      *                |  MatchType
      *                |  InfixType
      *  FunType     ::=  (MonoFunType | PolyFunType)
@@ -1374,6 +1375,16 @@ object Parsers {
       var imods = Modifiers()
       def functionRest(params: List[Tree]): Tree =
         atSpan(start, in.offset) {
+          if in.token == TLARROW then
+            if !imods.flags.isEmpty || params.isEmpty then
+              syntaxError(em"illegal parameter list for type lambda", start)
+              in.token = ARROW
+            else
+              for case ValDef(_, tpt: ByNameTypeTree, _) <- params do
+                syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
+              in.nextToken()
+              return TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], typ())
+
           if in.token == CTXARROW then
             in.nextToken()
             imods |= Given

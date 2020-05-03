@@ -146,5 +146,9 @@ object ErrorReporting {
       else ""
   }
 
+  def dependentStr =
+    """Term-dependent types are experimental,
+      |they must be enabled with a `experimental.dependent` language import or setting""".stripMargin
+
   def err(using Context): Errors = new Errors
 }
