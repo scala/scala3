@@ -1902,9 +1902,8 @@ object Types {
      */
     protected def computeSignature(implicit ctx: Context): Signature =
       val lastd = lastDenotation
-      val isErased = ctx.erasedTypes
-      if lastd != null && !isErased then lastd.signature
-      else if isErased then computeSignature(using ctx.withPhase(ctx.erasurePhase))
+      if lastd != null && lastd.validFor.firstPhaseId <= ctx.erasurePhase.id then lastd.signature
+      else if ctx.erasedTypes then computeSignature(using ctx.withPhase(ctx.erasurePhase))
       else symbol.asSeenFrom(prefix).signature
 
     /** The signature of the current denotation if it is known without forcing.
@@ -1915,9 +1914,8 @@ object Types {
       if ctx.runId == mySignatureRunId then mySignature
       else
         val lastd = lastDenotation
-        val isErased = ctx.erasedTypes
-        if lastd != null && !isErased then lastd.signature
-        else if isErased then currentSignature(using ctx.withPhase(ctx.erasurePhase))
+        if lastd != null && lastd.validFor.firstPhaseId <= ctx.erasurePhase.id then lastd.signature
+        else if ctx.erasedTypes then currentSignature(using ctx.withPhase(ctx.erasurePhase))
         else
           val sym = currentSymbol
           if sym.exists then sym.asSeenFrom(prefix).signature
