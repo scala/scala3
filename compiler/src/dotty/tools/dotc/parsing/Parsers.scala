@@ -1580,7 +1580,8 @@ object Parsers {
 
     /**  SimpleType      ::=  SimpleLiteral
      *                     |  ‘?’ SubtypeBounds
-     *                     |  SimpleType1 { ‘(’ Singletons ‘)’ }
+     *                     |  SimpleType1
+     *                     |  SimpeType ‘(’ Singletons ‘)’  -- under language.experimental.dependent, checked in Typer
      *   Singletons      ::=  Singleton {‘,’ Singleton}
      */
     def simpleType(): Tree =
