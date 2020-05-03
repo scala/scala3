@@ -1358,17 +1358,17 @@ object Parsers {
       case _ => false
     }
 
-    /** Type        ::=  FunType
-     *                |  HkTypeParamClause ‘=>>’ Type
-     *                |  ‘(’ TypedFunParams ‘)’ ‘=>>’ Type
-     *                |  MatchType
-     *                |  InfixType
-     *  FunType     ::=  (MonoFunType | PolyFunType)
-     *  MonoFunType ::=  FunArgTypes (‘=>’ | ‘?=>’) Type
-     *  PolyFunType ::=  HKTypeParamClause '=>' Type
-     *  FunArgTypes ::=  InfixType
-     *                |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
-     *                |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
+    /** Type           ::=  FunType
+     *                   |  HkTypeParamClause ‘=>>’ Type
+     *                   |  FunParamClause ‘=>>’ Type
+     *                   |  MatchType
+     *                   |  InfixType
+     *  FunType        ::=  (MonoFunType | PolyFunType)
+     *  MonoFunType    ::=  FunArgTypes (‘=>’ | ‘?=>’) Type
+     *  PolyFunType    ::=  HKTypeParamClause '=>' Type
+     *  FunArgTypes    ::=  InfixType
+     *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
+     *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
      */
     def typ(): Tree = {
       val start = in.offset
@@ -1511,10 +1511,19 @@ object Parsers {
       Span(start, start + nme.IMPLICITkw.asSimpleName.length)
 
     /** TypedFunParam   ::= id ':' Type */
-    def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): Tree = atSpan(start) {
-      accept(COLON)
-      makeParameter(name, typ(), mods | Param)
-    }
+    def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): ValDef =
+      atSpan(start) {
+        accept(COLON)
+        makeParameter(name, typ(), mods | Param)
+      }
+
+    /**  FunParamClause ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+     */
+    def funParamClause(): List[ValDef] =
+      inParens(commaSeparated(() => typedFunParam(in.offset, ident())))
+
+    def funParamClauses(): List[List[ValDef]] =
+      if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
 
     /** InfixType ::= RefinedType {id [nl] RefinedType}
      */
@@ -3394,15 +3403,16 @@ object Parsers {
         argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs()))
       }
 
-    /** TypeDcl ::=  id [TypeParamClause] TypeBounds [‘=’ Type]
+    /** TypeDcl ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type]
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
       newLinesOpt()
       atSpan(start, nameStart) {
         val nameIdent = typeIdent()
         val tparams = typeParamClauseOpt(ParamOwner.Type)
+        val vparamss = funParamClauses()
         def makeTypeDef(rhs: Tree): Tree = {
-          val rhs1 = lambdaAbstract(tparams, rhs)
+          val rhs1 = lambdaAbstractAll(tparams :: vparamss, rhs)
           val tdef = TypeDef(nameIdent.name.toTypeName, rhs1)
           if (nameIdent.isBackquoted)
             tdef.pushAttachment(Backquoted, ())

@@ -138,16 +138,16 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 ### Types
 ```ebnf
 Type              ::=  FunType
-                    |  HkTypeParamClause ‘=>>’ Type                             TypeLambda(ps, t)
-                    |  ‘(’ TypedFunParams ‘)’ ‘=>>’ Type                        TypeLambda(ps, t)
+                    |  HkTypeParamClause ‘=>>’ Type                             LambdaTypeTree(ps, t)
+                    |  FunParamClause ‘=>>’ Type                                TermLambdaTypeTree(ps, t)
                     |  MatchType
                     |  InfixType
 FunType           ::=  FunArgTypes (‘=>’ | ‘?=>’) Type                          Function(ts, t)
                     |  HKTypeParamClause '=>' Type                              PolyFunction(ps, t)
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
-                    |  ‘(’ TypedFunParams ‘)’
-TypedFunParams    ::=  TypedFunParam {‘,’ TypedFunParam }
+                    |  FunParamClause
+FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
 MatchType         ::=  InfixType `match` ‘{’ TypeCaseClauses ‘}’
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
@@ -372,7 +372,8 @@ VarDcl            ::=  ids ‘:’ Type                                         
 DefDcl            ::=  DefSig ‘:’ Type                                          DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  id [DefTypeParamClause] DefParamClauses
                     |  ExtParamClause {nl} [‘.’] id DefParamClauses
-TypeDcl           ::=  id [TypeParamClause] SubtypeBounds [‘=’ Type]           TypeDefTree(_, name, tparams, bound
+TypeDcl           ::=  id [TypeParamClause] {FunParamClause} SubtypeBounds      TypeDefTree(_, name, tparams, bound
+                       [‘=’ Type]
 
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ VarDef

@@ -486,8 +486,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
       .withFlags(flags)
 
-  def lambdaAbstract(tparams: List[TypeDef], tpt: Tree)(implicit ctx: Context): Tree =
-    if (tparams.isEmpty) tpt else LambdaTypeTree(tparams, tpt)
+  def lambdaAbstract(params: List[ValDef] | List[TypeDef], tpt: Tree)(using Context): Tree =
+    params match
+      case Nil               => tpt
+      case (vd: ValDef) :: _ => TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], tpt)
+      case _                 => LambdaTypeTree(params.asInstanceOf[List[TypeDef]], tpt)
+
+  def lambdaAbstractAll(paramss: List[List[ValDef] | List[TypeDef]], tpt: Tree)(using Context): Tree =
+    paramss.foldRight(tpt)(lambdaAbstract)
 
   /** A reference to given definition. If definition is a repeated
    *  parameter, the reference will be a repeated argument.
