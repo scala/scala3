@@ -2846,11 +2846,11 @@ object Parsers {
       else tree1
     }
 
-    /** Annotation        ::=  `@' SimpleType {ParArgumentExprs}
+    /** Annotation        ::=  `@' SimpleType1 {ParArgumentExprs}
      */
     def annot(): Tree =
       adjustStart(accept(AT)) {
-        ensureApplied(parArgumentExprss(wrapNew(simpleType())))
+        ensureApplied(parArgumentExprss(wrapNew(simpleType1())))
       }
 
     def annotations(skipNewLines: Boolean = false): List[Tree] = {

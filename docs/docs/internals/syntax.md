@@ -341,7 +341,7 @@ LocalModifier     ::=  ‘abstract’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’
 
-Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
+Annotation        ::=  ‘@’ SimpleType1 {ParArgumentExprs}                        Apply(tpe, args)
 
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec                          Import(expr, sels)
