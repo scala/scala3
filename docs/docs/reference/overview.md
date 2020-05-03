@@ -55,7 +55,7 @@ Value classes (superseded by opaque type aliases) are a special case. There are 
 These constructs are restricted to make the language safer.
 
  - [Implicit Conversions](contextual/conversions.md): there is only one way to define implicit conversions instead of many, and potentially surprising implicit conversions require a language import.
- - [Given Imports](contextual/import-delegate.md): implicits now require a special form of import, to make the import clearly visible.
+ - [Given Imports](contextual/given-imports.md): implicits now require a special form of import, to make the import clearly visible.
  - [Type Projection](dropped-features/type-projection.md): only classes can be used as prefix `C` of a type projection `C#A`. Type projection on abstract types is no longer supported since it is unsound.
  - [Multiversal Equality](contextual/multiversal-equality.md) implements an "opt-in" scheme to rule out nonsensical comparisons with `==` and `!=`.
  - [@infix and @alpha](https://github.com/lampepfl/dotty/pull/5975)
