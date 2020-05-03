@@ -1,25 +1,54 @@
-compile-time: 3
+compile-time: ({
+  val i: 3 = 3
+
+  (i: 3)
+}: scala.Int)
 run-time: 3
-compile-time: 3
+compile-time: ({
+  val i: 3 = 3
+
+  (i: 3)
+}: scala.Int)
 run-time: 3
-compile-time: 3
+compile-time: ({
+  val i: 3 = 3
+
+  (i: 3)
+}: scala.Int)
 run-time: 3
-compile-time: 3
+compile-time: (3: scala.Int)
 run-time: 3
-compile-time: {
+compile-time: ({
   val $elem9: A = Test.a
-  val $elem10: Int = $elem9.i
-  val i: Int = $elem10
-  i:Int
-}
+  val $elem10: scala.Int = $elem9.i
+  val i: scala.Int = $elem10
+
+  (i: scala.Int)
+}: scala.Int)
 run-time: 3
-compile-time: 3
+compile-time: ({
+  val i: 3 = 3
+
+  (i: 3)
+}: scala.Int)
 run-time: 3
-compile-time: 3
+compile-time: ({
+  val i: 3 = 3
+
+  (i: 3)
+}: scala.Int)
 run-time: 3
-compile-time: 3
+compile-time: ({
+  val i: 3 = 3
+
+  (i: 3)
+}: scala.Int)
 run-time: 3
-compile-time: 3
+compile-time: (3: scala.Int)
 run-time: 3
-compile-time: 3
+compile-time: ({
+  val t: 3 = 3
+
+  (t: 3)
+}: scala.Int)
 run-time: 3

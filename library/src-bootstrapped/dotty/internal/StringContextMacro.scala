@@ -61,19 +61,9 @@ object StringContextMacro {
     import qctx.tasty._
     val sourceFile = strCtxExpr.unseal.pos.sourceFile
 
-    def notStatic =
-      qctx.throwError("Expected statically known String Context", strCtxExpr)
-    def splitParts(seq: Expr[Seq[String]]) = seq match {
-      case Varargs(p1) =>
-        p1 match
-          case Consts(p2) => (p1.toList, p2.toList)
-          case _ => notStatic
-      case _ => notStatic
-    }
     val (partsExpr, parts) = strCtxExpr match {
-      case '{ StringContext($parts: _*) } => splitParts(parts)
-      case '{ new StringContext($parts: _*) } => splitParts(parts)
-      case _ => notStatic
+      case Expr.StringContext(p1 @ Consts(p2)) => (p1.toList, p2.toList)
+      case _ => qctx.throwError("Expected statically known String Context", strCtxExpr)
     }
 
     val args = argsExpr match {
