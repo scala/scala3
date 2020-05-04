@@ -12,8 +12,7 @@ object Macro {
     val ConstantType(Constant(v1: Int)) = a.unseal.tpe
     val ConstantType(Constant(v2: Int)) = b.unseal.tpe
 
-    val t = Literal(Constant((v1 + v2): Int)).tpe.seal
-
-    '{ null: AddInt[$a, $b] { type Out = $t } }
+    Literal(Constant((v1 + v2): Int)).tpe.seal match
+      case '[$t] => '{ null: AddInt[$a, $b] { type Out = $t } }
   }
 }
