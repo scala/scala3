@@ -220,6 +220,7 @@ object TypeTestsCasts {
            *  can be true in some cases. Issues a warning or an error otherwise.
            */
           def checkSensical(foundClasses: List[Symbol])(using Context): Boolean =
+            def exprType = i"type ${expr.tpe.widen.stripAnnots}"
             def check(foundCls: Symbol): Boolean =
               if (!isCheckable(foundCls)) true
               else if (!foundCls.derivesFrom(testCls)) {
@@ -227,9 +228,9 @@ object TypeTestsCasts {
                   testCls.is(Final) || !testCls.is(Trait) && !foundCls.is(Trait)
                 )
                 if (foundCls.is(Final))
-                  unreachable(i"type ${expr.tpe.widen} is not a subclass of $testCls")
+                  unreachable(i"$exprType is not a subclass of $testCls")
                 else if (unrelated)
-                  unreachable(i"type ${expr.tpe.widen} and $testCls are unrelated")
+                  unreachable(i"$exprType and $testCls are unrelated")
                 else true
               }
               else true
@@ -238,7 +239,7 @@ object TypeTestsCasts {
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
 
             if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
-              ctx.error("cannot test if value types are references", tree.sourcePos)
+              ctx.error(i"cannot test if value of $exprType is a reference of $testCls", tree.sourcePos)
               false
             else foundClasses.exists(check)
           end checkSensical
