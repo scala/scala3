@@ -24,14 +24,14 @@ These new constructs directly model core features of DOT, higher-kinded types, a
  - [Intersection types](new-types/intersection-types.md), replacing compound types,
  - [Union types](new-types/union-types.md),
  - [Type lambdas](new-types/type-lambdas.md), replacing encodings using structural types and type projection.
- - [Implicit Function Types](contextual/implicit-function-types.md), offering abstraction over given parameters.
+ - [Context Functions](contextual/context-functions.md), offering abstraction over given parameters.
 
 ## Simplifications
 
 These constructs replace existing constructs with the aim of making the language safer and simpler to use, and to promote uniformity in code style.
 
  - [Trait Parameters](other-new-features/trait-parameters.md) replace [early initializers](dropped-features/early-initializers.md) with a more generally useful construct.
- - [Given Instances](contextual/delegates.md)
+ - [Given Instances](contextual/givens.md)
    replace implicit objects and defs, focussing on intent over mechanism.
  - [Using Clauses](contextual/using-clauses.md) replace implicit parameters, avoiding their ambiguities.
  - [Extension Methods](contextual/extension-methods.md) replace implicit classes with a clearer and simpler mechanism.
@@ -55,10 +55,10 @@ Value classes (superseded by opaque type aliases) are a special case. There are 
 These constructs are restricted to make the language safer.
 
  - [Implicit Conversions](contextual/conversions.md): there is only one way to define implicit conversions instead of many, and potentially surprising implicit conversions require a language import.
- - [Given Imports](contextual/import-delegate.md): implicits now require a special form of import, to make the import clearly visible.
+ - [Given Imports](contextual/given-imports.md): implicits now require a special form of import, to make the import clearly visible.
  - [Type Projection](dropped-features/type-projection.md): only classes can be used as prefix `C` of a type projection `C#A`. Type projection on abstract types is no longer supported since it is unsound.
  - [Multiversal Equality](contextual/multiversal-equality.md) implements an "opt-in" scheme to rule out nonsensical comparisons with `==` and `!=`.
- - [@infix and @alpha](https://github.com/lampepfl/dotty/pull/5975)
+ - [@infix and @alpha](changed-features/operators.md)
  make method application syntax uniform across code bases and require alphanumeric aliases for all symbolic names (proposed, not implemented).
 
 Unrestricted implicit conversions continue to be available in Scala 3.0, but will be deprecated and removed later. Unrestricted versions of the other constructs in the list above are available only under `-source 3.0-migration`.
