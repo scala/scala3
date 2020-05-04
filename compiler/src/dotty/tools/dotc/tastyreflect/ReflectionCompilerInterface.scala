@@ -1983,6 +1983,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Definitions_isTupleClass(sym: Symbol): Boolean = defn.isTupleClass(sym)
 
   def Definitions_InternalQuoted_patternHole: Symbol = defn.InternalQuoted_patternHole
+  def Definitions_InternalQuoted_higherOrderHole: Symbol = defn.InternalQuoted_higherOrderHole
   def Definitions_InternalQuoted_patternTypeAnnot: Symbol = defn.InternalQuoted_patternTypeAnnot
   def Definitions_InternalQuoted_fromAboveAnnot: Symbol = defn.InternalQuoted_fromAboveAnnot
 

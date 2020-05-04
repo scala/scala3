@@ -1,0 +1,2 @@
+Matched open
+((y: scala.Int) => y.*(y))

@@ -240,7 +240,8 @@ private[quoted] object Matcher {
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
-          // TODO do not encode with `hole`. Maybe use `higherOrderHole[(T1, ..., Tn) => R]((x1: T1, ..., xn: Tn)): R`
+          // DEPRECATED: replaced with `higherOrderHole`
+          // TODO: remove case
           case (scrutinee, pattern @ Apply(Select(TypeApply(patternHole, List(Inferred())), "apply"), args0 @ IdentArgs(args)))
               if patternHole.symbol == internal.Definitions_InternalQuoted_patternHole =>
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
@@ -254,6 +255,29 @@ private[quoted] object Matcher {
             }
             val names = args.map(_.name)
             val argTypes = args0.map(x => x.tpe.widenTermRefExpr)
+            val resType = pattern.tpe
+            val res = Lambda(MethodType(names)(_ => argTypes, _ => resType), bodyFn)
+            matched(res.seal)
+
+          /* Higher order term hole */
+          // Matches an open term and wraps it into a lambda that provides the free variables
+          case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: Nil))
+              if pattern.symbol == internal.Definitions_InternalQuoted_higherOrderHole =>
+
+            def bodyFn(lambdaArgs: List[Tree]): Tree = {
+              val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
+              new TreeMap {
+                override def transformTerm(tree: Term)(using ctx: Context): Term =
+                  tree match
+                    case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
+                    case tree => super.transformTerm(tree)
+              }.transformTree(scrutinee)
+            }
+            val names = args.map {
+              case Block(List(DefDef("$anonfun", _, _, _, Some(Apply(Ident(name), _)))), _) => name
+              case arg => arg.symbol.name
+            }
+            val argTypes = args.map(x => x.tpe.widenTermRefExpr)
             val resType = pattern.tpe
             val res = Lambda(MethodType(names)(_ => argTypes, _ => resType), bodyFn)
             matched(res.seal)

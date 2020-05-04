@@ -695,6 +695,8 @@ class Definitions {
     @tu lazy val InternalQuoted_exprNestedSplice : Symbol = InternalQuotedModule.requiredMethod("exprNestedSplice")
     @tu lazy val InternalQuoted_typeQuote  : Symbol = InternalQuotedModule.requiredMethod("typeQuote")
     @tu lazy val InternalQuoted_patternHole: Symbol = InternalQuotedModule.requiredMethod("patternHole")
+    @tu lazy val InternalQuoted_patternHigherOrderHole: Symbol = InternalQuotedModule.requiredMethod("patternHigherOrderHole")
+    @tu lazy val InternalQuoted_higherOrderHole: Symbol = InternalQuotedModule.requiredMethod("higherOrderHole")
     @tu lazy val InternalQuoted_patternTypeAnnot: ClassSymbol = InternalQuotedModule.requiredClass("patternType")
     @tu lazy val InternalQuoted_QuoteTypeTagAnnot: ClassSymbol = InternalQuotedModule.requiredClass("quoteTypeTag")
     @tu lazy val InternalQuoted_fromAboveAnnot: ClassSymbol = InternalQuotedModule.requiredClass("fromAbove")
