@@ -147,40 +147,40 @@ funkyAssertEquals(computeActual(), computeExpected(), computeDelta())
 Inline methods can override other non-inline methods. The rules are as follows:
 
 1. If an inline method `f` implements or overrides another, non-inline method, the inline method can also be invoked at runtime. For instance, consider the scenario:
-```scala
-abstract class A {
-  def f(): Int
-  def g(): Int = f()
-}
-class B extends A {
-  inline def f() = 22
-  override inline def g() = f() + 11
-}
-val b = B()
-val a: A = b
-// inlined invocatons
-assert(b.f() == 22)
-assert(b.g() == 33)
-// dynamic invocations
-assert(a.f() == 22)
-assert(a.g() == 33)
-```
-The inlined invocations and the dynamically dispatched invocations give the same results.
+    ```scala
+    abstract class A {
+      def f(): Int
+      def g(): Int = f()
+    }
+    class B extends A {
+      inline def f() = 22
+      override inline def g() = f() + 11
+    }
+    val b = B()
+    val a: A = b
+    // inlined invocatons
+    assert(b.f() == 22)
+    assert(b.g() == 33)
+    // dynamic invocations
+    assert(a.f() == 22)
+    assert(a.g() == 33)
+    ```
+    The inlined invocations and the dynamically dispatched invocations give the same results.
 
 2. Inline methods are effectively final.
 
 3. Inline methods can also be abstract. An abstract inline method can be implemented only by other inline methods. It cannot be invoked directly:
-```scala
-abstract class A {
-  inline def f(): Int
-}
-object B extends A {
-  inline def f(): Int = 22
-}
-B.f()         // OK
-val a: A = B
-a.f()         // error: cannot inline f() in A.
-```
+    ```scala
+    abstract class A {
+      inline def f(): Int
+    }
+    object B extends A {
+      inline def f(): Int = 22
+    }
+    B.f()         // OK
+    val a: A = B
+    a.f()         // error: cannot inline f() in A.
+    ```
 
 ### Relationship to @inline
 
@@ -260,7 +260,7 @@ class B extends A {
 }
 
 transparent inline def choose(b: Boolean): A =
-  if b then A() else B
+  if b then new A() else new B()
 
 val obj1 = choose(true)  // static type is A
 val obj2 = choose(false) // static type is B
@@ -268,10 +268,12 @@ val obj2 = choose(false) // static type is B
 // obj1.m() // compile-time error: `m` is not defined on `A`
 obj2.m()    // OK
 ```
-Here, the inline method `choose` returns an object of either of the two types `A` and `B`. If `choose` had been declared with a normal return type `: A`, the result
-of its expansion would always be of type `A`, even though the computed value might be of the subtype `B`. The inline method is a "blackbox" in the sense that details of its implementation do not leak out. But if a `transparent` modifier is given,
-the expansion is the type of the expanded body. If the argument `b`
-is `true`, that type is `A`, otherwise it is `B`. Consequently, calling `meth` on `obj2`
+Here, the inline method `choose` returns an instance of either of the two types `A` or `B`. 
+If `choose` had not been declared to be `transparent`, the result
+of its expansion would always be of type `A`, even though the computed value might be of the subtype `B`. 
+The inline method is a "blackbox" in the sense that details of its implementation do not leak out. 
+But if a `transparent` modifier is given, the expansion is the type of the expanded body. If the argument `b`
+is `true`, that type is `A`, otherwise it is `B`. Consequently, calling `m` on `obj2`
 type-checks since `obj2` has the same type as the expansion of `choose(false)`, which is `B`.
 Transparent inline methods are "whitebox" in the sense that the type
 of an application of such a method can be more specialized than its declared
