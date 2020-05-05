@@ -206,7 +206,9 @@ object Parsers {
     def isBindingIntro: Boolean = {
       in.token match {
         case USCORE => true
-        case IDENTIFIER | BACKQUOTED_IDENT => in.lookaheadIn(BitSet(ARROW, CTXARROW))
+        case IDENTIFIER | BACKQUOTED_IDENT =>
+          val nxt = in.lookahead.token
+          nxt == ARROW || nxt == CTXARROW
         case LPAREN =>
           val lookahead = in.LookaheadScanner()
           lookahead.skipParens()
@@ -235,7 +237,7 @@ object Parsers {
      */
     def isSplice: Boolean =
       in.token == IDENTIFIER && in.name(0) == '$' && {
-        if (in.name.length == 1) in.lookaheadIn(BitSet(LBRACE))
+        if in.name.length == 1 then in.lookahead.token == LBRACE
         else (staged & StageKind.Quoted) != 0
       }
 
@@ -1038,84 +1040,61 @@ object Parsers {
       atSpan(accept(USCORE)) { Ident(nme.WILDCARD) }
 
     /** Accept identifier or match clause acting as a selector on given tree `t` */
-    def selector(t: Tree): Tree =
+    def selectorOrMatch(t: Tree): Tree =
       atSpan(startOffset(t), in.offset) {
         if in.token == MATCH then matchClause(t) else Select(t, ident())
       }
 
-    /** Selectors ::= id { `.' id }
-     *
-     *  Accept `.' separated identifiers acting as a selectors on given tree `t`.
-     *  @param finish   An alternative parse in case the next token is not an identifier.
-     *                  If the alternative does not apply, its tree argument is returned unchanged.
-     */
-    def selectors(t: Tree, finish: Tree => Tree): Tree = {
-      val t1 = finish(t)
-      if (t1 ne t) t1 else dotSelectors(selector(t), finish)
-    }
+    def selector(t: Tree): Tree =
+      atSpan(startOffset(t), in.offset) { Select(t, ident()) }
 
-    /** DotSelectors ::= { `.' id }
-     *
-     *  Accept `.' separated identifiers acting as a selectors on given tree `t`.
-     *  @param finish   An alternative parse in case the token following a `.' is not an identifier.
-     *                  If the alternative does not apply, its tree argument is returned unchanged.
-     */
-    def dotSelectors(t: Tree, finish: Tree => Tree = id): Tree =
-      if (in.token == DOT) { in.nextToken(); selectors(t, finish) }
+    /** DotSelectors ::= { `.' id } */
+    def dotSelectors(t: Tree): Tree =
+      if (in.token == DOT) { in.nextToken(); dotSelectors(selector(t)) }
       else t
 
     private val id: Tree => Tree = x => x
 
-    /** Path       ::= StableId
-     *              |  [id `.'] this
-     *
-     *  @param thisOK   If true, the path can end with the keyword `this`.
-     *                  If false, another selection is required after the `this`.
-     *  @param finish   An alternative parse in case the token following a `.' is not an identifier.
-     *                  If the alternative does not apply, its tree argument is returned unchanged.
+    /** SimpleRef  ::= id
+     *              |  [id ‘.’] ‘this’
+     *              |  [id ‘.’] ‘super’ [ClassQualifier] ‘.’ id
      */
-    def path(thisOK: Boolean, finish: Tree => Tree = id): Tree = {
+    def simpleRef(): Tree =
       val start = in.offset
-      def handleThis(qual: Ident) = {
+
+      def handleThis(qual: Ident) =
         in.nextToken()
-        val t = atSpan(start) { This(qual) }
-        if (!thisOK && in.token != DOT) syntaxError(DanglingThisInPath(), t.span)
-        dotSelectors(t, finish)
-      }
-      def handleSuper(qual: Ident) = {
+        atSpan(start) { This(qual) }
+
+      def handleSuper(qual: Ident) =
         in.nextToken()
         val mix = mixinQualifierOpt()
         val t = atSpan(start) { Super(This(qual), mix) }
         accept(DOT)
-        dotSelectors(selector(t), finish)
-      }
-      if (in.token == THIS) handleThis(EmptyTypeIdent)
-      else if (in.token == SUPER) handleSuper(EmptyTypeIdent)
-      else {
+        selector(t)
+
+      if in.token == THIS then handleThis(EmptyTypeIdent)
+      else if in.token == SUPER then handleSuper(EmptyTypeIdent)
+      else
         val t = termIdent()
-        if (in.token == DOT) {
+        if in.token == DOT then
           def qual = cpy.Ident(t)(t.name.toTypeName)
-          in.nextToken()
-          if (in.token == THIS) handleThis(qual)
-          else if (in.token == SUPER) handleSuper(qual)
-          else selectors(t, finish)
-        }
+          in.lookahead.token match
+            case THIS =>
+              in.nextToken()
+              handleThis(qual)
+            case SUPER =>
+              in.nextToken()
+              handleSuper(qual)
+            case _ => t
         else t
-      }
-    }
+    end simpleRef
 
     /** MixinQualifier ::= `[' id `]'
     */
     def mixinQualifierOpt(): Ident =
       if (in.token == LBRACKET) inBrackets(atSpan(in.offset) { typeIdent() })
       else EmptyTypeIdent
-
-    /** StableId ::= id
-     *            |  Path `.' id
-     *            |  [id '.'] super [`[' id `]']`.' id
-     */
-    def stableId(): Tree =
-      path(thisOK = false)
 
     /** QualId ::= id {`.' id}
     */
@@ -1506,7 +1485,10 @@ object Parsers {
 
     /** Is current ident a `*`, and is it followed by a `)` or `,`? */
     def isPostfixStar: Boolean =
-      in.name == nme.raw.STAR && in.lookaheadIn(BitSet(RPAREN, COMMA))
+      in.name == nme.raw.STAR && {
+        val nxt = in.lookahead.token
+        nxt == RPAREN || nxt == COMMA
+      }
 
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
@@ -1570,57 +1552,61 @@ object Parsers {
         if (isType) TypSplice(expr) else Splice(expr)
       }
 
-    /** SimpleType       ::=  SimpleType TypeArgs
-     *                     |  SimpleType `#' id
-     *                     |  StableId
-     *                     |  Path `.' type
-     *                     |  `(' ArgTypes `)'
-     *                     |  `_' TypeBounds
-     *                     |  Refinement
-     *                     |  Literal
-     *                     |  ‘$’ ‘{’ Block ‘}’
+    /**  SimpleType      ::=  SimpleLiteral
+     *                     |  ‘?’ SubtypeBounds
+     *                     |  SimpleType1
      */
-    def simpleType(): Tree = simpleTypeRest {
-      if (in.token == LPAREN)
-        atSpan(in.offset) {
-          makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true)))
-        }
-      else if (in.token == LBRACE)
-        atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
-      else if (isSimpleLiteral) { SingletonTypeTree(literal(inType = true)) }
-      else if (isIdent(nme.raw.MINUS) && in.lookaheadIn(numericLitTokens)) {
+    def simpleType(): Tree =
+      if isSimpleLiteral then
+        SingletonTypeTree(literal(inType = true))
+      else if isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token) then
         val start = in.offset
         in.nextToken()
         SingletonTypeTree(literal(negOffset = start, inType = true))
-      }
-      else if (in.token == USCORE) {
+      else if in.token == USCORE then
         if sourceVersion.isAtLeast(`3.1`) then
           deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
           patch(source, Span(in.offset, in.offset + 1), "?")
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
-      }
-      else if (isIdent(nme.?)) {
+      else if isIdent(nme.?) then
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
-      }
-      else if (isIdent(nme.*) && ctx.settings.YkindProjector.value) {
+      else if isIdent(nme.*) && ctx.settings.YkindProjector.value then
         typeIdent()
-      }
+      else
+        simpleType1()
+
+    /** SimpleType1      ::=  id
+     *                     |  Singleton `.' id
+     *                     |  Singleton `.' type
+     *                     |  ‘(’ ArgTypes ‘)’
+     *                     |  Refinement
+     *                     |  ‘$’ ‘{’ Block ‘}’
+     *                     |  SimpleType1 TypeArgs
+     *                     |  SimpleType1 `#' id
+     */
+    def simpleType1() = simpleTypeRest {
+      if in.token == LPAREN then
+        atSpan(in.offset) {
+          makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true)))
+        }
+      else if in.token == LBRACE then
+        atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
       else if (isSplice)
         splice(isType = true)
-      else path(thisOK = false, handleSingletonType) match {
-        case r @ SingletonTypeTree(_) => r
-        case r => convertToTypeId(r)
-      }
+      else
+        def singletonCompletion(t: Tree): Tree =
+          if in.token == DOT then
+            in.nextToken()
+            if in.token == TYPE then
+              in.nextToken()
+              atSpan(startOffset(t)) { SingletonTypeTree(t) }
+            else
+              singletonCompletion(selector(t))
+          else convertToTypeId(t)
+        singletonCompletion(simpleRef())
     }
-
-    val handleSingletonType: Tree => Tree = t =>
-      if (in.token == TYPE) {
-        in.nextToken()
-        atSpan(startOffset(t)) { SingletonTypeTree(t) }
-      }
-      else t
 
     private def simpleTypeRest(t: Tree): Tree = in.token match {
       case HASH => simpleTypeRest(typeProjection(t))
@@ -2012,7 +1998,7 @@ object Parsers {
       case _ =>
         if isIdent(nme.inline)
            && !in.inModifierPosition()
-           && in.lookaheadIn(in.canStartExprTokens)
+           && in.canStartExprTokens.contains(in.lookahead.token)
         then
           val start = in.skipToken()
           in.token match
@@ -2203,7 +2189,7 @@ object Parsers {
      *                 |  SimpleExpr1 [`_`]
      *  SimpleExpr1   ::= literal
      *                 |  xmlLiteral
-     *                 |  Path
+     *                 |  SimpleRef
      *                 |  `(` [ExprsInParens] `)`
      *                 |  SimpleExpr `.` id
      *                 |  SimpleExpr `.` MatchClause
@@ -2219,9 +2205,9 @@ object Parsers {
           xmlLiteral()
         case IDENTIFIER =>
           if (isSplice) splice(isType = false)
-          else path(thisOK = true)
+          else simpleRef()
         case BACKQUOTED_IDENT | THIS | SUPER =>
-          path(thisOK = true)
+          simpleRef()
         case USCORE =>
           val start = in.skipToken()
           val pname = WildcardParamName.fresh()
@@ -2276,7 +2262,7 @@ object Parsers {
       in.token match {
         case DOT =>
           in.nextToken()
-          simpleExprRest(selector(t), canApply = true)
+          simpleExprRest(selectorOrMatch(t), canApply = true)
         case LBRACKET =>
           val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
           simpleExprRest(tapp, canApply = true)
@@ -2654,17 +2640,16 @@ object Parsers {
      *                    |  XmlPattern
      *                    |  `(' [Patterns] `)'
      *                    |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
-     *  SimplePattern1   ::= Path
+     *  SimplePattern1   ::= SimpleRef
      *                    |  SimplePattern1 `.' id
      *  PatVar           ::= id
      *                    |  `_'
      */
     val simplePattern: () => Tree = () => in.token match {
-      case IDENTIFIER | BACKQUOTED_IDENT | THIS =>
-        path(thisOK = true) match {
+      case IDENTIFIER | BACKQUOTED_IDENT | THIS | SUPER =>
+        simpleRef() match
           case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(startOffset(id))
           case t => simplePatternRest(t)
-        }
       case USCORE =>
         val wildIdent = wildcardIdent()
 
@@ -2690,14 +2675,17 @@ object Parsers {
         }
     }
 
-    def simplePatternRest(t: Tree): Tree = {
-      var p = t
-      if (in.token == LBRACKET)
-        p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false)) }
-      if (in.token == LPAREN)
-        p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
-      p
-    }
+    def simplePatternRest(t: Tree): Tree =
+      if in.token == DOT then
+        in.nextToken()
+        simplePatternRest(selector(t))
+      else
+        var p = t
+        if (in.token == LBRACKET)
+          p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false)) }
+        if (in.token == LPAREN)
+          p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
+        p
 
     /** Patterns          ::=  Pattern [`,' Pattern]
      */
@@ -3005,7 +2993,7 @@ object Parsers {
               val isParams =
                 !impliedMods.is(Given)
                 || startParamTokens.contains(in.token)
-                || isIdent && (in.name == nme.inline || in.lookaheadIn(BitSet(COLON)))
+                || isIdent && (in.name == nme.inline || in.lookahead.token == COLON)
               if isParams then commaSeparated(() => param())
               else contextTypes(ofClass, nparams)
           checkVarArgsRules(clause)
@@ -3084,7 +3072,7 @@ object Parsers {
             ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
       Import(tree, selectors)
 
-    /**  ImportExpr ::= StableId ‘.’ ImportSpec
+    /**  ImportExpr ::= SimpleRef {‘.’ id} ‘.’ ImportSpec
      *   ImportSpec  ::=  id
      *                 | ‘_’
      *                 | ‘{’ ImportSelectors) ‘}’
@@ -3131,26 +3119,24 @@ object Parsers {
             Nil
         selector :: rest
 
-      val handleImport: Tree => Tree = tree =>
+      def importSelection(qual: Tree): Tree =
+        accept(DOT)
         in.token match
           case USCORE =>
-            mkTree(tree, ImportSelector(wildcardSelectorId()) :: Nil)
+            mkTree(qual, ImportSelector(wildcardSelectorId()) :: Nil)
           case LBRACE =>
-            mkTree(tree, inBraces(importSelectors(idOK = true)))
+            mkTree(qual, inBraces(importSelectors(idOK = true)))
           case _ =>
-            tree
+            val start = in.offset
+            val name = ident()
+            if in.token == DOT then
+              importSelection(atSpan(startOffset(qual), start) { Select(qual, name) })
+            else
+              atSpan(startOffset(qual)) {
+                mkTree(qual, ImportSelector(atSpan(start) { Ident(name) }) :: Nil)
+              }
 
-      () => {
-        val p = path(thisOK = false, handleImport)
-        p match
-          case _: Import | _: Export => p
-          case sel @ Select(qual, name) =>
-            val selector = ImportSelector(atSpan(pointOffset(sel)) { Ident(name) })
-            mkTree(qual, selector :: Nil).withSpan(sel.span)
-          case t =>
-            accept(DOT)
-            mkTree(t, ImportSelector(Ident(nme.WILDCARD)) :: Nil)
-      }
+      () => importSelection(simpleRef())
     }
 
     def posMods(start: Int, mods: Modifiers): Modifiers = {
@@ -3567,7 +3553,7 @@ object Parsers {
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         newLineOpt()
         val vparamss =
-          if in.token == LPAREN && in.lookaheadIn(nme.using)
+          if in.token == LPAREN && in.lookahead.isIdent(nme.using)
           then paramClauses(givenOnly = true)
           else Nil
         newLinesOpt()
@@ -3625,13 +3611,13 @@ object Parsers {
 
 /* -------- TEMPLATES ------------------------------------------- */
 
-    /** SimpleConstrApp  ::=  AnnotType {ParArgumentExprs}
+    /** ConstrApp  ::=  SimpleType1 {Annotation} {ParArgumentExprs}
      */
-    val constrApp: () => Tree = () => {
-      val t = rejectWildcardType(annotType(), fallbackTree = Ident(nme.ERROR))
-        // Using Ident(nme.ERROR) to avoid causing cascade errors on non-user-written code
+    val constrApp: () => Tree = () =>
+      val t = rejectWildcardType(annotTypeRest(simpleType1()),
+        fallbackTree = Ident(tpnme.ERROR))
+        // Using Ident(tpnme.ERROR) to avoid causing cascade errors on non-user-written code
       if in.token == LPAREN then parArgumentExprss(wrapNew(t)) else t
-    }
 
     /** ConstrApps  ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
      */

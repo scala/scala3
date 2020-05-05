@@ -128,11 +128,10 @@ Literal           ::=  SimpleLiteral
 QualId            ::=  id {‘.’ id}
 ids               ::=  id {‘,’ id}
 
-Path              ::=  StableId
+SimpleRef         ::=  id
                     |  [id ‘.’] ‘this’
-StableId          ::=  id
-                    |  Path ‘.’ id
                     |  [id ‘.’] ‘super’ [ClassQualifier] ‘.’ id
+
 ClassQualifier    ::=  ‘[’ id ‘]’
 ```
 
@@ -153,17 +152,25 @@ InfixType         ::=  RefinedType {id [nl] RefinedType}                        
 RefinedType       ::=  WithType {[nl | colonEol] Refinement}                    RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
-SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
-                    |  SimpleType ‘#’ id                                        Select(t, name)
-                    |  StableId
-                    |  Path ‘.’ ‘type’                                          SingletonTypeTree(p)
-                    |  ‘(’ ArgTypes ‘)’                                         Tuple(ts)
+
+SimpleType        ::=  SimpleLiteral                                            SingletonTypeTree(l)
                     |  ‘?’ SubtypeBounds
+                    |  SimpleType ‘(’ Singletons ‘)’
+                    |  SimpleType1
+SimpleType1       ::=  id                                                       Ident(name)
+                    |  Singleton ‘.’ id                                         Select(t, name)
+                    |  Singleton ‘.’ ‘type’                                     SingletonTypeTree(p)
+                    |  ‘(’ ArgTypes ‘)’                                         Tuple(ts)
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
-                    |  SimpleLiteral                                            SingletonTypeTree(l)
                     |  ‘$’ ‘{’ Block ‘}’
-ArgTypes          ::=  Type {‘,’ Type}
-                    |  NamedTypeArg {‘,’ NamedTypeArg}
+                    |  SimpleType1 TypeArgs                                     AppliedTypeTree(t, args)
+                    |  SimpleType1 ‘#’ id                                       Select(t, name)
+Singleton         ::=  SimpleRef
+                    |  Singleton ‘.’ id
+-- not yet          |  Singleton ‘(’ Singletons ‘)’
+-- not yet          |  Singleton ‘[’ ArgTypes ‘]’
+Singletons        ::=  Singleton { ‘,’ Singleton }
+ArgTypes          ::=  Types
 FunArgType        ::=  Type
                     |  ‘=>’ Type                                                PrefixOp(=>, t)
 ParamType         ::=  [‘=>’] ParamValueType
@@ -209,7 +216,7 @@ InfixExpr         ::=  PrefixExpr
                     |  InfixExpr MatchClause
 MatchClause       ::=  ‘match’ ‘{’ CaseClauses ‘}’                              Match(expr, cases)
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
-SimpleExpr        ::=  Path
+SimpleExpr        ::=  SimpleRef
                     |  Literal
                     |  ‘_’
                     |  BlockExpr
@@ -271,7 +278,7 @@ SimplePattern     ::=  PatVar                                                   
                     |  Quoted
                     |  XmlPattern
                     |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
-SimplePattern1    ::=  Path
+SimplePattern1    ::=  SimpleRef
                     |  SimplePattern1 ‘.’ id
 PatVar            ::=  varid
                     |  ‘_’
@@ -335,7 +342,7 @@ AccessQualifier   ::=  ‘[’ id ‘]’
 Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
 
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
-ImportExpr        ::=  StableId ‘.’ ImportSpec                                  Import(expr, sels)
+ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec                          Import(expr, sels)
 ImportSpec        ::=  id
                     | ‘_’
                     | ‘{’ ImportSelectors) ‘}’
@@ -398,7 +405,7 @@ ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
-ConstrApp         ::=  AnnotType {ParArgumentExprs}                             Apply(tp, args)
+ConstrApp         ::=  SimpleType1 {Annotation} {ParArgumentExprs}              Apply(tp, args)
 ConstrExpr        ::=  SelfInvocation
                     |  ‘{’ SelfInvocation {semi BlockStat} ‘}’
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}

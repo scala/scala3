@@ -98,6 +98,13 @@ object Scanners {
       this.strVal = td.strVal
       this.base = td.base
     }
+
+    def isNewLine = token == NEWLINE || token == NEWLINES
+    def isIdent = token == IDENTIFIER || token == BACKQUOTED_IDENT
+    def isIdent(name: Name) = token == IDENTIFIER && this.name == name
+
+    def isNestedStart = token == LBRACE || token == INDENT
+    def isNestedEnd = token == RBRACE || token == OUTDENT
   }
 
   abstract class ScannerCommon(source: SourceFile)(implicit ctx: Context) extends CharArrayReader with TokenData {
@@ -535,7 +542,7 @@ object Scanners {
 
     def observeColonEOL(): Unit =
       if token == COLON then
-        lookahead()
+        lookAhead()
         val atEOL = isAfterLineEnd || token == EOF
         reset()
         if atEOL then token = COLONEOL
@@ -562,7 +569,7 @@ object Scanners {
         insert(OUTDENT, offset)
       case _ =>
 
-    def lookahead() = {
+    def lookAhead() = {
       prev.copyFrom(this)
       lastOffset = lastCharOffset
       fetchToken()
@@ -591,12 +598,12 @@ object Scanners {
       }
       token match {
         case CASE =>
-          lookahead()
+          lookAhead()
           if (token == CLASS) fuse(CASECLASS)
           else if (token == OBJECT) fuse(CASEOBJECT)
           else reset()
         case SEMI =>
-          lookahead()
+          lookAhead()
           if (token != ELSE) reset()
         case COMMA =>
           def isEnclosedInParens(r: Region): Boolean = r match
@@ -608,7 +615,7 @@ object Scanners {
               insert(OUTDENT, offset)
               currentRegion = r.outer
             case _ =>
-              lookahead()
+              lookAhead()
               if isAfterLineEnd
                  && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
               then
@@ -892,6 +899,18 @@ object Scanners {
 
 // Lookahead ---------------------------------------------------------------
 
+    /** The next token after this one.
+     *  The token is computed via fetchToken, so complex two word
+     *  tokens such as CASECLASS are not recognized.
+     *  Newlines and indent/unindent tokens are skipped.
+     *
+     */
+     def lookahead: TokenData =
+      if next.token == EMPTY then
+        lookAhead()
+        reset()
+      next
+
     class LookaheadScanner() extends Scanner(source, offset)
 
     /** Skip matching pairs of `(...)` or `[...]` parentheses.
@@ -903,17 +922,6 @@ object Scanners {
       while token != EOF && token != opening + 1 do
         if token == opening && multiple then skipParens() else nextToken()
       nextToken()
-
-    /** Is the token following the current one in `tokens`? */
-    def lookaheadIn(follow: BitSet | TermName): Boolean =
-      val lookahead = LookaheadScanner()
-      while
-        lookahead.nextToken()
-        lookahead.isNewLine
-      do ()
-      follow match
-        case tokens: BitSet => tokens.contains(lookahead.token)
-        case name: TermName => lookahead.token == IDENTIFIER && lookahead.name == name
 
     /** Is the current token in a position where a modifier is allowed? */
     def inModifierPosition(): Boolean = {
@@ -1010,14 +1018,7 @@ object Scanners {
       isSoftModifier && inModifierPosition()
 
     def isSoftModifierInParamModifierPosition: Boolean =
-      isSoftModifier && !lookaheadIn(BitSet(COLON))
-
-    def isNewLine = token == NEWLINE || token == NEWLINES
-    def isIdent = token == IDENTIFIER || token == BACKQUOTED_IDENT
-    def isIdent(name: Name) = token == IDENTIFIER && this.name == name
-
-    def isNestedStart = token == LBRACE || token == INDENT
-    def isNestedEnd = token == RBRACE || token == OUTDENT
+      isSoftModifier && lookahead.token != COLON
 
     def canStartStatTokens =
       if migrateTo3 then canStartStatTokens2 else canStartStatTokens3
