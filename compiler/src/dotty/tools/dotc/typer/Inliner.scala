@@ -79,6 +79,7 @@ object Inliner {
       override def transform(t: Tree)(using Context) =
         t match {
           case Inlined(t, Nil, expr) if t.isEmpty => expr
+          case _ if t.isEmpty => t
           case _ => super.transform(t.withSpan(call.span))
         }
     }
