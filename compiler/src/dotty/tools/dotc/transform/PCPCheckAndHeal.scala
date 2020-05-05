@@ -38,7 +38,7 @@ import scala.annotation.constructorOnly
  *
  *  Type healing consists in transforming a phase inconsistent type `T` into a splice of `${summon[Type[T]]}`.
  *
- *  As references to types do not necessarely have an assosiated tree it is not always possible to replace the types in place.
+ *  As references to types do not necessarily have an assosiated tree it is not always possible to replace the types directly.
  *  Instead we always generate a type alias for it and palce it at the start of the surounding quote. This also avoids duplication.
  *  For example:
  *    '{
@@ -80,7 +80,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           case tree1 => tree1
 
       case _: Ident | _: This =>
-        tree.withType(healTermType(tree.sourcePos)(tree.tpe))
+        tree.withType(healTypeOfTerm(tree.sourcePos)(tree.tpe))
 
       // Remove inline defs in quoted code. Already fully inlined.
       case tree: DefDef if tree.symbol.is(Inline) && level > 0 =>
@@ -156,7 +156,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
   private def healInfo(tree: Tree, pos: SourcePosition)(using Context): Unit =
     tree.symbol.info = healType(pos)(tree.symbol.info)
 
-  /** If the refers to a locally defined symbol (either directly, or in a pickled type),
+  /** If the type refers to a locally defined symbol (either directly, or in a pickled type),
    *  check that its staging level matches the current level.
    *  - Static types and term are allowed at any level.
    *  - If a type reference is used a higher level, then it is insosistent. Will atempt to heal before failing.
@@ -177,7 +177,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
             case prefix: ThisType if !tp.symbol.isStatic && level > levelOf(prefix.cls) =>
               tryHeal(tp.symbol, tp, pos)
             case prefix: TermRef if tp.symbol.isSplice =>
-              // Heal explice type splice in the code
+              // Heal explicit type splice in the code
               if level > 0 then getQuoteTypeTags.getTagRef(prefix) else tp
             case prefix: TermRef if !prefix.symbol.isStatic && level > levelOf(prefix.symbol) =>
               tryHeal(prefix.symbol, tp, pos)
@@ -193,7 +193,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
   }
 
   /** Check phase consistency of terms and heal incosistent type references. */
-  private def healTermType(pos: SourcePosition)(using Context) = new TypeMap {
+  private def healTypeOfTerm(pos: SourcePosition)(using Context) = new TypeMap {
     def apply(tp: Type): Type =
       tp match
         case tp @ TypeRef(NoPrefix, _) if level > levelOf(tp.symbol) =>
