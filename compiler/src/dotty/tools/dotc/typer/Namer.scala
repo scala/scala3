@@ -1439,18 +1439,10 @@ class Namer { typer: Typer =>
       // instead of widening to the underlying module class types.
       // We also drop the @Repeated annotation here to avoid leaking it in method result types
       // (see run/inferred-repeated-result).
-      def widenRhs(tp: Type): Type = {
-        val tp1 = tp.widenTermRefExpr.simplified match
+      def widenRhs(tp: Type): Type =
+        tp.widenTermRefExpr.simplified match
           case ctp: ConstantType if isInlineVal => ctp
-          case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
-          case tp =>
-            if true then ctx.typeComparer.widenInferred(tp, rhsProto)
-            else rhsProto match {
-              case OrType(_, _) | WildcardType(TypeBounds(_, OrType(_, _))) => tp.widen
-              case _ => tp.widenUnion
-            }
-        tp1.dropRepeatedAnnot
-      }
+          case tp => ctx.typeComparer.widenInferred(tp, rhsProto)
 
       // Replace aliases to Unit by Unit itself. If we leave the alias in
       // it would be erased to BoxedUnit.
