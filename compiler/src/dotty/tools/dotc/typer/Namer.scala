@@ -196,11 +196,11 @@ class Namer { typer: Typer =>
 
   import untpd._
 
-  val TypedAhead: Property.Key[tpd.Tree] = new Property.Key
-  val ExpandedTree: Property.Key[untpd.Tree] = new Property.Key
+  val TypedAhead      : Property.Key[tpd.Tree]            = new Property.Key
+  val ExpandedTree    : Property.Key[untpd.Tree]          = new Property.Key
   val ExportForwarders: Property.Key[List[tpd.MemberDef]] = new Property.Key
-  val SymOfTree: Property.Key[Symbol] = new Property.Key
-  val Deriver: Property.Key[typer.Deriver] = new Property.Key
+  val SymOfTree       : Property.Key[Symbol]              = new Property.Key
+  val Deriver         : Property.Key[typer.Deriver]       = new Property.Key
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
@@ -1443,7 +1443,12 @@ class Namer { typer: Typer =>
         val tp1 = tp.widenTermRefExpr.simplified match
           case ctp: ConstantType if isInlineVal => ctp
           case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
-          case tp => tp.widenUnion
+          case tp =>
+            if true then ctx.typeComparer.widenInferred(tp, rhsProto)
+            else rhsProto match {
+              case OrType(_, _) | WildcardType(TypeBounds(_, OrType(_, _))) => tp.widen
+              case _ => tp.widenUnion
+            }
         tp1.dropRepeatedAnnot
       }
 
@@ -1512,10 +1517,10 @@ class Namer { typer: Typer =>
       case _ =>
         WildcardType
     }
-    val memTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
-      JavaNullInterop.nullifyMember(sym, memTpe, mdef.mods.isAllOf(JavaEnumValue))
-    else memTpe
+      JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
+    else mbrTpe
   }
 
   /** The type signature of a DefDef with given symbol */
