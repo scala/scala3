@@ -40,3 +40,6 @@ nullable.scala
 
 # parameter untupling with overloaded functions (see comment in Applications.normArg)
 i7757.scala
+
+# splice type tag dealiased in this reference
+i8651b.scala

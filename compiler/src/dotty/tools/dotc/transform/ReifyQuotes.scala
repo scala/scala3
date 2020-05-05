@@ -301,7 +301,7 @@ class ReifyQuotes extends MacroTransform {
 
     /** Returns true if this tree will be captured by `makeLambda`. Checks phase consistency and presence of capturer. */
     private def isCaptured(sym: Symbol, level: Int)(implicit ctx: Context): Boolean =
-      level == 1 && levelOf(sym).contains(1) && capturers.contains(sym)
+      level == 1 && levelOf(sym) == 1 && capturers.contains(sym)
 
     /** Transform `tree` and return the resulting tree and all `embedded` quotes
      *  or splices as a pair.

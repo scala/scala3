@@ -43,19 +43,19 @@ class Staging extends MacroTransform {
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
           val checker = new PCPCheckAndHeal(freshStagingContext) {
-            override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(implicit ctx: Context): Option[tpd.Tree] = {
+            override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(implicit ctx: Context): TypeRef = {
               def symStr =
                 if (sym.is(ModuleClass)) sym.sourceModule.show
                 else i"${sym.name}.this"
               val errMsg = s"\nin ${ctx.owner.fullName}"
               assert(
                 ctx.owner.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) ||
-                (sym.isType && levelOf(sym).getOrElse(0) > 0),
+                (sym.isType && levelOf(sym) > 0),
                 em"""access to $symStr from wrong staging level:
-                    | - the definition is at level ${levelOf(sym).getOrElse(0)},
+                    | - the definition is at level ${levelOf(sym)},
                     | - but the access is at level $level.$errMsg""")
 
-              None
+              tp
             }
           }
           checker.transform(tree)

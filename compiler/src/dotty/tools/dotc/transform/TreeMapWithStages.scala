@@ -35,23 +35,28 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   import TreeMapWithStages._
 
   /** A map from locally defined symbols to their definition quotation level */
-  private val levelOfMap: mutable.HashMap[Symbol, Int] = ictx.property(LevelOfKey).get
+  private[this] val levelOfMap: mutable.HashMap[Symbol, Int] = ictx.property(LevelOfKey).get
 
   /** A stack of entered symbols, to be unwound after scope exit */
-  private var enteredSyms: List[Symbol] = Nil
+  private[this] var enteredSyms: List[Symbol] = Nil
+
+  /** If we are inside a quote or a splice */
+  private[this] var inQuoteOrSplice = false
 
   /** The quotation level of the definition of the locally defined symbol */
-  protected def levelOf(sym: Symbol): Option[Int] = levelOfMap.get(sym)
+  protected def levelOf(sym: Symbol): Int = levelOfMap.getOrElse(sym, 0)
 
   /** Localy defined symbols seen so far by `StagingTransformer.transform` */
   protected def localSymbols: List[Symbol] = enteredSyms
 
-  /** Enter staging level of symbol defined by `tree`, if applicable. */
+  /** If we are inside a quote or a splice */
+  protected def isInQuoteOrSplice: Boolean = inQuoteOrSplice
+
+  /** Enter staging level of symbol defined by `tree` */
   private def markSymbol(sym: Symbol)(implicit ctx: Context): Unit =
-    if ((sym.isClass || sym.maybeOwner.isTerm) && !levelOfMap.contains(sym)) {
+    if level != 0 && !levelOfMap.contains(sym) then
       levelOfMap(sym) = level
       enteredSyms = sym :: enteredSyms
-  }
 
   /** Enter staging level of symbol defined by `tree`, if applicable. */
   private def markDef(tree: Tree)(implicit ctx: Context): Unit = tree match {
@@ -89,19 +94,25 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
       tree match {
 
         case Quoted(quotedTree) =>
-          dropEmptyBlocks(quotedTree) match {
+          val old = inQuoteOrSplice
+          inQuoteOrSplice = true
+          try dropEmptyBlocks(quotedTree) match {
             case Spliced(t) =>
               // '{ $x } --> x
               // and adapt the refinment of `QuoteContext { type tasty: ... } ?=> Expr[T]`
               transform(t).asInstance(tree.tpe)
             case _ => transformQuotation(quotedTree, tree)
           }
+          finally inQuoteOrSplice = old
 
         case tree @ Spliced(splicedTree) =>
-          dropEmptyBlocks(splicedTree) match {
+          val old = inQuoteOrSplice
+          inQuoteOrSplice = true
+          try dropEmptyBlocks(splicedTree) match {
             case Quoted(t) => transform(t) // ${ 'x } --> x
             case _ => transformSplice(splicedTree, tree)
           }
+          finally inQuoteOrSplice = old
 
         case Block(stats, _) =>
           val last = enteredSyms
