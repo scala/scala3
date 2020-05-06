@@ -24,9 +24,12 @@ local.sbt
 # npm
 node_modules
 
-# VS Code
+# VS Code 
 .vscode/
+# Metals
+.bloop/
 .metals/
+project/metals.sbt
 
 # Scala-IDE specific
 .scala_dependencies
