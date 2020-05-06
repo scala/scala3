@@ -502,7 +502,7 @@ object ProtoTypes {
       for (paramRef <- tl.paramRefs)
       yield {
         val tt = new TypeVarBinder().withSpan(owningTree.span)
-        val tvar = new TypeVar(paramRef, state)
+        val tvar = new TypeVar(paramRef, state, ctx.owner.ownersIterator.length)
         state.ownedVars += tvar
         tt.withType(tvar)
       }

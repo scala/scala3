@@ -4110,11 +4110,8 @@ object Types {
    *
    *  @param  origin        The parameter that's tracked by the type variable.
    *  @param  creatorState  The typer state in which the variable was created.
-   *
-   *  `owningTree` and `owner` are used to determine whether a type-variable can be instantiated
-   *  at some given point. See `Inferencing#interpolateUndetVars`.
    */
-  final class TypeVar(private var _origin: TypeParamRef, creatorState: TyperState) extends CachedProxyType with ValueType {
+  final class TypeVar(private var _origin: TypeParamRef, creatorState: TyperState, level: Int) extends CachedProxyType with ValueType {
 
     def origin: TypeParamRef = _origin
 
@@ -4150,14 +4147,34 @@ object Types {
     /** Is the variable already instantiated? */
     def isInstantiated(implicit ctx: Context): Boolean = instanceOpt.exists
 
+    def hygienic(tp: Type)(using Context): Type =
+      val problemSyms = new TypeAccumulator[Set[Symbol]]:
+        def apply(syms: Set[Symbol], t: Type): Set[Symbol] = t match
+          case ref @ TermRef(NoPrefix, _)
+          if ref.symbol.maybeOwner.ownersIterator.length > level =>
+            syms + ref.symbol
+          case _ =>
+            foldOver(syms, t)
+      val problems = problemSyms(Set.empty, tp)
+      if problems.isEmpty then tp
+      else
+        val htp = ctx.typer.avoid(tp, problems.toList)
+        val msg = i"Inaccessible variables captured by instance for $this.\n$tp was fixed to $htp"
+        typr.println(msg)
+        val bound = ctx.typeComparer.fullUpperBound(origin)
+        if !(htp <:< bound) then
+          throw new TypeError(s"$msg,\nbut this does not conform to upper bound $bound")
+        htp
+
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
       assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
-      typr.println(s"instantiating ${this.show} with ${tp.show}")
+      val htp = hygienic(tp)
+      typr.println(s"instantiating ${this.show} with ${htp.show}")
       if ((ctx.typerState eq owningState.get) && !ctx.typeComparer.subtypeCheckInProgress)
-        inst = tp
-      ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
-      tp
+        inst = htp
+      ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, htp)
+      htp
     }
 
     /** Instantiate variable from the constraints over its `origin`.
