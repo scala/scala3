@@ -1,0 +1,4 @@
+> a/packageBin
+# Remove the source file to check if we later try to read it because it's in the @SourceFile annotation of the tasty file being inlined
+$ delete a/A.scala
+> b/check
