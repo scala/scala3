@@ -1494,9 +1494,9 @@ class Namer { typer: Typer =>
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe).tpe
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
-        val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
         mdef match {
           case mdef: DefDef if mdef.name == nme.ANON_FUN =>
+            val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
             val hygienicType = avoid(rhsType, paramss.flatten)
             if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
               ctx.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
