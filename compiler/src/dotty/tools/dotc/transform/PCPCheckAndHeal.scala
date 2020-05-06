@@ -179,7 +179,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
             case prefix: TermRef if tp.symbol.isSplice =>
               prefix.symbol.info.argInfos match
                 case (tb: TypeBounds) :: _ =>
-                  ctx.error(em"Cannot splice $tp with wildcard type", pos)
+                  ctx.error(em"Cannot splice $tp because it is a wildcard type", pos)
                 case _ =>
               // Heal explicit type splice in the code
               if level > 0 then getQuoteTypeTags.getTagRef(prefix) else tp
