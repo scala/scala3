@@ -128,6 +128,12 @@ object projects:
     dependencies = List(scalatest, scalacheck, scalatestplusScalacheck)
   )
 
+  lazy val geny = MillCommunityProject(
+    project = "geny",
+    baseCommand = s"geny.jvm[$compilerVersion]",
+    dependencies = List(utest)
+  )
+
   lazy val intent = SbtCommunityProject(
     project       = "intent",
     sbtTestCommand   = "test",
@@ -351,6 +357,7 @@ class CommunityBuildTest:
   @Test def oslib = projects.oslib.run()
   @Test def ujson = projects.ujson.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
+  @Test def geny = projects.geny.run()
   @Test def stdLib213 = projects.stdLib213.run()
   @Test def shapeless = projects.shapeless.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
