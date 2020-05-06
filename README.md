@@ -22,7 +22,6 @@ other more direct lines of communication such as email.
 How to Contribute
 =================
 * [Getting Started as Contributor](https://dotty.epfl.ch/docs/contributing/getting-started.html)
-* [Awesome Error Messages](http://scala-lang.org/blog/2016/10/14/dotty-errors.html)
 * [Issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
 
 ## Contribute Internals-related Knowledge
