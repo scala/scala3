@@ -7,7 +7,7 @@ echo "Working directory: $PWD"
 GENDOC_EXTRA_ARGS=$@
 GIT_HEAD=$(git rev-parse HEAD) # save current head for commit message in gh-pages
 PREVIOUS_SNAPSHOTS_DIR="$PWD/../prev_snapshots"
-SCRIPT_DIR="(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)"
 SITE_OUT_DIR="$PWD/docs/_site"
 
 ### Obtain the previous versions of the website ###
