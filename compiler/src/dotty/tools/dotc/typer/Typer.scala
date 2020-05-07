@@ -3083,7 +3083,7 @@ class Typer extends Namer
         checkEqualityEvidence(tree, pt)
         tree
       }
-      else if (methPart(tree).symbol.isAllOf(Inline | Deferred) && !ctx.inInlineMethod) then
+      else if (methPart(tree).symbol.isAllOf(Inline | Deferred) && !Inliner.inInlineMethod) then
         errorTree(tree, i"Deferred inline ${methPart(tree).symbol.showLocated} cannot be invoked")
       else if (Inliner.isInlineable(tree) &&
                !ctx.settings.YnoInline.value &&
