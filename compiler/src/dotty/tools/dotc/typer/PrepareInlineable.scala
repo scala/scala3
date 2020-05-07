@@ -244,7 +244,7 @@ object PrepareInlineable {
   def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): Unit = {
     if (inlined.owner.isClass && inlined.owner.seesOpaques)
       ctx.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.sourcePos)
-    if (ctx.outer.inInlineMethod)
+    if Inliner.inInlineMethod(using ctx.outer) then
       ctx.error(ex"Implementation restriction: nested inline methods are not supported", inlined.sourcePos)
 
     if (inlined.is(Macro) && !ctx.isAfterTyper) {

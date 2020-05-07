@@ -5,6 +5,7 @@ package core
 import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
 import Decorators._
 import StdNames.nme
+import TypeOps.refineUsingParent
 import collection.mutable
 import util.Stats
 import config.Config
@@ -2306,7 +2307,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
      *  denote the same set of values.
      */
     def decompose(sym: Symbol, tp: Type): List[Type] =
-      sym.children.map(x => ctx.refineUsingParent(tp, x)).filter(_.exists)
+      sym.children.map(x => refineUsingParent(tp, x)).filter(_.exists)
 
     (tp1.dealias, tp2.dealias) match {
       case (tp1: TypeRef, tp2: TypeRef) if tp1.symbol == defn.SingletonClass || tp2.symbol == defn.SingletonClass =>

@@ -898,7 +898,7 @@ object Types {
     final def asSeenFrom(pre: Type, cls: Symbol)(implicit ctx: Context): Type = {
       record("asSeenFrom")
       if (!cls.membersNeedAsSeenFrom(pre)) this
-      else ctx.asSeenFrom(this, pre, cls)
+      else TypeOps.asSeenFrom(this, pre, cls)
     }
 
 // ----- Subtype-related --------------------------------------------
@@ -1668,7 +1668,7 @@ object Types {
      *  after the type variables are instantiated. Finally, it
      *  maps poly params in the current constraint set back to their type vars.
      */
-    def simplified(implicit ctx: Context): Type = ctx.simplify(this, null)
+    def simplified(implicit ctx: Context): Type = TypeOps.simplify(this, null)
 
     /** Compare `this == that`, assuming corresponding binders in `bs` are equal.
      *  The normal `equals` should be equivalent to `equals(that, null`)`.
@@ -2948,7 +2948,7 @@ object Types {
     /** Replace or type by the closest non-or type above it */
     def join(implicit ctx: Context): Type = {
       if (myJoinPeriod != ctx.period) {
-        myJoin = ctx.orDominator(this)
+        myJoin = TypeOps.orDominator(this)
         core.println(i"join of $this == $myJoin")
         assert(myJoin != this)
         myJoinPeriod = ctx.period
@@ -4165,7 +4165,7 @@ object Types {
       val problems = problemSyms(Set.empty, tp)
       if problems.isEmpty then tp
       else
-        val atp = ctx.typer.avoid(tp, problems.toList)
+        val atp = TypeOps.avoid(tp, problems.toList)
         def msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
         typr.println(msg)
         val bound = ctx.typeComparer.fullUpperBound(origin)

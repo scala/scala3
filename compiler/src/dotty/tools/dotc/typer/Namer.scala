@@ -1510,7 +1510,7 @@ class Namer { typer: Typer =>
             // are better ways to achieve this. It would be good if we could get rid of this code.
             // It seems at least partially redundant with the nesting level checking on TypeVar
             // instantiation.
-            val hygienicType = avoid(rhsType, paramss.flatten)
+            val hygienicType = TypeOps.avoid(rhsType, paramss.flatten)
             if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
               ctx.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
                 i"it is not a supertype of the hygienic type $hygienicType", mdef.sourcePos)

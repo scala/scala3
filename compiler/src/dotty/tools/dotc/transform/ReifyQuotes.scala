@@ -76,7 +76,7 @@ class ReifyQuotes extends MacroTransform {
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
     tree match {
-      case tree: RefTree if !ctx.inInlineMethod =>
+      case tree: RefTree if !Inliner.inInlineMethod =>
         assert(!tree.symbol.isQuote)
         assert(!tree.symbol.isSplice)
       case _ : TypeDef =>
