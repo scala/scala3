@@ -4111,14 +4111,16 @@ object Types {
    *  @param  origin        The parameter that's tracked by the type variable.
    *  @param  creatorState  The typer state in which the variable was created.
    */
-  final class TypeVar(private var _origin: TypeParamRef, creatorState: TyperState, level: Int) extends CachedProxyType with ValueType {
+  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState, nestingLevel: Int) extends CachedProxyType with ValueType {
 
-    def origin: TypeParamRef = _origin
+    private var currentOrigin = initOrigin
+
+    def origin: TypeParamRef = currentOrigin
 
     /** Set origin to new parameter. Called if we merge two conflicting constraints.
      *  See OrderingConstraint#merge, OrderingConstraint#rename
      */
-    def setOrigin(p: TypeParamRef) = _origin = p
+    def setOrigin(p: TypeParamRef) = currentOrigin = p
 
     /** The permanent instance type of the variable, or NoType is none is given yet */
     private var myInst: Type = NoType
@@ -4147,34 +4149,34 @@ object Types {
     /** Is the variable already instantiated? */
     def isInstantiated(implicit ctx: Context): Boolean = instanceOpt.exists
 
-    def hygienic(tp: Type)(using Context): Type =
+    def avoidCaptures(tp: Type)(using Context): Type =
       val problemSyms = new TypeAccumulator[Set[Symbol]]:
         def apply(syms: Set[Symbol], t: Type): Set[Symbol] = t match
           case ref @ TermRef(NoPrefix, _)
-          if ref.symbol.maybeOwner.ownersIterator.length > level =>
+          if ref.symbol.maybeOwner.nestingLevel > nestingLevel =>
             syms + ref.symbol
           case _ =>
             foldOver(syms, t)
       val problems = problemSyms(Set.empty, tp)
       if problems.isEmpty then tp
       else
-        val htp = ctx.typer.avoid(tp, problems.toList)
-        val msg = i"Inaccessible variables captured by instance for $this.\n$tp was fixed to $htp"
+        val atp = ctx.typer.avoid(tp, problems.toList)
+        val msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
         typr.println(msg)
         val bound = ctx.typeComparer.fullUpperBound(origin)
-        if !(htp <:< bound) then
-          throw new TypeError(s"$msg,\nbut this does not conform to upper bound $bound")
-        htp
+        if !(atp <:< bound) then
+          throw new TypeError(s"$msg,\nbut the latter type does not conform to the upper bound $bound")
+        atp
 
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
       assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
-      val htp = hygienic(tp)
-      typr.println(s"instantiating ${this.show} with ${htp.show}")
+      val atp = avoidCaptures(tp)
+      typr.println(s"instantiating ${this.show} with ${atp.show}")
       if ((ctx.typerState eq owningState.get) && !ctx.typeComparer.subtypeCheckInProgress)
-        inst = htp
-      ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, htp)
-      htp
+        inst = atp
+      ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, atp)
+      atp
     }
 
     /** Instantiate variable from the constraints over its `origin`.
@@ -4217,6 +4219,9 @@ object Types {
       s"TypeVar($origin$instStr)"
     }
   }
+  object TypeVar:
+    def apply(initOrigin: TypeParamRef, creatorState: TyperState)(using Context) =
+      new TypeVar(initOrigin, creatorState, ctx.owner.nestingLevel)
 
   type TypeVars = SimpleIdentitySet[TypeVar]
 
