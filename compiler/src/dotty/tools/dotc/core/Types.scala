@@ -4167,7 +4167,7 @@ object Types {
       else
         val atp = ctx.typer.avoid(tp, problems.toList)
         val msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
-        println(msg)
+        typr.println(msg)
         val bound = ctx.typeComparer.fullUpperBound(origin)
         if !(atp <:< bound) then
           throw new TypeError(s"$msg,\nbut the latter type does not conform to the upper bound $bound")
