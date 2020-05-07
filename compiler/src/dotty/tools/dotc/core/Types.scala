@@ -4149,10 +4149,15 @@ object Types {
     /** Is the variable already instantiated? */
     def isInstantiated(implicit ctx: Context): Boolean = instanceOpt.exists
 
-    def avoidCaptures(tp: Type)(using Context): Type =
+    /** Avoid term references in `tp` to parameters or local variables that
+     *  are nested more deeply than the type variable itself.
+     */
+    private def avoidCaptures(tp: Type)(using Context): Type =
       val problemSyms = new TypeAccumulator[Set[Symbol]]:
         def apply(syms: Set[Symbol], t: Type): Set[Symbol] = t match
           case ref @ TermRef(NoPrefix, _)
+          // AVOIDANCE TODO: Are there other problematic kinds of references?
+          // Our current tests only give us these, but we might need to generalize this.
           if ref.symbol.maybeOwner.nestingLevel > nestingLevel =>
             syms + ref.symbol
           case _ =>
@@ -4162,21 +4167,26 @@ object Types {
       else
         val atp = ctx.typer.avoid(tp, problems.toList)
         val msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
-        typr.println(msg)
+        println(msg)
         val bound = ctx.typeComparer.fullUpperBound(origin)
         if !(atp <:< bound) then
           throw new TypeError(s"$msg,\nbut the latter type does not conform to the upper bound $bound")
         atp
+      // AVOIDANCE TODO: This really works well only if variables are instantiated from below
+      // If we hit a problematic symbol while instantiating from above, then avoidance
+      // will widen the instance type further. This could yield an alias, which would be OK.
+      // But it also could yield a true super type which would then fail the bounds check
+      // and throw a TypeError. The right thing to do instead would be to avoid "downwards".
+      // To do this, we need first test cases for that situation.
 
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
       assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
-      val atp = avoidCaptures(tp)
-      typr.println(s"instantiating ${this.show} with ${atp.show}")
+      typr.println(s"instantiating ${this.show} with ${tp.show}")
       if ((ctx.typerState eq owningState.get) && !ctx.typeComparer.subtypeCheckInProgress)
-        inst = atp
-      ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, atp)
-      atp
+        inst = tp
+      ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
+      tp
     }
 
     /** Instantiate variable from the constraints over its `origin`.
@@ -4187,7 +4197,7 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type =
-      instantiateWith(ctx.typeComparer.instanceType(origin, fromBelow))
+      instantiateWith(avoidCaptures(ctx.typeComparer.instanceType(origin, fromBelow)))
 
     /** For uninstantiated type variables: Is the lower bound different from Nothing? */
     def hasLowerBound(implicit ctx: Context): Boolean =
