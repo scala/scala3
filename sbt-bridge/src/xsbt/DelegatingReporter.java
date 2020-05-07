@@ -78,45 +78,59 @@ final public class DelegatingReporter extends AbstractReporter {
       SourcePosition pos = dia.pos();
       SourceFile src = pos.source();
       position = new Position() {
-        public Optional<java.io.File> sourceFile() {
-          if (!src.exists()) return Optional.empty();
-          else return Optional.ofNullable(src.file().file());
-        }
         public Optional<String> sourcePath() {
-          if (!src.exists()) return Optional.empty();
-          else return Optional.ofNullable(src.file().path());
+          if (!src.exists())
+            return Optional.empty();
+
+          return Optional.ofNullable(src.file().path());
+        }
+        public Optional<java.io.File> sourceFile() {
+          if (!src.exists())
+            return Optional.empty();
+
+          return Optional.ofNullable(src.file().file());
         }
         public Optional<Integer> line() {
+          if (!src.file().exists())
+            return Optional.empty();
+
           int line = pos.line() + 1;
-          if (line == -1) return Optional.empty();
-          else return Optional.of(line);
+          if (line == -1)
+            return Optional.empty();
+
+          return Optional.of(line);
         }
         public String lineContent() {
+          if (!src.file().exists())
+            return "";
+
           String line = pos.lineContent();
           if (line.endsWith("\r\n"))
             return line.substring(0, line.length() - 2);
-          else if (line.endsWith("\n") || line.endsWith("\u000c"))
+          if (line.endsWith("\n") || line.endsWith("\u000c"))
             return line.substring(0, line.length() - 1);
-          else
-            return line;
+
+          return line;
         }
         public Optional<Integer> offset() {
           return Optional.of(pos.point());
         }
         public Optional<Integer> pointer() {
-          if (!src.exists()) return Optional.empty();
-          else return Optional.of(pos.point() - src.startOfLine(pos.point()));
+          if (!src.file().exists())
+            return Optional.empty();
+
+          return Optional.of(pos.point() - src.startOfLine(pos.point()));
         }
         public Optional<String> pointerSpace() {
-          if (!src.exists()) return Optional.empty();
-          else {
-            String lineContent = this.lineContent();
-            int pointer = this.pointer().get();
-            StringBuilder result = new StringBuilder();
-            for (int i = 0; i < pointer; i++)
-              result.append(lineContent.charAt(i) == '\t' ? '\t' : ' ');
-            return Optional.of(result.toString());
-          }
+          if (!src.file().exists())
+            return Optional.empty();
+
+          String lineContent = this.lineContent();
+          int pointer = this.pointer().get();
+          StringBuilder result = new StringBuilder();
+          for (int i = 0; i < pointer; i++)
+            result.append(lineContent.charAt(i) == '\t' ? '\t' : ' ');
+          return Optional.of(result.toString());
         }
       };
     } else {
