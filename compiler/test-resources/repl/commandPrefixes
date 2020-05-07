@@ -1,0 +1,6 @@
+scala>:t 123
+Int
+scala>:type 123
+Int
+scala>:typee 123
+Unknown command: ":typee", run ":help" for a list of commands
