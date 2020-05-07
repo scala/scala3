@@ -213,7 +213,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
         toTextDependentFunction(tp.refinedInfo.asInstanceOf[MethodType])
       case tp: TypeRef =>
-        if (tp.symbol.isAnonymousClass && !ctx.settings.uniqid.value)
+        if (tp.symbol.isAnonymousClass && !showUniqueIds)
           toText(tp.info)
         else if (tp.symbol.is(Param))
           tp.prefix match {
@@ -729,7 +729,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def optAscription[T >: Untyped](tpt: Tree[T]): Text = optText(tpt)(": " ~ _)
 
   private def idText(tree: untpd.Tree): Text =
-    if ((ctx.settings.uniqid.value || Printer.debugPrintUnique) && tree.hasType && tree.symbol.exists) s"#${tree.symbol.id}" else ""
+    if showUniqueIds && tree.hasType && tree.symbol.exists then s"#${tree.symbol.id}" else ""
 
   private def useSymbol(tree: untpd.Tree) =
     tree.hasType && tree.symbol.exists && ctx.settings.YprintSyms.value
