@@ -41,6 +41,9 @@ sealed trait Command extends ParseResult
 /** An unknown command that will not be handled by the REPL */
 case class UnknownCommand(cmd: String) extends Command
 
+/** An ambiguous prefix that matches multiple commands */
+case class AmbiguousCommand(cmd: String) extends Command
+
 /** `:load <path>` interprets a scala file as if entered line-by-line into
  *  the REPL
  */
@@ -116,19 +119,29 @@ object ParseResult {
     stats
   }
 
+  private val commands: List[(String, String => ParseResult)] = List(
+    Quit.command -> (_ => Quit),
+    Help.command -> (_  => Help),
+    Reset.command -> (_  => Reset),
+    Imports.command -> (_  => Imports),
+    Load.command -> (arg => Load(arg)),
+    TypeOf.command -> (arg => TypeOf(arg)),
+    DocOf.command -> (arg => DocOf(arg))
+  )
+
   def apply(source: SourceFile)(implicit state: State): ParseResult = {
     val sourceCode = source.content().mkString
     sourceCode match {
       case "" => Newline
-      case CommandExtract(cmd, arg) => cmd match {
-        case Quit.command => Quit
-        case Help.command => Help
-        case Reset.command => Reset
-        case Imports.command => Imports
-        case Load.command => Load(arg)
-        case TypeOf.command => TypeOf(arg)
-        case DocOf.command => DocOf(arg)
-        case _ => UnknownCommand(cmd)
+      case CommandExtract(cmd, arg) => {
+        val matchingParsers = commands.collect {
+          case (command, f) if command.startsWith(cmd) => f
+        }
+        matchingParsers match {
+          case Nil => UnknownCommand(cmd)
+          case f :: Nil => f(arg)
+          case _ => AmbiguousCommand(cmd)
+        }
       }
       case _ =>
         implicit val ctx: Context = state.context
