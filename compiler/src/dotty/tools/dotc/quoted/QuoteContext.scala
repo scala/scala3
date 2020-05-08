@@ -6,7 +6,7 @@ import dotty.tools.dotc.tastyreflect.ReflectionImpl
 object QuoteContext {
 
   def apply()(using Context): scala.quoted.QuoteContext =
-    new scala.quoted.QuoteContext(ReflectionImpl(summon[Context]))
+    new QuoteContext(ReflectionImpl(summon[Context]))
 
   type ScopeId = Int
 
@@ -19,3 +19,5 @@ object QuoteContext {
   private[dotty] def scopeId(using Context): ScopeId =
     summon[Context].outersIterator.toList.last.hashCode()
 }
+
+class QuoteContext(val tasty: scala.tasty.Reflection) extends scala.quoted.QuoteContext
