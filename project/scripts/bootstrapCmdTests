@@ -14,7 +14,7 @@ grep -qe "val a: scala.Int = 3" "$tmp"
 
 
 # setup for `dotc`/`dotr` script tests
-"$SBT" dist-bootstrapped/pack
+"$SBT" dist/pack
 
 # check that `dotc` compiles and `dotr` runs it
 echo "testing ./bin/dotc and ./bin/dotr"
@@ -36,7 +36,7 @@ clear_out "$OUT1"
 ./bin/dotr -classpath "$OUT1" "$MAIN" > "$tmp"
 test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
-# echo ":quit" | ./dist-bootstrapped/target/pack/bin/dotr  # not supported by CI
+# echo ":quit" | ./dist/target/pack/bin/dotr  # not supported by CI
 
 echo "testing ./bin/dotd"
 clear_out "$OUT"

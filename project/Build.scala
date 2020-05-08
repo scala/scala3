@@ -1315,13 +1315,9 @@ object Build {
     packArchiveName := "dotty-" + dottyVersion
   )
 
-  lazy val dist = project.asDist(NonBootstrapped)
+  lazy val dist = project.asDist(Bootstrapped)
     .settings(
       packResourceDir += (baseDirectory.value / "bin" -> "bin"),
-    )
-  lazy val `dist-bootstrapped` = project.asDist(Bootstrapped)
-    .settings(
-      packResourceDir += ((baseDirectory in dist).value / "bin" -> "bin"),
     )
 
   implicit class ProjectDefinitions(val project: Project) extends AnyVal {

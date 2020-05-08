@@ -9,6 +9,17 @@ Running all tests in Dotty is as simple as:
 $ sbt test
 ```
 
+Specifically, `sbt test` runs all tests that do _not_ require a bootstrapped 
+compiler. In practice, this means that it runs all compilation tests meeting 
+this criterion, as well as all non-compiler tests. 
+
+The entire suite of tests can be run using the bootstrapped compiler as follows:
+
+```bash
+$ sbt
+> dotty-bootstrapped/test
+```
+
 There are currently several forms of tests in Dotty. These can be split into
 two categories:
 

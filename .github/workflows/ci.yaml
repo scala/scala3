@@ -368,8 +368,8 @@ jobs:
 
       - name: Publish Release
         run: |
-          ./project/scripts/sbt dist-bootstrapped/packArchive
-          sha256sum dist-bootstrapped/target/dotty-* > dist-bootstrapped/target/sha256sum.txt
+          ./project/scripts/sbt dist/packArchive
+          sha256sum dist/target/dotty-* > dist/target/sha256sum.txt
           ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
           echo "::set-env name=RELEASE_TAG::${GITHUB_REF#*refs/tags/}"
 
@@ -391,7 +391,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist-bootstrapped/target/dotty-${{ env.RELEASE_TAG }}.zip
+          asset_path: ./dist/target/dotty-${{ env.RELEASE_TAG }}.zip
           asset_name: dotty-${{ env.RELEASE_TAG }}.zip
           asset_content_type: application/zip
 
@@ -401,7 +401,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist-bootstrapped/target/dotty-${{ env.RELEASE_TAG }}.tar.gz
+          asset_path: ./dist/target/dotty-${{ env.RELEASE_TAG }}.tar.gz
           asset_name: dotty-${{ env.RELEASE_TAG }}.tar.gz
           asset_content_type: application/gzip
 
@@ -411,7 +411,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist-bootstrapped/target/sha256sum.txt
+          asset_path: ./dist/target/sha256sum.txt
           asset_name: sha256sum.txt
           asset_content_type: text/plain
 
