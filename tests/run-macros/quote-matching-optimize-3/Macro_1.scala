@@ -1,8 +1,6 @@
 import scala.quoted._
 import scala.quoted.autolift
 
-import scala.tasty.Reflection
-
 object Macro {
 
   inline def optimize[T](inline x: T): Any = ${ Macro.impl('x) }
