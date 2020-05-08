@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.{given _}
 
 inline def foo(inline n: Int) = ${fooImpl('n)}
 

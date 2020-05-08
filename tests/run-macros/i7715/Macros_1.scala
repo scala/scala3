@@ -1,4 +1,4 @@
-import scala.quoted.{ given _, _ }
+import scala.quoted._
 
 inline def mcr(e: => Any): Any = ${mcrImpl('e)}
 def mcrImpl(e: Expr[Any])(using ctx: QuoteContext): Expr[Any] =

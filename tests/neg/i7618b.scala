@@ -1,6 +1,6 @@
 package macros
 
-import scala.quoted.{given _, _}
+import scala.quoted._
 
 enum Exp {
   case Num(n: Int)
