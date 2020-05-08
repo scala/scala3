@@ -749,14 +749,13 @@ object Erasure {
         val origFunType = origFun.tpe.widen(using preErasureCtx)
         val ownArgs = if origFunType.isErasedMethod then Nil else args
         val fun1 = typedExpr(fun, AnyFunctionProto)
-        val fun1core = stripBlock(fun1)
         fun1.tpe.widen match
           case mt: MethodType =>
             val (xmt,        // A method type like `mt` but with bunched arguments expanded to individual ones
                  bunchArgs,  // whether arguments are bunched
                  outers) =   // the outer reference parameter(s)
-              if fun1core.isInstanceOf[Apply] then
-                (mt, fun1core.removeAttachment(BunchedArgs).isDefined, Nil)
+              if fun1.isInstanceOf[Apply] then
+                (mt, fun1.removeAttachment(BunchedArgs).isDefined, Nil)
               else
                 val xmt = expandedMethodType(mt, origFun)
                 (xmt, xmt ne mt, outer.args(origFun))
