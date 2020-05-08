@@ -632,6 +632,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(tree.app) ~ Str("(with integrated type args)").provided(printDebug)
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
+      case MacroTree(call) =>
+        keywordStr("macro ") ~ toTextGlobal(call)
       case _ =>
         tree.fallbackToText(this)
     }
@@ -786,7 +788,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
         addVparamssText(prefix ~ tparamsText(tree.tparams), vparamss) ~
           optAscription(tree.tpt) ~
-          optText(tree.rhs)(" = " ~ _)
+          optText(tree.rhs)(" = " ~ keywordText("macro ").provided(tree.symbol.isScala2Macro) ~ _)
       }
     }
   }

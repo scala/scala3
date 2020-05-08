@@ -1863,10 +1863,12 @@ class Typer extends Namer
     }
 
     if (sym.isInlineMethod) rhsCtx.addMode(Mode.InlineableBody)
-    val rhs1 = typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(using rhsCtx)
-    val rhsToInline = PrepareInlineable.wrapRHS(ddef, tpt1, rhs1)
+    val rhs1 =
+      if sym.isScala2Macro then typedScala2MacroBody(ddef.rhs)(using rhsCtx)
+      else typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(using rhsCtx)
 
     if (sym.isInlineMethod)
+      val rhsToInline = PrepareInlineable.wrapRHS(ddef, tpt1, rhs1)
       PrepareInlineable.registerInlineInfo(sym, rhsToInline)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor) {
@@ -3440,4 +3442,19 @@ class Typer extends Namer
     if (!tree.tpe.isErroneous && !ctx.isAfterTyper && isPureExpr(tree) &&
         !tree.tpe.isRef(defn.UnitClass) && !isSelfOrSuperConstrCall(tree))
       ctx.warning(PureExpressionInStatementPosition(original, exprOwner), original.sourcePos)
+
+  /** Types the body Scala 2 macro declaration `def f = macro <body>` */
+  private def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree =
+    // TODO check that call is to a method with valid signature
+    call match
+      case rhs0: untpd.Ident =>
+        typedIdent(rhs0, defn.AnyType)
+      case rhs0: untpd.Select =>
+        typedSelect(rhs0, defn.AnyType)
+      case rhs0: untpd.TypeApply =>
+        typedTypeApply(rhs0, defn.AnyType)
+      case _ =>
+        ctx.error("Invalid Scala 2 macro", call.sourcePos)
+        EmptyTree
+
 }

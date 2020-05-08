@@ -1000,7 +1000,12 @@ object SymDenotations {
       is(Method, butNot = Accessor) && isRetainedInline
 
     /** Is this a Scala 2 macro */
-    final def isScala2Macro(implicit ctx: Context): Boolean = is(Macro) && symbol.owner.is(Scala2x)
+    final def isScala2Macro(implicit ctx: Context): Boolean =
+      isScala2MacroInScala3 || (is(Macro) && symbol.owner.is(Scala2x))
+
+    /** Is this a Scala 2 macro defined */
+    final def isScala2MacroInScala3(implicit ctx: Context): Boolean =
+      is(Macro, butNot = Inline) && is(Erased)
 
     /** An erased value or an erased inline method or field */
     def isEffectivelyErased(implicit ctx: Context): Boolean =

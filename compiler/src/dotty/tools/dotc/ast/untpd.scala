@@ -112,6 +112,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @constructorOnly src: SourceFile) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
   case class Export(expr: Tree, selectors: List[ImportSelector])(implicit @constructorOnly src: SourceFile) extends Tree
+  case class MacroTree(expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
 
   case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
     // TODO: Make bound a typed tree?
@@ -623,6 +624,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: TypedSplice if splice `eq` tree.splice => tree
       case _ => finalize(tree, untpd.TypedSplice(splice)(ctx))
     }
+    def MacroTree(tree: Tree)(expr: Tree)(implicit ctx: Context): Tree = tree match {
+      case tree: MacroTree if expr `eq` tree.expr => tree
+      case _ => finalize(tree, untpd.MacroTree(expr)(tree.source))
+    }
   }
 
   abstract class UntypedTreeMap(cpy: UntypedTreeCopier = untpd.cpy) extends TreeMap(cpy) {
@@ -677,6 +682,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.ImportSelector(tree)(transformSub(imported), transform(renamed), transform(bound))
       case Number(_, _) | TypedSplice(_) =>
         tree
+      case MacroTree(expr) =>
+        cpy.MacroTree(tree)(transform(expr))
       case _ =>
         super.transformMoreCases(tree)
     }
@@ -736,6 +743,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         x
       case TypedSplice(splice) =>
         this(x, splice)
+      case MacroTree(expr) =>
+        this(x, expr)
       case _ =>
         super.foldMoreCases(x, tree)
     }

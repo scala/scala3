@@ -146,6 +146,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       tree match
         case tree: ValOrDefDef if !tree.symbol.is(Synthetic) =>
           checkInferredWellFormed(tree.tpt)
+          val sym = tree.symbol
+          if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then
+            if !sym.owner.unforcedDecls.exists(p => !p.isScala2Macro && p.name == sym.name && p.signature == sym.signature) then
+              ctx.error("No Scala 3 implementation found for this Scala 2 macro.", tree.sourcePos)
         case _ =>
       processMemberDef(tree)
 
