@@ -329,6 +329,10 @@ class ReplDriver(settings: Array[String],
       out.println(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
       state
 
+    case AmbiguousCommand(cmd, matching) =>
+      out.println(s""""$cmd" matches ${matching.mkString(", ")}. Try typing a few more characters. Run ":help" for a list of commands""")
+      state
+
     case Help =>
       out.println(Help.text)
       state
