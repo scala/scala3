@@ -119,6 +119,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
   def cloneIn(src: SourceFile): this.type = {
     val newpd: this.type = clone.asInstanceOf[this.type]
     newpd.uniqueId = src.nextId
+    // assert(newpd.uniqueId != 2208, s"source = $this, ${this.uniqueId}, ${this.span}")
     newpd
   }
 

@@ -1044,6 +1044,7 @@ object Trees {
       def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = tree match {
         case tree: Apply if (fun eq tree.fun) && (args eq tree.args) => tree
         case _ => finalize(tree, untpd.Apply(fun, args)(sourceFile(tree)))
+            //.ensuring(res => res.uniqueId != 2213, s"source = $tree, ${tree.uniqueId}, ${tree.span}")
       }
       def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = tree match {
         case tree: TypeApply if (fun eq tree.fun) && (args eq tree.args) => tree
@@ -1060,7 +1061,6 @@ object Trees {
       def Typed(tree: Tree)(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed = tree match {
         case tree: Typed if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
         case tree => finalize(tree, untpd.Typed(expr, tpt)(sourceFile(tree)))
-          //.ensuring(res => res.uniqueId != 1471, s"source = $tree, ${tree.uniqueId}")
       }
       def NamedArg(tree: Tree)(name: Name, arg: Tree)(implicit ctx: Context): NamedArg = tree match {
         case tree: NamedArg if (name == tree.name) && (arg eq tree.arg) => tree

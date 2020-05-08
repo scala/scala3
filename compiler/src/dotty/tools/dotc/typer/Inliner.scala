@@ -75,14 +75,15 @@ object Inliner {
     *  inlined call `call` to the position of `call`. This transform is necessary
     *  when lifting bindings from the expansion to the outside of the call.
     */
-    def liftFromInlined(call: Tree) = new TreeMap {
+    def liftFromInlined(call: Tree) = new TreeMap:
       override def transform(t: Tree)(using Context) =
-        t match {
-          case Inlined(t, Nil, expr) if t.isEmpty => expr
-          case _ if t.isEmpty => t
-          case _ => super.transform(t.withSpan(call.span))
-        }
-    }
+        if call.span.exists then
+          t match
+            case Inlined(t, Nil, expr) if t.isEmpty => expr
+            case _ if t.isEmpty => t
+            case _ => super.transform(t.withSpan(call.span))
+        else t
+    end liftFromInlined
 
     val bindings = new mutable.ListBuffer[Tree]
 
@@ -108,6 +109,7 @@ object Inliner {
         tree
     }
 
+    // assertAllPositioned(tree)   // debug
     val tree1 = liftBindings(tree, identity)
     if (bindings.nonEmpty)
       cpy.Block(tree)(bindings.toList, inlineCall(tree1))
@@ -590,6 +592,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
    *  itself, it has to be marked as an inlined argument.
    */
   def integrate(tree: Tree, originalOwner: Symbol)(using Context): Tree =
+    // assertAllPositioned(tree)   // debug
     tree.changeOwner(originalOwner, ctx.owner)
 
   def tryConstValue: Tree =
