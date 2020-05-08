@@ -42,7 +42,7 @@ sealed trait Command extends ParseResult
 case class UnknownCommand(cmd: String) extends Command
 
 /** An ambiguous prefix that matches multiple commands */
-case class AmbiguousCommand(cmd: String) extends Command
+case class AmbiguousCommand(cmd: String, matchingCommands: List[String]) extends Command
 
 /** `:load <path>` interprets a scala file as if entered line-by-line into
  *  the REPL
@@ -134,13 +134,11 @@ object ParseResult {
     sourceCode match {
       case "" => Newline
       case CommandExtract(cmd, arg) => {
-        val matchingParsers = commands.collect {
-          case (command, f) if command.startsWith(cmd) => f
-        }
-        matchingParsers match {
+        val matchingCommands = commands.filter((command, _) => command.startsWith(cmd))
+        matchingCommands match {
           case Nil => UnknownCommand(cmd)
-          case f :: Nil => f(arg)
-          case _ => AmbiguousCommand(cmd)
+          case (_, f) :: Nil => f(arg)
+          case multiple => AmbiguousCommand(cmd, multiple.map(_._1))
         }
       }
       case _ =>
