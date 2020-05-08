@@ -727,14 +727,14 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
           val showTp = '[Show[$tp]]
           Expr.summon(using showTp) match {
             case Some(showExpr) => '{ $showExpr.show($arg) }
-            case None => qctx.error(s"could not find implicit for ${showTp.show}", arg); '{???}
+            case None => Reporting.error(s"could not find implicit for ${showTp.show}", arg); '{???}
           }
       }
       val newArgsExpr = Varargs(argShowedExprs)
       '{ $sc.s($newArgsExpr: _*) }
     case _ =>
       // `new StringContext(...).showMeExpr(args: _*)` not an explicit `showMeExpr"..."`
-      qctx.error(s"Args must be explicit", argsExpr)
+      Reporting.error(s"Args must be explicit", argsExpr)
       '{???}
   }
 }

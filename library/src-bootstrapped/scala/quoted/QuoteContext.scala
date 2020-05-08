@@ -34,31 +34,10 @@ trait QuoteContext { self =>
     val tasty: self.tasty.type
   }
 
-  /** Report an error at the position of the macro expansion */
-  def error(msg: => String): Unit =
-    tasty.error(msg, tasty.rootPosition)
+}
 
-  /** Report an error at the on the position of `expr` */
-  def error(msg: => String, expr: Expr[Any]): Unit =
-    tasty.error(msg, expr.unseal(using this).pos)
-
-  /** Report an error at the position of the macro expansion and throws a StopQuotedContext */
-  def throwError(msg: => String): Nothing = {
-    error(msg)
-    throw new StopQuotedContext
-  }
-  /** Report an error at the on the position of `expr` and throws a StopQuotedContext */
-  def throwError(msg: => String, expr: Expr[Any]): Nothing = {
-    error(msg, expr)
-    throw new StopQuotedContext
-  }
-
-  /** Report a warning */
-  def warning(msg: => String): Unit =
-    tasty.warning(msg, tasty.rootPosition)
-
-  /** Report a warning at the on the position of `expr` */
-  def warning(msg: => String, expr: Expr[Any]): Unit =
-    tasty.warning(msg, expr.unseal(using this).pos)
-
+object QuoteContext {
+  // TODO remove in 0.26.0
+  @deprecated("Errors and warnings have been moved to scala.quoted.Reporting", "0.25.0")
+  given error_and_warining_on_QuoteContext as Conversion[QuoteContext, Reporting.type] = _ => Reporting
 }

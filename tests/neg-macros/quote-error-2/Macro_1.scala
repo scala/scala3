@@ -7,6 +7,6 @@ object Macro_1 {
 
   def msg(b: Boolean)(using qctx: QuoteContext): Expr[String] =
     if (b) '{"foo(true)"}
-    else { qctx.error("foo cannot be called with false"); '{ ??? } }
+    else { Reporting.error("foo cannot be called with false"); '{ ??? } }
 
 }

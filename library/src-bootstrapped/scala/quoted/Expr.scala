@@ -43,7 +43,7 @@ class Expr[+T] private[scala] {
    *  Otherwise returns the value.
    */
   final def unliftOrError[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): U =
-    unlift(this).getOrElse(qctx.throwError(s"Expected a known value. \n\nThe value of: $show\ncould not be unlifted using $unlift", this))
+    unlift(this).getOrElse(Reporting.throwError(s"Expected a known value. \n\nThe value of: $show\ncould not be unlifted using $unlift", this))
 
   /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
    *  It does the equivalent of
