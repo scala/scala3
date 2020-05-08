@@ -9,7 +9,7 @@ import ast.Trees._
 
 /** Rewrite `{ stats; expr}.f(args) }` to `{ stats; expr.f(args) }` before
  *  proceeding, but leave closures alone. This is necessary to be able to
- *  collapse applies of IFTs.
+ *  collapse applies of IFTs (this is done in Erasure).
  */
 class LetOverApply extends MiniPhase:
   import ast.tpd._
