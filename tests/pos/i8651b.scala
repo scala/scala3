@@ -5,8 +5,6 @@ abstract class Coroutine[+T] {
 object Macros {
 
  import scala.quoted._
- import scala.quoted.matching._
-
 
  inline def coroutine[T](inline body: Any): Coroutine[T] = ${ coroutineImpl('{body}) }
 

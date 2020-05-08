@@ -1,7 +1,6 @@
 package scala.util
 import scala.math.{BigInt}
 import quoted._
-import quoted.matching._
 import internal.Chars.digit2int
 import annotation.internal.sharable
 
