@@ -211,13 +211,13 @@ through quotes. Most likely, those constructors would work over `Expr`
 types which lack a known type argument. For instance, an `Apply`
 constructor could be typed as follows:
 ```scala
-def Apply(fn: Expr[_], args: List[Expr[_]]): Expr[_]
+def Apply(fn: Expr[Any], args: List[Expr[Any]]): Expr[Any]
 ```
 This would allow constructing applications from lists of arguments
 without having to match the arguments one-by-one with the
 corresponding formal parameter types of the function. We then need "at
-the end" a method to convert an `Expr[_]` to an `Expr[T]` where `T` is
-given from the outside. E.g. if `code` yields a `Expr[_]`, then
+the end" a method to convert an `Expr[Any]` to an `Expr[T]` where `T` is
+given from the outside. E.g. if `code` yields a `Expr[Any]`, then
 `code.atType[T]` yields an `Expr[T]`. The `atType` method has to be
 implemented as a primitive; it would check that the computed type
 structure of `Expr` is a subtype of the type structure representing

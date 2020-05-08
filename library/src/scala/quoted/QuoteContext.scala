@@ -53,7 +53,7 @@ class QuoteContext(val tasty: scala.tasty.Reflection) { self =>
     tasty.warning(msg, tasty.rootPosition)
 
   /** Report a warning at the on the position of `expr` */
-  def warning(msg: => String, expr: Expr[_]): Unit =
+  def warning(msg: => String, expr: Expr[Any]): Unit =
     tasty.warning(msg, expr.unseal(using this).pos)
 
 }

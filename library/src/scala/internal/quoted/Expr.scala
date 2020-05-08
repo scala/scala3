@@ -26,13 +26,13 @@ object Expr {
    *    - scala.internal.Quoted.patternHole[T]: hole that matches an expression `x` of type `Expr[U]`
    *                                            if `U <:< T` and returns `x` as part of the match.
    *
-   *  @param scrutineeExpr `Expr[_]` on which we are pattern matching
-   *  @param patternExpr `Expr[_]` containing the pattern tree
+   *  @param scrutineeExpr `Expr[Any]` on which we are pattern matching
+   *  @param patternExpr `Expr[Any]` containing the pattern tree
    *  @param hasTypeSplices `Boolean` notify if the pattern has type splices (if so we use a GADT context)
    *  @param qctx the current QuoteContext
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
    */
-  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: scala.quoted.Expr[_])(using patternExpr: scala.quoted.Expr[_],
+  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: scala.quoted.Expr[Any])(using patternExpr: scala.quoted.Expr[Any],
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
     new Matcher.QuoteMatcher[qctx.type].termMatch(scrutineeExpr.unseal, patternExpr.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
   }

@@ -32,7 +32,7 @@ def foo(x: Expr[Int])(using tasty.Reflect): Expr[Int] = x match {
 At runtime to a `quoted.Expr` can be matched to another using `scala.internal.quoted.Expr.unapply`.
 
 ```scala
-def unapply[Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], reflection: Reflection): Option[Tup]
+def unapply[Tup <: Tuple](scrutineeExpr: Expr[Any])(implicit patternExpr: Expr[Any], reflection: Reflection): Option[Tup]
 ```
 
 The `scrutineeExpr` is a normal quoted expression while `patternExpr` may contain holes representing splices.

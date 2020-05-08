@@ -256,7 +256,7 @@ For precise rules, semantics and a larger example of `BigFloat`, see [the docume
 ## Metaprogramming Progress
 We are making steady progress with the language metaprogramming features. The metaprogramming spotlights of this release are as follows:
 
-- `toExprOfTuple` method which allows converting a `Seq[Expr[_]]` to `Expr[Tuple]`. The types of the expressions will be preserved in the tuple. See [#7037](https://github.com/lampepfl/dotty/pull/7037) and [#7076](https://github.com/lampepfl/dotty/pull/7076) for the details.
+- `toExprOfTuple` method which allows converting a `Seq[Expr[Any]]` to `Expr[Tuple]`. The types of the expressions will be preserved in the tuple. See [#7037](https://github.com/lampepfl/dotty/pull/7037) and [#7076](https://github.com/lampepfl/dotty/pull/7076) for the details.
 - `toExprOfTuple` method that converts a tuple of expressions to an expression of tuple – see [#7047](https://github.com/lampepfl/dotty/pull/7047).
 - `toExprOfSeq` which converts an `Seq[Expr[A]]` to `Expr[Seq[A]]` – see [#6935](https://github.com/lampepfl/dotty/pull/6935).
 - More `Liftable` instances – for Tuples of arity greater than 22, `BigInt` and `BigDecimal` – see [#6947](https://github.com/lampepfl/dotty/pull/6947) and [#6944](https://github.com/lampepfl/dotty/pull/6944).
