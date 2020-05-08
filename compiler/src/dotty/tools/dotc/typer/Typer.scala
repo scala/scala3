@@ -2900,6 +2900,7 @@ class Typer extends Namer
       def dummyArg(tp: Type) = untpd.Ident(nme.???).withTypeUnchecked(tp)
 
       def addImplicitArgs(using Context) = {
+        def hasDefaultParams = methPart(tree).symbol.hasDefaultParams
         def implicitArgs(formals: List[Type], argIndex: Int, pt: Type): List[Tree] = formals match {
           case Nil => Nil
           case formal :: formals1 =>
@@ -2909,7 +2910,7 @@ class Typer extends Namer
                 val pt1 = pt.deepenProto
                 if ((pt1 `ne` pt) && constrainResult(tree.symbol, wtp, pt1)) implicitArgs(formals, argIndex, pt1)
                 else arg :: implicitArgs(formals1, argIndex + 1, pt1)
-              case failed: SearchFailureType if !tree.symbol.hasDefaultParams =>
+              case failed: SearchFailureType if !hasDefaultParams =>
                 // no need to search further, the adapt fails in any case
                 // the reason why we continue inferring arguments in case of an AmbiguousImplicits
                 // is that we need to know whether there are further errors.
@@ -2965,7 +2966,7 @@ class Typer extends Namer
 
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
-          if (methPart(tree).symbol.hasDefaultParams && !propFail.isInstanceOf[AmbiguousImplicits]) {
+          if hasDefaultParams && !propFail.isInstanceOf[AmbiguousImplicits] then
             val namedArgs = wtp.paramNames.lazyZip(args).flatMap { (pname, arg) =>
               if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
@@ -2977,7 +2978,6 @@ class Typer extends Namer
             } { (_, _) =>
               issueErrors()
             }
-          }
           else issueErrors()
         }
         else tree match {
