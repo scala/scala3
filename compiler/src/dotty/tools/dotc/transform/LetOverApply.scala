@@ -3,15 +3,9 @@ package dotc
 package transform
 
 import core._
+import Contexts.Context, Symbols._, Decorators._
 import MegaPhase._
-import Contexts.Context
-import Symbols._, Decorators._, Types._
 import ast.Trees._
-import dotty.tools.dotc.ast.tpd
-
-
-import scala.collection.immutable.::
-
 
 /** Rewrite `{ stats; expr}.f(args) }` to `{ stats; expr.f(args) }` before
  *  proceeding, but leave closures alone. This is necessary to be able to
@@ -22,7 +16,7 @@ class LetOverApply extends MiniPhase:
 
   override def phaseName: String = "letOverApply"
 
-  override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
+  override def transformApply(tree: Apply)(using Context): Tree =
     tree.fun match
       case Select(blk @ Block(stats, expr), name) if !expr.isInstanceOf[Closure] =>
         cpy.Block(blk)(stats,
