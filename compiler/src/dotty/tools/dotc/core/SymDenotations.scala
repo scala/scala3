@@ -1450,7 +1450,7 @@ object SymDenotations {
       else if is(Contravariant) then Contravariant
       else EmptyFlags
 
-    /** The length of the owner chain of this symbol. 0 for NoSymbol, 1 for _root_ */
+    /** The length of the owner chain of this symbol. 0 for _root_, undefined for NoSymbol */
     def nestingLevel(using Context): Int =
       @tailrec def recur(d: SymDenotation, n: Int): Int = d match
         case d: ClassDenotation => d.nestingLevel + n // profit from the cache in ClassDenotation
