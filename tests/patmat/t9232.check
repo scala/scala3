@@ -1,3 +1,3 @@
 13: Pattern Match Exhaustivity: Node2()
-17: Pattern Match Exhaustivity: Node1(Foo(_, _: _*)), Node1(Foo()), Node2()
+17: Pattern Match Exhaustivity: Node1(_), Node2()
 21: Pattern Match Exhaustivity: Node1(Foo()), Node2()

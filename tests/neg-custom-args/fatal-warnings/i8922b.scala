@@ -31,7 +31,7 @@ object Interpreter {
             case Binary(left, op, right) =>
                 val l = eval(left)
                 val r = eval(right)
-                (l, r, op.tokenType) match {
+                (l, r, op.tokenType) match {    // error
                     case (l: DoubleV, r: DoubleV, PLUS)          => ???
                     case (l: IntV, r: IntV, PLUS)                => ???
                     case (l: DoubleV, r: IntV, PLUS)             => ???

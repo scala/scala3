@@ -1,6 +1,6 @@
 7: Pattern Match Exhaustivity: Baz
 11: Pattern Match Exhaustivity: Bar(_)
-23: Pattern Match Exhaustivity: (Qult(), Qult()), (Kult(_), Kult(_))
+23: Pattern Match Exhaustivity: (Kult(_), Kult(_)), (Qult(), Qult())
 49: Pattern Match Exhaustivity: _: Gp
 53: Pattern Match Exhaustivity: _: Gp
 59: Pattern Match Exhaustivity: Nil

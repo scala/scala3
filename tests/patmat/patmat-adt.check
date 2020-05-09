@@ -1,5 +1,5 @@
 7: Pattern Match Exhaustivity: Good(Bad(_)), Bad(Good(_))
 19: Pattern Match Exhaustivity: Some(_)
 24: Pattern Match Exhaustivity: (_, Some(_))
-29: Pattern Match Exhaustivity: (None, None), (Some(_), Some(_))
+29: Pattern Match Exhaustivity: (Some(_), Some(_)), (None, None)
 50: Pattern Match Exhaustivity: LetL(IntLit), LetL(BooleanLit)
