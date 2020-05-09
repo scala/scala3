@@ -1450,9 +1450,10 @@ object SymDenotations {
       else if is(Contravariant) then Contravariant
       else EmptyFlags
 
-    /** The length of the owner chain of this symbol. 0 for _root_, undefined for NoSymbol */
+    /** The length of the owner chain of this symbol. 1 for _root_, 0 for NoSymbol */
     def nestingLevel(using Context): Int =
       @tailrec def recur(d: SymDenotation, n: Int): Int = d match
+        case NoDenotation => n
         case d: ClassDenotation => d.nestingLevel + n // profit from the cache in ClassDenotation
         case _ => recur(d.owner, n + 1)
       recur(this, 0)
@@ -2162,8 +2163,7 @@ object SymDenotations {
     private var myNestingLevel = -1
 
     override def nestingLevel(using Context) =
-      if myNestingLevel == -1 then
-        myNestingLevel = if maybeOwner.exists then maybeOwner.nestingLevel + 1 else 0
+      if myNestingLevel == -1 then myNestingLevel = owner.nestingLevel + 1
       myNestingLevel
   }
 
