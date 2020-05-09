@@ -582,8 +582,7 @@ object Denotations {
      */
     def prefix: Type = NoPrefix
 
-    /** Either the Scala or Java signature of the info, depending on where the
-     *  symbol is defined.
+    /** The symbol-specific signature of the info.
      *
      *  Invariants:
      *  - Before erasure, the signature of a denotation is always equal to the
@@ -595,17 +594,17 @@ object Denotations {
      *    SingleDenotations will have distinct signatures (cf #9050).
      */
     final def signature(using Context): Signature =
-      signature(isJava = !isType && symbol.is(JavaDefined))
+      signature(sourceLanguage = if isType then SourceLanguage.Scala3 else SourceLanguage(symbol))
 
-    /** Overload of `signature` which lets the caller pick between the Java and
-     *  Scala signature of the info. Useful to match denotations defined in
+    /** Overload of `signature` which lets the caller pick the language used
+     *  to compute the signature of the info. Useful to match denotations defined in
      *  different classes (see `matchesLoosely`).
      */
-    def signature(isJava: Boolean)(using Context): Signature =
+    def signature(sourceLanguage: SourceLanguage)(using Context): Signature =
       if (isType) Signature.NotAMethod // don't force info if this is a type denotation
       else info match {
         case info: MethodOrPoly =>
-          try info.signature(isJava)
+          try info.signature(sourceLanguage)
           catch { // !!! DEBUG
             case scala.util.control.NonFatal(ex) =>
               report.echo(s"cannot take signature of $info")
@@ -1013,36 +1012,36 @@ object Denotations {
 
     /** `matches` without a target name check.
      *
-     *  We consider a Scala method and a Java method to match if they have
-     *  matching Scala signatures. This allows us to override some Java
-     *  definitions even if they have a different erasure (see i8615b,
-     *  i9109b), Erasure takes care of adding any necessary bridge to make
-     *  this work at runtime.
+     *  For definitions coming from different languages, we pick a common
+     *  language to compute their signatures. This allows us for example to
+     *  override some Java definitions from Scala even if they have a different
+     *  erasure (see i8615b, i9109b), Erasure takes care of adding any necessary
+     *  bridge to make this work at runtime.
      */
     def matchesLoosely(other: SingleDenotation)(using Context): Boolean =
       if isType then true
       else
-        val isJava = symbol.is(JavaDefined)
-        val otherIsJava = other.symbol.is(JavaDefined)
-        val useJavaSig = isJava && otherIsJava
-        val sig = signature(isJava = useJavaSig)
-        val otherSig = other.signature(isJava = useJavaSig)
+        val thisLanguage = SourceLanguage(symbol)
+        val otherLanguage = SourceLanguage(other.symbol)
+        val commonLanguage = SourceLanguage.commonLanguage(thisLanguage, otherLanguage)
+        val sig = signature(commonLanguage)
+        val otherSig = other.signature(commonLanguage)
         sig.matchDegree(otherSig) match
           case FullMatch =>
             true
           case MethodNotAMethodMatch =>
             !ctx.erasedTypes && {
               // A Scala zero-parameter method and a Scala non-method always match.
-              if !isJava && !otherIsJava then
+              if !thisLanguage.isJava && !otherLanguage.isJava then
                 true
               // Java allows defining both a field and a zero-parameter method with the same name,
               // so they must not match.
-              else if isJava && otherIsJava then
+              else if thisLanguage.isJava && otherLanguage.isJava then
                 false
               // A Java field never matches a Scala method.
-              else if isJava then
+              else if thisLanguage.isJava then
                 symbol.is(Method)
-              else // otherIsJava
+              else // otherLanguage.isJava
                 other.symbol.is(Method)
             }
           case ParamMatch =>

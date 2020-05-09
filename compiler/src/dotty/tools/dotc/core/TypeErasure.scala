@@ -14,6 +14,40 @@ import Decorators._
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
 
+/** The language in which the definition being erased was written. */
+enum SourceLanguage:
+  case Java, Scala2, Scala3
+  def isJava: Boolean = this eq Java
+  def isScala2: Boolean = this eq Scala2
+  def isScala3: Boolean = this eq Scala3
+object SourceLanguage:
+  /** The language in which `sym` was defined. */
+  def apply(sym: Symbol)(using Context): SourceLanguage =
+    if sym.is(JavaDefined) then
+      SourceLanguage.Java
+    // Scala 2 methods don't have Inline set, except for the ones injected with `patchStdlibClass`
+    // which are really Scala 3 methods.
+    else if sym.isClass && sym.is(Scala2x) || (sym.maybeOwner.is(Scala2x) && !sym.is(Inline)) then
+      SourceLanguage.Scala2
+    else
+      SourceLanguage.Scala3
+
+  /** Number of bits needed to represent this enum. */
+  def bits: Int =
+    val len = values.length
+    val log2 = 31 - Integer.numberOfLeadingZeros(len)
+    if len == 1 << log2 then
+      log2
+    else
+      log2 + 1
+
+   /** A common language to use when matching definitions written in different
+    *  languages.
+    */
+  def commonLanguage(x: SourceLanguage, y: SourceLanguage): SourceLanguage =
+    if x.ordinal > y.ordinal then x else y
+end SourceLanguage
+
 /** Erased types are:
  *
  *  ErasedValueType
@@ -107,28 +141,29 @@ object TypeErasure {
     }
   }
 
-  private def erasureIdx(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) =
-    (if (isJava) 1 else 0) +
-    (if (semiEraseVCs) 2 else 0) +
-    (if (isConstructor) 4 else 0) +
-    (if (wildcardOK) 8 else 0)
+  private def erasureIdx(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) =
+    extension (b: Boolean) def toInt = if b then 1 else 0
+    wildcardOK.toInt
+    + (isConstructor.toInt    << 1)
+    + (semiEraseVCs.toInt     << 2)
+    + (sourceLanguage.ordinal << 3)
 
-  private val erasures = new Array[TypeErasure](16)
+  private val erasures = new Array[TypeErasure](1 << (SourceLanguage.bits + 3))
 
-  for {
-    isJava <- List(false, true)
+  for
+    sourceLanguage <- SourceLanguage.values
     semiEraseVCs <- List(false, true)
     isConstructor <- List(false, true)
     wildcardOK <- List(false, true)
-  }
-  erasures(erasureIdx(isJava, semiEraseVCs, isConstructor, wildcardOK)) =
-    new TypeErasure(isJava, semiEraseVCs, isConstructor, wildcardOK)
+  do
+    erasures(erasureIdx(sourceLanguage, semiEraseVCs, isConstructor, wildcardOK)) =
+      new TypeErasure(sourceLanguage, semiEraseVCs, isConstructor, wildcardOK)
 
   /** Produces an erasure function. See the documentation of the class [[TypeErasure]]
    *  for a description of each parameter.
    */
-  private def erasureFn(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean): TypeErasure =
-    erasures(erasureIdx(isJava, semiEraseVCs, isConstructor, wildcardOK))
+  private def erasureFn(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean): TypeErasure =
+    erasures(erasureIdx(sourceLanguage, semiEraseVCs, isConstructor, wildcardOK))
 
   /** The current context with a phase no later than erasure */
   def preErasureCtx(using Context) =
@@ -139,7 +174,7 @@ object TypeErasure {
    *  @param tp            The type to erase.
   */
   def erasure(tp: Type)(using Context): Type =
-    erasureFn(isJava = false, semiEraseVCs = false, isConstructor = false, wildcardOK = false)(tp)(using preErasureCtx)
+    erasureFn(sourceLanguage = SourceLanguage.Scala3, semiEraseVCs = false, isConstructor = false, wildcardOK = false)(tp)(using preErasureCtx)
 
   /** The value class erasure of a Scala type, where value classes are semi-erased to
    *  ErasedValueType (they will be fully erased in [[ElimErasedValueType]]).
@@ -147,7 +182,7 @@ object TypeErasure {
    *  @param tp            The type to erase.
    */
   def valueErasure(tp: Type)(using Context): Type =
-    erasureFn(isJava = false, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(using preErasureCtx)
+    erasureFn(sourceLanguage = SourceLanguage.Scala3, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(using preErasureCtx)
 
   /** Like value class erasure, but value classes erase to their underlying type erasure */
   def fullErasure(tp: Type)(using Context): Type =
@@ -155,9 +190,9 @@ object TypeErasure {
       case ErasedValueType(_, underlying) => erasure(underlying)
       case etp => etp
 
-  def sigName(tp: Type, isJava: Boolean)(using Context): TypeName = {
-    val normTp = tp.translateFromRepeated(toArray = isJava)
-    val erase = erasureFn(isJava, semiEraseVCs = true, isConstructor = false, wildcardOK = true)
+  def sigName(tp: Type, sourceLanguage: SourceLanguage)(using Context): TypeName = {
+    val normTp = tp.translateFromRepeated(toArray = sourceLanguage.isJava)
+    val erase = erasureFn(sourceLanguage, semiEraseVCs = true, isConstructor = false, wildcardOK = true)
     erase.sigName(normTp)(using preErasureCtx)
   }
 
@@ -181,15 +216,13 @@ object TypeErasure {
    *   - For $asInstanceOf           : [T]T
    *   - For $isInstanceOf           : [T]Boolean
    *   - For all abstract types      : = ?
-   *   - For Java-defined symbols:   : the erasure of their type with isJava = true,
-   *                                   semiEraseVCs = false. Semi-erasure never happens in Java.
-   *   - For all other symbols       : the semi-erasure of their types, with
-   *                                   isJava, isConstructor set according to symbol.
+   *
+   *   `sourceLanguage`, `isConstructor` and `semiEraseVCs` are set based on the symbol.
    */
   def transformInfo(sym: Symbol, tp: Type)(using Context): Type = {
-    val isJava = sym is JavaDefined
-    val semiEraseVCs = !isJava
-    val erase = erasureFn(isJava, semiEraseVCs, sym.isConstructor, wildcardOK = false)
+    val sourceLanguage = SourceLanguage(sym)
+    val semiEraseVCs = !sourceLanguage.isJava // Java sees our value classes as regular classes.
+    val erase = erasureFn(sourceLanguage, semiEraseVCs, sym.isConstructor, wildcardOK = false)
 
     def eraseParamBounds(tp: PolyType): Type =
       tp.derivedLambdaType(
@@ -391,18 +424,20 @@ object TypeErasure {
     case _ => false
   }
 }
+
 import TypeErasure._
 
 /**
- *  @param isJava        Arguments should be treated the way Java does it
- *  @param semiEraseVCs  If true, value classes are semi-erased to ErasedValueType
- *                       (they will be fully erased in [[ElimErasedValueType]]).
- *                       If false, they are erased like normal classes.
- *  @param isConstructor Argument forms part of the type of a constructor
- *  @param wildcardOK    Wildcards are acceptable (true when using the erasure
- *                       for computing a signature name).
+ *  @param sourceLanguage Adapt our erasure rules to mimic what the given language
+ *                        would do.
+ *  @param semiEraseVCs   If true, value classes are semi-erased to ErasedValueType
+ *                        (they will be fully erased in [[ElimErasedValueType]]).
+ *                        If false, they are erased like normal classes.
+ *  @param isConstructor  Argument forms part of the type of a constructor
+ *  @param wildcardOK     Wildcards are acceptable (true when using the erasure
+ *                        for computing a signature name).
  */
-class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) {
+class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) {
 
   /**  The erasure |T| of a type T. This is:
    *
@@ -450,7 +485,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       val tycon = tp.tycon
       if (tycon.isRef(defn.ArrayClass)) eraseArray(tp)
       else if (tycon.isRef(defn.PairClass)) erasePair(tp)
-      else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = isJava))
+      else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = sourceLanguage.isJava))
       else if (semiEraseVCs && isDerivedValueClass(tycon.classSymbol)) eraseDerivedValueClass(tp)
       else apply(tp.translucentSuperType)
     case _: TermRef | _: ThisType =>
@@ -468,12 +503,12 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case tp: TypeProxy =>
       this(tp.underlying)
     case AndType(tp1, tp2) =>
-      erasedGlb(this(tp1), this(tp2), isJava)
+      erasedGlb(this(tp1), this(tp2), sourceLanguage.isJava)
     case OrType(tp1, tp2) =>
       TypeComparer.orType(this(tp1), this(tp2), isErased = true)
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
-        erasureFn(isJava, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)
+        erasureFn(sourceLanguage, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)
       val (names, formals0) = if (tp.isErasedMethod) (Nil, Nil) else (tp.paramNames, tp.paramInfos)
       val formals = formals0.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
@@ -516,8 +551,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   private def eraseArray(tp: Type)(using Context) = {
     val defn.ArrayOf(elemtp) = tp
     if (classify(elemtp).derivesFrom(defn.NullClass)) JavaArrayType(defn.ObjectType)
-    else if (isUnboundedGeneric(elemtp) && !isJava) defn.ObjectType
-    else JavaArrayType(erasureFn(isJava, semiEraseVCs = false, isConstructor, wildcardOK)(elemtp))
+    else if (isUnboundedGeneric(elemtp) && !sourceLanguage.isJava) defn.ObjectType
+    else JavaArrayType(erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, wildcardOK)(elemtp))
   }
 
   private def erasePair(tp: Type)(using Context): Type = {
@@ -544,7 +579,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
             // See doc comment for ElimByName for speculation how we could improve this.
         else
           MethodType(Nil, Nil,
-            eraseResult(sym.info.finalResultType.translateFromRepeated(toArray = isJava)))
+            eraseResult(sym.info.finalResultType.translateFromRepeated(toArray = sourceLanguage.isJava)))
       case tp1: PolyType =>
         eraseResult(tp1.resultType) match
           case rt: MethodType => rt
@@ -596,7 +631,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     // correctly (see SIP-15 and [[Erasure.Boxing.adaptToType]]), so the result type of a
     // constructor method should not be semi-erased.
     if semiEraseVCs && isConstructor && !tp.isInstanceOf[MethodOrPoly] then
-      erasureFn(isJava, semiEraseVCs = false, isConstructor, wildcardOK).eraseResult(tp)
+      erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, wildcardOK).eraseResult(tp)
     else tp match
       case tp: TypeRef =>
         val sym = tp.symbol

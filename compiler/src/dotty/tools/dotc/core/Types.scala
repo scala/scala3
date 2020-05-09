@@ -3345,6 +3345,8 @@ object Types {
     private var mySignatureRunId: Int = NoRunId
     private var myJavaSignature: Signature = _
     private var myJavaSignatureRunId: Int = NoRunId
+    private var myScala2Signature: Signature = _
+    private var myScala2SignatureRunId: Int = NoRunId
 
     /** If `isJava` is false, the Scala signature of this method. Otherwise, its Java signature.
      *
@@ -3360,31 +3362,37 @@ object Types {
      *
      *  @see SingleDenotation#signature
      */
-    def signature(isJava: Boolean)(using Context): Signature =
-      def computeSignature(isJava: Boolean)(using Context): Signature =
+    def signature(sourceLanguage: SourceLanguage)(using Context): Signature =
+      def computeSignature(using Context): Signature =
         val resultSignature = resultType match
-          case tp: MethodOrPoly => tp.signature(isJava)
+          case tp: MethodOrPoly => tp.signature(sourceLanguage)
           case tp: ExprType => tp.signature
           case tp =>
             if tp.isRef(defn.UnitClass) then Signature(Nil, defn.UnitClass.fullName.asTypeName)
-            else Signature(tp, isJava)
+            else Signature(tp, sourceLanguage)
         this match
           case tp: MethodType =>
             val params = if (isErasedMethod) Nil else tp.paramInfos
-            resultSignature.prependTermParams(params, isJava)
+            resultSignature.prependTermParams(params, sourceLanguage)
           case tp: PolyType =>
             resultSignature.prependTypeParams(tp.paramNames.length)
 
-      if isJava then
-        if ctx.runId != myJavaSignatureRunId then
-          myJavaSignature = computeSignature(isJava)
-          if !myJavaSignature.isUnderDefined then myJavaSignatureRunId = ctx.runId
-        myJavaSignature
-      else
-        if ctx.runId != mySignatureRunId then
-          mySignature = computeSignature(isJava)
-          if !mySignature.isUnderDefined then mySignatureRunId = ctx.runId
-        mySignature
+      sourceLanguage match
+        case SourceLanguage.Java =>
+          if ctx.runId != myJavaSignatureRunId then
+            myJavaSignature = computeSignature
+            if !myJavaSignature.isUnderDefined then myJavaSignatureRunId = ctx.runId
+          myJavaSignature
+        case SourceLanguage.Scala2 =>
+          if ctx.runId != myScala2SignatureRunId then
+            myScala2Signature = computeSignature
+            if !myScala2Signature.isUnderDefined then myScala2SignatureRunId = ctx.runId
+          myScala2Signature
+        case SourceLanguage.Scala3 =>
+          if ctx.runId != mySignatureRunId then
+            mySignature = computeSignature
+            if !mySignature.isUnderDefined then mySignatureRunId = ctx.runId
+          mySignature
     end signature
 
     /** The Scala signature of this method. Note that two distinct Java method
@@ -3392,7 +3400,7 @@ object Types {
      *  `signature` can be used to avoid ambiguity if necessary.
      */
     final override def signature(using Context): Signature =
-      signature(isJava = false)
+      signature(sourceLanguage = SourceLanguage.Scala3)
 
     final override def hashCode: Int = System.identityHashCode(this)
 

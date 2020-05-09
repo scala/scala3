@@ -385,12 +385,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def hasWriteReplace(clazz: ClassSymbol)(using Context): Boolean =
     clazz.membersNamed(nme.writeReplace)
-      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, isJava = false))
+      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, sourceLanguage = SourceLanguage.Scala3))
       .exists
 
   private def hasReadResolve(clazz: ClassSymbol)(using Context): Boolean =
     clazz.membersNamed(nme.readResolve)
-      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, isJava = false))
+      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, sourceLanguage = SourceLanguage.Scala3))
       .exists
 
   private def writeReplaceDef(clazz: ClassSymbol)(using Context): TermSymbol =
