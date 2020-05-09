@@ -4166,7 +4166,7 @@ object Types {
       if problems.isEmpty then tp
       else
         val atp = ctx.typer.avoid(tp, problems.toList)
-        val msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
+        def msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
         typr.println(msg)
         val bound = ctx.typeComparer.fullUpperBound(origin)
         if !(atp <:< bound) then
