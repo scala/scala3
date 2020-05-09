@@ -296,10 +296,10 @@ trait ConstraintHandling[AbstractContext] {
 
   /** Widen inferred type `inst` with upper `bound`, according to the following rules:
    *   1. If `inst` is a singleton type, or a union containing some singleton types,
-   *      widen (all) the singleton type(s), provied the result is a subtype of `bound`
+   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`
    *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
    *   2. If `inst` is a union type, approximate the union type from above by an intersection
-   *      of all common base types, provied the result is a subtype of `bound`.
+   *      of all common base types, provided the result is a subtype of `bound`.
    *
    *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
    *  Also, if the result of these widenings is a TypeRef to a module class,
@@ -312,15 +312,17 @@ trait ConstraintHandling[AbstractContext] {
   def widenInferred(inst: Type, bound: Type)(implicit actx: AbstractContext): Type = {
     def widenOr(tp: Type) = {
       val tpw = tp.widenUnion
-      if ((tpw ne tp) && tpw <:< bound) tpw else tp
+      if (tpw ne tp) && (tpw <:< bound) then tpw else tp
     }
     def widenSingle(tp: Type) = {
       val tpw = tp.widenSingletons
-      if ((tpw ne tp) && tpw <:< bound) tpw else tp
+      if (tpw ne tp) && (tpw <:< bound) then tpw else tp
     }
+    def isSingleton(tp: Type): Boolean = tp match
+      case WildcardType(optBounds) => optBounds.exists && isSingleton(optBounds.bounds.hi)
+      case _ => isSubTypeWhenFrozen(tp, defn.SingletonType)
     val wideInst =
-      if (isSubTypeWhenFrozen(bound, defn.SingletonType)) inst
-      else widenOr(widenSingle(inst))
+      if isSingleton(bound) then inst else widenOr(widenSingle(inst))
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)

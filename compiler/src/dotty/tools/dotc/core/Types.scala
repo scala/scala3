@@ -4110,18 +4110,17 @@ object Types {
    *
    *  @param  origin        The parameter that's tracked by the type variable.
    *  @param  creatorState  The typer state in which the variable was created.
-   *
-   *  `owningTree` and `owner` are used to determine whether a type-variable can be instantiated
-   *  at some given point. See `Inferencing#interpolateUndetVars`.
    */
-  final class TypeVar(private var _origin: TypeParamRef, creatorState: TyperState) extends CachedProxyType with ValueType {
+  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState, nestingLevel: Int) extends CachedProxyType with ValueType {
 
-    def origin: TypeParamRef = _origin
+    private var currentOrigin = initOrigin
+
+    def origin: TypeParamRef = currentOrigin
 
     /** Set origin to new parameter. Called if we merge two conflicting constraints.
      *  See OrderingConstraint#merge, OrderingConstraint#rename
      */
-    def setOrigin(p: TypeParamRef) = _origin = p
+    def setOrigin(p: TypeParamRef) = currentOrigin = p
 
     /** The permanent instance type of the variable, or NoType is none is given yet */
     private var myInst: Type = NoType
@@ -4150,6 +4149,36 @@ object Types {
     /** Is the variable already instantiated? */
     def isInstantiated(implicit ctx: Context): Boolean = instanceOpt.exists
 
+    /** Avoid term references in `tp` to parameters or local variables that
+     *  are nested more deeply than the type variable itself.
+     */
+    private def avoidCaptures(tp: Type)(using Context): Type =
+      val problemSyms = new TypeAccumulator[Set[Symbol]]:
+        def apply(syms: Set[Symbol], t: Type): Set[Symbol] = t match
+          case ref @ TermRef(NoPrefix, _)
+          // AVOIDANCE TODO: Are there other problematic kinds of references?
+          // Our current tests only give us these, but we might need to generalize this.
+          if ref.symbol.maybeOwner.nestingLevel > nestingLevel =>
+            syms + ref.symbol
+          case _ =>
+            foldOver(syms, t)
+      val problems = problemSyms(Set.empty, tp)
+      if problems.isEmpty then tp
+      else
+        val atp = ctx.typer.avoid(tp, problems.toList)
+        def msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
+        typr.println(msg)
+        val bound = ctx.typeComparer.fullUpperBound(origin)
+        if !(atp <:< bound) then
+          throw new TypeError(s"$msg,\nbut the latter type does not conform to the upper bound $bound")
+        atp
+      // AVOIDANCE TODO: This really works well only if variables are instantiated from below
+      // If we hit a problematic symbol while instantiating from above, then avoidance
+      // will widen the instance type further. This could yield an alias, which would be OK.
+      // But it also could yield a true super type which would then fail the bounds check
+      // and throw a TypeError. The right thing to do instead would be to avoid "downwards".
+      // To do this, we need first test cases for that situation.
+
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
       assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
@@ -4168,7 +4197,7 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type =
-      instantiateWith(ctx.typeComparer.instanceType(origin, fromBelow))
+      instantiateWith(avoidCaptures(ctx.typeComparer.instanceType(origin, fromBelow)))
 
     /** For uninstantiated type variables: Is the lower bound different from Nothing? */
     def hasLowerBound(implicit ctx: Context): Boolean =
@@ -4200,6 +4229,9 @@ object Types {
       s"TypeVar($origin$instStr)"
     }
   }
+  object TypeVar:
+    def apply(initOrigin: TypeParamRef, creatorState: TyperState)(using Context) =
+      new TypeVar(initOrigin, creatorState, ctx.owner.nestingLevel)
 
   type TypeVars = SimpleIdentitySet[TypeVar]
 

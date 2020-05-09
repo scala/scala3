@@ -196,11 +196,11 @@ class Namer { typer: Typer =>
 
   import untpd._
 
-  val TypedAhead: Property.Key[tpd.Tree] = new Property.Key
-  val ExpandedTree: Property.Key[untpd.Tree] = new Property.Key
+  val TypedAhead      : Property.Key[tpd.Tree]            = new Property.Key
+  val ExpandedTree    : Property.Key[untpd.Tree]          = new Property.Key
   val ExportForwarders: Property.Key[List[tpd.MemberDef]] = new Property.Key
-  val SymOfTree: Property.Key[Symbol] = new Property.Key
-  val Deriver: Property.Key[typer.Deriver] = new Property.Key
+  val SymOfTree       : Property.Key[Symbol]              = new Property.Key
+  val Deriver         : Property.Key[typer.Deriver]       = new Property.Key
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
@@ -1440,13 +1440,10 @@ class Namer { typer: Typer =>
       // instead of widening to the underlying module class types.
       // We also drop the @Repeated annotation here to avoid leaking it in method result types
       // (see run/inferred-repeated-result).
-      def widenRhs(tp: Type): Type = {
-        val tp1 = tp.widenTermRefExpr.simplified match
+      def widenRhs(tp: Type): Type =
+        tp.widenTermRefExpr.simplified match
           case ctp: ConstantType if isInlineVal => ctp
-          case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
-          case tp => tp.widenUnion
-        tp1.dropRepeatedAnnot
-      }
+          case tp => ctx.typeComparer.widenInferred(tp, rhsProto)
 
       // Replace aliases to Unit by Unit itself. If we leave the alias in
       // it would be erased to BoxedUnit.
@@ -1498,9 +1495,21 @@ class Namer { typer: Typer =>
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe).tpe
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
-        val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
         mdef match {
           case mdef: DefDef if mdef.name == nme.ANON_FUN =>
+            // This case applies if the closure result type contains uninstantiated
+            // type variables. In this case, constrain the closure result from below
+            // by the parameter-capture-avoiding type of the body.
+            val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
+
+            // The following part is important since otherwise we might instantiate
+            // the closure result type with a plain functon type that refers
+            // to local parameters. An example where this happens in `dependent-closures.scala`
+            // If the code after `val rhsType` is commented out, this file fails pickling tests.
+            // AVOIDANCE TODO: Follow up why this happens, and whether there
+            // are better ways to achieve this. It would be good if we could get rid of this code.
+            // It seems at least partially redundant with the nesting level checking on TypeVar
+            // instantiation.
             val hygienicType = avoid(rhsType, paramss.flatten)
             if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
               ctx.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
@@ -1513,10 +1522,10 @@ class Namer { typer: Typer =>
       case _ =>
         WildcardType
     }
-    val memTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
-      JavaNullInterop.nullifyMember(sym, memTpe, mdef.mods.isAllOf(JavaEnumValue))
-    else memTpe
+      JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
+    else mbrTpe
   }
 
   /** The type signature of a DefDef with given symbol */
