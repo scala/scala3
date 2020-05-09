@@ -812,16 +812,16 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }.apply(false, tp)
 
   def checkExhaustivity(_match: Match): Unit = {
-    val Match(sel, cases :+ last) = _match
+    val Match(sel, cases) = _match
     val selTyp = sel.tpe.widen.dealias
 
     if (!exhaustivityCheckable(sel)) return
 
-    val patternSpace = Or((last :: cases).map({ x =>
+    val patternSpace = Or(cases.foldLeft(List.empty[Space]) { (acc, x) =>
       val space = if (x.guard.isEmpty) project(x.pat) else Empty
       debug.println(s"${x.pat.show} ====> ${show(space)}")
-      space
-    }))
+      space :: acc
+    })
 
     val checkGADTSAT = shouldCheckExamples(selTyp)
 
