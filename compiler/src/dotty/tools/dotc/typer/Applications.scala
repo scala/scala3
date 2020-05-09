@@ -1878,7 +1878,15 @@ trait Applications extends Compatibility {
     val reverseMapping = alts.flatMap { alt =>
       val t = f(alt)
       if t.exists then
-        Some((TermRef(NoPrefix, alt.symbol.asTerm.copy(info = t)), alt))
+        val mappedSym = alt.symbol.asTerm.copy(info = t)
+        mappedSym.rawParamss = alt.symbol.rawParamss
+          // we need rawParamss to find parameters with default arguments,
+          // but we do not need to be precise right now, since this is just a pre-test before
+          // we look up defult getters. If at some point we extract default arguments from the
+          // parameter symbols themselves, we have to find the right parameter by name, not position.
+          // That means it's OK to copy parameters wholesale rather than tailoring them to always
+          // correspond to the type transformation.
+        Some((TermRef(NoPrefix, mappedSym), alt))
       else
         None
     }
