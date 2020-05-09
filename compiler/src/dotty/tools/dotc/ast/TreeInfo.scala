@@ -8,6 +8,7 @@ import Names._, StdNames._, NameOps._, Symbols._
 import typer.ConstFold
 import reporting.trace
 import dotty.tools.dotc.transform.SymUtils._
+import Decorators._
 
 import scala.annotation.tailrec
 
@@ -835,6 +836,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         }
       }
   }
+
+  def assertAllPositioned(tree: Tree)(using Context): Unit =
+    tree.foreachSubTree {
+      case t: WithoutTypeOrPos[_] =>
+      case t => assert(t.span.exists, i"$t")
+    }
 
   /** Extractors for quotes */
   object Quoted {
