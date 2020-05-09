@@ -167,7 +167,7 @@ trait SpaceLogic {
     def tryDecompose1(tp: Type) = canDecompose(tp) && isSubspace(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = canDecompose(tp) && isSubspace(a, Or(decompose(tp)))
 
-    (simplify(a), b) match {
+    (simplify(a), simplify(b)) match {
       case (Empty, _) => true
       case (_, Empty) => false
       case (Or(ss), _) =>
@@ -728,6 +728,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     checkConstraint(genConstraint(sp))(ctx.fresh.setNewTyperState())
   }
 
+  def show(ss: Seq[Space]): String = ss.map(show).mkString(", ")
   /** Display spaces */
   def show(s: Space): String = {
     def params(tp: Type): List[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
@@ -740,7 +741,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
 
     def doShow(s: Space, flattenList: Boolean = false): String = s match {
-      case Empty => ""
+      case Empty => "empty"
       case Typ(c: ConstantType, _) => "" + c.value.value
       case Typ(tp: TermRef, _) =>
         if (flattenList && tp <:< scalaNilType) ""
@@ -773,11 +774,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           val paramsStr = params.map(doShow(_, flattenList = isUnapplySeq)).mkString("(", ", ", ")")
           showType(fun.prefix) + paramsStr
         }
-      case Or(_) =>
-        throw new Exception("incorrect flatten result " + s)
+      case Or(ss) =>
+        ss.map(doShow(_, flattenList)).mkString(" | ")
     }
 
-    flatten(s).map(doShow(_, flattenList = false)).distinct.mkString(", ")
+    doShow(s, flattenList = false)
   }
 
   private def exhaustivityCheckable(sel: Tree): Boolean = {
@@ -831,7 +832,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }
 
     if (uncovered.nonEmpty)
-      ctx.warning(PatternMatchExhaustivity(show(Or(uncovered))), sel.sourcePos)
+      ctx.warning(PatternMatchExhaustivity(show(uncovered)), sel.sourcePos)
   }
 
   private def redundancyCheckable(sel: Tree): Boolean =

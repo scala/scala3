@@ -1,1 +1,1 @@
-63: Pattern Match Exhaustivity: (Try3.VC(_, _), Try3.VN()), (Try3.VN(), Try3.VC(_, _))
+63: Pattern Match Exhaustivity: (Try3.VN(), Try3.VC(_, _)), (Try3.VC(_, _), Try3.VN())

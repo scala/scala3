@@ -1,1 +1,1 @@
-12: Pattern Match Exhaustivity: (VC(_, _), VN()), (VN(), VC(_, _))
+12: Pattern Match Exhaustivity: (VN(), VC(_, _)), (VC(_, _), VN())
