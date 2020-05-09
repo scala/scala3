@@ -263,7 +263,7 @@ trait SpaceLogic {
         a  // approximation
       case (Prod(tp1, fun1, ss1, full), Prod(tp2, fun2, ss2, _)) =>
         if (!isSameUnapply(fun1, fun2)) a
-        else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) a
+        else if (ss1.zip(ss2).exists(p => isSubspace(p._1, minus(p._1, p._2)))) a
         else if (ss1.zip(ss2).forall((isSubspace _).tupled)) Empty
         else
           // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
@@ -812,16 +812,16 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }.apply(false, tp)
 
   def checkExhaustivity(_match: Match): Unit = {
-    val Match(sel, cases) = _match
+    val Match(sel, cases :+ last) = _match
     val selTyp = sel.tpe.widen.dealias
 
     if (!exhaustivityCheckable(sel)) return
 
-    val patternSpace = cases.map({ x =>
+    val patternSpace = Or((last :: cases).map({ x =>
       val space = if (x.guard.isEmpty) project(x.pat) else Empty
       debug.println(s"${x.pat.show} ====> ${show(space)}")
       space
-    }).reduce((a, b) => Or(List(a, b)))
+    }))
 
     val checkGADTSAT = shouldCheckExamples(selTyp)
 
