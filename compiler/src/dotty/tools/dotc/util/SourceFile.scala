@@ -52,7 +52,14 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   
   def maybeIncomplete: Boolean = _maybeInComplete
 
-  def this(file: AbstractFile, codec: Codec) = this(file, new String(file.toByteArray, codec.charSet).toCharArray)
+  def this(file: AbstractFile, codec: Codec) =
+    // It would be cleaner to check if the file exists instead of catching
+    // an exception, but it turns out that Files.exists is remarkably slow,
+    // at least on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
+    // this is significant enough to show up in our benchmarks.
+    this(file,
+      try new String(file.toByteArray, codec.charSet).toCharArray
+      catch case _: java.nio.file.NoSuchFileException => Array[Char]())
 
   /** Tab increment; can be overridden */
   def tabInc: Int = 8
