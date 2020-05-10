@@ -48,9 +48,13 @@ object Inliner {
     else
       EmptyTree
 
+  /** Are we in an inline method body? */
+  def inInlineMethod(using Context): Boolean =
+    ctx.owner.ownersIterator.exists(_.isInlineMethod)
+
   /** Should call to method `meth` be inlined in this context? */
   def isInlineable(meth: Symbol)(using Context): Boolean =
-    meth.is(Inline) && meth.hasAnnotation(defn.BodyAnnot) && !ctx.inInlineMethod
+    meth.is(Inline) && meth.hasAnnotation(defn.BodyAnnot) && !inInlineMethod
 
   /** Should call be inlined in this context? */
   def isInlineable(tree: Tree)(using Context): Boolean = tree match {

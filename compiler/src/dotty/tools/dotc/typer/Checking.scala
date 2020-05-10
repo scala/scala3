@@ -69,7 +69,7 @@ object Checking {
         errorTree(arg,
           showInferred(MissingTypeParameterInTypeApp(arg.tpe), app, tpt))
     }
-    for (arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate, app) do
+    for (arg, which, bound) <- TypeOps.boundsViolations(args, boundss, instantiate, app) do
       ctx.error(
           showInferred(DoesNotConformToBound(arg.tpe, which, bound),
               app, tpt),
@@ -884,7 +884,7 @@ trait Checking {
 
   /** Check that `tree` can be right hand-side or argument to `inline` value or parameter. */
   def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = {
-    if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !ctx.inInlineMethod then
+    if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !Inliner.inInlineMethod then
       // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
       val purityLevel = if (sym.is(Final)) Idempotent else Pure
       tpt.tpe.widenTermRefExpr.dealias.normalized match
@@ -1088,7 +1088,7 @@ trait Checking {
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
   def checkInInlineContext(what: String, posd: Positioned)(using Context): Unit =
-    if !ctx.inInlineMethod && !ctx.isInlineContext then
+    if !Inliner.inInlineMethod && !ctx.isInlineContext then
       ctx.error(em"$what can only be used in an inline method", posd.sourcePos)
 
   /** 1. Check that all case classes that extend `scala.Enum` are `enum` cases

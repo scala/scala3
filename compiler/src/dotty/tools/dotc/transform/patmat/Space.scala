@@ -605,7 +605,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case tp =>
         val parts = children.map { sym =>
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
-          val refined = ctx.refineUsingParent(tp, sym1)
+          val refined = TypeOps.refineUsingParent(tp, sym1)
 
           def inhabited(tp: Type): Boolean =
             tp.dealias match {

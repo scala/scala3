@@ -885,7 +885,7 @@ class Typer extends Namer
     if (noLeaks(tree)) tree
     else {
       fullyDefinedType(tree.tpe, "block", tree.span)
-      var avoidingType = avoid(tree.tpe, localSyms)
+      var avoidingType = TypeOps.avoid(tree.tpe, localSyms)
       val ptDefined = isFullyDefined(pt, ForceDegree.none)
       if (ptDefined && !(avoidingType.widenExpr <:< pt)) avoidingType = pt
       val tree1 = ascribeType(tree, avoidingType)
@@ -3083,7 +3083,7 @@ class Typer extends Namer
         checkEqualityEvidence(tree, pt)
         tree
       }
-      else if (methPart(tree).symbol.isAllOf(Inline | Deferred) && !ctx.inInlineMethod) then
+      else if (methPart(tree).symbol.isAllOf(Inline | Deferred) && !Inliner.inInlineMethod) then
         errorTree(tree, i"Deferred inline ${methPart(tree).symbol.showLocated} cannot be invoked")
       else if (Inliner.isInlineable(tree) &&
                !ctx.settings.YnoInline.value &&

@@ -78,7 +78,6 @@ object Contexts {
   abstract class Context(val base: ContextBase)
     extends Periods
        with Substituters
-       with TypeOps
        with Phases
        with Printers
        with Symbols

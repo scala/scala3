@@ -22,13 +22,16 @@ import typer.Inferencing.isFullyDefined
 import typer.IfBottom
 
 import scala.annotation.internal.sharable
+import scala.annotation.threadUnsafe
 
-trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
+object TypeOps:
+
+  @sharable var track: Boolean = false // for debugging
 
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means.
    */
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type = {
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol)(using Context): Type = {
     pre match {
       case pre: QualSkolemType =>
         // When a selection has an unstable qualifier, the qualifier type gets
@@ -53,7 +56,7 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
   }
 
   /** The TypeMap handling the asSeenFrom */
-  class AsSeenFromMap(pre: Type, cls: Symbol) extends ApproximatingTypeMap {
+  class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap {
     /** Set to true when the result of `apply` was approximated to avoid an unstable prefix. */
     var approximated: Boolean = false
 
@@ -62,7 +65,7 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
       /** Map a `C.this` type to the right prefix. If the prefix is unstable, and
        *  the current variance is <= 0, return a range.
        */
-      def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ trace.conditionally(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)", show = true) /*<|<*/ {
+      def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ trace.conditionally(track, s"toPrefix($pre, $cls, $thiscls)", show = true) /*<|<*/ {
         if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
           tp
         else pre match {
@@ -89,7 +92,7 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
         }
       }
 
-      trace.conditionally(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) { // !!! DEBUG
+      trace.conditionally(track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) { // !!! DEBUG
         // All cases except for ThisType are the same as in Map. Inlined for performance
         // TODO: generalize the inlining trick?
         tp match {
@@ -117,11 +120,11 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
     }
   }
 
-  def isLegalPrefix(pre: Type)(implicit ctx: Context): Boolean =
+  def isLegalPrefix(pre: Type)(using Context): Boolean =
     pre.isStable || !ctx.phase.isTyper
 
   /** Implementation of Types#simplified */
-  final def simplify(tp: Type, theMap: SimplifyMap): Type = {
+  def simplify(tp: Type, theMap: SimplifyMap)(using Context): Type = {
     def mapOver = (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
     tp match {
       case tp: NamedType =>
@@ -135,20 +138,20 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
         }
       case tp: TypeParamRef =>
         if (tp.paramName.is(DepParamName)) {
-          val bounds = thisCtx.typeComparer.bounds(tp)
+          val bounds = ctx.typeComparer.bounds(tp)
           if (bounds.lo.isRef(defn.NothingClass)) bounds.hi else bounds.lo
         }
         else {
-          val tvar = typerState.constraint.typeVarOfParam(tp)
+          val tvar = ctx.typerState.constraint.typeVarOfParam(tp)
           if (tvar.exists) tvar else tp
         }
       case  _: ThisType | _: BoundType =>
         tp
       case tp: AliasingBounds =>
         tp.derivedAlias(simplify(tp.alias, theMap))
-      case AndType(l, r) if !thisCtx.mode.is(Mode.Type) =>
+      case AndType(l, r) if !ctx.mode.is(Mode.Type) =>
         simplify(l, theMap) & simplify(r, theMap)
-      case OrType(l, r) if !thisCtx.mode.is(Mode.Type) =>
+      case OrType(l, r) if !ctx.mode.is(Mode.Type) =>
         simplify(l, theMap) | simplify(r, theMap)
       case _: AppliedType | _: MatchType =>
         val normed = tp.tryNormalize
@@ -158,7 +161,7 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
     }
   }
 
-  class SimplifyMap extends TypeMap {
+  class SimplifyMap(using Context) extends TypeMap {
     def apply(tp: Type): Type = simplify(tp, this)
   }
 
@@ -178,7 +181,7 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
    *  in a "best effort", ad-hoc way by selectively widening types in `T1, ..., Tn`
    *  and stopping if the resulting union simplifies to a type that is not a disjunction.
    */
-  def orDominator(tp: Type): Type = {
+  def orDominator(tp: Type)(using Context): Type = {
 
     /** a faster version of cs1 intersect cs2 */
     def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] = {
@@ -193,7 +196,7 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
         val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
       case Nil => // this case can happen because after erasure we do not have a top class anymore
-        assert(thisCtx.erasedTypes || thisCtx.reporter.errorsReported)
+        assert(ctx.erasedTypes || ctx.reporter.errorsReported)
         defn.ObjectClass :: Nil
     }
 
@@ -217,7 +220,7 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
             case AppliedType(tycon2, args2) =>
               tp1.derivedAppliedType(
                 mergeRefinedOrApplied(tycon1, tycon2),
-                thisCtx.typeComparer.lubArgs(args1, args2, tycon1.typeParams))
+                ctx.typeComparer.lubArgs(args1, args2, tycon1.typeParams))
             case _ => fallback
           }
         case tp1 @ TypeRef(pre1, _) =>
@@ -327,12 +330,128 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
     }
   }
 
+  /** An abstraction of a class info, consisting of
+   *   - the intersection of its parents,
+   *   - refined by all non-private fields, methods, and type members,
+   *   - abstracted over all type parameters (into a type lambda)
+   *   - where all references to `this` of the class are closed over in a RecType.
+   */
+  def classBound(info: ClassInfo)(using Context): Type = {
+    val cls = info.cls
+    val parentType = info.parents.reduceLeft(ctx.typeComparer.andType(_, _))
+
+    def addRefinement(parent: Type, decl: Symbol) = {
+      val inherited =
+        parentType.findMember(decl.name, cls.thisType,
+          required = EmptyFlags, excluded = Private
+        ).suchThat(decl.matches(_))
+      val inheritedInfo = inherited.info
+      val isPolyFunctionApply = decl.name == nme.apply && (parent <:< defn.PolyFunctionType)
+      if isPolyFunctionApply
+         || inheritedInfo.exists
+            && !decl.isClass
+            && decl.info.widenExpr <:< inheritedInfo.widenExpr
+            && !(inheritedInfo.widenExpr <:< decl.info.widenExpr)
+      then
+        val r = RefinedType(parent, decl.name, decl.info)
+        typr.println(i"add ref $parent $decl --> " + r)
+        r
+      else
+        parent
+    }
+
+    def close(tp: Type) = RecType.closeOver { rt =>
+      tp.subst(cls :: Nil, rt.recThis :: Nil).substThis(cls, rt.recThis)
+    }
+
+    def isRefinable(sym: Symbol) = !sym.is(Private) && !sym.isConstructor
+    val refinableDecls = info.decls.filter(isRefinable)
+    val raw = refinableDecls.foldLeft(parentType)(addRefinement)
+    HKTypeLambda.fromParams(cls.typeParams, raw) match {
+      case tl: HKTypeLambda => tl.derivedLambdaType(resType = close(tl.resType))
+      case tp => close(tp)
+    }
+  }
+
+  /** An upper approximation of the given type `tp` that does not refer to any symbol in `symsToAvoid`.
+   *  We need to approximate with ranges:
+   *
+   *    term references to symbols in `symsToAvoid`,
+   *    term references that have a widened type of which some part refers
+   *    to a symbol in `symsToAvoid`,
+   *    type references to symbols in `symsToAvoid`,
+   *    this types of classes in `symsToAvoid`.
+   *
+   *  Type variables that would be interpolated to a type that
+   *  needs to be widened are replaced by the widened interpolation instance.
+   */
+  def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
+    val widenMap = new ApproximatingTypeMap {
+      @threadUnsafe lazy val forbidden = symsToAvoid.toSet
+      def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)
+      def partsToAvoid = new NamedPartsAccumulator(tp => toAvoid(tp.symbol))
+      def apply(tp: Type): Type = tp match {
+        case tp: TermRef
+        if toAvoid(tp.symbol) || partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
+          tp.info.widenExpr.dealias match {
+            case info: SingletonType => apply(info)
+            case info => range(defn.NothingType, apply(info))
+          }
+        case tp: TypeRef if toAvoid(tp.symbol) =>
+          tp.info match {
+            case info: AliasingBounds =>
+              apply(info.alias)
+            case TypeBounds(lo, hi) =>
+              range(atVariance(-variance)(apply(lo)), apply(hi))
+            case info: ClassInfo =>
+              range(defn.NothingType, apply(classBound(info)))
+            case _ =>
+              emptyRange // should happen only in error cases
+          }
+        case tp: ThisType if toAvoid(tp.cls) =>
+          range(defn.NothingType, apply(classBound(tp.cls.classInfo)))
+        case tp: SkolemType if partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
+          range(defn.NothingType, apply(tp.info))
+        case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
+          val lo = mapCtx.typeComparer.instanceType(
+            tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)
+          val lo1 = apply(lo)
+          if (lo1 ne lo) lo1 else tp
+        case _ =>
+          mapOver(tp)
+      }
+
+      /** Three deviations from standard derivedSelect:
+       *   1. We first try a widening conversion to the type's info with
+       *      the original prefix. Since the original prefix is known to
+       *      be a subtype of the returned prefix, this can improve results.
+       *   2. Then, if the approximation result is a singleton reference C#x.type, we
+       *      replace by the widened type, which is usually more natural.
+       *   3. Finally, we need to handle the case where the prefix type does not have a member
+       *      named `tp.name` anymmore. In that case, we need to fall back to Bot..Top.
+       */
+      override def derivedSelect(tp: NamedType, pre: Type) =
+        if (pre eq tp.prefix)
+          tp
+        else tryWiden(tp, tp.prefix).orElse {
+          if (tp.isTerm && variance > 0 && !pre.isSingleton)
+          	apply(tp.info.widenExpr)
+          else if (upper(pre).member(tp.name).exists)
+            super.derivedSelect(tp, pre)
+          else
+            range(defn.NothingType, defn.AnyType)
+        }
+    }
+
+    widenMap(tp)
+  }
+
   /** If `tpe` is of the form `p.x` where `p` refers to a package
    *  but `x` is not owned by a package, expand it to
    *
    *      p.package.x
    */
-  def makePackageObjPrefixExplicit(tpe: NamedType): Type = {
+  def makePackageObjPrefixExplicit(tpe: NamedType)(using Context): Type = {
     def tryInsert(pkgClass: SymDenotation): Type = pkgClass match {
       case pkg: PackageClassDenotation =>
         val pobj = pkg.packageObjFor(tpe.symbol)
@@ -370,9 +489,12 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
    *  In fact the current treatment for this sitiuation can so far only be classified as "not obviously wrong",
    *  (maybe it still needs to be revised).
    */
-  def boundsViolations(args: List[Tree], boundss: List[TypeBounds],
-      instantiate: (Type, List[Type]) => Type, app: Type)(
-      implicit ctx: Context): List[BoundsViolation] = {
+  def boundsViolations(
+      args: List[Tree],
+      boundss: List[TypeBounds],
+      instantiate: (Type, List[Type]) => Type,
+      app: Type)(
+      using Context): List[BoundsViolation] = {
     val argTypes = args.tpes
 
     /** Replace all wildcards in `tps` with `<app>#<tparam>` where `<tparam>` is the
@@ -465,9 +587,6 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
     violations.toList
   }
 
-  /** Are we in an inline method body? */
-  def inInlineMethod: Boolean = owner.ownersIterator.exists(_.isInlineMethod)
-
   /** Refine child based on parent
    *
    *  In child class definition, we have:
@@ -487,7 +606,7 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
    *  If the subtyping is true, the instantiated type `p.child[Vs]` is
    *  returned. Otherwise, `NoType` is returned.
    */
-  def refineUsingParent(parent: Type, child: Symbol)(implicit ctx: Context): Type = {
+  def refineUsingParent(parent: Type, child: Symbol)(using Context): Type = {
     if (child.isTerm && child.is(Case, butNot = Module)) return child.termRef // enum vals always match
 
     // <local child> is a place holder from Scalac, it is hopeless to instantiate it.
@@ -503,7 +622,8 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
 
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
-    instantiateToSubType(childTp, parent)(ctx.fresh.setNewTyperState()).dealias
+    instantiateToSubType(childTp, parent)(using ctx.fresh.setNewTyperState())
+      .dealias
   }
 
   /** Instantiate type `tp1` to be a subtype of `tp2`
@@ -513,7 +633,7 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
    *
    *  Otherwise, return NoType.
    */
-  private def instantiateToSubType(tp1: NamedType, tp2: Type)(implicit ctx: Context): Type = {
+  private def instantiateToSubType(tp1: NamedType, tp2: Type)(using Context): Type = {
     /** expose abstract type references to their bounds or tvars according to variance */
     class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends TypeMap {
       def expose(lo: Type, hi: Type): Type =
@@ -594,8 +714,9 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
     // we manually patch subtyping check instead of changing TypeComparer.
     // See tests/patmat/i3645b.scala
     def parentQualify = tp1.widen.classSymbol.info.parents.exists { parent =>
-      implicit val ictx = ctx.fresh.setNewTyperState()
-      parent.argInfos.nonEmpty && minTypeMap.apply(parent) <:< maxTypeMap.apply(tp2)
+      inContext(ctx.fresh.setNewTyperState()) {
+        parent.argInfos.nonEmpty && minTypeMap.apply(parent) <:< maxTypeMap.apply(tp2)
+      }
     }
 
     if (protoTp1 <:< tp2)
@@ -612,13 +733,8 @@ trait TypeOps { thisCtx: Context => // TODO: Make standalone object.
       }
     }
   }
-}
 
-object TypeOps {
-  @sharable var track: Boolean = false // !!!DEBUG
-
-  // TODO: Move other typeops here. It's a bit weird that they are a part of `ctx`
-
-  def nestedPairs(ts: List[Type])(implicit ctx: Context): Type =
+  def nestedPairs(ts: List[Type])(using Context): Type =
     ts.foldRight(defn.UnitType: Type)(defn.PairClass.typeRef.appliedTo(_, _))
-}
+
+end TypeOps

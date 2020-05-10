@@ -16,8 +16,6 @@ import collection.mutable
 import reporting.messages._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 
-import scala.annotation.threadUnsafe
-
 trait TypeAssigner {
   import tpd._
 
@@ -41,124 +39,8 @@ trait TypeAssigner {
     }
   }
 
-  /** An abstraction of a class info, consisting of
-   *   - the intersection of its parents,
-   *   - refined by all non-private fields, methods, and type members,
-   *   - abstracted over all type parameters (into a type lambda)
-   *   - where all references to `this` of the class are closed over in a RecType.
-   */
-  def classBound(info: ClassInfo)(using Context): Type = {
-    val cls = info.cls
-    val parentType = info.parents.reduceLeft(ctx.typeComparer.andType(_, _))
-
-    def addRefinement(parent: Type, decl: Symbol) = {
-      val inherited =
-        parentType.findMember(decl.name, cls.thisType,
-          required = EmptyFlags, excluded = Private
-        ).suchThat(decl.matches(_))
-      val inheritedInfo = inherited.info
-      val isPolyFunctionApply = decl.name == nme.apply && (parent <:< defn.PolyFunctionType)
-      if isPolyFunctionApply
-         || inheritedInfo.exists
-            && !decl.isClass
-            && decl.info.widenExpr <:< inheritedInfo.widenExpr
-            && !(inheritedInfo.widenExpr <:< decl.info.widenExpr)
-      then
-        val r = RefinedType(parent, decl.name, decl.info)
-        typr.println(i"add ref $parent $decl --> " + r)
-        r
-      else
-        parent
-    }
-
-    def close(tp: Type) = RecType.closeOver { rt =>
-      tp.subst(cls :: Nil, rt.recThis :: Nil).substThis(cls, rt.recThis)
-    }
-
-    def isRefinable(sym: Symbol) = !sym.is(Private) && !sym.isConstructor
-    val refinableDecls = info.decls.filter(isRefinable)
-    val raw = refinableDecls.foldLeft(parentType)(addRefinement)
-    HKTypeLambda.fromParams(cls.typeParams, raw) match {
-      case tl: HKTypeLambda => tl.derivedLambdaType(resType = close(tl.resType))
-      case tp => close(tp)
-    }
-  }
-
-  /** An upper approximation of the given type `tp` that does not refer to any symbol in `symsToAvoid`.
-   *  We need to approximate with ranges:
-   *
-   *    term references to symbols in `symsToAvoid`,
-   *    term references that have a widened type of which some part refers
-   *    to a symbol in `symsToAvoid`,
-   *    type references to symbols in `symsToAvoid`,
-   *    this types of classes in `symsToAvoid`.
-   *
-   *  Type variables that would be interpolated to a type that
-   *  needs to be widened are replaced by the widened interpolation instance.
-   */
-  def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
-    val widenMap = new ApproximatingTypeMap {
-      @threadUnsafe lazy val forbidden = symsToAvoid.toSet
-      def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)
-      def partsToAvoid = new NamedPartsAccumulator(tp => toAvoid(tp.symbol))
-      def apply(tp: Type): Type = tp match {
-        case tp: TermRef
-        if toAvoid(tp.symbol) || partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
-          tp.info.widenExpr.dealias match {
-            case info: SingletonType => apply(info)
-            case info => range(defn.NothingType, apply(info))
-          }
-        case tp: TypeRef if toAvoid(tp.symbol) =>
-          tp.info match {
-            case info: AliasingBounds =>
-              apply(info.alias)
-            case TypeBounds(lo, hi) =>
-              range(atVariance(-variance)(apply(lo)), apply(hi))
-            case info: ClassInfo =>
-              range(defn.NothingType, apply(classBound(info)))
-            case _ =>
-              emptyRange // should happen only in error cases
-          }
-        case tp: ThisType if toAvoid(tp.cls) =>
-          range(defn.NothingType, apply(classBound(tp.cls.classInfo)))
-        case tp: SkolemType if partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
-          range(defn.NothingType, apply(tp.info))
-        case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
-          val lo = mapCtx.typeComparer.instanceType(
-            tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)
-          val lo1 = apply(lo)
-          if (lo1 ne lo) lo1 else tp
-        case _ =>
-          mapOver(tp)
-      }
-
-      /** Three deviations from standard derivedSelect:
-       *   1. We first try a widening conversion to the type's info with
-       *      the original prefix. Since the original prefix is known to
-       *      be a subtype of the returned prefix, this can improve results.
-       *   2. Then, if the approximation result is a singleton reference C#x.type, we
-       *      replace by the widened type, which is usually more natural.
-       *   3. Finally, we need to handle the case where the prefix type does not have a member
-       *      named `tp.name` anymmore. In that case, we need to fall back to Bot..Top.
-       */
-      override def derivedSelect(tp: NamedType, pre: Type) =
-        if (pre eq tp.prefix)
-          tp
-        else tryWiden(tp, tp.prefix).orElse {
-          if (tp.isTerm && variance > 0 && !pre.isSingleton)
-          	apply(tp.info.widenExpr)
-          else if (upper(pre).member(tp.name).exists)
-            super.derivedSelect(tp, pre)
-          else
-            range(defn.NothingType, defn.AnyType)
-        }
-    }
-
-    widenMap(tp)
-  }
-
   def avoidingType(expr: Tree, bindings: List[Tree])(using Context): Type =
-    avoid(expr.tpe, localSyms(bindings).filter(_.isTerm))
+    TypeOps.avoid(expr.tpe, localSyms(bindings).filter(_.isTerm))
 
   def avoidPrivateLeaks(sym: Symbol)(using Context): Type =
     if sym.owner.isClass && !sym.isOneOf(JavaOrPrivateOrSynthetic)
@@ -228,7 +110,7 @@ trait TypeAssigner {
             else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
           }
         }
-        else ctx.makePackageObjPrefixExplicit(tpe withDenot d)
+        else TypeOps.makePackageObjPrefixExplicit(tpe withDenot d)
       case _ =>
         tpe
     }
@@ -241,7 +123,7 @@ trait TypeAssigner {
    *  @see QualSkolemType, TypeOps#asSeenFrom
    */
   def maybeSkolemizePrefix(qualType: Type, name: Name)(using Context): Type =
-    if (name.isTermName && !ctx.isLegalPrefix(qualType))
+    if (name.isTermName && !TypeOps.isLegalPrefix(qualType))
       QualSkolemType(qualType)
     else
       qualType
