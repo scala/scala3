@@ -215,7 +215,8 @@ object Build {
           case Some(prop) => List("-Xmx" + prop)
           case _ => List()
         }
-      agentOptions ::: ciOptions
+      // Do not cut off the bottom of large stack traces (default is 1024)
+      "-XX:MaxJavaStackTraceDepth=1000000" :: agentOptions ::: ciOptions
     }
   )
 
