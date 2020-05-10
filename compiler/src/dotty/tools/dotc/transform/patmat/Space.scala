@@ -262,15 +262,21 @@ trait SpaceLogic {
       case (Typ(tp1, _), Prod(tp2, _, _, false)) =>
         a  // approximation
       case (Prod(tp1, fun1, ss1, full), Prod(tp2, fun2, ss2, _)) =>
-        if (!isSameUnapply(fun1, fun2)) a
-        else if (ss1.zip(ss2).exists(p => isSubspace(p._1, minus(p._1, p._2)))) a
-        else if (ss1.zip(ss2).forall((isSubspace _).tupled)) Empty
+        if (!isSameUnapply(fun1, fun2)) return a
+
+        val range = (0 until ss1.size).toList
+        val cache = Array.fill[Space](ss2.length)(null)
+        def sub(i: Int) =
+          if cache(i) == null then
+            cache(i) = minus(ss1(i), ss2(i))
+          cache(i)
+        end sub
+
+        if range.exists(i => isSubspace(ss1(i), sub(i))) then a
+        else if cache.forall(sub => isSubspace(sub, Empty)) then Empty
         else
           // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
-          Or(ss1.zip(ss2).map((minus _).tupled).zip(0 to ss2.length - 1).map {
-            case (ri, i) => Prod(tp1, fun1, ss1.updated(i, ri), full)
-          })
-
+          Or(range.map { i => Prod(tp1, fun1, ss1.updated(i, sub(i)), full) })
     }
   }
 }
