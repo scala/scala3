@@ -6,12 +6,12 @@ object Other {
 
 object Macro {
 
-  def impl(using qctx: QuoteContext): Expr[Int] = {
-    import qctx.tasty._
+  def impl(using Scope): scope.Expr[Int] = {
+    import scope.tasty._
 
     let(
       Select.unique(
-        '{ Other }.unseal,
+        '{ Other },
         "apply"
       )
     )(identity).seal.cast[Int]

@@ -4,7 +4,7 @@ object Lib {
 
   inline def foo[T](inline arg: T): T = ${ impl('arg) }
 
-  private def impl[T: Type](arg: Expr[T])(using QuoteContext): Expr[T] = {
+  private def impl[T](using s: Scope)(arg: s.Expr[T])(using s.Type[T]): s.Expr[T] = {
     arg match {
       case e @ '{ $x: Boolean } => '{ println("Boolean: " + $e); $e }
       case e @ '{ $x: Int } => '{ println("Int: " + $x); $x }

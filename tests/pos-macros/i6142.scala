@@ -1,9 +1,9 @@
 import scala.quoted._
 
 object O {
-  def foo(using QuoteContext) = {
+  def foo(using s: Scope) = {
     type T
-    implicit val _: scala.quoted.Type[T] = ???
+    implicit val _: s.Type[T] = ???
     '[List[T]]
     ()
   }

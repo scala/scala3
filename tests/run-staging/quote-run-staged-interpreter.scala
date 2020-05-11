@@ -11,8 +11,8 @@ enum Exp {
 object Test {
   import Exp._
 
-  def compile(e: Exp, env: Map[String, Expr[Int]], keepLets: Boolean)(using QuoteContext): Expr[Int] = {
-    def compileImpl(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
+  def compile(using s: Scope)(e: Exp, env: Map[String, s.Expr[Int]], keepLets: Boolean): s.Expr[Int] = {
+    def compileImpl(using s: Scope)(e: Exp, env: Map[String, s.Expr[Int]]): s.Expr[Int] = e match {
       case Num(n) => Expr(n)
       case Plus(e1, e2) => '{${compileImpl(e1, env)} + ${compileImpl(e2, env)}}
       case Var(x) => env(x)
@@ -31,10 +31,10 @@ object Test {
     val exp = Plus(Plus(Num(2), Var("x")), Num(4))
     val letExp = Let("x", Num(3), exp)
 
-    def res1(using QuoteContext) = '{ (x: Int) => ${compile(exp, Map("x" -> 'x), false)} }
+    def res1(using Scope) = '{ (x: Int) => ${compile(exp, Map("x" -> 'x), false)} }
 
 
-    println(withQuoteContext(res1.show))
+    println(usingNewScope(res1.show))
 
     val fn = run(res1)
     println(fn(0))
@@ -43,14 +43,14 @@ object Test {
 
     println("---")
 
-    def res2(using QuoteContext) = compile(letExp, Map(), false)
-    println(withQuoteContext(res2.show))
+    def res2(using s: Scope) = compile(letExp, Map(), false)
+    println(usingNewScope(res2.show))
     println(run(res2))
 
     println("---")
 
-    def res3(using QuoteContext) = compile(letExp, Map(), true)
-    println(withQuoteContext(res3.show))
+    def res3(using s: Scope) = compile(letExp, Map(), true)
+    println(usingNewScope(res3.show))
     println(run(res3))
   }
 }

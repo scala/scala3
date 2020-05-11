@@ -3,14 +3,14 @@ import scala.quoted.staging._
 
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def eval1(ff: Expr[Int => Int])(using QuoteContext): Expr[Int] =
+  def eval1(using s: Scope)(ff: s.Expr[Int => Int]): s.Expr[Int] =
     Expr.betaReduce('{ $ff(42) })
 
-  def peval1()(using QuoteContext): Expr[Unit] = '{
+  def peval1(using s: Scope)(): s.Expr[Unit] = '{
     def f(x: Int): Int = ${eval1('f)}
   }
 
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = usingNewScope {
     val p = peval1()
     println(p.show)
   }

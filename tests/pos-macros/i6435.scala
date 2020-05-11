@@ -1,12 +1,12 @@
 class Foo {
   import scala.quoted._
 
-  def f(sc: quoted.Expr[StringContext])(using QuoteContext): Unit = {
+  def f(using s: Scope)(sc: s.Expr[StringContext]): Unit = {
 
     val '{ StringContext(${parts}: _*) } = sc
-    val ps0: Expr[Seq[String]] = parts
+    val ps0: s.Expr[Seq[String]] = parts
 
     val '{ StringContext(${Varargs(parts2)}: _*) } = sc
-    val ps: Seq[Expr[String]] = parts2
+    val ps: Seq[s.Expr[String]] = parts2
   }
 }

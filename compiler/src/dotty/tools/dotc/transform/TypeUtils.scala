@@ -8,6 +8,7 @@ import Types._
 import Contexts._
 import Symbols._
 import Names.Name
+import StdNames._
 
 object TypeUtils {
   /** A decorator that provides methods on types
@@ -76,5 +77,12 @@ object TypeUtils {
       case self: TypeProxy =>
         self.underlying.companionRef
     }
+
+    /** Is this type a refercene to scala.quoted.Scope.Type.T */
+    def isTypeSplice(using Context): Boolean = self match
+      case self: TypeRef =>
+        self.name == tpnme.spliceType && self.prefix.widen.isRef(defn.ScopeTypeClass)
+      case _ => false
+
   }
 }

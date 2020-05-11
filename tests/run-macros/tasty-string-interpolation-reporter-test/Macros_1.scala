@@ -18,27 +18,27 @@ object TestFooErrors { // Defined in tests
 
 object Macro {
 
-  def foo(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
+  def foo(using s: Scope)(sc: s.Expr[StringContext], argsExpr: s.Expr[Seq[Any]]): s.Expr[String] = {
     (sc, argsExpr) match {
       case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args)) =>
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
-            import qctx.tasty._
-            error(msg, parts(partIdx).unseal.pos)
+            import s.tasty._
+            error(msg, parts(partIdx).pos)
           }
         }
         fooCore(parts, args, reporter)
     }
   }
 
-  def fooErrors(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[List[(Int, Int, Int, String)]] = {
+  def fooErrors(using s: Scope)(sc: s.Expr[StringContext], argsExpr: s.Expr[Seq[Any]]): s.Expr[List[(Int, Int, Int, String)]] = {
     (sc, argsExpr) match {
       case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args)) =>
-        val errors = List.newBuilder[Expr[(Int, Int, Int, String)]]
+        val errors = List.newBuilder[s.Expr[(Int, Int, Int, String)]]
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
-            import qctx.tasty._
-            val pos = parts(partIdx).unseal.pos
+            import s.tasty._
+            val pos = parts(partIdx).pos
             errors += '{ Tuple4(${Expr(partIdx)}, ${Expr(pos.start)}, ${Expr(pos.end)}, ${Expr(msg)}) }
           }
         }
@@ -50,7 +50,7 @@ object Macro {
   }
 
 
-  private def fooCore(parts: Seq[Expr[String]], args: Seq[Expr[Any]], reporter: Reporter)(using QuoteContext): Expr[String] = {
+  private def fooCore(using s: Scope)(parts: Seq[s.Expr[String]], args: Seq[s.Expr[Any]], reporter: Reporter): s.Expr[String] = {
     for ((part, idx) <- parts.zipWithIndex) {
       val Const(v: String) = part
       if (v.contains("#"))

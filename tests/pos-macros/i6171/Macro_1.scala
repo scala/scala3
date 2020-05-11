@@ -4,9 +4,9 @@ object scalatest {
 
   inline def assert(x: => Any): Unit = ${ assertImpl('x) }
 
-  def assertImpl(x: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
-    x.unseal.underlyingArgument
+  def assertImpl(using s: Scope)(x: s.Expr[Any]): s.Expr[Unit] = {
+    import s.tasty._
+    x.underlyingArgument
     '{ () }
   }
 }

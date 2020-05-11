@@ -369,7 +369,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else if (name.isTypeName) typeText(txt)
         else txt
       case tree @ Select(qual, name) =>
-        if (!printDebug && tree.hasType && tree.symbol.isTypeSplice) typeText("${") ~ toTextLocal(qual) ~ typeText("}")
+        if (!printDebug && tree.hasType && tree.tpe.asInstanceOf[Type].isTypeSplice) typeText("${") ~ toTextLocal(qual) ~ typeText("}")
         else if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
         else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided (name != nme.CONSTRUCTOR || printDebug))
       case tree: This =>
@@ -632,11 +632,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case Number(digits, kind) =>
         digits
-      case Quote(tree) if tree.isTerm =>
+      case Quote(tree) if !printDebug && tree.isTerm =>
         keywordStr("'{") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
-      case Splice(tree) =>
+      case Splice(tree) if !printDebug =>
         keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
-      case TypSplice(tree) =>
+      case TypSplice(tree) if !printDebug =>
         keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case tree: Applications.IntegratedTypeArgs =>
         toText(tree.app) ~ Str("(with integrated type args)").provided(printDebug)

@@ -3,7 +3,7 @@ import scala.quoted.staging._
 
 object Test {
 
-  def foo[T: Type](init: Expr[T])(using QuoteContext): Expr[Unit] = '{
+  def foo[T](using s: Scope)(init: s.Expr[T])(using s.Type[T]): s.Expr[Unit] = '{
     var x = $init
     println(x)
   }

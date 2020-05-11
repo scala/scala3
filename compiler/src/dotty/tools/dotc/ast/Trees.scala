@@ -56,6 +56,8 @@ object Trees {
   abstract class Tree[-T >: Untyped](implicit @constructorOnly src: SourceFile)
   extends Positioned, SrcPos, Product, Attachment.Container, printing.Showable {
 
+    type X <: AnyKind // FIXME used for reflection. find another way to add this type
+
     if (Stats.enabled) ntrees += 1
 
     /** The type  constructor at the root of the tree */

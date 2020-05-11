@@ -43,6 +43,9 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   /** If we are inside a quote or a splice */
   private[this] var inQuoteOrSplice = false
 
+  /** The quote scope of the surrounding quote */
+  private[this] var currentScope: Tree = EmptyTree
+
   /** The quotation level of the definition of the locally defined symbol */
   protected def levelOf(sym: Symbol): Int = levelOfMap.getOrElse(sym, 0)
 
@@ -51,6 +54,9 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
 
   /** If we are inside a quote or a splice */
   protected def isInQuoteOrSplice: Boolean = inQuoteOrSplice
+
+  /** The quote scope of the surrounding quote */
+  protected def getCurrentScope: Tree = currentScope
 
   /** Enter staging level of symbol defined by `tree` */
   private def markSymbol(sym: Symbol)(using Context): Unit =
@@ -95,21 +101,27 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
       }
 
       tree match {
-        case Apply(Select(Quoted(quotedTree), _), _) if quotedTree.isType =>
-          dropEmptyBlocks(quotedTree) match
+        case TypeApply(Select(Select(scope, _) ,nme.apply), List(quotedTree)) if tree.symbol.isQuote =>
+          val old = inQuoteOrSplice
+          inQuoteOrSplice = true
+          currentScope = scope
+          try dropEmptyBlocks(quotedTree) match
             case SplicedType(t) =>
               // '[ x.$splice ] --> x
               transform(t)
             case _ =>
-              super.transform(tree)
-
+              transformQuotation(quotedTree, tree)
+          finally inQuoteOrSplice = old
+        case Apply(Select(Quoted(quotedTree), _), List(scope)) =>
+          currentScope = scope
+          super.transform(tree)
         case Quoted(quotedTree) =>
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(quotedTree) match {
             case Spliced(t) =>
               // '{ $x } --> x
-              // and adapt the refinment of `QuoteContext { type tasty: ... } ?=> Expr[T]`
+              // and adapt the refinment of `Scope { type tasty: ... } ?=> Expr[T]`
               transform(t).asInstance(tree.tpe)
             case _ => transformQuotation(quotedTree, tree)
           }

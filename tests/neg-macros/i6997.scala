@@ -1,8 +1,8 @@
 
 import scala.quoted._
 class Foo {
-  def mcrImpl(body: Expr[Any])(using t: Type[_ <: Any])(using ctx: QuoteContext): Expr[Any] = '{
-    val tmp = ???.asInstanceOf[$t] // error // error
+  def mcrImpl(using s: Scope)(body: s.Expr[Any])(using t: s.Type[_ <: Any]): s.Expr[Any] = '{ // error
+    val tmp = ???.asInstanceOf[$t]
     tmp
   }
 }

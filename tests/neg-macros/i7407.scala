@@ -1,2 +1,2 @@
-def qc(using ctx: scala.quoted.QuoteContext) = println(ctx)
+def qc(using s: quoted.Scope) = println(s)
 inline def g = qc  // error: no implicit argument

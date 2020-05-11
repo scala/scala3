@@ -11,16 +11,12 @@ object Lens {
     def set(t: T, s: S): S = _set(t)(s)
   }
 
-  def impl[S: Type, T: Type](getter: Expr[S => T])(using qctx: QuoteContext): Expr[Lens[S, T]] = {
-    implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(this.getClass.getClassLoader)
-    import qctx.tasty._
+  def impl[S, T](using s: Scope)(getter: s.Expr[S => T])(using s.Type[S], s.Type[T]): s.Expr[Lens[S, T]] = {
+    import s.tasty._
     import util._
-    // obj.copy(field = value)
-    def setterBody(obj: Expr[S], value: Expr[T], field: String): Expr[S] =
-      Select.overloaded(obj.unseal, "copy", Nil, NamedArg(field, value.unseal) :: Nil).seal.cast[S]
 
-    // exception: getter.unseal.underlyingArgument
-    getter.unseal match {
+    // exception: getter.underlyingArgument
+    getter match {
       case Inlined(
         None, Nil,
         Block(
@@ -29,7 +25,7 @@ object Lens {
         )
       ) if o.symbol == param.symbol =>
         '{
-          val setter = (t: T) => (s: S) => ${ setterBody('s, 't, field) }
+          val setter = (t: T) => (x: S) => ${ setterBody('x, 't, field) }
           apply($getter)(setter)
         }
       case _ =>
@@ -37,6 +33,12 @@ object Lens {
         '{???}
     }
   }
+
+  // obj.copy(field = value)
+  def setterBody[S, T](using s: Scope)(obj: s.Expr[S], value: s.Expr[T], field: String)(using s.Type[S]): s.Expr[S] =
+    import s.tasty._
+    Select.overloaded(obj, "copy", Nil, NamedArg(field, value) :: Nil).seal.cast[S]
+
 }
 
 object GenLens {

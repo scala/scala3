@@ -22,10 +22,10 @@ object X {
     transformImpl[A]('x)
  }
 
- def transformImpl[A:Type](x:Expr[A])(using qctx: QuoteContext):Expr[A] = {
-    import qctx.tasty._
-    val slowPath = '{ SlowPath }.unseal
-    val fastPath = '{ FastPath }.unseal
+ def transformImpl[A](using Scope)(x: scope.Expr[A])(using scope.Type[A]): scope.Expr[A] = {
+    import scope.tasty._
+    val slowPath = '{ SlowPath }
+    val fastPath = '{ FastPath }
     val transformer = new TreeMap() {
       override def transformTerm(term:Term)(using ctx:Context):Term = {
         term match
@@ -37,7 +37,7 @@ object X {
           case _ => super.transformTerm(term)
       }
     }
-    val r = transformer.transformTerm(x.unseal).seal.cast[A]
+    val r = transformer.transformTerm(x).seal.cast[A]
     s"result: ${r.show}"
     r
  }

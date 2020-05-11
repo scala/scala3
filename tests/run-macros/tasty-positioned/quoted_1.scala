@@ -9,9 +9,8 @@ object Positioned {
 
   implicit inline def apply[T](x: => T): Positioned[T] = ${impl('x)}
 
-  def impl[T](x: Expr[T])(implicit ev: Type[T], qctx: QuoteContext): Expr[Positioned[T]] = {
-    import qctx.tasty.{Position => _, _}
-    val pos = rootPosition
+  def impl[T](using s: Scope)(x: s.Expr[T])(using s.Type[T]): s.Expr[Positioned[T]] = {
+    val pos = s.tasty.rootPosition
 
     val path = Expr(pos.sourceFile.jpath.toString)
     val start = Expr(pos.start)

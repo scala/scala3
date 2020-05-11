@@ -1,5 +1,5 @@
 import scala.quoted._
 
 object Macros {
-  def assertImpl(expr: Expr[Boolean])(using QuoteContext) = '{ println($expr) }
+  def assertImpl(using s: Scope)(expr: s.Expr[Boolean]) = '{ println($expr) }
 }

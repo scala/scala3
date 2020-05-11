@@ -1,0 +1,24 @@
+import scala.quoted._
+
+trait VecOp[Idx, Unt] {
+  def iter: Vec[Idx, Unt] => Unt
+}
+
+class VecSta extends VecOp[Int, Unit] {
+  def iter: Vec[Int, Unit] => Unit = { arr =>
+    for (i <- 0 until arr.size)
+      arr(i)
+  }
+  override def toString(): String = s"StaticVec"
+}
+
+class VecDyn(using s: Scope) extends VecOp[s.Expr[Int], s.Expr[Unit]] {
+  def iter: Vec[s.Expr[Int], s.Expr[Unit]] => s.Expr[Unit] = arr => '{
+    var i = 0
+    while (i < ${arr.size}) {
+      ${arr('i)}
+      i += 1
+    }
+  }
+  override def toString(): String = s"DynVec"
+}

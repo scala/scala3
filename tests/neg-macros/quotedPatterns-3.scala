@@ -1,5 +1,5 @@
 object Test {
-  def test(x: quoted.Expr[Int])(using scala.quoted.QuoteContext) = x match {
+  def test(using s: quoted.Scope)(x: s.Expr[Int]) = x match {
     case '{ val `$y`: Int = 2; 1 } => // error
       y // error: Not found: y
     case '{ ((`$y`: Int) => 3); 2 } => // error

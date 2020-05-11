@@ -70,7 +70,7 @@ object Test {
   case class Linear[A](producer: Producer[A]) extends StagedStream[A]
   case class Nested[A, B](producer: Producer[B], nestedf: B => StagedStream[A]) extends StagedStream[A]
 
-  case class Stream[A: Type](stream: StagedStream[Expr[A]]) {
+  class Stream[A](using val s: Scope)(stream: StagedStream[s.Expr[A]])(using s.Type[A]) {
 
     /** Main consumer
       *
@@ -81,17 +81,17 @@ object Test {
       * @tparam W  the type of the accumulator
       * @return
       */
-    def fold[W: Type](z: Expr[W], f: ((Expr[W], Expr[A]) => Expr[W])): E[W] = {
+    def fold[W: s.Type](z: s.Expr[W], f: ((s.Expr[W], s.Expr[A]) => s.Expr[W])): E[W] = {
       Var(z) { s =>
         '{
-          ${ foldRaw[Expr[A]]((a: Expr[A]) => s.update(f(s.get, a)), stream) }
+          ${ foldRaw[s.Expr[A]]((a: s.Expr[A]) => s.update(f(s.get, a)), stream) }
 
           ${ s.get }
         }
       }
     }
 
-     private def foldRaw[A](consumer: A => Expr[Unit], stream: StagedStream[A]): E[Unit] = {
+     private def foldRaw[A](consumer: A => s.Expr[Unit], stream: StagedStream[A]): E[Unit] = {
        stream match {
          case Linear(producer) => {
            producer.card match {
@@ -121,8 +121,8 @@ object Test {
       * @tparam B the element type of the returned stream
       * @return   a new stream resulting from applying `mapRaw` and threading the element of the first stream downstream.
       */
-    def map[B : Type](f: (Expr[A] => Expr[B])): Stream[B] = {
-      Stream(mapRaw[Expr[A], Expr[B]](a => k => k(f(a)), stream))
+    def map[B : s.Type](f: (s.Expr[A] => s.Expr[B])): Stream[B] = {
+      Stream(mapRaw[s.Expr[A], s.Expr[B]](a => k => k(f(a)), stream))
     }
 
     /** Handles generically the mapping of elements from one producer to another.
@@ -139,7 +139,7 @@ object Test {
       * @tparam B      the element type of the resulting stream
       * @return        a new stream resulting from applying `f` in the `step` function of the input stream's producer.
       */
-    private def mapRaw[A, B](f: (A => (B => Expr[Unit]) => Expr[Unit]), stream: StagedStream[A]): StagedStream[B] = {
+    private def mapRaw[A, B](f: (A => (B => s.Expr[Unit]) => s.Expr[Unit]), stream: StagedStream[A]): StagedStream[B] = {
       stream match {
         case Linear(producer) => {
           val prod = new Producer[B] {
@@ -147,11 +147,11 @@ object Test {
             type St = producer.St
             val card = producer.card
 
-            def init(k: St => Expr[Unit]): E[Unit] = {
+            def init(k: St => s.Expr[Unit]): E[Unit] = {
               producer.init(k)
             }
 
-            def step(st: St, k: (B => Expr[Unit])): E[Unit] = {
+            def step(st: St, k: (B => s.Expr[Unit])): E[Unit] = {
               producer.step(st, el => f(el)(k))
             }
 
@@ -169,8 +169,8 @@ object Test {
     }
 
     /** Flatmap */
-    def flatMap[B : Type](f: (Expr[A] => Stream[B])): Stream[B] = {
-      Stream(flatMapRaw[Expr[A], Expr[B]]((a => { val Stream (nested) = f(a); nested }), stream))
+    def flatMap[B : s.Type](f: (s.Expr[A] => Stream[B])): Stream[B] = {
+      Stream(flatMapRaw[s.Expr[A], s.Expr[B]]((a => { val Stream (nested) = f(a); nested }), stream))
     }
 
     /** Returns a new stream that applies a function `f` to each element of the input stream.
@@ -203,24 +203,24 @@ object Test {
       * @return     a new stream consisting of all elements of the input stream that do satisfy the given
       *             predicate `pred`.
       */
-    def filter(pred: (Expr[A] => Expr[Boolean]))(using QuoteContext): Stream[A] = {
-      val filterStream = (a: Expr[A]) =>
-        new Producer[Expr[A]] {
+    def filter(pred: (s.Expr[A] => s.Expr[Boolean])): Stream[A] = {
+      val filterStream = (a: s.Expr[A]) =>
+        new Producer[s.Expr[A]] {
 
-          type St = Expr[A]
+          type St = s.Expr[A]
           val card = AtMost1
 
-          def init(k: St => Expr[Unit]): E[Unit] =
+          def init(k: St => s.Expr[Unit]): E[Unit] =
             k(a)
 
-          def step(st: St, k: (Expr[A] => Expr[Unit])): E[Unit] =
+          def step(st: St, k: (s.Expr[A] => s.Expr[Unit])): E[Unit] =
             k(st)
 
           def hasNext(st: St): E[Boolean] =
             pred(st)
         }
 
-      Stream(flatMapRaw[Expr[A], Expr[A]]((a => { Linear(filterStream(a)) }), stream))
+      Stream(flatMapRaw[s.Expr[A], s.Expr[A]]((a => { Linear(filterStream(a)) }), stream))
     }
 
     /** Adds a new termination condition to a stream (recursively if nested) of cardinality `Many`.
@@ -232,18 +232,18 @@ object Test {
       * @return        the stream with the new producer. If the passed stream was linear, the new termination is added
       *                otherwise the new termination is propagated to all nested ones, recursively.
       */
-    private def addTerminationCondition[A](condition: Expr[Boolean] => Expr[Boolean], stream: StagedStream[A]): StagedStream[A] = {
-      def addToProducer[A](f: Expr[Boolean] => Expr[Boolean], producer: Producer[A]): Producer[A] = {
+    private def addTerminationCondition[A](condition: s.Expr[Boolean] => s.Expr[Boolean], stream: StagedStream[A]): StagedStream[A] = {
+      def addToProducer[A](f: s.Expr[Boolean] => Expr[Boolean], producer: Producer[A]): Producer[A] = {
         producer.card match {
             case Many =>
               new Producer[A] {
                 type St = producer.St
                 val card = producer.card
 
-                def init(k: St => Expr[Unit]): E[Unit] =
+                def init(k: St => s.Expr[Unit]): E[Unit] =
                   producer.init(k)
 
-                def step(st: St, k: (A => Expr[Unit])): E[Unit] =
+                def step(st: St, k: (A => s.Expr[Unit])): E[Unit] =
                   producer.step(st, el => k(el))
 
                 def hasNext(st: St): E[Boolean] =
@@ -268,7 +268,7 @@ object Test {
       * @tparam A        the type of the producer's elements.
       * @return          the enhanced producer
       */
-    private def addCounter[A](n: Expr[Int], producer: Producer[A]): Producer[(Var[Int], A)] = {
+    private def addCounter[A](n: s.Expr[Int], producer: Producer[A]): Producer[(Var[Int], A)] = {
       new Producer[(Var[Int], A)] {
         type St = (Var[Int], producer.St)
         val card = producer.card
@@ -281,7 +281,7 @@ object Test {
           })
         }
 
-        def step(st: St, k: (((Var[Int], A)) => Expr[Unit])): E[Unit] = {
+        def step(st: St, k: (((Var[Int], A)) => s.Expr[Unit])): E[Unit] = {
           val (counter, currentState) = st
           producer.step(currentState, el => k((counter, el)))
         }
@@ -303,7 +303,7 @@ object Test {
       * @tparam A      the type of the producer's elements.
       * @return        a linear or nested stream aware of the variable reference to decrement.
       */
-    private def takeRaw[A: Type](n: Expr[Int], stream: StagedStream[A])(using QuoteContext): StagedStream[A] = {
+    private def takeRaw[A: Type](n: s.Expr[Int], stream: StagedStream[A])(using QuoteContext): StagedStream[A] = {
       stream match {
         case linear: Linear[A] => {
           val enhancedProducer: Producer[(Var[Int], A)] = addCounter[A](n, linear.producer)
@@ -332,7 +332,7 @@ object Test {
      }
 
     /** A stream containing the first `n` elements of this stream. */
-    def take(n: Expr[Int])(using QuoteContext): Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
+    def take(n: s.Expr[Int])(using QuoteContext): Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
 
     private def zipRaw[A: Type, B: Type](stream1: StagedStream[Expr[A]], stream2: StagedStream[B])(using QuoteContext): StagedStream[(Expr[A], B)] = {
       (stream1, stream2) match {
@@ -485,7 +485,7 @@ object Test {
                 }})
             }
 
-            def step(st: St, k: Expr[A] => Expr[Unit]): E[Unit] = {
+            def step(st: St, k: s.Expr[A] => Expr[Unit]): E[Unit] = {
               val (flag, current, nadv) = st
               '{
                 var el = ${current.get}
@@ -535,7 +535,7 @@ object Test {
         mapRaw[C, (A, C)]((c => k => '{
           ${producer.step(s1, a => k((a, c)))}
           ${flag.update(producer.hasNext(s1))}
-        }), addTerminationCondition((b_flag: Expr[Boolean]) => '{ ${flag.get} && $b_flag }, nestedf(b)))
+        }), addTerminationCondition((b_flag: s.Expr[Boolean]) => '{ ${flag.get} && $b_flag }, nestedf(b)))
       })
     }
 
@@ -563,14 +563,14 @@ object Test {
     }
 
     /** zip **/
-    def zip[B: Type, C: Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B])(using QuoteContext): Stream[C] = {
+    def zip[B, C](using s: Scope)(f: (s.Expr[A] => s.Expr[B] => s.Expr[C]), stream2: Stream[B])(using s.Type[B], s.Type[C]): Stream[C] = {
       val Stream(stream_b) = stream2
-      Stream(mapRaw[(Expr[A], Expr[B]), Expr[C]]((t => k => k(f(t._1)(t._2))), zipRaw[A, Expr[B]](stream, stream_b)))
+      Stream(mapRaw[(s.Expr[A], s.Expr[B]), s.Expr[C]]((t => k => k(f(t._1)(t._2))), zipRaw[A, s.Expr[B]](stream, stream_b)))
     }
   }
 
   object Stream {
-    def of[A: Type](arr: Expr[Array[A]])(using QuoteContext): Stream[A] = {
+    def of[A](using s: Scope)(arr: s.Expr[Array[A]])(using s.Type[A]): Stream[A] = {
       val prod = new Producer[Expr[A]] {
         type St = (Var[Int], Var[Int], Expr[Array[A]])
 
@@ -605,55 +605,55 @@ object Test {
     }
   }
 
-  def test1()(using QuoteContext) = Stream
+  def test1(using s: Scope)() = Stream
     .of('{Array(1, 2, 3)})
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
+    .fold('{0}, ((a: s.Expr[Int], b : s.Expr[Int]) => '{ $a + $b }))
 
-  def test2()(using QuoteContext) = Stream
+  def test2(using s: Scope)() = Stream
     .of('{Array(1, 2, 3)})
-    .map((a: Expr[Int]) => '{ $a * 2 })
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
+    .map((a: s.Expr[Int]) => '{ $a * 2 })
+    .fold('{0}, ((a: s.Expr[Int], b : s.Expr[Int]) => '{ $a + $b }))
 
-  def test3()(using QuoteContext) = Stream
+  def test3(using s: Scope)() = Stream
     .of('{Array(1, 2, 3)})
-    .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d * $dp }))
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
+    .flatMap((d: s.Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: s.Expr[Int]) => '{ $d * $dp }))
+    .fold('{0}, ((a: s.Expr[Int], b : s.Expr[Int]) => '{ $a + $b }))
 
-  def test4()(using QuoteContext) = Stream
+  def test4(using s: Scope)() = Stream
     .of('{Array(1, 2, 3)})
-    .filter((d: Expr[Int]) => '{ $d % 2 == 0 })
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
+    .filter((d: s.Expr[Int]) => '{ $d % 2 == 0 })
+    .fold('{0}, ((a: s.Expr[Int], b : s.Expr[Int]) => '{ $a + $b }))
 
-  def test5()(using QuoteContext) = Stream
+  def test5(using s: Scope)() = Stream
     .of('{Array(1, 2, 3)})
     .take('{2})
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
+    .fold('{0}, ((a: s.Expr[Int], b : s.Expr[Int]) => '{ $a + $b }))
 
-  def test6()(using QuoteContext) = Stream
+  def test6(using s: Scope)() = Stream
     .of('{Array(1, 1, 1)})
-    .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).take('{2}))
+    .flatMap((d: s.Expr[Int]) => Stream.of('{Array(1, 2, 3)}).take('{2}))
     .take('{5})
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
+    .fold('{0}, ((a: s.Expr[Int], b : s.Expr[Int]) => '{ $a + $b }))
 
-  def test7()(using QuoteContext) = Stream
+  def test7(using s: Scope)() = Stream
     .of('{Array(1, 2, 3)})
-    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}))
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
+    .zip(((a : s.Expr[Int]) => (b : s.Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}))
+    .fold('{0}, ((a: s.Expr[Int], b : s.Expr[Int]) => '{ $a + $b }))
 
-  def test8()(using QuoteContext) = Stream
+  def test8(using s: Scope)() = Stream
     .of('{Array(1, 2, 3)})
-    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })))
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
+    .zip(((a : s.Expr[Int]) => (b : s.Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: s.Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: s.Expr[Int]) => '{ $d + $dp })))
+    .fold('{0}, ((a: s.Expr[Int], b : s.Expr[Int]) => '{ $a + $b }))
 
-  def test9()(using QuoteContext) = Stream
-    .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
-    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}) )
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
+  def test9(using s: Scope)() = Stream
+    .of('{Array(1, 2, 3)}).flatMap((d: s.Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: s.Expr[Int]) => '{ $d + $dp }))
+    .zip(((a : s.Expr[Int]) => (b : s.Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}) )
+    .fold('{0}, ((a: s.Expr[Int], b : s.Expr[Int]) => '{ $a + $b }))
 
-  def test10()(using QuoteContext) = Stream
-    .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
-    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })) )
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
+  def test10(using s: Scope)() = Stream
+    .of('{Array(1, 2, 3)}).flatMap((d: s.Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: s.Expr[Int]) => '{ $d + $dp }))
+    .zip(((a : s.Expr[Int]) => (b : s.Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: s.Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: s.Expr[Int]) => '{ $d + $dp })) )
+    .fold('{0}, ((a: s.Expr[Int], b : s.Expr[Int]) => '{ $a + $b }))
 
   def main(args: Array[String]): Unit = {
     given Toolbox = Toolbox.make(getClass.getClassLoader)

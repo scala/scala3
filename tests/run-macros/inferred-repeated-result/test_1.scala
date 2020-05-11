@@ -2,10 +2,10 @@ object Macros {
   import scala.quoted._
 
   inline def go[T](inline t: T) = ${ impl('t) }
-  def impl[T](expr: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def impl[T](using s: Scope)(expr: s.Expr[T]): s.Expr[Unit] = {
+    import s.tasty._
 
-    val tree = expr.unseal
+    val tree = expr
 
     val methods =
       tree.tpe.classSymbol.get.classMethods.map { m =>
@@ -16,6 +16,6 @@ object Macros {
             s"$name : $returnType"
       }.sorted
 
-    methods.foldLeft('{}) { (res, m) => '{ $res; println(${Expr(m)}) } }
+    methods.foldLeft[s.Expr[Unit]]('{}) { (res, m) => '{ $res; println(${Expr(m)}) } }
   }
 }

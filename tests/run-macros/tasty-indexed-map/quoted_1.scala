@@ -24,8 +24,8 @@ object Index {
 
   implicit inline def succ[K, H, T](implicit prev: => Index[K, T]): Index[K, (H, T)] = ${succImpl[K, H, T]}
 
-  def succImpl[K, H, T](implicit qctx: QuoteContext, k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
-    import qctx.tasty._
+  def succImpl[K, H, T](using s: Scope)(using k: s.Type[K], h: s.Type[H], t: s.Type[T]): s.Expr[Index[K, (H, T)]] = {
+    import s.tasty._
 
     def name(tp: Type): String = tp match {
       case ConstantType(Constant(str: String)) => str
@@ -36,8 +36,8 @@ object Index {
       case _ => Nil
     }
 
-    val key = name(k.unseal.tpe)
-    val keys = name(h.unseal.tpe) :: names(t.unseal.tpe)
+    val key = name(k.tpe)
+    val keys = name(h.tpe) :: names(t.tpe)
 
     val index = keys.indexOf(key)
 

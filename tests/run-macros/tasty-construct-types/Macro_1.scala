@@ -11,8 +11,8 @@ object Macros {
 
   class TestAnnotation extends scala.annotation.Annotation
 
-  def theTestBlockImpl(using qctx : QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def theTestBlockImpl(using s: Scope): s.Expr[Unit] = {
+    import s.tasty._
 
     val x1T = ConstantType(Constant(1))
     val x2T = OrType(ConstantType(Constant(1)), ConstantType(Constant(2)))
@@ -28,7 +28,7 @@ object Macros {
         "T",
         TypeBounds(Type.of[Int], Type.of[Int]))
     val x6T = Type.of[List].appliedTo(List(Type.of[Int]))
-    val x7T = AnnotatedType(ConstantType(Constant(7)), '{ new TestAnnotation }.unseal)
+    val x7T = AnnotatedType(ConstantType(Constant(7)), '{ new TestAnnotation })
     val x8T =
       MatchType(
         Type.of[Int],
@@ -40,14 +40,14 @@ object Macros {
             tl => Type.of[scala.internal.MatchCase].appliedTo(List(Type.of[List].appliedTo(tl.param(0)), tl.param(0)))))
       )
 
-    assert(x1T =:= '[1].unseal.tpe)
-    assert(x2T =:= '[1|2].unseal.tpe)
-    assert(x3T =:= '[3&Any].unseal.tpe)
-    assert(x4T =:= '[[A,B] =>> B].unseal.tpe)
-    assert(x5T =:= '[RefineMe { type T = Int }].unseal.tpe)
-    assert(x6T =:= '[List[Int]].unseal.tpe)
-    assert(x7T =:= '[7 @TestAnnotation].unseal.tpe)
-    assert(x8T =:= '[List[8] match { case List[t] => t }].unseal.tpe)
+    assert(x1T =:= '[1].tpe)
+    assert(x2T =:= '[1|2].tpe)
+    assert(x3T =:= '[3&Any].tpe)
+    assert(x4T =:= '[[A,B] =>> B].tpe)
+    assert(x5T =:= '[RefineMe { type T = Int }].tpe)
+    assert(x6T =:= '[List[Int]].tpe)
+    assert(x7T =:= '[7 @TestAnnotation].tpe)
+    assert(x8T =:= '[List[8] match { case List[t] => t }].tpe)
 
     '{
       println("Ok")

@@ -6,10 +6,10 @@ def sum(args: Int*): Int = args.sum
 inline def showOptimize(inline arg: Int): String = ${ showOptimizeExpr('arg) }
 inline def optimize(inline arg: Int): Int = ${ optimizeExpr('arg) }
 
-private def showOptimizeExpr(body: Expr[Int])(using QuoteContext): Expr[String] =
+private def showOptimizeExpr(using s: Scope)(body: s.Expr[Int]): s.Expr[String] =
   Expr(optimizeExpr(body).show)
 
-private def optimizeExpr(body: Expr[Int])(using QuoteContext): Expr[Int] = body match {
+private def optimizeExpr(using s: Scope)(body: s.Expr[Int]): s.Expr[Int] = body match {
   // Match a call to sum without any arguments
   case '{ sum() } => Expr(0)
   // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
@@ -19,8 +19,8 @@ private def optimizeExpr(body: Expr[Int])(using QuoteContext): Expr[Int] = body 
   case body => body
 }
 
-private def sumExpr(args1: Seq[Expr[Int]])(using QuoteContext): Expr[Int] = {
-    def flatSumArgs(arg: Expr[Int]): Seq[Expr[Int]] = arg match {
+private def sumExpr(using s: Scope)(args1: Seq[s.Expr[Int]]): s.Expr[Int] = {
+    def flatSumArgs(arg: s.Expr[Int]): Seq[s.Expr[Int]] = arg match {
       case '{ sum(${Varargs(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
       case arg => Seq(arg)
     }
@@ -29,7 +29,7 @@ private def sumExpr(args1: Seq[Expr[Int]])(using QuoteContext): Expr[Int] = {
       case Const(arg) => arg
       case _ => 0
     }.sum
-    val dynamicSum: Seq[Expr[Int]] = args2.filter {
+    val dynamicSum: Seq[s.Expr[Int]] = args2.filter {
       case Const(_) => false
       case arg => true
     }

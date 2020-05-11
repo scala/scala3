@@ -3,31 +3,6 @@ package scala.internal.quoted
 import scala.quoted._
 import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
 
-/** An Expr backed by a tree. Only the current compiler trees are allowed.
- *
- *  These expressions are used for arguments of macros. They contain and actual tree
- *  from the program that is being expanded by the macro.
- *
- *  May contain references to code defined outside this Expr instance.
- */
- final class Expr[Tree](val tree: Tree, val scopeId: Int) extends scala.quoted.Expr[Any] {
-  override def equals(that: Any): Boolean = that match {
-    case that: Expr[_] =>
-      // Expr are wrappers around trees, therfore they are equals if their trees are equal.
-      // All scopeId should be equal unless two different runs of the compiler created the trees.
-      tree == that.tree && scopeId == that.scopeId
-    case _ => false
-  }
-
-  def unseal(using qctx: QuoteContext): qctx.tasty.Term =
-    if (quoteContextWithCompilerInterface(qctx).tasty.compilerId != scopeId)
-      throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
-    tree.asInstanceOf[qctx.tasty.Term]
-
-  override def hashCode: Int = tree.hashCode
-  override def toString: String = "'{ ... }"
-}
-
 object Expr {
 
   /** Pattern matches an the scrutineeExpr against the patternExpr and returns a tuple
@@ -48,27 +23,42 @@ object Expr {
    *  @param scrutineeExpr `Expr[Any]` on which we are pattern matching
    *  @param patternExpr `Expr[Any]` containing the pattern tree
    *  @param hasTypeSplices `Boolean` notify if the pattern has type splices (if so we use a GADT context)
-   *  @param qctx the current QuoteContext
+   *  @param s the current Scope
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
    */
-  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: scala.quoted.Expr[Any])(using patternExpr: scala.quoted.Expr[Any],
-        hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
-    val qctx1 = quoteContextWithCompilerInterface(qctx)
-    val qctx2 = if hasTypeSplices then qctx1.tasty.Constraints_context else qctx1
-    given qctx2.type = qctx2
-    new Matcher.QuoteMatcher[qctx2.type](qctx2).termMatch(scrutineeExpr.unseal, patternExpr.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
+  def unapply[TypeBindings <: Tuple, Tup <: Tuple](using s: Scope)(scrutineeExpr: s.Expr[Any])(using patternExpr: s.Expr[Any],
+        hasTypeSplices: Boolean): Option[Tup] = {
+    // TODO facrtor out
+    val s1 = quoteContextWithCompilerInterface(s)
+    def withWithMatcherState[T](hasTypeSplices: Boolean)(body: (s2: s.Nested) ?=> T) = {
+      val s2 = if hasTypeSplices then s1.tasty.Constraints_context else s1
+      body(using s2.asInstanceOf[s.Nested])
+    }
+    withWithMatcherState(hasTypeSplices) {
+      new Matcher.QuoteMatcher[scope.type].termMatch(scrutineeExpr, patternExpr, hasTypeSplices).asInstanceOf[Option[Tup]]
+    }
   }
 
   /** Returns a null expresssion equivalent to `'{null}` */
-  def `null`: QuoteContext ?=> quoted.Expr[Null] = qctx ?=> {
-    import qctx.tasty._
-    Literal(Constant(null)).seal.asInstanceOf[quoted.Expr[Null]]
+  def `null`: (s: Scope) ?=> s.Expr[Null] = s ?=> {
+    import s.tasty._
+    Literal(Constant(null)).seal.asInstanceOf[s.Expr[Null]]
   }
 
   /** Returns a unit expresssion equivalent to `'{}` or `'{()}` */
-  def Unit: QuoteContext ?=> quoted.Expr[Unit] = qctx ?=> {
-    import qctx.tasty._
-    Literal(Constant(())).seal.asInstanceOf[quoted.Expr[Unit]]
+  def Unit: (s: Scope) ?=> s.Expr[Unit] = s ?=> {
+    import s.tasty._
+    Literal(Constant(())).seal.asInstanceOf[s.Expr[Unit]]
   }
+
+  def liftBoolean[T <: Boolean](x: T): (s: Scope) ?=> s.Expr[T] = quoted.Expr(x)
+  def liftByte[T <: Byte](x: T): (s: Scope) ?=> s.Expr[T] = quoted.Expr(x)
+  def liftShort[T <: Short](x: T): (s: Scope) ?=> s.Expr[T] = quoted.Expr(x)
+  def liftInt[T <: Int](x: T): (s: Scope) ?=> s.Expr[T] = quoted.Expr(x)
+  def liftLong[T <: Long](x: T): (s: Scope) ?=> s.Expr[T] = quoted.Expr(x)
+  def liftFloat[T <: Float](x: T): (s: Scope) ?=> s.Expr[T] = quoted.Expr(x)
+  def liftDouble[T <: Double](x: T): (s: Scope) ?=> s.Expr[T] = quoted.Expr(x)
+  def liftChar[T <: Char](x: T): (s: Scope) ?=> s.Expr[T] = quoted.Expr(x)
+  def liftString[T <: String](x: T): (s: Scope) ?=> s.Expr[T] = quoted.Expr(x)
 
 }

@@ -4,7 +4,7 @@ import scala.quoted._
 
 inline def mcr(x: => Any): Any = ${mcrImpl('x)}
 
-def mcrImpl(body: Expr[Any])(using ctx: QuoteContext): Expr[Any] =
+def mcrImpl(using s: Scope)(body: s.Expr[Any]): s.Expr[Any] =
   body match
     case '{$x: $t} =>
       '{

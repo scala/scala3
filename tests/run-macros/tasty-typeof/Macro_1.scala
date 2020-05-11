@@ -4,8 +4,8 @@ object Macros {
 
   inline def testTypeOf(): Unit = ${ testTypeOfImpl }
 
-  private def testTypeOfImpl(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  private def testTypeOfImpl(using s: Scope): s.Expr[Unit] = {
+    import s.tasty._
     '{
       assert(${Expr(Type.of[Unit] =:= Type.of[Unit])}, "Unit")
       assert(${Expr(Type.of[Byte] =:= Type.of[Byte])}, "Byte")

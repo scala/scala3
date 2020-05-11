@@ -1,7 +1,7 @@
 import scala.quoted._
 
-def f(a: Expr[Int])(using qctx: QuoteContext): Unit =
+def f(using s: Scope)(a: s.Expr[Int]): Unit =
 
-  '{ val x: Int = ${ (using qctx2) => a } }
+  '{ val x: Int = ${ (using s2) => a } }
 
-  '{ val x: Int = ${ (using qctx2: qctx.Nested) => a } }
+  '{ val x: Int = ${ (using s2: s.Nested) => a } }

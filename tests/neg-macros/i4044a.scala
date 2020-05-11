@@ -1,17 +1,17 @@
 import scala.quoted._
 
-def test(using QuoteContext) = {
+def test(using s: Scope) = {
 
-  val a = '{1}
+  def a(using s0: Scope) = '{1}
   '{
-    val qctx: QuoteContext = ???
-    given qctx.type = qctx
+    val s: Scope = ???
+    given s.type = s
     a // error
     $a
     '{$a} // error
     '{
-      val qctx: QuoteContext = ???
-      given qctx.type = qctx
+      val s: Scope = ???
+      given s.type = s
       '{$a} // error
     }
   }

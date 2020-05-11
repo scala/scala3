@@ -1,11 +1,11 @@
 
-import scala.quoted.{Expr, QuoteContext}
+import scala.quoted._
 
 object Inspect {
   inline def inspect[T <: AnyKind]: String = ${ inspectTpe[T] }
 
-  def inspectTpe[T <: AnyKind](using tpe: quoted.Type[T], qctx0: QuoteContext): Expr[String] = {
-    val tree = summon[quoted.Type[T]].unseal.tpe.typeSymbol.tree
+  def inspectTpe[T <: AnyKind](using s: Scope)(using tpe: s.Type[T]): s.Expr[String] = {
+    val tree = summon[s.Type[T]].tpe.typeSymbol.tree
     Expr(tree.show)
   }
 }

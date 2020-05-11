@@ -3,9 +3,9 @@ import scala.quoted._
 
 inline def f: Any = ${ fImpl }
 
-private def fImpl(using qctx: QuoteContext): Expr[Unit] = {
-  import qctx.tasty._
-  searchImplicit(('[A]).unseal.tpe) match {
+private def fImpl(using s: Scope): s.Expr[Unit] = {
+  import s.tasty._
+  searchImplicit(('[A]).tpe) match {
     case x: ImplicitSearchSuccess =>
       '{}
     case x: DivergingImplicit => '{}

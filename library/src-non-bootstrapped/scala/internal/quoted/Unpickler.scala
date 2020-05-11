@@ -2,6 +2,7 @@ package scala.internal.quoted
 
 import scala.quoted.{Expr, QuoteContext, Type}
 
+/** Provides methods to unpickle `Expr` and `Type` trees. */
 object Unpickler {
 
   type PickledQuote = List[String]

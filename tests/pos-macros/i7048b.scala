@@ -6,7 +6,7 @@ trait IsExpr {
 
 val foo: IsExpr = ???
 
-def g()(using QuoteContext): Unit = {
+def g(using s: Scope)(): Unit = {
   val a = '[foo.Underlying]
   ()
 }

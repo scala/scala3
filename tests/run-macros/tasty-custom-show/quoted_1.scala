@@ -6,8 +6,8 @@ object Macros {
   implicit inline def printOwners[T](inline x: T): Unit =
     ${ impl('x) }
 
-  def impl[T](x: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def impl[T](using s: Scope)(x: s.Expr[T]): s.Expr[Unit] = {
+    import s.tasty._
 
     val buff = new StringBuilder
 
@@ -32,15 +32,15 @@ object Macros {
       }
     }
 
-    val tree = x.unseal
+    val tree = x
     output.traverseTree(tree)
     '{print(${Expr(buff.result())})}
   }
 
-  def dummyShow(using qctx: QuoteContext) : scala.tasty.reflect.Printer[qctx.tasty.type] = {
+  def dummyShow(using s: Scope): scala.tasty.reflect.Printer[s.tasty.type] = {
     new scala.tasty.reflect.Printer {
-      val tasty = qctx.tasty
-      import qctx.tasty._
+      val tasty = s.tasty
+      import s.tasty._
       def showTree(tree: Tree): String = "Tree"
       def showType(tpe: Type): String = "Type"
       def showConstant(const: Constant): String = "Constant"

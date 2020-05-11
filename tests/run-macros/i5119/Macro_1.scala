@@ -5,8 +5,8 @@ object Macro {
     inline def ff(args: => Any*): String = ${ Macro.impl('sc, 'args) }
   }
   implicit inline def XmlQuote(inline sc: StringContext): StringContextOps = new StringContextOps(sc)
-  def impl(sc: Expr[StringContext], args: Expr[Seq[Any]])(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty._
-    Expr(sc.unseal.underlyingArgument.showExtractors + "\n" + args.unseal.underlyingArgument.showExtractors)
+  def impl(using s: Scope)(sc: s.Expr[StringContext], args: s.Expr[Seq[Any]]): s.Expr[String] = {
+    import s.tasty._
+    Expr(sc.underlyingArgument.showExtractors + "\n" + args.underlyingArgument.showExtractors)
   }
 }

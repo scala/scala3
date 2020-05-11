@@ -6,11 +6,11 @@ object Macros {
 
   extension (inline self: StringContext) inline def S(args: => String*): String = ${impl('self, 'args)}
 
-  private def impl(self: Expr[StringContext], args: Expr[Seq[String]])(using QuoteContext): Expr[String] = {
+  private def impl(using s: Scope)(self: s.Expr[StringContext], args: s.Expr[Seq[String]]): s.Expr[String] = {
     self match {
       case '{ StringContext(${Varargs(Consts(parts))}: _*) } =>
         val upprerParts: List[String] = parts.toList.map(_.toUpperCase)
-        val upprerPartsExpr: Expr[List[String]] = Expr.ofList(upprerParts.map(Expr(_)))
+        val upprerPartsExpr: s.Expr[List[String]] = Expr.ofList(upprerParts.map(Expr(_)))
         '{ StringContext($upprerPartsExpr: _*).s($args: _*) }
       case _ =>
         '{

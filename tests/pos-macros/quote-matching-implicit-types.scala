@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Foo {
 
-  def f(e: Expr[Any])(using QuoteContext): Unit = e match {
+  def f(using s: Scope)(e: s.Expr[Any]): Unit = e match {
     case '{ foo[$t]($x) } => bar(x)
     case '{ foo[$t]($x) } if bar(x) => ()
     case '{ foo[$t]($x) } => '{ foo($x) }
@@ -11,6 +11,6 @@ object Foo {
 
   def foo[T](t: T): Unit = ()
 
-  def bar[T: Type](t: Expr[T]): Boolean = true
+  def bar[T](using s: Scope)(t: s.Expr[T])(using s.Type[T]): Boolean = true
 
 }

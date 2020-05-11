@@ -6,7 +6,7 @@ class MatchFactory1[T, S[_]] {
 
 object MatcherFactory1 {
 
-  def impl[T: Type, S[_], M >: MatchFactory1[T, S] <: MatchFactory1[T, S] : Type](self: Expr[M])(implicit qctx: QuoteContext, tpS: Type[S[T]]) =
+  def impl[T, S[_], M >: MatchFactory1[T, S] <: MatchFactory1[T, S]](using s: Scope)(self: s.Expr[M])(using s.Type[T], s.Type[S[T]], s.Type[M]) =
     '{ val a = ${self}; a.f }
 
 }

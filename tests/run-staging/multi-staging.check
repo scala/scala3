@@ -1,5 +1,5 @@
-stage1 code: ((qctx1: scala.quoted.QuoteContext) ?=> {
+stage1 code: ((s2: scala.quoted.Scope) ?=> {
   val x1: scala.Int = 2
-  scala.internal.quoted.CompileTime.exprQuote[scala.Int](1.+(scala.internal.quoted.CompileTime.exprNestedSplice[scala.Int](qctx1)(((evidence$5: qctx1.Nested) ?=> scala.quoted.Expr.apply[scala.Int](x1)(evidence$5, scala.quoted.Liftable.IntLiftable[scala.Int]))))).apply(using qctx1)
+  scala.internal.quoted.CompileTime.exprQuote[scala.Int](1.+(scala.internal.quoted.CompileTime.exprNestedSplice[scala.Int](s2)(((evidence$5: s2.Nested) ?=> scala.quoted.Expr.apply[scala.Int](x1)(evidence$5)(evidence$5.Liftable.IntLiftable[scala.Int]))))).apply(using s2)
 })
 3

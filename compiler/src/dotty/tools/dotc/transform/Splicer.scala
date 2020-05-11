@@ -25,7 +25,7 @@ import dotty.tools.repl.AbstractFileClassLoader
 import scala.reflect.ClassTag
 
 import dotty.tools.dotc.quoted._
-import scala.quoted.QuoteContext
+import scala.quoted.Scope
 
 /** Utility class to splice quoted expressions */
 object Splicer {
@@ -49,8 +49,8 @@ object Splicer {
             val interpreter = new Interpreter(pos, classLoader)
 
             // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
-            val interpretedExpr = interpreter.interpret[QuoteContext => scala.quoted.Expr[Any]](tree)
-            val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContextImpl())))
+            val interpretedExpr = interpreter.interpret[scala.quoted.Scope => Tree](tree)
+            val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.healOwner(macroClosure(ScopeImpl())))
 
             checkEscapedVariables(interpretedTree, macroOwner)
           } finally {
@@ -60,7 +60,7 @@ object Splicer {
       catch {
         case ex: CompilationUnit.SuspendException =>
           throw ex
-        case ex: scala.quoted.report.StopQuotedContext if ctx.reporter.hasErrors =>
+        case ex: scala.quoted.StopQuoteExpansion if ctx.reporter.hasErrors =>
            // errors have been emitted
           EmptyTree
         case ex: StopInterpretation =>
@@ -146,7 +146,7 @@ object Splicer {
         case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
           // OK
 
-        case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.QuotedTypeModule_apply =>
+        case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.ScopeTypeModule_apply =>
           // OK
 
         case Literal(Constant(value)) =>
@@ -197,6 +197,9 @@ object Splicer {
             report.error("Macro cannot be implemented with an `inline` method", fn.srcPos)
           args.flatten.foreach(checkIfValidArgument)
 
+        case TypeApply(aio @ Select(expr, _), _) if aio.symbol == defn.Any_typeCast =>
+          checkIfValidStaticCall(expr)
+
         case _ =>
           report.error(
             """Malformed macro.
@@ -236,8 +239,13 @@ object Splicer {
         }
         interpretQuote(quoted1)
 
-      case Apply(Select(TypeApply(fn, quoted :: Nil), _), _) if fn.symbol == defn.QuotedTypeModule_apply =>
+      case Apply(Select(TypeApply(fn, quoted :: Nil), _), _) if fn.symbol == defn.ScopeTypeModule_apply =>
         interpretTypeQuote(quoted)
+      case  TypeApply(fn, quoted :: Nil) if fn.symbol == defn.ScopeTypeModule_apply =>
+        interpretTypeQuote(quoted)
+
+      case TypeApply(aio @ Select(expr, _), _) if aio.symbol == defn.Any_typeCast =>
+        interpretTree(expr)
 
       case Literal(Constant(value)) =>
         interpretLiteral(value)
@@ -329,10 +337,10 @@ object Splicer {
     }
 
     private def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.internal.quoted.Expr(Inlined(EmptyTree, Nil, PickledQuotes.healOwner(tree)).withSpan(tree.span), QuoteContextImpl.scopeId)
+      Inlined(EmptyTree, Nil, PickledQuotes.healOwner(tree)).withSpan(tree.span)
 
     private def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.internal.quoted.Type(PickledQuotes.healOwner(tree), QuoteContextImpl.scopeId)
+      PickledQuotes.healOwner(tree)
 
     private def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]
@@ -370,7 +378,11 @@ object Splicer {
     }
 
     private def unexpectedTree(tree: Tree)(implicit env: Env): Object =
-      throw new StopInterpretation("Unexpected tree could not be interpreted: " + tree, tree.srcPos)
+      throw new StopInterpretation(
+        s"""Unexpected tree could not be interpreted:
+           |${tree.show}
+           |$tree
+         """.stripMargin, tree.sourcePos)
 
     private def loadModule(sym: Symbol): Object =
       if (sym.owner.is(Package)) {
@@ -423,7 +435,7 @@ object Splicer {
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
           ex.getTargetException match {
-            case ex: scala.quoted.report.StopQuotedContext =>
+            case ex: scala.quoted.StopQuoteExpansion =>
               throw ex
             case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
               if (ctx.settings.XprintSuspension.value)

@@ -4,19 +4,19 @@ import scala.quoted._
 object Macro {
 
   inline def unrolledForeach(inline unrollSize: Int, seq: Array[Int])(inline f: Int => Unit): Unit = // or f: Int => Unit
-    ${unrolledForeachImpl('unrollSize, 'seq, 'f)}
+    ${unrolledForeachImpl0('unrollSize, 'seq, 'f)}
 
-  private def unrolledForeachImpl(unrollSizeExpr: Expr[Int], seq: Expr[Array[Int]], f: Expr[Int => Unit]) (using QuoteContext): Expr[Unit] =
+  private def unrolledForeachImpl0(using s: Scope)(unrollSizeExpr: s.Expr[Int], seq: s.Expr[Array[Int]], f: s.Expr[Int => Unit]): s.Expr[Unit] =
     unrolledForeachImpl(unrollSizeExpr.unliftOrError, seq, f)
 
-  private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit])(using QuoteContext): Expr[Unit] = '{
+  private def unrolledForeachImpl(using s: Scope)(unrollSize: Int, seq: s.Expr[Array[Int]], f: s.Expr[Int => Unit]): s.Expr[Unit] = '{
     val size = $seq.length
     assert(size % (${Expr(unrollSize)}) == 0) // for simplicity of the implementation
     var i = 0
     while (i < size) {
       println("<log> start loop")
       ${
-        @tailrec def loop(j: Int, acc: Expr[Unit]): Expr[Unit] =
+        @tailrec def loop(j: Int, acc: scope.Expr[Unit]): scope.Expr[Unit] =
         if (j >= 0) loop(j - 1, '{ ${Expr.betaReduce('{$f($seq(i + ${Expr(j)}))})}; $acc })
         else acc
         loop(unrollSize - 1, '{})

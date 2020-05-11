@@ -1,5 +1,5 @@
 import scala.quoted._
 
 object Macros {
-  def impl(x: Expr[Int])(using QuoteContext): Expr[Int] = '{ $x + 1 }
+  def impl(using s: Scope)(x: s.Expr[Int]): s.Expr[Int] = '{ $x + 1 }
 }

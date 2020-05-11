@@ -4,9 +4,9 @@ object Macros {
 
   inline def test(): String = ${ testImpl }
 
-  private def testImpl(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty._
-    val classSym = Type.of[Function1].classSymbol.get
+  private def testImpl(using s: Scope): s.Expr[String] = {
+    import s.tasty._
+    val classSym = Type.of[Function1[_, _]].classSymbol.get
     classSym.classMethod("apply")
     classSym.classMethods
     classSym.method("apply")

@@ -5,14 +5,14 @@ object Macros {
   implicit inline def printOwners[T](inline x: T): Unit =
     ${ impl('x) }
 
-  def impl[T](x: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def impl[T](using s: Scope)(x: s.Expr[T]): s.Expr[Unit] = {
+    import s.tasty._
 
     val buff = new StringBuilder
 
     val output = new MyTraverser(qctx.tasty)(buff)
 
-    val tree = x.unseal
+    val tree = x
     output.traverseTree(tree)
     '{print(${Expr(buff.result())})}
   }

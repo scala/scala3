@@ -3,10 +3,10 @@ import scala.quoted.staging._
 
 class Foo {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def foo: Unit = withQuoteContext {
-    val e: Expr[Int] = '{3}
-    val f: Expr[Int] = '{5}
-    def foo(x: Expr[Int], y: Expr[Int]): Expr[Int] = '{ $x + $y }
+  def foo: Unit = usingNewScope {
+    val e: scope.Expr[Int] = '{3}
+    val f: scope.Expr[Int] = '{5}
+    def foo(using s: Scope)(x: s.Expr[Int], y: s.Expr[Int]): s.Expr[Int] = '{ $x + $y }
     val q = '{
       val e1 = $e
       val f1 = $f

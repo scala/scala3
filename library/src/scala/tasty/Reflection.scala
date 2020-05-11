@@ -2,7 +2,7 @@ package scala.tasty
 
 import scala.internal.tasty.CompilerInterface
 
-import scala.quoted.QuoteContext
+import scala.quoted.Scope
 import scala.quoted.show.SyntaxHighlight
 import scala.tasty.reflect._
 
@@ -127,8 +127,8 @@ trait Reflection { reflection =>
   type Context <: AnyRef
 
   /** Context of the macro expansion */
-  def rootContext: Context // TODO: Should this be moved to QuoteContext?
-  given Context = rootContext // TODO: Should be an implicit converion from QuoteContext to Context
+  def rootContext: Context // TODO: Should this be moved to Scope?
+  given Context = rootContext // TODO: Should be an implicit converion from Scope to Context
 
   ///////////////
   //   TREES   //
@@ -168,7 +168,7 @@ trait Reflection { reflection =>
 
     /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
     extension [T](self: Tree)
-      def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T]
+      def asExprOf(using s: Scope)(using s.Type[T]): s.Expr[T]
   }
 
   /** Tree representing a pacakage clause in the source code */
@@ -397,10 +397,10 @@ trait Reflection { reflection =>
     extension (self: Term):
 
       /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression or throws */
-      def seal: scala.quoted.Expr[Any]
+      def seal(using s: Scope): s.Expr[Any]
 
-      /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression */
-      def sealOpt: Option[scala.quoted.Expr[Any]]
+      /** Convert `Term` to an `Expr[Any]` if the term is a valid expression */
+      def sealOpt(using s: Scope): Option[s.Expr[Any]]
 
       /** Type of this term */
       def tpe: Type
@@ -1738,7 +1738,7 @@ trait Reflection { reflection =>
 
   trait TypeModule { this: Type.type =>
     /** Returns the type or kind (Type) of T */
-    def of[T <: AnyKind](using qtype: scala.quoted.Type[T]): Type
+    def of[T <: AnyKind](using s: Scope)(using qtype: s.Type[T]): Type
 
     /** Returns the type constructor of the runtime (erased) class */
     def typeConstructorOf(clazz: Class[?]): Type
@@ -1746,6 +1746,11 @@ trait Reflection { reflection =>
 
   given TypeMethods as TypeMethods = TypeMethodsImpl
   protected val TypeMethodsImpl: TypeMethods
+
+  class QuotedType(tp: TypeTree) {
+    type X <: AnyKind
+    def get(using s: Scope): s.Type[X] = tp.asInstanceOf
+  }
 
   trait TypeMethods {
     extension (self: Type):
@@ -1759,8 +1764,8 @@ trait Reflection { reflection =>
       /** Shows the tree as fully typed source code */
       def showWith(syntaxHighlight: SyntaxHighlight): String
 
-      /** Convert `Type` to an `quoted.Type[_]` */
-      def seal: scala.quoted.Type[_]
+      /** Convert `Type` to a `Type[_]` */
+      def seal(using scope: Scope): QuotedType
 
       /** Is `self` type the same as `that` type?
        *  This is the case iff `self <:< that` and `that <:< self`.
@@ -3052,7 +3057,7 @@ trait Reflection { reflection =>
   // POSITIONS //
   ///////////////
 
-  // TODO: Should this be in the QuoteContext?
+  // TODO: Should this be in the Scope?
   // TODO: rename to enclosingPosition (as in scala.reflect)
   /** Root position of this tasty context. For macros it corresponds to the expansion site. */
   def rootPosition: Position

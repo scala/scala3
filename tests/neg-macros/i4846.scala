@@ -5,9 +5,9 @@ object Test {
     fooImpl(
       x, // error
       'x,
-      '{ 'x }, // error
-      '{ '{ 'x } } // error
+      '{ (s: Scope) ?=> 'x }, // error
+      '{ (s: Scope) ?=> '{ (s: Scope) ?=> 'x } } // error
     )
   }
-  def fooImpl(a: Int, b: Expr[Int], c: Expr[QuoteContext ?=> Expr[Int]], d: Expr[QuoteContext ?=> Expr[QuoteContext ?=> Expr[Int]]]): Expr[Int] = ???
+  def fooImpl(using s: Scope)(a: Int, b: s.Expr[Int], c: s.Expr[(s2: Scope) ?=> s2.Expr[Int]], d: s.Expr[(s2: Scope) ?=> s2.Expr[(s3: Scope) ?=> s3.Expr[Int]]]): s.Expr[Int] = ???
 }

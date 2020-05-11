@@ -1,8 +1,8 @@
 import scala.quoted._
 
-inline def foo[T:Type]: Int = 10
+inline def foo[T](using s: Scope)(using s.Type[T]): Int = 10
 
-def main(using QuoteContext) = {
+def main(using s: Scope) = {
   type S = Int
   foo[S]
   foo[Int]

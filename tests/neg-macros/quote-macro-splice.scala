@@ -22,6 +22,6 @@ object Test {
     1
   }
 
-  def impl(n: Expr[Int]): Expr[Int] = ???
+  def impl(using s: Scope)(n: s.Expr[Int]): s.Expr[Int] = ???
 
 }

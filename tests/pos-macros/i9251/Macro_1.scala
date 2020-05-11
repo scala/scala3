@@ -18,17 +18,16 @@ object Async {
   }
 
 
-  def checkPrintTypeImpl[F[_]:Type,T:Type](f: Expr[T])(using qctx: QuoteContext): Expr[Unit] =
-    import qctx.tasty._
+  def checkPrintTypeImpl[F[_],T](using s: Scope)(f: s.Expr[T])(using s.Type[F], s.Type[T]): s.Expr[Unit] =
+    import s.tasty._
 
-    val fu = f.unseal
-    fu match
+    f match
       case Inlined(_,_,Block(_,Apply(TypeApply(Select(q,n),tparams),List(param)))) =>
         param.tpe match
           case AppliedType(tp,tparams1) =>
-            val fType = summon[quoted.Type[F]]
+            val fType = summon[s.Type[F]]
             val ptp = tparams1.tail.head
-            val ptpTree = Inferred(fType.unseal.tpe.appliedTo(ptp))
+            val ptpTree = Inferred(fType.tpe.appliedTo(ptp))
             '{ println(${Expr(ptpTree.show)}) }
 
 }

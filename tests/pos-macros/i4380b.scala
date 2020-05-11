@@ -1,8 +1,8 @@
 import scala.quoted._
 
-class Test(using qctx: QuoteContext) {
-  def step(k: (String => Expr[Unit])): Expr[Unit] = '{}
-  def meth(): Unit = '{
+class Test {
+  def step(using s: Scope)(k: (String => s.Expr[Unit])): s.Expr[Unit] = '{}
+  def meth(using s: Scope)(): Unit = '{
     (i: Int) => ${ step(el => '{} ) }
   }
 }

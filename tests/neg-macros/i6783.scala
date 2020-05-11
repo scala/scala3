@@ -2,8 +2,8 @@ import scala.quoted._
 
 inline def test(f: (Int, Int) => Int) = ${
   testImpl(
-    (a: Expr[Int], b: Expr[Int]) =>  '{ f(${a}, ${b}) } // error: Malformed macro
+    (a: scope.Expr[Int], b: scope.Expr[Int]) =>  '{ f(${a}, ${b}) } // error: Malformed macro
   )
 }
 
-def testImpl(f: (Expr[Int], Expr[Int]) => Expr[Int]): Expr[Int] = ???
+def testImpl(using s: Scope)(f: (s.Expr[Int], s.Expr[Int]) => s.Expr[Int]): s.Expr[Int] = ???

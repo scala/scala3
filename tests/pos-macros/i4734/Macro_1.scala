@@ -5,7 +5,7 @@ object Macros {
   inline def unrolledForeach(f: Int => Int): Int =
     ${unrolledForeachImpl('f)}
 
-  def unrolledForeachImpl(f: Expr[Int => Int])(using QuoteContext): Expr[Int] = '{
+  def unrolledForeachImpl(using s: Scope)(f: s.Expr[Int => Int]): s.Expr[Int] = '{
     val size: Int = 5
     ($f)(3)
   }

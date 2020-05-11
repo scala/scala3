@@ -1,8 +1,9 @@
 package scala.internal.tasty
 
-import scala.quoted.QuoteContext
+import scala.tasty.Reflection
 import scala.tasty.reflect._
 import scala.internal.quoted.Unpickler
+import scala.quoted.Scope
 
 /** Part of the reflection interface that needs to be implemented by the compiler */
 trait CompilerInterface { self: scala.tasty.Reflection =>
@@ -22,7 +23,11 @@ trait CompilerInterface { self: scala.tasty.Reflection =>
   def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): TypeTree
 
 
-  def Constraints_context[T]: scala.quoted.QuoteContext
+  /////////////////
+  // Constraints //
+  /////////////////
+
+  def Constraints_context[T]: scala.quoted.Scope
   def Constraints_add(syms: List[Symbol]): Boolean
   def Constraints_approximation(sym: Symbol, fromBelow: Boolean): Type
 
@@ -81,7 +86,7 @@ trait CompilerInterface { self: scala.tasty.Reflection =>
 
 object CompilerInterface {
 
-  private[scala] def quoteContextWithCompilerInterface(qctx: QuoteContext): qctx.type { val tasty: qctx.tasty.type & scala.internal.tasty.CompilerInterface } =
-    qctx.asInstanceOf[qctx.type { val tasty: qctx.tasty.type & scala.internal.tasty.CompilerInterface }]
+  private[scala] def quoteContextWithCompilerInterface(s: Scope): s.type { val tasty: s.tasty.type & scala.internal.tasty.CompilerInterface } =
+    s.asInstanceOf[s.type { val tasty: s.tasty.type & scala.internal.tasty.CompilerInterface }]
 
 }

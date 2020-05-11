@@ -1,4 +1,4 @@
 object Test {
-  given quoted.QuoteContext = ???
+  given quoted.Scope = ???
   Macro.ff[Int]
 }

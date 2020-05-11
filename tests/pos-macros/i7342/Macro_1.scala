@@ -1,5 +1,5 @@
-import scala.quoted.{ QuoteContext, Expr }
+import scala.quoted._
 
 trait Foo
 
-inline def g(em: Expr[Foo])(using QuoteContext) = '{$em}
+inline def g(using s: Scope)(em: s.Expr[Foo]) = '{$em}

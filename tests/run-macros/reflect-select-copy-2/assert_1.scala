@@ -4,15 +4,15 @@ object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition, '{""}) }
 
-  def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def assertImpl(using s: Scope)(cond: s.Expr[Boolean], clue: s.Expr[Any]): s.Expr[Unit] = {
+    import s.tasty._
     import util._
 
     def isImplicitMethodType(tp: Type): Boolean = tp match
       case tp: MethodType => tp.isImplicit
       case _ => false
 
-    cond.unseal.underlyingArgument match {
+    cond.underlyingArgument match {
       case Apply(sel @ Select(lhs, op), rhs :: Nil) =>
         let(lhs) { left =>
           let(rhs) { right =>
@@ -21,7 +21,7 @@ object scalatest {
               val r = right.seal
               val b = result.seal.cast[Boolean]
               val code = '{ scala.Predef.assert(${b}) }
-              code.unseal
+              code
             }
           }
         }.seal.cast[Unit]
@@ -34,7 +34,7 @@ object scalatest {
               val r = right.seal
               val b = result.seal.cast[Boolean]
               val code = '{ scala.Predef.assert(${b}) }
-              code.unseal
+              code
             }
           }
         }.seal.cast[Unit]

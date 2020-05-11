@@ -5,8 +5,8 @@ class Foo {
   def foo: Unit = {
     given Toolbox = Toolbox.make(getClass.getClassLoader)
     run {
-      val a: Expr[Int] = '{3}
-      val q: Expr[Int] = '{
+      val a: scope.Expr[Int] = '{3}
+      val q: scope.Expr[Int] = '{
         val b = 3
         ${
           println("evaluating inner quote")

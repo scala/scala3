@@ -6,8 +6,8 @@ object Test {
   implicit val tbx: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = {
-    def y(using QuoteContext): Expr[Unit] = '{
-      def x(using QuoteContext): Expr[Unit] = '{println("bar")}
+    def y(using s: Scope): s.Expr[Unit] = '{
+      def x(using s: Scope): s.Expr[Unit] = '{println("bar")}
       println("foo")
       run(x)
     }
@@ -16,7 +16,7 @@ object Test {
       throw new Exception
     } catch {
       case ex: java.lang.reflect.InvocationTargetException =>
-        assert(ex.getTargetException.isInstanceOf[scala.quoted.ScopeException])
+        assert(ex.getTargetException.isInstanceOf[scala.quoted.staging.Toolbox.ToolboxInUse])
     }
   }
 }

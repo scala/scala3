@@ -6,8 +6,8 @@ trait IsExpr {
 
 val foo: IsExpr = ???
 
-def g(e: IsExpr)(using tu: Type[e.Underlying]): Unit = ???
+def g(using s: Scope)(e: IsExpr)(using tu: s.Type[e.Underlying]): Unit = ???
 
-def mcrImpl(using QuoteContext): Unit = {
+def mcrImpl(using s: Scope): Unit = {
   g(foo)
 }

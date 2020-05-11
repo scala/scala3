@@ -1,1 +1,1 @@
-((qctx: scala.quoted.QuoteContext) ?=> scala.internal.quoted.CompileTime.exprQuote[scala.Int](3).apply(using qctx))
+((s: scala.quoted.Scope) ?=> scala.internal.quoted.CompileTime.exprQuote[scala.Int](3).apply(using s))

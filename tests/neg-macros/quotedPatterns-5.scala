@@ -1,9 +1,9 @@
 import scala.quoted._
 object Test {
-  def test(x: quoted.Expr[Int])(using QuoteContext) = x match {
+  def test(using s: Scope)(x: s.Expr[Int]) = x match {
     case '{ type $t; poly[$t]($x); 4 } => ??? // error: duplicate pattern variable: $t
     case '{ type `$t`; poly[`$t`]($x); 4 } =>
-      val tt: quoted.Type[_] = t // error
+      val tt: s.Type[_] = t // error
       ???
     case _ =>
   }

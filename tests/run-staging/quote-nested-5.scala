@@ -3,11 +3,11 @@ import scala.quoted.staging._
 
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = usingNewScope {
 
-    val q = '{(using qctx: QuoteContext) =>
-      val a = '{4}
-      ${'{(using qctx2: QuoteContext) =>
+    val q = '{(using s: Scope) =>
+      def a(using Scope) = '{4}
+      ${'{(using s2: Scope) =>
         '{${a}}
       }}
 

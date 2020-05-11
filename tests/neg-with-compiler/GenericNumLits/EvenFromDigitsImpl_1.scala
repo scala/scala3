@@ -3,7 +3,7 @@ import scala.quoted._
 import Even._
 
 object EvenFromDigitsImpl:
-  def apply(digits: Expr[String])(using QuoteContext): Expr[Even] = digits match {
+  def apply(using s: Scope)(digits: s.Expr[String]): s.Expr[Even] = digits match {
     case Const(ds) =>
       val ev =
         try evenFromDigits(ds)

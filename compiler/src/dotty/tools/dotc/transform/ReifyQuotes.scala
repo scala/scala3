@@ -13,6 +13,7 @@ import ast.{TreeTypeMap, untpd}
 import util.Spans._
 import tasty.TreePickler.Hole
 import SymUtils._
+import TypeUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd
 import typer.Implicits.SearchFailureType
@@ -77,7 +78,7 @@ class ReifyQuotes extends MacroTransform {
       case tree: RefTree if !Inliner.inInlineMethod =>
         assert(!tree.symbol.isQuote)
         assert(!tree.symbol.isExprSplice)
-        assert(!tree.symbol.isTypeSplice)
+        assert(!tree.tpe.isTypeSplice)
       case _ : TypeDef =>
         assert(!tree.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot),
           s"${tree.symbol} should have been removed by PickledQuotes because it has a @quoteTypeTag")
@@ -125,7 +126,7 @@ class ReifyQuotes extends MacroTransform {
      *  core and splices as arguments.
      */
     override protected def transformQuotation(body: Tree, quote: Tree)(using Context): Tree = {
-      val isType = quote.symbol eq defn.QuotedTypeModule_apply
+      val isType = quote.symbol eq defn.ScopeTypeModule_apply
       if (level > 0) {
         val body1 = nested(isQuote = true).transform(body)(using quoteContext)
         super.transformQuotation(body1, quote)
@@ -136,29 +137,29 @@ class ReifyQuotes extends MacroTransform {
           val body2 =
             if (body1.isType) body1
             else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
-          pickledQuote(body2, splices, body.tpe, isType).withSpan(quote.span)
+          pickledQuote(body2, quote, splices, body.tpe, isType).withSpan(quote.span)
         }
         else
           body
       }
     }
 
-    private def pickledQuote(body: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(using Context) = {
+    private def pickledQuote(body: Tree, quote: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(using Context) = {
       def pickleAsLiteral(lit: Literal) = {
         def liftedValue(lifter: Symbol) =
-          ref(lifter).appliedToType(originalTp).select(nme.toExpr).appliedTo(lit)
+          ref(lifter).appliedToType(originalTp).appliedTo(lit)
         lit.const.tag match {
           case Constants.NullTag => ref(defn.InternalQuotedExpr_null)
           case Constants.UnitTag => ref(defn.InternalQuotedExpr_unit)
-          case Constants.BooleanTag => liftedValue(defn.LiftableModule_BooleanLiftable)
-          case Constants.ByteTag => liftedValue(defn.LiftableModule_ByteLiftable)
-          case Constants.ShortTag => liftedValue(defn.LiftableModule_ShortLiftable)
-          case Constants.IntTag => liftedValue(defn.LiftableModule_IntLiftable)
-          case Constants.LongTag => liftedValue(defn.LiftableModule_LongLiftable)
-          case Constants.FloatTag => liftedValue(defn.LiftableModule_FloatLiftable)
-          case Constants.DoubleTag => liftedValue(defn.LiftableModule_DoubleLiftable)
-          case Constants.CharTag => liftedValue(defn.LiftableModule_CharLiftable)
-          case Constants.StringTag => liftedValue(defn.LiftableModule_StringLiftable)
+          case Constants.BooleanTag => liftedValue(defn.InternalQuotedExpr_liftBoolean)
+          case Constants.ByteTag => liftedValue(defn.InternalQuotedExpr_liftByte)
+          case Constants.ShortTag => liftedValue(defn.InternalQuotedExpr_liftShort)
+          case Constants.IntTag => liftedValue(defn.InternalQuotedExpr_liftInt)
+          case Constants.LongTag => liftedValue(defn.InternalQuotedExpr_liftLong)
+          case Constants.FloatTag => liftedValue(defn.InternalQuotedExpr_liftFloat)
+          case Constants.DoubleTag => liftedValue(defn.InternalQuotedExpr_liftDouble)
+          case Constants.CharTag => liftedValue(defn.InternalQuotedExpr_liftChar)
+          case Constants.StringTag => liftedValue(defn.InternalQuotedExpr_liftString)
         }
       }
 
@@ -172,8 +173,11 @@ class ReifyQuotes extends MacroTransform {
       def taggedType(sym: Symbol) = ref(defn.InternalQuotedTypeModule).select(sym.name.toTermName)
 
       if (isType) {
-        if (splices.isEmpty && body.symbol.isPrimitiveValueClass) taggedType(body.symbol)
-        else pickleAsTasty()
+        val TypeApply(Select(Select(scope, _), _), _) = quote
+        if splices.isEmpty && body.symbol.isPrimitiveValueClass then
+          taggedType(body.symbol).appliedTo(scope)
+        else
+          pickleAsTasty().select(nme.apply).appliedTo(scope)
       }
       else getLiteral(body) match {
         case Some(lit) => pickleAsLiteral(lit)
@@ -258,8 +262,8 @@ class ReifyQuotes extends MacroTransform {
                 }
                 assert(tpw.isInstanceOf[ValueType])
                 val argTpe =
-                  if (tree.isType) defn.QuotedTypeClass.typeRef.appliedTo(tpw)
-                  else defn.FunctionType(1, isContextual = true).appliedTo(defn.QuoteContextClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(tpw))
+                  if (tree.isType) defn.ScopeTypeClass.typeRef.appliedTo(tpw)
+                  else defn.FunctionType(1, isContextual = true).appliedTo(defn.ScopeClass.typeRef, defn.ScopeExprClass.typeRef.appliedTo(tpw))
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).cast(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
                 i += 1
@@ -327,7 +331,7 @@ class ReifyQuotes extends MacroTransform {
       /** Remove references to local types that will not be defined in this quote */
       def getTypeHoleType(using Context) = new TypeMap() {
         override def apply(tp: Type): Type = tp match
-          case tp: TypeRef if tp.typeSymbol.isTypeSplice =>
+          case tp: TypeRef if tp.isTypeSplice =>
             apply(tp.dealias)
           case tp @ TypeRef(pre, _) if pre == NoPrefix || pre.termSymbol.isLocal =>
             val hiBound = tp.typeSymbol.info match
@@ -361,7 +365,7 @@ class ReifyQuotes extends MacroTransform {
         transform(tree)(using ctx.withSource(tree.source))
       else reporting.trace(i"Reifier.transform $tree at $level", show = true) {
         tree match {
-          case Apply(Select(TypeApply(fn, (body: RefTree) :: Nil), _), _) if fn.symbol == defn.QuotedTypeModule_apply && isCaptured(body.symbol, level + 1) =>
+          case Apply(Select(TypeApply(fn, (body: RefTree) :: Nil), _), _) if fn.symbol == defn.ScopeTypeModule_apply && isCaptured(body.symbol, level + 1) =>
             // Optimization: avoid the full conversion when capturing `x`
             // in '{ x } to '{ ${x$1} } and go directly to `x$1`
             capturers(body.symbol)(body)

@@ -4,16 +4,16 @@ object Macros {
 
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('{condition}, '{""}) }
 
-  def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
-    val b = cond.unseal.underlyingArgument.seal.cast[Boolean]
+  def assertImpl(using s: Scope)(cond: s.Expr[Boolean], clue: s.Expr[Any]): s.Expr[Unit] = {
+    import s.tasty._
+    val b = cond.underlyingArgument.seal.cast[Boolean]
     '{ scala.Predef.assert($b) }
   }
 
   inline def thisLineNumber = ${ thisLineNumberImpl }
 
-  def thisLineNumberImpl(using qctx: QuoteContext) : Expr[Int] = {
-    import qctx.tasty._
+  def thisLineNumberImpl(using s: Scope): s.Expr[Int] = {
+    import s.tasty._
     Expr(rootPosition.startLine)
   }
 }

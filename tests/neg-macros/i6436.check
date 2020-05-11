@@ -1,10 +1,10 @@
 -- Error: tests/neg-macros/i6436.scala:5:9 -----------------------------------------------------------------------------
 5 |    case '{ StringContext(${Varargs(parts)}: _*) } => // error
   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |         no implicit argument of type scala.quoted.QuoteContext was found
--- [E006] Not Found Error: tests/neg-macros/i6436.scala:6:34 -----------------------------------------------------------
-6 |      val ps: Seq[Expr[String]] = parts // error
-  |                                  ^^^^^
-  |                                  Not found: parts
+  |         no implicit argument of type scala.quoted.Scope was found
+-- [E006] Not Found Error: tests/neg-macros/i6436.scala:6:36 -----------------------------------------------------------
+6 |      val ps: Seq[s.Expr[String]] = parts // error
+  |                                    ^^^^^
+  |                                    Not found: parts
 
 longer explanation available when compiling with `-explain`

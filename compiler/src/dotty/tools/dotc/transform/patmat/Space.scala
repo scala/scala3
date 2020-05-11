@@ -858,8 +858,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
     // and implicit parameters cannot normally differ between two patterns in one `match`,
     // the easiest solution is just to ignore Expr[T] and Type[T].
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
-    && !sel.tpe.widen.isRef(defn.QuotedExprClass)
-    && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
+    && !sel.tpe.widen.isRef(defn.ScopeExprClass)
+    && !sel.tpe.widen.isRef(defn.ScopeTypeClass)
 
   def checkRedundancy(_match: Match): Unit = {
     val Match(sel, cases) = _match

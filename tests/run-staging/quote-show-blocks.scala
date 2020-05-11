@@ -4,6 +4,7 @@ import scala.quoted.staging._
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = run {
+    import scope._
     def a(n: Int, x: Expr[Unit]): Expr[Unit] =
       if (n == 0) x
       else a(n - 1, '{ println(${Expr(n)}); $x })

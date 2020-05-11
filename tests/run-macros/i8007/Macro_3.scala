@@ -25,22 +25,22 @@ object Eq {
       def eqv(x: T, y: T): Boolean = body(x, y)
     }
 
-  def summonAll[T](t: Type[T])(using qctx: QuoteContext): List[Expr[Eq[_]]] = t match {
+  def summonAll[T](using s: Scope)(t: s.Type[T]): List[s.Expr[Eq[_]]] = t match {
     case '[String *: $tpes] => '{ summon[Eq[String]] }  :: summonAll(tpes)
     case '[Int *: $tpes]    => '{ summon[Eq[Int]] }     :: summonAll(tpes)
-    case '[$tpe *: $tpes]   => derived(using tpe, qctx) :: summonAll(tpes)
+    case '[$tpe *: $tpes]   => derived(using s)(using tpe) :: summonAll(tpes)
     case '[EmptyTuple] => Nil
   }
 
-  given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
-    import qctx.tasty._
+  given derived[T](using s: Scope)(using s.Type[T]) as s.Expr[Eq[T]] = {
+    import s.tasty._
 
-    val ev: Expr[Mirror.Of[T]] = Expr.summon(using '[Mirror.Of[T]]).get
+    val ev: s.Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
 
     ev match {
       case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = $elementTypes }} =>
         val elemInstances = summonAll(elementTypes)
-        val eqProductBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
+        def eqProductBody(using s2: s.Nested): (s2.Expr[T], s2.Expr[T]) => s2.Expr[Boolean] = (x, y) => {
           elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
             case (acc, (elem, index)) =>
               val e1 = '{$x.asInstanceOf[Product].productElement(${Expr(index)})}
@@ -55,7 +55,7 @@ object Eq {
 
       case '{ $m: Mirror.SumOf[T] { type MirroredElemTypes = $elementTypes }} =>
         val elemInstances = summonAll(elementTypes)
-        val eqSumBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
+        def eqSumBody(using s2: s.Nested): (s2.Expr[T], s2.Expr[T]) => s2.Expr[Boolean] = (x, y) => {
           val ordx = '{ $m.ordinal($x) }
           val ordy = '{ $m.ordinal($y) }
 

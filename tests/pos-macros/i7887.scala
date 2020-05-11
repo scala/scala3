@@ -1,5 +1,4 @@
-def typed[A](using t: quoted.Type[A], qctx: quoted.QuoteContext): Unit = {
-  import qctx.tasty._
+def typed[A](using s: quoted.Scope)(using t: s.Type[A]): Unit = {
   '{
     type T = $t
     ${'{???}.cast[T]}

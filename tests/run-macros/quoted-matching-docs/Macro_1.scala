@@ -1,17 +1,15 @@
 import scala.quoted._
 
-import scala.quoted.unsafe._
-
 inline def sum(args: Int*): Int = ${ sumExpr('args) }
 
 inline def sumShow(args: Int*): String = ${ sumExprShow('args) }
 
-private def sumExprShow(argsExpr: Expr[Seq[Int]]) (using QuoteContext): Expr[String] =
+private def sumExprShow(using s: Scope)(argsExpr: s.Expr[Seq[Int]]): s.Expr[String] =
   Expr(sumExpr(argsExpr).show)
 
-private def sumExpr(argsExpr: Expr[Seq[Int]])(using qctx: QuoteContext) : Expr[Int] = {
-  import qctx.tasty._
-  UnsafeExpr.underlyingArgument(argsExpr) match {
+private def sumExpr(using s: Scope)(argsExpr: s.Expr[Seq[Int]]): s.Expr[Int] = {
+  import s.tasty._
+  argsExpr.underlyingArgument.seal.cast[Seq[Int]] match {
     case Varargs(Consts(args)) => // args is of type Seq[Int]
       Expr(args.sum) // precompute result of sum
     case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
@@ -19,7 +17,7 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using qctx: QuoteContext) : Expr[I
         case Const(arg) => arg
         case _ => 0
       }.sum
-      val dynamicSum: Seq[Expr[Int]] = argExprs.filter {
+      val dynamicSum: Seq[s.Expr[Int]] = argExprs.filter {
         case Const(_) => false
         case arg => true
       }

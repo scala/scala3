@@ -6,10 +6,10 @@ object Macros {
   inline def printComment[T](t: => T): Unit =
     ${ impl('t) }
 
-  def impl[T](x: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def impl[T](using s: Scope)(x: s.Expr[T]): s.Expr[Unit] = {
+    import s.tasty._
 
-    val tree = x.unseal
+    val tree = x
     tree.symbol.comment.map(_.raw) match {
       case Some(str) => '{ println(${str}) }
       case None => '{ println() }

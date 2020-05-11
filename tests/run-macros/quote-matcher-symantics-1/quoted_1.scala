@@ -6,9 +6,9 @@ object Macros {
 
   inline def lift[T](sym: Symantics[T])(inline a: DSL): T = ${impl[T]('sym, 'a)}
 
-  private def impl[T: Type](sym: Expr[Symantics[T]], a: Expr[DSL])(using qctx: QuoteContext): Expr[T] = {
+  private def impl[T](using s: Scope)(sym: s.Expr[Symantics[T]], a: s.Expr[DSL])(using s.Type[T]): s.Expr[T] = {
 
-    def lift(e: Expr[DSL]): Expr[T] = e match {
+    def lift(e: s.Expr[DSL]): s.Expr[T] = e match {
 
       case '{ LitDSL(${ Const(c) }) } =>
         '{ $sym.value(${Expr(c)}) }
@@ -20,8 +20,8 @@ object Macros {
         '{ $sym.times(${lift(x)}, ${lift(y)}) }
 
       case _ =>
-        import qctx.tasty._
-        error("Expected explicit DSL", e.unseal.pos)
+        import s.tasty._
+        error("Expected explicit DSL", e.pos)
         '{ ??? }
 
     }

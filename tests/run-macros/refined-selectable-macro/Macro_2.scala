@@ -16,7 +16,7 @@ object Macro2 {
 
     inline def apply[R <: Record](elems: (String, Any)*) : R = ${ applyImpl('elems, '[R]) }
 
-    def applyImpl[R <: Record: Type](elems: Expr[Seq[(String, Any)]], ev: Type[R])(using qctx: QuoteContext) = {
+    def applyImpl[R <: Record](using s: Scope)(elems: s.Expr[Seq[(String, Any)]], ev: s.Type[R]) = {
       '{ new Record($elems:_*).asInstanceOf[$ev] }
     }
 

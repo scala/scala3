@@ -11,18 +11,18 @@ object FileName {
   def fileNameFromString(s: String): Either[String, FileName] =
     Right(FileName.unsafe(s))
 
-  def createFileName(fileName: Expr[String])(using qctx: QuoteContext): Expr[FileName] =
+  def createFileName(using s: Scope)(fileName: s.Expr[String]): s.Expr[FileName] =
     fileName match {
-      case e@Const(s) =>
-        fileNameFromString(s) match {
+      case e@Const(str) =>
+        fileNameFromString(str) match {
             case Right(fn) =>
               '{FileName.unsafe(${Expr(fn.name)})} // Or `Expr(fn)` if there is a `Liftable[FileName]`
             case Left(_) =>
-              report.throwError(s"$s is not a valid file name! It must not contain a /", fileName)
+              report.throwErrorOn(fileName, s"$str is not a valid file name! It must not contain a /")
          }
 
       case _ =>
-        report.throwError(s"$fileName is not a valid file name. It must be a literal string", fileName)
+        report.throwErrorOn(fileName, s"$fileName is not a valid file name. It must be a literal string")
     }
 }
 

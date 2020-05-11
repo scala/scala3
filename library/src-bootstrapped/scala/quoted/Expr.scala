@@ -3,96 +3,30 @@ package scala.quoted
 import scala.quoted.show.SyntaxHighlight
 import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
 
-/** Quoted expression of type `T` */
-abstract class Expr[+T] private[scala] {
-
-  /** Show a source code like representation of this expression without syntax highlight */
-  def show(using qctx: QuoteContext): String =
-    this.unseal.showWith(SyntaxHighlight.plain)
-
-  /** Show a source code like representation of this expression */
-  def showWith(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String =
-    this.unseal.showWith(syntaxHighlight)
-
-  /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
-   *  It does the equivalent of
-   *  ```
-   *  this match
-   *    case '{...} => true // where the contents of the pattern are the contents of `that`
-   *    case _ => false
-   *  ```
-   */
-  final def matches(that: Expr[Any])(using qctx: QuoteContext): Boolean =
-    !scala.internal.quoted.Expr.unapply[EmptyTuple, EmptyTuple](this)(using that, false, qctx).isEmpty
-
-  /** Checked cast to a `quoted.Expr[U]` */
-  def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] = asExprOf[U]
-
-  /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
-  def asExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): scala.quoted.Expr[X] = {
-    val tree = this.unseal
-    val expectedType = tp.unseal.tpe
-    if (tree.tpe <:< expectedType)
-      this.asInstanceOf[scala.quoted.Expr[X]]
-    else
-      throw new scala.tasty.reflect.ExprCastError(
-        s"""Expr: ${tree.show}
-           |of type: ${tree.tpe.show}
-           |did not conform to type: ${expectedType.show}
-           |""".stripMargin
-      )
-  }
-
-  /** View this expression `quoted.Expr[T]` as a `Term` */
-  def unseal(using qctx: QuoteContext): qctx.tasty.Term
-
-}
-
 object Expr {
-
-  extension [T](expr: Expr[T]):
-    /** Return the unlifted value of this expression.
-     *
-     *  Returns `None` if the expression does not contain a value or contains side effects.
-     *  Otherwise returns the `Some` of the value.
-     */
-    def unlift(using qctx: QuoteContext, unlift: Unliftable[T]): Option[T] =
-      unlift.fromExpr(expr)
-
-    /** Return the unlifted value of this expression.
-     *
-     *  Emits an error and throws if the expression does not contain a value or contains side effects.
-     *  Otherwise returns the value.
-     */
-    def unliftOrError(using qctx: QuoteContext, unlift: Unliftable[T]): T =
-      def reportError =
-        val msg = s"Expected a known value. \n\nThe value of: ${expr.show}\ncould not be unlifted using $unlift"
-        report.throwError(msg, expr)
-      unlift.fromExpr(expr).getOrElse(reportError)
-  end extension
 
   /** `e.betaReduce` returns an expression that is functionally equivalent to `e`,
    *   however if `e` is of the form `((y1, ..., yn) => e2)(x1, ..., xn)`
    *   then it optimizes this the top most call by returning the result of beta-reducing the application.
    *   Otherwise returns `expr`.
    */
-  def betaReduce[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
-    val qctx2 = quoteContextWithCompilerInterface(qctx)
-    qctx2.tasty.betaReduce(expr.unseal) match
-      case Some(expr1) => expr1.seal.asInstanceOf[Expr[T]]
+  def betaReduce[T](using s: Scope)(expr: s.Expr[T]): s.Expr[T] =
+    val s1 = quoteContextWithCompilerInterface(s)
+    s1.tasty.betaReduce(expr) match
+      case Some(expr1) => expr1.seal.asInstanceOf[s.Expr[T]]
       case _ => expr
 
   /** Returns an expression containing a block with the given statements and ending with the expresion
    *  Given list of statements `s1 :: s2 :: ... :: Nil` and an expression `e` the resulting expression
    *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
    */
-  def block[T](statements: List[Expr[Any]], expr: Expr[T])(using qctx: QuoteContext): Expr[T] = {
-    import qctx.tasty._
-    Block(statements.map(_.unseal), expr.unseal).seal.asInstanceOf[Expr[T]]
+  def block[T](using s: Scope)(statements: List[s.Expr[Any]], expr: s.Expr[T]): s.Expr[T] = {
+    import s.tasty._
+    Block(statements, expr).seal.asInstanceOf[s.Expr[T]]
   }
 
   /** Lift a value into an expression containing the construction of that value */
-  def apply[T](x: T)(using qctx: QuoteContext, lift: Liftable[T]): Expr[T] = lift.toExpr(x)
+  def apply[T](x: T)(using s: Scope)(using lift: s.Liftable[T]): s.Expr[T] = lift.toExpr(x)
 
   /** Lifts this sequence of expressions into an expression of a sequence
    *
@@ -102,7 +36,7 @@ object Expr {
    *    `'{ Seq($e1, $e2, ...) }` typed as an `Expr[Seq[T]]`
    *  ```
    */
-  def ofSeq[T](xs: Seq[Expr[T]])(using tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = Varargs(xs)
+  def ofSeq[T](using s: Scope)(xs: Seq[s.Expr[T]])(using s.Type[T]): s.Expr[Seq[T]] = Varargs(xs)
 
   /** Lifts this list of expressions into an expression of a list
    *
@@ -111,7 +45,7 @@ object Expr {
    *  to an expression equivalent to
    *    `'{ List($e1, $e2, ...) }` typed as an `Expr[List[T]]`
    */
-  def  ofList[T](xs: Seq[Expr[T]])(using Type[T], QuoteContext): Expr[List[T]] =
+  def  ofList[T](using s: Scope)(xs: Seq[s.Expr[T]])(using s.Type[T]): s.Expr[List[T]] =
     if (xs.isEmpty) Expr(Nil) else '{ List(${Varargs(xs)}: _*) }
 
   /** Lifts this sequence of expressions into an expression of a tuple
@@ -121,7 +55,7 @@ object Expr {
    *  to an expression equivalent to
    *    `'{ ($e1, $e2, ...) }` typed as an `Expr[Tuple]`
    */
-  def ofTupleFromSeq(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] = {
+  def ofTupleFromSeq(using s: Scope)(seq: Seq[s.Expr[Any]]): s.Expr[Tuple] = {
     seq match {
       case Seq() =>
         '{ Tuple() }
@@ -175,23 +109,23 @@ object Expr {
   }
 
   /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
-  def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
-    val elems: Seq[Expr[Any]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[Any]]]
-    ofTupleFromSeq(elems).asExprOf[Tuple.InverseMap[T, Expr]]
+  def ofTuple[T <: Tuple](tup: T)(using s: Scope)(using Tuple.IsMappedBy[s.Expr][T]): s.Expr[Tuple.InverseMap[T, s.Expr]] = {
+    val elems: Seq[s.Expr[Any]] = tup.productIterator.toSeq.asInstanceOf[Seq[s.Expr[Any]]]
+    ofTupleFromSeq(elems).asInstanceOf[s.Expr[Tuple.InverseMap[T, s.Expr]]]
   }
 
-  /** Find an implicit of type `T` in the current scope given by `qctx`.
-   *  Return `Some` containing the expression of the implicit or
+  /** Find an implicit of type `T` in the current scope given by `s`.
+   *  Return `Some` containing the expression `s.Expr[T]` of the implicit or
    * `None` if implicit resolution failed.
    *
    *  @tparam T type of the implicit parameter
    *  @param tpe quoted type of the implicit parameter
-   *  @param qctx current context
+   *  @param s current Scope
    */
-  def summon[T](using tpe: Type[T])(using qctx: QuoteContext): Option[Expr[T]] = {
-    import qctx.tasty._
-    searchImplicit(tpe.unseal.tpe) match {
-      case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[Expr[T]])
+  def summon[T](using s: Scope)(using tpe: s.Type[T]): Option[s.Expr[T]] = {
+    import s.tasty._
+    searchImplicit(tpe.tpe) match {
+      case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[s.Expr[T]])
       case isf: ImplicitSearchFailure => None
     }
   }
@@ -200,7 +134,7 @@ object Expr {
     /** Matches a `StringContext(part0, part1, ...)` and extracts the parts of a call to if the
      *  parts are passed explicitly. Returns the equvalent to `Seq('{part0}, '{part1}, ...)`.
      */
-    def unapply(sc: Expr[StringContext])(using QuoteContext): Option[Seq[Expr[String]]] =
+    def unapply(using s: Scope)(sc: s.Expr[StringContext]): Option[Seq[s.Expr[String]]] =
       sc match
         case '{ scala.StringContext(${Varargs(parts)}: _*) } => Some(parts)
         case '{ new scala.StringContext(${Varargs(parts)}: _*) } => Some(parts)

@@ -2,7 +2,7 @@ import scala.quoted._
 
 object OtherMacro {
 
-  def impl(using qctx: QuoteContext): Expr[Int] =
+  def impl(using Scope): scope.Expr[Int] =
     '{ 42 }
 
   inline def apply = ${ OtherMacro.impl }
@@ -11,12 +11,12 @@ object OtherMacro {
 
 object Macro {
 
-  def impl(using qctx: QuoteContext): Expr[Int] = {
-    import qctx.tasty._
+  def impl(using Scope): scope.Expr[Int] = {
+    import scope.tasty._
 
     let(
       Select.unique(
-        '{ OtherMacro }.unseal,
+        '{ OtherMacro },
         "apply"
       )
     )(identity).seal.cast[Int]

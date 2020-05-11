@@ -1,8 +1,8 @@
 import scala.quoted._
 object Test {
-  def test(x: quoted.Expr[Int])(using QuoteContext) = x match {
+  def test(using s: Scope)(x: s.Expr[Int]) = x match {
     case '{ poly[${Foo(t)}]($x); 4 } => ??? // error
-    case '{ type $t; poly[${Foo(y: quoted.Type[`$t`])}]($x); 4 } => ??? // error
+    case '{ type $t; poly[${Foo(y: s.Type[`$t`])}]($x); 4 } => ??? // error
     case _ =>
   }
 

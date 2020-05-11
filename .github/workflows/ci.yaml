@@ -96,46 +96,46 @@ jobs:
           ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;configureIDE"
           ./project/scripts/bootstrapCmdTests
 
-  community_build:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
+  # community_build:
+  #   runs-on: self-hosted
+  #   container: lampepfl/dotty:2020-04-24
 
-    steps:
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #   steps:
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
+  #     - name: Cache Ivy
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.ivy2/cache
+  #         key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-ivy-
 
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
+  #     - name: Cache SBT
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.sbt
+  #         key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+  #         restore-keys: ${{ runner.os }}-sbt-
 
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+  #     - name: Cache Coursier and Mill
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.cache
+  #         key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-general-
 
-      - name: Test
-        run: |
-          git submodule sync
-          git submodule update --init --recursive --jobs 7
-          ./project/scripts/sbt community-build/test
+  #     - name: Test
+  #       run: |
+  #         git submodule sync
+  #         git submodule update --init --recursive --jobs 7
+  #         ./project/scripts/sbt community-build/test
 
   test_sbt:
     runs-on: self-hosted
@@ -226,304 +226,304 @@ jobs:
       - name: Test
         run: ./project/scripts/sbt ";compile ;test"
 
-  publish_nightly:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
-    if: github.event_name == 'schedule'
-    env:
-      NIGHTLYBUILD: yes
-      PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
-      PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
-      SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
-      SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+  # publish_nightly:
+  #   runs-on: self-hosted
+  #   container: lampepfl/dotty:2020-04-24
+  #   needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
+  #   if: github.event_name == 'schedule'
+  #   env:
+  #     NIGHTLYBUILD: yes
+  #     PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
+  #     PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
+  #     SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
+  #     SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
 
-    steps:
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #   steps:
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
+  #     - name: Cache Ivy
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.ivy2/cache
+  #         key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-ivy-
 
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
+  #     - name: Cache SBT
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.sbt
+  #         key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+  #         restore-keys: ${{ runner.os }}-sbt-
 
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+  #     - name: Cache Coursier and Mill
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.cache
+  #         key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-general-
 
-      - name: Publish Nightly
-        run: |
-          ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+  #     - name: Publish Nightly
+  #       run: |
+  #         ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
 
-  nightly_documentation:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
-    needs: [publish_nightly]
-    if: github.event_name == 'schedule'
-    env:
-      NIGHTLYBUILD: yes
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
-                                           # Generate one at https://github.com/settings/tokens
-                                           # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
+  # nightly_documentation:
+  #   runs-on: self-hosted
+  #   container: lampepfl/dotty:2020-04-24
+  #   needs: [publish_nightly]
+  #   if: github.event_name == 'schedule'
+  #   env:
+  #     NIGHTLYBUILD: yes
+  #     BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
+  #                                          # Generate one at https://github.com/settings/tokens
+  #                                          # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
 
-    steps:
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #   steps:
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
+  #     - name: Cache Ivy
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.ivy2/cache
+  #         key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-ivy-
 
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
+  #     - name: Cache SBT
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.sbt
+  #         key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+  #         restore-keys: ${{ runner.os }}-sbt-
 
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+  #     - name: Cache Coursier and Mill
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.cache
+  #         key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-general-
 
-      - name: Generate Website
-        run: |
-          ./project/scripts/genDocs -doc-snapshot
+  #     - name: Generate Website
+  #       run: |
+  #         ./project/scripts/genDocs -doc-snapshot
 
-      - name: Deploy Website
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          personal_token: ${{ secrets.BOT_TOKEN }}
-          publish_dir: docs/_site
-          external_repository: lampepfl/dotty-website
-          publish_branch: gh-pages
+  #     - name: Deploy Website
+  #       uses: peaceiris/actions-gh-pages@v3
+  #       with:
+  #         personal_token: ${{ secrets.BOT_TOKEN }}
+  #         publish_dir: docs/_site
+  #         external_repository: lampepfl/dotty-website
+  #         publish_branch: gh-pages
 
-  publish_release:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
-    if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/') &&
-        !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+  # publish_release:
+  #   runs-on: self-hosted
+  #   container: lampepfl/dotty:2020-04-24
+  #   needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
+  #   if: github.event_name == 'push' &&
+  #       startsWith(github.event.ref, 'refs/tags/') &&
+  #       !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
 
-    env:
-      RELEASEBUILD: yes
-      PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
-      PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
-      SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
-      SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+  #   env:
+  #     RELEASEBUILD: yes
+  #     PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
+  #     PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
+  #     SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
+  #     SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
 
-    steps:
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #   steps:
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
+  #     - name: Cache Ivy
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.ivy2/cache
+  #         key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-ivy-
 
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
+  #     - name: Cache SBT
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.sbt
+  #         key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+  #         restore-keys: ${{ runner.os }}-sbt-
 
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+  #     - name: Cache Coursier and Mill
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.cache
+  #         key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-general-
 
-      - name: Publish Release
-        run: |
-          ./project/scripts/sbt dist/packArchive
-          sha256sum dist/target/dotty-* > dist/target/sha256sum.txt
-          ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
-          echo "::set-env name=RELEASE_TAG::${GITHUB_REF#*refs/tags/}"
+  #     - name: Publish Release
+  #       run: |
+  #         ./project/scripts/sbt dist/packArchive
+  #         sha256sum dist/target/dotty-* > dist/target/sha256sum.txt
+  #         ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+  #         echo "::set-env name=RELEASE_TAG::${GITHUB_REF#*refs/tags/}"
 
-      - name: Create GitHub Release
-        id: create_gh_release
-        uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
-          body:
-          draft: false
-          prerelease: ${{ contains(env.RELEASE_TAG, 'RC') }}
+  #     - name: Create GitHub Release
+  #       id: create_gh_release
+  #       uses: actions/create-release@latest
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+  #       with:
+  #         tag_name: ${{ github.ref }}
+  #         release_name: ${{ github.ref }}
+  #         body:
+  #         draft: false
+  #         prerelease: ${{ contains(env.RELEASE_TAG, 'RC') }}
 
-      - name: Upload zip archive to GitHub Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/dotty-${{ env.RELEASE_TAG }}.zip
-          asset_name: dotty-${{ env.RELEASE_TAG }}.zip
-          asset_content_type: application/zip
+  #     - name: Upload zip archive to GitHub Release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
+  #         asset_path: ./dist/target/dotty-${{ env.RELEASE_TAG }}.zip
+  #         asset_name: dotty-${{ env.RELEASE_TAG }}.zip
+  #         asset_content_type: application/zip
 
-      - name: Upload tar.gz archive to GitHub Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/dotty-${{ env.RELEASE_TAG }}.tar.gz
-          asset_name: dotty-${{ env.RELEASE_TAG }}.tar.gz
-          asset_content_type: application/gzip
+  #     - name: Upload tar.gz archive to GitHub Release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
+  #         asset_path: ./dist/target/dotty-${{ env.RELEASE_TAG }}.tar.gz
+  #         asset_name: dotty-${{ env.RELEASE_TAG }}.tar.gz
+  #         asset_content_type: application/gzip
 
-      - name: Upload SHA256 sum of the release artefacts to GitHub Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/sha256sum.txt
-          asset_name: sha256sum.txt
-          asset_content_type: text/plain
+  #     - name: Upload SHA256 sum of the release artefacts to GitHub Release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
+  #         asset_path: ./dist/target/sha256sum.txt
+  #         asset_name: sha256sum.txt
+  #         asset_content_type: text/plain
 
-  release_documentation:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
-    needs: [publish_release]
-    if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/') &&
-        !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+  # release_documentation:
+  #   runs-on: self-hosted
+  #   container: lampepfl/dotty:2020-04-24
+  #   needs: [publish_release]
+  #   if: github.event_name == 'push' &&
+  #       startsWith(github.event.ref, 'refs/tags/') &&
+  #       !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
 
-    env:
-      RELEASEBUILD: yes
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
-                                           # Generate one at https://github.com/settings/tokens
-                                           # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
+  #   env:
+  #     RELEASEBUILD: yes
+  #     BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
+  #                                          # Generate one at https://github.com/settings/tokens
+  #                                          # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
 
-    steps:
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #   steps:
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
+  #     - name: Cache Ivy
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.ivy2/cache
+  #         key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-ivy-
 
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
+  #     - name: Cache SBT
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.sbt
+  #         key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+  #         restore-keys: ${{ runner.os }}-sbt-
 
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+  #     - name: Cache Coursier and Mill
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.cache
+  #         key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-general-
 
-      - name: Generate Website
-        run: |
-          ./project/scripts/genDocs -doc-snapshot
+  #     - name: Generate Website
+  #       run: |
+  #         ./project/scripts/genDocs -doc-snapshot
 
-      - name: Deploy Website
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          personal_token: ${{ secrets.BOT_TOKEN }}
-          publish_dir: docs/_site
-          external_repository: lampepfl/dotty-website
-          publish_branch: gh-pages
+  #     - name: Deploy Website
+  #       uses: peaceiris/actions-gh-pages@v3
+  #       with:
+  #         personal_token: ${{ secrets.BOT_TOKEN }}
+  #         publish_dir: docs/_site
+  #         external_repository: lampepfl/dotty-website
+  #         publish_branch: gh-pages
 
-  publish_sbt_release:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
-    if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+  # publish_sbt_release:
+  #   runs-on: self-hosted
+  #   container: lampepfl/dotty:2020-04-24
+  #   needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
+  #   if: github.event_name == 'push' &&
+  #       startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
 
-    env:
-      RELEASEBUILD: yes
-      PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
-      PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
-      SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
-      SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+  #   env:
+  #     RELEASEBUILD: yes
+  #     PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
+  #     PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
+  #     SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
+  #     SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
 
-    steps:
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #   steps:
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
+  #     - name: Cache Ivy
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.ivy2/cache
+  #         key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-ivy-
 
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
+  #     - name: Cache SBT
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.sbt
+  #         key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+  #         restore-keys: ${{ runner.os }}-sbt-
 
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+  #     - name: Cache Coursier and Mill
+  #       uses: actions/cache@v1.1.2
+  #       with:
+  #         path: /root/.cache
+  #         key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+  #         restore-keys: ${{ runner.os }}-general-
 
-      - name: Publish Dotty SBT Plugin Release
-        run: |
-          ./project/scripts/sbtPublish ";project sbt-dotty ;publishSigned ;sonatypeBundleRelease"
+  #     - name: Publish Dotty SBT Plugin Release
+  #       run: |
+  #         ./project/scripts/sbtPublish ";project sbt-dotty ;publishSigned ;sonatypeBundleRelease"

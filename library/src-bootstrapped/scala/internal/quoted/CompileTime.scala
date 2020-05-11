@@ -8,17 +8,17 @@ object CompileTime {
 
   /** A term quote is desugared by the compiler into a call to this method */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprQuote`")
-  def exprQuote[T](x: T): QuoteContext ?=> Expr[T] = ???
+  def exprQuote[T](x: T): (s: Scope) ?=> s.Expr[T] = ???
 
   /** A term splice is desugared by the compiler into a call to this method */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprSplice`")
-  def exprSplice[T](x: QuoteContext ?=> Expr[T]): T = ???
+  def exprSplice[T](x: (s: Scope) ?=> s.Expr[T]): T = ???
 
   /** A term splice nested within a quote is desugared by the compiler into a call to this method.
-   *  `ctx` is the `QuoteContext` that the quote of this splice uses.
+   *  `ctx` is the `Scope` that the quote of this splice uses.
    */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprNestedSplice`")
-  def exprNestedSplice[T](ctx: QuoteContext)(x: ctx.Nested ?=> Expr[T]): T = ???
+  def exprNestedSplice[T](s0: Scope)(x: (s: s0.Nested) ?=> s.Expr[T]): T = ???
 
   /** Artifact of pickled type splices
    *

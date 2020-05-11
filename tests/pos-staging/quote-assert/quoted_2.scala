@@ -10,7 +10,7 @@ object Test {
     ${ assertImpl('expr) }
 
 
-  def program(using QuoteContext) = '{
+  def program(using s: Scope) = '{
     val x = 1
     assert(x != 0)
 

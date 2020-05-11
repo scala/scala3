@@ -1,12 +1,11 @@
 import scala.quoted._
 
-object Test {
-  given QuoteContext = ???
+class Test {
 
-  def a[A: Type](): Unit = {
-    b[Expr[A]]()
+  def a[A](using s: Scope)()(using s.Type[A]): Unit = {
+    def f(using s2: Scope)(using s2.Type[s.Expr[A]]): Unit = b[s.Expr[A]]()
     a[A]()
   }
 
-  def b[A: Type](): Unit = ???
+  def b[A](using s: Scope)()(using s.Type[A]): Unit = ???
 }

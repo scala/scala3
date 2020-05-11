@@ -5,7 +5,7 @@ import scala.annotation.implicitNotFound
 
 @implicitNotFound("Could not find implicit scala.quoted.staging.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `given scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)`\n\n")
 trait Toolbox:
-  def run[T](expr: QuoteContext => Expr[T]): T
+  def run[T](expr: (s: Scope) => s.Expr[T]): T
 
 object Toolbox:
 
@@ -28,10 +28,10 @@ object Toolbox:
 
       private[this] var running = false
 
-      def run[T](exprBuilder: QuoteContext => Expr[T]): T = synchronized {
+      def run[T](exprBuilder: (s: Scope) => s.Expr[T]): T = synchronized {
         try
           if (running) // detected nested run
-            throw new ScopeException("Cannot call `scala.quoted.staging.run(...)` within a another `run(...)`")
+            throw new ToolboxInUse("Cannot call `scala.quoted.staging.Toolbox.run(...)` within a another `run(...)` on the same toolbox")
           running = true
           driver.run(exprBuilder, settings)
         finally
@@ -61,5 +61,7 @@ object Toolbox:
       new Settings(outDir, showRawTree, compilerArgs)
 
   end Settings
+
+  class ToolboxInUse(msg: String) extends Exception(msg)
 
 end Toolbox

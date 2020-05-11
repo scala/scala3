@@ -1,5 +1,5 @@
 import scala.quoted._
-def test(using QuoteContext) = {
+def test(using s: Scope) = {
   def f = {
     {
       '[String]
@@ -13,10 +13,10 @@ def test(using QuoteContext) = {
     '[String]
   }
 
-  def bar[T](t: quoted.Type[T]) = ???
+  def bar[T](t: s.Type[T]) = ???
   bar('[String])
 
-  class Baz[T](t: quoted.Type[T])
+  class Baz[T](t: s.Type[T])
   new Baz('[String])
 
 }

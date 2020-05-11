@@ -5,21 +5,21 @@ object Macros {
   implicit inline def foo(i: Int): String =
     ${ impl('i) }
 
-  def impl(i: Expr[Int]) (using QuoteContext): Expr[String] = {
+  def impl(using s: Scope)(i: s.Expr[Int]): s.Expr[String] = {
     Expr(value(i).toString)
   }
 
-  inline implicit def value[X](e: Expr[X])(implicit qctx: QuoteContext, ev: Valuable[X]): Option[X] = ev.value(e)
+  inline implicit def value[X](using s: Scope)(e: s.Expr[X])(implicit ev: Valuable[X]): Option[X] = ev.value(e)
 
   trait Valuable[X] {
-    def value(e: Expr[X]) (using QuoteContext): Option[X]
+    def value(using s: Scope)(e: s.Expr[X]): Option[X]
   }
 
   implicit def intIsEvalable: Valuable[Int] = new Valuable[Int] {
-    override def value(e: Expr[Int])(using qctx: QuoteContext) : Option[Int] = {
-      import qctx.tasty._
+    override def value(using s: Scope)(e: s.Expr[Int]) : Option[Int] = {
+      import s.tasty._
 
-      e.unseal.tpe match {
+      e.tpe match {
         case pre: TermRef if pre.termSymbol.isValDef =>
           pre.termSymbol.tree match
             case t: ValDef =>

@@ -785,22 +785,16 @@ class Definitions {
   @tu lazy val ClassTagModule: Symbol = ClassTagClass.companionModule
     @tu lazy val ClassTagModule_apply: Symbol = ClassTagModule.requiredMethod(nme.apply)
 
+  @tu lazy val QuotedExprModule: Symbol = requiredModule("scala.quoted.Expr")
 
-  @tu lazy val QuotedExprClass: ClassSymbol = requiredClass("scala.quoted.Expr")
-  @tu lazy val QuotedExprModule: Symbol = QuotedExprClass.companionModule
+  @tu lazy val TastyReflectionClass: ClassSymbol = requiredClass("scala.tasty.Reflection")
 
-  @tu lazy val QuoteContextClass: ClassSymbol = requiredClass("scala.quoted.QuoteContext")
-
-  @tu lazy val LiftableModule: Symbol = requiredModule("scala.quoted.Liftable")
-    @tu lazy val LiftableModule_BooleanLiftable: Symbol = LiftableModule.requiredMethod("BooleanLiftable")
-    @tu lazy val LiftableModule_ByteLiftable: Symbol = LiftableModule.requiredMethod("ByteLiftable")
-    @tu lazy val LiftableModule_ShortLiftable: Symbol = LiftableModule.requiredMethod("ShortLiftable")
-    @tu lazy val LiftableModule_IntLiftable: Symbol = LiftableModule.requiredMethod("IntLiftable")
-    @tu lazy val LiftableModule_LongLiftable: Symbol = LiftableModule.requiredMethod("LongLiftable")
-    @tu lazy val LiftableModule_FloatLiftable: Symbol = LiftableModule.requiredMethod("FloatLiftable")
-    @tu lazy val LiftableModule_DoubleLiftable: Symbol = LiftableModule.requiredMethod("DoubleLiftable")
-    @tu lazy val LiftableModule_CharLiftable: Symbol = LiftableModule.requiredMethod("CharLiftable")
-    @tu lazy val LiftableModule_StringLiftable: Symbol = LiftableModule.requiredMethod("StringLiftable")
+  @tu lazy val ScopeClass: ClassSymbol = requiredClass("scala.quoted.Scope")
+  @tu lazy val ScopeTypeModule: Symbol = ScopeClass.requiredMethod("Type")
+  @tu lazy val ScopeTypeModule_apply: Symbol = ScopeTypeModule.requiredMethod(nme.apply)
+  @tu lazy val ScopeExprClass: Symbol = ScopeClass.typeRef.select(tpnme.Expr).typeSymbol
+  @tu lazy val ScopeTypeClass: Symbol = ScopeClass.typeRef.select(tpnme.Type).typeSymbol
+    @tu lazy val Scope_Type_splice: Symbol = ScopeClass.typeRef.select(tpnme.Type).select(tpnme.spliceType).typeSymbol
 
   @tu lazy val InternalQuotedModule: Symbol = requiredModule("scala.internal.quoted.CompileTime")
     @tu lazy val InternalQuoted_exprQuote  : Symbol = InternalQuotedModule.requiredMethod("exprQuote")
@@ -819,17 +813,18 @@ class Definitions {
     @tu lazy val InternalQuotedExpr_unapply: Symbol = InternalQuotedExprModule.requiredMethod(nme.unapply)
     @tu lazy val InternalQuotedExpr_null: Symbol = InternalQuotedExprModule.requiredMethod(nme.null_)
     @tu lazy val InternalQuotedExpr_unit: Symbol = InternalQuotedExprModule.requiredMethod(nme.Unit)
+    @tu lazy val InternalQuotedExpr_liftBoolean: Symbol = InternalQuotedExprModule.requiredMethod("liftBoolean")
+    @tu lazy val InternalQuotedExpr_liftByte: Symbol = InternalQuotedExprModule.requiredMethod("liftByte")
+    @tu lazy val InternalQuotedExpr_liftShort: Symbol = InternalQuotedExprModule.requiredMethod("liftShort")
+    @tu lazy val InternalQuotedExpr_liftInt: Symbol = InternalQuotedExprModule.requiredMethod("liftInt")
+    @tu lazy val InternalQuotedExpr_liftLong: Symbol = InternalQuotedExprModule.requiredMethod("liftLong")
+    @tu lazy val InternalQuotedExpr_liftFloat: Symbol = InternalQuotedExprModule.requiredMethod("liftFloat")
+    @tu lazy val InternalQuotedExpr_liftDouble: Symbol = InternalQuotedExprModule.requiredMethod("liftDouble")
+    @tu lazy val InternalQuotedExpr_liftChar: Symbol = InternalQuotedExprModule.requiredMethod("liftChar")
+    @tu lazy val InternalQuotedExpr_liftString: Symbol = InternalQuotedExprModule.requiredMethod("liftString")
 
   @tu lazy val InternalQuotedTypeModule: Symbol = requiredModule("scala.internal.quoted.Type")
     @tu lazy val InternalQuotedType_unapply: Symbol = InternalQuotedTypeModule.requiredMethod(nme.unapply)
-
-  @tu lazy val QuotedTypeClass: ClassSymbol = requiredClass("scala.quoted.Type")
-    @tu lazy val QuotedType_splice: Symbol = QuotedTypeClass.requiredType(tpnme.spliceType)
-
-  @tu lazy val QuotedTypeModule: Symbol = QuotedTypeClass.companionModule
-    @tu lazy val QuotedTypeModule_apply: Symbol = QuotedTypeModule.requiredMethod("apply")
-
-  @tu lazy val TastyReflectionClass: ClassSymbol = requiredClass("scala.tasty.Reflection")
 
   @tu lazy val Unpickler_unpickleExpr: Symbol = requiredMethod("scala.internal.quoted.Unpickler.unpickleExpr")
   @tu lazy val Unpickler_unpickleType: Symbol = requiredMethod("scala.internal.quoted.Unpickler.unpickleType")

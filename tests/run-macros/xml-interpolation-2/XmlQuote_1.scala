@@ -13,8 +13,8 @@ object XmlQuote {
   }
   implicit inline def SCOps(ctx: => StringContext): SCOps = new SCOps(ctx)
 
-  def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(using qctx: QuoteContext) : Expr[Xml] = {
-    import qctx.tasty._
+  def impl(using s: Scope)(receiver: s.Expr[SCOps], args: s.Expr[Seq[Any]]): s.Expr[Xml] = {
+    import s.tasty._
 
     // for debugging purpose
     def pp(tree: Tree): Unit = {
@@ -36,27 +36,24 @@ object XmlQuote {
     }
 
     // XmlQuote.SCOps(StringContext.apply([p0, ...]: String*)
-    val parts: List[String] = stripTyped(receiver.unseal.underlying) match {
+    val parts: List[String] = stripTyped(receiver.underlying) match {
       case Apply(conv, List(ctx1)) if isSCOpsConversion(conv) =>
         ctx1 match {
           case Apply(fun, List(Typed(Repeated(values, _), _))) if isStringContextApply(fun) =>
             values.iterator.map {
               case Literal(Constant(value: String)) => value
               case _ =>
-                report.error("Expected statically known String")
-                return '{???}
+                report.throwError("Expected statically known String")
             }.toList
           case _ =>
-            report.error("Expected statically known StringContext")
-            return '{???}
+            report.throwError("Expected statically known StringContext")
         }
       case _ =>
-        report.error("Expected statically known SCOps")
-        return '{???}
+        report.throwError("Expected statically known SCOps")
     }
 
     // [a0, ...]: Any*
-    val args2: Expr[List[Any]] = args.unseal.underlyingArgument match {
+    val args2: s.Expr[List[Any]] = args.underlyingArgument match {
       case Typed(Repeated(args0, _), _) => // statically known args, make list directly
         Expr.ofList(args0.map(_.seal))
       case _ =>

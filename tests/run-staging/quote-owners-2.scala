@@ -10,7 +10,7 @@ object Test {
     '{ println($q) }
   }
 
-  def f(t: Type[List[Int]])(using QuoteContext): Expr[Int] = '{
+  def f(using s: Scope)(t: s.Type[List[Int]]): s.Expr[Int] = '{
     def ff: Int = {
       val a: $t = {
         type T = $t
@@ -22,5 +22,5 @@ object Test {
     ff
   }
 
-  def g[T](a: Type[T])(using QuoteContext): Type[List[T]] = '[List[$a]]
+  def g[T](using s: Scope)(a: s.Type[T]): s.Type[List[T]] = '[List[$a]]
 }

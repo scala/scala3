@@ -1,6 +1,6 @@
 import scala.quoted._
 
 class Test {
-  def fold[W: Type](s: Expr[W]): QuoteContext ?=> Expr[W] =
-    '{ ???; $s }
+  def fold[W](using s: Scope)(x: s.Expr[W])(using s.Type[W]): s.Expr[W] =
+    '{ ???; $x }
 }

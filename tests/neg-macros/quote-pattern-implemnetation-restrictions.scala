@@ -1,6 +1,6 @@
 import scala.quoted._
 
-def f(x: Expr[Any])(using QuoteContext) =
+def f(using s: Scope)(x: s.Expr[Any]) =
   x match {
     case '{ class Foo; () } => // error
     case '{ object Foo; () } => // error

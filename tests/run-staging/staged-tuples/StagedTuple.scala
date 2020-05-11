@@ -15,7 +15,9 @@ object StagedTuple {
 
   private final val specialize = true
 
-  def toArrayStaged(tup: Expr[Tuple], size: Option[Int])(using QuoteContext): Expr[Array[Object]] = {
+  def toArrayStaged(using s: Scope)(tup: s.Expr[Tuple], size: Option[Int]): s.Expr[Array[Object]] = {
+    val ext = new Extension[scope.type]
+    import ext._
     if (!specialize) '{scala.runtime.Tuple.toArray($tup)}
     else size match {
       case Some(0) =>
@@ -35,10 +37,14 @@ object StagedTuple {
     }
   }
 
-  def fromArrayStaged[T <: Tuple : Type](xs: Expr[Array[Object]], size: Option[Int])(using QuoteContext): Expr[T] = {
+  def fromArrayStaged[T <: Tuple](using s: Scope)(xs: s.Expr[Array[Object]], size: Option[Int])(using s.Type[T]): s.Expr[T] = {
+    val ext = new Extension[scope.type]
+    import ext._
     if (!specialize) '{scala.runtime.Tuple.fromArray($xs)}.as[T]
     else xs.bind { xs =>
-      val tup: Expr[Any] = size match {
+      val ext = new Extension[scope.type]
+      import ext._
+      val tup: scope.Expr[Any] = size match {
         case Some(0)  => '{Tuple()}
         case Some(1)  => '{Tuple1( $xs(0))}
         case Some(2)  => '{Tuple2( $xs(0), $xs(1))}
@@ -69,7 +75,9 @@ object StagedTuple {
     }
   }
 
-  def sizeStaged[Res <: Int : Type](tup: Expr[Tuple], size: Option[Int])(using QuoteContext): Expr[Res] = {
+  def sizeStaged[Res <: Int](using s: Scope)(tup: s.Expr[Tuple], size: Option[Int])(using s.Type[Res]): s.Expr[Res] = {
+    val ext = new Extension[scope.type]
+    import ext._
     val res =
       if (!specialize) '{scala.runtime.Tuple.size($tup)}
       else size match {
@@ -79,7 +87,9 @@ object StagedTuple {
     res.as[Res]
   }
 
-  def headStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int])(using QuoteContext): Expr[Head[Tup]] = {
+  def headStaged[Tup <: NonEmptyTuple](using s: Scope)(tup: s.Expr[Tup], size: Option[Int])(using s.Type[Tup]): s.Expr[Head[Tup]] = {
+    val ext = new Extension[scope.type]
+    import ext._
     if (!specialize) '{scala.runtime.Tuple.apply($tup, 0)}.as[Head[Tup]]
     else {
       val resVal = size match {
@@ -93,7 +103,7 @@ object StagedTuple {
           '{${ tup.as[Tuple4[_, _, _, _]] }._1}
         case Some(n) if n > 4 && n <= MaxSpecialized =>
           '{${ tup.as[Product] }.productElement(0)}
-        case Some(n) if n > MaxSpecialized =>
+        case Some(n) =>
           '{${tup.as[TupleXXL] }.elems(0)}
         case None =>
           '{scala.runtime.Tuple.apply($tup, 0)}
@@ -102,7 +112,9 @@ object StagedTuple {
     }
   }
 
-  def tailStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int])(using QuoteContext): Expr[Tail[Tup]] = {
+  def tailStaged[Tup <: NonEmptyTuple](using s: Scope)(tup: s.Expr[Tup], size: Option[Int])(using s.Type[Tup]): s.Expr[Tail[Tup]] = {
+    val ext = new Extension[scope.type]
+    import ext._
     if (!specialize) '{scala.runtime.Tuple.tail($tup)}.as[Tail[Tup]]
     else {
       val res = size match {
@@ -126,13 +138,14 @@ object StagedTuple {
     }
   }
 
-  def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int])(using qctx: QuoteContext): Expr[Elem[Tup, N]] = {
-
+  def applyStaged[Tup <: NonEmptyTuple, N <: Int](using s: Scope)(tup: s.Expr[Tup], size: Option[Int], n: s.Expr[N], nValue: Option[Int])(using s.Type[Tup], s.Type[N]): s.Expr[Elem[Tup, N]] = {
+    val ext = new Extension[scope.type]
+    import ext._
     if (!specialize) '{scala.runtime.Tuple.apply($tup, $n)}.as[Elem[Tup, N]]
     else {
-      def fallbackApply(): Expr[Elem[Tup, N]] = nValue match {
+      def fallbackApply(): s.Expr[Elem[Tup, N]] = nValue match {
         case Some(n) =>
-          report.error("index out of bounds: " + n, tup)
+          report.errorOn(tup, "index out of bounds: " + n)
           '{ throw new IndexOutOfBoundsException(${Expr(n.toString)}) }
         case None => '{scala.runtime.Tuple.apply($tup, $n)}.as[Elem[Tup, N]]
       }
@@ -167,16 +180,16 @@ object StagedTuple {
             case Some(3) => '{$t._4}
             case _ => fallbackApply()
           }
-        case Some(s) if s > 4 && s <= MaxSpecialized =>
+        case Some(x) if x > 4 && x <= MaxSpecialized =>
           val t = tup.as[Product]
           nValue match {
-            case Some(n) if n >= 0 && n < s => '{$t.productElement(${ Expr(n) })}
+            case Some(n) if n >= 0 && n < x => '{$t.productElement(${ Expr(n) })}
             case _ => fallbackApply()
           }
-        case Some(s) if s > MaxSpecialized =>
+        case Some(x) if x > MaxSpecialized =>
           val t = tup.as[TupleXXL]
           nValue match {
-            case Some(n) if n >= 0 && n < s => '{$t.elems(${ Expr(n) })}
+            case Some(n) if n >= 0 && n < x => '{$t.elems(${ Expr(n) })}
             case _ => fallbackApply()
           }
         case _ => fallbackApply()
@@ -185,30 +198,34 @@ object StagedTuple {
     }
   }
 
-  def consStaged[T <: Tuple & Singleton : Type, H : Type](self: Expr[T], x: Expr[H], tailSize: Option[Int])(using QuoteContext): Expr[H *: T] =
-  if (!specialize) '{scala.runtime.Tuple.cons($x, $self)}.as[H *: T]
-  else {
-    val res = tailSize match {
-      case Some(0) =>
-        '{Tuple1($x)}
-      case Some(1) =>
-        self.as[Tuple1[_]].bind(t => '{Tuple2($x, $t._1)})
-      case Some(2) =>
-        self.as[Tuple2[_, _]].bind(t => '{Tuple3($x, $t._1, $t._2)})
-      case Some(3) =>
-        self.as[Tuple3[_, _, _]].bind(t => '{Tuple4($x, $t._1, $t._2, $t._3)})
-      case Some(4) =>
-        self.as[Tuple4[_, _, _, _]].bind(t => '{Tuple5($x, $t._1, $t._2, $t._3, $t._4)})
-      case _ =>
-        '{scala.runtime.Tuple.cons($x, $self)}
+  def consStaged[T <: Tuple & Singleton, H](using s: Scope)(self: s.Expr[T], x: s.Expr[H], tailSize: Option[Int])(using s.Type[T], s.Type[H]): s.Expr[H *: T] =
+    val ext = new Extension[scope.type]
+    import ext._
+    if (!specialize) '{scala.runtime.Tuple.cons($x, $self)}.as[H *: T]
+    else {
+      val res = tailSize match {
+        case Some(0) =>
+          '{Tuple1($x)}
+        case Some(1) =>
+          self.as[Tuple1[_]].bind(t => '{Tuple2($x, $t._1)})
+        case Some(2) =>
+          self.as[Tuple2[_, _]].bind(t => '{Tuple3($x, $t._1, $t._2)})
+        case Some(3) =>
+          self.as[Tuple3[_, _, _]].bind(t => '{Tuple4($x, $t._1, $t._2, $t._3)})
+        case Some(4) =>
+          self.as[Tuple4[_, _, _, _]].bind(t => '{Tuple5($x, $t._1, $t._2, $t._3, $t._4)})
+        case _ =>
+          '{scala.runtime.Tuple.cons($x, $self)}
+      }
+      res.as[H *: T]
     }
-    res.as[H *: T]
-  }
 
-  def concatStaged[Self <: Tuple & Singleton : Type, That <: Tuple & Singleton : Type](self: Expr[Self], selfSize: Option[Int], that: Expr[That], thatSize: Option[Int])(using QuoteContext): Expr[Concat[Self, That]] = {
+  def concatStaged[Self <: Tuple & Singleton, That <: Tuple & Singleton](using s: Scope)(self: s.Expr[Self], selfSize: Option[Int], that: s.Expr[That], thatSize: Option[Int])(using s.Type[Self], s.Type[That]): s.Expr[Concat[Self, That]] = {
+    val ext = new Extension[scope.type]
+    import ext._
     if (!specialize) '{scala.runtime.Tuple.concat($self, $that)}.as[Concat[Self, That]]
     else {
-      def genericConcat(xs: Expr[Tuple], ys: Expr[Tuple]): Expr[Tuple] =
+      def genericConcat(xs: s.Expr[Tuple], ys: s.Expr[Tuple]): s.Expr[Tuple] =
         // TODO remove ascriptions when #6126 is fixed
         fromArrayStaged[Tuple]('{${ toArrayStaged(xs, None) } ++ (${ toArrayStaged(ys, None) }: Array[Object])}, None)
 
@@ -254,13 +271,20 @@ object StagedTuple {
     }
   }
 
-  private implicit class ExprOps[U: Type](expr: Expr[U]) {
 
-    def as[T: Type](using QuoteContext): Expr[T] = '{ $expr.asInstanceOf[T] }
+  // TODO support
+  // extension [T](using s: Scope)(expr: s.Expr[Any])
+  //   def as(using s.Type[T]): s.Expr[T] = '{ $expr.asInstanceOf[T] }
 
-    def bind[T: Type](in: Expr[U] => Expr[T])(using QuoteContext): Expr[T] = '{
-      val t: U = $expr
-      ${in('t)}
-    }
+  class Extension[S <: Scope](using val s: S) {
+    extension [T](expr: s.Expr[Any])
+      def as(using s.Type[T]): s.Expr[T] = '{ $expr.asInstanceOf[T] }
+
+    extension [T, U](expr: s.Expr[U])
+      def bind(in: (s2: s.Nested) ?=> s2.Expr[U] => s2.Expr[T])(using s.Type[T], s.Type[U]): s.Expr[T] = '{
+        val t: U = $expr
+        ${ in('t) }
+      }
   }
+
 }

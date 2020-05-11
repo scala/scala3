@@ -1,7 +1,7 @@
 import scala.quoted._
 
 class Foo {
-  def f(using QuoteContext): Expr[Any] = {
+  def f(using s: Scope): s.Expr[Any] = {
     '{
       trait X {
         type Y
@@ -10,7 +10,7 @@ class Foo {
       val x: X = ???
       type Z = x.Y
       ${
-        val t: Type[Z] = '[Z]
+        val t: scope.Type[Z] = '[Z]
         '{ val y: $t = x.y }
       }
     }

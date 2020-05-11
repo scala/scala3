@@ -11,7 +11,7 @@ object XmlQuote {
       ${XmlQuote.impl('ctx, 'args)}
   }
 
-  def impl(receiver: Expr[StringContext], args: Expr[Seq[Any]])(using QuoteContext): Expr[Xml] = {
+  def impl(using s: Scope)(receiver: s.Expr[StringContext], args: s.Expr[Seq[Any]]): s.Expr[Xml] = {
     val string = receiver.unliftOrError.parts.mkString("??")
     '{new Xml(${Expr(string)}, $args.toList)}
   }

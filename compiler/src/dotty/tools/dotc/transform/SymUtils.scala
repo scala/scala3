@@ -207,15 +207,21 @@ object SymUtils {
 
   /** Is symbol a quote operation? */
   def isQuote(using Context): Boolean =
-    self == defn.InternalQuoted_exprQuote || self == defn.QuotedTypeModule_apply
+    self == defn.InternalQuoted_exprQuote || self == defn.ScopeTypeModule_apply
 
   /** Is symbol a term splice operation? */
   def isExprSplice(using Context): Boolean =
     self == defn.InternalQuoted_exprSplice || self == defn.InternalQuoted_exprNestedSplice
 
-  /** Is symbol a type splice operation? */
-  def isTypeSplice(using Context): Boolean =
-    self == defn.QuotedType_splice
+  /** Is symbol an extension method? Accessors are excluded since
+   *  after the getters phase collective extension objects become accessors
+   */
+  def isExtensionMethod(using Context): Boolean =
+    self.isAllOf(ExtensionMethod, butNot = Accessor)
+
+  /** Is symbol the module class of a collective extension object? */
+  def isCollectiveExtensionClass(using Context): Boolean =
+    self.is(ModuleClass) && self.sourceModule.is(Extension) && !self.sourceModule.isExtensionMethod
 
   def isScalaStatic(using Context): Boolean =
     self.hasAnnotation(defn.ScalaStaticAnnot)

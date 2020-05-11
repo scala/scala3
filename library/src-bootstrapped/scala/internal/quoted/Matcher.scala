@@ -123,15 +123,15 @@ object Matcher {
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.fromAbove`")
   class fromAbove extends Annotation
 
-  class QuoteMatcher[QCtx <: QuoteContext & Singleton](val qctx0: QCtx) {
-    val qctx = quoteContextWithCompilerInterface(qctx0)
+  class QuoteMatcher[S <: Scope & Singleton](using val s0: S) {
+    val s = quoteContextWithCompilerInterface(s0)
 
     // TODO improve performance
 
-    // TODO use flag from qctx.tasty. Maybe -debug or add -debug-macros
+    // TODO use flag from scope.tasty. Maybe -debug or add -debug-macros
     private final val debug = false
 
-    import qctx.tasty._
+    import s.tasty._
     import Matching._
 
     /** A map relating equivalent symbols from the scrutinee and the pattern
@@ -156,7 +156,7 @@ object Matcher {
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performance
-            case x: SymBinding => qctx.tasty.Constraints_approximation(x.sym, !x.fromAbove).seal
+            case x: SymBinding => s.tasty.Constraints_approximation(x.sym, !x.fromAbove).seal.get
             case x => x
           })
         }
@@ -173,7 +173,7 @@ object Matcher {
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performance
-            case x: SymBinding => qctx.tasty.Constraints_approximation(x.sym, !x.fromAbove).seal
+            case x: SymBinding => s.tasty.Constraints_approximation(x.sym, !x.fromAbove).seal.get
             case x => x
           })
         }
@@ -185,13 +185,13 @@ object Matcher {
     private def hasFromAboveAnnotation(sym: Symbol) = sym.annots.exists(isFromAboveAnnotation)
 
     private def isPatternTypeAnnotation(tree: Tree): Boolean = tree match {
-      case New(tpt) => tpt.symbol == qctx.tasty.Definitions_InternalQuotedMatcher_patternTypeAnnot
-      case annot => annot.symbol.owner == qctx.tasty.Definitions_InternalQuotedMatcher_patternTypeAnnot
+      case New(tpt) => tpt.symbol == s.tasty.Definitions_InternalQuotedMatcher_patternTypeAnnot
+      case annot => annot.symbol.owner == s.tasty.Definitions_InternalQuotedMatcher_patternTypeAnnot
     }
 
     private def isFromAboveAnnotation(tree: Tree): Boolean = tree match {
-      case New(tpt) => tpt.symbol == qctx.tasty.Definitions_InternalQuotedMatcher_fromAboveAnnot
-      case annot => annot.symbol.owner == qctx.tasty.Definitions_InternalQuotedMatcher_fromAboveAnnot
+      case New(tpt) => tpt.symbol == s.tasty.Definitions_InternalQuotedMatcher_fromAboveAnnot
+      case annot => annot.symbol.owner == s.tasty.Definitions_InternalQuotedMatcher_fromAboveAnnot
     }
 
     /** Check that all trees match with `mtch` and concatenate the results with &&& */
@@ -244,23 +244,23 @@ object Matcher {
 
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
-          case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
-              if patternHole.symbol == qctx.tasty.Definitions_InternalQuotedMatcher_patternHole &&
-                 s.tpe <:< tpt.tpe &&
+          case (scrutinee @ Typed(scrut, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
+              if patternHole.symbol == s.tasty.Definitions_InternalQuotedMatcher_patternHole &&
+                 scrut.tpe <:< tpt.tpe &&
                  tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
             matched(scrutinee.seal)
 
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
           case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
-              if patternHole.symbol == qctx.tasty.Definitions_InternalQuotedMatcher_patternHole &&
+              if patternHole.symbol == s.tasty.Definitions_InternalQuotedMatcher_patternHole &&
                  scrutinee.tpe <:< tpt.tpe =>
             matched(scrutinee.seal)
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
           case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: Nil))
-              if pattern.symbol == qctx.tasty.Definitions_InternalQuotedMatcher_higherOrderHole =>
+              if pattern.symbol == s.tasty.Definitions_InternalQuotedMatcher_higherOrderHole =>
 
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
               val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
@@ -318,7 +318,7 @@ object Matcher {
             fn1 =?= fn2 &&& args1 =?= args2
 
           case (Block(stats1, expr1), Block(binding :: stats2, expr2)) if isTypeBinding(binding) =>
-            qctx.tasty.Constraints_add(binding.symbol :: Nil)
+            s.tasty.Constraints_add(binding.symbol :: Nil)
             matched(new SymBinding(binding.symbol, hasFromAboveAnnotation(binding.symbol))) &&& Block(stats1, expr1) =?= Block(stats2, expr2)
 
           /* Match block */
@@ -335,7 +335,7 @@ object Matcher {
 
           case (scrutinee, Block(typeBindings, expr2)) if typeBindings.forall(isTypeBinding) =>
             val bindingSymbols = typeBindings.map(_.symbol)
-            qctx.tasty.Constraints_add(bindingSymbols)
+            s.tasty.Constraints_add(bindingSymbols)
             bindingSymbols.foldRight(scrutinee =?= expr2)((x, acc) => matched(new SymBinding(x, hasFromAboveAnnotation(x))) &&& acc)
 
           /* Match if */

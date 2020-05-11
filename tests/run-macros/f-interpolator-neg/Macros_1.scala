@@ -11,7 +11,7 @@ object TestFooErrors { // Defined in tests
 
 object Macro {
 
-  def fooErrors(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using QuoteContext): Expr[List[(Boolean, Int, Int, Int, String)]] = {
+  def fooErrors(using s: Scope)(strCtxExpr: s.Expr[StringContext], argsExpr: s.Expr[Seq[Any]]): s.Expr[List[(Boolean, Int, Int, Int, String)]] = {
     (strCtxExpr, argsExpr) match {
       case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args)) =>
         fooErrorsImpl(parts, args, argsExpr)
@@ -20,8 +20,8 @@ object Macro {
     }
   }
 
-  def fooErrorsImpl(parts0: Seq[Expr[String]], args: Seq[Expr[Any]], argsExpr: Expr[Seq[Any]])(using QuoteContext)= {
-    val errors = List.newBuilder[Expr[(Boolean, Int, Int, Int, String)]]
+  def fooErrorsImpl(using s: Scope)(parts0: Seq[s.Expr[String]], args: Seq[s.Expr[Any]], argsExpr: s.Expr[Seq[Any]]) = {
+    val errors = List.newBuilder[s.Expr[(Boolean, Int, Int, Int, String)]]
     // true if error, false if warning
     // 0 if part, 1 if arg, 2 if strCtx, 3 if args
     // index in the list if arg or part, -1 otherwise
@@ -67,7 +67,7 @@ object Macro {
       }
     }
     val parts = parts0.map { case Const(s) => s }
-    dotty.internal.StringContextMacro.interpolate(parts.toList, args.toList, argsExpr, reporter) // Discard result
+    dotty.internal.StringContextMacro.interpolate2(parts.toList, args.toList, argsExpr, reporter) // Discard result
     Expr.ofList(errors.result())
   }
 }

@@ -4,11 +4,10 @@ object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition) }
 
-  def assertImpl(cond: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def assertImpl(using s: Scope)(cond: s.Expr[Boolean]): s.Expr[Unit] = {
+    import s.tasty._
     import util._
-
-    cond.unseal.underlyingArgument match {
+    cond.underlyingArgument match {
       case t @ Apply(Select(lhs, op), rhs :: Nil) =>
         let(lhs) { left =>
           let(rhs) { right =>
@@ -18,7 +17,7 @@ object scalatest {
               val r = right.seal
               val b = result.seal.cast[Boolean]
               val code = '{ scala.Predef.assert($b) }
-              code.unseal
+              code
             }
           }
         }.seal.cast[Unit]

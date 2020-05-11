@@ -5,45 +5,45 @@ import scala.quoted.staging._
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = run {
-    def code1(using QuoteContext) = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach1('arr, 'f) } }
+    def code1(using Scope) = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach1('arr, 'f) } }
     println(code1.show)
     println()
 
-    def code1Tpe(using QuoteContext) = '{ (arr: Array[String], f: String => Unit) => ${ foreach1Tpe1('arr, 'f) } }
+    def code1Tpe(using Scope) = '{ (arr: Array[String], f: String => Unit) => ${ foreach1Tpe1('arr, 'f) } }
     println(code1Tpe.show)
     println()
 
-    def code1Tpe2(using QuoteContext) = '{ (arr: Array[String], f: String => Unit) => ${ foreach1Tpe1('arr, 'f) } }
+    def code1Tpe2(using Scope) = '{ (arr: Array[String], f: String => Unit) => ${ foreach1Tpe1('arr, 'f) } }
     println(code1Tpe2.show)
     println()
 
-    def code2(using QuoteContext) = '{ (arr: Array[Int]) => ${ foreach1('arr, '{i => System.out.println(i)}) } }
+    def code2(using Scope) = '{ (arr: Array[Int]) => ${ foreach1('arr, '{(i: Int) => System.out.println(i)}) } }
     println(code2.show)
     println()
 
-    def code3(using QuoteContext) = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach3('arr, 'f) } }
+    def code3(using Scope) = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach3('arr, 'f) } }
     println(code3.show)
     println()
 
-    def code4(using QuoteContext) = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach4('arr, 'f, 4) } }
+    def code4(using Scope) = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach4('arr, 'f, 4) } }
     println(code4.show)
     println()
 
-    def liftedArray(using QuoteContext): Expr[Array[Int]] = Expr(Array(1, 2, 3, 4))
+    def liftedArray(using s: Scope): s.Expr[Array[Int]] = Expr(Array(1, 2, 3, 4))
     println(liftedArray.show)
     println()
 
 
     def printAll(arr: Array[Int]) = '{
       val arr1 = ${ Expr(arr) }
-      ${ foreach1('arr1, '{x => println(x)}) }
+      ${ foreach1('arr1, '{(x: Int) => println(x)}) }
     }
 
     println(printAll(Array(1, 3, 4, 5)).show)
     '{}
   }
 
-  def foreach1(arrRef: Expr[Array[Int]], f: Expr[Int => Unit])(using QuoteContext): Expr[Unit] = '{
+  def foreach1(using s: Scope)(arrRef: s.Expr[Array[Int]], f: s.Expr[Int => Unit]): s.Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {
@@ -53,7 +53,7 @@ object Test {
     }
   }
 
-  def foreach1Tpe1[T](arrRef: Expr[Array[T]], f: Expr[T => Unit])(implicit t: Type[T], qctx: QuoteContext): Expr[Unit] = '{
+  def foreach1Tpe1[T](using s: Scope)(arrRef: s.Expr[Array[T]], f: s.Expr[T => Unit])(implicit t: s.Type[T]): s.Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {
@@ -63,7 +63,7 @@ object Test {
     }
   }
 
-  def foreach1Tpe2[T: Type](arrRef: Expr[Array[T]], f: Expr[T => Unit])(using QuoteContext): Expr[Unit] = '{
+  def foreach1Tpe2[T](using s: Scope)(arrRef: s.Expr[Array[T]], f: s.Expr[T => Unit])(using s.Type[T]): s.Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {
@@ -73,7 +73,7 @@ object Test {
     }
   }
 
-  def foreach2(arrRef: Expr[Array[Int]], f: Expr[Int => Unit])(using QuoteContext): Expr[Unit] = '{
+  def foreach2(using s: Scope)(arrRef: s.Expr[Array[Int]], f: s.Expr[Int => Unit]): s.Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {
@@ -83,7 +83,7 @@ object Test {
     }
   }
 
-  def foreach3(arrRef: Expr[Array[Int]], f: Expr[Int => Unit])(using QuoteContext): Expr[Unit] = '{
+  def foreach3(using s: Scope)(arrRef: s.Expr[Array[Int]], f: s.Expr[Int => Unit]): s.Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     if (size % 3 != 0) throw new Exception("...")// for simplicity of the implementation
@@ -95,7 +95,7 @@ object Test {
     }
   }
 
-  def foreach3_2(arrRef: Expr[Array[Int]], f: Expr[Int => Unit])(using QuoteContext): Expr[Unit] = '{
+  def foreach3_2(using s: Scope)(arrRef: s.Expr[Array[Int]], f: s.Expr[Int => Unit]): s.Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     if (size % 3 != 0) throw new Exception("...")// for simplicity of the implementation
@@ -107,7 +107,7 @@ object Test {
     }
   }
 
-  def foreach4(arrRef: Expr[Array[Int]], f: Expr[Int => Unit], unrollSize: Int)(using QuoteContext): Expr[Unit] = '{
+  def foreach4(using s: Scope)(arrRef: s.Expr[Array[Int]], f: s.Expr[Int => Unit], unrollSize: Int): s.Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     if (size % ${Expr(unrollSize)} != 0) throw new Exception("...") // for simplicity of the implementation
@@ -117,7 +117,7 @@ object Test {
     }
   }
 
-  implicit object ArrayIntIsLiftable extends Liftable[Array[Int]] {
+  implicit def ArrayIntIsLiftable(using s: Scope): s.Liftable[Array[Int]] = new {
     override def toExpr(x: Array[Int]) = '{
       val array = new Array[Int](${Expr(x.length)})
       ${ foreachInRange(0, x.length)(i => '{ array(${Expr(i)}) = ${Expr(x(i))}}) }
@@ -125,8 +125,8 @@ object Test {
     }
   }
 
-  def foreachInRange(start: Int, end: Int)(f: Int => Expr[Unit])(using QuoteContext): Expr[Unit] = {
-    @tailrec def unroll(i: Int, acc: Expr[Unit]): Expr[Unit] =
+  def foreachInRange(using s: Scope)(start: Int, end: Int)(f: Int => s.Expr[Unit]): s.Expr[Unit] = {
+    @tailrec def unroll(i: Int, acc: s.Expr[Unit]): s.Expr[Unit] =
       if (i < end) unroll(i + 1, '{ $acc; ${f(i)} }) else acc
     if (start < end) unroll(start + 1, f(start)) else '{}
   }

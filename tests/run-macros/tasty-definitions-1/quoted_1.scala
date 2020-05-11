@@ -4,8 +4,8 @@ object Macros {
 
   inline def testDefinitions(): Unit = ${testDefinitionsImpl}
 
-  def testDefinitionsImpl(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def testDefinitionsImpl(using s: Scope): s.Expr[Unit] = {
+    import s.tasty._
 
     val buff = List.newBuilder[String]
     def printout(x: => String): Unit = {

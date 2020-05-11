@@ -8,15 +8,15 @@ object Macros {
   inline def isSubTypeOf[T, U]: Boolean =
     ${isSubTypeOfImpl('[T], '[U])}
 
-  def isTypeEqualImpl[T, U](t: Type[T], u: Type[U])(using QuoteContext) : Expr[Boolean] = {
-    import qctx.tasty._
-    val isTypeEqual = t.unseal.tpe =:= u.unseal.tpe
+  def isTypeEqualImpl[T, U](using s: Scope)(t: s.Type[T], u: s.Type[U]): s.Expr[Boolean] = {
+    import s.tasty._
+    val isTypeEqual = t.tpe =:= u.tpe
     Expr(isTypeEqual)
   }
 
-  def isSubTypeOfImpl[T, U](t: Type[T], u: Type[U])(using QuoteContext) : Expr[Boolean] = {
-    import qctx.tasty._
-    val isTypeEqual = t.unseal.tpe <:< u.unseal.tpe
+  def isSubTypeOfImpl[T, U](using s: Scope)(t: s.Type[T], u: s.Type[U]): s.Expr[Boolean] = {
+    import s.tasty._
+    val isTypeEqual = t.tpe <:< u.tpe
     Expr(isTypeEqual)
   }
 }

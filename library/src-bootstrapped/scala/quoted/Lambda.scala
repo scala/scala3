@@ -17,15 +17,15 @@ object Lambda {
    *       body('{3}) // returns '{ println(3) }
    *   ```
    */
-  def unapply[F, Args <: Tuple, Res, G](expr: Expr[F])(using qctx: QuoteContext, tf: TupledFunction[F, Args => Res], tg: TupledFunction[G, Tuple.Map[Args, Expr] => Expr[Res]], functionType: Type[F]): Option[/*QuoteContext ?=>*/ G] = {
-    import qctx.tasty._
-    val argTypes = functionType.unseal.tpe match
+  def unapply[F, Args <: Tuple, Res, G](using s: Scope)(expr: s.Expr[F])(using tf: TupledFunction[F, Args => Res], tg: TupledFunction[G, Tuple.Map[Args, s.Expr] => s.Expr[Res]], functionType: s.Type[F]): Option[/*Scope ?=>*/ G] = {
+    import s.tasty._
+    val argTypes = functionType.tpe match
       case AppliedType(_, functionArguments) => functionArguments.init.asInstanceOf[List[Type]]
-    val qctx2 = quoteContextWithCompilerInterface(qctx)
-    qctx2.tasty.lambdaExtractor(expr.unseal, argTypes).map { fn =>
-      def f(args: Tuple.Map[Args, Expr]): Expr[Res] =
-        fn(args.toArray.toList.map(_.asInstanceOf[Expr[Any]].unseal)).seal.asInstanceOf[Expr[Res]]
-      tg.untupled(f)
+    val s1 = quoteContextWithCompilerInterface(s)
+    s1.tasty.lambdaExtractor(expr, argTypes).map { fn =>
+      def f(args: Tuple.Map[Args, s.Expr]): s.Expr[Res] =
+        fn(args.toArray.toList.map(_.asInstanceOf[s.Expr[Any]])).seal.asInstanceOf[s.Expr[Res]]
+      tg.untupled(f) // TODO remove asInstanceOf
     }
   }
 

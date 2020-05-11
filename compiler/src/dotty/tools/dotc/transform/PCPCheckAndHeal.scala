@@ -17,6 +17,7 @@ import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.transform.TypeUtils._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
@@ -66,7 +67,6 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       checkAnnotations(tree)
       super.transform(tree)
     else tree match {
-
       case _: TypeTree | _: RefTree if tree.isType  =>
         val healedType = healType(tree.srcPos)(tree.tpe)
         if healedType == tree.tpe then tree
@@ -130,11 +130,14 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
         val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
         cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
-      case f @ Apply(fun @ TypeApply(_, _), qctx :: Nil) =>
+      case f @ Apply(fun @ TypeApply(_, _), scope :: Nil) if splice.isTerm =>
         // Type of the splice itsel must also be healed
         // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
-        val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
-        cpy.Apply(splice)(cpy.Apply(f)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), qctx :: Nil), body1 :: Nil)
+        val tp = healType(splice.sourcePos)(splice.tpe.widenTermRefExpr)
+        cpy.Apply(splice)(cpy.Apply(f)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), scope :: Nil), body1 :: Nil)
+      case splice: Select =>
+        val tagRef = getQuoteTypeTags.getTagRef(splice.qualifier.tpe.asInstanceOf[TermRef])
+        ref(tagRef).withSpan(splice.span)
     }
   }
 
@@ -180,7 +183,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
               else tryHeal(tp.symbol, tp, pos)
             case prefix: ThisType if !tp.symbol.isStatic && level > levelOf(prefix.cls) =>
               tryHeal(tp.symbol, tp, pos)
-            case prefix: TermRef if tp.symbol.isTypeSplice =>
+            case prefix: TermRef if tp.isTypeSplice =>
               prefix.symbol.info.argInfos match
                 case (tb: TypeBounds) :: _ =>
                   report.error(em"Cannot splice $tp because it is a wildcard type", pos)
@@ -221,8 +224,9 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  Emits and error if `T` cannot be healed and returns `T`.
    */
   protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos)(using Context): TypeRef = {
-    val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
+    val reqType = getCurrentScope.tpe.select(tpnme.Type).appliedTo(tp)
     val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
+
     tag.tpe match
 
       case tp: TermRef =>

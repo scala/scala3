@@ -1,10 +1,10 @@
 import quoted._
-import quoted.unsafe._
+
 object Main {
 
-  def myMacroImpl(body: Expr[_])(using qctx: QuoteContext) : Expr[_] = {
-    import qctx.tasty._
-    val bodyTerm = UnsafeExpr.underlyingArgument(body).unseal
+  def myMacroImpl(using s: Scope)(body: s.Expr[Any]): s.Expr[Any] = {
+    import s.tasty._
+    val bodyTerm = body.underlyingArgument
     val showed = bodyTerm.show
     '{
       println(${Expr(showed)})

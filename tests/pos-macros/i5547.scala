@@ -5,8 +5,8 @@ object scalatest {
    ${assertImpl('condition, '{""})}
 
   inline def assert2(condition: => Boolean): Unit =
-    ${ assertImpl('condition, Expr("")) }
+    ${ assertImpl('condition, '{""}) }
 
-  def assertImpl(condition: Expr[Boolean], clue: Expr[Any])(using QuoteContext): Expr[Unit] =
+  def assertImpl(using Scope)(condition: scope.Expr[Boolean], clue: scope.Expr[Any]): scope.Expr[Unit] =
     '{}
 }

@@ -12,10 +12,10 @@ object Test {
     println(ack3(4))
   }
 
-  def ackermann(m: Int)(using QuoteContext): Expr[Int => Int] = {
-    if (m == 0) '{ n => n + 1 }
-    else '{ n =>
-      def `ackermann(m-1)`(n: Int): Int = ${Expr.betaReduce('{ ${ackermann(m - 1)}(n)})} // Expr[Int => Int] applied to Expr[Int]
+  def ackermann(m: Int)(using s: Scope): s.Expr[Int => Int] = {
+    if (m == 0) '{ (n: Int) => n + 1 } // FIXME infer parameter type
+    else '{ (n: Int) =>
+      def `ackermann(m-1)`(n: Int): Int = ${Expr.betaReduce('{ ${ackermann(m - 1)}(n)})} // s.Expr[Int => Int] applied to Expr[Int]
       def `ackermann(m)`(n: Int): Int =
         if (n == 0) `ackermann(m-1)`(1) else `ackermann(m-1)`(`ackermann(m)`(n - 1))
       `ackermann(m)`(n)

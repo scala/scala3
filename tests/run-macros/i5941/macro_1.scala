@@ -11,8 +11,8 @@ object Lens {
     def set(t: T, s: S): S = _set(t)(s)
   }
 
-  def impl[S: Type, T: Type](getter: Expr[S => T])(using qctx: QuoteContext) : Expr[Lens[S, T]] = {
-    import qctx.tasty._
+  def impl[S, T](using s: Scope)(getter: s.Expr[S => T])(using s.Type[S], s.Type[T]): s.Expr[Lens[S, T]] = {
+    import s.tasty._
     import util._
 
     // obj.copy(a = obj.a.copy(b = a.b.copy(c = v)))
@@ -45,16 +45,15 @@ object Lens {
       }
     }
 
-    // exception: getter.unseal.underlyingArgument
-    getter.unseal match {
+    // exception: getter.underlyingArgument
+    getter match {
       case Function(param :: Nil, Path(o, parts)) if o.symbol == param.symbol =>
         '{
-          val setter = (t: T) => (s: S) => ${ setterBody(('s).unseal, ('t).unseal, parts).seal.cast[S] }
+          val setter = (t: T) => (s1: S) => ${ setterBody(('s1), ('t), parts).seal.cast[S] }
           apply($getter)(setter)
         }
       case _ =>
-        report.error("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
-        '{???}
+        report.throwError("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
     }
   }
 }
@@ -84,8 +83,8 @@ object Iso {
     def to(s: S): A = _to(s)
   }
 
-  def impl[S: Type, A: Type](using qctx: QuoteContext) : Expr[Iso[S, A]] = {
-    import qctx.tasty._
+  def impl[S, A](using s: Scope)(using s.Type[S], s.Type[A]): s.Expr[Iso[S, A]] = {
+    import s.tasty._
     import util._
 
     val tpS = Type.of[S]
@@ -95,8 +94,7 @@ object Iso {
     // 2. A must be a tuple
     // 3. The parameters of S must match A
     if (tpS.classSymbol.flatMap(cls => if (cls.flags.is(Flags.Case)) Some(true) else None).isEmpty) {
-      report.error("Only support generation for case classes")
-      return '{???}
+      report.throwError("Only support generation for case classes")
     }
 
     val cls = tpS.classSymbol.get
@@ -106,25 +104,23 @@ object Iso {
     }
 
     if (cls.caseFields.size != 1) {
-      report.error("Use GenIso.fields for case classes more than one parameter")
-      return '{???}
+      report.throwError("Use GenIso.fields for case classes more than one parameter")
     }
 
     val fieldTp = tpS.memberType(cls.caseFields.head)
     if (!(fieldTp =:= tpA)) {
-      report.error(s"The type of case class field $fieldTp does not match $tpA")
-      '{???}
+      report.throwError(s"The type of case class field $fieldTp does not match $tpA")
     } else '{
       // (p: S) => p._1
-      val to = (p: S) =>  ${ Select.unique(('p).unseal, "_1").seal.cast[A] }
+      val to = (p: S) =>  ${ Select.unique(('p), "_1").seal.cast[A] }
       // (p: A) => S(p)
-      val from = (p: A) =>  ${ Select.overloaded(Ident(companion), "apply", Nil, ('p).unseal :: Nil).seal.cast[S] }
+      val from = (p: A) =>  ${ Select.overloaded(Ident(companion), "apply", Nil, ('p) :: Nil).seal.cast[S] }
       apply(from)(to)
     }
   }
 
-  def implUnit[S: Type](using qctx: QuoteContext) : Expr[Iso[S, 1]] = {
-    import qctx.tasty._
+  def implUnit[S](using s: Scope)(using s.Type[S]): s.Expr[Iso[S, 1]] = {
+    import s.tasty._
     import util._
 
     val tpS = Type.of[S]
@@ -139,8 +135,7 @@ object Iso {
       val cls = tpS.classSymbol.get
 
       if (cls.caseFields.size != 0) {
-        report.error("Use GenIso.fields for case classes more than one parameter")
-        return '{???}
+        report.throwError("Use GenIso.fields for case classes more than one parameter")
       }
 
       val companion = tpS match {
@@ -154,13 +149,12 @@ object Iso {
       }
     }
     else {
-      report.error("Only support generation for case classes or singleton types")
-      '{???}
+      report.throwError("Only support generation for case classes or singleton types")
     }
   }
 
   // TODO: require whitebox macro
-  def implFields[S: Type](using qctx: QuoteContext) : Expr[Iso[S, Any]] = ???
+  def implFields[S](using s: Scope)(using s.Type[S]): s.Expr[Iso[S, Any]] = ???
 }
 
 object GenIso {
@@ -195,8 +189,8 @@ object Prism {
     def apply(a: A): S = app(a)
   }
 
-  def impl[S: Type, A <: S : Type](using qctx: QuoteContext) : Expr[Prism[S, A]] = {
-    import qctx.tasty._
+  def impl[S, A <: S](using s: Scope)(using s.Type[S], s.Type[A]): s.Expr[Prism[S, A]] = {
+    import s.tasty._
     import util._
 
     '{

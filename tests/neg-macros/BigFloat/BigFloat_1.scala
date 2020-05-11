@@ -42,7 +42,7 @@ object BigFloat extends App {
 
   // Should be in StdLib:
 
-  given Liftable[BigInt] {
+  given (using s: Scope) as s.Liftable[BigInt] {
     def toExpr(x: BigInt) =
       '{BigInt(${Expr(x.toString)})}
   }

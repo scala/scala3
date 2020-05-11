@@ -1,10 +1,8 @@
 import scala.quoted._
 
-def test(using QuoteContext) = {
+def test(using s: Scope) = {
 
-  given QuoteContext = ???
-
-  implicit def IntIsLiftable: Liftable[Int] = new {
+  implicit def IntIsLiftable(using s: Scope): s.Liftable[Int] = new {
     def toExpr(n: Int) = n match {
       case Int.MinValue    => '{Int.MinValue}
       case _ if n < 0      => '{- ${toExpr(n)}}
@@ -14,14 +12,14 @@ def test(using QuoteContext) = {
     }
   }
 
-  implicit def BooleanIsLiftable: Liftable[Boolean] = new {
+  implicit def BooleanIsLiftable(using s: Scope): s.Liftable[Boolean] = new {
     implicit def toExpr(b: Boolean) =
       if (b) '{true} else '{false}
   }
 
-  implicit def ListIsLiftable[T: Liftable: Type]: Liftable[List[T]] = new {
+  implicit def ListIsLiftable[T](using s: Scope)(using s.Liftable[T], s.Type[T]): s.Liftable[List[T]] = new {
     def toExpr(xs: List[T]) = xs match {
-      case x :: xs1 => '{ ${ Expr(x) } :: ${ toExpr(xs1) } }
+      case x :: xs1 => '{ ${ s.Expr(x) } :: ${ toExpr(xs1) } }
       case Nil => '{Nil: List[T]}
     }
   }
@@ -37,5 +35,5 @@ def test(using QuoteContext) = {
   Expr("abc")
   Expr(StringContext("a", "b", "c"))
 
-  val xs: Expr[List[Int]] = Expr(1 :: 2 :: 3 :: Nil)
+  val xs: s.Expr[List[Int]] = Expr(1 :: 2 :: 3 :: Nil)
 }

@@ -8,6 +8,7 @@ import Names._, StdNames._, NameOps._, Symbols._
 import typer.ConstFold
 import reporting.trace
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.transform.TypeUtils._
 import Decorators._
 import Constants.Constant
 import scala.collection.mutable
@@ -395,7 +396,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case New(_) | Closure(_, _, _) =>
       Pure
     case TypeApply(fn, _) =>
-      if (fn.symbol.is(Erased) || fn.symbol == defn.QuotedTypeModule_apply || fn.symbol == defn.Predef_classOf) Pure else exprPurity(fn)
+      if (fn.symbol.is(Erased) || fn.symbol == defn.ScopeTypeModule_apply || fn.symbol == defn.Predef_classOf) Pure else exprPurity(fn)
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass
@@ -910,7 +911,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       *  will return a type tree.
       */
     def unapply(tree: tpd.Select)(using Context): Option[tpd.Tree] =
-      if tree.symbol.isTypeSplice then Some(tree.qualifier) else None
+      if tree.tpe.isTypeSplice || (tree.qualifier.tpe.widenTermRefExpr.typeSymbol == defn.ScopeTypeClass && tree.name == tpnme.spliceType) then Some(tree.qualifier)
+      else None
   }
 
   /** Extractor for not-null assertions.

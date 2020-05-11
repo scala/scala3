@@ -5,8 +5,8 @@ import scala.quoted._
 object macros {
   inline def mcr(x: => Any) = ${mcrImpl('x)}
 
-  def mcrImpl(body: Expr[Any])(using ctx: QuoteContext) : Expr[Any] = {
-    import ctx.tasty._
-    body.unseal match { case Block(_, _) => '{2} }
+  def mcrImpl(using s: Scope)(body: s.Expr[Any]): s.Expr[Any] = {
+    import s.tasty._
+    body match { case Block(_, _) => '{2} }
   }
 }

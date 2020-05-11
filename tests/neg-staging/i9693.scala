@@ -7,7 +7,7 @@ object Test extends App {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
 
   run {
-    val expr: Expr[Int] = '{ var x = 1; x = 2; 42 }
+    val expr: scope.Expr[Int] = '{ var x = 1; x = 2; 42 }
 
     expr match {
       case '{ var x: Int = $binding; $body(x): Int } => // error

@@ -12,8 +12,8 @@ object Test {
     println(f(43))
   }
 
-  def f1(using QuoteContext): Expr[Int => Int] = '{ n => ${Expr.betaReduce('{$f2(n)})} }
-  def f2(using QuoteContext): Expr[Int => Int] = '{ n => ${Expr.betaReduce('{$f3(n)})} }
-  def f3(using QuoteContext): Expr[Int => Int] = '{ n => ${Expr.betaReduce('{$f4(n)})} }
-  def f4(using QuoteContext): Expr[Int => Int] = '{ n => n }
+  def f1(using s: Scope): s.Expr[Int => Int] = '{ (n: Int) => ${Expr.betaReduce('{$f2(n)})} } // FIXME infer parameter type
+  def f2(using s: Scope): s.Expr[Int => Int] = '{ (n: Int) => ${Expr.betaReduce('{$f3(n)})} }
+  def f3(using s: Scope): s.Expr[Int => Int] = '{ (n: Int) => ${Expr.betaReduce('{$f4(n)})} }
+  def f4(using s: Scope): s.Expr[Int => Int] = '{ (n: Int) => n }
 }

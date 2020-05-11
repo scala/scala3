@@ -5,10 +5,10 @@ object Macros {
   implicit inline def printTree[T](inline x: T): Unit =
     ${ impl('x) }
 
-  def impl[T](x: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def impl[T](using s: Scope)(x: s.Expr[T]): s.Expr[Unit] = {
+    import s.tasty._
 
-    val tree = x.unseal
+    val tree = x
 
     val treeStr = Expr(tree.showExtractors)
     val treeTpeStr = Expr(tree.tpe.showExtractors)

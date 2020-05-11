@@ -5,12 +5,12 @@ object Macro {
 
   inline def foo: Unit = ${ nested() }
 
-  private def nested()(using QuoteContext): Expr[Unit] = '{
+  private def nested(using s: Scope)(): s.Expr[Unit] = '{
     var i = 0
     ${
-      val x: Expr[Double] = '{
+      val x: scope.Expr[Double] = '{
         val y: Boolean = ${
-          val z: Expr[Int] = '{i + 3}
+          val z: scope.Expr[Int] = '{i + 3}
           '{true}
         }
         4.2

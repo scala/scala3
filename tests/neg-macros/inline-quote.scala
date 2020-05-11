@@ -2,10 +2,10 @@ import scala.quoted._
 
 object Test {
 
-  inline def foo(x: Expr[Int])(using QuoteContext): Expr[Int] = '{ // error
+  inline def foo(using s: Scope)(x: s.Expr[Int]): s.Expr[Int] = '{ // error
     println("foo")
     ${
-      ${??? : Expr[Int]}
+      ${??? : scope.Expr[Int]}
 
       x
     }

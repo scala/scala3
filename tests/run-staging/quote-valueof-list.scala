@@ -5,10 +5,10 @@ object Test {
 
   given Toolbox = Toolbox.make(getClass.getClassLoader)
 
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = usingNewScope {
 
-    implicit def UnliftableInt: Unliftable[Int] = new {
-      def fromExpr(n: Expr[Int]) = n match {
+    implicit def UnliftableInt(using s: Scope): s.Unliftable[Int] = new {
+      def fromExpr(n: s.Expr[Int]): Option[Int] = n match {
         case '{ 0 } => Some(0)
         case '{ 1 } => Some(1)
         case '{ 2 } => Some(1)
@@ -16,16 +16,16 @@ object Test {
       }
     }
 
-    implicit def UnliftableBoolean: Unliftable[Boolean] = new Unliftable[Boolean] {
-      def fromExpr(b: Expr[Boolean]) = b match {
+    implicit def UnliftableBoolean(using s: Scope): s.Unliftable[Boolean] = new s.Unliftable[Boolean] {
+      def fromExpr(b: s.Expr[Boolean]): Option[Boolean] = b match {
         case '{ true } => Some(true)
         case '{ false } => Some(false)
         case _ => None
       }
     }
 
-    implicit def UnliftableList[T: Unliftable: Type]: Unliftable[List[T]] = new {
-      def fromExpr(xs: Expr[List[T]]) = (xs: Expr[Any]) match {
+    implicit def UnliftableList[T](using s: Scope)(using s.Type[T], s.Unliftable[T]): s.Unliftable[List[T]] = new {
+      def fromExpr(xs: s.Expr[List[T]]): Option[List[T]] = (xs: s.Expr[Any]) match {
         case '{ ($xs1: List[T]).::($x) } =>
           for { head <- x.unlift; tail <- xs1.unlift }
           yield head :: tail
@@ -34,8 +34,8 @@ object Test {
       }
     }
 
-    implicit def UnliftableOption[T: Unliftable: Type]: Unliftable[Option[T]] = new {
-      def fromExpr(expr: Expr[Option[T]]) = expr match {
+    implicit def UnliftableOption[T](using s: Scope)(using s.Type[T], s.Unliftable[T]): s.Unliftable[Option[T]] = new {
+      def fromExpr(expr: s.Expr[Option[T]]): Option[Option[T]] = expr match {
         case '{ Some[T]($x) } => for (v <- x.unlift) yield Some(v)
         case '{ None } => Some(None)
         case _ => None
@@ -50,11 +50,11 @@ object Test {
     println(('{false}).unlift)
     println(('{ println(); false }).unlift)
 
-    println(('{ Nil }: Expr[List[String]]).unlift)
-    println(('{ "a" :: "b" :: "c" :: Nil }: Expr[List[String]]).unlift)
+    println(('{ Nil }: scope.Expr[List[String]]).unlift)
+    println(('{ "a" :: "b" :: "c" :: Nil }: scope.Expr[List[String]]).unlift)
 
-    println(('{ None }: Expr[Option[Int]]).unlift)
-    println(('{ Some("abc") }: Expr[Option[String]]).unlift)
+    println(('{ None }: scope.Expr[Option[Int]]).unlift)
+    println(('{ Some("abc") }: scope.Expr[Option[String]]).unlift)
 
   }
 }

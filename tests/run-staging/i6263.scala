@@ -5,14 +5,14 @@ object Test {
 
   given Toolbox = Toolbox.make(getClass.getClassLoader)
 
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = usingNewScope {
     fn("foo")
     fn((1,2))
     fn(O)
     fn(1)
   }
 
-  def fn[T : Type](v : T) = "ok"
+  def fn[T](using s: Scope)(v : T)(using s.Type[T]) = "ok"
 }
 
 object O

@@ -14,8 +14,8 @@ object Const {
    *  }
    *  ```
    */
-  def unapply[T](expr: Expr[T])(using qctx: QuoteContext): Option[T] = {
-    import qctx.tasty._
+  def unapply[T](using s: Scope)(expr: s.Expr[T]): Option[T] = {
+    import s.tasty._
     def rec(tree: Term): Option[T] = tree match {
       case Literal(c) => Some(c.value.asInstanceOf[T])
       case Block(Nil, e) => rec(e)
@@ -23,7 +23,7 @@ object Const {
       case Inlined(_, Nil, e) => rec(e)
       case _  => None
     }
-    rec(expr.unseal)
+    rec(expr)
   }
 
 }

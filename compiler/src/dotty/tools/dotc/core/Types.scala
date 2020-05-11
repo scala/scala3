@@ -92,6 +92,8 @@ object Types {
    */
   abstract class Type extends Hashable with printing.Showable {
 
+    type X <: AnyKind // FIXME used for reflection. find another way to add this type
+
 // ----- Tests -----------------------------------------------------
 
 //    // debug only: a unique identifier for a type

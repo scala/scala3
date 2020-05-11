@@ -11,11 +11,11 @@ object A:
 
   def pure[A](a:A):A = ???
 
-  def transformImplExpr[A:Type](using qctx: QuoteContext)(expr: Expr[A]): Expr[A] = {
-     import qctx.tasty._
-     expr.unseal match {
-         case Inlined(x,y,z) => transformImplExpr(z.seal.asInstanceOf[Expr[A]])
-         case Apply(fun,args) =>  '{  A.pure(${Apply(fun,args).seal.asInstanceOf[Expr[A]]}) }
+  def transformImplExpr[A](using s: Scope)(expr: s.Expr[A])(using s.Type[A]): s.Expr[A] = {
+    import s.tasty._
+     expr match {
+         case Inlined(x,y,z) => transformImplExpr(z.seal.asInstanceOf[s.Expr[A]])
+         case Apply(fun,args) =>  '{  A.pure(${Apply(fun,args).seal.asInstanceOf[s.Expr[A]]}) }
          case other => expr
      }
   }

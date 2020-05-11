@@ -4,10 +4,10 @@ object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition, '{""}) }
 
-  def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def assertImpl(using s: Scope)(cond: s.Expr[Boolean], clue: s.Expr[Any]): s.Expr[Unit] = {
+    import s.tasty._
 
-    cond.unseal.underlyingArgument match {
+    cond.underlyingArgument match {
       case app @ Apply(select @ Select(lhs, op), rhs :: Nil) =>
         val cond = Apply(Select.copy(select)(lhs, "exists"), rhs :: Nil).seal.cast[Boolean]
         '{ scala.Predef.assert($cond) }

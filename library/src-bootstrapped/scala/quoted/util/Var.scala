@@ -7,10 +7,10 @@ package util
 sealed trait Var[T] {
 
   // Retrieves the value of the variable
-  def get(using qctx: QuoteContext): Expr[T]
+  def get(using s: Scope): s.Expr[T]
 
   // Update the variable with the expression of a value (`e` corresponds to the RHS of variable assignment `x = e`)
-  def update(e: Expr[T])(using qctx: QuoteContext): Expr[Unit]
+  def update(using s: Scope)(e: s.Expr[T]): s.Expr[Unit]
 }
 
 object Var {
@@ -36,15 +36,16 @@ object Var {
    *  }
    *  ```
    */
-  def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U])(using qctx: QuoteContext): Expr[U] = '{
+  // FIXME
+  def apply[T, U](using s: Scope)(init: s.Expr[T])(body: Var[T] => s.Expr[U])(using s.Type[T], s.Type[U]): s.Expr[U] = ??? /*'{
     var x = $init
     ${
       body(
         new Var[T] {
-          def get(using qctx: QuoteContext): Expr[T] = 'x
-          def update(e: Expr[T])(using qctx: QuoteContext): Expr[Unit] = '{ x = $e }
+          def get(using s: Scope): s.Expr[T] = 'x
+          def update(using s: Scope)(e: s.Expr[T]): s.Expr[Unit] = '{ x = $e }
         }
       )
     }
-  }
+  }*/
 }

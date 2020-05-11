@@ -1,11 +1,11 @@
 import scala.quoted._
 
 inline def inner(exprs: Any): Any = ${innerImpl('exprs)}
-def innerImpl(exprs: Expr[Any])(using QuoteContext): Expr[Any] =
+def innerImpl(using s: Scope)(exprs: s.Expr[Any]): s.Expr[Any] =
   '{$exprs ; ()}
 
 inline def outer(expr: => Any): Any = ${outerImpl('expr)}
-def outerImpl(body: Expr[Any])(using ctx: QuoteContext): Expr[Any] = {
-  import ctx.tasty._
-  body.unseal.underlyingArgument.seal
+def outerImpl(using s: Scope)(body: s.Expr[Any]): s.Expr[Any] = {
+  import s.tasty._
+  body.underlyingArgument.seal
 }

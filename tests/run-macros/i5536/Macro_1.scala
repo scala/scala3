@@ -3,9 +3,9 @@ import scala.quoted._
 object scalatest {
   inline def assert(condition: => Boolean): Unit = ${assertImpl('condition)}
 
-  def assertImpl(condition: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
-    val tree = condition.unseal
+  def assertImpl(using s: Scope)(condition: s.Expr[Boolean]): s.Expr[Unit] = {
+    import s.tasty._
+    val tree = condition
     def exprStr: String = condition.show
 
     tree.underlyingArgument match {

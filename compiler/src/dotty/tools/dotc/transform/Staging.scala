@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.util.{SourceFile, SrcPos}
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.transform.TypeUtils._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
 import dotty.tools.dotc.typer.Inliner
@@ -63,7 +64,7 @@ class Staging extends MacroTransform {
       }
 
       tree.tpe match {
-        case tpe @ TypeRef(prefix, _) if tpe.typeSymbol.isTypeSplice =>
+        case tpe @ TypeRef(prefix, _) if tpe.isTypeSplice =>
           // Type splices must have a know term ref, usually to an implicit argument
           // This is mostly intended to catch `quoted.Type[T]#splice` types which should just be `T`
           assert(prefix.isInstanceOf[TermRef] || prefix.isInstanceOf[ThisType], prefix)

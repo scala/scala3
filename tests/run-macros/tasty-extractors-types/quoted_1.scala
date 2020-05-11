@@ -4,10 +4,8 @@ object Macros {
 
   implicit inline def printType[T]: Unit = ${ impl('[T]) }
 
-  def impl[T](x: Type[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
-
-    val tree = x.unseal
+  def impl[T](using s: Scope)(x: s.Type[T]): s.Expr[Unit] = {
+    val tree = x
     '{
       println(${Expr(tree.showExtractors)})
       println(${Expr(tree.tpe.showExtractors)})

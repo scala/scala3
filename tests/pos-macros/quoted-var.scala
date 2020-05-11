@@ -3,13 +3,13 @@ import scala.quoted._
 class Var[T]
 
 object Var {
-  def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U])(using qctx: QuoteContext): Expr[U] = '{
+  def apply[T, U](using s: Scope)(init: s.Expr[T])(body: Var[T] => s.Expr[U])(using s.Type[T], s.Type[U]): s.Expr[U] = '{
     var x = $init
     ${
       body(
         new Var[T] {
-          def get(using qctx: QuoteContext): Expr[T] = 'x
-          def update(e: Expr[T])(using qctx: QuoteContext): Expr[Unit] = '{ x = $e }
+          def get(using s1: s.Nested): s1.Expr[T] = 'x
+          def update(using s1: s.Nested)(e: s1.Expr[T]): s1.Expr[Unit] = '{ x = $e }
         }
       )
     }

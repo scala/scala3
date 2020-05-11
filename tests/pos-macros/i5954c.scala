@@ -5,11 +5,11 @@ abstract class MatcherFactory1[A] {
 object MatcherFactory1 {
   import scala.quoted._
 
-  def impl(self: Expr[MatcherFactory1[Int]#AndNotWord])(using QuoteContext) =
+  def impl(using s: Scope)(self: s.Expr[MatcherFactory1[Int]#AndNotWord]) =
     '{ val a: Any = $self }
 
 
-  def impl[T: Type](self: Expr[MatcherFactory1[T]#AndNotWord])(using QuoteContext) =
+  def impl[T](using s: Scope)(self: s.Expr[MatcherFactory1[T]#AndNotWord])(using s.Type[T]) =
     '{ val a: Any = $self }
 
 }

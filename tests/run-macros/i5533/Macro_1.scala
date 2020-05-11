@@ -7,10 +7,10 @@ object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${assertImpl('condition)}
 
-  def assertImpl(condition: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def assertImpl(using s: Scope)(condition: s.Expr[Boolean]): s.Expr[Unit] = {
+    import s.tasty._
 
-    val tree = condition.unseal
+    val tree = condition
 
     val expr = tree.seal.cast[Boolean]
 

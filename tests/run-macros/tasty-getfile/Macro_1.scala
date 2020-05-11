@@ -6,7 +6,7 @@ object SourceFiles {
   implicit inline def getThisFile: String =
     ${getThisFileImpl}
 
-  private def getThisFileImpl(using qctx: QuoteContext) : Expr[String] =
-    Expr(qctx.tasty.Source.path.getFileName.toString)
+  private def getThisFileImpl(using s: Scope): s.Expr[String] =
+    Expr(s.tasty.Source.path.getFileName.toString)
 
 }

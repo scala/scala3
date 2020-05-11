@@ -57,18 +57,18 @@ object StringContextMacro {
    *  @param args the Expr that holds the sequence of arguments to interpolate to the String in the correct format
    *  @return the Expr containing the formatted and interpolated String or an error/warning if the parameters are not correct
    */
-  private def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty._
-    val sourceFile = strCtxExpr.unseal.pos.sourceFile
+  private def interpolate(using s: Scope)(strCtxExpr: s.Expr[StringContext], argsExpr: s.Expr[Seq[Any]]): s.Expr[String] = {
+    import s.tasty._
+    val sourceFile = strCtxExpr.pos.sourceFile
 
     val (partsExpr, parts) = strCtxExpr match {
       case Expr.StringContext(p1 @ Consts(p2)) => (p1.toList, p2.toList)
-      case _ => report.throwError("Expected statically known String Context", strCtxExpr)
+      case _ => report.throwErrorOn(strCtxExpr, "Expected statically known String Context")
     }
 
     val args = argsExpr match {
       case Varargs(args) => args
-      case _ => report.throwError("Expected statically known argument list", argsExpr)
+      case _ => report.throwErrorOn(argsExpr, "Expected statically known argument list")
     }
 
     val reporter = new Reporter{
@@ -76,28 +76,28 @@ object StringContextMacro {
       private[this] var oldReported = false
       def partError(message : String, index : Int, offset : Int) : Unit = {
         reported = true
-        val positionStart = partsExpr(index).unseal.pos.start + offset
+        val positionStart = partsExpr(index).pos.start + offset
         error(message, sourceFile, positionStart, positionStart)
       }
       def partWarning(message : String, index : Int, offset : Int) : Unit = {
         reported = true
-        val positionStart = partsExpr(index).unseal.pos.start + offset
+        val positionStart = partsExpr(index).pos.start + offset
         warning(message, sourceFile, positionStart, positionStart)
       }
 
       def argError(message : String, index : Int) : Unit = {
         reported = true
-        error(message, args(index).unseal.pos)
+        error(message, args(index).pos)
       }
 
       def strCtxError(message : String) : Unit = {
         reported = true
-        val positionStart = strCtxExpr.unseal.pos.start
+        val positionStart = strCtxExpr.pos.start
         error(message, sourceFile, positionStart, positionStart)
       }
       def argsError(message : String) : Unit = {
         reported = true
-        error(message, argsExpr.unseal.pos)
+        error(message, argsExpr.pos)
       }
 
       def hasReported() : Boolean = {
@@ -114,7 +114,7 @@ object StringContextMacro {
       }
     }
 
-    interpolate(parts, args, argsExpr, reporter)
+    interpolate2(parts, args, argsExpr, reporter)
   }
 
   /** Helper function for the interpolate function above
@@ -124,8 +124,8 @@ object StringContextMacro {
    *  @param reporter the reporter to return any error/warning when a problem is encountered
    *  @return the Expr containing the formatted and interpolated String or an error/warning report if the parameters are not correct
    */
-  def interpolate(parts0 : List[String], args : Seq[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty._
+  def interpolate2(using s: Scope)(parts0 : List[String], args : Seq[s.Expr[Any]], argsExpr: s.Expr[Seq[Any]], reporter : Reporter): s.Expr[String] = {
+    import s.tasty._
 
     /** Checks if the number of arguments are the same as the number of formatting strings
      *
@@ -647,7 +647,7 @@ object StringContextMacro {
      *  @param maxArgumentIndex an Option containing the maximum argument index possible, None if no args are specified
      *  @return a list with all the elements of the conversion per formatting string
      */
-    def checkPart(part : String, start : Int, argument : Option[(Int, Expr[Any])], maxArgumentIndex : Option[Int]) : List[(Option[(Type, Int)], Char, List[(Char, Int)])] = {
+    def checkPart(part : String, start : Int, argument : Option[(Int, s.Expr[Any])], maxArgumentIndex : Option[Int]) : List[(Option[(Type, Int)], Char, List[(Char, Int)])] = {
       reporter.resetReported()
       val hasFormattingSubstring = getFormattingSubstring(part, part.size, start)
       if (hasFormattingSubstring.nonEmpty) {
@@ -658,7 +658,7 @@ object StringContextMacro {
           case Some(argIndex, arg) => {
             val (hasArgumentIndex, argumentIndex, flags, hasWidth, width, hasPrecision, precision, hasRelative, relativeIndex, conversion) = getFormatSpecifiers(part, argIndex, argIndex + 1, false, formattingStart)
             if (!reporter.hasReported()){
-              val conversionWithType = checkFormatSpecifiers(argIndex + 1, hasArgumentIndex, argumentIndex, Some(argIndex + 1), start == 0, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, Some(arg.unseal.tpe), part)
+              val conversionWithType = checkFormatSpecifiers(argIndex + 1, hasArgumentIndex, argumentIndex, Some(argIndex + 1), start == 0, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, Some(arg.tpe), part)
               nextStart = conversion + 1
               conversionWithType :: checkPart(part, nextStart, argument, maxArgumentIndex)
             } else checkPart(part, conversion + 1, argument, maxArgumentIndex)

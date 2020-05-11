@@ -4,9 +4,9 @@ object Macro {
 
   inline def optimize[T](inline x: T): Any = ${ Macro.impl('x) }
 
-  def impl[T: Type](x: Expr[T])(using QuoteContext): Expr[Any] = {
+  def impl[T](using s: Scope)(x: s.Expr[T])(using s.Type[T]): s.Expr[Any] = {
 
-    def optimize(x: Expr[Any]): Expr[Any] = x match {
+    def optimize(x: s.Expr[Any]): s.Expr[Any] = x match {
       case '{ type $t; ($ls: List[`$t`]).filter($f).filter($g) } =>
         optimize('{ $ls.filter(x => ${Expr.betaReduce('{$f(x)})} && ${Expr.betaReduce('{$g(x)})}) })
 

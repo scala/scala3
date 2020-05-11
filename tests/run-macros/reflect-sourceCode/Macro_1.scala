@@ -4,8 +4,7 @@ object api {
   extension [T](x: => T) inline def reflect: String =
     ${ reflImpl('x) }
 
-  private def reflImpl[T](x: Expr[T])(implicit qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty._
-    Expr(x.unseal.pos.sourceCode)
-  }
+  private def reflImpl[T](using s: Scope)(x: s.Expr[T]): s.Expr[String] =
+    Expr(x.pos.sourceCode)
+
 }

@@ -12,10 +12,10 @@ object Asserts {
   inline def macroAssert(inline cond: Boolean): Unit =
     ${ impl('cond) }
 
-  def impl(cond: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def impl(using s: Scope)(cond: s.Expr[Boolean]): s.Expr[Unit] = {
+    import s.tasty._
 
-    val tree = cond.unseal
+    val tree = cond
 
     def isOps(tpe: Type): Boolean = tpe match {
       case tpe: TermRef => tpe.termSymbol.isDefDef && tpe.name == "Ops"// TODO check that the parent is Asserts

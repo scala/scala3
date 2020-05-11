@@ -5,6 +5,6 @@ abstract class MatcherFactory1 {
 object MatcherFactory1 {
   import scala.quoted._
 
-  def impl2(a: MatcherFactory1)(self: Expr[a.AndNotWord]) =
+  def impl2(using s: Scope)(a: MatcherFactory1)(self: s.Expr[a.AndNotWord]) =
     '{ val a: Any = $self } // error: access to value a from wrong staging level
 }

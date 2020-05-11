@@ -1,6 +1,6 @@
-import scala.quoted.QuoteContext
+import scala.quoted.Scope
 
-def test(using QuoteContext) = {
+def test(using s: Scope) = {
   val x = '{0}
   val y = '{ // error: Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.
     $x

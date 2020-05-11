@@ -4,7 +4,7 @@ object Macros {
   def printStack(tag: String): Unit = {
     println(tag + ": "+ new Exception().getStackTrace().apply(1))
   }
-  def assertImpl(expr: Expr[Boolean])(using QuoteContext) = '{
+  def assertImpl(using s: Scope)(expr: s.Expr[Boolean]) = '{
     printStack("assertImpl")
     println($expr)
   }

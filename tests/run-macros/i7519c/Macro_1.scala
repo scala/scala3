@@ -7,7 +7,7 @@ class Quoted[T]
 
 inline def quote[T]: String = ${ quoteImpl[T] }
 
-def quoteImpl[T: Type](using qctx: QuoteContext): Expr[String] = {
-  val value: Expr[Int] = '{ 42 }
+def quoteImpl[T](using s: Scope)(using s.Type[T]): s.Expr[String] = {
+  val value: s.Expr[Int] = '{ 42 }
   Expr(('{ new Quoted[T @Annot($value)] }).show)
 }

@@ -5,11 +5,11 @@ import scala.quoted._
 trait ExprMap {
 
   /** Map an expression `e` with a type `tpe` */
-  def transform[T](e: Expr[T])(using qctx: QuoteContext, tpe: Type[T]): Expr[T]
+  def transform[T](using s: Scope)(e: s.Expr[T])(using tpe: s.Type[T]): s.Expr[T]
 
   /** Map subexpressions an expression `e` with a type `tpe` */
-  def transformChildren[T](e: Expr[T])(using qctx: QuoteContext, tpe: Type[T]): Expr[T] = {
-    import qctx.tasty._
+  def transformChildren[T](using s: Scope)(e: s.Expr[T])(using tpe: s.Type[T]): s.Expr[T] = {
+    import s.tasty._
     final class MapChildren() {
 
       def transformStatement(tree: Statement)(using ctx: Context): Statement = {
@@ -104,9 +104,9 @@ trait ExprMap {
             transformTermChildren(tree, tpe)
           case _ if tree.isExpr =>
             type X
-            val expr = tree.seal.asInstanceOf[Expr[X]]
-            val t = tpe.seal.asInstanceOf[quoted.Type[X]]
-            transform(expr)(using qctx, t).unseal
+            val expr = tree.seal.asInstanceOf[s.Expr[X]]
+            val t = tpe.seal.get.asInstanceOf[s.Type[X]]
+            transform(expr)(using t)
           case _ =>
             transformTermChildren(tree, tpe)
 
@@ -146,7 +146,7 @@ trait ExprMap {
         trees mapConserve (transformTypeCaseDef(_))
 
     }
-    new MapChildren().transformTermChildren(e.unseal, tpe.unseal.tpe).asExprOf[T]
+    new MapChildren().transformTermChildren(e, tpe.tpe).asExprOf[T]
   }
 
 }

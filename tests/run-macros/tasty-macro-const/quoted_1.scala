@@ -4,9 +4,9 @@ object Macros {
 
   inline def natConst(x: Int): Int = ${ natConstImpl('x) }
 
-  def natConstImpl(x: Expr[Int])(using qctx: QuoteContext) : Expr[Int] = {
-    import qctx.tasty._
-    val xTree: Term = x.unseal
+  def natConstImpl(using s: Scope)(x: s.Expr[Int]): s.Expr[Int] = {
+    import s.tasty._
+    val xTree: Term = x
     xTree match {
       case Inlined(_, _, Literal(Constant(n: Int))) =>
         if (n <= 0) {

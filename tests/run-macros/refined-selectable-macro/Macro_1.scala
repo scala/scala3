@@ -14,10 +14,10 @@ object Macro {
     transparent inline def fromTuple[T <: Tuple](inline s: T): Any = ${ fromTupleImpl('s, '{ (x: Array[(String, Any)]) => fromUntypedTuple(x: _*) } ) }
   }
 
-  private def toTupleImpl(s: Expr[Selectable])(using qctx:QuoteContext) : Expr[Tuple] = {
-    import qctx.tasty._
+  private def toTupleImpl(using s: Scope)(e: s.Expr[Selectable]): s.Expr[Tuple] = {
+    import s.tasty._
 
-    val repr = s.unseal.tpe.widenTermRefExpr.dealias
+    val repr = e.tpe.widenTermRefExpr.dealias
 
     def rec(tpe: Type): List[(String, Type)] = {
       tpe match {
@@ -26,7 +26,7 @@ object Macro {
             case _: TypeBounds =>
               rec(parent)
             case _: MethodType | _: PolyType | _: TypeBounds | _: ByNameType =>
-              report.warning(s"Ignored `$name` as a field of the record", s)
+              report.warningOn(e, s"Ignored `$name` as a field of the record")
               rec(parent)
             case info: Type =>
               (name, info) :: rec(parent)
@@ -36,10 +36,10 @@ object Macro {
       }
     }
 
-    def tupleElem(name: String, info: Type): Expr[Any] = {
+    def tupleElem(name: String, info: Type): s.Expr[Any] = {
       val nameExpr = Expr(name)
-      info.seal match { case '[$qType] =>
-          Expr.ofTupleFromSeq(Seq(nameExpr, '{ $s.selectDynamic($nameExpr).asInstanceOf[$qType] }))
+      info.seal.get match { case '[$qType] =>
+          Expr.ofTupleFromSeq(Seq(nameExpr, '{ $e.selectDynamic($nameExpr).asInstanceOf[$qType] }))
       }
     }
 
@@ -48,10 +48,10 @@ object Macro {
     Expr.ofTupleFromSeq(ret)
   }
 
-  private def fromTupleImpl[T: Type](s: Expr[Tuple], newRecord: Expr[Array[(String, Any)] => T])(using qctx:QuoteContext) : Expr[Any] = {
-    import qctx.tasty._
+  private def fromTupleImpl[T](using s: Scope)(e: s.Expr[Tuple], newRecord: s.Expr[Array[(String, Any)] => T])(using s.Type[T]): s.Expr[Any] = {
+    import s.tasty._
 
-    val repr = s.unseal.tpe.widenTermRefExpr.dealias
+    val repr = e.tpe.widenTermRefExpr.dealias
 
     def isTupleCons(sym: Symbol): Boolean = sym.owner == defn.ScalaPackageClass && sym.name == "*:"
 
@@ -60,10 +60,10 @@ object Macro {
         // Tuple2(S, T) where S must be a constant string type
         case AppliedType(parent, ConstantType(Constant(name: String)) :: (info: Type) :: Nil) if (parent.typeSymbol == defn.TupleClass(2)) =>
           if seen(name) then
-            report.error(s"Repeated record name: $name", s)
+            report.errorOn(e, s"Repeated record name: $name")
           (seen + name, (name, info))
         case _ =>
-          report.error("Tuple type was not explicit expected `(S, T)` where S is a singleton string", s)
+          report.errorOn(e, "Tuple type was not explicit expected `(S, T)` where S is a singleton string")
           (seen, ("<error>", Type.of[Any]))
       }
     }
@@ -82,17 +82,17 @@ object Macro {
           })._2
         // Tuple
         case _ =>
-          report.error("Tuple type must be of known size", s)
+          report.errorOn(e, "Tuple type must be of known size")
           Nil
       }
     }
 
     val r = rec(repr, Set.empty)
 
-    val refinementType = r.foldLeft('[T].unseal.tpe)((acc, e) => Refinement(acc, e._1, e._2)).seal
+    val refinementType = r.foldLeft('[T].tpe)((acc, e) => Refinement(acc, e._1, e._2)).seal.get
 
     refinementType match { case '[$qType] =>
-        '{ $newRecord($s.toArray.map(e => e.asInstanceOf[(String, Any)])).asInstanceOf[${qType}] }
+        '{ $newRecord($e.toArray.map(e => e.asInstanceOf[(String, Any)])).asInstanceOf[${qType}] }
     }
   }
 }

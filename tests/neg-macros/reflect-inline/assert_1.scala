@@ -4,7 +4,7 @@ object api {
   extension (inline x: String) inline def stripMargin2: String =
     ${ stripImpl('x) }
 
-  private def stripImpl(x: Expr[String])(using qctx: QuoteContext): Expr[String] =
+  private def stripImpl(using s: Scope)(x: s.Expr[String]): s.Expr[String] =
     Expr(x.unliftOrError.stripMargin)
 
 }

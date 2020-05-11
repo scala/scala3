@@ -1,7 +1,7 @@
 import scala.quoted._
 import scala.quoted.staging._
 
-def foo(n: Int, t: Expr[Int])(using QuoteContext): Expr[Int] =
+def foo(using s: Scope)(n: Int, t: s.Expr[Int]): s.Expr[Int] =
   if (n == 0) t
   else '{ val a = ${Expr(n)}; ${foo(n - 1, 'a)} + $t  }
 

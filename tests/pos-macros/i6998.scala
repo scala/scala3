@@ -1,5 +1,5 @@
 import scala.quoted._
 
-def foo(using QuoteContext) : Unit = {
-  val '{ $f : (Int => Double) } = ??? : Expr[Any]
+def foo(using s: Scope) : Unit = {
+  val '{ $f : (Int => Double) } = ??? : s.Expr[Any]
 }

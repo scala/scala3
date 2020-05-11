@@ -4,7 +4,7 @@ object Macro {
   inline def test[A, B]: Any =
     ${ impl[A, B] }
 
-  def impl[A : Type, B : Type](using QuoteContext): Expr[Any] = {
+  def impl[A, B](using s: Scope)(using s.Type[A], s.Type[B]): s.Expr[Any] = {
     val t = '[Map[A, B]]
     '{
       new Object().asInstanceOf[$t]

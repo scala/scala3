@@ -3,9 +3,9 @@ import scala.quoted.staging._
 
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = usingNewScope {
 
-    val q = '{ (using qctx: QuoteContext) =>
+    val q = '{ (using s: Scope) =>
       val t = '[String]
       t
     }

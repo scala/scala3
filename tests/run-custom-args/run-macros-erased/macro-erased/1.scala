@@ -10,12 +10,12 @@ object Macro {
   inline def foo7(i: Int) = $ { case7('{ i })(1)('{ i }) }
   inline def foo8(i: Int) = $ { case8('{ i })('{ i })(1) }
 
-  def case1(erased i: Expr[Int])(using QuoteContext): Expr[Int] = '{ 0 }
-  def case2 (i: Int)(erased j: Expr[Int])(using QuoteContext): Expr[Int] = '{ 0 }
-  def case3(erased i: Expr[Int]) (j: Int)(using QuoteContext): Expr[Int] = '{ 0 }
-  def case4 (h: Int)(erased i: Expr[Int], j: Expr[Int])(using QuoteContext): Expr[Int] = '{ 0 }
-  def case5(erased i: Expr[Int], j: Expr[Int]) (h: Int)(using QuoteContext): Expr[Int] = '{ 0 }
-  def case6 (h: Int)(erased i: Expr[Int])(erased j: Expr[Int])(using QuoteContext): Expr[Int] = '{ 0 }
-  def case7(erased i: Expr[Int]) (h: Int)(erased j: Expr[Int])(using QuoteContext): Expr[Int] = '{ 0 }
-  def case8(erased i: Expr[Int])(erased j: Expr[Int]) (h: Int)(using QuoteContext): Expr[Int] = '{ 0 }
+  def case1(using s: Scope)(erased i: s.Expr[Int]): s.Expr[Int] = '{ 0 }
+  def case2(using s: Scope) (i: Int)(erased j: s.Expr[Int]): s.Expr[Int] = '{ 0 }
+  def case3(using s: Scope)(erased i: s.Expr[Int]) (j: Int): s.Expr[Int] = '{ 0 }
+  def case4(using s: Scope) (h: Int)(erased i: s.Expr[Int], j: s.Expr[Int]): s.Expr[Int] = '{ 0 }
+  def case5(using s: Scope)(erased i: s.Expr[Int], j: s.Expr[Int]) (h: Int): s.Expr[Int] = '{ 0 }
+  def case6(using s: Scope) (h: Int)(erased i: s.Expr[Int])(erased j: s.Expr[Int]): s.Expr[Int] = '{ 0 }
+  def case7(using s: Scope)(erased i: s.Expr[Int]) (h: Int)(erased j: s.Expr[Int]): s.Expr[Int] = '{ 0 }
+  def case8(using s: Scope)(erased i: s.Expr[Int])(erased j: s.Expr[Int]) (h: Int): s.Expr[Int] = '{ 0 }
 }

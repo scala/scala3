@@ -4,16 +4,16 @@ import scala.quoted.staging._
 
 object Test {
   def main(args: Array[String]): Unit =
-    val s1: QuoteContext ?=> Expr[Int] = {
+    val s1: (s: Scope) ?=> s.Expr[Int] = {
       given Toolbox = Toolbox.make(getClass.getClassLoader)
-      run[QuoteContext ?=> Expr[Int]] { stage1('{2}) }
+      run[(s: Scope) ?=> s.Expr[Int]] { stage1('{2}) }
     }
     {
       given Toolbox = Toolbox.make(getClass.getClassLoader)
       println(run(s1))
     }
-  def stage1(x: Expr[Int])(using qctx: QuoteContext): Expr[QuoteContext ?=> Expr[Int]] =
-    val code = '{ (using qctx1: QuoteContext) =>
+  def stage1(using s1: Scope)(x: s1.Expr[Int]): s1.Expr[(s2: Scope) ?=> s2.Expr[Int]] =
+    val code = '{ (using s2: Scope) =>
       val x1 = $x
       '{ 1 + ${Expr(x1)} }
     }

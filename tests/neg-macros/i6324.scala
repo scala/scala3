@@ -1,5 +1,5 @@
 class Test {
-  def res(x: quoted.Expr[Int])(using tasty.Reflection): quoted.Expr[Int] = x match {
+  def res(using s: quoted.Scope)(x: s.Expr[Int]): s.Expr[Int] = x match {
     case '{ 1 + $b } => // error: Type must be fully defined. Consider annotating the splice using a type ascription: (${b}: XYZ).
       b // error: Not found: b
   }

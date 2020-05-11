@@ -6,7 +6,7 @@ object Show {
   inline def deriveWithMacro[T]: Show[T] = ${ impl[T] }
 
   import quoted._
-  def impl[T](using ctx: QuoteContext, tpe: Type[T]): Expr[Show[T]] =
+  def impl[T](using s: Scope)(using tpe: s.Type[T]): s.Expr[Show[T]] =
     '{
       new Show[$tpe] {
         def show(t: $tpe): String = "TODO"

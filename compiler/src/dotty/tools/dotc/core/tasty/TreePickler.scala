@@ -764,7 +764,7 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickle(trees: List[Tree])(using Context): Unit = {
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
-    def missing = forwardSymRefs.keysIterator.map(sym => sym.showLocated + "(line " + sym.srcPos.line + ")").toList
+    def missing = forwardSymRefs.keysIterator.map(sym => sym.showLocated + (if sym.sourcePos.exists then "(line " + sym.srcPos.line + ")" else "")).toList
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: $missing%, % when pickling ${ctx.source}")
   }
 

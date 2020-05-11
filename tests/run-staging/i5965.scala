@@ -5,22 +5,22 @@ object Test {
 
   given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = {
-    withQuoteContext('[List])
+    usingNewScope('[List])
 
-    def list(using QuoteContext) = bound('{List(1, 2, 3)})
-    println(withQuoteContext(list.show))
+    def list(using s: Scope) = bound('{List(1, 2, 3)})
+    println(usingNewScope(list.show))
     println(run(list))
 
-    def opt(using QuoteContext) = bound('{Option(4)})
-    println(withQuoteContext(opt.show))
+    def opt(using s: Scope) = bound('{Option(4)})
+    println(usingNewScope(opt.show))
     println(run(opt))
 
-    def map(using QuoteContext) = bound('{Map(4 -> 1)})
-    println(withQuoteContext(map.show))
+    def map(using s: Scope) = bound('{Map(4 -> 1)})
+    println(usingNewScope(map.show))
     println(run(map))
   }
 
-  def bound[T: Type, S[_]: Type](x: Expr[S[T]])(using QuoteContext): Expr[S[T]] = '{
+  def bound[T, S[_]](using s: Scope)(x: s.Expr[S[T]])(using s.Type[T], s.Type[S]): s.Expr[S[T]] = '{
     val y: S[T] = $x
     y
   }

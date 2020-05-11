@@ -2,5 +2,5 @@ import scala.quoted._
 
 class C {
     type T = Int
-    def fn(e : Expr[T])(using QuoteContext): Expr[T] = '{ println(); $e }
+    def fn(using s: Scope)(e: s.Expr[T]): s.Expr[T] = '{ println(); $e }
 }

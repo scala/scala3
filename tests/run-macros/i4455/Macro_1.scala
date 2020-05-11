@@ -4,5 +4,5 @@ object Macros {
 
   inline def foo2(inline i: Int): Int = ${ bar('{i + 1}) }
 
-  def bar(x: Expr[Int]): Expr[Int] = x
+  def bar(using s: Scope)(x: s.Expr[Int]): s.Expr[Int] = x
 }

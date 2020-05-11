@@ -4,9 +4,9 @@ trait Show[T] {
   def show(x: T): String
 }
 
-def showInterpolatorImpl(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] =
-  argsExpr.unseal match
-    case '{ $arg: $t } => // error
+def showInterpolatorImpl(using s: Scope)(sc: s.Expr[StringContext], argsExpr: s.Expr[Seq[Any]]): s.Expr[String] =
+  argsExpr match
+    case '{ $arg: $t } =>
     case '[ Int ] => // error
   ???
 

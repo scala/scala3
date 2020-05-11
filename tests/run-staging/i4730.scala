@@ -3,9 +3,9 @@ import scala.quoted.staging._
 
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def ret(using QuoteContext): Expr[Int => Int] = '{ (x: Int) =>
+  def ret(using s: Scope): s.Expr[Int => Int] = '{ (x: Int) =>
     ${
-      val z = run('{x + 1}) // throws a RunScopeException
+      val z = run('{x + 1}) // throws a ToolboxInUse
       Expr(z)
     }
   }
@@ -14,7 +14,7 @@ object Test {
       run(ret).apply(10)
       throw new Exception
     } catch {
-      case ex: scala.quoted.ScopeException =>
+      case ex: scala.quoted.staging.Toolbox.ToolboxInUse =>
         // ok
     }
   }

@@ -4,9 +4,9 @@ object Test {
 
   import scala.quoted._
 
-  def impl[T](t: T)(using qctx: QuoteContext, tt: Type[T]): Expr[Any] = {
+  def impl[T](using s: Scope)(t: T)(using tt: s.Type[T]): s.Expr[Any] = {
 
-    import qctx.tasty._
+    import s.tasty._
     import util._
 
     val foo = Type.of[Foo[String]]
