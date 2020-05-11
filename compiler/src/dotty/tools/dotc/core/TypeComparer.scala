@@ -497,7 +497,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             if (base.typeSymbol == cls2) return true
           }
           else if tp1.isLambdaSub && !tp1.isAnyKind then
-            return recur(tp1, EtaExpansion(cls2.typeRef))
+            return recur(tp1, EtaExpansion(tp2))
         fourthTry
     }
 
