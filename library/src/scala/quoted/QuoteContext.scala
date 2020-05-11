@@ -20,12 +20,12 @@ class QuoteContext(val tasty: scala.tasty.Reflection) { self =>
    *
    *  ```scala
    *  def run(using qctx: QuoteContext)(tree: qctx.tasty.Tree): Unit =
-   *    def nested()(using qctx.NestedContext): Expr[Int] = '{  ${ makeExpr(tree) } + 1  }
+   *    def nested()(using qctx.Nested): Expr[Int] = '{  ${ makeExpr(tree) } + 1  }
    *    '{  ${ nested() } + 2 }
    *  def makeExpr(using qctx: QuoteContext)(tree: qctx.tasty.Tree): Expr[Int] = ???
    *  ```
    */
-  type NestedContext = QuoteContext {
+  type Nested = QuoteContext {
     val tasty: self.tasty.type
   }
 

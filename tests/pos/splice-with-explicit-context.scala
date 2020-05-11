@@ -4,4 +4,4 @@ def f(a: Expr[Int])(using qctx: QuoteContext): Unit =
 
   '{ val x: Int = ${ (using qctx2) => a } }
 
-  '{ val x: Int = ${ (using qctx2: qctx.NestedContext) => a } }
+  '{ val x: Int = ${ (using qctx2: qctx.Nested) => a } }
