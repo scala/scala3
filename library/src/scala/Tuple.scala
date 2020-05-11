@@ -3,8 +3,6 @@ import annotation.showAsInfix
 import compiletime._
 import internal._
 
-import scala.runtime.DynamicTuple
-
 /** Tuple of arbitrary arity */
 sealed trait Tuple extends Any {
   import Tuple._

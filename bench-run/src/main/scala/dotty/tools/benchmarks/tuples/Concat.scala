@@ -2,7 +2,6 @@ package dotty.tools.benchmarks.tuples
 
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
-import scala.runtime.DynamicTuple
 
 @State(Scope.Thread)
 class Concat {
