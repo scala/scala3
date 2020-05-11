@@ -355,13 +355,11 @@ class Definitions {
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
   def NothingType: TypeRef = NothingClass.typeRef
-  @tu lazy val RuntimeNothingModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Nothing")
   @tu lazy val NullClass: ClassSymbol = {
     val parent = if (ctx.explicitNulls) AnyType else ObjectType
     enterCompleteClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, parent :: Nil)
   }
   def NullType: TypeRef = NullClass.typeRef
-  @tu lazy val RuntimeNullModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Null")
 
   /** An alias for null values that originate in Java code.
    *  This type gets special treatment in the Typer. Specifically, `UncheckedNull` can be selected through:
