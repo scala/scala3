@@ -1,3 +1,3 @@
 2: Pattern Match Exhaustivity: _: Int
 7: Pattern Match Exhaustivity: (_, _)
-12: Pattern Match Exhaustivity: (false, false), (true, true)
+12: Pattern Match Exhaustivity: (true, true), (false, false)

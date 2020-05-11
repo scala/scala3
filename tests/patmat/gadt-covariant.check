@@ -1,1 +1,1 @@
-6: Pattern Match Exhaustivity: (BExpr(_), IExpr(_)), (IExpr(_), BExpr(_))
+6: Pattern Match Exhaustivity: (IExpr(_), BExpr(_)), (BExpr(_), IExpr(_))
