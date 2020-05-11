@@ -1,7 +1,7 @@
 import scala.quoted._
 object Test
   def run(using qctx: QuoteContext)(tree: qctx.tasty.Tree): Unit =
-    def nested()(using qctx.NestedContext): Expr[Int] =
+    def nested()(using qctx.Nested): Expr[Int] =
       '{  ${ makeExpr(tree) } + 1  }
     '{  ${ nested() } + 2 }
 
