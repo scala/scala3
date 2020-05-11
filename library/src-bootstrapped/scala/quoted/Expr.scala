@@ -13,14 +13,6 @@ class Expr[+T] private[scala] {
   def show(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String =
     this.unseal.showWith(syntaxHighlight)
 
-  /** Return the value of this expression.
-   *
-   *  Returns `None` if the expression does not contain a value or contains side effects.
-   *  Otherwise returns the `Some` of the value.
-   */
-  @deprecated("Use Expr.unlift", "0.23")
-  final def getValue[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): Option[U] = unlift(this)
-
   /** Return the unlifted value of this expression.
    *
    *  Returns `None` if the expression does not contain a value or contains side effects.
@@ -28,14 +20,6 @@ class Expr[+T] private[scala] {
    */
   final def unlift[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): Option[U] =
     unlift(this)
-
-  /** Return the unlifted value of this expression.
-   *
-   *  Emits an error error and throws if the expression does not contain a value or contains side effects.
-   *  Otherwise returns the value.
-   */
-  @deprecated("Use Expr.unliftOrError", "0.23")
-  final def value[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): U = unliftOrError
 
   /** Return the unlifted value of this expression.
    *
