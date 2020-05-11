@@ -7,8 +7,9 @@ import Contexts.Context, Symbols._, Decorators._
 import MegaPhase._
 import ast.Trees._
 
-/** Rewrite `{ stats; expr}.f(args) }` to `{ stats; expr.f(args) }` before
- *  proceeding, but leave closures alone. This is necessary to be able to
+/** Rewrite `{ stats; expr}.f(args)` to `{ stats; expr.f(args) }` and
+ *  `{ stats; expr }(args)` to `{ stats; expr(args) }` before proceeding,
+ *  but leave closures alone. This is necessary to be able to
  *  collapse applies of IFTs (this is done in Erasure).
  */
 class LetOverApply extends MiniPhase:
