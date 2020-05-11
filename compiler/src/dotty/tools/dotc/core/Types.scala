@@ -1667,6 +1667,13 @@ object Types {
      *  what was a union or intersection of type variables might be a simpler type
      *  after the type variables are instantiated. Finally, it
      *  maps poly params in the current constraint set back to their type vars.
+     *
+     *  NOTE: Simplifying an intersection type might change its erasure (for
+     *  example, the Java erasure of `Object & Serializable` is `Object`,
+     *  but its simplification is `Serializable`). This means that simplification
+     *  should never be used in a `MethodicType`, because that could
+     *  lead to a different `signature`. Since this isn't very useful anyway,
+     *  this method handles this by never simplifying inside a `MethodicType`.
      */
     def simplified(implicit ctx: Context): Type = TypeOps.simplify(this, null)
 

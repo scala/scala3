@@ -434,7 +434,8 @@ class ClassfileParser(
         if (sig(index) != ':') // guard against empty class bound
           ts += objToAny(sig2type(tparams, skiptvs))
       }
-      TypeBounds.upper(ts.foldLeft(NoType: Type)(_ & _) orElse defn.AnyType)
+      val bound = if ts.isEmpty then defn.AnyType else ts.reduceLeft(AndType.apply)
+      TypeBounds.upper(bound)
     }
 
     var tparams = classTParams

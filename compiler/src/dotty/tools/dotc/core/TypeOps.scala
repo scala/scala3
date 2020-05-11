@@ -156,6 +156,8 @@ object TypeOps:
       case _: AppliedType | _: MatchType =>
         val normed = tp.tryNormalize
         if (normed.exists) normed else mapOver
+      case tp: MethodicType =>
+        tp // See documentation of `Types#simplified`
       case _ =>
         mapOver
     }
