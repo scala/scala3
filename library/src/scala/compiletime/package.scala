@@ -35,13 +35,8 @@ package object compiletime {
    * @note only by-name arguments will be displayed as "code".
    *       Other values may display unintutively.
    */
-  transparent inline def (inline self: StringContext) code (inline args: Any*): String = ${ codeExpr('self, 'args) }
-  private def codeExpr(using qctx: QuoteContext)(sc: Expr[StringContext], args: Expr[Seq[Any]]): Expr[String] =
-    (sc, args) match
-      case (Expr.StringContext(Consts(parts)), Varargs(args2)) =>
-        Expr(StringContext(parts: _*).s(args2.map(_.show): _*))
-      case _ =>
-        qctx.throwError("compiletime.code must be used as a string interpolator `code\"...\"`")
+  transparent inline def (inline self: StringContext) code (inline args: Any*): String =
+    ${ dotty.internal.CompileTimeMacros.codeExpr('self, 'args) }
 
   inline def constValueOpt[T]: Option[T] = ???
 
