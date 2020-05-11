@@ -10,7 +10,12 @@ import scala.quoted.show.SyntaxHighlight
  *
  *  @param tasty Typed AST API. Usage: `def f(qctx: QuoteContext) = { import qctx.tasty._; ... }`.
  */
-class QuoteContext(val tasty: scala.tasty.Reflection) { self =>
+trait QuoteContext { self =>
+
+  /** Low-level Typed AST API `tasty` meta-programming API.
+   *  This API does not have the static type guarantiees that `Expr` and `Type` provide.
+   */
+  val tasty: scala.tasty.Reflection
 
   /** Type of a QuoteContext provided by a splice within a quote that took this context.
    *  It is only required if working with the reflection API.
