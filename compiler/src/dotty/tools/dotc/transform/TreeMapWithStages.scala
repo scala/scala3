@@ -92,6 +92,13 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
       }
 
       tree match {
+        case Apply(Select(Quoted(quotedTree), _), _) if quotedTree.isType =>
+          dropEmptyBlocks(quotedTree) match
+            case Spliced(t) =>
+              // '[ x.$splice ] --> x
+              transform(t)
+            case _ =>
+              super.transform(tree)
 
         case Quoted(quotedTree) =>
           val old = inQuoteOrSplice

@@ -228,7 +228,7 @@ object Splicer {
         }
         interpretQuote(quoted1)
 
-      case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.InternalQuoted_typeQuote =>
+      case Apply(Select(TypeApply(fn, quoted :: Nil), _), _) if fn.symbol == defn.InternalQuoted_typeQuote =>
         interpretTypeQuote(quoted)
 
       case Literal(Constant(value)) =>

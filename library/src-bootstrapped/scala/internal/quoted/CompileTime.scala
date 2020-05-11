@@ -22,7 +22,7 @@ object CompileTime {
 
   /** A type quote is desugared by the compiler into a call to this method */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.typeQuote`")
-  def typeQuote[T <: AnyKind]: Type[T] = ???
+  def typeQuote[T <: AnyKind]: QuoteContext ?=> Type[T] = ???
 
   /** A splice in a quoted pattern is desugared by the compiler into a call to this method */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHole`")
