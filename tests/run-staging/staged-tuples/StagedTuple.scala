@@ -126,7 +126,6 @@ object StagedTuple {
   }
 
   def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int])(using qctx: QuoteContext): Expr[Elem[Tup, N]] = {
-    import reflect._
 
     if (!specialize) '{dynamicApply($tup, $n)}
     else {
