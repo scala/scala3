@@ -151,16 +151,21 @@ object LambdaLift {
       if (!enclosure.exists) throw new NoPath
       if (enclosure == sym.enclosure) NoSymbol
       else {
+        def nestedInConstructor(sym: Symbol): Boolean =
+          sym.isConstructor ||
+          sym.isTerm && nestedInConstructor(sym.enclosure)
         ctx.debuglog(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
         val intermediate =
           if (enclosure.is(PackageClass)) enclosure
           else if (enclosure.isConstructor) markFree(sym, enclosure.owner.enclosure)
           else markFree(sym, enclosure.enclosure)
         if (intermediate.exists) narrowLiftedOwner(enclosure, intermediate)
-        if (!intermediate.isRealClass || enclosure.isConstructor)
+        if !intermediate.isRealClass || nestedInConstructor(enclosure) then
           // Constructors and methods nested inside traits get the free variables
-          // of the enclosing trait or class.
+          // of the enclosing trait or class. 
           // Conversely, local traits do not get free variables.
+          // Methods inside constructors also don't have intermediates,
+          // need to get all their free variables passed directly.
           if (!enclosure.is(Trait))
             if (symSet(free, enclosure).add(sym)) {
               changedFreeVars = true
@@ -301,7 +306,7 @@ object LambdaLift {
     private def generateProxies()(implicit ctx: Context): Unit =
       for ((owner, freeValues) <- free.iterator) {
         val newFlags = Synthetic | (if (owner.isClass) ParamAccessor | Private else Param)
-        ctx.debuglog(i"free var proxy: ${owner.showLocated}, ${freeValues.toList}%, %")
+        ctx.debuglog(i"free var proxy of ${owner.showLocated}: ${freeValues.toList}%, %")
         proxyMap(owner) = {
           for (fv <- freeValues.toList) yield {
             val proxyName = newName(fv)
