@@ -1,6 +1,6 @@
 package playground
 
-import scala.quoted.{_, given _}, scala.quoted.matching._
+import scala.quoted._
 
 inline def mcr(x: => Any): Any = ${mcrImpl('x)}
 

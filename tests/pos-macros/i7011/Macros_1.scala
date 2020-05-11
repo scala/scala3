@@ -1,5 +1,4 @@
-import scala.quoted._, scala.quoted.matching._
-import scala.quoted.{given _}
+import scala.quoted._
 
 inline def mcr(body: => Any): Unit = ${mcrImpl('body)}
 

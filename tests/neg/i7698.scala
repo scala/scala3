@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.matching._
 
 trait Show[T] {
   def show(x: T): String

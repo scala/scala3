@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.{given _}
 import scala.quoted.staging._
 
 object Test {
