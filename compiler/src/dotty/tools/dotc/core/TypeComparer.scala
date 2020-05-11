@@ -261,13 +261,13 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               if ((sym1 ne NoSymbol) && (sym1 eq sym2))
                 ctx.erasedTypes ||
                 sym1.isStaticOwner ||
-                isSubType(tp1.prefix, tp2.prefix) ||
+                isSubPrefix(tp1.prefix, tp2.prefix) ||
                 thirdTryNamed(tp2)
               else
                 (  (tp1.name eq tp2.name)
                 && tp1.isMemberRef
                 && tp2.isMemberRef
-                && isSubType(tp1.prefix, tp2.prefix)
+                && isSubPrefix(tp1.prefix, tp2.prefix)
                 && tp1.signature == tp2.signature
                 && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
                 ) ||
@@ -296,12 +296,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         def compareThis = {
           val cls2 = tp2.cls
           tp1 match {
-            case tp1: ThisType =>
-              // We treat two prefixes A.this, B.this as equivalent if
-              // A's selftype derives from B and B's selftype derives from A.
-              val cls1 = tp1.cls
-              cls1.classInfo.selfType.derivesFrom(cls2) &&
-              cls2.classInfo.selfType.derivesFrom(cls1)
             case tp1: NamedType if cls2.is(Module) && cls2.eq(tp1.widen.typeSymbol) =>
               cls2.isStaticOwner ||
               recur(tp1.prefix, cls2.owner.thisType) ||
@@ -819,6 +813,44 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         false
     }
 
+    /** When called from `pre1.A <:< pre2.A` does `pre1` relate to `pre2` so that
+     *  the subtype test is true? This is the case if `pre1 <:< pre2`, or
+     *  `pre1` and `pre2` are both this-types of related classes. Here, two classes
+     *  are related if each of them has a self type that derives from the other.
+     *
+     *  This criterion is a bit dubious. I.e. in the test
+     *
+     *      A.this.T <:< B.this.T
+     *
+     *  where `T` is the same type, what relationship must exist between A and B
+     *  for the test to be guaranteed true? The problem is we can't tell without additional
+     *  info. One could be an outer this at the point where we do the test, but that
+     *  location is unknown to us.
+     *
+     *  The conservative choice would be to require A == B, but then some tests involving
+     *  self types fail. Specifically, t360, t361 and pat_iuli fail the pickling test, and
+     *  Namer fails to compile. At line 203, we get
+     *
+     *    val Deriver         : Property.Key[typer.Deriver]       = new Property.Key
+     *        ^
+     *  value Deriver in class Namer is not a legal implementation of `Deriver` in class Namer.
+     *  its type             dotty.tools.dotc.util.Property.Key[Namer.this.Deriver]
+    |*  does not conform to  dotty.tools.dotc.util.Property.Key[Typer.this.Deriver & Namer.this.Deriver]
+     */
+    def isSubPrefix(pre1: Type, pre2: Type): Boolean =
+      pre1 match
+        case pre1: ThisType =>
+          pre2 match
+            case pre2: ThisType =>
+              if pre1.cls.classInfo.selfType.derivesFrom(pre2.cls)
+                 && pre2.cls.classInfo.selfType.derivesFrom(pre1.cls)
+              then
+                subtyping.println(i"assume equal prefixes $pre1 $pre2")
+                return true
+            case _ =>
+        case _ =>
+      isSubType(pre1, pre2)
+
     /** Subtype test for the hk application `tp2 = tycon2[args2]`.
      */
     def compareAppliedType2(tp2: AppliedType, tycon2: Type, args2: List[Type]): Boolean = {
@@ -857,7 +889,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
                   val res = (
                     tycon1sym == tycon2sym
-                      && isSubType(tycon1.prefix, tycon2.prefix)
+                      && isSubPrefix(tycon1.prefix, tycon2.prefix)
                       || byGadtBounds(tycon1sym, tycon2, fromAbove = true)
                       || byGadtBounds(tycon2sym, tycon1, fromAbove = false)
                   ) && {
