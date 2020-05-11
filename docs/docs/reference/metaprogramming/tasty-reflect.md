@@ -14,7 +14,7 @@ You may find all you need without using TASTy Reflect.
 ## API: From quotes and splices to TASTy reflect trees and back
 
 With `quoted.Expr` and `quoted.Type` we can compute code but also analyze code
-by inspecting the ASTs. [Macros](./macros.md) provides the guarantee that the
+by inspecting the ASTs. [Macros](./macros.md) provide the guarantee that the
 generation of code will be type-correct. Using TASTy Reflect will break these
 guarantees and may fail at macro expansion time, hence additional explicit
 checks must be done.
@@ -64,8 +64,7 @@ To easily know which extractors are needed, the `showExtractors` method on a
 The method `qctx.tasty.Term.seal` provides a way to go back to a
 `quoted.Expr[Any]`. Note that the type is `Expr[Any]`. Consequently, the type
 must be set explicitly with a checked `cast` call. If the type does not conform
-to it an exception will be thrown. In the code above, we could have replaced
-`Expr(n)` by `xTree.seal.cast[Int]`.
+to it an exception will be thrown at runtime.
 
 ### Obtaining the underlying argument
 
@@ -92,8 +91,8 @@ macro(this.checkCondition())
 
 ### Positions
 
-The tasty context provides a `rootPosition` value. For macros it corresponds to
-the expansion site. The macro authors can obtain various information about that
+The tasty context provides a `rootPosition` value. It corresponds to
+the expansion site for macros. The macro authors can obtain various information about that
 expansion site. The example below shows how we can obtain position information
 such as the start line, the end line or even the source code at the expansion
 point.
@@ -117,10 +116,10 @@ def macroImpl()(qctx: QuoteContext): Expr[Unit] = {
 ### Tree Utilities
 
 `scala.tasty.reflect` contains three facilities for tree traversal and
-transformations.
+transformation.
 
 `TreeAccumulator` ties the knot of a traversal. By calling `foldOver(x, tree))`
-we can dive in the `tree` node and start accumulating values of type `X` (e.g.,
+we can dive into the `tree` node and start accumulating values of type `X` (e.g.,
 of type List[Symbol] if we want to collect symbols). The code below, for
 example, collects the pattern variables of a tree.
 
@@ -142,8 +141,8 @@ but without returning any value. Finally a `TreeMap` performs a transformation.
 #### Let
 
 `scala.tasty.Reflection` also offers a method `let` that allows us
-to bind the `rhs` to a `val` and use it in `body`. Additionally, `lets` binds
-the given `terms` to names and use them in the `body`. Their type definitions
+to bind the `rhs` (right-hand side) to a `val` and use it in `body`. Additionally, `lets` binds
+the given `terms` to names and allows to use them in the `body`. Their type definitions
 are shown below:
 
 ```scala
