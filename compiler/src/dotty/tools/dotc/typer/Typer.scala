@@ -2772,20 +2772,21 @@ class Typer extends Namer
    *  If all this fails, error
    *  Parameters as for `typedUnadapted`.
    */
-  def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree =
-    trace(i"adapting $tree to $pt", typr, show = true) {
+  def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean = true)(using Context): Tree = {
+    trace(i"adapting $tree to $pt ${if (tryGadtHealing) "" else "(tryGadtHealing=false)" }\n", typr, show = true) {
       record("adapt")
-      adapt1(tree, pt, locked)
+      adapt1(tree, pt, locked, tryGadtHealing)
     }
+  }
 
   final def adapt(tree: Tree, pt: Type)(using Context): Tree =
     adapt(tree, pt, ctx.typerState.ownedVars)
 
-  private def adapt1(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
+  private def adapt1(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree = {
     assert(pt.exists && !pt.isInstanceOf[ExprType] || ctx.reporter.errorsReported)
     def methodStr = err.refStr(methPart(tree).tpe)
 
-    def readapt(tree: Tree)(using Context) = adapt(tree, pt, locked)
+    def readapt(tree: Tree, shouldTryGadtHealing: Boolean = tryGadtHealing)(using Context) = adapt(tree, pt, locked, shouldTryGadtHealing)
     def readaptSimplified(tree: Tree)(using Context) = readapt(simplify(tree, pt, locked))
 
     def missingArgs(mt: MethodType) = {
@@ -3245,7 +3246,6 @@ class Typer extends Namer
       if (folded ne tree)
         return adaptConstant(folded, folded.tpe.asInstanceOf[ConstantType])
 
-      // Try to capture wildcards in type
       val captured = captureWildcards(wtp)
       if (captured `ne` wtp)
         return readapt(tree.cast(captured))
@@ -3276,6 +3276,28 @@ class Typer extends Namer
         case _ =>
       }
 
+      val approximation = Inferencing.approximateGADT(wtp)
+      gadts.println(
+        i"""GADT approximation {
+        approximation = $approximation
+        pt.isInstanceOf[SelectionProto] = ${pt.isInstanceOf[SelectionProto]}
+        ctx.gadt.nonEmpty = ${ctx.gadt.nonEmpty}
+        ctx.gadt = ${ctx.gadt.debugBoundsDescription}
+        pt.isMatchedBy = ${
+          if (pt.isInstanceOf[SelectionProto])
+            pt.asInstanceOf[SelectionProto].isMatchedBy(approximation).toString
+          else
+            "<not a SelectionProto>"
+        }
+        }
+        """
+      )
+      pt match {
+        case pt: SelectionProto if ctx.gadt.nonEmpty && pt.isMatchedBy(approximation) =>
+          return tpd.Typed(tree, TypeTree(approximation))
+        case _ => ;
+      }
+
       // try an extension method in scope
       pt match {
         case SelectionProto(name, mbrType, _, _) =>
@@ -3300,10 +3322,34 @@ class Typer extends Namer
 
       // try an implicit conversion
       val prevConstraint = ctx.typerState.constraint
-      def recover(failure: SearchFailureType) =
+      def recover(failure: SearchFailureType) = {
+        def canTryGADTHealing: Boolean = {
+          val isDummy = tree.hasAttachment(dummyTreeOfType.IsDummyTree)
+          tryGadtHealing // allow GADT healing only once to avoid a loop
+          && ctx.gadt.nonEmpty // GADT healing only makes sense if there are GADT constraints present
+          && !isDummy // avoid healing a dummy tree as it can lead to an error in a very specific case
+        }
+
         if (isFullyDefined(wtp, force = ForceDegree.all) &&
             ctx.typerState.constraint.ne(prevConstraint)) readapt(tree)
-        else err.typeMismatch(tree, pt, failure)
+        else if (canTryGADTHealing) {
+          // try recovering with a GADT approximation
+          val nestedCtx = ctx.fresh.setNewTyperState()
+          val res =
+            readapt(
+              tree = tpd.Typed(tree, TypeTree(Inferencing.approximateGADT(wtp))),
+              shouldTryGadtHealing = false,
+            )(using nestedCtx)
+          if (!nestedCtx.reporter.hasErrors) {
+            // GADT recovery successful
+            nestedCtx.typerState.commit()
+            res
+          } else {
+            // otherwise fail with the error that would have been reported without the GADT recovery
+            err.typeMismatch(tree, pt, failure)
+          }
+        } else err.typeMismatch(tree, pt, failure)
+      }
       if ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType then
         if pt.isRef(defn.AnyValClass) || pt.isRef(defn.ObjectClass) then
           ctx.error(em"the result of an implicit conversion must be more specific than $pt", tree.sourcePos)

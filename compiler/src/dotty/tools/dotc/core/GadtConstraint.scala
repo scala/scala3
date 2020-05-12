@@ -44,6 +44,7 @@ sealed abstract class GadtConstraint extends Showable {
   def contains(sym: Symbol)(implicit ctx: Context): Boolean
 
   def isEmpty: Boolean
+  final def nonEmpty: Boolean = !isEmpty
 
   /** See [[ConstraintHandling.approximation]] */
   def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type
