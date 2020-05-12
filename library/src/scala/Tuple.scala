@@ -16,13 +16,13 @@ sealed trait Tuple extends Any {
     scala.runtime.Tuple.toIArray(this)
 
   /** Return a new tuple by prepending the element to `this` tuple.
-   *  This opteration is O(this.size)
+   *  This operation is O(this.size)
    */
   inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This =
     scala.runtime.Tuple.cons(x, this).asInstanceOf[H *: This]
 
   /** Return a new tuple by concatenating `this` tuple with `that` tuple.
-   *  This opteration is O(this.size + that.size)
+   *  This operation is O(this.size + that.size)
    */
   inline def ++ [This >: this.type <: Tuple](that: Tuple): Concat[This, that.type] =
     scala.runtime.Tuple.concat(this, that).asInstanceOf[Concat[This, that.type]]
@@ -200,7 +200,7 @@ sealed trait NonEmptyTuple extends Tuple {
     scala.runtime.Tuple.apply(this, 0).asInstanceOf[Head[This]]
 
   /** Get the tail of this tuple.
-   *  This opteration is O(this.size)
+   *  This operation is O(this.size)
    */
   inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
     scala.runtime.Tuple.tail(this).asInstanceOf[Tail[This]]

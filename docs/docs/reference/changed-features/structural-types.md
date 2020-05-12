@@ -70,7 +70,7 @@ differences.
   `Selectable` is a trait which declares the access operations.
 
 - Two access operations, `selectDynamic` and `applyDynamic` are shared
-  between both approches. In `Selectable`, `applyDynamic` also takes
+  between both approaches. In `Selectable`, `applyDynamic` also takes
   `ClassTag` indicating the method's formal parameter types. `Dynamic`
   comes with `updateDynamic`.
 
