@@ -1646,6 +1646,9 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def isSingleton(using ctx: Context): Boolean = internal.Type_isSingleton(self)
     def memberType(member: Symbol)(using ctx: Context): Type = internal.Type_memberType(self)(member)
 
+    /** The base classes of this type with the class itself as first element. */
+    def baseClasses(using ctx: Context): List[Symbol] = internal.Type_baseClasses(self)
+
     /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
     def derivesFrom(cls: Symbol)(using ctx: Context): Boolean =
       internal.Type_derivesFrom(self)(cls)

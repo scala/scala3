@@ -1198,6 +1198,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Type_memberType(self: Type)(member: Symbol)(using ctx: Context): Type =
     member.info.asSeenFrom(self, member.owner)
 
+  def Type_baseClasses(self: Type)(using ctx: Context): List[Symbol] =
+    self.baseClasses
+
   def Type_derivesFrom(self: Type)(cls: Symbol)(using ctx: Context): Boolean =
     self.derivesFrom(cls)
 

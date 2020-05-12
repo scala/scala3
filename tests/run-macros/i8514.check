@@ -1,0 +1,4 @@
+List(class Object, class Any)
+List(class A, class Object, class Any)
+List(class B, class A, class Object, class Any)
+List(class C, class B, class A, class Object, class Any)
