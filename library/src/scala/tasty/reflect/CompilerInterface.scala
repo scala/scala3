@@ -1434,9 +1434,8 @@ trait CompilerInterface {
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
   def QuotedType_unseal(self: scala.quoted.Type[_])(using ctx: Context): TypeTree
 
-  /** Convert `Term` to an `quoted.Expr[Any]` */
-  def QuotedExpr_seal(self: Term)(using ctx: Context): scala.quoted.Expr[Any]
-
+  /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression */
+  def QuotedExpr_seal(self: Term)(using ctx: Context): Option[scala.quoted.Expr[Any]]
 
   /** Convert `Type` to an `quoted.Type[_]` */
   def QuotedType_seal(self: Type)(using ctx: Context): scala.quoted.Type[_]

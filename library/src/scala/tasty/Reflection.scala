@@ -619,13 +619,26 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   extension TermOps on (self: Term) {
 
-    /** Convert `Term` to an `quoted.Expr[Any]` */
+    /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression or throws */
     def seal(using ctx: Context): scala.quoted.Expr[Any] =
+      internal.QuotedExpr_seal(self).getOrElse {
+        throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
+      }
+
+    /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression */
+    def sealOpt(using ctx: Context): Option[scala.quoted.Expr[Any]] =
       internal.QuotedExpr_seal(self)
 
+    /** Type of this term */
     def tpe(using ctx: Context): Type = internal.Term_tpe(self)
+
+    /** Replace Inlined nodes and InlineProxy references to underlying arguments */
     def underlyingArgument(using ctx: Context): Term = internal.Term_underlyingArgument(self)
+
+    /** Replace Ident nodes references to the underlying tree that defined them */
     def underlying(using ctx: Context): Term = internal.Term_underlying(self)
+
+    /** Converts a partally applied term into a lambda expression */
     def etaExpand(using ctx: Context): Term = internal.Term_etaExpand(self)
 
     /** A unary apply node with given argument: `tree(arg)` */
