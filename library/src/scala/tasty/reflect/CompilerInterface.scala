@@ -871,6 +871,9 @@ trait CompilerInterface {
 
   def Type_memberType(self: Type)(member: Symbol)(using ctx: Context): Type
 
+  /** The base classes of this type with the class itself as first element. */
+  def Type_baseClasses(self: Type)(using ctx: Context): List[Symbol]
+
   /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
   def Type_derivesFrom(self: Type)(cls: Symbol)(using ctx: Context): Boolean
 
