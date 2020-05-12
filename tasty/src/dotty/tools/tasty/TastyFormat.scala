@@ -56,7 +56,7 @@ Standard-Section: "ASTs" TopLevelStat*
 
   Stat          = Term
                   ValOrDefDef
-                  TYPEDEF        Length NameRef (type_Term | Template) Modifier*   -- modifiers type name (= type | bounds)  |  moifiers class name template
+                  TYPEDEF        Length NameRef (type_Term | Template) Modifier*   -- modifiers type name (= type | bounds)  |  modifiers class name template
                   IMPORT         Length qual_Term Selector*                        -- import qual selectors
   ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*      -- modifiers val name : type (= rhs)?
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term

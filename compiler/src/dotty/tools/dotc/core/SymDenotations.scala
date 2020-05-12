@@ -782,7 +782,7 @@ object SymDenotations {
     }
 
     /** Is this a denotation of a class that does not have - either direct or inherited -
-     *  initaliazion code?
+     *  initialization code?
      */
     def isNoInitsClass(implicit ctx: Context): Boolean =
       isClass &&
