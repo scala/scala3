@@ -1678,6 +1678,9 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
      *  @see `isFunctionType`
      */
     def isDependentFunctionType(using ctx: Context): Boolean = internal.Type_isDependentFunctionType(self)
+
+    /** The type <this . sym>, reduced if possible */
+    def select(sym: Symbol)(using ctx: Context): Type = internal.Type_select(self)(sym)
   }
 
   given (using ctx: Context) as IsInstanceOf[Type] = internal.isInstanceOfType

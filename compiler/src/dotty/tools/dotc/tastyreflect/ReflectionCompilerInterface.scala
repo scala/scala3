@@ -1215,6 +1215,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     tpNoRefinement != self && defn.isNonRefinedFunction(tpNoRefinement)
   }
 
+  def Type_select(self: Type)(sym: Symbol)(using ctx: Context): Type =
+    self.select(sym)
+
   type ConstantType = Types.ConstantType
 
   def isInstanceOfConstantType(using ctx: Context): IsInstanceOf[ConstantType] = new {

@@ -885,7 +885,6 @@ trait CompilerInterface {
    */
   def Type_isFunctionType(self: Type)(using ctx: Context): Boolean
 
-
   /** Is this type an context function type?
    *
    *  @see `Type_isFunctionType`
@@ -903,6 +902,9 @@ trait CompilerInterface {
    *  @see `Type_isFunctionType`
    */
   def Type_isDependentFunctionType(self: Type)(using ctx: Context): Boolean
+
+  /** The type <this . sym>, reduced if possible */
+  def Type_select(self: Type)(sym: Symbol)(using ctx: Context): Type
 
   /** A singleton type representing a known constant value */
   type ConstantType <: Type
