@@ -2219,6 +2219,14 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def classMethods(using ctx: Context): List[Symbol] =
       internal.Symbol_classMethods(sym)
 
+    /** Type member directly declared in the class */
+    def typeMembers(using ctx: Context): List[Symbol] =
+      internal.Symbol_typeMembers(sym)
+
+    /** Type member with the given name directly declared in the class */
+    def typeMember(name: String)(using ctx: Context): Symbol =
+      internal.Symbol_typeMember(sym)(name)
+
     /** Get named non-private methods declared or inherited */
     def method(name: String)(using ctx: Context): List[Symbol] =
       internal.Symbol_method(sym)(name)
