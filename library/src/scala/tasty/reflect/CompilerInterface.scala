@@ -1313,6 +1313,12 @@ trait CompilerInterface {
   /** Get all non-private methods declared or inherited */
   def Symbol_methods(self: Symbol)(using ctx: Context): List[Symbol]
 
+  /** Type member directly declared in the class */
+  def Symbol_typeMembers(self: Symbol)(using ctx: Context): List[Symbol]
+
+  /** Type member with the given name directly declared in the class */
+  def Symbol_typeMember(self: Symbol)(name: String)(using ctx: Context): Symbol
+
   /** The symbols of each type parameter list and value parameter list of this
    *  method, or Nil if this isn't a method.
    */

@@ -1738,6 +1738,12 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
 
+  def Symbol_typeMembers(self: Symbol)(using ctx: Context): List[Symbol] =
+    self.unforcedDecls.filter(_.isType)
+
+  def Symbol_typeMember(self: Symbol)(name: String)(using ctx: Context): Symbol =
+    self.unforcedDecls.find(sym => sym.name == name.toTypeName)
+
   def Symbol_classMethods(self: Symbol)(using ctx: Context): List[Symbol] =
     self.typeRef.decls.iterator.collect {
       case sym if isMethod(sym) => sym.asTerm
