@@ -160,12 +160,12 @@ object Splicer {
           // OK
 
         case _ =>
+          val extra = if tree.span.isZeroExtent then ": " + tree.show else ""
           ctx.error(
-            """Malformed macro parameter
+            s"""Malformed macro parameter$extra
               |
-              |Parameters may be:
+              |Parameters may only be:
               | * Quoted parameters or fields
-              | * References to inline parameters
               | * Literal values of primitive types
               |""".stripMargin, tree.sourcePos)
       }
