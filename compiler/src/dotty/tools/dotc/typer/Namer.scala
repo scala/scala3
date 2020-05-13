@@ -1115,10 +1115,14 @@ class Namer { typer: Typer =>
               else {
                 import tpd._
                 val ref = path.select(sym.asTerm)
-                tpd.polyDefDef(forwarder.asTerm, targs => prefss =>
+                val ddef = tpd.polyDefDef(forwarder.asTerm, targs => prefss =>
                   ref.appliedToTypes(targs).appliedToArgss(prefss)
                 )
+                if forwarder.isInlineMethod then
+                  PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
+                ddef
               }
+
             buf += forwarderDef.withSpan(span)
           }
 
