@@ -114,8 +114,10 @@ class ExtractSemanticDB extends Phase:
 
     override def traverse(tree: Tree)(using Context): Unit =
 
-      inline def traverseCtorParamTpt(ctorSym: Symbol, tpt: Tree): Unit =
-        val tptSym = tpt.symbol
+      def traverseCtorParamTpt(ctorSym: Symbol, tpt: Tree)(using Context): Unit =
+        val tptSym = tpt match
+          case ByNameTypeTree(tpt) => tpt.symbol
+          case tpt                 => tpt.symbol
         if tptSym.owner == ctorSym
           val found = matchingMemberType(tptSym, ctorSym.owner)
           if tpt.span.hasLength
@@ -131,7 +133,7 @@ class ExtractSemanticDB extends Phase:
           && tree.pid.span.hasLength
             tree.pid match
             case tree @ Select(qual, name) =>
-              registerDefinition(tree.symbol, adjustSpanToName(tree.span, qual.span, name), Set.empty)
+              registerDefinition(tree.symbol, adjustSpanToName(tree.span, qual.span, name, tree.source), Set.empty)
               traverse(qual)
             case tree => registerDefinition(tree.symbol, tree.span, Set.empty)
           tree.stats.foreach(traverse)
@@ -206,7 +208,7 @@ class ExtractSemanticDB extends Phase:
             val lhs = tree.lhs.symbol
             val setter = lhs.matchingSetter.orElse(lhs)
             tree.lhs match
-              case tree @ Select(qual, name) => registerUse(setter, adjustSpanToName(tree.span, qual.span, name))
+              case tree @ Select(qual, name) => registerUse(setter, adjustSpanToName(tree.span, qual.span, name, tree.source))
               case tree                      => registerUse(setter, tree.span)
             traverseChildren(tree.lhs)
           traverse(tree.rhs)
@@ -217,7 +219,7 @@ class ExtractSemanticDB extends Phase:
         case tree: Select =>
           val qualSpan = tree.qualifier.span
           val sym = tree.symbol.adjustIfCtorTyparam
-          registerUseGuarded(tree.qualifier.symbol.ifExists, sym, adjustSpanToName(tree.span, qualSpan, tree.name))
+          registerUseGuarded(tree.qualifier.symbol.ifExists, sym, adjustSpanToName(tree.span, qualSpan, tree.name, tree.source))
           if qualSpan.exists && qualSpan.hasLength then
             traverse(tree.qualifier)
         case tree: Import =>
@@ -502,7 +504,7 @@ class ExtractSemanticDB extends Phase:
         }).toMap
     end findGetters
 
-    private def adjustSpanToName(span: Span, qualSpan: Span, name: Name)(using Context) =
+    private def adjustSpanToName(span: Span, qualSpan: Span, name: Name, source: SourceFile) =
       val end = span.end
       val limit = qualSpan.end
       val start =
@@ -559,8 +561,8 @@ class ExtractSemanticDB extends Phase:
         case _ =>
         symkinds.toSet
 
-    private inline def ctorParams(
-      vparamss: List[List[ValDef]], body: List[Tree])(traverseTpt: => Tree => Unit)(using Context): Unit =
+    private def ctorParams(
+      vparamss: List[List[ValDef]], body: List[Tree])(traverseTpt: Tree => Unit)(using Context): Unit =
       @tu lazy val getters = findGetters(vparamss.flatMap(_.map(_.name)).toSet, body)
       for
         vparams <- vparamss
