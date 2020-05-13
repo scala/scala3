@@ -76,17 +76,17 @@ class A extends C[A] with D
 class B extends C[B] with D with E
 ```
 
-The join of `A | B` is `C[A | B] with D`
+The join of `A | B` is `C[A | B] & D`
 
 ## Type inference
 
-When inferring the result type of a definition (`val`, `var`, or `def`), if the
-type we are about to infer is a union type, we replace it by its join.
+When inferring the result type of a definition (`val`, `var`, or `def`) and the
+type we are about to infer is a union type, then we replace it by its join.
 Similarly, when instantiating a type argument, if the corresponding type
 parameter is not upper-bounded by a union type and the type we are about to
 instantiate is a union type, we replace it by its join. This mirrors the
 treatment of singleton types which are also widened to their underlying type
-unless explicitly specified. and the motivation is the same: inferring types
+unless explicitly specified. The motivation is the same: inferring types
 which are "too precise" can lead to unintuitive typechecking issues later on.
 
 Note: Since this behavior limits the usability of union types, it might
@@ -126,6 +126,14 @@ trait B { def hello: String }
 
 def test(x: A | B) = x.hello // error: value `hello` is not a member of A | B
 ```
+
+On the otherhand, the following would be allowed
+```scala
+trait C { def hello: String }
+trait A extends C with D 
+trait B extends C with E
+
+def test(x: A | B) = x.hello // ok as `hello` is a member of the join of A | B which is C
 
 ## Exhaustivity checking
 
