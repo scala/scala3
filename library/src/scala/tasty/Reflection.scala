@@ -1507,7 +1507,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   given (using ctx: Context) as IsInstanceOf[Bind] = internal.isInstanceOfBind
 
   object Bind {
-    // TODO def apply(name: String, pattern: Tree)(using ctx: Context): Bind
+    def apply(sym: Symbol, pattern: Tree)(using ctx: Context): Bind =
+      internal.Tree_Bind_module_apply(sym, pattern)
     def copy(original: Tree)(name: String, pattern: Tree)(using ctx: Context): Bind =
       internal.Tree_Bind_module_copy(original)(name, pattern)
     def unapply(pattern: Bind)(using ctx: Context): Option[(String, Tree)] =
@@ -2129,6 +2130,19 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
      */
     def newVal(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol)(using ctx: Context): Symbol =
       internal.Symbol_newVal(parent, name, flags, tpe, privateWithin)
+
+    /** Generates a pattern bind symbol with the given parent, name and type.
+     *
+     *  This symbol starts without an accompanying definition.
+     *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+     *  this symbol to the BindDef constructor.
+     *
+     *  @param flags extra flags to with which the symbol should be constructed
+     *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+     *        direct or indirect children of the reflection context's owner.
+     */
+    def newBind(parent: Symbol, name: String, flags: Flags, tpe: Type)(using ctx: Context): Symbol =
+      internal.Symbol_newBind(parent, name, flags, tpe)
 
     /** Definition not available */
     def noSymbol(using ctx: Context): Symbol =
