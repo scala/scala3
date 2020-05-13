@@ -1,0 +1,8 @@
+-- Error: tests/neg-macros/i7839.scala:4:18 ----------------------------------------------------------------------------
+4 |  ${ transformImpl } // error
+  |                  ^
+  |                  Malformed macro parameter: dummyImplicit
+  |
+  |                  Parameters may only be:
+  |                   * Quoted parameters or fields
+  |                   * Literal values of primitive types
