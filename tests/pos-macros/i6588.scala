@@ -2,7 +2,7 @@ import scala.quoted._
 
 inline def foo[T:Type]: Int = 10
 
-def main = {
+def main(using QuoteContext) = {
   type S = Int
   foo[S]
   foo[Int]

@@ -131,32 +131,20 @@ class ReifyQuotes extends MacroTransform {
         val body1 = nested(isQuote = true).transform(body)(quoteContext)
         super.transformQuotation(body1, quote)
       }
-      else body match {
-        case body: RefTree if isCaptured(body.symbol, level + 1) =>
-          // Optimization: avoid the full conversion when capturing `x`
-          // in '{ x } to '{ ${x$1} } and go directly to `x$1`
-          capturers(body.symbol)(body)
-        case _ =>
-          val (body1, splices) = nested(isQuote = true).splitQuote(body)(quoteContext)
-          if (level == 0) {
-            val body2 =
-              if (body1.isType) body1
-              else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
-            pickledQuote(body2, splices, body.tpe, isType).withSpan(quote.span)
-          }
-          else
-            body
+      else {
+        val (body1, splices) = nested(isQuote = true).splitQuote(body)(quoteContext)
+        if (level == 0) {
+          val body2 =
+            if (body1.isType) body1
+            else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
+          pickledQuote(body2, splices, body.tpe, isType).withSpan(quote.span)
+        }
+        else
+          body
       }
     }
 
     private def pickledQuote(body: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(implicit ctx: Context) = {
-      def qctx: Tree = {
-        val qctx = ctx.typer.inferImplicitArg(defn.QuoteContextClass.typeRef, body.span)
-        if (qctx.tpe.isInstanceOf[SearchFailureType])
-          ctx.error(ctx.typer.missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(body.span))
-        qctx
-      }
-
       def pickleAsLiteral(lit: Literal) = {
         def liftedValue(lifter: Symbol) =
           ref(lifter).appliedToType(originalTp).select(nme.toExpr).appliedTo(lit)
@@ -185,9 +173,9 @@ class ReifyQuotes extends MacroTransform {
       }
 
       if (isType) {
-        def tag(tagName: String) = ref(defn.QuotedTypeModule).select(tagName.toTermName).appliedTo(qctx)
+        def tag(tagName: String) = ref(defn.QuotedTypeModule).select(tagName.toTermName)
         if (splices.isEmpty && body.symbol.isPrimitiveValueClass) tag(s"${body.symbol.name}Tag")
-        else pickleAsTasty().select(nme.apply).appliedTo(qctx)
+        else pickleAsTasty()
       }
       else getLiteral(body) match {
         case Some(lit) => pickleAsLiteral(lit)
@@ -362,6 +350,10 @@ class ReifyQuotes extends MacroTransform {
         transform(tree)(ctx.withSource(tree.source))
       else reporting.trace(i"Reifier.transform $tree at $level", show = true) {
         tree match {
+          case Apply(Select(TypeApply(fn, (body: RefTree) :: Nil), _), _) if fn.symbol == defn.InternalQuoted_typeQuote && isCaptured(body.symbol, level + 1) =>
+            // Optimization: avoid the full conversion when capturing `x`
+            // in '{ x } to '{ ${x$1} } and go directly to `x$1`
+            capturers(body.symbol)(body)
           case tree: RefTree if isCaptured(tree.symbol, level) =>
             val body = capturers(tree.symbol).apply(tree)
             val splice: Tree =

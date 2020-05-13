@@ -5,7 +5,7 @@ object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuoteContext {
 
-    val q = '{
+    val q = '{ (using qctx: QuoteContext) =>
       val t = '[String]
       t
     }

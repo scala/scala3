@@ -55,7 +55,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     def quotedType(t: Type) =
       if StagingContext.level == 0 then
         ctx.compilationUnit.needsStaging = true // We will need to run ReifyQuotes
-      ref(defn.InternalQuoted_typeQuote).appliedToType(t)
+      val qctx = ctx.typer.inferImplicitArg(defn.QuoteContextClass.typeRef, span)
+      qctx.tpe match
+        case tpe: Implicits.SearchFailureType => ctx.error(tpe.msg, ctx.source.atSpan(span))
+        case _ =>
+      ref(defn.InternalQuoted_typeQuote).appliedToType(t).select(nme.apply).appliedTo(qctx)
     formal.argInfos match
       case arg :: Nil =>
         val deepDealias = new TypeMap:
