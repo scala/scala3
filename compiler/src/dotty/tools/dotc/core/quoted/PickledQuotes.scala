@@ -16,7 +16,7 @@ import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.quoted.QuoteContext
-import dotty.tools.dotc.tastyreflect.{ReflectionImpl, TastyTreeExpr, TreeType}
+import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
 import dotty.tools.tasty.TastyString
 
@@ -38,14 +38,14 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = {
-    val expr1 = expr.asInstanceOf[TastyTreeExpr]
+    val expr1 = expr.asInstanceOf[scala.internal.quoted.Expr[Tree]]
     QuoteContext.checkScopeId(expr1.scopeId)
     healOwner(expr1.tree)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(tpe: quoted.Type[?])(implicit ctx: Context): Tree = {
-    val tpe1 = tpe.asInstanceOf[TreeType]
+    val tpe1 = tpe.asInstanceOf[scala.internal.quoted.Type[Tree]]
     QuoteContext.checkScopeId(tpe1.scopeId)
     healOwner(tpe1.typeTree)
   }
@@ -74,8 +74,8 @@ object PickledQuotes {
       override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args) =>
           val reifiedArgs = args.map { arg =>
-            if (arg.isTerm) (using qctx: scala.quoted.QuoteContext) => new TastyTreeExpr(arg, QuoteContext.scopeId)
-            else new TreeType(arg, QuoteContext.scopeId)
+            if (arg.isTerm) (using qctx: scala.quoted.QuoteContext) => new scala.internal.quoted.Expr(arg, QuoteContext.scopeId)
+            else new scala.internal.quoted.Type(arg, QuoteContext.scopeId)
           }
           if isTerm then
             val splice1 = splices(idx).asInstanceOf[Seq[Any] => scala.quoted.QuoteContext ?=> quoted.Expr[?]]

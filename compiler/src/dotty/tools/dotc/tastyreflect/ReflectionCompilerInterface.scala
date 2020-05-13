@@ -35,11 +35,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   // QUOTE UNPICKLING //
   //////////////////////
 
-  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): scala.quoted.Expr[?] =
-    new TastyTreeExpr(PickledQuotes.unpickleExpr(repr, args), compilerId)
+  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): Term =
+    PickledQuotes.unpickleExpr(repr, args)
 
-  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): scala.quoted.Type[?] =
-    new TreeType(PickledQuotes.unpickleType(repr, args), compilerId)
+  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): TypeTree =
+    PickledQuotes.unpickleType(repr, args)
 
 
   /////////////
@@ -1903,7 +1903,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def QuotedExpr_seal(self: Term)(using ctx: Context): Option[scala.quoted.Expr[Any]] = self.tpe.widen match {
     case _: Types.MethodType | _: Types.PolyType => None
-    case _ => Some(new TastyTreeExpr(self, compilerId))
+    case _ => Some(new scala.internal.quoted.Expr(self, compilerId))
   }
 
   /** Checked cast to a `quoted.Expr[U]` */
@@ -1923,7 +1923,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   /** Convert `Type` to an `quoted.Type[?]` */
   def QuotedType_seal(self: Type)(using ctx: Context): scala.quoted.Type[?] = {
     val dummySpan = ctx.owner.span // FIXME
-    new TreeType(tpd.TypeTree(self).withSpan(dummySpan), compilerId)
+    new scala.internal.quoted.Type(tpd.TypeTree(self).withSpan(dummySpan), compilerId)
   }
 
   /////////////////
@@ -2139,5 +2139,5 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   private def withDefaultPos[T <: Tree](fn: Context ?=> T)(using ctx: Context): T =
     fn(using ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
 
-  private def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()
+  def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()
 }
