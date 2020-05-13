@@ -774,6 +774,8 @@ trait CompilerInterface {
 
   def Tree_Bind_pattern(self: Bind)(using ctx: Context): Tree
 
+  def Tree_Bind_module_apply(sym: Symbol, body: Tree)(using ctx: Context): Bind
+
   def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree)(using ctx: Context): Bind
 
   /** Tree representing an unapply pattern `Xyz(...)` */
@@ -1335,6 +1337,8 @@ trait CompilerInterface {
   def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol
 
   def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol
+
+  def Symbol_newBind(parent: Symbol, name: String, flags: Flags, tpe: Type)(using ctx: Context): Symbol
 
   def Symbol_isTypeParam(self: Symbol)(using ctx: Context): Boolean
 

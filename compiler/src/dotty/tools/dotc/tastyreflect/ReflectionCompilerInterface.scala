@@ -1070,6 +1070,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Tree_Bind_pattern(self: Bind)(using ctx: Context): Tree = self.body
 
+  def Tree_Bind_module_apply(sym: Symbol, body: Tree)(using ctx: Context): Bind =
+    tpd.Bind(sym, body)
+
   def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree)(using ctx: Context): Bind =
     withDefaultPos(tpd.cpy.Bind(original)(name.toTermName, pattern))
 
@@ -1789,6 +1792,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol =
     ctx.newSymbol(parent, name.toTermName, flags, tpe, privateWithin)
+
+  def Symbol_newBind(parent: Symbol, name: String, flags: Flags, tpe: Type)(using ctx: Context): Symbol =
+    ctx.newSymbol(parent, name.toTermName, flags | Case, tpe)
 
   def Symbol_isTypeParam(self: Symbol)(using ctx: Context): Boolean =
     self.isTypeParam
