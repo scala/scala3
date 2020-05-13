@@ -1895,10 +1895,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def QuotedType_unseal(self: scala.quoted.Type[?])(using ctx: Context): TypeTree =
     PickledQuotes.quotedTypeToTree(self)
 
-  /** Convert `Term` to an `quoted.Expr[Any]`  */
-  def QuotedExpr_seal(self: Term)(using ctx: Context): scala.quoted.Expr[Any] = self.tpe.widen match {
-    case _: Types.MethodType | _: Types.PolyType => throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
-    case _ => new TastyTreeExpr(self, compilerId)
+  def QuotedExpr_seal(self: Term)(using ctx: Context): Option[scala.quoted.Expr[Any]] = self.tpe.widen match {
+    case _: Types.MethodType | _: Types.PolyType => None
+    case _ => Some(new TastyTreeExpr(self, compilerId))
   }
 
   /** Checked cast to a `quoted.Expr[U]` */
