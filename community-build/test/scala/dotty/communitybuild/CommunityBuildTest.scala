@@ -284,6 +284,11 @@ object projects:
     dependencies     = List(scalacheck)
   )
 
+  lazy val endpoints = SbtCommunityProject(
+    project        = "endpoints",
+    sbtTestCommand = ";json-schemaJVM/compile;algebraJVM/compile;openapiJVM/compile;http4s-server/compile;http4s-client/compile;play-server/compile;play-client/compile;akka-http-server/compile;akka-http-client/compile"
+  )
+
 end projects
 
 @Category(Array(classOf[TestCategory]))
@@ -376,6 +381,7 @@ class CommunityBuildTest:
   @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
   @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
   @Test def scalaz = projects.scalaz.run()
+  @Test def endpoints = projects.endpoints.run()
 end CommunityBuildTest
 
 class TestCategory
