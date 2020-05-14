@@ -16,7 +16,7 @@ object TestConfiguration {
     "-Yno-deep-subtypes",
     "-Yno-double-bindings",
     "-Yforce-sbt-phases",
-    // "-Ysemanticdb",
+    "-Ysemanticdb",
     "-Xverify-signatures"
   )
 

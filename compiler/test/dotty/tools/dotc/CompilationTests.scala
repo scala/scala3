@@ -202,9 +202,9 @@ class CompilationTests extends ParallelTesting {
     ).checkCompile()
   }
 
-  /** The purpose of this test is two-fold, being able to compile dotty
+  /** The purpose of this test is three-fold, being able to compile dotty
    *  bootstrapped, and making sure that TASTY can link against a compiled
-   *  version of Dotty
+   *  version of Dotty, and compiling the compiler using the SemanticDB generation
    */
   @Test def tastyBootstrap: Unit = {
     implicit val testGroup: TestGroup = TestGroup("tastyBootstrap/tests")
@@ -228,7 +228,7 @@ class CompilationTests extends ParallelTesting {
         Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
         Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
       ).mkString(File.pathSeparator),
-      Array("-Ycheck-reentrant", "-Yemit-tasty-in-class", "-language:postfixOps")
+      Array("-Ycheck-reentrant", "-Yemit-tasty-in-class", "-language:postfixOps", "-Ysemanticdb")
     )
 
     val libraryDirs = List(Paths.get("library/src"), Paths.get("library/src-bootstrapped"))
