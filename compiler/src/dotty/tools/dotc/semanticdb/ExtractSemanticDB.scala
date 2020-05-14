@@ -334,14 +334,16 @@ class ExtractSemanticDB extends Phase:
        *  the same starting position have the same index.
        */
       def localIdx(sym: Symbol)(using Context): Int =
+        def startPos(sym: Symbol) =
+          if sym.span.exists then sym.span.start else -1
         def computeLocalIdx(): Int =
-          symsAtOffset(sym.span.start).find(_.name == sym.name) match
+          symsAtOffset(startPos(sym)).find(_.name == sym.name) match
             case Some(other) => localIdx(other)
             case None =>
               val idx = nextLocalIdx
               nextLocalIdx += 1
               locals(sym) = idx
-              symsAtOffset(sym.span.start) += sym
+              symsAtOffset(startPos(sym)) += sym
               idx
         locals.getOrElseUpdate(sym, computeLocalIdx())
 
