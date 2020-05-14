@@ -298,7 +298,7 @@ class ExtractSemanticDB extends Phase:
           else
             decls0
         end decls
-        val alts = decls.filter(_.is(Method)).toList.reverse
+        val alts = decls.filter(_.isOneOf(Method | Mutable)).toList.reverse
         alts match
         case notSym :: rest if sym != notSym =>
           val idx = rest.indexOf(sym).ensuring(_ >= 0)

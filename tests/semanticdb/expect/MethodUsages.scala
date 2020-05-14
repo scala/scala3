@@ -30,3 +30,9 @@ class MethodUsages {
   m.m18(1)
   m.m18("")
 }
+
+object MethodUsages {
+  var x: Int = 1
+  def x(n: String): Int = n.toInt
+  def foo: Int = x + x("22")
+}

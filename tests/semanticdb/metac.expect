@@ -1616,13 +1616,20 @@ Schema => SemanticDB v4
 Uri => MethodUsages.scala
 Text => empty
 Language => Scala
-Symbols => 3 entries
-Occurrences => 76 entries
+Symbols => 10 entries
+Occurrences => 91 entries
 
 Symbols:
 example/MethodUsages# => class MethodUsages
 example/MethodUsages#`<init>`(). => primary ctor <init>
 example/MethodUsages#m. => val method m
+example/MethodUsages. => final object MethodUsages
+example/MethodUsages.`x_=`(). => var method x_=
+example/MethodUsages.`x_=`().(x$1) => param x$1
+example/MethodUsages.foo(). => method foo
+example/MethodUsages.x(). => var method x
+example/MethodUsages.x(+1). => method x
+example/MethodUsages.x(+1).(n) => param n
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -1701,6 +1708,21 @@ Occurrences:
 [29:4..29:7): m18 -> example/Methods#m18().
 [30:2..30:3): m -> example/MethodUsages#m.
 [30:4..30:7): m18 -> example/Methods#m18(+1).
+[33:7..33:19): MethodUsages <- example/MethodUsages.
+[34:6..34:7): x <- example/MethodUsages.x().
+[34:9..34:12): Int -> scala/Int#
+[35:6..35:7): x <- example/MethodUsages.x(+1).
+[35:8..35:9): n <- example/MethodUsages.x(+1).(n)
+[35:11..35:17): String -> scala/Predef.String#
+[35:20..35:23): Int -> scala/Int#
+[35:26..35:26): -> scala/Predef.augmentString().
+[35:26..35:27): n -> example/MethodUsages.x(+1).(n)
+[35:28..35:33): toInt -> scala/collection/StringOps#toInt().
+[36:6..36:9): foo <- example/MethodUsages.foo().
+[36:11..36:14): Int -> scala/Int#
+[36:17..36:18): x -> example/MethodUsages.x().
+[36:19..36:20): + -> scala/Int#`+`(+4).
+[36:21..36:22): x -> example/MethodUsages.x(+1).
 
 expect/Methods.scala
 --------------------
