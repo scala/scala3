@@ -72,6 +72,8 @@ class ExtractSemanticDB extends Phase:
     /** The symbol occurrences generated so far, as a set */
     private val generated = new mutable.HashSet[SymbolOccurrence]
 
+    private val anotatedSymbols = new mutable.HashSet[Symbol]
+
     /** Definitions of this symbol should be excluded from semanticdb */
     private def excludeDef(sym: Symbol)(using Context): Boolean =
       !sym.exists
@@ -104,13 +106,15 @@ class ExtractSemanticDB extends Phase:
       || sym == defn.Any_typeCast
       || qualifier.exists(excludeQual)
 
-    private def traverseAnnotsOf(sym: Symbol)(using Context): Unit =
-      for annot <- sym.annotations do
-        if annot.tree.span.exists
-        && annot.tree.span.hasLength
-          annot.tree match
-            case tree: Typed => () // hack for inline code
-            case tree        => traverse(tree)
+    private def traverseAnnotsOfDefinition(sym: Symbol)(using Context): Unit =
+      if (!anotatedSymbols.contains(sym)) then
+        anotatedSymbols += sym
+        for annot <- sym.annotations do
+          if annot.tree.span.exists
+          && annot.tree.span.hasLength
+            annot.tree match
+              case tree: Typed => () // hack for inline code
+              case tree        => traverse(tree)
 
     override def traverse(tree: Tree)(using Context): Unit =
 
@@ -125,7 +129,11 @@ class ExtractSemanticDB extends Phase:
         else
           traverse(tpt)
 
-      traverseAnnotsOf(tree.symbol)
+      tree match
+        case tree: DefTree if tree.symbol.exists =>
+          traverseAnnotsOfDefinition(tree.symbol)
+        case _ =>
+          ()
 
       tree match
         case tree: PackageDef =>
@@ -182,6 +190,7 @@ class ExtractSemanticDB extends Phase:
         case tree: Template =>
           val ctorSym = tree.constr.symbol
           if !excludeDef(ctorSym)
+            traverseAnnotsOfDefinition(ctorSym)
             registerDefinition(ctorSym, tree.constr.span, Set.empty)
             ctorParams(tree.constr.vparamss, tree.body)(traverseCtorParamTpt(ctorSym, _))
           for parent <- tree.parentsOrDerived if parent.span.hasLength do
@@ -568,8 +577,8 @@ class ExtractSemanticDB extends Phase:
         vparams <- vparamss
         vparam  <- vparams
       do
-        traverseAnnotsOf(vparam.symbol)
         if !excludeSymbol(vparam.symbol)
+          traverseAnnotsOfDefinition(vparam.symbol)
           val symkinds =
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>
               if getter.mods.is(Mutable) then SymbolKind.VarSet else SymbolKind.ValSet)
