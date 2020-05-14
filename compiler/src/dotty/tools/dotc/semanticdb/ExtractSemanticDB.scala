@@ -64,7 +64,7 @@ class ExtractSemanticDB extends Phase:
     val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
 
     /** The extracted symbol infos */
-    val symbolInfos = new mutable.HashSet[SymbolInformation]()
+    val symbolInfos = new mutable.ListBuffer[SymbolInformation]()
 
     /** A cache of localN names */
     val localNames = new mutable.HashSet[String]()
@@ -299,11 +299,14 @@ class ExtractSemanticDB extends Phase:
             decls0
         end decls
         val alts = decls.filter(_.isOneOf(Method | Mutable)).toList.reverse
-        alts match
-        case notSym :: rest if sym != notSym =>
-          val idx = rest.indexOf(sym).ensuring(_ >= 0)
-          b.append('+').append(idx + 1)
-        case _ =>
+        def find(filter: Symbol => Boolean) = alts match
+          case notSym :: rest if !filter(notSym) =>
+            val idx = rest.indexWhere(filter).ensuring(_ >= 0)
+            b.append('+').append(idx + 1)
+          case _ =>
+        end find
+        val sig = sym.signature
+        find(_.signature == sig)
 
       def addDescriptor(sym: Symbol): Unit =
         if sym.is(ModuleClass) then

@@ -339,8 +339,8 @@ Schema => SemanticDB v4
 Uri => Classes.scala
 Text => empty
 Language => Scala
-Symbols => 79 entries
-Occurrences => 62 entries
+Symbols => 106 entries
+Occurrences => 126 entries
 
 Symbols:
 classes/C1# => final class C1
@@ -408,6 +408,33 @@ classes/C10# => class C10
 classes/C10#`<init>`(). => primary ctor <init>
 classes/C10#`<init>`().(s) => param s
 classes/C10#s. => val method s
+classes/C11# => class C11
+classes/C11#`<init>`(). => primary ctor <init>
+classes/C11#foo(). => macro foo
+classes/C11#foo(). => macro foo
+classes/C12# => class C12
+classes/C12#Context# => class Context
+classes/C12#Context#Expr# => type Expr
+classes/C12#Context#Expr#[T] => typeparam T
+classes/C12#Context#`<init>`(). => primary ctor <init>
+classes/C12#`<init>`(). => primary ctor <init>
+classes/C12#foo1(). => macro foo1
+classes/C12#foo1(). => method foo1
+classes/C12#foo1().(x) => param x
+classes/C12#foo1().(x) => param x
+classes/C12#foo1Impl(). => method foo1Impl
+classes/C12#foo1Impl().(context) => param context
+classes/C12#foo1Impl().(x) => param x
+classes/C12#foo2(). => macro foo2
+classes/C12#foo2(). => method foo2
+classes/C12#foo2().(x) => param x
+classes/C12#foo2().(x) => param x
+classes/C12#foo2().(y) => param y
+classes/C12#foo2().(y) => param y
+classes/C12#foo2Impl(). => method foo2Impl
+classes/C12#foo2Impl().(context) => param context
+classes/C12#foo2Impl().(x) => param x
+classes/C12#foo2Impl().(y) => param y
 classes/M. => final object M
 classes/M.C5# => class C5
 classes/M.C5#`<init>`(). => primary ctor <init>
@@ -472,20 +499,84 @@ Occurrences:
 [24:9..24:23): <- classes/C10#`<init>`().
 [24:10..24:11): s <- classes/C10#s.
 [24:16..24:22): String -> scala/Predef.String#
-[26:7..26:8): N <- classes/N.
-[27:6..27:15): anonClass <- classes/N.anonClass.
-[27:22..27:24): C7 -> classes/C7#
-[27:24..27:24): -> classes/C7#`<init>`().
-[28:8..28:13): local <- local1
-[28:16..28:19): ??? -> scala/Predef.`???`().
-[30:6..30:13): anonFun <- classes/N.anonFun.
-[30:16..30:20): List -> scala/package.List.
-[30:20..30:20): -> scala/collection/IterableFactory#apply().
-[30:24..30:27): map -> scala/collection/immutable/List#map().
-[30:30..30:31): i <- local2
-[31:8..31:13): local <- local3
-[32:4..32:9): local -> local3
-[32:10..32:11): + -> scala/Int#`+`(+4).
+[26:6..26:9): C11 <- classes/C11#
+[27:2..27:2): <- classes/C11#`<init>`().
+[27:6..27:9): foo <- classes/C11#foo().
+[27:11..27:14): Int -> scala/Int#
+[27:23..27:26): ??? -> scala/Predef.`???`().
+[28:13..28:16): foo <- classes/C11#foo().
+[28:18..28:21): Int -> scala/Int#
+[28:24..28:27): ??? -> scala/Predef.`???`().
+[31:6..31:9): C12 <- classes/C12#
+[33:2..33:2): <- classes/C12#`<init>`().
+[33:8..33:15): Context <- classes/C12#Context#
+[34:4..34:4): <- classes/C12#Context#`<init>`().
+[34:9..34:13): Expr <- classes/C12#Context#Expr#
+[34:14..34:15): T <- classes/C12#Context#Expr#[T]
+[36:6..36:10): foo1 <- classes/C12#foo1().
+[36:11..36:12): x <- classes/C12#foo1().(x)
+[36:14..36:17): Int -> scala/Int#
+[36:20..36:23): Int -> scala/Int#
+[36:32..36:40): foo1Impl -> classes/C12#foo1Impl().
+[37:6..37:10): foo1 <- classes/C12#foo1().
+[37:11..37:12): x <- classes/C12#foo1().(x)
+[37:14..37:17): Int -> scala/Int#
+[37:20..37:23): Int -> scala/Int#
+[37:26..37:29): ??? -> scala/Predef.`???`().
+[39:6..39:10): foo2 <- classes/C12#foo2().
+[39:11..39:12): x <- classes/C12#foo2().(x)
+[39:14..39:17): Int -> scala/Int#
+[39:19..39:20): y <- classes/C12#foo2().(y)
+[39:22..39:28): String -> scala/Predef.String#
+[39:31..39:34): Int -> scala/Int#
+[39:43..39:51): foo2Impl -> classes/C12#foo2Impl().
+[40:6..40:10): foo2 <- classes/C12#foo2().
+[40:11..40:12): x <- classes/C12#foo2().(x)
+[40:14..40:17): Int -> scala/Int#
+[40:19..40:20): y <- classes/C12#foo2().(y)
+[40:22..40:28): String -> scala/Predef.String#
+[40:31..40:34): Int -> scala/Int#
+[40:37..40:40): ??? -> scala/Predef.`???`().
+[42:6..42:14): foo1Impl <- classes/C12#foo1Impl().
+[42:15..42:22): context <- classes/C12#foo1Impl().(context)
+[42:24..42:31): Context -> classes/C12#Context#
+[42:33..42:34): x <- classes/C12#foo1Impl().(x)
+[42:36..42:43): context -> classes/C12#foo1Impl().(context)
+[42:44..42:48): Expr -> classes/C12#Context#Expr#
+[42:49..42:52): Int -> scala/Int#
+[42:56..42:63): context -> classes/C12#foo1Impl().(context)
+[42:64..42:68): Expr -> classes/C12#Context#Expr#
+[42:69..42:72): Int -> scala/Int#
+[42:76..42:79): ??? -> scala/Predef.`???`().
+[43:6..43:14): foo2Impl <- classes/C12#foo2Impl().
+[43:15..43:22): context <- classes/C12#foo2Impl().(context)
+[43:24..43:31): Context -> classes/C12#Context#
+[43:33..43:34): x <- classes/C12#foo2Impl().(x)
+[43:36..43:43): context -> classes/C12#foo2Impl().(context)
+[43:44..43:48): Expr -> classes/C12#Context#Expr#
+[43:49..43:52): Int -> scala/Int#
+[43:55..43:56): y <- classes/C12#foo2Impl().(y)
+[43:58..43:65): context -> classes/C12#foo2Impl().(context)
+[43:66..43:70): Expr -> classes/C12#Context#Expr#
+[43:71..43:77): String -> scala/Predef.String#
+[43:81..43:88): context -> classes/C12#foo2Impl().(context)
+[43:89..43:93): Expr -> classes/C12#Context#Expr#
+[43:94..43:97): Int -> scala/Int#
+[43:101..43:104): ??? -> scala/Predef.`???`().
+[47:7..47:8): N <- classes/N.
+[48:6..48:15): anonClass <- classes/N.anonClass.
+[48:22..48:24): C7 -> classes/C7#
+[48:24..48:24): -> classes/C7#`<init>`().
+[49:8..49:13): local <- local1
+[49:16..49:19): ??? -> scala/Predef.`???`().
+[51:6..51:13): anonFun <- classes/N.anonFun.
+[51:16..51:20): List -> scala/package.List.
+[51:20..51:20): -> scala/collection/IterableFactory#apply().
+[51:24..51:27): map -> scala/collection/immutable/List#map().
+[51:30..51:31): i <- local2
+[52:8..52:13): local <- local3
+[53:4..53:9): local -> local3
+[53:10..53:11): + -> scala/Int#`+`(+4).
 
 expect/Empty.scala
 ------------------
