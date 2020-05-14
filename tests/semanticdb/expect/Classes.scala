@@ -22,6 +22,8 @@ class C8(private[this] val x: Int)
 
 class C9(private[this] var x: Int)
 
+class C10(s: => String)
+
 object N {
   val anonClass = new C7(42) {
     val local = ???

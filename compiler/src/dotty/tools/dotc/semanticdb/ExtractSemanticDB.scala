@@ -72,8 +72,6 @@ class ExtractSemanticDB extends Phase:
     /** The symbol occurrences generated so far, as a set */
     private val generated = new mutable.HashSet[SymbolOccurrence]
 
-    private val anotatedSymbols = new mutable.HashSet[Symbol]
-
     /** Definitions of this symbol should be excluded from semanticdb */
     private def excludeDef(sym: Symbol)(using Context): Boolean =
       !sym.exists
@@ -107,27 +105,14 @@ class ExtractSemanticDB extends Phase:
       || qualifier.exists(excludeQual)
 
     private def traverseAnnotsOfDefinition(sym: Symbol)(using Context): Unit =
-      if (!anotatedSymbols.contains(sym)) then
-        anotatedSymbols += sym
-        for annot <- sym.annotations do
-          if annot.tree.span.exists
-          && annot.tree.span.hasLength
-            annot.tree match
-              case tree: Typed => () // hack for inline code
-              case tree        => traverse(tree)
+      for annot <- sym.annotations do
+        if annot.tree.span.exists
+        && annot.tree.span.hasLength
+          annot.tree match
+            case tree: Typed => () // hack for inline code
+            case tree        => traverse(tree)
 
     override def traverse(tree: Tree)(using Context): Unit =
-
-      def traverseCtorParamTpt(ctorSym: Symbol, tpt: Tree)(using Context): Unit =
-        val tptSym = tpt match
-          case ByNameTypeTree(tpt) => tpt.symbol
-          case tpt                 => tpt.symbol
-        if tptSym.owner == ctorSym
-          val found = matchingMemberType(tptSym, ctorSym.owner)
-          if tpt.span.hasLength
-            registerUseGuarded(None, found, tpt.span)
-        else
-          traverse(tpt)
 
       tree match
         case tree: DefTree if tree.symbol.exists =>
@@ -192,7 +177,7 @@ class ExtractSemanticDB extends Phase:
           if !excludeDef(ctorSym)
             traverseAnnotsOfDefinition(ctorSym)
             registerDefinition(ctorSym, tree.constr.span, Set.empty)
-            ctorParams(tree.constr.vparamss, tree.body)(traverseCtorParamTpt(ctorSym, _))
+            ctorParams(tree.constr.vparamss, tree.body)
           for parent <- tree.parentsOrDerived if parent.span.hasLength do
             traverse(parent)
           val selfSpan = tree.self.span
@@ -571,7 +556,7 @@ class ExtractSemanticDB extends Phase:
         symkinds.toSet
 
     private def ctorParams(
-      vparamss: List[List[ValDef]], body: List[Tree])(traverseTpt: Tree => Unit)(using Context): Unit =
+      vparamss: List[List[ValDef]], body: List[Tree])(using Context): Unit =
       @tu lazy val getters = findGetters(vparamss.flatMap(_.map(_.name)).toSet, body)
       for
         vparams <- vparamss
@@ -583,7 +568,7 @@ class ExtractSemanticDB extends Phase:
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>
               if getter.mods.is(Mutable) then SymbolKind.VarSet else SymbolKind.ValSet)
           registerSymbol(vparam.symbol, symbolName(vparam.symbol), symkinds)
-        traverseTpt(vparam.tpt)
+        traverse(vparam.tpt)
 
 object ExtractSemanticDB:
   import java.nio.file.Path

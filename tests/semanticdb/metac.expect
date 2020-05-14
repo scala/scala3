@@ -339,8 +339,8 @@ Schema => SemanticDB v4
 Uri => Classes.scala
 Text => empty
 Language => Scala
-Symbols => 75 entries
-Occurrences => 58 entries
+Symbols => 79 entries
+Occurrences => 62 entries
 
 Symbols:
 classes/C1# => final class C1
@@ -404,6 +404,10 @@ classes/C9# => class C9
 classes/C9#`<init>`(). => primary ctor <init>
 classes/C9#`<init>`().(x) => param x
 classes/C9#x(). => var method x
+classes/C10# => class C10
+classes/C10#`<init>`(). => primary ctor <init>
+classes/C10#`<init>`().(s) => param s
+classes/C10#s. => val method s
 classes/M. => final object M
 classes/M.C5# => class C5
 classes/M.C5#`<init>`(). => primary ctor <init>
@@ -464,20 +468,24 @@ Occurrences:
 [22:8..22:34): <- classes/C9#`<init>`().
 [22:27..22:28): x <- classes/C9#x().
 [22:30..22:33): Int -> scala/Int#
-[24:7..24:8): N <- classes/N.
-[25:6..25:15): anonClass <- classes/N.anonClass.
-[25:22..25:24): C7 -> classes/C7#
-[25:24..25:24): -> classes/C7#`<init>`().
-[26:8..26:13): local <- local1
-[26:16..26:19): ??? -> scala/Predef.`???`().
-[28:6..28:13): anonFun <- classes/N.anonFun.
-[28:16..28:20): List -> scala/package.List.
-[28:20..28:20): -> scala/collection/IterableFactory#apply().
-[28:24..28:27): map -> scala/collection/immutable/List#map().
-[28:30..28:31): i <- local2
-[29:8..29:13): local <- local3
-[30:4..30:9): local -> local3
-[30:10..30:11): + -> scala/Int#`+`(+4).
+[24:6..24:9): C10 <- classes/C10#
+[24:9..24:23): <- classes/C10#`<init>`().
+[24:10..24:11): s <- classes/C10#s.
+[24:16..24:22): String -> scala/Predef.String#
+[26:7..26:8): N <- classes/N.
+[27:6..27:15): anonClass <- classes/N.anonClass.
+[27:22..27:24): C7 -> classes/C7#
+[27:24..27:24): -> classes/C7#`<init>`().
+[28:8..28:13): local <- local1
+[28:16..28:19): ??? -> scala/Predef.`???`().
+[30:6..30:13): anonFun <- classes/N.anonFun.
+[30:16..30:20): List -> scala/package.List.
+[30:20..30:20): -> scala/collection/IterableFactory#apply().
+[30:24..30:27): map -> scala/collection/immutable/List#map().
+[30:30..30:31): i <- local2
+[31:8..31:13): local <- local3
+[32:4..32:9): local -> local3
+[32:10..32:11): + -> scala/Int#`+`(+4).
 
 expect/Empty.scala
 ------------------
@@ -739,7 +747,7 @@ Occurrences:
 [17:31..17:38): Boolean -> scala/Boolean#
 [17:41..17:45): suit -> _empty_/Enums.Suits.isBlack().(suit)
 [18:11..18:17): Spades -> _empty_/Enums.Suits.Spades.
-[18:20..18:28): Diamonds -> _empty_/Enums.Suits.Diamonds.
+[18:20..18:25): Clubs -> _empty_/Enums.Suits.Clubs.
 [21:7..21:15): WeekDays <- _empty_/Enums.WeekDays#
 [22:4..22:4): <- _empty_/Enums.WeekDays#`<init>`().
 [22:9..22:15): Monday <- _empty_/Enums.WeekDays.Monday.
@@ -2899,6 +2907,112 @@ Occurrences:
 [5:4..5:9): local -> local0
 [5:10..5:11): + -> scala/Int#`+`(+4).
 
+expect/recursion.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => recursion.scala
+Text => empty
+Language => Scala
+Symbols => 35 entries
+Occurrences => 56 entries
+
+Symbols:
+local0 => case val method N$1
+local1 => val local p
+local2 => case val method N$2
+local3 => val local p
+local4 => val local Nat_this
+local5 => val local Nat_this
+local6 => val local Nat_this
+recursion/Nats. => final object Nats
+recursion/Nats.Nat# => sealed trait Nat
+recursion/Nats.Nat#`++`(). => macro ++
+recursion/Nats.Nat#`+`(). => macro +
+recursion/Nats.Nat#`+`().(that) => param that
+recursion/Nats.Nat#`<init>`(). => primary ctor <init>
+recursion/Nats.Succ# => case class Succ
+recursion/Nats.Succ#[N] => typeparam N
+recursion/Nats.Succ#_1(). => method _1
+recursion/Nats.Succ#`<init>`(). => primary ctor <init>
+recursion/Nats.Succ#`<init>`().(p) => val param p
+recursion/Nats.Succ#copy$default$1(). => method copy$default$1
+recursion/Nats.Succ#copy$default$1().[N] => typeparam N
+recursion/Nats.Succ#copy(). => method copy
+recursion/Nats.Succ#copy().(p) => param p
+recursion/Nats.Succ#copy().[N] => typeparam N
+recursion/Nats.Succ#p. => val method p
+recursion/Nats.Succ. => final object Succ
+recursion/Nats.Succ.apply(). => method apply
+recursion/Nats.Succ.apply().(p) => param p
+recursion/Nats.Succ.apply().[N] => typeparam N
+recursion/Nats.Succ.unapply(). => method unapply
+recursion/Nats.Succ.unapply().(x$1) => param x$1
+recursion/Nats.Succ.unapply().[N] => typeparam N
+recursion/Nats.Zero. => final case object Zero
+recursion/Nats.j31. => val method j31
+recursion/Nats.toIntg(). => macro toIntg
+recursion/Nats.toIntg().(n) => param n
+
+Occurrences:
+[1:8..1:17): recursion <- recursion/
+[3:7..3:11): Nats <- recursion/Nats.
+[4:15..4:18): Nat <- recursion/Nats.Nat#
+[5:4..5:4): <- recursion/Nats.Nat#`<init>`().
+[5:15..5:17): ++ <- recursion/Nats.Nat#`++`().
+[5:20..5:24): Succ -> recursion/Nats.Succ#
+[5:38..5:42): Succ -> recursion/Nats.Succ.
+[5:42..5:42): -> recursion/Nats.Succ.apply().
+[7:27..7:28): + <- recursion/Nats.Nat#`+`().
+[7:36..7:40): that <- recursion/Nats.Nat#`+`().(that)
+[7:42..7:45): Nat -> recursion/Nats.Nat#
+[7:48..7:51): Nat -> recursion/Nats.Nat#
+[9:13..9:17): Zero -> recursion/Nats.Zero.
+[9:24..9:28): that -> recursion/Nats.Nat#`+`().(that)
+[10:13..10:17): Succ -> recursion/Nats.Succ.
+[10:17..10:17): -> recursion/Nats.Succ.unapply().
+[10:17..10:17): -> local0
+[10:18..10:19): p <- local1
+[10:24..10:25): p -> local1
+[10:26..10:27): + -> recursion/Nats.Nat#`+`().
+[10:28..10:32): that -> recursion/Nats.Nat#`+`().(that)
+[10:33..10:35): ++ -> recursion/Nats.Nat#`++`().
+[14:14..14:18): Zero <- recursion/Nats.Zero.
+[14:27..14:30): Nat -> recursion/Nats.Nat#
+[15:13..15:17): Succ <- recursion/Nats.Succ#
+[15:17..15:33): <- recursion/Nats.Succ#`<init>`().
+[15:18..15:19): N <- recursion/Nats.Succ#[N]
+[15:28..15:29): p <- recursion/Nats.Succ#p.
+[15:31..15:32): N -> recursion/Nats.Succ#[N]
+[15:42..15:45): Nat -> recursion/Nats.Nat#
+[17:25..17:31): toIntg <- recursion/Nats.toIntg().
+[17:39..17:40): n <- recursion/Nats.toIntg().(n)
+[17:42..17:45): Nat -> recursion/Nats.Nat#
+[17:48..17:51): Int -> scala/Int#
+[18:11..18:12): n -> recursion/Nats.toIntg().(n)
+[19:11..19:15): Zero -> recursion/Nats.Zero.
+[20:11..20:15): Succ -> recursion/Nats.Succ.
+[20:15..20:15): -> recursion/Nats.Succ.unapply().
+[20:15..20:15): -> local2
+[20:16..20:17): p <- local3
+[20:22..20:28): toIntg -> recursion/Nats.toIntg().
+[20:29..20:30): p -> local3
+[20:32..20:33): + -> scala/Int#`+`(+4).
+[23:6..23:9): j31 <- recursion/Nats.j31.
+[23:12..23:18): toIntg -> recursion/Nats.toIntg().
+[23:19..23:23): Zero -> recursion/Nats.Zero.
+[23:24..23:32): ++.++.++ <- local4
+[23:24..23:24): -> recursion/Nats.Zero.
+[23:24..23:26): ++ -> recursion/Nats.Nat#`++`().
+[23:27..23:35): ++.++ +  <- local5
+[23:27..23:29): ++ -> recursion/Nats.Nat#`++`().
+[23:30..23:38): ++ + Zer <- local6
+[23:30..23:32): ++ -> recursion/Nats.Nat#`++`().
+[23:33..23:34): + -> recursion/Nats.Nat#`+`().
+[23:35..23:39): Zero -> recursion/Nats.Zero.
+[23:40..23:42): ++ -> recursion/Nats.Nat#`++`().
+
 expect/semanticdb-Definitions.scala
 -----------------------------------
 
@@ -3088,8 +3202,8 @@ Schema => SemanticDB v4
 Uri => semanticdb-Types.scala
 Text => empty
 Language => Scala
-Symbols => 125 entries
-Occurrences => 242 entries
+Symbols => 140 entries
+Occurrences => 250 entries
 
 Symbols:
 local0 => abstract method k
@@ -3105,6 +3219,21 @@ types/B# => class B
 types/B#`<init>`(). => primary ctor <init>
 types/C# => class C
 types/C#`<init>`(). => primary ctor <init>
+types/Foo# => case class Foo
+types/Foo#_1(). => method _1
+types/Foo#`<init>`(). => primary ctor <init>
+types/Foo#`<init>`().(s) => val param s
+types/Foo#copy$default$1(). => method copy$default$1
+types/Foo#copy(). => method copy
+types/Foo#copy().(s) => param s
+types/Foo#s. => val method s
+types/Foo. => final object Foo
+types/Foo.apply(). => method apply
+types/Foo.apply().(s) => param s
+types/Foo.unapply(). => method unapply
+types/Foo.unapply().(x$1) => param x$1
+types/Foo.x. => val method x
+types/Foo.y. => val method y
 types/P# => class P
 types/P#C# => class C
 types/P#C#`<init>`(). => primary ctor <init>
@@ -3266,201 +3395,209 @@ Occurrences:
 [22:6..22:7): x <- types/T#x.
 [22:14..22:15): X -> types/T#X#
 [22:15..22:15): -> types/T#X#`<init>`().
-[25:7..25:11): Test <- types/Test.
-[26:8..26:9): M <- types/Test.M#
-[27:4..27:4): <- types/Test.M#`<init>`().
-[27:8..27:9): m <- types/Test.M#m().
-[27:11..27:14): Int -> scala/Int#
-[27:17..27:20): ??? -> scala/Predef.`???`().
-[30:8..30:9): N <- types/Test.N#
-[31:4..31:4): <- types/Test.N#`<init>`().
-[31:8..31:9): n <- types/Test.N#n().
-[31:11..31:14): Int -> scala/Int#
-[31:17..31:20): ??? -> scala/Predef.`???`().
-[34:8..34:9): C <- types/Test.C#
-[34:18..34:18): <- types/Test.C#`<init>`().
-[34:18..34:19): M -> types/Test.M#
-[34:19..34:19): -> types/Test.M#`<init>`().
-[35:8..35:9): p <- types/Test.C#p.
-[35:16..35:17): P -> types/P#
-[35:17..35:17): -> types/P#`<init>`().
-[36:8..36:9): x <- types/Test.C#x.
-[36:12..36:13): p -> types/Test.C#p.
-[36:14..36:15): x -> types/P#x.
-[38:8..38:16): typeRef1 <- types/Test.C#typeRef1.
-[38:18..38:19): C -> types/Test.C#
-[38:22..38:25): ??? -> scala/Predef.`???`().
-[39:8..39:16): typeRef2 <- types/Test.C#typeRef2.
-[39:18..39:19): p -> types/Test.C#p.
-[39:20..39:21): C -> types/P#C#
-[39:24..39:27): ??? -> scala/Predef.`???`().
-[40:8..40:16): typeRef3 <- types/Test.C#typeRef3.
-[40:18..40:19): T -> types/T#
-[40:20..40:21): C -> types/T#C#
-[40:24..40:27): ??? -> scala/Predef.`???`().
-[41:8..41:16): typeRef4 <- types/Test.C#typeRef4.
-[41:18..41:22): List -> scala/package.List#
-[41:23..41:26): Int -> scala/Int#
-[41:30..41:33): ??? -> scala/Predef.`???`().
-[43:8..43:19): singleType1 <- types/Test.C#singleType1.
-[43:21..43:22): x -> types/Test.C#x.
-[43:30..43:33): ??? -> scala/Predef.`???`().
-[44:8..44:19): singleType2 <- types/Test.C#singleType2.
-[44:21..44:22): p -> types/Test.C#p.
-[44:23..44:24): x -> types/P#x.
-[44:32..44:35): ??? -> scala/Predef.`???`().
-[45:8..45:14): Either <- types/Test.C#Either.
-[45:17..45:22): scala -> scala/
-[45:23..45:27): util -> scala/util/
-[45:28..45:34): Either -> scala/util/Either.
-[47:8..47:17): thisType1 <- types/Test.C#thisType1.
-[47:31..47:34): ??? -> scala/Predef.`???`().
-[48:8..48:17): thisType2 <- types/Test.C#thisType2.
-[48:33..48:36): ??? -> scala/Predef.`???`().
-[50:8..50:18): superType1 <- types/Test.C#superType1.
-[50:27..50:28): m -> types/Test.M#m().
-[51:8..51:18): superType2 <- types/Test.C#superType2.
-[51:30..51:31): m -> types/Test.M#m().
-[52:8..52:18): superType3 <- types/Test.C#superType3.
-[52:32..52:33): m -> types/Test.M#m().
-[54:8..54:21): compoundType1 <- types/Test.C#compoundType1.
-[54:29..54:30): k <- local0
-[54:32..54:35): Int -> scala/Int#
-[54:40..54:43): ??? -> scala/Predef.`???`().
-[55:8..55:21): compoundType2 <- types/Test.C#compoundType2.
-[55:23..55:24): M -> types/Test.M#
-[55:30..55:31): N -> types/Test.N#
-[55:34..55:37): ??? -> scala/Predef.`???`().
-[56:8..56:21): compoundType3 <- types/Test.C#compoundType3.
-[56:23..56:24): M -> types/Test.M#
-[56:30..56:31): N -> types/Test.N#
-[56:38..56:39): k <- local1
-[56:41..56:44): Int -> scala/Int#
-[56:49..56:52): ??? -> scala/Predef.`???`().
-[57:8..57:21): compoundType4 <- types/Test.C#compoundType4.
-[57:34..57:35): k <- local3
-[57:37..57:40): Int -> scala/Int#
-[57:43..57:46): ??? -> scala/Predef.`???`().
-[58:8..58:21): compoundType5 <- types/Test.C#compoundType5.
-[58:28..58:29): M -> types/Test.M#
-[58:29..58:29): -> types/Test.M#`<init>`().
-[58:35..58:36): N -> types/Test.N#
-[59:8..59:21): compoundType6 <- types/Test.C#compoundType6.
-[59:28..59:29): M -> types/Test.M#
-[59:29..59:29): -> types/Test.M#`<init>`().
-[59:35..59:36): N -> types/Test.N#
-[59:43..59:44): k <- local6
-[59:46..59:49): Int -> scala/Int#
-[59:52..59:55): ??? -> scala/Predef.`???`().
-[61:8..61:16): annType1 <- types/Test.C#annType1.
-[61:18..61:19): T -> types/T#
-[61:31..61:34): ??? -> scala/Predef.`???`().
-[62:8..62:16): annType2 <- types/Test.C#annType2.
-[62:18..62:19): T -> types/T#
-[62:21..62:25): ann1 -> types/ann1#
-[62:27..62:31): ann2 -> types/ann2#
+[25:11..25:14): Foo <- types/Foo#
+[25:14..25:24): <- types/Foo#`<init>`().
+[25:15..25:16): s <- types/Foo#s.
+[27:7..27:10): Foo <- types/Foo.
+[28:6..28:7): x <- types/Foo.x.
+[28:16..28:26): deprecated -> scala/deprecated#
+[29:6..29:7): y <- types/Foo.y.
+[29:17..29:18): x -> types/Foo.x.
+[32:7..32:11): Test <- types/Test.
+[33:8..33:9): M <- types/Test.M#
+[34:4..34:4): <- types/Test.M#`<init>`().
+[34:8..34:9): m <- types/Test.M#m().
+[34:11..34:14): Int -> scala/Int#
+[34:17..34:20): ??? -> scala/Predef.`???`().
+[37:8..37:9): N <- types/Test.N#
+[38:4..38:4): <- types/Test.N#`<init>`().
+[38:8..38:9): n <- types/Test.N#n().
+[38:11..38:14): Int -> scala/Int#
+[38:17..38:20): ??? -> scala/Predef.`???`().
+[41:8..41:9): C <- types/Test.C#
+[41:18..41:18): <- types/Test.C#`<init>`().
+[41:18..41:19): M -> types/Test.M#
+[41:19..41:19): -> types/Test.M#`<init>`().
+[42:8..42:9): p <- types/Test.C#p.
+[42:16..42:17): P -> types/P#
+[42:17..42:17): -> types/P#`<init>`().
+[43:8..43:9): x <- types/Test.C#x.
+[43:12..43:13): p -> types/Test.C#p.
+[43:14..43:15): x -> types/P#x.
+[45:8..45:16): typeRef1 <- types/Test.C#typeRef1.
+[45:18..45:19): C -> types/Test.C#
+[45:22..45:25): ??? -> scala/Predef.`???`().
+[46:8..46:16): typeRef2 <- types/Test.C#typeRef2.
+[46:18..46:19): p -> types/Test.C#p.
+[46:20..46:21): C -> types/P#C#
+[46:24..46:27): ??? -> scala/Predef.`???`().
+[47:8..47:16): typeRef3 <- types/Test.C#typeRef3.
+[47:18..47:19): T -> types/T#
+[47:20..47:21): C -> types/T#C#
+[47:24..47:27): ??? -> scala/Predef.`???`().
+[48:8..48:16): typeRef4 <- types/Test.C#typeRef4.
+[48:18..48:22): List -> scala/package.List#
+[48:23..48:26): Int -> scala/Int#
+[48:30..48:33): ??? -> scala/Predef.`???`().
+[50:8..50:19): singleType1 <- types/Test.C#singleType1.
+[50:21..50:22): x -> types/Test.C#x.
+[50:30..50:33): ??? -> scala/Predef.`???`().
+[51:8..51:19): singleType2 <- types/Test.C#singleType2.
+[51:21..51:22): p -> types/Test.C#p.
+[51:23..51:24): x -> types/P#x.
+[51:32..51:35): ??? -> scala/Predef.`???`().
+[52:8..52:14): Either <- types/Test.C#Either.
+[52:17..52:22): scala -> scala/
+[52:23..52:27): util -> scala/util/
+[52:28..52:34): Either -> scala/util/Either.
+[54:8..54:17): thisType1 <- types/Test.C#thisType1.
+[54:31..54:34): ??? -> scala/Predef.`???`().
+[55:8..55:17): thisType2 <- types/Test.C#thisType2.
+[55:33..55:36): ??? -> scala/Predef.`???`().
+[57:8..57:18): superType1 <- types/Test.C#superType1.
+[57:27..57:28): m -> types/Test.M#m().
+[58:8..58:18): superType2 <- types/Test.C#superType2.
+[58:30..58:31): m -> types/Test.M#m().
+[59:8..59:18): superType3 <- types/Test.C#superType3.
+[59:32..59:33): m -> types/Test.M#m().
+[61:8..61:21): compoundType1 <- types/Test.C#compoundType1.
+[61:29..61:30): k <- local0
+[61:32..61:35): Int -> scala/Int#
+[61:40..61:43): ??? -> scala/Predef.`???`().
+[62:8..62:21): compoundType2 <- types/Test.C#compoundType2.
+[62:23..62:24): M -> types/Test.M#
+[62:30..62:31): N -> types/Test.N#
 [62:34..62:37): ??? -> scala/Predef.`???`().
-[64:8..64:24): existentialType2 <- types/Test.C#existentialType2.
-[64:26..64:30): List -> scala/package.List#
-[64:36..64:39): ??? -> scala/Predef.`???`().
-[65:8..65:24): existentialType3 <- types/Test.C#existentialType3.
-[65:27..65:32): Class -> java/lang/Class#
-[65:33..65:40): forName -> java/lang/Class#forName().
-[66:8..66:24): existentialType4 <- types/Test.C#existentialType4.
-[66:27..66:32): Class -> java/lang/Class#
-[66:33..66:40): forName -> java/lang/Class#forName().
-[68:8..68:19): typeLambda1 <- types/Test.C#typeLambda1().
-[68:20..68:21): M <- types/Test.C#typeLambda1().[M]
-[68:28..68:31): ??? -> scala/Predef.`???`().
-[69:4..69:15): typeLambda1 -> types/Test.C#typeLambda1().
-[69:24..69:25): L <- local7
-[69:26..69:27): T <- local8
-[69:31..69:35): List -> scala/package.List#
-[69:36..69:37): T -> local8
-[71:11..71:25): ClassInfoType1 <- types/Test.C#ClassInfoType1.
-[72:10..72:24): ClassInfoType2 <- types/Test.C#ClassInfoType2#
-[72:33..72:33): <- types/Test.C#ClassInfoType2#`<init>`().
-[72:33..72:34): B -> types/B#
-[72:34..72:34): -> types/B#`<init>`().
-[72:41..72:42): x <- types/Test.C#ClassInfoType2#x().
-[73:10..73:24): ClassInfoType3 <- types/Test.C#ClassInfoType3#
-[73:24..73:27): <- types/Test.C#ClassInfoType3#`<init>`().
-[73:25..73:26): T <- types/Test.C#ClassInfoType3#[T]
-[75:11..75:21): MethodType <- types/Test.C#MethodType.
-[76:10..76:12): x1 <- types/Test.C#MethodType.x1().
-[76:14..76:17): Int -> scala/Int#
-[76:20..76:23): ??? -> scala/Predef.`???`().
-[77:10..77:12): x2 <- types/Test.C#MethodType.x2().
-[77:14..77:17): Int -> scala/Int#
-[77:20..77:23): ??? -> scala/Predef.`???`().
-[78:10..78:12): m3 <- types/Test.C#MethodType.m3().
-[78:14..78:17): Int -> scala/Int#
-[78:20..78:23): ??? -> scala/Predef.`???`().
-[79:10..79:12): m4 <- types/Test.C#MethodType.m4().
-[79:16..79:19): Int -> scala/Int#
-[79:22..79:25): ??? -> scala/Predef.`???`().
-[80:10..80:12): m5 <- types/Test.C#MethodType.m5().
-[80:13..80:14): x <- types/Test.C#MethodType.m5().(x)
-[80:16..80:19): Int -> scala/Int#
-[80:22..80:25): Int -> scala/Int#
-[80:28..80:31): ??? -> scala/Predef.`???`().
-[81:10..81:12): m6 <- types/Test.C#MethodType.m6().
-[81:13..81:14): T <- types/Test.C#MethodType.m6().[T]
-[81:16..81:17): x <- types/Test.C#MethodType.m6().(x)
-[81:19..81:20): T -> types/Test.C#MethodType.m6().[T]
-[81:23..81:24): T -> types/Test.C#MethodType.m6().[T]
-[81:27..81:30): ??? -> scala/Predef.`???`().
-[84:11..84:21): ByNameType <- types/Test.C#ByNameType.
-[85:10..85:12): m1 <- types/Test.C#ByNameType.m1().
-[85:13..85:14): x <- types/Test.C#ByNameType.m1().(x)
-[85:19..85:22): Int -> scala/Int#
-[85:25..85:28): Int -> scala/Int#
-[85:31..85:34): ??? -> scala/Predef.`???`().
-[88:15..88:27): RepeatedType <- types/Test.C#RepeatedType#
-[88:27..88:39): <- types/Test.C#RepeatedType#`<init>`().
-[88:28..88:29): s <- types/Test.C#RepeatedType#s.
-[88:31..88:37): String -> scala/Predef.String#
-[89:10..89:12): m1 <- types/Test.C#RepeatedType#m1().
-[89:13..89:14): x <- types/Test.C#RepeatedType#m1().(x)
-[89:16..89:19): Int -> scala/Int#
-[89:23..89:26): Int -> scala/Int#
-[89:29..89:30): s -> types/Test.C#RepeatedType#s.
-[89:31..89:37): length -> scala/collection/SeqOps#length().
-[92:11..92:19): TypeType <- types/Test.C#TypeType.
-[93:11..93:13): T1 <- types/Test.C#TypeType.T1#
-[94:10..94:12): m2 <- types/Test.C#TypeType.m2().
-[94:13..94:15): T2 <- types/Test.C#TypeType.m2().[T2]
-[94:19..94:20): C -> types/Test.C#
-[94:24..94:25): C -> types/Test.C#
-[94:29..94:32): ??? -> scala/Predef.`???`().
-[95:10..95:12): m3 <- types/Test.C#TypeType.m3().
-[95:13..95:15): M3 <- types/Test.C#TypeType.m3().[M3]
-[95:22..95:25): ??? -> scala/Predef.`???`().
-[96:11..96:13): T4 <- types/Test.C#TypeType.T4#
-[96:16..96:17): C -> types/Test.C#
-[97:11..97:13): T5 <- types/Test.C#TypeType.T5#
-[97:14..97:15): U <- types/Test.C#TypeType.T5#[U]
-[97:19..97:20): U -> types/Test.C#TypeType.T5#[U]
-[101:9..101:16): Literal <- types/Test.Literal.
-[102:14..102:17): int <- types/Test.Literal.int.
-[103:14..103:18): long <- types/Test.Literal.long.
-[104:14..104:19): float <- types/Test.Literal.float.
-[105:14..105:20): double <- types/Test.Literal.double.
-[106:14..106:17): nil <- types/Test.Literal.nil.
-[107:14..107:18): char <- types/Test.Literal.char.
-[108:14..108:20): string <- types/Test.Literal.string.
-[109:14..109:18): bool <- types/Test.Literal.bool.
-[110:14..110:18): unit <- types/Test.Literal.unit.
-[111:14..111:22): javaEnum <- types/Test.Literal.javaEnum.
-[111:25..111:29): java -> java/
-[111:30..111:33): nio -> java/nio/
-[111:34..111:38): file -> java/nio/file/
-[111:39..111:49): LinkOption -> java/nio/file/LinkOption#
-[111:50..111:64): NOFOLLOW_LINKS -> java/nio/file/LinkOption#NOFOLLOW_LINKS.
-[112:14..112:21): clazzOf <- types/Test.Literal.clazzOf.
-[112:24..112:31): classOf -> scala/Predef.classOf().
-[112:32..112:38): Option -> scala/Option#
-[112:39..112:42): Int -> scala/Int#
+[63:8..63:21): compoundType3 <- types/Test.C#compoundType3.
+[63:23..63:24): M -> types/Test.M#
+[63:30..63:31): N -> types/Test.N#
+[63:38..63:39): k <- local1
+[63:41..63:44): Int -> scala/Int#
+[63:49..63:52): ??? -> scala/Predef.`???`().
+[64:8..64:21): compoundType4 <- types/Test.C#compoundType4.
+[64:34..64:35): k <- local3
+[64:37..64:40): Int -> scala/Int#
+[64:43..64:46): ??? -> scala/Predef.`???`().
+[65:8..65:21): compoundType5 <- types/Test.C#compoundType5.
+[65:28..65:29): M -> types/Test.M#
+[65:29..65:29): -> types/Test.M#`<init>`().
+[65:35..65:36): N -> types/Test.N#
+[66:8..66:21): compoundType6 <- types/Test.C#compoundType6.
+[66:28..66:29): M -> types/Test.M#
+[66:29..66:29): -> types/Test.M#`<init>`().
+[66:35..66:36): N -> types/Test.N#
+[66:43..66:44): k <- local6
+[66:46..66:49): Int -> scala/Int#
+[66:52..66:55): ??? -> scala/Predef.`???`().
+[68:8..68:16): annType1 <- types/Test.C#annType1.
+[68:18..68:19): T -> types/T#
+[68:31..68:34): ??? -> scala/Predef.`???`().
+[69:8..69:16): annType2 <- types/Test.C#annType2.
+[69:18..69:19): T -> types/T#
+[69:21..69:25): ann1 -> types/ann1#
+[69:27..69:31): ann2 -> types/ann2#
+[69:34..69:37): ??? -> scala/Predef.`???`().
+[71:8..71:24): existentialType2 <- types/Test.C#existentialType2.
+[71:26..71:30): List -> scala/package.List#
+[71:36..71:39): ??? -> scala/Predef.`???`().
+[72:8..72:24): existentialType3 <- types/Test.C#existentialType3.
+[72:27..72:32): Class -> java/lang/Class#
+[72:33..72:40): forName -> java/lang/Class#forName().
+[73:8..73:24): existentialType4 <- types/Test.C#existentialType4.
+[73:27..73:32): Class -> java/lang/Class#
+[73:33..73:40): forName -> java/lang/Class#forName().
+[75:8..75:19): typeLambda1 <- types/Test.C#typeLambda1().
+[75:20..75:21): M <- types/Test.C#typeLambda1().[M]
+[75:28..75:31): ??? -> scala/Predef.`???`().
+[76:4..76:15): typeLambda1 -> types/Test.C#typeLambda1().
+[76:24..76:25): L <- local7
+[76:26..76:27): T <- local8
+[76:31..76:35): List -> scala/package.List#
+[76:36..76:37): T -> local8
+[78:11..78:25): ClassInfoType1 <- types/Test.C#ClassInfoType1.
+[79:10..79:24): ClassInfoType2 <- types/Test.C#ClassInfoType2#
+[79:33..79:33): <- types/Test.C#ClassInfoType2#`<init>`().
+[79:33..79:34): B -> types/B#
+[79:34..79:34): -> types/B#`<init>`().
+[79:41..79:42): x <- types/Test.C#ClassInfoType2#x().
+[80:10..80:24): ClassInfoType3 <- types/Test.C#ClassInfoType3#
+[80:24..80:27): <- types/Test.C#ClassInfoType3#`<init>`().
+[80:25..80:26): T <- types/Test.C#ClassInfoType3#[T]
+[82:11..82:21): MethodType <- types/Test.C#MethodType.
+[83:10..83:12): x1 <- types/Test.C#MethodType.x1().
+[83:14..83:17): Int -> scala/Int#
+[83:20..83:23): ??? -> scala/Predef.`???`().
+[84:10..84:12): x2 <- types/Test.C#MethodType.x2().
+[84:14..84:17): Int -> scala/Int#
+[84:20..84:23): ??? -> scala/Predef.`???`().
+[85:10..85:12): m3 <- types/Test.C#MethodType.m3().
+[85:14..85:17): Int -> scala/Int#
+[85:20..85:23): ??? -> scala/Predef.`???`().
+[86:10..86:12): m4 <- types/Test.C#MethodType.m4().
+[86:16..86:19): Int -> scala/Int#
+[86:22..86:25): ??? -> scala/Predef.`???`().
+[87:10..87:12): m5 <- types/Test.C#MethodType.m5().
+[87:13..87:14): x <- types/Test.C#MethodType.m5().(x)
+[87:16..87:19): Int -> scala/Int#
+[87:22..87:25): Int -> scala/Int#
+[87:28..87:31): ??? -> scala/Predef.`???`().
+[88:10..88:12): m6 <- types/Test.C#MethodType.m6().
+[88:13..88:14): T <- types/Test.C#MethodType.m6().[T]
+[88:16..88:17): x <- types/Test.C#MethodType.m6().(x)
+[88:19..88:20): T -> types/Test.C#MethodType.m6().[T]
+[88:23..88:24): T -> types/Test.C#MethodType.m6().[T]
+[88:27..88:30): ??? -> scala/Predef.`???`().
+[91:11..91:21): ByNameType <- types/Test.C#ByNameType.
+[92:10..92:12): m1 <- types/Test.C#ByNameType.m1().
+[92:13..92:14): x <- types/Test.C#ByNameType.m1().(x)
+[92:19..92:22): Int -> scala/Int#
+[92:25..92:28): Int -> scala/Int#
+[92:31..92:34): ??? -> scala/Predef.`???`().
+[95:15..95:27): RepeatedType <- types/Test.C#RepeatedType#
+[95:27..95:39): <- types/Test.C#RepeatedType#`<init>`().
+[95:28..95:29): s <- types/Test.C#RepeatedType#s.
+[95:31..95:37): String -> scala/Predef.String#
+[96:10..96:12): m1 <- types/Test.C#RepeatedType#m1().
+[96:13..96:14): x <- types/Test.C#RepeatedType#m1().(x)
+[96:16..96:19): Int -> scala/Int#
+[96:23..96:26): Int -> scala/Int#
+[96:29..96:30): s -> types/Test.C#RepeatedType#s.
+[96:31..96:37): length -> scala/collection/SeqOps#length().
+[99:11..99:19): TypeType <- types/Test.C#TypeType.
+[100:11..100:13): T1 <- types/Test.C#TypeType.T1#
+[101:10..101:12): m2 <- types/Test.C#TypeType.m2().
+[101:13..101:15): T2 <- types/Test.C#TypeType.m2().[T2]
+[101:19..101:20): C -> types/Test.C#
+[101:24..101:25): C -> types/Test.C#
+[101:29..101:32): ??? -> scala/Predef.`???`().
+[102:10..102:12): m3 <- types/Test.C#TypeType.m3().
+[102:13..102:15): M3 <- types/Test.C#TypeType.m3().[M3]
+[102:22..102:25): ??? -> scala/Predef.`???`().
+[103:11..103:13): T4 <- types/Test.C#TypeType.T4#
+[103:16..103:17): C -> types/Test.C#
+[104:11..104:13): T5 <- types/Test.C#TypeType.T5#
+[104:14..104:15): U <- types/Test.C#TypeType.T5#[U]
+[104:19..104:20): U -> types/Test.C#TypeType.T5#[U]
+[108:9..108:16): Literal <- types/Test.Literal.
+[109:14..109:17): int <- types/Test.Literal.int.
+[110:14..110:18): long <- types/Test.Literal.long.
+[111:14..111:19): float <- types/Test.Literal.float.
+[112:14..112:20): double <- types/Test.Literal.double.
+[113:14..113:17): nil <- types/Test.Literal.nil.
+[114:14..114:18): char <- types/Test.Literal.char.
+[115:14..115:20): string <- types/Test.Literal.string.
+[116:14..116:18): bool <- types/Test.Literal.bool.
+[117:14..117:18): unit <- types/Test.Literal.unit.
+[118:14..118:22): javaEnum <- types/Test.Literal.javaEnum.
+[118:25..118:29): java -> java/
+[118:30..118:33): nio -> java/nio/
+[118:34..118:38): file -> java/nio/file/
+[118:39..118:49): LinkOption -> java/nio/file/LinkOption#
+[118:50..118:64): NOFOLLOW_LINKS -> java/nio/file/LinkOption#NOFOLLOW_LINKS.
+[119:14..119:21): clazzOf <- types/Test.Literal.clazzOf.
+[119:24..119:31): classOf -> scala/Predef.classOf().
+[119:32..119:38): Option -> scala/Option#
+[119:39..119:42): Int -> scala/Int#
 
 expect/semanticdb-extract.scala
 -------------------------------

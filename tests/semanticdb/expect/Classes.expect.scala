@@ -22,6 +22,8 @@ class C8/*<-classes::C8#*/(private[this] val x/*<-classes::C8#x.*/: Int/*->scala
 
 class C9/*<-classes::C9#*/(private[this] var x/*<-classes::C9#x().*/: Int/*->scala::Int#*/)
 
+class C10/*<-classes::C10#*/(s/*<-classes::C10#s.*/: => String/*->scala::Predef.String#*/)
+
 object N/*<-classes::N.*/ {
   val anonClass/*<-classes::N.anonClass.*/ = new C7/*->classes::C7#*/(42) {
     val local/*<-local1*/ = ???/*->scala::Predef.`???`().*/

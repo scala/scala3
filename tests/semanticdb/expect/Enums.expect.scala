@@ -16,8 +16,8 @@ object Enums/*<-_empty_::Enums.*/:
       suit/*->_empty_::Enums.Suits.isRed().(suit)*/ ==/*->scala::Any#`==`().*/ Hearts/*->_empty_::Enums.Suits.Hearts.*/ ||/*->scala::Boolean#`||`().*/ suit/*->_empty_::Enums.Suits.isRed().(suit)*/ ==/*->scala::Any#`==`().*/ Diamonds/*->_empty_::Enums.Suits.Diamonds.*/
 
     def (suit: /*<-_empty_::Enums.Suits.isBlack().*//*<-_empty_::Enums.Suits.isBlack().(suit)*/Suits/*->_empty_::Enums.Suits#*/).isBlack: Boolean/*->scala::Boolean#*/ = suit/*->_empty_::Enums.Suits.isBlack().(suit)*/ match
-      case Spades/*->_empty_::Enums.Suits.Spades.*/ | Diamonds/*->_empty_::Enums.Suits.Diamonds.*/ => true
-      case _                 => false
+      case Spades/*->_empty_::Enums.Suits.Spades.*/ | Clubs/*->_empty_::Enums.Suits.Clubs.*/ => true
+      case _              => false
 
   enum WeekDays/*<-_empty_::Enums.WeekDays#*/:
     case Monday/*<-_empty_::Enums.WeekDays.Monday.*/
