@@ -240,8 +240,15 @@ trait QuotesAndSplices {
             TypeTree(tree.tpe.dealias).withSpan(tree.span)
           else
             tree
-        case tdef: TypeDef if tdef.symbol.hasAnnotation(defn.InternalQuoted_patternTypeAnnot) =>
-          transformTypeBindingTypeDef(tdef, typePatBuf)
+        case tdef: TypeDef  =>
+          if tdef.symbol.hasAnnotation(defn.InternalQuoted_patternTypeAnnot) then
+            transformTypeBindingTypeDef(tdef, typePatBuf)
+          else if tdef.symbol.isClass then
+            val kind = if tdef.symbol.is(Module) then "objects" else "classes"
+            ctx.error("Implementation restriction: cannot match " + kind, tree.sourcePos)
+            EmptyTree
+          else
+            super.transform(tree)
         case tree @ AppliedTypeTree(tpt, args) =>
             val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVarianceSign)) { (arg, v) =>
               arg.tpe match {
@@ -254,6 +261,15 @@ trait QuotesAndSplices {
           if tree.name.isTermName && !tree.nameSpan.isSynthetic && tree.name.startsWith("$") then
             ctx.error("Names cannot start with $ quote pattern ", tree.namePos)
           super.transform(tree)
+        case _: Match =>
+          ctx.error("Implementation restriction: cannot match `match` expressions", tree.sourcePos)
+          EmptyTree
+        case _: Try =>
+          ctx.error("Implementation restriction: cannot match `try` expressions", tree.sourcePos)
+          EmptyTree
+        case _: Return =>
+          ctx.error("Implementation restriction: cannot match `return` statements", tree.sourcePos)
+          EmptyTree
         case _ =>
           super.transform(tree)
       }
