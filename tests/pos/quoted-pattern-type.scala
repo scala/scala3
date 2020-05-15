@@ -42,22 +42,6 @@ object Lib {
         z: Expr[T & Int]
         e
 
-      case e @ '{ ($x: Boolean) match { case _ => $y: Int } } =>
-        e: Expr[T & Int]
-        y: Expr[T & Int]
-        e
-
-      case e @ '{ ($x: Boolean) match { case _ => $y } } =>
-        e: Expr[T]
-        y: Expr[T]
-        e
-
-      case e @ '{ try ($x: Boolean) catch { case _ => $y: Int } } =>
-        e: Expr[T & (Boolean | Int)]
-        x: Expr[T & Boolean]
-        y: Expr[T & Int]
-        e
-
     }
   }
 }
