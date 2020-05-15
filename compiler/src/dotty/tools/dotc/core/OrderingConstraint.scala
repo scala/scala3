@@ -479,6 +479,12 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         case (e1: TypeBounds, _) if e1 contains e2 => e2
         case (_, e2: TypeBounds) if e2 contains e1 => e1
         case (tv1: TypeVar, tv2: TypeVar) if tv1 eq tv2 => e1
+
+        // Should this be based on the merged entries instead of
+        // using this.entry/other.entry ?
+        case (e1: TypeParamRef, e2) if  this.entry(e1).bounds.contains(e2) => e2
+        case (e1, e2: TypeParamRef) if other.entry(e2).bounds.contains(e1) => e1
+
         case _ =>
           if (otherHasErrors)
             e1
