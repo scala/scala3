@@ -57,7 +57,7 @@ Type -+- ProxyType --+- NamedType ----+--- TypeRef
  `p.x.T` == `p.x.type#T`   | `TypeRef(TermRef(p, x), T)`
  `this.type`               | `ThisType`
  `A & B`                   | `AndType(A, B)`
- `A | B`                   | `OrType(A, B)`
+ <code>A \| B</code>       | `OrType(A, B)`
  `=> T`                    | `ExprType(T)`
  `p { refinedName }`       | `RefinedType(p, refinedName)`
  type of the value `super` | `SuperType`
