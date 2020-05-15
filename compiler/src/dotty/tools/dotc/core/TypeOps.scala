@@ -137,14 +137,8 @@ object TypeOps:
           case tp1 => tp1
         }
       case tp: TypeParamRef =>
-        if (tp.paramName.is(DepParamName)) {
-          val bounds = ctx.typeComparer.bounds(tp)
-          if (bounds.lo.isRef(defn.NothingClass)) bounds.hi else bounds.lo
-        }
-        else {
-          val tvar = ctx.typerState.constraint.typeVarOfParam(tp)
-          if (tvar.exists) tvar else tp
-        }
+        val tvar = ctx.typerState.constraint.typeVarOfParam(tp)
+        if (tvar.exists) tvar else tp
       case  _: ThisType | _: BoundType =>
         tp
       case tp: AliasingBounds =>
