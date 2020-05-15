@@ -34,4 +34,7 @@ class Methods[T] {
   def m18(a: Int) = ???
   def m18(b: String) = ???
   def m19(x: Int, y: Int = 2)(z: Int = 3) = ???
+  def m20(a: Int) = ???
+  def m20(b: String) = ???
+  var m20 = m17
 }

@@ -29,10 +29,8 @@ class MethodUsages/*<-example::MethodUsages#*/ {
   m/*->example::MethodUsages#m.*/.m18/*->example::Methods#m18.*/.m/*->example::Methods#m17.m().*/()
   m/*->example::MethodUsages#m.*/.m18/*->example::Methods#m18().*/(1)
   m/*->example::MethodUsages#m.*/.m18/*->example::Methods#m18(+1).*/("")
-}
-
-object MethodUsages/*<-example::MethodUsages.*/ {
-  var x/*<-example::MethodUsages.x().*/: Int/*->scala::Int#*/ = 1
-  def x/*<-example::MethodUsages.x(+1).*/(n/*<-example::MethodUsages.x(+1).(n)*/: String/*->scala::Predef.String#*/): Int/*->scala::Int#*/ = /*->scala::Predef.augmentString().*/n/*->example::MethodUsages.x(+1).(n)*/.toInt/*->scala::collection::StringOps#toInt().*/
-  def foo/*<-example::MethodUsages.foo().*/: Int/*->scala::Int#*/ = x/*->example::MethodUsages.x().*/ +/*->scala::Int#`+`(+4).*/ x/*->example::MethodUsages.x(+1).*/("22")
+  m/*->example::MethodUsages#m.*/.m19/*->example::Methods#m19().*/(1,2)(3)
+  m/*->example::MethodUsages#m.*/.m20/*->example::Methods#m20().*/(1)
+  m/*->example::MethodUsages#m.*/.m20/*->example::Methods#m20(+1).*/("")
+  m/*->example::MethodUsages#m.*/.m20/*->example::Methods#m20(+2).*/.m/*->example::Methods#m17.m().*/()
 }
