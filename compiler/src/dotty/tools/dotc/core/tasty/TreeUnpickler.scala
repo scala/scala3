@@ -531,7 +531,7 @@ class TreeUnpickler(reader: TastyReader,
         def complete(denot: SymDenotation)(implicit ctx: Context) =
           denot.info = typeReader.readType()
       }
-      val sym = ctx.newSymbol(ctx.owner, name, Flags.Case, completer, coord = coordAt(start))
+      val sym = ctx.newSymbol(ctx.owner, name, Flags.Case, completer, coord = coordAt(start)(ctx.addMode(Mode.ReadPositions)))
       registerSym(start, sym)
       sym
     }
@@ -559,7 +559,7 @@ class TreeUnpickler(reader: TastyReader,
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
         if (flags.is(Module)) ctx.adjustModuleCompleter(completer, name) else completer
-      val coord = coordAt(start)
+      val coord = coordAt(start)(ctx.addMode(Mode.ReadPositions))
       val sym =
         roots.find(root => (root.owner eq ctx.owner) && root.name == name) match {
           case Some(rootd) =>
@@ -1188,7 +1188,7 @@ class TreeUnpickler(reader: TastyReader,
               UnApply(fn, implicitArgs, argPats, patType)
             case REFINEDtpt =>
               val refineCls = symAtAddr.getOrElse(start,
-                ctx.newRefinedClassSymbol(coordAt(start))).asClass
+                ctx.newRefinedClassSymbol(coordAt(start)(ctx.addMode(Mode.ReadPositions)))).asClass
               registerSym(start, refineCls)
               typeAtAddr(start) = refineCls.typeRef
               val parent = readTpt()
