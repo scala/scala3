@@ -191,7 +191,7 @@ object DiffUtil {
   }
 
   private def needlemanWunsch(x: Array[String], y: Array[String], builder: mutable.ArrayBuilder[Patch]): Unit = {
-    def similarity(a: String, b: String) = if (a == b) 2 else -1
+    def similarity(a: String, b: String) = if (a == b) 3 else -1
     val d = 1
     val score = Array.tabulate(x.length + 1, y.length + 1) { (i, j) =>
       if (i == 0) d * j
