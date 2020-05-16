@@ -60,6 +60,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case tp @ AppliedType(tycon, args) =>
           if (defn.isCompiletimeAppliedType(tycon.typeSymbol)) tp.tryCompiletimeConstantFold
           else tycon.dealias.appliedTo(args)
+        // Workaround for https://github.com/lampepfl/dotty/issues/8988
+        case tp @ AnnotatedType(underlying @ AnnotatedType(_, annot2), annot1)
+            if (annot1.symbol eq defn.UncheckedVarianceAnnot) && (annot1.symbol eq annot2.symbol) =>
+          homogenize(underlying)
         case _ =>
           tp
       }
