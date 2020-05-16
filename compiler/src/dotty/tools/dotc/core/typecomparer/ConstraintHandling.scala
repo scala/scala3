@@ -1,6 +1,7 @@
 package dotty.tools
 package dotc
 package core
+package typecomparer
 
 import Types._
 import Contexts._
@@ -28,33 +29,33 @@ trait ConstraintHandling[AbstractContext] {
 
   implicit def ctx(implicit ac: AbstractContext): Context
 
-  protected def isSubType(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Boolean
-  protected def isSameType(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Boolean
+  private[typecomparer] def isSubType(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Boolean
+  private[typecomparer] def isSameType(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Boolean
 
-  protected def constraint: Constraint
-  protected def constraint_=(c: Constraint): Unit
+  private[typecomparer] def constraint: Constraint
+  private[typecomparer] def constraint_=(c: Constraint): Unit
 
   private var addConstraintInvocations = 0
 
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
-  protected var frozenConstraint: Boolean = false
+  private[typecomparer] var frozenConstraint: Boolean = false
 
   /** Potentially a type lambda that is still instantiatable, even though the constraint
    *  is generally frozen.
    */
-  protected var caseLambda: Type = NoType
+  private[typecomparer] var caseLambda: Type = NoType
 
   /** If set, align arguments `S1`, `S2`when taking the glb
    *  `T1 { X = S1 } & T2 { X = S2 }` of a constraint upper bound for some type parameter.
    *  Aligning means computing `S1 =:= S2` which may change the current constraint.
    *  See note in TypeComparer#distributeAnd.
    */
-  protected var homogenizeArgs: Boolean = false
+  private[typecomparer] var homogenizeArgs: Boolean = false
 
   /** We are currently comparing type lambdas. Used as a flag for
    *  optimization: when `false`, no need to do an expensive `pruneLambdaParams`
    */
-  protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
+  private[typecomparer] var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
   /** Gives for each instantiated type var that does not yet have its `inst` field
     *  set, the instance value stored in the constraint. Storing instances in constraints
@@ -85,7 +86,7 @@ trait ConstraintHandling[AbstractContext] {
   def fullBounds(param: TypeParamRef)(implicit actx: AbstractContext): TypeBounds =
     nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
-  protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using AbstractContext): Boolean =
+  private[typecomparer] def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using AbstractContext): Boolean =
     if !constraint.contains(param) then true
     else if !isUpper && param.occursIn(bound)
       // We don't allow recursive lower bounds when defining a type,
@@ -123,7 +124,7 @@ trait ConstraintHandling[AbstractContext] {
         }
   end addOneBound
 
-  protected def addBoundTransitively(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(implicit actx: AbstractContext): Boolean =
+  private[typecomparer] def addBoundTransitively(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(implicit actx: AbstractContext): Boolean =
 
     /** Adjust the bound `tp` in the following ways:
      *
@@ -170,7 +171,7 @@ trait ConstraintHandling[AbstractContext] {
         .reporting(i"added $description = $result$location", constr)
   end addBoundTransitively
 
-  protected def addLess(p1: TypeParamRef, p2: TypeParamRef)(implicit actx: AbstractContext): Boolean = {
+  private[typecomparer] def addLess(p1: TypeParamRef, p2: TypeParamRef)(implicit actx: AbstractContext): Boolean = {
     def description = i"ordering $p1 <: $p2 to\n$constraint"
     val res =
       if (constraint.isLess(p2, p1)) unify(p2, p1)
@@ -207,7 +208,7 @@ trait ConstraintHandling[AbstractContext] {
     up.forall(addOneBound(_, lo, isUpper = false))
   }
 
-  protected def isSubType(tp1: Type, tp2: Type, whenFrozen: Boolean)(implicit actx: AbstractContext): Boolean =
+  private[typecomparer] def isSubType(tp1: Type, tp2: Type, whenFrozen: Boolean)(implicit actx: AbstractContext): Boolean =
     if (whenFrozen)
       isSubTypeWhenFrozen(tp1, tp2)
     else
@@ -231,7 +232,7 @@ trait ConstraintHandling[AbstractContext] {
   /** Test whether the lower bounds of all parameters in this
    *  constraint are a solution to the constraint.
    */
-  protected final def isSatisfiable(implicit actx: AbstractContext): Boolean =
+  private[typecomparer] final def isSatisfiable(implicit actx: AbstractContext): Boolean =
     constraint.forallParams { param =>
       val TypeBounds(lo, hi) = constraint.entry(param)
       isSubType(lo, hi) || {
@@ -388,7 +389,7 @@ trait ConstraintHandling[AbstractContext] {
    *  Both `c1` and `c2` are required to derive from constraint `pre`, without adding
    *  any new type variables but possibly narrowing already registered ones with further bounds.
    */
-  protected final def subsumes(c1: Constraint, c2: Constraint, pre: Constraint)(implicit actx: AbstractContext): Boolean =
+  private[typecomparer] final def subsumes(c1: Constraint, c2: Constraint, pre: Constraint)(implicit actx: AbstractContext): Boolean =
     if (c2 eq pre) true
     else if (c1 eq pre) false
     else {
@@ -460,7 +461,7 @@ trait ConstraintHandling[AbstractContext] {
    *  not be AndTypes and lower bounds may not be OrTypes. This is assured by the
    *  way isSubType is organized.
    */
-  protected def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit actx: AbstractContext): Boolean =
+  private[typecomparer] def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit actx: AbstractContext): Boolean =
 
     /** When comparing lambdas we might get constraints such as
      *  `A <: X0` or `A = List[X0]` where `A` is a constrained parameter

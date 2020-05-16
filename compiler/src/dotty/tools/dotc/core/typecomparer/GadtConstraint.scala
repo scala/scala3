@@ -1,6 +1,7 @@
 package dotty.tools
 package dotc
 package core
+package typecomparer
 
 import Decorators._
 import Contexts._
@@ -219,8 +220,8 @@ final class ProperGadtConstraint private(
 
   implicit override def ctx(implicit ctx: Context): Context = ctx
 
-  override protected def constraint = myConstraint
-  override protected def constraint_=(c: Constraint) = myConstraint = c
+  override protected[typecomparer] def constraint = myConstraint
+  override protected[typecomparer] def constraint_=(c: Constraint) = myConstraint = c
 
   override def isSubType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
   override def isSameType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSameType(tp1, tp2)

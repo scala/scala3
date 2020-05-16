@@ -13,6 +13,7 @@ import core.NameKinds.{DocArtifactName, OuterSelectName}
 import core.Decorators._
 import core.Phases.Phase
 import core.Mode
+import core.typecomparer.TypeComparer
 import typer._
 import typer.ErrorReporting._
 import reporting.ThrowingReporter
@@ -328,7 +329,7 @@ class TreeChecker extends Phase with SymTransformer {
                |Original tree : ${tree.show}
                |After checking: ${tree1.show}
                |Why different :
-             """.stripMargin + core.TypeComparer.explained(tp1 <:< tp2)
+             """.stripMargin + TypeComparer.explained(tp1 <:< tp2)
           if (tree.hasType) // it might not be typed because Typer sometimes constructs new untyped trees and resubmits them to typedUnadapted
             assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
           tree1

@@ -1,6 +1,7 @@
 package dotty.tools
 package dotc
 package core
+package typecomparer
 
 import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
 import Decorators._
@@ -30,13 +31,19 @@ object AbsentContext {
 
 /** Provides methods to compare types.
  */
-class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] with PatternTypeConstrainer {
+class TypeComparer(initctx: Context) extends PatternTypeConstrainer {
   import TypeComparer._
   implicit def ctx(implicit nc: AbsentContext): Context = initctx
 
   val state = ctx.typerState
-  def constraint: Constraint = state.constraint
-  def constraint_=(c: Constraint): Unit = state.constraint = c
+  val tvar = new TVarConstraintHandling(initctx) {
+    protected val self = TypeComparer.this
+  }
+
+  export tvar.{bounds, fullBounds, approximation, isSubTypeWhenFrozen, isSameTypeWhenFrozen}
+
+  def isSubType(tp1: Type, tp2: Type, whenFrozen: Boolean)(implicit actx: AbsentContext): Boolean =
+    tvar.isSubType(tp1, tp2, whenFrozen)
 
   private var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private var recCount = 0
@@ -134,7 +141,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     finally {
       monitored = false
       if (Config.checkConstraintsSatisfiable)
-        assert(isSatisfiable, constraint.show)
+        assert(tvar.isSatisfiable, tvar.constraint.show)
     }
   }
 
@@ -197,7 +204,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       if (pendingSubTypes == null) {
         pendingSubTypes = new mutable.HashSet[(Type, Type)]
         ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
-        ctx.log(s"!!! constraint = ${constraint.show}")
+        ctx.log(s"!!! constraint = ${tvar.constraint.show}")
         //if (ctx.settings.YnoDeepSubtypes.value) {
         //  new Error("deep subtype").printStackTrace()
         //}
@@ -360,18 +367,18 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         thirdTry
       case tp1: TypeParamRef =>
         def flagNothingBound = {
-          if (!frozenConstraint && tp2.isRef(NothingClass) && state.isGlobalCommittable) {
-            def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
+          if (!tvar.frozenConstraint && tp2.isRef(NothingClass) && state.isGlobalCommittable) {
+            def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${tvar.constraint.show}"
             if (Config.failOnInstantiationToNothing) assert(false, msg)
             else ctx.log(msg)
           }
           true
         }
         def compareTypeParamRef =
-          assumedTrue(tp1) ||
-          isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
-            if (canConstrain(tp1) && !approx.high)
-              addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
+          tvar.assumedTrue(tp1) ||
+          tvar.isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
+            if (tvar.canConstrain(tp1) && !approx.high)
+              tvar.addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
             else thirdTry
           }
         compareTypeParamRef
@@ -456,7 +463,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         def compareGADT: Boolean = {
           val gbounds2 = gadtBounds(tp2.symbol)
           (gbounds2 != null) &&
-            (isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
+            (tvar.isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
               (tp1 match {
                 case tp1: NamedType if ctx.gadt.contains(tp1.symbol) =>
                   // Note: since we approximate constrained types only with their non-param bounds,
@@ -503,7 +510,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         thirdTryNamed(tp2)
       case tp2: TypeParamRef =>
         def compareTypeParamRef =
-          assumedTrue(tp2) || {
+          tvar.assumedTrue(tp2) || {
             val alwaysTrue =
               // The following condition is carefully formulated to catch all cases
               // where the subtype relation is true without needing to add a constraint
@@ -512,15 +519,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               // So if the constraint is not yet frozen, we do the same comparison again
               // with a frozen constraint, which means that we get a chance to do the
               // widening in `fourthTry` before adding to the constraint.
-              if (frozenConstraint) recur(tp1, bounds(tp2).lo)
-              else isSubTypeWhenFrozen(tp1, tp2)
+              if (tvar.frozenConstraint) recur(tp1, bounds(tp2).lo)
+              else tvar.isSubTypeWhenFrozen(tp1, tp2)
             alwaysTrue ||
-            frozenConstraint && (tp1 match {
-              case tp1: TypeParamRef => constraint.isLess(tp1, tp2)
+            tvar.frozenConstraint && (tp1 match {
+              case tp1: TypeParamRef => tvar.constraint.isLess(tp1, tp2)
               case _ => false
             }) || {
-              if (canConstrain(tp2) && !approx.low)
-                addConstraint(tp2, tp1.widenExpr, fromBelow = true)
+              if (tvar.canConstrain(tp2) && !approx.low)
+                tvar.addConstraint(tp2, tp1.widenExpr, fromBelow = true)
               else fourthTry
             }
           }
@@ -583,12 +590,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               migrateTo3 ||
               tp1.typeParams.corresponds(tp2.typeParams)((tparam1, tparam2) =>
                 isSubType(tparam2.paramInfo.subst(tp2, tp1), tparam1.paramInfo))
-            val saved = comparedTypeLambdas
-            comparedTypeLambdas += tp1
-            comparedTypeLambdas += tp2
+            val saved = tvar.comparedTypeLambdas
+            tvar.comparedTypeLambdas += tp1
+            tvar.comparedTypeLambdas += tp2
             val variancesOK = variancesConform(tp1.typeParams, tp2.typeParams)
             try variancesOK && boundsOK && isSubType(tp1.resType, tp2.resType.subst(tp2, tp1))
-            finally comparedTypeLambdas = saved
+            finally tvar.comparedTypeLambdas = saved
           case _ =>
             val tparams1 = tp1.typeParams
             if (tparams1.nonEmpty)
@@ -721,7 +728,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             def compareGADT = {
               val gbounds1 = gadtBounds(tp1.symbol)
               (gbounds1 != null) &&
-                (isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
+                (tvar.isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
                 narrowGADTBounds(tp1, tp2, approx, isUpper = true)) &&
                 { tp2.isAny || GADTusage(tp1.symbol) }
             }
@@ -866,7 +873,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1.dealiasKeepRefiningAnnots match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
-               canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
+               tvar.canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
               isSubArgs(args1, args2, tp1, tparams)
             case tycon1: TypeRef =>
               tycon2.dealiasKeepRefiningAnnots match {
@@ -961,7 +968,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
                     tl => tparams1.map(tparam => tl.integrate(tparams, tparam.paramInfo).bounds),
                     tl => tp1base.tycon.appliedTo(args1.take(lengthDiff) ++
                             tparams1.indices.toList.map(tl.paramRefs(_))))
-                (assumedTrue(tycon2) || isSubType(tycon1.ensureLambdaSub, tycon2)) &&
+                (tvar.assumedTrue(tycon2) || isSubType(tycon1.ensureLambdaSub, tycon2)) &&
                 recur(tp1, tycon1.appliedTo(args2))
               }
             }
@@ -1012,7 +1019,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       tycon2 match {
         case param2: TypeParamRef =>
           isMatchingApply(tp1) ||
-          canConstrain(param2) && canInstantiate(param2) ||
+          tvar.canConstrain(param2) && canInstantiate(param2) ||
           compareLower(bounds(param2), tyconIsTypeRef = false)
         case tycon2: TypeRef =>
           isMatchingApply(tp1) ||
@@ -1051,7 +1058,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             case _ =>
               false
           }
-          canConstrain(param1) && canInstantiate ||
+          tvar.canConstrain(param1) && canInstantiate ||
             isSubType(bounds(param1).hi.applyIfParameterized(args1), tp2, approx.addLow)
         case tycon1: TypeRef =>
           val sym = tycon1.symbol
@@ -1126,7 +1133,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
-      val saved = constraint
+      val saved = tvar.constraint
       val savedSuccessCount = successCount
       try {
         recCount = recCount + 1
@@ -1200,7 +1207,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   /** Optionally, the constant `c` such that `tp <:< ConstantType(c)` */
   def constValue(tp: Type): Option[Constant] = {
     val ct = new AnyConstantType
-    if (isSubTypeWhenFrozen(tp, ct))
+    if (tvar.isSubTypeWhenFrozen(tp, ct))
       ct.tpe match {
         case ConstantType(c) => Some(c)
         case _ => None
@@ -1456,14 +1463,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  one of subtyping relationships.
    */
   private def sufficientEither(op1: => Boolean, op2: => Boolean): Boolean = {
-    val preConstraint = constraint
+    val preConstraint = tvar.constraint
     op1 && {
-      val leftConstraint = constraint
-      constraint = preConstraint
-      if (!(op2 && subsumes(leftConstraint, constraint, preConstraint))) {
-        if (constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint))
-          constr.println(i"CUT - prefer $leftConstraint over $constraint")
-        constraint = leftConstraint
+      val leftConstraint = tvar.constraint
+      tvar.constraint = preConstraint
+      if (!(op2 && tvar.subsumes(leftConstraint, tvar.constraint, preConstraint))) {
+        if (constr != noPrinter && !tvar.subsumes(tvar.constraint, leftConstraint, preConstraint))
+          constr.println(i"CUT - prefer $leftConstraint over ${tvar.constraint}")
+        tvar.constraint = leftConstraint
       }
       true
     } || op2
@@ -1521,37 +1528,37 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  subtyping relationships.
    */
   private def necessaryEither(op1: => Boolean, op2: => Boolean): Boolean =
-    val preConstraint = constraint
+    val preConstraint = tvar.constraint
     val preGadt = ctx.gadt.fresh
 
     def allSubsumes(leftGadt: GadtConstraint, rightGadt: GadtConstraint, left: Constraint, right: Constraint): Boolean =
-      subsumes(left, right, preConstraint) && preGadt.match
+      tvar.subsumes(left, right, preConstraint) && preGadt.match
         case preGadt: ProperGadtConstraint =>
           preGadt.subsumes(leftGadt, rightGadt, preGadt)
         case _ =>
           true
 
     if op1 then
-      val op1Constraint = constraint
+      val op1Constraint = tvar.constraint
       val op1Gadt = ctx.gadt.fresh
-      constraint = preConstraint
+      tvar.constraint = preConstraint
       ctx.gadt.restore(preGadt)
       if op2 then
-        if allSubsumes(op1Gadt, ctx.gadt, op1Constraint, constraint) then
+        if allSubsumes(op1Gadt, ctx.gadt, op1Constraint, tvar.constraint) then
           gadts.println(i"GADT CUT - prefer ${ctx.gadt} over $op1Gadt")
-          constr.println(i"CUT - prefer $constraint over $op1Constraint")
-        else if allSubsumes(ctx.gadt, op1Gadt, constraint, op1Constraint) then
+          constr.println(i"CUT - prefer ${tvar.constraint} over $op1Constraint")
+        else if allSubsumes(ctx.gadt, op1Gadt, tvar.constraint, op1Constraint) then
           gadts.println(i"GADT CUT - prefer $op1Gadt over ${ctx.gadt}")
-          constr.println(i"CUT - prefer $op1Constraint over $constraint")
-          constraint = op1Constraint
+          constr.println(i"CUT - prefer $op1Constraint over ${tvar.constraint}")
+          tvar.constraint = op1Constraint
           ctx.gadt.restore(op1Gadt)
         else
           gadts.println(i"GADT CUT - no constraint is preferable, reverting to $preGadt")
           constr.println(i"CUT - no constraint is preferable, reverting to $preConstraint")
-          constraint = preConstraint
+          tvar.constraint = preConstraint
           ctx.gadt.restore(preGadt)
       else
-        constraint = op1Constraint
+        tvar.constraint = op1Constraint
         ctx.gadt.restore(op1Gadt)
       true
     else op2
@@ -1653,7 +1660,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
   /** Defer constraining type variables when compared against prototypes */
   def isMatchedByProto(proto: ProtoType, tp: Type): Boolean = tp.stripTypeVar match {
-    case tp: TypeParamRef if constraint contains tp => true
+    case tp: TypeParamRef if tvar.constraint contains tp => true
     case _ => proto.isMatchedBy(tp, keepConstraint = true)
   }
 
@@ -1663,7 +1670,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    */
   private def narrowGADTBounds(tr: NamedType, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
     val boundImprecise = approx.high || approx.low
-    ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
+    ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !tvar.frozenConstraint && !boundImprecise && {
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
@@ -1754,7 +1761,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         formals2 match {
           case formal2 :: rest2 =>
             val formal2a = formal2.subst(tp2, tp1)
-            isSubTypeWhenFrozen(formal2a, formal1) &&
+            tvar.isSubTypeWhenFrozen(formal2a, formal1) &&
             loop(rest1, rest2)
           case nil =>
             false
@@ -1804,7 +1811,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    */
   def singletonInterval(tp1: Type, tp2: Type): Type = {
     def isSingletonBounds(lo: Type, hi: Type) =
-      lo.isSingleton && hi.derivesFrom(defn.SingletonClass) && isSubTypeWhenFrozen(lo, hi)
+      lo.isSingleton && hi.derivesFrom(defn.SingletonClass) && tvar.isSubTypeWhenFrozen(lo, hi)
     if (isSameTypeWhenFrozen(tp1, tp2)) tp1
     else if (isSingletonBounds(tp1, tp2)) tp1
     else if (isSingletonBounds(tp2, tp1)) tp2
@@ -1957,7 +1964,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           else if (isBounds(arg1) || isBounds(arg2))
             TypeBounds(lub(arg1.loBound, arg2.loBound),
                        glb(arg1.hiBound, arg2.hiBound))
-          else if (homogenizeArgs && !frozenConstraint && isSameType(arg1, arg2)) arg1
+          else if (tvar.homogenizeArgs && !tvar.frozenConstraint && isSameType(arg1, arg2)) arg1
           else NoType
         glbArg :: glbArgs(args1Rest, args2Rest, tparamsRest)
       case nil =>
@@ -1972,7 +1979,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   /** If some (&-operand of) `tp` is a supertype of `sub` replace it with `NoType`.
    */
   private def dropIfSuper(tp: Type, sub: Type): Type =
-    if (isSubTypeWhenFrozen(sub, tp)) NoType
+    if (tvar.isSubTypeWhenFrozen(sub, tp)) NoType
     else tp match {
       case tp @ AndType(tp1, tp2) =>
         recombineAnd(tp, dropIfSuper(tp1, sub), dropIfSuper(tp2, sub))
@@ -1983,8 +1990,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   /** Merge `t1` into `tp2` if t1 is a subtype of some &-summand of tp2.
    */
   private def mergeIfSub(tp1: Type, tp2: Type): Type =
-    if (isSubTypeWhenFrozen(tp1, tp2))
-      if (isSubTypeWhenFrozen(tp2, tp1)) tp2 else tp1 // keep existing type if possible
+    if (tvar.isSubTypeWhenFrozen(tp1, tp2))
+      if (tvar.isSubTypeWhenFrozen(tp2, tp1)) tp2 else tp1 // keep existing type if possible
     else tp2 match {
       case tp2 @ AndType(tp21, tp22) =>
         val lower1 = mergeIfSub(tp1, tp21)
@@ -2204,7 +2211,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     case tp1: ClassInfo =>
       tp2 match {
         case tp2: ClassInfo =>
-          isSubTypeWhenFrozen(tp1.prefix, tp2.prefix) || (tp1.cls.owner derivesFrom tp2.cls.owner)
+          tvar.isSubTypeWhenFrozen(tp1.prefix, tp2.prefix) || (tp1.cls.owner derivesFrom tp2.cls.owner)
         case _ =>
           false
       }
@@ -2220,7 +2227,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       tp2 match {
         case tp2: MethodType =>
           def asGoodParams(formals1: List[Type], formals2: List[Type]) =
-            (formals2 corresponds formals1)(isSubTypeWhenFrozen)
+            (formals2 corresponds formals1)(tvar.isSubTypeWhenFrozen)
           asGoodParams(tp1.paramInfos, tp2.paramInfos) &&
           (!asGoodParams(tp2.paramInfos, tp1.paramInfos) ||
            isAsGood(tp1.resultType, tp2.resultType))
@@ -2243,14 +2250,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     s"${tp1.show} <:< ${tp2.show}" + {
       if (ctx.settings.verbose.value || Config.verboseExplainSubtype)
         s" ${tp1.getClass}, ${tp2.getClass}" +
-        (if (frozenConstraint) " frozen" else "") +
+        (if (tvar.frozenConstraint) " frozen" else "") +
         (if (ctx.mode is Mode.TypevarsMissContext) " tvars-miss-ctx" else "")
       else ""
     }
 
   /** Show subtype goal that led to an assertion failure */
   def showGoal(tp1: Type, tp2: Type)(implicit ctx: Context): Unit = {
-    ctx.echo(i"assertion failure for ${show(tp1)} <:< ${show(tp2)}, frozen = $frozenConstraint")
+    ctx.echo(i"assertion failure for ${show(tp1)} <:< ${show(tp2)}, frozen = ${tvar.frozenConstraint}")
     def explainPoly(tp: Type) = tp match {
       case tp: TypeParamRef => ctx.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
       case tp: TypeRef if tp.symbol.exists => ctx.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
@@ -2490,16 +2497,31 @@ object TypeComparer {
 class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   import state.constraint
 
-  val footprint: mutable.Set[Type] = mutable.Set[Type]()
+  override val tvar = new TVarConstraintHandling(initctx) {
+    val self: TrackingTypeComparer = TrackingTypeComparer.this
 
-  override def bounds(param: TypeParamRef)(implicit nc: AbsentContext): TypeBounds = {
-    if (param.binder `ne` caseLambda) footprint += param
-    super.bounds(param)
+    override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit nc: AbsentContext): Boolean =
+      traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound ${tvar.frozenConstraint}, constraint = ${ctx.typerState.constraint}") {
+        super.addConstraint(param, bound, fromBelow)
+      }
+
+    override def bounds(param: TypeParamRef)(implicit nc: AbsentContext): TypeBounds = {
+      if (param.binder `ne` caseLambda) self.footprint += param
+      super.bounds(param)
+    }
+
+    override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit nc: AbsentContext): Boolean = {
+      if (param.binder `ne` caseLambda) self.footprint += param
+      super.addOneBound(param, bound, isUpper)
+    }
+
   }
 
-  override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit nc: AbsentContext): Boolean = {
-    if (param.binder `ne` caseLambda) footprint += param
-    super.addOneBound(param, bound, isUpper)
+  val footprint: mutable.Set[Type] = mutable.Set[Type]()
+
+  override def typeVarInstance(tvar: TypeVar)(implicit ctx: Context): Type = {
+    footprint += tvar
+    super.typeVarInstance(tvar)
   }
 
   override def gadtBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
@@ -2517,16 +2539,11 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     super.gadtAddUpperBound(sym, b)
   }
 
-  override def typeVarInstance(tvar: TypeVar)(implicit ctx: Context): Type = {
-    footprint += tvar
-    super.typeVarInstance(tvar)
-  }
-
   def matchCases(scrut: Type, cases: List[Type])(implicit ctx: Context): Type = {
     def paramInstances = new TypeAccumulator[Array[Type]] {
       def apply(inst: Array[Type], t: Type) = t match {
-        case t @ TypeParamRef(b, n) if b `eq` caseLambda =>
-          inst(n) = approximation(t, fromBelow = variance >= 0).simplified
+        case t @ TypeParamRef(b, n) if b `eq` tvar.caseLambda =>
+          inst(n) = tvar.approximation(t, fromBelow = variance >= 0).simplified
           inst
         case _ =>
           foldOver(inst, t)
@@ -2535,7 +2552,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
     def instantiateParams(inst: Array[Type]) = new TypeMap {
       def apply(t: Type) = t match {
-        case t @ TypeParamRef(b, n) if b `eq` caseLambda => inst(n)
+        case t @ TypeParamRef(b, n) if b `eq` tvar.caseLambda => inst(n)
         case t: LazyRef => apply(t.ref)
         case _ => mapOver(t)
       }
@@ -2550,8 +2567,8 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     def matchCase(cas: Type): Option[Type] = {
       val cas1 = cas match {
         case cas: HKTypeLambda =>
-          caseLambda = constrained(cas)
-          caseLambda.resultType
+          tvar.caseLambda = constrained(cas)
+          tvar.caseLambda.resultType
         case _ =>
           cas
       }
@@ -2589,7 +2606,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       if (isSubType(scrut, pat))
         // `scrut` is a subtype of `pat`: *It's a Match!*
         Some {
-          caseLambda match {
+          tvar.caseLambda match {
             case caseLambda: HKTypeLambda =>
               val instances = paramInstances(new Array(caseLambda.paramNames.length), pat)
               instantiateParams(instances)(body)
@@ -2612,7 +2629,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       case Nil => NoType
     }
 
-    inFrozenConstraint {
+    tvar.inFrozenConstraint {
       // Empty types break the basic assumption that if a scrutinee and a
       // pattern are disjoint it's OK to reduce passed that pattern. Indeed,
       // empty types viewed as a set of value is always a subset of any other
@@ -2638,6 +2655,15 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   import TypeComparer._
 
+  override val tvar = new TVarConstraintHandling(initctx) {
+    protected val self: ExplainingTypeComparer = ExplainingTypeComparer.this
+
+    override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit nc: AbsentContext): Boolean =
+      traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound ${tvar.frozenConstraint}, constraint = ${ctx.typerState.constraint}") {
+        super.addConstraint(param, bound, fromBelow)
+      }
+  }
+
   private var indent = 0
   private val b = new StringBuilder
 
@@ -2659,12 +2685,12 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       if Config.verboseExplainSubtype || ctx.settings.verbose.value
       then s" ${tp1.getClass} ${tp2.getClass}"
       else ""
-    traceIndented(s"${show(tp1)} <:< ${show(tp2)}$moreInfo $approx ${if (frozenConstraint) " frozen" else ""}") {
+    traceIndented(s"${show(tp1)} <:< ${show(tp2)}$moreInfo $approx ${if (tvar.frozenConstraint) " frozen" else ""}") {
       super.isSubType(tp1, tp2, approx)
     }
 
   override def recur(tp1: Type, tp2: Type): Boolean =
-    traceIndented(s"${show(tp1)} <:< ${show(tp2)} recur ${if (frozenConstraint) " frozen" else ""}") {
+    traceIndented(s"${show(tp1)} <:< ${show(tp2)} recur ${if (tvar.frozenConstraint) " frozen" else ""}") {
       super.recur(tp1, tp2)
     }
 
@@ -2683,12 +2709,19 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.glb(tp1, tp2)
     }
 
-  override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit nc: AbsentContext): Boolean =
-    traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint, constraint = ${ctx.typerState.constraint}") {
-      super.addConstraint(param, bound, fromBelow)
-    }
-
   override def copyIn(ctx: Context): ExplainingTypeComparer = new ExplainingTypeComparer(ctx)
 
   override def lastTrace(): String = "Subtype trace:" + { try b.toString finally b.clear() }
+}
+
+abstract class TVarConstraintHandling(initctx: Context) extends ConstraintHandling[AbsentContext] {
+  protected val self: TypeComparer
+
+  def isSubType(tp1: Type, tp2: Type)(implicit actx: AbsentContext): Boolean = self.isSubType(tp1, tp2)
+  def isSameType(tp1: Type, tp2: Type)(implicit actx: AbsentContext): Boolean = self.isSameType(tp1, tp2)
+
+  def constraint: Constraint = self.state.constraint
+  def constraint_=(c: Constraint): Unit = self.state.constraint = c
+
+  implicit def ctx(implicit nc: AbsentContext): Context = initctx
 }

@@ -1463,7 +1463,7 @@ class Namer { typer: Typer =>
         tp.widenTermRefExpr.simplified match
           case ctp: ConstantType if isInlineVal => ctp
           case tp =>
-            val tp1 = ctx.typeComparer.widenInferred(tp, rhsProto)
+            val tp1 = ctx.typeComparer.tvar.widenInferred(tp, rhsProto)
             if sym.is(Enum) then dropEnumValue(tp1) else tp1
 
       // Replace aliases to Unit by Unit itself. If we leave the alias in

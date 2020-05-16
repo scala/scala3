@@ -35,6 +35,7 @@ import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
+import typecomparer._
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -4160,7 +4161,7 @@ object Types {
      *  uninstantiated
      */
     def instanceOpt(implicit ctx: Context): Type =
-      if (inst.exists) inst else ctx.typeComparer.instType(this)
+      if (inst.exists) inst else ctx.typeComparer.tvar.instType(this)
 
     /** Is the variable already instantiated? */
     def isInstantiated(implicit ctx: Context): Boolean = instanceOpt.exists
@@ -4184,7 +4185,7 @@ object Types {
         val atp = TypeOps.avoid(tp, problems.toList)
         def msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
         typr.println(msg)
-        val bound = ctx.typeComparer.fullUpperBound(origin)
+        val bound = ctx.typeComparer.tvar.fullUpperBound(origin)
         if !(atp <:< bound) then
           throw new TypeError(s"$msg,\nbut the latter type does not conform to the upper bound $bound")
         atp
@@ -4213,7 +4214,7 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type =
-      instantiateWith(avoidCaptures(ctx.typeComparer.instanceType(origin, fromBelow)))
+      instantiateWith(avoidCaptures(ctx.typeComparer.tvar.instanceType(origin, fromBelow)))
 
     /** For uninstantiated type variables: Is the lower bound different from Nothing? */
     def hasLowerBound(implicit ctx: Context): Boolean =

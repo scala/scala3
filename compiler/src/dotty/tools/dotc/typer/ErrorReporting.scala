@@ -6,6 +6,7 @@ import ast._
 import core._
 import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
 import Implicits._, Flags._, Constants.Constant
+import typecomparer.TypeComparer
 import util.Spans._
 import util.SourcePosition
 import config.Feature

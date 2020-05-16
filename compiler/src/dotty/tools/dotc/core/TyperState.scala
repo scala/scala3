@@ -169,7 +169,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
     val toCollect = new mutable.ListBuffer[TypeLambda]
     constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {
-        val inst = ctx.typeComparer.instType(tvar)
+        val inst = ctx.typeComparer.tvar.instType(tvar)
         if (inst.exists && (tvar.owningState.get eq this)) {
           tvar.inst = inst
           val lam = tvar.origin.binder

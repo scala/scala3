@@ -326,7 +326,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                   val tparams = poly.paramRefs
                   val variances = caseClass.typeParams.map(_.paramVarianceSign)
                   val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
-                    ctx.typeComparer.instanceType(tparam, fromBelow = variance < 0))
+                    ctx.typeComparer.tvar.instanceType(tparam, fromBelow = variance < 0))
                   resType.substParams(poly, instanceTypes)
                 instantiate(using ctx.fresh.setExploreTyperState().setOwner(caseClass))
               case _ =>

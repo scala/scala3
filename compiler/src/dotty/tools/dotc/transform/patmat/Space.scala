@@ -13,6 +13,7 @@ import Symbols._
 import StdNames._
 import NameOps._
 import Constants._
+import typecomparer.TypeComparer
 import typer._
 import Applications._
 import Inferencing._

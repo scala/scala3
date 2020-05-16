@@ -409,7 +409,7 @@ object TypeOps:
         case tp: SkolemType if partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
           range(defn.NothingType, apply(tp.info))
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
-          val lo = mapCtx.typeComparer.instanceType(
+          val lo = mapCtx.typeComparer.tvar.instanceType(
             tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp

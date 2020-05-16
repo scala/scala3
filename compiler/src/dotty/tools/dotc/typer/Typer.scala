@@ -2285,7 +2285,7 @@ class Typer extends Namer
         if (ctx.mode.is(Mode.Pattern)) app1
         else {
           val elemTpes = elems.lazyZip(pts).map((elem, pt) =>
-            ctx.typeComparer.widenInferred(elem.tpe, pt))
+            ctx.typeComparer.tvar.widenInferred(elem.tpe, pt))
           val resTpe = TypeOps.nestedPairs(elemTpes)
           app1.cast(resTpe)
         }

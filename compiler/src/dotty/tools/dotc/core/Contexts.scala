@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package core
 
+import typecomparer._
+
 import interfaces.CompilerCallback
 import Decorators._
 import Periods._

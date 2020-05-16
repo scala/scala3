@@ -1,6 +1,7 @@
 package dotty.tools
 package dotc
 package core
+package typecomparer
 
 import Decorators._
 import Symbols._

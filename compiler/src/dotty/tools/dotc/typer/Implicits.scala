@@ -35,6 +35,7 @@ import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.trace
 import annotation.tailrec
+import typecomparer._
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
