@@ -24,16 +24,12 @@ import typer.Applications.productSelectorTypes
 import reporting.trace
 import NullOpsDecorator.NullOps
 
-final class AbsentContext
-object AbsentContext {
-  implicit val absentContext: AbsentContext = new AbsentContext
-}
 
 /** Provides methods to compare types.
  */
 class TypeComparer(initctx: Context) extends PatternTypeConstrainer {
   import TypeComparer._
-  implicit def ctx(implicit nc: AbsentContext): Context = initctx
+  implicit def ctx: Context = initctx
 
   val state = ctx.typerState
   val tvar = new TVarConstraintHandling(initctx) {
@@ -43,7 +39,7 @@ class TypeComparer(initctx: Context) extends PatternTypeConstrainer {
 
   export tvar.{bounds, fullBounds, approximation, isSubTypeWhenFrozen, isSameTypeWhenFrozen}
 
-  def isSubType(tp1: Type, tp2: Type, whenFrozen: Boolean)(implicit actx: AbsentContext): Boolean =
+  def isSubType(tp1: Type, tp2: Type, whenFrozen: Boolean): Boolean =
     tvar.isSubType(tp1, tp2, whenFrozen)
 
   private var pendingSubTypes: mutable.Set[(Type, Type)] = null
@@ -182,7 +178,7 @@ class TypeComparer(initctx: Context) extends PatternTypeConstrainer {
     }
   }
 
-  def isSubType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean = isSubType(tp1, tp2, FreshApprox)
+  def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, FreshApprox)
 
   /** The inner loop of the isSubType comparison.
    *  Recursive calls from recur should go to recur directly if the two types
@@ -1772,7 +1768,7 @@ class TypeComparer(initctx: Context) extends PatternTypeConstrainer {
   // Type equality =:=
 
   /** Two types are the same if are mutual subtypes of each other */
-  def isSameType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean =
+  def isSameType(tp1: Type, tp2: Type): Boolean =
     if (tp1 eq NoType) false
     else if (tp1 eq tp2) true
     else isSubType(tp1, tp2) && isSubType(tp2, tp1)
@@ -2497,17 +2493,17 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override val tvar = new TVarConstraintHandling(initctx) {
     val self: TrackingTypeComparer = TrackingTypeComparer.this
 
-    override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit nc: AbsentContext): Boolean =
+    override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean): Boolean =
       traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound ${tvar.frozenConstraint}, constraint = ${ctx.typerState.constraint}") {
         super.addConstraint(param, bound, fromBelow)
       }
 
-    override def bounds(param: TypeParamRef)(implicit nc: AbsentContext): TypeBounds = {
+    override def bounds(param: TypeParamRef): TypeBounds = {
       if (param.binder `ne` caseLambda) self.footprint += param
       super.bounds(param)
     }
 
-    override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit nc: AbsentContext): Boolean = {
+    override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean): Boolean = {
       if (param.binder `ne` caseLambda) self.footprint += param
       super.addOneBound(param, bound, isUpper)
     }
@@ -2655,7 +2651,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override val tvar = new TVarConstraintHandling(initctx) {
     protected val self: ExplainingTypeComparer = ExplainingTypeComparer.this
 
-    override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit nc: AbsentContext): Boolean =
+    override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean): Boolean =
       traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound ${tvar.frozenConstraint}, constraint = ${ctx.typerState.constraint}") {
         super.addConstraint(param, bound, fromBelow)
       }
@@ -2711,14 +2707,14 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override def lastTrace(): String = "Subtype trace:" + { try b.toString finally b.clear() }
 }
 
-abstract class TVarConstraintHandling(initctx: Context) extends ConstraintHandling[AbsentContext] {
+abstract class TVarConstraintHandling(initctx: Context) extends ConstraintHandling {
+  implicit def ctx: Context = initctx
+
   protected val self: TypeComparer
 
-  def isSubType(tp1: Type, tp2: Type)(implicit actx: AbsentContext): Boolean = self.isSubType(tp1, tp2)
-  def isSameType(tp1: Type, tp2: Type)(implicit actx: AbsentContext): Boolean = self.isSameType(tp1, tp2)
+  def isSubType(tp1: Type, tp2: Type): Boolean = self.isSubType(tp1, tp2)
+  def isSameType(tp1: Type, tp2: Type): Boolean = self.isSameType(tp1, tp2)
 
   def constraint: Constraint = self.state.constraint
   def constraint_=(c: Constraint): Unit = self.state.constraint = c
-
-  implicit def ctx(implicit nc: AbsentContext): Context = initctx
 }
