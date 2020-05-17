@@ -35,7 +35,7 @@ class TypeComparer(initctx: Context) extends PatternTypeConstrainer {
   val tvar = new TVarConstraintHandling(initctx) {
     protected val self = TypeComparer.this
   }
-  val gadt = new GadtConstraintHandlingImpl(initctx)
+  val gadt: GadtConstraintHandling = new GadtConstraintHandlingImpl(initctx)
 
   export tvar.{bounds, fullBounds, approximation, isSubTypeWhenFrozen, isSameTypeWhenFrozen}
 

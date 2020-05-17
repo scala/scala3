@@ -11,9 +11,7 @@ import util.SimpleIdentityMap
 import collection.mutable
 import printing._
 
-import scala.annotation.internal.sharable
-
-/** Represents GADT constraints currently in scope */
+/** Encapsulates operating on [[GadtScopeState]]. */
 sealed abstract class GadtConstraintHandling extends Showable {
   /** Immediate bounds of `sym`. Does not contain lower/upper symbols (see [[fullBounds]]). */
   def bounds(sym: Symbol): TypeBounds
@@ -50,34 +48,10 @@ sealed abstract class GadtConstraintHandling extends Showable {
   /** See [[ConstraintHandling.approximation]] */
   def approximation(sym: Symbol, fromBelow: Boolean): Type
 
+  /** See [[ConstraintHandling.subsumes]] */
+  def subsumes(left: GadtScopeState, right: GadtScopeState, pre: GadtScopeState): Boolean
+
   def debugBoundsDescription: String
-}
-
-final class GadtScopeState(
-  private[typecomparer] var constraint: Constraint,
-  private[typecomparer] var mapping: SimpleIdentityMap[Symbol, TypeVar],
-  private[typecomparer] var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
-) {
-  def this() = this(
-    constraint = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty),
-    mapping = SimpleIdentityMap.Empty,
-    reverseMapping = SimpleIdentityMap.Empty
-  )
-
-  def isEmpty: Boolean = mapping.size == 0
-  def nonEmpty: Boolean = !isEmpty
-
-  def restore(other: GadtScopeState): Unit = {
-    this.constraint = other.constraint
-    this.mapping = other.mapping
-    this.reverseMapping = other.reverseMapping
-  }
-
-  def fresh: GadtScopeState = new GadtScopeState(
-    constraint,
-    mapping,
-    reverseMapping,
-  )
 }
 
 final class GadtConstraintHandlingImpl(
@@ -85,17 +59,18 @@ final class GadtConstraintHandlingImpl(
 ) extends GadtConstraintHandling with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
-  def myConstraint: Constraint = initctx.gadtState.constraint
-  def myConstraint_=(c: Constraint): Unit = initctx.gadtState.constraint = c
-  def mapping: SimpleIdentityMap[Symbol, TypeVar] = initctx.gadtState.mapping
-  def mapping_=(m: SimpleIdentityMap[Symbol, TypeVar]): Unit = initctx.gadtState.mapping = m
-  def reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol] = initctx.gadtState.reverseMapping
-  def reverseMapping_=(m: SimpleIdentityMap[TypeParamRef, Symbol]): Unit = initctx.gadtState.reverseMapping = m
+  // ---- Preamble ---------------------------------------------------
 
-  /** Exposes ConstraintHandling.subsumes */
-  def subsumes(left: GadtScopeState, right: GadtScopeState, pre: GadtScopeState): Boolean = {
-    subsumes(left.constraint, right.constraint, pre.constraint)
-  }
+  implicit override def ctx: Context = initctx
+
+  override protected[typecomparer] def constraint = ctx.gadtState.constraint
+  override protected[typecomparer] def constraint_=(c: Constraint) = ctx.gadtState.constraint = c
+  def mapping: SimpleIdentityMap[Symbol, TypeVar] = ctx.gadtState.mapping
+  def mapping_=(m: SimpleIdentityMap[Symbol, TypeVar]): Unit = ctx.gadtState.mapping = m
+  def reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol] = ctx.gadtState.reverseMapping
+  def reverseMapping_=(m: SimpleIdentityMap[TypeParamRef, Symbol]): Unit = ctx.gadtState.reverseMapping = m
+
+  // ---- Public -----------------------------------------------------
 
   override def addToConstraint(params: List[Symbol]): Boolean = {
     import NameKinds.DepParamName
@@ -217,14 +192,12 @@ final class GadtConstraintHandlingImpl(
     res
   }
 
+  override def subsumes(left: GadtScopeState, right: GadtScopeState, pre: GadtScopeState): Boolean =
+    subsumes(left.constraint, right.constraint, pre.constraint)
+
   override def isEmpty: Boolean = mapping.size == 0
 
   // ---- Protected/internal -----------------------------------------------
-
-  implicit override def ctx: Context = ctx
-
-  override protected[typecomparer] def constraint = myConstraint
-  override protected[typecomparer] def constraint_=(c: Constraint) = myConstraint = c
 
   override def isSubType(tp1: Type, tp2: Type): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
   override def isSameType(tp1: Type, tp2: Type): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
@@ -269,7 +242,7 @@ final class GadtConstraintHandlingImpl(
       (if (acc ne null) acc else new ContainsNoInternalTypesAccumulator()).foldOver(true, tp)
   }
 
-  private class ContainsNoInternalTypesAccumulator extends TypeAccumulator[Boolean] {
+  private class ContainsNoInternalTypesAccumulator(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     override def apply(x: Boolean, tp: Type): Boolean = x && containsNoInternalTypes(tp)
   }
 
