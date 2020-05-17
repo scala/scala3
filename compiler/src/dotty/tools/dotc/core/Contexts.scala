@@ -147,9 +147,11 @@ object Contexts {
     final def importInfo: ImportInfo = _importInfo
 
     /** The current bounds in force for type parameters appearing in a GADT */
-    private var _gadt: GadtConstraint = _
-    protected def gadt_=(gadt: GadtConstraint): Unit = _gadt = gadt
-    final def gadt: GadtConstraint = _gadt
+    private var _gadtState: GadtScopeState = _
+    protected def gadtState_=(gadt: GadtScopeState): Unit = _gadtState = gadt
+    final def gadtState: GadtScopeState = _gadtState
+
+    final def gadt: GadtConstraintHandling = typeComparer.gadt
 
     /** The history of implicit searches that are currently active */
     private var _searchHistory: SearchHistory = null
@@ -387,7 +389,7 @@ object Contexts {
       val constrCtx = outersIterator.dropWhile(_.outer.owner == owner).next()
       superOrThisCallContext(owner, constrCtx.scope)
         .setTyperState(typerState)
-        .setGadt(gadt)
+        .setGadtState(gadtState)
         .fresh
         .setScope(this.scope)
     }
@@ -442,7 +444,7 @@ object Contexts {
       _typerState = origin.typerState
       _typeAssigner = origin.typeAssigner
       _importInfo = origin.importInfo
-      _gadt = origin.gadt
+      _gadtState = origin.gadtState
       _searchHistory = origin.searchHistory
       _typeComparer = origin.typeComparer
       _source = origin.source
@@ -550,8 +552,8 @@ object Contexts {
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
-    def setGadt(gadt: GadtConstraint): this.type = { this.gadt = gadt; this }
-    def setFreshGADTBounds: this.type = setGadt(gadt.fresh)
+    def setGadtState(state: GadtScopeState): this.type = { this.gadtState = state; this }
+    def setFreshGadtState: this.type = setGadtState(gadtState.fresh)
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def setSource(source: SourceFile): this.type = { this.source = source; this }
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
@@ -646,7 +648,8 @@ object Contexts {
       .updated(notNullInfosLoc, Nil)
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchRoot
-    gadt = EmptyGadtConstraint
+    gadtState = new GadtScopeState()
+    // EmptyGadtConstraint
   }
 
   @sharable object NoContext extends Context(null) {

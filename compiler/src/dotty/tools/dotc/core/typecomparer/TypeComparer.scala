@@ -39,6 +39,7 @@ class TypeComparer(initctx: Context) extends PatternTypeConstrainer {
   val tvar = new TVarConstraintHandling(initctx) {
     protected val self = TypeComparer.this
   }
+  val gadt = new GadtConstraintHandlingImpl(initctx)
 
   export tvar.{bounds, fullBounds, approximation, isSubTypeWhenFrozen, isSameTypeWhenFrozen}
 
@@ -1529,37 +1530,33 @@ class TypeComparer(initctx: Context) extends PatternTypeConstrainer {
    */
   private def necessaryEither(op1: => Boolean, op2: => Boolean): Boolean =
     val preConstraint = tvar.constraint
-    val preGadt = ctx.gadt.fresh
+    val preGadt = ctx.gadtState.fresh
 
-    def allSubsumes(leftGadt: GadtConstraint, rightGadt: GadtConstraint, left: Constraint, right: Constraint): Boolean =
-      tvar.subsumes(left, right, preConstraint) && preGadt.match
-        case preGadt: ProperGadtConstraint =>
-          preGadt.subsumes(leftGadt, rightGadt, preGadt)
-        case _ =>
-          true
+    def allSubsumes(leftGadt: GadtScopeState, rightGadt: GadtScopeState, left: Constraint, right: Constraint): Boolean =
+      tvar.subsumes(left, right, preConstraint) && gadt.subsumes(leftGadt, rightGadt, preGadt)
 
     if op1 then
       val op1Constraint = tvar.constraint
-      val op1Gadt = ctx.gadt.fresh
+      val op1Gadt = ctx.gadtState.fresh
       tvar.constraint = preConstraint
-      ctx.gadt.restore(preGadt)
+      ctx.gadtState.restore(preGadt)
       if op2 then
-        if allSubsumes(op1Gadt, ctx.gadt, op1Constraint, tvar.constraint) then
+        if allSubsumes(op1Gadt, ctx.gadtState, op1Constraint, tvar.constraint) then
           gadts.println(i"GADT CUT - prefer ${ctx.gadt} over $op1Gadt")
           constr.println(i"CUT - prefer ${tvar.constraint} over $op1Constraint")
-        else if allSubsumes(ctx.gadt, op1Gadt, tvar.constraint, op1Constraint) then
+        else if allSubsumes(ctx.gadtState, op1Gadt, tvar.constraint, op1Constraint) then
           gadts.println(i"GADT CUT - prefer $op1Gadt over ${ctx.gadt}")
           constr.println(i"CUT - prefer $op1Constraint over ${tvar.constraint}")
           tvar.constraint = op1Constraint
-          ctx.gadt.restore(op1Gadt)
+          ctx.gadtState.restore(op1Gadt)
         else
           gadts.println(i"GADT CUT - no constraint is preferable, reverting to $preGadt")
           constr.println(i"CUT - no constraint is preferable, reverting to $preConstraint")
           tvar.constraint = preConstraint
-          ctx.gadt.restore(preGadt)
+          ctx.gadtState.restore(preGadt)
       else
         tvar.constraint = op1Constraint
-        ctx.gadt.restore(op1Gadt)
+        ctx.gadtState.restore(op1Gadt)
       true
     else op2
   end necessaryEither

@@ -53,7 +53,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Context_source(self: Context): java.nio.file.Path = self.compilationUnit.source.file.jpath
 
   def Context_GADT_setFreshGADTBounds(self: Context): Context =
-    self.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
+    self.fresh.setFreshGadtState.addMode(Mode.GadtConstraintInference)
 
   def Context_GADT_addToConstraint(self: Context)(syms: List[Symbol]): Boolean =
     self.gadt.addToConstraint(syms)
