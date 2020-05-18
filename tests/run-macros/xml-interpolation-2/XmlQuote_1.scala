@@ -44,15 +44,15 @@ object XmlQuote {
             values.iterator.map {
               case Literal(Constant(value: String)) => value
               case _ =>
-                qctx.error("Expected statically known String")
+                Reporting.error("Expected statically known String")
                 return '{???}
             }.toList
           case _ =>
-            qctx.error("Expected statically known StringContext")
+            Reporting.error("Expected statically known StringContext")
             return '{???}
         }
       case _ =>
-        qctx.error("Expected statically known SCOps")
+        Reporting.error("Expected statically known SCOps")
         return '{???}
     }
 

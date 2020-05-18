@@ -2,6 +2,7 @@
 import scala.quoted._
 import scala.language.implicitConversions
 import scala.quoted.autolift
+import scala.quoted.Reporting.error
 
 object Macro {
 
@@ -36,15 +37,15 @@ abstract class MacroStringInterpolator[T] {
     catch {
       case ex: NotStaticlyKnownError =>
         // TODO use ex.expr to recover the position
-        qctx.error(ex.getMessage)
+        error(ex.getMessage)
         '{???}
       case ex: StringContextError =>
         // TODO use ex.idx to recover the position
-        qctx.error(ex.getMessage)
+        error(ex.getMessage)
         '{???}
       case ex: ArgumentError =>
         // TODO use ex.idx to recover the position
-        qctx.error(ex.getMessage)
+        error(ex.getMessage)
         '{???}
     }
   }

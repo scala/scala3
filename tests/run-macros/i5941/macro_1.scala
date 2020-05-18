@@ -53,7 +53,7 @@ object Lens {
           apply($getter)(setter)
         }
       case _ =>
-        qctx.error("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
+        Reporting.error("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
         '{???}
     }
   }
@@ -95,7 +95,7 @@ object Iso {
     // 2. A must be a tuple
     // 3. The parameters of S must match A
     if (tpS.classSymbol.flatMap(cls => if (cls.flags.is(Flags.Case)) Some(true) else None).isEmpty) {
-      qctx.error("Only support generation for case classes")
+      Reporting.error("Only support generation for case classes")
       return '{???}
     }
 
@@ -106,13 +106,13 @@ object Iso {
     }
 
     if (cls.caseFields.size != 1) {
-      qctx.error("Use GenIso.fields for case classes more than one parameter")
+      Reporting.error("Use GenIso.fields for case classes more than one parameter")
       return '{???}
     }
 
     val fieldTp = tpS.memberType(cls.caseFields.head)
     if (!(fieldTp =:= tpA)) {
-      qctx.error(s"The type of case class field $fieldTp does not match $tpA")
+      Reporting.error(s"The type of case class field $fieldTp does not match $tpA")
       '{???}
     } else '{
       // (p: S) => p._1
@@ -139,7 +139,7 @@ object Iso {
       val cls = tpS.classSymbol.get
 
       if (cls.caseFields.size != 0) {
-        qctx.error("Use GenIso.fields for case classes more than one parameter")
+        Reporting.error("Use GenIso.fields for case classes more than one parameter")
         return '{???}
       }
 
@@ -154,7 +154,7 @@ object Iso {
       }
     }
     else {
-      qctx.error("Only support generation for case classes or singleton types")
+      Reporting.error("Only support generation for case classes or singleton types")
       '{???}
     }
   }

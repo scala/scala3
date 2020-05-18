@@ -23,7 +23,7 @@ object Macro {
             case _: TypeBounds =>
               rec(parent)
             case _: MethodType | _: PolyType | _: TypeBounds | _: ByNameType =>
-              qctx.warning(s"Ignored `$name` as a field of the record", s)
+              Reporting.warning(s"Ignored `$name` as a field of the record", s)
               rec(parent)
             case info: Type =>
               (name, info) :: rec(parent)
@@ -57,10 +57,10 @@ object Macro {
         // Tuple2(S, T) where S must be a constant string type
         case AppliedType(parent, ConstantType(Constant(name: String)) :: (info: Type) :: Nil) if (parent.typeSymbol == defn.TupleClass(2)) =>
           if seen(name) then
-            qctx.error(s"Repeated record name: $name", s)
+            Reporting.error(s"Repeated record name: $name", s)
           (seen + name, (name, info))
         case _ =>
-          qctx.error("Tuple type was not explicit expected `(S, T)` where S is a singleton string", s)
+          Reporting.error("Tuple type was not explicit expected `(S, T)` where S is a singleton string", s)
           (seen, ("<error>", defn.AnyType))
       }
     }
@@ -79,7 +79,7 @@ object Macro {
           })._2
         // Tuple
         case _ =>
-          qctx.error("Tuple type must be of known size", s)
+          Reporting.error("Tuple type must be of known size", s)
           Nil
       }
     }
