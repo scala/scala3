@@ -24,7 +24,7 @@ class ScriptEngine extends AbstractScriptEngine {
       "-color:never",
       "-Xrepl-disable-display"
     ), Console.out, None)
-  private val rendering = new Rendering
+  private val rendering = new Rendering(Some(getClass.getClassLoader))
   private var state: State = driver.initialState
 
   def getFactory: ScriptEngineFactory = new ScriptEngine.Factory
