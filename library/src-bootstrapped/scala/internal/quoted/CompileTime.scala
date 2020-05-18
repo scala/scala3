@@ -24,35 +24,6 @@ object CompileTime {
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.typeQuote`")
   def typeQuote[T <: AnyKind]: QuoteContext ?=> Type[T] = ???
 
-  // TODO move to internal.Quoted.Matcher
-  /** A splice in a quoted pattern is desugared by the compiler into a call to this method */
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHole`")
-  def patternHole[T]: T = ???
-
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHigherOrderHole`")
-  /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method */
-  def patternHigherOrderHole[U](pat: Any, args: Any*): U = ???
-
-  // TODO move to internal.Quoted.Matcher
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.higherOrderHole`")
-  /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method */
-  def higherOrderHole[U](args: Any*): U = ???
-
-  // TODO remove
-  /** A splice of a name in a quoted pattern is desugared by wrapping getting this annotation */
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternBindHole`")
-  class patternBindHole extends Annotation
-
-  // TODO move to internal.Quoted.Matcher
-  /** A splice of a name in a quoted pattern is that marks the definition of a type splice */
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternType`")
-  class patternType extends Annotation
-
-  // TODO move to internal.Quoted.Matcher
-  /** A type pattern that must be aproximated from above */
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.fromAbove`")
-  class fromAbove extends Annotation
-
   /** Artifact of pickled type splices
    *
    *  During quote reification a quote `'{ ... F[$t] ... }` will be transformed into
