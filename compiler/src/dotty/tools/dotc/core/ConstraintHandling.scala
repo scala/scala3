@@ -87,9 +87,22 @@ trait ConstraintHandling[AbstractContext] {
 
   protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using AbstractContext): Boolean =
     if !constraint.contains(param) then true
-    else if !isUpper && param.occursIn(bound)
-      // We don't allow recursive lower bounds when defining a type,
-      // so we shouldn't allow them as constraints either.
+    else if
+      bound.existsPart {
+        case `param` =>
+          // We don't allow recursive lower bounds when defining a type,
+          // so we shouldn't allow them as constraints either.
+          !isUpper
+        case AppliedType(tycon: TypeRef, args) if tycon.info.isInstanceOf[MatchAlias] =>
+          // FIXME: this is incomplete, see tests/pos/type-match-fbounds.scala
+          args.exists {
+            case `param` => true
+            case tp: TypeVar => tp.origin eq param
+            case _ => false
+          }
+        case _ => false
+      }
+    then
       false
     else
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
