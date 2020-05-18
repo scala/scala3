@@ -238,7 +238,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   private def fileOrSubdirectoryNamed(name: String, isDir: Boolean): AbstractFile =
     lookupName(name, isDir) match {
       case null =>
-        // the optional exception may be thrown for symlinks, notably /tmp on MacOS.
+        // the optional exception may be thrown for symlinks, notably /tmp on macOS.
         // isDirectory tests for existing directory. The default behavior is hypothetical isDirectory(jpath, FOLLOW_LINKS).
         try Files.createDirectories(jpath)
         catch { case _: FileAlreadyExistsException if Files.isDirectory(jpath) => }

@@ -8,7 +8,7 @@ title: Tests for Debuggability
 - JDB
 - expect
 
-Both are usually pre-installed on Mac OS and linux distributions.
+Both are usually pre-installed on macOS and linux distributions.
 
 ## Debug Manually with JDB
 
