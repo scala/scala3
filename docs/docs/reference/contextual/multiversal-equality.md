@@ -210,4 +210,4 @@ work under `-language:strictEquality`, since otherwise the universal `Eq[Any]` i
 
 
 More on multiversal equality is found in a [blog post](http://www.scala-lang.org/blog/2016/05/06/multiversal-equality.html)
-and a [Github issue](https://github.com/lampepfl/dotty/issues/1247).
+and a [GitHub issue](https://github.com/lampepfl/dotty/issues/1247).

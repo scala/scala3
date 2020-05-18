@@ -148,7 +148,7 @@ Releases are available for download on the _Releases_
 section of the Dotty repository:
 [https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
 
-For MacOs users, we also provide a [homebrew](https://brew.sh/) package that can be installed by
+For macOS users, we also provide a [homebrew](https://brew.sh/) package that can be installed by
 running:
 
 ```shell

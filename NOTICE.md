@@ -83,7 +83,7 @@ major authors were omitted by oversight.
     Adriaan Moors, Paul Phillips and others.
 
   * dotty.tools.dottydoc: The Dottydoc documentation utility ships some
-    third-party Javascript and CSS libraries which are located under
+    third-party JavaScript and CSS libraries which are located under
     dotty-doc/resources/css/, dotty-doc/resources/js/, docs/css/ and
     docs/js/. Please refer to the license header of the concerned files for
     details.
