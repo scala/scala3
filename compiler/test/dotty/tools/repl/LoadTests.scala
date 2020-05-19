@@ -42,8 +42,8 @@ class LoadTests extends ReplTest {
     file    = """|@main def helloWorld = println("Hello, World!")
                  |@main def helloTo(name: String) = println(s"Hello, $name!")
                  |""".stripMargin,
-    defs    = """|def helloTo(name: String): Unit
-                 |def helloWorld: Unit
+    defs    = """|def helloWorld: Unit
+                 |def helloTo(name: String): Unit
                  |
                  |
                  |""".stripMargin,
