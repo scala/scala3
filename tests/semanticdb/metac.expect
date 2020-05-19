@@ -2999,6 +2999,67 @@ Occurrences:
 [2:0..2:0): <- example/FilenameWithSpaces#`<init>`().
 [2:6..2:24): FilenameWithSpaces <- example/FilenameWithSpaces#
 
+expect/inlineconsume.scala
+--------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => inlineconsume.scala
+Text => empty
+Language => Scala
+Symbols => 3 entries
+Occurrences => 9 entries
+
+Symbols:
+inlineconsume/Foo# => class Foo
+inlineconsume/Foo#`<init>`(). => primary ctor <init>
+inlineconsume/Foo#test(). => method test
+
+Occurrences:
+[0:8..0:21): inlineconsume <- inlineconsume/
+[2:7..2:17): inlinedefs -> inlinedefs/
+[2:18..2:28): FakePredef -> inlinedefs/FakePredef.
+[2:29..2:35): assert -> inlinedefs/FakePredef.assert().
+[4:6..4:9): Foo <- inlineconsume/Foo#
+[5:2..5:2): <- inlineconsume/Foo#`<init>`().
+[5:6..5:10): test <- inlineconsume/Foo#test().
+[5:13..5:19): assert -> inlinedefs/FakePredef.assert().
+[5:22..5:23): > -> scala/Int#`>`(+3).
+
+expect/inlinedefs.scala
+-----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => inlinedefs.scala
+Text => empty
+Language => Scala
+Symbols => 4 entries
+Occurrences => 15 entries
+
+Symbols:
+inlinedefs/FakePredef. => final object FakePredef
+inlinedefs/FakePredef.assert(). => final macro assert
+inlinedefs/FakePredef.assert().(assertion) => param assertion
+inlinedefs/FakePredef.assertFail(). => method assertFail
+
+Occurrences:
+[0:8..0:18): inlinedefs <- inlinedefs/
+[2:7..2:17): FakePredef <- inlinedefs/FakePredef.
+[4:6..4:16): assertFail <- inlinedefs/FakePredef.assertFail().
+[4:20..4:27): Nothing -> scala/Nothing#
+[4:40..4:44): java -> java/
+[4:45..4:49): lang -> java/lang/
+[4:50..4:64): AssertionError -> java/lang/AssertionError#
+[4:64..4:64): -> java/lang/AssertionError#`<init>`(+2).
+[15:31..15:37): assert <- inlinedefs/FakePredef.assert().
+[15:45..15:54): assertion <- inlinedefs/FakePredef.assert().(assertion)
+[15:56..15:63): Boolean -> scala/Boolean#
+[15:66..15:70): Unit -> scala/Unit#
+[16:9..16:18): assertion -> inlinedefs/FakePredef.assert().(assertion)
+[16:18..16:18): -> scala/Boolean#`unary_!`().
+[17:6..17:16): assertFail -> inlinedefs/FakePredef.assertFail().
+
 expect/local-file.scala
 -----------------------
 

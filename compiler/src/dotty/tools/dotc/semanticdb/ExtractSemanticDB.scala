@@ -81,27 +81,33 @@ class ExtractSemanticDB extends Phase:
       || excludeDefOrUse(sym)
 
     private def excludeDefOrUse(sym: Symbol)(using Context): Boolean =
-      sym.name.is(NameKinds.DefaultGetterName)
+      !sym.exists
+      || sym.name.is(NameKinds.DefaultGetterName)
       || sym.isConstructor && (sym.owner.is(ModuleClass) || !sym.isGlobal)
       || excludeSymbol(sym)
 
     private def excludeSymbol(sym: Symbol)(using Context): Boolean =
-      sym.name.isWildcard
+      !sym.exists
+      || sym.name.isWildcard
       || excludeQual(sym)
 
     private def excludeQual(sym: Symbol)(using Context): Boolean =
-      sym.isAnonymousFunction
+      !sym.exists
+      || sym.isAnonymousFunction
       || sym.isAnonymousModuleVal
       || sym.name.isEmptyNumbered
 
     private def excludeChildren(sym: Symbol)(using Context): Boolean =
-      sym.isAllOf(HigherKinded | Param)
+      !sym.exists
+      || sym.isAllOf(HigherKinded | Param)
 
     /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
     private def excludeUse(qualifier: Option[Symbol], sym: Symbol)(using Context): Boolean =
-      excludeDefOrUse(sym)
+      !sym.exists
+      || excludeDefOrUse(sym)
       || sym.isConstructor && sym.owner.isAnnotation
       || sym == defn.Any_typeCast
+      || sym.owner == defn.OpsPackageClass
       || qualifier.exists(excludeQual)
 
     private def traverseAnnotsOfDefinition(sym: Symbol)(using Context): Unit =
