@@ -154,8 +154,8 @@ class CyclicReference private (val denot: SymDenotation) extends TypeError {
 object CyclicReference {
   def apply(denot: SymDenotation)(implicit ctx: Context): CyclicReference = {
     val ex = new CyclicReference(denot)
-    if (!(ctx.mode is Mode.CheckCyclic)) {
-      cyclicErrors.println(s"Cyclic reference involving $denot")
+    if (!(ctx.mode is Mode.CheckCyclic) || ctx.settings.Ydebug.value) {
+      cyclicErrors.println(s"Cyclic reference involving! $denot")
       for (elem <- ex.getStackTrace take 200)
         cyclicErrors.println(elem.toString)
     }

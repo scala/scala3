@@ -2238,7 +2238,11 @@ object messages {
 
   class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(using ctx: Context)
     extends CyclicMsg(IllegalCyclicTypeReferenceID) {
-    def msg = i"illegal cyclic type reference: ${where} ${hl(lastChecked.show)} of $sym refers back to the type itself"
+    def msg =
+      val lastCheckedStr =
+        try lastChecked.show
+        catch case ex: CyclicReference => "..."
+      i"illegal cyclic type reference: ${where} ${hl(lastCheckedStr)} of $sym refers back to the type itself"
     def explain = ""
   }
 
