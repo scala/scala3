@@ -573,7 +573,7 @@ object Parsers {
     def inBraces[T](body: => T): T = enclosed(LBRACE, body)
     def inBrackets[T](body: => T): T = enclosed(LBRACKET, body)
 
-    def inBracesOrIndented[T](body: => T): T =
+    def inBracesOrIndented[T](body: => T, rewriteWithColon: Boolean = false): T =
       if (in.token == INDENT) {
         val rewriteToBraces =
           in.rewriteNoIndent &&
@@ -582,12 +582,12 @@ object Parsers {
         else enclosed(INDENT, body)
       }
       else
-        if (in.rewriteToIndent) bracesToIndented(body)
+        if (in.rewriteToIndent) bracesToIndented(body, rewriteWithColon)
         else inBraces(body)
 
-    def inDefScopeBraces[T](body: => T): T = {
+    def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T = {
       val saved = lastStatOffset
-      try inBracesOrIndented(body)
+      try inBracesOrIndented(body, rewriteWithColon)
       finally lastStatOffset = saved
     }
 
@@ -775,8 +775,9 @@ object Parsers {
      *      rewriting back to braces does not work after `=>` (since in most cases braces are omitted
      *      after a `=>` it would be annoying if braces were inserted).
      */
-    def bracesToIndented[T](body: => T): T = {
-      val colonRequired = possibleColonOffset == in.lastOffset
+    def bracesToIndented[T](body: => T, rewriteWithColon: Boolean): T = {
+      val underColonSyntax = possibleColonOffset == in.lastOffset
+      val colonRequired = rewriteWithColon || underColonSyntax
       val (startOpening, endOpening) = startingElimRegion(colonRequired)
       val isOutermost = in.currentRegion.isOutermost
       def allBraces(r: Region): Boolean = r match {
@@ -795,10 +796,10 @@ object Parsers {
         }
       })
       canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
-      if (canRewrite && (!colonRequired || in.colonSyntax)) {
+      if (canRewrite && (!underColonSyntax || in.colonSyntax)) {
         val openingPatchStr =
-          if (!colonRequired) ""
-          else if (testChar(startOpening - 1, Chars.isOperatorPart(_))) " :"
+          if !colonRequired then ""
+          else if testChar(startOpening - 1, Chars.isOperatorPart(_)) then " :"
           else ":"
         val (startClosing, endClosing) = closingElimRegion()
         patch(source, Span(startOpening, endOpening), openingPatchStr)
@@ -1736,7 +1737,8 @@ object Parsers {
 
     /** Refinement ::= `{' RefineStatSeq `}'
      */
-    def refinement(): List[Tree] = inBracesOrIndented(refineStatSeq())
+    def refinement(): List[Tree] =
+      inBracesOrIndented(refineStatSeq(), rewriteWithColon = true)
 
     /** TypeBounds ::= [`>:' Type] [`<:' Type]
      */
@@ -2469,11 +2471,10 @@ object Parsers {
                   val pos = t.sourcePos
                   pos.startLine < pos.endLine
                 }
-              if (rewriteToNewSyntax(Span(start)) && (leading == LBRACE || !hasMultiLineEnum)) {
+              if in.newSyntax && in.rewrite && (leading == LBRACE || !hasMultiLineEnum) then
                 // Don't rewrite if that could change meaning of newlines
                 newLinesOpt()
                 dropParensOrBraces(start, if (in.token == YIELD || in.token == DO) "" else "do")
-              }
             }
             in.observeIndented()
             res
@@ -3687,7 +3688,7 @@ object Parsers {
       Template(constr, parents, derived, self, stats)
 
     def templateBody(): (ValDef, List[Tree]) =
-      val r = inDefScopeBraces { templateStatSeq() }
+      val r = inDefScopeBraces(templateStatSeq(), rewriteWithColon = true)
       if in.token == WITH then
         syntaxError(EarlyDefinitionsNotSupported())
         in.nextToken()
@@ -3706,7 +3707,7 @@ object Parsers {
     def packaging(start: Int): Tree =
       val pkg = qualId()
       possibleTemplateStart()
-      val stats = inDefScopeBraces(topStatSeq())
+      val stats = inDefScopeBraces(topStatSeq(), rewriteWithColon = true)
       makePackaging(start, pkg, stats)
 
     /** TopStatSeq ::= TopStat {semi TopStat}
@@ -3898,7 +3899,7 @@ object Parsers {
             if in.token == EOF then
               ts += makePackaging(start, pkg, List())
             else if in.isNestedStart then
-              ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()))
+              ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()), rewriteWithColon = true)
               continue = true
             else
               acceptStatSep()
