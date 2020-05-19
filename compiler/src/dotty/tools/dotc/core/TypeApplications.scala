@@ -10,6 +10,7 @@ import Decorators._
 import util.Stats._
 import Names._
 import NameOps._
+import Flags.Module
 import Variances.variancesConform
 import dotty.tools.dotc.config.Config
 
@@ -145,7 +146,11 @@ class TypeApplications(val self: Type) extends AnyVal {
   final def typeParams(implicit ctx: Context): List[TypeParamInfo] = {
     record("typeParams")
     def isTrivial(prefix: Type, tycon: Symbol) = prefix match {
-      case prefix: ThisType => prefix.cls `eq` tycon.owner
+      case prefix: ThisType =>
+        prefix.cls eq tycon.owner
+      case prefix: TermRef =>
+        val sym = prefix.symbol
+        sym.is(Module) && sym.isStatic && (sym.moduleClass eq tycon.owner)
       case NoPrefix => true
       case _ => false
     }
