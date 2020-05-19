@@ -5,9 +5,9 @@ import language.implicitConversions
 /** The offsets part of a full position, consisting of 2 or 3 entries:
  *    - start:  the start offset of the span, in characters from start of file
  *    - end  :  the end offset of the span
- *    - point:  if given, the offset where a sing;le `^` would be logically placed
+ *    - point:  if given, the offset where a single `^` would be logically placed
  *
- &  Spans are encoded according to the following format in little endian:
+ *  Spans are encoded according to the following format in little endian:
  *  Start: unsigned 26 Bits (works for source files up to 64M)
  *  End: unsigned 26 Bits
  *  Point: unsigned 12 Bits relative to start
@@ -30,8 +30,8 @@ object Spans {
 
   /** A span indicates a range between a start offset and an end offset.
    *  Spans can be synthetic or source-derived. A source-derived span
-   *  has in addition a point lies somewhere between start and end. The point
-   *  is roughly where the ^ would go if an error was diagnosed at that position.
+   *  has in addition a point. The point lies somewhere between start and end. The point
+   *  is roughly where the `^` would go if an error was diagnosed at that position.
    *  All quantities are encoded opaquely in a Long.
    */
   class Span(val coords: Long) extends AnyVal {
