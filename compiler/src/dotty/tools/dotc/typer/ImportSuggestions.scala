@@ -323,6 +323,7 @@ trait ImportSuggestions:
          |$fix might $help the problem:
          |
          |$suggestions%\n%
-         """
+         |
+         |"""
   end importSuggestionAddendum
 end ImportSuggestions

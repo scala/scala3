@@ -6,7 +6,7 @@
    |                  The following import might fix the problem:
    |
    |                    import test.instances.y
-   |                           
+   |
 -- Error: tests/neg/missing-implicit2.scala:16:5 -----------------------------------------------------------------------
 16 |    f // error
    |     ^
@@ -15,4 +15,4 @@
    |     The following import might make progress towards fixing the problem:
    |
    |       import instances2.xFromY
-   |              
+   |

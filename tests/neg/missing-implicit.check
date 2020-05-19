@@ -7,7 +7,7 @@
   |
   |                     import math.Ordered.orderingToOrdered
   |                     import math.Ordering.Implicits.infixOrderingOps
-  |                            
+  |
 -- [E008] Not Found Error: tests/neg/missing-implicit.scala:5:51 -------------------------------------------------------
 5 |  case x :: xs1 if limit > 0 => consume(xs1, limit - x) // error // error
   |                                             ^^^^^^^
@@ -16,7 +16,7 @@
   |                                 The following import might fix the problem:
   |
   |                                   import math.Numeric.Implicits.infixNumericOps
-  |                                          
+  |
 -- Error: tests/neg/missing-implicit.scala:10:24 -----------------------------------------------------------------------
 10 |val f = Future[Unit] { } // error
    |                        ^
@@ -36,7 +36,7 @@
    |                   The following import might fix the problem:
    |
    |                     import concurrent.ExecutionContext.Implicits.global
-   |                            
+   |
 -- [E007] Type Mismatch Error: tests/neg/missing-implicit.scala:12:25 --------------------------------------------------
 12 |val b: java.lang.Byte = (1: Byte) // error, but no hint
    |                         ^^^^^^^
@@ -58,7 +58,7 @@
    |                                            The following import might fix the problem:
    |
    |                                              import concurrent.duration.pairIntToDuration
-   |                                                     
+   |
 -- [E008] Not Found Error: tests/neg/missing-implicit.scala:18:48 ------------------------------------------------------
 18 |val d2: scala.concurrent.duration.Duration = 10.days // error
    |                                             ^^^^^^^
@@ -69,4 +69,4 @@
    |                            import concurrent.duration.DurationInt
    |                            import concurrent.duration.DurationLong
    |                            import concurrent.duration.DurationDouble
-   |                                   
+   |
