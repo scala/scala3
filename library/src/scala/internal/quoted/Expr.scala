@@ -2,12 +2,24 @@ package scala.internal.quoted
 
 import scala.quoted._
 
-/** Quoted expression of type `T`
+/** An Expr backed by a tree. Only the current compiler trees are allowed.
  *
- *  Restriction: only the QuoteContext.tasty.internal implementation is allowed to extend this trait.
- *  Any other implementation will result in an undefined behavior.
+ *  These expressions are used for arguments of macros. They contain and actual tree
+ *  from the program that is being expanded by the macro.
+ *
+ *  May contain references to code defined outside this Expr instance.
  */
-class Expr[+T] extends scala.quoted.Expr[T]
+ final class Expr[Tree](val tree: Tree, val scopeId: Int) extends scala.quoted.Expr[Any] {
+  override def equals(that: Any): Boolean = that match {
+    case that: Expr[_] =>
+      // Expr are wrappers around trees, therfore they are equals if their trees are equal.
+      // All scopeId should be equal unless two different runs of the compiler created the trees.
+      tree == that.tree && scopeId == that.scopeId
+    case _ => false
+  }
+  override def hashCode: Int = tree.hashCode
+  override def toString: String = "'{ ... }"
+}
 
 object Expr {
 

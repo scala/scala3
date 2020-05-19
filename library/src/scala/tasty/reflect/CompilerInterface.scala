@@ -125,12 +125,12 @@ trait CompilerInterface {
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): scala.quoted.Expr[Any]
+  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): Term
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): scala.quoted.Type[_]
+  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): TypeTree
 
 
   /////////////
@@ -1575,5 +1575,7 @@ trait CompilerInterface {
   def betaReduce(f: Term, args: List[Term])(using ctx: Context): Term
 
   def lambdaExtractor(term: Term, paramTypes: List[Type])(using ctx: Context): Option[List[Term] => Term]
+
+  def compilerId: Int
 
 }
