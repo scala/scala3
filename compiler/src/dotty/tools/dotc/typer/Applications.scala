@@ -149,10 +149,12 @@ object Applications {
   }
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SourcePosition)(using Context): List[Type] = {
-
-    val unapplyName = unapplyFn match            // tolerate structural `unapply`, which does not have a symbol
-      case TypeApply(fn: RefTree, _) => fn.name
-      case fn: RefTree => fn.name
+    def getName(fn: Tree): Name =
+      fn match
+        case TypeApply(fn, _) => getName(fn)
+        case Apply(fn, _) => getName(fn)
+        case fn: RefTree => fn.name
+    val unapplyName = getName(unapplyFn) // tolerate structural `unapply`, which does not have a symbol
 
     def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
