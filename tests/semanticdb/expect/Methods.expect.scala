@@ -34,4 +34,7 @@ class Methods/*<-example::Methods#*/[T/*<-example::Methods#[T]*/] {
   def m18/*<-example::Methods#m18().*/(a/*<-example::Methods#m18().(a)*/: Int/*->scala::Int#*/) = ???/*->scala::Predef.`???`().*/
   def m18/*<-example::Methods#m18(+1).*/(b/*<-example::Methods#m18(+1).(b)*/: String/*->scala::Predef.String#*/) = ???/*->scala::Predef.`???`().*/
   def m19/*<-example::Methods#m19().*/(x/*<-example::Methods#m19().(x)*//*<-example::Methods#m19$default$3().(x)*/: Int/*->scala::Int#*/, y/*<-example::Methods#m19().(y)*//*<-example::Methods#m19$default$3().(y)*/: Int/*->scala::Int#*/ = 2)(z/*<-example::Methods#m19().(z)*/: Int/*->scala::Int#*/ = 3) = ???/*->scala::Predef.`???`().*/
+  def m20/*<-example::Methods#m20().*/(a/*<-example::Methods#m20().(a)*/: Int/*->scala::Int#*/) = ???/*->scala::Predef.`???`().*/
+  def m20/*<-example::Methods#m20(+1).*/(b/*<-example::Methods#m20(+1).(b)*/: String/*->scala::Predef.String#*/) = ???/*->scala::Predef.`???`().*/
+  var m20/*<-example::Methods#m20(+2).*/ = m17/*->example::Methods#m17.*/
 }

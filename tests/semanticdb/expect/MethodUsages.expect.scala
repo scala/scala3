@@ -29,4 +29,8 @@ class MethodUsages/*<-example::MethodUsages#*/ {
   m/*->example::MethodUsages#m.*/.m18/*->example::Methods#m18.*/.m/*->example::Methods#m17.m().*/()
   m/*->example::MethodUsages#m.*/.m18/*->example::Methods#m18().*/(1)
   m/*->example::MethodUsages#m.*/.m18/*->example::Methods#m18(+1).*/("")
+  m/*->example::MethodUsages#m.*/.m19/*->example::Methods#m19().*/(1,2)(3)
+  m/*->example::MethodUsages#m.*/.m20/*->example::Methods#m20().*/(1)
+  m/*->example::MethodUsages#m.*/.m20/*->example::Methods#m20(+1).*/("")
+  m/*->example::MethodUsages#m.*/.m20/*->example::Methods#m20(+2).*/.m/*->example::Methods#m17.m().*/()
 }

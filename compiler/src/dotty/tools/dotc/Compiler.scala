@@ -146,6 +146,11 @@ class Compiler {
 
   def newRun(implicit ctx: Context): Run = {
     reset()
-    new Run(this, ctx)
+    val rctx =
+      if ctx.settings.Ysemanticdb.value
+        ctx.addMode(Mode.ReadPositions)
+      else
+        ctx
+    new Run(this, rctx)
   }
 }

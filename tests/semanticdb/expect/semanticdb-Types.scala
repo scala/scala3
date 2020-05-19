@@ -23,6 +23,13 @@ class T {
   val x = new X
 }
 
+case class Foo(s: "abc")
+
+object Foo {
+  val x: "abc" @deprecated = "abc"
+  val y: "abc" = x
+}
+
 object Test {
   class M {
     def m: Int = ???

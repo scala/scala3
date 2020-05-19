@@ -23,6 +23,13 @@ class T/*<-types::T#*/ {
   val x/*<-types::T#x.*/ = new X/*->types::T#X#*/
 }
 
+case class Foo/*<-types::Foo#*/(s/*<-types::Foo#s.*/: "abc")
+
+object Foo/*<-types::Foo.*/ {
+  val x/*<-types::Foo.x.*/: "abc" @deprecated/*->scala::deprecated#*/ = "abc"
+  val y/*<-types::Foo.y.*/: "abc" = x/*->types::Foo.x.*/
+}
+
 object Test/*<-types::Test.*/ {
   class M/*<-types::Test.M#*/ {
     def m/*<-types::Test.M#m().*/: Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/

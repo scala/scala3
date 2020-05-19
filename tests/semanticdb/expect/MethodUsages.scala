@@ -29,4 +29,8 @@ class MethodUsages {
   m.m18.m()
   m.m18(1)
   m.m18("")
+  m.m19(1,2)(3)
+  m.m20(1)
+  m.m20("")
+  m.m20.m()
 }

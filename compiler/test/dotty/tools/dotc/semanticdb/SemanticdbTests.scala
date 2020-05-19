@@ -73,6 +73,8 @@ class SemanticdbTests:
       println(s"""[${red("error")}] check file ${blue(expect.toString)} does not match generated.
       |If you meant to make a change, replace the expect file by:
       |  mv ${expect.resolveSibling("" + expect.getFileName + ".out")} $expect
+      |inspect with:
+      |  diff $expect ${expect.resolveSibling("" + expect.getFileName + ".out")}
       |Or else update all expect files with
       |  sbt 'dotty-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
     Files.walk(target).sorted(Comparator.reverseOrder).forEach(Files.delete)

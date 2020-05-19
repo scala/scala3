@@ -16,8 +16,8 @@ object Enums:
       suit == Hearts || suit == Diamonds
 
     def (suit: Suits).isBlack: Boolean = suit match
-      case Spades | Diamonds => true
-      case _                 => false
+      case Spades | Clubs => true
+      case _              => false
 
   enum WeekDays:
     case Monday
