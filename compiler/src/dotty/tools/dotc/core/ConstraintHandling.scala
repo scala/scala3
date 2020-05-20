@@ -242,25 +242,20 @@ trait ConstraintHandling[AbstractContext] {
 
   /** Solve constraint set for given type parameter `param`.
    *  If `fromBelow` is true the parameter is approximated by its lower bound,
-   *  otherwise it is approximated by its upper bound. However, any occurrences
-   *  of the parameter in a refinement somewhere in the bound are removed. Also
-   *  wildcard types in bounds are approximated by their upper or lower bounds.
+   *  otherwise it is approximated by its upper bound, unless the upper bound
+   *  contains a reference to the parameter itself (`addOneBound` ensures that
+   *  such reference never occur in the lower bound).
+   *  Wildcard types in bounds are approximated by their upper or lower bounds.
    *  (Such occurrences can arise for F-bounded types).
    *  The constraint is left unchanged.
    *  @return the instantiating type
    *  @pre `param` is in the constraint's domain.
    */
   final def approximation(param: TypeParamRef, fromBelow: Boolean)(implicit actx: AbstractContext): Type = {
-    val avoidParam = new TypeMap {
+    val replaceWildcards = new TypeMap {
       override def stopAtStatic = true
-      def avoidInArg(arg: Type): Type =
-        if (param.occursIn(arg)) TypeBounds.empty else arg
       def apply(tp: Type) = mapOver {
         tp match {
-          case tp @ AppliedType(tycon, args) =>
-            tp.derivedAppliedType(tycon, args.mapConserve(avoidInArg))
-          case tp: RefinedType if param occursIn tp.refinedInfo =>
-            tp.parent
           case tp: WildcardType =>
             val bounds = tp.optBounds.orElse(TypeBounds.empty).bounds
             // Try to instantiate the wildcard to a type that is known to conform to it.
@@ -287,9 +282,10 @@ trait ConstraintHandling[AbstractContext] {
       }
     }
     constraint.entry(param) match {
-      case _: TypeBounds =>
-        val bound = if (fromBelow) fullLowerBound(param) else fullUpperBound(param)
-        val inst = avoidParam(bound)
+      case entry: TypeBounds =>
+        val useLowerBound = fromBelow || param.occursIn(entry.hi)
+        val bound = if (useLowerBound) fullLowerBound(param) else fullUpperBound(param)
+        val inst = replaceWildcards(bound)
         typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
         inst
       case inst =>
