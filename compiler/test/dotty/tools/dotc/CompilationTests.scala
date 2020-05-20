@@ -49,7 +49,6 @@ class CompilationTests extends ParallelTesting {
       compileFilesInDir("tests/new", defaultOptions),
       compileFilesInDir("tests/pos-scala2", scala2CompatMode),
       compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-Yerased-terms")),
-      compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Ysemanticdb")),
       compileFilesInDir("tests/pos", defaultOptions),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
       compileFile(
