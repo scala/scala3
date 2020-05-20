@@ -87,6 +87,10 @@ trait ConstraintHandling[AbstractContext] {
 
   protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using AbstractContext): Boolean =
     if !constraint.contains(param) then true
+    else if !isUpper && param.occursIn(bound)
+      // We don't allow recursive lower bounds when defining a type,
+      // so we shouldn't allow them as constraints either.
+      false
     else
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
       val equalBounds = (if isUpper then lo else hi) eq bound
