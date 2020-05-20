@@ -4035,7 +4035,7 @@ object Types {
      *        one check would be redundant. But maybe that's cheap enough.
      */
     def canInstantiateWith(inst: Type, fromBelow: Boolean)(using Context): Boolean =
-      if fromBelow then inst <:< this else this <:< inst
+      if fromBelow then inst frozen_<:< this else this frozen_<:< inst
   }
 
   private final class TypeParamRefImpl(binder: TypeLambda, paramNum: Int) extends TypeParamRef(binder, paramNum)
@@ -4229,6 +4229,7 @@ object Types {
       if instOK then
         instantiateWith(inst)
       else
+        typr.println(i"failure to instantiate $this with $inst")
         val bounds = ctx.typeComparer.fullBounds(origin)
         instantiateWith(inst) // instantiate anyway to prevent subsequent instantiation attempts and errors
         val noInstance = NoInstance(origin, inst, bounds)

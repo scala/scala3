@@ -120,6 +120,7 @@ object Inferencing {
         tvar.instantiateWith(inst)
         typr.println(i"forced instantiation of ${tvar.origin} = $inst")
       else
+        typr.println(i"failed forced instantiation of ${tvar.origin} = $inst")
         instancesOK = false
       inst
 
@@ -243,6 +244,8 @@ object Inferencing {
                 if param.canInstantiateWith(inst, fromBelow = true) then
                   typr.println(i"replace singleton $param := $inst")
                   accCtx.typerState.constraint = constraint.replace(param, inst)
+                else
+                  typr.println(i"failed to replace singleton $param $inst")
               case _ =>
             }
           case _ =>
