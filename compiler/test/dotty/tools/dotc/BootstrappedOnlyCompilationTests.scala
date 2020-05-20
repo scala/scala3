@@ -32,7 +32,10 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def posMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosMacros")
-    compileFilesInDir("tests/pos-macros", defaultOptions).checkCompile()
+    aggregateTests(
+      compileFilesInDir("tests/pos-macros", defaultOptions),
+      compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Ysemanticdb")),
+    ).checkCompile()
   }
 
   @Test def posWithCompiler: Unit = {
