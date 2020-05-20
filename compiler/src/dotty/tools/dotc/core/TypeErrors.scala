@@ -192,3 +192,11 @@ class MergeError(val sym1: Symbol, val sym2: Symbol, val tp1: Type, val tp2: Typ
        """
   }
 }
+
+class NoInstance(param: TypeParamRef, val inst: Type, bounds: TypeBounds) extends TypeError:
+  override def produceMessage(using Context): Message =
+    i"""Type variable $param cannot be instantiated.
+       |Its attempted instantiation type $inst
+       |does not conform to its bounds $bounds}"""
+
+

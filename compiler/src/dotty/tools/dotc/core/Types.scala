@@ -4029,6 +4029,13 @@ object Types {
       case bound: OrType   => occursIn(bound.tp1, fromBelow) || occursIn(bound.tp2, fromBelow)
       case _ => false
     }
+
+    /** Is `inst` a legal instance type for this type parameter?
+     *  TODO: Check whether we can always check both bounds even if
+     *        one check would be redundant. But maybe that's cheap enough.
+     */
+    def canInstantiateWith(inst: Type, fromBelow: Boolean)(using Context): Boolean =
+      if fromBelow then inst <:< this else this <:< inst
   }
 
   private final class TypeParamRefImpl(binder: TypeLambda, paramNum: Int) extends TypeParamRef(binder, paramNum)
@@ -4176,7 +4183,7 @@ object Types {
         def msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
         typr.println(msg)
         val bound = ctx.typeComparer.fullUpperBound(origin)
-        if !(atp <:< bound) then
+        if !(atp <:< bound) then // TODO: compare with param instead
           throw new TypeError(s"$msg,\nbut the latter type does not conform to the upper bound $bound")
         atp
       // AVOIDANCE TODO: This really works well only if variables are instantiated from below
@@ -4187,24 +4194,47 @@ object Types {
       // To do this, we need first test cases for that situation.
 
     /** Instantiate variable with given type */
-    def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
+    def instantiateWith(tp: Type)(implicit ctx: Context): Unit =
       assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
       typr.println(s"instantiating ${this.show} with ${tp.show}")
-      if ((ctx.typerState eq owningState.get) && !ctx.typeComparer.subtypeCheckInProgress)
+      if (ctx.typerState eq owningState.get) && !ctx.typeComparer.subtypeCheckInProgress then
         inst = tp
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
-      tp
-    }
+
+    /** The type this type variable should be instantiated with.
+     *  This is the type-comparer's instance type with the added tweak that
+     *  captured for more deeply nested symbols are avoided.
+     */
+    def instanceType(fromBelow: Boolean)(using Context): Type =
+      avoidCaptures(ctx.typeComparer.instanceType(origin, fromBelow))
 
     /** Instantiate variable from the constraints over its `origin`.
-     *  If `fromBelow` is true, the variable is instantiated to the lub
-     *  of its lower bounds in the current constraint; otherwise it is
-     *  instantiated to the glb of its upper bounds. However, a lower bound
-     *  instantiation can be a singleton type only if the upper bound
-     *  is also a singleton type.
+     *  If `fromBelow` is true, the variable's instance type is computed from
+     *  the lub of its lower bounds in the current constraint; otherwise it is
+     *  computed from the glb of its upper bounds.
+     *  After that, there are some further transformations and checks:
+     *
+     *   - Singletons and union types are sometimes widened according to
+     *     `ConstraintHandling.widenInferred`.
+     *   - References to more neeply nested symbols are avoided
+     *     according to `avoidCaptures`
+     *   - It is checked that the resulting type still fits within
+     *     bounds. If not, a `NoInstance` exception is thrown,
+     *     but only after instantiating the variable anyway because
+     *     this avoids follow-on errors.
      */
     def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type =
-      instantiateWith(avoidCaptures(ctx.typeComparer.instanceType(origin, fromBelow)))
+      val inst = instanceType(fromBelow)
+      val instOK = origin.canInstantiateWith(inst, fromBelow)
+      if instOK then
+        instantiateWith(inst)
+      else
+        val bounds = ctx.typeComparer.fullBounds(origin)
+        instantiateWith(inst) // instantiate anyway to prevent subsequent instantiation attempts and errors
+        val noInstance = NoInstance(origin, inst, bounds)
+        if ctx.settings.Ydebug.value then noInstance.printStackTrace()
+        throw noInstance
+      inst
 
     /** For uninstantiated type variables: Is the lower bound different from Nothing? */
     def hasLowerBound(implicit ctx: Context): Boolean =

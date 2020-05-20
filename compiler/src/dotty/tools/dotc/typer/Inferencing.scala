@@ -112,11 +112,16 @@ object Inferencing {
   private class IsFullyDefinedAccumulator(force: ForceDegree.Value, minimizeSelected: Boolean = false)
     (using Context) extends TypeAccumulator[Boolean] {
 
-    private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type = {
-      val inst = tvar.instantiate(fromBelow)
-      typr.println(i"forced instantiation of ${tvar.origin} = $inst")
+    private var instancesOK = true
+
+    private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type =
+      val inst = tvar.instanceType(fromBelow)
+      if tvar.origin.canInstantiateWith(inst, fromBelow) then
+        tvar.instantiateWith(inst)
+        typr.println(i"forced instantiation of ${tvar.origin} = $inst")
+      else
+        instancesOK = false
       inst
-    }
 
     private var toMaximize: List[TypeVar] = Nil
 
@@ -147,6 +152,7 @@ object Inferencing {
     }
 
     def process(tp: Type): Boolean =
+      instancesOK = true
       // Maximize type vars in the order they were visited before */
       def maximize(tvars: List[TypeVar]): Unit = tvars match
         case tvar :: tvars1 =>
@@ -158,10 +164,11 @@ object Inferencing {
       && (
         toMaximize.isEmpty
         || { maximize(toMaximize)
-             toMaximize = Nil       // Do another round since the maximixing instances
-             process(tp)            // might have type uninstantiated variables themselves.
-           }
+            toMaximize = Nil       // Do another round since the maximixing instances
+            process(tp)            // might have type uninstantiated variables themselves.
+          }
       )
+      && instancesOK
   }
 
   def approximateGADT(tp: Type)(implicit ctx: Context): Type = {
@@ -233,8 +240,9 @@ object Inferencing {
               case TypeBounds(lo, hi)
               if (hi frozen_<:< lo) =>
                 val inst = accCtx.typeComparer.approximation(param, fromBelow = true)
-                typr.println(i"replace singleton $param := $inst")
-                accCtx.typerState.constraint = constraint.replace(param, inst)
+                if param.canInstantiateWith(inst, fromBelow = true) then
+                  typr.println(i"replace singleton $param := $inst")
+                  accCtx.typerState.constraint = constraint.replace(param, inst)
               case _ =>
             }
           case _ =>
