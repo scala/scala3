@@ -37,7 +37,7 @@ object Test {
   }
 
   def m2c(s: (T & OpenClass) & (OpenTrait & OpenClass2)) = s match {
-    case _: Unrelated => ;
+    case _: Unrelated => ;  // OK since scrutinee is the empty type
   }
 
   def m3(s: T & OpenAbstractClass) = s match {
