@@ -33,6 +33,7 @@ object StdNames {
 
     final val MODULE_INSTANCE_FIELD      = "MODULE$"
 
+    final val EnumValue                  = "EnumValue"
     final val Function                   = "Function"
     final val ErasedFunction             = "ErasedFunction"
     final val ContextFunction            = "ContextFunction"
