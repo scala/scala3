@@ -1,12 +1,13 @@
+trait P
 enum Tree[T] {
-  case True                 extends Tree[Boolean]
-  case False                extends Tree[Boolean]
-  case Zero                 extends Tree[Int]
-  case Succ(n: Tree[Int])   extends Tree[Int]
-  case Pred(n: Tree[Int])   extends Tree[Int]
-  case IsZero(n: Tree[Int]) extends Tree[Boolean]
+  case True                 extends Tree[Boolean], P
+  case False                extends Tree[Boolean], P
+  case Zero                 extends Tree[Int], P
+  case Succ(n: Tree[Int])   extends Tree[Int], P
+  case Pred(n: Tree[Int])   extends Tree[Int], P
+  case IsZero(n: Tree[Int]) extends Tree[Boolean], P
   case If(cond: Tree[Boolean], thenp: Tree[T], elsep: Tree[T])
-                            extends Tree[T]
+                            extends Tree[T], P
 }
 
 object Test {
