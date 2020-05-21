@@ -381,7 +381,7 @@ object Inferencing {
    *
    *  we want to instantiate U to x.type right away. No need to wait further.
    */
-  private def variances(tp: Type)(using Context): VarianceMap = {
+  def variances(tp: Type)(using Context): VarianceMap = {
     Stats.record("variances")
     val constraint = ctx.typerState.constraint
 

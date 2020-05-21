@@ -3927,7 +3927,7 @@ object Types {
         NoType
     }
 
-    def tyconTypeParams(implicit ctx: Context): List[ParamInfo] = {
+    def tyconTypeParams(implicit ctx: Context): List[TypeApplications.TypeParamInfo] = {
       val tparams = tycon.typeParams
       if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
     }

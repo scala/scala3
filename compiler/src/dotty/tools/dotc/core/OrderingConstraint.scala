@@ -310,6 +310,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private def ensureNonCyclic(param: TypeParamRef, inst: Type)(using Context): Type =
 
     def recur(tp: Type, fromBelow: Boolean): Type = tp match
+      case tp: NamedType =>
+        val underlying1 = recur(tp.underlying, fromBelow)
+        if underlying1 ne tp.underlying then underlying1 else tp
       case tp: AndOrType =>
         val r1 = recur(tp.tp1, fromBelow)
         val r2 = recur(tp.tp2, fromBelow)
@@ -613,6 +616,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def occursAtToplevel(param: TypeParamRef, inst: Type)(implicit ctx: Context): Boolean =
 
     def occurs(tp: Type)(using Context): Boolean = tp match
+      case tp: NamedType =>
+        occurs(tp.underlying)
       case tp: AndOrType =>
         occurs(tp.tp1) || occurs(tp.tp2)
       case tp: TypeParamRef =>

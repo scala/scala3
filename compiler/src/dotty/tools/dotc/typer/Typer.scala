@@ -516,6 +516,203 @@ class Typer extends Namer
     tree
   }
 
+  /** Try to add constraints to type a selection where the qualifier is a type variable.
+   *
+   *  Currently, this should only happen with lambdas, for example when typechecking:
+   *
+   *    def foo[T <: List[Any]](x: T => T)
+   *    foo(x => x.head: Int)
+   *
+   *  In the past, `typedFunctionValue` would have instantiated the type
+   *  variable corresponding to the type parameter `T` to `List[Any]` before
+   *  typing the lambda, which would then fail because `x.head` has type `Any`.
+   *  But we now leave such type variables uninstantiated, which means we need
+   *  to figure out how to type a selection where the prefix is an
+   *  uninstantiated type variable, and in particular how to propagate
+   *  constraints from typing this selection back to that type variable.
+   *
+   *  @param qual           The type of the qualifier of the selection
+   *  @param name           The name of the member being selected
+   *  @param underlyingVar  The uninstantiated type variable underlying the type of the qualifier
+   *  @param pt             The expected type of the selection
+   */
+  private def constrainSelectionQualifier(
+    qual: Type, name: Name, underlyingVar: TypeVar, pt: Type)(using Context): Boolean = {
+
+    /** Return `tycon[?A, ?B, ...]` where `?A`, `?B`, ... are fresh type variables
+     *  conforming to the corresponding type parameter in `tparams`.
+     */
+    def appliedWithVars(tycon: Type, tparams: List[TypeApplications.TypeParamInfo]): Type = {
+      if (tparams.isEmpty)
+        tycon
+      else {
+        val tl = tycon.EtaExpand(tparams).asInstanceOf[HKTypeLambda]
+        val tvars = constrained(tl, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
+        tycon.appliedTo(tvars)
+      }
+    }
+
+    /** Replace all applied types `tycon[T, S, ...]` by `tycon[?A, ?B, ...]`
+     *  where `?A`, `?B`, ... are fresh type variables.
+     */
+    def replaceArgsByVars = new TypeMap {
+      def apply(t: Type): Type = t match {
+        case tp: TypeLambda =>
+          tp
+        case tp @ AppliedType(tycon, args) =>
+          // Note that we don't constrain the fresh type variables
+          // such that the mapped type is a subtype of `tp`, we let
+          // the caller deal with that.
+          appliedWithVars(tycon, tp.tyconTypeParams)
+        case _ =>
+          mapOver(t)
+      }
+    }
+
+    /** Does `@uncheckedVariance` appears somewhere in the type of `d` ? */
+    def hasUncheckedVariance(d: SingleDenotation) = d.info.widen.existsPart {
+      case tp @ AnnotatedType(_, annot) =>
+        annot.symbol eq defn.UncheckedVarianceAnnot
+      case tp =>
+        false
+    }
+
+    /** The members of one of the bound of `underlyingVar` which the selection
+     *  could resolve to.
+     *
+     * @param isUpper  If true, look for candidates in the upper bound,
+     *                 otherwise look in the lower bound.
+     */
+    def candidatesInBound(isUpper: Boolean): List[SingleDenotation] = {
+      val bounds = ctx.typeComparer.bounds(underlyingVar.origin)
+      val bound = if (isUpper) bounds.hi else bounds.lo
+      val d = bound.member(name)
+      d.alternatives
+    }
+
+    /** Try to add additional constraints on `underlyingVar`
+     *  to allow a selection of `candidate` to typecheck.
+     *
+     *  @param  isUpper  Does `candidate` come from the upper bound
+     *                   of the qualifier type?
+     */
+    def constrainTo(candidate: SingleDenotation, isUpper: Boolean): Boolean = {
+      if (hasUncheckedVariance(candidate)) {
+        // If `@uncheckedVariance` appears in the type of the candidate, give up
+        // on delaying instantiation and just instantiate the type variable at
+        // that point. If we don't do that, the type variable might later
+        // be constrained in a way that prevents the selection from typechecking,
+        // because narrowing does not hold with unchecked variance.
+        // See tests/pos/fold-infer-uncheckedVariance.scala for an example
+        // which did not pass `-Ytest-pickler` before.
+        // FIXME: `-Ycheck:all` did not pick up on this issue in
+        // fold-infer-uncheckedVariance.scala because the ReTyper never retypes
+        // selections, I think it's important to get TreeChecker to actually
+        // verify this stuff, especially with everything going on in this PR.
+        underlyingVar.instantiate(fromBelow = !isUpper)
+        return true
+      }
+
+      val owner = candidate.symbol.maybeOwner
+      // TODO: Deal with methods in structural types?
+      if (!owner.exists || !owner.isClass)
+        return false
+
+      if (isUpper) {
+        // The candidate comes from the upper bound of the qualifier.
+        // In that case we replace type arguments in the upper bound
+        // by fresh type variables to make it more flexible.
+        //
+        // For example, we might have `qual: ?T` where `?T <: List[AnyVal]`.
+        // in which case `qual.head` will have type `qual.A` where `A`
+        // is an abstract type >: Nothing <: AnyVal.
+        // Therefore, when typechecking `qual.head: Int`, we get:
+        //
+        //   qual.A <:< Int
+        //   AnyVal <:< Int
+        //         false
+        //
+        // The problem is that subtype checks on `qual.A` do
+        // not allow us to constraint `?T` further.
+        //
+        // To fix this, we need a more precise upper-bound for `?T`:
+        // we can safely rewrite the constraint:
+        //
+        //   ?T <: List[AnyVal]
+        //
+        // as:
+        //
+        //   ?T <: List[?X]
+        //   ?X <: AnyVal
+        //
+        // Now, if we try to typecheck `qual.head: Int`, we get:
+        //
+        //   qual.A <:< Int
+        //       ?X <:< Int
+        //         true, with extra constraint `?X <: Int`
+        //
+        // And at a later point, `?T` will be instantiated to a
+        // subtype of `List[Int]` as expected.
+
+        val base = qual.baseType(owner)
+        // FIXME: this is wasteful: if we have multiple selections with the
+        // same qualifier, we'll create fresh type variables every time.
+        val newUpperBound = replaceArgsByVars(base)
+
+        if newUpperBound ne base then
+          underlyingVar <:< newUpperBound
+      } else {
+        // The candidate comes from the lower bound of the qualifier.
+        // In that case, we need to constrain the upper bound of the
+        // qualifier to be able to typecheck the selection at all,
+        // and like in the isUpper case, we want type variables in
+        // the arguments of that upper bound for flexibility.
+        //
+        // For example, if we have `qual: ?T` where `?T >: Nil`, then
+        // `qual.::` will fail as there is no member named `::`
+        // defined on `Any`, so we need to further constrain the upper
+        // bound. We know that `::` is defined on `List`, so we can add
+        // a constraint:
+        //
+        //   ?T <: List[?X]
+        //   ?X
+        //
+        // (in this example, the fresh type variable `?X` can stay
+        // unconstrained since `Nil <:< List[?X]` is true for all `?X`)
+
+        // FIXME: better handling of overrides: `candidate` might be an
+        // override of some member defined in a parent class, in which
+        // case we're overconstraining the upper bound.
+        val newUpperBound = appliedWithVars(owner.typeRef, owner.typeParams)
+        underlyingVar <:< newUpperBound
+      }
+
+      // FIXME: it would be nice if we could use the expected type
+      // to filter out some candidates, but it's hard to rule out
+      // anything since some implicit conversion might kick in
+      // during adaptation.
+      true
+    }
+
+    /** Try to add additional constraints on `underlyingVar`
+     *  to allow a selection based on the candidates found
+     *  in one of its own bound.
+     *
+     *  @param isUpper  If true, look for candidates in the upper bound,
+     *                  otherwise look in the lower bound.
+     */
+    def constrainInBound(isUpper: Boolean): Boolean = {
+      // FIXME: we just stop after finding a matching candidate, should we
+      // take the union of the constraints they add instead?
+      candidatesInBound(isUpper).exists(constrainTo(_, isUpper))
+    }
+
+    // FIXME: We currently only look at the lower bound if we don't find a
+    // matching member in the upper bound, but that could exclude
+    // the right candidate.
+    constrainInBound(isUpper = true) || constrainInBound(isUpper = false)
+  }
+
   def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(using Context): Tree = qual match {
     case qual @ IntegratedTypeArgs(app) =>
       pt.revealIgnored match {
@@ -523,6 +720,16 @@ class Typer extends Namer
         case _ => app
       }
     case qual =>
+      qual.tpe.widenDealias.stripTypeVar match {
+        case tp: TypeParamRef =>
+          ctx.typerState.constraint.typeVarOfParam(tp) match {
+            case tvar: TypeVar =>
+              constrainSelectionQualifier(qual.tpe, tree.name, tvar, pt)
+            case _ =>
+          }
+        case _ =>
+      }
+
       val select = assignType(cpy.Select(tree)(qual, tree.name), qual)
       val select1 = toNotNullTermRef(select, pt)
 
@@ -1096,6 +1303,21 @@ class Typer extends Namer
       case _ =>
     }
 
+    // The set of type variables in the prototype which appear only in covariant or
+    // contravariant positions. These should be instantiatable without
+    // preventing the body of the lambda from typechecking (...except in situations
+    // like `def foo[T, U <: T](x: T => U)`, where instantiating `T` to a specific
+    // type might overconstrain `U`).
+    //
+    // This doesn't exclude type variables which appear with a different
+    // variance at a later point in the same method call, or a subsequent chained
+    // call.
+    //
+    // TODO: try to replace this by an empty list and see how that affects
+    // inference and performance (we would end up creating a lot more type
+    // variables in `typedSelect`).
+    lazy val protoVariantVars = variances(pt).toList.filter(_._2 != 0).map(_._1)
+
     val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length)
 
     /** The inferred parameter type for a parameter in a lambda that does
@@ -1118,7 +1340,7 @@ class Typer extends Namer
      *  If all attempts fail, issue a "missing parameter type" error.
      */
     def inferredParamType(param: untpd.ValDef, formal: Type): Type =
-      if isFullyDefined(formal, ForceDegree.failBottom) then return formal
+      if isFullyDefined(formal, ForceDegree.none) then return formal
       val target = calleeType.widen match
         case mtpe: MethodType =>
           val pos = paramIndex(param.name)
@@ -1128,9 +1350,17 @@ class Typer extends Namer
           else NoType
         case _ => NoType
       if target.exists then formal <:< target
-      if isFullyDefined(formal, ForceDegree.flipBottom) then formal
+      // if isFullyDefined(formal, ForceDegree.flipBottom) then formal
+      if isFullyDefined(formal, ForceDegree.none) then formal
       else if target.exists && isFullyDefined(target, ForceDegree.flipBottom) then target
-      else errorType(AnonymousFunctionMissingParamType(param, params, tree, formal), param.sourcePos)
+      else if !formal.isInstanceOf[WildcardType] then
+        instantiateSelected(formal, protoVariantVars)
+        // Intentionally leave uninstantiated type variables in the types of parameters,
+        // this works because `typedSelect` special cases the handling of qualifiers
+        // whose type is a type variable.
+        formal
+      else
+        errorType(AnonymousFunctionMissingParamType(param, params, tree, formal), param.sourcePos)
 
     def protoFormal(i: Int): Type =
       if (protoFormals.length == params.length) protoFormals(i)

@@ -135,7 +135,12 @@ object ProtoTypes {
      *  or as an upper bound of a prefix or underlying type.
      */
     private def hasUnknownMembers(tp: Type)(using Context): Boolean = tp match {
-      case tp: TypeVar => !tp.isInstantiated
+      case tp: TypeVar =>
+        // FIXME: This used to be `!tp.isInstantiated` but that prevents
+        // extension methods from being selected with the changes in this PR.
+        // This change doesn't break any testcase, can we construct a testcase
+        // where this matters?
+        false
       case tp: WildcardType => true
       case NoType => true
       case tp: TypeRef =>
@@ -152,13 +157,15 @@ object ProtoTypes {
       case _ => false
     }
 
-    override def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean =
-      name == nme.WILDCARD || hasUnknownMembers(tp1) ||
-      {
-        val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
+    override def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean = {
+      if name == nme.WILDCARD || hasUnknownMembers(tp1) then
+        return true
+
+      def go(pre: Type): Boolean = {
+        val mbr = if (privateOK) pre.member(name) else pre.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =
           memberProto.isRef(defn.UnitClass) ||
-          tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint)
+          pre.isValueType && compat.normalizedCompatible(NamedType(pre, name, m), memberProto, keepConstraint)
             // Note: can't use `m.info` here because if `m` is a method, `m.info`
             //       loses knowledge about `m`'s default arguments.
         mbr match { // hasAltWith inlined for performance
@@ -166,6 +173,14 @@ object ProtoTypes {
           case _ => mbr hasAltWith qualifies
         }
       }
+      tp1.widenDealias.stripTypeVar match {
+        case tp: TypeParamRef =>
+          val bounds = ctx.typeComparer.bounds(tp)
+          go(bounds.hi) || go(bounds.lo)
+        case _ =>
+          go(tp1)
+      }
+    }
 
     def underlying(using Context): Type = WildcardType
 

@@ -681,7 +681,12 @@ object desugar {
               if (restrictedAccess) mods.withPrivateWithin(constr1.mods.privateWithin)
               else mods
             }
-            val appParamss =
+            // FIXME: This now infers `List[List[DefTree]]`, the issue
+            // is that `withMods` is defined in `DefTree` so that becomes the
+            // upper bound of the type variable (see logic in `constrainSelectionQualifier`),
+            // but the result type of `withMods` is a type member which is
+            // refined in `ValDef`.
+            val appParamss: List[List[ValDef]] =
               derivedVparamss.nestedZipWithConserve(constrVparamss)((ap, cp) =>
                 ap.withMods(ap.mods | (cp.mods.flags & HasDefault)))
             val app = DefDef(nme.apply, derivedTparams, appParamss, applyResultTpt, widenedCreatorExpr)
