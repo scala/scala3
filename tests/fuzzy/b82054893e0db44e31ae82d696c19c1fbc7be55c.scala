@@ -1,4 +1,4 @@
-object main {
+object _main {
 def i0 = {
 class i1 {
 private[i0] var i2: _ > 0 private def i3: List[Int]

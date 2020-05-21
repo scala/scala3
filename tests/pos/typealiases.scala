@@ -11,7 +11,7 @@ trait Test[T] {
   def check2[S](xs: Array[S], c: Check[S]) = c(xs)
 }
 
-object main extends Test[Int] {
+object _main extends Test[Int] {
   val pair1 = (1,1)
 
   implicit def topair(x: Int): Tuple2[Int, Int] = (x,x)
