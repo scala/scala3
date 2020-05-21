@@ -8,5 +8,5 @@ object Test {
   class Foo[T] { def apply[Y >: T <: Nested[T, Tuple2, Unit]](t: T): T = t }
   def foo[T] = new Foo[T]
 
-  foo.apply((21, ()))
+  foo.apply((21, ())) // error
 }

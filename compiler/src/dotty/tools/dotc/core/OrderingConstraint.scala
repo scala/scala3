@@ -232,7 +232,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  @param isUpper   If true, `bound` is an upper bound, else a lower bound.
    */
   private def stripParams(tp: Type, paramBuf: mutable.ListBuffer[TypeParamRef],
-      isUpper: Boolean)(implicit ctx: Context): Type = tp match {
+      isUpper: Boolean)(implicit ctx: Context): Type = tp.stripTypeVar match {
     case param: TypeParamRef if contains(param) =>
       if (!paramBuf.contains(param)) paramBuf += param
       NoType
@@ -365,7 +365,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *    Q <: tp  implies  Q <: P      and isUpper = true, or
    *    tp <: Q  implies  P <: Q      and isUpper = false
    */
-  private def dependentParams(tp: Type, isUpper: Boolean): List[TypeParamRef] = tp match
+  private def dependentParams(tp: Type, isUpper: Boolean)(using Context): List[TypeParamRef] = tp.stripTypeVar match
     case param: TypeParamRef if contains(param) =>
       param :: (if (isUpper) upper(param) else lower(param))
     case tp: AndType if isUpper  =>
