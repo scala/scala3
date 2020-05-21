@@ -1,6 +1,6 @@
 package scala
 
-trait EnumValue extends Product:
+trait EnumValue extends Product, Serializable:
   override def canEqual(that: Any) = true
   override def productArity: Int = 0
   override def productPrefix: String = toString
