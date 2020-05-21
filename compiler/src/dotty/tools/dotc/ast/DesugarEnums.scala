@@ -306,7 +306,7 @@ object DesugarEnums {
     else {
       val (tag, scaffolding) = nextOrdinal(CaseKind.Simple)
       val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
-      val vdef = ValDef(name, enumClassRef, creator).withMods(mods.withAddedFlags(EnumValue, span))
+      val vdef = ValDef(name, TypeTree(), creator).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
 }
