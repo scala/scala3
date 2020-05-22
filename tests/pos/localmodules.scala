@@ -1,6 +1,6 @@
 package test;
 
-object main {
+object _main {
 
   class a {
 

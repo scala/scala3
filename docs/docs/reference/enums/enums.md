@@ -95,7 +95,7 @@ If you want to use the Scala-defined enums as Java enums, you can do so by exten
 enum Color extends java.lang.Enum[Color] { case Red, Green, Blue }
 ```
 
-The type parameter comes from the Java enum [definition](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Enum.html) and should be the same as the type of the enum. 
+The type parameter comes from the Java enum [definition](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Enum.html) and should be the same as the type of the enum.
 There is no need to provide constructor arguments (as defined in the Java API docs) to `java.lang.Enum` when extending it – the compiler will generate them automatically.
 
 After defining `Color` like that, you can use it like you would a Java enum:
@@ -116,7 +116,7 @@ This trait defines a single public method, `ordinal`:
 package scala
 
 /** A base trait of all enum classes */
-trait Enum {
+trait Enum extends Product with Serializable {
 
   /** A number uniquely identifying a case of an enum */
   def ordinal: Int

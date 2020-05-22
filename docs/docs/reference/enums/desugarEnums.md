@@ -126,7 +126,9 @@ map into `case class`es or `val`s.
    where `n` is the ordinal number of the case in the companion object,
    starting from 0.  The statement `$values.register(this)` registers the value
    as one of the `values` of the enumeration (see below). `$values` is a
-   compiler-defined private value in the companion object.
+   compiler-defined private value in the companion object. The anonymous class also
+   implements the abstract `Product` methods that it inherits from `Enum`.
+
 
    It is an error if a value case refers to a type parameter of the enclosing `enum`
    in a type argument of `<parents>`.
@@ -178,6 +180,7 @@ Companion objects of enumerations that contain at least one simple case define i
      }
      ```
 
+The anonymous class also implements the abstract `Product` methods that it inherits from `Enum`.
 The `$ordinal` method above is used to generate the `ordinal` method if the enum does not extend a `java.lang.Enum` (as Scala enums do not extend `java.lang.Enum`s unless explicitly specified). In case it does, there is no need to generate `ordinal` as `java.lang.Enum` defines it.
 
 ### Scopes for Enum Cases

@@ -1,4 +1,4 @@
-object main { // don't do this at home
+object _main { // don't do this at home
 
   trait Impl
 

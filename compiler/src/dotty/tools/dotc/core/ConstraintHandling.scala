@@ -300,6 +300,8 @@ trait ConstraintHandling[AbstractContext] {
    *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
    *   2. If `inst` is a union type, approximate the union type from above by an intersection
    *      of all common base types, provided the result is a subtype of `bound`.
+   *   3. (currently not enabled, see #9028) If `inst` is an intersection with some restricted base types, drop
+   *      the restricted base types from the intersection, provided the result is a subtype of `bound`.
    *
    *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
    *  Also, if the result of these widenings is a TypeRef to a module class,
@@ -309,26 +311,48 @@ trait ConstraintHandling[AbstractContext] {
    * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
    * as those could leak the annotation to users (see run/inferred-repeated-result).
    */
-  def widenInferred(inst: Type, bound: Type)(implicit actx: AbstractContext): Type = {
-    def widenOr(tp: Type) = {
+  def widenInferred(inst: Type, bound: Type)(implicit actx: AbstractContext): Type =
+
+    def isRestricted(tp: Type) = tp.typeSymbol == defn.EnumValueClass // for now, to be generalized later
+
+    def dropRestricted(tp: Type): Type = tp.dealias match
+      case tpd @ AndType(tp1, tp2) =>
+        if isRestricted(tp1) then tp2
+        else if isRestricted(tp2) then tp1
+        else
+          val tpw = tpd.derivedAndType(dropRestricted(tp1), dropRestricted(tp2))
+          if tpw ne tpd then tpw else tp
+      case _ =>
+        tp
+
+    def widenRestricted(tp: Type) =
+      val tpw = dropRestricted(tp)
+      if (tpw ne tp) && (tpw <:< bound) then tpw else tp
+
+    def widenOr(tp: Type) =
       val tpw = tp.widenUnion
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
-    }
-    def widenSingle(tp: Type) = {
+
+    def widenSingle(tp: Type) =
       val tpw = tp.widenSingletons
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
-    }
+
     def isSingleton(tp: Type): Boolean = tp match
       case WildcardType(optBounds) => optBounds.exists && isSingleton(optBounds.bounds.hi)
       case _ => isSubTypeWhenFrozen(tp, defn.SingletonType)
+
     val wideInst =
-      if isSingleton(bound) then inst else widenOr(widenSingle(inst))
+      if isSingleton(bound) then inst
+      else /*widenRestricted*/(widenOr(widenSingle(inst)))
+        // widenRestricted is currently not called since it's special cased in `dropEnumValue`
+        // in `Namer`. It's left in here in case we want to generalize the scheme to other
+        // "protected inheritance" classes.
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)
       case _ =>
         wideInst.dropRepeatedAnnot
-  }
+  end widenInferred
 
   /** The instance type of `param` in the current constraint (which contains `param`).
    *  If `fromBelow` is true, the instance type is the lub of the parameter's
