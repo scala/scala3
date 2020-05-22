@@ -112,7 +112,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
   override def relaxedTypingInGroup: Boolean = true
     // Because it changes number of parameters in trait initializers
 
-  override def runsAfter: Set[String] = Set(Erasure.name)
+  override def runsAfter: Set[String] = Set(
+    Erasure.name,
+    CompleteJavaEnums.name // This phase changes constructor parameters which Mixin translates into super-calls
+  )
 
   override def changesMembers: Boolean = true  // the phase adds implementions of mixin accessors
 

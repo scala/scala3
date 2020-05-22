@@ -61,8 +61,7 @@ class Compiler {
          new CheckStatic,            // Check restrictions that apply to @static members
          new BetaReduce,             // Reduce closure applications
          new init.Checker) ::        // Check initialization of objects
-    List(new CompleteJavaEnums,      // Fill in constructors for Java enums
-         new ElimRepeated,           // Rewrite vararg parameters and arguments
+    List(new ElimRepeated,           // Rewrite vararg parameters and arguments
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
@@ -101,6 +100,7 @@ class Compiler {
          new ArrayApply,             // Optimize `scala.Array.apply([....])` and `scala.Array.apply(..., [....])` into `[...]`
          new ElimPolyFunction,       // Rewrite PolyFunction subclasses to FunctionN subclasses
          new TailRec,                // Rewrite tail recursion to loops
+         new CompleteJavaEnums,      // Fill in constructors for Java enums
          new Mixin,                  // Expand trait fields and trait initializers
          new LazyVals,               // Expand lazy vals
          new Memoize,                // Add private fields to getters and setters
