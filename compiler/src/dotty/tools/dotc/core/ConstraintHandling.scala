@@ -243,10 +243,10 @@ trait ConstraintHandling[AbstractContext] {
   /** Solve constraint set for given type parameter `param`.
    *  If `fromBelow` is true the parameter is approximated by its lower bound,
    *  otherwise it is approximated by its upper bound, unless the upper bound
-   *  contains a reference to the parameter itself (`addOneBound` ensures that
-   *  such reference never occur in the lower bound).
+   *  contains a reference to the parameter itself (such occurrences can arise
+   *  for F-bounded types, `addOneBound` ensures that they never occur in the
+   *  lower bound).
    *  Wildcard types in bounds are approximated by their upper or lower bounds.
-   *  (Such occurrences can arise for F-bounded types).
    *  The constraint is left unchanged.
    *  @return the instantiating type
    *  @pre `param` is in the constraint's domain.
