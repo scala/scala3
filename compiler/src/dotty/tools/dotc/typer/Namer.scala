@@ -389,6 +389,8 @@ class Namer { typer: Typer =>
         val name = checkNoConflict(tree.name, flags.is(Private), tree.span)
         tree match
           case tree: ValOrDefDef =>
+            if tree.isInstanceOf[ValDef] && !flags.is(Param) && name.endsWith("_=") then
+              ctx.error("Names of vals or vars may not end in `_=`", tree.namePos)
             if tree.unforcedRhs == EmptyTree
                && !flags.isOneOf(TermParamOrAccessor)
                && !tree.name.isConstructorName
