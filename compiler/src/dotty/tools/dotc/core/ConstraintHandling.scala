@@ -300,8 +300,8 @@ trait ConstraintHandling[AbstractContext] {
    *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
    *   2. If `inst` is a union type, approximate the union type from above by an intersection
    *      of all common base types, provided the result is a subtype of `bound`.
-   *   3. (currently not enabled) If `inst` is an intersection with some protected base types, drop
-   *      the protected base types from the intersection, provided the result is a subtype of `bound`.
+   *   3. (currently not enabled) If `inst` is an intersection with some restricted base types, drop
+   *      the restricted base types from the intersection, provided the result is a subtype of `bound`.
    *
    *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
    *  Also, if the result of these widenings is a TypeRef to a module class,
@@ -313,18 +313,20 @@ trait ConstraintHandling[AbstractContext] {
    */
   def widenInferred(inst: Type, bound: Type)(implicit actx: AbstractContext): Type =
 
-    def isProtected(tp: Type) = tp.typeSymbol == defn.EnumValueClass // for now, to be generalized later
+    def isRestricted(tp: Type) = tp.typeSymbol == defn.EnumValueClass // for now, to be generalized later
 
-    def dropProtected(tp: Type): Type = tp.dealias match
-      case tp @ AndType(tp1, tp2) =>
-        if isProtected(tp1) then tp2
-        else if isProtected(tp2) then tp1
-        else tp.derivedAndType(dropProtected(tp1), dropProtected(tp2))
+    def dropRestricted(tp: Type): Type = tp.dealias match
+      case tpd @ AndType(tp1, tp2) =>
+        if isRestricted(tp1) then tp2
+        else if isRestricted(tp2) then tp1
+        else
+          val tpw = tpd.derivedAndType(dropRestricted(tp1), dropRestricted(tp2))
+          if tpw ne tpd then tpw else tp
       case _ =>
         tp
 
-    def widenProtected(tp: Type) =
-      val tpw = dropProtected(tp)
+    def widenRestricted(tp: Type) =
+      val tpw = dropRestricted(tp)
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
 
     def widenOr(tp: Type) =
@@ -341,8 +343,8 @@ trait ConstraintHandling[AbstractContext] {
 
     val wideInst =
       if isSingleton(bound) then inst
-      else /*widenProtected*/(widenOr(widenSingle(inst)))
-        // widenProtected is currently not called since it's special cased in `dropEnumValue`
+      else /*widenRestricted*/(widenOr(widenSingle(inst)))
+        // widenRestricted is currently not called since it's special cased in `dropEnumValue`
         // in `Namer`. It's left in here in case we want to generalize the scheme to other
         // "protected inheritance" classes.
     wideInst match

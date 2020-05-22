@@ -1443,10 +1443,12 @@ class Namer { typer: Typer =>
 
       // Drop EnumValue parents from inferred types of enum constants
       def dropEnumValue(tp: Type): Type = tp.dealias match
-        case tp @ AndType(tp1, tp2) =>
+        case tpd @ AndType(tp1, tp2) =>
           if isEnumValue(tp1) then tp2
           else if isEnumValue(tp2) then tp1
-          else tp.derivedAndType(dropEnumValue(tp1), dropEnumValue(tp2))
+          else
+            val tpw = tpd.derivedAndType(dropEnumValue(tp1), dropEnumValue(tp2))
+            if tpw ne tpd then tpw else tp
         case _ =>
           tp
 
