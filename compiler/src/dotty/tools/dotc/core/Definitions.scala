@@ -639,7 +639,7 @@ class Definitions {
   @tu lazy val EnumClass: ClassSymbol = ctx.requiredClass("scala.Enum")
     @tu lazy val Enum_ordinal: Symbol = EnumClass.requiredMethod(nme.ordinal)
 
-  @tu lazy val EnumValueClass: ClassSymbol = ctx.requiredClass("scala.EnumValue")
+  @tu lazy val EnumValueClass: ClassSymbol = ctx.requiredClass("scala.runtime.EnumValue")
   @tu lazy val EnumValuesClass: ClassSymbol = ctx.requiredClass("scala.runtime.EnumValues")
   @tu lazy val ProductClass: ClassSymbol = ctx.requiredClass("scala.Product")
     @tu lazy val Product_canEqual          : Symbol = ProductClass.requiredMethod(nme.canEqual_)

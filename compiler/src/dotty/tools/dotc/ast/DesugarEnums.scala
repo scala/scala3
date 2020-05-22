@@ -124,7 +124,7 @@ object DesugarEnums {
 
   /** A creation method for a value of enum type `E`, which is defined as follows:
    *
-   *   private def $new(_$ordinal: Int, $name: String) = new E with EnumValue {
+   *   private def $new(_$ordinal: Int, $name: String) = new E with scala.runtime.EnumValue {
    *     def $ordinal = $tag
    *     override def toString = $name
    *     $values.register(this)
@@ -135,7 +135,7 @@ object DesugarEnums {
     val toStringDef = toStringMeth(Ident(nme.nameDollar))
     val creator = New(Template(
       constr = emptyConstructor,
-      parents = enumClassRef :: scalaDot(str.EnumValue.toTypeName) :: Nil,
+      parents = enumClassRef :: scalaRuntimeDot(tpnme.EnumValue) :: Nil,
       derived = Nil,
       self = EmptyValDef,
       body = List(ordinalDef, toStringDef) ++ registerCall
@@ -287,7 +287,7 @@ object DesugarEnums {
       val ordinalDef = ordinalMethLit(tag)
       val toStringDef = toStringMethLit(name.toString)
       val impl1 = cpy.Template(impl)(
-        parents = impl.parents :+ scalaDot(str.EnumValue.toTypeName),
+        parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue),
         body = List(ordinalDef, toStringDef) ++ registerCall)
         .withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))

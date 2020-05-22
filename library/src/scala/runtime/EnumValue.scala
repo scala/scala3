@@ -1,4 +1,4 @@
-package scala
+package scala.runtime
 
 trait EnumValue extends Product, Serializable:
   override def canEqual(that: Any) = this eq that.asInstanceOf[AnyRef]

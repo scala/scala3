@@ -11,7 +11,7 @@ object List {
   object Cons {
     def apply[T](x: T, xs: List[T]): List[T] = new Cons(x, xs)
   }
-  final class Nil[T]() extends List[T], EnumValue {
+  final class Nil[T]() extends List[T], runtime.EnumValue {
     def $ordinal = 1
   }
   object Nil {
