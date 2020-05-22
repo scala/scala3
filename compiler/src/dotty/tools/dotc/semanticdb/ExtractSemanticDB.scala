@@ -595,20 +595,15 @@ object ExtractSemanticDB:
 
   def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
-    def common(root: Path, i1: java.util.Iterator[Path], i2: java.util.Iterator[Path]) =
-      require(root != null)
-      var res: Path = root
-      var next: Path = null
-      while
-        i1.hasNext && i2.hasNext
-        && { next = i1.next; next } == i2.next
-      do res = res.resolve(next)
-      res
-    end common
+    def commonPrefix[T](z: T)(i1: Iterable[T], i2: Iterable[T])(app: (T, T) => T): T =
+      (i1 lazyZip i2).takeWhile(p => p(0) == p(1)).map(_(0)).foldLeft(z)(app)
     val sourcePath = absolutePath(source.file.jpath)
     val sourceRoot =
+      // Here if `sourceRoot` and `sourcePath` do not share a common prefix then `relPath` will not be normalised,
+      // containing ../.. etc, which is problematic when appending to `/META-INF/semanticdb/` and will not be accepted
+      // by Files.createDirectories on JDK 11.
       val sourceRoot0 = absolutePath(Paths.get(ctx.settings.sourceroot.value))
-      common(sourcePath.getRoot, sourcePath.iterator, sourceRoot0.iterator)
+      commonPrefix(sourcePath.getRoot)(sourcePath.asScala, sourceRoot0.asScala)(_ resolve _)
     val semanticdbTarget =
       val semanticdbTargetSetting = ctx.settings.semanticdbTarget.value
       absolutePath(
