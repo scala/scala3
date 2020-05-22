@@ -4,5 +4,6 @@ object Test {
     val e = m.getEngineByName("scala")
     println(e.eval("42"))
     println(e.eval("Some(42)").asInstanceOf[Option[Int]].get)
+    println(e.eval(new java.io.StringReader("42")))
   }
 }

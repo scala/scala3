@@ -1,7 +1,7 @@
 package dotty.tools
 package repl
 
-import java.io.Reader
+import java.io.{Reader, StringWriter}
 import javax.script.{AbstractScriptEngine, Bindings, ScriptContext, ScriptEngine => JScriptEngine, ScriptEngineFactory, ScriptException, SimpleBindings}
 import dotc.core.StdNames.str
 
@@ -44,7 +44,20 @@ class ScriptEngine extends AbstractScriptEngine {
   }
 
   @throws[ScriptException]
-  def eval(reader: Reader, context: ScriptContext): Object = throw new UnsupportedOperationException
+  def eval(reader: Reader, context: ScriptContext): Object = eval(stringFromReader(reader), context)
+
+  private val buffer = new Array[Char](8192)
+
+  def stringFromReader(in: Reader) = {
+    val out = new StringWriter
+    var n = in.read(buffer)
+    while (n > -1) {
+      out.write(buffer, 0, n)
+      n = in.read(buffer)
+    }
+    in.close
+    out.toString
+  }
 }
 
 object ScriptEngine {
