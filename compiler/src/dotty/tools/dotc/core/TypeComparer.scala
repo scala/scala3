@@ -2413,13 +2413,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         provablyDisjoint(tp1.tp1, tp2) && provablyDisjoint(tp1.tp2, tp2)
       case (_, tp2: OrType)  =>
         provablyDisjoint(tp1, tp2.tp1) && provablyDisjoint(tp1, tp2.tp2)
-      case (tp1: AndType, tp2: AndType) =>
-        (provablyDisjoint(tp1.tp1, tp2.tp1) || provablyDisjoint(tp1.tp2, tp2.tp2)) &&
-        (provablyDisjoint(tp1.tp1, tp2.tp2) || provablyDisjoint(tp1.tp2, tp2.tp1))
       case (tp1: AndType, _) =>
-        provablyDisjoint(tp1.tp2, tp2) || provablyDisjoint(tp1.tp1, tp2)
+        !(tp1 <:< tp2)
+        && (provablyDisjoint(tp1.tp2, tp2) || provablyDisjoint(tp1.tp1, tp2))
       case (_, tp2: AndType) =>
-        provablyDisjoint(tp1, tp2.tp2) || provablyDisjoint(tp1, tp2.tp1)
+        !(tp2 <:< tp1)
+        && (provablyDisjoint(tp1, tp2.tp2) || provablyDisjoint(tp1, tp2.tp1))
       case (tp1: TypeProxy, tp2: TypeProxy) =>
         provablyDisjoint(tp1.underlying, tp2) || provablyDisjoint(tp1, tp2.underlying)
       case (tp1: TypeProxy, _) =>
