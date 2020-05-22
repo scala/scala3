@@ -1439,6 +1439,17 @@ class Namer { typer: Typer =>
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
       def isInlineVal = sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
 
+      def isEnumValue(tp: Type) = tp.typeSymbol == defn.EnumValueClass
+
+      // Drop EnumValue parents from inferred types of enum constants
+      def dropEnumValue(tp: Type): Type = tp.dealias match
+        case tp @ AndType(tp1, tp2) =>
+          if isEnumValue(tp1) then tp2
+          else if isEnumValue(tp2) then tp1
+          else tp.derivedAndType(dropEnumValue(tp1), dropEnumValue(tp2))
+        case _ =>
+          tp
+
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
       // instead of widening to the underlying module class types.
@@ -1447,7 +1458,9 @@ class Namer { typer: Typer =>
       def widenRhs(tp: Type): Type =
         tp.widenTermRefExpr.simplified match
           case ctp: ConstantType if isInlineVal => ctp
-          case tp => ctx.typeComparer.widenInferred(tp, rhsProto)
+          case tp =>
+            val tp1 = ctx.typeComparer.widenInferred(tp, rhsProto)
+            if sym.is(Enum) then dropEnumValue(tp1) else tp1
 
       // Replace aliases to Unit by Unit itself. If we leave the alias in
       // it would be erased to BoxedUnit.

@@ -341,7 +341,10 @@ trait ConstraintHandling[AbstractContext] {
 
     val wideInst =
       if isSingleton(bound) then inst
-      else widenProtected(widenOr(widenSingle(inst)))
+      else /*widenProtected*/(widenOr(widenSingle(inst)))
+        // widenProtected is currently not called since it's special cased in `dropEnumValue`
+        // in `Namer`. It's left in here in case we want to generalize the scheme to other
+        // "protected inheritance" classes.
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)

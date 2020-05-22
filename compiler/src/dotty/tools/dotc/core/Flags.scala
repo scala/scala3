@@ -438,7 +438,7 @@ object Flags {
    *  TODO: Should check that FromStartFlags do not change in completion
    */
   val FromStartFlags: FlagSet = commonFlags(
-    Module, Package, Deferred, Method, Case,
+    Module, Package, Deferred, Method, Case, Enum,
     HigherKinded, Param, ParamAccessor,
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
