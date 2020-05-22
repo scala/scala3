@@ -12,7 +12,7 @@ This is the process for committing code to the Scala project. There are of cours
     2. The ticket has been discussed and prioritized by the team.
 3. You should always perform your work in its own Git branch. The branch should be given a descriptive name that explains its intent. Some teams also like adding the ticket number and/or the [GitHub](http://github.com) user ID to the branch name, these details is up to each of the individual teams. (See below for more details on branch naming.)
 4. When the feature or fix is completed you should open a [Pull Request](https://help.github.com/articles/using-pull-requests) on GitHub.
-5. The Pull Request should be reviewed by other maintainers (as many as feasible/practical). Note that a reviewer can also be an outside contributor-- members of Typesafe and independent contributors are encouraged to participate in the review process. It is not a closed process. Please try to avoid conflict of interest -- the spirit of the review process is to evenly distribute the understanding of our code base across its maintainers as well as to load balance quality assurance. Assigning a review to a "sure win" reviewer is not a good long-term solution.
+5. The Pull Request should be reviewed by other maintainers (as many as feasible/practical). Note that a reviewer can also be an outside contributor—members of Typesafe and independent contributors are encouraged to participate in the review process. It is not a closed process. Please try to avoid conflict of interest—the spirit of the review process is to evenly distribute the understanding of our code base across its maintainers as well as to load balance quality assurance. Assigning a review to a "sure win" reviewer is not a good long-term solution.
 6. After the review, you should resolve issues brought up by the reviewers as needed (pushing a new commit to address reviewers' comments), iterating until the reviewers give their thumbs up, the "LGTM" (acronym for "Looks Good To Me").
 7. Once the code has passed review the Pull Request can be merged into the distribution.
 
@@ -32,7 +32,7 @@ If *all* of these requirements are not met then the code should **not** be merge
 
 ## Documentation
 
-All contributed code should come accompanied with documentation. Pull requests containing undocumented code will not be accepted. Both user-facing Scaladoc comments, as well as committer-facing internal documentation (i.e. important design decisions that other maintainers should know about should be placed inline with line comments `//`) should be accompanying all contributed code where possible.
+All contributed code should come accompanied by documentation. Pull requests containing undocumented code will not be accepted. Both user-facing Scaladoc comments, as well as committer-facing internal documentation (i.e. essential design decisions that other maintainers should know about should be placed inline with line comments `//`) should be accompanying all contributed code where possible.
 
 
 ## Work In Progress
@@ -45,7 +45,7 @@ Also, to facilitate both well-formed commits and working together, the ``wip`` a
 
 Follow these guidelines when creating public commits and writing commit messages.
 
-1. If your work spans multiple local commits (for example; if you do safe point commits while working in a feature branch or work in a branch for long time doing merges/rebases etc.) then please do not commit it all but rewrite the history by squashing the commits into one large commit which is accompanied by a detailed commit message for (as discussed in the following sections). For more info, see the article: [Git Workflow](http://sandofsky.com/blog/git-workflow.html). Additionally, every commit should be able to be used in isolation-- that is, each commit must build and pass all tests.
+1. If your work spans multiple local commits (for example; if you do safe point commits while working in a feature branch or work in a branch for long time doing merges/rebases etc.) then please do not commit it all but rewrite the history by squashing the commits into one large commit which is accompanied by a detailed commit message for (as discussed in the following sections). For more info, see the article: [Git Workflow](http://sandofsky.com/blog/git-workflow.html). Additionally, every commit should be able to be used in isolation—that is, each commit must build and pass all tests.
 2. The first line should be a descriptive sentence about what the commit is doing. It should be possible to fully understand what the commit does by just reading this single line. It is **not ok** to only list the ticket number, type "minor fix" or similar. If the commit has a corresponding ticket, include a reference to the ticket number, prefixed with "Closes #", at the beginning of the first line followed by the title of the ticket, assuming that it aptly and concisely summarizes the commit in a single line. If the commit is a small fix, then you are done. If not, go to 3.
 3. Following the single line description (ideally no more than 70 characters long) should be a blank line followed by an enumerated list with the details of the commit.
 4. Add keywords for your commit (depending on the degree of automation we reach, the list may change over time):
