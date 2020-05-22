@@ -63,7 +63,7 @@ def combineAll[T: Monoid](xs: List[T]): T =
     xs.foldLeft(Monoid[T].unit)(_ combine _)
 ```
 
-We can also benefit from [extension methods](extension-methods-new.html) to make this `combineAll` function accessible as a method on the `List` type:
+We can also benefit from [extension methods](extension-methods.html) to make this `combineAll` function accessible as a method on the `List` type:
 
 
 ```scala
@@ -119,7 +119,7 @@ assertTransformation(List("a1", "b1"), List("a", "b"), elt => s"${elt}1")
 ```
 
 That's a first step, but in practice we probably would like the `map` function to be a method directly accessible on the type `F`. So that we can call `map` directly on instances of `F`, and get rid of the `summon[Functor[F]]` part.
-As in the previous example of Monoids, [`extension` methods](extension-methods-new.html) help achieving that. Let's re-define the `Functor` _typeclass_ with extension methods.
+As in the previous example of Monoids, [`extension` methods](extension-methods.html) help achieving that. Let's re-define the `Functor` _typeclass_ with extension methods.
 
 ```scala
 trait Functor[F[?]] {
