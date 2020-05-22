@@ -300,7 +300,7 @@ trait ConstraintHandling[AbstractContext] {
    *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
    *   2. If `inst` is a union type, approximate the union type from above by an intersection
    *      of all common base types, provided the result is a subtype of `bound`.
-   *   3. (currently not enabled) If `inst` is an intersection with some restricted base types, drop
+   *   3. (currently not enabled, see #9028) If `inst` is an intersection with some restricted base types, drop
    *      the restricted base types from the intersection, provided the result is a subtype of `bound`.
    *
    *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
