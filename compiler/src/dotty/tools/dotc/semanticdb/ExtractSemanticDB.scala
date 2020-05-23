@@ -12,6 +12,7 @@ import Names.Name
 import StdNames.nme
 import util.Spans.Span
 import util.{SourceFile, SourcePosition}
+import scala.jdk.CollectionConverters._
 import collection.mutable
 import java.nio.file.Paths
 
@@ -594,8 +595,15 @@ object ExtractSemanticDB:
 
   def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
+    def commonPrefix[T](z: T)(i1: Iterable[T], i2: Iterable[T])(app: (T, T) => T): T =
+      (i1 lazyZip i2).takeWhile(p => p(0) == p(1)).map(_(0)).foldLeft(z)(app)
     val sourcePath = absolutePath(source.file.jpath)
-    val sourceRoot = absolutePath(Paths.get(ctx.settings.sourceroot.value))
+    val sourceRoot =
+      // Here if `sourceRoot` and `sourcePath` do not share a common prefix then `relPath` will not be normalised,
+      // containing ../.. etc, which is problematic when appending to `/META-INF/semanticdb/` and will not be accepted
+      // by Files.createDirectories on JDK 11.
+      val sourceRoot0 = absolutePath(Paths.get(ctx.settings.sourceroot.value))
+      commonPrefix(sourcePath.getRoot)(sourcePath.asScala, sourceRoot0.asScala)(_ resolve _)
     val semanticdbTarget =
       val semanticdbTargetSetting = ctx.settings.semanticdbTarget.value
       absolutePath(

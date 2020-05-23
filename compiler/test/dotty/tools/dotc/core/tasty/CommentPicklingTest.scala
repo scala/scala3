@@ -82,7 +82,7 @@ class CommentPicklingTest {
     Directory.inTempDirectory { tmp =>
       val sourceFiles = sources.zipWithIndex.map {
         case (src, id) =>
-          val path = tmp./(File("Src$id.scala")).toAbsolute
+          val path = tmp./(File(s"Src$id.scala")).toAbsolute
           path.writeAll(src)
           path.toString
       }
