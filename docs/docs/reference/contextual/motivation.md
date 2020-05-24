@@ -73,7 +73,7 @@ This design thus avoids feature interactions and makes the language more consist
 
 Could we achieve the same goals by tweaking existing implicits? After having tried for a long time, I believe now that this is impossible.
 
- - First, some problems are clearly syntactic and require different syntax to solve them.
+ - First, some of the problems are clearly syntactic and require different syntax to solve them.
  - Second, there is the problem how to migrate. We cannot change the rules in mid-flight. At some stage of language evolution we need to accommodate both the new and the old rules. With a syntax change, this is easy: Introduce the new syntax with new rules, support the old syntax for a while to facilitate cross compilation, deprecate and phase out the old syntax at some later time. Keeping the same syntax does not offer this path, and in fact does not seem to offer any viable path for evolution
  - Third, even if we would somehow succeed with migration, we still have the problem
  how to teach this. We cannot make existing tutorials go away. Almost all existing tutorials start with implicit conversions, which will go away; they use normal imports, which will go away, and they explain calls to methods with implicit parameters by expanding them to plain applications, which will also go away. This means that we'd have

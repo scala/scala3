@@ -167,7 +167,7 @@ def eval[T](e: Expr[T]): T = e match {
 We've also plugged a few soundness problems (e.g. [#5667](https://github.com/lampepfl/dotty/issues/5667)) caused by inferring too much when matching on abstract, union and intersection types. For more information, see PR [#5736](https://github.com/lampepfl/dotty/pull/5736).
 
 ## Other changes
-Some other notable changes include the following:
+Some of the other notable changes include the following:
 
 - Singletons are now allowed in union types. E.g. the following is allowed: `object foo; type X = Int | foo.type`.
 - A bunch of improvements was made for the type inference system – see, e.g., PRs [#6454](https://github.com/lampepfl/dotty/pull/6454) and [#6467](https://github.com/lampepfl/dotty/pull/6467).

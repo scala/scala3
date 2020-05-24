@@ -58,7 +58,7 @@ Above, `<stable_release>` is the stable version being released. For example, if 
 
 Copy and paste the output into the release issue.
 
-The ecosystem update section for some projects also mentions a set of criteria upon which the project is to be marked in the checklist. When the Travis build status is specified next to the project's name, it is to be understood that this build must pass after all the other criteria of that project are checked. Note that due to caching, the label image next to the link may not reflect the real status of the build. Therefore, to verify the status, click on the link and make sure that your recent commit passes.
+The ecosystem update section for some projects also mentions a set of criteria upon which the project is to be marked in the checklist. When the Travis build status is specified next to the project's name, it is to be understood that this build must pass after all of the other criteria of that project are checked. Note that due to caching, the label image next to the link may not reflect the real status of the build. Therefore, to verify the status, click on the link and make sure that your recent commit passes.
 
 When no criteria is specified, common sense is to be used.
 

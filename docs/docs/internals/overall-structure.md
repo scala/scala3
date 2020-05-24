@@ -82,7 +82,7 @@ context".
 
 With these two conventions in place, it has turned out that implicit contexts
 work amazingly well as a device for dependency injection and bulk
-parameterization. There is of course always the danger that an unexpected
+parameterization.  There is of course always the danger that an unexpected
 implicit will be passed, but in practice this has not turned out to be much of
 a problem.
 

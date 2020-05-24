@@ -142,4 +142,4 @@ project are important.
     This lets us put other constructs of the Scala language to the test,
     either to increase our confidence that they are indeed sound, or
     to show that they are unsound. In my next blog I will
-    present some issues we have discovered through that exercise.
+    present some of the issues we have discovered through that exercise.
