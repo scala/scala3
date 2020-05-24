@@ -91,3 +91,6 @@
 [submodule "community-build/community-projects/geny"]
 	path = community-build/community-projects/geny
 	url = https://github.com/dotty-staging/geny.git
+[submodule "community-build/community-projects/scalaz"]
+	path = community-build/community-projects/scalaz
+	url = https://github.com/dotty-staging/scalaz.git

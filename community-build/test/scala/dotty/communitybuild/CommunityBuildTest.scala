@@ -278,6 +278,12 @@ object projects:
     sbtTestCommand   = "test",
   )
 
+  lazy val scalaz = SbtCommunityProject(
+    project          = "scalaz",
+    sbtTestCommand   = "rootJVM/test",
+    dependencies     = List(scalacheck)
+  )
+
 end projects
 
 @Category(Array(classOf[TestCategory]))
@@ -369,6 +375,7 @@ class CommunityBuildTest:
   @Test def scodec = projects.scodec.run()
   @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
   @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
+  @Test def scalaz = projects.scalaz.run()
 end CommunityBuildTest
 
 class TestCategory
