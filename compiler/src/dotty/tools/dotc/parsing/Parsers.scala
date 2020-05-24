@@ -3434,7 +3434,7 @@ object Parsers {
       }
     }
 
-    /** TmplDef ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
+    /** TmplDef ::=  ([‘case’] ‘class’ | [‘super’] ‘trait’) ClassDef
      *            |  [‘case’] ‘object’ ObjectDef
      *            |  ‘enum’ EnumDef
      *            |  ‘given’ GivenDef
@@ -3444,6 +3444,8 @@ object Parsers {
       in.token match {
         case TRAIT =>
           classDef(start, posMods(start, addFlag(mods, Trait)))
+        case SUPERTRAIT =>
+          classDef(start, posMods(start, addFlag(mods, Trait | SuperTrait)))
         case CLASS =>
           classDef(start, posMods(start, mods))
         case CASECLASS =>

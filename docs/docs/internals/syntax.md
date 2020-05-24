@@ -388,7 +388,7 @@ VarDef            ::=  PatDef
 DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                               DefDef(_, name, tparams, vparamss, tpe, expr)
                     |  ‘this’ DefParamClause DefParamClauses ‘=’ ConstrExpr     DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
 
-TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
+TmplDef           ::=  ([‘case’] ‘class’ | [‘super’] ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
                     |  ‘given’ GivenDef

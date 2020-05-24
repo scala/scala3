@@ -639,7 +639,6 @@ class Definitions {
   @tu lazy val EnumClass: ClassSymbol = ctx.requiredClass("scala.Enum")
     @tu lazy val Enum_ordinal: Symbol = EnumClass.requiredMethod(nme.ordinal)
 
-  @tu lazy val EnumValueClass: ClassSymbol = ctx.requiredClass("scala.runtime.EnumValue")
   @tu lazy val EnumValuesClass: ClassSymbol = ctx.requiredClass("scala.runtime.EnumValues")
   @tu lazy val ProductClass: ClassSymbol = ctx.requiredClass("scala.Product")
     @tu lazy val Product_canEqual          : Symbol = ProductClass.requiredMethod(nme.canEqual_)
@@ -1307,6 +1306,9 @@ class Definitions {
   /** Is synthesized symbol with alphanumeric name allowed to be used as an infix operator? */
   def isInfix(sym: Symbol)(implicit ctx: Context): Boolean =
     (sym eq Object_eq) || (sym eq Object_ne)
+
+  @tu lazy val assumedSuperTraits =
+    Set(ComparableClass, JavaSerializableClass, ProductClass, SerializableClass)
 
   // ----- primitive value class machinery ------------------------------------------
 

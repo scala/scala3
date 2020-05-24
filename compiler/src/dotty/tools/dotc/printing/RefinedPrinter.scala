@@ -729,7 +729,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
   private def Modifiers(sym: Symbol): Modifiers = untpd.Modifiers(
-    sym.flags & (if (sym.isType) ModifierFlags | VarianceFlags else ModifierFlags),
+    sym.flags & (if (sym.isType) ModifierFlags | VarianceFlags | SuperTrait else ModifierFlags),
     if (sym.privateWithin.exists) sym.privateWithin.asType.name else tpnme.EMPTY,
     sym.annotations.filterNot(ann => dropAnnotForModText(ann.symbol)).map(_.tree))
 
@@ -839,7 +839,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   protected def templateText(tree: TypeDef, impl: Template): Text = {
-    val decl = modText(tree.mods, tree.symbol, keywordStr(if (tree.mods.is(Trait)) "trait" else "class"), isType = true)
+    val kw =
+      if tree.mods.is(SuperTrait) then "super trait"
+      else if tree.mods.is(Trait) then "trait"
+      else "class"
+    val decl = modText(tree.mods, tree.symbol, keywordStr(kw), isType = true)
     ( decl ~~ typeText(nameIdText(tree)) ~ withEnclosingDef(tree) { toTextTemplate(impl) }
     // ~ (if (tree.hasType && printDebug) i"[decls = ${tree.symbol.info.decls}]" else "") // uncomment to enable
     )
@@ -945,6 +949,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else if (sym.isPackageObject) "package object"
     else if (flags.is(Module) && flags.is(Case)) "case object"
     else if (sym.isClass && flags.is(Case)) "case class"
+    else if sym.isClass && flags.is(SuperTrait) then "super trait"
     else super.keyString(sym)
   }
 

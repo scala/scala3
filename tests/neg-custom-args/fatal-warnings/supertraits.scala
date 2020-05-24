@@ -1,0 +1,32 @@
+sealed super trait TA
+sealed super trait TB
+case object a extends TA, TB
+case object b extends TA, TB
+
+object Test:
+
+  def choose0[X](x: X, y: X): X = x
+  def choose1[X <: TA](x: X, y: X): X = x
+  def choose2[X <: TB](x: X, y: X): X = x
+  def choose3[X <: Product](x: X, y: X): X = x
+  def choose4[X <: TA & TB](x: X, y: X): X = x
+
+  choose0(a, b) match
+    case _: TA => ???
+    case _: TB => ???
+
+  choose1(a, b) match
+    case _: TA => ???
+    case _: TB => ???  // error: unreachable
+
+  choose2(a, b) match
+    case _: TB => ???
+    case _: TA => ???  // error: unreachable
+
+  choose3(a, b) match
+    case _: Product => ???
+    case _: TA => ???  // error: unreachable
+
+  choose4(a, b) match
+    case _: (TA & TB) => ???
+    case _: Product => ???  // error: unreachable
