@@ -1,7 +1,7 @@
 package dotty.tools
 
 import javax.tools._
-import java.io.File
+import java.io._
 import java.nio.file._
 import java.net.URI
 import scala.jdk.CollectionConverters._
@@ -10,14 +10,22 @@ import core._
 import core.Contexts._
 import dotc.core.Comments.{ContextDoc, ContextDocstrings}
 
-/** Initialize a compiler context with the given classpath and
- *  pass it to `op`.
+/** Initialize a compiler context with the given `classpath`, compile all
+ *  `scalaSources`, then run `op`.
+ *
+ *  If `separateRun` is true , then `op` will be run in a new run different from the
+ *  one used to compile the sources, this makes it easier to test for potential
+ *  issues involving retrieving symbols defined in a previous run.
  */
-def inCompilerContext[T](classpath: String)(op: Context ?=> T): T =
+def inCompilerContext[T](classpath: String, separateRun: Boolean = true, scalaSources: String*)(op: Context ?=> T): T =
   val compiler = Compiler()
-  val run = compiler.newRun(initCtx(classpath))
-  run.compileUnits(Nil) // Initialize phases
-  op(using run.runContext)
+  val rootCtx = initCtx(classpath)
+  val firstRun = compiler.newRun(rootCtx)
+  firstRun.compileFromStrings(scalaSources.toList)
+  val opRun = if separateRun
+    then compiler.newRun(rootCtx)
+    else firstRun
+  op(using opRun.runContext)
 
 private def initCtx(classpath: String): Context =
   val ctx0 = (new ContextBase).initialCtx.fresh

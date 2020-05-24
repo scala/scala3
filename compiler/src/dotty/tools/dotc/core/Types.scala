@@ -1896,30 +1896,39 @@ object Types {
       case sym: Symbol => sym.originDenotation.name
     }
 
-    /** The signature of the last known denotation, or if there is none, the
-     *  signature of the symbol
+    /** The signature computed from the last known denotation with `sigFromDenot`,
+     *  or if there is none, the signature of the symbol. Signatures are always
+     *  computed before erasure, since some symbols change their signature at erasure.
      */
-    protected def computeSignature(implicit ctx: Context): Signature = {
+    protected def computeSignature(implicit ctx: Context): Signature =
       val lastd = lastDenotation
-      if (lastd != null) lastd.signature
+      if lastd != null then sigFromDenot(lastd)
+      else if ctx.erasedTypes then computeSignature(using ctx.withPhase(ctx.erasurePhase))
       else symbol.asSeenFrom(prefix).signature
-    }
 
-    /** The signature of the current denotation if it is known without forcing.
+    /** The signature computed from the current denotation with `sigFromDenot` if it is
+     *  known without forcing.
      *  Otherwise the signature of the current symbol if it is known without forcing.
-     *  Otherwise NotAMethod.
+     *  Otherwise NotAMethod. Signatures are always computed before erasure, since
+     *  some symbols change their signature at erasure.
      */
     private def currentSignature(implicit ctx: Context): Signature =
-      if (ctx.runId == mySignatureRunId) mySignature
-      else {
+      if ctx.runId == mySignatureRunId then mySignature
+      else
         val lastd = lastDenotation
-        if (lastd != null) lastd.signature
-        else {
+        if lastd != null then sigFromDenot(lastd)
+        else if ctx.erasedTypes then currentSignature(using ctx.withPhase(ctx.erasurePhase))
+        else
           val sym = currentSymbol
-          if (sym.exists) sym.asSeenFrom(prefix).signature
+          if sym.exists then sym.asSeenFrom(prefix).signature
           else Signature.NotAMethod
-        }
-      }
+
+    /** The signature of a pre-erasure version of denotation `lastd`. */
+    private def sigFromDenot(lastd: Denotation)(using Context) =
+      if lastd.validFor.firstPhaseId <= ctx.erasurePhase.id then lastd.signature
+      else lastd match
+        case lastd: SingleDenotation => lastd.initial.signature
+        case _ => Signature.OverloadedSignature
 
     final def symbol(implicit ctx: Context): Symbol =
       // We can rely on checkedPeriod (unlike in the definition of `denot` below)
@@ -3066,7 +3075,7 @@ object Types {
     }
   }
 
-  trait MethodicType extends SignatureCachingType {
+  trait MethodicType extends TermType {
     protected def resultSignature(implicit ctx: Context): Signature = try resultType match {
       case rtp: MethodicType => rtp.signature
       case tp =>
@@ -3086,7 +3095,7 @@ object Types {
     override def resultType(implicit ctx: Context): Type = resType
     override def underlying(implicit ctx: Context): Type = resType
 
-    def computeSignature(implicit ctx: Context): Signature = resultSignature
+    override def signature(implicit ctx: Context): Signature = Signature.NotAMethod
 
     def derivedExprType(resType: Type)(implicit ctx: Context): ExprType =
       if (resType eq this.resType) this else ExprType(resType)
@@ -3192,7 +3201,7 @@ object Types {
     final override def equals(that: Any): Boolean = equals(that, null)
   }
 
-  abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType {
+  abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType with SignatureCachingType {
     final override def hashCode: Int = System.identityHashCode(this)
 
     final override def equals(that: Any): Boolean = equals(that, null)

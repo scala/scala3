@@ -87,6 +87,19 @@ class TreeChecker extends Phase with SymTransformer {
 
     checkCompanion(symd)
 
+    // Signatures are used to disambiguate overloads and need to stay stable
+    // until erasure, see the comment above `Compiler#phases`.
+    if (ctx.phaseId <= ctx.erasurePhase.id) {
+      val cur = symd.info
+      val initial = symd.initial.info
+      assert(cur.signature == initial.signature,
+        i"""Signature of $symd changed at phase ${ctx.phase}
+           |Initial info: ${initial}
+           |Initial sig : ${initial.signature}
+           |Current info: ${cur}
+           |Current sig : ${cur.signature}""")
+    }
+
     symd
   }
 

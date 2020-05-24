@@ -77,23 +77,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       case p => p
     }
 
-  /** 1. If this is a constructor of a enum class that extends, add $name and $ordinal parameters to it.
-   *
-   *  2. If this is a $new method that creates simple cases, pass $name and $ordinal parameters
-   *     to the enum superclass. The $new method looks like this:
-   *
-   *       def $new(..., ordinal: Int, name: String) = {
-   *         class $anon extends E(...) { ... }
-   *         new $anon
-   *       }
-   *
-   *     After the transform it is expanded to
-   *
-   *       def $new(..., ordinal: Int, name: String) = {
-   *         class $anon extends E(..., name, ordinal) { ... }
-   *         new $anon
-   *       }
-   */
+  /** If this is a constructor of a enum class that extends, add $name and $ordinal parameters to it. */
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): DefDef = {
     val sym = tree.symbol
     if (sym.isConstructor && sym.owner.derivesFromJavaEnum)
@@ -101,14 +85,6 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         vparamss = tree.vparamss.init :+ (tree.vparamss.last ++ addedParams(sym, Param)))
       sym.setParamssFromDefs(tree1.tparams, tree1.vparamss)
       tree1
-    else if (sym.name == nme.DOLLAR_NEW && sym.owner.linkedClass.derivesFromJavaEnum) {
-      val Block((tdef @ TypeDef(tpnme.ANON_CLASS, templ: Template)) :: Nil, call) = tree.rhs
-      val args = tree.vparamss.last.takeRight(2).map(param => ref(param.symbol)).reverse
-      val templ1 = cpy.Template(templ)(
-        parents = addEnumConstrArgs(sym.owner.linkedClass, templ.parents, args))
-      cpy.DefDef(tree)(
-        rhs = cpy.Block(tree.rhs)(cpy.TypeDef(tdef)(tdef.name, templ1) :: Nil, call))
-    }
     else tree
   }
 
@@ -159,7 +135,8 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
         body = params ++ addedDefs ++ addedForwarders ++ rest)
     }
-    else if (cls.isAnonymousClass && cls.owner.isAllOf(EnumCase) && cls.owner.owner.linkedClass.derivesFromJavaEnum) {
+    else if (cls.isAnonymousClass && ((cls.owner.name eq nme.DOLLAR_NEW) || cls.owner.isAllOf(EnumCase)) &&
+             cls.owner.owner.linkedClass.derivesFromJavaEnum) {
       def rhsOf(name: TermName) =
         templ.body.collect {
           case mdef: DefDef if mdef.name == name => mdef.rhs
