@@ -300,8 +300,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 // ---------- Updates ------------------------------------------------------------
 
   /** If `inst` is a TypeBounds, make sure it does not contain toplevel
-   *  references to `param`. Toplevel means: the term itself or a factor in some
-   *  combination of `&` or `|` types.
+   *  references to `param` (see `Constraint#occursAtToplevel` for a definition
+   *  of "toplevel").
    *  Any such references are replace by `Nothing` in the lower bound and `Any`
    *  in the upper bound.
    *  References can be direct or indirect through instantiations of other
@@ -594,33 +594,36 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 // ---------- Checking -----------------------------------------------
 
   def checkNonCyclic()(implicit ctx: Context): this.type =
-    if Config.checkConstraintsNonCyclic then domainParams.foreach(checkNonCyclic)
+    if Config.checkConstraintsNonCyclic then
+      domainParams.foreach { param =>
+        val inst = entry(param)
+        assert(!isLess(param, param),
+          s"cyclic ordering involving $param in ${this.show}, upper = $inst")
+        assert(!occursAtToplevel(param, inst),
+          s"cyclic bound for $param: ${inst.show} in ${this.show}")
+      }
     this
 
-  private def checkNonCyclic(param: TypeParamRef)(implicit ctx: Context): Unit =
-    assert(!isLess(param, param), i"cyclic ordering involving $param in $this, upper = ${upper(param)}")
+  def occursAtToplevel(param: TypeParamRef, inst: Type)(implicit ctx: Context): Boolean =
 
-    def recur(tp: Type)(using Context): Unit = tp match
+    def occurs(tp: Type)(using Context): Boolean = tp match
       case tp: AndOrType =>
-        recur(tp.tp1)
-        recur(tp.tp2)
+        occurs(tp.tp1) || occurs(tp.tp2)
       case tp: TypeParamRef =>
-        assert(tp ne param, i"cyclic bound for $param: ${entry(param)} in $this")
-        entry(tp) match
-          case NoType =>
-          case TypeBounds(lo, hi) => if lo eq hi then recur(lo)
-          case inst => recur(inst)
+        (tp eq param) || entry(tp).match
+          case NoType => false
+          case TypeBounds(lo, hi) => (lo eq hi) && occurs(lo)
+          case inst => occurs(inst)
       case tp: TypeVar =>
-        recur(tp.underlying)
+        occurs(tp.underlying)
       case TypeBounds(lo, hi) =>
-        recur(lo)
-        recur(hi)
+        occurs(lo) || occurs(hi)
       case _ =>
         val tp1 = tp.dealias
-        if tp1 ne tp then recur(tp1)
+        (tp1 ne tp) && occurs(tp1)
 
-    recur(entry(param))
-  end checkNonCyclic
+    occurs(inst)
+  end occursAtToplevel
 
   override def checkClosed()(using Context): Unit =
 

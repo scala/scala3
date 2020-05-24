@@ -153,6 +153,12 @@ abstract class Constraint extends Showable {
   /** Check that no constrained parameter contains itself as a bound */
   def checkNonCyclic()(implicit ctx: Context): this.type
 
+  /** Does `param` occur at the toplevel in `tp` ?
+   *  Toplevel means: the type itself or a factor in some
+   *  combination of `&` or `|` types.
+   */
+  def occursAtToplevel(param: TypeParamRef, tp: Type)(using Context): Boolean
+
   /** Check that constraint only refers to TypeParamRefs bound by itself */
   def checkClosed()(implicit ctx: Context): Unit
 
