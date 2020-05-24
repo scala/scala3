@@ -1308,7 +1308,7 @@ class Definitions {
     (sym eq Object_eq) || (sym eq Object_ne)
 
   @tu lazy val assumedSuperTraits =
-    Set(ComparableClass, JavaSerializableClass, ProductClass, SerializableClass)
+    Set(ComparableClass, ProductClass, SerializableClass)
 
   // ----- primitive value class machinery ------------------------------------------
 

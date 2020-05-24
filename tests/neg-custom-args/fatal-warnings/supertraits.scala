@@ -1,7 +1,8 @@
 sealed super trait TA
 sealed super trait TB
-case object a extends TA, TB
-case object b extends TA, TB
+trait S
+case object a extends S, TA, TB
+case object b extends S, TA, TB
 
 object Test:
 
@@ -13,7 +14,7 @@ object Test:
 
   choose0(a, b) match
     case _: TA => ???
-    case _: TB => ???
+    case _: TB => ???  // error: unreachable
 
   choose1(a, b) match
     case _: TA => ???

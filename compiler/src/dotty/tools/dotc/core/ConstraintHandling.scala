@@ -300,9 +300,12 @@ trait ConstraintHandling[AbstractContext] {
    *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
    *   2. If `inst` is a union type, approximate the union type from above by an intersection
    *      of all common base types, provided the result is a subtype of `bound`.
-   *   3. If `inst` a super trait instance or an intersection with some super trait
-   *      parents, replace all super trait instances with AnyRef (or Any, if the trait
-   *      is a universal trait) as long as the result is a subtype of `bound`.
+   *   3. If `inst` an intersection such that some operands are super trait instances
+   *      and others are not, replace as many super trait instances as possible with Any
+   *      as long as the result is still a subtype of `bound`. But fall back to the
+   *      original type if the resulting widened type is a supertype of all dropped
+   *      types (since in this case the type was not a true intersection of super traits
+   *      and other types to start with).
    *
    *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
    *  Also, if the result of these widenings is a TypeRef to a module class,
@@ -315,14 +318,14 @@ trait ConstraintHandling[AbstractContext] {
   def widenInferred(inst: Type, bound: Type)(implicit actx: AbstractContext): Type =
 
     def dropSuperTraits(tp: Type): Type =
-      var keep: Set[Type] = Set()    // types to keep since otherwise bound would not fit
-      var lastDropped: Type = NoType // the last type dropped in dropOneSuperTrait
+      var kept: Set[Type] = Set()      // types to keep since otherwise bound would not fit
+      var dropped: List[Type] = List() // the types dropped so far, last one on top
 
       def dropOneSuperTrait(tp: Type): Type =
         val tpd = tp.dealias
-        if tpd.typeSymbol.isSuperTrait && !tpd.isLambdaSub && !keep.contains(tpd) then
-          lastDropped = tpd
-          if tpd.derivesFrom(defn.ObjectClass) then defn.ObjectType else defn.AnyType
+        if tpd.typeSymbol.isSuperTrait && !tpd.isLambdaSub && !kept.contains(tpd) then
+          dropped = tpd :: dropped
+          defn.AnyType
         else tpd match
           case AndType(tp1, tp2) =>
             val tp1w = dropOneSuperTrait(tp1)
@@ -339,10 +342,12 @@ trait ConstraintHandling[AbstractContext] {
         if tpw eq tp then tp
         else if tpw <:< bound then recur(tpw)
         else
-          keep += lastDropped
+          kept += dropped.head
+          dropped = dropped.tail
           recur(tp)
 
-      recur(tp)
+      val tpw = recur(tp)
+      if (tpw eq tp) || dropped.forall(_ frozen_<:< tpw) then tp else tpw
     end dropSuperTraits
 
     def widenOr(tp: Type) =
