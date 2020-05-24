@@ -5,7 +5,7 @@ title: Dropped: private[this] and protected[this]
 
 The `private[this]` and `protected[this]` access modifiers are deprecated and will be phased out.
 
-Previously, these modifier were needed
+Previously, these modifiers were needed
 
  - for avoiding the generation of getters and setters
  - for excluding code under a `private[this]` from variance checks. (Scala 2 also excludes `protected[this]` but this was found to be unsound and was therefore removed).

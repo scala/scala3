@@ -11,6 +11,6 @@ a type definition.
 ```
 
 For instance, the type above defines a binary type constructor, which maps arguments `X` and `Y` to `Map[Y, X]`.
-Type parameters of type lambdas can have bounds but they cannot carry `+` or `-` variance annotations.
+Type parameters of type lambdas can have bounds, but they cannot carry `+` or `-` variance annotations.
 
 [More details](./type-lambdas-spec.md)

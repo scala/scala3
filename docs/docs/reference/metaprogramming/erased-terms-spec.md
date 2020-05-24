@@ -59,5 +59,5 @@ title: "Erased Terms Spec"
 
 7. Overriding
    * Member definitions overriding each other must both be `erased` or not be `erased`
-   * `def foo(x: T): U` cannot be overridden by `def foo(erased x: T): U` an vice-versa
+   * `def foo(x: T): U` cannot be overridden by `def foo(erased x: T): U` and vice-versa
 

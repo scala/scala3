@@ -83,7 +83,7 @@ val res3: Int = 3
 
 To smoothen the migration, the deprecation warnings will only be emitted if you compile with the `-strict` flag under Scala 3. Alphanumeric methods that are defined without the `@infix` annotation used in an infix position will be deprecated by default starting with Scala 3.1.
 
-For more information, see the the [documentation](https://dotty.epfl.ch/docs/reference/changed-features/operators.html#the-infix-annotation). Note that the `@alpha` annotation also described in the documentation is planned for the future and is not available in this release.
+For more information, see the [documentation](https://dotty.epfl.ch/docs/reference/changed-features/operators.html#the-infix-annotation). Note that the `@alpha` annotation also described in the documentation is planned for the future and is not available in this release.
 
 ## `given` clause comes last
 In the previous release, you could write something like this:
@@ -167,7 +167,7 @@ def eval[T](e: Expr[T]): T = e match {
 We've also plugged a few soundness problems (e.g. [#5667](https://github.com/lampepfl/dotty/issues/5667)) caused by inferring too much when matching on abstract, union and intersection types. For more information, see PR [#5736](https://github.com/lampepfl/dotty/pull/5736).
 
 ## Other changes
-Some of the other notable changes include the following:
+Some other notable changes include the following:
 
 - Singletons are now allowed in union types. E.g. the following is allowed: `object foo; type X = Int | foo.type`.
 - A bunch of improvements was made for the type inference system – see, e.g., PRs [#6454](https://github.com/lampepfl/dotty/pull/6454) and [#6467](https://github.com/lampepfl/dotty/pull/6467).

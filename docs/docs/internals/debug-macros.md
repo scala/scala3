@@ -4,7 +4,7 @@ title: "Debug Macros"
 ---
 
 Complex macros may break invariants of the compiler, which leads to compiler crashes.
-Here we lists common compiler crashes and how to deal with them.
+Here we list common compiler crashes and how to deal with them.
 
 ## position not set
 

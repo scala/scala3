@@ -119,7 +119,7 @@ implicit class CircleDecorator(c: Circle) extends AnyVal {
   def circumference: Double = c.radius * math.Pi * 2
 }
 ```
-Abstract extension methods in traits that are implemented in given instances have no direct counterpart in Scala-2. The only way to simulate these is to make implicit classes available through imports. The Simulacrum macro library can automate this process in some cases.
+Abstract extension methods in traits that are implemented in given instances have no direct counterpart in Scala-2. The only way to simulate this is to make implicit classes available through imports. The Simulacrum macro library can automate this process in some cases.
 
 ### Typeclass Derivation
 

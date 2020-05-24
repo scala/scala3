@@ -109,7 +109,7 @@ are currently two backends using the TASTY frontend:
    different backends...
 
 ### Generic java signatures [#3234](https://github.com/lampepfl/dotty/pull/3234)
-Dotty now emits generic signatures for classes and methods. Theses signatures are used by compilers,
+Dotty now emits generic signatures for classes and methods. Those signatures are used by compilers,
 debuggers and to support runtime reflection. For example:
 
 ```scala

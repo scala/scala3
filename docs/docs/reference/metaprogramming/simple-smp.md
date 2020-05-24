@@ -142,7 +142,7 @@ To prove (2):
    - `t1` is a simple term but `t2` is not. Then by the second IH. `t2 ==> t22`, hence `t ==> t1 t22`.
 
  - The case `t = ’t2` is not typable.
- - If `t = ~t2` then by inversion we have `E2 ~  |- t2: ’T2`, for some some type `T2`.
+ - If `t = ~t2` then by inversion we have `E2 ~  |- t2: ’T2`, for some type `T2`.
    By the first I.H., we have one of
 
    - `t2 = v`. Since `t2: ’T2`, we must have `v = ’u`, for some simple term `u`, hence `t = ~’u`.

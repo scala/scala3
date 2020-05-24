@@ -82,7 +82,7 @@ Within `Types.scala`, we defined some extractors to work with nullable unions:
 }
 ```
 
-These extractor will call utility methods in `NullOpsDecorator.scala`. All of these
+This extractor will call utility methods in `NullOpsDecorator.scala`. All of these
 are methods of the `Type` class, so call them with `this` as a receiver:
 
 - `stripNull` syntactically strips all `Null` types in the union:

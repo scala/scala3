@@ -59,7 +59,7 @@ The main reasons for dropping `private[this]` are:
 - Its effect over `private` is purely local and can be easily inferred.
 - It leads to bike shedding: should I use `private` or `private[this]`? One is shorter but the other might be more efficient.
 
-`protected[this]` by now influences compiler decisions in no way at all. Hence it is is reasonable to drop it.
+`protected[this]` by now influences compiler decisions in no way at all. Hence it is reasonable to drop it.
 
 ## `with` keyword's new role
 `with` keyword can now optionally precede the class body. So that you can write your classes as follows:

@@ -14,7 +14,7 @@ abstraction to Scala_". What do I mean by this?
 **Abstraction**: The ability to name a concept and use just the name afterwards.
 
 **Contextual**: A piece of a program produces results or outputs in
-some context. Our programming languages are very good in describing
+some context. Our programming languages are very good at describing
 and abstracting what outputs are produced. But there's hardly anything
 yet available to abstract over the inputs that programs get from their
 context. Many interesting scenarios fall into that category,

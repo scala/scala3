@@ -4,7 +4,7 @@ title: "Dotc's concept of time"
 ---
 
 Conceptually, the `dotc` compiler's job is to maintain views of various
-artifacts associated with source code at all points in time.  But what is
+artifacts associated with source code at all points in time. But what is
 *time* for `dotc`? In fact, it is a combination of compiler runs and compiler
 phases.
 

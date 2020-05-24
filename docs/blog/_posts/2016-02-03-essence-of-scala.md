@@ -65,7 +65,7 @@ property was shown with a mechanized, (i.e. machine-checked) proof:
 Formulating the precise soundness theorem and proving it was unexpectedly hard,
 because it uncovered some technical challenges that had not been
 studied in depth before. In DOT - as well as in many programming languages -
-you can have conflicting definitions. For instance you might have an abstract
+you can have conflicting definitions. For instance, you might have an abstract
 type declaration in a base class with two conflicting aliases in subclasses:
 ```scala
 trait Base { type A }
@@ -142,4 +142,4 @@ project are important.
     This lets us put other constructs of the Scala language to the test,
     either to increase our confidence that they are indeed sound, or
     to show that they are unsound. In my next blog I will
-    present some of the issues we have discovered through that exercise.
+    present some issues we have discovered through that exercise.

@@ -38,7 +38,7 @@ This is a recorded meeting between EPFL and Waterloo, where we introduce denotat
 
 - (Typelevel Summit Oslo, May 2016) [Dotty and types: the story so far](https://www.youtube.com/watch?v=YIQjfCKDR5A) by 
 Guillaume Martres [\[slides\]](http://guillaume.martres.me/talks/typelevel-summit-oslo/).
-Guillaume focused on some of the practical improvements to the type system that Dotty makes, like the new type parameter 
+Guillaume focused on some practical improvements to the type system that Dotty makes, like the new type parameter 
 inference algorithm that is able to reason about the type safety of more situations than scalac.
 
 - (flatMap(Oslo) 2016) [AutoSpecialization in Dotty](https://vimeo.com/165928176) by [Dmitry Petrashko](http://twitter.com/darkdimius) [\[slides\]](https://d-d.me/talks/flatmap2016/#/). 

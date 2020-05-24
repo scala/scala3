@@ -342,7 +342,7 @@ Significant indentation is enabled by default. It can be turned off by giving an
 
 The Dotty compiler can rewrite source code to indented code and back.
 When invoked with options `-rewrite -indent` it will rewrite braces to
-indented regions where possible. When invoked with with options `-rewrite -noindent` it will rewrite in the reverse direction, inserting braces for indentation regions.
+indented regions where possible. When invoked with options `-rewrite -noindent` it will rewrite in the reverse direction, inserting braces for indentation regions.
 The `-indent` option only works on [new-style syntax](./control-syntax.html). So to go from old-style syntax to new-style indented code one has to invoke the compiler twice, first with options `-rewrite -new-syntax`, then again with options
 `-rewrite -indent`. To go in the opposite direction, from indented code to old-style syntax, it's `-rewrite -noindent`, followed by `-rewrite -old-syntax`.
 
