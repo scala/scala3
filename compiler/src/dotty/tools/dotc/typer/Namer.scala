@@ -404,7 +404,6 @@ class Namer { typer: Typer =>
               case _: TypeBoundsTree | _: MatchTypeTree =>
                 flags |= Deferred // Typedefs with Match rhs classify as abstract
               case LambdaTypeTree(_, body) =>
-                flags |= HigherKinded
                 analyzeRHS(body)
               case _ =>
                 if rhs.isEmpty || flags.is(Opaque) then flags |= Deferred

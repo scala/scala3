@@ -100,7 +100,7 @@ class ExtractSemanticDB extends Phase:
 
     private def excludeChildren(sym: Symbol)(using Context): Boolean =
       !sym.exists
-      || sym.isAllOf(HigherKinded | Param)
+      || sym.is(Param) && sym.info.bounds.hi.isInstanceOf[Types.HKTypeLambda]
 
     /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
     private def excludeUse(qualifier: Option[Symbol], sym: Symbol)(using Context): Boolean =
