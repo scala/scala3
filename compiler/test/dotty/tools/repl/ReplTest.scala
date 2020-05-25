@@ -6,6 +6,7 @@ import vulpix.TestConfiguration
 import java.lang.System.{lineSeparator => EOL}
 import java.io.{ByteArrayOutputStream, File => JFile, PrintStream}
 import scala.io.Source
+import scala.util.Using
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -56,26 +57,22 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
 
   def testFile(f: JFile): Unit = {
     val prompt = "scala>"
-    val lines = Source.fromFile(f, "UTF-8").getLines().buffered
 
-    assert(lines.head.startsWith(prompt),
-           s"""Each file has to start with the prompt: "$prompt"""")
-
-    def extractInputs(prompt: String): List[String] = {
+    def extractInputs(lines: BufferedIterator[String]): List[String] = {
       val input = lines.next()
 
-      if (!input.startsWith(prompt)) extractInputs(prompt)
+      if (!input.startsWith(prompt)) extractInputs(lines)
       else if (lines.hasNext) {
         // read lines and strip trailing whitespace:
         while (lines.hasNext && !lines.head.startsWith(prompt))
           lines.next()
 
-        input :: { if (lines.hasNext) extractInputs(prompt) else Nil }
+        input :: { if (lines.hasNext) extractInputs(lines) else Nil }
       }
       else Nil
     }
 
-    def evaluate(state: State, input: String, prompt: String) =
+    def evaluate(state: State, input: String) =
       try {
         val nstate = run(input.drop(prompt.length))(state)
         val out = input + EOL + storedOutput()
@@ -94,13 +91,20 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
       }
 
     val expectedOutput =
-      Source.fromFile(f, "UTF-8").getLines().flatMap(filterEmpties).mkString(EOL)
+      Using(Source.fromFile(f, "UTF-8"))(_.getLines().flatMap(filterEmpties).mkString(EOL)).get
     val actualOutput = {
       resetToInitial()
-      val inputRes = extractInputs(prompt)
+
+      val inputRes = Using(Source.fromFile(f, "UTF-8")) { source =>
+        val lines = source.getLines.buffered
+        assert(lines.head.startsWith(prompt),
+              s"""Each file has to start with the prompt: "$prompt"""")
+        extractInputs(lines)
+      }.get
+
       val buf = new ArrayBuffer[String]
       inputRes.foldLeft(initialState) { (state, input) =>
-        val (out, nstate) = evaluate(state, input, prompt)
+        val (out, nstate) = evaluate(state, input)
         buf.append(out)
 
         assert(out.endsWith("\n"),

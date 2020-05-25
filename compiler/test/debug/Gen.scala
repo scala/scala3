@@ -1,5 +1,6 @@
 import scala.io.Source
 import scala.collection.mutable.ListBuffer
+import scala.util.Using
 
 /** Automate testing debuggability of generated code using JDB and expect
  *
@@ -64,7 +65,7 @@ object Gen {
   }
 
   def parse(file: String): Program = {
-    val lines = Source.fromFile(file).getLines().toBuffer
+    val lines = Using(Source.fromFile(file))(_.getLines().toBuffer).get
 
     val breaks = new ListBuffer[Break]()
     val cmds = new ListBuffer[Command]()

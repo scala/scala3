@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit
 import java.io.{File, FileOutputStream, BufferedWriter, FileWriter}
 import scala.collection.JavaConverters._
 import scala.io.Source
+import scala.util.Using
 
 object Bench {
   val COMPILE_OPTS_FILE = "compile.txt"
@@ -77,7 +78,7 @@ object Bench {
   }
 
   def readCompileOptions: Seq[String] =
-    Source.fromFile(COMPILE_OPTS_FILE).getLines.toSeq
+    Using(Source.fromFile(COMPILE_OPTS_FILE))(_.getLines.toSeq).get
 }
 
 @State(Scope.Benchmark)

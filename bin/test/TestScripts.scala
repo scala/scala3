@@ -5,6 +5,7 @@ import org.junit.{Before, After, Test}
 
 import scala.io.Source
 import scala.sys.process.{Process, ProcessLogger}
+import scala.util.Using
 import java.io.{File => JFile, FileNotFoundException}
 
 class TestScripts {
@@ -29,7 +30,7 @@ class TestScripts {
 
   private def deletePackages: Unit = {
     try {
-      for (jar <- Source.fromFile("./.packages").getLines())
+      for (jar <- Using(Source.fromFile("./.packages"))(_.getLines().toList).get)
         delete(jar)
 
       delete("./.packages")

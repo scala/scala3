@@ -25,6 +25,7 @@ import org.jline.reader._
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
+import scala.util.Using
 
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
@@ -351,7 +352,7 @@ class ReplDriver(settings: Array[String],
     case Load(path) =>
       val file = new JFile(path)
       if (file.exists) {
-        val contents = scala.io.Source.fromFile(file, "UTF-8").mkString
+        val contents = Using(scala.io.Source.fromFile(file, "UTF-8"))(_.mkString).get
         run(contents)
       }
       else {

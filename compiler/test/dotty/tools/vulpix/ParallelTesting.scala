@@ -12,7 +12,7 @@ import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors
 
 import scala.collection.mutable
 import scala.io.Source
-import scala.util.{Random, Try, Failure => TryFailure, Success => TrySuccess}
+import scala.util.{Random, Try, Failure => TryFailure, Success => TrySuccess, Using}
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
 
@@ -654,33 +654,35 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val errorMap = new HashMap[String, Integer]()
       var expectedErrors = 0
       files.filter(_.getName.endsWith(".scala")).foreach { file =>
-        Source.fromFile(file, "UTF-8").getLines().zipWithIndex.foreach { case (line, lineNbr) =>
-          val errors = line.toSeq.sliding("// error".length).count(_.unwrap == "// error")
-          if (errors > 0)
-            errorMap.put(s"${file.getPath}:$lineNbr", errors)
+        Using(Source.fromFile(file, "UTF-8")) { source =>
+          source.getLines.zipWithIndex.foreach { case (line, lineNbr) =>
+            val errors = line.toSeq.sliding("// error".length).count(_.unwrap == "// error")
+            if (errors > 0)
+              errorMap.put(s"${file.getPath}:$lineNbr", errors)
 
-          val noposErrors = line.toSeq.sliding("// nopos-error".length).count(_.unwrap == "// nopos-error")
-          if (noposErrors > 0) {
-            val nopos = errorMap.get("nopos")
-            val existing: Integer = if (nopos eq null) 0 else nopos
-            errorMap.put("nopos", noposErrors + existing)
+            val noposErrors = line.toSeq.sliding("// nopos-error".length).count(_.unwrap == "// nopos-error")
+            if (noposErrors > 0) {
+              val nopos = errorMap.get("nopos")
+              val existing: Integer = if (nopos eq null) 0 else nopos
+              errorMap.put("nopos", noposErrors + existing)
+            }
+
+            val anyposErrors = line.toSeq.sliding("// anypos-error".length).count(_.unwrap == "// anypos-error")
+            if (anyposErrors > 0) {
+              val anypos = errorMap.get("anypos")
+              val existing: Integer = if (anypos eq null) 0 else anypos
+              errorMap.put("anypos", anyposErrors + existing)
+            }
+
+            val possibleTypos = List("//error" -> "// error", "//nopos-error" -> "// nopos-error", "//anypos-error" -> "// anypos-error")
+            for ((possibleTypo, expected) <- possibleTypos) {
+              if (line.contains(possibleTypo))
+                echo(s"Warning: Possible typo in error tag in file ${file.getCanonicalPath}:$lineNbr: found `$possibleTypo` but expected `$expected`")
+            }
+
+            expectedErrors += anyposErrors + noposErrors + errors
           }
-
-          val anyposErrors = line.toSeq.sliding("// anypos-error".length).count(_.unwrap == "// anypos-error")
-          if (anyposErrors > 0) {
-            val anypos = errorMap.get("anypos")
-            val existing: Integer = if (anypos eq null) 0 else anypos
-            errorMap.put("anypos", anyposErrors + existing)
-          }
-
-          val possibleTypos = List("//error" -> "// error", "//nopos-error" -> "// nopos-error", "//anypos-error" -> "// anypos-error")
-          for ((possibleTypo, expected) <- possibleTypos) {
-            if (line.contains(possibleTypo))
-              echo(s"Warning: Possible typo in error tag in file ${file.getCanonicalPath}:$lineNbr: found `$possibleTypo` but expected `$expected`")
-          }
-
-          expectedErrors += anyposErrors + noposErrors + errors
-        }
+        }.get
       }
 
       (errorMap, expectedErrors)

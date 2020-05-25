@@ -25,6 +25,7 @@ import dotc.core.Contexts.Context
 import dotc.util.SourceFile
 import model.Package
 import scala.io.{ Codec, Source }
+import scala.util.Using
 import io.{ AbstractFile, VirtualFile, File }
 import scala.collection.mutable.ArrayBuffer
 import util.syntax._
@@ -90,7 +91,7 @@ case class Site(
     root
       .listFiles
       .find(_.getName == "sidebar.yml")
-      .map("---\n" + Source.fromFile(_).mkString + "\n---")
+      .map(f => "---\n" + Using(Source.fromFile(f))(_.mkString).get + "\n---")
       .map(Yaml.apply)
       .flatMap(Sidebar.apply)
       .getOrElse(Sidebar.empty)
@@ -412,7 +413,7 @@ case class Site(
   }
 
   private def toSourceFile(f: JFile): SourceFile =
-    new SourceFile(AbstractFile.getFile(new File(f.toPath)), Source.fromFile(f, "UTF-8").toArray)
+    new SourceFile(AbstractFile.getFile(new File(f.toPath)), Using(Source.fromFile(f, "UTF-8"))(_.toArray).get)
 
   private def collectFiles(dir: JFile, includes: String => Boolean): Array[JFile] =
     dir

@@ -1,6 +1,7 @@
 package dotty.tools.vulpix
 
 import scala.io.Source
+import scala.util.Using
 import java.io.File
 import java.lang.System.{lineSeparator => EOL}
 import java.nio.file.{Files, Paths}
@@ -17,7 +18,7 @@ object FileDiff {
   def check(sourceTitle: String, outputLines: Seq[String], checkFile: String): Option[String] = {
     val checkLines =
       if (!(new File(checkFile)).exists) Nil
-      else Source.fromFile(checkFile, "UTF-8").getLines().toList
+      else Using(Source.fromFile(checkFile, "UTF-8"))(_.getLines().toList).get
 
     def linesMatch =
       outputLines.length == checkLines.length &&
