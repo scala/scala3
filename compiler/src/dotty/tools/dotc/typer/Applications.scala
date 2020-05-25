@@ -1228,14 +1228,18 @@ trait Applications extends Compatibility {
           }
         val dummyArg = dummyTreeOfType(ownType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
-        def unapplyImplicits(unapp: Tree): List[Tree] = unapp match {
-          case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
-          case Apply(unapply, `dummyArg` :: Nil) => Nil
-          case Inlined(u, _, _) => unapplyImplicits(u)
-          case DynamicUnapply(_) =>
-            ctx.error("Structural unapply is not supported", unapplyFn.sourcePos)
-            Nil
-          case _ => Nil.assertingErrorsReported
+        def unapplyImplicits(unapp: Tree): List[Tree] = {
+          val res = List.newBuilder[Tree]
+          def loop(unapp: Tree): Unit = unapp match {
+            case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
+            case Apply(unapply, `dummyArg` :: Nil) =>
+            case Inlined(u, _, _) => loop(u)
+            case DynamicUnapply(_) => ctx.error("Structural unapply is not supported", unapplyFn.sourcePos)
+            case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args
+            case _ => ().assertingErrorsReported
+          }
+          loop(unapp)
+          res.result()
         }
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.sourcePos)
