@@ -58,20 +58,6 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
   def testFile(f: JFile): Unit = {
     val prompt = "scala>"
 
-    def extractInputs(lines: BufferedIterator[String]): List[String] = {
-      val input = lines.next()
-
-      if (!input.startsWith(prompt)) extractInputs(lines)
-      else if (lines.hasNext) {
-        // read lines and strip trailing whitespace:
-        while (lines.hasNext && !lines.head.startsWith(prompt))
-          lines.next()
-
-        input :: { if (lines.hasNext) extractInputs(lines) else Nil }
-      }
-      else Nil
-    }
-
     def evaluate(state: State, input: String) =
       try {
         val nstate = run(input.drop(prompt.length))(state)
@@ -95,12 +81,10 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
     val actualOutput = {
       resetToInitial()
 
-      val inputRes = Using(Source.fromFile(f, "UTF-8")) { source =>
-        val lines = source.getLines.buffered
-        assert(lines.head.startsWith(prompt),
-              s"""Each file has to start with the prompt: "$prompt"""")
-        extractInputs(lines)
-      }.get
+      val lines = Using(Source.fromFile(f, "UTF-8"))(_.getLines.toList).get
+      assert(lines.head.startsWith(prompt),
+        s"""Each file has to start with the prompt: "$prompt"""")
+      val inputRes = lines.filter(_.startsWith(prompt))
 
       val buf = new ArrayBuffer[String]
       inputRes.foldLeft(initialState) { (state, input) =>
