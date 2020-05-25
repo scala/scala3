@@ -157,6 +157,13 @@ object Tuple {
    */
   type Split[T <: Tuple, N <: Int] = (Take[T, N], Drop[T, N])
 
+
+  /** Empty tuple */
+  def apply(): Unit = ()
+
+  /** Matches an empty tuple. */
+  def unapply(x: Any): Boolean = x.isInstanceOf[Unit]
+
   /** Convert an array into a tuple of unknown arity and types */
   def fromArray[T](xs: Array[T]): Tuple = {
     val xs2 = xs match {

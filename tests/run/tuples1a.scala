@@ -1,5 +1,5 @@
 object Test extends App {
-  val t7 = '5' *: 4 *: "C" *: ()
+  val t7 = '5' *: 4 *: "C" *: Tuple()
 
   val t7a = t7.tail
   val t7b = t7a.tail
