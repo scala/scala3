@@ -5,11 +5,17 @@ import java.io.{ StringWriter, PrintWriter }
 import java.lang.{ ClassLoader, ExceptionInInitializerError }
 import java.lang.reflect.InvocationTargetException
 
+import dotc.ast.tpd
 import dotc.core.Contexts.Context
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags
-import dotc.core.Symbols.Symbol
+import dotc.core.Flags._
+import dotc.core.Symbols.{Symbol, defn}
 import dotc.core.StdNames.str
+import dotc.core.NameOps.NameDecorator
+import dotc.printing.ReplPrinter
+import dotc.reporting.{MessageRendering, Message, Diagnostic}
+import dotc.util.SourcePosition
 
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
  *  wall (i.e. fetching back values from the compiled class files put into a
@@ -21,7 +27,14 @@ import dotc.core.StdNames.str
  */
 private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
+  import Rendering._
+
   private val MaxStringElements: Int = 1000  // no need to mkString billions of elements
+
+  /** A `MessageRenderer` for the REPL without file positions */
+  private val messageRenderer = new MessageRendering {
+    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String = ""
+  }
 
   private var myClassLoader: ClassLoader = _
 
@@ -63,7 +76,6 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
    *  Calling this method evaluates the expression using reflection
    */
   private def valueOf(sym: Symbol)(implicit ctx: Context): Option[String] = {
-    val defn = ctx.definitions
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
     val value =
@@ -82,19 +94,33 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       }
   }
 
+  /** Formats errors using the `messageRenderer` */
+  def formatError(dia: Diagnostic)(implicit state: State): Diagnostic =
+    new Diagnostic(
+      messageRenderer.messageAndPos(dia.msg, dia.pos, messageRenderer.diagnosticLevel(dia))(state.context),
+      dia.pos,
+      dia.level
+    )
+
+  def renderTypeDef(d: Denotation)(implicit ctx: Context): Diagnostic =
+    infoDiagnostic("// defined " ++ d.symbol.showUser, d)
+
+  def renderTypeAlias(d: Denotation)(implicit ctx: Context): Diagnostic =
+    infoDiagnostic("// defined alias " ++ d.symbol.showUser, d)
+
   /** Render method definition result */
-  def renderMethod(d: Denotation)(implicit ctx: Context): String =
-    d.symbol.showUser
+  def renderMethod(d: Denotation)(implicit ctx: Context): Diagnostic =
+    infoDiagnostic(d.symbol.showUser, d)
 
   /** Render value definition result */
-  def renderVal(d: Denotation)(implicit ctx: Context): Option[String] = {
+  def renderVal(d: Denotation)(implicit ctx: Context): Option[Diagnostic] = {
     val dcl = d.symbol.showUser
 
     try {
-      if (d.symbol.is(Flags.Lazy)) Some(dcl)
-      else valueOf(d.symbol).map(value => s"$dcl = $value")
+      if (d.symbol.is(Flags.Lazy)) Some(infoDiagnostic(dcl, d))
+      else valueOf(d.symbol).map(value => infoDiagnostic(s"$dcl = $value", d))
     }
-    catch { case ex: InvocationTargetException => Some(renderError(ex)) }
+    catch { case ex: InvocationTargetException => Some(infoDiagnostic(renderError(ex), d)) }
   }
 
   /** Render the stack trace of the underlying exception */
@@ -107,5 +133,20 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     val pw = new PrintWriter(sw)
     cause.printStackTrace(pw)
     sw.toString
+  }
+
+  private def infoDiagnostic(msg: String, d: Denotation)(implicit ctx: Context): Diagnostic =
+    new Diagnostic.Info(msg, d.symbol.sourcePos)
+
+}
+
+object Rendering {
+
+  implicit class ShowUser(val s: Symbol) extends AnyVal {
+    def showUser(implicit ctx: Context): String = {
+      val printer = new ReplPrinter(ctx)
+      val text = printer.dclText(s)
+      text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
+    }
   }
 }

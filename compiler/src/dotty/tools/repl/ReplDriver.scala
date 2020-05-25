@@ -139,6 +139,7 @@ class ReplDriver(settings: Array[String],
   // TODO: i5069
   final def bind(name: String, value: Any)(implicit state: State): State = state
 
+  // redirecting the output allows us to test `println` in scripted tests
   private def withRedirectedOutput(op: => State): State = {
     val savedOut = System.out
     val savedErr = System.err
@@ -238,19 +239,34 @@ class ReplDriver(settings: Array[String],
               allImports += (newState.objectIndex -> newImports)
             val newStateWithImports = newState.copy(imports = allImports)
 
-            val warnings = newState.context.reporter.removeBufferedMessages(newState.context)
-            displayErrors(warnings)(newState) // display warnings
-            implicit val ctx = newState.context
-            if (!ctx.settings.XreplDisableDisplay.value)
-              displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
-            else
-              newStateWithImports
+            val warnings = newState.context.reporter
+              .removeBufferedMessages(newState.context)
+              .map(rendering.formatError)
+
+            implicit val ctx: Context = newState.context
+            val (updatedState, definitions) =
+              if (!ctx.settings.XreplDisableDisplay.value)
+                renderDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
+              else
+                (newStateWithImports, Seq.empty)
+
+            // output is printed in the order it was put in. warnings should be
+            // shown before infos (eg. typedefs) for the same line. column
+            // ordering is mostly to make tests deterministic
+            implicit val diagnosticOrdering: Ordering[Diagnostic] =
+              Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
+
+            (definitions ++ warnings)
+              .sorted
+              .map(_.msg)
+              .foreach(out.println)
+
+            updatedState
         }
       )
   }
 
-  /** Display definitions from `tree` */
-  private def displayDefinitions(tree: tpd.Tree, newestWrapper: Name)(implicit state: State): State = {
+  private def renderDefinitions(tree: tpd.Tree, newestWrapper: Name)(implicit state: State): (State, Seq[Diagnostic]) = {
     implicit val ctx = state.context
 
     def resAndUnit(denot: Denotation) = {
@@ -264,7 +280,7 @@ class ReplDriver(settings: Array[String],
       name.startsWith(str.REPL_RES_PREFIX) && hasValidNumber && sym.info == defn.UnitType
     }
 
-    def displayMembers(symbol: Symbol) = if (tree.symbol.info.exists) {
+    def extractAndFormatMembers(symbol: Symbol): (State, Seq[Diagnostic]) = if (tree.symbol.info.exists) {
       val info = symbol.info
       val defs =
         info.bounds.hi.finalResultType
@@ -274,51 +290,47 @@ class ReplDriver(settings: Array[String],
             denot.symbol.owner == defn.ObjectClass ||
             denot.symbol.isConstructor
           }
-          .sortBy(_.name)
 
       val vals =
         info.fields
           .filterNot(_.symbol.isOneOf(ParamAccessor | Private | Synthetic | Artifact | Module))
           .filter(_.symbol.name.is(SimpleNameKind))
-          .sortBy(_.name)
 
       val typeAliases =
-        info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias).sortBy(_.name)
+        info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias)
 
-      (
-        typeAliases.map("// defined alias " + _.symbol.showUser) ++
+      val formattedMembers =
+        typeAliases.map(rendering.renderTypeAlias) ++
         defs.map(rendering.renderMethod) ++
-        vals.map(rendering.renderVal).flatten
-      ).foreach(str => out.println(SyntaxHighlighting.highlight(str)))
+        vals.flatMap(rendering.renderVal)
 
-      state.copy(valIndex = state.valIndex - vals.count(resAndUnit))
+      (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), formattedMembers)
     }
-    else state
+    else (state, Seq.empty)
 
     def isSyntheticCompanion(sym: Symbol) =
       sym.is(Module) && sym.is(Synthetic)
 
-    def displayTypeDefs(sym: Symbol) = sym.info.memberClasses
+    def typeDefs(sym: Symbol): Seq[Diagnostic] = sym.info.memberClasses
       .collect {
         case x if !isSyntheticCompanion(x.symbol) && !x.symbol.name.isReplWrapperName =>
-          x.symbol
+          rendering.renderTypeDef(x)
       }
-      .foreach { sym =>
-        out.println(SyntaxHighlighting.highlight("// defined " + sym.showUser))
-      }
-
 
     ctx.atPhase(ctx.typerPhase.next) {
       // Display members of wrapped module:
       tree.symbol.info.memberClasses
         .find(_.symbol.name == newestWrapper.moduleClassName)
         .map { wrapperModule =>
-          displayTypeDefs(wrapperModule.symbol)
-          displayMembers(wrapperModule.symbol)
+          val formattedTypeDefs = typeDefs(wrapperModule.symbol)
+          val (newState, formattedMembers) = extractAndFormatMembers(wrapperModule.symbol)
+          val highlighted = (formattedTypeDefs ++ formattedMembers)
+            .map(d => new Diagnostic(d.msg.mapMsg(SyntaxHighlighting.highlight), d.pos, d.level))
+          (newState, highlighted)
         }
         .getOrElse {
           // user defined a trait/class/object, so no module needed
-          state
+          (state, Seq.empty)
         }
     }
   }
@@ -378,18 +390,9 @@ class ReplDriver(settings: Array[String],
       state
   }
 
-  /** A `MessageRenderer` without file positions */
-  private val messageRenderer = new MessageRendering {
-    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String = ""
-  }
-
-  /** Render messages using the `MessageRendering` trait */
-  private def renderMessage(dia: Diagnostic): Context => String =
-    messageRenderer.messageAndPos(dia.msg, dia.pos, messageRenderer.diagnosticLevel(dia))(_)
-
-  /** Output errors to `out` */
+  /** shows all errors nicely formatted */
   private def displayErrors(errs: Seq[Diagnostic])(implicit state: State): State = {
-    errs.map(renderMessage(_)(state.context)).foreach(out.println)
+    errs.map(rendering.formatError).map(_.msg).foreach(out.println)
     state
   }
 }

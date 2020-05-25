@@ -17,6 +17,6 @@ scala> f + g
 val res3: Int = 10
 
 scala> { val x = 3; 4; val y = 5 }
-val res4: Int = 4
 val x: Int = 3
+val res4: Int = 4
 val y: Int = 5

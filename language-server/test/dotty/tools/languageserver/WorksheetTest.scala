@@ -96,7 +96,7 @@ class WorksheetTest {
   @Test def patternMatching1: Unit = {
     ws"""${m1}val (foo, bar) = (1, 2)${m2}""".withSource
       .run(m1,
-        ((m1 to m2), s"val bar: Int = 2${nl}val foo: Int = 1"))
+        ((m1 to m2), s"val foo: Int = 1${nl}val bar: Int = 2"))
   }
 
   @Test def evaluationException: Unit = {

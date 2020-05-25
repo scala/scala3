@@ -24,9 +24,9 @@ object Message {
   * consumed by a subclass of `Reporter`. However, the error position is only
   * part of `Diagnostic`, not `Message`.
   *
-  * NOTE: you should not be persisting  Most messages take an implicit
-  * `Context` and these contexts weigh in at about 4mb per instance, as such
-  * persisting these will result in a memory leak.
+  * NOTE: you should not persist a message directly, because most messages take
+  * an implicit `Context` and these contexts weigh in at about 4mb per instance.
+  * Therefore, persisting these will result in a memory leak.
   *
   * Instead use the `persist` method to create an instance that does not keep a
   * reference to these contexts.

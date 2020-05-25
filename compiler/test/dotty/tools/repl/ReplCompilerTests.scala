@@ -51,10 +51,10 @@ class ReplCompilerTests extends ReplTest {
 
     val expected = List(
       "def foo: Int",
-      "val res0: Int = 2",
-      "val res1: Int = 20",
       "val x: Int = 10",
-      "var y: Int = 5"
+      "val res0: Int = 2",
+      "var y: Int = 5",
+      "val res1: Int = 20"
     )
 
     assertEquals(expected, lines())
@@ -83,6 +83,25 @@ class ReplCompilerTests extends ReplTest {
       run("x = 10")
       assertEquals("x: Int = 10", storedOutput().trim)
     }
+
+  @Test def i8677 = fromInitialState { implicit state =>
+    run {
+      """|sealed trait T1
+         |case class X() extends T1
+         |case class Y() extends T1
+         | case object O extends T1
+         """.stripMargin
+    }
+
+    val expected = List(
+     "// defined trait T1",
+     "// defined case class X",
+     "// defined case class Y",
+     "// defined case object O"
+    )
+
+    assertEquals(expected, lines())
+  }
 
   // FIXME: Tests are not run in isolation, the classloader is corrupted after the first exception
   @Ignore @Test def i3305: Unit = {
