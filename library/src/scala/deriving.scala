@@ -64,7 +64,7 @@ object deriving {
   }
 
   /** The empty product */
-  object EmptyProduct extends ArrayProduct(Array[AnyRef]())
+  object EmptyProduct extends ArrayProduct(Array.emptyObjectArray)
 
   /** Helper method to select a product element */
   def productElement[T](x: Any, idx: Int) =
