@@ -413,6 +413,28 @@ class TypeApplications(val self: Type) extends AnyVal {
   def translateToRepeated(from: ClassSymbol)(using Context): Type =
     translateParameterized(from, defn.RepeatedParamClass)
 
+  /** Translate `T` by `T & Object` in the situations where an `Array[T]`
+   *  coming from Java would need to be interpreted as an `Array[T & Object]`
+   *  to be erased correctly.
+   *
+   *  This is necessary because a fully generic Java array erases to an array of Object,
+   *  whereas a fully generic Java array erases to Object to allow primitive arrays
+   *  as subtypeS.
+   *
+   *  Note: According to
+   *  <http://cr.openjdk.java.net/~briangoetz/valhalla/sov/02-object-model.html>,
+   *  in the future the JVM will consider that:
+   *
+   *      int[] <: Integer[] <: Object[]
+   *
+   *  So hopefully our grand-children will not have to deal with this non-sense!
+   */
+  def translateJavaArrayElementType(using Context): Type =
+    if self.typeSymbol.isAbstractOrParamType && !self.derivesFrom(defn.ObjectClass) then
+      AndType(self, defn.ObjectType)
+    else
+      self
+
   /** If this is an encoding of a (partially) applied type, return its arguments,
    *  otherwise return Nil.
    *  Existential types in arguments are returned as TypeBounds instances.

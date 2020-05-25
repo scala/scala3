@@ -395,16 +395,8 @@ class ClassfileParser(
           tpe
         case ARRAY_TAG =>
           while ('0' <= sig(index) && sig(index) <= '9') index += 1
-          var elemtp = sig2type(tparams, skiptvs)
-          // make unbounded Array[T] where T is a type variable into Array[T with Object]
-          // (this is necessary because such arrays have a representation which is incompatible
-          // with arrays of primitive types.
-          // NOTE that the comparison to Object only works for abstract types bounded by classes that are strict subclasses of Object
-          // if the bound is exactly Object, it will have been converted to Any, and the comparison will fail
-          // see also RestrictJavaArraysMap (when compiling java sources directly)
-          if (elemtp.typeSymbol.isAbstractOrParamType && !(elemtp.derivesFrom(defn.ObjectClass)))
-            elemtp = AndType(elemtp, defn.ObjectType)
-          defn.ArrayOf(elemtp)
+          val elemtp = sig2type(tparams, skiptvs)
+          defn.ArrayOf(elemtp.translateJavaArrayElementType)
         case '(' =>
           // we need a method symbol. given in line 486 by calling getType(methodSym, ..)
           val paramtypes = new ListBuffer[Type]()
