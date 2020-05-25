@@ -2,7 +2,7 @@
 layout: doc-page
 title: "Changes in Implicit Resolution"
 ---
-This page describes changes to the implicit resolution of old-style `implicit`s in Dotty.
+This page describes changes to the implicit resolution that apply both to the new `given`s and to the old-style `implicit`s in Dotty.
 Implicit resolution uses a new algorithm which caches implicit results
 more aggressively for performance. There are also some changes that
 affect implicits on the language level.
