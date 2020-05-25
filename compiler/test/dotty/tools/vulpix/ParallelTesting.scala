@@ -871,7 +871,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def checkCompile()(implicit summaryReport: SummaryReporting): this.type = {
       val test = new PosTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
 
-      // cleanup()
+      cleanup()
 
       if (!shouldFail && test.didFail) {
         fail(s"Expected no errors when compiling, failed for the following reason(s):\n${ reasonsForFailure(test) }")
@@ -991,21 +991,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       if (file.isDirectory) file.listFiles.map(copyToDir(target.toFile, _))
       target.toFile
     }
-
-    /** Builds a new `CompilationTest` where we have copied the target files to
-     *  the out directory. This is needed for tests that modify the
-     *  source, such as `-rewrite` tests
-     */
-    def copyToTarget()(implicit summary: SummaryReporting): CompilationTest =
-      new CompilationTest (
-        targets.map {
-          case target @ JointCompilationSource(_, files, _, outDir, _, _) =>
-            target.copy(files = files.map(copyToDir(outDir,_)))
-          case target @ SeparateCompilationSource(_, dir, _, outDir) =>
-            target.copy(dir = copyToDir(outDir, dir))
-        },
-        times, shouldDelete, threadLimit, shouldFail, shouldSuppressOutput
-      )
 
     /** Builds a `CompilationTest` which performs the compilation `i` times on
      *  each target
