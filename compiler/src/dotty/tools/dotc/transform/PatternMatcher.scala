@@ -383,7 +383,9 @@ object PatternMatcher {
                 assert(mt.isImplicitMethod || mt.isContextualMethod)
                 val (args, rest) = implicits.splitAt(mt.paramNames.size)
                 applyImplicits(acc.appliedToArgs(args), rest, mt.resultType)
-              case _ => acc
+              case _ => 
+                assert(implicits.isEmpty)
+                acc
             }
             val mt @ MethodType(_) = extractor.tpe.widen
             val unapp0 = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
