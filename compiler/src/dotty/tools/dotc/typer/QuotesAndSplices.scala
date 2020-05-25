@@ -119,43 +119,27 @@ trait QuotesAndSplices {
   def typedAppliedSplice(tree: untpd.Apply, pt: Type)(using Context): Tree = {
     assert(ctx.mode.is(Mode.QuotedPattern))
     val untpd.Apply(splice: untpd.Splice, args) = tree
-    if args.forall(_.isInstanceOf[untpd.Ident]) then
-      val suggestionArgs = args match
-        case arg :: Nil => arg.show
-        case args => args.map(_.show).mkString("(", ", ", ")")
-      val suggestion = s"$${${splice.expr.show}}{$suggestionArgs}"
-      ctx.warning(s"""Possibly using open pattern syntax instead application pattern.
-                     |If this is a open pattern replace it with $suggestion.
-                     |""".stripMargin, tree.sourcePos)
-    object HigherOrderQuasipatternArgs {
-      /** Matches a args of splice of the form `${body}{<args*>}` */
-      def unapply(args: List[untpd.Tree]): Option[List[untpd.Tree]] = args match
-        case Block(Nil, untpd.Tuple(args)) :: Nil => Some(args)
-        case Block(Nil, arg) :: Nil => Some(List(arg))
-        case _ => None
-    }
     if !isFullyDefined(pt, ForceDegree.flipBottom) then
       ctx.error(i"Type must be fully defined.", splice.sourcePos)
       tree.withType(UnspecifiedErrorType)
-    else args match
-      case HigherOrderQuasipatternArgs(args) =>
-        val typedArgs = args.map {
-          case arg: untpd.Ident =>
-            typedExpr(arg)
-          case arg =>
-            ctx.error("Exprected an identifier", arg.sourcePos)
-            EmptyTree
-        }
-        if args.isEmpty then
-          ctx.error("Missing arguments for open pattern", tree.sourcePos)
-        val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-        val typedPat = typedSplice(splice, defn.FunctionOf(argTypes, pt))
-        ref(defn.InternalQuotedMatcher_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs, TypeTree(defn.AnyType)))
-      case _ =>
-        val typedArgs = args.map(arg => typedExpr(arg))
-        val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-        val splice1 = typedSplice(splice, defn.FunctionOf(argTypes, pt))
-        Apply(splice1.select(nme.apply), typedArgs).withType(pt).withSpan(tree.span)
+    else if splice.isInBrackets then // ${x}(...) match an application
+      val typedArgs = args.map(arg => typedExpr(arg))
+      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
+      val splice1 = typedSplice(splice, defn.FunctionOf(argTypes, pt))
+      Apply(splice1.select(nme.apply), typedArgs).withType(pt).withSpan(tree.span)
+    else // $x(...) higher-order quasipattern
+      val typedArgs = args.map {
+        case arg: untpd.Ident =>
+          typedExpr(arg)
+        case arg =>
+          ctx.error("Open patttern exprected an identifier", arg.sourcePos)
+          EmptyTree
+      }
+      if args.isEmpty then
+        ctx.error("Missing arguments for open pattern", tree.sourcePos)
+      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
+      val typedPat = typedSplice(splice, defn.FunctionOf(argTypes, pt))
+      ref(defn.InternalQuotedMatcher_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs, TypeTree(defn.AnyType)))
   }
 
   /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */

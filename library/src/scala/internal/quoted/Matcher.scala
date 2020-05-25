@@ -97,7 +97,6 @@ import scala.quoted._
  */
 object Matcher {
 
-  // TODO move to internal.Quoted.Matcher
   /** A splice in a quoted pattern is desugared by the compiler into a call to this method */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHole`")
   def patternHole[T]: T = ???
@@ -106,7 +105,6 @@ object Matcher {
   /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method */
   def patternHigherOrderHole[U](pat: Any, args: Any*): U = ???
 
-  // TODO move to internal.Quoted.Matcher
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.higherOrderHole`")
   /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method */
   def higherOrderHole[U](args: Any*): U = ???
@@ -116,12 +114,10 @@ object Matcher {
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternBindHole`")
   class patternBindHole extends Annotation
 
-  // TODO move to internal.Quoted.Matcher
   /** A splice of a name in a quoted pattern is that marks the definition of a type splice */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternType`")
   class patternType extends Annotation
 
-  // TODO move to internal.Quoted.Matcher
   /** A type pattern that must be aproximated from above */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.fromAbove`")
   class fromAbove extends Annotation
@@ -267,27 +263,6 @@ object Matcher {
               if patternHole.symbol == internal.Definitions_InternalQuotedMatcher_patternHole &&
                  scrutinee.tpe <:< tpt.tpe =>
             matched(scrutinee.seal)
-
-          /* Higher order term hole */
-          // Matches an open term and wraps it into a lambda that provides the free variables
-          // DEPRECATED: replaced with `higherOrderHole`
-          // TODO: remove case
-          case (scrutinee, pattern @ Apply(Select(TypeApply(patternHole, List(Inferred())), "apply"), args0 @ IdentArgs(args)))
-              if patternHole.symbol == internal.Definitions_InternalQuotedMatcher_patternHole =>
-            def bodyFn(lambdaArgs: List[Tree]): Tree = {
-              val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
-              new TreeMap {
-                override def transformTerm(tree: Term)(using ctx: Context): Term =
-                  tree match
-                    case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
-                    case tree => super.transformTerm(tree)
-              }.transformTree(scrutinee)
-            }
-            val names = args.map(_.name)
-            val argTypes = args0.map(x => x.tpe.widenTermRefExpr)
-            val resType = pattern.tpe
-            val res = Lambda(MethodType(names)(_ => argTypes, _ => resType), bodyFn)
-            matched(res.seal)
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables

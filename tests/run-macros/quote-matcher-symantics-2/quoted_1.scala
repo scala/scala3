@@ -20,7 +20,7 @@ object Macros {
 
       case '{ ($x: DSL) * ($y: DSL) } => sym.times(lift(x), lift(y))
 
-      case '{ $f($x: DSL): DSL } => sym.app(liftFun(f), lift(x))
+      case '{ ${f}($x: DSL): DSL } => sym.app(liftFun(f), lift(x))
 
       case '{ val x: DSL = $value; $bodyFn(x): DSL } =>
         UnsafeExpr.open(bodyFn) { (body1, close) =>

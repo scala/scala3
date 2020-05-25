@@ -39,23 +39,23 @@ object Macros {
       case '{ ($x: Int) <= ($y: Int) } =>
         '{ $sym.leq(${lift(x)}, ${lift(y)}).asInstanceOf[R[T]] }
 
-      case '{ $f($arg: $t): $u } =>
+      case '{ ${f}($arg: $t): $u } =>
         '{ $sym.app[$t, $u](${lift(f)}, ${lift(arg)}).asInstanceOf[R[T]] }
 
       case '{ (if ($cond) $thenp else $elsep): $t } =>
         '{ $sym.ifThenElse[$t](${lift(cond)}, ${lift(thenp)}, ${lift(elsep)}) }.asInstanceOf[Expr[R[T]]]
 
-      case '{ (x0: Int) => ${bodyFn}{x0}: Any } =>
+      case '{ (x0: Int) => $bodyFn(x0): Any } =>
         val (i, nEnvVar) = freshEnvVar[Int]()
         val body2 = UnsafeExpr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
         '{ $sym.lam((x: R[Int]) => ${given Env = envWith(i, 'x)(using env); lift(body2)}).asInstanceOf[R[T]] }
 
-      case '{ (x0: Boolean) => ${bodyFn}{x0}: Any } =>
+      case '{ (x0: Boolean) => $bodyFn(x0): Any } =>
         val (i, nEnvVar) = freshEnvVar[Boolean]()
         val body2 = UnsafeExpr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
         '{ $sym.lam((x: R[Boolean]) => ${given Env = envWith(i, 'x)(using env); lift(body2)}).asInstanceOf[R[T]] }
 
-      case '{ (x0: Int => Int) => ${bodyFn}{x0}: Any } =>
+      case '{ (x0: Int => Int) => $bodyFn(x0): Any } =>
         val (i, nEnvVar) = freshEnvVar[Int => Int]()
         val body2 = UnsafeExpr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
         '{ $sym.lam((x: R[Int => Int]) => ${given Env = envWith(i, 'x)(using env); lift(body2)}).asInstanceOf[R[T]] }
