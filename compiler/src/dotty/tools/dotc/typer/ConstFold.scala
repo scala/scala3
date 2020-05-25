@@ -12,6 +12,7 @@ import Constants._
 import Names._
 import StdNames._
 import Contexts._
+import transform.TypeUtils._
 
 object ConstFold {
 
@@ -28,10 +29,13 @@ object ConstFold {
               case _ => null
           case _ => null
       case Select(xt, op) =>
-        xt.tpe.widenTermRefExpr match {
-          case ConstantType(x) => foldUnop(op, x)
-          case _ => null
-        }
+        if (op eq nme.getClass_) && xt.tpe.widen.isPrimitiveValueType then
+          Constant(xt.tpe.widen)
+        else
+          xt.tpe.widenTermRefExpr match {
+            case ConstantType(x) => foldUnop(op, x)
+            case _ => null
+          }
       case TypeApply(_, List(targ)) if tree.symbol eq defn.Predef_classOf =>
         Constant(targ.tpe)
       case _ => null
