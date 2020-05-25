@@ -871,7 +871,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def checkCompile()(implicit summaryReport: SummaryReporting): this.type = {
       val test = new PosTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
 
-      cleanup()
+      // cleanup()
 
       if (!shouldFail && test.didFail) {
         fail(s"Expected no errors when compiling, failed for the following reason(s):\n${ reasonsForFailure(test) }")

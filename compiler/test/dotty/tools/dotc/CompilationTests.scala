@@ -71,8 +71,8 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("rewrites")
 
     aggregateTests(
-      compileFile("tests/pos-scala2/rewrites.scala", scala2CompatMode.and("-rewrite")),
-      compileFile("tests/pos/i8982.scala", defaultOptions.and("-indent").and("-rewrite"))
+      compileFile("tests/rewrites/rewrites.scala", scala2CompatMode.and("-rewrite")),
+      compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent").and("-rewrite"))
     ).checkRewrites()
   }
 
