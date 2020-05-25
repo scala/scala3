@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.reporting.Diagnostic
+import dotty.tools.dotc.reporting.{Diagnostic, Reporter}
 import dotty.tools.dotc.transform.{PostTyper, Staging}
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.Spans._
@@ -29,7 +29,7 @@ import scala.collection.mutable
  *  - provides utility to query the type of an expression
  *  - provides utility to query the documentation of an expression
  */
-class ReplCompiler extends Compiler {
+class ReplCompiler(reporter: Reporter) extends Compiler {
 
   override protected def frontendPhases: List[List[Phase]] = List(
     List(new REPLFrontEnd),
@@ -241,7 +241,7 @@ class ReplCompiler extends Compiler {
         PackageDef(Ident(nme.EMPTY_PACKAGE), List(wrapper))
       }
 
-      ParseResult(sourceFile)(state) match {
+      ParseResult(sourceFile, reporter)(state) match {
         case Parsed(_, trees) =>
           wrap(trees).result
         case SyntaxErrors(_, reported, trees) =>
@@ -275,7 +275,7 @@ class ReplCompiler extends Compiler {
 
     val src = SourceFile.virtual("<typecheck>", expr)
     implicit val ctx: Context = state.context.fresh
-      .setReporter(newStoreReporter)
+      .setReporter(reporter)
       .setSetting(state.context.settings.YstopAfter, List("typer"))
 
     wrapped(expr, src, state).flatMap { pkg =>

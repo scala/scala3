@@ -7,7 +7,7 @@ import dotc.core.Contexts.Context
 import dotc.core.StdNames.str
 import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
-import dotc.reporting.Diagnostic
+import dotc.reporting.{Diagnostic, Reporter}
 import dotc.util.SourceFile
 
 import scala.annotation.internal.sharable
@@ -129,7 +129,7 @@ object ParseResult {
     DocOf.command -> (arg => DocOf(arg))
   )
 
-  def apply(source: SourceFile)(implicit state: State): ParseResult = {
+  def apply(source: SourceFile, reporter: Reporter)(implicit state: State): ParseResult = {
     val sourceCode = source.content().mkString
     sourceCode match {
       case "" => Newline
@@ -144,7 +144,6 @@ object ParseResult {
       case _ =>
         implicit val ctx: Context = state.context
 
-        val reporter = newStoreReporter
         val stats = parseStats(state.context.fresh.setReporter(reporter).withSource(source))
 
         if (reporter.hasErrors)
@@ -157,8 +156,11 @@ object ParseResult {
     }
   }
 
-  def apply(sourceCode: String)(implicit state: State): ParseResult =
-    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode, maybeIncomplete = true))
+  def apply(sourceCode: String, reporter: Reporter)(implicit state: State): ParseResult =
+    apply(
+      SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode, maybeIncomplete = true),
+      reporter
+    )
 
   /** Check if the input is incomplete.
    *

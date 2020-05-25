@@ -15,8 +15,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
-import dotty.tools.dotc.reporting.MessageRendering
-import dotty.tools.dotc.reporting.{Message, Diagnostic}
+import dotty.tools.dotc.reporting.{MessageRendering, Message, Diagnostic, Reporter}
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
@@ -51,9 +50,16 @@ case class State(objectIndex: Int,
                  imports: Map[Int, List[tpd.Import]],
                  context: Context)
 
-/** Main REPL instance, orchestrating input, compilation and presentation */
+/** Main REPL instance, orchestrating input, compilation and presentation.
+ *
+ * @param out where regular output (eg. "define trait Foo") is printed
+ * @param errorReporter if set, this is reporter is passed to the parser and typer. Otherwise,
+ *        the warnings and errors are printed to `out` as well. Note, however, that REPL errors
+ *        (eg. ":load" cannot find the file) are not reported with this reporter
+ */
 class ReplDriver(settings: Array[String],
                  out: PrintStream = Console.out,
+                 errorReporter: Option[() => Reporter] = None,
                  classLoader: Option[ClassLoader] = None) extends Driver {
 
   /** Overridden to `false` in order to not have to give sources on the
@@ -84,7 +90,7 @@ class ReplDriver(settings: Array[String],
     if (rootCtx.settings.outputDir.isDefault(rootCtx))
       rootCtx = rootCtx.fresh
         .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
-    compiler = new ReplCompiler
+    compiler = new ReplCompiler(newReporter)
     rendering = new Rendering(classLoader)
   }
 
@@ -114,7 +120,7 @@ class ReplDriver(settings: Array[String],
       implicit val ctx = state.context
       try {
         val line = terminal.readLine(completer)
-        ParseResult(line)(state)
+        ParseResult(line, newReporter)(state)
       } catch {
         case _: EndOfFileException |
             _: UserInterruptException => // Ctrl+D or Ctrl+C
@@ -133,7 +139,7 @@ class ReplDriver(settings: Array[String],
   }
 
   final def run(input: String)(implicit state: State): State = withRedirectedOutput {
-    val parsed = ParseResult(input)(state)
+    val parsed = ParseResult(input, newReporter)(state)
     interpret(parsed)
   }
 
@@ -155,8 +161,11 @@ class ReplDriver(settings: Array[String],
     }
   }
 
+  private def newReporter: Reporter =
+    errorReporter.map(_.apply).getOrElse(newStoreReporter)
+
   private def newRun(state: State) = {
-    val run = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state)
+    val run = compiler.newRun(rootCtx.fresh.setReporter(newReporter), state)
     state.copy(context = run.runContext)
   }
 

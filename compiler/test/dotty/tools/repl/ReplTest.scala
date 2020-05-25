@@ -10,12 +10,16 @@ import scala.util.Using
 
 import scala.collection.mutable.ArrayBuffer
 
-import dotty.tools.dotc.reporting.MessageRendering
+import dotty.tools.dotc.reporting.{MessageRendering, Reporter}
 import org.junit.{After, Before}
 import org.junit.Assert._
 
 
-class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new ByteArrayOutputStream) extends ReplDriver(
+class ReplTest(
+  withStaging: Boolean = false,
+  out: ByteArrayOutputStream = new ByteArrayOutputStream,
+  errorReporter: Option[() => Reporter] = None
+) extends ReplDriver(
   Array(
     "-classpath",
     if (withStaging)
@@ -25,7 +29,8 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
     "-color:never",
     "-Yerased-terms",
   ),
-  new PrintStream(out)
+  new PrintStream(out),
+  errorReporter
 ) with MessageRendering {
   /** Get the stored output from `out`, resetting the buffer */
   def storedOutput(): String = {
