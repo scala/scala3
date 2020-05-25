@@ -5,5 +5,5 @@ object Test {
     case hd *: tl => hd *: DU[tl]
   }
 
-  (1, 2): DU[Int *: Int *: Unit]
+  (1, 2): DU[Int *: Int *: EmptyTuple]
 }

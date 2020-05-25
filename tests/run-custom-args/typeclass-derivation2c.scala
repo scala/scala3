@@ -172,18 +172,18 @@ case class Right[R](elem: R) extends Either[Nothing, R]
 object Left extends Generic.Product[Left[_]] {
   def fromProduct(p: Product): Left[_] = Left(productElement[Any](p, 0))
   implicit def GenericLeft[L]: Generic.Product[Left[L]] {
-    type ElemTypes = L *: Unit
+    type ElemTypes = L *: EmptyTuple
     type CaseLabel = "Left"
-    type ElemLabels = "x" *: Unit
+    type ElemLabels = "x" *: EmptyTuple
   } = this.asInstanceOf
 }
 
 object Right extends Generic.Product[Right[_]] {
   def fromProduct(p: Product): Right[_] = Right(productElement[Any](p, 0))
   implicit def GenericRight[R]: Generic.Product[Right[R]] {
-    type ElemTypes = R *: Unit
+    type ElemTypes = R *: EmptyTuple
     type CaseLabel = "Right"
-    type ElemLabels = "x" *: Unit
+    type ElemLabels = "x" *: EmptyTuple
   } = this.asInstanceOf
 }
 

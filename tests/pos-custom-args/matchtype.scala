@@ -59,8 +59,8 @@ object Test {
   erased val z5: (String, Int) = erasedValue[Concat[Unit, (String, Int)]]
   erased val y6: Concat[(Boolean, Boolean), (String, Int)] = erasedValue[Boolean *: Boolean *: (String, Int)]
   erased val z6: Boolean *: Boolean *: (String, Int) = erasedValue[Concat[(Boolean, Boolean), (String, Int)]]
-  erased val y7: (Boolean, Boolean, String, Int) = erasedValue[Concat[(Boolean, Boolean), String *: Int *: Unit]]
-  erased val z7: Concat[(Boolean, Boolean), String *: Int *: Unit] = erasedValue[(Boolean, Boolean, String, Int)]
+  erased val y7: (Boolean, Boolean, String, Int) = erasedValue[Concat[(Boolean, Boolean), String *: Int *: EmptyTuple]]
+  erased val z7: Concat[(Boolean, Boolean), String *: Int *: EmptyTuple] = erasedValue[(Boolean, Boolean, String, Int)]
 
   def index[Xs <: NonEmptyTuple](xs: Xs, n: Int): Elem[Xs, n.type] = xs(n).asInstanceOf
 

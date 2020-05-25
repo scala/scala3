@@ -745,6 +745,7 @@ class Definitions {
   @tu lazy val TupleTypeRef: TypeRef = ctx.requiredClassRef("scala.Tuple")
   def TupleClass(implicit ctx: Context): ClassSymbol = TupleTypeRef.symbol.asClass
     @tu lazy val Tuple_cons: Symbol = TupleClass.requiredMethod("*:")
+  @tu lazy val EmptyTupleTypeRef: TypeRef = ctx.requiredClassRef("scala.EmptyTuple")
   @tu lazy val NonEmptyTupleTypeRef: TypeRef = ctx.requiredClassRef("scala.NonEmptyTuple")
   def NonEmptyTupleClass(implicit ctx: Context): ClassSymbol = NonEmptyTupleTypeRef.symbol.asClass
     lazy val NonEmptyTuple_tail: Symbol = NonEmptyTupleClass.requiredMethod("tail")
@@ -1294,7 +1295,7 @@ class Definitions {
   /** If `cls` is Tuple1..Tuple22, add the corresponding *: type as last parent to `parents` */
   def adjustForTuple(cls: ClassSymbol, tparams: List[TypeSymbol], parents: List[Type]): List[Type] = {
     def syntheticParent(tparams: List[TypeSymbol]): Type =
-      if (tparams.isEmpty) TupleTypeRef
+      if (tparams.isEmpty) EmptyTupleTypeRef
       else TypeOps.nestedPairs(tparams.map(_.typeRef))
     if (isTupleClass(cls) || cls == UnitClass) parents :+ syntheticParent(tparams)
     else parents

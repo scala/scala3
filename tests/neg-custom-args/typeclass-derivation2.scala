@@ -185,8 +185,8 @@ object Either {
   import TypeLevel._
 
   type Shape[L, R] = Shape.Cases[(
-    Shape.Case[Left[L], L *: Unit],
-    Shape.Case[Right[R], R *: Unit]
+    Shape.Case[Left[L], L *: EmptyTuple],
+    Shape.Case[Right[R], R *: EmptyTuple]
   )]
 
   val genericClass = new GenericClass("Left\000x\001Right\000x")
