@@ -582,12 +582,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput)
 
-  private final class RewriteTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  private final class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private def verifyOutput(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       testSource.sourceFiles.foreach { file =>
-        val checkFile = new JFile(file.getPath.replaceFirst("\\.scala$", ".check"))
-        if checkFile.exists then
+        if checkFiles.contains(file) then
+          val checkFile = checkFiles(file)
           val actual = Source.fromFile(file, "UTF-8").getLines().toList
           diffTest(testSource, checkFile, actual, reporters, logger)
       }
@@ -937,17 +937,28 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     /** Tests `-rewrite`, which makes sure that the rewritten files still compile
      *  and agree with the expected result (if specified).
+     *
+     *  Check files are only supported for joint compilation sources.
      */
     def checkRewrites()(implicit summaryReport: SummaryReporting): this.type = {
+      // use the original check file, to simplify update of check files
+      var checkFileMap = Map.empty[JFile, JFile]
+
       // copy source file to targets, as they will be changed
       val copiedTargets = targets.map {
         case target @ JointCompilationSource(_, files, _, outDir, _, _) =>
-          target.copy(files = files.map(copyToDir(outDir,_)))
+          val files2 = files.map { f =>
+            val dest = copyToDir(outDir, f)
+            val checkFile = new JFile(f.getPath.replaceFirst("\\.scala$", ".check"))
+            if (checkFile.exists) checkFileMap = checkFileMap.updated(dest, checkFile)
+            dest
+          }
+          target.copy(files = files2)
         case target @ SeparateCompilationSource(_, dir, _, outDir) =>
           target.copy(dir = copyToDir(outDir, dir))
       }
 
-      val test = new RewriteTest(copiedTargets, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
+      val test = new RewriteTest(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
       this
     }
 
