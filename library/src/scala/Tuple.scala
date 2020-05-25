@@ -186,7 +186,7 @@ object Tuple {
 }
 
 /** Tuple of arbitrary non-zero arity */
-sealed trait NonEmptyTuple extends Tuple {
+sealed trait NonEmptyTuple extends Tuple with Product {
   import Tuple._
 
   /** Get the i-th element of this tuple.

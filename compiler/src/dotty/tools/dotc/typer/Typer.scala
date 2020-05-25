@@ -1147,7 +1147,9 @@ class Typer extends Namer
 
     val desugared =
       if (protoFormals.length == 1 && params.length != 1 && ptIsCorrectProduct(protoFormals.head)) {
-        val isGenericTuple = !protoFormals.head.derivesFrom(defn.ProductClass)
+        val isGenericTuple =
+          protoFormals.head.derivesFrom(defn.TupleClass)
+          && !defn.isTupleClass(protoFormals.head.typeSymbol)
         desugar.makeTupledFunction(params, fnBody, isGenericTuple)
       }
       else {
