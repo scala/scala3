@@ -38,6 +38,7 @@ class CompilationTests extends ParallelTesting {
     aggregateTests(
       compileFile("tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")),
       compileFile("tests/pos-scala2/rewrites.scala", scala2CompatMode.and("-rewrite")).copyToTarget(),
+      compileFile("tests/pos/i8982.scala", defaultOptions.and("-indent").and("-rewrite")).copyToTarget(),
       compileFile("tests/pos-special/utf8encoded.scala", explicitUTF8),
       compileFile("tests/pos-special/utf16encoded.scala", explicitUTF16),
       compileFilesInDir("tests/pos-special/sourcepath/outer", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
