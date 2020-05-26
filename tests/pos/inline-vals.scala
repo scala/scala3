@@ -21,3 +21,8 @@ object Constants extends InlineConstants {
   inline val myInlinedChar = 'a'
   inline val myInlinedString = "abc"
 }
+
+object Direct:
+  inline val byte: _ <: Byte = 1
+  val byte1: Byte = byte
+
