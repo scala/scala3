@@ -1224,7 +1224,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         if sym.is(Inline) then
           val rhs = typed(vdef.rhs)
           sym.info = rhs.tpe
-          untpd.cpy.ValDef(vdef)(vdef.name, untpd.TypedSplice(TypeTree(rhs.tpe)), untpd.TypedSplice(rhs))
+          untpd.cpy.ValDef(vdef)(vdef.name, untpd.TypeTree(rhs.tpe), untpd.TypedSplice(rhs))
         else vdef
       super.typedValDef(vdef1, sym)
 
