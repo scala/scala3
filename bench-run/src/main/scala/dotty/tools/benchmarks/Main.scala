@@ -8,6 +8,7 @@ import org.openjdk.jmh.runner.options._
 import java.util.concurrent.TimeUnit
 
 import scala.io.Source
+import scala.util.Using
 
 object Bench {
   def main(args: Array[String]): Unit = {
@@ -57,7 +58,7 @@ object Bench {
   }
 
   def paramsFromFile(file: String): Array[(String, Array[String])] = {
-    Source.fromFile(file).getLines.toArray.map { l =>
+    Using(Source.fromFile(file))(_.getLines.toArray).get.map { l =>
       val Array(param, values) = l split ':'
       (param, values split ',')
     }

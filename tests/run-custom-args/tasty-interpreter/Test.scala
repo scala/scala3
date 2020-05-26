@@ -7,6 +7,7 @@ import dotty.tools.dotc.util.DiffUtil
 import dotty.tools.io.Path
 
 import scala.io.Source
+import scala.util.Using
 import scala.tasty.interpreter.TastyInterpreter
 
 object Test {
@@ -89,7 +90,7 @@ object Test {
 
     val checkFile = java.nio.file.Paths.get("tests/run/" + testFileName.stripSuffix(".scala") + ".check")
     if (java.nio.file.Files.exists(checkFile)) {
-      val expectedOutput = Source.fromFile(checkFile.toFile).getLines().mkString("", "\n", "\n")
+      val expectedOutput = Using(Source.fromFile(checkFile.toFile))(_.getLines().mkString("", "\n", "\n")).get
 
       assert(expectedOutput == actualOutput,
         "\n>>>>>>>>>>>>>>>>>>\n" +
