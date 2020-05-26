@@ -18,10 +18,10 @@ object IsOn {
 }
 
 class Machine[S <: State] {
-  inline def turnOn()(using s: IsOff[S]) <: Machine[On] = summonFrom {
+  transparent inline def turnOn()(using s: IsOff[S]): Machine[On] = summonFrom {
     case _: IsOff[Off]  => new Machine[On]
   }
-  inline def turnOff()(using s: IsOn[S]) <: Machine[Off] = summonFrom {
+  transparent inline def turnOff()(using s: IsOn[S]): Machine[Off] = summonFrom {
     case _: IsOn[On]    => new Machine[Off]
   }
 }

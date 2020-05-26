@@ -36,8 +36,6 @@ object Parsers {
 
   import ast.untpd._
 
-  val AllowOldWhiteboxSyntax = true
-
   case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 
   class ParensCounters {
@@ -1822,16 +1820,9 @@ object Parsers {
         Nil
     }
 
-    def typedOpt(): Tree = {
-      if (in.token == COLONEOL) in.token = COLON
-      	// a hack to allow
-      	//
-      	//     def f():
-      	//       T
-        //
+    def typedOpt(): Tree =
       if (in.token == COLON) { in.nextToken(); toplevelTyp() }
       else TypeTree().withSpan(Span(in.lastOffset))
-    }
 
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
@@ -3266,7 +3257,7 @@ object Parsers {
       }
     }
 
-    /** DefDef  ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr
+    /** DefDef  ::=  DefSig [‘:’ Type] ‘=’ Expr
      *            |  this ParamClause ParamClauses `=' ConstrExpr
      *  DefDcl  ::=  DefSig `:' Type
      *  DefSig  ::=  id [DefTypeParamClause] DefParamClauses
@@ -3342,12 +3333,13 @@ object Parsers {
           case rparamss =>
             leadingVparamss ::: rparamss
         var tpt = fromWithinReturnType {
-          if in.token == SUBTYPE && mods.is(Inline) && AllowOldWhiteboxSyntax then
-            deprecationWarning("`<:` return type will no longer be supported. Use transparent modifier instead.")
-            in.nextToken()
-            mods1 = addMod(mods1, Mod.Transparent())
-            toplevelTyp()
-          else typedOpt()
+          if in.token == COLONEOL then in.token = COLON
+     	      // a hack to allow
+      	    //
+      	    //     def f():
+      	    //       T
+            //
+          typedOpt()
         }
         if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
@@ -3581,7 +3573,7 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
-    /** GivenDef          ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
+    /** GivenDef          ::=  [GivenSig] Type ‘=’ Expr
      *                      |  [GivenSig] ConstrApps [TemplateBody]
      *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘as’
      */
@@ -3601,30 +3593,19 @@ object Parsers {
         newLinesOpt()
         if isIdent(nme.as) || !name.isEmpty || !tparams.isEmpty || !vparamss.isEmpty then
           accept(nme.as)
-        def givenAlias(tpt: Tree) =
+        val parents = constrApps(commaOK = true, templateCanFollow = true)
+        if in.token == EQUALS && parents.length == 1 && parents.head.isType then
           accept(EQUALS)
           mods1 |= Final
-          DefDef(name, tparams, vparamss, tpt, subExpr())
-        if in.token == USCORE && AllowOldWhiteboxSyntax then
-          deprecationWarning("`<:` return type will no longer be supported. Use transparent modifier instead.")
-          if !mods.is(Inline) then
-            syntaxError("`_ <:` is only allowed for given with `inline` modifier")
-          in.nextToken()
-          accept(SUBTYPE)
-          mods1 = addMod(mods1, Mod.Transparent())
-          givenAlias(toplevelTyp())
+          DefDef(name, tparams, vparamss, parents.head, subExpr())
         else
-          val parents = constrApps(commaOK = true, templateCanFollow = true)
-          if in.token == EQUALS && parents.length == 1 && parents.head.isType then
-            givenAlias(parents.head)
-          else
-            possibleTemplateStart()
-            val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
-            val vparamss1 = vparamss.map(_.map(vparam =>
-              vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
-            val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
-            if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
-            else TypeDef(name.toTypeName, templ)
+          possibleTemplateStart()
+          val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
+          val vparamss1 = vparamss.map(_.map(vparam =>
+            vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
+          val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
+          if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
+          else TypeDef(name.toTypeName, templ)
       end gdef
       finalizeDef(gdef, mods1, start)
     }

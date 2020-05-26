@@ -14,7 +14,7 @@ class Test:
 
   final val ctwo = toIntC[2]
 
-  inline def defaultValue[T] <: Option[Any] = inline erasedValue[T] match
+  transparent inline def defaultValue[T]: Option[Any] = inline erasedValue[T] match
     case _: Byte => Some(0: Byte)
     case _: Char => Some(0: Char)
     case _: Short => Some(0: Short)

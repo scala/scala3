@@ -19,7 +19,7 @@ object XmlQuote {
     opaque type StringContext = scala.StringContext
     def apply(sc: scala.StringContext): StringContext = sc
   }
-  inline def (inline ctx: StringContext).xml <: SCOps.StringContext = SCOps(ctx)
+  transparent inline def (inline ctx: StringContext).xml: SCOps.StringContext = SCOps(ctx)
   inline def (inline ctx: SCOps.StringContext).apply(inline args: Any*): Xml =
     ${XmlQuote.impl('ctx, 'args)}
   // inline def (inline ctx: SCOps.StringContext).unapplySeq(...): Xml = ...

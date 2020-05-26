@@ -156,7 +156,7 @@ WithType          ::=  AnnotType {‘with’ AnnotType}                         
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
 
 SimpleType        ::=  SimpleLiteral                                            SingletonTypeTree(l)
-                    |  ‘?’ SubtypeBounds
+                    |  ‘?’ TypeBounds
                     |  SimpleType1 { ‘(’ Singletons ‘)’ }
 SimpleType1       ::=  id                                                       Ident(name)
                     |  Singleton ‘.’ id                                         Select(t, name)
@@ -181,8 +181,8 @@ TypeArgs          ::=  ‘[’ ArgTypes ‘]’                                 
 NamedTypeArg      ::=  id ‘=’ Type                                              NamedArg(id, t)
 NamedTypeArgs     ::=  ‘[’ NamedTypeArg {‘,’ NamedTypeArg} ‘]’                  nts
 Refinement        ::=  ‘{’ [RefineDcl] {semi [RefineDcl]} ‘}’                   ds
-SubtypeBounds     ::=  [‘>:’ Type] [‘<:’ Type] | INT                            TypeBoundsTree(lo, hi)
-TypeParamBounds   ::=  SubtypeBounds {‘:’ Type}                                 ContextBounds(typeBounds, tps)
+TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
+TypeParamBounds   ::=  TypeBounds {‘:’ Type}                                    ContextBounds(typeBounds, tps)
 Types             ::=  Type {‘,’ Type}
 ```
 
@@ -299,11 +299,11 @@ DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
 DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
 
 TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
-TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] SubtypeBounds
+TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
 
 HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
 HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypeParamClause] | ‘_’)
-                       SubtypeBounds
+                       TypeBounds
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
 ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
@@ -372,7 +372,7 @@ VarDcl            ::=  ids ‘:’ Type                                         
 DefDcl            ::=  DefSig ‘:’ Type                                          DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  id [DefTypeParamClause] DefParamClauses
                     |  ExtParamClause {nl} [‘.’] id DefParamClauses
-TypeDcl           ::=  id [TypeParamClause] {FunParamClause} SubtypeBounds      TypeDefTree(_, name, tparams, bound
+TypeDcl           ::=  id [TypeParamClause] {FunParamClause} TypeBounds         TypeDefTree(_, name, tparams, bound
                        [‘=’ Type]
 
 Def               ::=  ‘val’ PatDef
@@ -385,7 +385,7 @@ PatDef            ::=  ids [‘:’ Type] ‘=’ Expr
                     |  Pattern2 [‘:’ Type | Ascription] ‘=’ Expr                PatDef(_, pats, tpe?, expr)
 VarDef            ::=  PatDef
                     |  ids ‘:’ Type ‘=’ ‘_’
-DefDef            ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr                      DefDef(_, name, tparams, vparamss, tpe, expr)
+DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                               DefDef(_, name, tparams, vparamss, tpe, expr)
                     |  ‘this’ DefParamClause DefParamClauses ‘=’ ConstrExpr     DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
@@ -398,7 +398,7 @@ ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
-GivenDef          ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
+GivenDef          ::=  [GivenSig] Type ‘=’ Expr
                     |  [GivenSig] ConstrApps [TemplateBody]
 GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘as’
 ExtensionDef      ::=  [id] [‘on’ ExtParamClause {UsingParamClause}]

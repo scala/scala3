@@ -8,7 +8,7 @@ object `implicit-match-nested` {
   implicit val b1: B[Int] = B[Int]()
   implicit val b2: B[String] = B[String]()
 
-  inline def locateB <: B[_] =
+  transparent inline def locateB: B[_] =
     summonFrom {
       case _: A[t] =>
         summonFrom {
