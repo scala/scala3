@@ -42,5 +42,4 @@ class BaseCNSP[T] {
 }
 
 object ClashNoSigPoly extends BaseCNSP[Int]
-// TODO: improve error message
-case class ClashNoSigPoly private(x: Int)  // error: found: ClashNoSigPoly required: Nothing
+case class ClashNoSigPoly private(x: Int)
