@@ -1,6 +1,6 @@
 object `inline-match-specialize` {
   case class Box[+T](value: T)
-  inline def specialize[T](box: Box[T]) <: Box[T] = inline box match {
+  inline def specialize[T](box: Box[T]): _ <: Box[T] = inline box match {
     case box: Box[t] => box
   }
 

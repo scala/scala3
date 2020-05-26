@@ -36,8 +36,6 @@ object Parsers {
 
   import ast.untpd._
 
-  val AllowOldWhiteboxSyntax = true
-
   case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 
   class ParensCounters {
@@ -1774,16 +1772,21 @@ object Parsers {
         Nil
     }
 
-    def typedOpt(): Tree = {
-      if (in.token == COLONEOL) in.token = COLON
-      	// a hack to allow
-      	//
-      	//     def f():
-      	//       T
-        //
-      if (in.token == COLON) { in.nextToken(); toplevelTyp() }
+    def typedOpt(typ: => Tree) =
+      if (in.token == COLON) { in.nextToken(); typ }
       else TypeTree().withSpan(Span(in.lastOffset))
-    }
+
+    /** ResultType  ::= [‘_’ ‘<:] Type */
+    def resultType(mods: Modifiers): Tree =
+      if in.token == USCORE && in.lookahead.token == SUBTYPE then
+        atSpan(in.offset) {
+          in.nextToken()
+          if !mods.is(Inline) then
+            syntaxError(em"upper bound is only permitted for inline definitions")
+          in.nextToken()
+          TypeBoundsTree(EmptyTree, toplevelTyp())
+        }
+      else toplevelTyp()
 
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
@@ -2138,7 +2141,9 @@ object Parsers {
     /**  Binding           ::= (id | `_') [`:' Type]
      */
     def binding(mods: Modifiers): Tree =
-      atSpan(in.offset) { makeParameter(bindingName(), typedOpt(), mods) }
+      atSpan(in.offset) {
+        makeParameter(bindingName(), typedOpt(toplevelTyp()), mods)
+      }
 
     def bindingName(): TermName =
       if (in.token == USCORE) {
@@ -3166,7 +3171,7 @@ object Parsers {
         tmplDef(start, mods)
     }
 
-    /** PatDef  ::=  ids [‘:’ Type] ‘=’ Expr
+    /** PatDef  ::=  ids [‘:’ ResultType] ‘=’ Expr
      *            |  Pattern2 [‘:’ Type | Ascription] ‘=’ Expr
      *  VarDef  ::=  PatDef | id {`,' id} `:' Type `=' `_'
      *  ValDcl  ::=  id {`,' id} `:' Type
@@ -3189,7 +3194,7 @@ object Parsers {
             lhs = ascription(first, Location.ElseWhere) :: Nil
             emptyType
           }
-          else toplevelTyp()
+          else resultType(mods)
         }
         else emptyType
       val rhs =
@@ -3218,7 +3223,7 @@ object Parsers {
       }
     }
 
-    /** DefDef  ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr
+    /** DefDef  ::=  DefSig [‘:’ ResultType] ‘=’ Expr
      *            |  this ParamClause ParamClauses `=' ConstrExpr
      *  DefDcl  ::=  DefSig `:' Type
      *  DefSig  ::=  id [DefTypeParamClause] DefParamClauses
@@ -3294,12 +3299,13 @@ object Parsers {
           case rparamss =>
             leadingVparamss ::: rparamss
         var tpt = fromWithinReturnType {
-          if in.token == SUBTYPE && mods.is(Inline) && AllowOldWhiteboxSyntax then
-            deprecationWarning("`<:` return type will no longer be supported. Use transparent modifier instead.")
-            in.nextToken()
-            mods1 = addMod(mods1, Mod.Transparent())
-            toplevelTyp()
-          else typedOpt()
+          if in.token == COLONEOL then in.token = COLON
+     	      // a hack to allow
+      	    //
+      	    //     def f():
+      	    //       T
+            //
+          typedOpt(resultType(mods))
         }
         if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
@@ -3532,7 +3538,7 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
-    /** GivenDef          ::=  [GivenSig] [‘_’ ‘<:’] Type ‘=’ Expr
+    /** GivenDef          ::=  [GivenSig] ResultType ‘=’ Expr
      *                      |  [GivenSig] ConstrApps [TemplateBody]
      *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘as’
      */
@@ -3556,14 +3562,8 @@ object Parsers {
           accept(EQUALS)
           mods1 |= Final
           DefDef(name, tparams, vparamss, tpt, subExpr())
-        if in.token == USCORE && AllowOldWhiteboxSyntax then
-          deprecationWarning("`<:` return type will no longer be supported. Use transparent modifier instead.")
-          if !mods.is(Inline) then
-            syntaxError("`_ <:` is only allowed for given with `inline` modifier")
-          in.nextToken()
-          accept(SUBTYPE)
-          mods1 = addMod(mods1, Mod.Transparent())
-          givenAlias(toplevelTyp())
+        if in.token == USCORE then
+          givenAlias(resultType(mods))
         else
           val parents = constrApps(commaOK = true, templateCanFollow = true)
           if in.token == EQUALS && parents.length == 1 && parents.head.isType then

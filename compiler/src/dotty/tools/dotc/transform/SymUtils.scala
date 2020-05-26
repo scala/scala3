@@ -223,4 +223,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   def isCollectiveExtensionClass(using Context): Boolean =
     self.is(ModuleClass) && self.sourceModule.is(Extension, butNot = Method)
+
+  /** The result type of this constructor */
+  def constructorResultType(typeParams: List[Symbol])(using Context): Type =
+    self.owner.typeRef.appliedTo(typeParams.map(_.typeRef))
 }

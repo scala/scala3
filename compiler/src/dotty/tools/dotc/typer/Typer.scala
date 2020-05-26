@@ -1802,6 +1802,9 @@ class Typer extends Namer
   def typedAnnotation(annot: untpd.Tree)(using Context): Tree =
     typed(annot, defn.AnnotationClass.typeRef)
 
+  private def typedRHS(rhs: untpd.Tree, tpt: Tree)(using Context) =
+    typedExpr(rhs, tpt.tpe.widenExpr.bounds.hi)
+
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = {
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
@@ -1809,7 +1812,7 @@ class Typer extends Namer
     val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
-      case rhs => typedExpr(rhs, tpt1.tpe.widenExpr)
+      case rhs => typedRHS(rhs, tpt1)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     checkSignatureRepeatedParam(sym)
@@ -1876,7 +1879,7 @@ class Typer extends Namer
     if (sym.isInlineMethod) rhsCtx.addMode(Mode.InlineableBody)
     val rhs1 =
       if sym.isScala2Macro then typedScala2MacroBody(ddef.rhs)(using rhsCtx)
-      else typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(using rhsCtx)
+      else typedRHS(ddef.rhs, tpt1)(using rhsCtx)
 
     if (sym.isInlineMethod)
       val rhsToInline = PrepareInlineable.wrapRHS(ddef, tpt1, rhs1)

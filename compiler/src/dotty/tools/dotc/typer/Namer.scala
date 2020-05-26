@@ -118,13 +118,6 @@ trait NamerContextOps {
     if (pkg.is(Package)) thisCtx.fresh.setOwner(pkg.moduleClass).setTree(tree)
     else thisCtx
 
-  /** The given type, unless `sym` is a constructor, in which case the
-   *  type of the constructed instance is returned
-   */
-  def effectiveResultType(sym: Symbol, typeParams: List[Symbol], givenTp: Type): Type =
-    if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams.map(_.typeRef))
-    else givenTp
-
   /** if isConstructor, make sure it has one non-implicit parameter list */
   def normalizeIfConstructor(termParamss: List[List[Symbol]], isConstructor: Boolean): List[List[Symbol]] =
     if (isConstructor &&
@@ -1416,26 +1409,28 @@ class Namer { typer: Typer =>
        *  the corresponding parameter where bound parameters are replaced by
        *  Wildcards.
        */
-      def rhsProto = sym.asTerm.name collect {
-        case DefaultGetterName(original, idx) =>
-          val meth: Denotation =
-            if (original.isConstructorName && (sym.owner.is(ModuleClass)))
-              sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
+      def rhsProto = mdef.tpt match
+        case TypeBoundsTree(_, bound, _) => typedAheadType(bound).tpe
+        case _ => sym.asTerm.name.collect {
+          case DefaultGetterName(original, idx) =>
+            val meth: Denotation =
+              if (original.isConstructorName && (sym.owner.is(ModuleClass)))
+                sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
+              else
+                ctx.defContext(sym).denotNamed(original)
+            def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
+              case params :: paramss1 =>
+                if (idx < params.length) wildApprox(params(idx))
+                else paramProto(paramss1, idx - params.length)
+              case nil =>
+                WildcardType
+            }
+            val defaultAlts = meth.altsWith(_.hasDefaultParams)
+            if (defaultAlts.length == 1)
+              paramProto(defaultAlts.head.info.widen.paramInfoss, idx)
             else
-              ctx.defContext(sym).denotNamed(original)
-          def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
-            case params :: paramss1 =>
-              if (idx < params.length) wildApprox(params(idx))
-              else paramProto(paramss1, idx - params.length)
-            case nil =>
               WildcardType
-          }
-          val defaultAlts = meth.altsWith(_.hasDefaultParams)
-          if (defaultAlts.length == 1)
-            paramProto(defaultAlts.head.info.widen.paramInfoss, idx)
-          else
-            WildcardType
-      } getOrElse WildcardType
+        }.getOrElse(WildcardType)
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
@@ -1509,7 +1504,7 @@ class Namer { typer: Typer =>
     val tptProto = mdef.tpt match {
       case _: untpd.DerivedTypeTree =>
         WildcardType
-      case TypeTree() =>
+      case TypeTree() | TypeBoundsTree(_, _, _) =>
         checkMembersOK(inferredType, mdef.sourcePos)
       case DependentTypeTree(tpFun) =>
         val tpe = tpFun(paramss.head)
@@ -1543,7 +1538,10 @@ class Namer { typer: Typer =>
       case _ =>
         WildcardType
     }
-    val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    val resultTpe = mdef.tpt match
+      case TypeBoundsTree(_, _, _) => tptProto
+      case _ => checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe
+    val mbrTpe = paramFn(resultTpe)
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
       JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
     else mbrTpe
@@ -1593,7 +1591,7 @@ class Namer { typer: Typer =>
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
-      wrapMethType(ctx.effectiveResultType(sym, typeParams, NoType))
+      wrapMethType(sym.constructorResultType(typeParams))
     }
     else valOrDefDefSig(ddef, sym, typeParams, termParamss, wrapMethType)
   }

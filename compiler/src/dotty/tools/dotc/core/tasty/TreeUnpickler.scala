@@ -546,7 +546,7 @@ class TreeUnpickler(reader: TastyReader,
       if (tag == TYPEDEF || tag == TYPEPARAM) name = name.toTypeName
       skipParams()
       val ttag = nextUnsharedTag
-      val isAbsType = isAbstractType(ttag)
+      val isAbsType = name.isTypeName && isAbstractType(ttag)
       val isClass = ttag == TEMPLATE
       val templateStart = currentAddr
       skipTree() // tpt
@@ -812,9 +812,12 @@ class TreeUnpickler(reader: TastyReader,
           val vparamss = readParamss(localCtx)
           val tpt = readTpt()(localCtx)
           val typeParams = tparams.map(_.symbol)
-          val valueParamss = ctx.normalizeIfConstructor(
-              vparamss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
-          val resType = ctx.effectiveResultType(sym, typeParams, tpt.tpe)
+          val isConstructor = name == nme.CONSTRUCTOR
+          val valueParamss =
+            ctx.normalizeIfConstructor(vparamss.nestedMap(_.symbol), isConstructor)
+          val resType =
+            if isConstructor then sym.constructorResultType(typeParams)
+            else tpt.tpe.bounds.hi
           sym.info = ctx.methodType(typeParams, valueParamss, resType)
           DefDef(tparams, vparamss, tpt)
         case VALDEF =>

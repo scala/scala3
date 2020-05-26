@@ -206,7 +206,9 @@ object PrepareInlineable {
 
   /** The type ascription `rhs: tpt`, unless `original` is `transparent`. */
   def wrapRHS(original: untpd.DefDef, tpt: Tree, rhs: Tree)(using Context): Tree =
-    if original.mods.hasMod(classOf[untpd.Mod.Transparent]) then rhs
+    if original.mods.hasMod(classOf[untpd.Mod.Transparent])
+       || tpt.isInstanceOf[TypeBoundsTree]
+    then rhs
     else Typed(rhs, tpt)
 
   /** Register inline info for given inlineable method `sym`.
