@@ -1579,6 +1579,14 @@ class Typer extends Namer
   }
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(using Context): Tree = {
+    tree.args match
+      case arg :: _ if arg.isTerm =>
+        if dependentEnabled then
+          return errorTree(tree, i"Not yet implemented: T(...)")
+        else
+          return errorTree(tree, dependentStr)
+      case _ =>
+
     val tpt1 = typed(tree.tpt, AnyTypeConstructorProto)(using ctx.retractMode(Mode.Pattern))
     val tparams = tpt1.tpe.typeParams
     if (tparams.isEmpty) {
@@ -1663,6 +1671,12 @@ class Typer extends Namer
     val body1 = typedType(tree.body)
     assignType(cpy.LambdaTypeTree(tree)(tparams1, body1), tparams1, body1)
   }
+
+  def typedTermLambdaTypeTree(tree: untpd.TermLambdaTypeTree)(using Context): Tree =
+    if dependentEnabled then
+      errorTree(tree, i"Not yet implemented: (...) =>> ...")
+    else
+      errorTree(tree, dependentStr)
 
   def typedMatchTypeTree(tree: untpd.MatchTypeTree, pt: Type)(using Context): Tree = {
     val bound1 =
@@ -2381,6 +2395,7 @@ class Typer extends Namer
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
           case tree: untpd.LambdaTypeTree => typedLambdaTypeTree(tree)(using ctx.localContext(tree, NoSymbol).setNewScope)
+          case tree: untpd.TermLambdaTypeTree => typedTermLambdaTypeTree(tree)(using ctx.localContext(tree, NoSymbol).setNewScope)
           case tree: untpd.MatchTypeTree => typedMatchTypeTree(tree, pt)
           case tree: untpd.ByNameTypeTree => typedByNameTypeTree(tree)
           case tree: untpd.TypeBoundsTree => typedTypeBoundsTree(tree, pt)

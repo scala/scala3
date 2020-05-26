@@ -138,14 +138,16 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 ### Types
 ```ebnf
 Type              ::=  FunType
-                    |  HkTypeParamClause ‘=>>’ Type                             TypeLambda(ps, t)
+                    |  HkTypeParamClause ‘=>>’ Type                             LambdaTypeTree(ps, t)
+                    |  FunParamClause ‘=>>’ Type                                TermLambdaTypeTree(ps, t)
                     |  MatchType
                     |  InfixType
 FunType           ::=  FunArgTypes (‘=>’ | ‘?=>’) Type                          Function(ts, t)
                     |  HKTypeParamClause '=>' Type                              PolyFunction(ps, t)
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
-                    |  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+                    |  FunParamClause
+FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
 MatchType         ::=  InfixType `match` ‘{’ TypeCaseClauses ‘}’
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
@@ -155,8 +157,7 @@ AnnotType         ::=  SimpleType {Annotation}                                  
 
 SimpleType        ::=  SimpleLiteral                                            SingletonTypeTree(l)
                     |  ‘?’ SubtypeBounds
-                    |  SimpleType ‘(’ Singletons ‘)’
-                    |  SimpleType1
+                    |  SimpleType1 { ‘(’ Singletons ‘)’ }
 SimpleType1       ::=  id                                                       Ident(name)
                     |  Singleton ‘.’ id                                         Select(t, name)
                     |  Singleton ‘.’ ‘type’                                     SingletonTypeTree(p)
@@ -166,6 +167,7 @@ SimpleType1       ::=  id                                                       
                     |  SimpleType1 TypeArgs                                     AppliedTypeTree(t, args)
                     |  SimpleType1 ‘#’ id                                       Select(t, name)
 Singleton         ::=  SimpleRef
+                    |  SimpleLiteral
                     |  Singleton ‘.’ id
 -- not yet          |  Singleton ‘(’ Singletons ‘)’
 -- not yet          |  Singleton ‘[’ ArgTypes ‘]’
@@ -339,7 +341,7 @@ LocalModifier     ::=  ‘abstract’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’
 
-Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
+Annotation        ::=  ‘@’ SimpleType1 {ParArgumentExprs}                        Apply(tpe, args)
 
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec                          Import(expr, sels)
@@ -370,7 +372,8 @@ VarDcl            ::=  ids ‘:’ Type                                         
 DefDcl            ::=  DefSig ‘:’ Type                                          DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  id [DefTypeParamClause] DefParamClauses
                     |  ExtParamClause {nl} [‘.’] id DefParamClauses
-TypeDcl           ::=  id [TypeParamClause] SubtypeBounds [‘=’ Type]           TypeDefTree(_, name, tparams, bound
+TypeDcl           ::=  id [TypeParamClause] {FunParamClause} SubtypeBounds      TypeDefTree(_, name, tparams, bound
+                       [‘=’ Type]
 
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ VarDef

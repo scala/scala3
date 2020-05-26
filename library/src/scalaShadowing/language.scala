@@ -210,6 +210,9 @@ object language {
      *  to debug and understand.
      */
     implicit lazy val macros: macros = languageFeature.experimental.macros
+
+    /** Experimental support for richer dependent types */
+    object dependent
   }
 
   /** Where imported, a backwards compatibility mode for Scala2 is enabled */
@@ -238,6 +241,9 @@ object language {
    *  That's why the language import is required for them.
    */
   object adhocExtensions
+
+  /** Experimental support for richer dependent types */
+  object dependent
 
   /** Source version */
   object `3.0-migration`

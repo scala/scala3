@@ -663,6 +663,7 @@ class Definitions {
   @tu lazy val Mirror_SingletonProxyClass: ClassSymbol = ctx.requiredClass("scala.deriving.Mirror.SingletonProxy")
 
   @tu lazy val LanguageModule: Symbol = ctx.requiredModule("scala.language")
+  @tu lazy val LanguageExperimentalModule: Symbol = ctx.requiredModule("scala.language.experimental")
   @tu lazy val NonLocalReturnControlClass: ClassSymbol = ctx.requiredClass("scala.runtime.NonLocalReturnControl")
   @tu lazy val SelectableClass: ClassSymbol = ctx.requiredClass("scala.Selectable")
 

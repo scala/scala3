@@ -3,7 +3,7 @@ package dotc
 package config
 
 import core._
-import Contexts._, Symbols._, Names._
+import Contexts._, Symbols._, Names._, NameOps._
 import StdNames.nme
 import Decorators.{given _}
 import util.SourcePosition
@@ -22,7 +22,7 @@ object Feature:
   def enabledBySetting(feature: TermName, owner: Symbol = NoSymbol)(using Context): Boolean =
     def toPrefix(sym: Symbol): String =
       if !sym.exists || sym == defn.LanguageModule.moduleClass then ""
-      else toPrefix(sym.owner) + sym.name + "."
+      else toPrefix(sym.owner) + sym.name.stripModuleClassSuffix + "."
     val prefix = if owner.exists then toPrefix(owner) else ""
     ctx.base.settings.language.value.contains(prefix + feature)
 
@@ -38,7 +38,7 @@ object Feature:
   def enabledByImport(feature: TermName, owner: Symbol = NoSymbol)(using Context): Boolean =
     ctx.atPhase(ctx.typerPhase) {
       ctx.importInfo != null
-      && ctx.importInfo.featureImported(feature.toTermName,
+      && ctx.importInfo.featureImported(feature,
           if owner.exists then owner else defn.LanguageModule.moduleClass)
     }
 
@@ -56,6 +56,9 @@ object Feature:
 
   def dynamicsEnabled(using Context): Boolean =
     enabled(nme.dynamics)
+
+  def dependentEnabled(using Context) =
+    enabled(nme.dependent, defn.LanguageExperimentalModule.moduleClass)
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)

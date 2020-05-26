@@ -192,7 +192,9 @@ object Parsers {
 
     def isIdent = in.isIdent
     def isIdent(name: Name) = in.isIdent(name)
-    def isSimpleLiteral = simpleLiteralTokens contains in.token
+    def isSimpleLiteral =
+      simpleLiteralTokens.contains(in.token)
+      || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
     def isLiteral = literalTokens contains in.token
     def isNumericLit = numericLitTokens contains in.token
     def isTemplateIntro = templateIntroTokens contains in.token
@@ -1101,18 +1103,42 @@ object Parsers {
     */
     def qualId(): Tree = dotSelectors(termIdent())
 
-    /** SimpleExpr    ::= literal
-     *                  | 'id | 'this | 'true | 'false | 'null
-     *                  | null
-     *  @param negOffset   The offset of a preceding `-' sign, if any.
-     *                     If the literal is not negated, negOffset = in.offset.
+    /** Singleton    ::=  SimpleRef
+     *                 |  SimpleLiteral
+     *                 |  Singleton ‘.’ id
      */
-    def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inType: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
+    def singleton(): Tree =
+      if isSimpleLiteral then simpleLiteral()
+      else dotSelectors(simpleRef())
+
+    /** SimpleLiteral     ::=  [‘-’] integerLiteral
+     *                      |  [‘-’] floatingPointLiteral
+     *                      |  booleanLiteral
+     *                      |  characterLiteral
+     *                      |  stringLiteral
+     */
+    def simpleLiteral(): Tree =
+      if isIdent(nme.raw.MINUS) then
+        val start = in.offset
+        in.nextToken()
+        literal(negOffset = start, inTypeOrSingleton = true)
+      else
+        literal(inTypeOrSingleton = true)
+
+    /** Literal           ::=  SimpleLiteral
+     *                      |  processedStringLiteral
+     *                      |  symbolLiteral
+     *                      |  ‘null’
+     *
+     *  @param negOffset   The offset of a preceding `-' sign, if any.
+     *                     If the literal is not negated, negOffset == in.offset.
+     */
+    def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
       def literalOf(token: Token): Tree = {
         val isNegated = negOffset < in.offset
         def digits0 = in.removeNumberSeparators(in.strVal)
         def digits = if (isNegated) "-" + digits0 else digits0
-        if (!inType)
+        if !inTypeOrSingleton then
           token match {
             case INTLIT  => return Number(digits, NumberKind.Whole(in.base))
             case DECILIT => return Number(digits, NumberKind.Decimal)
@@ -1333,22 +1359,33 @@ object Parsers {
       case _ => false
     }
 
-    /** Type        ::=  FunType
-     *                |  HkTypeParamClause ‘=>>’ Type
-     *                |  MatchType
-     *                |  InfixType
-     *  FunType     ::=  (MonoFunType | PolyFunType)
-     *  MonoFunType ::=  FunArgTypes (‘=>’ | ‘?=>’) Type
-     *  PolyFunType ::=  HKTypeParamClause '=>' Type
-     *  FunArgTypes ::=  InfixType
-     *                |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
-     *                |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
+    /** Type           ::=  FunType
+     *                   |  HkTypeParamClause ‘=>>’ Type
+     *                   |  FunParamClause ‘=>>’ Type
+     *                   |  MatchType
+     *                   |  InfixType
+     *  FunType        ::=  (MonoFunType | PolyFunType)
+     *  MonoFunType    ::=  FunArgTypes (‘=>’ | ‘?=>’) Type
+     *  PolyFunType    ::=  HKTypeParamClause '=>' Type
+     *  FunArgTypes    ::=  InfixType
+     *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
+     *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
      */
     def typ(): Tree = {
       val start = in.offset
       var imods = Modifiers()
       def functionRest(params: List[Tree]): Tree =
         atSpan(start, in.offset) {
+          if in.token == TLARROW then
+            if !imods.flags.isEmpty || params.isEmpty then
+              syntaxError(em"illegal parameter list for type lambda", start)
+              in.token = ARROW
+            else
+              for case ValDef(_, tpt: ByNameTypeTree, _) <- params do
+                syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
+              in.nextToken()
+              return TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], typ())
+
           if in.token == CTXARROW then
             in.nextToken()
             imods |= Given
@@ -1475,10 +1512,19 @@ object Parsers {
       Span(start, start + nme.IMPLICITkw.asSimpleName.length)
 
     /** TypedFunParam   ::= id ':' Type */
-    def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): Tree = atSpan(start) {
-      accept(COLON)
-      makeParameter(name, typ(), mods | Param)
-    }
+    def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): ValDef =
+      atSpan(start) {
+        accept(COLON)
+        makeParameter(name, typ(), mods | Param)
+      }
+
+    /**  FunParamClause ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+     */
+    def funParamClause(): List[ValDef] =
+      inParens(commaSeparated(() => typedFunParam(in.offset, ident())))
+
+    def funParamClauses(): List[List[ValDef]] =
+      if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
 
     /** InfixType ::= RefinedType {id [nl] RefinedType}
      */
@@ -1556,14 +1602,12 @@ object Parsers {
     /**  SimpleType      ::=  SimpleLiteral
      *                     |  ‘?’ SubtypeBounds
      *                     |  SimpleType1
+     *                     |  SimpeType ‘(’ Singletons ‘)’  -- under language.experimental.dependent, checked in Typer
+     *   Singletons      ::=  Singleton {‘,’ Singleton}
      */
     def simpleType(): Tree =
       if isSimpleLiteral then
-        SingletonTypeTree(literal(inType = true))
-      else if isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token) then
-        val start = in.offset
-        in.nextToken()
-        SingletonTypeTree(literal(negOffset = start, inType = true))
+        SingletonTypeTree(simpleLiteral())
       else if in.token == USCORE then
         if sourceVersion.isAtLeast(`3.1`) then
           deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
@@ -1576,7 +1620,11 @@ object Parsers {
       else if isIdent(nme.*) && ctx.settings.YkindProjector.value then
         typeIdent()
       else
-        simpleType1()
+        def singletonArgs(t: Tree): Tree =
+          if in.token == LPAREN
+          then singletonArgs(AppliedTypeTree(t, inParens(commaSeparated(singleton))))
+          else t
+        singletonArgs(simpleType1())
 
     /** SimpleType1      ::=  id
      *                     |  Singleton `.' id
@@ -2811,11 +2859,11 @@ object Parsers {
       else tree1
     }
 
-    /** Annotation        ::=  `@' SimpleType {ParArgumentExprs}
+    /** Annotation        ::=  `@' SimpleType1 {ParArgumentExprs}
      */
     def annot(): Tree =
       adjustStart(accept(AT)) {
-        ensureApplied(parArgumentExprss(wrapNew(simpleType())))
+        ensureApplied(parArgumentExprss(wrapNew(simpleType1())))
       }
 
     def annotations(skipNewLines: Boolean = false): List[Tree] = {
@@ -3348,15 +3396,16 @@ object Parsers {
         argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs()))
       }
 
-    /** TypeDcl ::=  id [TypeParamClause] TypeBounds [‘=’ Type]
+    /** TypeDcl ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type]
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
       newLinesOpt()
       atSpan(start, nameStart) {
         val nameIdent = typeIdent()
         val tparams = typeParamClauseOpt(ParamOwner.Type)
+        val vparamss = funParamClauses()
         def makeTypeDef(rhs: Tree): Tree = {
-          val rhs1 = lambdaAbstract(tparams, rhs)
+          val rhs1 = lambdaAbstractAll(tparams :: vparamss, rhs)
           val tdef = TypeDef(nameIdent.name.toTypeName, rhs1)
           if (nameIdent.isBackquoted)
             tdef.pushAttachment(Backquoted, ())
