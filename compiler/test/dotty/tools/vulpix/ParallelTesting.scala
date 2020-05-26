@@ -81,6 +81,13 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       else self
     }
 
+    def withoutFlags(flags1: String*): TestSource = self match {
+      case self: JointCompilationSource =>
+        self.copy(flags = flags.without(flags1: _*))
+      case self: SeparateCompilationSource =>
+        self.copy(flags = flags.without(flags1: _*))
+    }
+
     /** Generate the instructions to redo the test from the command line */
     def buildInstructions(errors: Int, warnings: Int): String = {
       val sb = new StringBuilder

@@ -197,7 +197,6 @@ object Scanners {
     val noindentSyntax =
       ctx.settings.noindent.value
       || ctx.settings.oldSyntax.value
-      || migrateTo3
     val indentSyntax =
       ((if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value)
        || rewriteNoIndent)
