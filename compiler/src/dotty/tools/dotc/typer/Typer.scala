@@ -2309,7 +2309,7 @@ class Typer extends Namer
         else List.fill(arity)(defn.AnyType)
       val elems = tree.trees.lazyZip(pts).map(typed(_, _))
       if (ctx.mode.is(Mode.Type))
-        elems.foldRight(TypeTree(defn.UnitType): Tree)((elemTpt, elemTpts) =>
+        elems.foldRight(TypeTree(defn.EmptyTupleModule.termRef): Tree)((elemTpt, elemTpts) =>
           AppliedTypeTree(TypeTree(defn.PairClass.typeRef), List(elemTpt, elemTpts)))
           .withSpan(tree.span)
       else {

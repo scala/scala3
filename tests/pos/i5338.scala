@@ -1,6 +1,6 @@
 object Test {
-  val unit = ()
+  val emptyTuple = Tuple()
 
   def f[T <: Tuple, X](xs: T, x: X) =
-    xs ++ x *: unit
+    xs ++ x *: emptyTuple
 }

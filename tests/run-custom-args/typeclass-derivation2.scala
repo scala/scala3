@@ -194,8 +194,8 @@ object Either {
   import TypeLevel._
 
   type Shape[L, R] = Shape.Cases[(
-    Shape.Case[Left[L], L *: Unit],
-    Shape.Case[Right[R], R *: Unit]
+    Shape.Case[Left[L], L *: EmptyTuple],
+    Shape.Case[Right[R], R *: EmptyTuple]
   )]
 
   val reflectedClass = new ReflectedClass("Left\000x\001Right\000x")
@@ -234,7 +234,7 @@ object Eq {
       case _: (elem *: elems1) =>
         tryEql[elem](xm(n).asInstanceOf, ym(n).asInstanceOf) &&
         eqlElems[elems1](xm, ym, n + 1)
-      case _: Unit =>
+      case _: EmptyTuple =>
         true
     }
 
@@ -251,7 +251,7 @@ object Eq {
           case _ =>
             error("invalid call to eqlCases: one of Alts is not a subtype of T")
         }
-      case _: Unit =>
+      case _: EmptyTuple =>
         false
     }
 
@@ -293,7 +293,7 @@ object Pickler {
       case _: (elem *: elems1) =>
         tryPickle[elem](buf, elems(n).asInstanceOf[elem])
         pickleElems[elems1](buf, elems, n + 1)
-      case _: Unit =>
+      case _: EmptyTuple =>
     }
 
   inline def pickleCase[T, Elems <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], x: T): Unit =
@@ -314,7 +314,7 @@ object Pickler {
           case _ =>
             error("invalid pickleCases call: one of Alts is not a subtype of T")
         }
-      case _: Unit =>
+      case _: EmptyTuple =>
     }
 
   inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonInline[Pickler[T]].unpickle(buf)
@@ -324,7 +324,7 @@ object Pickler {
       case _: (elem *: elems1) =>
         elems(n) = tryUnpickle[elem](buf).asInstanceOf[AnyRef]
         unpickleElems[elems1](buf, elems, n + 1)
-      case _: Unit =>
+      case _: EmptyTuple =>
     }
 
   inline def unpickleCase[T, Elems <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
@@ -384,7 +384,7 @@ object Show {
         val formal = elems.elementLabel(n)
         val actual = tryShow[elem](elems(n).asInstanceOf)
         s"$formal = $actual" :: showElems[elems1](elems, n + 1)
-      case _: Unit =>
+      case _: EmptyTuple =>
         Nil
     }
 
@@ -407,7 +407,7 @@ object Show {
           case _ =>
             error("invalid call to showCases: one of Alts is not a subtype of T")
         }
-      case _: Unit =>
+      case _: EmptyTuple =>
         throw new MatchError(x)
     }
 

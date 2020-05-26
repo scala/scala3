@@ -4,7 +4,7 @@ import compiletime._
 import internal._
 
 /** Tuple of arbitrary arity */
-sealed trait Tuple extends Any {
+sealed trait Tuple extends Product {
   import Tuple._
 
   /** Create a copy this tuple as an Array */
@@ -35,7 +35,7 @@ sealed trait Tuple extends Any {
    *  `((a1, b1), ..., (an, bn))`. If the two tuples have different sizes,
    *  the extra elements of the larger tuple will be disregarded.
    *  The result is typed as `((A1, B1), ..., (An, Bn))` if at least one of the
-   *  tuple types has a `Unit` tail. Otherwise the result type is
+   *  tuple types has a `EmptyTuple` tail. Otherwise the result type is
    *  `(A1, B1) *: ... *: (Ai, Bi) *: Tuple`
    */
   inline def zip[This >: this.type <: Tuple, T2 <: Tuple](t2: T2): Zip[This, T2] =
@@ -84,7 +84,7 @@ object Tuple {
 
   /** Type of the concatenation of two tuples */
   type Concat[X <: Tuple, +Y <: Tuple] <: Tuple = X match {
-    case Unit => Y
+    case EmptyTuple => Y
     case x1 *: xs1 => x1 *: Concat[xs1, Y]
   }
 
@@ -99,32 +99,32 @@ object Tuple {
 
   /** Literal constant Int size of a tuple */
   type Size[X <: Tuple] <: Int = X match {
-    case Unit => 0
+    case EmptyTuple => 0
     case x *: xs => S[Size[xs]]
   }
 
   /** Converts a tuple `(T1, ..., Tn)` to `(F[T1], ..., F[Tn])` */
   type Map[Tup <: Tuple, F[_]] <: Tuple = Tup match {
-    case Unit => Unit
+    case EmptyTuple => EmptyTuple
     case h *: t => F[h] *: Map[t, F]
   }
 
   /** Given two tuples, `A1 *: ... *: An * At` and `B1 *: ... *: Bn *: Bt`
-   *  where at least one of `At` or `Bt` is `Unit` or `Tuple`,
+   *  where at least one of `At` or `Bt` is `EmptyTuple` or `Tuple`,
    *  returns the tuple type `(A1, B1) *: ... *: (An, Bn) *: Ct`
-   *  where `Ct` is `Unit` if `At` or `Bt` is `Unit`, otherwise `Ct` is `Tuple`.
+   *  where `Ct` is `EmptyTuple` if `At` or `Bt` is `EmptyTuple`, otherwise `Ct` is `Tuple`.
    */
   type Zip[T1 <: Tuple, T2 <: Tuple] <: Tuple = (T1, T2) match {
     case (h1 *: t1, h2 *: t2) => (h1, h2) *: Zip[t1, t2]
-    case (Unit, _) => Unit
-    case (_, Unit) => Unit
+    case (EmptyTuple, _) => EmptyTuple
+    case (_, EmptyTuple) => EmptyTuple
     case _ => Tuple
   }
 
   /** Converts a tuple `(F[T1], ..., F[Tn])` to `(T1,  ... Tn)` */
   type InverseMap[X <: Tuple, F[_]] <: Tuple = X match {
     case F[x] *: t => x *: InverseMap[t, F]
-    case Unit => Unit
+    case EmptyTuple => EmptyTuple
   }
 
   /** Implicit evidence. IsMappedBy[F][X] is present in the implicit scope iff
@@ -136,9 +136,9 @@ object Tuple {
 
   /** Transforms a tuple `(T1, ..., Tn)` into `(T1, ..., Ti)`. */
   type Take[T <: Tuple, N <: Int] <: Tuple = N match {
-    case 0 => Unit
+    case 0 => EmptyTuple
     case S[n1] => T match {
-      case Unit => Unit
+      case EmptyTuple => EmptyTuple
       case x *: xs => x *: Take[xs, n1]
     }
   }
@@ -147,7 +147,7 @@ object Tuple {
   type Drop[T <: Tuple, N <: Int] <: Tuple = N match {
     case 0 => T
     case S[n1] => T match {
-      case Unit => Unit
+      case EmptyTuple => EmptyTuple
       case x *: xs => Drop[xs, n1]
     }
   }
@@ -156,6 +156,15 @@ object Tuple {
    * `(Ti+1, ..., Tn)`.
    */
   type Split[T <: Tuple, N <: Int] = (Take[T, N], Drop[T, N])
+
+  /** Empty tuple */
+  def apply(): EmptyTuple = EmptyTuple
+
+  /** Tuple with one element */
+  def apply[T](x: T): T *: EmptyTuple = Tuple1(x)
+
+  /** Matches an empty tuple. */
+  def unapply(x: EmptyTuple): true = true
 
   /** Convert an array into a tuple of unknown arity and types */
   def fromArray[T](xs: Array[T]): Tuple = {
@@ -185,8 +194,17 @@ object Tuple {
     Tuple.fromArray(p.productIterator.toArray).asInstanceOf[m.MirroredElemTypes] // TODO use toIArray of Object to avoid double/triple array copy
 }
 
+/** A tuple of 0 elements */
+type EmptyTuple = EmptyTuple.type
+
+/** A tuple of 0 elements; the canonical representation of a [[scala.Product0]]. */
+object EmptyTuple extends Tuple with Product0 {
+  def canEqual(that: Any): Boolean = this == that
+  override def toString(): String = "()"
+}
+
 /** Tuple of arbitrary non-zero arity */
-sealed trait NonEmptyTuple extends Tuple with Product {
+sealed trait NonEmptyTuple extends Tuple {
   import Tuple._
 
   /** Get the i-th element of this tuple.

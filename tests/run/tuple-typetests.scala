@@ -2,9 +2,9 @@ object Test extends App {
 
   def nonEmpty(x: Any) = x match {
     case _: (h *: t) => true
-    case () => false
+    case _: EmptyTuple => false
   }
 
-  println(nonEmpty(()))
+  println(nonEmpty(Tuple()))
   println(nonEmpty(1, 2,3))
 }

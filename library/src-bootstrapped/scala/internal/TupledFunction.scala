@@ -6,8 +6,8 @@ import scala.runtime.TupleXXL
 object TupledFunction {
 
   def tupledFunction0[F, G]: TupledFunction[F, G] = scala.TupledFunction[F, G](
-    tupledImpl = (f: F) => ((args: Unit) => f.asInstanceOf[() => Any].apply()).asInstanceOf[G],
-    untupledImpl = (g: G) => (() => g.asInstanceOf[Unit => Any].apply(())).asInstanceOf[F]
+    tupledImpl = (f: F) => ((args: EmptyTuple) => f.asInstanceOf[() => Any].apply()).asInstanceOf[G],
+    untupledImpl = (g: G) => (() => g.asInstanceOf[EmptyTuple => Any].apply(Tuple())).asInstanceOf[F]
   )
 
   def tupledFunction1[F, G]: TupledFunction[F, G] = scala.TupledFunction[F, G](

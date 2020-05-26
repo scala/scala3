@@ -38,7 +38,7 @@ class Expr[+T] private[scala] {
    *  ```
    */
   final def matches(that: Expr[Any])(using qctx: QuoteContext): Boolean =
-    !scala.internal.quoted.Expr.unapply[Unit, Unit](this)(using that, false, qctx).isEmpty
+    !scala.internal.quoted.Expr.unapply[EmptyTuple, EmptyTuple](this)(using that, false, qctx).isEmpty
 
   /** Checked cast to a `quoted.Expr[U]` */
   def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] =
@@ -131,7 +131,7 @@ object Expr {
   def ofTuple(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] = {
     seq match {
       case Seq() =>
-        unitExpr
+        '{ Tuple() }
       case Seq('{ $x1: $t1 }) =>
         '{ Tuple1($x1) }
       case Seq('{ $x1: $t1 }, '{ $x2: $t2 }) =>

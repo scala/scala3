@@ -18,7 +18,7 @@ object Test {
     type LiftP[F[_[_]], T[_]] = LiftP0[F, Apply[T]]
 
     type LiftP0[F[_[_]], T] <: Tuple = T match {
-      case Unit => Unit
+      case EmptyTuple => EmptyTuple
       case (a *:  b) => Unapply[F, Wrap[a]] *: LiftP0[F, b]
     }
 

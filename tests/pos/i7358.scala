@@ -4,7 +4,7 @@ import scala.quoted._
 import scala.compiletime._
 
 transparent inline def summonT[Tp <: Tuple](using QuoteContext): Tuple = inline erasedValue[Tp] match {
-  case _ : Unit => ()
+  case _ : EmptyTuple => Tuple()
   case _ : (hd *: tl) => {
     type H = hd
     summonFrom {

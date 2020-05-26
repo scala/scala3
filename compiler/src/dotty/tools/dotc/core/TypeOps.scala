@@ -729,6 +729,6 @@ object TypeOps:
   }
 
   def nestedPairs(ts: List[Type])(using Context): Type =
-    ts.foldRight(defn.UnitType: Type)(defn.PairClass.typeRef.appliedTo(_, _))
+    ts.foldRight(defn.EmptyTupleModule.termRef: Type)(defn.PairClass.typeRef.appliedTo(_, _))
 
 end TypeOps

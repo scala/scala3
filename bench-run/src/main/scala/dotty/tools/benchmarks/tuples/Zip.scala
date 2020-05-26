@@ -13,8 +13,8 @@ class Zip {
 
   @Setup
   def setup(): Unit = {
-    tuple1 = ()
-    tuple2 = ()
+    tuple1 = Tuple()
+    tuple2 = Tuple()
 
     for (i <- 1 to size) {
       tuple1 = "el" *: tuple1

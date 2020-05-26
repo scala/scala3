@@ -11,7 +11,7 @@ class Concat {
   var tuple2: Tuple = _
 
   def tupleOfSize(n: Int): Tuple = {
-    var t: Tuple = ()
+    var t: Tuple = Tuple()
     for (i <- 1 to n)
       t = "elem" *: t
     t

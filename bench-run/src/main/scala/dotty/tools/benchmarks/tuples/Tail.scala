@@ -11,7 +11,7 @@ class Tail {
 
   @Setup
   def setup(): Unit = {
-    tuple = "elem" *: ()
+    tuple = "elem" *: Tuple()
 
     for (i <- 1 until size)
       tuple = "elem" *: tuple

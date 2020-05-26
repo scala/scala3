@@ -5,15 +5,15 @@ object Tuple {
   inline val MaxSpecialized = 22
 
   def toArray(self: Tuple): Array[Object] = (self: Any) match {
+    case EmptyTuple => Array.emptyObjectArray
     case self: TupleXXL => self.toArray
     case self: Product => productToArray(self)
-    case self: Unit => Array.emptyObjectArray
   }
 
   def toIArray(self: Tuple): IArray[Object] = (self: Any) match {
+    case EmptyTuple => Array.emptyObjectArray.asInstanceOf[IArray[Object]]
     case self: TupleXXL => self.elems
     case self: Product => productToArray(self).asInstanceOf[IArray[Object]]
-    case self: Unit => Array.emptyObjectArray.asInstanceOf[IArray[Object]]
   }
 
   def productToArray(self: Product): Array[Object] = {
@@ -27,7 +27,7 @@ object Tuple {
   }
 
   def fromArray(xs: Array[Object]): Tuple = xs.length match {
-    case 0  => ()
+    case 0  => EmptyTuple
     case 1  => Tuple1(xs(0))
     case 2  => Tuple2(xs(0), xs(1))
     case 3  => Tuple3(xs(0), xs(1), xs(2))
@@ -178,7 +178,7 @@ object Tuple {
   // Cons for Tuple1 to Tuple22
   private def specialCaseCons(x: Any, self: Tuple): Tuple = {
     (self: Any) match {
-      case self: Unit =>
+      case EmptyTuple =>
         Tuple1(x)
       case self: Tuple1[_] =>
         Tuple2(x, self._1)
@@ -267,7 +267,7 @@ object Tuple {
       case xxl: TupleXXL =>
         System.arraycopy(xxl.elems, 0, array, offset, size)
       case _ =>
-        tuple.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+        tuple.productIterator.asInstanceOf[Iterator[Object]]
           .copyToArray(array, offset, size)
     }
 
@@ -278,7 +278,7 @@ object Tuple {
   }
 
   def size(self: Tuple): Int = (self: Any) match {
-    case self: Unit => 0
+    case EmptyTuple => 0
     case self: Product => self.productArity
   }
 
@@ -286,7 +286,7 @@ object Tuple {
   private def specialCaseTail(self: Tuple): Tuple = {
     (self: Any) match {
       case self: Tuple1[_] =>
-        ()
+        EmptyTuple
       case self: Tuple2[_, _] =>
         Tuple1(self._2)
       case self: Tuple3[_, _, _] =>
@@ -354,12 +354,8 @@ object Tuple {
     case _ => specialCaseTail(self)
   }
 
-  def apply(self: NonEmptyTuple, n: Int): Any = {
-    (self: Any) match {
-      // case self: Unit => throw new IndexOutOfBoundsException(n.toString)
-      case self: Product => self.productElement(n)
-    }
-  }
+  def apply(self: NonEmptyTuple, n: Int): Any =
+    self.productElement(n)
 
   // Benchmarks showed that this is faster than doing (it1 zip it2).copyToArray(...)
   private def zipIterators(it1: Iterator[Any], it2: Iterator[Any], size: Int): IArray[Object] = {
@@ -376,19 +372,19 @@ object Tuple {
     val t1Size: Int = t1.size
     val t2Size: Int = t2.size
     val size = Math.min(t1Size, t2Size)
-    if size == 0 then ()
+    if size == 0 then EmptyTuple
     else Tuple.fromIArray(
       zipIterators(
-        t1.asInstanceOf[Product].productIterator,
-        t2.asInstanceOf[Product].productIterator,
+        t1.productIterator,
+        t2.productIterator,
         size
       )
     )
   }
 
-  def map[F[_]](self: Tuple, f: [t] => t => F[t]): Tuple = (self: Any) match {
-    case self: Unit => ()
-    case _ => fromIArray(self.asInstanceOf[Product].productIterator.map(f(_).asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use toIArray
+  def map[F[_]](self: Tuple, f: [t] => t => F[t]): Tuple = self match {
+    case EmptyTuple => self
+    case _ => fromIArray(self.productIterator.map(f(_).asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use toIArray
   }
 
   def take(self: Tuple, n: Int): Tuple = {
@@ -396,14 +392,14 @@ object Tuple {
     val selfSize: Int = self.size
     val actualN = Math.min(n, selfSize)
 
-    if (actualN == 0) ()
+    if (actualN == 0) EmptyTuple
     else {
       val arr = (self: Any) match {
         case xxl: TupleXXL =>
           xxl.elems.asInstanceOf[Array[Object]].take(actualN)
         case _ =>
           val arr = new Array[Object](actualN)
-          self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+          self.productIterator.asInstanceOf[Iterator[Object]]
             .copyToArray(arr, 0, actualN)
           arr
       }
@@ -418,14 +414,14 @@ object Tuple {
     val actualN = Math.min(n, size)
     val rem = size - actualN
 
-    if (rem == 0) ()
+    if (rem == 0) EmptyTuple
     else {
       val arr = (self: Any) match {
         case xxl: TupleXXL =>
           xxl.elems.asInstanceOf[Array[Object]].drop(actualN)
         case _ =>
           val arr = new Array[Object](rem)
-          self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+          self.productIterator.asInstanceOf[Iterator[Object]]
             .drop(actualN).copyToArray(arr, 0, rem)
           arr
       }
@@ -439,13 +435,13 @@ object Tuple {
     val size = self.size
     val actualN = Math.min(n, size)
     val (arr1, arr2) = (self: Any) match {
-      case () => (Array.empty[Object], Array.empty[Object])
+      case EmptyTuple => (Array.empty[Object], Array.empty[Object])
       case xxl: TupleXXL =>
         xxl.elems.asInstanceOf[Array[Object]].splitAt(actualN)
       case _ =>
         val arr1 = new Array[Object](actualN)
         val arr2 = new Array[Object](size - actualN)
-        val it = self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+        val it = self.productIterator.asInstanceOf[Iterator[Object]]
         it.copyToArray(arr1, 0, actualN)
         it.copyToArray(arr2, 0, size - actualN)
         (arr1, arr2)
@@ -458,9 +454,72 @@ object Tuple {
   }
 
   def consIterator(head: Any, tail: Tuple): Iterator[Any] =
-    Iterator.single(head) ++ tail.asInstanceOf[Product].productIterator
+    Iterator.single(head) ++ tail.productIterator
 
   def concatIterator(tup1: Tuple, tup2: Tuple): Iterator[Any] =
-    tup1.asInstanceOf[Product].productIterator ++ tup2.asInstanceOf[Product].productIterator
+    tup1.productIterator ++ tup2.productIterator
+
+  def isInstanceOfTuple(x: Any): Boolean =
+    x match
+      case x: Product =>
+        x.productArity match
+          case 0 => x == EmptyTuple
+          case 1 => x.isInstanceOf[Tuple1[_]]
+          case 2 => x.isInstanceOf[Tuple2[_, _]]
+          case 3 => x.isInstanceOf[Tuple3[_, _, _]]
+          case 4 => x.isInstanceOf[Tuple4[_, _, _, _]]
+          case 5 => x.isInstanceOf[Tuple5[_, _, _, _, _]]
+          case 6 => x.isInstanceOf[Tuple6[_, _, _, _, _, _]]
+          case 7 => x.isInstanceOf[Tuple7[_, _, _, _, _, _, _]]
+          case 8 => x.isInstanceOf[Tuple8[_, _, _, _, _, _, _, _]]
+          case 9 => x.isInstanceOf[Tuple9[_, _, _, _, _, _, _, _, _]]
+          case 10 => x.isInstanceOf[Tuple10[_, _, _, _, _, _, _, _, _, _]]
+          case 11 => x.isInstanceOf[Tuple11[_, _, _, _, _, _, _, _, _, _, _]]
+          case 12 => x.isInstanceOf[Tuple12[_, _, _, _, _, _, _, _, _, _, _, _]]
+          case 13 => x.isInstanceOf[Tuple13[_, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 14 => x.isInstanceOf[Tuple14[_, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 15 => x.isInstanceOf[Tuple15[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 16 => x.isInstanceOf[Tuple16[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 17 => x.isInstanceOf[Tuple17[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 18 => x.isInstanceOf[Tuple18[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 19 => x.isInstanceOf[Tuple19[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 20 => x.isInstanceOf[Tuple20[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 21 => x.isInstanceOf[Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 22 => x.isInstanceOf[Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case _ => x.isInstanceOf[TupleXXL]
+      case _ =>
+        false
+
+  def isInstanceOfEmptyTuple(x: Any): Boolean = x == EmptyTuple
+
+  def isInstanceOfNonEmptyTuple(x: Any): Boolean =
+    x match
+      case x: Product =>
+        x.productArity match
+          case 1 => x.isInstanceOf[Tuple1[_]]
+          case 2 => x.isInstanceOf[Tuple2[_, _]]
+          case 3 => x.isInstanceOf[Tuple3[_, _, _]]
+          case 4 => x.isInstanceOf[Tuple4[_, _, _, _]]
+          case 5 => x.isInstanceOf[Tuple5[_, _, _, _, _]]
+          case 6 => x.isInstanceOf[Tuple6[_, _, _, _, _, _]]
+          case 7 => x.isInstanceOf[Tuple7[_, _, _, _, _, _, _]]
+          case 8 => x.isInstanceOf[Tuple8[_, _, _, _, _, _, _, _]]
+          case 9 => x.isInstanceOf[Tuple9[_, _, _, _, _, _, _, _, _]]
+          case 10 => x.isInstanceOf[Tuple10[_, _, _, _, _, _, _, _, _, _]]
+          case 11 => x.isInstanceOf[Tuple11[_, _, _, _, _, _, _, _, _, _, _]]
+          case 12 => x.isInstanceOf[Tuple12[_, _, _, _, _, _, _, _, _, _, _, _]]
+          case 13 => x.isInstanceOf[Tuple13[_, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 14 => x.isInstanceOf[Tuple14[_, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 15 => x.isInstanceOf[Tuple15[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 16 => x.isInstanceOf[Tuple16[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 17 => x.isInstanceOf[Tuple17[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 18 => x.isInstanceOf[Tuple18[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 19 => x.isInstanceOf[Tuple19[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 20 => x.isInstanceOf[Tuple20[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 21 => x.isInstanceOf[Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 22 => x.isInstanceOf[Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case _ => x.isInstanceOf[TupleXXL]
+      case _ =>
+        false
 
 }

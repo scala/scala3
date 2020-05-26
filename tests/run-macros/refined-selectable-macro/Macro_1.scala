@@ -65,7 +65,7 @@ object Macro {
       }
     }
     def rec(tpe: Type, seen: Set[String]): List[(String, Type)] = {
-      if tpe =:= defn.UnitType then Nil
+      if tpe =:= defn.EmptyTupleType then Nil
       else tpe match {
         // head *: tail
         case AppliedType(parent, List(head, tail: Type)) if isTupleCons(parent.typeSymbol) =>

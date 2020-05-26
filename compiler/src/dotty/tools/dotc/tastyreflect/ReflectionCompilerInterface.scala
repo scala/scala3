@@ -2005,7 +2005,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Definitions_NothingType: Type = defn.NothingType
   def Definitions_NullType: Type = defn.NullType
   def Definitions_StringType: Type = defn.StringType
-
+  def Definitions_TupleType: Type = defn.TupleTypeRef
+  def Definitions_EmptyTupleType: Type = defn.EmptyTupleModule.termRef
+  def Definitions_NonEmptyTupleType: Type = defn.NonEmptyTupleClass.typeRef
+  def Definitions_TupleConsType: Type = defn.PairClass.typeRef
 
   ///////////////
   // IMPLICITS //

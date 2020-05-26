@@ -305,11 +305,17 @@ object TypeTestsCasts {
          *
          *    expr.isInstanceOf[A | B]  ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
          *    expr.isInstanceOf[A & B]  ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]
+         *    expr.isInstanceOf[Tuple]          ~~>  scala.runtime.Tuple.isInstanceOfTuple(expr)
+         *    expr.isInstanceOf[EmptyTuple]     ~~>  scala.runtime.Tuple.isInstanceOfEmptyTuple(expr)
+         *    expr.isInstanceOf[NonEmptyTuple]  ~~>  scala.runtime.Tuple.isInstanceOfNonEmptyTuple(expr)
+         *    expr.isInstanceOf[*:[_, _]]       ~~>  scala.runtime.Tuple.isInstanceOfNonEmptyTuple(expr)
          *
          *  The transform happens before erasure of `testType`, thus cannot be merged
          *  with `transformIsInstanceOf`, which depends on erased type of `testType`.
          */
         def transformTypeTest(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = testType.dealias match {
+          case tref: TermRef if tref.symbol == defn.EmptyTupleModule =>
+            ref(defn.RuntimeTuple_isInstanceOfEmptyTuple).appliedTo(expr)
           case _: SingletonType =>
             expr.isInstance(testType).withSpan(tree.span)
           case OrType(tp1, tp2) =>
@@ -330,6 +336,12 @@ object TypeTestsCasts {
               derivedTree(e, defn.Any_isInstanceOf, e.tpe)
                 .and(isArrayTest(e))
             }
+          case tref: TypeRef if tref.symbol == defn.TupleClass =>
+            ref(defn.RuntimeTuple_isInstanceOfTuple).appliedTo(expr)
+          case tref: TypeRef if tref.symbol == defn.NonEmptyTupleClass =>
+            ref(defn.RuntimeTuple_isInstanceOfNonEmptyTuple).appliedTo(expr)
+          case AppliedType(tref: TypeRef, _) if tref.symbol == defn.PairClass =>
+            ref(defn.RuntimeTuple_isInstanceOfNonEmptyTuple).appliedTo(expr)
           case _ =>
             transformIsInstanceOf(expr, erasure(testType), flagUnrelated)
         }
