@@ -16,8 +16,9 @@ import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.{MessageRendering, Message, Diagnostic, Reporter}
+import dotty.tools.dotc.reporting.Diagnostic.Error
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.util.{SourceFile, SourcePosition}
+import dotty.tools.dotc.util.{SourceFile, SourcePosition, NoSourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.io._
 import org.jline.reader._
@@ -54,8 +55,7 @@ case class State(objectIndex: Int,
  *
  * @param out where regular output (eg. "define trait Foo") is printed
  * @param errorReporter if set, this reporter is passed to the parser and typer. Otherwise,
- *        the warnings and errors are printed to `out` as well. Note, however, that REPL errors
- *        (eg. ":load" cannot find the file) are not reported with this reporter
+ *        the warnings and errors are printed to `out` as well.
  */
 class ReplDriver(settings: Array[String],
                  out: PrintStream = Console.out,
@@ -348,11 +348,11 @@ class ReplDriver(settings: Array[String],
   /** Interpret `cmd` to action and propagate potentially new `state` */
   private def interpretCommand(cmd: Command)(implicit state: State): State = cmd match {
     case UnknownCommand(cmd) =>
-      out.println(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
+      reportError(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
       state
 
     case AmbiguousCommand(cmd, matching) =>
-      out.println(s""""$cmd" matches ${matching.mkString(", ")}. Try typing a few more characters. Run ":help" for a list of commands""")
+      reportError(s""""$cmd" matches ${matching.mkString(", ")}. Try typing a few more characters. Run ":help" for a list of commands""")
       state
 
     case Help =>
@@ -377,7 +377,7 @@ class ReplDriver(settings: Array[String],
         run(contents)
       }
       else {
-        out.println(s"""Couldn't find file "${file.getCanonicalPath}"""")
+        reportError(s"""Couldn't find file "${file.getCanonicalPath}"""")
         state
       }
 
@@ -398,6 +398,17 @@ class ReplDriver(settings: Array[String],
     case Quit =>
       // end of the world!
       state
+  }
+
+  /** reports an error message and prints all buffered messages immediately */
+  private def reportError(msg: String)(implicit state: State): Unit = {
+    implicit val ctx: Context = state.context
+    val reporter = newReporter
+    reporter.report(new Error(msg, NoSourcePosition))
+    // in the default case, the reporter stores messages and removing
+    // them returns all messages. a custom reporter might not store them
+    // and therefore, removing them won't return anything to print
+    reporter.removeBufferedMessages.foreach(m => out.println(m.msg))
   }
 
   /** shows all errors nicely formatted */

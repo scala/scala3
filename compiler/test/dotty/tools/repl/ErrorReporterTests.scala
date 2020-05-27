@@ -21,6 +21,11 @@ class ErrorReporterTests:
     assertEquals("", output)
     assertEquals(List("Illegal start of statement", "unclosed string literal"), errors.map(_.msg.message))
 
+  @Test def testReplError =
+    val (output, errors) = eval(":load /home/rethab/nope/foo.scala")
+    assertEquals("", output)
+    assertEquals(List("Couldn't find file \"/home/rethab/nope/foo.scala\""), errors.map(_.msg.message))
+
   @Test def testWarning =
     val (output, errors) = eval("Option(42) match { case Some(x) => println(x) } ")
     assertEquals("42", output)
