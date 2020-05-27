@@ -1169,9 +1169,9 @@ trait Implicits { self: Typer =>
         if (level1 < level2) return false
         val sym1 = cand1.ref.symbol
         val sym2 = cand2.ref.symbol
-        val ownerScore = compareOwner(sym1.maybeOwner, sym2.maybeOwner)
-        if (ownerScore > 0) return true
-        if (ownerScore < 0) return false
+        // val ownerScore = compareOwner(sym1.maybeOwner, sym2.maybeOwner)
+        // if (ownerScore > 0) return true
+        // if (ownerScore < 0) return false
         val arity1 = sym1.info.firstParamTypes.length
         val arity2 = sym2.info.firstParamTypes.length
         if (arity1 < arity2) return true
