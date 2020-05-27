@@ -53,7 +53,7 @@ case class State(objectIndex: Int,
 /** Main REPL instance, orchestrating input, compilation and presentation.
  *
  * @param out where regular output (eg. "define trait Foo") is printed
- * @param errorReporter if set, this is reporter is passed to the parser and typer. Otherwise,
+ * @param errorReporter if set, this reporter is passed to the parser and typer. Otherwise,
  *        the warnings and errors are printed to `out` as well. Note, however, that REPL errors
  *        (eg. ":load" cannot find the file) are not reported with this reporter
  */
