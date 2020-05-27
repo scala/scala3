@@ -2,7 +2,7 @@ import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.compiletime.summonInline
 
-// Simulation of an alternative typeclass derivation scheme proposed in #6153
+// Simulation of an alternative type class derivation scheme proposed in #6153
 
 // -- Classes and Objects of the Derivation Framework ----------------------------------
 
@@ -189,11 +189,11 @@ object Right extends Generic.Product[Right[_]] {
 
 // -- Type classes ------------------------------------------------------------
 
-// Everything here is hand-written by the authors of the derivable typeclasses
+// Everything here is hand-written by the authors of the derivable type classes
 // The same schema is used throughout.
 //
-//  - A typeclass implements an inline `derived` method, given a `Generic` instance.
-//  - Each implemented typeclass operation `xyz` calls 4 inline helper methods:
+//  - A type class implements an inline `derived` method, given a `Generic` instance.
+//  - Each implemented type class operation `xyz` calls 4 inline helper methods:
 //      1. `xyzCases` for sums,
 //      2. `xyzProduct` for products,
 //      3. `xyzElems` stepping through the elements of a product,
@@ -203,7 +203,7 @@ object Right extends Generic.Product[Right[_]] {
 //    the second parameter list contains parameters that show up in the
 //    generated code. (This is done just to make things clearer).
 
-// Equality typeclass
+// Equality type class
 trait Eq[T] {
   def eql(x: T, y: T): Boolean
 }
@@ -253,7 +253,7 @@ object Eq {
   }
 }
 
-// Pickling typeclass
+// Pickling type class
 trait Pickler[T] {
   def pickle(buf: mutable.ListBuffer[Int], x: T): Unit
   def unpickle(buf: mutable.ListBuffer[Int]): T

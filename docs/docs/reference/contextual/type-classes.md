@@ -1,18 +1,18 @@
 ---
 layout: doc-page
-title: "Implementing Typeclasses"
+title: "Implementing Type classes"
 ---
 
-A _typeclass_ is an abstract, parameterized type that lets you add new behavior to any closed data type without using sub-typing. This can be useful in multiple use-cases, for example:
+A _type class_ is an abstract, parameterized type that lets you add new behavior to any closed data type without using sub-typing. This can be useful in multiple use-cases, for example:
 * expressing how a type you don't own (from the standard or 3rd-party library) conforms to such behavior
 * expressing such a behavior for multiple types without involving sub-typing relationships (one `extends` another) between those types (see: [ad hoc polymorphism](https://en.wikipedia.org/wiki/Ad_hoc_polymorphism) for instance) 
 
-Therefore in Scala 3, _typeclasses_ are just _traits_ with one or more parameters whose implementations are not defined through the `extends` keyword, but by **given instances**. 
-Here are some examples of usual typeclasses:
+Therefore in Scala 3, _type classes_ are just _traits_ with one or more parameters whose implementations are not defined through the `extends` keyword, but by **given instances**. 
+Here are some examples of usual type classes:
 
 ### Semigroups and monoids:
 
-Here's the `Monoid` typeclass definition:
+Here's the `Monoid` type class definition:
 
 ```scala
 trait SemiGroup[T] {
@@ -24,7 +24,7 @@ trait Monoid[T] extends SemiGroup[T] {
 }
 ```
 
-An implementation of this `Monoid` typeclass for the type `String` can be the following: 
+An implementation of this `Monoid` type class for the type `String` can be the following: 
 
 ```scala
 given Monoid[String] {
@@ -94,7 +94,7 @@ trait Functor[F[?]] {
 }
 ```
 
-Which could read as follows: "A `Functor` for the type constructor `F[?]` represents the ability to transform `F[A]` to `F[B]` through the application of the `mapper` function whose type is `A => B`". We call the `Functor` definition here a _typeclass_.
+Which could read as follows: "A `Functor` for the type constructor `F[?]` represents the ability to transform `F[A]` to `F[B]` through the application of the `mapper` function whose type is `A => B`". We call the `Functor` definition here a _type class_.
 This way, we could define an instance of `Functor` for the `List` type: 
 
 ```scala
@@ -119,7 +119,7 @@ assertTransformation(List("a1", "b1"), List("a", "b"), elt => s"${elt}1")
 ```
 
 That's a first step, but in practice we probably would like the `map` function to be a method directly accessible on the type `F`. So that we can call `map` directly on instances of `F`, and get rid of the `summon[Functor[F]]` part.
-As in the previous example of Monoids, [`extension` methods](extension-methods.html) help achieving that. Let's re-define the `Functor` _typeclass_ with extension methods.
+As in the previous example of Monoids, [`extension` methods](extension-methods.html) help achieving that. Let's re-define the `Functor` _type class_ with extension methods.
 
 ```scala
 trait Functor[F[?]] {
@@ -271,8 +271,8 @@ given readerMonad[Ctx] as Monad[[X] =>> Ctx => X] {
 
 ### Summary
 
-The definition of a _typeclass_ is expressed via a parameterised type with abstract members, such as a `trait`.
-The main difference between object oriented polymorphism, and ad-hoc polymorphism with _typeclasses_, is how the definition of the _typeclass_ is implemented, in relation to the type it acts upon.
-In the case of a _typeclass_, its implementation for a concrete type is expressed through a `given` term definition, which is supplied as an implicit argument alongside the value it acts upon. With object oriented polymorphism, the implementation is mixed into the parents of a class, and only a single term is required to perform a polymorphic operation.
+The definition of a _type class_ is expressed via a parameterised type with abstract members, such as a `trait`.
+The main difference between object oriented polymorphism, and ad-hoc polymorphism with _type classes_, is how the definition of the _type class_ is implemented, in relation to the type it acts upon.
+In the case of a _type class_, its implementation for a concrete type is expressed through a `given` term definition, which is supplied as an implicit argument alongside the value it acts upon. With object oriented polymorphism, the implementation is mixed into the parents of a class, and only a single term is required to perform a polymorphic operation.
 
-To conclude, in addition to given instances, other constructs like extension methods, context bounds and type lambdas allow a concise and natural expression of _typeclasses_.
+To conclude, in addition to given instances, other constructs like extension methods, context bounds and type lambdas allow a concise and natural expression of _type classes_.

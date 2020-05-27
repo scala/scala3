@@ -1,6 +1,6 @@
 package scala.quoted
 
-/** A typeclass for types that can be turned from a `quoted.Expr[T]` to a `T` */
+/** A type class for types that can be turned from a `quoted.Expr[T]` to a `T` */
 trait Unliftable[T] {
 
   /** Return the value of the expression.

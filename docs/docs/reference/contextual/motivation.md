@@ -10,7 +10,7 @@ Scala's implicits are its most distinguished feature. They are _the_ fundamental
 Following Haskell, Scala was the second popular language to have some form of implicits. Other languages have followed suit. E.g Rust's traits or Swift's protocol extensions. Design proposals are also on the table for Kotlin as [compile time dependency resolution](https://github.com/Kotlin/KEEP/blob/e863b25f8b3f2e9b9aaac361c6ee52be31453ee0/proposals/compile-time-dependency-resolution.md), for C# as [Shapes and Extensions](https://github.com/dotnet/csharplang/issues/164)
 or for F# as [Traits](https://github.com/MattWindsor91/visualfsharp/blob/hackathon-vs/examples/fsconcepts.md). Implicits are also a common feature of theorem provers such as Coq or Agda.
 
-Even though these designs use widely different terminology, they are all variants of the core idea of _term inference_. Given a type, the compiler synthesizes a "canonical" term that has that type. Scala embodies the idea in a purer form than most other languages: An implicit parameter directly leads to an inferred argument term that could also be written down explicitly. By contrast, typeclass based designs are less direct since they hide term inference behind some form of type classification and do not offer the option of writing the inferred quantities (typically, dictionaries) explicitly.
+Even though these designs use widely different terminology, they are all variants of the core idea of _term inference_. Given a type, the compiler synthesizes a "canonical" term that has that type. Scala embodies the idea in a purer form than most other languages: An implicit parameter directly leads to an inferred argument term that could also be written down explicitly. By contrast, type class based designs are less direct since they hide term inference behind some form of type classification and do not offer the option of writing the inferred quantities (typically, dictionaries) explicitly.
 
 Given that term inference is where the industry is heading, and given that Scala has it in a very pure form, how come implicits are not more popular? In fact, it's fair to say that implicits are at the same time Scala's most distinguished and most controversial feature. I believe this is due to a number of aspects that together make implicits harder to learn than necessary and also make it harder to prevent abuses.
 
@@ -27,7 +27,7 @@ Particular criticisms are:
 
  2. Another widespread abuse is over-reliance on implicit imports. This often leads to inscrutable type errors that go away with the right import incantation, leaving a feeling of frustration. Conversely, it is hard to see what implicits a program uses since implicits can hide anywhere in a long list of imports.
 
- 3. The syntax of implicit definitions is too minimal. It consists of a single modifier, `implicit`, that can be attached to a large number of language constructs. A problem with this for newcomers is that it conveys mechanism instead of intent. For instance, a typeclass instance is an implicit object or val if unconditional and an implicit def with implicit parameters referring to some class if conditional. This describes precisely what the implicit definitions translate to -- just drop the `implicit` modifier, and that's it! But the cues that define intent are rather indirect and can be easily misread, as demonstrated by the definitions of `i1` and `i2` above.
+ 3. The syntax of implicit definitions is too minimal. It consists of a single modifier, `implicit`, that can be attached to a large number of language constructs. A problem with this for newcomers is that it conveys mechanism instead of intent. For instance, a type class instance is an implicit object or val if unconditional and an implicit def with implicit parameters referring to some class if conditional. This describes precisely what the implicit definitions translate to -- just drop the `implicit` modifier, and that's it! But the cues that define intent are rather indirect and can be easily misread, as demonstrated by the definitions of `i1` and `i2` above.
 
  4. The syntax of implicit parameters also has shortcomings. While implicit _parameters_ are designated specifically, arguments are not. Passing an argument to an implicit parameter looks like a regular application `f(arg)`. This is problematic because it means there can be confusion regarding what parameter gets instantiated in a call. For instance, in
     ```scala
@@ -59,10 +59,10 @@ The following pages introduce a redesign of contextual abstractions in Scala. Th
 This section also contains pages describing other language features that are related to context abstraction. These are:
 
  - [Context Bounds](./context-bounds.md), which carry over unchanged.
- - [Extension Methods](./extension-methods.md) replace implicit classes in a way that integrates better with typeclasses.
- - [Implementing Typeclasses](./typeclasses.md) demonstrates how some common typeclasses can be implemented using the new constructs.
- - [Typeclass Derivation](./derivation.md) introduces constructs to automatically derive typeclass instances for ADTs.
- - [Multiversal Equality](./multiversal-equality.md) introduces a special typeclass to support type safe equality.
+ - [Extension Methods](./extension-methods.md) replace implicit classes in a way that integrates better with type classes.
+ - [Implementing Type classes](type-classes.md) demonstrates how some common type classes can be implemented using the new constructs.
+ - [Type class Derivation](./derivation.md) introduces constructs to automatically derive type class instances for ADTs.
+ - [Multiversal Equality](./multiversal-equality.md) introduces a special type class to support type safe equality.
  - [Context Functions](./context-functions.md) provide a way to abstract over context parameters.
  - [By-Name Context Parameters](./by-name-context-parameters.md) are an essential tool to define recursive synthesized values without looping.
  - [Relationship with Scala 2 Implicits](./relationship-implicits.md) discusses the relationship between old-style implicits and new-style givens and how to migrate from one to the other.

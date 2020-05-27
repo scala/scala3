@@ -25,7 +25,7 @@ object datatypes {
 }
 
 object typeclasses {
-  // A typeclass
+  // A type class
   trait Eq[T] {
     def eql(x: T, y: T): Boolean
   }
@@ -79,7 +79,7 @@ object typeclasses {
     }
   }
 
-  // Another typeclass
+  // Another type class
   trait Pickler[T] {
     def pickle(buf: mutable.ListBuffer[Int], x: T): Unit
     def unpickle(buf: mutable.ListBuffer[Int]): T
@@ -177,7 +177,7 @@ object typeclasses {
     }
   }
 
-  // A third typeclass, making use of labels
+  // A third type class, making use of labels
   trait Show[T] {
     def show(x: T): String
   }

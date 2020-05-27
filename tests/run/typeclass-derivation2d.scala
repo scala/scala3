@@ -1,7 +1,7 @@
 import scala.collection.mutable
 import scala.annotation.tailrec
 
-// Simulation of an alternative typeclass derivation scheme
+// Simulation of an alternative type class derivation scheme
 
 // -- Classes and Objects of the Derivation Framework ----------------------------------
 
@@ -190,7 +190,7 @@ object Right extends Mirror.Product {
   } = this.asInstanceOf
 }
 
-// --------------- Equality typeclass ---------------------------------
+// --------------- Equality type class ---------------------------------
 
 trait Eq[T] {
   def eql(x: T, y: T): Boolean
@@ -241,7 +241,7 @@ object Eq {
   }
 }
 
-// ----------- Another typeclass -----------------------------------
+// ----------- Another type class -----------------------------------
 
 trait Pickler[T] {
   def pickle(buf: mutable.ListBuffer[Int], x: T): Unit
@@ -336,7 +336,7 @@ object Pickler {
   }
 }
 
-// ----------- A third typeclass, making use of labels --------------------------
+// ----------- A third type class, making use of labels --------------------------
 
 trait Show[T] {
   def show(x: T): String

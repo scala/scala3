@@ -27,7 +27,7 @@ object Test extends App {
   def tf0[T](using e: Exp[T]): T =
     e.add(e.lit(8), e.neg(e.add(e.lit(1), e.lit(2))))
 
-  // Typeclass-style Exp syntax
+  // Type class style Exp syntax
   object ExpSyntax {
     def lit[T](i: Int)    (using e: Exp[T]): T = e.lit(i)
     def neg[T](t: T)      (using e: Exp[T]): T = e.neg(t)
@@ -39,7 +39,7 @@ object Test extends App {
   def tf1[T](using Exp[T]): T =
     add(lit(8), neg(add(lit(1), lit(2))))
 
-  // Base operations as typeclasses
+  // Base operations as type classes
   given Exp[Int] {
     def lit(i: Int): Int = i
     def neg(t: Int): Int = -t
@@ -243,7 +243,7 @@ object Test extends App {
     case Add(l, r) => e.add(finalize[T](l), finalize[T](r))
   }
 
-  // Abstracting over multiple typeclasses
+  // Abstracting over multiple type classes
   type Ring[T] = Exp[T] ?=> Mult[T] ?=> T
 
   def tfm1a[T]: Ring[T] = add(lit(7), neg(mul(lit(1), lit(2))))

@@ -1,7 +1,7 @@
 import scala.collection.mutable
 import scala.annotation.tailrec
 
-// A typeclass derivation encoding using Shape/Shaped scheme, now superseded by
+// A type class derivation encoding using Shape/Shaped scheme, now superseded by
 // typeclass-derivation2a
 object TypeLevel {
   /** @param caseLabels The case and element labels of the described ADT as encoded strings.
@@ -109,7 +109,7 @@ object TypeLevel {
     case Case[T, Elems <: Tuple]()
   }
 
-  /** Every generic derivation starts with a typeclass instance of this type.
+  /** Every generic derivation starts with a type class instance of this type.
    *  It informs that type `T` has shape `S` and also implements runtime reflection on `T`.
    */
   abstract class Shaped[T, S <: Shape] extends Reflected[T]
@@ -218,7 +218,7 @@ object Either {
   implicit def derived$Show[L: Show, R: Show]: Show[Either[L, R]] = Show.derived
 }
 
-// A typeclass
+// A type class
 trait Eq[T] {
   def eql(x: T, y: T): Boolean
 }
@@ -274,7 +274,7 @@ object Eq {
   }
 }
 
-// Another typeclass
+// Another type class
 trait Pickler[T] {
   def pickle(buf: mutable.ListBuffer[Int], x: T): Unit
   def unpickle(buf: mutable.ListBuffer[Int]): T
@@ -368,7 +368,7 @@ object Pickler {
   }
 }
 
-// A third typeclass, making use of labels
+// A third type class, making use of labels
 trait Show[T] {
   def show(x: T): String
 }

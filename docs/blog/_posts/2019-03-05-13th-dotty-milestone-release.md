@@ -107,7 +107,7 @@ communicated more clearly syntactically. Furthermore, the `implicit` keyword is
 ascribed too many overloaded meanings in the language (implicit vals, defs,
 objects, parameters). For instance, a newcomer can easily confuse the two
 examples above, although they demonstrate completely different things, a
-typeclass instance is an implicit object or val if unconditional and an implicit
+type class instance is an implicit object or val if unconditional and an implicit
 def with implicit parameters if conditional; arguably all of them are
 surprisingly similar (syntactically). Another consideration is that the
 `implicit` keyword annotates a whole parameter section instead of a single
@@ -231,8 +231,8 @@ PR chain that originated from
 implicits are summarized in
 [#5825](https://github.com/lampepfl/dotty/pull/5825).
 
-This release offers the support for _typeclass derivation_ as a language
-feature. Typeclass derivation is a way to generate instances of certain type
+This release offers the support for _type class derivation_ as a language
+feature. Type class derivation is a way to generate instances of certain type
 classes automatically or with minimal code hints, and is now supported natively
 with *dedicated language support*. A type class in this sense is any trait or
 class with a type parameter that describes the type being operated on. Commonly
@@ -267,7 +267,7 @@ which replaces:
 A extends B with C { ... }
 ```
 
-With typeclass derivation we can also derive types. A trait or class can appear
+With type class derivation we can also derive types. A trait or class can appear
 in a derives clause if its companion object defines a method named `derived`.
 The type and implementation of a `derived` method are arbitrary, but typically
 it has a definition like this:
@@ -276,7 +276,7 @@ it has a definition like this:
 def derived[T] given Generic[T] = ...
 ```
 
-**You can read more about** [Typeclass
+**You can read more about** [Type class
 Derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) or
 have a deep dive at the relevant PRs:
 [#5540](https://github.com/lampepfl/dotty/pull/5540) and
@@ -291,7 +291,7 @@ provide a derived implicit instance:
 implied for Eql[Int, String] = Eql.derived
 ```
 
-**You can read more about** how we based multiversal equality on typeclass derivation through
+**You can read more about** how we based multiversal equality on type class derivation through
 the relevant PR [#5843](https://github.com/lampepfl/dotty/pull/5843).
 
 _Implicit conversions_ are now defined by implied instances of the

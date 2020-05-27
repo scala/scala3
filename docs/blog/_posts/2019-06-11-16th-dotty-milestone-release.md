@@ -194,14 +194,14 @@ import delegate Delegates.{for Ordering[_], ExecutionContext}
 would import the `intOrd`, `listOrd`, and `ec` instances but leave out the `im`
 instance, since it fits none of the specified bounds.
 
-## New typeclass derivation scheme
+## New type class derivation scheme
 
 Summary of measured differences with the old scheme:
 
 - About 100 lines more compiler code - the rest of the lines changed diff is
 tests.
-- About 13-15% more code generated for typeclass instances
-- About 3-4% slower to compile typeclass instances
+- About 13-15% more code generated for type class instances
+- About 3-4% slower to compile type class instances
 
 Advantages of new scheme:
 

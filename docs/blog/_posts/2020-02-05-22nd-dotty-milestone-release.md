@@ -58,7 +58,7 @@ This syntax is a completely separate one from the `given` syntax and hence is ai
 For the discussion, see [PR #7917](https://github.com/lampepfl/dotty/pull/7917). For more information on how to use extension methods in general and collective extension methods in particular, see the [documentation](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html).
 
 # Kind projector syntax support
-[Kind projector](https://github.com/typelevel/kind-projector) is a popular compiler plugin for Scala 2. It is especially useful in the context of purely functional programming and typeclass derivation – everywhere where you need to work extensively with types.
+[Kind projector](https://github.com/typelevel/kind-projector) is a popular compiler plugin for Scala 2. It is especially useful in the context of purely functional programming and type class derivation – everywhere where you need to work extensively with types.
 
 As of this release, a subset of the kind projector syntax is now supported in Dotty. Credits for this contribution go to [Travis Brown](https://github.com/travisbrown).
 
