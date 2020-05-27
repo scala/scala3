@@ -9,6 +9,7 @@ import dotty.tools.tasty.TastyBuffer._
 import ast.Trees._
 import ast.{untpd, tpd}
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, Flags._
+import Denotations.MultiDenotation
 import typer.Inliner
 import NameKinds._
 import StdNames.nme
@@ -381,10 +382,20 @@ class TreePickler(pickler: TastyPickler) {
                 pickleType(tp)
               }
             case _ =>
-              writeByte(if (name.isTypeName) SELECTtpt else SELECT)
               val sig = tree.tpe.signature
-              pickleNameAndSig(name, sig)
-              pickleTree(qual)
+              qual.tpe.nonPrivateMember(name).atSignature(sig) match
+                case d: MultiDenotation =>
+                  assert(tree.symbol.isTerm)
+                  writeByte(SELECTin)
+                  withLength {
+                    pickleNameAndSig(name, tree.symbol.signature)
+                    pickleTree(qual)
+                    pickleType(tree.symbol.owner.typeRef)
+                  }
+                case _ =>
+                  writeByte(if (name.isTypeName) SELECTtpt else SELECT)
+                  pickleNameAndSig(name, sig)
+                  pickleTree(qual)
           }
         case Apply(fun, args) =>
           if (fun.symbol eq defn.throwMethod) {

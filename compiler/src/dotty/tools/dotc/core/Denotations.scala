@@ -407,7 +407,7 @@ object Denotations {
       }
 
       /** Try to merge single-denotations. */
-      def mergeSingleDenot(denot1: SingleDenotation, denot2: SingleDenotation): SingleDenotation = {
+      def mergeSingleDenot(denot1: SingleDenotation, denot2: SingleDenotation): Denotation = {
         val info1 = denot1.info
         val info2 = denot2.info
         val sym1 = denot1.symbol
@@ -465,9 +465,10 @@ object Denotations {
           preferSym(sym1, sym2) &&
           info1.overrides(info2, sym1.matchNullaryLoosely || sym2.matchNullaryLoosely, checkClassInfo = false)
 
-        def handleDoubleDef =
+        def handleDoubleDef: Denotation =
           if (preferSym(sym1, sym2)) denot1
           else if (preferSym(sym2, sym1)) denot2
+          else if sym1.exists then MultiDenotation(denot1, denot2)
           else doubleDefError(denot1, denot2, pre)
 
         if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2

@@ -75,6 +75,7 @@ Standard-Section: "ASTs" TopLevelStat*
   Term          = Path                                                             -- Paths represent both types and terms
                   IDENT                 NameRef Type                               -- Used when term ident’s type is not a TermRef
                   SELECT                possiblySigned_NameRef qual_Term           -- qual.name
+                  SELECTin       Length possiblySigned_NameRef qual_Term owner_Type -- qual.name, referring to a symbol declared in owner that has the given signature
                   QUALTHIS              typeIdent_Tree                             -- id.this, different from THIS in that it contains a qualifier ident with position.
                   NEW                   clsType_Term                               -- new cls
                   THROW                 throwableExpr_Term                         -- throw throwableExpr
@@ -452,6 +453,7 @@ object TastyFormat {
   final val ANNOTATION = 173
   final val TERMREFin = 174
   final val TYPEREFin = 175
+  final val SELECTin = 176
 
   final val METHODtype = 180
 
@@ -646,6 +648,7 @@ object TastyFormat {
     case SUPERtype => "SUPERtype"
     case TERMREFin => "TERMREFin"
     case TYPEREFin => "TYPEREFin"
+    case SELECTin => "SELECTin"
 
     case REFINEDtype => "REFINEDtype"
     case REFINEDtpt => "REFINEDtpt"
@@ -675,7 +678,7 @@ object TastyFormat {
    */
   def numRefs(tag: Int): Int = tag match {
     case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
-         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | HOLE => 1
+         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | SELECTin | HOLE => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | TYPELAMBDAtype | METHODtype => -1
     case _ => 0
