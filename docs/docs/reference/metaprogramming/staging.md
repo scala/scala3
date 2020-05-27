@@ -7,7 +7,7 @@ The framework expresses at the same time compile-time meta-programming and
 multi-stage programming. We can think of compile-time meta-programming as a
 two stage compilation process: one that we write the code in top-level splices,
 that will be used for code generation (macros) and one that will perform all
-necessecary evaluations at compile-time and an object program that we will run
+necessary evaluations at compile-time and an object program that we will run
 as usual. What if we could synthesize code at run-time and offer one extra stage
 to the programmer? Then we can have a value of type `Expr[T]` at run-time that we
 can essentially treat as a typed-syntax tree that we can either _show_ as a

@@ -42,7 +42,7 @@ These constructs replace existing constructs with the aim of making the language
  provide a simple and general way to express aggregation, which can replace the
  previous facade pattern of package objects inheriting from classes.
  - [Vararg patterns](changed-features/vararg-patterns.md) now use the form `: _*` instead of `@ _*`, mirroring vararg expressions,
- - [Creator applications](other-new-features/creator-applications.md) allow to use simple function call syntax
+ - [Creator applications](other-new-features/creator-applications.md) allow using simple function call syntax
  instead of `new` expressions. `new` expressions stay around as a fallback for
  the cases where creator applications cannot be used.
 

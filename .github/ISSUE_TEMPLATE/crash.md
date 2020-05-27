@@ -1,6 +1,6 @@
 ---
 name: "\U0001F4A5 Crash report"
-about: Report a Dotty Compiler compiler crash
+about: Report a Dotty compiler crash
 title: ''
 labels: itype:bug, itype:crash
 assignees: ''

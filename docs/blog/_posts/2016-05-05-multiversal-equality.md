@@ -18,7 +18,7 @@ For instance, one might want to introduce a proxy for some data structure so tha
 
 ## Where Are We Today?
 
-The problems of universal equality in Scala are of course well known. Some libraries have tried to fix it by adding another equality operator with more restricted typing. Most often this safer equality is written `===`. While `===` is certainly useful, I am not a fan of adding another equality operator to the language and core libraries. It would be much better if we could fix `==` instead. This would be both simpler and would catch all potential equality problems including those related to pattern matching.
+The problems of universal equality in Scala are of course well-known. Some libraries have tried to fix it by adding another equality operator with more restricted typing. Most often this safer equality is written `===`. While `===` is certainly useful, I am not a fan of adding another equality operator to the language and core libraries. It would be much better if we could fix `==` instead. This would be both simpler and would catch all potential equality problems including those related to pattern matching.
 
 How can `==` be fixed? It looks much harder to do this than adding an alternate equality operator. First, we have to keep backwards compatibility. The ability to compare everything to everything is by now baked into lots of code and libraries.  Second, with just one equality operator we need to make this operator work in all cases where it makes sense. An alternative `===` operator can choose to refuse some comparisons that should be valid because there's always `==` to fall back to. With a unique `==` operator we do not have this luxury.
 

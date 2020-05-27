@@ -4,7 +4,7 @@
 - Abstract platform operations
   - Arrays
 - Proxies
-  - Enviroment of the object
+  - Environment of the object
   - `this` in Env
   - Class with fields
   - Class with custom constructor (and secondary)

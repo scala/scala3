@@ -41,7 +41,7 @@ Note that after the first stage of the release cycle (see "Publishing artifacts 
 - `<stable-version>` *tag* of the stable version being released
 - `<rc-version>` *tag* of the RC version being released
 
-However you may end up with as many as 6 tasks being run. The auxiliary tasks may include:
+However, you may end up with as many as 6 tasks being run. The auxiliary tasks may include:
 
 - *commit* tests of the *tags* specified above. You may have two of these, corresponding to the two tags. You should see them appearing to have the same commit hash in the CI, but one of them will have the tag next to it and the other one will not. The *tag* one must remain, as the CI tasks on tags publish to maven. CI tasks on commits do not. So it is safe to cancel the task running on the commit, if the commit hash is the same as that of the tag's task commit.
 - Older commit from the `master` branch. Look for all the tasks run on the `master` branch in the CI and see if there are more than one of these. Then, find the one testing the most recent commit of the branch. The others can safely be canceled.

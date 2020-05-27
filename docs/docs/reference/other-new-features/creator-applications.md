@@ -3,7 +3,7 @@ layout: doc-page
 title: "Creator Applications"
 ---
 
-Creator applications allow to use simple function call syntax to create instances
+Creator applications allow using simple function call syntax to create instances
 of a class, even if there is no apply method implemented. Example:
 ```scala
 class StringBuilder(s: String) {

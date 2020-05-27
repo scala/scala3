@@ -63,7 +63,7 @@ For more details also follow the [Migrating the Ecosystem](https://www.scala-lan
 
 Firstly thank you for all the hard work in issue reporting! Being feature complete means that our
 issue tracker will now be more important than ever. We encourage you to stress
-the compiler and report self contained test-cases! Bug minimization is hard and
+the compiler and report self-contained test-cases! Bug minimization is hard and
 an art form! Help us unearth those nasty bugs! ✊
 
 Last but not least we restate the mission of Scala 3. Scala has pioneered the
