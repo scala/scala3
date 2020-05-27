@@ -391,7 +391,7 @@ This means that code for generic type classes has to ensure that type exploratio
 lockstep and it has to assert this conformance in some places using casts. If generic type classes are correctly
 written these casts will never fail.
 
-As mentioned, however, the compiler-provided mechansim is intentionally very low level and it is anticipated that
+As mentioned, however, the compiler-provided mechanism is intentionally very low level and it is anticipated that
 higher level type class derivation and generic programming libraries will build on this and Dotty's other
 metaprogramming facilities to hide these low-level details from type class authors and general users. Type class
 derivation in the style of both shapeless and Magnolia are possible (a prototype of shapeless 3, which combines

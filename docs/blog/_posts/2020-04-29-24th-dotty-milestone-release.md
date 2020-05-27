@@ -6,7 +6,7 @@ authorImg: /images/anatolii.png
 date: 2020-04-29
 ---
 
-Hello! We are excited to announce 0.24.0-RC1 of Dotty. In this version, we have updated the standard library to 2.13.2. Also, we have made some work to make error messages more user friendly and a bunch of other polishings to the language.
+Hello! We are excited to announce 0.24.0-RC1 of Dotty. In this version, we have updated the standard library to 2.13.2. Also, we have made some work to make error messages more user-friendly and a bunch of other polishings to the language.
 
 You can try out this version right now, from the comfort of your SBT, by visiting the [home page](https://dotty.epfl.ch/) and scrolling down to the "Create a Dotty Project" section.
 

@@ -154,7 +154,7 @@ Applying the `List.map` ability with the following mapping function as parameter
 
 Now, applying the `List.map` ability with the following mapping function as parameter: `mapping: A => List[B]` would result in a `List[List[B]]`.  
 
-To avoid avoid managing lists of lists, we may want to "flatten" the values in a single list.
+To avoid managing lists of lists, we may want to "flatten" the values in a single list.
 
 That's where `Monad` enters the party. A `Monad` for type `F[?]` is a `Functor[F]` with 2 more abilities: 
 * the flatten ability we just described: turning `F[A]` to `F[B]` when given a `mapping: A => F[B]` function

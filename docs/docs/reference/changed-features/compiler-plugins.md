@@ -33,7 +33,7 @@ dotc -Xplugin:pluginA.jar -Xplugin:pluginB.jar Test.scala
 
 The compiler will examine the jar provided, and look for a property file named
 `plugin.properties` in the root directory of the jar. The property file specifies
-the fully qualified plugin class name. The format of a property file is as follow:
+the fully qualified plugin class name. The format of a property file is as follows:
 
 ```properties
 pluginClass=dividezero.DivideZero
@@ -99,7 +99,7 @@ the `PluginPhase` trait. In order to specify when the phase is executed, we also
 need to specify a `runsBefore` and `runsAfter` constraints that are list of phase
 names.
 
-We can now transform trees by by overriding methods like `transformXXX`.
+We can now transform trees by overriding methods like `transformXXX`.
 
 ## Writing a Research Compiler Plugin
 
