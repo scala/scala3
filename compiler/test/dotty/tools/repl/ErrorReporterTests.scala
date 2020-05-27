@@ -31,6 +31,11 @@ class ErrorReporterTests:
     assertEquals("42", output)
     assertEquals(List("match may not be exhaustive.\n\nIt would fail on pattern case: None"), errors.map(_.msg.message))
 
+  @Test def tabCompletionError =
+    val (completions, errors) = evalCompletions("List.r")
+    assertEquals(List("range"), completions)
+    assertEquals(List.empty, errors)
+
   private def eval(code: String): (String, List[Diagnostic]) =
     var errors: List[Diagnostic] = List.empty
     val reporter = new Reporter {
@@ -44,3 +49,24 @@ class ErrorReporterTests:
       driver.storedOutput().trim
     }
     (output, errors)
+
+  private def evalCompletions(code: String): (List[String], List[Diagnostic]) =
+    var errors: List[Diagnostic] = List.empty
+    val reporter = new Reporter {
+      override def doReport(dia: Diagnostic)(implicit ctx: Context): Unit =
+        errors = dia :: errors
+    }
+
+    val driver: ReplTest & RunCompletions = new ReplTest(errorReporter = Some(() => reporter)) with RunCompletions {
+      def runCompletions(src: String)(implicit state: State): List[String] =
+        completions(src.length, src, state).map(_.value).sorted
+    }
+    val cs = driver.fromInitialState { implicit s =>
+      driver.runCompletions(code)
+    }
+    (cs, errors)
+
+  // make protected method `completions` accessible
+  trait RunCompletions {
+    def runCompletions(src: String)(implicit state: State): List[String]
+  }
