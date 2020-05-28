@@ -2,7 +2,7 @@
 layout: doc-page
 title: "Changes in Implicit Resolution"
 ---
-
+This page describes changes to the implicit resolution that apply both to the new `given`s and to the old-style `implicit`s in Dotty.
 Implicit resolution uses a new algorithm which caches implicit results
 more aggressively for performance. There are also some changes that
 affect implicits on the language level.
@@ -39,7 +39,7 @@ affect implicits on the language level.
     due to _shadowing_ (where an implicit is hidden by a nested definition)
     no longer applies.
 
- 3. Package prefixes no longer contribute to the implicit scope of a type.
+ 3. Package prefixes no longer contribute to the implicit search scope of a type.
     Example:
     ```scala
     package p
@@ -52,7 +52,7 @@ affect implicits on the language level.
     ```
     Both `a` and `b` are visible as implicits at the point of the definition
     of `type C`. However, a reference to `p.o.C` outside of package `p` will
-    have only `b` in its implicit scope but not `a`.
+    have only `b` in its implicit search scope but not `a`.
 
  4. The treatment of ambiguity errors has changed. If an ambiguity is encountered
     in some recursive step of an implicit search, the ambiguity is propagated to the caller.
@@ -85,7 +85,7 @@ affect implicits on the language level.
  5. The treatment of divergence errors has also changed. A divergent implicit is
     treated as a normal failure, after which alternatives are still tried. This also makes
     sense: Encountering a divergent implicit means that we assume that no finite
-    solution can be found on the given path, but another path can still be tried. By contrast
+    solution can be found on the corresponding path, but another path can still be tried. By contrast
     most (but not all) divergence errors in Scala 2 would terminate the implicit
     search as a whole.
 

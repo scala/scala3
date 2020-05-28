@@ -52,9 +52,9 @@ val x = -10_000_000_000
 ```
 gives a type error, since without an expected type `-10_000_000_000` is treated by rule (3) as an `Int` literal, but it is too large for that type.
 
-### The FromDigits Class
+### The FromDigits Trait
 
-To allow numeric literals, a type simply has to define a given instance of the
+To allow numeric literals, a type simply has to define a `given` instance of the
 `scala.util.FromDigits` typeclass, or one of its subclasses. `FromDigits` is defined
 as follows:
 ```scala
@@ -153,7 +153,7 @@ object BigFloat {
     BigFloat(BigInt(intPart), exponent)
   }
 ```
-To accept `BigFloat` literals, all that's needed in addition is a given instance of type
+To accept `BigFloat` literals, all that's needed in addition is a `given` instance of type
 `FromDigits.Floating[BigFloat]`:
 ```scala
   given FromDigits as FromDigits.Floating[BigFloat] {
@@ -196,7 +196,7 @@ object BigFloat {
   }
 ```
 Note that an inline method cannot directly fill in for an abstract method, since it produces
-no code that can be executed at runtime. That's why we define an intermediary class
+no code that can be executed at runtime. That is why we define an intermediary class
 `FromDigits` that contains a fallback implementation which is then overridden by the inline
 method in the `FromDigits` given instance. That method is defined in terms of a macro
 implementation method `fromDigitsImpl`. Here is its definition:
@@ -220,7 +220,7 @@ implementation method `fromDigitsImpl`. Here is its definition:
 ```
 The macro implementation takes an argument of type `Expr[String]` and yields
 a result of type `Expr[BigFloat]`. It tests whether its argument is a constant
-string. If that's the case, it converts the string using the `apply` method
+string. If that is the case, it converts the string using the `apply` method
 and lifts the resulting `BigFloat` back to `Expr` level. For non-constant
 strings `fromDigitsImpl(digits)` is simply `apply(digits)`, i.e. everything is
 evaluated at runtime in this case.

@@ -9,7 +9,7 @@ libraryDependencies += "ch.epfl.lamp" %% "dotty-tasty-inspector" % scalaVersion.
 
 TASTy files contain the full typed tree of a class including source positions
 and documentation. This is ideal for tools that analyze or extract semantic
-information of the code. To avoid the hassle of working directly with the TASTy
+information from the code. To avoid the hassle of working directly with the TASTy
 file we provide the `TastyInspector` which loads the contents and exposes it
 through the TASTy reflect API.
 
@@ -42,8 +42,8 @@ object Test {
 }
 ```
 
-Note that if we need to run the main (in an object called `Test`) after
-compilation we need make available the compiler to the runtime:
+Note that if we need to run the main (in the example below defined in an object called `Test`) after
+compilation we need to make the compiler available to the runtime:
 
 ```shell
 dotc -d out Test.scala
