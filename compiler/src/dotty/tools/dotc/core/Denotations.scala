@@ -468,9 +468,22 @@ object Denotations {
           preferSym(sym1, sym2) &&
           info1.overrides(info2, sym1.matchNullaryLoosely || sym2.matchNullaryLoosely, checkClassInfo = false)
 
+        /** `sym1` comes before `sym2` in the ranking
+         *    1. Non-bridge methods
+         *    2. non-methods
+         *    3. bridges
+         *    4. NoSymbol
+         */
+        def preferMethod(sym1: Symbol, sym2: Symbol): Boolean =
+          sym1.exists &&
+            (!sym2.exists
+            || sym2.is(Bridge) && !sym1.is(Bridge)
+            || sym1.is(Method) && !sym2.is(Method)
+            || sym1.info.isErroneous)
+
         def handleDoubleDef: Denotation =
-          if preferSymSimple(sym1, sym2) then denot1
-          else if preferSymSimple(sym2, sym1) then denot2
+          if preferMethod(sym1, sym2) then denot1
+          else if preferMethod(sym2, sym1) then denot2
           else MultiDenotation(denot1, denot2)
 
         if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2
@@ -481,15 +494,13 @@ object Denotations {
           else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
           else if (isDoubleDef(sym1, sym2)) handleDoubleDef
           else
-            val sym =
-              if (preferSym(sym2, sym1)) sym2
-              else sym1
+            val sym = if preferSym(sym2, sym1) then sym2 else sym1
             def jointRef(jointInfo: Type) =
               JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
             try jointRef(infoMeet(info1, info2, sym1, sym2, safeIntersection))
             catch case ex: MergeError =>
-              if preferSymSimple(sym2, sym1) then jointRef(info2)
-              else if preferSymSimple(sym1, sym2) then jointRef(info1)
+              if preferMethod(sym2, sym1) then jointRef(info2)
+              else if preferMethod(sym1, sym2) then jointRef(info1)
               else if pre.widen.classSymbol.is(Scala2x) || migrateTo3 then
                 jointRef(info1)
                   // follow Scala2 linearization -
