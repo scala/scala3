@@ -384,11 +384,11 @@ class TreePickler(pickler: TastyPickler) {
             case _ =>
               val sig = tree.tpe.signature
               val isAmbiguous =
-                qual.tpe.nonPrivateMember(name).atSignature(sig) match
+                sig != Signature.NotAMethod
+                && qual.tpe.nonPrivateMember(name).match
                   case d: MultiDenotation => d.atSignature(sig).isInstanceOf[MultiDenotation]
                   case _ => false
               if isAmbiguous then
-                assert(tree.symbol.isTerm)
                 writeByte(SELECTin)
                 withLength {
                   pickleNameAndSig(name, tree.symbol.signature)
