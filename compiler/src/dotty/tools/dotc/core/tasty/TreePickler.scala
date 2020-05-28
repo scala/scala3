@@ -383,19 +383,22 @@ class TreePickler(pickler: TastyPickler) {
               }
             case _ =>
               val sig = tree.tpe.signature
-              qual.tpe.nonPrivateMember(name).atSignature(sig) match
-                case d: MultiDenotation =>
-                  assert(tree.symbol.isTerm)
-                  writeByte(SELECTin)
-                  withLength {
-                    pickleNameAndSig(name, tree.symbol.signature)
-                    pickleTree(qual)
-                    pickleType(tree.symbol.owner.typeRef)
-                  }
-                case _ =>
-                  writeByte(if (name.isTypeName) SELECTtpt else SELECT)
-                  pickleNameAndSig(name, sig)
+              val isAmbiguous =
+                qual.tpe.nonPrivateMember(name).atSignature(sig) match
+                  case d: MultiDenotation => d.atSignature(sig).isInstanceOf[MultiDenotation]
+                  case _ => false
+              if isAmbiguous then
+                assert(tree.symbol.isTerm)
+                writeByte(SELECTin)
+                withLength {
+                  pickleNameAndSig(name, tree.symbol.signature)
                   pickleTree(qual)
+                  pickleType(tree.symbol.owner.typeRef)
+                }
+              else
+                writeByte(if (name.isTypeName) SELECTtpt else SELECT)
+                pickleNameAndSig(name, sig)
+                pickleTree(qual)
           }
         case Apply(fun, args) =>
           if (fun.symbol eq defn.throwMethod) {
