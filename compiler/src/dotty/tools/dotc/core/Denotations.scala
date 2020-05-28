@@ -449,16 +449,19 @@ object Denotations {
          *   - minimizes raising of doubleDef errors
          */
         def preferSym(sym1: Symbol, sym2: Symbol) =
-          sym1.eq(sym2) ||
-          sym1.exists &&
-            (!sym2.exists ||
-              sym1.isAsConcrete(sym2) &&
-              (!sym2.isAsConcrete(sym1) ||
-                precedes(sym1.owner, sym2.owner) ||
-                accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
-                sym2.is(Bridge) && !sym1.is(Bridge) ||
-                sym1.is(Method) && !sym2.is(Method)) ||
-              sym1.info.isErroneous)
+          sym1.eq(sym2)
+          || sym1.exists
+             && (!sym2.exists
+                || sym1.isAsConcrete(sym2)
+                   && (!sym2.isAsConcrete(sym1)
+                      || precedes(sym1.owner, sym2.owner)
+                      || accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1))
+                      || sym2.is(Bridge) && !sym1.is(Bridge)
+                      || sym1.is(Method) && !sym2.is(Method))
+                || sym1.info.isErroneous)
+
+        def preferSymSimple(sym1: Symbol, sym2: Symbol) =
+          sym1.is(Method) && !sym2.is(Method) || sym1.info.isErroneous
 
         /** Sym preference provided types also override */
         def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
@@ -466,10 +469,9 @@ object Denotations {
           info1.overrides(info2, sym1.matchNullaryLoosely || sym2.matchNullaryLoosely, checkClassInfo = false)
 
         def handleDoubleDef: Denotation =
-          if (preferSym(sym1, sym2)) denot1
-          else if (preferSym(sym2, sym1)) denot2
-          else if sym1.exists then MultiDenotation(denot1, denot2)
-          else doubleDefError(denot1, denot2, pre)
+          if preferSymSimple(sym1, sym2) then denot1
+          else if preferSymSimple(sym2, sym1) then denot2
+          else MultiDenotation(denot1, denot2)
 
         if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2
         else {
