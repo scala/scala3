@@ -641,6 +641,9 @@ object TypeOps:
           if (maximize) lo else hi
 
       def apply(tp: Type): Type = tp match {
+        case _: MatchType =>
+          tp // break cycles
+
         case tp: TypeRef if isBounds(tp.underlying) =>
           val lo = this(tp.info.loBound)
           val hi = this(tp.info.hiBound)
