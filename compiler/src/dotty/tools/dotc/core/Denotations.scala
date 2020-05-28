@@ -407,7 +407,7 @@ object Denotations {
       }
 
       /** Try to merge single-denotations. */
-      def mergeSingleDenot(denot1: SingleDenotation, denot2: SingleDenotation): Denotation = {
+      def mergeSingleDenot(denot1: SingleDenotation, denot2: SingleDenotation): Denotation =
         val info1 = denot1.info
         val info2 = denot2.info
         val sym1 = denot1.symbol
@@ -474,34 +474,28 @@ object Denotations {
           else MultiDenotation(denot1, denot2)
 
         if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2
-        else {
+        else
           val sym1Accessible = sym1.isAccessibleFrom(pre)
           if (sym1Accessible && prefer(sym1, sym2, info1, info2)) denot1
           else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
           else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
           else if (isDoubleDef(sym1, sym2)) handleDoubleDef
-          else {
+          else
             val sym =
               if (preferSym(sym2, sym1)) sym2
               else sym1
-            val jointInfo =
-              try infoMeet(info1, info2, sym1, sym2, safeIntersection)
-              catch {
-                case ex: MergeError =>
-                  // TODO: this picks one type over the other whereas it might be better
-                  // to return a MultiDenotation instead. But doing so would affect lots of
-                  // things, starting with the return type of this method.
-                  if (preferSym(sym2, sym1)) info2
-                  else if (preferSym(sym1, sym2)) info1
-                  else if (pre.widen.classSymbol.is(Scala2x) || migrateTo3)
-                    info1 // follow Scala2 linearization -
+            def jointRef(jointInfo: Type) =
+              JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
+            try jointRef(infoMeet(info1, info2, sym1, sym2, safeIntersection))
+            catch case ex: MergeError =>
+              if preferSymSimple(sym2, sym1) then jointRef(info2)
+              else if preferSymSimple(sym1, sym2) then jointRef(info1)
+              else if pre.widen.classSymbol.is(Scala2x) || migrateTo3 then
+                jointRef(info1)
+                  // follow Scala2 linearization -
                   // compare with way merge is performed in SymDenotation#computeMembersNamed
-                  else throw new MergeError(ex.sym1, ex.sym2, ex.tp1, ex.tp2, pre)
-              }
-            new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
-          }
-        }
-      }
+              else MultiDenotation(denot1, denot2)
+      end mergeSingleDenot
 
       if (this eq that) this
       else if (!this.exists) that
