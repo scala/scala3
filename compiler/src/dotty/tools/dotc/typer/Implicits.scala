@@ -1169,14 +1169,11 @@ trait Implicits { self: Typer =>
         if (level1 < level2) return false
         val sym1 = cand1.ref.symbol
         val sym2 = cand2.ref.symbol
-        val ownerScore = compareOwner(sym1.maybeOwner, sym2.maybeOwner)
-        if (ownerScore > 0) return true
-        if (ownerScore < 0) return false
         val arity1 = sym1.info.firstParamTypes.length
         val arity2 = sym2.info.firstParamTypes.length
         if (arity1 < arity2) return true
         if (arity1 > arity2) return false
-        false
+        isSubOwner(sym1, sym2)
       }
 
       /** Sort list of implicit references according to `prefer`.
@@ -1190,7 +1187,19 @@ trait Implicits { self: Typer =>
           if (prefer(e2, e1)) e2 :: e1 :: Nil
           else eligible
         case _ =>
-          eligible.sortWith(prefer)
+          try eligible.sortWith(prefer)
+          catch case ex: IllegalArgumentException =>
+            // diagnostic to see what went wrong
+            for
+              e1 <- eligible
+              e2 <- eligible
+              if prefer(e1, e2)
+              e3 <- eligible
+              if prefer(e2, e3) && !prefer(e1, e3)
+            do
+              val es = List(e1, e2, e3)
+              println(i"transitivity violated for $es%, %\n ${es.map(_.implicitRef.underlyingRef.symbol.showLocated)}%, %")
+            throw ex
       }
 
       rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
