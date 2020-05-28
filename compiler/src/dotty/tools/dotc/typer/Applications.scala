@@ -1347,14 +1347,18 @@ trait Applications extends Compatibility {
     *  @return    1   if `sym1` properly derives from `sym2`
     *            -1   if `sym2` properly derives from `sym1`
     *             0   otherwise
-    *  Module classes also inherit the relationship from their companions.
+    *  Module classes inherit the relationship from their companions. This means:
+    *   - If both sym1 and sym1 are module classes that have companion classes, compare the companions
+    *   - If sym1 is a module class with a companion, and sym2 is a normal class or trait, compare
+    *     the companion with sym2.
+    *  Going beyond that risks making compareOwner non-transitive.
     */
   def compareOwner(sym1: Symbol, sym2: Symbol)(using Context): Int =
-    if (sym1 == sym2) 0
-    else if (sym1 isSubClass sym2) 1
-    else if (sym2 isSubClass sym1) -1
-    else if (sym2.is(Module)) compareOwner(sym1, sym2.companionClass)
-    else if (sym1.is(Module)) compareOwner(sym1.companionClass, sym2)
+    if sym1 == sym2 then 0
+    else if sym1.is(Module) && sym1.companionClass.exists then
+      compareOwner(sym1.companionClass, if sym2.is(Module) then sym2.companionClass else sym2)
+    else if sym1.isSubClass(sym2) then 1
+    else if sym2.isSubClass(sym1) then -1
     else 0
 
   /** Compare to alternatives of an overloaded call or an implicit search.
