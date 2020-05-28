@@ -19,6 +19,7 @@ import printing.Printer
 import io.AbstractFile
 import config.Feature.migrateTo3
 import config.Config
+import config.Printers.overload
 import util.common._
 import typer.ProtoTypes.NoViewsAllowed
 import collection.mutable.ListBuffer
@@ -460,31 +461,40 @@ object Denotations {
                       || sym1.is(Method) && !sym2.is(Method))
                 || sym1.info.isErroneous)
 
-        def preferSymSimple(sym1: Symbol, sym2: Symbol) =
-          sym1.is(Method) && !sym2.is(Method) || sym1.info.isErroneous
-
         /** Sym preference provided types also override */
         def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
           preferSym(sym1, sym2) &&
           info1.overrides(info2, sym1.matchNullaryLoosely || sym2.matchNullaryLoosely, checkClassInfo = false)
 
-        /** `sym1` comes before `sym2` in the ranking
+        /** Handle conflict where we have either definitions coming from the same class
+         *  that have matching signatures as seen from the current prefix, or we have
+         *  definitions from different classes that have the same signature but
+         *  conflicting infos. In these cases, do a last minute disambiguation
+         *  by picking one alternative according to the ranking
+         *
          *    1. Non-bridge methods
          *    2. non-methods
          *    3. bridges
          *    4. NoSymbol
+         *
+         *  If that fails, return a MultiDenotation with both alternatives
+         *  and rely on overloading resolution to pick one of them.
          */
-        def preferMethod(sym1: Symbol, sym2: Symbol): Boolean =
-          sym1.exists &&
-            (!sym2.exists
-            || sym2.is(Bridge) && !sym1.is(Bridge)
-            || sym1.is(Method) && !sym2.is(Method)
-            || sym1.info.isErroneous)
+        def handleConflict: Denotation =
 
-        def handleDoubleDef: Denotation =
+          def preferMethod(sym1: Symbol, sym2: Symbol): Boolean =
+            sym1.exists &&
+              (!sym2.exists
+              || sym2.is(Bridge) && !sym1.is(Bridge)
+              || sym1.is(Method) && !sym2.is(Method)
+              || sym1.info.isErroneous)
+
           if preferMethod(sym1, sym2) then denot1
           else if preferMethod(sym2, sym1) then denot2
-          else MultiDenotation(denot1, denot2)
+          else
+            overload.println(i"overloaded with same signature: ${sym1.showLocated}: $info1 / ${sym2.showLocated}: $info2")
+            MultiDenotation(denot1, denot2)
+        end handleConflict
 
         if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2
         else
@@ -492,20 +502,13 @@ object Denotations {
           if (sym1Accessible && prefer(sym1, sym2, info1, info2)) denot1
           else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
           else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
-          else if (isDoubleDef(sym1, sym2)) handleDoubleDef
-          else
+          else if isDoubleDef(sym1, sym2) then handleConflict
+          else try
             val sym = if preferSym(sym2, sym1) then sym2 else sym1
-            def jointRef(jointInfo: Type) =
-              JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
-            try jointRef(infoMeet(info1, info2, sym1, sym2, safeIntersection))
-            catch case ex: MergeError =>
-              if preferMethod(sym2, sym1) then jointRef(info2)
-              else if preferMethod(sym1, sym2) then jointRef(info1)
-              else if pre.widen.classSymbol.is(Scala2x) || migrateTo3 then
-                jointRef(info1)
-                  // follow Scala2 linearization -
-                  // compare with way merge is performed in SymDenotation#computeMembersNamed
-              else MultiDenotation(denot1, denot2)
+            val jointInfo = infoMeet(info1, info2, sym1, sym2, safeIntersection)
+            JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
+          catch case ex: MergeError =>
+            handleConflict
       end mergeSingleDenot
 
       if (this eq that) this
