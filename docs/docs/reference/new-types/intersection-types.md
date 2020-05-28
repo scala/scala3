@@ -11,10 +11,10 @@ The type `S & T` represents values that are of the type `S` and `T` at the same 
 
 ```scala
 trait Resettable {
-  def reset(): this.type
+  def reset(): Unit
 }
 trait Growable[T] {
-  def add(x: T): this.type
+  def add(t: T): Unit
 }
 def f(x: Resettable & Growable[String]) = {
   x.reset()
@@ -22,7 +22,7 @@ def f(x: Resettable & Growable[String]) = {
 }
 ```
 
-The value `x` is required to be _both_ a `Resettable` and a
+The parameter `x` is required to be _both_ a `Resettable` and a
 `Growable[String]`.
 
 The members of an intersection type `A & B` are all the members of `A` and all
@@ -51,8 +51,8 @@ can be further simplified to `List[A & B]` because `List` is
 covariant.
 
 One might wonder how the compiler could come up with a definition for
-`children` of type `List[A & B]` since all its is given are `children`
-definitions of type `List[A]` and `List[B]`. The answer is it does not
+`children` of type `List[A & B]` since what is given are `children`
+definitions of type `List[A]` and `List[B]`. The answer is the compiler does not
 need to. `A & B` is just a type that represents a set of requirements for
 values of the type. At the point where a value is _constructed_, one
 must make sure that all inherited members are correctly defined.

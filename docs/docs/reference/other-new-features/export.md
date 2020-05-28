@@ -87,9 +87,9 @@ export O.c
 def f: c.T = ...
 ```
 
+<a id="note_class"></a>
 Export clauses can appear in classes or they can appear at the top-level. An export clause cannot appear as a statement in a block.
 
-<a id="note_class"></a>
 (\*) Note: Unless otherwise stated, the term "class" in this discussion also includes object and trait definitions.
 
 ### Motivation

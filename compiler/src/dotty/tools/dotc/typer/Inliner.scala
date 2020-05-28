@@ -1219,6 +1219,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             super.typedIf(if1, pt)
       }
 
+    override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
+      val vdef1 =
+        if sym.is(Inline) then
+          val rhs = typed(vdef.rhs)
+          sym.info = rhs.tpe
+          untpd.cpy.ValDef(vdef)(vdef.name, untpd.TypeTree(rhs.tpe), untpd.TypedSplice(rhs))
+        else vdef
+      super.typedValDef(vdef1, sym)
+
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
       constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
         case res: Apply if res.symbol == defn.InternalQuoted_exprSplice

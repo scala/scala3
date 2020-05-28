@@ -67,19 +67,19 @@ given Eql[B, A] = Eql.derived
 The `scala.Eql` object defines a number of `Eql` given instances that together
 define a rule book for what standard types can be compared (more details below).
 
-There's also a "fallback" instance named `eqlAny` that allows comparisons
+There is also a "fallback" instance named `eqlAny` that allows comparisons
 over all types that do not themselves have an `Eql` given.  `eqlAny` is defined as follows:
 
 ```scala
 def eqlAny[L, R]: Eql[L, R] = Eql.derived
 ```
 
-Even though `eqlAny` is not declared a given, the compiler will still construct an `eqlAny` instance as answer to an implicit search for the
+Even though `eqlAny` is not declared as `given`, the compiler will still construct an `eqlAny` instance as answer to an implicit search for the
 type `Eql[L, R]`, unless `L` or `R` have `Eql` instances
-defined on them, or the language feature `strictEquality` is enabled
+defined on them, or the language feature `strictEquality` is enabled.
 
-The primary motivation for having `eqlAny` is backwards compatibility,
-if this is of no concern, one can disable `eqlAny` by enabling the language
+The primary motivation for having `eqlAny` is backwards compatibility.
+If this is of no concern, one can disable `eqlAny` by enabling the language
 feature `strictEquality`. As for all language features this can be either
 done with an import
 
@@ -112,7 +112,7 @@ The precise rules for equality checking are as follows.
 
 If the `strictEquality` feature is enabled then
 a comparison using `x == y` or `x != y` between values `x: T` and `y: U`
-is legal if there is a given of type `Eql[T, U]`.
+is legal if there is a `given` of type `Eql[T, U]`.
 
 In the default case where the `strictEquality` feature is not enabled the comparison is
 also legal if
@@ -123,8 +123,8 @@ also legal if
 
 Explanations:
 
- - _lifting_ a type `S` means replacing all references to  abstract types
-   in covariant positions of `S` by their upper bound, and to replacing
+ - _lifting_ a type `S` means replacing all references to abstract types
+   in covariant positions of `S` by their upper bound, and replacing
    all refinement types in covariant positions of `S` by their parent.
  - a type `T` has a _reflexive_ `Eql` instance if the implicit search for `Eql[T, T]`
    succeeds.
@@ -153,8 +153,9 @@ Instances are defined so that every one of these types has a _reflexive_ `Eql` i
 ## Why Two Type Parameters?
 
 One particular feature of the `Eql` type is that it takes _two_ type parameters, representing the types of the two items to be compared. By contrast, conventional
-implementations of an equality type class take only a single type parameter which represents the common type of _both_ operands. One type parameter is simpler than two, so why go through the additional complication? The reason has to do with the fact that, rather than coming up with a type class where no operation existed before,
-we are dealing with a refinement of pre-existing, universal equality. It's best illustrated through an example.
+implementations of an equality type class take only a single type parameter which represents the common type of _both_ operands.
+One type parameter is simpler than two, so why go through the additional complication? The reason has to do with the fact that, rather than coming up with a type class where no operation existed before,
+we are dealing with a refinement of pre-existing, universal equality. It is best illustrated through an example.
 
 Say you want to come up with a safe version of the `contains` method on `List[T]`. The original definition of `contains` in the standard library was:
 ```scala
