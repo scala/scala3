@@ -1347,19 +1347,52 @@ trait Applications extends Compatibility {
     *  @return    1   if `sym1` properly derives from `sym2`
     *            -1   if `sym2` properly derives from `sym1`
     *             0   otherwise
-    *  Module classes inherit the relationship from their companions. This means:
+    *  Module classes also inherit the relationship from their companions. This means,
+    *  if no direct derivation exists between `sym1` and `sym2` also perform the following
+    *  tests:
     *   - If both sym1 and sym1 are module classes that have companion classes, compare the companions
     *   - If sym1 is a module class with a companion, and sym2 is a normal class or trait, compare
     *     the companion with sym2.
-    *  Going beyond that risks making compareOwner non-transitive.
+    *
+    *  Note that this makes `compareOwner(_, _) > 0` not transitive! For instance:
+    *
+    *    class A extends B
+    *    object A
+    *    class B
+    *    object B extends C
+    *
+    *  Then compareOwner(A$, B$) = 1 and compareOwner(B$, C) == 1, but
+    *  compareOwner(A$, C) == 0.
     */
   def compareOwner(sym1: Symbol, sym2: Symbol)(using Context): Int =
     if sym1 == sym2 then 0
-    else if sym1.is(Module) && sym1.companionClass.exists then
-      compareOwner(sym1.companionClass, if sym2.is(Module) then sym2.companionClass else sym2)
     else if sym1.isSubClass(sym2) then 1
     else if sym2.isSubClass(sym1) then -1
+    else if sym1.is(Module) then
+      compareOwner(sym1.companionClass, if sym2.is(Module) then sym2.companionClass else sym2)
     else 0
+
+  /** A version of `compareOwner` that is transitive, to be used in sorting
+   *  It would be nice if we could use this as the general method for comparing
+   *  owners, but unfortunately this does not compile all existsing code.
+   *  An example is `enrich-gentraversable.scala`. Here we have
+   *
+   *    trait BuildFrom...
+   *    object BuildFrom extends BuildFromLowPriority1
+   *
+   *  and we need to pick an implicit in BuildFrom over BuildFromLowPriority1
+   *  the rules in `compareOwner` give us that, but the rules in `isSubOwner`
+   *  don't.
+   *  So we need to stick with `compareOwner` for backwards compatibility, even
+   *  though it is arguably broken. We can still use `isSubOwner` for sorting
+   *  since that is just a performance optimization, so if the two methods
+   *  don't agree sometimes that's OK.
+   */
+  def isSubOwner(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
+    if sym1.is(Module) && sym1.companionClass.exists then
+      isSubOwner(sym1.companionClass, if sym2.is(Module) then sym2.companionClass else sym2)
+    else
+      sym1 != sym2 && sym1.isSubClass(sym2)
 
   /** Compare to alternatives of an overloaded call or an implicit search.
    *
