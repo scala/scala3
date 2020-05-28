@@ -379,7 +379,7 @@ class CommunityBuildTest:
   @Test def scodecBits = projects.scodecBits.run()
   @Test def scodec = projects.scodec.run()
   @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
-  @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
+  //@Test def dottyCpsAsync = projects.dottyCpsAsync.run()
   @Test def scalaz = projects.scalaz.run()
   @Test def endpoints = projects.endpoints.run()
 end CommunityBuildTest
