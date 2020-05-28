@@ -18,7 +18,7 @@ import transform.TypeUtils._
 import transform.SymUtils._
 import ErrorReporting.errorTree
 
-/** A typer mixin that implements typeclass derivation functionality */
+/** A typer mixin that implements type class derivation functionality */
 trait Deriving {
   this: Typer =>
 
@@ -49,7 +49,7 @@ trait Deriving {
     private def addDerivedInstance(clsName: Name, info: Type, pos: SourcePosition): Unit = {
       val instanceName = s"derived$$$clsName".toTermName
       if (ctx.denotNamed(instanceName).exists)
-        ctx.error(i"duplicate typeclass derivation for $clsName", pos)
+        ctx.error(i"duplicate type class derivation for $clsName", pos)
       else
         // If we set the Synthetic flag here widenGiven will widen too far and the
         // derived instance will have too low a priority to be selected over a freshly
@@ -71,7 +71,7 @@ trait Deriving {
      *
      *      See detailed descriptions in deriveSingleParameter and deriveEql below.
      *
-     *  If it passes the checks, enter a typeclass instance for it in the current scope.
+     *  If it passes the checks, enter a type class instance for it in the current scope.
      *
      *  See test run/typeclass-derivation2, run/poly-kinded-derives and pos/derive-eq
      *  for examples that spell out what would be generated.
@@ -210,12 +210,12 @@ trait Deriving {
 
         // Procedure:
         // We construct a two column matrix of the deriving class type parameters
-        // and the Eql typeclass parameters.
+        // and the Eql type class parameters.
         //
         // Rows: parameters of the deriving class
-        // Columns: parameters of the Eql typeclass (L/R)
+        // Columns: parameters of the Eql type class (L/R)
         //
-        // Running example: typeclass: class Eql[L, R], deriving class: class A[T, U, V]
+        // Running example: type class: class Eql[L, R], deriving class: class A[T, U, V]
         // clsParamss =
         //     T_L  T_R
         //     U_L  U_R

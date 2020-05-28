@@ -24,7 +24,7 @@ the program will still typecheck, since values of all types can be compared with
 But it will probably give unexpected results and fail at runtime.
 
 Multiversal equality is an opt-in way to make universal equality
-safer. It uses a binary typeclass `Eql` to indicate that values of
+safer. It uses a binary type class `Eql` to indicate that values of
 two given types can be compared with each other.
 The example above would not typecheck if `S` or `T` was a class
 that derives `Eql`, e.g.
@@ -94,7 +94,7 @@ Instead of defining `Eql` instances directly, it is often more convenient to der
 ```scala
 class Box[T](x: T) derives Eql
 ```
-By the usual rules of [typeclass derivation](./derivation.md),
+By the usual rules of [type class derivation](./derivation.md),
 this generates the following `Eql` instance in the companion object of `Box`:
 ```scala
 given [T, U](using Eql[T, U]) as Eql[Box[T], Box[U]] = Eql.derived

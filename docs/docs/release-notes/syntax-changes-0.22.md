@@ -34,7 +34,7 @@ max(a, b)(using intOrd)
 ```
 The previous syntax that uses `given` also for context parameters and arguments is no longer supported.
 
-Context bounds remain supported as a shorthand for one-parameter typeclass constraints. So the two definitions above could also be written as
+Context bounds remain supported as a shorthand for one-parameter type class constraints. So the two definitions above could also be written as
 ```scala
 def max[T: Ordering](x: T, y: T): T = ...
 given [T: Ordering] as Ordering[List[T]] { ... }

@@ -51,7 +51,7 @@ object Test extends App {
     def (x: String).combine(y: String): String = x.concat(y)
     def unit: String = ""
 
-  // Abstracting over a typeclass with a context bound:
+  // Abstracting over a type class with a context bound:
   def sum[T: Monoid](xs: List[T]): T =
     xs.foldLeft(implicitly[Monoid[T]].unit)(_.combine(_))
 

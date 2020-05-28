@@ -208,7 +208,7 @@ object datatypes {
 
 object typeclasses {
   import compiletime.summonFrom
-  // A typeclass
+  // A type class
   trait Eq[T] {
     def eql(x: T, y: T): Boolean
   }
@@ -260,7 +260,7 @@ object typeclasses {
     }
   }
 
-  // Another typeclass
+  // Another type class
   trait Pickler[T] {
     def pickle(buf: mutable.ListBuffer[Int], x: T): Unit
     def unpickle(buf: mutable.ListBuffer[Int]): T

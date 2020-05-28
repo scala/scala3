@@ -55,7 +55,7 @@ gives a type error, since without an expected type `-10_000_000_000` is treated 
 ### The FromDigits Trait
 
 To allow numeric literals, a type simply has to define a `given` instance of the
-`scala.util.FromDigits` typeclass, or one of its subclasses. `FromDigits` is defined
+`scala.util.FromDigits` type class, or one of its subclasses. `FromDigits` is defined
 as follows:
 ```scala
 trait FromDigits[T] {

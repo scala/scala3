@@ -17,5 +17,5 @@ object Test extends App {
   val a = new A
   val a2 = new A2
 
-  case class D() derives a.TC1, a2.TC1  // error: duplicate typeclass derivation
+  case class D() derives a.TC1, a2.TC1  // error: duplicate type class derivation
 }

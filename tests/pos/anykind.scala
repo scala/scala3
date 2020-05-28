@@ -7,7 +7,7 @@ object Test {
   // PoC of controlled KindPolymorphism in Scala
   //
   // The idea is NOT to provide universal kind-polymorphism that would be a bad idea anyway
-  // but to bring a "controlled" kind-polymorphism relying on accepted kinds defined by typeclass implicits
+  // but to bring a "controlled" kind-polymorphism relying on accepted kinds defined by type class implicits
   // Thus, kind-polymorphism is strictly scoped to your domain and is what you expect to be, nothing else.
   //
   // `Ykind-polymorphism` flag aims at deferring just a bit Scalac type inference when encountering AnyKind higher bounds
@@ -16,7 +16,7 @@ object Test {
   //
   // Here are code-samples that work now:
   //    - basic kind polymorphism controlled by implicits
-  //    - Kindness proofs based on typeclasses (specially SameKind)
+  //    - Kindness proofs based on type classes (specially SameKind)
   //    - Kind-Polymorphic list (on type & value) (2 different implementations)
   //    - Some weird cases we don't want the compiler to authorize
 

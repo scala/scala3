@@ -4,7 +4,7 @@ import quoted._
 import internal.Chars.digit2int
 import annotation.internal.sharable
 
-/** A typeclass for types that admit numeric literals.
+/** A type class for types that admit numeric literals.
  */
 trait FromDigits[T] {
 

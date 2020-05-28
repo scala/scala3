@@ -8,7 +8,7 @@ object Test {
   A == A
   A == (B: Hoge[_])
 
-  A == B // should be error: cannot be compared, needs proper typeclass drivation of `Eql` to get there.
+  A == B // should be error: cannot be compared, needs proper type class drivation of `Eql` to get there.
 
   class C
 

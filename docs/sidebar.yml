@@ -55,9 +55,9 @@ sidebar:
               url: docs/reference/contextual/given-imports.html
             - title: Extension Methods
               url: docs/reference/contextual/extension-methods.html
-            - title: Implementing Typeclasses
-              url: docs/reference/contextual/typeclasses.html
-            - title: Typeclass Derivation
+            - title: Implementing Type classes
+              url: docs/reference/contextual/type-classes.html
+            - title: Type class Derivation
               url: docs/reference/contextual/derivation.html
             - title: Multiversal Equality
               url: docs/reference/contextual/multiversal-equality.html

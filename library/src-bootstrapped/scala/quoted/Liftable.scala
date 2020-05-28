@@ -2,7 +2,7 @@ package scala.quoted
 
 import scala.reflect.ClassTag
 
-/** A typeclass for types that can be turned to `quoted.Expr[T]`
+/** A type class for types that can be turned to `quoted.Expr[T]`
  *  without going through an explicit `'{...}` operation.
  */
 trait Liftable[T] {
