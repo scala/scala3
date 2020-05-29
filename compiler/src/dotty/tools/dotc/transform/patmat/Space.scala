@@ -603,9 +603,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case tp if tp.isRef(defn.UnitClass) =>
         Typ(ConstantType(Constant(())), true) :: Nil
       case tp if tp.classSymbol.isAllOf(JavaEnumTrait) =>
-        tp.classSymbol.linkedClass.info.decls.toList.map(_.ensureCompleted())
-        val children = tp.classSymbol.children
-        children.map(sym => Typ(sym.termRef, true))
+        tp.classSymbol.children.map(sym => Typ(sym.termRef, true))
       case tp =>
         val children = tp.classSymbol.children
         debug.println(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
