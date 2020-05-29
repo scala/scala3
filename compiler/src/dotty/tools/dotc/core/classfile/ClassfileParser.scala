@@ -201,12 +201,6 @@ class ClassfileParser(
         sym.markAbsent()
       }
 
-    // eager load enum definitions for exhaustivity check of pattern match
-    if (isEnum) {
-      instanceScope.toList.map(_.ensureCompleted())
-      staticScope.toList.map(_.ensureCompleted())
-    }
-
     result
   }
 
