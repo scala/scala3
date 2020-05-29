@@ -75,7 +75,7 @@ Standard-Section: "ASTs" TopLevelStat*
   Term          = Path                                                             -- Paths represent both types and terms
                   IDENT                 NameRef Type                               -- Used when term ident’s type is not a TermRef
                   SELECT                possiblySigned_NameRef qual_Term           -- qual.name
-                  SELECTin       Length possiblySigned_NameRef qual_Term owner_Type -- qual.name, referring to a symbol declared in owner that has the given signature
+                  SELECTin       Length possiblySigned_NameRef qual_Term owner_Type -- qual.name, referring to a symbol declared in owner that has the given signature (see note below)
                   QUALTHIS              typeIdent_Tree                             -- id.this, different from THIS in that it contains a qualifier ident with position.
                   NEW                   clsType_Term                               -- new cls
                   THROW                 throwableExpr_Term                         -- throw throwableExpr
@@ -212,6 +212,10 @@ Standard-Section: "ASTs" TopLevelStat*
                 | CONTRAVARIANT
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term             -- An annotation, given (class) type of constructor, and full application tree
+
+Note: The signature of a SELECTin node is the signature of the selected symbol, not
+      the signature of the reference. The latter undergoes an asSeenFrom but the former
+      does not. TODO: Also use symbol signatures in TERMREFin
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 

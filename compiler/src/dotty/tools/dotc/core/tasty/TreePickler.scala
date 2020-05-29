@@ -33,7 +33,9 @@ object TreePickler {
   }
 
   /** Select tree cannot be unambiguously resolved with signature alone,
-   *  needs to be pickled using the SELECTin tag.
+   *  needs to be pickled using the SELECTin tag. This is set by Typer, if
+   *  after overloading resolution it is discovered that other alternatives
+   *  have the same signature as the one that was selected.
    */
   val NeedsSelectIn = new Property.StickyKey[Unit]
 }
@@ -391,6 +393,9 @@ class TreePickler(pickler: TastyPickler) {
               val sig = tree.tpe.signature
               val needsSelectIn = tree.hasAttachment(NeedsSelectIn)
               if checkAmbiguousSelects then
+                // We use needsSelectIn instead of isAmbiguous since isAmbiguous
+                // is more expensive to compute. This matters since either criterion
+                // is false in almost all cases.
                 val isAmbiguous = qual.tpe.nonPrivateMember(name) match
                   case d: MultiDenotation => d.atSignature(sig).isInstanceOf[MultiDenotation]
                   case _ => false
