@@ -1309,7 +1309,17 @@ class Definitions {
     (sym eq Object_eq) || (sym eq Object_ne)
 
   @tu lazy val assumedSuperTraits =
-    Set(ComparableClass, ProductClass, SerializableClass)
+    Set(ComparableClass, ProductClass, SerializableClass,
+      ctx.requiredClass("scala.collection.SortedOps"),
+      ctx.requiredClass("scala.collection.StrictOptimizedSortedSetOps"),
+      ctx.requiredClass("scala.collection.generic.DefaultSerializable"),
+      ctx.requiredClass("scala.collection.generic.IsIterable"),
+      ctx.requiredClass("scala.collection.generic.IsIterableOnce"),
+      ctx.requiredClass("scala.collection.generic.IsMap"),
+      ctx.requiredClass("scala.collection.generic.IsSeq"),
+      ctx.requiredClass("scala.collection.generic.Subtractable"),
+      ctx.requiredClass("scala.collection.immutable.StrictOptimizedSeqOps")
+    )
 
   // ----- primitive value class machinery ------------------------------------------
 
