@@ -1070,7 +1070,7 @@ class Typer extends Namer
      *         every parameter in `params`.
      */
     lazy val calleeType: Type = untpd.stripAnnotated(fnBody) match {
-      case ident: Ident if isContextual =>
+      case ident: untpd.Ident if isContextual =>
         val tp = typedIdent(ident, WildcardType).tpe.widen
         if defn.isContextFunctionType(tp) && params.size == defn.functionArity(tp)
         then
@@ -2471,7 +2471,7 @@ class Typer extends Namer
     val defn.FunctionOf(formals, _, true, _) = pt.dropDependentRefinement
     val ifun = desugar.makeContextualFunction(formals.map(_ => untpd.TypeTree()), tree, defn.isErasedFunctionType(pt))
     typr.println(i"make contextual function $tree / $pt ---> $ifun")
-    typedFunctionValue(ifun, pt)
+    typed(ifun, pt)
   }
 
   /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */
