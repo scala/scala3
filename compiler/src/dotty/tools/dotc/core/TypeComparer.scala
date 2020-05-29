@@ -2376,6 +2376,32 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         def covariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
           provablyDisjoint(tp1, tp2) && typeparamCorrespondsToField(tycon1, tparam)
 
+        // In the invariant case, we used a weaker version of disjointness:
+        // we consider types not equal with respect to =:= to be disjoint
+        // (under any context). This is fine because it matches the runtime
+        // semantics of pattern matching. To implement a pattern such as
+        // `case Inv[T] => ...`, one needs a type tag for `T` and the compiler
+        // is used at runtime to check it the scrutinee's type is =:= to `T`.
+        // Note that this is currently a theoretical concern since we Dotty
+        // doesn't have type tags, meaning that users cannot write patterns
+        // that do type tests on higher kinded types.
+        def invariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
+          covariantDisjoint(tp1, tp2, tparam) || !isSameType(tp1, tp2) && {
+            // We can only trust a "no" from `isSameType` when both
+            // `tp1` and `tp2` are fully instantiated.
+            def fullyInstantiated(tp: Type): Boolean = new TypeAccumulator[Boolean] {
+              override def apply(x: Boolean, t: Type) =
+                x && {
+                  t match {
+                    case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
+                    case _: SkolemType | _: TypeVar => false
+                    case _ => foldOver(x, t)
+                  }
+                }
+            }.apply(true, tp)
+            fullyInstantiated(tp1) && fullyInstantiated(tp2)
+          }
+
         args1.lazyZip(args2).lazyZip(tycon1.typeParams).exists {
           (arg1, arg2, tparam) =>
             val v = tparam.paramVarianceSign
@@ -2386,21 +2412,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               // instantiated to `Any` belongs to both types.
               false
             else
-              covariantDisjoint(arg1, arg2, tparam) || !isSameType(arg1, arg2) && {
-                // We can only trust a "no" from `isSameType` when both
-                // `arg1` and `arg2` are fully instantiated.
-                def fullyInstantiated(tp: Type): Boolean = new TypeAccumulator[Boolean] {
-                  override def apply(x: Boolean, t: Type) =
-                    x && {
-                      t match {
-                        case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
-                        case _: SkolemType | _: TypeVar => false
-                        case _ => foldOver(x, t)
-                      }
-                    }
-                }.apply(true, tp)
-                fullyInstantiated(arg1) && fullyInstantiated(arg2)
-              }
+              invariantDisjoint(arg1, arg2, tparam)
         }
       case (tp1: HKLambda, tp2: HKLambda) =>
         provablyDisjoint(tp1.resType, tp2.resType)
