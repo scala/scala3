@@ -1350,49 +1350,45 @@ trait Applications extends Compatibility {
     *  Module classes also inherit the relationship from their companions. This means,
     *  if no direct derivation exists between `sym1` and `sym2` also perform the following
     *  tests:
-    *   - If both sym1 and sym1 are module classes that have companion classes, compare the companions
-    *   - If sym1 is a module class with a companion, and sym2 is a normal class or trait, compare
-    *     the companion with sym2.
+    *   - If both sym1 and sym1 are module classes that have companion classes,
+    *     and sym2 does not inherit implicit members from a base class (#),
+    *     compare the companion classes.
+    *   - If sym1 is a module class with a companion, and sym2 is a normal class or trait,
+    *     compare the companion with sym2.
     *
-    *  Note that this makes `compareOwner(_, _) > 0` not transitive! For instance:
+    *  Condition (#) is necessary to make `compareOwner(_, _) > 0` a transitive relation.
+    *  For instance:
     *
     *    class A extends B
-    *    object A
+    *    object A { given a ... }
     *    class B
-    *    object B extends C
+    *    object B extends C { given b ... }
+    *    class C { given c }
     *
-    *  Then compareOwner(A$, B$) = 1 and compareOwner(B$, C) == 1, but
-    *  compareOwner(A$, C) == 0.
+    *  Then without (#), and taking A$ for the module class of A,
+    *  compareOwner(A$, B$) = 1 and compareOwner(B$, C) == 1,
+    *  but compareOwner(A$, C) == 0.
+    *  Violating transitivity in this way is bad, since it makes implicit search
+    *  outcomes compilation order dependent. E.g. if we compare `b` with `c`
+    *  first, we pick `b`. Then, if we compare `a` and `b`, we pick `a` as
+    *  solution of the search. But if we start with comparing `a` with `c`,
+    *  we get an ambiguity.
+    *
+    *  With the added condition (#), compareOwner(A$, B$) == 0.
+    *  This means we get an ambiguity between `a` and `b` in all cases.
     */
   def compareOwner(sym1: Symbol, sym2: Symbol)(using Context): Int =
     if sym1 == sym2 then 0
     else if sym1.isSubClass(sym2) then 1
     else if sym2.isSubClass(sym1) then -1
     else if sym1.is(Module) then
-      compareOwner(sym1.companionClass, if sym2.is(Module) then sym2.companionClass else sym2)
+      val cls1 = sym1.companionClass
+      if sym2.is(Module) then
+        if sym2.thisType.implicitMembers.forall(_.symbol.owner == sym2) then // test for (#)
+          compareOwner(cls1, sym2.companionClass)
+        else 0
+      else compareOwner(cls1, sym2)
     else 0
-
-  /** A version of `compareOwner` that is transitive, to be used in sorting
-   *  It would be nice if we could use this as the general method for comparing
-   *  owners, but unfortunately this does not compile all existsing code.
-   *  An example is `enrich-gentraversable.scala`. Here we have
-   *
-   *    trait BuildFrom...
-   *    object BuildFrom extends BuildFromLowPriority1
-   *
-   *  and we need to pick an implicit in BuildFrom over BuildFromLowPriority1
-   *  the rules in `compareOwner` give us that, but the rules in `isSubOwner`
-   *  don't.
-   *  So we need to stick with `compareOwner` for backwards compatibility, even
-   *  though it is arguably broken. We can still use `isSubOwner` for sorting
-   *  since that is just a performance optimization, so if the two methods
-   *  don't agree sometimes that's OK.
-   */
-  def isSubOwner(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
-    if sym1.is(Module) && sym1.companionClass.exists then
-      isSubOwner(sym1.companionClass, if sym2.is(Module) then sym2.companionClass else sym2)
-    else
-      sym1 != sym2 && sym1.isSubClass(sym2)
 
   /** Compare to alternatives of an overloaded call or an implicit search.
    *

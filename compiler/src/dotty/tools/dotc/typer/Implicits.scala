@@ -1173,7 +1173,7 @@ trait Implicits { self: Typer =>
         val arity2 = sym2.info.firstParamTypes.length
         if (arity1 < arity2) return true
         if (arity1 > arity2) return false
-        isSubOwner(sym1, sym2)
+        compareOwner(sym1, sym2) == 1
       }
 
       /** Sort list of implicit references according to `prefer`.
