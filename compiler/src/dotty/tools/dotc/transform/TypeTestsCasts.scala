@@ -55,22 +55,20 @@ object TypeTestsCasts {
    */
   def checkable(X: Type, P: Type, span: Span)(using Context): Boolean = {
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
-    def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 
     def replaceP(tp: Type)(implicit ctx: Context) = new TypeMap {
       def apply(tp: Type) = tp match {
-        case tref: TypeRef
-        if isPatternTypeSymbol(tref.typeSymbol) => WildcardType
-        case AnnotatedType(_, annot)
-        if annot.symbol == defn.UncheckedAnnot => WildcardType
+        case tref: TypeRef if tref.typeSymbol.isPatternBound =>
+          WildcardType
+        case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedAnnot =>
+          WildcardType
         case _ => mapOver(tp)
       }
     }.apply(tp)
 
     def replaceX(tp: Type)(implicit ctx: Context) = new TypeMap {
       def apply(tp: Type) = tp match {
-        case tref: TypeRef
-        if isPatternTypeSymbol(tref.typeSymbol) =>
+        case tref: TypeRef if tref.typeSymbol.isPatternBound =>
           if (variance == 1) tref.info.hiBound
           else if (variance == -1) tref.info.loBound
           else OrType(defn.AnyType, defn.NothingType)

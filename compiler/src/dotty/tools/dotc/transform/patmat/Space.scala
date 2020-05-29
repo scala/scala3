@@ -464,7 +464,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *     }
    */
   private def erase(tp: Type, inArray: Boolean = false): Type = trace(i"$tp erased to", debug) {
-    def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 
     tp match {
       case tp @ AppliedType(tycon, args) =>
@@ -476,7 +475,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         AndType(erase(tp1, inArray), erase(tp2, inArray))
       case tp @ RefinedType(parent, _, _) =>
         erase(parent)
-      case tref: TypeRef if isPatternTypeSymbol(tref.typeSymbol) =>
+      case tref: TypeRef if tref.typeSymbol.isPatternBound =>
         if (inArray) tref.underlying else WildcardType
       case _ => tp
     }

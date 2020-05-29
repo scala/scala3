@@ -686,14 +686,12 @@ object TypeOps:
       }
     }
 
-    def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
-
     // replace uninstantiated type vars with WildcardType, check tests/patmat/3333.scala
     def instUndetMap(implicit ctx: Context) = new TypeMap {
       def apply(t: Type): Type = t match {
         case tvar: TypeVar if !tvar.isInstantiated =>
           WildcardType(tvar.origin.underlying.bounds)
-        case tref: TypeRef if isPatternTypeSymbol(tref.typeSymbol) =>
+        case tref: TypeRef if tref.typeSymbol.isPatternBound =>
           WildcardType(tref.underlying.bounds)
         case _ => mapOver(t)
       }
