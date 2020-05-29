@@ -1168,7 +1168,9 @@ object SymDenotations {
 
     final def isSuperTrait(using Context): Boolean =
       isClass
-      && (is(SuperTrait) || defn.assumedSuperTraits.contains(symbol.asClass))
+      && (is(SuperTrait)
+          || defn.assumedSuperTraits.contains(symbol.asClass)
+          || hasAnnotation(defn.SuperTraitAnnot))
 
     /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {

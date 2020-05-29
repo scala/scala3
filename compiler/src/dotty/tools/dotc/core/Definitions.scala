@@ -803,6 +803,7 @@ class Definitions {
   @tu lazy val ScalaStrictFPAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.strictfp")
   @tu lazy val ScalaStaticAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.static")
   @tu lazy val SerialVersionUIDAnnot: ClassSymbol = ctx.requiredClass("scala.SerialVersionUID")
+  @tu lazy val SuperTraitAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.superTrait")
   @tu lazy val TASTYSignatureAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.TASTYSignature")
   @tu lazy val TASTYLongSignatureAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.TASTYLongSignature")
   @tu lazy val TailrecAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.tailrec")
