@@ -81,6 +81,13 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       else self
     }
 
+    def withoutFlags(flags1: String*): TestSource = self match {
+      case self: JointCompilationSource =>
+        self.copy(flags = flags.without(flags1: _*))
+      case self: SeparateCompilationSource =>
+        self.copy(flags = flags.without(flags1: _*))
+    }
+
     /** Generate the instructions to redo the test from the command line */
     def buildInstructions(errors: Int, warnings: Int): String = {
       val sb = new StringBuilder
@@ -582,6 +589,24 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput)
 
+  private final class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  extends Test(testSources, times, threadLimit, suppressAllOutput) {
+    private def verifyOutput(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
+      testSource.sourceFiles.foreach { file =>
+        if checkFiles.contains(file) then
+          val checkFile = checkFiles(file)
+          val actual = Source.fromFile(file, "UTF-8").getLines().toList
+          diffTest(testSource, checkFile, actual, reporters, logger)
+      }
+
+      // check that the rewritten code compiles
+      new CompilationTest(testSource).checkCompile()
+    }
+
+    override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
+      verifyOutput(testSource, reporters, logger)
+  }
+
   private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private var didAddNoRunWarning = false
@@ -917,6 +942,33 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       this
     }
 
+    /** Tests `-rewrite`, which makes sure that the rewritten files still compile
+     *  and agree with the expected result (if specified).
+     *
+     *  Check files are only supported for joint compilation sources.
+     */
+    def checkRewrites()(implicit summaryReport: SummaryReporting): this.type = {
+      // use the original check file, to simplify update of check files
+      var checkFileMap = Map.empty[JFile, JFile]
+
+      // copy source file to targets, as they will be changed
+      val copiedTargets = targets.map {
+        case target @ JointCompilationSource(_, files, _, outDir, _, _) =>
+          val files2 = files.map { f =>
+            val dest = copyToDir(outDir, f)
+            val checkFile = new JFile(f.getPath.replaceFirst("\\.scala$", ".check"))
+            if (checkFile.exists) checkFileMap = checkFileMap.updated(dest, checkFile)
+            dest
+          }
+          target.copy(files = files2)
+        case target @ SeparateCompilationSource(_, dir, _, outDir) =>
+          target.copy(dir = copyToDir(outDir, dir))
+      }
+
+      val test = new RewriteTest(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
+      this
+    }
+
     /** Deletes output directories and files */
     private def cleanup(): this.type = {
       if (shouldDelete) delete()
@@ -946,20 +998,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       if (file.isDirectory) file.listFiles.map(copyToDir(target.toFile, _))
       target.toFile
     }
-
-    /** Builds a new `CompilationTest` where we have copied the target files to
-     *  the out directory. This is needed for tests that modify the original
-     *  source, such as `-rewrite` tests
-     */
-    def copyToTarget(): CompilationTest = new CompilationTest (
-      targets.map {
-        case target @ JointCompilationSource(_, files, _, outDir, _, _) =>
-          target.copy(files = files.map(copyToDir(outDir,_)))
-        case target @ SeparateCompilationSource(_, dir, _, outDir) =>
-          target.copy(dir = copyToDir(outDir, dir))
-      },
-      times, shouldDelete, threadLimit, shouldFail, shouldSuppressOutput
-    )
 
     /** Builds a `CompilationTest` which performs the compilation `i` times on
      *  each target
