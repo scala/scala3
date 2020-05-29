@@ -88,7 +88,7 @@ object Lst {
       case Nil => 1
     }
     inline override def numberOfCases = 2
-    inline override def alternative(n: Int) <: Generic[_ <: Lst[T]] =
+    transparent inline override def alternative(n: Int): Generic[_ <: Lst[T]] =
       inline n match {
         case 0 => Cons.GenericCons[T]
         case 1 => Nil.GenericNil
@@ -153,7 +153,7 @@ object Either {
       case x: Right[_] => 1
     }
     inline override def numberOfCases = 2
-    inline override def alternative(n: Int) <: Generic[_ <: Either[L, R]] =
+    inline override def alternative(n: Int): _ <: Generic[_ <: Either[L, R]] =
       inline n match {
         case 0 => Left.GenericLeft[L]
         case 1 => Right.GenericRight[R]

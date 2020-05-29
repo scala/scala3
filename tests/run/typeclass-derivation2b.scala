@@ -49,7 +49,7 @@ object Lst {
       case x: Cons[_] => 0
       case Nil => 1
     }
-    inline def alternative(inline n: Int) <: GenericProduct[_ <: Lst[T]] =
+    transparent inline def alternative(inline n: Int): GenericProduct[_ <: Lst[T]] =
       inline n match {
         case 0 => Cons.GenericCons[T]
         case 1 => Nil.GenericNil

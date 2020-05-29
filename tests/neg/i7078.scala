@@ -1,8 +1,7 @@
 trait A
 class B extends A
 
-given g1 as _ <: A = B()  // error: `_ <:' is only allowed for given with `inline' modifier
+transparent given g1 as A = B()  // error: `transparent` can only be used in conjunction with `inline`
 
 inline given g2 as _ <: A:  // error: `=' expected
   def foo = 2
-// error

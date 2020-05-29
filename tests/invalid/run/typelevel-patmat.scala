@@ -78,12 +78,12 @@ object Test extends App {
   val e1 = nth(r2, 1)
   val ce1: String = e1
 
-  inline def concatTyped(xs: HList, ys: HList) <: Typed[_ <: HList] = inline xs match {
+  transparent inline def concatTyped(xs: HList, ys: HList): Typed[_ <: HList] = inline xs match {
     case HNil => Typed(ys)
     case HCons(x, xs1) => Typed(HCons(x, concatTyped(xs1, ys).value))
   }
 
-  def concatImpl(xs: HList, ys: HList) <: HList = xs match {
+  transparent def concatImpl(xs: HList, ys: HList): HList = xs match {
     case HNil => ys
     case HCons(x, xs1) => HCons(x, concatImpl(xs1, ys))
   }
