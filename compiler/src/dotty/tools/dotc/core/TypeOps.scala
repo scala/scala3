@@ -18,7 +18,7 @@ import config.Feature
 import typer.Applications._
 import typer.ProtoTypes._
 import typer.ForceDegree
-import typer.Inferencing.isFullyDefined
+import typer.Inferencing._
 import typer.IfBottom
 
 import scala.annotation.internal.sharable
@@ -618,8 +618,9 @@ object TypeOps:
 
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
-    instantiateToSubType(childTp, parent)(using ctx.fresh.setNewTyperState())
-      .dealias
+    inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
+      instantiateToSubType(childTp, parent).dealias
+    }
   }
 
   /** Instantiate type `tp1` to be a subtype of `tp2`
@@ -685,10 +686,15 @@ object TypeOps:
       }
     }
 
+    def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
+
     // replace uninstantiated type vars with WildcardType, check tests/patmat/3333.scala
     def instUndetMap(implicit ctx: Context) = new TypeMap {
       def apply(t: Type): Type = t match {
-        case tvar: TypeVar if !tvar.isInstantiated => WildcardType(tvar.origin.underlying.bounds)
+        case tvar: TypeVar if !tvar.isInstantiated =>
+          WildcardType(tvar.origin.underlying.bounds)
+        case tref: TypeRef if isPatternTypeSymbol(tref.typeSymbol) =>
+          WildcardType(tref.underlying.bounds)
         case _ => mapOver(t)
       }
     }
@@ -715,9 +721,10 @@ object TypeOps:
       }
     }
 
-    if (protoTp1 <:< tp2)
-      if (isFullyDefined(protoTp1, force)) protoTp1
-      else instUndetMap.apply(protoTp1)
+    if (protoTp1 <:< tp2) {
+      maximizeType(protoTp1, NoSpan, fromScala2x = false)
+      instUndetMap.apply(protoTp1)
+    }
     else {
       val protoTp2 = maxTypeMap.apply(tp2)
       if (protoTp1 <:< protoTp2 || parentQualify)
