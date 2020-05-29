@@ -1057,7 +1057,14 @@ class Typer extends Namer
      *  @post: If result exists, `paramIndex` is defined for the name of
      *         every parameter in `params`.
      */
-    lazy val calleeType: Type = fnBody match {
+    lazy val calleeType: Type = untpd.stripAnnotated(fnBody) match {
+      case ident: Ident if isContextual =>
+        val tp = typedIdent(ident, WildcardType).tpe.widen
+        if defn.isContextFunctionType(tp) && params.size == defn.functionArity(tp)
+        then
+          paramIndex = params.map(_.name).zipWithIndex.toMap
+          tp.select(nme.apply)
+        else NoType
       case app @ Apply(expr, args) =>
         paramIndex = {
           for (param <- params; idx <- paramIndices(param, args))
@@ -2450,9 +2457,9 @@ class Typer extends Namer
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
     val defn.FunctionOf(formals, _, true, _) = pt.dropDependentRefinement
-    val ifun = desugar.makeContextualFunction(formals, tree, defn.isErasedFunctionType(pt))
+    val ifun = desugar.makeContextualFunction(formals.map(_ => untpd.TypeTree()), tree, defn.isErasedFunctionType(pt))
     typr.println(i"make contextual function $tree / $pt ---> $ifun")
-    typed(ifun, pt)
+    typedFunctionValue(ifun, pt)
   }
 
   /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */

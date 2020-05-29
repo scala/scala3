@@ -98,6 +98,11 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => tree
   }
 
+  def stripAnnotated(tree: Tree): Tree = tree match {
+    case Annotated(arg, _) => arg
+    case _ => tree
+  }
+
   /** The number of arguments in an application */
   def numArgs(tree: Tree): Int = unsplice(tree) match {
     case Apply(fn, args) => numArgs(fn) + args.length
