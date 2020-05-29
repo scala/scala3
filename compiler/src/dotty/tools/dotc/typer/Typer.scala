@@ -2469,7 +2469,34 @@ class Typer extends Namer
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
     val defn.FunctionOf(formals, _, true, _) = pt.dropDependentRefinement
-    val ifun = desugar.makeContextualFunction(formals.map(_ => untpd.TypeTree()), tree, defn.isErasedFunctionType(pt))
+
+    // The getter of default parameters may reach here.
+    // Given the code below
+    //
+    //     class Foo[A](run: A ?=> Int) {
+    //        def foo[T](f: T ?=> Int = run) = ()
+    //     }
+    //
+    // it desugars to
+    //
+    //     class Foo[A](run: A ?=> Int) {
+    //        def foo$default$1[T] = run
+    //        def foo[T](f: T ?=> Int = run) = ()
+    //     }
+    //
+    // The expected type for checking `run` in `foo$default$1` is
+    //
+    //      <?> ?=> Int
+    //
+    // see tests/pos/i7778b.scala
+
+    val paramTypes = {
+      val hasWildcard = formals.exists(_.isInstanceOf[WildcardType])
+      if hasWildcard then formals.map(_ => untpd.TypeTree())
+      else formals.map(untpd.TypeTree)
+    }
+
+    val ifun = desugar.makeContextualFunction(paramTypes, tree, defn.isErasedFunctionType(pt))
     typr.println(i"make contextual function $tree / $pt ---> $ifun")
     typed(ifun, pt)
   }

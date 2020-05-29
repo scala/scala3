@@ -1336,7 +1336,7 @@ object desugar {
     Function(param :: Nil, Block(vdefs, body))
   }
 
-  def makeContextualFunction(formals: List[TypeTree], body: Tree, isErased: Boolean)(implicit ctx: Context): Function = {
+  def makeContextualFunction(formals: List[Tree], body: Tree, isErased: Boolean)(implicit ctx: Context): Function = {
     val mods = if (isErased) Given | Erased else Given
     val params = makeImplicitParameters(formals, mods)
     FunctionWithMods(params, body, Modifiers(mods))
