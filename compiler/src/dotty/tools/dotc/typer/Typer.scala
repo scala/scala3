@@ -1049,10 +1049,22 @@ class Typer extends Namer
      */
     var paramIndex = Map[Name, Int]()
 
-     /** If function is of the form
+    /** Infer parameter type from the body of the function
+     *
+     *  1. If function is of the form
+     *
      *      (x1, ..., xN) => f(... x1, ..., XN, ...)
+     *
      *  where each `xi` occurs exactly once in the argument list of `f` (in
      *  any order), the type of `f`, otherwise NoType.
+     *
+     *  2. If the function is of the form
+     *
+     *     (using x1, ..., xN) => f
+     *
+     *  where `f` is a contextual function type of the form `(T1, ..., TN) ?=> T`,
+     *  then `xi` takes the type `Ti`.
+     *
      *  Updates `fnBody` and `paramIndex` as a side effect.
      *  @post: If result exists, `paramIndex` is defined for the name of
      *         every parameter in `params`.
