@@ -4600,6 +4600,7 @@ object Types {
     def apply(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
       unique(new RealTypeBounds(lo, hi))
     def empty(implicit ctx: Context): TypeBounds = apply(defn.NothingType, defn.AnyType)
+    def emptyPolyKind(implicit ctx: Context): TypeBounds = apply(defn.NothingType, defn.AnyKindType)
     def upper(hi: Type)(implicit ctx: Context): TypeBounds = apply(defn.NothingType, hi)
     def lower(lo: Type)(implicit ctx: Context): TypeBounds = apply(lo, defn.AnyType)
   }
