@@ -23,10 +23,15 @@ class Test {
   val foo = new Foo
   import foo.bar._
 
-  def test(a: A) = {
+  def h(a: A) = {
     a match {
       case B() => 1
       case _ => 2 // unreachable code
     }
   }
+
+  def f(a: A) =
+    a match {
+      case B() => 1
+    }
 }

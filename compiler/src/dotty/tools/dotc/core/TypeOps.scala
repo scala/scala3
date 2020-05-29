@@ -667,33 +667,23 @@ object TypeOps:
     def maxTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true)
 
     // Prefix inference, replace `p.C.this.Child` with `X.Child` where `X <: p.C`
-    // Note: we need to handle `p` recursively.
+    // Note: we need to strip ThisType in `p` recursively.
     //
     // See tests/patmat/i3938.scala
     class InferPrefixMap extends TypeMap {
-      var tvars = Set.empty[TypeVar]
+      var prefixTVar: Type = null
       def apply(tp: Type): Type = tp match {
         case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
           if (tref.symbol.is(Module))
             TermRef(this(tref.prefix), tref.symbol.sourceModule)
+          else if (prefixTVar != null)
+            this(tref)
           else {
-            val bound = TypeRef(this(tref.prefix), tref.symbol)
-            val tvar = newTypeVar(TypeBounds.upper(bound))
-            tvars = tvars + tvar
-            tvar
+            prefixTVar = WildcardType  // prevent recursive call from assigning it
+            prefixTVar = newTypeVar(TypeBounds.upper(this(tref)))
+            prefixTVar
           }
         case tp => mapOver(tp)
-      }
-    }
-
-    // replace uninstantiated type vars with WildcardType, check tests/patmat/3333.scala
-    def instUndetMap(implicit ctx: Context) = new TypeMap {
-      def apply(t: Type): Type = t match {
-        case tvar: TypeVar if !tvar.isInstantiated =>
-          WildcardType(tvar.origin.underlying.bounds)
-        case tref: TypeRef if tref.typeSymbol.isPatternBound =>
-          WildcardType(tref.underlying.bounds)
-        case _ => mapOver(t)
       }
     }
 
@@ -704,7 +694,7 @@ object TypeOps:
     val force = new ForceDegree.Value(
       tvar =>
         !(ctx.typerState.constraint.entry(tvar.origin) `eq` tvar.origin.underlying) ||
-        inferThisMap.tvars.contains(tvar), // always instantiate prefix
+        (tvar `eq` inferThisMap.prefixTVar), // always instantiate prefix
       IfBottom.flip
     )
 
@@ -721,13 +711,13 @@ object TypeOps:
 
     if (protoTp1 <:< tp2) {
       maximizeType(protoTp1, NoSpan, fromScala2x = false)
-      instUndetMap.apply(protoTp1)
+      wildApprox(protoTp1)
     }
     else {
       val protoTp2 = maxTypeMap.apply(tp2)
       if (protoTp1 <:< protoTp2 || parentQualify)
         if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
-        else instUndetMap.apply(protoTp1)
+        else wildApprox(protoTp1)
       else {
         typr.println(s"$protoTp1 <:< $protoTp2 = false")
         NoType
