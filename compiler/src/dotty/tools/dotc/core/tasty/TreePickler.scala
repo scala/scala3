@@ -16,7 +16,8 @@ import StdNames.nme
 import transform.SymUtils._
 import printing.Printer
 import printing.Texts._
-import util.SourceFile
+import util.{SourceFile, Property}
+import config.Config.checkAmbiguousSelects
 import annotation.constructorOnly
 
 object TreePickler {
@@ -30,6 +31,11 @@ object TreePickler {
       if isTermHole then s"{{{ $idx |" ~~ printer.toTextGlobal(tpe) ~~ "|" ~~ printer.toTextGlobal(args, ", ") ~~ "}}}"
       else s"[[[ $idx |" ~~ printer.toTextGlobal(tpe) ~~ "|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]]"
   }
+
+  /** Select tree cannot be unambiguously resolved with signature alone,
+   *  needs to be pickled using the SELECTin tag.
+   */
+  val NeedsSelectIn = new Property.StickyKey[Unit]
 }
 
 class TreePickler(pickler: TastyPickler) {
@@ -383,12 +389,14 @@ class TreePickler(pickler: TastyPickler) {
               }
             case _ =>
               val sig = tree.tpe.signature
-              val isAmbiguous =
-                sig != Signature.NotAMethod
-                && qual.tpe.nonPrivateMember(name).match
+              val needsSelectIn = tree.hasAttachment(NeedsSelectIn)
+              if checkAmbiguousSelects then
+                val isAmbiguous = qual.tpe.nonPrivateMember(name) match
                   case d: MultiDenotation => d.atSignature(sig).isInstanceOf[MultiDenotation]
                   case _ => false
-              if isAmbiguous then
+                assert(needsSelectIn == isAmbiguous,
+                  i"ambiguity misprediction for select node $tree, is ambiguous = $isAmbiguous")
+              if needsSelectIn then
                 writeByte(SELECTin)
                 withLength {
                   pickleNameAndSig(name, tree.symbol.signature)
