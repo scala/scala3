@@ -211,7 +211,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   /** The typeRef with wildcard arguments for each type parameter */
   def rawTypeRef(implicit ctx: Context) =
-    self.typeRef.appliedTo(self.typeParams.map(_ => TypeBounds.empty))
+    self.typeRef.appliedTo(self.typeParams.map(_ => TypeBounds.emptyPolyKind))
 
   /** Is symbol a quote operation? */
   def isQuote(implicit ctx: Context): Boolean =
