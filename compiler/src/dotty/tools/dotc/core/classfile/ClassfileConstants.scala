@@ -362,6 +362,7 @@ object ClassfileConstants {
       res = addFlag(res, nflags & JAVA_ACC_FINAL)
       res = addFlag(res, nflags & JAVA_ACC_SYNTHETIC)
       res = addFlag(res, nflags & JAVA_ACC_STATIC)
+      res = addFlag(res, nflags & JAVA_ACC_ENUM)
       res = addFlag(res, nflags & JAVA_ACC_ABSTRACT)
       res = addFlag(res, nflags & JAVA_ACC_INTERFACE)
       res

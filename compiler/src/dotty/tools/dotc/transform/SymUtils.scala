@@ -192,6 +192,10 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def children(implicit ctx: Context): List[Symbol] = {
     if (self.isType)
       self.setFlag(ChildrenQueried)
+
+    if (self.isAllOf(JavaEnumTrait))
+      self.linkedClass.info.decls.foreach(_.ensureCompleted())
+
     self.annotations.collect {
       case Annotation.Child(child) => child
     }.reverse

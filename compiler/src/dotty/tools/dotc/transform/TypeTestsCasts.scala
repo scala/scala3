@@ -120,6 +120,9 @@ object TypeTestsCasts {
       maximizeType(P1, span, fromScala2x = false)
 
       val res = P1 <:< P
+
+      debug.println(TypeComparer.explained(P1 <:< P))
+
       debug.println("P1 : " + P1.show)
       debug.println("P1 <:< P = " + res)
 

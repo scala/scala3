@@ -586,11 +586,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
-  def decompose(tp: Type): List[Space] = {
-    val children = tp.classSymbol.children
-
-    debug.println(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
-
+  def decompose(tp: Type): List[Space] =
     tp.dealias match {
       case AndType(tp1, tp2) =>
         intersect(Typ(tp1, false), Typ(tp2, false)) match {
@@ -607,8 +603,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case tp if tp.isRef(defn.UnitClass) =>
         Typ(ConstantType(Constant(())), true) :: Nil
       case tp if tp.classSymbol.isAllOf(JavaEnumTrait) =>
-        children.map(sym => Typ(sym.termRef, true))
+        tp.classSymbol.children.map(sym => Typ(sym.termRef, true))
       case tp =>
+        val children = tp.classSymbol.children
+        debug.println(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
+
         val parts = children.map { sym =>
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
           val refined = TypeOps.refineUsingParent(tp, sym1)
@@ -630,7 +629,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
         parts.map(Typ(_, true))
     }
-  }
+
 
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
   def canDecompose(tp: Type): Boolean = {
