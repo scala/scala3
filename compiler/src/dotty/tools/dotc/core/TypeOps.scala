@@ -665,21 +665,21 @@ object TypeOps:
     def minTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false)
     def maxTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true)
 
-    // Fix subtype checking for child instantiation,
-    // such that `Foo(Test.this.foo) <:< Foo(Foo.this)`
+    // Prefix inference, replace `p.C.this.Child` with `X.Child` where `X <: p.C`
+    // Note: we need to handle `p` recursively.
+    //
     // See tests/patmat/i3938.scala
-    class RemoveThisMap extends TypeMap {
-      var prefixTVar: Type = null
+    class InferPrefixMap extends TypeMap {
+      var tvars = Set.empty[TypeVar]
       def apply(tp: Type): Type = tp match {
         case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
           if (tref.symbol.is(Module))
             TermRef(this(tref.prefix), tref.symbol.sourceModule)
-          else if (prefixTVar != null)
-            this(tref)
           else {
-            prefixTVar = WildcardType  // prevent recursive call from assigning it
-            prefixTVar = newTypeVar(TypeBounds.upper(this(tref)))
-            prefixTVar
+            val bound = TypeRef(this(tref.prefix), tref.symbol)
+            val tvar = newTypeVar(TypeBounds.upper(bound))
+            tvars = tvars + tvar
+            tvar
           }
         case tp => mapOver(tp)
       }
@@ -693,14 +693,14 @@ object TypeOps:
       }
     }
 
-    val removeThisType = new RemoveThisMap
+    val inferThisMap = new InferPrefixMap
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
-    val protoTp1 = removeThisType.apply(tp1).appliedTo(tvars)
+    val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
 
     val force = new ForceDegree.Value(
       tvar =>
         !(ctx.typerState.constraint.entry(tvar.origin) `eq` tvar.origin.underlying) ||
-        (tvar `eq` removeThisType.prefixTVar),
+        inferThisMap.tvars.contains(tvar), // always instantiate prefix
       IfBottom.flip
     )
 
