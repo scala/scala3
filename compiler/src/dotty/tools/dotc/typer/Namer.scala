@@ -15,6 +15,7 @@ import util.Spans._
 import util.Property
 import collection.mutable
 import tpd.ListOfTreeDecorator
+import Variances.alwaysInvariant
 import config.{Config, Feature}
 import config.Printers.typr
 import Annotations._
@@ -968,7 +969,10 @@ class Namer { typer: Typer =>
     override final def typeSig(sym: Symbol): Type =
       val tparamSyms = completerTypeParams(sym)(ictx)
       given ctx as Context = nestedCtx
-      def abstracted(tp: TypeBounds): TypeBounds = HKTypeLambda.boundsFromParams(tparamSyms, tp)
+
+      def abstracted(tp: TypeBounds): TypeBounds =
+        HKTypeLambda.boundsFromParams(tparamSyms, tp)
+
       val dummyInfo1 = abstracted(TypeBounds.empty)
       sym.info = dummyInfo1
       sym.setFlag(Provisional)
@@ -998,8 +1002,22 @@ class Namer { typer: Typer =>
       }
       sym.info = dummyInfo2
 
+      // Treat the parameters of an upper type lambda bound on the RHS as non-variant.
+      // E.g.   type F <: [X] =>> G   and   type F[X] <: G
+      // are treated alike.
+      def addVariances(tp: Type): Type = tp match
+        case tp: TypeBounds =>
+          def recur(tp: Type): Type = tp match
+            case tp: HKTypeLambda if !tp.isDeclaredVarianceLambda =>
+              tp.withVariances(tp.paramNames.map(alwaysInvariant))
+               .derivedLambdaType(resType = recur(tp.resType))
+            case tp => tp
+          tp.derivedTypeBounds(tp.lo, recur(tp.hi))
+        case _ =>
+          tp
+
       val rhs1 = typedAheadType(rhs)
-      val rhsBodyType: TypeBounds = rhs1.tpe.toBounds
+      val rhsBodyType: TypeBounds = addVariances(rhs1.tpe).toBounds
       val unsafeInfo = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
 
       def opaqueToBounds(info: Type): Type =
