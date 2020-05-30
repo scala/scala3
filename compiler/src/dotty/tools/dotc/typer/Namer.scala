@@ -1002,15 +1002,17 @@ class Namer { typer: Typer =>
       }
       sym.info = dummyInfo2
 
-      // If this type does not have type parameters itself, treat the parameters
-      // of a type lambda on the RHS as non-variant. E.g.
-      //   type F <: [X] =>> G   and   type F[X] <: G
+      // Treat the parameters of an upper type lambda bound on the RHS as non-variant.
+      // E.g.   type F <: [X] =>> G   and   type F[X] <: G
       // are treated alike.
       def addVariances(tp: Type): Type = tp match
-        case tp @ TypeBounds(lo, hi) =>
-          tp.derivedTypeBounds(addVariances(lo), addVariances(hi))
-        case tp: HKTypeLambda if tparamSyms.isEmpty && !tp.isDeclaredVarianceLambda =>
-          tp.withVariances(tp.paramNames.map(alwaysInvariant))
+        case tp: TypeBounds =>
+          def recur(tp: Type): Type = tp match
+            case tp: HKTypeLambda if !tp.isDeclaredVarianceLambda =>
+              tp.withVariances(tp.paramNames.map(alwaysInvariant))
+               .derivedLambdaType(resType = recur(tp.resType))
+            case tp => tp
+          tp.derivedTypeBounds(tp.lo, recur(tp.hi))
         case _ =>
           tp
 
