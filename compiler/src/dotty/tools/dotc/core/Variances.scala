@@ -156,6 +156,4 @@ object Variances {
     if (v > 0) "+"
     else if (v < 0) "-"
     else ""
-
-  val alwaysInvariant: Any => Invariant.type = Function.const(Invariant)
 }
