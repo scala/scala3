@@ -1578,6 +1578,32 @@ object SymDenotations {
       if (is(Private))
         copySymDenotation(name = expandedName, initFlags = this.flags &~ Private)
       else this
+
+    /** If this is a sealed class, its known children in the order of textual occurrence
+     */
+    def children(using Context): List[Symbol] =
+
+      def completeChildrenIn(owner: Symbol) =
+        def maybeChild(c: Symbol) =
+          !owner.is(Package)
+          || c.infoOrCompleter.match
+              case _: SymbolLoaders.SecondCompleter => c.associatedFile == symbol.associatedFile
+              case _ => false
+        if owner.isClass then
+          for c <- owner.info.decls.toList if c.isClass && maybeChild(c) do
+            c.ensureCompleted()
+
+      if is(Sealed) then
+        if !is(ChildrenQueried) && !ctx.isAfterTyper then
+          // During typer, make sure all visible children are completed, so that
+          // they show up in Child annotations. A class is visible if it is defined
+          // in the same scope as `cls` or in the companion object of `cls`.
+          completeChildrenIn(owner)
+          completeChildrenIn(companionClass)
+          setFlag(ChildrenQueried)
+
+      annotations.collect { case Annotation.Child(child) => child }.reverse
+    end children
   }
 
   /** The contents of a class definition during a period

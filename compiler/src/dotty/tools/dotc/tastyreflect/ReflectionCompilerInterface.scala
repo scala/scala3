@@ -1780,7 +1780,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     }
 
   def Symbol_children(self: Symbol)(using ctx: Context): List[Symbol] =
-    dotty.tools.dotc.transform.SymUtils(self).children
+    self.children
 
   private def isField(sym: Symbol)(using ctx: Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
 
