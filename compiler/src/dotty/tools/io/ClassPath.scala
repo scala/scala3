@@ -157,7 +157,7 @@ object ClassPath {
     catch { case _: MalformedURLException => None }
 
   def manifests: List[java.net.URL] = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters.EnumerationHasAsScala
     val resources = Thread.currentThread().getContextClassLoader().getResources("META-INF/MANIFEST.MF")
     resources.asScala.filter(_.getProtocol == "jar").toList
   }
