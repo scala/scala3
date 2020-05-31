@@ -278,7 +278,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           val (monoType, elemsType) = mirroredType match
             case mirroredType: HKTypeLambda =>
               def accessorType(acc: Symbol) =
-                acc.info.subst(cls.typeParams, mirroredType.paramRefs)
+                if cls.typeParams.hasSameLengthAs(mirroredType.paramRefs) then
+                  acc.info.subst(cls.typeParams, mirroredType.paramRefs)
+                else
+                  acc.info
               val elems =
                 mirroredType.derivedLambdaType(
                   resType = TypeOps.nestedPairs(accessors.map(accessorType))
