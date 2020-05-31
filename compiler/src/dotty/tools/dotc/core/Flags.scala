@@ -339,7 +339,7 @@ object Flags {
   val (_, DefaultMethod @ _, _) = newFlags(38, "<defaultmethod>")
 
   /** Symbol is an enum class or enum case (if used with case) */
-  val (Enum @ _, _, _) = newFlags(40, "enum")
+  val (Enum @ _, EnumVal @ _, _) = newFlags(40, "enum")
 
   /** An export forwarder */
   val (Exported @ _, _, _) = newFlags(41, "exported")
@@ -530,7 +530,7 @@ object Flags {
   val DeferredOrLazyOrMethod: FlagSet        = Deferred | Lazy | Method
   val DeferredOrTermParamOrAccessor: FlagSet = Deferred | ParamAccessor | TermParam           // term symbols without right-hand sides
   val DeferredOrTypeParam: FlagSet           = Deferred | TypeParam                           // type symbols without right-hand sides
-  val EnumValue: FlagSet                     = Enum | StableRealizable           // A Scala enum value
+  val EnumValue: FlagSet                     = Enum | StableRealizable                        // A Scala enum value
   val StableOrErased: FlagSet                = Erased | StableRealizable                      // Assumed to be pure
   val ExtensionMethod: FlagSet               = Extension | Method
   val FinalOrInline: FlagSet                 = Final | Inline
