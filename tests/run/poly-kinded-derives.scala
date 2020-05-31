@@ -27,7 +27,7 @@ object Test extends App {
       given t2 [T] as Functor[[U] =>> (T, U)] {}
       given t3 [T, U] as Functor[[V] =>> (T, U, V)] {}
 
-      def derived[F[_]](using m: Mirror { type MirroredType = F ; type MirroredElemTypes[_] }, r: Functor[m.MirroredElemTypes]): Functor[F] = new Functor[F] {}
+      def derived[F[_]](using m: Mirror { type MirroredType[X] = F[X] ; type MirroredElemTypes[_] }, r: Functor[m.MirroredElemTypes]): Functor[F] = new Functor[F] {}
     }
 
     case class Mono(i: Int) derives Functor
@@ -43,7 +43,7 @@ object Test extends App {
       given [C] as FunctorK[[F[_]] =>> C] {}
       given [T] as FunctorK[[F[_]] =>> Tuple1[F[T]]]
 
-      def derived[F[_[_]]](using m: Mirror { type MirroredType = F ; type MirroredElemTypes[_[_]] }, r: FunctorK[m.MirroredElemTypes]): FunctorK[F] = new FunctorK[F] {}
+      def derived[F[_[_]]](using m: Mirror { type MirroredType[X[_]] = F[X] ; type MirroredElemTypes[_[_]] }, r: FunctorK[m.MirroredElemTypes]): FunctorK[F] = new FunctorK[F] {}
     }
 
     case class Mono(i: Int) derives FunctorK
@@ -61,7 +61,7 @@ object Test extends App {
       given t2 as Bifunctor[[T, U] =>> (T, U)] {}
       given t3 [T] as Bifunctor[[U, V] =>> (T, U, V)] {}
 
-      def derived[F[_, _]](using m: Mirror { type MirroredType = F ; type MirroredElemTypes[_, _] }, r: Bifunctor[m.MirroredElemTypes]): Bifunctor[F] = ???
+      def derived[F[_, _]](using m: Mirror { type MirroredType[X, Y] = F[X, Y] ; type MirroredElemTypes[_, _] }, r: Bifunctor[m.MirroredElemTypes]): Bifunctor[F] = ???
     }
 
     case class Mono(i: Int) derives Bifunctor
