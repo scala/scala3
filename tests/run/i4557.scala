@@ -33,7 +33,7 @@ object Test {
   type T11 = C1[Int]
   class DT11 extends T11(2)
 
-  type T12 = C1
+  type T12[X] = C1[X]
   class DT12 extends T12[Int](3)
 
   type T2[T, S] = C2[T, S]
@@ -49,7 +49,7 @@ object Test {
   type T23[T, S] = T2[T, S]
   class DT23 extends T23(4, "e")
 
-  type T24 = C2
+  type T24[X, Y] = C2[X, Y]
   class DT24 extends T24[Int, String](5, "f")
 
   def main(args: Array[String]) = {

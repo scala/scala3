@@ -1086,6 +1086,22 @@ trait Checking {
     checker.traverse(tree)
   }
 
+  /** Check that user-defined (result) type is fully applied */
+  def checkFullyAppliedType(tree: Tree)(using Context): Unit = tree match
+    case TypeBoundsTree(lo, hi, alias) =>
+      checkFullyAppliedType(lo)
+      checkFullyAppliedType(hi)
+      checkFullyAppliedType(alias)
+    case Annotated(arg, annot) =>
+      checkFullyAppliedType(arg)
+    case LambdaTypeTree(_, body) =>
+      checkFullyAppliedType(body)
+    case _: TypeTree =>
+    case _ =>
+      if tree.tpe.typeParams.nonEmpty then
+        val what = if tree.symbol.exists then tree.symbol else i"type $tree"
+        ctx.error(em"$what takes type parameters", tree.sourcePos)
+
   /** Check that we are in an inline context (inside an inline method or in inline code) */
   def checkInInlineContext(what: String, posd: Positioned)(using Context): Unit =
     if !Inliner.inInlineMethod && !ctx.isInlineContext then
@@ -1209,6 +1225,7 @@ trait ReChecking extends Checking {
   import tpd._
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(using Context): Unit = ()
+  override def checkFullyAppliedType(tree: Tree)(using Context): Unit = ()
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(using Context): Unit = ()
   override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean = true
 }

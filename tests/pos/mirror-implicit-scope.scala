@@ -9,7 +9,7 @@ object Test {
   }
 
   object K1 {
-    type Generic[F[_]] = Mirror { type Scope = K1.type ; type MirroredType = F ; type MirroredElemTypes[_] }
+    type Generic[F[_]] = Mirror { type Scope = K1.type ; type MirroredType = [X] =>> F[X] ; type MirroredElemTypes[_] }
     extension on [F[_] <: Product, T](gen: Generic[F]) {
       inline def toRepr (t: F[T]): gen.MirroredElemTypes[T] = Tuple.fromProduct(t).asInstanceOf
     }

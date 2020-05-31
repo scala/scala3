@@ -274,7 +274,7 @@ object runtime1 {
 
   trait TypeClass1 {
     val commons: TypeClassCommon1
-    type This = commons.This
+    type This = [X] =>> commons.This[X]
   }
 
   trait TypeClassCommon1 { self =>
@@ -284,12 +284,14 @@ object runtime1 {
   }
 
   trait TypeClassCompanion1 {
-    type Impl[T[_]] <: TypeClassCommon1 { type This = T }
+    type Impl[T[_]] <: TypeClassCommon1 { type This = [X] =>> T[X] }
     def impl[T[_]](implicit ev: Impl[T]): Impl[T] = ev
   }
 
   implicit def inject1[A, From[_]](x: From[A])
-      (implicit ev: TypeClassCommon1 { type This = From }): ev.Instance[A] { type This = From } =
+      (implicit ev: TypeClassCommon1 {
+        type This = [X] =>> From[X]
+      }): ev.Instance[A] { type This = [X] =>> From[X] } =
     ev.inject(x)
 }
 import runtime1._
@@ -306,7 +308,7 @@ object functors {
     def pure[A](x: A): This[A]
   }
   object Functor extends TypeClassCompanion1 {
-    type Impl[T[_]] = FunctorCommon { type This = T }
+    type Impl[T[_]] = FunctorCommon { type This = [X] =>> T[X] }
   }
 
   trait Monad[A] extends Functor[A] {
@@ -319,16 +321,16 @@ object functors {
     type Instance[X] <: Monad[X]
   }
   object Monad extends TypeClassCompanion1 {
-    type Impl[T[_]] = MonadCommon { type This = T }
+    type Impl[T[_]] = MonadCommon { type This = [X] =>> T[X] }
   }
 
   def develop[A, F[X]](n: Int, x: A, f: A => A)(implicit ev: Functor.Impl[F]): F[A] =
     if (n == 0) Functor.impl[F].pure(x)
-    else develop(n - 1, x, f).map(f)
+    else develop(n - 1, x, f).map(f).asInstanceOf
 
   implicit object ListMonad extends MonadCommon {
-    type This = List
-    type Instance = Monad
+    type This[+X] = List[X]
+    type Instance[X] = Monad[X]
     def pure[A](x: A) = x :: Nil
     def inject[A]($this: List[A]) = new Monad[A] {
       val commons: ListMonad.this.type = ListMonad
@@ -339,7 +341,7 @@ object functors {
 
   object MonadFlatten {
     def flattened[T[_], A]($this: T[T[A]])(implicit ev: Monad.Impl[T]): T[A] =
-      $this.flatMap(identity  )
+      ??? // $this.flatMap[A](identity)   disabled since it does not typecheck
   }
 
   MonadFlatten.flattened(List(List(1, 2, 3), List(4, 5)))

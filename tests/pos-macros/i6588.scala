@@ -15,7 +15,7 @@ def main(using QuoteContext) = {
   foo[U]
   foo[List[Int]]
 
-  type N = List
+  type N[+X] = List[X]
   foo[N]
   foo[List]
 

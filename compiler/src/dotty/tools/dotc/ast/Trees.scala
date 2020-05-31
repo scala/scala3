@@ -243,7 +243,7 @@ object Trees {
   // ------ Categories of trees -----------------------------------
 
   /** Instances of this class are trees for which isType is definitely true.
-   *  Note that some trees have isType = true without being TypTrees (e.g. Ident, AnnotatedTree)
+   *  Note that some trees have isType = true without being TypTrees (e.g. Ident, Annotated)
    */
   trait TypTree[-T >: Untyped] extends Tree[T] {
     type ThisTree[-T >: Untyped] <: TypTree[T]
@@ -251,7 +251,7 @@ object Trees {
   }
 
   /** Instances of this class are trees for which isTerm is definitely true.
-   *  Note that some trees have isTerm = true without being TermTrees (e.g. Ident, AnnotatedTree)
+   *  Note that some trees have isTerm = true without being TermTrees (e.g. Ident, Annotated)
    */
   trait TermTree[-T >: Untyped] extends Tree[T] {
     type ThisTree[-T >: Untyped] <: TermTree[T]

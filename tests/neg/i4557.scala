@@ -2,11 +2,11 @@ class C0[A]
 class C1[A, B]
 
 object O {
-  type T0 = C0
+  type T0[X] = C0[X]
   type T1 = C0[String, Int] // error
   type T2[A] = C0[A, Int] // error
 
-  type S0 = C1
+  type S0[X, Y] = C1[X, Y]
   type S1 = C1[Int] // error
 
   class D0 extends T0 // error

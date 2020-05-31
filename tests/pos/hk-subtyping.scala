@@ -5,7 +5,7 @@ object Test {
   compare[Int, Int]
   compare[Int, Any]
 
-  def f[C <: List] = {
+  def f[C <: [X] =>> List[X]] = {
     compare[C[Int], List[Int]]
   }
 
