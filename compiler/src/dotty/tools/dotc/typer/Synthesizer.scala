@@ -277,9 +277,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
           val (monoType, elemsType) = mirroredType match
             case mirroredType: HKTypeLambda =>
+              def accessorType(acc: Symbol) =
+                acc.info.subst(cls.typeParams, mirroredType.paramRefs)
               val elems =
                 mirroredType.derivedLambdaType(
-                  resType = TypeOps.nestedPairs(accessors.map(_.info))
+                  resType = TypeOps.nestedPairs(accessors.map(accessorType))
                 )
               (mkMirroredMonoType(mirroredType), elems)
             case _ =>
