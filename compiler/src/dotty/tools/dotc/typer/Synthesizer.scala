@@ -279,7 +279,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             case mirroredType: HKTypeLambda =>
               val elems =
                 mirroredType.derivedLambdaType(
-                  resType = TypeOps.nestedPairs(accessors.map(mirroredType.memberInfo(_).widenExpr))
+                  resType = TypeOps.nestedPairs(accessors.map(_.info))
                 )
               (mkMirroredMonoType(mirroredType), elems)
             case _ =>
