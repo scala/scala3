@@ -18,7 +18,7 @@ import config.Feature
 import typer.Applications._
 import typer.ProtoTypes._
 import typer.ForceDegree
-import typer.Inferencing.isFullyDefined
+import typer.Inferencing._
 import typer.IfBottom
 
 import scala.annotation.internal.sharable
@@ -618,8 +618,9 @@ object TypeOps:
 
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
-    instantiateToSubType(childTp, parent)(using ctx.fresh.setNewTyperState())
-      .dealias
+    inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
+      instantiateToSubType(childTp, parent).dealias
+    }
   }
 
   /** Instantiate type `tp1` to be a subtype of `tp2`
@@ -668,10 +669,11 @@ object TypeOps:
     def minTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false)
     def maxTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true)
 
-    // Fix subtype checking for child instantiation,
-    // such that `Foo(Test.this.foo) <:< Foo(Foo.this)`
+    // Prefix inference, replace `p.C.this.Child` with `X.Child` where `X <: p.C`
+    // Note: we need to strip ThisType in `p` recursively.
+    //
     // See tests/patmat/i3938.scala
-    class RemoveThisMap extends TypeMap {
+    class InferPrefixMap extends TypeMap {
       var prefixTVar: Type = null
       def apply(tp: Type): Type = tp match {
         case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
@@ -688,22 +690,14 @@ object TypeOps:
       }
     }
 
-    // replace uninstantiated type vars with WildcardType, check tests/patmat/3333.scala
-    def instUndetMap(implicit ctx: Context) = new TypeMap {
-      def apply(t: Type): Type = t match {
-        case tvar: TypeVar if !tvar.isInstantiated => WildcardType(tvar.origin.underlying.bounds)
-        case _ => mapOver(t)
-      }
-    }
-
-    val removeThisType = new RemoveThisMap
+    val inferThisMap = new InferPrefixMap
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
-    val protoTp1 = removeThisType.apply(tp1).appliedTo(tvars)
+    val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
 
     val force = new ForceDegree.Value(
       tvar =>
         !(ctx.typerState.constraint.entry(tvar.origin) `eq` tvar.origin.underlying) ||
-        (tvar `eq` removeThisType.prefixTVar),
+        (tvar `eq` inferThisMap.prefixTVar), // always instantiate prefix
       IfBottom.flip
     )
 
@@ -718,14 +712,15 @@ object TypeOps:
       }
     }
 
-    if (protoTp1 <:< tp2)
-      if (isFullyDefined(protoTp1, force)) protoTp1
-      else instUndetMap.apply(protoTp1)
+    if (protoTp1 <:< tp2) {
+      maximizeType(protoTp1, NoSpan, fromScala2x = false)
+      wildApprox(protoTp1)
+    }
     else {
       val protoTp2 = maxTypeMap.apply(tp2)
       if (protoTp1 <:< protoTp2 || parentQualify)
         if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
-        else instUndetMap.apply(protoTp1)
+        else wildApprox(protoTp1)
       else {
         typr.println(s"$protoTp1 <:< $protoTp2 = false")
         NoType
