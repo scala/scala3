@@ -37,3 +37,20 @@ class AnnotationsTest:
         }
       }
     }
+
+  @Test def surviveMissingAnnot: Unit =
+    withJavaCompiled(
+      VirtualJavaSource("Annot.java",
+        "public @interface Annot {}"),
+      VirtualJavaSource("A.java",
+        "@Annot() public class A {}")) { javaOutputDir =>
+      Files.delete(javaOutputDir.resolve("Annot.class"))
+      inCompilerContext(javaOutputDir.toString + File.pathSeparator + TestConfiguration.basicClasspath) {
+        val cls = ctx.requiredClass("A")
+        val annots = cls.annotations.map(_.tree)
+        assert(annots == Nil,
+          s"class A should have no visible annotations since Annot is not on the classpath, but found: $annots")
+        assert(!ctx.reporter.hasErrors && !ctx.reporter.hasWarnings,
+          s"A missing annotation while parsing a Java class should be silently ignored but: ${ctx.reporter.summary}")
+      }
+    }
