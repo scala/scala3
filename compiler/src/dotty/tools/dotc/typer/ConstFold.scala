@@ -29,15 +29,15 @@ object ConstFold {
               case _ => null
           case _ => null
       case Select(xt, op) =>
-        if (op eq nme.getClass_) && xt.tpe.widen.isPrimitiveValueType then
-          Constant(xt.tpe.widen)
-        else
-          xt.tpe.widenTermRefExpr match {
-            case ConstantType(x) => foldUnop(op, x)
-            case _ => null
-          }
+        xt.tpe.widenTermRefExpr match {
+          case ConstantType(x) => foldUnop(op, x)
+          case _ => null
+        }
       case TypeApply(_, List(targ)) if tree.symbol eq defn.Predef_classOf =>
         Constant(targ.tpe)
+      case Apply(TypeApply(Select(qual, nme.getClass_), _), Nil)
+          if qual.tpe.widen.isPrimitiveValueType =>
+        Constant(qual.tpe.widen)
       case _ => null
     }
   }

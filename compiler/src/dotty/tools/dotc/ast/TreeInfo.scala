@@ -513,6 +513,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *
    *     { pre; v }
    *
+   *  (3) An expression `pre.getClass[..]()` that has a constant type `ConstantType(v)` but where
+   *  `pre` has side-effects is translated to:
+   *
+   *     { pre; v }
+   *
    *  This avoids the situation where we have a Select node that does not have a symbol.
    */
   def constToLiteral(tree: Tree)(implicit ctx: Context): Tree = {
@@ -524,12 +529,19 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         tree1
       case ConstantType(value) =>
         if (isIdempotentExpr(tree1)) Literal(value).withSpan(tree.span)
-        else tree1 match {
-          case Select(qual, _) if tree1.tpe.isInstanceOf[ConstantType] =>
-            // it's a primitive unary operator; Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
-            Block(qual :: Nil, Literal(value)).withSpan(tree.span)
-          case _ =>
-            tree1
+        else {
+          def keepPrefix(pre: Tree) =
+            Block(pre :: Nil, Literal(value)).withSpan(tree.span)
+
+          tree1 match {
+            case Select(pre, _) if tree1.tpe.isInstanceOf[ConstantType] =>
+              // it's a primitive unary operator; Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
+              keepPrefix(pre)
+            case Apply(TypeApply(Select(pre, nme.getClass_), _), Nil) =>
+              keepPrefix(pre)
+            case _ =>
+              tree1
+          }
         }
       case _ => tree1
     }
