@@ -9,6 +9,7 @@ import dotty.tools.dotc.util.SourceFile
 import org.jline.reader
 import org.jline.reader.Parser.ParseContext
 import org.jline.reader._
+import org.jline.reader.impl.LineReaderImpl
 import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
 import org.jline.utils.AttributedString
@@ -60,6 +61,8 @@ final class JLineTerminal extends java.io.Closeable {
                                                 // this is supplied from the EOFError.getMissing() method
       .variable(LIST_MAX, 400)                  // Ask user when number of completions exceed this limit (default is 100).
       .variable(BLINK_MATCHING_PAREN, 0L)       // Don't blink the opening paren after typing a closing paren.
+      .variable(WORDCHARS,
+        LineReaderImpl.DEFAULT_WORDCHARS.filterNot("*?.[]~=/&;!#%^(){}<>".toSet)) // Finer grained word boundaries
       .option(INSERT_TAB, true)                 // At the beginning of the line, insert tab instead of completing.
       .option(AUTO_FRESH_LINE, true)            // if not at start of line before prompt, move to new line.
       .option(DISABLE_EVENT_EXPANSION, true)    // don't process escape sequences in input
