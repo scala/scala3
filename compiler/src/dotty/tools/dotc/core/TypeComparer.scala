@@ -1983,8 +1983,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   /** Merge `t1` into `tp2` if t1 is a subtype of some &-summand of tp2.
    */
   private def mergeIfSub(tp1: Type, tp2: Type): Type =
-    if (isSubTypeWhenFrozen(tp1, tp2))
-      if (isSubTypeWhenFrozen(tp2, tp1)) tp2 else tp1 // keep existing type if possible
+    if (isSubTypeWhenFrozen(tp1, tp2)) tp1
     else tp2 match {
       case tp2 @ AndType(tp21, tp22) =>
         val lower1 = mergeIfSub(tp1, tp21)
@@ -2004,8 +2003,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  @param canConstrain  If true, new constraints might be added to make the merge possible.
    */
   private def mergeIfSuper(tp1: Type, tp2: Type, canConstrain: Boolean): Type =
-    if (isSubType(tp2, tp1, whenFrozen = !canConstrain))
-      if (isSubType(tp1, tp2, whenFrozen = !canConstrain)) tp2 else tp1 // keep existing type if possible
+    if (isSubType(tp2, tp1, whenFrozen = !canConstrain)) tp1
     else tp2 match {
       case tp2 @ OrType(tp21, tp22) =>
         val higher1 = mergeIfSuper(tp1, tp21, canConstrain)
