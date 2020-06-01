@@ -3320,11 +3320,7 @@ object Parsers {
           mods1 = mods1.withAddedAnnotation(infixAnnot)
         val tparams =
           if in.token == LBRACKET then
-            if mods1.is(Extension) then
-              if leadingTparams.isEmpty then
-                deprecationWarning("type parameters in extension methods should be written after `def`")
-              else
-                syntaxError("no type parameters allowed here")
+            if mods1.is(Extension) then syntaxError("no type parameters allowed here")
             typeParamClause(ParamOwner.Def)
           else leadingTparams
         val vparamss = paramClauses() match

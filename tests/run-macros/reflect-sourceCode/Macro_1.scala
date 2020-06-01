@@ -1,7 +1,7 @@
 import scala.quoted._
 
 object api {
-  inline def (x: => T) reflect[T] : String =
+  inline def [T](x: => T).reflect: String =
     ${ reflImpl('x) }
 
   private def reflImpl[T](x: Expr[T])(implicit qctx: QuoteContext): Expr[String] = {
