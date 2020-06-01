@@ -10,11 +10,11 @@ class Test {
 
   val y: A[Int][Boolean] = x
 
-  def f[X <: T[Int]] = ???
+  def f[X <: [Y] =>> T[Int][Y]] = ???
 
   f[A[Int]]
 
-  def g[X <: T] = ???
+  def g[X <: [Y] =>> [Z] =>> T[Y][Z]] = ???
 
   g[A]
 
