@@ -534,6 +534,15 @@ class ClassfileParser(
    */
   def parseAnnotation(attrNameIndex: Char, skip: Boolean = false)(implicit ctx: Context): Option[Annotation] = try {
     val attrType = pool.getType(attrNameIndex)
+    attrType match
+      case tp: TypeRef =>
+        // Silently ignore missing annotation classes like javac
+        if tp.denot.infoOrCompleter.isInstanceOf[StubInfo] then
+          if ctx.debug then
+            ctx.warning(i"Error while parsing annotations in ${in.file}: annotation class $tp not present on classpath")
+          return None
+      case _ =>
+
     val nargs = in.nextChar
     val argbuf = new ListBuffer[untpd.Tree]
     var hasError = false
