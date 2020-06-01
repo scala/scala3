@@ -187,11 +187,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           val savedIndex = readIndex
           readIndex = index(i)
           val sym = readSymbol()
-          entries(i) = sym
-          sym.infoOrCompleter match {
-            case info: ClassUnpickler => info.init()
-            case _ =>
-          }
+          if sym.exists then
+            entries(i) = sym
+            sym.infoOrCompleter match {
+              case info: ClassUnpickler => info.init()
+              case _ =>
+            }
           readIndex = savedIndex
         }
         i += 1
@@ -437,6 +438,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val nameref = readNat()
     var name = at(nameref, () => readName()(ctx))
     val owner = readSymbolRef()
+
+    if (name eq nme.getClass_) && defn.hasProblematicGetClass(owner.name) then
+      // skip this member
+      return NoSymbol
 
     var flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
 

@@ -460,7 +460,19 @@ object desugar {
         case tree: MemberDef => Ident(tree.name.toTermName) :: Nil
         case PatDef(_, ids: List[Ident] @ unchecked, _, _) => ids
       }
-      val stats = impl.body.map(expandConstructor)
+
+      val stats0 = impl.body.map(expandConstructor)
+      val stats =
+        if (ctx.owner eq defn.ScalaPackageClass) && defn.hasProblematicGetClass(className) then
+          stats0.filterConserve {
+            case ddef: DefDef =>
+              ddef.name ne nme.getClass_
+            case _ =>
+              true
+          }
+        else
+          stats0
+
       if (isEnum) {
         val (enumCases, enumStats) = stats.partition(DesugarEnums.isEnumCase)
         if (enumCases.isEmpty)
