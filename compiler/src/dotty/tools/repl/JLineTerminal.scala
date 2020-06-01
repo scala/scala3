@@ -76,6 +76,8 @@ final class JLineTerminal extends java.io.Closeable {
       val highlighted = SyntaxHighlighting.highlight(buffer)
       AttributedString.fromAnsi(highlighted)
     }
+    def setErrorPattern(errorPattern: java.util.regex.Pattern): Unit = {}
+    def setErrorIndex(errorIndex: Int): Unit = {}
   }
 
   /** Provide multi-line editing support */
