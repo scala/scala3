@@ -3,8 +3,8 @@ class Err
 type Lifted[A] = Err | A
 
 def point[O](o: O): Lifted[O] = o
-def (o: Lifted[O]) map [O, U] (f: O => U): Lifted[U] = ???
-def (o: Lifted[O]) flatMap [O, U] (f: O => Lifted[U]): Lifted[U] = ???
+def [O, U](o: Lifted[O]).map(f: O => U): Lifted[U] = ???
+def [O, U](o: Lifted[O]).flatMap(f: O => Lifted[U]): Lifted[U] = ???
 
 val error: Err = Err()
 

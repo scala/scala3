@@ -3,7 +3,7 @@ type G[T]
 type Stuff
 given Stuff = ???
 
-def (x: T).f[T](using Stuff): F[T] = ???
+def [T](x: T).f(using Stuff): F[T] = ???
 
 
 def g1[T](x: T): F[G[T]] = x.f(using summon[Stuff]) // error

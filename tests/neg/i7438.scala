@@ -1,5 +1,5 @@
 type Tr[+A]
-inline def (tr: Tr[A]).map[A, B](f: A => B): Tr[B] = ???
+inline def [A, B](tr: Tr[A]).map(f: A => B): Tr[B] = ???
 
 def (d: Double).func: None.type => Some[Double] = ???
 
