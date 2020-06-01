@@ -1072,8 +1072,7 @@ class Typer extends Namer
     lazy val calleeType: Type = untpd.stripAnnotated(fnBody) match {
       case ident: untpd.Ident if isContextual =>
         val tp = typedIdent(ident, WildcardType).tpe.widen
-        if defn.isContextFunctionType(tp) && params.size == defn.functionArity(tp)
-        then
+        if defn.isContextFunctionType(tp) && params.size == defn.functionArity(tp) then
           paramIndex = params.map(_.name).zipWithIndex.toMap
           tp.select(nme.apply)
         else NoType
