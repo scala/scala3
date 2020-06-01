@@ -1009,8 +1009,8 @@ class Namer { typer: Typer =>
         case tp: TypeBounds =>
           def recur(tp: Type): Type = tp match
             case tp: HKTypeLambda if !tp.isDeclaredVarianceLambda =>
-              tp.withVariances(tp.paramNames.map(alwaysInvariant))
-               .derivedLambdaType(resType = recur(tp.resType))
+              val tp1 = tp.withVariances(tp.paramNames.map(alwaysInvariant))
+              tp1.derivedLambdaType(resType = recur(tp1.resType))
             case tp => tp
           tp.derivedTypeBounds(tp.lo, recur(tp.hi))
         case _ =>
