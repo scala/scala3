@@ -1049,15 +1049,35 @@ class Typer extends Namer
      */
     var paramIndex = Map[Name, Int]()
 
-     /** If function is of the form
+    /** Infer parameter type from the body of the function
+     *
+     *  1. If function is of the form
+     *
      *      (x1, ..., xN) => f(... x1, ..., XN, ...)
+     *
      *  where each `xi` occurs exactly once in the argument list of `f` (in
      *  any order), the type of `f`, otherwise NoType.
+     *
+     *  2. If the function is of the form
+     *
+     *     (using x1, ..., xN) => f
+     *
+     *  where `f` is a contextual function type of the form `(T1, ..., TN) ?=> T`,
+     *  then `xi` takes the type `Ti`.
+     *
      *  Updates `fnBody` and `paramIndex` as a side effect.
      *  @post: If result exists, `paramIndex` is defined for the name of
      *         every parameter in `params`.
      */
-    lazy val calleeType: Type = fnBody match {
+    lazy val calleeType: Type = untpd.stripAnnotated(fnBody) match {
+      case ident: untpd.Ident if isContextual =>
+        val ident1 = typedIdent(ident, WildcardType)
+        val tp = ident1.tpe.widen
+        if defn.isContextFunctionType(tp) && params.size == defn.functionArity(tp) then
+          paramIndex = params.map(_.name).zipWithIndex.toMap
+          fnBody = untpd.TypedSplice(ident1)
+          tp.select(nme.apply)
+        else NoType
       case app @ Apply(expr, args) =>
         paramIndex = {
           for (param <- params; idx <- paramIndices(param, args))
@@ -2450,7 +2470,34 @@ class Typer extends Namer
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
     val defn.FunctionOf(formals, _, true, _) = pt.dropDependentRefinement
-    val ifun = desugar.makeContextualFunction(formals, tree, defn.isErasedFunctionType(pt))
+
+    // The getter of default parameters may reach here.
+    // Given the code below
+    //
+    //     class Foo[A](run: A ?=> Int) {
+    //        def foo[T](f: T ?=> Int = run) = ()
+    //     }
+    //
+    // it desugars to
+    //
+    //     class Foo[A](run: A ?=> Int) {
+    //        def foo$default$1[T] = run
+    //        def foo[T](f: T ?=> Int = run) = ()
+    //     }
+    //
+    // The expected type for checking `run` in `foo$default$1` is
+    //
+    //      <?> ?=> Int
+    //
+    // see tests/pos/i7778b.scala
+
+    val paramTypes = {
+      val hasWildcard = formals.exists(_.isInstanceOf[WildcardType])
+      if hasWildcard then formals.map(_ => untpd.TypeTree())
+      else formals.map(untpd.TypeTree)
+    }
+
+    val ifun = desugar.makeContextualFunction(paramTypes, tree, defn.isErasedFunctionType(pt))
     typr.println(i"make contextual function $tree / $pt ---> $ifun")
     typed(ifun, pt)
   }
