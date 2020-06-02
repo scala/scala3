@@ -127,7 +127,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val FloatClass: Symbol = defn.FloatClass
   val DoubleClass: Symbol = defn.DoubleClass
   def isArrayClone(tree: Tree): Boolean = tree match {
-    case Select(qual, StdNames.nme.clone_) if qual.tpe.widen.isInstanceOf[JavaArrayType] => true
+    case SelectBI(qual, StdNames.nme.clone_) if qual.tpe.widen.isInstanceOf[JavaArrayType] => true
     case _ => false
   }
 
@@ -982,12 +982,12 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def parents: List[Type] = tp.parents
   }
 
-  object Assign extends AssignDeconstructor {
+  object AssignBI extends AssignDeconstructor {
     def _1: Tree = field.lhs
     def _2: Tree = field.rhs
   }
 
-  object Select extends SelectDeconstructor {
+  object SelectBI extends SelectDeconstructor {
 
     var desugared: tpd.Select = null
 
@@ -1013,18 +1013,18 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  object Apply extends ApplyDeconstructor {
+  object ApplyBI extends ApplyDeconstructor {
     def _1: Tree = field.fun
     def _2: List[Tree] = field.args
   }
 
-  object If extends IfDeconstructor {
+  object IfBI extends IfDeconstructor {
     def _1: Tree = field.cond
     def _2: Tree = field.thenp
     def _3: Tree = field.elsep
   }
 
-  object ValDef extends ValDefDeconstructor {
+  object ValDefBI extends ValDefDeconstructor {
     def _1: Null = null
     def _2: Name = field.name
     def _3: Tree = field.tpt
@@ -1032,14 +1032,14 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   // todo: this product1s should also eventually become name-based pattn matching
-  object Literal extends LiteralDeconstructor {
+  object LiteralBI extends LiteralDeconstructor {
     def get: Constant = field.const
   }
 
-  object Throw extends ThrowDeconstructor {
+  object ThrowBI extends ThrowDeconstructor {
     def get: Tree = field.args.head
 
-    override def unapply(s: Throw): Throw.type = {
+    override def unapply(s: Throw): ThrowBI.type = {
       if (s.fun.symbol eq defn.throwMethod) {
         field = s
       } else {
@@ -1049,60 +1049,60 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  object New extends NewDeconstructor {
+  object NewBI extends NewDeconstructor {
     def get: Type = field.tpt.tpe
   }
 
-  object This extends ThisDeconstructor {
+  object ThisBI extends ThisDeconstructor {
     def get: Name = field.qual.name
     def apply(s: Symbol): This = tpd.This(s.asClass)
   }
 
-  object Labeled extends LabeledDeconstructor {
+  object LabeledBI extends LabeledDeconstructor {
     def _1: Bind = field.bind
     def _2: Tree = field.expr
   }
 
-  object Return extends ReturnDeconstructor {
+  object ReturnBI extends ReturnDeconstructor {
     def _1: Tree = field.expr
     def _2: Symbol = if (field.from.symbol.isLabel) field.from.symbol else NoSymbol
   }
 
-  object WhileDo extends WhileDoDeconstructor {
+  object WhileDoBI extends WhileDoDeconstructor {
     def _1: Tree = field.cond
     def _2: Tree = field.body
   }
 
-  object Ident extends IdentDeconstructor {
+  object IdentBI extends IdentDeconstructor {
     def get: Name = field.name
   }
 
-  object Alternative extends AlternativeDeconstructor {
+  object AlternativeBI extends AlternativeDeconstructor {
     def get: List[Tree] = field.trees
   }
 
-  object Constant extends ConstantDeconstructor {
+  object ConstantBI extends ConstantDeconstructor {
     def get: Any = field.value
   }
-  object ThrownException extends ThrownException {
+  object ThrownExceptionBI extends ThrownException {
     def unapply(a: Annotation): Option[Symbol] = None // todo
   }
 
-  object Try extends TryDeconstructor {
+  object TryBI extends TryDeconstructor {
     def _1: Tree = field.expr
     def _2: List[Tree] = field.cases
     def _3: Tree = field.finalizer
   }
 
-  object Typed extends TypedDeconstrutor {
+  object TypedBI extends TypedDeconstrutor {
     def _1: Tree = field.expr
     def _2: Tree = field.tpt
   }
-  object Super extends SuperDeconstructor {
+  object SuperBI extends SuperDeconstructor {
     def _1: Tree = field.qual
     def _2: Name = field.mix.name
   }
-  object ArrayValue extends ArrayValueDeconstructor {
+  object ArrayValueBI extends ArrayValueDeconstructor {
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
@@ -1111,25 +1111,25 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
     def _2: List[Tree] = field.elems
   }
-  object Match extends MatchDeconstructor {
+  object MatchBI extends MatchDeconstructor {
     def _1: Tree = field.selector
     def _2: List[Tree] = field.cases
   }
-  object Block extends BlockDeconstructor {
+  object BlockBI extends BlockDeconstructor {
     def _1: List[Tree] = field.stats
     def _2: Tree = field.expr
   }
-  object TypeApply extends TypeApplyDeconstructor {
+  object TypeApplyBI extends TypeApplyDeconstructor {
     def _1: Tree = field.fun
     def _2: List[Tree] = field.args
   }
-  object CaseDef extends CaseDeconstructor {
+  object CaseDefBI extends CaseDeconstructor {
     def _1: Tree = field.pat
     def _2: Tree = field.guard
     def _3: Tree = field.body
   }
 
-  object DefDef extends DefDefDeconstructor {
+  object DefDefBI extends DefDefDeconstructor {
     def _1: Null = null
     def _2: Name = field.name
     def _3: List[TypeDef] = field.tparams
@@ -1138,7 +1138,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _6: Tree = field.rhs
   }
 
-  object Template extends TemplateDeconstructor {
+  object TemplateBI extends TemplateDeconstructor {
     def _1: List[Tree] = field.parents
     def _2: ValDef = field.self
     def _3: List[Tree] =
@@ -1146,19 +1146,19 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       else field.constr :: field.body
   }
 
-  object Bind extends BindDeconstructor {
+  object BindBI extends BindDeconstructor {
     def _1: Name = field.name
     def _2: Tree = field.body
   }
 
-  object ClassDef extends ClassDefDeconstructor {
+  object ClassDefBI extends ClassDefDeconstructor {
     def _1: Null = null
     def _2: Name = field.name
     def _4: Template = field.rhs.asInstanceOf[Template]
     def _3: List[TypeDef] = Nil
   }
 
-  object Closure extends ClosureDeconstructor {
+  object ClosureBI extends ClosureDeconstructor {
     def _1: List[Tree] = field.env
     def _2: Tree = field.meth
     def _3: Symbol = {

@@ -406,7 +406,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     def getExceptions(excs: List[Annotation]): List[String] = {
-      for (ThrownException(exc) <- excs.distinct)
+      for (ThrownExceptionBI(exc) <- excs.distinct)
       yield internalName(exc)
     }
 

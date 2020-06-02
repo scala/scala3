@@ -57,7 +57,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
 
       tree match {
-        case Assign(lhs @ Select(qual, _), rhs) =>
+        case AssignBI(lhs @ SelectBI(qual, _), rhs) =>
           val isStatic = symHelper(treeHelper(lhs).symbol).isStaticMember
           if (!isStatic) { genLoadQualifier(lhs) }
           genLoad(rhs, symInfoTK(treeHelper(lhs).symbol))
@@ -66,7 +66,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val receiverClass = typeHelper(treeHelper(qual).tpe).typeSymbol
           fieldStore(treeHelper(lhs).symbol, receiverClass)
 
-        case Assign(lhs, rhs) =>
+        case AssignBI(lhs, rhs) =>
           val s = treeHelper(lhs).symbol
           val Local(tk, _, idx, _) = locals.getOrMakeLocal(s)
           genLoad(rhs, tk)
@@ -92,7 +92,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     /* Generate code for primitive arithmetic operations. */
     def genArithmeticOp(tree: Tree, code: Int): BType = tree match{
-      case Apply(fun @ Select(larg, _), args) =>
+      case ApplyBI(fun @ SelectBI(larg, _), args) =>
       var resKind = tpeTK(larg)
 
       assert(resKind.isNumericType || (resKind == BOOL),
@@ -148,7 +148,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     /* Generate primitive array operations. */
     def genArrayOp(tree: Tree, code: Int, expectedType: BType): BType = tree match{
 
-      case Apply(Select(arrayObj, _), args) =>
+      case ApplyBI(SelectBI(arrayObj, _), args) =>
       import ScalaPrimitivesOps._
       val k = tpeTK(arrayObj)
       genLoad(arrayObj, k)
@@ -179,13 +179,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     def genLoadIf(tree: If, expectedType: BType): BType = tree match{
-      case If(condp, thenp, elsep) =>
+      case IfBI(condp, thenp, elsep) =>
 
       val success = new asm.Label
       val failure = new asm.Label
 
       val hasElse = !treeHelper(elsep).isEmpty && (elsep match {
-        case Literal(value) if constantHelper(value).tag == UnitTag => false
+        case LiteralBI(value) if constantHelper(value).tag == UnitTag => false
         case _ => true
       })
       val postIf  = if (hasElse) new asm.Label else failure
@@ -210,7 +210,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     def genPrimitiveOp(tree: Apply, expectedType: BType): BType = tree match {
-      case Apply(fun @ Select(receiver, _), _) =>
+      case ApplyBI(fun @ SelectBI(receiver, _), _) =>
       val sym = treeHelper(tree).symbol
 
       val code = primitives.getPrimitive(tree, treeHelper(receiver).tpe)
@@ -258,10 +258,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
 
       tree match {
-        case ValDef(_, `nme_THIS`, _, _) =>
+        case ValDefBI(_, `nme_THIS`, _, _) =>
           debuglog("skipping trivial assign to _$this: " + tree)
 
-        case ValDef(_, _, _, rhs) =>
+        case ValDefBI(_, _, _, rhs) =>
           val sym = treeHelper(tree).symbol
           /* most of the time, !locals.contains(sym), unless the current activation of genLoad() is being called
              while duplicating a finalizer that contains this ValDef. */
@@ -276,34 +276,34 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
           generatedType = UNIT
 
-        case t @ If(_, _, _) =>
+        case t @ IfBI(_, _, _) =>
           generatedType = genLoadIf(t, expectedType)
 
-        case t @ Labeled(_, _) =>
+        case t @ LabeledBI(_, _) =>
           generatedType = genLabeled(t)
 
-        case r @ Return(_) =>
+        case r @ ReturnBI(_) =>
           genReturn(r)
           generatedType = expectedType
 
-        case t @ WhileDo(_, _) =>
+        case t @ WhileDoBI(_, _) =>
           generatedType = genWhileDo(t)
 
-        case t @ Try(_, _, _) =>
+        case t @ TryBI(_, _, _) =>
           generatedType = genLoadTry(t)
 
-        case Throw(expr) =>
+        case ThrowBI(expr) =>
           generatedType = genThrow(expr)
 
-        case New(tpt) =>
+        case NewBI(tpt) =>
           abort(s"Unexpected New(${typeHelper(tpt).summaryString}/$tpt) reached GenBCode.\n" +
                 "  Call was genLoad" + ((tree, expectedType)))
 
-        case app @ Closure(env, call, functionalInterface) =>
+        case app @ ClosureBI(env, call, functionalInterface) =>
           val (fun, args) = call match {
-            case Apply(fun, args) => (fun, args)
-            case t @ Select(_, _) => (t, Nil)
-            case t @ Ident(_) => (t, Nil)
+            case ApplyBI(fun, args) => (fun, args)
+            case t @ SelectBI(_, _) => (t, Nil)
+            case t @ IdentBI(_) => (t, Nil)
           }
 
           if (!symHelper(treeHelper(fun).symbol).isStaticMember) {
@@ -313,17 +313,17 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             // but I was able to derrive it by reading
             // AbstractValidatingLambdaMetafactory.validateMetafactoryArgs
 
-            val Select(prefix, _) = fun
+            val SelectBI(prefix, _) = fun
             genLoad(prefix)
           }
 
           genLoadArguments(env, typeHelper(symHelper(treeHelper(fun).symbol).info).paramTypes map toTypeKind)
           generatedType = genInvokeDynamicLambda(NoSymbol, treeHelper(fun).symbol, env.size, functionalInterface)
 
-        case app @ Apply(_, _) =>
+        case app @ ApplyBI(_, _) =>
           generatedType = genApply(app, expectedType)
 
-        case This(qual) =>
+        case ThisBI(qual) =>
           val symIsModuleClass = symHelper(treeHelper(tree).symbol).isModuleClass
           assert(treeHelper(tree).symbol == claszSymbol || symIsModuleClass,
                  s"Trying to access the this of another class: tree.symbol = ${treeHelper(tree).symbol}, class symbol = $claszSymbol compilation unit: $cunit")
@@ -337,11 +337,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               else classBTypeFromSymbol(claszSymbol)
           }
 
-        case Select(Ident(`nme_EMPTY_PACKAGE_NAME`), module) =>
+        case SelectBI(IdentBI(`nme_EMPTY_PACKAGE_NAME`), module) =>
           assert(symHelper(treeHelper(tree).symbol).isModule, s"Selection of non-module from empty package: $tree sym: ${treeHelper(tree).symbol} at: ${treeHelper(tree).pos}")
           genLoadModule(tree)
 
-        case Select(qualifier, _) =>
+        case SelectBI(qualifier, _) =>
           val sym = treeHelper(tree).symbol
           generatedType = symInfoTK(sym)
           val qualSafeToElide = isQualifierSafeToElide(qualifier)
@@ -361,7 +361,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             fieldLoad(sym, receiverClass)
           }
 
-        case t @ Ident(name) =>
+        case t @ IdentBI(name) =>
           val sym = treeHelper(tree).symbol
           val tk = symInfoTK(sym)
           generatedType = tk
@@ -377,7 +377,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               genLoad(t, generatedType)
           }
 
-        case Literal(value) =>
+        case LiteralBI(value) =>
           if (constantHelper(value).tag != UnitTag) (constantHelper(value).tag, expectedType) match {
             case (IntTag,   LONG  ) => bc.lconst(constantHelper(value).longValue);       generatedType = LONG
             case (FloatTag, DOUBLE) => bc.dconst(constantHelper(value).doubleValue);     generatedType = DOUBLE
@@ -385,23 +385,23 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             case _                  => genConstant(value);               generatedType = tpeTK(tree)
           }
 
-        case blck @ Block(stats, expr) =>
+        case blck @ BlockBI(stats, expr) =>
           if(stats.isEmpty)
             genLoad(expr, expectedType)
           else genBlock(blck, expectedType)
 
-        case Typed(Super(_, _), _) => genLoad(This(claszSymbol), expectedType)
+        case TypedBI(SuperBI(_, _), _) => genLoad(ThisBI(claszSymbol), expectedType)
 
-        case Typed(expr, _) => genLoad(expr, expectedType)
+        case TypedBI(expr, _) => genLoad(expr, expectedType)
 
-        case Assign(_, _) =>
+        case AssignBI(_, _) =>
           generatedType = UNIT
           genStat(tree)
 
-        case av @ ArrayValue(_, _) =>
+        case av @ ArrayValueBI(_, _) =>
           generatedType = genArrayValue(av)
 
-        case mtch @ Match(_, _) =>
+        case mtch @ MatchBI(_, _) =>
           generatedType = genMatch(mtch)
 
         case EmptyTree => if (expectedType != UNIT) { emitZeroOf(expectedType) }
@@ -501,7 +501,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     private def genLabeled(tree: Labeled): BType = tree match {
-      case Labeled(bind, expr) =>
+      case LabeledBI(bind, expr) =>
 
       val resKind = tpeTK(tree)
       genLoad(expr, resKind)
@@ -510,7 +510,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     private def genReturn(r: Return): Unit = r match {
-      case Return(expr, fromSym) =>
+      case ReturnBI(expr, fromSym) =>
 
       if (NoSymbol == fromSym) {
         // return from enclosing method
@@ -552,7 +552,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     } // end of genReturn()
 
     def genWhileDo(tree: WhileDo): BType = tree match{
-      case WhileDo(cond, body) =>
+      case WhileDoBI(cond, body) =>
 
       val isInfinite = cond == EmptyTree
 
@@ -565,7 +565,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         RT_NOTHING
       } else {
         val hasBody = cond match {
-          case Literal(value) if constantHelper(value).tag == UnitTag => false
+          case LiteralBI(value) if constantHelper(value).tag == UnitTag => false
           case _ => true
         }
 
@@ -589,7 +589,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     def genTypeApply(t: TypeApply): BType = t match {
-      case TypeApply(fun@Select(obj, _), targs) =>
+      case TypeApplyBI(fun@SelectBI(obj, _), targs) =>
 
         val sym = treeHelper(fun).symbol
         val cast = sym match {
@@ -658,17 +658,17 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       var generatedType = expectedType
       lineNumber(app)
       app match {
-        case Apply(_, args) if isSyntheticArrayConstructor(treeHelper(app).symbol) =>
-          val List(elemClaz, Literal(c: Constant), ArrayValue(_, dims)) = args
+        case ApplyBI(_, args) if isSyntheticArrayConstructor(treeHelper(app).symbol) =>
+          val List(elemClaz, LiteralBI(c: Constant), ArrayValueBI(_, dims)) = args
 
           generatedType = toTypeKind(constantHelper(c).typeValue)
           mkArrayConstructorCall(generatedType.asArrayBType, app, dims)
-        case Apply(t :TypeApply, _) =>
+        case ApplyBI(t :TypeApply, _) =>
           generatedType =
             if (treeHelper(t).symbol ne Object_synchronized) genTypeApply(t)
             else genSynchronized(app, expectedType)
 
-        case Apply(fun @ Select(Super(_, _), _), args) =>
+        case ApplyBI(fun @ SelectBI(SuperBI(_, _), _), args) =>
           def initModule(): Unit = {
             // we initialize the MODULE$ field immediately after the super ctor
             if (!isModuleInitialized &&
@@ -700,7 +700,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         // thought to return an instance of what they construct,
         // we have to 'simulate' it by DUPlicating the freshly created
         // instance (on JVM, <init> methods return VOID).
-        case Apply(fun @ Select(New(tpt), `nme_CONSTRUCTOR`), args) =>
+        case ApplyBI(fun @ SelectBI(NewBI(tpt), `nme_CONSTRUCTOR`), args) =>
           val ctor = treeHelper(fun).symbol
           assert(symHelper(ctor).isClassConstructor, s"'new' call to non-constructor: ${symHelper(ctor).name}")
 
@@ -722,21 +722,21 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               abort(s"Cannot instantiate $tpt of kind: $generatedType")
           }
 
-        case Apply(fun, List(expr)) if isBox(treeHelper(fun).symbol) =>
+        case ApplyBI(fun, List(expr)) if isBox(treeHelper(fun).symbol) =>
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
           val MethodNameAndType(mname, methodType) = asmBoxTo(nativeKind)
           bc.invokestatic(BoxesRunTime.internalName, mname, methodType.descriptor, itf = false)
           generatedType = boxResultType(treeHelper(fun).symbol) // was toTypeKind(fun.symbol.tpe.resultType)
 
-        case Apply(fun, List(expr)) if isUnbox(treeHelper(fun).symbol) =>
+        case ApplyBI(fun, List(expr)) if isUnbox(treeHelper(fun).symbol) =>
           genLoad(expr)
           val boxType = unboxResultType(treeHelper(fun).symbol) // was toTypeKind(fun.symbol.owner.linkedClassOfClass.tpe)
           generatedType = boxType
           val MethodNameAndType(mname, methodType) = asmUnboxTo(boxType)
           bc.invokestatic(BoxesRunTime.internalName, mname, methodType.descriptor, itf = false)
 
-        case app @ Apply(fun, args) =>
+        case app @ ApplyBI(fun, args) =>
           val sym = treeHelper(fun).symbol
 
           if (isPrimitive(fun)) { // primitive method call
@@ -750,7 +750,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             if (invokeStyle.hasInstance) genLoadQualifier(fun)
             genLoadArguments(args, paramTKs(app))
 
-            val Select(qual, _) = fun // fun is a Select, also checked in genLoadQualifier
+            val SelectBI(qual, _) = fun // fun is a Select, also checked in genLoadQualifier
             if (isArrayClone(fun)) {
               // Special-case Array.clone, introduced in 36ef60e. The goal is to generate this call
               // as "[I.clone" instead of "java/lang/Object.clone". This is consistent with javac.
@@ -792,8 +792,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     } // end of genApply()
 
     private def genArrayValue(av: ArrayValue): BType = av match {
-      case ArrayValue(tpt, elems) =>
-      val ArrayValue(tpt, elems) = av
+      case ArrayValueBI(tpt, elems) =>
+      val ArrayValueBI(tpt, elems) = av
 
       lineNumber(av)
       genArray(elems, tpt)
@@ -831,7 +831,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
      * On a second pass, we emit the switch blocks, one for each different target.
      */
     private def genMatch(tree: Match): BType = tree match {
-      case Match(selector, cases) =>
+      case MatchBI(selector, cases) =>
       lineNumber(tree)
       genLoad(selector, INT)
       val generatedType = tpeTK(tree)
@@ -842,20 +842,20 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       var switchBlocks: List[(asm.Label, Tree)] = Nil
 
       // collect switch blocks and their keys, but don't emit yet any switch-block.
-      for (caze @ CaseDef(pat, guard, body) <- cases) {
+      for (caze @ CaseDefBI(pat, guard, body) <- cases) {
         assert(guard == EmptyTree, guard)
         val switchBlockPoint = new asm.Label
         switchBlocks ::= (switchBlockPoint, body)
         pat match {
-          case Literal(value) =>
+          case LiteralBI(value) =>
             flatKeys ::= constantHelper(value).intValue
             targets  ::= switchBlockPoint
-          case Ident(`nme_WILDCARD`) =>
+          case IdentBI(`nme_WILDCARD`) =>
             assert(default == null, s"multiple default targets in a Match node, at ${treeHelper(tree).pos}")
             default = switchBlockPoint
-          case Alternative(alts) =>
+          case AlternativeBI(alts) =>
             alts foreach {
-              case Literal(value) =>
+              case LiteralBI(value) =>
                 flatKeys ::= constantHelper(value).intValue
                 targets  ::= switchBlockPoint
               case _ =>
@@ -882,7 +882,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     def genBlock(tree: Block, expectedType: BType) = tree match {
-      case Block(stats, expr) =>
+      case BlockBI(stats, expr) =>
 
       val savedScope = varsInScope
       varsInScope = Nil
@@ -978,7 +978,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genLoadQualifier(tree: Tree): Unit = {
       lineNumber(tree)
       tree match {
-        case Select(qualifier, _) => genLoad(qualifier)
+        case SelectBI(qualifier, _) => genLoad(qualifier)
         case t: Ident             => // dotty specific
           desugarIdent(t) match {
             case Some(sel) => genLoadQualifier(sel)
@@ -1055,7 +1055,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
       liftStringConcat(tree) match {
         // Optimization for expressions of the form "" + x.  We can avoid the StringBuilder.
-        case List(Literal(Constant("")), arg) =>
+        case List(LiteralBI(ConstantBI("")), arg) =>
           genLoad(arg, ObjectReference)
           genCallMethod(String_valueOf, InvokeStyle.Static)
 
@@ -1063,7 +1063,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           bc.genStartConcat
           for (elem <- concatenations) {
             val loadedElem = elem match {
-              case Apply(boxOp, value :: Nil) if isBox(treeHelper(boxOp).symbol) =>
+              case ApplyBI(boxOp, value :: Nil) if isBox(treeHelper(boxOp).symbol) =>
                 // Eliminate boxing of primitive values. Boxing is introduced by erasure because
                 // there's only a single synthetic `+` method "added" to the string class.
                 value
@@ -1156,7 +1156,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
      * It turns a chained call like "a".+("b").+("c") into a list of arguments.
      */
     def liftStringConcat(tree: Tree): List[Tree] = tree match {
-      case tree @ Apply(fun @ Select(larg, method), rarg) =>
+      case tree @ ApplyBI(fun @ SelectBI(larg, method), rarg) =>
         if (isPrimitive(fun) &&
             primitives.getPrimitive(tree, treeHelper(larg).tpe) == ScalaPrimitivesOps.CONCAT)
           liftStringConcat(larg) ::: rarg
@@ -1259,11 +1259,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
       tree match {
 
-        case tree @ Apply(fun, args) if isPrimitive(fun) =>
+        case tree @ ApplyBI(fun, args) if isPrimitive(fun) =>
           import ScalaPrimitivesOps.{ ZNOT, ZAND, ZOR, EQ }
 
           // lhs and rhs of test
-          lazy val Select(lhs, _) = fun
+          lazy val SelectBI(lhs, _) = fun
           val rhs = if (args.isEmpty) EmptyTree else args.head // args.isEmpty only for ZNOT
 
           def genZandOrZor(and: Boolean): Unit = {

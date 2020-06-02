@@ -63,7 +63,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
-      case Apply(fun, _) =>
+      case ApplyBI(fun, _) =>
       val funSym = treeHelper(fun).symbol
       (typeHelper(symHelper(funSym).info).paramTypes map toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
@@ -79,7 +79,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
     def genPlainClass(cd: ClassDef) = cd match {
-      case ClassDef(_, _, _, impl) =>
+      case ClassDefBI(_, _, _, impl) =>
       assert(cnode == null, "GenBCode detected nested methods.")
       innerClassBufferASM.clear()
 
@@ -445,7 +445,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     // on entering a method
     def resetMethodBookkeeping(dd: DefDef) = dd match {
-      case DefDef(_, _, _, _, _, rhs) =>
+      case DefDefBI(_, _, _, _, _, rhs) =>
       locals.reset(isStaticMethod = symHelper(methSymbol).isStaticMember)
       jumpDest = immutable.Map.empty[ /* LabelDef */ Symbol, asm.Label ]
 
@@ -466,11 +466,11 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       tree match {
         case EmptyTree => ()
 
-        case ValDef(mods, name, tpt, rhs) => () // fields are added in `genPlainClass()`, via `addClassFields()`
+        case ValDefBI(mods, name, tpt, rhs) => () // fields are added in `genPlainClass()`, via `addClassFields()`
 
-        case dd @ DefDef(_, _, _, _, _, _) => genDefDef(dd.asInstanceOf[DefDef])
+        case dd @ DefDefBI(_, _, _, _, _, _) => genDefDef(dd.asInstanceOf[DefDef])
 
-        case Template(_, _, body) => body foreach gen
+        case TemplateBI(_, _, body) => body foreach gen
 
         case _ => abort(s"Illegal tree in gen: $tree")
       }
@@ -507,7 +507,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
 
     def genDefDef(dd: DefDef): Unit = dd match {
-      case DefDef(_, _, _, vparamss, _, rhs) =>
+      case DefDefBI(_, _, _, vparamss, _, rhs) =>
       // the only method whose implementation is not emitted: getClass()
       if (symHelper(treeHelper(dd).symbol).isGetClass) { return }
       assert(mnode == null, "GenBCode detected nested method.")
@@ -552,7 +552,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           genLoad(rhs, returnType)
 
           rhs match {
-            case Return(_) | Block(_, Return(_)) | Throw(_) | Block(_, Throw(_)) => ()
+            case ReturnBI(_) | BlockBI(_, ReturnBI(_)) | ThrowBI(_) | BlockBI(_, ThrowBI(_)) => ()
             case EmptyTree =>
               error(NoPosition, "Concrete method has no definition: " + dd + (
                 if (settings_debug) "(found: " + typeHelper(symHelper(symHelper(methSymbol).owner).info).decls.toList.mkString(", ") + ")"

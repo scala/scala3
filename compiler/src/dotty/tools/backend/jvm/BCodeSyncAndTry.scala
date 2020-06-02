@@ -21,7 +21,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
   abstract class SyncAndTryBuilder(cunit: CompilationUnit) extends PlainBodyBuilder(cunit) {
 
     def genSynchronized(tree: Apply, expectedType: BType): BType = tree match {
-      case Apply(TypeApply(fun, _), args) =>
+      case ApplyBI(TypeApplyBI(fun, _), args) =>
       val monitor = locals.makeLocal(ObjectReference, "monitor", Object_Type, treeHelper(tree).pos)
       val monCleanup = new asm.Label
 
@@ -170,15 +170,15 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
      *
      */
     def genLoadTry(tree: Try): BType = tree match {
-      case Try(block, catches, finalizer) =>
+      case TryBI(block, catches, finalizer) =>
       val kind = tpeTK(tree)
 
       val caseHandlers: List[EHClause] =
-        for (CaseDef(pat, _, caseBody) <- catches) yield {
+        for (CaseDefBI(pat, _, caseBody) <- catches) yield {
           pat match {
-            case Typed(Ident(`nme_WILDCARD`), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)
-            case Ident(`nme_WILDCARD`)              => NamelessEH(ThrowableReference,  caseBody)
-            case Bind(_, _)                       => BoundEH   (treeHelper(pat).symbol, caseBody)
+            case TypedBI(IdentBI(`nme_WILDCARD`), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)
+            case IdentBI(`nme_WILDCARD`)              => NamelessEH(ThrowableReference,  caseBody)
+            case BindBI(_, _)                       => BoundEH   (treeHelper(pat).symbol, caseBody)
           }
         }
 
@@ -404,7 +404,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
 
     /* Does this tree have a try-catch block? */
     def mayCleanStack(tree: Tree): Boolean = treeHelper(tree) exists { t => t match {
-        case Try(_, _, _) => true
+        case TryBI(_, _, _) => true
         case _ => false
       }
     }

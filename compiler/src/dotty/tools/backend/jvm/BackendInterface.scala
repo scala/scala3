@@ -176,35 +176,35 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   def positionHelper(a: Position): PositionHelper
 
 
-  val Assign: AssignDeconstructor
-  val Select: SelectDeconstructor
-  val Apply: ApplyDeconstructor
-  val If: IfDeconstructor
-  val ValDef: ValDefDeconstructor
-  val Throw: ThrowDeconstructor
-  val New: NewDeconstructor
-  val This: ThisDeconstructor
-  val Ident: IdentDeconstructor
-  val Try: TryDeconstructor
-  val Labeled: LabeledDeconstructor
-  val Return: ReturnDeconstructor
-  val WhileDo: WhileDoDeconstructor
-  val Literal: LiteralDeconstructor
-  val Typed: TypedDeconstrutor
-  val Super: SuperDeconstructor
-  val ArrayValue: ArrayValueDeconstructor
-  val Match: MatchDeconstructor
-  val Block: BlockDeconstructor
-  val TypeApply: TypeApplyDeconstructor
-  val CaseDef: CaseDeconstructor
-  val Alternative: AlternativeDeconstructor
-  val Constant: ConstantDeconstructor
-  val ThrownException: ThrownException
-  val DefDef: DefDefDeconstructor
-  val Template: TemplateDeconstructor
-  val Bind: BindDeconstructor
-  val ClassDef: ClassDefDeconstructor
-  val Closure: ClosureDeconstructor
+  val AssignBI: AssignDeconstructor
+  val SelectBI: SelectDeconstructor
+  val ApplyBI: ApplyDeconstructor
+  val IfBI: IfDeconstructor
+  val ValDefBI: ValDefDeconstructor
+  val ThrowBI: ThrowDeconstructor
+  val NewBI: NewDeconstructor
+  val ThisBI: ThisDeconstructor
+  val IdentBI: IdentDeconstructor
+  val TryBI: TryDeconstructor
+  val LabeledBI: LabeledDeconstructor
+  val ReturnBI: ReturnDeconstructor
+  val WhileDoBI: WhileDoDeconstructor
+  val LiteralBI: LiteralDeconstructor
+  val TypedBI: TypedDeconstrutor
+  val SuperBI: SuperDeconstructor
+  val ArrayValueBI: ArrayValueDeconstructor
+  val MatchBI: MatchDeconstructor
+  val BlockBI: BlockDeconstructor
+  val TypeApplyBI: TypeApplyDeconstructor
+  val CaseDefBI: CaseDeconstructor
+  val AlternativeBI: AlternativeDeconstructor
+  val ConstantBI: ConstantDeconstructor
+  val ThrownExceptionBI: ThrownException
+  val DefDefBI: DefDefDeconstructor
+  val TemplateBI: TemplateDeconstructor
+  val BindBI: BindDeconstructor
+  val ClassDefBI: ClassDefDeconstructor
+  val ClosureBI: ClosureDeconstructor
 
   abstract class DeconstructorCommon[T >: Null <: AnyRef] {
     var field: T = null
@@ -755,11 +755,11 @@ abstract class BackendInterfaceDefinitions { self: BackendInterface =>
   val String_valueOf: Symbol
 
   def isNull(t: Tree): Boolean = t match {
-    case Literal(Constant(null)) => true
+    case LiteralBI(ConstantBI(null)) => true
     case _ => false
   }
   def isLiteral(t: Tree): Boolean = t match {
-    case Literal(_) => true
+    case LiteralBI(_) => true
     case _ => false
   }
   def isNonNullExpr(t: Tree): Boolean = isLiteral(t) || ((treeHelper(t).symbol ne null) && symHelper(treeHelper(t).symbol).isModule)
