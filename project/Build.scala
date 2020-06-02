@@ -493,9 +493,9 @@ object Build {
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "7.3.1-scala-1", // used by the backend
         Dependencies.`compiler-interface`,
-        "org.jline" % "jline-reader" % "3.9.0",   // used by the REPL
-        "org.jline" % "jline-terminal" % "3.9.0",
-        "org.jline" % "jline-terminal-jna" % "3.9.0" // needed for Windows
+        "org.jline" % "jline-reader" % "3.15.0",   // used by the REPL
+        "org.jline" % "jline-terminal" % "3.15.0",
+        "org.jline" % "jline-terminal-jna" % "3.15.0" // needed for Windows
       ),
 
       // For convenience, change the baseDirectory when running the compiler
