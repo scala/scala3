@@ -1,6 +1,6 @@
 object RepeatedExtendEnum {
 
-  enum Maybe[T] derives Eql { // error // error
+  enum Maybe[T] derives Eql { // error
     case Foo extends Maybe[Int]
   }
 
