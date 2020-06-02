@@ -8,6 +8,7 @@ import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Names.{Name, TermName}
+import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Decorators._
@@ -23,8 +24,8 @@ object Dynamic {
 }
 
 object DynamicUnapply {
-  def unapply(tree: tpd.Tree): Option[List[tpd.Tree]] = tree match
-    case TypeApply(Select(qual, name), _) if name == nme.asInstanceOfPM =>
+  def unapply(tree: tpd.Tree)(using Context): Option[List[tpd.Tree]] = tree match
+    case TypeApply(Select(qual, _), _) if tree.symbol == defn.Any_typeCast =>
       unapply(qual)
     case Apply(Apply(Select(selectable, fname), Literal(Constant(name)) :: ctag :: Nil), _ :: implicits)
     if fname == nme.applyDynamic && (name == "unapply" || name == "unapplySeq") =>

@@ -1,0 +1,8 @@
+-- [E008] Not Found Error: tests/neg/i8869.scala:1:15 ------------------------------------------------------------------
+1 |val test1 = "".$asInstanceOf$[Int] // error
+  |            ^^^^^^^^^^^^^^^^^
+  |            value $asInstanceOf$ is not a member of String - did you mean ("" : String).asInstanceOf?
+-- [E008] Not Found Error: tests/neg/i8869.scala:2:15 ------------------------------------------------------------------
+2 |val test2 = "".$isInstanceOf$[Int] // error
+  |            ^^^^^^^^^^^^^^^^^
+  |            value $isInstanceOf$ is not a member of String - did you mean ("" : String).isInstanceOf?

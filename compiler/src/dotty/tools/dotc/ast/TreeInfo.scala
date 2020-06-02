@@ -881,7 +881,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       tree.select(defn.Any_typeCast).appliedToType(AndType(tree.tpe, tpnn))
 
     def unapply(tree: tpd.TypeApply)(using Context): Option[tpd.Tree] = tree match
-      case TypeApply(Select(qual: RefTree, nme.asInstanceOfPM), arg :: Nil) =>
+      case TypeApply(Select(qual: RefTree, _), arg :: Nil) if tree.symbol == defn.Any_typeCast =>
         arg.tpe match
           case AndType(ref, _) if qual.tpe eq ref => Some(qual)
           case _ => None

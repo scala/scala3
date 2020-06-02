@@ -248,7 +248,7 @@ object Splicer {
           assert(args.isEmpty)
           interpretedStaticFieldAccess(fn.symbol)
         else if (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic)
-          if (fn.name == nme.asInstanceOfPM)
+          if fn.name == NameKinds.AsInstanceOf then
             interpretModuleAccess(fn.qualifier.symbol)
           else {
             val staticMethodCall = interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol)

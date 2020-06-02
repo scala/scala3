@@ -36,6 +36,7 @@ object NameTags extends TastyFormat.NameTags {
     case EXPANDED => "EXPANDED"
     case EXPANDPREFIX => "EXPANDPREFIX"
     case TRAITSETTER => "TRAITSETTER"
+    case INSTANCEOF => "INSTANCEOF"
     case UNIQUE => "UNIQUE"
     case DEFAULTGETTER => "DEFAULTGETTER"
     case OUTERSELECT => "OUTERSELECT"

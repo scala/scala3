@@ -363,6 +363,10 @@ object NameKinds {
   val ImplMethName: SuffixNameKind = new SuffixNameKind(IMPLMETH, "$")
   val AdaptedClosureName: SuffixNameKind = new SuffixNameKind(ADAPTEDCLOSURE, "$adapted") { override def definesNewName = true }
 
+  val InstanceOf: SuffixNameKind = new SuffixNameKind(INSTANCEOF, "InstanceOf$")
+    val IsInstanceOf: TermName = InstanceOf(nme.isInstanceOfPM)
+    val AsInstanceOf: TermName = InstanceOf(nme.asInstanceOfPM)
+
   /** A name together with a signature. Used in Tasty trees. */
   object SignedName extends NameKind(SIGNED) {
 

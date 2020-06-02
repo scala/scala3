@@ -263,6 +263,8 @@ object TastyFormat {
     final val EXPANDPREFIX = 4       // An expansion prefix `<prefix>$<suffix>`,
                                      // used by Scala-2 for private names.
 
+    final val INSTANCEOF = 7      // Type test of cast on Any `$isInsctanceOf$` and `$asInsctanceOf$`
+
     final val UNIQUE = 10            // A unique name `<name>$<num>` where `<num>`
                                      // is used only once for each `<name>`.
 
