@@ -16,8 +16,7 @@ import StdNames.nme
 import transform.SymUtils._
 import printing.Printer
 import printing.Texts._
-import util.{SourceFile, Property}
-import config.Config.checkAmbiguousSelects
+import util.SourceFile
 import annotation.constructorOnly
 
 object TreePickler {
@@ -31,13 +30,6 @@ object TreePickler {
       if isTermHole then s"{{{ $idx |" ~~ printer.toTextGlobal(tpe) ~~ "|" ~~ printer.toTextGlobal(args, ", ") ~~ "}}}"
       else s"[[[ $idx |" ~~ printer.toTextGlobal(tpe) ~~ "|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]]"
   }
-
-  /** Select tree cannot be unambiguously resolved with signature alone,
-   *  needs to be pickled using the SELECTin tag. This is set by Typer, if
-   *  after overloading resolution it is discovered that other alternatives
-   *  have the same signature as the one that was selected.
-   */
-  val NeedsSelectIn = new Property.StickyKey[Unit]
 }
 
 class TreePickler(pickler: TastyPickler) {
@@ -391,17 +383,12 @@ class TreePickler(pickler: TastyPickler) {
               }
             case _ =>
               val sig = tree.tpe.signature
-              val needsSelectIn = tree.hasAttachment(NeedsSelectIn)
-              if checkAmbiguousSelects then
-                // We use needsSelectIn instead of isAmbiguous since isAmbiguous
-                // is more expensive to compute. This matters since either criterion
-                // is false in almost all cases.
-                val isAmbiguous = qual.tpe.nonPrivateMember(name) match
+              val isAmbiguous =
+                sig != Signature.NotAMethod
+                && qual.tpe.nonPrivateMember(name).match
                   case d: MultiDenotation => d.atSignature(sig).isInstanceOf[MultiDenotation]
                   case _ => false
-                assert(needsSelectIn == isAmbiguous,
-                  i"ambiguity misprediction for select node $tree, is ambiguous = $isAmbiguous")
-              if needsSelectIn then
+              if isAmbiguous then
                 writeByte(SELECTin)
                 withLength {
                   pickleNameAndSig(name, tree.symbol.signature)

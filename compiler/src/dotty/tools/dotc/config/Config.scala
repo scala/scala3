@@ -87,6 +87,10 @@ object Config {
    */
   final val alignArgsInAnd = true
 
+  /** If this flag is set, higher-kinded applications are checked for validity
+   */
+  final val checkHKApplications = false
+
   /** If this flag is set, method types are checked for valid parameter references
    */
   final val checkMethodTypes = false
@@ -135,14 +139,6 @@ object Config {
    *  atoms comparison is intended to be just an optimization.
    */
   final val checkAtomsComparisons = false
-
-  /** Normally, a Select node can be unpickled giving just the name and the signature
-   *  of the selected member. However, in some rare cases, this is not enough since there
-   *  are multiple possible members with the same signature. In that case we need to
-   *  pickle the Select with a SELECTin tag. If on, we check that all ambiguous selects do
-   *  get pickled with SELECTin
-   */
-  final val checkAmbiguousSelects = false
 
   /** In `derivedSelect`, rewrite
    *

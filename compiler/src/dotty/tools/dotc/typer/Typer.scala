@@ -40,7 +40,6 @@ import rewrites.Rewrites.patch
 import NavigateAST._
 import transform.SymUtils._
 import transform.TypeUtils._
-import tasty.TreePickler.NeedsSelectIn
 import reporting.trace
 import Nullables.{NotNullInfo, given _}
 import NullOpsDecorator._
@@ -2828,16 +2827,9 @@ class Typer extends Namer
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%\n\n %")
       def altRef(alt: SingleDenotation) = TermRef(ref.prefix, ref.name, alt)
       val alts = altDenots.map(altRef)
-
-      def resolveWith(alt: TermRef) =
-        val resolved = tree.withType(alt)
-        if alts.exists(a => (a ne alt) && a.signature == alt.signature) then
-          resolved.pushAttachment(NeedsSelectIn, ())
-        readaptSimplified(resolved)
-
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
-          resolveWith(alt)
+          readaptSimplified(tree.withType(alt))
         case Nil =>
           // If alternative matches, there are still two ways to recover:
           //  1. If context is an application, try to insert an apply or implicit
@@ -2852,8 +2844,7 @@ class Typer extends Namer
               tryInsertApplyOrImplicit(tree, pt, locked)(noMatches)
             case _ =>
               alts.filter(_.info.isParameterless) match {
-                case alt :: Nil =>
-                  resolveWith(alt)
+                case alt :: Nil => readaptSimplified(tree.withType(alt))
                 case _ =>
                   if (altDenots exists (_.info.paramInfoss == ListOfNil))
                     typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt, locked)
