@@ -19,7 +19,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   type Type       >: Null <: AnyRef
   type Annotation >: Null <: AnyRef
   type Tree       >: Null <: AnyRef
-  type Modifiers  >: Null <: AnyRef
   type TypeDef    >: Null <: Tree
   type Apply      >: Null <: Tree
   type Select     >: Null <: Tree
@@ -236,7 +235,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   }
 
   abstract class ClassDefDeconstructor extends DeconstructorCommon[ClassDef] {
-    def _1: Modifiers
+    def _1: Null
     def _2: Name
     def _3: List[TypeDef]
     def _4: Template
@@ -254,13 +253,13 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   }
 
   abstract class ModuleDefDeconstructor extends DeconstructorCommon[ModuleDef]{
-    def _1: Modifiers
+    def _1: Null
     def _2: Name
     def _3: Tree
   }
 
   abstract class DefDefDeconstructor extends DeconstructorCommon[DefDef]{
-    def _1: Modifiers
+    def _1: Null
     def _2: Name
     def _3: List[TypeDef]
     def _4: List[List[ValDef]]
@@ -353,7 +352,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   }
 
   abstract class ValDefDeconstructor extends DeconstructorCommon[ValDef]{
-    def _1: Modifiers
+    def _1: Null
     def _2: Name
     def _3: Tree
     def _4: Tree
