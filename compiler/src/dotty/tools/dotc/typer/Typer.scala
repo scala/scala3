@@ -3574,7 +3574,9 @@ class Typer extends Namer
           case Ident(name) => untpd.Ident(name.toTypeName).withSpan(tree.span)
           case Select(qual, name) => untpd.Select(qual, name.toTypeName).withSpan(tree.span)
         val bundle = untpd.Apply(untpd.Select(untpd.New(ref), nme.CONSTRUCTOR), untpd.Literal(Constant(null))).withSpan(call.span)
-        typedExpr(bundle, defn.AnyType)
+        val bundle1 = typedExpr(bundle, defn.AnyType)
+        val bundleVal = SyntheticValDef(NameKinds.UniqueName.fresh("bundle".toTermName), bundle1)
+        tpd.Block(List(bundleVal), tpd.ref(bundleVal.symbol))
       }
     }
     if ctx.phase.isTyper then
