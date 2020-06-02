@@ -29,7 +29,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   type Assign     >: Null <: Tree
   type Ident      >: Null <: Tree
   type If         >: Null <: Tree
-  type LabelDef   >: Null <: Tree
   type ValDef     >: Null <: Tree
   type Throw      >: Null <: Tree
   type Labeled    >: Null <: Tree
@@ -66,7 +65,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   implicit val AssignTag: ClassTag[Assign]
   implicit val IdentTag: ClassTag[Ident]
   implicit val IfTag: ClassTag[If]
-  implicit val LabelDefTag: ClassTag[LabelDef]
   implicit val ValDefTag: ClassTag[ValDef]
   implicit val ThrowTag: ClassTag[Throw]
   implicit val LabeledTag: ClassTag[Labeled]
@@ -127,15 +125,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   def isSyntheticArrayConstructor(s: Symbol) = false
 
   /*
-   * Collects all LabelDef nodes enclosed (directly or not) by each node.
-   *
-   * In other words, this prepares a map giving
-   * all labelDefs (the entry-value) having a Tree node (the entry-key) as ancestor.
-   * The entry-value for a LabelDef entry-key always contains the entry-key.
-   */
-  def getLabelDefOwners(t: Tree): Map[Tree, List[LabelDef]]
-
-  /*
    * Implementation of those methods is very specific to how annotations are represented
    *  representations for Dotc and Scalac are to different to abstract over them
    */
@@ -162,7 +151,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   def targetPlatform: String
   def sourceFileFor(cu: CompilationUnit): String
   def informProgress(msg: String): Unit
-  def hasLabelDefs: Boolean // whether this compiler uses LabelDefs (i.e., scalac)
 
   /* backend actually uses free names to generate stuff. This should NOT mangled */
   def newTermName(prefix: String): Name
@@ -207,7 +195,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   val Labeled: LabeledDeconstructor
   val Return: ReturnDeconstructor
   val WhileDo: WhileDoDeconstructor
-  val LabelDef: LabelDeconstructor
   val Literal: LiteralDeconstructor
   val Typed: TypedDeconstrutor
   val Super: SuperDeconstructor
@@ -382,12 +369,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   abstract class TryDeconstructor extends DeconstructorCommon[Try]{
     def _1: Tree
     def _2: List[Tree]
-    def _3: Tree
-  }
-
-  abstract class LabelDeconstructor extends DeconstructorCommon[LabelDef]{
-    def _1: Name
-    def _2: List[Symbol]
     def _3: Tree
   }
 

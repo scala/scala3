@@ -392,9 +392,6 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       var saved: immutable.Map[ /* LabelDef */ Symbol, asm.Label ] = null
       if (isDuplicate) {
         saved = jumpDest
-        for(ldef <- labelDefsAtOrUnder(finalizer)) {
-          jumpDest -= ldef.symbol
-        }
       }
       // when duplicating, the above guarantees new asm.Labels are used for LabelDefs contained in the finalizer (their vars are reused, that's ok)
       if (tmp != null) { locals.store(tmp) }

@@ -74,7 +74,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type ArrayValue      = tpd.JavaSeqLiteral
   type ApplyDynamic    = Null
   type ModuleDef       = Null
-  type LabelDef        = Null
   type Closure         = tpd.Closure
 
   val NoSymbol: Symbol = Symbols.NoSymbol
@@ -186,7 +185,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit val AssignTag: ClassTag[Assign] = ClassTag[Assign](classOf[Assign])
   implicit val IdentTag: ClassTag[Ident] = ClassTag[Ident](classOf[Ident])
   implicit val IfTag: ClassTag[If] = ClassTag[If](classOf[If])
-  implicit val LabelDefTag: ClassTag[LabelDef] = ClassTag[LabelDef](classOf[LabelDef])
   implicit val ValDefTag: ClassTag[ValDef] = ClassTag[ValDef](classOf[ValDef])
   implicit val ThrowTag: ClassTag[Throw] = ClassTag[Throw](classOf[Throw])
   implicit val LabeledTag: ClassTag[Labeled] = ClassTag[Labeled](classOf[Labeled])
@@ -398,8 +396,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   def emitAsmp: Option[String] = None
 
-  def hasLabelDefs: Boolean = false
-
   def dumpClasses: Option[String] =
     if (ctx.settings.Ydumpclasses.isDefault) None
     else Some(ctx.settings.Ydumpclasses.value)
@@ -445,8 +441,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
     if (found == null) None else Some(found)
   }
-
-  def getLabelDefOwners(tree: Tree): Map[Tree, List[LabelDef]] = Map.empty
 
   // todo: remove
   def isMaybeBoxed(sym: Symbol): Boolean = {
@@ -1108,12 +1102,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _1: Tree = field.expr
     def _2: List[Tree] = field.cases
     def _3: Tree = field.finalizer
-  }
-
-  object LabelDef extends LabelDeconstructor {
-    def _1: Name = ???
-    def _2: List[Symbol] = ???
-    def _3: Tree = ???
   }
 
   object Typed extends TypedDeconstrutor {

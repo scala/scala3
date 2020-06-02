@@ -401,30 +401,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- Part 2 of program points, ie Labels in the ASM world ---------------- */
 
-    /*
-     *  The semantics of try-with-finally and synchronized-expr require their cleanup code
-     *  to be present in three forms in the emitted bytecode:
-     *    (a) as normal-exit code, reached via fall-through from the last program point being protected,
-     *    (b) as code reached upon early-return from an enclosed return statement.
-     *        The only difference between (a) and (b) is their next program-point:
-     *          the former must continue with fall-through while
-     *          the latter must continue to the next early-return cleanup (if any, otherwise return from the method).
-     *        Otherwise they are identical.
-     *    (c) as exception-handler, reached via exceptional control flow,
-     *        which rethrows the caught exception once it's done with the cleanup code.
-     *
-     *  A particular cleanup may in general contain LabelDefs. Care is needed when duplicating such jump-targets,
-     *  so as to preserve agreement wit the (also duplicated) jump-sources.
-     *  This is achieved based on the bookkeeping provided by two maps:
-     *    - `labelDefsAtOrUnder` lists all LabelDefs enclosed by a given Tree node (the key)
-     *    - `labelDef` provides the LabelDef node whose symbol is used as key.
-     *       As a sidenote, a related map is `jumpDest`: it has the same keys as `labelDef` but its values are asm.Labels not LabelDef nodes.
-     *
-     *  Details in `emitFinalizer()`, which is invoked from `genLoadTry()` and `genSynchronized()`.
-     */
-    var labelDefsAtOrUnder: scala.collection.Map[Tree, List[LabelDef]] = null
-    var labelDef: scala.collection.Map[Symbol, LabelDef] = null// (LabelDef-sym -> LabelDef)
-
     // bookkeeping the scopes of non-synthetic local vars, to emit debug info (`emitVars`).
     var varsInScope: List[(Symbol, asm.Label)] = null // (local-var-sym -> start-of-scope)
 
@@ -472,11 +448,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       case DefDef(_, _, _, _, _, rhs) =>
       locals.reset(isStaticMethod = methSymbol.isStaticMember)
       jumpDest = immutable.Map.empty[ /* LabelDef */ Symbol, asm.Label ]
-      // populate labelDefsAtOrUnder
 
-      val ldf = getLabelDefOwners(rhs)
-      labelDefsAtOrUnder = ldf.withDefaultValue(Nil)
-      labelDef = labelDefsAtOrUnder(rhs).map(ld => (ld.symbol -> ld)).toMap
       // check previous invocation of genDefDef exited as many varsInScope as it entered.
       assert(varsInScope == null, "Unbalanced entering/exiting of GenBCode's genBlock().")
       // check previous invocation of genDefDef unregistered as many cleanups as it registered.
@@ -574,21 +546,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
       initJMethod(flags, params.map(p => p.symbol.annotations))
 
-      /* Add method-local vars for LabelDef-params.
-       *
-       * This makes sure that:
-       *   (1) upon visiting any "forward-jumping" Apply (ie visited before its target LabelDef), and after
-       *   (2) grabbing the corresponding param symbols,
-       * those param-symbols can be used to access method-local vars.
-       *
-       * When duplicating a finally-contained LabelDef, another program-point is needed for the copy (each such copy has its own asm.Label),
-       * but the same vars (given by the LabelDef's params) can be reused,
-       * because no LabelDef ends up nested within itself after such duplication.
-       */
-      for(ld <- labelDefsAtOrUnder(rhs); LabelDef(_, ldpl ,_) = ld; ldp <- ldpl; if !locals.contains(ldp)) {
-        // the tail-calls xform results in symbols shared btw method-params and labelDef-params, thus the guard above.
-        locals.makeLocal(ldp)
-      }
 
       if (!isAbstractMethod && !isNative) {
 

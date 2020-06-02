@@ -258,8 +258,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
 
       tree match {
-        case lblDf @ LabelDef(_, _, _) => genLabelDef(lblDf, expectedType)
-
         case ValDef(_, `nme_THIS`, _, _) =>
           debuglog("skipping trivial assign to _$this: " + tree)
 
@@ -504,18 +502,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
-    private def genLabelDef(lblDf: LabelDef, expectedType: BType): Unit = lblDf match {
-      case LabelDef(_, _, rhs) =>
-
-      assert(int.hasLabelDefs) // scalac
-
-      // duplication of LabelDefs contained in `finally`-clauses is handled when emitting RETURN. No bookkeeping for that required here.
-      // no need to call index() over lblDf.params, on first access that magic happens (moreover, no LocalVariableTable entries needed for them).
-      markProgramPoint(programPoint(lblDf.symbol))
-      lineNumber(lblDf)
-      genLoad(rhs, expectedType)
-    }
-
     private def genLabeled(tree: Labeled): BType = tree match {
       case Labeled(bind, expr) =>
 
@@ -755,11 +741,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case app @ Apply(fun, args) =>
           val sym = fun.symbol
 
-          if (sym.isLabel) { // jump to a label
-            assert(int.hasLabelDefs)
-            genLoadLabelArguments(args, labelDef(sym), app.pos)
-            bc goTo programPoint(sym)
-          } else if (isPrimitive(fun)) { // primitive method call
+          if (isPrimitive(fun)) { // primitive method call
             generatedType = genPrimitiveOp(app, expectedType)
           } else { // normal method call
             val invokeStyle =
@@ -1007,36 +989,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
         case _                    => abort(s"Unknown qualifier $tree")
       }
-    }
-
-    /* Generate code that loads args into label parameters. */
-    def genLoadLabelArguments(args: List[Tree], lblDef: LabelDef, gotoPos: Position) = lblDef match {
-      case LabelDef(_, param, _) =>
-
-      val aps = {
-        val params: List[Symbol] = param
-        assert(args.length == params.length, s"Wrong number of arguments in call to label at: $gotoPos")
-
-        def isTrivial(kv: (Tree, Symbol)) = kv match {
-          case (This(_), p) if p.name == nme_THIS     => true
-          case (arg @ Ident(_), p) if arg.symbol == p => true
-          case _                                      => false
-        }
-
-        (args zip params) filterNot isTrivial
-      }
-
-      // first push *all* arguments. This makes sure multiple uses of the same labelDef-var will all denote the (previous) value.
-      aps foreach { case (arg, param) => genLoad(arg, locals(param).tk) } // `locals` is known to contain `param` because `genDefDef()` visited `labelDefsAtOrUnder`
-
-      // second assign one by one to the LabelDef's variables.
-      aps.reverse foreach {
-        case (_, param) =>
-          // TODO FIXME a "this" param results from tail-call xform. If so, the `else` branch seems perfectly fine. And the `then` branch must be wrong.
-          if (param.name == nme_THIS) mnode.visitVarInsn(asm.Opcodes.ASTORE, 0)
-          else locals.store(param)
-      }
-
     }
 
     def genLoadArguments(args: List[Tree], btpes: List[BType]): Unit = {
