@@ -323,8 +323,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case app @ Apply(_, _) =>
           generatedType = genApply(app, expectedType)
 
-        case ApplyDynamic(qual, args) => sys.error("No invokedynamic support yet.")
-
         case This(qual) =>
           val symIsModuleClass = tree.symbol.isModuleClass
           assert(tree.symbol == claszSymbol || symIsModuleClass,

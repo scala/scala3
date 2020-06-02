@@ -71,7 +71,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type Super           = tpd.Super
   type Annotation      = Annotations.Annotation
   type ArrayValue      = tpd.JavaSeqLiteral
-  type ApplyDynamic    = Null
   type Closure         = tpd.Closure
 
   val NoSymbol: Symbol = Symbols.NoSymbol
@@ -201,7 +200,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit val TemplateTag: ClassTag[Template] = ClassTag[Template](classOf[Template])
   implicit val BindTag: ClassTag[Bind] = ClassTag[Bind](classOf[Bind])
   implicit val NewTag: ClassTag[New] = ClassTag[New](classOf[New])
-  implicit val ApplyDynamicTag: ClassTag[ApplyDynamic] = ClassTag[ApplyDynamic](classOf[ApplyDynamic])
   implicit val SuperTag: ClassTag[Super] = ClassTag[Super](classOf[Super])
   implicit val ConstantClassTag: ClassTag[Constant] = ClassTag[Constant](classOf[Constant])
   implicit val ClosureTag: ClassTag[Closure] = ClassTag[Closure](classOf[Closure])
@@ -1031,11 +1029,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _2: Name = field.name
     def _3: Tree = field.tpt
     def _4: Tree = field.rhs
-  }
-
-  object ApplyDynamic extends ApplyDynamicDeconstructor {
-    def _1: Tree = ???
-    def _2: List[Tree] = ???
   }
 
   // todo: this product1s should also eventually become name-based pattn matching

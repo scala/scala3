@@ -48,7 +48,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   type CompilationUnit <: AnyRef
   type Bind         >: Null <: Tree
   type New          >: Null <: Tree
-  type ApplyDynamic >: Null <: Tree
   type Super       >: Null <: Tree
   type Closure     >: Null <: Tree
 
@@ -81,7 +80,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   implicit val TemplateTag: ClassTag[Template]
   implicit val BindTag: ClassTag[Bind]
   implicit val NewTag: ClassTag[New]
-  implicit val ApplyDynamicTag: ClassTag[ApplyDynamic]
   implicit val SuperTag: ClassTag[Super]
   implicit val ConstantClassTag: ClassTag[Constant]
   implicit val ClosureTag: ClassTag[Closure]
@@ -185,7 +183,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   val ValDef: ValDefDeconstructor
   val Throw: ThrowDeconstructor
   val New: NewDeconstructor
-  val ApplyDynamic: ApplyDynamicDeconstructor
   val This: ThisDeconstructor
   val Ident: IdentDeconstructor
   val Try: TryDeconstructor
@@ -347,12 +344,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def _2: Name
     def _3: Tree
     def _4: Tree
-  }
-
-
-  abstract class ApplyDynamicDeconstructor extends DeconstructorCommon[ApplyDynamic]{
-    def _1: Tree
-    def _2: List[Tree]
   }
 
 
