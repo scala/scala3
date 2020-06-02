@@ -122,7 +122,7 @@ trait QuotesAndSplices {
     if !isFullyDefined(pt, ForceDegree.flipBottom) then
       ctx.error(i"Type must be fully defined.", splice.sourcePos)
       tree.withType(UnspecifiedErrorType)
-    else if splice.isInBrackets then // ${x}(...) match an application
+    else if splice.isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
       val splice1 = typedSplice(splice, defn.FunctionOf(argTypes, pt))

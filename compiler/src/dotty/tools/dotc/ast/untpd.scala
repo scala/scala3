@@ -104,7 +104,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class Throw(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class Quote(quoted: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class Splice(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree {
-    def isInBrackets: Boolean = span.end != expr.span.end
+    def isInBraces: Boolean = span.end != expr.span.end
   }
   case class TypSplice(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
   case class ForYield(enums: List[Tree], expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
