@@ -385,11 +385,11 @@ object Denotations {
      *  give a strong score advantage, the others a weak one.
      *
      *  1. The symbol exists, and the other one does not. (*)
-     *  2. The symbol is concrete, and the other one is deferred
-     *  3. The symbol appears before the other in the linearization of `pre`
-     *  4. The symbol's visibility is strictly greater than the other one's.
-     *  5. The symbol is not a bridge, but the other one is. (*)
-     *  6. The symbol is a method, but the other one is not. (*)
+     *  2. The symbol is not a bridge, but the other one is. (*)
+     *  3. The symbol is concrete, and the other one is deferred
+     *  4. The symbol appears before the other in the linearization of `pre`
+     *  5. The symbol's visibility is strictly greater than the other one's.
+     *  6. The symbol is a method, but the other one is not.
      */
     def meet(that: Denotation, pre: Type, safeIntersection: Boolean = false)(implicit ctx: Context): Denotation = {
       /** Try to merge denot1 and denot2 without adding a new signature. */
@@ -451,6 +451,8 @@ object Denotations {
           val symScore: Int =
             if !sym1.exists then -2
             else if !sym2.exists then 2
+            else if sym1.is(Bridge) && !sym2.is(Bridge) then -2
+            else if sym2.is(Bridge) && !sym1.is(Bridge) then 2
             else if !sym1.isAsConcrete(sym2) then -1
             else if !sym2.isAsConcrete(sym1) then 1
             else
@@ -461,10 +463,8 @@ object Denotations {
                 val boundary2 = accessBoundary(sym2)
                 if boundary1.isProperlyContainedIn(boundary2) then -1
                 else if boundary2.isProperlyContainedIn(boundary1) then 1
-                else if sym1.is(Bridge) && !sym2.is(Bridge) then -2
-                else if sym2.is(Bridge) && !sym1.is(Bridge) then 2
-                else if sym2.is(Method) && !sym1.is(Method) then -2
-                else if sym1.is(Method) && !sym2.is(Method) then 2
+                else if sym2.is(Method) && !sym1.is(Method) then -1
+                else if sym1.is(Method) && !sym2.is(Method) then 1
                 else 0
 
           val matchLoosely = sym1.matchNullaryLoosely || sym2.matchNullaryLoosely
