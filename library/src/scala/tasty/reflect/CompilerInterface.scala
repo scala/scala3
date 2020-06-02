@@ -1511,14 +1511,17 @@ trait CompilerInterface {
   def Definitions_TupleClass(arity: Int): Symbol
   def Definitions_isTupleClass(sym: Symbol): Boolean
 
-  /** Symbol of scala.internal.Quoted.patternHole */
-  def Definitions_InternalQuoted_patternHole: Symbol
+  /** Symbol of scala.internal.CompileTime.patternHole */
+  def Definitions_InternalQuotedMatcher_patternHole: Symbol
 
-  /** Symbol of scala.internal.Quoted.patternType */
-  def Definitions_InternalQuoted_patternTypeAnnot: Symbol
+  /** Symbol of scala.internal.CompileTime.higherOrderHole */
+  def Definitions_InternalQuotedMatcher_higherOrderHole: Symbol
 
-  /** Symbol of scala.internal.Quoted.fromAbove */
-  def Definitions_InternalQuoted_fromAboveAnnot: Symbol
+  /** Symbol of scala.internal.CompileTime.patternType */
+  def Definitions_InternalQuotedMatcher_patternTypeAnnot: Symbol
+
+  /** Symbol of scala.internal.CompileTime.fromAbove */
+  def Definitions_InternalQuotedMatcher_fromAboveAnnot: Symbol
 
   def Definitions_UnitType: Type
   def Definitions_ByteType: Type

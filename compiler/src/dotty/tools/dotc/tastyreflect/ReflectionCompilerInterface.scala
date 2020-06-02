@@ -1982,9 +1982,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Definitions_TupleClass(arity: Int): Symbol = defn.TupleType(arity).classSymbol.asClass
   def Definitions_isTupleClass(sym: Symbol): Boolean = defn.isTupleClass(sym)
 
-  def Definitions_InternalQuoted_patternHole: Symbol = defn.InternalQuoted_patternHole
-  def Definitions_InternalQuoted_patternTypeAnnot: Symbol = defn.InternalQuoted_patternTypeAnnot
-  def Definitions_InternalQuoted_fromAboveAnnot: Symbol = defn.InternalQuoted_fromAboveAnnot
+  def Definitions_InternalQuotedMatcher_patternHole: Symbol = defn.InternalQuotedMatcher_patternHole
+  def Definitions_InternalQuotedMatcher_higherOrderHole: Symbol = defn.InternalQuotedMatcher_higherOrderHole
+  def Definitions_InternalQuotedMatcher_patternTypeAnnot: Symbol = defn.InternalQuotedMatcher_patternTypeAnnot
+  def Definitions_InternalQuotedMatcher_fromAboveAnnot: Symbol = defn.InternalQuotedMatcher_fromAboveAnnot
 
   // Types
 

@@ -694,11 +694,14 @@ class Definitions {
     @tu lazy val InternalQuoted_exprSplice : Symbol = InternalQuotedModule.requiredMethod("exprSplice")
     @tu lazy val InternalQuoted_exprNestedSplice : Symbol = InternalQuotedModule.requiredMethod("exprNestedSplice")
     @tu lazy val InternalQuoted_typeQuote  : Symbol = InternalQuotedModule.requiredMethod("typeQuote")
-    @tu lazy val InternalQuoted_patternHole: Symbol = InternalQuotedModule.requiredMethod("patternHole")
-    @tu lazy val InternalQuoted_patternTypeAnnot: ClassSymbol = InternalQuotedModule.requiredClass("patternType")
     @tu lazy val InternalQuoted_QuoteTypeTagAnnot: ClassSymbol = InternalQuotedModule.requiredClass("quoteTypeTag")
-    @tu lazy val InternalQuoted_fromAboveAnnot: ClassSymbol = InternalQuotedModule.requiredClass("fromAbove")
 
+  @tu lazy val InternalQuotedMatcher: Symbol = ctx.requiredModule("scala.internal.quoted.Matcher")
+    @tu lazy val InternalQuotedMatcher_patternHole: Symbol = InternalQuotedMatcher.requiredMethod("patternHole")
+    @tu lazy val InternalQuotedMatcher_patternHigherOrderHole: Symbol = InternalQuotedMatcher.requiredMethod("patternHigherOrderHole")
+    @tu lazy val InternalQuotedMatcher_higherOrderHole: Symbol = InternalQuotedMatcher.requiredMethod("higherOrderHole")
+    @tu lazy val InternalQuotedMatcher_patternTypeAnnot: ClassSymbol = InternalQuotedMatcher.requiredClass("patternType")
+    @tu lazy val InternalQuotedMatcher_fromAboveAnnot: ClassSymbol = InternalQuotedMatcher.requiredClass("fromAbove")
 
   @tu lazy val InternalQuotedExprModule: Symbol = ctx.requiredModule("scala.internal.quoted.Expr")
     @tu lazy val InternalQuotedExpr_unapply: Symbol = InternalQuotedExprModule.requiredMethod(nme.unapply)

@@ -3,7 +3,7 @@ import Macros._
 
 import scala.internal.quoted.Expr._
 
-import scala.internal.quoted.CompileTime._
+import scala.internal.quoted.Matcher._
 
 object Test {
 

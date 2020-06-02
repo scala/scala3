@@ -39,7 +39,7 @@ object Macros {
       case '{ ($x: Int) <= ($y: Int) } =>
         '{ $sym.leq(${lift(x)}, ${lift(y)}).asInstanceOf[R[T]] }
 
-      case '{ $f($arg: $t): $u } =>
+      case '{ ${f}($arg: $t): $u } =>
         '{ $sym.app[$t, $u](${lift(f)}, ${lift(arg)}).asInstanceOf[R[T]] }
 
       case '{ (if ($cond) $thenp else $elsep): $t } =>

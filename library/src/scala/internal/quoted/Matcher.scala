@@ -1,6 +1,7 @@
 package scala.internal.quoted
 
 import scala.annotation.internal.sharable
+import scala.annotation.{Annotation, compileTimeOnly}
 
 import scala.quoted._
 
@@ -94,7 +95,32 @@ import scala.quoted._
  *
  *   ```
  */
-private[quoted] object Matcher {
+object Matcher {
+
+  /** A splice in a quoted pattern is desugared by the compiler into a call to this method */
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHole`")
+  def patternHole[T]: T = ???
+
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHigherOrderHole`")
+  /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method */
+  def patternHigherOrderHole[U](pat: Any, args: Any*): U = ???
+
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.higherOrderHole`")
+  /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method */
+  def higherOrderHole[U](args: Any*): U = ???
+
+  // TODO remove
+  /** A splice of a name in a quoted pattern is desugared by wrapping getting this annotation */
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternBindHole`")
+  class patternBindHole extends Annotation
+
+  /** A splice of a name in a quoted pattern is that marks the definition of a type splice */
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternType`")
+  class patternType extends Annotation
+
+  /** A type pattern that must be aproximated from above */
+  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.fromAbove`")
+  class fromAbove extends Annotation
 
   class QuoteMatcher[QCtx <: QuoteContext & Singleton](using val qctx: QCtx) {
     // TODO improve performance
@@ -164,13 +190,13 @@ private[quoted] object Matcher {
     private def hasFromAboveAnnotation(sym: Symbol) = sym.annots.exists(isFromAboveAnnotation)
 
     private def isPatternTypeAnnotation(tree: Tree): Boolean = tree match {
-      case New(tpt) => tpt.symbol == internal.Definitions_InternalQuoted_patternTypeAnnot
-      case annot => annot.symbol.owner == internal.Definitions_InternalQuoted_patternTypeAnnot
+      case New(tpt) => tpt.symbol == internal.Definitions_InternalQuotedMatcher_patternTypeAnnot
+      case annot => annot.symbol.owner == internal.Definitions_InternalQuotedMatcher_patternTypeAnnot
     }
 
     private def isFromAboveAnnotation(tree: Tree): Boolean = tree match {
-      case New(tpt) => tpt.symbol == internal.Definitions_InternalQuoted_fromAboveAnnot
-      case annot => annot.symbol.owner == internal.Definitions_InternalQuoted_fromAboveAnnot
+      case New(tpt) => tpt.symbol == internal.Definitions_InternalQuotedMatcher_fromAboveAnnot
+      case annot => annot.symbol.owner == internal.Definitions_InternalQuotedMatcher_fromAboveAnnot
     }
 
     /** Check that all trees match with `mtch` and concatenate the results with &&& */
@@ -226,7 +252,7 @@ private[quoted] object Matcher {
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
           case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
-              if patternHole.symbol == internal.Definitions_InternalQuoted_patternHole &&
+              if patternHole.symbol == internal.Definitions_InternalQuotedMatcher_patternHole &&
                  s.tpe <:< tpt.tpe &&
                  tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
             matched(scrutinee.seal)
@@ -234,15 +260,15 @@ private[quoted] object Matcher {
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
           case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
-              if patternHole.symbol == internal.Definitions_InternalQuoted_patternHole &&
+              if patternHole.symbol == internal.Definitions_InternalQuotedMatcher_patternHole &&
                  scrutinee.tpe <:< tpt.tpe =>
             matched(scrutinee.seal)
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
-          // TODO do not encode with `hole`. Maybe use `higherOrderHole[(T1, ..., Tn) => R]((x1: T1, ..., xn: Tn)): R`
-          case (scrutinee, pattern @ Apply(Select(TypeApply(patternHole, List(Inferred())), "apply"), args0 @ IdentArgs(args)))
-              if patternHole.symbol == internal.Definitions_InternalQuoted_patternHole =>
+          case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: Nil))
+              if pattern.symbol == internal.Definitions_InternalQuotedMatcher_higherOrderHole =>
+
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
               val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
               new TreeMap {
@@ -252,8 +278,11 @@ private[quoted] object Matcher {
                     case tree => super.transformTerm(tree)
               }.transformTree(scrutinee)
             }
-            val names = args.map(_.name)
-            val argTypes = args0.map(x => x.tpe.widenTermRefExpr)
+            val names = args.map {
+              case Block(List(DefDef("$anonfun", _, _, _, Some(Apply(Ident(name), _)))), _) => name
+              case arg => arg.symbol.name
+            }
+            val argTypes = args.map(x => x.tpe.widenTermRefExpr)
             val resType = pattern.tpe
             val res = Lambda(MethodType(names)(_ => argTypes, _ => resType), bodyFn)
             matched(res.seal)
