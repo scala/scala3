@@ -675,7 +675,7 @@ object Types {
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
         else
-          val joint = pdenot & (
+          val joint = pdenot.meet(
             new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre),
             pre,
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
@@ -726,7 +726,7 @@ object Types {
       }
 
       def goAnd(l: Type, r: Type) =
-        go(l) & (go(r), pre, safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+        go(l).meet(go(r), pre, safeIntersection = ctx.base.pendingMemberSearches.contains(name))
 
       def goOr(tp: OrType) = tp match {
         case OrUncheckedNull(tp1) =>

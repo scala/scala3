@@ -366,29 +366,32 @@ object Denotations {
      *
      *  NoDenotations are dropped. MultiDenotations are handled by merging
      *  parts with same signatures. SingleDenotations with equal signatures
-     *  are joined as follows:
+     *  are joined by following this sequence of steps:
      *
-     *  In a first step, consider only those denotations which have symbols
-     *  that are accessible from prefix `pre`.
+     *  1. If exactly one the denotations has an inaccessible symbol, pick the other one.
+     *  2. Otherwise, if one of the infos overrides the other one, and the associated
+     *     symbol does not score strictly lower than the other one,
+     *     pick the associated denotation.
+     *  3. Otherwise, if the two infos can be combined with `infoMeet`, pick that as
+     *     result info, and pick the symbol that scores higher as result symbol,
+     *     or pick `sym2` as a tie breaker. The picked info and symbol are combined
+     *     in a JointDenotation.
+     *  4. Otherwise, if one of the two symbols scores strongly higher than the
+     *     other one, pick the associated denotation.
+     *  5. Otherwise return a multi-denotation consisting of both denotations.
      *
-     *  If there are several such denotations, try to pick one by applying the following
-     *  three precedence rules in decreasing order of priority:
+     *  Symbol scoring is determined according to the following ranking
+     *  where earlier criteria trump later ones. Cases marked with (*)
+     *  give a strong score advantage, the others a weak one.
      *
-     *  1. Prefer denotations with more specific infos.
-     *  2. If infos are equally specific, prefer denotations with concrete symbols over denotations
-     *     with abstract symbols.
-     *  3. If infos are equally specific and symbols are equally concrete,
-     *     prefer denotations with symbols defined in subclasses
-     *     over denotations with symbols defined in proper superclasses.
-     *
-     *  If there is exactly one (preferred) accessible denotation, return it.
-     *
-     *  If there is no preferred accessible denotation, return a JointRefDenotation
-     *  with one of the operand symbols (unspecified which one), and an info which
-     *  is the intersection using `&` or `safe_&` if `safeIntersection` is true)
-     *  of the infos of the operand denotations.
+     *  1. The symbol exists, and the other one does not. (*)
+     *  2. The symbol is concrete, and the other one is deferred
+     *  3. The symbol appears before the other in the linearization of `pre`
+     *  4. The symbol's visibility is strictly greater than the other one's.
+     *  5. The symbol is not a bridge, but the other one is. (*)
+     *  6. The symbol is a method, but the other one is not. (*)
      */
-    def & (that: Denotation, pre: Type, safeIntersection: Boolean = false)(implicit ctx: Context): Denotation = {
+    def meet(that: Denotation, pre: Type, safeIntersection: Boolean = false)(implicit ctx: Context): Denotation = {
       /** Try to merge denot1 and denot2 without adding a new signature. */
       def mergeDenot(denot1: Denotation, denot2: SingleDenotation): Denotation = denot1 match {
         case denot1 @ MultiDenotation(denot11, denot12) =>
@@ -412,7 +415,7 @@ object Denotations {
         val sym1 = denot1.symbol
         val sym2 = denot2.symbol
 
-        /** Does `sym1` come before `sym2` in the linearization of `pre`? */
+        /** Does `owner1` come before `owner2` in the linearization of `pre`? */
         def linearScore(owner1: Symbol, owner2: Symbol): Int =
 
           def searchBaseClasses(bcs: List[ClassSymbol]): Int = bcs match
@@ -441,6 +444,10 @@ object Denotations {
         if hidden1 && !hidden2 then denot2
         else if hidden2 && !hidden1 then denot1
         else
+          // The score that determines which symbol to pick for the result denotation.
+          // A value > 0 means pick `sym1`, < 0 means pick `sym2`.
+          // A value of +/- 2 means pick one of the denotations as a tie-breaker
+          // if a common info does not exist.
           val symScore: Int =
             if !sym1.exists then -2
             else if !sym2.exists then 2
@@ -488,7 +495,7 @@ object Denotations {
           val r = mergeDenot(this, that)
           if (r.exists) r else MultiDenotation(this, that)
         case that @ MultiDenotation(denot1, denot2) =>
-          this & (denot1, pre) & (denot2, pre)
+          this.meet(denot1, pre).meet(denot2, pre)
       }
     }
 
@@ -1106,7 +1113,7 @@ object Denotations {
   final case class DenotUnion(denot1: PreDenotation, denot2: PreDenotation) extends MultiPreDenotation {
     def exists: Boolean = true
     def toDenot(pre: Type)(implicit ctx: Context): Denotation =
-      denot1.toDenot(pre).&(denot2.toDenot(pre), pre)
+      denot1.toDenot(pre).meet(denot2.toDenot(pre), pre)
     def containsSym(sym: Symbol): Boolean =
       (denot1 containsSym sym) || (denot2 containsSym sym)
     type AsSeenFromResult = PreDenotation
