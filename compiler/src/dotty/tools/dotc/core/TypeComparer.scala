@@ -2049,16 +2049,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  instantiated TypeVars are dereferenced and annotations are stripped.
    *  Finally, refined types with the same refined name are
    *  opportunistically merged.
-   *
-   *  Sometimes, the conjunction of two types cannot be formed because
-   *  the types are in conflict of each other. In particular:
-   *
-   *    1. Two different class types are conflicting.
-   *    2. A class type conflicts with a type bounds that does not include the class reference.
-   *    3. Two method or poly types with different (type) parameters but the same
-   *       signature are conflicting
-   *
-   *  In these cases, a MergeError is thrown.
    */
   final def andType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type =
     andTypeGen(tp1, tp2, AndType(_, _), isErased = isErased)
@@ -2071,10 +2061,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  all types which are not value types (e.g. TypeBounds, ClassInfo,
    *  ExprType, LambdaType). Also, when forming an `|`,
    *  instantiated TypeVars are dereferenced and annotations are stripped.
-   *
-   *  Sometimes, the disjunction of two types cannot be formed because
-   *  the types are in conflict of each other. (@see `andType` for an enumeration
-   *  of these cases). In cases of conflict a `MergeError` is raised.
    *
    *  @param isErased Apply erasure semantics. If erased is true, instead of creating
    *                  an OrType, the lub will be computed using TypeCreator#erasedLub.
@@ -2141,13 +2127,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       // gives =:= types), but it keeps the type smaller.
       tp2 match {
         case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
-          try {
-            val jointInfo = Denotations.infoMeet(tp1.refinedInfo, tp2.refinedInfo, NoSymbol, NoSymbol, safeIntersection = false)
+          val jointInfo = Denotations.infoMeet(tp1.refinedInfo, tp2.refinedInfo, safeIntersection = false)
+          if jointInfo.exists then
             tp1.derivedRefinedType(tp1.parent & tp2.parent, tp1.refinedName, jointInfo)
-          }
-          catch {
-            case ex: MergeError => NoType
-          }
+          else
+            NoType
         case _ =>
           NoType
       }

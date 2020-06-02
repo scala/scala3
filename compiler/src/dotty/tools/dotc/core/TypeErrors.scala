@@ -163,32 +163,3 @@ object CyclicReference {
   }
 }
 
-class MergeError(val sym1: Symbol, val sym2: Symbol, val tp1: Type, val tp2: Type, prefix: Type) extends TypeError {
-
-  private def showSymbol(sym: Symbol)(implicit ctx: Context): String =
-    if (sym.exists) sym.showLocated else "[unknown]"
-
-  private def showType(tp: Type)(implicit ctx: Context) = tp match {
-    case ClassInfo(_, cls, _, _, _) => cls.showLocated
-    case _ => tp.show
-  }
-
-  protected def addendum(implicit ctx: Context): String =
-    if (prefix `eq` NoPrefix) ""
-    else {
-      val owner = prefix match {
-        case prefix: ThisType => prefix.cls.show
-        case prefix: TermRef => prefix.symbol.show
-        case _ => i"type $prefix"
-      }
-      s"\nas members of $owner"
-    }
-
-  override def produceMessage(implicit ctx: Context): Message = {
-    if (ctx.debug) printStackTrace()
-    i"""cannot merge
-       |  ${showSymbol(sym1)} of type ${showType(tp1)}  and
-       |  ${showSymbol(sym2)} of type ${showType(tp2)}$addendum
-       """
-  }
-}
