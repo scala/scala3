@@ -188,21 +188,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
         || sym.isType && isAccessible(sym.owner, cls)
     !isAccessible(self.owner, cls)
 
-  /** If this is a sealed class, its known children in the order of textual occurrence */
-  def children(implicit ctx: Context): List[Symbol] = {
-    if (self.isType)
-      self.setFlag(ChildrenQueried)
-
-    if (self.isAllOf(JavaEnumTrait))
-      self.linkedClass.info.decls.foreach(_.ensureCompleted())
-
-    self.annotations.collect {
-      case Annotation.Child(child) => child
-    }.reverse
-  }
-
   def hasAnonymousChild(implicit ctx: Context): Boolean =
-    children.exists(_ `eq` self)
+    self.children.exists(_ `eq` self)
 
   /** Is symbol directly or indirectly owned by a term symbol? */
   @tailrec final def isLocal(implicit ctx: Context): Boolean = {

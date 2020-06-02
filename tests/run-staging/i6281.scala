@@ -1,11 +1,11 @@
 import scala.quoted._
 import scala.quoted.staging._
 
-object Test extends App {
+sealed trait HList
+sealed trait HNil extends HList
+sealed trait ::[E, T <: HList] extends HList
 
-  sealed trait HList
-  sealed trait HNil extends HList
-  sealed trait ::[E, T <: HList] extends HList
+object Test extends App {
 
   type STM[A, L <: HList] = L match {
     case HNil => Expr[A]

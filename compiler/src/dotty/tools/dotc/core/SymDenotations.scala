@@ -1578,6 +1578,39 @@ object SymDenotations {
       if (is(Private))
         copySymDenotation(name = expandedName, initFlags = this.flags &~ Private)
       else this
+
+    /** If this is a sealed class, its known children in the order of textual occurrence
+     */
+    def children(using Context): List[Symbol] =
+
+      def completeChildrenIn(owner: Symbol)(using Context) =
+        // Possible children are: classes extending Scala classes and
+        // Scala or Java enum values that are defined in owner.
+        // If owner is a package, we complete only
+        // children that are defined in the same file as their parents.
+        def maybeChild(sym: Symbol) =
+          (sym.isClass && !this.is(JavaDefined) || sym.originDenotation.is(EnumVal))
+          && !owner.is(Package)
+             || sym.originDenotation.infoOrCompleter.match
+                  case _: SymbolLoaders.SecondCompleter => sym.associatedFile == this.symbol.associatedFile
+                  case _ => false
+
+        if owner.isClass then
+          for c <- owner.info.decls.toList if maybeChild(c) do
+            c.ensureCompleted()
+      end completeChildrenIn
+
+      if is(Sealed) then
+        if !is(ChildrenQueried) then
+          // Make sure all visible children are completed, so that
+          // they show up in Child annotations. A possible child is visible if it
+          // is defined in the same scope as `cls` or in the companion object of `cls`.
+          completeChildrenIn(owner)
+          completeChildrenIn(companionClass)
+          setFlag(ChildrenQueried)
+
+      annotations.collect { case Annotation.Child(child) => child }.reverse
+    end children
   }
 
   /** The contents of a class definition during a period
