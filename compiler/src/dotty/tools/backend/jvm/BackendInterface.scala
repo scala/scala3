@@ -166,14 +166,14 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
 
   def getSingleOutput: Option[AbstractFile]
 
-  implicit def symHelper(sym: Symbol): SymbolHelper
-  implicit def typeHelper(tp: Type): TypeHelper
-  implicit def nameHelper(n: Name): NameHelper
-  implicit def annotHelper(a: Annotation): AnnotationHelper
-  implicit def treeHelper(a: Tree): TreeHelper
+  def symHelper(sym: Symbol): SymbolHelper
+  def typeHelper(tp: Type): TypeHelper
+  def nameHelper(n: Name): NameHelper
+  def annotHelper(a: Annotation): AnnotationHelper
+  def treeHelper(a: Tree): TreeHelper
 
-  implicit def constantHelper(a: Constant): ConstantHelper
-  implicit def positionHelper(a: Position): PositionHelper
+  def constantHelper(a: Constant): ConstantHelper
+  def positionHelper(a: Position): PositionHelper
 
 
   val Assign: AssignDeconstructor
@@ -426,7 +426,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
      *  which we represent as classes.
      */
     final def isEmittedInterface: Boolean = isInterface ||
-      isJavaDefined && (isAnnotation || isModuleClass && companionClass.isInterface)
+      isJavaDefined && (isAnnotation || isModuleClass && symHelper(companionClass).isInterface)
 
     // tests
     def isClass: Boolean
@@ -548,7 +548,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
      * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
      */
     def isOriginallyStaticOwner: Boolean =
-      isPackageClass || isModuleClass && originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
+      isPackageClass || isModuleClass && symHelper(symHelper(originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
 
     def samMethod(): Symbol
 
@@ -728,7 +728,7 @@ abstract class BackendInterfaceDefinitions { self: BackendInterface =>
   val ThrowsClass: Symbol = requiredClass[scala.throws[_]]
 
   // Module symbols used in backend
-  val StringModule: Symbol = StringClass.linkedClassOfClass
+  val StringModule: Symbol = symHelper(StringClass).linkedClassOfClass
   val ScalaRunTimeModule: Symbol = requiredModule[scala.runtime.ScalaRunTime.type]
 
 
@@ -762,7 +762,7 @@ abstract class BackendInterfaceDefinitions { self: BackendInterface =>
     case Literal(_) => true
     case _ => false
   }
-  def isNonNullExpr(t: Tree): Boolean = isLiteral(t) || ((t.symbol ne null) && t.symbol.isModule)
+  def isNonNullExpr(t: Tree): Boolean = isLiteral(t) || ((treeHelper(t).symbol ne null) && symHelper(treeHelper(t).symbol).isModule)
   def ifOneIsNull(l: Tree, r: Tree): Tree = if (isNull(l)) r else if (isNull(r)) l else null
 
   private val primitiveCompilationUnits = Set(

@@ -205,7 +205,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit val ClosureTag: ClassTag[Closure] = ClassTag[Closure](classOf[Closure])
 
   def isRuntimeVisible(annot: Annotation): Boolean =
-    if (toDenot(annot.atp.typeSymbol).hasAnnotation(AnnotationRetentionAttr))
+    if (toDenot(annotHelper(annot).atp.typeSymbol).hasAnnotation(AnnotationRetentionAttr))
       retentionPolicyOf(annot) == AnnotationRetentionRuntimeAttr
     else {
       // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the

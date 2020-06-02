@@ -39,10 +39,10 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
    */
   def getOutFolder(csym: Symbol, cName: String): AbstractFile = {
     try {
-      csym.outputDirectory
+      symHelper(csym).outputDirectory
     } catch {
       case ex: Throwable =>
-        int.error(csym.pos, s"Couldn't create file for class $cName\n${ex.getMessage}")
+        int.error(symHelper(csym).pos, s"Couldn't create file for class $cName\n${ex.getMessage}")
         null
     }
   }
@@ -192,12 +192,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       // If the `sym` is a java module class, we use the java class instead. This ensures that we
       // register the class (instead of the module class) in innerClassBufferASM.
       // The two symbols have the same name, so the resulting internalName is the same.
-      val classSym = if (sym.isJavaDefined && sym.isModuleClass) sym.linkedClassOfClass else sym
+      val classSym = if (symHelper(sym).isJavaDefined && symHelper(sym).isModuleClass) symHelper(sym).linkedClassOfClass else sym
       getClassBTypeAndRegisterInnerClass(classSym).internalName
     }
 
     private def assertClassNotArray(sym: Symbol): Unit = {
-      assert(sym.isClass, sym)
+      assert(symHelper(sym).isClass, sym)
       assert(sym != ArrayClass || isCompilingArray, sym)
     }
 
@@ -236,11 +236,11 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     final def asmMethodType(msym: Symbol): MethodBType = {
-      assert(msym.isMethod, s"not a method-symbol: $msym")
+      assert(symHelper(msym).isMethod, s"not a method-symbol: $msym")
       val resT: BType =
-        if (msym.isClassConstructor || msym.isConstructor) UNIT
-        else toTypeKind(msym.tpe.resultType)
-      MethodBType(msym.tpe.paramTypes map toTypeKind, resT)
+        if (symHelper(msym).isClassConstructor || symHelper(msym).isConstructor) UNIT
+        else toTypeKind(typeHelper(symHelper(msym).tpe).resultType)
+      MethodBType(typeHelper(symHelper(msym).tpe).paramTypes map toTypeKind, resT)
     }
 
     /**
@@ -255,7 +255,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      */
     final def symDescriptor(sym: Symbol): String = { getClassBTypeAndRegisterInnerClass(sym).descriptor }
 
-    final def toTypeKind(tp: Type): BType = tp.toTypeKind(BCodeHelpers.this)(this)
+    final def toTypeKind(tp: Type): BType = typeHelper(tp).toTypeKind(BCodeHelpers.this)(this)
 
   } // end of trait BCInnerClassGen
 
@@ -309,8 +309,8 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      */
     private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol): Unit = {
       val moduleName     = internalName(module)
-      val methodInfo     = module.thisType.memberInfo(m)
-      val paramJavaTypes: List[BType] = methodInfo.paramTypes map toTypeKind
+      val methodInfo     = typeHelper(symHelper(module).thisType).memberInfo(m)
+      val paramJavaTypes: List[BType] = typeHelper(methodInfo).paramTypes map toTypeKind
       // val paramNames     = 0 until paramJavaTypes.length map ("x_" + _)
 
       /* Forwarders must not be marked final,
@@ -320,17 +320,17 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       // TODO: evaluate the other flags we might be dropping on the floor here.
       // TODO: ACC_SYNTHETIC ?
       val flags = GenBCodeOps.PublicStatic | (
-        if (m.isVarargsMethod) asm.Opcodes.ACC_VARARGS else 0
+        if (symHelper(m).isVarargsMethod) asm.Opcodes.ACC_VARARGS else 0
       )
 
       // TODO needed? for(ann <- m.annotations) { ann.symbol.initialize }
       val jgensig = getStaticForwarderGenericSignature(m, module)
-      val (throws, others) = m.annotations partition (_.symbol == ThrowsClass)
+      val (throws, others) = symHelper(m).annotations partition (annotHelper(_).symbol == ThrowsClass)
       val thrownExceptions: List[String] = getExceptions(throws)
 
-      val jReturnType = toTypeKind(methodInfo.resultType)
+      val jReturnType = toTypeKind(typeHelper(methodInfo).resultType)
       val mdesc = MethodBType(paramJavaTypes, jReturnType).descriptor
-      val mirrorMethodName = m.javaSimpleName.toString
+      val mirrorMethodName = symHelper(m).javaSimpleName.toString
       val mirrorMethod: asm.MethodVisitor = jclass.visitMethod(
         flags,
         mirrorMethodName,
@@ -340,7 +340,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       )
 
       emitAnnotations(mirrorMethod, others)
-      emitParamAnnotations(mirrorMethod, m.info.params.map(_.annotations))
+      emitParamAnnotations(mirrorMethod, typeHelper(symHelper(m).info).params.map(symHelper(_).annotations))
 
       mirrorMethod.visitCode()
 
@@ -369,24 +369,24 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     def addForwarders(jclass: asm.ClassVisitor, jclassName: String, moduleClass: Symbol): Unit = {
-      assert(moduleClass.isModuleClass, moduleClass)
+      assert(symHelper(moduleClass).isModuleClass, moduleClass)
       debuglog(s"Dumping mirror class for object: $moduleClass")
 
-      val linkedClass  = moduleClass.companionClass
+      val linkedClass  = symHelper(moduleClass).companionClass
       lazy val conflictingNames: Set[Name] = {
-        (linkedClass.info.members collect { case sym if sym.name.isTermName => sym.name }).toSet
+        (typeHelper(symHelper(linkedClass).info).members collect { case sym if nameHelper(symHelper(sym).name).isTermName => symHelper(sym).name }).toSet
       }
       debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
-      for (m0 <- moduleClass.info.sortedMembersBasedOnFlags(required = Flag_METHOD, excluded = ExcludedForwarderFlags)) {
-        val m = if (m0.isBridge) m0.nextOverriddenSymbol else m0
+      for (m0 <- typeHelper(symHelper(moduleClass).info).sortedMembersBasedOnFlags(required = Flag_METHOD, excluded = ExcludedForwarderFlags)) {
+        val m = if (symHelper(m0).isBridge) symHelper(m0).nextOverriddenSymbol else m0
         if (m == NoSymbol)
           log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
-        else if (m.isType || m.isDeferred || (m.owner eq ObjectClass) || m.isConstructor || m.isExpanded)
+        else if (symHelper(m).isType || symHelper(m).isDeferred || (symHelper(m).owner eq ObjectClass) || symHelper(m).isConstructor || symHelper(m).isExpanded)
           debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
-        else if (conflictingNames(m.name))
-          log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")
-        else if (m.hasAccessBoundary)
+        else if (conflictingNames(symHelper(m).name))
+          log(s"No forwarder for $m due to conflict with ${typeHelper(symHelper(linkedClass).info).member(symHelper(m).name)}")
+        else if (symHelper(m).hasAccessBoundary)
           log(s"No forwarder for non-public member $m")
         else {
           log(s"Adding static forwarder for '$m' from $jclassName to '$moduleClass'")
@@ -458,8 +458,8 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      *  must-single-thread
      */
     def genMirrorClass(moduleClass: Symbol, cunit: CompilationUnit): asm.tree.ClassNode = {
-      assert(moduleClass.isModuleClass)
-      assert(moduleClass.companionClass == NoSymbol, moduleClass)
+      assert(symHelper(moduleClass).isModuleClass)
+      assert(symHelper(moduleClass).companionClass == NoSymbol, moduleClass)
       innerClassBufferASM.clear()
       this.cunit = cunit
       val moduleName = internalName(moduleClass) // + "$"
@@ -481,9 +481,9 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
                                 null /* SourceDebugExtension */)
       }
 
-      val ssa = getAnnotPickle(mirrorName, moduleClass.companionSymbol)
+      val ssa = getAnnotPickle(mirrorName, symHelper(moduleClass).companionSymbol)
       mirrorClass.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
-      emitAnnotations(mirrorClass, moduleClass.annotations ++ ssa)
+      emitAnnotations(mirrorClass, symHelper(moduleClass).annotations ++ ssa)
 
       addForwarders(mirrorClass, mirrorName, moduleClass)
 
@@ -492,7 +492,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       mirrorClass.visitEnd()
 
-      moduleClass.name // this side-effect is necessary, really.
+      symHelper(moduleClass).name // this side-effect is necessary, really.
 
       mirrorClass
     }
@@ -517,7 +517,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      */
     def isAndroidParcelableClass(sym: Symbol) =
       (AndroidParcelableInterface != NoSymbol) &&
-      (sym.parentSymbols contains AndroidParcelableInterface)
+      (symHelper(sym).parentSymbols contains AndroidParcelableInterface)
 
     /*
      * must-single-thread

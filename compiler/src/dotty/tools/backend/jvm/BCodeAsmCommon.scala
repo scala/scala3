@@ -16,13 +16,13 @@ final class BCodeAsmCommon[I <: BackendInterface](val interface: I) {
    * null.
    */
   def isAnonymousOrLocalClass(classSym: Symbol): Boolean = {
-    assert(classSym.isClass, s"not a class: $classSym")
+    assert(symHelper(classSym).isClass, s"not a class: $classSym")
     // Here used to be an `assert(!classSym.isDelambdafyFunction)`: delambdafy lambda classes are
     // always top-level. However, SI-8900 shows an example where the weak name-based implementation
     // of isDelambdafyFunction failed (for a function declared in a package named "lambda").
-    classSym.isAnonymousClass || {
-      val originalOwnerLexicallyEnclosingClass = classSym.originalOwner.originalLexicallyEnclosingClass
-      originalOwnerLexicallyEnclosingClass != NoSymbol && !originalOwnerLexicallyEnclosingClass.isClass
+    symHelper(classSym).isAnonymousClass || {
+      val originalOwnerLexicallyEnclosingClass = symHelper(symHelper(classSym).originalOwner).originalLexicallyEnclosingClass
+      originalOwnerLexicallyEnclosingClass != NoSymbol && !symHelper(originalOwnerLexicallyEnclosingClass).isClass
     }
   }
 
@@ -50,13 +50,13 @@ final class BCodeAsmCommon[I <: BackendInterface](val interface: I) {
    * This is a source-level property, so we need to use the originalOwner chain to reconstruct it.
    */
   private def enclosingMethodForEnclosingMethodAttribute(classSym: Symbol): Option[Symbol] = {
-    assert(classSym.isClass, classSym)
+    assert(symHelper(classSym).isClass, classSym)
     def enclosingMethod(sym: Symbol): Option[Symbol] = {
-      if (sym.isClass || sym == NoSymbol) None
-      else if (sym.isMethod) Some(sym)
-      else enclosingMethod(sym.originalOwner.originalLexicallyEnclosingClass)
+      if (symHelper(sym).isClass || sym == NoSymbol) None
+      else if (symHelper(sym).isMethod) Some(sym)
+      else enclosingMethod(symHelper(symHelper(sym).originalOwner).originalLexicallyEnclosingClass)
     }
-    enclosingMethod(classSym.originalOwner.originalLexicallyEnclosingClass)
+    enclosingMethod(symHelper(symHelper(classSym).originalOwner).originalLexicallyEnclosingClass)
   }
 
   /**
@@ -64,12 +64,12 @@ final class BCodeAsmCommon[I <: BackendInterface](val interface: I) {
    * property, this method looks at the originalOwner chain. See doc in BTypes.
    */
   private def enclosingClassForEnclosingMethodAttribute(classSym: Symbol): Symbol = {
-    assert(classSym.isClass, classSym)
+    assert(symHelper(classSym).isClass, classSym)
     def enclosingClass(sym: Symbol): Symbol = {
-      if (sym.isClass) sym
-      else enclosingClass(sym.originalOwner.originalLexicallyEnclosingClass)
+      if (symHelper(sym).isClass) sym
+      else enclosingClass(symHelper(symHelper(sym).originalOwner).originalLexicallyEnclosingClass)
     }
-    enclosingClass(classSym.originalOwner.originalLexicallyEnclosingClass)
+    enclosingClass(symHelper(symHelper(classSym).originalOwner).originalLexicallyEnclosingClass)
   }
 
   /*final*/ case class EnclosingMethodEntry(owner: String, name: String, methodDescriptor: String)
@@ -85,10 +85,10 @@ final class BCodeAsmCommon[I <: BackendInterface](val interface: I) {
   def enclosingMethodAttribute(classSym: Symbol, classDesc: Symbol => String, methodDesc: Symbol => String): Option[EnclosingMethodEntry] = {
     if (isAnonymousOrLocalClass(classSym)) {
       val methodOpt = enclosingMethodForEnclosingMethodAttribute(classSym)
-      debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(_.enclClass)})")
+      debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(symHelper(_).enclClass)})")
       Some(EnclosingMethodEntry(
         classDesc(enclosingClassForEnclosingMethodAttribute(classSym)),
-        methodOpt.map(_.javaSimpleName.toString).orNull,
+        methodOpt.map(symHelper(_).javaSimpleName.toString).orNull,
         methodOpt.map(methodDesc).orNull))
     } else {
       None

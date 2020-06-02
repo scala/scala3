@@ -45,14 +45,14 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
    */
   final def classBTypeFromSymbol(classSym: Symbol): ClassBType = {
     assert(classSym != NoSymbol, "Cannot create ClassBType from NoSymbol")
-    assert(classSym.isClass, s"Cannot create ClassBType from non-class symbol $classSym")
+    assert(symHelper(classSym).isClass, s"Cannot create ClassBType from non-class symbol $classSym")
     assert(
       (!primitiveTypeMap.contains(classSym) || isCompilingPrimitive) &&
       (classSym != NothingClass && classSym != NullClass),
-      s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
+      s"Cannot create ClassBType for special class symbol ${symHelper(classSym).showFullName}")
 
     convertedClasses.getOrElse(classSym, {
-      val internalName = classSym.javaBinaryName
+      val internalName = symHelper(classSym).javaBinaryName
       // We first create and add the ClassBType to the hash map before computing its info. This
       // allows initializing cylic dependencies, see the comment on variable ClassBType._info.
       val classBType = new ClassBType(internalName)
@@ -62,21 +62,21 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
   }
 
   private def setClassInfo(classSym: Symbol, classBType: ClassBType): ClassBType = {
-    val superClassSym = classSym.superClass
+    val superClassSym = symHelper(classSym).superClass
     assert(
       if (classSym == ObjectClass)
         superClassSym == NoSymbol
-      else if (classSym.isInterface)
+      else if (symHelper(classSym).isInterface)
         superClassSym == ObjectClass
       else
         // A ClassBType for a primitive class (scala.Boolean et al) is only created when compiling these classes.
-        ((superClassSym != NoSymbol) && !superClassSym.isInterface) || (isCompilingPrimitive && primitiveTypeMap.contains(classSym)),
+        ((superClassSym != NoSymbol) && !symHelper(superClassSym).isInterface) || (isCompilingPrimitive && primitiveTypeMap.contains(classSym)),
       s"Bad superClass for $classSym: $superClassSym"
     )
     val superClass = if (superClassSym == NoSymbol) None
                      else Some(classBTypeFromSymbol(superClassSym))
 
-    val interfaces = classSym.superInterfaces.map(classBTypeFromSymbol)
+    val interfaces = symHelper(classSym).superInterfaces.map(classBTypeFromSymbol)
 
     val flags = javaFlags(classSym)
 
@@ -95,7 +95,7 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
       // The lambdalift phase lifts all nested classes to the enclosing class, so if we collect
       // member classes right after lambdalift, we obtain all nested classes, including local and
       // anonymous ones.
-      val nestedClasses = classSym.nestedClasses
+      val nestedClasses = symHelper(classSym).nestedClasses
 
       // If this is a top-level class, and it has a companion object, the member classes of the
       // companion are added as members of the class. For example:
@@ -109,8 +109,8 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
       // This is done by buildNestedInfo, the reason is Java compatibility, see comment in BTypes.
       // For consistency, the InnerClass entry for D needs to be present in C - to Java it looks
       // like D is a member of C, not C$.
-      val linkedClass = classSym.linkedClass
-      val companionModuleMembers = classSym.companionModuleMembers
+      val linkedClass = symHelper(classSym).linkedClass
+      val companionModuleMembers = symHelper(classSym).companionModuleMembers
 
       nestedClasses ++ companionModuleMembers
     }
@@ -122,10 +122,10 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
      * Here we get rid of the module class B, making sure that the class B is present.
      */
     val nestedClassSymbolsNoJavaModuleClasses = nestedClassSymbols.filter(s => {
-      if (s.isJavaDefined && s.isModuleClass) {
+      if (symHelper(s).isJavaDefined && symHelper(s).isModuleClass) {
         // We could also search in nestedClassSymbols for s.linkedClassOfClass, but sometimes that
         // returns NoSymbol, so it doesn't work.
-        val nb = nestedClassSymbols.count(mc => mc.name == s.name && mc.owner == s.owner)
+        val nb = nestedClassSymbols.count(mc => symHelper(mc).name == symHelper(s).name && symHelper(mc).owner == symHelper(s).owner)
         // this assertion is specific to how ScalaC works. It doesn't apply to dotty, as n dotty there will be B & B$
         // assert(nb == 2, s"Java member module without member class: $s - $nestedClassSymbols")
         false
@@ -142,34 +142,34 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
 
 
   private def buildNestedInfo(innerClassSym: Symbol): Option[NestedInfo] = {
-    assert(innerClassSym.isClass, s"Cannot build NestedInfo for non-class symbol $innerClassSym")
+    assert(symHelper(innerClassSym).isClass, s"Cannot build NestedInfo for non-class symbol $innerClassSym")
 
-    val isNested = !innerClassSym.rawowner.isPackageClass
+    val isNested = !symHelper(symHelper(innerClassSym).rawowner).isPackageClass
     if (!isNested) None
     else {
       // See comment in BTypes, when is a class marked static in the InnerClass table.
-      val isStaticNestedClass = innerClassSym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
+      val isStaticNestedClass = symHelper(symHelper(symHelper(innerClassSym).originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
 
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
-      val enclosingClassSym = innerClassSym.enclosingClassSym
+      val enclosingClassSym = symHelper(innerClassSym).enclosingClassSym
       val enclosingClass: ClassBType = classBTypeFromSymbol(enclosingClassSym)
 
       val outerName: Option[String] = {
         if (isAnonymousOrLocalClass(innerClassSym)) {
           None
         } else {
-          val outerName = innerClassSym.rawowner.javaBinaryName
+          val outerName = symHelper(symHelper(innerClassSym).rawowner).javaBinaryName
           // Java compatibility. See the big comment in BTypes that summarizes the InnerClass spec.
           val outerNameModule =
-            if (innerClassSym.rawowner.isTopLevelModuleClass) dropModule(outerName)
+            if (symHelper(symHelper(innerClassSym).rawowner).isTopLevelModuleClass) dropModule(outerName)
             else outerName
           Some(outerNameModule.toString)
         }
       }
 
       val innerName: Option[String] = {
-        if (innerClassSym.isAnonymousClass || innerClassSym.isAnonymousFunction) None
-        else Some(innerClassSym.rawname + innerClassSym.moduleSuffix) // moduleSuffix for module classes
+        if (symHelper(innerClassSym).isAnonymousClass || symHelper(innerClassSym).isAnonymousFunction) None
+        else Some(symHelper(innerClassSym).rawname + symHelper(innerClassSym).moduleSuffix) // moduleSuffix for module classes
       }
 
       Some(NestedInfo(enclosingClass, outerName, innerName, isStaticNestedClass))
@@ -197,42 +197,42 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
   final def javaFlags(sym: Symbol): Int = {
 
 
-    val privateFlag = sym.getsJavaPrivateFlag
+    val privateFlag = symHelper(sym).getsJavaPrivateFlag
 
-    val finalFlag = sym.getsJavaFinalFlag
+    val finalFlag = symHelper(sym).getsJavaFinalFlag
 
     import asm.Opcodes._
     GenBCodeOps.mkFlags(
       if (privateFlag) ACC_PRIVATE else ACC_PUBLIC,
-      if (sym.isDeferred || sym.hasAbstractFlag) ACC_ABSTRACT else 0,
-      if (sym.isInterface) ACC_INTERFACE else 0,
+      if (symHelper(sym).isDeferred || symHelper(sym).hasAbstractFlag) ACC_ABSTRACT else 0,
+      if (symHelper(sym).isInterface) ACC_INTERFACE else 0,
 
       if (finalFlag &&
         // Primitives are "abstract final" to prohibit instantiation
         // without having to provide any implementations, but that is an
         // illegal combination of modifiers at the bytecode level so
         // suppress final if abstract if present.
-        !sym.hasAbstractFlag &&
+        !symHelper(sym).hasAbstractFlag &&
         //  Mixin forwarders are bridges and can be final, but final bridges confuse some frameworks
-        !sym.isBridge)
+        !symHelper(sym).isBridge)
         ACC_FINAL else 0,
-      if (sym.isStaticMember) ACC_STATIC else 0,
-      if (sym.isBridge) ACC_BRIDGE | ACC_SYNTHETIC else 0,
-      if (sym.isArtifact) ACC_SYNTHETIC else 0,
-      if (sym.isClass && !sym.isInterface) ACC_SUPER else 0,
-      if (sym.hasEnumFlag) ACC_ENUM else 0,
-      if (sym.isVarargsMethod) ACC_VARARGS else 0,
-      if (sym.isSynchronized) ACC_SYNCHRONIZED else 0,
-      if (sym.isDeprecated) asm.Opcodes.ACC_DEPRECATED else 0,
-      if (sym.isEnum) asm.Opcodes.ACC_ENUM else 0
+      if (symHelper(sym).isStaticMember) ACC_STATIC else 0,
+      if (symHelper(sym).isBridge) ACC_BRIDGE | ACC_SYNTHETIC else 0,
+      if (symHelper(sym).isArtifact) ACC_SYNTHETIC else 0,
+      if (symHelper(sym).isClass && !symHelper(sym).isInterface) ACC_SUPER else 0,
+      if (symHelper(sym).hasEnumFlag) ACC_ENUM else 0,
+      if (symHelper(sym).isVarargsMethod) ACC_VARARGS else 0,
+      if (symHelper(sym).isSynchronized) ACC_SYNCHRONIZED else 0,
+      if (symHelper(sym).isDeprecated) asm.Opcodes.ACC_DEPRECATED else 0,
+      if (symHelper(sym).isEnum) asm.Opcodes.ACC_ENUM else 0
     )
   }
 
   def javaFieldFlags(sym: Symbol) = {
     javaFlags(sym) | GenBCodeOps.mkFlags(
-      if (sym hasAnnotation TransientAttr) asm.Opcodes.ACC_TRANSIENT else 0,
-      if (sym hasAnnotation VolatileAttr)  asm.Opcodes.ACC_VOLATILE  else 0,
-      if (sym.isMutable) 0 else asm.Opcodes.ACC_FINAL
+      if (symHelper(sym) hasAnnotation TransientAttr) asm.Opcodes.ACC_TRANSIENT else 0,
+      if (symHelper(sym) hasAnnotation VolatileAttr)  asm.Opcodes.ACC_VOLATILE  else 0,
+      if (symHelper(sym).isMutable) 0 else asm.Opcodes.ACC_FINAL
     )
   }
 }

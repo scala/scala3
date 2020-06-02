@@ -22,13 +22,13 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
 
     def genSynchronized(tree: Apply, expectedType: BType): BType = tree match {
       case Apply(TypeApply(fun, _), args) =>
-      val monitor = locals.makeLocal(ObjectReference, "monitor", Object_Type, tree.pos)
+      val monitor = locals.makeLocal(ObjectReference, "monitor", Object_Type, treeHelper(tree).pos)
       val monCleanup = new asm.Label
 
       // if the synchronized block returns a result, store it in a local variable.
       // Just leaving it on the stack is not valid in MSIL (stack is cleaned when leaving try-blocks).
       val hasResult = (expectedType != UNIT)
-      val monitorResult: Symbol = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", Object_Type, tree.pos) else null
+      val monitorResult: Symbol = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", Object_Type, treeHelper(tree).pos) else null
 
       /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
       genLoadQualifier(fun)
@@ -178,7 +178,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
           pat match {
             case Typed(Ident(`nme_WILDCARD`), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)
             case Ident(`nme_WILDCARD`)              => NamelessEH(ThrowableReference,  caseBody)
-            case Bind(_, _)                       => BoundEH   (pat.symbol, caseBody)
+            case Bind(_, _)                       => BoundEH   (treeHelper(pat).symbol, caseBody)
           }
         }
 
@@ -206,7 +206,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
        * please notice `tmp` has type tree.tpe, while `earlyReturnVar` has the method return type.
        * Because those two types can be different, dedicated vars are needed.
        */
-      val tmp          = if (guardResult) locals.makeLocal(tpeTK(tree), "tmp", tree.tpe, tree.pos) else null
+      val tmp          = if (guardResult) locals.makeLocal(tpeTK(tree), "tmp", treeHelper(tree).tpe, treeHelper(tree).pos) else null
 
       /*
        * upon early return from the try-body or one of its EHs (but not the EH-version of the finally-clause)
@@ -316,7 +316,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
         nopIfNeeded(startTryBody)
         val finalHandler = currProgramPoint() // version of the finally-clause reached via unhandled exception.
         protect(startTryBody, finalHandler, finalHandler, null)
-        val Local(eTK, _, eIdx, _) = locals(locals.makeLocal(ThrowableReference, "exc", Throwable_Type, finalizer.pos))
+        val Local(eTK, _, eIdx, _) = locals(locals.makeLocal(ThrowableReference, "exc", Throwable_Type, treeHelper(finalizer).pos))
         bc.store(eIdx, eTK)
         emitFinalizer(finalizer, null, isDuplicate = true)
         bc.load(eIdx, eTK)
@@ -403,7 +403,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
     }
 
     /* Does this tree have a try-catch block? */
-    def mayCleanStack(tree: Tree): Boolean = tree exists { t => t match {
+    def mayCleanStack(tree: Tree): Boolean = treeHelper(tree) exists { t => t match {
         case Try(_, _, _) => true
         case _ => false
       }
