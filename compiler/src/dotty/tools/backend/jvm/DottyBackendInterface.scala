@@ -72,7 +72,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type Annotation      = Annotations.Annotation
   type ArrayValue      = tpd.JavaSeqLiteral
   type ApplyDynamic    = Null
-  type ModuleDef       = Null
   type Closure         = tpd.Closure
 
   val NoSymbol: Symbol = Symbols.NoSymbol
@@ -198,7 +197,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit val ThisTag: ClassTag[This] = ClassTag[This](classOf[This])
   implicit val AlternativeTag: ClassTag[Alternative] = ClassTag[Alternative](classOf[Alternative])
   implicit val DefDefTag: ClassTag[DefDef] = ClassTag[DefDef](classOf[DefDef])
-  implicit val ModuleDefTag: ClassTag[ModuleDef] = ClassTag[ModuleDef](classOf[ModuleDef])
   implicit val NameTag: ClassTag[Name] = ClassTag[Name](classOf[Name])
   implicit val TemplateTag: ClassTag[Template] = ClassTag[Template](classOf[Template])
   implicit val BindTag: ClassTag[Bind] = ClassTag[Bind](classOf[Bind])
@@ -1145,12 +1143,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _4: List[List[ValDef]] = field.vparamss
     def _5: Tree = field.tpt
     def _6: Tree = field.rhs
-  }
-
-  object ModuleDef extends ModuleDefDeconstructor {
-    def _1: Null = ???
-    def _2: Name = ???
-    def _3: Tree = ???
   }
 
   object Template extends TemplateDeconstructor {

@@ -466,8 +466,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       tree match {
         case EmptyTree => ()
 
-        case ModuleDef(_, _, _) => abort(s"Modules should have been eliminated by refchecks: $tree")
-
         case ValDef(mods, name, tpt, rhs) => () // fields are added in `genPlainClass()`, via `addClassFields()`
 
         case dd @ DefDef(_, _, _, _, _, _) => genDefDef(dd.asInstanceOf[DefDef])

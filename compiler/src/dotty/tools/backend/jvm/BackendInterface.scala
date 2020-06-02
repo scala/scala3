@@ -42,7 +42,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   type CaseDef    >: Null <: Tree
   type Alternative >: Null <: Tree
   type DefDef     >: Null <: Tree
-  type ModuleDef  >: Null <: Tree
   type Template   >: Null <: Tree
   type Name       >: Null <: AnyRef
   type Position
@@ -78,7 +77,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   implicit val ThisTag: ClassTag[This]
   implicit val AlternativeTag: ClassTag[Alternative]
   implicit val DefDefTag: ClassTag[DefDef]
-  implicit val ModuleDefTag: ClassTag[ModuleDef]
   implicit val NameTag: ClassTag[Name]
   implicit val TemplateTag: ClassTag[Template]
   implicit val BindTag: ClassTag[Bind]
@@ -206,7 +204,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   val Constant: ConstantDeconstructor
   val ThrownException: ThrownException
   val DefDef: DefDefDeconstructor
-  val ModuleDef: ModuleDefDeconstructor
   val Template: TemplateDeconstructor
   val Bind: BindDeconstructor
   val ClassDef: ClassDefDeconstructor
@@ -250,12 +247,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def _1: List[Tree]
     def _2: ValDef
     def _3: List[Tree]
-  }
-
-  abstract class ModuleDefDeconstructor extends DeconstructorCommon[ModuleDef]{
-    def _1: Null
-    def _2: Name
-    def _3: Tree
   }
 
   abstract class DefDefDeconstructor extends DeconstructorCommon[DefDef]{
