@@ -433,8 +433,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case _ => false } )
     }
     def lineNumber(tree: Tree): Unit = {
-      if (!emitLines || !positionHelper(tree.span).isDefined) return;
-      val nr = positionHelper(positionHelper(tree.span).finalPosition).line
+      if (!emitLines || !tree.span.exists) return;
+      val nr = sourcePos(tree.span).line + 1
       if (nr != lastEmittedLineNr) {
         lastEmittedLineNr = nr
         lastInsn match {
@@ -486,7 +486,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     def initJMethod(flags: Int, paramAnnotations: List[List[Annotation]]): Unit = {
 
       val jgensig = getGenericSignature(methSymbol, claszSymbol)
-      val (excs, others) = symHelper(methSymbol).annotations partition (annotHelper(_).symbol == defn.ThrowsAnnot)
+      val (excs, others) = symHelper(methSymbol).annotations partition (_.tree.symbol == defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(excs)
 
       val bytecodeName =

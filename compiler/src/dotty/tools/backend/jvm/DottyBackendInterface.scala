@@ -130,7 +130,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   def isRuntimeVisible(annot: Annotation): Boolean =
-    if (toDenot(annotHelper(annot).atp.typeSymbol).hasAnnotation(AnnotationRetentionAttr))
+    if (toDenot(annot.tree.tpe.typeSymbol).hasAnnotation(AnnotationRetentionAttr))
       retentionPolicyOf(annot) == AnnotationRetentionRuntimeAttr
     else {
       // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the
@@ -141,12 +141,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   def shouldEmitAnnotation(annot: Annotation): Boolean = {
     annot.symbol.isJavaDefined &&
-      retentionPolicyOf(annot) != AnnotationRetentionSourceAttr &&
-      annot.args.isEmpty
+      retentionPolicyOf(annot) != AnnotationRetentionSourceAttr
   }
 
   private def retentionPolicyOf(annot: Annotation): Symbol =
-    annot.atp.typeSymbol.getAnnotation(AnnotationRetentionAttr).
+    annot.tree.tpe.typeSymbol.getAnnotation(AnnotationRetentionAttr).
       flatMap(_.argumentConstant(0).map(_.symbolValue)).getOrElse(AnnotationRetentionClassAttr)
 
   private def normalizeArgument(arg: Tree): Tree = arg match {
@@ -234,8 +233,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def emitAnnotations(cw: asm.ClassVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
                               (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for(annot <- annotations; if shouldEmitAnnotation(annot)) {
-      val typ = annot.atp
-      val assocs = annot.assocs
+      val typ = annot.tree.tpe
+      val assocs = assocsFromApply(annot.tree)
       val av = cw.visitAnnotation(innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]), isRuntimeVisible(annot))
       emitAssocs(av, assocs, bcodeStore)(innerClasesStore)
     }
@@ -251,8 +250,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def emitAnnotations(mw: asm.MethodVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
                               (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for(annot <- annotations; if shouldEmitAnnotation(annot)) {
-      val typ = annot.atp
-      val assocs = annot.assocs
+      val typ = annot.tree.tpe
+      val assocs = assocsFromApply(annot.tree)
       val av = mw.visitAnnotation(innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]), isRuntimeVisible(annot))
       emitAssocs(av, assocs, bcodeStore)(innerClasesStore)
     }
@@ -261,8 +260,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def emitAnnotations(fw: asm.FieldVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
                               (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for(annot <- annotations; if shouldEmitAnnotation(annot)) {
-      val typ = annot.atp
-      val assocs = annot.assocs
+      val typ = annot.tree.tpe
+      val assocs = assocsFromApply(annot.tree)
       val av = fw.visitAnnotation(innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]), isRuntimeVisible(annot))
       emitAssocs(av, assocs, bcodeStore)(innerClasesStore)
     }
@@ -274,8 +273,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     if (annotationss forall (_.isEmpty)) return
     for ((annots, idx) <- annotationss.zipWithIndex;
          annot <- annots) {
-      val typ = annot.atp
-      val assocs = annot.assocs
+      val typ = annot.tree.tpe
+      val assocs = assocsFromApply(annot.tree)
       val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]), isRuntimeVisible(annot))
       emitAssocs(pannVisitor, assocs, bcodeStore)(innerClasesStore)
     }
@@ -471,24 +470,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   def sourceFileFor(cu: CompilationUnit): String = cu.source.file.name
 
-
-
-  implicit def positionHelper(a: Position): PositionHelper = new PositionHelper {
-    def isDefined: Boolean = a.exists
-    def line: Int = sourcePos(a).line + 1
-    def finalPosition: Position = a
-  }
-
-
-  implicit def annotHelper(a: Annotation): AnnotationHelper = new AnnotationHelper {
-    def atp: Type = a.tree.tpe
-
-    def assocs: List[(Name, Tree)] = assocsFromApply(a.tree)
-
-    def symbol: Symbol = a.tree.symbol
-
-    def args: List[Tree] = List.empty // those arguments to scala-defined annotations. they are never emitted
-  }
 
   def assocsFromApply(tree: Tree): List[(Name, Tree)] = {
     tree match {
@@ -970,12 +951,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
 
-  abstract class PositionHelper {
-    def isDefined: Boolean
-    def finalPosition: Position
-    def line: Int
-  }
-
   abstract class ConstantHelper {
     def tag: ConstantTag
     def longValue: Long
@@ -1180,13 +1155,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def getPrimitive(app: Apply, receiver: Type): Int
     def isPrimitive(fun: Tree): Boolean
     def getPrimitive(sym: Symbol): Int
-  }
-
-  abstract class AnnotationHelper{
-    def atp: Type
-    def symbol: Symbol
-    def args: List[Tree]
-    def assocs: List[(Name, /* ClassfileAnnotArg*/ Object)]
   }
 
   abstract class Caches {
