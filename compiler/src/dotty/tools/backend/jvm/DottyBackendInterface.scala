@@ -479,22 +479,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def finalPosition: Position = a
   }
 
-  implicit def constantHelper(a: Constant): ConstantHelper = new ConstantHelper {
-    def booleanValue: Boolean = a.booleanValue
-    def longValue: Long = a.longValue
-    def byteValue: Byte = a.byteValue
-    def stringValue: String = a.stringValue
-    def symbolValue: Symbol = a.symbolValue
-    def floatValue: Float = a.floatValue
-    def value: Any = a.value
-    def tag: ConstantTag = a.tag
-    def typeValue: Type = a.typeValue
-    def shortValue: Short = a.shortValue
-    def intValue: Int = a.intValue
-    def doubleValue: Double = a.doubleValue
-    def charValue: Char = a.charValue
-  }
-
 
   implicit def treeHelper(a: Tree): TreeHelper = new TreeHelper {
     def symbol: Symbol = a.symbol

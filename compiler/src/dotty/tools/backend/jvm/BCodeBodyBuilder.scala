@@ -191,7 +191,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val failure = new asm.Label
 
       val hasElse = !treeHelper(elsep).isEmpty && (elsep match {
-        case Literal(value) if constantHelper(value).tag == UnitTag => false
+        case Literal(value) if value.tag == UnitTag => false
         case _ => true
       })
       val postIf  = if (hasElse) new asm.Label else failure
@@ -384,9 +384,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
 
         case Literal(value) =>
-          if (constantHelper(value).tag != UnitTag) (constantHelper(value).tag, expectedType) match {
-            case (IntTag,   LONG  ) => bc.lconst(constantHelper(value).longValue);       generatedType = LONG
-            case (FloatTag, DOUBLE) => bc.dconst(constantHelper(value).doubleValue);     generatedType = DOUBLE
+          if (value.tag != UnitTag) (value.tag, expectedType) match {
+            case (IntTag,   LONG  ) => bc.lconst(value.longValue);       generatedType = LONG
+            case (FloatTag, DOUBLE) => bc.dconst(value.doubleValue);     generatedType = DOUBLE
             case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = RT_NULL
             case _                  => genConstant(value);               generatedType = tpeTK(tree)
           }
@@ -463,35 +463,35 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
      * Otherwise it's safe to call from multiple threads.
      */
     def genConstant(const: Constant): Unit = {
-      (constantHelper(const).tag/*: @switch*/) match {
+      (const.tag/*: @switch*/) match {
 
-        case BooleanTag => bc.boolconst(constantHelper(const).booleanValue)
+        case BooleanTag => bc.boolconst(const.booleanValue)
 
-        case ByteTag    => bc.iconst(constantHelper(const).byteValue)
-        case ShortTag   => bc.iconst(constantHelper(const).shortValue)
-        case CharTag    => bc.iconst(constantHelper(const).charValue)
-        case IntTag     => bc.iconst(constantHelper(const).intValue)
+        case ByteTag    => bc.iconst(const.byteValue)
+        case ShortTag   => bc.iconst(const.shortValue)
+        case CharTag    => bc.iconst(const.charValue)
+        case IntTag     => bc.iconst(const.intValue)
 
-        case LongTag    => bc.lconst(constantHelper(const).longValue)
-        case FloatTag   => bc.fconst(constantHelper(const).floatValue)
-        case DoubleTag  => bc.dconst(constantHelper(const).doubleValue)
+        case LongTag    => bc.lconst(const.longValue)
+        case FloatTag   => bc.fconst(const.floatValue)
+        case DoubleTag  => bc.dconst(const.doubleValue)
 
         case UnitTag    => ()
 
         case StringTag  =>
-          assert(constantHelper(const).value != null, const) // TODO this invariant isn't documented in `case class Constant`
-          mnode.visitLdcInsn(constantHelper(const).stringValue) // `stringValue` special-cases null, but not for a const with StringTag
+          assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
+          mnode.visitLdcInsn(const.stringValue) // `stringValue` special-cases null, but not for a const with StringTag
 
         case NullTag    => emit(asm.Opcodes.ACONST_NULL)
 
         case ClazzTag   =>
-          val tp = toTypeKind(constantHelper(const).typeValue)
+          val tp = toTypeKind(const.typeValue)
           // classOf[Int] is transformed to Integer.TYPE by ClassOf
           assert(!tp.isPrimitive, s"expected class type in classOf[T], found primitive type $tp")
           mnode.visitLdcInsn(tp.toASMType)
 
         case EnumTag   =>
-          val sym       = constantHelper(const).symbolValue
+          val sym       = const.symbolValue
           val ownerName = internalName(symHelper(sym).owner)
           val fieldName = symHelper(sym).javaSimpleName.toString
           val fieldDesc = toTypeKind(typeHelper(symHelper(sym).tpe).underlying).descriptor
@@ -571,7 +571,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         RT_NOTHING
       } else {
         val hasBody = cond match {
-          case Literal(value) if constantHelper(value).tag == UnitTag => false
+          case Literal(value) if value.tag == UnitTag => false
           case _ => true
         }
 
@@ -665,7 +665,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case Apply(_, args) if isSyntheticArrayConstructor(treeHelper(app).symbol) =>
           val List(elemClaz, Literal(c: Constant), ArrayValueBI(_, dims)) = args
 
-          generatedType = toTypeKind(constantHelper(c).typeValue)
+          generatedType = toTypeKind(c.typeValue)
           mkArrayConstructorCall(generatedType.asArrayBType, app, dims)
         case Apply(t :TypeApply, _) =>
           generatedType =
@@ -852,7 +852,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         switchBlocks ::= (switchBlockPoint, body)
         pat match {
           case Literal(value) =>
-            flatKeys ::= constantHelper(value).intValue
+            flatKeys ::= value.intValue
             targets  ::= switchBlockPoint
           case Ident(nme.WILDCARD) =>
             assert(default == null, s"multiple default targets in a Match node, at ${treeHelper(tree).pos}")
@@ -860,7 +860,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           case Alternative(alts) =>
             alts foreach {
               case Literal(value) =>
-                flatKeys ::= constantHelper(value).intValue
+                flatKeys ::= value.intValue
                 targets  ::= switchBlockPoint
               case _ =>
                 abort(s"Invalid alternative in alternative pattern in Match node: $tree at: ${treeHelper(tree).pos}")
