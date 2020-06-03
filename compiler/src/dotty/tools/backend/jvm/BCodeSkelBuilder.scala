@@ -528,7 +528,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val rhs = dd.rhs
       val vparamss = dd.vparamss
       // the only method whose implementation is not emitted: getClass()
-      if (symHelper(dd.symbol).isGetClass) { return }
+      if (dd.symbol eq defn.Any_getClass) { return }
       assert(mnode == null, "GenBCode detected nested method.")
 
       methSymbol  = dd.symbol

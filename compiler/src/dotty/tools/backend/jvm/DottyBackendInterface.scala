@@ -455,11 +455,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def isStrictFP: Boolean = false // todo: implement
     def hasPackageFlag: Boolean = sym.is(Flags.Package)
     def isInterface: Boolean = (sym.is(Flags.PureInterface)) || (sym.is(Flags.Trait))
-    def isGetClass: Boolean = sym eq defn.Any_getClass
     def isJavaDefaultMethod: Boolean = !((sym.is(Flags.Deferred))  || toDenot(sym).isClassConstructor)
-
-    def getsJavaFinalFlag: Boolean =
-      sym.is(Flags.Final) &&  !toDenot(sym).isClassConstructor && !(sym.is(Flags.Mutable)) &&  !(sym.enclosingClass.is(Flags.Trait))
 
     /** Does this symbol actually correspond to an interface that will be emitted?
      *  In the backend, this should be preferred over `isInterface` because it
@@ -469,9 +465,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
      */
     def isEmittedInterface: Boolean = isInterface ||
       sym.is(Flags.JavaDefined) && (toDenot(sym).isAnnotation || sym.is(Flags.ModuleClass) && symHelper(sym.companionClass).isInterface)
-
-    def getsJavaPrivateFlag: Boolean =
-      sym.is(Flags.Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
     def isScalaStatic: Boolean =
       toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot)
@@ -508,7 +501,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
 
     // navigation
-    def parentSymbols: List[Symbol] = toDenot(sym).info.parents.map(_.typeSymbol)
     def superClass: Symbol =  {
       val t = toDenot(sym).asClass.superClass
       if (t.exists) t
@@ -582,8 +574,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
       ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos)
     }
-
-    def throwsAnnotations: List[Symbol] = Nil
 
     /**
      * All interfaces implemented by a class, except for those inherited through the superclass.
@@ -849,9 +839,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def hasPackageFlag: Boolean
     def isInterface: Boolean
 
-    def isGetClass: Boolean
-    def getsJavaPrivateFlag: Boolean
-    def getsJavaFinalFlag: Boolean
     def isScalaStatic: Boolean
     def isStaticMember: Boolean
     def isBottomClass: Boolean
@@ -874,7 +861,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
 
     // navigation
-    def parentSymbols: List[Symbol]
     def superClass: Symbol
     def linkedClassOfClass: Symbol
     def companionSymbol: Symbol
@@ -885,7 +871,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
 
     // members
-    // def primaryConstructor: Symbol
     def nestedClasses: List[Symbol]
     def memberClasses: List[Symbol]
     def companionModuleMembers: List[Symbol]
@@ -894,8 +879,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
 
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol
-
-    def throwsAnnotations: List[Symbol]
 
     /**
      * All interfaces implemented by a class, except for those inherited through the superclass.

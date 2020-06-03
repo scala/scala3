@@ -529,7 +529,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      */
     def isAndroidParcelableClass(sym: Symbol) =
       (AndroidParcelableInterface != NoSymbol) &&
-      (symHelper(sym).parentSymbols contains AndroidParcelableInterface)
+      (sym.info.parents.map(_.typeSymbol) contains AndroidParcelableInterface)
 
     /*
      * must-single-thread

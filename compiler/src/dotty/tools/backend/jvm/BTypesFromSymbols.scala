@@ -203,9 +203,9 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   final def javaFlags(sym: Symbol): Int = {
 
 
-    val privateFlag = symHelper(sym).getsJavaPrivateFlag
+    val privateFlag = sym.is(Flags.Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
-    val finalFlag = symHelper(sym).getsJavaFinalFlag
+    val finalFlag = sym.is(Flags.Final) &&  !toDenot(sym).isClassConstructor && !(sym.is(Flags.Mutable)) &&  !(sym.enclosingClass.is(Flags.Trait))
 
     import asm.Opcodes._
     GenBCodeOps.mkFlags(
