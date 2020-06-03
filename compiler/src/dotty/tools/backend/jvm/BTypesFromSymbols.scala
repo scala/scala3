@@ -123,7 +123,12 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       // For consistency, the InnerClass entry for D needs to be present in C - to Java it looks
       // like D is a member of C, not C$.
       val linkedClass = classSym.linkedClass
-      val companionModuleMembers = symHelper(classSym).companionModuleMembers
+      val companionModuleMembers = {
+        // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
+        // not local classes of the companion module (E in the example) that were lifted by lambdalift.
+        if (classSym.linkedClass.isTopLevelModuleClass) /*exitingPickler*/ classSym.linkedClass.memberClasses
+        else Nil
+      }
 
       nestedClasses ++ companionModuleMembers
     }

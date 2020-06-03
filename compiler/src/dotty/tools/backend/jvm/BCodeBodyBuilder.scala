@@ -459,7 +459,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
      * must-single-thread
      */
     private def fieldOp(field: Symbol, isLoad: Boolean, specificReceiver: Symbol): Unit = {
-      val useSpecificReceiver = specificReceiver != null && !symHelper(field).isScalaStatic
+      val useSpecificReceiver = specificReceiver != null && !field.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
 
       val owner      = internalName(if (useSpecificReceiver) specificReceiver else field.owner)
       val fieldJName = field.name.mangledString.toString
@@ -1118,7 +1118,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         if (specificReceiver != null)
           assert(style.isVirtual || specificReceiver == methodOwner, s"specificReceiver can only be specified for virtual calls. $method - $specificReceiver")
 
-        val useSpecificReceiver = specificReceiver != null && (specificReceiver ne defn.NullClass) && (specificReceiver ne defn.NothingClass) && !symHelper(method).isScalaStatic
+        val useSpecificReceiver = specificReceiver != null && (specificReceiver ne defn.NullClass) && (specificReceiver ne defn.NothingClass) && !method.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
         val receiver = if (useSpecificReceiver) specificReceiver else methodOwner
 
         // workaround for a JVM bug: https://bugs.openjdk.java.net/browse/JDK-8154587

@@ -99,7 +99,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       initJClass(cnode)
 
-      val hasStaticCtor = symHelper(cd.symbol).methodSymbols exists (symHelper(_).isStaticConstructor)
+      val methodSymbols = for (f <- cd.symbol.info.decls.toList if f.is(Flags.Method) && f.isTerm && !f.is(Flags.Module)) yield f
+      val hasStaticCtor = methodSymbols exists (symHelper(_).isStaticConstructor)
       if (!hasStaticCtor) {
         // but needs one ...
         if (isCZStaticModule || isCZParcelable) {
@@ -246,7 +247,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
        *  backend emits them as static).
        *  No code is needed for this module symbol.
        */
-      for (f <- symHelper(claszSymbol).fieldSymbols) {
+      for (f <- claszSymbol.info.decls.filter(p => p.isTerm && !p.is(Flags.Method))) {
         val javagensig = getGenericSignature(f, claszSymbol)
         val flags = javaFieldFlags(f)
 

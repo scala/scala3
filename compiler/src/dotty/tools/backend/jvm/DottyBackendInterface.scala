@@ -458,10 +458,8 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def isEmittedInterface: Boolean = isInterface ||
       sym.is(Flags.JavaDefined) && (toDenot(sym).isAnnotation || sym.is(Flags.ModuleClass) && symHelper(sym.companionClass).isInterface)
 
-    def isScalaStatic: Boolean =
-      toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot)
     def isStaticMember: Boolean = (sym ne NoSymbol) &&
-      (sym.is(Flags.JavaStatic) || isScalaStatic)
+      (sym.is(Flags.JavaStatic) || sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot))
       // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
     /**
@@ -513,18 +511,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
         }
       else Nil
 
-    def companionModuleMembers: List[Symbol] =  {
-      // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
-      // not local classes of the companion module (E in the example) that were lifted by lambdalift.
-      if (sym.linkedClass.isTopLevelModuleClass) /*exitingPickler*/ sym.linkedClass.memberClasses
-      else Nil
-    }
-    def fieldSymbols: List[Symbol] = {
-      toDenot(sym).info.decls.filter(p => p.isTerm && !p.is(Flags.Method))
-    }
-    def methodSymbols: List[Symbol] =
-      for (f <- toDenot(sym).info.decls.toList if f.is(Flags.Method) && f.isTerm && !f.is(Flags.Module)) yield f
-
     /**
      * All interfaces implemented by a class, except for those inherited through the superclass.
      * Redundant interfaces are removed unless there is a super call to them.
@@ -549,7 +535,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
         toDenot(sym).owner.is(Flags.PackageClass)
       }
 
-    def addRemoteRemoteExceptionAnnotation: Unit = ()
 
     def samMethod(): Symbol = ctx.atPhase(ctx.erasurePhase) {
       val samMethods = toDenot(sym).info.possibleSamMethods.toList
