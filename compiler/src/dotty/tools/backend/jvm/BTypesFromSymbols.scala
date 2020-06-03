@@ -65,7 +65,17 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   }
 
   private def setClassInfo(classSym: Symbol, classBType: ClassBType): ClassBType = {
-    val superClassSym = symHelper(classSym).superClass
+    val superClassSym: Symbol =  {
+      val t = classSym.asClass.superClass
+      if (t.exists) t
+      else if (classSym.is(Flags.ModuleClass)) {
+        // workaround #371
+
+        println(s"Warning: mocking up superclass for $classSym")
+        defn.ObjectClass
+      }
+      else t
+    }
     assert(
       if (classSym == defn.ObjectClass)
         superClassSym == NoSymbol
@@ -154,7 +164,14 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       val isStaticNestedClass = symHelper(symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
 
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
-      val enclosingClassSym = symHelper(innerClassSym).enclosingClassSym
+      val enclosingClassSym = {
+        if (symHelper(innerClassSym).isClass) {
+          val ct = ctx.withPhase(ctx.flattenPhase.prev)
+          toDenot(innerClassSym)(ct).owner.enclosingClass(ct)
+        }
+        else innerClassSym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
+      } //todo is handled specially for JavaDefined symbols in scalac
+
       val enclosingClass: ClassBType = classBTypeFromSymbol(enclosingClassSym)
 
       val outerName: Option[String] = {

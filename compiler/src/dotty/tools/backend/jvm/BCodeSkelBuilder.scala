@@ -157,7 +157,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
                   superClass, interfaceNames.toArray)
 
       if (emitSource) {
-        cnode.visitSource(sourceFileFor(cunit), null /* SourceDebugExtension */)
+        cnode.visitSource(cunit.source.file.name, null /* SourceDebugExtension */)
       }
 
       enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
@@ -557,11 +557,11 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       }
 
       val isNative         = methSymbol.hasAnnotation(NativeAttr)
-      val isAbstractMethod = (methSymbol.is(Flags.Deferred) || (symHelper(methSymbol.owner).isInterface && !symHelper(methSymbol).isJavaDefaultMethod))
+      val isAbstractMethod = (methSymbol.is(Flags.Deferred) || (symHelper(methSymbol.owner).isInterface && ((methSymbol.is(Flags.Deferred))  || methSymbol.isClassConstructor)))
       val flags = GenBCodeOps.mkFlags(
         javaFlags(methSymbol),
         if (isAbstractMethod)        asm.Opcodes.ACC_ABSTRACT   else 0,
-        if (symHelper(methSymbol).isStrictFP)   asm.Opcodes.ACC_STRICT     else 0,
+        if (false /*methSymbol.isStrictFP*/)   asm.Opcodes.ACC_STRICT     else 0,
         if (isNative)                asm.Opcodes.ACC_NATIVE     else 0  // native methods of objects are generated in mirror classes
       )
 

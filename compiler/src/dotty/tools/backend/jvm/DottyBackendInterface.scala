@@ -426,10 +426,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
 
 
-
-  def sourceFileFor(cu: CompilationUnit): String = cu.source.file.name
-
-
   def assocsFromApply(tree: Tree): List[(Name, Tree)] = {
     tree match {
       case Block(_, expr) => assocsFromApply(expr)
@@ -449,14 +445,9 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   class SymbolHelper(sym: Symbol) {
 
     // tests
-    def isClass: Boolean = {
-      sym.isPackageObject || (sym.isClass)
-    }
+    def isClass: Boolean = sym.isPackageObject || sym.isClass
     def isPublic: Boolean = !sym.flags.isOneOf(Flags.Private | Flags.Protected)
-    def isStrictFP: Boolean = false // todo: implement
-    def hasPackageFlag: Boolean = sym.is(Flags.Package)
     def isInterface: Boolean = (sym.is(Flags.PureInterface)) || (sym.is(Flags.Trait))
-    def isJavaDefaultMethod: Boolean = !((sym.is(Flags.Deferred))  || toDenot(sym).isClassConstructor)
 
     /** Does this symbol actually correspond to an interface that will be emitted?
      *  In the backend, this should be preferred over `isInterface` because it
@@ -492,31 +483,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
 
     // navigation
-    def superClass: Symbol =  {
-      val t = toDenot(sym).asClass.superClass
-      if (t.exists) t
-      else if (sym.is(Flags.ModuleClass)) {
-        // workaround #371
 
-        println(s"Warning: mocking up superclass for $sym")
-        defn.ObjectClass
-      }
-      else t
-    }
-    // def enclClass: Symbol = toDenot(sym).enclosingClass
-    def linkedClassOfClass: Symbol = sym.linkedClass
-    // def linkedClass: Symbol = toDenot(sym)(ctx).linkedClass(ctx) //exitingPickler(sym.linkedClassOfClass)
-    // def companionClass: Symbol = toDenot(sym).companionClass
-    // def companionModule: Symbol = toDenot(sym).companionModule
-    def companionSymbol: Symbol = if (sym.is(Flags.Module)) sym.companionClass else sym.companionModule
-    // def moduleClass: Symbol = toDenot(sym).moduleClass
-    def enclosingClassSym: Symbol = {
-      if (this.isClass) {
-        val ct = ctx.withPhase(ctx.flattenPhase.prev)
-        toDenot(sym)(ct).owner.enclosingClass(ct)
-      }
-      else sym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
-    } //todo is handled specially for JavaDefined symbols in scalac
     def originalLexicallyEnclosingClass: Symbol =
       // used to populate the EnclosingMethod attribute.
       // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
@@ -557,11 +524,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
     def methodSymbols: List[Symbol] =
       for (f <- toDenot(sym).info.decls.toList if f.is(Flags.Method) && f.isTerm && !f.is(Flags.Module)) yield f
-
-
-    // def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
-    //   ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos)
-    // }
 
     /**
      * All interfaces implemented by a class, except for those inherited through the superclass.
@@ -796,7 +758,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   val ScalaSignatureATTRName: String = "ScalaSig"
 
   // Module symbols used in backend
-  val StringModule: Symbol = symHelper(requiredClass[java.lang.String]).linkedClassOfClass
+  val StringModule: Symbol = requiredClass[java.lang.String].linkedClass
   val ScalaRunTimeModule: Symbol = requiredModule[scala.runtime.ScalaRunTime.type]
 
 
@@ -817,11 +779,11 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
    * Used only in assertions.
    */
   def isCompilingPrimitive = {
-    primitiveCompilationUnits(sourceFileFor(ctx.compilationUnit))
+    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
   }
 
   def isCompilingArray = {
-    sourceFileFor(ctx.compilationUnit) == "Array.scala"
+    ctx.compilationUnit.source.file.name == "Array.scala"
   }
 }
 

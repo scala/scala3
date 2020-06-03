@@ -184,7 +184,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(implicit ctx: Context) ex
           try   { /*withCurrentUnit(item.cunit)*/(visit(item)) }
           catch {
             case ex: Throwable =>
-              println(s"Error while emitting ${int.sourceFileFor(item.cunit)}")
+              println(s"Error while emitting ${item.cunit.source.file.name}")
               throw ex
           }
         }

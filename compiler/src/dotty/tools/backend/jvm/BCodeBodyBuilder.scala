@@ -392,7 +392,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val desugared = desugarIdent(t)
           desugared match {
             case None =>
-              if (!symHelper(sym).hasPackageFlag) {
+              if (!sym.is(Flags.Package)) {
                 if (sym.is(Flags.Module)) genLoadModule(sym)
                 else locals.load(sym)
               }

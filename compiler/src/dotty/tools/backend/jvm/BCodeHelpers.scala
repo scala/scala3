@@ -198,7 +198,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       // If the `sym` is a java module class, we use the java class instead. This ensures that we
       // register the class (instead of the module class) in innerClassBufferASM.
       // The two symbols have the same name, so the resulting internalName is the same.
-      val classSym = if (sym.is(Flags.JavaDefined) && sym.is(Flags.ModuleClass)) symHelper(sym).linkedClassOfClass else sym
+      val classSym = if (sym.is(Flags.JavaDefined) && sym.is(Flags.ModuleClass)) sym.linkedClass else sym
       getClassBTypeAndRegisterInnerClass(classSym).internalName
     }
 
@@ -489,11 +489,11 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       )
 
       if (emitSource) {
-        mirrorClass.visitSource("" + sourceFileFor(cunit),
+        mirrorClass.visitSource("" + cunit.source.file.name,
                                 null /* SourceDebugExtension */)
       }
 
-      val ssa = getAnnotPickle(mirrorName, symHelper(moduleClass).companionSymbol)
+      val ssa = getAnnotPickle(mirrorName, if (moduleClass.is(Flags.Module)) moduleClass.companionClass else moduleClass.companionModule)
       mirrorClass.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
       emitAnnotations(mirrorClass, moduleClass.annotations ++ ssa)
 
