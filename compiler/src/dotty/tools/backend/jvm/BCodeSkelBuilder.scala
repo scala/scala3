@@ -10,6 +10,7 @@ import scala.tools.asm.util.{TraceMethodVisitor, ASMifier}
 import java.io.PrintWriter
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.StdNames.str
 import dotty.tools.dotc.core.Symbols._
@@ -181,7 +182,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           // add static forwarders if there are no name conflicts; see bugs #363 and #1735
           if (lmoc != NoSymbol) {
             // it must be a top level class (name contains no $s)
-            val isCandidateForForwarders = symHelper(lmoc).shouldEmitForwarders
+            val isCandidateForForwarders =  (lmoc.is(Flags.Module)) && lmoc.isStatic
             if (isCandidateForForwarders) {
               ctx.log(s"Adding static forwarders from '$claszSymbol' to implementations in '$lmoc'")
               addForwarders(cnode, thisName, lmoc.moduleClass)
@@ -379,7 +380,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
        */
       def makeLocal(tk: BType, name: String, tpe: Type, pos: Position): Symbol = {
 
-        val locSym = symHelper(methSymbol).freshLocal(cunit, name, tpe, pos, Flags.Synthetic.bits) // setInfo tpe
+        val locSym = ctx.newSymbol(methSymbol, name.toTermName, Flags.Synthetic, tpe, NoSymbol, pos)
         makeLocal(locSym, tk)
         locSym
       }
@@ -551,7 +552,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         return
       }
 
-      val isNative         = symHelper(methSymbol).hasAnnotation(NativeAttr)
+      val isNative         = methSymbol.hasAnnotation(NativeAttr)
       val isAbstractMethod = (methSymbol.is(Flags.Deferred) || (symHelper(methSymbol.owner).isInterface && !symHelper(methSymbol).isJavaDefaultMethod))
       val flags = GenBCodeOps.mkFlags(
         javaFlags(methSymbol),

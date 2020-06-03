@@ -236,8 +236,8 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
 
   def javaFieldFlags(sym: Symbol) = {
     javaFlags(sym) | GenBCodeOps.mkFlags(
-      if (symHelper(sym) hasAnnotation TransientAttr) asm.Opcodes.ACC_TRANSIENT else 0,
-      if (symHelper(sym) hasAnnotation VolatileAttr)  asm.Opcodes.ACC_VOLATILE  else 0,
+      if (sym hasAnnotation TransientAttr) asm.Opcodes.ACC_TRANSIENT else 0,
+      if (sym hasAnnotation VolatileAttr)  asm.Opcodes.ACC_VOLATILE  else 0,
       if (sym.is(Flags.Mutable)) 0 else asm.Opcodes.ACC_FINAL
     )
   }

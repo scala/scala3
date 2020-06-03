@@ -1104,7 +1104,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         if (specificReceiver != null)
           assert(style.isVirtual || specificReceiver == methodOwner, s"specificReceiver can only be specified for virtual calls. $method - $specificReceiver")
 
-        val useSpecificReceiver = specificReceiver != null && !symHelper(specificReceiver).isBottomClass && !symHelper(method).isScalaStatic
+        val useSpecificReceiver = specificReceiver != null && (specificReceiver ne defn.NullClass) && (specificReceiver ne defn.NothingClass) && !symHelper(method).isScalaStatic
         val receiver = if (useSpecificReceiver) specificReceiver else methodOwner
 
         // workaround for a JVM bug: https://bugs.openjdk.java.net/browse/JDK-8154587
@@ -1125,7 +1125,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             style.isVirtual &&
             symHelper(receiver).isEmittedInterface &&
             defn.ObjectType.decl(method.name).symbol.exists && { // fast path - compute overrideChain on the next line only if necessary
-              val syms = symHelper(method).allOverriddenSymbols
+              val syms = method.allOverriddenSymbols.toList
               !syms.isEmpty && syms.last.owner == defn.ObjectClass
             }
         }

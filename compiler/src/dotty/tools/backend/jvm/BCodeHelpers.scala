@@ -397,7 +397,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
           ctx.debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
         else if (conflictingNames(m.name))
           ctx.log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")
-        else if (symHelper(m).hasAccessBoundary)
+        else if (m.accessBoundary(defn.RootClass) ne defn.RootClass)
           ctx.log(s"No forwarder for non-public member $m")
         else {
           ctx.log(s"Adding static forwarder for '$m' from $jclassName to '$moduleClass'")

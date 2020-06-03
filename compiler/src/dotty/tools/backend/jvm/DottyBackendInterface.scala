@@ -473,16 +473,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       (sym.is(Flags.JavaStatic) || isScalaStatic)
       // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
-    def isBottomClass: Boolean = (sym eq defn.NullClass) || (sym eq defn.NothingClass)
-
-    def hasAccessBoundary: Boolean = sym.accessBoundary(defn.RootClass) ne defn.RootClass
-
-    def isNonBottomSubClass(other: Symbol): Boolean = sym.derivesFrom(other)
-    def hasAnnotation(ann: Symbol): Boolean = toDenot(sym).hasAnnotation(ann)
-    def shouldEmitForwarders: Boolean =
-      (sym.is(Flags.Module)) && sym.isStatic
-
-
     /**
      * True for module classes of modules that are top-level or owned only by objects. Module classes
      * for such objects will get a MODULE$ flag and a corresponding static initializer.
@@ -535,11 +525,8 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
         val shiftedContext = ctx.withPhase(validity.phaseId)
         toDenot(sym)(shiftedContext).lexicallyEnclosingClass(shiftedContext)
       } else NoSymbol
-    // def nextOverriddenSymbol: Symbol = toDenot(sym).nextOverriddenSymbol
-    def allOverriddenSymbols: List[Symbol] = toDenot(sym).allOverriddenSymbols.toList
 
     // members
-    // def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
 
     /** For currently compiled classes: All locally defined classes including local classes.
      *  The empty list for classes that are not currently compiled.
@@ -572,9 +559,9 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       for (f <- toDenot(sym).info.decls.toList if f.is(Flags.Method) && f.isTerm && !f.is(Flags.Module)) yield f
 
 
-    def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
-      ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos)
-    }
+    // def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
+    //   ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos)
+    // }
 
     /**
      * All interfaces implemented by a class, except for those inherited through the superclass.
