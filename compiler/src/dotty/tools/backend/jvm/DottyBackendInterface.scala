@@ -44,35 +44,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
   type Symbol          = Symbols.Symbol
   type Type            = Types.Type
-  type Tree            = tpd.Tree
-  type Literal         = tpd.Literal
-  type ClassDef        = tpd.TypeDef
-  type TypeDef         = tpd.TypeDef
-  type Apply           = tpd.Apply
-  type TypeApply       = tpd.TypeApply
-  type Try             = tpd.Try
-  type Assign          = tpd.Assign
-  type Ident           = tpd.Ident
-  type If              = tpd.If
-  type ValDef          = tpd.ValDef
-  type Throw           = tpd.Apply
-  type Labeled         = tpd.Labeled
-  type Return          = tpd.Return
-  type WhileDo         = tpd.WhileDo
-  type Block           = tpd.Block
-  type Typed           = tpd.Typed
-  type Match           = tpd.Match
-  type This            = tpd.This
-  type CaseDef         = tpd.CaseDef
-  type Alternative     = tpd.Alternative
-  type DefDef          = tpd.DefDef
-  type Template        = tpd.Template
-  type Select          = tpd.Tree // Actually tpd.Select || tpd.Ident
-  type Bind            = tpd.Bind
-  type New             = tpd.New
-  type Super           = tpd.Super
-  type ArrayValue      = tpd.JavaSeqLiteral
-  type Closure         = tpd.Closure
 
    // require LambdaMetafactory: scalac uses getClassIfDefined, but we need those always.
   @threadUnsafe lazy val LambdaMetaFactory: ClassSymbol = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
@@ -302,7 +273,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
-  def desugarIdent(i: Ident): Option[tpd.Select] = {
+  def desugarIdentBI(i: Ident): Option[tpd.Select] = {
     var found = desugared.get(i.tpe)
     if (found == null) {
       tpd.desugarIdent(i) match {
@@ -654,7 +625,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
   }
 
-  object SelectBI extends DeconstructorCommon[Select] {
+  object SelectBI extends DeconstructorCommon[tpd.Tree] {
 
     var desugared: tpd.Select = null
 
@@ -665,11 +636,11 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
     def _2: Name = desugared.name
 
-    override def unapply(s: Select): this.type = {
+    override def unapply(s: tpd.Tree): this.type = {
       s match {
         case t: tpd.Select => desugared = t
         case t: Ident  =>
-          desugarIdent(t) match {
+          desugarIdentBI(t) match {
             case Some(t) => desugared = t
             case None => desugared = null
           }
@@ -681,11 +652,11 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   }
 
   object ThrowBI {
-    var field: Throw = _
+    var field: tpd.Apply = _
     def isEmpty: Boolean = field eq null
     def isDefined = !isEmpty
     def get: Tree = field.args.head
-    def unapply(s: Throw): ThrowBI.type = {
+    def unapply(s: tpd.Apply): ThrowBI.type = {
       if (s.fun.symbol eq defn.throwMethod) {
         field = s
       } else {
@@ -695,7 +666,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
   }
 
-  object ArrayValueBI extends DeconstructorCommon[ArrayValue] {
+  object ArrayValueBI extends DeconstructorCommon[tpd.JavaSeqLiteral] {
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>

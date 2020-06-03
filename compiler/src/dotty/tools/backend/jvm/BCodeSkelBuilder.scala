@@ -26,6 +26,7 @@ import dotty.tools.dotc.util.Spans._
  */
 trait BCodeSkelBuilder extends BCodeHelpers {
   import int._
+  import tpd._
   import bTypes._
   import coreBTypes._
   import bCodeAsmCommon._
@@ -87,8 +88,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
-    def genPlainClass(cd: ClassDef) = cd match {
-      case ClassDef(_, impl) =>
+    def genPlainClass(cd: TypeDef) = cd match {
+      case TypeDef(_, impl) =>
       assert(cnode == null, "GenBCode detected nested methods.")
       innerClassBufferASM.clear()
 

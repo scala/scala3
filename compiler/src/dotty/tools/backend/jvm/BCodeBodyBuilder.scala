@@ -28,6 +28,7 @@ import dotty.tools.dotc.util.Spans._
 trait BCodeBodyBuilder extends BCodeSkelBuilder {
   // import global._
   // import definitions._
+  import tpd._
   import int._
   import bTypes._
   import coreBTypes._
@@ -390,7 +391,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val tk = symInfoTK(sym)
           generatedType = tk
 
-          val desugared = desugarIdent(t)
+          val desugared = desugarIdentBI(t)
           desugared match {
             case None =>
               if (!sym.is(Flags.Package)) {
@@ -818,7 +819,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       generatedType
     } // end of genApply()
 
-    private def genArrayValue(av: ArrayValue): BType = av match {
+    private def genArrayValue(av: tpd.JavaSeqLiteral): BType = av match {
       case ArrayValueBI(tpt, elems) =>
       val ArrayValueBI(tpt, elems) = av
 
@@ -1007,7 +1008,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       tree match {
         case SelectBI(qualifier, _) => genLoad(qualifier)
         case t: Ident             => // dotty specific
-          desugarIdent(t) match {
+          desugarIdentBI(t) match {
             case Some(sel) => genLoadQualifier(sel)
             case None =>
               assert(t.symbol.owner == this.claszSymbol)
