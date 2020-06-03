@@ -68,7 +68,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
       case Apply(fun, _) =>
-      val funSym = treeHelper(fun).symbol
+      val funSym = fun.symbol
       (typeHelper(symHelper(funSym).info).paramTypes map toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
@@ -76,7 +76,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       toTypeKind(symHelper(sym).info) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
-    def tpeTK(tree: Tree): BType = { toTypeKind(treeHelper(tree).tpe) }
+    def tpeTK(tree: Tree): BType = { toTypeKind(tree.tpe) }
 
     override def getCurrentCUnit(): CompilationUnit = { cunit }
 
@@ -87,7 +87,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       assert(cnode == null, "GenBCode detected nested methods.")
       innerClassBufferASM.clear()
 
-      claszSymbol       = treeHelper(cd).symbol
+      claszSymbol       = cd.symbol
       isCZParcelable    = isAndroidParcelableClass(claszSymbol)
       isCZStaticModule  = symHelper(claszSymbol).isStaticModuleClass
       thisName          = internalName(claszSymbol)
@@ -96,7 +96,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       initJClass(cnode)
 
-      val hasStaticCtor = symHelper(treeHelper(cd).symbol).methodSymbols exists (symHelper(_).isStaticConstructor)
+      val hasStaticCtor = symHelper(cd.symbol).methodSymbols exists (symHelper(_).isStaticConstructor)
       if (!hasStaticCtor) {
         // but needs one ...
         if (isCZStaticModule || isCZParcelable) {
@@ -117,7 +117,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         AsmUtils.traceClass(cnode)
 
       cnode.innerClasses
-      assert(treeHelper(cd).symbol == claszSymbol, "Someone messed up BCodePhase.claszSymbol during genPlainClass().")
+      assert(cd.symbol == claszSymbol, "Someone messed up BCodePhase.claszSymbol during genPlainClass().")
 
     } // end of method genPlainClass()
 
@@ -433,8 +433,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case _ => false } )
     }
     def lineNumber(tree: Tree): Unit = {
-      if (!emitLines || !positionHelper(treeHelper(tree).pos).isDefined) return;
-      val nr = positionHelper(positionHelper(treeHelper(tree).pos).finalPosition).line
+      if (!emitLines || !positionHelper(tree.span).isDefined) return;
+      val nr = positionHelper(positionHelper(tree.span).finalPosition).line
       if (nr != lastEmittedLineNr) {
         lastEmittedLineNr = nr
         lastInsn match {
@@ -514,12 +514,12 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val rhs = dd.rhs
       val vparamss = dd.vparamss
       // the only method whose implementation is not emitted: getClass()
-      if (symHelper(treeHelper(dd).symbol).isGetClass) { return }
+      if (symHelper(dd.symbol).isGetClass) { return }
       assert(mnode == null, "GenBCode detected nested method.")
 
-      methSymbol  = treeHelper(dd).symbol
+      methSymbol  = dd.symbol
       jMethodName = symHelper(methSymbol).javaSimpleName.toString
-      returnType  = asmMethodType(treeHelper(dd).symbol).returnType
+      returnType  = asmMethodType(dd.symbol).returnType
       isMethSymStaticCtor = symHelper(methSymbol).isStaticConstructor
 
       resetMethodBookkeeping(dd)
@@ -528,7 +528,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       assert(vparamss.isEmpty || vparamss.tail.isEmpty, s"Malformed parameter list: $vparamss")
       val params = if (vparamss.isEmpty) Nil else vparamss.head
-      for (p <- params) { locals.makeLocal(treeHelper(p).symbol) }
+      for (p <- params) { locals.makeLocal(p.symbol) }
       // debug assert((params.map(p => locals(p.symbol).tk)) == asmMethodType(methSymbol).getArgumentTypes.toList, "debug")
 
       if (params.size > MaximumJvmParameters) {
@@ -547,7 +547,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       )
 
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
-      initJMethod(flags, params.map(p => symHelper(treeHelper(p).symbol).annotations))
+      initJMethod(flags, params.map(p => symHelper(p.symbol).annotations))
 
 
       if (!isAbstractMethod && !isNative) {
@@ -580,7 +580,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
                 0
               )
             }
-            for (p <- params) { emitLocalVarScope(treeHelper(p).symbol, veryFirstProgramPoint, onePastLastProgramPoint, force = true) }
+            for (p <- params) { emitLocalVarScope(p.symbol, veryFirstProgramPoint, onePastLastProgramPoint, force = true) }
           }
 
           if (isMethSymStaticCtor) { appendToStaticCtor(dd) }

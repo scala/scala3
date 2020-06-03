@@ -480,19 +480,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
 
-  implicit def treeHelper(a: Tree): TreeHelper = new TreeHelper {
-    def symbol: Symbol = a.symbol
-
-    def pos: Position = a.span
-
-    def isEmpty: Boolean = a.isEmpty
-
-    def tpe: Type = a.tpe
-
-    def exists(pred: (Tree) => Boolean): Boolean = a.find(pred).isDefined
-  }
-
-
   implicit def annotHelper(a: Annotation): AnnotationHelper = new AnnotationHelper {
     def atp: Type = a.tree.tpe
 
@@ -1161,13 +1148,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def symbolValue: Symbol
   }
 
-  abstract class TreeHelper{
-    def symbol: Symbol
-    def tpe: Type
-    def isEmpty: Boolean
-    def pos: Position
-    def exists(pred: Tree => Boolean): Boolean
-  }
 
   abstract class SymbolHelper {
     def exists: Boolean
@@ -1404,7 +1384,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     case Literal(_) => true
     case _ => false
   }
-  def isNonNullExpr(t: Tree): Boolean = isLiteral(t) || ((treeHelper(t).symbol ne null) && symHelper(treeHelper(t).symbol).isModule)
+  def isNonNullExpr(t: Tree): Boolean = isLiteral(t) || ((t.symbol ne null) && symHelper(t.symbol).isModule)
   def ifOneIsNull(l: Tree, r: Tree): Tree = if (isNull(l)) r else if (isNull(r)) l else null
 
   private val primitiveCompilationUnits = Set(
