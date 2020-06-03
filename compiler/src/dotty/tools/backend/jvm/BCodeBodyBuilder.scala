@@ -10,6 +10,7 @@ import BCodeHelpers.InvokeStyle
 
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.util.Spans.NoSpan
@@ -70,7 +71,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           genLoad(rhs, symInfoTK(lhs.symbol))
           lineNumber(tree)
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
-          val receiverClass = typeHelper(qual.tpe).typeSymbol
+          val receiverClass = qual.tpe.widenDealias.typeSymbol
           fieldStore(lhs.symbol, receiverClass)
 
         case Assign(lhs, rhs) =>
@@ -303,7 +304,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           generatedType = genThrow(expr)
 
         case New(tpt) =>
-          abort(s"Unexpected New(${typeHelper(tpt.tpe).summaryString}/$tpt) reached GenBCode.\n" +
+          abort(s"Unexpected New(${tpt.tpe.showSummary()}/$tpt) reached GenBCode.\n" +
                 "  Call was genLoad" + ((tree, expectedType)))
 
         case app @ ClosureBI(env, call, functionalInterface) =>
@@ -356,7 +357,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           def genLoadQualUnlessElidable(): Unit = { if (!qualSafeToElide) { genLoadQualifier(tree) } }
 
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
-          def receiverClass = typeHelper(qualifier.tpe).typeSymbol
+          def receiverClass = qualifier.tpe.widenDealias.typeSymbol
           if (symHelper(sym).isModule) {
             genLoadQualUnlessElidable()
             genLoadModule(tree)
@@ -495,7 +496,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val sym       = const.symbolValue
           val ownerName = internalName(sym.owner)
           val fieldName = symHelper(sym).javaSimpleName.toString
-          val fieldDesc = toTypeKind(typeHelper(sym.info).underlying).descriptor
+          val underlying = sym.info match {
+            case t: TypeProxy => t.underlying
+            case t => t
+          }
+          val fieldDesc = toTypeKind(underlying).descriptor
           mnode.visitFieldInsn(
             asm.Opcodes.GETSTATIC,
             ownerName,
@@ -778,7 +783,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               val receiverClass = if (!invokeStyle.isVirtual) null else {
                 // receiverClass is used in the bytecode to as the method receiver. using sym.owner
                 // may lead to IllegalAccessErrors, see 9954eaf / aladdin bug 455.
-                val qualSym = typeHelper(qual.tpe).typeSymbol
+                val qualSym = qual.tpe.widenDealias.typeSymbol
                 if (qualSym == defn.ArrayClass) {
                   // For invocations like `Array(1).hashCode` or `.wait()`, use Object as receiver
                   // in the bytecode. Using the array descriptor (like we do for clone above) seems
@@ -1001,7 +1006,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genLoadModule(tree: Tree): BType = {
       val module = (
         if (!symHelper(tree.symbol).isPackageClass) tree.symbol
-        else typeHelper(tree.symbol.info).member(nme.PACKAGE) match {
+        else tree.symbol.info.member(nme.PACKAGE).symbol match {
           case NoSymbol => abort(s"SI-5604: Cannot use package as value: $tree")
           case s        => abort(s"SI-5604: found package class where package object expected: $tree")
         }
@@ -1117,7 +1122,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           receiver != methodOwner && // fast path - the boolean is used to pick either of these two, if they are the same it does not matter
             style.isVirtual &&
             symHelper(receiver).isEmittedInterface &&
-            typeHelper(defn.ObjectType).decl(method.name).exists && { // fast path - compute overrideChain on the next line only if necessary
+            defn.ObjectType.decl(method.name).symbol.exists && { // fast path - compute overrideChain on the next line only if necessary
               val syms = symHelper(method).allOverriddenSymbols
               !syms.isEmpty && syms.last.owner == defn.ObjectClass
             }
@@ -1320,7 +1325,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val mustUseAnyComparator: Boolean = {
         val areSameFinals = l.tpe.typeSymbol.is(Flags.Final) && r.tpe.typeSymbol.is(Flags.Final) && (l.tpe =:= r.tpe)
 
-        !areSameFinals && isMaybeBoxed(typeHelper(l.tpe).typeSymbol) && isMaybeBoxed(typeHelper(r.tpe).typeSymbol)
+        !areSameFinals && isMaybeBoxed(l.tpe.widenDealias.typeSymbol) && isMaybeBoxed(r.tpe.widenDealias.typeSymbol)
       }
 
       if (mustUseAnyComparator) {
@@ -1409,7 +1414,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info :: capturedParamsTypes
 
       // Requires https://github.com/scala/scala-java8-compat on the runtime classpath
-      val returnUnit = typeHelper(lambdaTarget.info.resultType).typeSymbol == defn.UnitClass
+      val returnUnit = lambdaTarget.info.resultType.widenDealias.typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
       val desc = capturedParamsTypes.map(tpe => toTypeKind(tpe)).mkString(("("), "", ")") + functionalInterfaceDesc
       // TODO specialization

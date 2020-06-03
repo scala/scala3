@@ -715,20 +715,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
 
   implicit def typeHelper(tp: Type): TypeHelper = new TypeHelper {
-    def member(string: Name): Symbol = tp.member(string.toTermName).symbol
 
-    def underlying: Type = tp match {
-      case t: TypeProxy => t.underlying
-      case _ => tp
-    }
-
-    def decl(name: Name): Symbol = tp.decl(name).symbol
-
-    def decls: List[Symbol] = tp.decls.toList
-
-    def members: List[Symbol] = tp.allMembers.map(_.symbol).toList
-
-    def typeSymbol: Symbol = tp.widenDealias.typeSymbol
 
     def sortedMembersBasedOnFlags(required: Flags, excluded: Flags): List[Symbol] = {
       val requiredFlagSet = termFlagSet(required)
@@ -816,16 +803,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       }
     }
 
-    def summaryString: String = tp.showSummary()
-
-    def params: List[Symbol] =
-      Nil // backend uses this to emit annotations on parameter lists of forwarders
-          // to static methods of companion class
-          // in Dotty this link does not exists: there is no way to get from method type
-          // to inner symbols of DefDef
-          // todo: somehow handle.
-
-    def parents: List[Type] = tp.parents
   }
 
   object SelectBI extends DeconstructorCommon[Select] {
@@ -1069,20 +1046,14 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   abstract class TypeHelper {
-    def params: List[Symbol]
+    // def params: List[Symbol]
 
     /** The members of this type that have all of `required` flags but none of `excluded` flags set.
      *  The members are sorted by name and signature to guarantee a stable ordering.
      */
     def sortedMembersBasedOnFlags(required: Flags, excluded: Flags): List[Symbol]
-    def members: List[Symbol]
-    def decl(name: Name): Symbol
-    def decls: List[Symbol]
-    def underlying: Type
-    def parents: List[Type]
-    def summaryString: String
-    def typeSymbol: Symbol
-    def member(string: Name): Symbol
+
+
     /**
      * This method returns the BType for a type reference, for example a parameter type.
      *

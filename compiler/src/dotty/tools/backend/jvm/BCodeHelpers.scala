@@ -342,7 +342,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       )
 
       emitAnnotations(mirrorMethod, others)
-      emitParamAnnotations(mirrorMethod, typeHelper(m.info).params.map(symHelper(_).annotations))
+      val params = Nil // backend uses this to emit annotations on parameter lists of forwarders
+      // to static methods of companion class
+      // in Dotty this link does not exists: there is no way to get from method type
+      // to inner symbols of DefDef
+      // todo: somehow handle.
+      emitParamAnnotations(mirrorMethod, params.map(symHelper(_).annotations))
 
       mirrorMethod.visitCode()
 
@@ -376,7 +381,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       val linkedClass  = symHelper(moduleClass).companionClass
       lazy val conflictingNames: Set[Name] = {
-        (typeHelper(linkedClass.info).members collect { case sym if sym.name.isTermName => sym.name }).toSet
+        (linkedClass.info.allMembers.map(_.symbol) collect { case sym if sym.name.isTermName => sym.name }).toSet
       }
       debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
@@ -387,7 +392,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         else if (m.isType || symHelper(m).isDeferred || (m.owner eq defn.ObjectClass) || m.isConstructor || symHelper(m).isExpanded)
           debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
         else if (conflictingNames(m.name))
-          log(s"No forwarder for $m due to conflict with ${typeHelper(linkedClass.info).member(m.name)}")
+          log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")
         else if (symHelper(m).hasAccessBoundary)
           log(s"No forwarder for non-public member $m")
         else {
