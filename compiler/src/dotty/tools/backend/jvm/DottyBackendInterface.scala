@@ -66,10 +66,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   def unboxMethods: Map[Symbol, Symbol] =
     defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
 
-  def isSyntheticArrayConstructor(s: Symbol): Boolean = {
-    s eq defn.newArrayMethod
-  }
-
   val primitives = new DottyPrimitives(ctx)
 
   def isRuntimeVisible(annot: Annotation): Boolean =
@@ -411,7 +407,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     // tests
     def isClass: Boolean = sym.isPackageObject || sym.isClass
     def isPublic: Boolean = !sym.flags.isOneOf(Flags.Private | Flags.Protected)
-    def isInterface: Boolean = (sym.is(Flags.PureInterface)) || (sym.is(Flags.Trait))
+    def isInterface: Boolean = (sym.is(Flags.PureInterface)) || sym.is(Flags.Trait)
 
     /** Does this symbol actually correspond to an interface that will be emitted?
      *  In the backend, this should be preferred over `isInterface` because it
@@ -420,7 +416,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
      *  which we represent as classes.
      */
     def isEmittedInterface: Boolean = isInterface ||
-      sym.is(Flags.JavaDefined) && (toDenot(sym).isAnnotation || sym.is(Flags.ModuleClass) && symHelper(sym.companionClass).isInterface)
+      sym.is(Flags.JavaDefined) && (toDenot(sym).isAnnotation || sym.is(Flags.ModuleClass) && (sym.is(Flags.PureInterface)) || sym.is(Flags.Trait))
 
     def isStaticMember: Boolean = (sym ne NoSymbol) &&
       (sym.is(Flags.JavaStatic) || sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot))

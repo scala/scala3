@@ -686,7 +686,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       var generatedType = expectedType
       lineNumber(app)
       app match {
-        case Apply(_, args) if isSyntheticArrayConstructor(app.symbol) =>
+        case Apply(_, args) if app.symbol eq defn.newArrayMethod =>
           val List(elemClaz, Literal(c: Constant), ArrayValueBI(_, dims)) = args
 
           generatedType = toTypeKind(c.typeValue)
