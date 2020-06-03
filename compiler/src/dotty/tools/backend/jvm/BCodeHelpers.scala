@@ -8,10 +8,12 @@ import scala.collection.mutable
 import dotty.tools.io.AbstractFile
 
 import dotty.tools.dotc.CompilationUnit
+import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.StdNames.str
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.NameKinds.ExpandedName
 
 /*

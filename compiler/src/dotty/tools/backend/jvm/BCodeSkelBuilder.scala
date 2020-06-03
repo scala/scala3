@@ -11,11 +11,12 @@ import java.io.PrintWriter
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.CompilationUnit
+import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.StdNames.str
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.util.Spans.NoSpan
+import dotty.tools.dotc.util.Spans._
 
 /*
  *
@@ -380,7 +381,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       /* Make a fresh local variable, ensuring a unique name.
        * The invoker must make sure inner classes are tracked for the sym's tpe.
        */
-      def makeLocal(tk: BType, name: String, tpe: Type, pos: Position): Symbol = {
+      def makeLocal(tk: BType, name: String, tpe: Type, pos: Span): Symbol = {
 
         val locSym = ctx.newSymbol(methSymbol, name.toTermName, Flags.Synthetic, tpe, NoSymbol, pos)
         makeLocal(locSym, tk)

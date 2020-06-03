@@ -31,6 +31,8 @@ import scala.tools.asm
 import StdNames.{nme, str}
 import NameKinds.{DefaultGetterName, ExpandedName}
 import Names.TermName
+import Annotations.Annotation
+import Names.Name
 
 class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit val ctx: Context) {
   import Symbols.{toDenot, toClassDenot}
@@ -43,10 +45,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   type Symbol          = Symbols.Symbol
   type Type            = Types.Type
   type Tree            = tpd.Tree
-  type Constant        = Constants.Constant
   type Literal         = tpd.Literal
-  type Position        = Spans.Span
-  type Name            = Names.Name
   type ClassDef        = tpd.TypeDef
   type TypeDef         = tpd.TypeDef
   type Apply           = tpd.Apply
@@ -72,7 +71,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   type Bind            = tpd.Bind
   type New             = tpd.New
   type Super           = tpd.Super
-  type Annotation      = Annotations.Annotation
   type ArrayValue      = tpd.JavaSeqLiteral
   type Closure         = tpd.Closure
 
@@ -281,7 +279,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     ctx.error(msg)
     throw new RuntimeException(msg)
   }
-  def sourcePos(pos: Position)(implicit ctx: Context): util.SourcePosition =
+  def sourcePos(pos: Spans.Span)(implicit ctx: Context): util.SourcePosition =
     ctx.source.atSpan(pos)
 
   def dumpClasses: Option[String] =

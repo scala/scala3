@@ -17,7 +17,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.StdNames.{nme, str}
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.Erasure
-import dotty.tools.dotc.util.Spans.NoSpan
+import dotty.tools.dotc.util.Spans._
 
 /*
  *
@@ -1111,7 +1111,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
      * invocation instruction, otherwise `method.owner`. A specific receiver class is needed to
      * prevent an IllegalAccessError, (aladdin bug 455).
      */
-    def genCallMethod(method: Symbol, style: InvokeStyle, pos: Position = NoSpan, specificReceiver: Symbol = null): BType = {
+    def genCallMethod(method: Symbol, style: InvokeStyle, pos: Span = NoSpan, specificReceiver: Symbol = null): BType = {
       val methodOwner = method.owner
 
       // the class used in the invocation's method descriptor in the classfile
