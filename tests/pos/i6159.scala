@@ -3,7 +3,7 @@ trait B extends A
 
 object O {
   opaque type T[X <: A] = X
-  type U = T.U
+  type U[X <: A] = T.U[X]
   object T{
     type U[X <: A] = X
     def t(a: T[B]): T[B] = a

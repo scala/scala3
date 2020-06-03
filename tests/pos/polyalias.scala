@@ -1,7 +1,7 @@
 
 object Test {
 
-  type S = scala.Predef.Set
+  type S[X] = scala.Predef.Set[X]
 
   val z: S[_] = ???
 

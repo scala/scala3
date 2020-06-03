@@ -31,7 +31,7 @@ object Test3 {
 
   type K1Top = [t] =>> Any
 
-  class Foo[F <: K1Top]
+  class Foo[F[X] <: K1Top[X]]
 
   inline def bar[T] = inline erasedValue[T] match {
     case _: Foo[f] => summon[f[Int]]

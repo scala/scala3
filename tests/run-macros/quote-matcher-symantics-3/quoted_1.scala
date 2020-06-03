@@ -5,7 +5,7 @@ import scala.quoted.unsafe._
 object Macros {
 
 
-  inline def lift[R[_]](sym: Symantics { type Repr = R })(inline a: Int): R[Int] = ${impl('sym, 'a)}
+  inline def lift[R[_]](sym: Symantics { type Repr[X] = R[X] })(inline a: Int): R[Int] = ${impl('sym, 'a)}
 
 
   private def impl[R[_]: Type](sym: Expr[Symantics { type Repr[X] = R[X] }], expr: Expr[Int])(using QuoteContext): Expr[R[Int]] = {

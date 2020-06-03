@@ -24,8 +24,8 @@ object Test {
     def x6: D[Int] = D()
   }
   export Types._
-  type D1 = Types.D
-  type U1 = Types.UC
+  type D1[X] = Types.D[X]
+  type U1[X] = Types.UC[X]
 
   val y1: T = x1
   val y2: U = x2

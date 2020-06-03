@@ -1684,13 +1684,16 @@ class Typer extends Namer
     }
   }
 
-  def typedLambdaTypeTree(tree: untpd.LambdaTypeTree)(using Context): Tree = {
+  private def typeIndexedLambdaTypeTree(
+      tree: untpd.LambdaTypeTree, tparams: List[untpd.TypeDef], body: untpd.Tree)(using Context) =
+    val tparams1 = tparams.map(typed(_)).asInstanceOf[List[TypeDef]]
+    val body1 = typedType(body)
+    assignType(cpy.LambdaTypeTree(tree)(tparams1, body1), tparams1, body1)
+
+  def typedLambdaTypeTree(tree: untpd.LambdaTypeTree)(using Context): Tree =
     val LambdaTypeTree(tparams, body) = tree
     index(tparams)
-    val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
-    val body1 = typedType(tree.body)
-    assignType(cpy.LambdaTypeTree(tree)(tparams1, body1), tparams1, body1)
-  }
+    typeIndexedLambdaTypeTree(tree, tparams, body)
 
   def typedTermLambdaTypeTree(tree: untpd.TermLambdaTypeTree)(using Context): Tree =
     if dependentEnabled then
@@ -1943,14 +1946,12 @@ class Typer extends Namer
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
     val TypeDef(name, rhs) = tdef
     completeAnnotations(tdef, sym)
-    val rhs1 = tdef.rhs match {
+    val rhs1 = tdef.rhs match
       case rhs @ LambdaTypeTree(tparams, body) =>
-        val tparams1 = tparams.map(typed(_)).asInstanceOf[List[TypeDef]]
-        val body1 = typedType(body)
-        assignType(cpy.LambdaTypeTree(rhs)(tparams1, body1), tparams1, body1)
+        typeIndexedLambdaTypeTree(rhs, tparams, body)
       case rhs =>
         typedType(rhs)
-    }
+    checkFullyAppliedType(rhs1)
     assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
   }
 

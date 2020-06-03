@@ -2,7 +2,7 @@ object App {
   def main(args: Array[String]): Unit = {
     trait ModuleSig {
       type F[_]
-      type Type = F
+      type Type[X] = F[X]
 
       def subst[F[_[_]]](fa: F[List]): F[Type]
     }
