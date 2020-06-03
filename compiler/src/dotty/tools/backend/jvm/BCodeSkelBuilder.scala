@@ -284,7 +284,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      */
     var jumpDest: immutable.Map[ /* Labeled or LabelDef */ Symbol, asm.Label ] = null
     def programPoint(labelSym: Symbol): asm.Label = {
-      assert(symHelper(labelSym).isLabel, s"trying to map a non-label symbol to an asm.Label, at: ${symHelper(labelSym).pos}")
+      assert(symHelper(labelSym).isLabel, s"trying to map a non-label symbol to an asm.Label, at: ${labelSym.span}")
       jumpDest.getOrElse(labelSym, {
         val pp = new asm.Label
         jumpDest += (labelSym -> pp)
@@ -386,7 +386,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val loc = Local(tk, symHelper(sym).javaSimpleName.toString, nxtIdx, symHelper(sym).isSynthetic)
         val existing = slots.put(sym, loc)
         if (existing.isDefined)
-          error(symHelper(sym).pos, "attempt to create duplicate local var.")
+          error(sym.span, "attempt to create duplicate local var.")
         assert(tk.size > 0, "makeLocal called for a symbol whose type is Unit.")
         nxtIdx += tk.size
         loc
@@ -535,7 +535,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       if (params.size > MaximumJvmParameters) {
         // SI-7324
-        error(symHelper(methSymbol).pos, s"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.")
+        error(methSymbol.span, s"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.")
         return
       }
 

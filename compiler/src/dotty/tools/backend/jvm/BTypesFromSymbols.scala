@@ -171,7 +171,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
 
       val innerName: Option[String] = {
         if (innerClassSym.isAnonymousClass || innerClassSym.isAnonymousFunction) None
-        else Some(symHelper(innerClassSym).rawname + symHelper(innerClassSym).moduleSuffix) // moduleSuffix for module classes
+        else Some(symHelper(innerClassSym).rawname) // moduleSuffix for module classes
       }
 
       Some(NestedInfo(enclosingClass, outerName, innerName, isStaticNestedClass))

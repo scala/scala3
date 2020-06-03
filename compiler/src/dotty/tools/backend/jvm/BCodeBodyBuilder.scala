@@ -1395,7 +1395,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val generatedType = classBTypeFromSymbol(functionalInterface)
       // Lambdas should be serializable if they implement a SAM that extends Serializable or if they
       // implement a scala.Function* class.
-      val isSerializable = functionalInterface.isSerializable || symHelper(functionalInterface).isFunctionClass
+      val isSerializable = functionalInterface.isSerializable || defn.isFunctionClass(functionalInterface)
       val isInterface = symHelper(lambdaTarget.owner).isEmittedInterface
       val invokeStyle =
         if (symHelper(lambdaTarget).isStaticMember) asm.Opcodes.H_INVOKESTATIC

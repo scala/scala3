@@ -44,10 +44,10 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
    */
   def getOutFolder(csym: Symbol, cName: String): AbstractFile = {
     try {
-      symHelper(csym).outputDirectory
+      outputDirectory
     } catch {
       case ex: Throwable =>
-        int.error(symHelper(csym).pos, s"Couldn't create file for class $cName\n${ex.getMessage}")
+        int.error(csym.span, s"Couldn't create file for class $cName\n${ex.getMessage}")
         null
     }
   }

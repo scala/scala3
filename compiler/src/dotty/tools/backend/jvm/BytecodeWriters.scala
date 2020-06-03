@@ -31,7 +31,7 @@ trait BytecodeWriters {
     ensureDirectory(dir) fileNamed pathParts.last + suffix
   }
   def getFile(sym: Symbol, clsName: String, suffix: String): AbstractFile =
-    getFile(symHelper(sym).outputDirectory, clsName, suffix)
+    getFile(outputDirectory, clsName, suffix)
 
   def factoryNonJarBytecodeWriter(): BytecodeWriter = {
     val emitAsmp  = None

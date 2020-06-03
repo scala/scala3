@@ -32,7 +32,7 @@ import StdNames.{nme, str}
 import NameKinds.{DefaultGetterName, ExpandedName}
 import Names.TermName
 
-class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit val ctx: Context) {
+class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit val ctx: Context) {
   import Symbols.{toDenot, toClassDenot}
     // Dotty deviation: Need to (re-)import implicit decorators here because otherwise
     // they would be shadowed by the more deeply nested `symHelper` decorator.
@@ -625,10 +625,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos)
     }
 
-    def moduleSuffix: String = "" // todo: validate that names already have $ suffix
-    def outputDirectory: AbstractFile = DottyBackendInterface.this.outputDirectory
-    def pos: Position = sym.span
-
     def throwsAnnotations: List[Symbol] = Nil
 
     /**
@@ -667,8 +663,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       }
     }
 
-    def isFunctionClass: Boolean =
-      defn.isFunctionClass(sym)
   }
 
 
@@ -969,10 +963,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol
 
-    def moduleSuffix: String
-    def outputDirectory: AbstractFile
-    def pos: Position
-
     def throwsAnnotations: List[Symbol]
 
     /**
@@ -1000,17 +990,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       isPackageClass || isModuleClass && symHelper(symHelper(originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
 
     def samMethod(): Symbol
-
-    /** Is this the symbol of one of the `scala.Function*` class ?
-     *  Note that this will return false for subclasses of these classes.
-     */
-    def isFunctionClass: Boolean
-  }
-
-  abstract class Primitives {
-    def getPrimitive(app: Apply, receiver: Type): Int
-    def isPrimitive(fun: Tree): Boolean
-    def getPrimitive(sym: Symbol): Int
   }
 
   abstract class Caches {
