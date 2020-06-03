@@ -292,7 +292,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case t @ Labeled(_, _) =>
           generatedType = genLabeled(t)
 
-        case r @ ReturnBI(_) =>
+        case r: Return =>
           genReturn(r)
           generatedType = expectedType
 
@@ -523,8 +523,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       resKind
     }
 
-    private def genReturn(r: Return): Unit = r match {
-      case ReturnBI(expr, fromSym) =>
+    private def genReturn(r: Return): Unit = {
+      val expr: Tree = r.expr
+      val fromSym: Symbol = if (r.from.symbol.is(Flags.Label)) r.from.symbol else NoSymbol
 
       if (NoSymbol == fromSym) {
         // return from enclosing method

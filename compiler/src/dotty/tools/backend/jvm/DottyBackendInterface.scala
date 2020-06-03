@@ -753,11 +753,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
   }
 
-  object ReturnBI extends DeconstructorCommon[Return] {
-    def _1: Tree = field.expr
-    def _2: Symbol = if (field.from.symbol.is(Flags.Label)) field.from.symbol else NoSymbol
-  }
-
   object ArrayValueBI extends DeconstructorCommon[ArrayValue] {
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
@@ -766,14 +761,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
         UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems
-  }
-
-  object TemplateBI extends DeconstructorCommon[Template] {
-    def _1: List[Tree] = field.parents
-    def _2: ValDef = field.self
-    def _3: List[Tree] =
-      if (field.constr.rhs.isEmpty) field.body
-      else field.constr :: field.body
   }
 
   object ClosureBI extends DeconstructorCommon[Closure] {

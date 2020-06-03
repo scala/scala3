@@ -489,7 +489,11 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         case dd: DefDef => genDefDef(dd)
 
-        case TemplateBI(_, _, body) => body foreach gen
+        case tree: Template =>
+          val body =
+            if (tree.constr.rhs.isEmpty) tree.body
+            else tree.constr :: tree.body
+          body foreach gen
 
         case _ => abort(s"Illegal tree in gen: $tree")
       }
@@ -572,7 +576,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           genLoad(rhs, returnType)
 
           rhs match {
-            case ReturnBI(_) | Block(_, ReturnBI(_)) | ThrowBI(_) | Block(_, ThrowBI(_)) => ()
+            case (_: Return) | Block(_, (_: Return)) | ThrowBI(_) | Block(_, ThrowBI(_)) => ()
             case tpd.EmptyTree =>
               error(NoSpan, "Concrete method has no definition: " + dd + (
                 if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
