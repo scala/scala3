@@ -206,7 +206,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     }
 
     private def assertClassNotArray(sym: Symbol): Unit = {
-      assert(symHelper(sym).isClass, sym)
+      assert(sym.isClass, sym)
       assert(sym != defn.ArrayClass || isCompilingArray, sym)
     }
 

@@ -48,7 +48,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
    */
   final def classBTypeFromSymbol(classSym: Symbol): ClassBType = {
     assert(classSym != NoSymbol, "Cannot create ClassBType from NoSymbol")
-    assert(symHelper(classSym).isClass, s"Cannot create ClassBType from non-class symbol $classSym")
+    assert(classSym.isClass, s"Cannot create ClassBType from non-class symbol $classSym")
     assert(
       (!primitiveTypeMap.contains(classSym) || isCompilingPrimitive) &&
       (classSym != defn.NothingClass && classSym != defn.NullClass),
@@ -160,7 +160,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
 
 
   private def buildNestedInfo(innerClassSym: Symbol): Option[NestedInfo] = {
-    assert(symHelper(innerClassSym).isClass, s"Cannot build NestedInfo for non-class symbol $innerClassSym")
+    assert(innerClassSym.isClass, s"Cannot build NestedInfo for non-class symbol $innerClassSym")
 
     val isNested = !symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass.is(Flags.PackageClass)
     if (!isNested) None
@@ -170,7 +170,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
 
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
       val enclosingClassSym = {
-        if (symHelper(innerClassSym).isClass) {
+        if (innerClassSym.isClass) {
           val ct = ctx.withPhase(ctx.flattenPhase.prev)
           toDenot(innerClassSym)(ct).owner.enclosingClass(ct)
         }
@@ -247,7 +247,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       if (symHelper(sym).isStaticMember) ACC_STATIC else 0,
       if (sym.is(Flags.Bridge)) ACC_BRIDGE | ACC_SYNTHETIC else 0,
       if (sym.is(Flags.Artifact)) ACC_SYNTHETIC else 0,
-      if (symHelper(sym).isClass && !symHelper(sym).isInterface) ACC_SUPER else 0,
+      if (sym.isClass && !symHelper(sym).isInterface) ACC_SUPER else 0,
       if (sym.isAllOf(Flags.JavaEnumTrait)) ACC_ENUM else 0,
       if (sym.is(Flags.JavaVarargs)) ACC_VARARGS else 0,
       if (sym.is(Flags.Synchronized)) ACC_SYNCHRONIZED else 0,

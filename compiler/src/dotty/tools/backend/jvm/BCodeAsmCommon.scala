@@ -19,13 +19,13 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
    * null.
    */
   def isAnonymousOrLocalClass(classSym: Symbol): Boolean = {
-    assert(symHelper(classSym).isClass, s"not a class: $classSym")
+    assert(classSym.isClass, s"not a class: $classSym")
     // Here used to be an `assert(!classSym.isDelambdafyFunction)`: delambdafy lambda classes are
     // always top-level. However, SI-8900 shows an example where the weak name-based implementation
     // of isDelambdafyFunction failed (for a function declared in a package named "lambda").
     classSym.isAnonymousClass || {
       val originalOwnerLexicallyEnclosingClass = symHelper(classSym.originalOwner).originalLexicallyEnclosingClass
-      originalOwnerLexicallyEnclosingClass != NoSymbol && !symHelper(originalOwnerLexicallyEnclosingClass).isClass
+      originalOwnerLexicallyEnclosingClass != NoSymbol && !originalOwnerLexicallyEnclosingClass.isClass
     }
   }
 
@@ -53,9 +53,9 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
    * This is a source-level property, so we need to use the originalOwner chain to reconstruct it.
    */
   private def enclosingMethodForEnclosingMethodAttribute(classSym: Symbol): Option[Symbol] = {
-    assert(symHelper(classSym).isClass, classSym)
+    assert(classSym.isClass, classSym)
     def enclosingMethod(sym: Symbol): Option[Symbol] = {
-      if (symHelper(sym).isClass || sym == NoSymbol) None
+      if (sym.isClass || sym == NoSymbol) None
       else if (sym.is(Flags.Method)) Some(sym)
       else enclosingMethod(symHelper(sym.originalOwner).originalLexicallyEnclosingClass)
     }
@@ -67,9 +67,9 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
    * property, this method looks at the originalOwner chain. See doc in BTypes.
    */
   private def enclosingClassForEnclosingMethodAttribute(classSym: Symbol): Symbol = {
-    assert(symHelper(classSym).isClass, classSym)
+    assert(classSym.isClass, classSym)
     def enclosingClass(sym: Symbol): Symbol = {
-      if (symHelper(sym).isClass) sym
+      if (sym.isClass) sym
       else enclosingClass(symHelper(sym.originalOwner).originalLexicallyEnclosingClass)
     }
     enclosingClass(symHelper(classSym.originalOwner).originalLexicallyEnclosingClass)

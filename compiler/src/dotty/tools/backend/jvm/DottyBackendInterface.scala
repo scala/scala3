@@ -394,7 +394,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   class SymbolHelper(sym: Symbol) {
 
     // tests
-    def isClass: Boolean = sym.isClass
     def isPublic: Boolean = !sym.flags.isOneOf(Flags.Private | Flags.Protected)
     def isInterface: Boolean = (sym.is(Flags.PureInterface)) || sym.is(Flags.Trait)
 
