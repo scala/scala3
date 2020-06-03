@@ -405,7 +405,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
      *  which we represent as classes.
      */
     def isEmittedInterface: Boolean = isInterface ||
-      sym.is(Flags.JavaDefined) && (toDenot(sym).isAnnotation || sym.is(Flags.ModuleClass) && (sym.is(Flags.PureInterface)) || sym.is(Flags.Trait))
+      sym.is(Flags.JavaDefined) && (toDenot(sym).isAnnotation || sym.is(Flags.ModuleClass) && (sym.companionClass.is(Flags.PureInterface)) || sym.companionClass.is(Flags.Trait))
 
     def isStaticMember: Boolean = (sym ne NoSymbol) &&
       (sym.is(Flags.JavaStatic) || sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot))
