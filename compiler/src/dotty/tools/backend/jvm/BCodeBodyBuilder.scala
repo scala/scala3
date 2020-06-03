@@ -10,13 +10,13 @@ import BCodeHelpers.InvokeStyle
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.StdNames.{nme, str}
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.Erasure
 import dotty.tools.dotc.util.Spans.NoSpan
-
 
 /*
  *
@@ -309,7 +309,20 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           abort(s"Unexpected New(${tpt.tpe.showSummary()}/$tpt) reached GenBCode.\n" +
                 "  Call was genLoad" + ((tree, expectedType)))
 
-        case app @ ClosureBI(env, call, functionalInterface) =>
+        case app: Closure =>
+          val env: List[Tree] = app.env
+          val call: Tree = app.meth
+          val functionalInterface: Symbol = {
+            val t = app.tpt.tpe.typeSymbol
+            if (t.exists) t
+            else {
+              val arity = app.meth.tpe.widenDealias.firstParamTypes.size - env.size
+              val returnsUnit = app.meth.tpe.widenDealias.resultType.classSymbol == defn.UnitClass
+              if (returnsUnit) ctx.requiredClass(("dotty.runtime.function.JProcedure" + arity))
+              else if (arity <= 2) ctx.requiredClass(("dotty.runtime.function.JFunction" + arity))
+              else ctx.requiredClass(("scala.Function" + arity))
+            }
+          }
           val (fun, args) = call match {
             case Apply(fun, args) => (fun, args)
             case t @ SelectBI(_, _) => (t, Nil)

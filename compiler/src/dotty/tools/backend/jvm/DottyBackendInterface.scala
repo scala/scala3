@@ -763,24 +763,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def _2: List[Tree] = field.elems
   }
 
-  object ClosureBI extends DeconstructorCommon[Closure] {
-    def _1: List[Tree] = field.env
-    def _2: Tree = field.meth
-    def _3: Symbol = {
-      val t = field.tpt.tpe.typeSymbol
-      if (t.exists) t
-      else {
-        val arity = field.meth.tpe.widenDealias.firstParamTypes.size - _1.size
-        val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == defn.UnitClass
-        if (returnsUnit) ctx.requiredClass(("dotty.runtime.function.JProcedure" + arity))
-        else if (arity <= 2) ctx.requiredClass(("dotty.runtime.function.JFunction" + arity))
-        else ctx.requiredClass(("scala.Function" + arity))
-      }
-    }
-  }
-
-  // def currentUnit: CompilationUnit = ctx.compilationUnit
-
 
 
   abstract class DeconstructorCommon[T >: Null <: AnyRef] {
