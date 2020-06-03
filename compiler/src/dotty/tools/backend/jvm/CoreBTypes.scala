@@ -5,6 +5,7 @@ package jvm
 import scala.annotation.switch
 
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.transform.Erasure
 
 /**
  * Core BTypes and some other definitions. The initialization of these definitions requies access
@@ -86,6 +87,9 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
    * method symbol for `Byte.box()` is mapped to the ClassBType `java/lang/Byte`.
    */
   lazy val boxResultType: Map[Symbol, ClassBType] = {
+    val boxMethods = defn.ScalaValueClasses().map{x => // @darkdimius Are you sure this should be a def?
+      (x, Erasure.Boxing.boxMethod(x.asClass))
+    }.toMap
     for ((valueClassSym, boxMethodSym) <- boxMethods)
     yield boxMethodSym -> boxedClassOfPrimitive(primitiveTypeMap(valueClassSym))
   }
@@ -94,6 +98,8 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
    * Maps the method symbol for an unbox method to the primitive type of the result.
    * For example, the method symbol for `Byte.unbox()`) is mapped to the PrimitiveBType BYTE. */
   lazy val unboxResultType: Map[Symbol, PrimitiveBType] = {
+    val unboxMethods: Map[Symbol, Symbol] =
+      defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
     for ((valueClassSym, unboxMethodSym) <- unboxMethods)
     yield unboxMethodSym -> primitiveTypeMap(valueClassSym)
   }

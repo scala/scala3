@@ -779,7 +779,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             genLoadArguments(args, paramTKs(app))
 
             val SelectBI(qual, _) = fun // fun is a Select, also checked in genLoadQualifier
-            if (isArrayClone(fun)) {
+            val isArrayClone = fun match {
+              case SelectBI(qual, nme.clone_) if qual.tpe.widen.isInstanceOf[JavaArrayType] => true
+              case _ => false
+            }
+            if (isArrayClone) {
               // Special-case Array.clone, introduced in 36ef60e. The goal is to generate this call
               // as "[I.clone" instead of "java/lang/Object.clone". This is consistent with javac.
               // Arrays have a public method `clone` (jls 10.7).
