@@ -448,8 +448,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     }
 
     // on entering a method
-    def resetMethodBookkeeping(dd: DefDef) = dd match {
-      case DefDefBI(_, _, _, _, _, rhs) =>
+    def resetMethodBookkeeping(dd: DefDef) = {
+      val rhs = dd.rhs
       locals.reset(isStaticMethod = symHelper(methSymbol).isStaticMember)
       jumpDest = immutable.Map.empty[ /* LabelDef */ Symbol, asm.Label ]
 
@@ -470,9 +470,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       tree match {
         case tpd.EmptyTree => ()
 
-        case ValDefBI(mods, name, tpt, rhs) => () // fields are added in `genPlainClass()`, via `addClassFields()`
+        case ValDef(name, tpt, rhs) => () // fields are added in `genPlainClass()`, via `addClassFields()`
 
-        case dd @ DefDefBI(_, _, _, _, _, _) => genDefDef(dd.asInstanceOf[DefDef])
+        case dd: DefDef => genDefDef(dd)
 
         case TemplateBI(_, _, body) => body foreach gen
 
@@ -510,8 +510,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     } // end of method initJMethod
 
 
-    def genDefDef(dd: DefDef): Unit = dd match {
-      case DefDefBI(_, _, _, vparamss, _, rhs) =>
+    def genDefDef(dd: DefDef): Unit = {
+      val rhs = dd.rhs
+      val vparamss = dd.vparamss
       // the only method whose implementation is not emitted: getClass()
       if (symHelper(treeHelper(dd).symbol).isGetClass) { return }
       assert(mnode == null, "GenBCode detected nested method.")

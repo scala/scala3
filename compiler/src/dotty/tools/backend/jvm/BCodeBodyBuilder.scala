@@ -264,17 +264,17 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
 
       tree match {
-        case ValDefBI(_, nme.THIS, _, _) =>
+        case ValDef(nme.THIS, _, _) =>
           debuglog("skipping trivial assign to _$this: " + tree)
 
-        case ValDefBI(_, _, _, rhs) =>
+        case tree@ValDef(_, _, _) =>
           val sym = treeHelper(tree).symbol
           /* most of the time, !locals.contains(sym), unless the current activation of genLoad() is being called
              while duplicating a finalizer that contains this ValDef. */
           val loc = locals.getOrMakeLocal(sym)
           val Local(tk, _, idx, isSynth) = loc
-          if (rhs == tpd.EmptyTree) { emitZeroOf(tk) }
-          else { genLoad(rhs, tk) }
+          if (tree.rhs == tpd.EmptyTree) { emitZeroOf(tk) }
+          else { genLoad(tree.rhs, tk) }
           bc.store(idx, tk)
           val localVarStart = currProgramPoint()
           if (!isSynth) { // there are case <synthetic> ValDef's emitted by patmat

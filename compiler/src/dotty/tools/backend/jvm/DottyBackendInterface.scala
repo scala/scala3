@@ -933,13 +933,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  object ValDefBI extends ValDefDeconstructor {
-    def _1: Null = null
-    def _2: Name = field.name
-    def _3: Tree = field.tpt
-    def _4: Tree = field.rhs
-  }
-
   object ThrowBI extends ThrowDeconstructor {
     def get: Tree = field.args.head
 
@@ -992,15 +985,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems
-  }
-
-  object DefDefBI extends DefDefDeconstructor {
-    def _1: Null = null
-    def _2: Name = field.name
-    def _3: List[TypeDef] = field.tparams
-    def _4: List[List[ValDef]] = field.vparamss
-    def _5: Tree = field.tpt
-    def _6: Tree = field.rhs
   }
 
   object TemplateBI extends TemplateDeconstructor {
