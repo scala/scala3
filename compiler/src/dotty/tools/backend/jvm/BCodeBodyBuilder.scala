@@ -329,7 +329,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case app @ Apply(_, _) =>
           generatedType = genApply(app, expectedType)
 
-        case ThisBI(qual) =>
+        case This(qual) =>
           val symIsModuleClass = symHelper(tree.symbol).isModuleClass
           assert(tree.symbol == claszSymbol || symIsModuleClass,
                  s"Trying to access the this of another class: tree.symbol = ${tree.symbol}, class symbol = $claszSymbol compilation unit: $cunit")
@@ -396,7 +396,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             genLoad(expr, expectedType)
           else genBlock(blck, expectedType)
 
-        case Typed(Super(_, _), _) => genLoad(ThisBI(claszSymbol), expectedType)
+        case Typed(Super(_, _), _) => genLoad(tpd.This(claszSymbol.asClass), expectedType)
 
         case Typed(expr, _) => genLoad(expr, expectedType)
 

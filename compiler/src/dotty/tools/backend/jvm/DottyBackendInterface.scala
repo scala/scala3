@@ -868,7 +868,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def parents: List[Type] = tp.parents
   }
 
-  object SelectBI extends SelectDeconstructor {
+  object SelectBI extends DeconstructorCommon[Select] {
 
     var desugared: tpd.Select = null
 
@@ -894,7 +894,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  object ThrowBI extends ThrowDeconstructor {
+  object ThrowBI extends Deconstructor1Common[Throw, Tree] {
     def get: Tree = field.args.head
 
     override def unapply(s: Throw): ThrowBI.type = {
@@ -907,21 +907,16 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  object ThisBI extends ThisDeconstructor {
-    def get: Name = field.qual.name
-    def apply(s: Symbol): This = tpd.This(s.asClass)
-  }
-
-  object ReturnBI extends ReturnDeconstructor {
+  object ReturnBI extends DeconstructorCommon[Return] {
     def _1: Tree = field.expr
     def _2: Symbol = if (field.from.symbol.isLabel) field.from.symbol else NoSymbol
   }
 
-  object ThrownExceptionBI extends ThrownException {
+  object ThrownExceptionBI {
     def unapply(a: Annotation): Option[Symbol] = None // todo
   }
 
-  object ArrayValueBI extends ArrayValueDeconstructor {
+  object ArrayValueBI extends DeconstructorCommon[ArrayValue] {
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
@@ -931,7 +926,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _2: List[Tree] = field.elems
   }
 
-  object TemplateBI extends TemplateDeconstructor {
+  object TemplateBI extends DeconstructorCommon[Template] {
     def _1: List[Tree] = field.parents
     def _2: ValDef = field.self
     def _3: List[Tree] =
@@ -939,7 +934,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       else field.constr :: field.body
   }
 
-  object ClosureBI extends ClosureDeconstructor {
+  object ClosureBI extends DeconstructorCommon[Closure] {
     def _1: List[Tree] = field.env
     def _2: Tree = field.meth
     def _3: Symbol = {
@@ -981,150 +976,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  abstract class ClassDefDeconstructor extends DeconstructorCommon[ClassDef] {
-    def _1: Null
-    def _2: Name
-    def _3: List[TypeDef]
-    def _4: Template
-  }
-
-  abstract class BindDeconstructor extends DeconstructorCommon[Bind]{
-    def _1: Name
-    def _2: Tree
-  }
-
-  abstract class TemplateDeconstructor extends DeconstructorCommon[Template]{
-    def _1: List[Tree]
-    def _2: ValDef
-    def _3: List[Tree]
-  }
-
-  abstract class DefDefDeconstructor extends DeconstructorCommon[DefDef]{
-    def _1: Null
-    def _2: Name
-    def _3: List[TypeDef]
-    def _4: List[List[ValDef]]
-    def _5: Tree
-    def _6: Tree
-  }
-
-  abstract class ClosureDeconstructor extends DeconstructorCommon[Closure]{
-    def _1: List[Tree] // environment
-    def _2: Tree // meth
-    def _3: Symbol // functionalInterface
-  }
-
-  abstract class ThisDeconstructor extends Deconstructor1Common[This, Name]{
-    def apply(s: Symbol): Tree
-  }
-
-  abstract class IdentDeconstructor extends Deconstructor1Common[Ident, Name]{
-  }
-
-  abstract class LabeledDeconstructor extends DeconstructorCommon[Labeled]{
-    def _1: Bind // bind
-    def _2: Tree // expr
-  }
-
-  abstract class ReturnDeconstructor extends DeconstructorCommon[Return]{
-    def _1: Tree // expr
-    def _2: Symbol // target label, NoSymbol if return to method
-  }
-
-  abstract class WhileDoDeconstructor extends DeconstructorCommon[WhileDo]{
-    def _1: Tree // cond
-    def _2: Tree // body
-  }
-
-  abstract class ThrownException {
-    def unapply(a: Annotation): Option[Symbol]
-  }
-
-  abstract class ThrowDeconstructor extends Deconstructor1Common[Throw, Tree]{
-  }
-
-  abstract class ConstantDeconstructor extends Deconstructor1Common[Constant, Any]{
-  }
-
-  abstract class NewDeconstructor extends Deconstructor1Common[New, Type]{
-  }
-
-  abstract class AlternativeDeconstructor extends Deconstructor1Common[Alternative, List[Tree]]{
-  }
-
-  abstract class BlockDeconstructor extends DeconstructorCommon[Block]{
-    def _1: List[Tree]
-    def _2: Tree
-  }
-
-  abstract class CaseDeconstructor extends DeconstructorCommon[CaseDef]{
-    def _1: Tree
-    def _2: Tree
-    def _3: Tree
-  }
-
-  abstract class MatchDeconstructor extends DeconstructorCommon[Match]{
-    def _1: Tree
-    def _2: List[Tree]
-  }
-
-  abstract class LiteralDeconstructor extends Deconstructor1Common[Literal, Constant]{
-  }
-
-  abstract class AssignDeconstructor extends DeconstructorCommon[Assign]{
-    def _1: Tree
-    def _2: Tree
-  }
-
-  abstract class SelectDeconstructor extends DeconstructorCommon[Select]{
-    def _1: Tree
-    def _2: Name
-  }
-
-  abstract class ApplyDeconstructor extends DeconstructorCommon[Apply] {
-    def _1: Tree
-    def _2: List[Tree]
-  }
-
-  abstract class IfDeconstructor extends DeconstructorCommon[If]{
-    def _1: Tree
-    def _2: Tree
-    def _3: Tree
-  }
-
-  abstract class ValDefDeconstructor extends DeconstructorCommon[ValDef]{
-    def _1: Null
-    def _2: Name
-    def _3: Tree
-    def _4: Tree
-  }
-
-
-  abstract class TryDeconstructor extends DeconstructorCommon[Try]{
-    def _1: Tree
-    def _2: List[Tree]
-    def _3: Tree
-  }
-
-  abstract class TypedDeconstrutor extends DeconstructorCommon[Typed]{
-    def _1: Tree
-    def _2: Tree
-  }
-
-  abstract class SuperDeconstructor extends DeconstructorCommon[Super]{
-    def _1: Tree
-    def _2: Name
-  }
-
-  abstract class ArrayValueDeconstructor extends DeconstructorCommon[ArrayValue]{
-    def _1: Type
-    def _2: List[Tree]
-  }
-
-  abstract class TypeApplyDeconstructor extends DeconstructorCommon[TypeApply]{
-    def _1: Tree
-    def _2: List[Tree]
-  }
 
   abstract class PositionHelper {
     def isDefined: Boolean
