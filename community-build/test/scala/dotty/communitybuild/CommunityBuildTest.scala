@@ -134,6 +134,11 @@ object projects:
     dependencies = List(utest)
   )
 
+  lazy val scas = MillCommunityProject(
+    project = "scas",
+    baseCommand = "scas.application"
+  )
+
   lazy val intent = SbtCommunityProject(
     project       = "intent",
     sbtTestCommand   = "test",
