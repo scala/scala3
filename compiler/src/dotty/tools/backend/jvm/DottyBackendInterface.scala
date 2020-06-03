@@ -1015,14 +1015,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _2: Symbol = if (field.from.symbol.isLabel) field.from.symbol else NoSymbol
   }
 
-  object IdentBI extends IdentDeconstructor {
-    def get: Name = field.name
-  }
-
-  object AlternativeBI extends AlternativeDeconstructor {
-    def get: List[Tree] = field.trees
-  }
-
   object ConstantBI extends ConstantDeconstructor {
     def get: Any = field.value
   }
@@ -1036,10 +1028,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _3: Tree = field.finalizer
   }
 
-  object TypedBI extends TypedDeconstrutor {
-    def _1: Tree = field.expr
-    def _2: Tree = field.tpt
-  }
   object SuperBI extends SuperDeconstructor {
     def _1: Tree = field.qual
     def _2: Name = field.mix.name
@@ -1052,16 +1040,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems
-  }
-  object MatchBI extends MatchDeconstructor {
-    def _1: Tree = field.selector
-    def _2: List[Tree] = field.cases
-  }
-
-  object CaseDefBI extends CaseDeconstructor {
-    def _1: Tree = field.pat
-    def _2: Tree = field.guard
-    def _3: Tree = field.body
   }
 
   object DefDefBI extends DefDefDeconstructor {
@@ -1079,11 +1057,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _3: List[Tree] =
       if (field.constr.rhs.isEmpty) field.body
       else field.constr :: field.body
-  }
-
-  object BindBI extends BindDeconstructor {
-    def _1: Name = field.name
-    def _2: Tree = field.body
   }
 
   object ClassDefBI extends ClassDefDeconstructor {

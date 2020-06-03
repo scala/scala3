@@ -295,15 +295,15 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case ThrowBI(expr) =>
           generatedType = genThrow(expr)
 
-        case NewBI(tpt) =>
-          abort(s"Unexpected New(${typeHelper(tpt).summaryString}/$tpt) reached GenBCode.\n" +
+        case New(tpt) =>
+          abort(s"Unexpected New(${typeHelper(tpt.tpe).summaryString}/$tpt) reached GenBCode.\n" +
                 "  Call was genLoad" + ((tree, expectedType)))
 
         case app @ ClosureBI(env, call, functionalInterface) =>
           val (fun, args) = call match {
             case Apply(fun, args) => (fun, args)
             case t @ SelectBI(_, _) => (t, Nil)
-            case t @ IdentBI(_) => (t, Nil)
+            case t @ Ident(_) => (t, Nil)
           }
 
           if (!symHelper(treeHelper(fun).symbol).isStaticMember) {
@@ -337,7 +337,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               else classBTypeFromSymbol(claszSymbol)
           }
 
-        case SelectBI(IdentBI(`nme_EMPTY_PACKAGE_NAME`), module) =>
+        case SelectBI(Ident(`nme_EMPTY_PACKAGE_NAME`), module) =>
           assert(symHelper(treeHelper(tree).symbol).isModule, s"Selection of non-module from empty package: $tree sym: ${treeHelper(tree).symbol} at: ${treeHelper(tree).pos}")
           genLoadModule(tree)
 
@@ -361,7 +361,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             fieldLoad(sym, receiverClass)
           }
 
-        case t @ IdentBI(name) =>
+        case t @ Ident(name) =>
           val sym = treeHelper(tree).symbol
           val tk = symInfoTK(sym)
           generatedType = tk
@@ -390,9 +390,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             genLoad(expr, expectedType)
           else genBlock(blck, expectedType)
 
-        case TypedBI(SuperBI(_, _), _) => genLoad(ThisBI(claszSymbol), expectedType)
+        case Typed(SuperBI(_, _), _) => genLoad(ThisBI(claszSymbol), expectedType)
 
-        case TypedBI(expr, _) => genLoad(expr, expectedType)
+        case Typed(expr, _) => genLoad(expr, expectedType)
 
         case Assign(_, _) =>
           generatedType = UNIT
@@ -401,7 +401,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case av @ ArrayValueBI(_, _) =>
           generatedType = genArrayValue(av)
 
-        case mtch @ MatchBI(_, _) =>
+        case mtch @ Match(_, _) =>
           generatedType = genMatch(mtch)
 
         case EmptyTree => if (expectedType != UNIT) { emitZeroOf(expectedType) }
@@ -700,11 +700,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         // thought to return an instance of what they construct,
         // we have to 'simulate' it by DUPlicating the freshly created
         // instance (on JVM, <init> methods return VOID).
-        case Apply(fun @ SelectBI(NewBI(tpt), `nme_CONSTRUCTOR`), args) =>
+        case Apply(fun @ SelectBI(New(tpt), `nme_CONSTRUCTOR`), args) =>
           val ctor = treeHelper(fun).symbol
           assert(symHelper(ctor).isClassConstructor, s"'new' call to non-constructor: ${symHelper(ctor).name}")
 
-          generatedType = toTypeKind(tpt)
+          generatedType = toTypeKind(tpt.tpe)
           assert(generatedType.isRef, s"Non reference type cannot be instantiated: $generatedType")
 
           generatedType match {
@@ -831,7 +831,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
      * On a second pass, we emit the switch blocks, one for each different target.
      */
     private def genMatch(tree: Match): BType = tree match {
-      case MatchBI(selector, cases) =>
+      case Match(selector, cases) =>
       lineNumber(tree)
       genLoad(selector, INT)
       val generatedType = tpeTK(tree)
@@ -842,7 +842,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       var switchBlocks: List[(asm.Label, Tree)] = Nil
 
       // collect switch blocks and their keys, but don't emit yet any switch-block.
-      for (caze @ CaseDefBI(pat, guard, body) <- cases) {
+      for (caze @ CaseDef(pat, guard, body) <- cases) {
         assert(guard == EmptyTree, guard)
         val switchBlockPoint = new asm.Label
         switchBlocks ::= (switchBlockPoint, body)
@@ -850,10 +850,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           case Literal(value) =>
             flatKeys ::= constantHelper(value).intValue
             targets  ::= switchBlockPoint
-          case IdentBI(`nme_WILDCARD`) =>
+          case Ident(`nme_WILDCARD`) =>
             assert(default == null, s"multiple default targets in a Match node, at ${treeHelper(tree).pos}")
             default = switchBlockPoint
-          case AlternativeBI(alts) =>
+          case Alternative(alts) =>
             alts foreach {
               case Literal(value) =>
                 flatKeys ::= constantHelper(value).intValue

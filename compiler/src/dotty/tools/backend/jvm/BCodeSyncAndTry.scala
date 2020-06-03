@@ -174,11 +174,11 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       val kind = tpeTK(tree)
 
       val caseHandlers: List[EHClause] =
-        for (CaseDefBI(pat, _, caseBody) <- catches) yield {
+        for (CaseDef(pat, _, caseBody) <- catches) yield {
           pat match {
-            case TypedBI(IdentBI(`nme_WILDCARD`), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)
-            case IdentBI(`nme_WILDCARD`)              => NamelessEH(ThrowableReference,  caseBody)
-            case BindBI(_, _)                       => BoundEH   (treeHelper(pat).symbol, caseBody)
+            case Typed(Ident(`nme_WILDCARD`), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)
+            case Ident(`nme_WILDCARD`)              => NamelessEH(ThrowableReference,  caseBody)
+            case Bind(_, _)                       => BoundEH   (treeHelper(pat).symbol, caseBody)
           }
         }
 
