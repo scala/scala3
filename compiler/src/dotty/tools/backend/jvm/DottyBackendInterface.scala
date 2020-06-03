@@ -444,8 +444,9 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
   }
 
-  implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper {
+  implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper(sym)
 
+  class SymbolHelper(sym: Symbol) {
 
     // tests
     def isClass: Boolean = {
@@ -817,93 +818,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       field = s
       this
     }
-  }
-
-  abstract class SymbolHelper {
-
-    // names
-    // def rawname: String
-
-    /** Does this symbol actually correspond to an interface that will be emitted?
-     *  In the backend, this should be preferred over `isInterface` because it
-     *  also returns true for the symbols of the fake companion objects we
-     *  create for Java-defined classes as well as for Java annotations
-     *  which we represent as classes.
-     */
-    def isEmittedInterface: Boolean
-
-    // tests
-    def isClass: Boolean
-    def isPublic: Boolean
-    def isStrictFP: Boolean
-    def hasPackageFlag: Boolean
-    def isInterface: Boolean
-
-    def isScalaStatic: Boolean
-    def isStaticMember: Boolean
-    def isBottomClass: Boolean
-
-    def hasAccessBoundary: Boolean
-    def isNonBottomSubClass(sym: Symbol): Boolean
-    def hasAnnotation(sym: Symbol): Boolean
-    def shouldEmitForwarders: Boolean
-    def isJavaDefaultMethod: Boolean
-
-    // def isEnum: Boolean
-
-    /**
-     * True for module classes of modules that are top-level or owned only by objects. Module classes
-     * for such objects will get a MODULE$ flag and a corresponding static initializer.
-     */
-    def isStaticModuleClass: Boolean
-
-    def isStaticConstructor: Boolean
-
-
-    // navigation
-    def superClass: Symbol
-    def linkedClassOfClass: Symbol
-    def companionSymbol: Symbol
-
-    def enclosingClassSym: Symbol
-    def originalLexicallyEnclosingClass: Symbol
-    def allOverriddenSymbols: List[Symbol]
-
-
-    // members
-    def nestedClasses: List[Symbol]
-    def memberClasses: List[Symbol]
-    def companionModuleMembers: List[Symbol]
-    def fieldSymbols: List[Symbol]
-    def methodSymbols: List[Symbol]
-
-
-    def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol
-
-    /**
-     * All interfaces implemented by a class, except for those inherited through the superclass.
-     *
-     */
-    def superInterfaces: List[Symbol]
-
-    /**
-     * True for module classes of package level objects. The backend will generate a mirror class for
-     * such objects.
-     */
-    def isTopLevelModuleClass: Boolean
-
-    /**
-     * This is basically a re-implementation of sym.isStaticOwner, but using the originalOwner chain.
-     *
-     * The problem is that we are interested in a source-level property. Various phases changed the
-     * symbol's properties in the meantime, mostly lambdalift modified (destructively) the owner.
-     * Therefore, `sym.isStatic` is not what we want. For example, in
-     *   object T { def f { object U } }
-     * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
-     */
-    def isOriginallyStaticOwner: Boolean
-
-    def samMethod(): Symbol
   }
 
   abstract class Caches {
