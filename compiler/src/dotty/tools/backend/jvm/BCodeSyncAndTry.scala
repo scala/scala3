@@ -174,7 +174,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
      *
      */
     def genLoadTry(tree: Try): BType = tree match {
-      case TryBI(block, catches, finalizer) =>
+      case Try(block, catches, finalizer) =>
       val kind = tpeTK(tree)
 
       val caseHandlers: List[EHClause] =
@@ -408,7 +408,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
 
     /* Does this tree have a try-catch block? */
     def mayCleanStack(tree: Tree): Boolean = treeHelper(tree) exists { t => t match {
-        case TryBI(_, _, _) => true
+        case Try(_, _, _) => true
         case _ => false
       }
     }

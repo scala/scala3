@@ -295,7 +295,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case t @ WhileDo(_, _) =>
           generatedType = genWhileDo(t)
 
-        case t @ TryBI(_, _, _) =>
+        case t @ Try(_, _, _) =>
           generatedType = genLoadTry(t)
 
         case ThrowBI(expr) =>
@@ -396,7 +396,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             genLoad(expr, expectedType)
           else genBlock(blck, expectedType)
 
-        case Typed(SuperBI(_, _), _) => genLoad(ThisBI(claszSymbol), expectedType)
+        case Typed(Super(_, _), _) => genLoad(ThisBI(claszSymbol), expectedType)
 
         case Typed(expr, _) => genLoad(expr, expectedType)
 
@@ -672,7 +672,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             if (treeHelper(t).symbol ne defn.Object_synchronized) genTypeApply(t)
             else genSynchronized(app, expectedType)
 
-        case Apply(fun @ SelectBI(SuperBI(_, _), _), args) =>
+        case Apply(fun @ SelectBI(Super(_, _), _), args) =>
           def initModule(): Unit = {
             // we initialize the MODULE$ field immediately after the super ctor
             if (!isModuleInitialized &&
@@ -1059,7 +1059,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
       liftStringConcat(tree) match {
         // Optimization for expressions of the form "" + x.  We can avoid the StringBuilder.
-        case List(Literal(ConstantBI("")), arg) =>
+        case List(Literal(Constant("")), arg) =>
           genLoad(arg, ObjectReference)
           genCallMethod(String_valueOf, InvokeStyle.Static)
 

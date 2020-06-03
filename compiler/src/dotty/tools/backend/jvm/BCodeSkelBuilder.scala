@@ -83,7 +83,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
     def genPlainClass(cd: ClassDef) = cd match {
-      case ClassDefBI(_, _, _, impl) =>
+      case ClassDef(_, impl) =>
       assert(cnode == null, "GenBCode detected nested methods.")
       innerClassBufferASM.clear()
 

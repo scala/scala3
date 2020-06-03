@@ -946,10 +946,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  object NewBI extends NewDeconstructor {
-    def get: Type = field.tpt.tpe
-  }
-
   object ThisBI extends ThisDeconstructor {
     def get: Name = field.qual.name
     def apply(s: Symbol): This = tpd.This(s.asClass)
@@ -960,23 +956,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _2: Symbol = if (field.from.symbol.isLabel) field.from.symbol else NoSymbol
   }
 
-  object ConstantBI extends ConstantDeconstructor {
-    def get: Any = field.value
-  }
   object ThrownExceptionBI extends ThrownException {
     def unapply(a: Annotation): Option[Symbol] = None // todo
   }
 
-  object TryBI extends TryDeconstructor {
-    def _1: Tree = field.expr
-    def _2: List[Tree] = field.cases
-    def _3: Tree = field.finalizer
-  }
-
-  object SuperBI extends SuperDeconstructor {
-    def _1: Tree = field.qual
-    def _2: Name = field.mix.name
-  }
   object ArrayValueBI extends ArrayValueDeconstructor {
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
@@ -993,13 +976,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _3: List[Tree] =
       if (field.constr.rhs.isEmpty) field.body
       else field.constr :: field.body
-  }
-
-  object ClassDefBI extends ClassDefDeconstructor {
-    def _1: Null = null
-    def _2: Name = field.name
-    def _4: Template = field.rhs.asInstanceOf[Template]
-    def _3: List[TypeDef] = Nil
   }
 
   object ClosureBI extends ClosureDeconstructor {
