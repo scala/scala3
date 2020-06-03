@@ -9,6 +9,10 @@ import scala.tools.asm
 import scala.tools.asm.util.{TraceMethodVisitor, ASMifier}
 import java.io.PrintWriter
 
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.util.Spans.NoSpan
+import dotty.tools.dotc.ast.tpd
+
 /*
  *
  *  @author  Miguel Garcia, http://lamp.epfl.ch/~magarcia/ScalaCompilerCornerReloaded/
@@ -464,7 +468,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     def gen(tree: Tree): Unit = {
       tree match {
-        case EmptyTree => ()
+        case tpd.EmptyTree => ()
 
         case ValDefBI(mods, name, tpt, rhs) => () // fields are added in `genPlainClass()`, via `addClassFields()`
 
@@ -553,8 +557,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
           rhs match {
             case ReturnBI(_) | Block(_, ReturnBI(_)) | ThrowBI(_) | Block(_, ThrowBI(_)) => ()
-            case EmptyTree =>
-              error(NoPosition, "Concrete method has no definition: " + dd + (
+            case tpd.EmptyTree =>
+              error(NoSpan, "Concrete method has no definition: " + dd + (
                 if (settings_debug) "(found: " + typeHelper(symHelper(symHelper(methSymbol).owner).info).decls.toList.mkString(", ") + ")"
                 else "")
               )

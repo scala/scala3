@@ -5,6 +5,10 @@ package jvm
 import scala.collection.immutable
 import scala.tools.asm
 
+import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.ast.tpd
+
 /*
  *
  *  @author  Miguel Garcia, http://lamp.epfl.ch/~magarcia/ScalaCompilerCornerReloaded/
@@ -22,13 +26,13 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
 
     def genSynchronized(tree: Apply, expectedType: BType): BType = tree match {
       case Apply(TypeApply(fun, _), args) =>
-      val monitor = locals.makeLocal(ObjectReference, "monitor", Object_Type, treeHelper(tree).pos)
+      val monitor = locals.makeLocal(ObjectReference, "monitor", defn.ObjectType, treeHelper(tree).pos)
       val monCleanup = new asm.Label
 
       // if the synchronized block returns a result, store it in a local variable.
       // Just leaving it on the stack is not valid in MSIL (stack is cleaned when leaving try-blocks).
       val hasResult = (expectedType != UNIT)
-      val monitorResult: Symbol = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", Object_Type, treeHelper(tree).pos) else null
+      val monitorResult: Symbol = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", defn.ObjectType, treeHelper(tree).pos) else null
 
       /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
       genLoadQualifier(fun)
@@ -176,8 +180,8 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       val caseHandlers: List[EHClause] =
         for (CaseDef(pat, _, caseBody) <- catches) yield {
           pat match {
-            case Typed(Ident(`nme_WILDCARD`), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)
-            case Ident(`nme_WILDCARD`)              => NamelessEH(ThrowableReference,  caseBody)
+            case Typed(Ident(nme.WILDCARD), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)
+            case Ident(nme.WILDCARD)              => NamelessEH(ThrowableReference,  caseBody)
             case Bind(_, _)                       => BoundEH   (treeHelper(pat).symbol, caseBody)
           }
         }
@@ -195,7 +199,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
        */
       val postHandlers = new asm.Label
 
-      val hasFinally   = (finalizer != EmptyTree)
+      val hasFinally   = (finalizer != tpd.EmptyTree)
 
       /*
        * used in the finally-clause reached via fall-through from try-catch, if any.
@@ -316,7 +320,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
         nopIfNeeded(startTryBody)
         val finalHandler = currProgramPoint() // version of the finally-clause reached via unhandled exception.
         protect(startTryBody, finalHandler, finalHandler, null)
-        val Local(eTK, _, eIdx, _) = locals(locals.makeLocal(ThrowableReference, "exc", Throwable_Type, treeHelper(finalizer).pos))
+        val Local(eTK, _, eIdx, _) = locals(locals.makeLocal(ThrowableReference, "exc", defn.ThrowableType, treeHelper(finalizer).pos))
         bc.store(eIdx, eTK)
         emitFinalizer(finalizer, null, isDuplicate = true)
         bc.load(eIdx, eTK)

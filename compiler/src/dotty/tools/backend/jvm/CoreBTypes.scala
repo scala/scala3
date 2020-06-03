@@ -4,6 +4,8 @@ package jvm
 
 import scala.annotation.switch
 
+import dotty.tools.dotc.core.Symbols._
+
 /**
  * Core BTypes and some other definitions. The initialization of these definitions requies access
  * to symbols / types (global).
@@ -40,15 +42,15 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
    * the first use of `classBTypeFromSymbol` because that method looks at the map.
    */
   lazy val primitiveTypeMap: Map[Symbol, PrimitiveBType] = Map(
-    UnitClass    -> UNIT,
-    BooleanClass -> BOOL,
-    CharClass    -> CHAR,
-    ByteClass    -> BYTE,
-    ShortClass   -> SHORT,
-    IntClass     -> INT,
-    LongClass    -> LONG,
-    FloatClass   -> FLOAT,
-    DoubleClass  -> DOUBLE
+    defn.UnitClass    -> UNIT,
+    defn.BooleanClass -> BOOL,
+    defn.CharClass    -> CHAR,
+    defn.ByteClass    -> BYTE,
+    defn.ShortClass   -> SHORT,
+    defn.IntClass     -> INT,
+    defn.LongClass    -> LONG,
+    defn.FloatClass   -> FLOAT,
+    defn.DoubleClass  -> DOUBLE
   )
 
   lazy val BOXED_UNIT    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Void])
@@ -107,16 +109,16 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
   lazy val RT_NOTHING : ClassBType = classBTypeFromSymbol(getRequiredClass("scala.runtime.Nothing$")) // (requiredClass[scala.runtime.Nothing$])
   lazy val RT_NULL    : ClassBType = classBTypeFromSymbol(getRequiredClass("scala.runtime.Null$"))    // (requiredClass[scala.runtime.Null$])
 
-  lazy val ObjectReference   : ClassBType = classBTypeFromSymbol(ObjectClass)
+  lazy val ObjectReference   : ClassBType = classBTypeFromSymbol(defn.ObjectClass)
   lazy val objArrayReference : ArrayBType = ArrayBType(ObjectReference)
 
-  lazy val StringRef                   : ClassBType = classBTypeFromSymbol(StringClass)
+  lazy val StringRef                   : ClassBType = classBTypeFromSymbol(defn.StringClass)
   lazy val jlStringBuilderRef          : ClassBType = classBTypeFromSymbol(JavaStringBuilderClass)
   lazy val jlStringBufferRef           : ClassBType = classBTypeFromSymbol(JavaStringBufferClass)
   lazy val jlCharSequenceRef           : ClassBType = classBTypeFromSymbol(JavaCharSequenceClass)
-  lazy val ThrowableReference          : ClassBType = classBTypeFromSymbol(ThrowableClass)
-  lazy val jlCloneableReference        : ClassBType = classBTypeFromSymbol(JavaCloneableClass)        // java/lang/Cloneable
-  lazy val jlNPEReference              : ClassBType = classBTypeFromSymbol(NullPointerExceptionClass) // java/lang/NullPointerException
+  lazy val ThrowableReference          : ClassBType = classBTypeFromSymbol(defn.ThrowableClass)
+  lazy val jlCloneableReference        : ClassBType = classBTypeFromSymbol(defn.JavaCloneableClass)        // java/lang/Cloneable
+  lazy val jlNPEReference              : ClassBType = classBTypeFromSymbol(defn.NullPointerExceptionClass) // java/lang/NullPointerException
   lazy val jioSerializableReference    : ClassBType = classBTypeFromSymbol(JavaSerializableClass)     // java/io/Serializable
   lazy val scalaSerializableReference  : ClassBType = classBTypeFromSymbol(SerializableClass)         // scala/Serializable
   lazy val classCastExceptionReference : ClassBType = classBTypeFromSymbol(ClassCastExceptionClass)   // java/lang/ClassCastException

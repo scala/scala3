@@ -5,6 +5,8 @@ package jvm
 import scala.tools.asm
 import scala.annotation.threadUnsafe
 
+import dotty.tools.dotc.core.Symbols._
+
 /**
  * This class mainly contains the method classBTypeFromSymbol, which extracts the necessary
  * information from a symbol and its type to create the corresponding ClassBType. It requires
@@ -48,7 +50,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     assert(symHelper(classSym).isClass, s"Cannot create ClassBType from non-class symbol $classSym")
     assert(
       (!primitiveTypeMap.contains(classSym) || isCompilingPrimitive) &&
-      (classSym != NothingClass && classSym != NullClass),
+      (classSym != defn.NothingClass && classSym != defn.NullClass),
       s"Cannot create ClassBType for special class symbol ${symHelper(classSym).showFullName}")
 
     convertedClasses.getOrElse(classSym, {
@@ -64,10 +66,10 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   private def setClassInfo(classSym: Symbol, classBType: ClassBType): ClassBType = {
     val superClassSym = symHelper(classSym).superClass
     assert(
-      if (classSym == ObjectClass)
+      if (classSym == defn.ObjectClass)
         superClassSym == NoSymbol
       else if (symHelper(classSym).isInterface)
-        superClassSym == ObjectClass
+        superClassSym == defn.ObjectClass
       else
         // A ClassBType for a primitive class (scala.Boolean et al) is only created when compiling these classes.
         ((superClassSym != NoSymbol) && !symHelper(superClassSym).isInterface) || (isCompilingPrimitive && primitiveTypeMap.contains(classSym)),

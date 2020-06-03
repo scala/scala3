@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import dotty.tools.dotc.core.Symbols._
+
 /**
  * This trait contains code shared between GenBCode and GenASM that depends on types defined in
  * the compiler cake (Global).

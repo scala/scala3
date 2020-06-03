@@ -24,6 +24,7 @@ import Phases._
 import dotty.tools.dotc.util
 import dotty.tools.dotc.util.Spans
 import Decorators._
+import Constants._
 import tpd._
 
 import scala.tools.asm
@@ -31,7 +32,7 @@ import StdNames.{nme, str}
 import NameKinds.{DefaultGetterName, ExpandedName}
 import Names.TermName
 
-class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: Context) {
+class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit val ctx: Context) {
   import Symbols.{toDenot, toClassDenot}
     // Dotty deviation: Need to (re-)import implicit decorators here because otherwise
     // they would be shadowed by the more deeply nested `symHelper` decorator.
@@ -76,59 +77,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type ArrayValue      = tpd.JavaSeqLiteral
   type Closure         = tpd.Closure
 
-  val NoSymbol: Symbol = Symbols.NoSymbol
-  val NoPosition: Position = Spans.NoSpan
-  val EmptyTree: Tree = tpd.EmptyTree
-
-
-  val UnitTag: ConstantTag = Constants.UnitTag
-  val IntTag: ConstantTag = Constants.IntTag
-  val FloatTag: ConstantTag = Constants.FloatTag
-  val NullTag: ConstantTag = Constants.NullTag
-  val BooleanTag: ConstantTag = Constants.BooleanTag
-  val ByteTag: ConstantTag = Constants.ByteTag
-  val ShortTag: ConstantTag = Constants.ShortTag
-  val CharTag: ConstantTag = Constants.CharTag
-  val DoubleTag: ConstantTag = Constants.DoubleTag
-  val LongTag: ConstantTag = Constants.LongTag
-  val StringTag: ConstantTag = Constants.StringTag
-  val ClazzTag: ConstantTag = Constants.ClazzTag
-  val EnumTag: ConstantTag = Constants.EnumTag
-
-  val nme_This: Name = StdNames.nme.This
-  val nme_EMPTY_PACKAGE_NAME: Name = StdNames.nme.EMPTY_PACKAGE
-  val nme_CONSTRUCTOR: Name = StdNames.nme.CONSTRUCTOR
-  val nme_WILDCARD: Name = StdNames.nme.WILDCARD
-  val nme_THIS: Name = StdNames.nme.THIS
-  val nme_PACKAGE: Name = StdNames.nme.PACKAGE
-  val nme_EQEQ_LOCAL_VAR: Name = StdNames.nme.EQEQ_LOCAL_VAR
-
    // require LambdaMetafactory: scalac uses getClassIfDefined, but we need those always.
   @threadUnsafe lazy val LambdaMetaFactory: ClassSymbol = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
   @threadUnsafe lazy val MethodHandle: ClassSymbol      = ctx.requiredClass("java.lang.invoke.MethodHandle")
 
-  val nme_valueOf: Name = StdNames.nme.valueOf
-  val nme_apply: TermName = StdNames.nme.apply
-  val NothingClass: Symbol = defn.NothingClass
-  val NullClass: Symbol = defn.NullClass
-  val ObjectClass: Symbol = defn.ObjectClass
-  val Object_Type: Type = defn.ObjectType
-  val Throwable_Type: Type = defn.ThrowableType
-  val Object_isInstanceOf: Symbol = defn.Any_isInstanceOf
-  val Object_asInstanceOf: Symbol = defn.Any_asInstanceOf
-  val Object_synchronized: Symbol = defn.Object_synchronized
-  val Object_equals: Symbol = defn.Any_equals
-  val ArrayClass: Symbol = defn.ArrayClass
-  val UnitClass: Symbol = defn.UnitClass
-  val BooleanClass: Symbol = defn.BooleanClass
-  val CharClass: Symbol = defn.CharClass
-  val ShortClass: Symbol = defn.ShortClass
-  val ClassClass: Symbol = defn.ClassClass
-  val ByteClass: Symbol = defn.ByteClass
-  val IntClass: Symbol = defn.IntClass
-  val LongClass: Symbol = defn.LongClass
-  val FloatClass: Symbol = defn.FloatClass
-  val DoubleClass: Symbol = defn.DoubleClass
   def isArrayClone(tree: Tree): Boolean = tree match {
     case SelectBI(qual, StdNames.nme.clone_) if qual.tpe.widen.isInstanceOf[JavaArrayType] => true
     case _ => false
@@ -237,7 +189,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         arrAnnotV.visitEnd()
 
       case Apply(fun, args) if fun.symbol == defn.ArrayClass.primaryConstructor ||
-        toDenot(fun.symbol).owner == defn.ArrayClass.linkedClass && fun.symbol.name == nme_apply =>
+        toDenot(fun.symbol).owner == defn.ArrayClass.linkedClass && fun.symbol.name == nme.apply =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
 
         var actualArgs = if (fun.tpe.isImplicitMethod) {
@@ -412,12 +364,12 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   // todo: remove
   def isMaybeBoxed(sym: Symbol): Boolean = {
-    (sym == ObjectClass) ||
-      (sym == JavaSerializableClass) ||
+    (sym == defn.ObjectClass) ||
+      (sym == defn.JavaSerializableClass) ||
       (sym == defn.ComparableClass) ||
-      (sym derivesFrom BoxedNumberClass) ||
+      (sym derivesFrom defn.BoxedNumberClass) ||
       (sym derivesFrom BoxedCharacterClass) ||
-      (sym derivesFrom BoxedBooleanClass)
+      (sym derivesFrom defn.BoxedBooleanClass)
   }
 
   def getSingleOutput: Option[AbstractFile] = None // todo: implement
@@ -699,7 +651,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         // workaround #371
 
         println(s"Warning: mocking up superclass for $sym")
-        ObjectClass
+        defn.ObjectClass
       }
       else t
     }
@@ -881,7 +833,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
        */
       def primitiveOrClassToBType(sym: Symbol): BType = {
         assert(sym.isClass, sym)
-        assert(sym != ArrayClass || isCompilingArray, sym)
+        assert(sym != defn.ArrayClass || isCompilingArray, sym)
         primitiveTypeMap.getOrElse(sym.asInstanceOf[ct.bTypes.coreBTypes.bTypes.int.Symbol],
           storage.getClassBTypeAndRegisterInnerClass(sym.asInstanceOf[ct.int.Symbol])).asInstanceOf[BType]
       }
@@ -934,7 +886,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
               "If possible, please file a bug on https://github.com/lampepfl/dotty/issues")
 
           tp match {
-            case tp: ThisType if tp.cls == ArrayClass => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
+            case tp: ThisType if tp.cls == defn.ArrayClass => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
             case tp: ThisType                         => storage.getClassBTypeAndRegisterInnerClass(tp.cls.asInstanceOf[ct.int.Symbol])
            // case t: SingletonType                   => primitiveOrClassToBType(t.classSymbol)
             case t: SingletonType                     => t.underlying.toTypeKind(ct)(storage)
@@ -1074,7 +1026,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       if (t.exists) t
       else {
         val arity = field.meth.tpe.widenDealias.paramTypes.size - _1.size
-        val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == UnitClass
+        val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == defn.UnitClass
         if (returnsUnit) ctx.requiredClass(("dotty.runtime.function.JProcedure" + arity))
         else if (arity <= 2) ctx.requiredClass(("dotty.runtime.function.JFunction" + arity))
         else ctx.requiredClass(("scala.Function" + arity))

@@ -7,6 +7,8 @@ import scala.tools.asm.ClassWriter
 import scala.collection.mutable
 import dotty.tools.io.AbstractFile
 
+import dotty.tools.dotc.core.Symbols._
+
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
  *
@@ -198,7 +200,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
     private def assertClassNotArray(sym: Symbol): Unit = {
       assert(symHelper(sym).isClass, sym)
-      assert(sym != ArrayClass || isCompilingArray, sym)
+      assert(sym != defn.ArrayClass || isCompilingArray, sym)
     }
 
     private def assertClassNotArrayNotPrimitive(sym: Symbol): Unit = {
@@ -223,8 +225,8 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     final def getClassBTypeAndRegisterInnerClass(sym: Symbol): ClassBType = {
       assertClassNotArrayNotPrimitive(sym)
 
-      if (sym == NothingClass) RT_NOTHING
-      else if (sym == NullClass) RT_NULL
+      if (sym == defn.NothingClass) RT_NOTHING
+      else if (sym == defn.NullClass) RT_NULL
       else {
         val r = classBTypeFromSymbol(sym)
         if (r.isNestedClass) innerClassBufferASM += r
@@ -382,7 +384,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         val m = if (symHelper(m0).isBridge) symHelper(m0).nextOverriddenSymbol else m0
         if (m == NoSymbol)
           log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
-        else if (symHelper(m).isType || symHelper(m).isDeferred || (symHelper(m).owner eq ObjectClass) || symHelper(m).isConstructor || symHelper(m).isExpanded)
+        else if (symHelper(m).isType || symHelper(m).isDeferred || (symHelper(m).owner eq defn.ObjectClass) || symHelper(m).isConstructor || symHelper(m).isExpanded)
           debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
         else if (conflictingNames(symHelper(m).name))
           log(s"No forwarder for $m due to conflict with ${typeHelper(symHelper(linkedClass).info).member(symHelper(m).name)}")
