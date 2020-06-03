@@ -39,8 +39,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     // Dotty deviation: Need to (re-)import implicit decorators here because otherwise
     // they would be shadowed by the more deeply nested `symHelper` decorator.
 
-  type Flags           = Long
-  type ConstantTag = Int
 
   type Symbol          = Symbols.Symbol
   type Type            = Types.Type
@@ -530,14 +528,12 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   /** The members of this type that have all of `required` flags but none of `excluded` flags set.
    *  The members are sorted by name and signature to guarantee a stable ordering.
    */
-  def sortedMembersBasedOnFlags(tp: Type, required: Flags, excluded: Flags): List[Symbol] = {
-    val requiredFlagSet = termFlagSet(required)
-    val excludedFlagSet = termFlagSet(excluded)
+  def sortedMembersBasedOnFlags(tp: Type, required: Flags.Flag, excluded: Flags.FlagSet): List[Symbol] = {
     // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
     val names = tp.memberNames(takeAllFilter).toSeq.sorted
     val buffer = mutable.ListBuffer[Symbol]()
     names.foreach { name =>
-      buffer ++= tp.memberBasedOnFlags(name, requiredFlagSet, excludedFlagSet)
+      buffer ++= tp.memberBasedOnFlags(name, required, excluded)
         .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol)
     }
     buffer.toList
