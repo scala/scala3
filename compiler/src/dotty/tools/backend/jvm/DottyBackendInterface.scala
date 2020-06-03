@@ -875,10 +875,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _2: Symbol = if (field.from.symbol.isLabel) field.from.symbol else NoSymbol
   }
 
-  object ThrownExceptionBI {
-    def unapply(a: Annotation): Option[Symbol] = None // todo
-  }
-
   object ArrayValueBI extends DeconstructorCommon[ArrayValue] {
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem

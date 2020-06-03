@@ -408,8 +408,9 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     def getExceptions(excs: List[Annotation]): List[String] = {
-      for (ThrownExceptionBI(exc) <- excs.distinct)
-      yield internalName(exc)
+      // for (ThrownException(exc) <- excs.distinct)
+      // yield internalName(exc)
+      Nil
     }
 
   } // end of trait BCForwardersGen
