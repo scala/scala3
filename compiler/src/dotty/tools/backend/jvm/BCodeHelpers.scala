@@ -7,6 +7,7 @@ import scala.tools.asm.ClassWriter
 import scala.collection.mutable
 import dotty.tools.io.AbstractFile
 
+import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.StdNames.str
 import dotty.tools.dotc.core.Decorators._

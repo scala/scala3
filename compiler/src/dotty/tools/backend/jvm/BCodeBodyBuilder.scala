@@ -9,6 +9,7 @@ import scala.tools.asm.{Handle, Label, Opcodes}
 import BCodeHelpers.InvokeStyle
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags

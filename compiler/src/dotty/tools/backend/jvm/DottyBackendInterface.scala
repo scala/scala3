@@ -43,7 +43,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   type Symbol          = Symbols.Symbol
   type Type            = Types.Type
   type Tree            = tpd.Tree
-  type CompilationUnit = dotc.CompilationUnit
   type Constant        = Constants.Constant
   type Literal         = tpd.Literal
   type Position        = Spans.Span

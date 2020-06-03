@@ -10,6 +10,7 @@ import scala.tools.asm.util.{TraceMethodVisitor, ASMifier}
 import java.io.PrintWriter
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.StdNames.str
