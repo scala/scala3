@@ -445,14 +445,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   }
 
   implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper {
-    // names
-    // def javaSimpleName: String = toDenot(sym).name.mangledString // addModuleSuffix(simpleName.dropLocal)
-    def javaBinaryName: String = javaClassName.replace('.', '/') // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
-    def javaClassName: String = toDenot(sym).fullName.mangledString // addModuleSuffix(fullNameInternal('.')).toString
-    def rawname: String = {
-      val original = toDenot(sym).initial
-      sym.name(ctx.withPhase(original.validFor.phaseId)).mangledString
-    }
+
 
     // tests
     def isClass: Boolean = {
@@ -839,10 +832,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   abstract class SymbolHelper {
 
     // names
-    // def javaSimpleName: String
-    def javaBinaryName: String
-    def javaClassName: String
-    def rawname: String
+    // def rawname: String
 
     /** Does this symbol actually correspond to an interface that will be emitted?
      *  In the backend, this should be preferred over `isInterface` because it

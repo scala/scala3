@@ -55,7 +55,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
 
     convertedClasses.getOrElse(classSym, {
-      val internalName = symHelper(classSym).javaBinaryName
+      val internalName = classSym.fullName.mangledString.replace('.', '/')
       // We first create and add the ClassBType to the hash map before computing its info. This
       // allows initializing cylic dependencies, see the comment on variable ClassBType._info.
       val classBType = new ClassBType(internalName)
@@ -161,7 +161,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         if (isAnonymousOrLocalClass(innerClassSym)) {
           None
         } else {
-          val outerName = symHelper(innerClassSym.originalOwner.originalLexicallyEnclosingClass).javaBinaryName
+          val outerName = innerClassSym.originalOwner.originalLexicallyEnclosingClass.fullName.mangledString.replace('.', '/')
           // Java compatibility. See the big comment in BTypes that summarizes the InnerClass spec.
           val outerNameModule =
             if (symHelper(innerClassSym.originalOwner.originalLexicallyEnclosingClass).isTopLevelModuleClass) dropModule(outerName)
@@ -172,7 +172,10 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
 
       val innerName: Option[String] = {
         if (innerClassSym.isAnonymousClass || innerClassSym.isAnonymousFunction) None
-        else Some(symHelper(innerClassSym).rawname) // moduleSuffix for module classes
+        else {
+          val original = innerClassSym.initial
+          Some(innerClassSym.name(ctx.withPhase(original.validFor.phaseId)).mangledString) // moduleSuffix for module classes
+        }
       }
 
       Some(NestedInfo(enclosingClass, outerName, innerName, isStaticNestedClass))
