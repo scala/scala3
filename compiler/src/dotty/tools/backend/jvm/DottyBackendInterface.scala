@@ -595,7 +595,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
         }
       else Nil
 
-    def annotations: List[Annotation] = toDenot(sym).annotations
     def companionModuleMembers: List[Symbol] =  {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
       // not local classes of the companion module (E in the example) that were lifted by lambdalift.
@@ -607,19 +606,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
     def methodSymbols: List[Symbol] =
       for (f <- toDenot(sym).info.decls.toList if f.isMethod && f.isTerm && !f.isModule) yield f
-    def serialVUID: Option[Long] =
-      sym.getAnnotation(defn.SerialVersionUIDAnnot).flatMap { annot =>
-        if (sym.is(Flags.Trait)) {
-          ctx.error("@SerialVersionUID does nothing on a trait", annot.tree.sourcePos)
-          None
-        } else {
-          val vuid = annot.argumentConstant(0).map(_.longValue)
-          if (vuid.isEmpty)
-            ctx.error("The argument passed to @SerialVersionUID must be a constant",
-              annot.argument(0).getOrElse(annot.tree).sourcePos)
-          vuid
-        }
-      }
+
 
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
       ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos)
@@ -954,11 +941,9 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     // def primaryConstructor: Symbol
     def nestedClasses: List[Symbol]
     def memberClasses: List[Symbol]
-    def annotations: List[Annotation]
     def companionModuleMembers: List[Symbol]
     def fieldSymbols: List[Symbol]
     def methodSymbols: List[Symbol]
-    def serialVUID: Option[Long]
 
 
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol
@@ -1015,17 +1000,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   val StringModule: Symbol = symHelper(requiredClass[java.lang.String]).linkedClassOfClass
   val ScalaRunTimeModule: Symbol = requiredModule[scala.runtime.ScalaRunTime.type]
 
-
-  def isNull(t: Tree): Boolean = t match {
-    case Literal(Constant(null)) => true
-    case _ => false
-  }
-  def isLiteral(t: Tree): Boolean = t match {
-    case Literal(_) => true
-    case _ => false
-  }
-  def isNonNullExpr(t: Tree): Boolean = isLiteral(t) || ((t.symbol ne null) && symHelper(t.symbol).isModule)
-  def ifOneIsNull(l: Tree, r: Tree): Tree = if (isNull(l)) r else if (isNull(r)) l else null
 
   private val primitiveCompilationUnits = Set(
     "Unit.scala",

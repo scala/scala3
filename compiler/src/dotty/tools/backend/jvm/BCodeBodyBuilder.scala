@@ -1250,6 +1250,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       def genComparisonOp(l: Tree, r: Tree, code: Int): Unit = {
         val op = testOpForPrimitive(code)
+        def isNull(t: Tree): Boolean = t match {
+          case Literal(Constant(null)) => true
+          case _ => false
+        }
+        def ifOneIsNull(l: Tree, r: Tree): Tree = if (isNull(l)) r else if (isNull(r)) l else null
         val nonNullSide = if (ScalaPrimitivesOps.isReferenceEqualityOp(code)) ifOneIsNull(l, r) else null
         if (nonNullSide != null) {
           // special-case reference (in)equality test for null (null eq x, x eq null)
@@ -1329,6 +1334,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
         !areSameFinals && isMaybeBoxed(l.tpe.widenDealias.typeSymbol) && isMaybeBoxed(r.tpe.widenDealias.typeSymbol)
       }
+      def isNull(t: Tree): Boolean = t match {
+        case Literal(Constant(null)) => true
+        case _ => false
+      }
+      def isNonNullExpr(t: Tree): Boolean = t.isInstanceOf[Literal] || ((t.symbol ne null) && symHelper(t.symbol).isModule)
 
       if (mustUseAnyComparator) {
         val equalsMethod: Symbol = {

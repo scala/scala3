@@ -106,7 +106,19 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         }
       }
 
-      val optSerial: Option[Long] = symHelper(claszSymbol).serialVUID
+      val optSerial: Option[Long] =
+        claszSymbol.getAnnotation(defn.SerialVersionUIDAnnot).flatMap { annot =>
+          if (claszSymbol.is(Flags.Trait)) {
+            ctx.error("@SerialVersionUID does nothing on a trait", annot.tree.sourcePos)
+            None
+          } else {
+            val vuid = annot.argumentConstant(0).map(_.longValue)
+            if (vuid.isEmpty)
+              ctx.error("The argument passed to @SerialVersionUID must be a constant",
+                annot.argument(0).getOrElse(annot.tree).sourcePos)
+            vuid
+          }
+        }
       if (optSerial.isDefined) { addSerialVUID(optSerial.get, cnode)}
 
       addClassFields()
@@ -155,7 +167,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val ssa = getAnnotPickle(thisName, claszSymbol)
       cnode.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
-      emitAnnotations(cnode, symHelper(claszSymbol).annotations ++ ssa)
+      emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
 
       if (isCZStaticModule || isCZParcelable) {
 
@@ -248,7 +260,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           null // no initial value
         )
         cnode.fields.add(jfield)
-        emitAnnotations(jfield, symHelper(f).annotations)
+        emitAnnotations(jfield, f.annotations)
       }
 
     } // end of method addClassFields()
@@ -488,7 +500,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     def initJMethod(flags: Int, paramAnnotations: List[List[Annotation]]): Unit = {
 
       val jgensig = getGenericSignature(methSymbol, claszSymbol)
-      val (excs, others) = symHelper(methSymbol).annotations partition (_.tree.symbol == defn.ThrowsAnnot)
+      val (excs, others) = methSymbol.annotations partition (_.tree.symbol == defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(excs)
 
       val bytecodeName =
@@ -549,7 +561,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       )
 
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
-      initJMethod(flags, params.map(p => symHelper(p.symbol).annotations))
+      initJMethod(flags, params.map(p => p.symbol.annotations))
 
 
       if (!isAbstractMethod && !isNative) {

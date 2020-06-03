@@ -330,7 +330,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       // TODO needed? for(ann <- m.annotations) { ann.symbol.initialize }
       val jgensig = getStaticForwarderGenericSignature(m, module)
-      val (throws, others) = symHelper(m).annotations partition (_.tree.symbol == defn.ThrowsAnnot)
+      val (throws, others) = m.annotations partition (_.tree.symbol == defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(throws)
 
       val jReturnType = toTypeKind(methodInfo.resultType)
@@ -345,12 +345,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       )
 
       emitAnnotations(mirrorMethod, others)
-      val params = Nil // backend uses this to emit annotations on parameter lists of forwarders
+      val params: List[Symbol] = Nil // backend uses this to emit annotations on parameter lists of forwarders
       // to static methods of companion class
       // in Dotty this link does not exists: there is no way to get from method type
       // to inner symbols of DefDef
       // todo: somehow handle.
-      emitParamAnnotations(mirrorMethod, params.map(symHelper(_).annotations))
+      emitParamAnnotations(mirrorMethod, params.map(_.annotations))
 
       mirrorMethod.visitCode()
 
@@ -494,7 +494,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       val ssa = getAnnotPickle(mirrorName, symHelper(moduleClass).companionSymbol)
       mirrorClass.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
-      emitAnnotations(mirrorClass, symHelper(moduleClass).annotations ++ ssa)
+      emitAnnotations(mirrorClass, moduleClass.annotations ++ ssa)
 
       addForwarders(mirrorClass, mirrorName, moduleClass)
 
