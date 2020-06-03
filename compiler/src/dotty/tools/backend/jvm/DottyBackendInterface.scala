@@ -440,7 +440,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
   }
 
-  implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper(sym)
+  def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper(sym)
 
   class SymbolHelper(sym: Symbol) {
 

@@ -126,7 +126,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       val companionModuleMembers = {
         // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
         // not local classes of the companion module (E in the example) that were lifted by lambdalift.
-        if (classSym.linkedClass.isTopLevelModuleClass) /*exitingPickler*/ classSym.linkedClass.memberClasses
+        if (symHelper(classSym.linkedClass).isTopLevelModuleClass) /*exitingPickler*/ symHelper(classSym.linkedClass).memberClasses
         else Nil
       }
 
@@ -162,7 +162,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   private def buildNestedInfo(innerClassSym: Symbol): Option[NestedInfo] = {
     assert(symHelper(innerClassSym).isClass, s"Cannot build NestedInfo for non-class symbol $innerClassSym")
 
-    val isNested = !innerClassSym.originalOwner.originalLexicallyEnclosingClass.is(Flags.PackageClass)
+    val isNested = !symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass.is(Flags.PackageClass)
     if (!isNested) None
     else {
       // See comment in BTypes, when is a class marked static in the InnerClass table.
@@ -183,10 +183,10 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         if (isAnonymousOrLocalClass(innerClassSym)) {
           None
         } else {
-          val outerName = innerClassSym.originalOwner.originalLexicallyEnclosingClass.fullName.mangledString.replace('.', '/')
+          val outerName = symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass.fullName.mangledString.replace('.', '/')
           // Java compatibility. See the big comment in BTypes that summarizes the InnerClass spec.
           val outerNameModule =
-            if (symHelper(innerClassSym.originalOwner.originalLexicallyEnclosingClass).isTopLevelModuleClass) dropModule(outerName)
+            if (symHelper(symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass).isTopLevelModuleClass) dropModule(outerName)
             else outerName
           Some(outerNameModule.toString)
         }
@@ -225,7 +225,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   final def javaFlags(sym: Symbol): Int = {
 
 
-    val privateFlag = sym.is(Flags.Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
+    val privateFlag = sym.is(Flags.Private) || (sym.isPrimaryConstructor && symHelper(sym.owner).isTopLevelModuleClass)
 
     val finalFlag = sym.is(Flags.Final) &&  !toDenot(sym).isClassConstructor && !(sym.is(Flags.Mutable)) &&  !(sym.enclosingClass.is(Flags.Trait))
 
@@ -244,7 +244,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         //  Mixin forwarders are bridges and can be final, but final bridges confuse some frameworks
         !sym.is(Flags.Bridge))
         ACC_FINAL else 0,
-      if (sym.isStaticMember) ACC_STATIC else 0,
+      if (symHelper(sym).isStaticMember) ACC_STATIC else 0,
       if (sym.is(Flags.Bridge)) ACC_BRIDGE | ACC_SYNTHETIC else 0,
       if (sym.is(Flags.Artifact)) ACC_SYNTHETIC else 0,
       if (symHelper(sym).isClass && !symHelper(sym).isInterface) ACC_SUPER else 0,
