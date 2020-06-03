@@ -11,7 +11,7 @@ import scala.tools.asm
 /* Interface to abstract over frontend inside backend.
  * Intended to be implemented by both scalac and dotc
  */
-abstract class BackendInterface {
+abstract class BackendInterfaceOld {
   type Flags      = Long
 
   type Constant   >: Null <: AnyRef

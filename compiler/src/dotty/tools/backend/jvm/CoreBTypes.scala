@@ -27,7 +27,7 @@ import scala.annotation.switch
  * added when the ClassBTypes are created. The per run cache removes them, so they would be missing
  * in the second run.
  */
-class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: BackendInterface]](val bTypes: BTFS) {
+class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTypes: BTFS) {
   import bTypes._
   import int._
 
@@ -199,7 +199,7 @@ trait CoreBTypesProxyGlobalIndependent[BTS <: BTypes] {
 /**
  * See comment in class [[CoreBTypes]].
  */
-final class CoreBTypesProxy[BTFS <: BTypesFromSymbols[_ <: BackendInterface]](val bTypes: BTFS) extends CoreBTypesProxyGlobalIndependent[BTFS] {
+final class CoreBTypesProxy[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTypes: BTFS) extends CoreBTypesProxyGlobalIndependent[BTFS] {
   import bTypes._
   import bTypes.int._
 

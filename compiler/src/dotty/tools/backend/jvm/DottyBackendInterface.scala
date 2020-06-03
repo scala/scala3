@@ -31,7 +31,7 @@ import StdNames.{nme, str}
 import NameKinds.{DefaultGetterName, ExpandedName}
 import Names.TermName
 
-class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: Context) extends BackendInterface{
+class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: Context) extends BackendInterfaceOld{
   import Symbols.{toDenot, toClassDenot}
     // Dotty deviation: Need to (re-)import implicit decorators here because otherwise
     // they would be shadowed by the more deeply nested `symHelper` decorator.
