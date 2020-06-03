@@ -475,8 +475,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper {
-    def exists: Boolean = sym.exists
-
     // names
     def javaSimpleName: String = toDenot(sym).name.mangledString // addModuleSuffix(simpleName.dropLocal)
     def javaBinaryName: String = javaClassName.replace('.', '/') // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
@@ -486,20 +484,15 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       sym.name(ctx.withPhase(original.validFor.phaseId)).mangledString
     }
 
-    // types
-    def info: Type = toDenot(sym).info
-    def tpe: Type = toDenot(sym).info // todo whats the differentce between tpe and info?
-    def thisType: Type = toDenot(sym).thisType
-
     // tests
     def isClass: Boolean = {
       sym.isPackageObject || (sym.isClass)
     }
-    def isType: Boolean = sym.isType
-    def isAnonymousClass: Boolean = toDenot(sym).isAnonymousClass
-    def isConstructor: Boolean = toDenot(sym).isConstructor
+    // def isType: Boolean = sym.isType
+    // def isAnonymousClass: Boolean = toDenot(sym).isAnonymousClass
+    // def isConstructor: Boolean = toDenot(sym).isConstructor
     def isExpanded: Boolean = sym.name.is(ExpandedName)
-    def isAnonymousFunction: Boolean = toDenot(sym).isAnonymousFunction
+    // def isAnonymousFunction: Boolean = toDenot(sym).isAnonymousFunction
     def isMethod: Boolean = sym.is(Flags.Method)
     def isPublic: Boolean = !sym.flags.isOneOf(Flags.Private | Flags.Protected)
     def isSynthetic: Boolean = sym.is(Flags.Synthetic)
@@ -510,8 +503,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isLabel: Boolean = sym.is(Flags.Label)
     def hasPackageFlag: Boolean = sym.is(Flags.Package)
     def isInterface: Boolean = (sym.is(Flags.PureInterface)) || (sym.is(Flags.Trait))
-    def isGetter: Boolean = toDenot(sym).isGetter
-    def isSetter: Boolean = toDenot(sym).isSetter
+    // def isGetter: Boolean = toDenot(sym).isGetter
+    // def isSetter: Boolean = toDenot(sym).isSetter
     def isGetClass: Boolean = sym eq defn.Any_getClass
     def isJavaDefined: Boolean = sym.is(Flags.JavaDefined)
     def isJavaDefaultMethod: Boolean = !((sym.is(Flags.Deferred))  || toDenot(sym).isClassConstructor)
@@ -519,6 +512,15 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isPrivate: Boolean = sym.is(Flags.Private)
     def getsJavaFinalFlag: Boolean =
       isFinal &&  !toDenot(sym).isClassConstructor && !(sym.is(Flags.Mutable)) &&  !(sym.enclosingClass.is(Flags.Trait))
+
+    /** Does this symbol actually correspond to an interface that will be emitted?
+     *  In the backend, this should be preferred over `isInterface` because it
+     *  also returns true for the symbols of the fake companion objects we
+     *  create for Java-defined classes as well as for Java annotations
+     *  which we represent as classes.
+     */
+    def isEmittedInterface: Boolean = isInterface ||
+      isJavaDefined && (toDenot(sym).isAnnotation || isModuleClass && symHelper(companionClass).isInterface)
 
     def getsJavaPrivateFlag: Boolean =
       isPrivate || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
@@ -536,7 +538,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def hasEnumFlag: Boolean = sym.isAllOf(Flags.JavaEnumTrait)
     def hasAccessBoundary: Boolean = sym.accessBoundary(defn.RootClass) ne defn.RootClass
     def isVarargsMethod: Boolean = sym.is(Flags.JavaVarargs)
-    def isDeprecated: Boolean = false
+    // def isDeprecated: Boolean = false
     def isMutable: Boolean = sym.is(Flags.Mutable)
     def hasAbstractFlag: Boolean = sym.isOneOf(Flags.AbstractOrTrait)
     def hasModuleFlag: Boolean = sym.is(Flags.Module)
@@ -547,9 +549,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       (sym.is(Flags.Module)) && sym.isStatic
     def isEnum = sym.is(Flags.Enum)
 
-    def isClassConstructor: Boolean = toDenot(sym).isClassConstructor
-    def isAnnotation: Boolean = toDenot(sym).isAnnotation
-    def isSerializable: Boolean = toDenot(sym).isSerializable
+    // def isClassConstructor: Boolean = toDenot(sym).isClassConstructor
+    // def isAnnotation: Boolean = toDenot(sym).isAnnotation
+    // def isSerializable: Boolean = toDenot(sym).isSerializable
 
     /**
      * True for module classes of modules that are top-level or owned only by objects. Module classes
@@ -566,11 +568,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         toDenot(sym)(shiftedContext).isStatic(shiftedContext)
       }
 
-    def isStaticConstructor: Boolean = (isStaticMember && isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
+    def isStaticConstructor: Boolean = (isStaticMember && sym.isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
 
 
     // navigation
-    def owner: Symbol = toDenot(sym).owner
     def rawowner: Symbol = {
       originalOwner.originalLexicallyEnclosingClass
     }
@@ -609,11 +610,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         val shiftedContext = ctx.withPhase(validity.phaseId)
         toDenot(sym)(shiftedContext).lexicallyEnclosingClass(shiftedContext)
       } else NoSymbol
-    def nextOverriddenSymbol: Symbol = toDenot(sym).nextOverriddenSymbol
+    // def nextOverriddenSymbol: Symbol = toDenot(sym).nextOverriddenSymbol
     def allOverriddenSymbols: List[Symbol] = toDenot(sym).allOverriddenSymbols.toList
 
     // members
-    def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
+    // def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
 
     /** For currently compiled classes: All locally defined classes including local classes.
      *  The empty list for classes that are not currently compiled.
@@ -923,7 +924,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   abstract class SymbolHelper {
-    def exists: Boolean
 
     // names
     def javaSimpleName: String
@@ -931,27 +931,21 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def javaClassName: String
     def rawname: String
 
-    // types
-    def info: Type
-    def tpe: Type // todo whats the differentce between tpe and info?
-    def thisType: Type
-
     /** Does this symbol actually correspond to an interface that will be emitted?
      *  In the backend, this should be preferred over `isInterface` because it
      *  also returns true for the symbols of the fake companion objects we
      *  create for Java-defined classes as well as for Java annotations
      *  which we represent as classes.
      */
-    final def isEmittedInterface: Boolean = isInterface ||
-      isJavaDefined && (isAnnotation || isModuleClass && symHelper(companionClass).isInterface)
+    def isEmittedInterface: Boolean
 
     // tests
     def isClass: Boolean
-    def isType: Boolean
-    def isAnonymousClass: Boolean
-    def isConstructor: Boolean
+    // def isType: Boolean
+    // def isAnonymousClass: Boolean
+    // def isConstructor: Boolean
     def isExpanded: Boolean
-    def isAnonymousFunction: Boolean
+    // def isAnonymousFunction: Boolean
     def isMethod: Boolean
     def isPublic: Boolean
     def isSynthetic: Boolean
@@ -962,8 +956,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isLabel: Boolean
     def hasPackageFlag: Boolean
     def isInterface: Boolean
-    def isGetter: Boolean
-    def isSetter: Boolean
+    // def isGetter: Boolean
+    // def isSetter: Boolean
     def isGetClass: Boolean
     def isJavaDefined: Boolean
     def isDeferred: Boolean
@@ -979,7 +973,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def hasEnumFlag: Boolean
     def hasAccessBoundary: Boolean
     def isVarargsMethod: Boolean
-    def isDeprecated: Boolean
+    // def isDeprecated: Boolean
     def isMutable: Boolean
     def hasAbstractFlag: Boolean
     def hasModuleFlag: Boolean
@@ -988,9 +982,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def hasAnnotation(sym: Symbol): Boolean
     def shouldEmitForwarders: Boolean
     def isJavaDefaultMethod: Boolean
-    def isClassConstructor: Boolean
-    def isAnnotation: Boolean
-    def isSerializable: Boolean
+    // def isClassConstructor: Boolean
+    // def isAnnotation: Boolean
+    // def isSerializable: Boolean
     def isEnum: Boolean
 
     /**
@@ -1003,7 +997,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
 
     // navigation
-    def owner: Symbol
     def rawowner: Symbol // todo ???
     def originalOwner: Symbol
     def parentSymbols: List[Symbol]
@@ -1017,12 +1010,12 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def moduleClass: Symbol
     def enclosingClassSym: Symbol
     def originalLexicallyEnclosingClass: Symbol
-    def nextOverriddenSymbol: Symbol
+    // def nextOverriddenSymbol: Symbol
     def allOverriddenSymbols: List[Symbol]
 
 
     // members
-    def primaryConstructor: Symbol
+    // def primaryConstructor: Symbol
     def nestedClasses: List[Symbol]
     def memberClasses: List[Symbol]
     def annotations: List[Annotation]

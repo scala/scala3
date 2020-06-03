@@ -240,9 +240,9 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     final def asmMethodType(msym: Symbol): MethodBType = {
       assert(symHelper(msym).isMethod, s"not a method-symbol: $msym")
       val resT: BType =
-        if (symHelper(msym).isClassConstructor || symHelper(msym).isConstructor) UNIT
-        else toTypeKind(symHelper(msym).tpe.resultType)
-      MethodBType(symHelper(msym).tpe.firstParamTypes map toTypeKind, resT)
+        if (msym.isClassConstructor || msym.isConstructor) UNIT
+        else toTypeKind(msym.info.resultType)
+      MethodBType(msym.info.firstParamTypes map toTypeKind, resT)
     }
 
     /**
@@ -311,7 +311,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      */
     private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol): Unit = {
       val moduleName     = internalName(module)
-      val methodInfo     = symHelper(module).thisType.memberInfo(m)
+      val methodInfo     = module.thisType.memberInfo(m)
       val paramJavaTypes: List[BType] = methodInfo.firstParamTypes map toTypeKind
       // val paramNames     = 0 until paramJavaTypes.length map ("x_" + _)
 
@@ -342,7 +342,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       )
 
       emitAnnotations(mirrorMethod, others)
-      emitParamAnnotations(mirrorMethod, typeHelper(symHelper(m).info).params.map(symHelper(_).annotations))
+      emitParamAnnotations(mirrorMethod, typeHelper(m.info).params.map(symHelper(_).annotations))
 
       mirrorMethod.visitCode()
 
@@ -376,18 +376,18 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       val linkedClass  = symHelper(moduleClass).companionClass
       lazy val conflictingNames: Set[Name] = {
-        (typeHelper(symHelper(linkedClass).info).members collect { case sym if sym.name.isTermName => sym.name }).toSet
+        (typeHelper(linkedClass.info).members collect { case sym if sym.name.isTermName => sym.name }).toSet
       }
       debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
-      for (m0 <- typeHelper(symHelper(moduleClass).info).sortedMembersBasedOnFlags(required = Flag_METHOD, excluded = ExcludedForwarderFlags)) {
-        val m = if (symHelper(m0).isBridge) symHelper(m0).nextOverriddenSymbol else m0
+      for (m0 <- typeHelper(moduleClass.info).sortedMembersBasedOnFlags(required = Flag_METHOD, excluded = ExcludedForwarderFlags)) {
+        val m = if (symHelper(m0).isBridge) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
           log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
-        else if (symHelper(m).isType || symHelper(m).isDeferred || (symHelper(m).owner eq defn.ObjectClass) || symHelper(m).isConstructor || symHelper(m).isExpanded)
+        else if (m.isType || symHelper(m).isDeferred || (m.owner eq defn.ObjectClass) || m.isConstructor || symHelper(m).isExpanded)
           debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
         else if (conflictingNames(m.name))
-          log(s"No forwarder for $m due to conflict with ${typeHelper(symHelper(linkedClass).info).member(m.name)}")
+          log(s"No forwarder for $m due to conflict with ${typeHelper(linkedClass.info).member(m.name)}")
         else if (symHelper(m).hasAccessBoundary)
           log(s"No forwarder for non-public member $m")
         else {

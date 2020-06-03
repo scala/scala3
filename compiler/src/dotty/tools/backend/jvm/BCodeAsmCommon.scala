@@ -22,7 +22,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
     // Here used to be an `assert(!classSym.isDelambdafyFunction)`: delambdafy lambda classes are
     // always top-level. However, SI-8900 shows an example where the weak name-based implementation
     // of isDelambdafyFunction failed (for a function declared in a package named "lambda").
-    symHelper(classSym).isAnonymousClass || {
+    classSym.isAnonymousClass || {
       val originalOwnerLexicallyEnclosingClass = symHelper(symHelper(classSym).originalOwner).originalLexicallyEnclosingClass
       originalOwnerLexicallyEnclosingClass != NoSymbol && !symHelper(originalOwnerLexicallyEnclosingClass).isClass
     }

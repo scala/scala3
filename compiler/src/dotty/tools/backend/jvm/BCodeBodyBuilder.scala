@@ -324,7 +324,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             genLoad(prefix)
           }
 
-          genLoadArguments(env, symHelper(fun.symbol).info.firstParamTypes map toTypeKind)
+          genLoadArguments(env, fun.symbol.info.firstParamTypes map toTypeKind)
           generatedType = genInvokeDynamicLambda(NoSymbol, fun.symbol, env.size, functionalInterface)
 
         case app @ Apply(_, _) =>
@@ -445,7 +445,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     private def fieldOp(field: Symbol, isLoad: Boolean, specificReceiver: Symbol): Unit = {
       val useSpecificReceiver = specificReceiver != null && !symHelper(field).isScalaStatic
 
-      val owner      = internalName(if (useSpecificReceiver) specificReceiver else symHelper(field).owner)
+      val owner      = internalName(if (useSpecificReceiver) specificReceiver else field.owner)
       val fieldJName = symHelper(field).javaSimpleName.toString
       val fieldDescr = symInfoTK(field).descriptor
       val isStatic   = symHelper(field).isStaticMember
@@ -493,9 +493,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
         case EnumTag   =>
           val sym       = const.symbolValue
-          val ownerName = internalName(symHelper(sym).owner)
+          val ownerName = internalName(sym.owner)
           val fieldName = symHelper(sym).javaSimpleName.toString
-          val fieldDesc = toTypeKind(typeHelper(symHelper(sym).tpe).underlying).descriptor
+          val fieldDesc = toTypeKind(typeHelper(sym.info).underlying).descriptor
           mnode.visitFieldInsn(
             asm.Opcodes.GETSTATIC,
             ownerName,
@@ -551,7 +551,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
          * that cross cleanup boundaries. However, in theory such crossings are valid, so we should take care
          * of them.
          */
-        val resultKind = toTypeKind(symHelper(fromSym).info)
+        val resultKind = toTypeKind(fromSym.info)
         genLoad(expr, resultKind)
         lineNumber(r)
         bc goTo programPoint(fromSym)
@@ -707,7 +707,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         // instance (on JVM, <init> methods return VOID).
         case Apply(fun @ SelectBI(New(tpt), nme.CONSTRUCTOR), args) =>
           val ctor = fun.symbol
-          assert(symHelper(ctor).isClassConstructor, s"'new' call to non-constructor: ${ctor.name}")
+          assert(ctor.isClassConstructor, s"'new' call to non-constructor: ${ctor.name}")
 
           generatedType = toTypeKind(tpt.tpe)
           assert(generatedType.isRef, s"Non reference type cannot be instantiated: $generatedType")
@@ -717,7 +717,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               mkArrayConstructorCall(arr, app, args)
 
             case rt: ClassBType =>
-              assert(classBTypeFromSymbol(symHelper(ctor).owner) == rt, s"Symbol ${symHelper(ctor).owner.showFullName} is different from $rt")
+              assert(classBTypeFromSymbol(ctor.owner) == rt, s"Symbol ${ctor.owner.showFullName} is different from $rt")
               mnode.visitTypeInsn(asm.Opcodes.NEW, rt.internalName)
               bc dup generatedType
               genLoadArguments(args, paramTKs(app))
@@ -749,7 +749,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           } else { // normal method call
             val invokeStyle =
               if (symHelper(sym).isStaticMember) InvokeStyle.Static
-              else if (symHelper(sym).isPrivate || symHelper(sym).isClassConstructor) InvokeStyle.Special
+              else if (symHelper(sym).isPrivate || sym.isClassConstructor) InvokeStyle.Special
               else InvokeStyle.Virtual
 
             if (invokeStyle.hasInstance) genLoadQualifier(fun)
@@ -784,7 +784,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
                   // in the bytecode. Using the array descriptor (like we do for clone above) seems
                   // to work as well, but it seems safer not to change this. Javac also uses Object.
                   // Note that array apply/update/length are handled by isPrimitive (above).
-                  assert(symHelper(sym).owner == defn.ObjectClass, s"unexpected array call: $app")
+                  assert(sym.owner == defn.ObjectClass, s"unexpected array call: $app")
                   defn.ObjectClass
                 } else qualSym
               }
@@ -988,7 +988,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           desugarIdent(t) match {
             case Some(sel) => genLoadQualifier(sel)
             case None =>
-              assert(symHelper(t.symbol).owner == this.claszSymbol)
+              assert(t.symbol.owner == this.claszSymbol)
           }
         case _                    => abort(s"Unknown qualifier $tree")
       }
@@ -1001,7 +1001,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genLoadModule(tree: Tree): BType = {
       val module = (
         if (!symHelper(tree.symbol).isPackageClass) tree.symbol
-        else typeHelper(symHelper(tree.symbol).info).member(nme.PACKAGE) match {
+        else typeHelper(tree.symbol.info).member(nme.PACKAGE) match {
           case NoSymbol => abort(s"SI-5604: Cannot use package as value: $tree")
           case s        => abort(s"SI-5604: found package class where package object expected: $tree")
         }
@@ -1090,7 +1090,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
      * prevent an IllegalAccessError, (aladdin bug 455).
      */
     def genCallMethod(method: Symbol, style: InvokeStyle, pos: Position = NoSpan, specificReceiver: Symbol = null): BType = {
-      val methodOwner = symHelper(method).owner
+      val methodOwner = method.owner
 
       // the class used in the invocation's method descriptor in the classfile
       val receiverClass = {
@@ -1117,15 +1117,15 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           receiver != methodOwner && // fast path - the boolean is used to pick either of these two, if they are the same it does not matter
             style.isVirtual &&
             symHelper(receiver).isEmittedInterface &&
-            symHelper(typeHelper(defn.ObjectType).decl(method.name)).exists && { // fast path - compute overrideChain on the next line only if necessary
+            typeHelper(defn.ObjectType).decl(method.name).exists && { // fast path - compute overrideChain on the next line only if necessary
               val syms = symHelper(method).allOverriddenSymbols
-              !syms.isEmpty && symHelper(syms.last).owner == defn.ObjectClass
+              !syms.isEmpty && syms.last.owner == defn.ObjectClass
             }
         }
         if (isTraitMethodOverridingObjectMember) methodOwner else receiver
       }
 
-      symHelper(receiverClass).info // ensure types the type is up to date; erasure may add lateINTERFACE to traits
+      receiverClass.info // ensure types the type is up to date; erasure may add lateINTERFACE to traits
       val receiverName = internalName(receiverClass)
 
       val jname    = symHelper(method).javaSimpleName.toString
@@ -1325,9 +1325,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       if (mustUseAnyComparator) {
         val equalsMethod: Symbol = {
-          if (l.tpe <:< symHelper(defn.BoxedNumberClass).tpe) {
-            if (r.tpe <:< symHelper(defn.BoxedNumberClass).tpe) defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumNum)
-            else if (r.tpe <:< symHelper(defn.BoxedCharClass).tpe) NoSymbol // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
+          if (l.tpe <:< defn.BoxedNumberClass.info) {
+            if (r.tpe <:< defn.BoxedNumberClass.info) defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumNum)
+            else if (r.tpe <:< defn.BoxedCharClass.info) NoSymbol // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
             else defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
           } else externalEquals
         }
@@ -1384,36 +1384,36 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genInvokeDynamicLambda(ctor: Symbol, lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol): BType = {
       import java.lang.invoke.LambdaMetafactory.FLAG_SERIALIZABLE
 
-      debuglog(s"Using invokedynamic rather than `new ${symHelper(ctor).owner}`")
+      debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
       val generatedType = classBTypeFromSymbol(functionalInterface)
       // Lambdas should be serializable if they implement a SAM that extends Serializable or if they
       // implement a scala.Function* class.
-      val isSerializable = symHelper(functionalInterface).isSerializable || symHelper(functionalInterface).isFunctionClass
-      val isInterface = symHelper(symHelper(lambdaTarget).owner).isEmittedInterface
+      val isSerializable = functionalInterface.isSerializable || symHelper(functionalInterface).isFunctionClass
+      val isInterface = symHelper(lambdaTarget.owner).isEmittedInterface
       val invokeStyle =
         if (symHelper(lambdaTarget).isStaticMember) asm.Opcodes.H_INVOKESTATIC
-        else if (symHelper(lambdaTarget).isPrivate || symHelper(lambdaTarget).isClassConstructor) asm.Opcodes.H_INVOKESPECIAL
+        else if (symHelper(lambdaTarget).isPrivate || lambdaTarget.isClassConstructor) asm.Opcodes.H_INVOKESPECIAL
         else if (isInterface) asm.Opcodes.H_INVOKEINTERFACE
         else asm.Opcodes.H_INVOKEVIRTUAL
 
       val targetHandle =
         new asm.Handle(invokeStyle,
-          classBTypeFromSymbol(symHelper(lambdaTarget).owner).internalName,
+          classBTypeFromSymbol(lambdaTarget.owner).internalName,
           lambdaTarget.name.mangledString,
           asmMethodType(lambdaTarget).descriptor,
           /* itf = */ isInterface)
 
-      val (a,b) = symHelper(lambdaTarget).info.firstParamTypes.splitAt(environmentSize)
+      val (a,b) = lambdaTarget.info.firstParamTypes.splitAt(environmentSize)
       var (capturedParamsTypes, lambdaParamTypes) = (a,b)
 
-      if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = symHelper(symHelper(lambdaTarget).owner).info :: capturedParamsTypes
+      if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info :: capturedParamsTypes
 
       // Requires https://github.com/scala/scala-java8-compat on the runtime classpath
-      val returnUnit = typeHelper(symHelper(lambdaTarget).info.resultType).typeSymbol == defn.UnitClass
+      val returnUnit = typeHelper(lambdaTarget.info.resultType).typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
       val desc = capturedParamsTypes.map(tpe => toTypeKind(tpe)).mkString(("("), "", ")") + functionalInterfaceDesc
       // TODO specialization
-      val constrainedType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(symHelper(lambdaTarget).tpe.resultType)).toASMType
+      val constrainedType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
       val abstractMethod = symHelper(functionalInterface).samMethod()
       val methodName = abstractMethod.name.mangledString
       val applyN = {

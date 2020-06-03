@@ -127,7 +127,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       if (symHelper(s).isJavaDefined && symHelper(s).isModuleClass) {
         // We could also search in nestedClassSymbols for s.linkedClassOfClass, but sometimes that
         // returns NoSymbol, so it doesn't work.
-        val nb = nestedClassSymbols.count(mc => mc.name == s.name && symHelper(mc).owner == symHelper(s).owner)
+        val nb = nestedClassSymbols.count(mc => mc.name == s.name && mc.owner == s.owner)
         // this assertion is specific to how ScalaC works. It doesn't apply to dotty, as n dotty there will be B & B$
         // assert(nb == 2, s"Java member module without member class: $s - $nestedClassSymbols")
         false
@@ -170,7 +170,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       }
 
       val innerName: Option[String] = {
-        if (symHelper(innerClassSym).isAnonymousClass || symHelper(innerClassSym).isAnonymousFunction) None
+        if (innerClassSym.isAnonymousClass || innerClassSym.isAnonymousFunction) None
         else Some(symHelper(innerClassSym).rawname + symHelper(innerClassSym).moduleSuffix) // moduleSuffix for module classes
       }
 
@@ -225,7 +225,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       if (symHelper(sym).hasEnumFlag) ACC_ENUM else 0,
       if (symHelper(sym).isVarargsMethod) ACC_VARARGS else 0,
       if (symHelper(sym).isSynchronized) ACC_SYNCHRONIZED else 0,
-      if (symHelper(sym).isDeprecated) asm.Opcodes.ACC_DEPRECATED else 0,
+      if (false /*sym.isDeprecated*/) asm.Opcodes.ACC_DEPRECATED else 0,
       if (symHelper(sym).isEnum) asm.Opcodes.ACC_ENUM else 0
     )
   }

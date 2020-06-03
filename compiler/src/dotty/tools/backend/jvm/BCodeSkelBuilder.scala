@@ -69,11 +69,11 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
       case Apply(fun, _) =>
       val funSym = fun.symbol
-      (symHelper(funSym).info.firstParamTypes map toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
+      (funSym.info.firstParamTypes map toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
     def symInfoTK(sym: Symbol): BType = {
-      toTypeKind(symHelper(sym).info) // this tracks mentioned inner classes (in innerClassBufferASM)
+      toTypeKind(sym.info) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
     def tpeTK(tree: Tree): BType = { toTypeKind(tree.tpe) }
@@ -126,7 +126,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      */
     private def initJClass(jclass: asm.ClassVisitor): Unit = {
 
-      val ps = typeHelper(symHelper(claszSymbol).info).parents
+      val ps = typeHelper(claszSymbol.info).parents
       val superClass: String = if (ps.isEmpty) ObjectReference.internalName else internalName(typeHelper(ps.head).typeSymbol)
       val interfaceNames = classBTypeFromSymbol(claszSymbol).info.interfaces map {
         case classBType =>
@@ -136,7 +136,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val flags = javaFlags(claszSymbol)
 
-      val thisSignature = getGenericSignature(claszSymbol, symHelper(claszSymbol).owner)
+      val thisSignature = getGenericSignature(claszSymbol, claszSymbol.owner)
       cnode.visit(classfileVersion, flags,
                   thisName, thisSignature,
                   superClass, interfaceNames.toArray)
@@ -538,7 +538,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       }
 
       val isNative         = symHelper(methSymbol).hasAnnotation(NativeAttr)
-      val isAbstractMethod = (symHelper(methSymbol).isDeferred || (symHelper(symHelper(methSymbol).owner).isInterface && !symHelper(methSymbol).isJavaDefaultMethod))
+      val isAbstractMethod = (symHelper(methSymbol).isDeferred || (symHelper(methSymbol.owner).isInterface && !symHelper(methSymbol).isJavaDefaultMethod))
       val flags = GenBCodeOps.mkFlags(
         javaFlags(methSymbol),
         if (isAbstractMethod)        asm.Opcodes.ACC_ABSTRACT   else 0,
@@ -560,7 +560,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             case ReturnBI(_) | Block(_, ReturnBI(_)) | ThrowBI(_) | Block(_, ThrowBI(_)) => ()
             case tpd.EmptyTree =>
               error(NoSpan, "Concrete method has no definition: " + dd + (
-                if (settings_debug) "(found: " + typeHelper(symHelper(symHelper(methSymbol).owner).info).decls.toList.mkString(", ") + ")"
+                if (settings_debug) "(found: " + typeHelper(methSymbol.owner.info).decls.toList.mkString(", ") + ")"
                 else "")
               )
             case _ =>
@@ -629,9 +629,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val className = internalName(symHelper(methSymbol).enclClass)
         insnModA      = new asm.tree.TypeInsnNode(asm.Opcodes.NEW, className)
         // INVOKESPECIAL <init>
-        val callee = symHelper(symHelper(methSymbol).enclClass).primaryConstructor
+        val callee = symHelper(methSymbol).enclClass.primaryConstructor
         val jname  = symHelper(callee).javaSimpleName.toString
-        val jowner = internalName(symHelper(callee).owner)
+        val jowner = internalName(callee.owner)
         val jtype  = asmMethodType(callee).descriptor
         insnModB   = new asm.tree.MethodInsnNode(asm.Opcodes.INVOKESPECIAL, jowner, jname, jtype, false)
       }
@@ -650,8 +650,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           null
         )
         // INVOKESTATIC CREATOR(): android.os.Parcelable$Creator; -- TODO where does this Android method come from?
-        val callee = typeHelper(symHelper(symHelper(claszSymbol).companionModule).info).member(androidFieldName)
-        val jowner = internalName(symHelper(callee).owner)
+        val callee = typeHelper(symHelper(claszSymbol).companionModule.info).member(androidFieldName)
+        val jowner = internalName(callee.owner)
         val jname  = symHelper(callee).javaSimpleName.toString
         val jtype  = asmMethodType(callee).descriptor
         insnParcA  = new asm.tree.MethodInsnNode(asm.Opcodes.INVOKESTATIC, jowner, jname, jtype, false)
