@@ -400,7 +400,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val loc = Local(tk, sym.name.mangledString.toString, nxtIdx, sym.is(Flags.Synthetic))
         val existing = slots.put(sym, loc)
         if (existing.isDefined)
-          error(sym.span, "attempt to create duplicate local var.")
+          ctx.error("attempt to create duplicate local var.", sourcePos(sym.span))
         assert(tk.size > 0, "makeLocal called for a symbol whose type is Unit.")
         nxtIdx += tk.size
         loc
@@ -553,7 +553,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       if (params.size > MaximumJvmParameters) {
         // SI-7324
-        error(methSymbol.span, s"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.")
+        ctx.error(s"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.", sourcePos(methSymbol.span))
         return
       }
 
@@ -579,9 +579,10 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           rhs match {
             case (_: Return) | Block(_, (_: Return)) | ThrowBI(_) | Block(_, ThrowBI(_)) => ()
             case tpd.EmptyTree =>
-              error(NoSpan, "Concrete method has no definition: " + dd + (
+              ctx.error("Concrete method has no definition: " + dd + (
                 if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
-                else "")
+                else ""),
+                sourcePos(NoSpan)
               )
             case _ =>
               bc emitRETURN returnType

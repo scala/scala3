@@ -48,7 +48,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       outputDirectory
     } catch {
       case ex: Throwable =>
-        int.error(csym.span, s"Couldn't create file for class $cName\n${ex.getMessage}")
+        ctx.error(s"Couldn't create file for class $cName\n${ex.getMessage}", sourcePos(csym.span))
         null
     }
   }

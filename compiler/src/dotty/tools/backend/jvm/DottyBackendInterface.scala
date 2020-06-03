@@ -278,8 +278,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     ctx.requiredModule(className)
   }
 
-  def error(pos: Position, msg: String): Unit = ctx.error(msg, sourcePos(pos))
-  def warning(pos: Position, msg: String): Unit = ctx.warning(msg, sourcePos(pos))
   def abort(msg: String): Nothing = {
     ctx.error(msg)
     throw new RuntimeException(msg)
@@ -704,7 +702,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
-        error(field.span, s"JavaSeqArray with type ${field.tpe} reached backend: $field")
+        ctx.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", sourcePos(field.span))
         UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems

@@ -661,7 +661,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       var elemKind = arr.elementType
       val argsSize = args.length
       if (argsSize > dims) {
-        error(app.span, s"too many arguments for array constructor: found ${args.length} but array has only $dims dimension(s)")
+        ctx.error(s"too many arguments for array constructor: found ${args.length} but array has only $dims dimension(s)", sourcePos(app.span))
       }
       if (argsSize < dims) {
         /* In one step:
