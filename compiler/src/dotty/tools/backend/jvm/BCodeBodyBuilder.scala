@@ -57,7 +57,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
 
       tree match {
-        case AssignBI(lhs @ SelectBI(qual, _), rhs) =>
+        case Assign(lhs @ SelectBI(qual, _), rhs) =>
           val isStatic = symHelper(treeHelper(lhs).symbol).isStaticMember
           if (!isStatic) { genLoadQualifier(lhs) }
           genLoad(rhs, symInfoTK(treeHelper(lhs).symbol))
@@ -66,7 +66,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val receiverClass = typeHelper(treeHelper(qual).tpe).typeSymbol
           fieldStore(treeHelper(lhs).symbol, receiverClass)
 
-        case AssignBI(lhs, rhs) =>
+        case Assign(lhs, rhs) =>
           val s = treeHelper(lhs).symbol
           val Local(tk, _, idx, _) = locals.getOrMakeLocal(s)
           genLoad(rhs, tk)
@@ -92,7 +92,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     /* Generate code for primitive arithmetic operations. */
     def genArithmeticOp(tree: Tree, code: Int): BType = tree match{
-      case ApplyBI(fun @ SelectBI(larg, _), args) =>
+      case Apply(fun @ SelectBI(larg, _), args) =>
       var resKind = tpeTK(larg)
 
       assert(resKind.isNumericType || (resKind == BOOL),
@@ -148,7 +148,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     /* Generate primitive array operations. */
     def genArrayOp(tree: Tree, code: Int, expectedType: BType): BType = tree match{
 
-      case ApplyBI(SelectBI(arrayObj, _), args) =>
+      case Apply(SelectBI(arrayObj, _), args) =>
       import ScalaPrimitivesOps._
       val k = tpeTK(arrayObj)
       genLoad(arrayObj, k)
@@ -179,13 +179,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     def genLoadIf(tree: If, expectedType: BType): BType = tree match{
-      case IfBI(condp, thenp, elsep) =>
+      case If(condp, thenp, elsep) =>
 
       val success = new asm.Label
       val failure = new asm.Label
 
       val hasElse = !treeHelper(elsep).isEmpty && (elsep match {
-        case LiteralBI(value) if constantHelper(value).tag == UnitTag => false
+        case Literal(value) if constantHelper(value).tag == UnitTag => false
         case _ => true
       })
       val postIf  = if (hasElse) new asm.Label else failure
@@ -210,7 +210,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     def genPrimitiveOp(tree: Apply, expectedType: BType): BType = tree match {
-      case ApplyBI(fun @ SelectBI(receiver, _), _) =>
+      case Apply(fun @ SelectBI(receiver, _), _) =>
       val sym = treeHelper(tree).symbol
 
       val code = primitives.getPrimitive(tree, treeHelper(receiver).tpe)
@@ -276,17 +276,17 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
           generatedType = UNIT
 
-        case t @ IfBI(_, _, _) =>
+        case t @ If(_, _, _) =>
           generatedType = genLoadIf(t, expectedType)
 
-        case t @ LabeledBI(_, _) =>
+        case t @ Labeled(_, _) =>
           generatedType = genLabeled(t)
 
         case r @ ReturnBI(_) =>
           genReturn(r)
           generatedType = expectedType
 
-        case t @ WhileDoBI(_, _) =>
+        case t @ WhileDo(_, _) =>
           generatedType = genWhileDo(t)
 
         case t @ TryBI(_, _, _) =>
@@ -301,7 +301,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
         case app @ ClosureBI(env, call, functionalInterface) =>
           val (fun, args) = call match {
-            case ApplyBI(fun, args) => (fun, args)
+            case Apply(fun, args) => (fun, args)
             case t @ SelectBI(_, _) => (t, Nil)
             case t @ IdentBI(_) => (t, Nil)
           }
@@ -320,7 +320,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           genLoadArguments(env, typeHelper(symHelper(treeHelper(fun).symbol).info).paramTypes map toTypeKind)
           generatedType = genInvokeDynamicLambda(NoSymbol, treeHelper(fun).symbol, env.size, functionalInterface)
 
-        case app @ ApplyBI(_, _) =>
+        case app @ Apply(_, _) =>
           generatedType = genApply(app, expectedType)
 
         case ThisBI(qual) =>
@@ -377,7 +377,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               genLoad(t, generatedType)
           }
 
-        case LiteralBI(value) =>
+        case Literal(value) =>
           if (constantHelper(value).tag != UnitTag) (constantHelper(value).tag, expectedType) match {
             case (IntTag,   LONG  ) => bc.lconst(constantHelper(value).longValue);       generatedType = LONG
             case (FloatTag, DOUBLE) => bc.dconst(constantHelper(value).doubleValue);     generatedType = DOUBLE
@@ -385,7 +385,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             case _                  => genConstant(value);               generatedType = tpeTK(tree)
           }
 
-        case blck @ BlockBI(stats, expr) =>
+        case blck @ Block(stats, expr) =>
           if(stats.isEmpty)
             genLoad(expr, expectedType)
           else genBlock(blck, expectedType)
@@ -394,7 +394,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
         case TypedBI(expr, _) => genLoad(expr, expectedType)
 
-        case AssignBI(_, _) =>
+        case Assign(_, _) =>
           generatedType = UNIT
           genStat(tree)
 
@@ -501,7 +501,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     private def genLabeled(tree: Labeled): BType = tree match {
-      case LabeledBI(bind, expr) =>
+      case Labeled(bind, expr) =>
 
       val resKind = tpeTK(tree)
       genLoad(expr, resKind)
@@ -552,7 +552,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     } // end of genReturn()
 
     def genWhileDo(tree: WhileDo): BType = tree match{
-      case WhileDoBI(cond, body) =>
+      case WhileDo(cond, body) =>
 
       val isInfinite = cond == EmptyTree
 
@@ -565,7 +565,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         RT_NOTHING
       } else {
         val hasBody = cond match {
-          case LiteralBI(value) if constantHelper(value).tag == UnitTag => false
+          case Literal(value) if constantHelper(value).tag == UnitTag => false
           case _ => true
         }
 
@@ -589,7 +589,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     def genTypeApply(t: TypeApply): BType = t match {
-      case TypeApplyBI(fun@SelectBI(obj, _), targs) =>
+      case TypeApply(fun@SelectBI(obj, _), targs) =>
 
         val sym = treeHelper(fun).symbol
         val cast = sym match {
@@ -658,17 +658,17 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       var generatedType = expectedType
       lineNumber(app)
       app match {
-        case ApplyBI(_, args) if isSyntheticArrayConstructor(treeHelper(app).symbol) =>
-          val List(elemClaz, LiteralBI(c: Constant), ArrayValueBI(_, dims)) = args
+        case Apply(_, args) if isSyntheticArrayConstructor(treeHelper(app).symbol) =>
+          val List(elemClaz, Literal(c: Constant), ArrayValueBI(_, dims)) = args
 
           generatedType = toTypeKind(constantHelper(c).typeValue)
           mkArrayConstructorCall(generatedType.asArrayBType, app, dims)
-        case ApplyBI(t :TypeApply, _) =>
+        case Apply(t :TypeApply, _) =>
           generatedType =
             if (treeHelper(t).symbol ne Object_synchronized) genTypeApply(t)
             else genSynchronized(app, expectedType)
 
-        case ApplyBI(fun @ SelectBI(SuperBI(_, _), _), args) =>
+        case Apply(fun @ SelectBI(SuperBI(_, _), _), args) =>
           def initModule(): Unit = {
             // we initialize the MODULE$ field immediately after the super ctor
             if (!isModuleInitialized &&
@@ -700,7 +700,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         // thought to return an instance of what they construct,
         // we have to 'simulate' it by DUPlicating the freshly created
         // instance (on JVM, <init> methods return VOID).
-        case ApplyBI(fun @ SelectBI(NewBI(tpt), `nme_CONSTRUCTOR`), args) =>
+        case Apply(fun @ SelectBI(NewBI(tpt), `nme_CONSTRUCTOR`), args) =>
           val ctor = treeHelper(fun).symbol
           assert(symHelper(ctor).isClassConstructor, s"'new' call to non-constructor: ${symHelper(ctor).name}")
 
@@ -722,21 +722,21 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               abort(s"Cannot instantiate $tpt of kind: $generatedType")
           }
 
-        case ApplyBI(fun, List(expr)) if isBox(treeHelper(fun).symbol) =>
+        case Apply(fun, List(expr)) if isBox(treeHelper(fun).symbol) =>
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
           val MethodNameAndType(mname, methodType) = asmBoxTo(nativeKind)
           bc.invokestatic(BoxesRunTime.internalName, mname, methodType.descriptor, itf = false)
           generatedType = boxResultType(treeHelper(fun).symbol) // was toTypeKind(fun.symbol.tpe.resultType)
 
-        case ApplyBI(fun, List(expr)) if isUnbox(treeHelper(fun).symbol) =>
+        case Apply(fun, List(expr)) if isUnbox(treeHelper(fun).symbol) =>
           genLoad(expr)
           val boxType = unboxResultType(treeHelper(fun).symbol) // was toTypeKind(fun.symbol.owner.linkedClassOfClass.tpe)
           generatedType = boxType
           val MethodNameAndType(mname, methodType) = asmUnboxTo(boxType)
           bc.invokestatic(BoxesRunTime.internalName, mname, methodType.descriptor, itf = false)
 
-        case app @ ApplyBI(fun, args) =>
+        case app @ Apply(fun, args) =>
           val sym = treeHelper(fun).symbol
 
           if (isPrimitive(fun)) { // primitive method call
@@ -847,7 +847,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val switchBlockPoint = new asm.Label
         switchBlocks ::= (switchBlockPoint, body)
         pat match {
-          case LiteralBI(value) =>
+          case Literal(value) =>
             flatKeys ::= constantHelper(value).intValue
             targets  ::= switchBlockPoint
           case IdentBI(`nme_WILDCARD`) =>
@@ -855,7 +855,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             default = switchBlockPoint
           case AlternativeBI(alts) =>
             alts foreach {
-              case LiteralBI(value) =>
+              case Literal(value) =>
                 flatKeys ::= constantHelper(value).intValue
                 targets  ::= switchBlockPoint
               case _ =>
@@ -882,7 +882,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     def genBlock(tree: Block, expectedType: BType) = tree match {
-      case BlockBI(stats, expr) =>
+      case Block(stats, expr) =>
 
       val savedScope = varsInScope
       varsInScope = Nil
@@ -1055,7 +1055,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
       liftStringConcat(tree) match {
         // Optimization for expressions of the form "" + x.  We can avoid the StringBuilder.
-        case List(LiteralBI(ConstantBI("")), arg) =>
+        case List(Literal(ConstantBI("")), arg) =>
           genLoad(arg, ObjectReference)
           genCallMethod(String_valueOf, InvokeStyle.Static)
 
@@ -1063,7 +1063,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           bc.genStartConcat
           for (elem <- concatenations) {
             val loadedElem = elem match {
-              case ApplyBI(boxOp, value :: Nil) if isBox(treeHelper(boxOp).symbol) =>
+              case Apply(boxOp, value :: Nil) if isBox(treeHelper(boxOp).symbol) =>
                 // Eliminate boxing of primitive values. Boxing is introduced by erasure because
                 // there's only a single synthetic `+` method "added" to the string class.
                 value
@@ -1156,7 +1156,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
      * It turns a chained call like "a".+("b").+("c") into a list of arguments.
      */
     def liftStringConcat(tree: Tree): List[Tree] = tree match {
-      case tree @ ApplyBI(fun @ SelectBI(larg, method), rarg) =>
+      case tree @ Apply(fun @ SelectBI(larg, method), rarg) =>
         if (isPrimitive(fun) &&
             primitives.getPrimitive(tree, treeHelper(larg).tpe) == ScalaPrimitivesOps.CONCAT)
           liftStringConcat(larg) ::: rarg
@@ -1259,7 +1259,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
       tree match {
 
-        case tree @ ApplyBI(fun, args) if isPrimitive(fun) =>
+        case tree @ Apply(fun, args) if isPrimitive(fun) =>
           import ScalaPrimitivesOps.{ ZNOT, ZAND, ZOR, EQ }
 
           // lhs and rhs of test

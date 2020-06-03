@@ -955,11 +955,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def parents: List[Type] = tp.parents
   }
 
-  object AssignBI extends AssignDeconstructor {
-    def _1: Tree = field.lhs
-    def _2: Tree = field.rhs
-  }
-
   object SelectBI extends SelectDeconstructor {
 
     var desugared: tpd.Select = null
@@ -986,27 +981,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  object ApplyBI extends ApplyDeconstructor {
-    def _1: Tree = field.fun
-    def _2: List[Tree] = field.args
-  }
-
-  object IfBI extends IfDeconstructor {
-    def _1: Tree = field.cond
-    def _2: Tree = field.thenp
-    def _3: Tree = field.elsep
-  }
-
   object ValDefBI extends ValDefDeconstructor {
     def _1: Null = null
     def _2: Name = field.name
     def _3: Tree = field.tpt
     def _4: Tree = field.rhs
-  }
-
-  // todo: this product1s should also eventually become name-based pattn matching
-  object LiteralBI extends LiteralDeconstructor {
-    def get: Constant = field.const
   }
 
   object ThrowBI extends ThrowDeconstructor {
@@ -1031,19 +1010,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def apply(s: Symbol): This = tpd.This(s.asClass)
   }
 
-  object LabeledBI extends LabeledDeconstructor {
-    def _1: Bind = field.bind
-    def _2: Tree = field.expr
-  }
-
   object ReturnBI extends ReturnDeconstructor {
     def _1: Tree = field.expr
     def _2: Symbol = if (field.from.symbol.isLabel) field.from.symbol else NoSymbol
-  }
-
-  object WhileDoBI extends WhileDoDeconstructor {
-    def _1: Tree = field.cond
-    def _2: Tree = field.body
   }
 
   object IdentBI extends IdentDeconstructor {
@@ -1088,14 +1057,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _1: Tree = field.selector
     def _2: List[Tree] = field.cases
   }
-  object BlockBI extends BlockDeconstructor {
-    def _1: List[Tree] = field.stats
-    def _2: Tree = field.expr
-  }
-  object TypeApplyBI extends TypeApplyDeconstructor {
-    def _1: Tree = field.fun
-    def _2: List[Tree] = field.args
-  }
+
   object CaseDefBI extends CaseDeconstructor {
     def _1: Tree = field.pat
     def _2: Tree = field.guard
@@ -1609,11 +1571,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
 
   def isNull(t: Tree): Boolean = t match {
-    case LiteralBI(ConstantBI(null)) => true
+    case Literal(Constant(null)) => true
     case _ => false
   }
   def isLiteral(t: Tree): Boolean = t match {
-    case LiteralBI(_) => true
+    case Literal(_) => true
     case _ => false
   }
   def isNonNullExpr(t: Tree): Boolean = isLiteral(t) || ((treeHelper(t).symbol ne null) && symHelper(treeHelper(t).symbol).isModule)

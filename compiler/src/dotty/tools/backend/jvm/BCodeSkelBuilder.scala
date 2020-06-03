@@ -63,7 +63,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
-      case ApplyBI(fun, _) =>
+      case Apply(fun, _) =>
       val funSym = treeHelper(fun).symbol
       (typeHelper(symHelper(funSym).info).paramTypes map toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
@@ -552,7 +552,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           genLoad(rhs, returnType)
 
           rhs match {
-            case ReturnBI(_) | BlockBI(_, ReturnBI(_)) | ThrowBI(_) | BlockBI(_, ThrowBI(_)) => ()
+            case ReturnBI(_) | Block(_, ReturnBI(_)) | ThrowBI(_) | Block(_, ThrowBI(_)) => ()
             case EmptyTree =>
               error(NoPosition, "Concrete method has no definition: " + dd + (
                 if (settings_debug) "(found: " + typeHelper(symHelper(symHelper(methSymbol).owner).info).decls.toList.mkString(", ") + ")"

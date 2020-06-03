@@ -21,7 +21,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
   abstract class SyncAndTryBuilder(cunit: CompilationUnit) extends PlainBodyBuilder(cunit) {
 
     def genSynchronized(tree: Apply, expectedType: BType): BType = tree match {
-      case ApplyBI(TypeApplyBI(fun, _), args) =>
+      case Apply(TypeApply(fun, _), args) =>
       val monitor = locals.makeLocal(ObjectReference, "monitor", Object_Type, treeHelper(tree).pos)
       val monCleanup = new asm.Label
 
