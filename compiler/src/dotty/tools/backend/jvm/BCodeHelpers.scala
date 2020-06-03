@@ -241,7 +241,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       assert(symHelper(msym).isMethod, s"not a method-symbol: $msym")
       val resT: BType =
         if (symHelper(msym).isClassConstructor || symHelper(msym).isConstructor) UNIT
-        else toTypeKind(typeHelper(symHelper(msym).tpe).resultType)
+        else toTypeKind(symHelper(msym).tpe.resultType)
       MethodBType(typeHelper(symHelper(msym).tpe).paramTypes map toTypeKind, resT)
     }
 
@@ -311,7 +311,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      */
     private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol): Unit = {
       val moduleName     = internalName(module)
-      val methodInfo     = typeHelper(symHelper(module).thisType).memberInfo(m)
+      val methodInfo     = symHelper(module).thisType.memberInfo(m)
       val paramJavaTypes: List[BType] = typeHelper(methodInfo).paramTypes map toTypeKind
       // val paramNames     = 0 until paramJavaTypes.length map ("x_" + _)
 
@@ -330,7 +330,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       val (throws, others) = symHelper(m).annotations partition (annotHelper(_).symbol == defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(throws)
 
-      val jReturnType = toTypeKind(typeHelper(methodInfo).resultType)
+      val jReturnType = toTypeKind(methodInfo.resultType)
       val mdesc = MethodBType(paramJavaTypes, jReturnType).descriptor
       val mirrorMethodName = symHelper(m).javaSimpleName.toString
       val mirrorMethod: asm.MethodVisitor = jclass.visitMethod(
@@ -376,7 +376,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       val linkedClass  = symHelper(moduleClass).companionClass
       lazy val conflictingNames: Set[Name] = {
-        (typeHelper(symHelper(linkedClass).info).members collect { case sym if nameHelper(symHelper(sym).name).isTermName => symHelper(sym).name }).toSet
+        (typeHelper(symHelper(linkedClass).info).members collect { case sym if nameHelper(sym.name).isTermName => sym.name }).toSet
       }
       debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
@@ -386,8 +386,8 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
           log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
         else if (symHelper(m).isType || symHelper(m).isDeferred || (symHelper(m).owner eq defn.ObjectClass) || symHelper(m).isConstructor || symHelper(m).isExpanded)
           debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
-        else if (conflictingNames(symHelper(m).name))
-          log(s"No forwarder for $m due to conflict with ${typeHelper(symHelper(linkedClass).info).member(symHelper(m).name)}")
+        else if (conflictingNames(m.name))
+          log(s"No forwarder for $m due to conflict with ${typeHelper(symHelper(linkedClass).info).member(m.name)}")
         else if (symHelper(m).hasAccessBoundary)
           log(s"No forwarder for non-public member $m")
         else {
@@ -494,7 +494,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       mirrorClass.visitEnd()
 
-      symHelper(moduleClass).name // this side-effect is necessary, really.
+      moduleClass.name // this side-effect is necessary, really.
 
       mirrorClass
     }

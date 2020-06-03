@@ -544,11 +544,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def exists: Boolean = sym.exists
 
     // names
-    def showFullName: String = sym.showFullName
     def javaSimpleName: String = toDenot(sym).name.mangledString // addModuleSuffix(simpleName.dropLocal)
     def javaBinaryName: String = javaClassName.replace('.', '/') // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
     def javaClassName: String = toDenot(sym).fullName.mangledString // addModuleSuffix(fullNameInternal('.')).toString
-    def name: Name = sym.name
     def rawname: String = {
       val original = toDenot(sym).initial
       sym.name(ctx.withPhase(original.validFor.phaseId)).mangledString
@@ -793,10 +791,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def paramTypes: List[Type] = tp.firstParamTypes
 
-    def <:<(other: Type): Boolean = tp <:< other
-
-    def memberInfo(s: Symbol): Type = tp.memberInfo(s)
-
     def decl(name: Name): Symbol = tp.decl(name).symbol
 
     def decls: List[Symbol] = tp.decls.toList
@@ -804,8 +798,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def members: List[Symbol] = tp.allMembers.map(_.symbol).toList
 
     def typeSymbol: Symbol = tp.widenDealias.typeSymbol
-
-    def =:=(other: Type): Boolean = tp =:= other
 
     def sortedMembersBasedOnFlags(required: Flags, excluded: Flags): List[Symbol] = {
       val requiredFlagSet = termFlagSet(required)
@@ -819,8 +811,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       }
       buffer.toList
     }
-
-    def resultType: Type = tp.resultType
 
     def toTypeKind(ct: BCodeHelpers)(storage: ct.BCInnerClassGen): ct.bTypes.BType = {
       import ct.bTypes._
@@ -1199,11 +1189,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def exists: Boolean
 
     // names
-    def showFullName: String
     def javaSimpleName: String
     def javaBinaryName: String
     def javaClassName: String
-    def name: Name
     def rawname: String
 
     // types
@@ -1351,12 +1339,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   abstract class TypeHelper {
-    def <:<(other: Type): Boolean
-    def =:=(other: Type): Boolean
     def paramTypes: List[Type]
     def params: List[Symbol]
-    def resultType: Type
-    def memberInfo(s: Symbol): Type
 
     /** The members of this type that have all of `required` flags but none of `excluded` flags set.
      *  The members are sorted by name and signature to guarantee a stable ordering.

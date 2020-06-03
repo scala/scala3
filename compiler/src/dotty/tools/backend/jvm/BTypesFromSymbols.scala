@@ -51,7 +51,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     assert(
       (!primitiveTypeMap.contains(classSym) || isCompilingPrimitive) &&
       (classSym != defn.NothingClass && classSym != defn.NullClass),
-      s"Cannot create ClassBType for special class symbol ${symHelper(classSym).showFullName}")
+      s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
 
     convertedClasses.getOrElse(classSym, {
       val internalName = symHelper(classSym).javaBinaryName
@@ -127,7 +127,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       if (symHelper(s).isJavaDefined && symHelper(s).isModuleClass) {
         // We could also search in nestedClassSymbols for s.linkedClassOfClass, but sometimes that
         // returns NoSymbol, so it doesn't work.
-        val nb = nestedClassSymbols.count(mc => symHelper(mc).name == symHelper(s).name && symHelper(mc).owner == symHelper(s).owner)
+        val nb = nestedClassSymbols.count(mc => mc.name == s.name && symHelper(mc).owner == symHelper(s).owner)
         // this assertion is specific to how ScalaC works. It doesn't apply to dotty, as n dotty there will be B & B$
         // assert(nb == 2, s"Java member module without member class: $s - $nestedClassSymbols")
         false

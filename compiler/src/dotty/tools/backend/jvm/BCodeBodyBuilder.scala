@@ -114,7 +114,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             case POS => () // nothing
             case NEG => bc.neg(resKind)
             case NOT => bc.genPrimitiveArithmetic(Primitives.NOT, resKind)
-            case _ => abort(s"Unknown unary operation: ${symHelper(treeHelper(fun).symbol).showFullName} code: $code")
+            case _ => abort(s"Unknown unary operation: ${treeHelper(fun).symbol.showFullName} code: $code")
           }
 
         // binary operation
@@ -249,7 +249,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         coercionTo(code)
       }
       else abort(
-        s"Primitive operation not handled yet: ${symHelper(sym).showFullName}(${symHelper(treeHelper(fun).symbol).name}) at: ${treeHelper(tree).pos}"
+        s"Primitive operation not handled yet: ${sym.showFullName}(${treeHelper(fun).symbol.name}) at: ${treeHelper(tree).pos}"
       )
     }
 
@@ -601,7 +601,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val cast =
           if (sym == defn.Any_isInstanceOf) false
           else if (sym == defn.Any_asInstanceOf) true
-          else abort(s"Unexpected type application $fun[sym: ${symHelper(sym).showFullName}] in: $t")
+          else abort(s"Unexpected type application $fun[sym: ${sym.showFullName}] in: $t")
         val l = tpeTK(obj)
         val r = tpeTK(targs.head)
         genLoadQualifier(fun)
@@ -706,7 +706,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         // instance (on JVM, <init> methods return VOID).
         case Apply(fun @ SelectBI(New(tpt), nme.CONSTRUCTOR), args) =>
           val ctor = treeHelper(fun).symbol
-          assert(symHelper(ctor).isClassConstructor, s"'new' call to non-constructor: ${symHelper(ctor).name}")
+          assert(symHelper(ctor).isClassConstructor, s"'new' call to non-constructor: ${ctor.name}")
 
           generatedType = toTypeKind(tpt.tpe)
           assert(generatedType.isRef, s"Non reference type cannot be instantiated: $generatedType")
@@ -716,7 +716,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               mkArrayConstructorCall(arr, app, args)
 
             case rt: ClassBType =>
-              assert(classBTypeFromSymbol(symHelper(ctor).owner) == rt, s"Symbol ${symHelper(symHelper(ctor).owner).showFullName} is different from $rt")
+              assert(classBTypeFromSymbol(symHelper(ctor).owner) == rt, s"Symbol ${symHelper(ctor).owner.showFullName} is different from $rt")
               mnode.visitTypeInsn(asm.Opcodes.NEW, rt.internalName)
               bc dup generatedType
               genLoadArguments(args, paramTKs(app))
@@ -1116,7 +1116,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           receiver != methodOwner && // fast path - the boolean is used to pick either of these two, if they are the same it does not matter
             style.isVirtual &&
             symHelper(receiver).isEmittedInterface &&
-            symHelper(typeHelper(defn.ObjectType).decl(symHelper(method).name)).exists && { // fast path - compute overrideChain on the next line only if necessary
+            symHelper(typeHelper(defn.ObjectType).decl(method.name)).exists && { // fast path - compute overrideChain on the next line only if necessary
               val syms = symHelper(method).allOverriddenSymbols
               !syms.isEmpty && symHelper(syms.last).owner == defn.ObjectClass
             }
@@ -1317,16 +1317,16 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
        * not using the rich equality is possible (their own equals method will do ok.)
        */
       val mustUseAnyComparator: Boolean = {
-        val areSameFinals = typeHelper(treeHelper(l).tpe).isFinalType && typeHelper(treeHelper(r).tpe).isFinalType && (typeHelper(treeHelper(l).tpe) =:= treeHelper(r).tpe)
+        val areSameFinals = typeHelper(treeHelper(l).tpe).isFinalType && typeHelper(treeHelper(r).tpe).isFinalType && (treeHelper(l).tpe =:= treeHelper(r).tpe)
 
         !areSameFinals && isMaybeBoxed(typeHelper(treeHelper(l).tpe).typeSymbol) && isMaybeBoxed(typeHelper(treeHelper(r).tpe).typeSymbol)
       }
 
       if (mustUseAnyComparator) {
         val equalsMethod: Symbol = {
-          if (typeHelper(treeHelper(l).tpe) <:< symHelper(defn.BoxedNumberClass).tpe) {
-            if (typeHelper(treeHelper(r).tpe) <:< symHelper(defn.BoxedNumberClass).tpe) externalEqualsNumNum
-            else if (typeHelper(treeHelper(r).tpe) <:< symHelper(defn.BoxedCharClass).tpe) externalEqualsNumChar
+          if (treeHelper(l).tpe <:< symHelper(defn.BoxedNumberClass).tpe) {
+            if (treeHelper(r).tpe <:< symHelper(defn.BoxedNumberClass).tpe) externalEqualsNumNum
+            else if (treeHelper(r).tpe <:< symHelper(defn.BoxedCharClass).tpe) externalEqualsNumChar
             else externalEqualsNumObject
           } else externalEquals
         }
@@ -1398,7 +1398,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val targetHandle =
         new asm.Handle(invokeStyle,
           classBTypeFromSymbol(symHelper(lambdaTarget).owner).internalName,
-          nameHelper(symHelper(lambdaTarget).name).mangledString,
+          nameHelper(lambdaTarget.name).mangledString,
           asmMethodType(lambdaTarget).descriptor,
           /* itf = */ isInterface)
 
@@ -1408,13 +1408,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = symHelper(symHelper(lambdaTarget).owner).info :: capturedParamsTypes
 
       // Requires https://github.com/scala/scala-java8-compat on the runtime classpath
-      val returnUnit = typeHelper(typeHelper(symHelper(lambdaTarget).info).resultType).typeSymbol == defn.UnitClass
+      val returnUnit = typeHelper(symHelper(lambdaTarget).info.resultType).typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
       val desc = capturedParamsTypes.map(tpe => toTypeKind(tpe)).mkString(("("), "", ")") + functionalInterfaceDesc
       // TODO specialization
-      val constrainedType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(typeHelper(symHelper(lambdaTarget).tpe).resultType)).toASMType
+      val constrainedType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(symHelper(lambdaTarget).tpe.resultType)).toASMType
       val abstractMethod = symHelper(functionalInterface).samMethod()
-      val methodName = nameHelper(symHelper(abstractMethod).name).mangledString
+      val methodName = nameHelper(abstractMethod.name).mangledString
       val applyN = {
         val mt = asmMethodType(abstractMethod)
         mt.toASMType
