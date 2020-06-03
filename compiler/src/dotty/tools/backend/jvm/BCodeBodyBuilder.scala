@@ -1324,9 +1324,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       if (mustUseAnyComparator) {
         val equalsMethod: Symbol = {
-          if (typeHelper(treeHelper(l).tpe) <:< symHelper(BoxedNumberClass).tpe) {
-            if (typeHelper(treeHelper(r).tpe) <:< symHelper(BoxedNumberClass).tpe) externalEqualsNumNum
-            else if (typeHelper(treeHelper(r).tpe) <:< symHelper(BoxedCharacterClass).tpe) externalEqualsNumChar
+          if (typeHelper(treeHelper(l).tpe) <:< symHelper(defn.BoxedNumberClass).tpe) {
+            if (typeHelper(treeHelper(r).tpe) <:< symHelper(defn.BoxedNumberClass).tpe) externalEqualsNumNum
+            else if (typeHelper(treeHelper(r).tpe) <:< symHelper(defn.BoxedCharClass).tpe) externalEqualsNumChar
             else externalEqualsNumObject
           } else externalEquals
         }
@@ -1403,7 +1403,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           /* itf = */ isInterface)
 
       val (a,b) = typeHelper(symHelper(lambdaTarget).info).paramTypes.splitAt(environmentSize)
-      var (capturedParamsTypes, lambdaParamTypes) = if(int.doLabmdasFollowJVMMetafactoryOrder) (a,b) else (b,a)
+      var (capturedParamsTypes, lambdaParamTypes) = (a,b)
 
       if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = symHelper(symHelper(lambdaTarget).owner).info :: capturedParamsTypes
 

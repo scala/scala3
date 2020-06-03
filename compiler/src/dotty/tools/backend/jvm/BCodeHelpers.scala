@@ -327,7 +327,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       // TODO needed? for(ann <- m.annotations) { ann.symbol.initialize }
       val jgensig = getStaticForwarderGenericSignature(m, module)
-      val (throws, others) = symHelper(m).annotations partition (annotHelper(_).symbol == ThrowsClass)
+      val (throws, others) = symHelper(m).annotations partition (annotHelper(_).symbol == defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(throws)
 
       val jReturnType = toTypeKind(typeHelper(methodInfo).resultType)

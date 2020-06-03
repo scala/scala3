@@ -486,7 +486,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     def initJMethod(flags: Int, paramAnnotations: List[List[Annotation]]): Unit = {
 
       val jgensig = getGenericSignature(methSymbol, claszSymbol)
-      val (excs, others) = symHelper(methSymbol).annotations partition (annotHelper(_).symbol == ThrowsClass)
+      val (excs, others) = symHelper(methSymbol).annotations partition (annotHelper(_).symbol == defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(excs)
 
       val bytecodeName =

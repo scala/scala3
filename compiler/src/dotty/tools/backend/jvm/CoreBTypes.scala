@@ -54,14 +54,14 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
   )
 
   lazy val BOXED_UNIT    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Void])
-  lazy val BOXED_BOOLEAN : ClassBType = classBTypeFromSymbol(BoxedBooleanClass)
-  lazy val BOXED_BYTE    : ClassBType = classBTypeFromSymbol(BoxedByteClass)
-  lazy val BOXED_SHORT   : ClassBType = classBTypeFromSymbol(BoxedShortClass)
-  lazy val BOXED_CHAR    : ClassBType = classBTypeFromSymbol(BoxedCharacterClass)
-  lazy val BOXED_INT     : ClassBType = classBTypeFromSymbol(BoxedIntClass)
-  lazy val BOXED_LONG    : ClassBType = classBTypeFromSymbol(BoxedLongClass)
-  lazy val BOXED_FLOAT   : ClassBType = classBTypeFromSymbol(BoxedFloatClass)
-  lazy val BOXED_DOUBLE  : ClassBType = classBTypeFromSymbol(BoxedDoubleClass)
+  lazy val BOXED_BOOLEAN : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Boolean])
+  lazy val BOXED_BYTE    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Byte])
+  lazy val BOXED_SHORT   : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Short])
+  lazy val BOXED_CHAR    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Character])
+  lazy val BOXED_INT     : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Integer])
+  lazy val BOXED_LONG    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Long])
+  lazy val BOXED_FLOAT   : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Float])
+  lazy val BOXED_DOUBLE  : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Double])
 
   /**
    * Map from primitive types to their boxed class type. Useful when pushing class literals onto the
@@ -113,17 +113,17 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
   lazy val objArrayReference : ArrayBType = ArrayBType(ObjectReference)
 
   lazy val StringRef                   : ClassBType = classBTypeFromSymbol(defn.StringClass)
-  lazy val jlStringBuilderRef          : ClassBType = classBTypeFromSymbol(JavaStringBuilderClass)
-  lazy val jlStringBufferRef           : ClassBType = classBTypeFromSymbol(JavaStringBufferClass)
-  lazy val jlCharSequenceRef           : ClassBType = classBTypeFromSymbol(JavaCharSequenceClass)
+  lazy val jlStringBuilderRef          : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.StringBuilder])
+  lazy val jlStringBufferRef           : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.StringBuffer])
+  lazy val jlCharSequenceRef           : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.CharSequence])
   lazy val ThrowableReference          : ClassBType = classBTypeFromSymbol(defn.ThrowableClass)
   lazy val jlCloneableReference        : ClassBType = classBTypeFromSymbol(defn.JavaCloneableClass)        // java/lang/Cloneable
   lazy val jlNPEReference              : ClassBType = classBTypeFromSymbol(defn.NullPointerExceptionClass) // java/lang/NullPointerException
-  lazy val jioSerializableReference    : ClassBType = classBTypeFromSymbol(JavaSerializableClass)     // java/io/Serializable
-  lazy val scalaSerializableReference  : ClassBType = classBTypeFromSymbol(SerializableClass)         // scala/Serializable
-  lazy val classCastExceptionReference : ClassBType = classBTypeFromSymbol(ClassCastExceptionClass)   // java/lang/ClassCastException
-  lazy val jlIllegalArgExceptionRef: ClassBType = classBTypeFromSymbol(IllegalArgExceptionClass)
-  lazy val jliSerializedLambdaRef: ClassBType = classBTypeFromSymbol(SerializedLambdaClass)
+  lazy val jioSerializableReference    : ClassBType = classBTypeFromSymbol(requiredClass[java.io.Serializable])     // java/io/Serializable
+  lazy val scalaSerializableReference  : ClassBType = classBTypeFromSymbol(requiredClass[scala.Serializable])         // scala/Serializable
+  lazy val classCastExceptionReference : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.ClassCastException])   // java/lang/ClassCastException
+  lazy val jlIllegalArgExceptionRef: ClassBType = classBTypeFromSymbol(requiredClass[java.lang.IllegalArgumentException])
+  lazy val jliSerializedLambdaRef: ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.SerializedLambda])
 
   lazy val srBooleanRef : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.BooleanRef])
   lazy val srByteRef    : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.ByteRef])

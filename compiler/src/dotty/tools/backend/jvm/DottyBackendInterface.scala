@@ -368,7 +368,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       (sym == defn.JavaSerializableClass) ||
       (sym == defn.ComparableClass) ||
       (sym derivesFrom defn.BoxedNumberClass) ||
-      (sym derivesFrom BoxedCharacterClass) ||
+      (sym derivesFrom defn.BoxedCharClass) ||
       (sym derivesFrom defn.BoxedBooleanClass)
   }
 
@@ -1463,35 +1463,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val ScalaATTRName: String = "Scala"
   val ScalaSignatureATTRName: String = "ScalaSig"
 
-  def doLabmdasFollowJVMMetafactoryOrder: Boolean = true
-
-  val BoxedBooleanClass: Symbol = requiredClass[java.lang.Boolean]
-  val BoxedByteClass: Symbol = requiredClass[java.lang.Byte]
-  val BoxedShortClass: Symbol = requiredClass[java.lang.Short]
-  val BoxedCharacterClass: Symbol = requiredClass[java.lang.Character]
-  val BoxedIntClass: Symbol  = requiredClass[java.lang.Integer]
-  val BoxedLongClass: Symbol = requiredClass[java.lang.Long]
-  val BoxedFloatClass: Symbol = requiredClass[java.lang.Float]
-  val BoxedDoubleClass: Symbol = requiredClass[java.lang.Double]
-  val StringClass: Symbol = requiredClass[java.lang.String]
-  val JavaStringBuilderClass: Symbol = requiredClass[java.lang.StringBuilder]
-  val JavaStringBufferClass: Symbol = requiredClass[java.lang.StringBuffer]
-  val JavaCharSequenceClass: Symbol = requiredClass[java.lang.CharSequence]
-  val ThrowableClass: Symbol = requiredClass[java.lang.Throwable]
-  val JavaCloneableClass: Symbol = requiredClass[java.lang.Cloneable]
-  val NullPointerExceptionClass: Symbol  = requiredClass[java.lang.NullPointerException]
-  val JavaSerializableClass: Symbol = requiredClass[java.io.Serializable]
-  val SerializableClass: Symbol = requiredClass[scala.Serializable]
-  val ClassCastExceptionClass: Symbol = requiredClass[java.lang.ClassCastException]
-  val IllegalArgExceptionClass: Symbol = requiredClass[java.lang.IllegalArgumentException]
-  val SerializedLambdaClass: Symbol = requiredClass[java.lang.invoke.SerializedLambda]
-
-  val ClassfileAnnotationClass: Symbol = requiredClass[scala.annotation.ClassfileAnnotation]
-  val BoxedNumberClass: Symbol = requiredClass[java.lang.Number]
-  val ThrowsClass: Symbol = requiredClass[scala.throws[_]]
-
   // Module symbols used in backend
-  val StringModule: Symbol = symHelper(StringClass).linkedClassOfClass
+  val StringModule: Symbol = symHelper(requiredClass[java.lang.String]).linkedClassOfClass
   val ScalaRunTimeModule: Symbol = requiredModule[scala.runtime.ScalaRunTime.type]
 
 
