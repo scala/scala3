@@ -69,7 +69,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
       case Apply(fun, _) =>
       val funSym = fun.symbol
-      (typeHelper(symHelper(funSym).info).paramTypes map toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
+      (symHelper(funSym).info.firstParamTypes map toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
     def symInfoTK(sym: Symbol): BType = {

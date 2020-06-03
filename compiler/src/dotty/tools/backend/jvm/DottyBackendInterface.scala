@@ -716,14 +716,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit def typeHelper(tp: Type): TypeHelper = new TypeHelper {
     def member(string: Name): Symbol = tp.member(string.toTermName).symbol
 
-    def isFinalType: Boolean = tp.typeSymbol.is(Flags.Final) //in scalac checks for type parameters. Why? Aren't they gone by backend?
-
     def underlying: Type = tp match {
       case t: TypeProxy => t.underlying
       case _ => tp
     }
-
-    def paramTypes: List[Type] = tp.firstParamTypes
 
     def decl(name: Name): Symbol = tp.decl(name).symbol
 
@@ -902,7 +898,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       val t = field.tpt.tpe.typeSymbol
       if (t.exists) t
       else {
-        val arity = field.meth.tpe.widenDealias.paramTypes.size - _1.size
+        val arity = field.meth.tpe.widenDealias.firstParamTypes.size - _1.size
         val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == defn.UnitClass
         if (returnsUnit) ctx.requiredClass(("dotty.runtime.function.JProcedure" + arity))
         else if (arity <= 2) ctx.requiredClass(("dotty.runtime.function.JFunction" + arity))
@@ -1080,7 +1076,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   abstract class TypeHelper {
-    def paramTypes: List[Type]
     def params: List[Symbol]
 
     /** The members of this type that have all of `required` flags but none of `excluded` flags set.
@@ -1106,7 +1101,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
      */
     def toTypeKind(ctx: BCodeHelpers)(storage: ctx.BCInnerClassGen): ctx.bTypes.BType
 
-    def isFinalType: Boolean
   }
 
   abstract class Primitives {

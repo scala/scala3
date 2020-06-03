@@ -9,6 +9,7 @@ import scala.tools.asm.{Handle, Label, Opcodes}
 import BCodeHelpers.InvokeStyle
 
 import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.util.Spans.NoSpan
@@ -323,7 +324,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             genLoad(prefix)
           }
 
-          genLoadArguments(env, typeHelper(symHelper(fun.symbol).info).paramTypes map toTypeKind)
+          genLoadArguments(env, symHelper(fun.symbol).info.firstParamTypes map toTypeKind)
           generatedType = genInvokeDynamicLambda(NoSymbol, fun.symbol, env.size, functionalInterface)
 
         case app @ Apply(_, _) =>
@@ -1317,7 +1318,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
        * not using the rich equality is possible (their own equals method will do ok.)
        */
       val mustUseAnyComparator: Boolean = {
-        val areSameFinals = typeHelper(l.tpe).isFinalType && typeHelper(r.tpe).isFinalType && (l.tpe =:= r.tpe)
+        val areSameFinals = l.tpe.typeSymbol.is(Flags.Final) && r.tpe.typeSymbol.is(Flags.Final) && (l.tpe =:= r.tpe)
 
         !areSameFinals && isMaybeBoxed(typeHelper(l.tpe).typeSymbol) && isMaybeBoxed(typeHelper(r.tpe).typeSymbol)
       }
@@ -1402,7 +1403,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           asmMethodType(lambdaTarget).descriptor,
           /* itf = */ isInterface)
 
-      val (a,b) = typeHelper(symHelper(lambdaTarget).info).paramTypes.splitAt(environmentSize)
+      val (a,b) = symHelper(lambdaTarget).info.firstParamTypes.splitAt(environmentSize)
       var (capturedParamsTypes, lambdaParamTypes) = (a,b)
 
       if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = symHelper(symHelper(lambdaTarget).owner).info :: capturedParamsTypes

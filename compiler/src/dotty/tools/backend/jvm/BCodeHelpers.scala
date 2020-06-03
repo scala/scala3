@@ -242,7 +242,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       val resT: BType =
         if (symHelper(msym).isClassConstructor || symHelper(msym).isConstructor) UNIT
         else toTypeKind(symHelper(msym).tpe.resultType)
-      MethodBType(typeHelper(symHelper(msym).tpe).paramTypes map toTypeKind, resT)
+      MethodBType(symHelper(msym).tpe.firstParamTypes map toTypeKind, resT)
     }
 
     /**
@@ -312,7 +312,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol): Unit = {
       val moduleName     = internalName(module)
       val methodInfo     = symHelper(module).thisType.memberInfo(m)
-      val paramJavaTypes: List[BType] = typeHelper(methodInfo).paramTypes map toTypeKind
+      val paramJavaTypes: List[BType] = methodInfo.firstParamTypes map toTypeKind
       // val paramNames     = 0 until paramJavaTypes.length map ("x_" + _)
 
       /* Forwarders must not be marked final,
