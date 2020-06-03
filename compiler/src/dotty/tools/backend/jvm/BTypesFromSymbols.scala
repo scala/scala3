@@ -17,7 +17,7 @@ import scala.annotation.threadUnsafe
  * of the core btypes. They are declared in BTypes as abstract members. Note that BTypes does
  * not have access to the compiler instance.
  */
-class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
+class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   import int._
 
   val bCodeAsmCommon: BCodeAsmCommon[int.type ] = new BCodeAsmCommon(int)

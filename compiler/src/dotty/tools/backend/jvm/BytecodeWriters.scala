@@ -15,7 +15,7 @@ class FileConflictException(msg: String, val file: AbstractFile) extends IOExcep
  *  files, jars, and disassembled/javap output.
  */
 trait BytecodeWriters {
-  val int: BackendInterface
+  val int: DottyBackendInterface
   import int._
 
   /**

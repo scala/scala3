@@ -6,7 +6,7 @@ package jvm
  * This trait contains code shared between GenBCode and GenASM that depends on types defined in
  * the compiler cake (Global).
  */
-final class BCodeAsmCommon[I <: BackendInterface](val interface: I) {
+final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
   import interface._
 
   /**

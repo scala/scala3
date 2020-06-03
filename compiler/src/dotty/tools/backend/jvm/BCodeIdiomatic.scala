@@ -16,7 +16,7 @@ import scala.tools.asm.tree.MethodInsnNode
  *
  */
 trait BCodeIdiomatic {
-  val int: BackendInterface
+  val int: DottyBackendInterface
   final lazy val bTypes = new BTypesFromSymbols[int.type](int)
 
   import int._
