@@ -257,7 +257,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      */
     final def symDescriptor(sym: Symbol): String = { getClassBTypeAndRegisterInnerClass(sym).descriptor }
 
-    final def toTypeKind(tp: Type): BType = typeHelper(tp).toTypeKind(BCodeHelpers.this)(this)
+    final def toTypeKind(tp: Type): BType = typeToTypeKind(tp)(BCodeHelpers.this)(this)
 
   } // end of trait BCInnerClassGen
 
@@ -385,7 +385,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       }
       debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
-      for (m0 <- typeHelper(moduleClass.info).sortedMembersBasedOnFlags(required = Flag_METHOD, excluded = ExcludedForwarderFlags)) {
+      for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Flag_METHOD, excluded = ExcludedForwarderFlags)) {
         val m = if (symHelper(m0).isBridge) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
           log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")

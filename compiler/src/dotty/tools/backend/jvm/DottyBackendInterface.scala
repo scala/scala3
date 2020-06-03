@@ -157,14 +157,14 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
           case StringTag =>
             assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
             av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
-          case ClazzTag => av.visit(name, const.typeValue.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
+          case ClazzTag => av.visit(name, typeToTypeKind(const.typeValue)(bcodeStore)(innerClasesStore).toASMType)
           case EnumTag =>
             val edesc = innerClasesStore.typeDescriptor(const.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
             val evalue = const.symbolValue.name.mangledString // value the actual enumeration value.
             av.visitEnum(name, edesc, evalue)
         }
       case t: TypeApply if (t.fun.symbol == defn.Predef_classOf) =>
-        av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
+        av.visit(name, typeToTypeKind(t.args.head.tpe.classSymbol.denot.info)(bcodeStore)(innerClasesStore).toASMType)
       case Ident(nme.WILDCARD) =>
         // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
       case t: tpd.RefTree if t.symbol.denot.owner.isAllOf(Flags.JavaEnumTrait) =>
@@ -714,95 +714,102 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
 
-  implicit def typeHelper(tp: Type): TypeHelper = new TypeHelper {
+  /** The members of this type that have all of `required` flags but none of `excluded` flags set.
+   *  The members are sorted by name and signature to guarantee a stable ordering.
+   */
+  def sortedMembersBasedOnFlags(tp: Type, required: Flags, excluded: Flags): List[Symbol] = {
+    val requiredFlagSet = termFlagSet(required)
+    val excludedFlagSet = termFlagSet(excluded)
+    // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
+    val names = tp.memberNames(takeAllFilter).toSeq.sorted
+    val buffer = mutable.ListBuffer[Symbol]()
+    names.foreach { name =>
+      buffer ++= tp.memberBasedOnFlags(name, requiredFlagSet, excludedFlagSet)
+        .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol)
+    }
+    buffer.toList
+  }
 
-
-    def sortedMembersBasedOnFlags(required: Flags, excluded: Flags): List[Symbol] = {
-      val requiredFlagSet = termFlagSet(required)
-      val excludedFlagSet = termFlagSet(excluded)
-      // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
-      val names = tp.memberNames(takeAllFilter).toSeq.sorted
-      val buffer = mutable.ListBuffer[Symbol]()
-      names.foreach { name =>
-        buffer ++= tp.memberBasedOnFlags(name, requiredFlagSet, excludedFlagSet)
-          .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol)
-      }
-      buffer.toList
+  /**
+   * This method returns the BType for a type reference, for example a parameter type.
+   *
+   * If the result is a ClassBType for a nested class, it is added to the innerClassBufferASM.
+   *
+   * If `t` references a class, toTypeKind ensures that the class is not an implementation class.
+   * See also comment on getClassBTypeAndRegisterInnerClass, which is invoked for implementation
+   * classes.
+   */
+  def typeToTypeKind(tp: Type)(ct: BCodeHelpers)(storage: ct.BCInnerClassGen): ct.bTypes.BType = {
+    import ct.bTypes._
+    val defn = ctx.definitions
+    import coreBTypes._
+    import Types._
+    /**
+      * Primitive types are represented as TypeRefs to the class symbol of, for example, scala.Int.
+      * The `primitiveTypeMap` maps those class symbols to the corresponding PrimitiveBType.
+      */
+    def primitiveOrClassToBType(sym: Symbol): BType = {
+      assert(sym.isClass, sym)
+      assert(sym != defn.ArrayClass || isCompilingArray, sym)
+      primitiveTypeMap.getOrElse(sym.asInstanceOf[ct.bTypes.coreBTypes.bTypes.int.Symbol],
+        storage.getClassBTypeAndRegisterInnerClass(sym.asInstanceOf[ct.int.Symbol])).asInstanceOf[BType]
     }
 
-    def toTypeKind(ct: BCodeHelpers)(storage: ct.BCInnerClassGen): ct.bTypes.BType = {
-      import ct.bTypes._
-      val defn = ctx.definitions
-      import coreBTypes._
-      import Types._
-      /**
-       * Primitive types are represented as TypeRefs to the class symbol of, for example, scala.Int.
-       * The `primitiveTypeMap` maps those class symbols to the corresponding PrimitiveBType.
-       */
-      def primitiveOrClassToBType(sym: Symbol): BType = {
-        assert(sym.isClass, sym)
-        assert(sym != defn.ArrayClass || isCompilingArray, sym)
-        primitiveTypeMap.getOrElse(sym.asInstanceOf[ct.bTypes.coreBTypes.bTypes.int.Symbol],
-          storage.getClassBTypeAndRegisterInnerClass(sym.asInstanceOf[ct.int.Symbol])).asInstanceOf[BType]
-      }
-
-      /**
-       * When compiling Array.scala, the type parameter T is not erased and shows up in method
-       * signatures, e.g. `def apply(i: Int): T`. A TyperRef to T is replaced by ObjectReference.
-       */
-      def nonClassTypeRefToBType(sym: Symbol): ClassBType = {
-        assert(sym.isType && isCompilingArray, sym)
-        ObjectReference.asInstanceOf[ct.bTypes.ClassBType]
-      }
-
-      tp.widenDealias match {
-        case JavaArrayType(el) =>ArrayBType(el.toTypeKind(ct)(storage)) // Array type such as Array[Int] (kept by erasure)
-        case t: TypeRef =>
-          t.info match {
-
-            case _ =>
-              if (!t.symbol.isClass) nonClassTypeRefToBType(t.symbol)  // See comment on nonClassTypeRefToBType
-              else primitiveOrClassToBType(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
-          }
-        case Types.ClassInfo(_, sym, _, _, _)           => primitiveOrClassToBType(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
-
-        /* AnnotatedType should (probably) be eliminated by erasure. However we know it happens for
-         * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
-         * The type in the AnnotationInfo is an AnnotatedTpe. Tested in jvm/annotations.scala.
-         */
-        case a @ AnnotatedType(t, _) =>
-          debuglog(s"typeKind of annotated type $a")
-          t.toTypeKind(ct)(storage)
-
-        /* ExistentialType should (probably) be eliminated by erasure. We know they get here for
-         * classOf constants:
-         *   class C[T]
-         *   class T { final val k = classOf[C[_]] }
-         */
-       /* case e @ ExistentialType(_, t) =>
-          debuglog(s"typeKind of existential type $e")
-          t.toTypeKind(ctx)(storage)*/
-
-        /* The cases below should probably never occur. They are kept for now to avoid introducing
-         * new compiler crashes, but we added a warning. The compiler / library bootstrap and the
-         * test suite don't produce any warning.
-         */
-
-        case tp =>
-          ctx.warning(
-            s"an unexpected type representation reached the compiler backend while compiling ${ctx.compilationUnit}: $tp. " +
-              "If possible, please file a bug on https://github.com/lampepfl/dotty/issues")
-
-          tp match {
-            case tp: ThisType if tp.cls == defn.ArrayClass => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
-            case tp: ThisType                         => storage.getClassBTypeAndRegisterInnerClass(tp.cls.asInstanceOf[ct.int.Symbol])
-           // case t: SingletonType                   => primitiveOrClassToBType(t.classSymbol)
-            case t: SingletonType                     => t.underlying.toTypeKind(ct)(storage)
-            case t: RefinedType                       =>  t.parent.toTypeKind(ct)(storage) //parents.map(_.toTypeKind(ct)(storage).asClassBType).reduceLeft((a, b) => a.jvmWiseLUB(b))
-          }
-      }
+    /**
+      * When compiling Array.scala, the type parameter T is not erased and shows up in method
+      * signatures, e.g. `def apply(i: Int): T`. A TyperRef to T is replaced by ObjectReference.
+      */
+    def nonClassTypeRefToBType(sym: Symbol): ClassBType = {
+      assert(sym.isType && isCompilingArray, sym)
+      ObjectReference.asInstanceOf[ct.bTypes.ClassBType]
     }
 
+    tp.widenDealias match {
+      case JavaArrayType(el) =>ArrayBType(typeToTypeKind(el)(ct)(storage)) // Array type such as Array[Int] (kept by erasure)
+      case t: TypeRef =>
+        t.info match {
+
+          case _ =>
+            if (!t.symbol.isClass) nonClassTypeRefToBType(t.symbol)  // See comment on nonClassTypeRefToBType
+            else primitiveOrClassToBType(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
+        }
+      case Types.ClassInfo(_, sym, _, _, _)           => primitiveOrClassToBType(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
+
+      /* AnnotatedType should (probably) be eliminated by erasure. However we know it happens for
+        * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
+        * The type in the AnnotationInfo is an AnnotatedTpe. Tested in jvm/annotations.scala.
+        */
+      case a @ AnnotatedType(t, _) =>
+        debuglog(s"typeKind of annotated type $a")
+        typeToTypeKind(t)(ct)(storage)
+
+      /* ExistentialType should (probably) be eliminated by erasure. We know they get here for
+        * classOf constants:
+        *   class C[T]
+        *   class T { final val k = classOf[C[_]] }
+        */
+      /* case e @ ExistentialType(_, t) =>
+        debuglog(s"typeKind of existential type $e")
+        t.toTypeKind(ctx)(storage)*/
+
+      /* The cases below should probably never occur. They are kept for now to avoid introducing
+        * new compiler crashes, but we added a warning. The compiler / library bootstrap and the
+        * test suite don't produce any warning.
+        */
+
+      case tp =>
+        ctx.warning(
+          s"an unexpected type representation reached the compiler backend while compiling ${ctx.compilationUnit}: $tp. " +
+            "If possible, please file a bug on https://github.com/lampepfl/dotty/issues")
+
+        tp match {
+          case tp: ThisType if tp.cls == defn.ArrayClass => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
+          case tp: ThisType                         => storage.getClassBTypeAndRegisterInnerClass(tp.cls.asInstanceOf[ct.int.Symbol])
+          // case t: SingletonType                   => primitiveOrClassToBType(t.classSymbol)
+          case t: SingletonType                     => typeToTypeKind(t.underlying)(ct)(storage)
+          case t: RefinedType                       => typeToTypeKind(t.parent)(ct)(storage) //parents.map(_.toTypeKind(ct)(storage).asClassBType).reduceLeft((a, b) => a.jvmWiseLUB(b))
+        }
+    }
   }
 
   object SelectBI extends DeconstructorCommon[Select] {
@@ -1043,28 +1050,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
      *  Note that this will return false for subclasses of these classes.
      */
     def isFunctionClass: Boolean
-  }
-
-  abstract class TypeHelper {
-    // def params: List[Symbol]
-
-    /** The members of this type that have all of `required` flags but none of `excluded` flags set.
-     *  The members are sorted by name and signature to guarantee a stable ordering.
-     */
-    def sortedMembersBasedOnFlags(required: Flags, excluded: Flags): List[Symbol]
-
-
-    /**
-     * This method returns the BType for a type reference, for example a parameter type.
-     *
-     * If the result is a ClassBType for a nested class, it is added to the innerClassBufferASM.
-     *
-     * If `t` references a class, toTypeKind ensures that the class is not an implementation class.
-     * See also comment on getClassBTypeAndRegisterInnerClass, which is invoked for implementation
-     * classes.
-     */
-    def toTypeKind(ctx: BCodeHelpers)(storage: ctx.BCInnerClassGen): ctx.bTypes.BType
-
   }
 
   abstract class Primitives {
