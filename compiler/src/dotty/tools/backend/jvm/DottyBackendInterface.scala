@@ -31,10 +31,13 @@ import StdNames.{nme, str}
 import NameKinds.{DefaultGetterName, ExpandedName}
 import Names.TermName
 
-class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: Context) extends BackendInterfaceOld{
+class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: Context) {
   import Symbols.{toDenot, toClassDenot}
     // Dotty deviation: Need to (re-)import implicit decorators here because otherwise
     // they would be shadowed by the more deeply nested `symHelper` decorator.
+
+  type Flags           = Long
+  type ConstantTag = Int
 
   type Symbol          = Symbols.Symbol
   type Type            = Types.Type
@@ -101,8 +104,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val nme_EQEQ_LOCAL_VAR: Name = StdNames.nme.EQEQ_LOCAL_VAR
 
    // require LambdaMetafactory: scalac uses getClassIfDefined, but we need those always.
-  @threadUnsafe override lazy val LambdaMetaFactory: ClassSymbol = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
-  @threadUnsafe override lazy val MethodHandle: ClassSymbol      = ctx.requiredClass("java.lang.invoke.MethodHandle")
+  @threadUnsafe lazy val LambdaMetaFactory: ClassSymbol = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
+  @threadUnsafe lazy val MethodHandle: ClassSymbol      = ctx.requiredClass("java.lang.invoke.MethodHandle")
 
   val nme_valueOf: Name = StdNames.nme.valueOf
   val nme_apply: TermName = StdNames.nme.apply
@@ -156,7 +159,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def unboxMethods: Map[Symbol, Symbol] =
     defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
 
-  override def isSyntheticArrayConstructor(s: Symbol): Boolean = {
+  def isSyntheticArrayConstructor(s: Symbol): Boolean = {
     s eq defn.newArrayMethod
   }
 
@@ -306,7 +309,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  override def emitAnnotations(cw: asm.ClassVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
+  def emitAnnotations(cw: asm.ClassVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
                               (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for(annot <- annotations; if shouldEmitAnnotation(annot)) {
       val typ = annot.atp
@@ -323,7 +326,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     av.visitEnd()
   }
 
-  override def emitAnnotations(mw: asm.MethodVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
+  def emitAnnotations(mw: asm.MethodVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
                               (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for(annot <- annotations; if shouldEmitAnnotation(annot)) {
       val typ = annot.atp
@@ -333,7 +336,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  override def emitAnnotations(fw: asm.FieldVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
+  def emitAnnotations(fw: asm.FieldVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
                               (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for(annot <- annotations; if shouldEmitAnnotation(annot)) {
       val typ = annot.atp
@@ -343,7 +346,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  override def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]], bcodeStore: BCodeHelpers)
+  def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]], bcodeStore: BCodeHelpers)
                                    (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     val annotationss = pannotss map (_ filter shouldEmitAnnotation)
     if (annotationss forall (_.isEmpty)) return
@@ -1175,6 +1178,500 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   def currentUnit: CompilationUnit = ctx.compilationUnit
+
+
+
+  abstract class DeconstructorCommon[T >: Null <: AnyRef] {
+    var field: T = null
+    def get: this.type = this
+    def isEmpty: Boolean = field eq null
+    def isDefined = !isEmpty
+    def unapply(s: T): this.type ={
+      field = s
+      this
+    }
+  }
+
+  abstract class Deconstructor1Common[T >: Null <: AnyRef, R]{
+    var field: T = _
+    def get: R
+    def isEmpty: Boolean = field eq null
+    def isDefined = !isEmpty
+    def unapply(s: T): this.type ={
+      field = s
+      this
+    }
+  }
+
+  abstract class ClassDefDeconstructor extends DeconstructorCommon[ClassDef] {
+    def _1: Null
+    def _2: Name
+    def _3: List[TypeDef]
+    def _4: Template
+  }
+
+  abstract class BindDeconstructor extends DeconstructorCommon[Bind]{
+    def _1: Name
+    def _2: Tree
+  }
+
+  abstract class TemplateDeconstructor extends DeconstructorCommon[Template]{
+    def _1: List[Tree]
+    def _2: ValDef
+    def _3: List[Tree]
+  }
+
+  abstract class DefDefDeconstructor extends DeconstructorCommon[DefDef]{
+    def _1: Null
+    def _2: Name
+    def _3: List[TypeDef]
+    def _4: List[List[ValDef]]
+    def _5: Tree
+    def _6: Tree
+  }
+
+  abstract class ClosureDeconstructor extends DeconstructorCommon[Closure]{
+    def _1: List[Tree] // environment
+    def _2: Tree // meth
+    def _3: Symbol // functionalInterface
+  }
+
+  abstract class ThisDeconstructor extends Deconstructor1Common[This, Name]{
+    def apply(s: Symbol): Tree
+  }
+
+  abstract class IdentDeconstructor extends Deconstructor1Common[Ident, Name]{
+  }
+
+  abstract class LabeledDeconstructor extends DeconstructorCommon[Labeled]{
+    def _1: Bind // bind
+    def _2: Tree // expr
+  }
+
+  abstract class ReturnDeconstructor extends DeconstructorCommon[Return]{
+    def _1: Tree // expr
+    def _2: Symbol // target label, NoSymbol if return to method
+  }
+
+  abstract class WhileDoDeconstructor extends DeconstructorCommon[WhileDo]{
+    def _1: Tree // cond
+    def _2: Tree // body
+  }
+
+  abstract class ThrownException {
+    def unapply(a: Annotation): Option[Symbol]
+  }
+
+  abstract class ThrowDeconstructor extends Deconstructor1Common[Throw, Tree]{
+  }
+
+  abstract class ConstantDeconstructor extends Deconstructor1Common[Constant, Any]{
+  }
+
+  abstract class NewDeconstructor extends Deconstructor1Common[New, Type]{
+  }
+
+  abstract class AlternativeDeconstructor extends Deconstructor1Common[Alternative, List[Tree]]{
+  }
+
+  abstract class BlockDeconstructor extends DeconstructorCommon[Block]{
+    def _1: List[Tree]
+    def _2: Tree
+  }
+
+  abstract class CaseDeconstructor extends DeconstructorCommon[CaseDef]{
+    def _1: Tree
+    def _2: Tree
+    def _3: Tree
+  }
+
+  abstract class MatchDeconstructor extends DeconstructorCommon[Match]{
+    def _1: Tree
+    def _2: List[Tree]
+  }
+
+  abstract class LiteralDeconstructor extends Deconstructor1Common[Literal, Constant]{
+  }
+
+  abstract class AssignDeconstructor extends DeconstructorCommon[Assign]{
+    def _1: Tree
+    def _2: Tree
+  }
+
+  abstract class SelectDeconstructor extends DeconstructorCommon[Select]{
+    def _1: Tree
+    def _2: Name
+  }
+
+  abstract class ApplyDeconstructor extends DeconstructorCommon[Apply] {
+    def _1: Tree
+    def _2: List[Tree]
+  }
+
+  abstract class IfDeconstructor extends DeconstructorCommon[If]{
+    def _1: Tree
+    def _2: Tree
+    def _3: Tree
+  }
+
+  abstract class ValDefDeconstructor extends DeconstructorCommon[ValDef]{
+    def _1: Null
+    def _2: Name
+    def _3: Tree
+    def _4: Tree
+  }
+
+
+  abstract class TryDeconstructor extends DeconstructorCommon[Try]{
+    def _1: Tree
+    def _2: List[Tree]
+    def _3: Tree
+  }
+
+  abstract class TypedDeconstrutor extends DeconstructorCommon[Typed]{
+    def _1: Tree
+    def _2: Tree
+  }
+
+  abstract class SuperDeconstructor extends DeconstructorCommon[Super]{
+    def _1: Tree
+    def _2: Name
+  }
+
+  abstract class ArrayValueDeconstructor extends DeconstructorCommon[ArrayValue]{
+    def _1: Type
+    def _2: List[Tree]
+  }
+
+  abstract class TypeApplyDeconstructor extends DeconstructorCommon[TypeApply]{
+    def _1: Tree
+    def _2: List[Tree]
+  }
+
+  abstract class PositionHelper {
+    def isDefined: Boolean
+    def finalPosition: Position
+    def line: Int
+  }
+
+  abstract class ConstantHelper {
+    def tag: ConstantTag
+    def longValue: Long
+    def doubleValue: Double
+    def charValue: Char
+    def stringValue: String
+    def byteValue: Byte
+    def booleanValue: Boolean
+    def shortValue: Short
+    def intValue: Int
+    def value: Any
+    def floatValue: Float
+    def typeValue: Type
+    def symbolValue: Symbol
+  }
+
+  abstract class TreeHelper{
+    def symbol: Symbol
+    def tpe: Type
+    def isEmpty: Boolean
+    def pos: Position
+    def exists(pred: Tree => Boolean): Boolean
+  }
+
+  abstract class SymbolHelper {
+    def exists: Boolean
+
+    // names
+    def showFullName: String
+    def javaSimpleName: String
+    def javaBinaryName: String
+    def javaClassName: String
+    def name: Name
+    def rawname: String
+
+    // types
+    def info: Type
+    def tpe: Type // todo whats the differentce between tpe and info?
+    def thisType: Type
+
+    /** Does this symbol actually correspond to an interface that will be emitted?
+     *  In the backend, this should be preferred over `isInterface` because it
+     *  also returns true for the symbols of the fake companion objects we
+     *  create for Java-defined classes as well as for Java annotations
+     *  which we represent as classes.
+     */
+    final def isEmittedInterface: Boolean = isInterface ||
+      isJavaDefined && (isAnnotation || isModuleClass && symHelper(companionClass).isInterface)
+
+    // tests
+    def isClass: Boolean
+    def isType: Boolean
+    def isAnonymousClass: Boolean
+    def isConstructor: Boolean
+    def isExpanded: Boolean
+    def isAnonymousFunction: Boolean
+    def isMethod: Boolean
+    def isPublic: Boolean
+    def isSynthetic: Boolean
+    def isPackageClass: Boolean
+    def isModuleClass: Boolean
+    def isModule: Boolean
+    def isStrictFP: Boolean
+    def isLabel: Boolean
+    def hasPackageFlag: Boolean
+    def isInterface: Boolean
+    def isGetter: Boolean
+    def isSetter: Boolean
+    def isGetClass: Boolean
+    def isJavaDefined: Boolean
+    def isDeferred: Boolean
+    def isPrivate: Boolean
+    def getsJavaPrivateFlag: Boolean
+    def isFinal: Boolean
+    def getsJavaFinalFlag: Boolean
+    def isScalaStatic: Boolean
+    def isStaticMember: Boolean
+    def isBottomClass: Boolean
+    def isBridge: Boolean
+    def isArtifact: Boolean
+    def hasEnumFlag: Boolean
+    def hasAccessBoundary: Boolean
+    def isVarargsMethod: Boolean
+    def isDeprecated: Boolean
+    def isMutable: Boolean
+    def hasAbstractFlag: Boolean
+    def hasModuleFlag: Boolean
+    def isSynchronized: Boolean
+    def isNonBottomSubClass(sym: Symbol): Boolean
+    def hasAnnotation(sym: Symbol): Boolean
+    def shouldEmitForwarders: Boolean
+    def isJavaDefaultMethod: Boolean
+    def isClassConstructor: Boolean
+    def isAnnotation: Boolean
+    def isSerializable: Boolean
+    def isEnum: Boolean
+
+    /**
+     * True for module classes of modules that are top-level or owned only by objects. Module classes
+     * for such objects will get a MODULE$ flag and a corresponding static initializer.
+     */
+    def isStaticModuleClass: Boolean
+
+    def isStaticConstructor: Boolean
+
+
+    // navigation
+    def owner: Symbol
+    def rawowner: Symbol // todo ???
+    def originalOwner: Symbol
+    def parentSymbols: List[Symbol]
+    def superClass: Symbol
+    def enclClass: Symbol
+    def linkedClassOfClass: Symbol
+    def linkedClass: Symbol
+    def companionClass: Symbol
+    def companionModule: Symbol
+    def companionSymbol: Symbol
+    def moduleClass: Symbol
+    def enclosingClassSym: Symbol
+    def originalLexicallyEnclosingClass: Symbol
+    def nextOverriddenSymbol: Symbol
+    def allOverriddenSymbols: List[Symbol]
+
+
+    // members
+    def primaryConstructor: Symbol
+    def nestedClasses: List[Symbol]
+    def memberClasses: List[Symbol]
+    def annotations: List[Annotation]
+    def companionModuleMembers: List[Symbol]
+    def fieldSymbols: List[Symbol]
+    def methodSymbols: List[Symbol]
+    def serialVUID: Option[Long]
+
+
+    def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol
+
+    def getter(clz: Symbol): Symbol
+    def setter(clz: Symbol): Symbol
+
+    def moduleSuffix: String
+    def outputDirectory: AbstractFile
+    def pos: Position
+
+    def throwsAnnotations: List[Symbol]
+
+    /**
+     * All interfaces implemented by a class, except for those inherited through the superclass.
+     *
+     */
+    def superInterfaces: List[Symbol]
+
+    /**
+     * True for module classes of package level objects. The backend will generate a mirror class for
+     * such objects.
+     */
+    def isTopLevelModuleClass: Boolean
+
+    /**
+     * This is basically a re-implementation of sym.isStaticOwner, but using the originalOwner chain.
+     *
+     * The problem is that we are interested in a source-level property. Various phases changed the
+     * symbol's properties in the meantime, mostly lambdalift modified (destructively) the owner.
+     * Therefore, `sym.isStatic` is not what we want. For example, in
+     *   object T { def f { object U } }
+     * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
+     */
+    def isOriginallyStaticOwner: Boolean =
+      isPackageClass || isModuleClass && symHelper(symHelper(originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
+
+    def samMethod(): Symbol
+
+    /** Is this the symbol of one of the `scala.Function*` class ?
+     *  Note that this will return false for subclasses of these classes.
+     */
+    def isFunctionClass: Boolean
+  }
+
+  abstract class TypeHelper {
+    def <:<(other: Type): Boolean
+    def =:=(other: Type): Boolean
+    def paramTypes: List[Type]
+    def params: List[Symbol]
+    def resultType: Type
+    def memberInfo(s: Symbol): Type
+
+    /** The members of this type that have all of `required` flags but none of `excluded` flags set.
+     *  The members are sorted by name and signature to guarantee a stable ordering.
+     */
+    def sortedMembersBasedOnFlags(required: Flags, excluded: Flags): List[Symbol]
+    def members: List[Symbol]
+    def decl(name: Name): Symbol
+    def decls: List[Symbol]
+    def underlying: Type
+    def parents: List[Type]
+    def summaryString: String
+    def typeSymbol: Symbol
+    def member(string: Name): Symbol
+    /**
+     * This method returns the BType for a type reference, for example a parameter type.
+     *
+     * If the result is a ClassBType for a nested class, it is added to the innerClassBufferASM.
+     *
+     * If `t` references a class, toTypeKind ensures that the class is not an implementation class.
+     * See also comment on getClassBTypeAndRegisterInnerClass, which is invoked for implementation
+     * classes.
+     */
+    def toTypeKind(ctx: BCodeHelpers)(storage: ctx.BCInnerClassGen): ctx.bTypes.BType
+
+    def isFinalType: Boolean
+  }
+
+  abstract class Primitives {
+    def getPrimitive(app: Apply, receiver: Type): Int
+    def isPrimitive(fun: Tree): Boolean
+    def getPrimitive(sym: Symbol): Int
+  }
+
+  abstract class NameHelper {
+    def isTypeName: Boolean
+    def isTermName: Boolean
+    def startsWith(s: String): Boolean
+    def mangledString: String
+  }
+
+  abstract class AnnotationHelper{
+    def atp: Type
+    def symbol: Symbol
+    def args: List[Tree]
+    def assocs: List[(Name, /* ClassfileAnnotArg*/ Object)]
+  }
+
+  abstract class Caches {
+    def recordCache[T <: Clearable](cache: T): T
+    def newWeakMap[K, V](): collection.mutable.WeakHashMap[K, V]
+    def newMap[K, V](): collection.mutable.HashMap[K, V]
+    def newSet[K](): collection.mutable.Set[K]
+    def newWeakSet[K >: Null <: AnyRef](): dotty.tools.dotc.util.WeakHashSet[K]
+    def newAnyRefMap[K <: AnyRef, V](): collection.mutable.AnyRefMap[K, V]
+  }
+
+  // Class symbols used in backend.
+  // Vals because they are to frequent in scala programs so that they are already loaded by backend
+
+  lazy val NativeAttr: Symbol = requiredClass[scala.native]
+  lazy val TransientAttr = requiredClass[scala.transient]
+  lazy val VolatileAttr = requiredClass[scala.volatile]
+
+  val ScalaATTRName: String = "Scala"
+  val ScalaSignatureATTRName: String = "ScalaSig"
+
+  def doLabmdasFollowJVMMetafactoryOrder: Boolean = true
+
+  val BoxedBooleanClass: Symbol = requiredClass[java.lang.Boolean]
+  val BoxedByteClass: Symbol = requiredClass[java.lang.Byte]
+  val BoxedShortClass: Symbol = requiredClass[java.lang.Short]
+  val BoxedCharacterClass: Symbol = requiredClass[java.lang.Character]
+  val BoxedIntClass: Symbol  = requiredClass[java.lang.Integer]
+  val BoxedLongClass: Symbol = requiredClass[java.lang.Long]
+  val BoxedFloatClass: Symbol = requiredClass[java.lang.Float]
+  val BoxedDoubleClass: Symbol = requiredClass[java.lang.Double]
+  val StringClass: Symbol = requiredClass[java.lang.String]
+  val JavaStringBuilderClass: Symbol = requiredClass[java.lang.StringBuilder]
+  val JavaStringBufferClass: Symbol = requiredClass[java.lang.StringBuffer]
+  val JavaCharSequenceClass: Symbol = requiredClass[java.lang.CharSequence]
+  val ThrowableClass: Symbol = requiredClass[java.lang.Throwable]
+  val JavaCloneableClass: Symbol = requiredClass[java.lang.Cloneable]
+  val NullPointerExceptionClass: Symbol  = requiredClass[java.lang.NullPointerException]
+  val JavaSerializableClass: Symbol = requiredClass[java.io.Serializable]
+  val SerializableClass: Symbol = requiredClass[scala.Serializable]
+  val ClassCastExceptionClass: Symbol = requiredClass[java.lang.ClassCastException]
+  val IllegalArgExceptionClass: Symbol = requiredClass[java.lang.IllegalArgumentException]
+  val SerializedLambdaClass: Symbol = requiredClass[java.lang.invoke.SerializedLambda]
+
+  val ClassfileAnnotationClass: Symbol = requiredClass[scala.annotation.ClassfileAnnotation]
+  val BoxedNumberClass: Symbol = requiredClass[java.lang.Number]
+  val ThrowsClass: Symbol = requiredClass[scala.throws[_]]
+
+  // Module symbols used in backend
+  val StringModule: Symbol = symHelper(StringClass).linkedClassOfClass
+  val ScalaRunTimeModule: Symbol = requiredModule[scala.runtime.ScalaRunTime.type]
+
+
+  def isNull(t: Tree): Boolean = t match {
+    case LiteralBI(ConstantBI(null)) => true
+    case _ => false
+  }
+  def isLiteral(t: Tree): Boolean = t match {
+    case LiteralBI(_) => true
+    case _ => false
+  }
+  def isNonNullExpr(t: Tree): Boolean = isLiteral(t) || ((treeHelper(t).symbol ne null) && symHelper(treeHelper(t).symbol).isModule)
+  def ifOneIsNull(l: Tree, r: Tree): Tree = if (isNull(l)) r else if (isNull(r)) l else null
+
+  private val primitiveCompilationUnits = Set(
+    "Unit.scala",
+    "Boolean.scala",
+    "Char.scala",
+    "Byte.scala",
+    "Short.scala",
+    "Int.scala",
+    "Float.scala",
+    "Long.scala",
+    "Double.scala"
+  )
+
+  /**
+   * True if the current compilation unit is of a primitive class (scala.Boolean et al).
+   * Used only in assertions.
+   */
+  def isCompilingPrimitive = {
+    primitiveCompilationUnits(sourceFileFor(currentUnit))
+  }
+
+  def isCompilingArray = {
+    sourceFileFor(currentUnit) == "Array.scala"
+  }
 }
 
 object DottyBackendInterface {
