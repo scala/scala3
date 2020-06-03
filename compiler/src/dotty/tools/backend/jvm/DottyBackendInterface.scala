@@ -86,18 +86,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     case _ => false
   }
 
-  val hashMethodSym: Symbol = NoSymbol // used to dispatch ## on primitives to ScalaRuntime.hash. Should be implemented by a miniphase
-  val externalEqualsNumNum: Symbol = defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumNum)
-  val externalEqualsNumChar: Symbol = NoSymbol // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
-  val externalEqualsNumObject: Symbol = defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
   val externalEquals: Symbol = defn.BoxesRunTimeModule.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
-  val MaxFunctionArity: Int = Definitions.MaxImplementedFunctionArity
-  val FunctionClass: Array[Symbol] = defn.FunctionClassPerRun()
-  val AbstractFunctionClass: Array[Symbol] = defn.AbstractFunctionClassPerRun()
-  val PartialFunctionClass: Symbol = defn.PartialFunctionClass
-  val AbstractPartialFunctionClass: Symbol = defn.AbstractPartialFunctionClass
-  val String_valueOf: Symbol = defn.String_valueOf_Object
-  @threadUnsafe lazy val Predef_classOf: Symbol = defn.ScalaPredefModule.requiredMethod(nme.classOf)
 
   @threadUnsafe lazy val AnnotationRetentionAttr: ClassSymbol = ctx.requiredClass("java.lang.annotation.Retention")
   @threadUnsafe lazy val AnnotationRetentionSourceAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
@@ -174,7 +163,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
             val evalue = const.symbolValue.name.mangledString // value the actual enumeration value.
             av.visitEnum(name, edesc, evalue)
         }
-      case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
+      case t: TypeApply if (t.fun.symbol == defn.Predef_classOf) =>
         av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
       case Ident(nme.WILDCARD) =>
         // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
@@ -948,23 +937,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       field = s
       this
     }
-  }
-
-
-  abstract class ConstantHelper {
-    def tag: ConstantTag
-    def longValue: Long
-    def doubleValue: Double
-    def charValue: Char
-    def stringValue: String
-    def byteValue: Byte
-    def booleanValue: Boolean
-    def shortValue: Short
-    def intValue: Int
-    def value: Any
-    def floatValue: Float
-    def typeValue: Type
-    def symbolValue: Symbol
   }
 
 

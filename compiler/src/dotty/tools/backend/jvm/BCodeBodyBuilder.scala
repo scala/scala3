@@ -1061,7 +1061,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         // Optimization for expressions of the form "" + x.  We can avoid the StringBuilder.
         case List(Literal(Constant("")), arg) =>
           genLoad(arg, ObjectReference)
-          genCallMethod(String_valueOf, InvokeStyle.Static)
+          genCallMethod(defn.String_valueOf_Object, InvokeStyle.Static)
 
         case concatenations =>
           bc.genStartConcat
@@ -1152,7 +1152,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     /* Generate the scala ## method. */
     def genScalaHash(tree: Tree): BType = {
       genLoad(tree, ObjectReference)
-      genCallMethod(hashMethodSym, InvokeStyle.Static)
+      genCallMethod(NoSymbol, InvokeStyle.Static) // used to dispatch ## on primitives to ScalaRuntime.hash. Should be implemented by a miniphase
     }
 
     /*
@@ -1325,9 +1325,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       if (mustUseAnyComparator) {
         val equalsMethod: Symbol = {
           if (l.tpe <:< symHelper(defn.BoxedNumberClass).tpe) {
-            if (r.tpe <:< symHelper(defn.BoxedNumberClass).tpe) externalEqualsNumNum
-            else if (r.tpe <:< symHelper(defn.BoxedCharClass).tpe) externalEqualsNumChar
-            else externalEqualsNumObject
+            if (r.tpe <:< symHelper(defn.BoxedNumberClass).tpe) defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumNum)
+            else if (r.tpe <:< symHelper(defn.BoxedCharClass).tpe) NoSymbol // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
+            else defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
           } else externalEquals
         }
 
