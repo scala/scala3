@@ -87,7 +87,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
   def enclosingMethodAttribute(classSym: Symbol, classDesc: Symbol => String, methodDesc: Symbol => String): Option[EnclosingMethodEntry] = {
     if (isAnonymousOrLocalClass(classSym)) {
       val methodOpt = enclosingMethodForEnclosingMethodAttribute(classSym)
-      debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(symHelper(_).enclClass)})")
+      ctx.debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(symHelper(_).enclClass)})")
       Some(EnclosingMethodEntry(
         classDesc(enclosingClassForEnclosingMethodAttribute(classSym)),
         methodOpt.map(symHelper(_).javaSimpleName.toString).orNull,

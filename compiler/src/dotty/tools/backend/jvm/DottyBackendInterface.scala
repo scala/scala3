@@ -104,19 +104,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     s eq defn.newArrayMethod
   }
 
-  def isBox(sym: Symbol): Boolean =
-    Erasure.Boxing.isBox(sym) && sym.denot.owner != defn.UnitModuleClass
-  def isUnbox(sym: Symbol): Boolean =
-    Erasure.Boxing.isUnbox(sym) && sym.denot.owner != defn.UnitModuleClass
-
-  val primitives: Primitives = new Primitives {
-    val primitives = new DottyPrimitives(ctx)
-    def getPrimitive(app: Apply, receiver: Type): Int = primitives.getPrimitive(app, receiver)
-
-    def getPrimitive(sym: Symbol): Int = primitives.getPrimitive(sym)
-
-    def isPrimitive(fun: Tree): Boolean = primitives.isPrimitive(fun)
-  }
+  val primitives = new DottyPrimitives(ctx)
 
   def isRuntimeVisible(annot: Annotation): Boolean =
     if (toDenot(annot.tree.tpe.typeSymbol).hasAnnotation(AnnotationRetentionAttr))
@@ -290,9 +278,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     ctx.requiredModule(className)
   }
 
-  def debuglog(msg: => String): Unit = ctx.debuglog(msg)
-  def informProgress(msg: String): Unit = ctx.informProgress(msg)
-  def log(msg: => String): Unit = ctx.log(msg)
   def error(pos: Position, msg: String): Unit = ctx.error(msg, sourcePos(pos))
   def warning(pos: Position, msg: String): Unit = ctx.warning(msg, sourcePos(pos))
   def abort(msg: String): Nothing = {
@@ -302,16 +287,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def sourcePos(pos: Position)(implicit ctx: Context): util.SourcePosition =
     ctx.source.atSpan(pos)
 
-  def emitAsmp: Option[String] = None
-
   def dumpClasses: Option[String] =
     if (ctx.settings.Ydumpclasses.isDefault) None
     else Some(ctx.settings.Ydumpclasses.value)
 
-  def noForwarders: Boolean = ctx.settings.XnoForwarders.value
   def debuglevel: Int = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
-  def settings_debug: Boolean = ctx.settings.Ydebug.value
-  def targetPlatform: String = ctx.settings.target.value
 
   val perRunCaches: Caches = new Caches {
     def newAnyRefMap[K <: AnyRef, V](): mutable.AnyRefMap[K, V] = new mutable.AnyRefMap[K, V]()
@@ -322,18 +302,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def newSet[K](): mutable.Set[K] = new mutable.HashSet[K]
   }
 
-  val MODULE_INSTANCE_FIELD: String = str.MODULE_INSTANCE_FIELD
-
   def dropModule(str: String): String =
     if (!str.isEmpty && str.last == '$') str.take(str.length - 1) else str
-
-  def newTermName(prefix: String): Name = prefix.toTermName
-
-  val Flag_SYNTHETIC: Flags = Flags.Synthetic.bits
-  val Flag_METHOD: Flags = Flags.Method.bits
-  val ExcludedForwarderFlags: Flags = DottyBackendInterface.ExcludedForwarderFlags.bits
-
-  def isQualifierSafeToElide(qual: Tree): Boolean = tpd.isIdempotentExpr(qual)
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
@@ -488,11 +458,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isClass: Boolean = {
       sym.isPackageObject || (sym.isClass)
     }
-    // def isType: Boolean = sym.isType
-    // def isAnonymousClass: Boolean = toDenot(sym).isAnonymousClass
-    // def isConstructor: Boolean = toDenot(sym).isConstructor
     def isExpanded: Boolean = sym.name.is(ExpandedName)
-    // def isAnonymousFunction: Boolean = toDenot(sym).isAnonymousFunction
     def isMethod: Boolean = sym.is(Flags.Method)
     def isPublic: Boolean = !sym.flags.isOneOf(Flags.Private | Flags.Protected)
     def isSynthetic: Boolean = sym.is(Flags.Synthetic)
@@ -503,8 +469,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isLabel: Boolean = sym.is(Flags.Label)
     def hasPackageFlag: Boolean = sym.is(Flags.Package)
     def isInterface: Boolean = (sym.is(Flags.PureInterface)) || (sym.is(Flags.Trait))
-    // def isGetter: Boolean = toDenot(sym).isGetter
-    // def isSetter: Boolean = toDenot(sym).isSetter
     def isGetClass: Boolean = sym eq defn.Any_getClass
     def isJavaDefined: Boolean = sym.is(Flags.JavaDefined)
     def isJavaDefaultMethod: Boolean = !((sym.is(Flags.Deferred))  || toDenot(sym).isClassConstructor)
@@ -549,9 +513,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       (sym.is(Flags.Module)) && sym.isStatic
     def isEnum = sym.is(Flags.Enum)
 
-    // def isClassConstructor: Boolean = toDenot(sym).isClassConstructor
-    // def isAnnotation: Boolean = toDenot(sym).isAnnotation
-    // def isSerializable: Boolean = toDenot(sym).isSerializable
 
     /**
      * True for module classes of modules that are top-level or owned only by objects. Module classes
@@ -780,7 +741,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         * The type in the AnnotationInfo is an AnnotatedTpe. Tested in jvm/annotations.scala.
         */
       case a @ AnnotatedType(t, _) =>
-        debuglog(s"typeKind of annotated type $a")
+        ctx.debuglog(s"typeKind of annotated type $a")
         typeToTypeKind(t)(ct)(storage)
 
       /* ExistentialType should (probably) be eliminated by erasure. We know they get here for

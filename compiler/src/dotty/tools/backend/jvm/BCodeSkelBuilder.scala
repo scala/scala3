@@ -9,9 +9,11 @@ import scala.tools.asm
 import scala.tools.asm.util.{TraceMethodVisitor, ASMifier}
 import java.io.PrintWriter
 
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.StdNames.str
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.util.Spans.NoSpan
-import dotty.tools.dotc.ast.tpd
 
 /*
  *
@@ -161,7 +163,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       } else {
 
-        val skipStaticForwarders = (symHelper(claszSymbol).isInterface || symHelper(claszSymbol).isModule || noForwarders)
+        val skipStaticForwarders = (symHelper(claszSymbol).isInterface || symHelper(claszSymbol).isModule || ctx.settings.XnoForwarders.value)
         if (!skipStaticForwarders) {
           val lmoc = symHelper(claszSymbol).companionModule
           // add static forwarders if there are no name conflicts; see bugs #363 and #1735
@@ -169,7 +171,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             // it must be a top level class (name contains no $s)
             val isCandidateForForwarders = symHelper(lmoc).shouldEmitForwarders
             if (isCandidateForForwarders) {
-              log(s"Adding static forwarders from '$claszSymbol' to implementations in '$lmoc'")
+              ctx.log(s"Adding static forwarders from '$claszSymbol' to implementations in '$lmoc'")
               addForwarders(cnode, thisName, symHelper(lmoc).moduleClass)
             }
           }
@@ -187,7 +189,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def addModuleInstanceField(): Unit = {
       val fv =
         cnode.visitField(GenBCodeOps.PublicStaticFinal, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
-                         MODULE_INSTANCE_FIELD,
+                         str.MODULE_INSTANCE_FIELD,
                          "L" + thisName + ";",
                          null, // no java-generic-signature
                          null  // no initial value
@@ -365,7 +367,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
        */
       def makeLocal(tk: BType, name: String, tpe: Type, pos: Position): Symbol = {
 
-        val locSym = symHelper(methSymbol).freshLocal(cunit, name, tpe, pos, Flag_SYNTHETIC) // setInfo tpe
+        val locSym = symHelper(methSymbol).freshLocal(cunit, name, tpe, pos, Flags.Synthetic.bits) // setInfo tpe
         makeLocal(locSym, tk)
         locSym
       }
@@ -560,7 +562,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             case ReturnBI(_) | Block(_, ReturnBI(_)) | ThrowBI(_) | Block(_, ThrowBI(_)) => ()
             case tpd.EmptyTree =>
               error(NoSpan, "Concrete method has no definition: " + dd + (
-                if (settings_debug) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
+                if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
                 else "")
               )
             case _ =>

@@ -8,6 +8,9 @@ import scala.collection.mutable
 import dotty.tools.io.AbstractFile
 
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.StdNames.str
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Flags
 
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -351,7 +354,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       mirrorMethod.visitCode()
 
-      mirrorMethod.visitFieldInsn(asm.Opcodes.GETSTATIC, moduleName, MODULE_INSTANCE_FIELD, symDescriptor(module))
+      mirrorMethod.visitFieldInsn(asm.Opcodes.GETSTATIC, moduleName, str.MODULE_INSTANCE_FIELD, symDescriptor(module))
 
       var index = 0
       for(jparamType <- paramJavaTypes) {
@@ -377,26 +380,26 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      */
     def addForwarders(jclass: asm.ClassVisitor, jclassName: String, moduleClass: Symbol): Unit = {
       assert(symHelper(moduleClass).isModuleClass, moduleClass)
-      debuglog(s"Dumping mirror class for object: $moduleClass")
+      ctx.debuglog(s"Dumping mirror class for object: $moduleClass")
 
       val linkedClass  = symHelper(moduleClass).companionClass
       lazy val conflictingNames: Set[Name] = {
         (linkedClass.info.allMembers.map(_.symbol) collect { case sym if sym.name.isTermName => sym.name }).toSet
       }
-      debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
+      ctx.debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
-      for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Flag_METHOD, excluded = ExcludedForwarderFlags)) {
+      for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Flags.Method.bits, excluded = DottyBackendInterface.ExcludedForwarderFlags.bits)) {
         val m = if (symHelper(m0).isBridge) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
-          log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
+          ctx.log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
         else if (m.isType || symHelper(m).isDeferred || (m.owner eq defn.ObjectClass) || m.isConstructor || symHelper(m).isExpanded)
-          debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
+          ctx.debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
         else if (conflictingNames(m.name))
-          log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")
+          ctx.log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")
         else if (symHelper(m).hasAccessBoundary)
-          log(s"No forwarder for non-public member $m")
+          ctx.log(s"No forwarder for non-public member $m")
         else {
-          log(s"Adding static forwarder for '$m' from $jclassName to '$moduleClass'")
+          ctx.log(s"Adding static forwarder for '$m' from $jclassName to '$moduleClass'")
           addForwarder(jclass, moduleClass, m)
         }
       }
@@ -515,7 +518,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      *  Classes implementing the `Parcelable` interface must also have a static field called `CREATOR`,
      *  which is an object implementing the `Parcelable.Creator` interface.
      */
-    val androidFieldName = newTermName("CREATOR")
+    val androidFieldName = "CREATOR".toTermName
 
     lazy val AndroidParcelableInterface : Symbol = getClassIfDefined("android.os.Parcelable")
     lazy val AndroidCreatorClass        : Symbol = getClassIfDefined("android.os.Parcelable$Creator")
@@ -549,7 +552,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       clinit.visitFieldInsn(
         asm.Opcodes.GETSTATIC,
         moduleName,
-        MODULE_INSTANCE_FIELD,
+        str.MODULE_INSTANCE_FIELD,
         "L" + moduleName + ";"
       )
 

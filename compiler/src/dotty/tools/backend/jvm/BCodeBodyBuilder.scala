@@ -8,13 +8,15 @@ import scala.tools.asm
 import scala.tools.asm.{Handle, Label, Opcodes}
 import BCodeHelpers.InvokeStyle
 
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.StdNames.{nme, str}
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.transform.Erasure
 import dotty.tools.dotc.util.Spans.NoSpan
-import dotty.tools.dotc.ast.tpd
+
 
 /*
  *
@@ -267,7 +269,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       tree match {
         case ValDef(nme.THIS, _, _) =>
-          debuglog("skipping trivial assign to _$this: " + tree)
+          ctx.debuglog("skipping trivial assign to _$this: " + tree)
 
         case tree@ValDef(_, _, _) =>
           val sym = tree.symbol
@@ -352,7 +354,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case SelectBI(qualifier, _) =>
           val sym = tree.symbol
           generatedType = symInfoTK(sym)
-          val qualSafeToElide = isQualifierSafeToElide(qualifier)
+          val qualSafeToElide = tpd.isIdempotentExpr(qualifier)
 
           def genLoadQualUnlessElidable(): Unit = { if (!qualSafeToElide) { genLoadQualifier(tree) } }
 
@@ -690,7 +692,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               mnode.visitFieldInsn(
                 asm.Opcodes.PUTSTATIC,
                 thisName,
-                MODULE_INSTANCE_FIELD,
+                str.MODULE_INSTANCE_FIELD,
                 "L" + thisName + ";"
               )
             }
@@ -732,14 +734,14 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               abort(s"Cannot instantiate $tpt of kind: $generatedType")
           }
 
-        case Apply(fun, List(expr)) if isBox(fun.symbol) =>
+        case Apply(fun, List(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
           val MethodNameAndType(mname, methodType) = asmBoxTo(nativeKind)
           bc.invokestatic(BoxesRunTime.internalName, mname, methodType.descriptor, itf = false)
           generatedType = boxResultType(fun.symbol) // was toTypeKind(fun.symbol.tpe.resultType)
 
-        case Apply(fun, List(expr)) if isUnbox(fun.symbol) =>
+        case Apply(fun, List(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           genLoad(expr)
           val boxType = unboxResultType(fun.symbol) // was toTypeKind(fun.symbol.owner.linkedClassOfClass.tpe)
           generatedType = boxType
@@ -1025,7 +1027,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         mnode.visitFieldInsn(
           asm.Opcodes.GETSTATIC,
           mbt.internalName /* + "$" */ ,
-          MODULE_INSTANCE_FIELD,
+          str.MODULE_INSTANCE_FIELD,
           mbt.descriptor // for nostalgics: toTypeKind(module.tpe).descriptor
         )
       }
@@ -1073,7 +1075,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           bc.genStartConcat
           for (elem <- concatenations) {
             val loadedElem = elem match {
-              case Apply(boxOp, value :: Nil) if isBox(boxOp.symbol) =>
+              case Apply(boxOp, value :: Nil) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
                 // Eliminate boxing of primitive values. Boxing is introduced by erasure because
                 // there's only a single synthetic `+` method "added" to the string class.
                 value
@@ -1389,7 +1391,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genInvokeDynamicLambda(ctor: Symbol, lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol): BType = {
       import java.lang.invoke.LambdaMetafactory.FLAG_SERIALIZABLE
 
-      debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
+      ctx.debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
       val generatedType = classBTypeFromSymbol(functionalInterface)
       // Lambdas should be serializable if they implement a SAM that extends Serializable or if they
       // implement a scala.Function* class.

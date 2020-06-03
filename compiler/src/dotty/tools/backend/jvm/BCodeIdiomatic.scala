@@ -23,7 +23,7 @@ trait BCodeIdiomatic {
   import bTypes._
   import coreBTypes._
 
-  lazy val classfileVersion: Int = targetPlatform match {
+  lazy val classfileVersion: Int = ctx.settings.target.value match {
     case "jvm-1.5"     => asm.Opcodes.V1_5
     case "jvm-1.6"     => asm.Opcodes.V1_6
     case "jvm-1.7"     => asm.Opcodes.V1_7
