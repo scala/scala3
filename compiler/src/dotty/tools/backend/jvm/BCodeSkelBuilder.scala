@@ -254,7 +254,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         val jfield = new asm.tree.FieldNode(
           flags,
-          symHelper(f).javaSimpleName.toString,
+          f.name.mangledString.toString,
           symInfoTK(f).descriptor,
           javagensig,
           null // no initial value
@@ -395,7 +395,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       private def makeLocal(sym: Symbol, tk: BType): Local = {
         assert(nxtIdx != -1, "not a valid start index")
-        val loc = Local(tk, symHelper(sym).javaSimpleName.toString, nxtIdx, sym.is(Flags.Synthetic))
+        val loc = Local(tk, sym.name.mangledString.toString, nxtIdx, sym.is(Flags.Synthetic))
         val existing = slots.put(sym, loc)
         if (existing.isDefined)
           error(sym.span, "attempt to create duplicate local var.")
@@ -532,7 +532,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       assert(mnode == null, "GenBCode detected nested method.")
 
       methSymbol  = dd.symbol
-      jMethodName = symHelper(methSymbol).javaSimpleName.toString
+      jMethodName = methSymbol.name.mangledString.toString
       returnType  = asmMethodType(dd.symbol).returnType
       isMethSymStaticCtor = symHelper(methSymbol).isStaticConstructor
 
@@ -644,7 +644,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         insnModA      = new asm.tree.TypeInsnNode(asm.Opcodes.NEW, className)
         // INVOKESPECIAL <init>
         val callee = methSymbol.enclosingClass.primaryConstructor
-        val jname  = symHelper(callee).javaSimpleName.toString
+        val jname  = callee.name.mangledString.toString
         val jowner = internalName(callee.owner)
         val jtype  = asmMethodType(callee).descriptor
         insnModB   = new asm.tree.MethodInsnNode(asm.Opcodes.INVOKESPECIAL, jowner, jname, jtype, false)
@@ -666,7 +666,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         // INVOKESTATIC CREATOR(): android.os.Parcelable$Creator; -- TODO where does this Android method come from?
         val callee = claszSymbol.companionModule.info.member(androidFieldName).symbol
         val jowner = internalName(callee.owner)
-        val jname  = symHelper(callee).javaSimpleName.toString
+        val jname  = callee.name.mangledString.toString
         val jtype  = asmMethodType(callee).descriptor
         insnParcA  = new asm.tree.MethodInsnNode(asm.Opcodes.INVOKESTATIC, jowner, jname, jtype, false)
         // PUTSTATIC `thisName`.CREATOR;

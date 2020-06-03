@@ -147,11 +147,11 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   private def buildNestedInfo(innerClassSym: Symbol): Option[NestedInfo] = {
     assert(symHelper(innerClassSym).isClass, s"Cannot build NestedInfo for non-class symbol $innerClassSym")
 
-    val isNested = !symHelper(innerClassSym).rawowner.is(Flags.PackageClass)
+    val isNested = !innerClassSym.originalOwner.originalLexicallyEnclosingClass.is(Flags.PackageClass)
     if (!isNested) None
     else {
       // See comment in BTypes, when is a class marked static in the InnerClass table.
-      val isStaticNestedClass = symHelper(symHelper(symHelper(innerClassSym).originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
+      val isStaticNestedClass = symHelper(symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
 
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
       val enclosingClassSym = symHelper(innerClassSym).enclosingClassSym
@@ -161,10 +161,10 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         if (isAnonymousOrLocalClass(innerClassSym)) {
           None
         } else {
-          val outerName = symHelper(symHelper(innerClassSym).rawowner).javaBinaryName
+          val outerName = symHelper(innerClassSym.originalOwner.originalLexicallyEnclosingClass).javaBinaryName
           // Java compatibility. See the big comment in BTypes that summarizes the InnerClass spec.
           val outerNameModule =
-            if (symHelper(symHelper(innerClassSym).rawowner).isTopLevelModuleClass) dropModule(outerName)
+            if (symHelper(innerClassSym.originalOwner.originalLexicallyEnclosingClass).isTopLevelModuleClass) dropModule(outerName)
             else outerName
           Some(outerNameModule.toString)
         }

@@ -24,7 +24,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
     // always top-level. However, SI-8900 shows an example where the weak name-based implementation
     // of isDelambdafyFunction failed (for a function declared in a package named "lambda").
     classSym.isAnonymousClass || {
-      val originalOwnerLexicallyEnclosingClass = symHelper(symHelper(classSym).originalOwner).originalLexicallyEnclosingClass
+      val originalOwnerLexicallyEnclosingClass = symHelper(classSym.originalOwner).originalLexicallyEnclosingClass
       originalOwnerLexicallyEnclosingClass != NoSymbol && !symHelper(originalOwnerLexicallyEnclosingClass).isClass
     }
   }
@@ -57,9 +57,9 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
     def enclosingMethod(sym: Symbol): Option[Symbol] = {
       if (symHelper(sym).isClass || sym == NoSymbol) None
       else if (sym.is(Flags.Method)) Some(sym)
-      else enclosingMethod(symHelper(symHelper(sym).originalOwner).originalLexicallyEnclosingClass)
+      else enclosingMethod(symHelper(sym.originalOwner).originalLexicallyEnclosingClass)
     }
-    enclosingMethod(symHelper(symHelper(classSym).originalOwner).originalLexicallyEnclosingClass)
+    enclosingMethod(symHelper(classSym.originalOwner).originalLexicallyEnclosingClass)
   }
 
   /**
@@ -70,9 +70,9 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
     assert(symHelper(classSym).isClass, classSym)
     def enclosingClass(sym: Symbol): Symbol = {
       if (symHelper(sym).isClass) sym
-      else enclosingClass(symHelper(symHelper(sym).originalOwner).originalLexicallyEnclosingClass)
+      else enclosingClass(symHelper(sym.originalOwner).originalLexicallyEnclosingClass)
     }
-    enclosingClass(symHelper(symHelper(classSym).originalOwner).originalLexicallyEnclosingClass)
+    enclosingClass(symHelper(classSym.originalOwner).originalLexicallyEnclosingClass)
   }
 
   /*final*/ case class EnclosingMethodEntry(owner: String, name: String, methodDescriptor: String)
@@ -91,7 +91,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
       ctx.debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(_.enclosingClass)})")
       Some(EnclosingMethodEntry(
         classDesc(enclosingClassForEnclosingMethodAttribute(classSym)),
-        methodOpt.map(symHelper(_).javaSimpleName.toString).orNull,
+        methodOpt.map(_.name.mangledString.toString).orNull,
         methodOpt.map(methodDesc).orNull))
     } else {
       None

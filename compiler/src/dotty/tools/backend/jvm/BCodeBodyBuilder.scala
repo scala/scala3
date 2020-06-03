@@ -449,7 +449,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val useSpecificReceiver = specificReceiver != null && !symHelper(field).isScalaStatic
 
       val owner      = internalName(if (useSpecificReceiver) specificReceiver else field.owner)
-      val fieldJName = symHelper(field).javaSimpleName.toString
+      val fieldJName = field.name.mangledString.toString
       val fieldDescr = symInfoTK(field).descriptor
       val isStatic   = symHelper(field).isStaticMember
       val opc =
@@ -497,7 +497,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case EnumTag   =>
           val sym       = const.symbolValue
           val ownerName = internalName(sym.owner)
-          val fieldName = symHelper(sym).javaSimpleName.toString
+          val fieldName = sym.name.mangledString.toString
           val underlying = sym.info match {
             case t: TypeProxy => t.underlying
             case t => t
@@ -685,7 +685,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             // we initialize the MODULE$ field immediately after the super ctor
             if (!isModuleInitialized &&
               jMethodName == INSTANCE_CONSTRUCTOR_NAME &&
-              symHelper(fun.symbol).javaSimpleName.toString == INSTANCE_CONSTRUCTOR_NAME &&
+              fun.symbol.name.mangledString.toString == INSTANCE_CONSTRUCTOR_NAME &&
               symHelper(claszSymbol).isStaticModuleClass) {
               isModuleInitialized = true
               mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
@@ -779,7 +779,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               // Emitting `def f(c: C) = c.clone()` as `Object.clone()` gives a VerifyError.
               val target: String = tpeTK(qual).asRefBType.classOrArrayType
               val methodBType = asmMethodType(sym)
-              bc.invokevirtual(target, symHelper(sym).javaSimpleName.toString, methodBType.descriptor)
+              bc.invokevirtual(target, sym.name.mangledString.toString, methodBType.descriptor)
               generatedType = methodBType.returnType
             } else {
               val receiverClass = if (!invokeStyle.isVirtual) null else {
@@ -1135,7 +1135,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       receiverClass.info // ensure types the type is up to date; erasure may add lateINTERFACE to traits
       val receiverName = internalName(receiverClass)
 
-      val jname    = symHelper(method).javaSimpleName.toString
+      val jname    = method.name.mangledString.toString
       val bmType   = asmMethodType(method)
       val mdescr   = bmType.descriptor
 

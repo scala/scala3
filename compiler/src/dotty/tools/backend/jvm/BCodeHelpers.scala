@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.StdNames.str
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.NameKinds.ExpandedName
 
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -335,7 +336,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       val jReturnType = toTypeKind(methodInfo.resultType)
       val mdesc = MethodBType(paramJavaTypes, jReturnType).descriptor
-      val mirrorMethodName = symHelper(m).javaSimpleName.toString
+      val mirrorMethodName = m.name.mangledString.toString
       val mirrorMethod: asm.MethodVisitor = jclass.visitMethod(
         flags,
         mirrorMethodName,
@@ -392,7 +393,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         val m = if (m0.is(Flags.Bridge)) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
           ctx.log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
-        else if (m.isType || m.is(Flags.Deferred) || (m.owner eq defn.ObjectClass) || m.isConstructor || symHelper(m).isExpanded)
+        else if (m.isType || m.is(Flags.Deferred) || (m.owner eq defn.ObjectClass) || m.isConstructor || m.name.is(ExpandedName))
           ctx.debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
         else if (conflictingNames(m.name))
           ctx.log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")

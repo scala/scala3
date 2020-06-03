@@ -446,7 +446,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
   implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper {
     // names
-    def javaSimpleName: String = toDenot(sym).name.mangledString // addModuleSuffix(simpleName.dropLocal)
+    // def javaSimpleName: String = toDenot(sym).name.mangledString // addModuleSuffix(simpleName.dropLocal)
     def javaBinaryName: String = javaClassName.replace('.', '/') // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
     def javaClassName: String = toDenot(sym).fullName.mangledString // addModuleSuffix(fullNameInternal('.')).toString
     def rawname: String = {
@@ -458,7 +458,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def isClass: Boolean = {
       sym.isPackageObject || (sym.isClass)
     }
-    def isExpanded: Boolean = sym.name.is(ExpandedName)
     def isPublic: Boolean = !sym.flags.isOneOf(Flags.Private | Flags.Protected)
     def isStrictFP: Boolean = false // todo: implement
     def hasPackageFlag: Boolean = sym.is(Flags.Package)
@@ -516,10 +515,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
 
     // navigation
-    def rawowner: Symbol = {
-      originalOwner.originalLexicallyEnclosingClass
-    }
-    def originalOwner: Symbol = toDenot(sym).originalOwner
     def parentSymbols: List[Symbol] = toDenot(sym).info.parents.map(_.typeSymbol)
     def superClass: Symbol =  {
       val t = toDenot(sym).asClass.superClass
@@ -644,7 +639,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
      * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
      */
      def isOriginallyStaticOwner: Boolean =
-      sym.is(Flags.PackageClass) || sym.is(Flags.ModuleClass) && symHelper(symHelper(originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
+      sym.is(Flags.PackageClass) || sym.is(Flags.ModuleClass) && symHelper(symHelper(sym.originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
   }
 
 
@@ -844,7 +839,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   abstract class SymbolHelper {
 
     // names
-    def javaSimpleName: String
+    // def javaSimpleName: String
     def javaBinaryName: String
     def javaClassName: String
     def rawname: String
@@ -859,7 +854,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
     // tests
     def isClass: Boolean
-    def isExpanded: Boolean
     def isPublic: Boolean
     def isStrictFP: Boolean
     def hasPackageFlag: Boolean
@@ -890,20 +884,13 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
 
     // navigation
-    def rawowner: Symbol // todo ???
-    def originalOwner: Symbol
     def parentSymbols: List[Symbol]
     def superClass: Symbol
-    // def enclClass: Symbol
     def linkedClassOfClass: Symbol
-    // def linkedClass: Symbol
-    // def companionClass: Symbol
-    // def companionModule: Symbol
     def companionSymbol: Symbol
-    // def moduleClass: Symbol
+
     def enclosingClassSym: Symbol
     def originalLexicallyEnclosingClass: Symbol
-    // def nextOverriddenSymbol: Symbol
     def allOverriddenSymbols: List[Symbol]
 
 
