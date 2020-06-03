@@ -530,7 +530,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(implicit ctx: Context) ex
         case PackageDef(_, stats) => stats foreach gen
         case ValDef(name, tpt, rhs) => () // module val not emitted
         case cd: TypeDef         =>
-          q1 add Item1(arrivalPos, cd, int.currentUnit)
+          q1 add Item1(arrivalPos, cd, int.ctx.compilationUnit)
           arrivalPos += 1
       }
     }

@@ -806,7 +806,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
         case tp =>
           ctx.warning(
-            s"an unexpected type representation reached the compiler backend while compiling $currentUnit: $tp. " +
+            s"an unexpected type representation reached the compiler backend while compiling ${ctx.compilationUnit}: $tp. " +
               "If possible, please file a bug on https://github.com/lampepfl/dotty/issues")
 
           tp match {
@@ -857,10 +857,12 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  object ThrowBI extends Deconstructor1Common[Throw, Tree] {
+  object ThrowBI {
+    var field: Throw = _
+    def isEmpty: Boolean = field eq null
+    def isDefined = !isEmpty
     def get: Tree = field.args.head
-
-    override def unapply(s: Throw): ThrowBI.type = {
+    def unapply(s: Throw): ThrowBI.type = {
       if (s.fun.symbol eq defn.throwMethod) {
         field = s
       } else {
@@ -909,7 +911,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  def currentUnit: CompilationUnit = ctx.compilationUnit
+  // def currentUnit: CompilationUnit = ctx.compilationUnit
 
 
 
@@ -923,18 +925,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       this
     }
   }
-
-  abstract class Deconstructor1Common[T >: Null <: AnyRef, R]{
-    var field: T = _
-    def get: R
-    def isEmpty: Boolean = field eq null
-    def isDefined = !isEmpty
-    def unapply(s: T): this.type ={
-      field = s
-      this
-    }
-  }
-
 
   abstract class SymbolHelper {
     def exists: Boolean
@@ -1177,11 +1167,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
    * Used only in assertions.
    */
   def isCompilingPrimitive = {
-    primitiveCompilationUnits(sourceFileFor(currentUnit))
+    primitiveCompilationUnits(sourceFileFor(ctx.compilationUnit))
   }
 
   def isCompilingArray = {
-    sourceFileFor(currentUnit) == "Array.scala"
+    sourceFileFor(ctx.compilationUnit) == "Array.scala"
   }
 }
 
