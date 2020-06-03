@@ -11,7 +11,7 @@ import scala.tools.asm
 /* Interface to abstract over frontend inside backend.
  * Intended to be implemented by both scalac and dotc
  */
-abstract class BackendInterface extends BackendInterfaceDefinitions {
+abstract class BackendInterface {
   type Flags      = Long
 
   type Constant   >: Null <: AnyRef
@@ -637,7 +637,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
 
   def dropModule(str: String): String
 
-/*  Returns a ScalaSignature annotation if it must be added to this class, none otherwise.
+ /*  Returns a ScalaSignature annotation if it must be added to this class, none otherwise.
  *  This annotation must be added to the class' annotations list when generating them.
  *
  *  Depending on whether the returned option is defined, it adds to `jclass` one of:
@@ -659,9 +659,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
  *  must-single-thread
  */
   def getAnnotPickle(jclassName: String, sym: Symbol): Option[Annotation]
-}
 
-abstract class BackendInterfaceDefinitions { self: BackendInterface =>
   val nme_valueOf: Name
 
   /* magic instances */
