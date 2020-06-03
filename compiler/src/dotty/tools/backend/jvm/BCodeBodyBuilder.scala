@@ -1020,7 +1020,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     def genLoadModule(module: Symbol): Unit = {
       def inStaticMethod = methSymbol != null && symHelper(methSymbol).isStaticMember
-      if (claszSymbol == symHelper(module).moduleClass && jMethodName != "readResolve" && !inStaticMethod) {
+      if (claszSymbol == module.moduleClass && jMethodName != "readResolve" && !inStaticMethod) {
         mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
       } else {
         val mbt = symInfoTK(module).asClassBType

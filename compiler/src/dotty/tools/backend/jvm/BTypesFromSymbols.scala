@@ -111,7 +111,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       // This is done by buildNestedInfo, the reason is Java compatibility, see comment in BTypes.
       // For consistency, the InnerClass entry for D needs to be present in C - to Java it looks
       // like D is a member of C, not C$.
-      val linkedClass = symHelper(classSym).linkedClass
+      val linkedClass = classSym.linkedClass
       val companionModuleMembers = symHelper(classSym).companionModuleMembers
 
       nestedClasses ++ companionModuleMembers

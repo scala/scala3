@@ -484,7 +484,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
      *  which we represent as classes.
      */
     def isEmittedInterface: Boolean = isInterface ||
-      isJavaDefined && (toDenot(sym).isAnnotation || isModuleClass && symHelper(companionClass).isInterface)
+      isJavaDefined && (toDenot(sym).isAnnotation || isModuleClass && symHelper(sym.companionClass).isInterface)
 
     def getsJavaPrivateFlag: Boolean =
       isPrivate || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
@@ -549,13 +549,13 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       }
       else t
     }
-    def enclClass: Symbol = toDenot(sym).enclosingClass
-    def linkedClassOfClass: Symbol = linkedClass
-    def linkedClass: Symbol = toDenot(sym)(ctx).linkedClass(ctx) //exitingPickler(sym.linkedClassOfClass)
-    def companionClass: Symbol = toDenot(sym).companionClass
-    def companionModule: Symbol = toDenot(sym).companionModule
-    def companionSymbol: Symbol = if (sym.is(Flags.Module)) companionClass else companionModule
-    def moduleClass: Symbol = toDenot(sym).moduleClass
+    // def enclClass: Symbol = toDenot(sym).enclosingClass
+    def linkedClassOfClass: Symbol = sym.linkedClass
+    // def linkedClass: Symbol = toDenot(sym)(ctx).linkedClass(ctx) //exitingPickler(sym.linkedClassOfClass)
+    // def companionClass: Symbol = toDenot(sym).companionClass
+    // def companionModule: Symbol = toDenot(sym).companionModule
+    def companionSymbol: Symbol = if (sym.is(Flags.Module)) sym.companionClass else sym.companionModule
+    // def moduleClass: Symbol = toDenot(sym).moduleClass
     def enclosingClassSym: Symbol = {
       if (this.isClass) {
         val ct = ctx.withPhase(ctx.flattenPhase.prev)
@@ -599,7 +599,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def companionModuleMembers: List[Symbol] =  {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
       // not local classes of the companion module (E in the example) that were lifted by lambdalift.
-      if (linkedClass.isTopLevelModuleClass) /*exitingPickler*/ linkedClass.memberClasses
+      if (sym.linkedClass.isTopLevelModuleClass) /*exitingPickler*/ sym.linkedClass.memberClasses
       else Nil
     }
     def fieldSymbols: List[Symbol] = {
@@ -624,9 +624,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
       ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos)
     }
-
-    def getter(clz: Symbol): Symbol = decorateSymbol(sym).getter
-    def setter(clz: Symbol): Symbol = decorateSymbol(sym).setter
 
     def moduleSuffix: String = "" // todo: validate that names already have $ suffix
     def outputDirectory: AbstractFile = DottyBackendInterface.this.outputDirectory
@@ -946,13 +943,13 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def originalOwner: Symbol
     def parentSymbols: List[Symbol]
     def superClass: Symbol
-    def enclClass: Symbol
+    // def enclClass: Symbol
     def linkedClassOfClass: Symbol
-    def linkedClass: Symbol
-    def companionClass: Symbol
-    def companionModule: Symbol
+    // def linkedClass: Symbol
+    // def companionClass: Symbol
+    // def companionModule: Symbol
     def companionSymbol: Symbol
-    def moduleClass: Symbol
+    // def moduleClass: Symbol
     def enclosingClassSym: Symbol
     def originalLexicallyEnclosingClass: Symbol
     // def nextOverriddenSymbol: Symbol
@@ -971,9 +968,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
 
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol
-
-    def getter(clz: Symbol): Symbol
-    def setter(clz: Symbol): Symbol
 
     def moduleSuffix: String
     def outputDirectory: AbstractFile

@@ -165,14 +165,14 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         val skipStaticForwarders = (symHelper(claszSymbol).isInterface || symHelper(claszSymbol).isModule || ctx.settings.XnoForwarders.value)
         if (!skipStaticForwarders) {
-          val lmoc = symHelper(claszSymbol).companionModule
+          val lmoc = claszSymbol.companionModule
           // add static forwarders if there are no name conflicts; see bugs #363 and #1735
           if (lmoc != NoSymbol) {
             // it must be a top level class (name contains no $s)
             val isCandidateForForwarders = symHelper(lmoc).shouldEmitForwarders
             if (isCandidateForForwarders) {
               ctx.log(s"Adding static forwarders from '$claszSymbol' to implementations in '$lmoc'")
-              addForwarders(cnode, thisName, symHelper(lmoc).moduleClass)
+              addForwarders(cnode, thisName, lmoc.moduleClass)
             }
           }
         }
@@ -628,10 +628,10 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // call object's private ctor from static ctor
       if (isCZStaticModule) {
         // NEW `moduleName`
-        val className = internalName(symHelper(methSymbol).enclClass)
+        val className = internalName(methSymbol.enclosingClass)
         insnModA      = new asm.tree.TypeInsnNode(asm.Opcodes.NEW, className)
         // INVOKESPECIAL <init>
-        val callee = symHelper(methSymbol).enclClass.primaryConstructor
+        val callee = methSymbol.enclosingClass.primaryConstructor
         val jname  = symHelper(callee).javaSimpleName.toString
         val jowner = internalName(callee.owner)
         val jtype  = asmMethodType(callee).descriptor
@@ -652,7 +652,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           null
         )
         // INVOKESTATIC CREATOR(): android.os.Parcelable$Creator; -- TODO where does this Android method come from?
-        val callee = symHelper(claszSymbol).companionModule.info.member(androidFieldName).symbol
+        val callee = claszSymbol.companionModule.info.member(androidFieldName).symbol
         val jowner = internalName(callee.owner)
         val jname  = symHelper(callee).javaSimpleName.toString
         val jtype  = asmMethodType(callee).descriptor

@@ -382,7 +382,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       assert(symHelper(moduleClass).isModuleClass, moduleClass)
       ctx.debuglog(s"Dumping mirror class for object: $moduleClass")
 
-      val linkedClass  = symHelper(moduleClass).companionClass
+      val linkedClass  = moduleClass.companionClass
       lazy val conflictingNames: Set[Name] = {
         (linkedClass.info.allMembers.map(_.symbol) collect { case sym if sym.name.isTermName => sym.name }).toSet
       }
@@ -470,7 +470,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      */
     def genMirrorClass(moduleClass: Symbol, cunit: CompilationUnit): asm.tree.ClassNode = {
       assert(symHelper(moduleClass).isModuleClass)
-      assert(symHelper(moduleClass).companionClass == NoSymbol, moduleClass)
+      assert(moduleClass.companionClass == NoSymbol, moduleClass)
       innerClassBufferASM.clear()
       this.cunit = cunit
       val moduleName = internalName(moduleClass) // + "$"
