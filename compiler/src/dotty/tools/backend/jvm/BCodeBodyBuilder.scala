@@ -1353,7 +1353,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
         } else {
           // l == r -> if (l eq null) r eq null else l.equals(r)
-          val eqEqTempLocal = locals.makeLocal(ObjectReference, nameHelper(nme.EQEQ_LOCAL_VAR).mangledString, defn.ObjectType, r.span)
+          val eqEqTempLocal = locals.makeLocal(ObjectReference, nme.EQEQ_LOCAL_VAR.mangledString, defn.ObjectType, r.span)
           val lNull    = new asm.Label
           val lNonNull = new asm.Label
 
@@ -1398,7 +1398,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val targetHandle =
         new asm.Handle(invokeStyle,
           classBTypeFromSymbol(symHelper(lambdaTarget).owner).internalName,
-          nameHelper(lambdaTarget.name).mangledString,
+          lambdaTarget.name.mangledString,
           asmMethodType(lambdaTarget).descriptor,
           /* itf = */ isInterface)
 
@@ -1414,7 +1414,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       // TODO specialization
       val constrainedType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(symHelper(lambdaTarget).tpe.resultType)).toASMType
       val abstractMethod = symHelper(functionalInterface).samMethod()
-      val methodName = nameHelper(abstractMethod.name).mangledString
+      val methodName = abstractMethod.name.mangledString
       val applyN = {
         val mt = asmMethodType(abstractMethod)
         mt.toASMType

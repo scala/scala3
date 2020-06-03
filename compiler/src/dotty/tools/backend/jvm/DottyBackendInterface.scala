@@ -504,13 +504,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-  implicit def nameHelper(n: Name): NameHelper = new NameHelper {
-    def isTypeName: Boolean = n.isTypeName
-    def isTermName: Boolean = n.isTermName
-    def startsWith(s: String): Boolean = n.startsWith(s)
-    def mangledString: String = n.mangledString
-  }
-
   implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper {
     def exists: Boolean = sym.exists
 
@@ -1187,13 +1180,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def getPrimitive(app: Apply, receiver: Type): Int
     def isPrimitive(fun: Tree): Boolean
     def getPrimitive(sym: Symbol): Int
-  }
-
-  abstract class NameHelper {
-    def isTypeName: Boolean
-    def isTermName: Boolean
-    def startsWith(s: String): Boolean
-    def mangledString: String
   }
 
   abstract class AnnotationHelper{
