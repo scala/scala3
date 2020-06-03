@@ -5,6 +5,7 @@ package jvm
 import scala.tools.asm
 import scala.annotation.threadUnsafe
 
+import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols._
 
 /**
@@ -124,7 +125,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
      * Here we get rid of the module class B, making sure that the class B is present.
      */
     val nestedClassSymbolsNoJavaModuleClasses = nestedClassSymbols.filter(s => {
-      if (symHelper(s).isJavaDefined && symHelper(s).isModuleClass) {
+      if (s.is(Flags.JavaDefined) && s.is(Flags.ModuleClass)) {
         // We could also search in nestedClassSymbols for s.linkedClassOfClass, but sometimes that
         // returns NoSymbol, so it doesn't work.
         val nb = nestedClassSymbols.count(mc => mc.name == s.name && mc.owner == s.owner)
@@ -146,7 +147,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   private def buildNestedInfo(innerClassSym: Symbol): Option[NestedInfo] = {
     assert(symHelper(innerClassSym).isClass, s"Cannot build NestedInfo for non-class symbol $innerClassSym")
 
-    val isNested = !symHelper(symHelper(innerClassSym).rawowner).isPackageClass
+    val isNested = !symHelper(innerClassSym).rawowner.is(Flags.PackageClass)
     if (!isNested) None
     else {
       // See comment in BTypes, when is a class marked static in the InnerClass table.
@@ -206,7 +207,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     import asm.Opcodes._
     GenBCodeOps.mkFlags(
       if (privateFlag) ACC_PRIVATE else ACC_PUBLIC,
-      if (symHelper(sym).isDeferred || symHelper(sym).hasAbstractFlag) ACC_ABSTRACT else 0,
+      if (sym.is(Flags.Deferred) || sym.isOneOf(Flags.AbstractOrTrait)) ACC_ABSTRACT else 0,
       if (symHelper(sym).isInterface) ACC_INTERFACE else 0,
 
       if (finalFlag &&
@@ -214,19 +215,19 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         // without having to provide any implementations, but that is an
         // illegal combination of modifiers at the bytecode level so
         // suppress final if abstract if present.
-        !symHelper(sym).hasAbstractFlag &&
+        !sym.isOneOf(Flags.AbstractOrTrait) &&
         //  Mixin forwarders are bridges and can be final, but final bridges confuse some frameworks
-        !symHelper(sym).isBridge)
+        !sym.is(Flags.Bridge))
         ACC_FINAL else 0,
-      if (symHelper(sym).isStaticMember) ACC_STATIC else 0,
-      if (symHelper(sym).isBridge) ACC_BRIDGE | ACC_SYNTHETIC else 0,
-      if (symHelper(sym).isArtifact) ACC_SYNTHETIC else 0,
+      if (sym.isStaticMember) ACC_STATIC else 0,
+      if (sym.is(Flags.Bridge)) ACC_BRIDGE | ACC_SYNTHETIC else 0,
+      if (sym.is(Flags.Artifact)) ACC_SYNTHETIC else 0,
       if (symHelper(sym).isClass && !symHelper(sym).isInterface) ACC_SUPER else 0,
-      if (symHelper(sym).hasEnumFlag) ACC_ENUM else 0,
-      if (symHelper(sym).isVarargsMethod) ACC_VARARGS else 0,
-      if (symHelper(sym).isSynchronized) ACC_SYNCHRONIZED else 0,
+      if (sym.isAllOf(Flags.JavaEnumTrait)) ACC_ENUM else 0,
+      if (sym.is(Flags.JavaVarargs)) ACC_VARARGS else 0,
+      if (sym.is(Flags.Synchronized)) ACC_SYNCHRONIZED else 0,
       if (false /*sym.isDeprecated*/) asm.Opcodes.ACC_DEPRECATED else 0,
-      if (symHelper(sym).isEnum) asm.Opcodes.ACC_ENUM else 0
+      if (sym.is(Flags.Enum)) asm.Opcodes.ACC_ENUM else 0
     )
   }
 
@@ -234,7 +235,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     javaFlags(sym) | GenBCodeOps.mkFlags(
       if (symHelper(sym) hasAnnotation TransientAttr) asm.Opcodes.ACC_TRANSIENT else 0,
       if (symHelper(sym) hasAnnotation VolatileAttr)  asm.Opcodes.ACC_VOLATILE  else 0,
-      if (symHelper(sym).isMutable) 0 else asm.Opcodes.ACC_FINAL
+      if (sym.is(Flags.Mutable)) 0 else asm.Opcodes.ACC_FINAL
     )
   }
 }

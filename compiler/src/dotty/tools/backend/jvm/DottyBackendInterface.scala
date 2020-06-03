@@ -117,7 +117,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
 
   def shouldEmitAnnotation(annot: Annotation): Boolean = {
-    annot.symbol.isJavaDefined &&
+    annot.symbol.is(Flags.JavaDefined) &&
       retentionPolicyOf(annot) != AnnotationRetentionSourceAttr
   }
 
@@ -459,23 +459,15 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       sym.isPackageObject || (sym.isClass)
     }
     def isExpanded: Boolean = sym.name.is(ExpandedName)
-    def isMethod: Boolean = sym.is(Flags.Method)
     def isPublic: Boolean = !sym.flags.isOneOf(Flags.Private | Flags.Protected)
-    def isSynthetic: Boolean = sym.is(Flags.Synthetic)
-    def isPackageClass: Boolean = sym.is(Flags.PackageClass)
-    def isModuleClass: Boolean = sym.is(Flags.ModuleClass)
-    def isModule: Boolean = sym.is(Flags.Module)
     def isStrictFP: Boolean = false // todo: implement
-    def isLabel: Boolean = sym.is(Flags.Label)
     def hasPackageFlag: Boolean = sym.is(Flags.Package)
     def isInterface: Boolean = (sym.is(Flags.PureInterface)) || (sym.is(Flags.Trait))
     def isGetClass: Boolean = sym eq defn.Any_getClass
-    def isJavaDefined: Boolean = sym.is(Flags.JavaDefined)
     def isJavaDefaultMethod: Boolean = !((sym.is(Flags.Deferred))  || toDenot(sym).isClassConstructor)
-    def isDeferred: Boolean = sym.is(Flags.Deferred)
-    def isPrivate: Boolean = sym.is(Flags.Private)
+
     def getsJavaFinalFlag: Boolean =
-      isFinal &&  !toDenot(sym).isClassConstructor && !(sym.is(Flags.Mutable)) &&  !(sym.enclosingClass.is(Flags.Trait))
+      sym.is(Flags.Final) &&  !toDenot(sym).isClassConstructor && !(sym.is(Flags.Mutable)) &&  !(sym.enclosingClass.is(Flags.Trait))
 
     /** Does this symbol actually correspond to an interface that will be emitted?
      *  In the backend, this should be preferred over `isInterface` because it
@@ -484,12 +476,11 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
      *  which we represent as classes.
      */
     def isEmittedInterface: Boolean = isInterface ||
-      isJavaDefined && (toDenot(sym).isAnnotation || isModuleClass && symHelper(sym.companionClass).isInterface)
+      sym.is(Flags.JavaDefined) && (toDenot(sym).isAnnotation || sym.is(Flags.ModuleClass) && symHelper(sym.companionClass).isInterface)
 
     def getsJavaPrivateFlag: Boolean =
-      isPrivate || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
+      sym.is(Flags.Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
-    def isFinal: Boolean = sym.is(Flags.Final)
     def isScalaStatic: Boolean =
       toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot)
     def isStaticMember: Boolean = (sym ne NoSymbol) &&
@@ -497,21 +488,13 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
     def isBottomClass: Boolean = (sym eq defn.NullClass) || (sym eq defn.NothingClass)
-    def isBridge: Boolean = sym.is(Flags.Bridge)
-    def isArtifact: Boolean = sym.is(Flags.Artifact)
-    def hasEnumFlag: Boolean = sym.isAllOf(Flags.JavaEnumTrait)
+
     def hasAccessBoundary: Boolean = sym.accessBoundary(defn.RootClass) ne defn.RootClass
-    def isVarargsMethod: Boolean = sym.is(Flags.JavaVarargs)
-    // def isDeprecated: Boolean = false
-    def isMutable: Boolean = sym.is(Flags.Mutable)
-    def hasAbstractFlag: Boolean = sym.isOneOf(Flags.AbstractOrTrait)
-    def hasModuleFlag: Boolean = sym.is(Flags.Module)
-    def isSynchronized: Boolean = sym.is(Flags.Synchronized)
+
     def isNonBottomSubClass(other: Symbol): Boolean = sym.derivesFrom(other)
     def hasAnnotation(ann: Symbol): Boolean = toDenot(sym).hasAnnotation(ann)
     def shouldEmitForwarders: Boolean =
       (sym.is(Flags.Module)) && sym.isStatic
-    def isEnum = sym.is(Flags.Enum)
 
 
     /**
@@ -605,7 +588,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       toDenot(sym).info.decls.filter(p => p.isTerm && !p.is(Flags.Method))
     }
     def methodSymbols: List[Symbol] =
-      for (f <- toDenot(sym).info.decls.toList if f.isMethod && f.isTerm && !f.isModule) yield f
+      for (f <- toDenot(sym).info.decls.toList if f.is(Flags.Method) && f.isTerm && !f.is(Flags.Module)) yield f
 
 
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
@@ -633,7 +616,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
      * True for module classes of package level objects. The backend will generate a mirror class for
      * such objects.
      */
-    def isTopLevelModuleClass: Boolean = sym.isModuleClass &&
+    def isTopLevelModuleClass: Boolean = sym.is(Flags.ModuleClass) &&
       ctx.atPhase(ctx.flattenPhase) {
         toDenot(sym).owner.is(Flags.PackageClass)
       }
@@ -650,6 +633,18 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       }
     }
 
+
+    /**
+     * This is basically a re-implementation of sym.isStaticOwner, but using the originalOwner chain.
+     *
+     * The problem is that we are interested in a source-level property. Various phases changed the
+     * symbol's properties in the meantime, mostly lambdalift modified (destructively) the owner.
+     * Therefore, `sym.isStatic` is not what we want. For example, in
+     *   object T { def f { object U } }
+     * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
+     */
+     def isOriginallyStaticOwner: Boolean =
+      sym.is(Flags.PackageClass) || sym.is(Flags.ModuleClass) && symHelper(symHelper(originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
   }
 
 
@@ -794,7 +789,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
   object ReturnBI extends DeconstructorCommon[Return] {
     def _1: Tree = field.expr
-    def _2: Symbol = if (field.from.symbol.isLabel) field.from.symbol else NoSymbol
+    def _2: Symbol = if (field.from.symbol.is(Flags.Label)) field.from.symbol else NoSymbol
   }
 
   object ArrayValueBI extends DeconstructorCommon[ArrayValue] {
@@ -864,51 +859,26 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
     // tests
     def isClass: Boolean
-    // def isType: Boolean
-    // def isAnonymousClass: Boolean
-    // def isConstructor: Boolean
     def isExpanded: Boolean
-    // def isAnonymousFunction: Boolean
-    def isMethod: Boolean
     def isPublic: Boolean
-    def isSynthetic: Boolean
-    def isPackageClass: Boolean
-    def isModuleClass: Boolean
-    def isModule: Boolean
     def isStrictFP: Boolean
-    def isLabel: Boolean
     def hasPackageFlag: Boolean
     def isInterface: Boolean
-    // def isGetter: Boolean
-    // def isSetter: Boolean
+
     def isGetClass: Boolean
-    def isJavaDefined: Boolean
-    def isDeferred: Boolean
-    def isPrivate: Boolean
     def getsJavaPrivateFlag: Boolean
-    def isFinal: Boolean
     def getsJavaFinalFlag: Boolean
     def isScalaStatic: Boolean
     def isStaticMember: Boolean
     def isBottomClass: Boolean
-    def isBridge: Boolean
-    def isArtifact: Boolean
-    def hasEnumFlag: Boolean
+
     def hasAccessBoundary: Boolean
-    def isVarargsMethod: Boolean
-    // def isDeprecated: Boolean
-    def isMutable: Boolean
-    def hasAbstractFlag: Boolean
-    def hasModuleFlag: Boolean
-    def isSynchronized: Boolean
     def isNonBottomSubClass(sym: Symbol): Boolean
     def hasAnnotation(sym: Symbol): Boolean
     def shouldEmitForwarders: Boolean
     def isJavaDefaultMethod: Boolean
-    // def isClassConstructor: Boolean
-    // def isAnnotation: Boolean
-    // def isSerializable: Boolean
-    def isEnum: Boolean
+
+    // def isEnum: Boolean
 
     /**
      * True for module classes of modules that are top-level or owned only by objects. Module classes
@@ -971,8 +941,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
      *   object T { def f { object U } }
      * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
      */
-    def isOriginallyStaticOwner: Boolean =
-      isPackageClass || isModuleClass && symHelper(symHelper(originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
+    def isOriginallyStaticOwner: Boolean
 
     def samMethod(): Symbol
   }

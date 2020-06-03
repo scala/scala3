@@ -197,7 +197,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       // If the `sym` is a java module class, we use the java class instead. This ensures that we
       // register the class (instead of the module class) in innerClassBufferASM.
       // The two symbols have the same name, so the resulting internalName is the same.
-      val classSym = if (symHelper(sym).isJavaDefined && symHelper(sym).isModuleClass) symHelper(sym).linkedClassOfClass else sym
+      val classSym = if (sym.is(Flags.JavaDefined) && sym.is(Flags.ModuleClass)) symHelper(sym).linkedClassOfClass else sym
       getClassBTypeAndRegisterInnerClass(classSym).internalName
     }
 
@@ -241,7 +241,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     final def asmMethodType(msym: Symbol): MethodBType = {
-      assert(symHelper(msym).isMethod, s"not a method-symbol: $msym")
+      assert(msym.is(Flags.Method), s"not a method-symbol: $msym")
       val resT: BType =
         if (msym.isClassConstructor || msym.isConstructor) UNIT
         else toTypeKind(msym.info.resultType)
@@ -325,7 +325,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       // TODO: evaluate the other flags we might be dropping on the floor here.
       // TODO: ACC_SYNTHETIC ?
       val flags = GenBCodeOps.PublicStatic | (
-        if (symHelper(m).isVarargsMethod) asm.Opcodes.ACC_VARARGS else 0
+        if (m.is(Flags.JavaVarargs)) asm.Opcodes.ACC_VARARGS else 0
       )
 
       // TODO needed? for(ann <- m.annotations) { ann.symbol.initialize }
@@ -379,7 +379,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     def addForwarders(jclass: asm.ClassVisitor, jclassName: String, moduleClass: Symbol): Unit = {
-      assert(symHelper(moduleClass).isModuleClass, moduleClass)
+      assert(moduleClass.is(Flags.ModuleClass), moduleClass)
       ctx.debuglog(s"Dumping mirror class for object: $moduleClass")
 
       val linkedClass  = moduleClass.companionClass
@@ -389,10 +389,10 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       ctx.debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
       for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Flags.Method.bits, excluded = DottyBackendInterface.ExcludedForwarderFlags.bits)) {
-        val m = if (symHelper(m0).isBridge) m0.nextOverriddenSymbol else m0
+        val m = if (m0.is(Flags.Bridge)) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
           ctx.log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
-        else if (m.isType || symHelper(m).isDeferred || (m.owner eq defn.ObjectClass) || m.isConstructor || symHelper(m).isExpanded)
+        else if (m.isType || m.is(Flags.Deferred) || (m.owner eq defn.ObjectClass) || m.isConstructor || symHelper(m).isExpanded)
           ctx.debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
         else if (conflictingNames(m.name))
           ctx.log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")
@@ -469,7 +469,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      *  must-single-thread
      */
     def genMirrorClass(moduleClass: Symbol, cunit: CompilationUnit): asm.tree.ClassNode = {
-      assert(symHelper(moduleClass).isModuleClass)
+      assert(moduleClass.is(Flags.ModuleClass))
       assert(moduleClass.companionClass == NoSymbol, moduleClass)
       innerClassBufferASM.clear()
       this.cunit = cunit

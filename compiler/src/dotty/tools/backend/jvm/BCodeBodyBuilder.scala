@@ -334,7 +334,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           generatedType = genApply(app, expectedType)
 
         case This(qual) =>
-          val symIsModuleClass = symHelper(tree.symbol).isModuleClass
+          val symIsModuleClass = tree.symbol.is(Flags.ModuleClass)
           assert(tree.symbol == claszSymbol || symIsModuleClass,
                  s"Trying to access the this of another class: tree.symbol = ${tree.symbol}, class symbol = $claszSymbol compilation unit: $cunit")
           if (symIsModuleClass && tree.symbol != claszSymbol) {
@@ -348,7 +348,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
 
         case SelectBI(Ident(nme.EMPTY_PACKAGE), module) =>
-          assert(symHelper(tree.symbol).isModule, s"Selection of non-module from empty package: $tree sym: ${tree.symbol} at: ${tree.span}")
+          assert(tree.symbol.is(Flags.Module), s"Selection of non-module from empty package: $tree sym: ${tree.symbol} at: ${tree.span}")
           genLoadModule(tree)
 
         case SelectBI(qualifier, _) =>
@@ -360,7 +360,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
           def receiverClass = qualifier.tpe.widenDealias.typeSymbol
-          if (symHelper(sym).isModule) {
+          if (sym.is(Flags.Module)) {
             genLoadQualUnlessElidable()
             genLoadModule(tree)
           } else if (symHelper(sym).isStaticMember) {
@@ -380,7 +380,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           desugared match {
             case None =>
               if (!symHelper(sym).hasPackageFlag) {
-                if (symHelper(sym).isModule) genLoadModule(sym)
+                if (sym.is(Flags.Module)) genLoadModule(sym)
                 else locals.load(sym)
               }
             case Some(t) =>
@@ -551,8 +551,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         }
       } else {
         // return from labeled
-        assert(symHelper(fromSym).isLabel, fromSym)
-        assert(!symHelper(fromSym).isMethod, fromSym)
+        assert(fromSym.is(Flags.Label), fromSym)
+        assert(!fromSym.is(Flags.Method), fromSym)
 
         /* TODO At the moment, we disregard cleanups, because by construction we don't have return-from-labels
          * that cross cleanup boundaries. However, in theory such crossings are valid, so we should take care
@@ -756,7 +756,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           } else { // normal method call
             val invokeStyle =
               if (symHelper(sym).isStaticMember) InvokeStyle.Static
-              else if (symHelper(sym).isPrivate || sym.isClassConstructor) InvokeStyle.Special
+              else if (sym.is(Flags.Private) || sym.isClassConstructor) InvokeStyle.Special
               else InvokeStyle.Virtual
 
             if (invokeStyle.hasInstance) genLoadQualifier(fun)
@@ -1007,7 +1007,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     def genLoadModule(tree: Tree): BType = {
       val module = (
-        if (!symHelper(tree.symbol).isPackageClass) tree.symbol
+        if (!tree.symbol.is(Flags.PackageClass)) tree.symbol
         else tree.symbol.info.member(nme.PACKAGE).symbol match {
           case NoSymbol => abort(s"SI-5604: Cannot use package as value: $tree")
           case s        => abort(s"SI-5604: found package class where package object expected: $tree")
@@ -1338,7 +1338,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case Literal(Constant(null)) => true
         case _ => false
       }
-      def isNonNullExpr(t: Tree): Boolean = t.isInstanceOf[Literal] || ((t.symbol ne null) && symHelper(t.symbol).isModule)
+      def isNonNullExpr(t: Tree): Boolean = t.isInstanceOf[Literal] || ((t.symbol ne null) && t.symbol.is(Flags.Module))
 
       if (mustUseAnyComparator) {
         val equalsMethod: Symbol = {
@@ -1409,7 +1409,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val isInterface = symHelper(lambdaTarget.owner).isEmittedInterface
       val invokeStyle =
         if (symHelper(lambdaTarget).isStaticMember) asm.Opcodes.H_INVOKESTATIC
-        else if (symHelper(lambdaTarget).isPrivate || lambdaTarget.isClassConstructor) asm.Opcodes.H_INVOKESPECIAL
+        else if (lambdaTarget.is(Flags.Private) || lambdaTarget.isClassConstructor) asm.Opcodes.H_INVOKESPECIAL
         else if (isInterface) asm.Opcodes.H_INVOKEINTERFACE
         else asm.Opcodes.H_INVOKEVIRTUAL
 

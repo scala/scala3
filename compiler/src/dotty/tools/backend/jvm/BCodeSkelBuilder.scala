@@ -175,7 +175,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       } else {
 
-        val skipStaticForwarders = (symHelper(claszSymbol).isInterface || symHelper(claszSymbol).isModule || ctx.settings.XnoForwarders.value)
+        val skipStaticForwarders = (symHelper(claszSymbol).isInterface || claszSymbol.is(Flags.Module) || ctx.settings.XnoForwarders.value)
         if (!skipStaticForwarders) {
           val lmoc = claszSymbol.companionModule
           // add static forwarders if there are no name conflicts; see bugs #363 and #1735
@@ -249,7 +249,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val javagensig = getGenericSignature(f, claszSymbol)
         val flags = javaFieldFlags(f)
 
-        assert(!symHelper(f).isStaticMember || !symHelper(claszSymbol).isInterface || !symHelper(f).isMutable,
+        assert(!symHelper(f).isStaticMember || !symHelper(claszSymbol).isInterface || !f.is(Flags.Mutable),
           s"interface $claszSymbol cannot have non-final static field $f")
 
         val jfield = new asm.tree.FieldNode(
@@ -296,7 +296,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      */
     var jumpDest: immutable.Map[ /* Labeled or LabelDef */ Symbol, asm.Label ] = null
     def programPoint(labelSym: Symbol): asm.Label = {
-      assert(symHelper(labelSym).isLabel, s"trying to map a non-label symbol to an asm.Label, at: ${labelSym.span}")
+      assert(labelSym.is(Flags.Label), s"trying to map a non-label symbol to an asm.Label, at: ${labelSym.span}")
       jumpDest.getOrElse(labelSym, {
         val pp = new asm.Label
         jumpDest += (labelSym -> pp)
@@ -395,7 +395,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       private def makeLocal(sym: Symbol, tk: BType): Local = {
         assert(nxtIdx != -1, "not a valid start index")
-        val loc = Local(tk, symHelper(sym).javaSimpleName.toString, nxtIdx, symHelper(sym).isSynthetic)
+        val loc = Local(tk, symHelper(sym).javaSimpleName.toString, nxtIdx, sym.is(Flags.Synthetic))
         val existing = slots.put(sym, loc)
         if (existing.isDefined)
           error(sym.span, "attempt to create duplicate local var.")
@@ -552,7 +552,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       }
 
       val isNative         = symHelper(methSymbol).hasAnnotation(NativeAttr)
-      val isAbstractMethod = (symHelper(methSymbol).isDeferred || (symHelper(methSymbol.owner).isInterface && !symHelper(methSymbol).isJavaDefaultMethod))
+      val isAbstractMethod = (methSymbol.is(Flags.Deferred) || (symHelper(methSymbol.owner).isInterface && !symHelper(methSymbol).isJavaDefaultMethod))
       val flags = GenBCodeOps.mkFlags(
         javaFlags(methSymbol),
         if (isAbstractMethod)        asm.Opcodes.ACC_ABSTRACT   else 0,

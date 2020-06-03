@@ -2,6 +2,7 @@ package dotty.tools
 package backend
 package jvm
 
+import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols._
 
 /**
@@ -55,7 +56,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
     assert(symHelper(classSym).isClass, classSym)
     def enclosingMethod(sym: Symbol): Option[Symbol] = {
       if (symHelper(sym).isClass || sym == NoSymbol) None
-      else if (symHelper(sym).isMethod) Some(sym)
+      else if (sym.is(Flags.Method)) Some(sym)
       else enclosingMethod(symHelper(symHelper(sym).originalOwner).originalLexicallyEnclosingClass)
     }
     enclosingMethod(symHelper(symHelper(classSym).originalOwner).originalLexicallyEnclosingClass)
