@@ -1172,12 +1172,14 @@ class TreeUnpickler(reader: TastyReader,
               var sname = readName()
               val qual = readTerm()
               val owner = readType()
-              val prefix = qual.tpe.widenIfUnstable
+              def select(name: Name, denot: Denotation) =
+                val prefix = ctx.typeAssigner.maybeSkolemizePrefix(qual.tpe.widenIfUnstable, name)
+                makeSelect(qual, name, denot.asSeenFrom(prefix))
               sname match
                 case SignedName(name, sig) =>
-                  makeSelect(qual, name, owner.decl(name).atSignature(sig).asSeenFrom(prefix))
+                  select(name, owner.decl(name).atSignature(sig))
                 case name =>
-                  makeSelect(qual, name, owner.decl(name).asSeenFrom(prefix))
+                  select(name, owner.decl(name))
             case REPEATED =>
               val elemtpt = readTpt()
               SeqLiteral(until(end)(readTerm()), elemtpt)
