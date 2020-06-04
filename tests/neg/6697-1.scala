@@ -3,5 +3,6 @@ object Test {
   case class Of[sup, sub <: sup]() extends Off
   type Sup[O <: Off] = O match { case Of[sup, sub] => sup }
   type Sub[O <: Off] = O match { case Of[sup, sub] => sub }
-  type Copy[O <: Off] = Of[Sup[O], Sub[O]]
+  type Copy[O <: Off] = Of[Sup[O], Sub[O]] // error
+  // Type argument Test.Sub[O] does not conform to upper bound Test.Sup[O]
 }
