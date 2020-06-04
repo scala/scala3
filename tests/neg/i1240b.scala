@@ -9,4 +9,4 @@ abstract class A[X] extends T[X] {
 trait U[X] extends T[X] {
   abstract override def foo(x: X): X = super.foo(x)
 }
-object Test extends A[String] with U[String] // error: accidental override // error: merge error
+object Test extends A[String] with U[String] // error: accidental override

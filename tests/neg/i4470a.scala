@@ -1,7 +1,7 @@
 object RepeatedEnum {
 
   enum Maybe { // error
-    case Foo   // error
+    case Foo
   }
 
   enum Maybe { // error

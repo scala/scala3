@@ -425,22 +425,10 @@ object RefChecks {
           }*/
     }
 
-    try {
-      val opc = new OverridingPairs.Cursor(clazz)
-      while (opc.hasNext) {
-        checkOverride(opc.overriding, opc.overridden)
-        opc.next()
-      }
-    }
-    catch {
-      case ex: MergeError =>
-        val addendum = ex.tp1 match {
-          case tp1: ClassInfo =>
-            "\n(Note that having same-named member classes in types of a mixin composition is no longer allowed)"
-          case _ => ""
-        }
-        ctx.error(ex.getMessage + addendum, clazz.sourcePos)
-    }
+    val opc = new OverridingPairs.Cursor(clazz)
+    while opc.hasNext do
+      checkOverride(opc.overriding, opc.overridden)
+      opc.next()
     printMixinOverrideErrors()
 
     // Verifying a concrete class has nothing unimplemented.

@@ -922,8 +922,8 @@ object SymDenotations {
         else true
       }
 
-      if (pre eq NoPrefix) true
-      else if (isAbsent()) false
+      if pre eq NoPrefix then true
+      else if isAbsent() then false
       else {
         val boundary = accessBoundary(owner)
 
@@ -2133,7 +2133,7 @@ object SymDenotations {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       try {
-        for (p <- classParents)
+        for (p <- classParents if p.classSymbol.isClass)
           for (name <- p.classSymbol.asClass.memberNames(keepOnly))
             maybeAdd(name)
         val ownSyms =

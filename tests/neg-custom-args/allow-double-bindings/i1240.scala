@@ -8,7 +8,7 @@ class C[T] {
 
 object C {
   def main(args: Array[String]) =
-        new C[D]().foo(new D()) // error: ambiguous
+        new C[D]().foo(new D())
 }
 
 class C1[T] {

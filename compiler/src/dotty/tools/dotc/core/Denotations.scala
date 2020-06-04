@@ -19,6 +19,7 @@ import printing.Printer
 import io.AbstractFile
 import config.Feature.migrateTo3
 import config.Config
+import config.Printers.overload
 import util.common._
 import typer.ProtoTypes.NoViewsAllowed
 import collection.mutable.ListBuffer
@@ -365,31 +366,32 @@ object Denotations {
      *
      *  NoDenotations are dropped. MultiDenotations are handled by merging
      *  parts with same signatures. SingleDenotations with equal signatures
-     *  are joined as follows:
+     *  are joined by following this sequence of steps:
      *
-     *  In a first step, consider only those denotations which have symbols
-     *  that are accessible from prefix `pre`.
+     *  1. If exactly one the denotations has an inaccessible symbol, pick the other one.
+     *  2. Otherwise, if one of the infos overrides the other one, and the associated
+     *     symbol does not score strictly lower than the other one,
+     *     pick the associated denotation.
+     *  3. Otherwise, if the two infos can be combined with `infoMeet`, pick that as
+     *     result info, and pick the symbol that scores higher as result symbol,
+     *     or pick `sym1` as a tie breaker. The picked info and symbol are combined
+     *     in a JointDenotation.
+     *  4. Otherwise, if one of the two symbols scores strongly higher than the
+     *     other one, pick the associated denotation.
+     *  5. Otherwise return a multi-denotation consisting of both denotations.
      *
-     *  If there are several such denotations, try to pick one by applying the following
-     *  three precedence rules in decreasing order of priority:
+     *  Symbol scoring is determined according to the following ranking
+     *  where earlier criteria trump later ones. Cases marked with (*)
+     *  give a strong score advantage, the others a weak one.
      *
-     *  1. Prefer denotations with more specific infos.
-     *  2. If infos are equally specific, prefer denotations with concrete symbols over denotations
-     *     with abstract symbols.
-     *  3. If infos are equally specific and symbols are equally concrete,
-     *     prefer denotations with symbols defined in subclasses
-     *     over denotations with symbols defined in proper superclasses.
-     *
-     *  If there is exactly one (preferred) accessible denotation, return it.
-     *
-     *  If there is no preferred accessible denotation, return a JointRefDenotation
-     *  with one of the operand symbols (unspecified which one), and an info which
-     *  is the intersection (using `&` or `safe_&` if `safeIntersection` is true)
-     *  of the infos of the operand denotations.
-     *
-     *  If SingleDenotations with different signatures are joined, return NoDenotation.
+     *  1. The symbol exists, and the other one does not. (*)
+     *  2. The symbol is not a bridge, but the other one is. (*)
+     *  3. The symbol is concrete, and the other one is deferred
+     *  4. The symbol appears before the other in the linearization of `pre`
+     *  5. The symbol's visibility is strictly greater than the other one's.
+     *  6. The symbol is a method, but the other one is not.
      */
-    def & (that: Denotation, pre: Type, safeIntersection: Boolean = false)(implicit ctx: Context): Denotation = {
+    def meet(that: Denotation, pre: Type, safeIntersection: Boolean = false)(implicit ctx: Context): Denotation = {
       /** Try to merge denot1 and denot2 without adding a new signature. */
       def mergeDenot(denot1: Denotation, denot2: SingleDenotation): Denotation = denot1 match {
         case denot1 @ MultiDenotation(denot11, denot12) =>
@@ -407,24 +409,27 @@ object Denotations {
       }
 
       /** Try to merge single-denotations. */
-      def mergeSingleDenot(denot1: SingleDenotation, denot2: SingleDenotation): SingleDenotation = {
+      def mergeSingleDenot(denot1: SingleDenotation, denot2: SingleDenotation): Denotation =
         val info1 = denot1.info
         val info2 = denot2.info
         val sym1 = denot1.symbol
         val sym2 = denot2.symbol
 
-        val sym2Accessible = sym2.isAccessibleFrom(pre)
+        /** Does `owner1` come before `owner2` in the linearization of `pre`? */
+        def linearScore(owner1: Symbol, owner2: Symbol): Int =
 
-        /** Does `sym1` come before `sym2` in the linearization of `pre`? */
-        def precedes(sym1: Symbol, sym2: Symbol) = {
-          def precedesIn(bcs: List[ClassSymbol]): Boolean = bcs match {
-            case bc :: bcs1 => (sym1 eq bc) || !(sym2 eq bc) && precedesIn(bcs1)
-            case Nil => false
-          }
-          (sym1 ne sym2) &&
-            (sym1.derivesFrom(sym2) ||
-              !sym2.derivesFrom(sym1) && precedesIn(pre.baseClasses))
-        }
+          def searchBaseClasses(bcs: List[ClassSymbol]): Int = bcs match
+            case bc :: bcs1 =>
+              if bc eq owner1 then 1
+              else if bc eq owner2 then -1
+              else searchBaseClasses(bcs1)
+            case Nil => 0
+
+          if owner1 eq owner2 then 0
+          else if owner1.derivesFrom(owner2) then 1
+          else if owner2.derivesFrom(owner1) then -1
+          else searchBaseClasses(pre.baseClasses)
+        end linearScore
 
         /** Similar to SymDenotation#accessBoundary, but without the special cases. */
         def accessBoundary(sym: Symbol) =
@@ -433,72 +438,52 @@ object Denotations {
             if (sym.is(Protected)) sym.owner.enclosingPackageClass
             else defn.RootClass)
 
-        /** Establish a partial order "preference" order between symbols.
-         *  Give preference to `sym1` over `sym2` if one of the following
-         *  conditions holds, in decreasing order of weight:
-         *   1. sym2 doesn't exist
-         *   2. sym1 is concrete and sym2 is abstract
-         *   3. The owner of sym1 comes before the owner of sym2 in the linearization
-         *      of the type of the prefix `pre`.
-         *   4. The access boundary of sym2 is properly contained in the access
-         *      boundary of sym1. For protected access, we count the enclosing
-         *      package as access boundary.
-         *   5. sym1 is a method but sym2 is not.
-         *  The aim of these criteria is to give some disambiguation on access which
-         *   - does not depend on textual order or other arbitrary choices
-         *   - minimizes raising of doubleDef errors
-         */
-        def preferSym(sym1: Symbol, sym2: Symbol) =
-          sym1.eq(sym2) ||
-          sym1.exists &&
-            (!sym2.exists ||
-              sym1.isAsConcrete(sym2) &&
-              (!sym2.isAsConcrete(sym1) ||
-                precedes(sym1.owner, sym2.owner) ||
-                accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
-                sym2.is(Bridge) && !sym1.is(Bridge) ||
-                sym1.is(Method) && !sym2.is(Method)) ||
-              sym1.info.isErroneous)
+        def isHidden(sym: Symbol) = sym.exists && !sym.isAccessibleFrom(pre)
+        val hidden1 = isHidden(sym1)
+        val hidden2 = isHidden(sym2)
+        if hidden1 && !hidden2 then denot2
+        else if hidden2 && !hidden1 then denot1
+        else
+          // The score that determines which symbol to pick for the result denotation.
+          // A value > 0 means pick `sym1`, < 0 means pick `sym2`.
+          // A value of +/- 2 means pick one of the denotations as a tie-breaker
+          // if a common info does not exist.
+          val symScore: Int =
+            if !sym1.exists then -2
+            else if !sym2.exists then 2
+            else if sym1.is(Bridge) && !sym2.is(Bridge) then -2
+            else if sym2.is(Bridge) && !sym1.is(Bridge) then 2
+            else if !sym1.isAsConcrete(sym2) then -1
+            else if !sym2.isAsConcrete(sym1) then 1
+            else
+              val linScore = linearScore(sym1.owner, sym2.owner)
+              if linScore != 0 then linScore
+              else
+                val boundary1 = accessBoundary(sym1)
+                val boundary2 = accessBoundary(sym2)
+                if boundary1.isProperlyContainedIn(boundary2) then -1
+                else if boundary2.isProperlyContainedIn(boundary1) then 1
+                else if sym2.is(Method) && !sym1.is(Method) then -1
+                else if sym1.is(Method) && !sym2.is(Method) then 1
+                else 0
 
-        /** Sym preference provided types also override */
-        def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
-          preferSym(sym1, sym2) &&
-          info1.overrides(info2, sym1.matchNullaryLoosely || sym2.matchNullaryLoosely, checkClassInfo = false)
+          val matchLoosely = sym1.matchNullaryLoosely || sym2.matchNullaryLoosely
 
-        def handleDoubleDef =
-          if (preferSym(sym1, sym2)) denot1
-          else if (preferSym(sym2, sym1)) denot2
-          else doubleDefError(denot1, denot2, pre)
-
-        if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2
-        else {
-          val sym1Accessible = sym1.isAccessibleFrom(pre)
-          if (sym1Accessible && prefer(sym1, sym2, info1, info2)) denot1
-          else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
-          else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
-          else if (isDoubleDef(sym1, sym2)) handleDoubleDef
-          else {
-            val sym =
-              if (preferSym(sym2, sym1)) sym2
-              else sym1
-            val jointInfo =
-              try infoMeet(info1, info2, sym1, sym2, safeIntersection)
-              catch {
-                case ex: MergeError =>
-                  // TODO: this picks one type over the other whereas it might be better
-                  // to return a MultiDenotation instead. But doing so would affect lots of
-                  // things, starting with the return type of this method.
-                  if (preferSym(sym2, sym1)) info2
-                  else if (preferSym(sym1, sym2)) info1
-                  else if (pre.widen.classSymbol.is(Scala2x) || migrateTo3)
-                    info1 // follow Scala2 linearization -
-                  // compare with way merge is performed in SymDenotation#computeMembersNamed
-                  else throw new MergeError(ex.sym1, ex.sym2, ex.tp1, ex.tp2, pre)
-              }
-            new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
-          }
-        }
-      }
+          if symScore <= 0 && info2.overrides(info1, matchLoosely, checkClassInfo = false) then
+            denot2
+          else if symScore >= 0 && info1.overrides(info2, matchLoosely, checkClassInfo = false) then
+            denot1
+          else
+            val jointInfo = infoMeet(info1, info2, safeIntersection)
+            if jointInfo.exists then
+              val sym = if symScore >= 0 then sym1 else sym2
+              JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
+            else if symScore == 2 then denot1
+            else if symScore == -2 then denot2
+            else
+              overload.println(i"overloaded with same signature: ${sym1.showLocated}: $info1 / ${sym2.showLocated}: $info2, info = ${info1.getClass}, ${info2.getClass}, $jointInfo")
+              MultiDenotation(denot1, denot2)
+      end mergeSingleDenot
 
       if (this eq that) this
       else if (!this.exists) that
@@ -508,64 +493,7 @@ object Denotations {
           val r = mergeDenot(this, that)
           if (r.exists) r else MultiDenotation(this, that)
         case that @ MultiDenotation(denot1, denot2) =>
-          this & (denot1, pre) & (denot2, pre)
-      }
-    }
-
-    /** Form a choice between this denotation and that one.
-     *  @param pre  The prefix type of the members of the denotation, used
-     *              to determine an accessible symbol if it exists.
-     */
-    def | (that: Denotation, pre: Type)(implicit ctx: Context): Denotation = {
-
-      def unionDenot(denot1: SingleDenotation, denot2: SingleDenotation): Denotation =
-        if (denot1.matches(denot2)) {
-          val sym1 = denot1.symbol
-          val sym2 = denot2.symbol
-          val info1 = denot1.info
-          val info2 = denot2.info
-          val sameSym = sym1 eq sym2
-          if (sameSym && (info1.widenExpr frozen_<:< info2.widenExpr)) denot2
-          else if (sameSym && (info2.widenExpr frozen_<:< info1.widenExpr)) denot1
-          else {
-            val jointSym =
-              if (sameSym) sym1
-              else {
-                val owner2 = if (sym2 ne NoSymbol) sym2.owner else NoSymbol
-                /** Determine a symbol which is overridden by both sym1 and sym2.
-                 *  Preference is given to accessible symbols.
-                 */
-                def lubSym(overrides: Iterator[Symbol], previous: Symbol): Symbol =
-                  if (!overrides.hasNext) previous
-                  else {
-                    val candidate = overrides.next()
-                    if (owner2 derivesFrom candidate.owner)
-                      if (candidate isAccessibleFrom pre) candidate
-                      else lubSym(overrides, previous orElse candidate)
-                    else
-                      lubSym(overrides, previous)
-                  }
-                lubSym(sym1.allOverriddenSymbols, NoSymbol)
-              }
-            new JointRefDenotation(
-                jointSym, infoJoin(info1, info2, sym1, sym2), denot1.validFor & denot2.validFor, pre)
-          }
-        }
-        else NoDenotation
-
-      if (this eq that) this
-      else if (!this.exists) this
-      else if (!that.exists) that
-      else this match {
-        case denot1 @ MultiDenotation(denot11, denot12) =>
-          denot1.derivedUnionDenotation(denot11 | (that, pre), denot12 | (that, pre))
-        case denot1: SingleDenotation =>
-          that match {
-            case denot2 @ MultiDenotation(denot21, denot22) =>
-              denot2.derivedUnionDenotation(this | (denot21, pre), this | (denot22, pre))
-            case denot2: SingleDenotation =>
-              unionDenot(denot1, denot2)
-          }
+          this.meet(denot1, pre).meet(denot2, pre)
       }
     }
 
@@ -580,11 +508,7 @@ object Denotations {
     final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
   }
 
-  // ------ Info meets and joins ---------------------------------------------
-
-  /** Handle merge conflict by throwing a `MergeError` exception */
-  private def mergeConflict(sym1: Symbol, sym2: Symbol, tp1: Type, tp2: Type)(implicit ctx: Context): Type =
-    throw new MergeError(sym1, sym2, tp1, tp2, NoPrefix)
+  // ------ Info meets ----------------------------------------------------
 
   /** Merge parameter names of lambda types. If names in corresponding positions match, keep them,
     *  otherwise generate new synthetic names.
@@ -593,134 +517,55 @@ object Denotations {
     (for ((name1, name2, idx) <- tp1.paramNames.lazyZip(tp2.paramNames).lazyZip(tp1.paramNames.indices))
       yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toList
 
-  /** Normally, `tp1 & tp2`.
-    *  Special cases for matching methods and classes, with
-    *  the possibility of raising a merge error.
-    *  Special handling of ExprTypes, where mixed intersections widen the ExprType away.
-    */
-  def infoMeet(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol, safeIntersection: Boolean)(implicit ctx: Context): Type =
-    if (tp1 eq tp2) tp1
-    else tp1 match {
+  /** Normally, `tp1 & tp2`, with extra care taken to return `tp1` or `tp2` directly if that's
+   *  a valid answer. Special cases for matching methods and classes, with
+   *  the possibility of returning NoType. Special handling of ExprTypes, where mixed
+   *  intersections widen the ExprType away.
+   */
+  def infoMeet(tp1: Type, tp2: Type, safeIntersection: Boolean)(implicit ctx: Context): Type =
+    if tp1 eq tp2 then tp1
+    else tp1 match
       case tp1: TypeBounds =>
-        tp2 match {
-          case tp2: TypeBounds => if (safeIntersection) tp1 safe_& tp2 else tp1 & tp2
+        tp2 match
+          case tp2: TypeBounds => if safeIntersection then tp1 safe_& tp2 else tp1 & tp2
           case tp2: ClassInfo => tp2
-          case _ => mergeConflict(sym1, sym2, tp1, tp2)
-        }
+          case _ => NoType
       case tp1: ClassInfo =>
-        tp2 match {
+        tp2 match
           case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
           case tp2: TypeBounds => tp1
-          case _ => mergeConflict(sym1, sym2, tp1, tp2)
-        }
-
-      // Two remedial strategies:
-      //
-      //  1. Prefer method types over poly types. This is necessary to handle
-      //     overloaded definitions like the following
-      //
-      //        def ++ [B >: A](xs: C[B]): D[B]
-      //        def ++ (xs: C[A]): D[A]
-      //
-      //     (Code like this is found in the collection strawman)
-      //
-      // 2. In the case of two method types or two polytypes with matching
-      //    parameters and implicit status, merge corresponding parameter
-      //    and result types.
+          case _ => NoType
       case tp1: MethodType =>
-        tp2 match {
-          case tp2: PolyType =>
-            tp1
+        tp2 match
           case tp2: MethodType
-          if ctx.typeComparer.matchingMethodParams(tp1, tp2) && (tp1.companion eq tp2.companion) =>
-            tp1.derivedLambdaType(
-              mergeParamNames(tp1, tp2),
-              tp1.paramInfos,
-              infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2, safeIntersection))
-          case _ =>
-            mergeConflict(sym1, sym2, tp1, tp2)
-        }
+          if ctx.typeComparer.matchingMethodParams(tp1, tp2)
+             && (tp1.isImplicitMethod || tp1.isContextualMethod) == (tp2.isImplicitMethod || tp2.isContextualMethod)
+             && tp1.isErasedMethod == tp2.isErasedMethod =>
+            val resType = infoMeet(tp1.resType, tp2.resType.subst(tp2, tp1), safeIntersection)
+            if resType.exists then
+              tp1.derivedLambdaType(mergeParamNames(tp1, tp2), tp1.paramInfos, resType)
+            else NoType
+          case _ => NoType
       case tp1: PolyType =>
-        tp2 match {
-          case tp2: MethodType =>
-            tp2
-          case tp2: PolyType if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
-            tp1.derivedLambdaType(
-              mergeParamNames(tp1, tp2),
-              tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
-                infoMeet(p1, p2.subst(tp2, tp1), sym1, sym2, safeIntersection).bounds
-              },
-              infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2, safeIntersection))
-          case _ =>
-            mergeConflict(sym1, sym2, tp1, tp2)
-        }
+        tp2 match
+          case tp2: PolyType if sameLength(tp1.paramNames, tp2.paramNames) =>
+            val resType = infoMeet(tp1.resType, tp2.resType.subst(tp2, tp1), safeIntersection)
+            if resType.exists then
+              tp1.derivedLambdaType(
+                mergeParamNames(tp1, tp2),
+                tp1.paramInfos.zipWithConserve(tp2.paramInfos)( _ & _ ),
+                resType)
+            else NoType
+          case _ => NoType
       case ExprType(rtp1) =>
-        tp2 match {
+        tp2 match
           case ExprType(rtp2) => ExprType(rtp1 & rtp2)
-          case _ => infoMeet(rtp1, tp2, sym1, sym2, safeIntersection)
-        }
+          case _ => infoMeet(rtp1, tp2, safeIntersection)
       case _ =>
         tp2 match
-          case _: MethodType | _: PolyType =>
-            mergeConflict(sym1, sym2, tp1, tp2)
-          case _ =>
-            try tp1 & tp2.widenExpr
-            catch
-              case ex: Throwable =>
-                println(i"error for meet: $tp1 &&& $tp2, ${tp1.getClass}, ${tp2.getClass}")
-                throw ex
-    }
-
-  /** Normally, `tp1 | tp2`.
-    *  Special cases for matching methods and classes, with
-    *  the possibility of raising a merge error.
-    *  Special handling of ExprTypes, where mixed unions widen the ExprType away.
-    */
-  def infoJoin(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Type = tp1 match {
-    case tp1: TypeBounds =>
-      tp2 match {
-        case tp2: TypeBounds => tp1 | tp2
-        case tp2: ClassInfo if tp1 contains tp2 => tp1
-        case _ => mergeConflict(sym1, sym2, tp1, tp2)
-      }
-    case tp1: ClassInfo =>
-      tp2 match {
-        case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
-        case tp2: TypeBounds if tp2 contains tp1 => tp2
-        case _ => mergeConflict(sym1, sym2, tp1, tp2)
-      }
-    case tp1: MethodType =>
-      tp2 match {
-        case tp2: MethodType
-        if ctx.typeComparer.matchingMethodParams(tp1, tp2) && (tp1.companion eq tp2.companion) =>
-          tp1.derivedLambdaType(
-            mergeParamNames(tp1, tp2),
-            tp1.paramInfos,
-            infoJoin(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2))
-        case _ =>
-          mergeConflict(sym1, sym2, tp1, tp2)
-      }
-    case tp1: PolyType =>
-      tp2 match {
-        case tp2: PolyType
-        if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
-          tp1.derivedLambdaType(
-            mergeParamNames(tp1, tp2),
-            tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
-              infoJoin(p1, p2.subst(tp2, tp1), sym1, sym2).bounds
-            },
-            infoJoin(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2))
-        case _ =>
-          mergeConflict(sym1, sym2, tp1, tp2)
-      }
-    case ExprType(rtp1) =>
-      tp2 match {
-        case ExprType(rtp2) => ExprType(rtp1 | rtp2)
-        case _ => rtp1 | tp2
-      }
-    case _ =>
-      tp1 | tp2.widenExpr
-  }
+          case _: MethodType | _: PolyType => NoType
+          case _ => tp1 & tp2.widenExpr
+  end infoMeet
 
   /** A non-overloaded denotation */
   abstract class SingleDenotation(symbol: Symbol, initInfo: Type) extends Denotation(symbol, initInfo) {
@@ -1237,20 +1082,6 @@ object Denotations {
     (sym1 `ne` sym2) && (sym1.effectiveOwner `eq` sym2.effectiveOwner) &&
     !sym1.is(Bridge) && !sym2.is(Bridge))
 
-  def doubleDefError(denot1: Denotation, denot2: Denotation, pre: Type = NoPrefix)(implicit ctx: Context): Nothing = {
-    val sym1 = denot1.symbol
-    val sym2 = denot2.symbol
-    if (denot1.isTerm)
-      throw new MergeError(sym1, sym2, sym1.info, sym2.info, pre) {
-        override def addendum(implicit ctx: Context) =
-          i"""
-             |they are both defined in ${this.sym1.effectiveOwner} but have matching signatures
-             |  ${denot1.info} and
-             |  ${denot2.info}${super.addendum}"""
-      }
-    else throw new MergeError(sym1, sym2, denot1.info, denot2.info, pre)
-  }
-
   // --- Overloaded denotations and predenotations -------------------------------------------------
 
   trait MultiPreDenotation extends PreDenotation {
@@ -1280,7 +1111,7 @@ object Denotations {
   final case class DenotUnion(denot1: PreDenotation, denot2: PreDenotation) extends MultiPreDenotation {
     def exists: Boolean = true
     def toDenot(pre: Type)(implicit ctx: Context): Denotation =
-      denot1.toDenot(pre).&(denot2.toDenot(pre), pre)
+      denot1.toDenot(pre).meet(denot2.toDenot(pre), pre)
     def containsSym(sym: Symbol): Boolean =
       (denot1 containsSym sym) || (denot2 containsSym sym)
     type AsSeenFromResult = PreDenotation
@@ -1307,10 +1138,12 @@ object Denotations {
     def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = {
       val sd1 = denot1.suchThat(p)
       val sd2 = denot2.suchThat(p)
-      if (sd1.exists)
-        if (sd2.exists)
-          if (isDoubleDef(denot1.symbol, denot2.symbol)) doubleDefError(denot1, denot2)
-          else throw new TypeError(i"failure to disambiguate overloaded reference at $this")
+      if sd1.exists then
+        if sd2.exists then
+          throw TypeError(
+            em"""Failure to disambiguate overloaded reference with
+                |  ${denot1.symbol.showLocated}: ${denot1.info}  and
+                |  ${denot2.symbol.showLocated}: ${denot2.info}""")
         else sd1
       else sd2
     }
