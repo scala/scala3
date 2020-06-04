@@ -2848,25 +2848,32 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         MatchTypeTrace.noMatches(scrut, cases)
         NoType
 
-    inFrozenConstraint {
-      // Empty types break the basic assumption that if a scrutinee and a
-      // pattern are disjoint it's OK to reduce passed that pattern. Indeed,
-      // empty types viewed as a set of value is always a subset of any other
-      // types. As a result, we first check that the scrutinee isn't empty
-      // before proceeding with reduction. See `tests/neg/6570.scala` and
-      // `6570-1.scala` for examples that exploit emptiness to break match
-      // type soundness.
+    // inFrozenConstraint is not sufficient here as it doesn't prevent
+    // parameters of type lambdas from being added to `constraint`, see
+    // ConstraintHandling.canConstrain and tests/neg/9107.scala.
+    val saved = constraint
+    try {
+      inFrozenConstraint {
+        // Empty types break the basic assumption that if a scrutinee and a
+        // pattern are disjoint it's OK to reduce passed that pattern. Indeed,
+        // empty types viewed as a set of value is always a subset of any other
+        // types. As a result, we first check that the scrutinee isn't empty
+        // before proceeding with reduction. See `tests/neg/6570.scala` and
+        // `6570-1.scala` for examples that exploit emptiness to break match
+        // type soundness.
 
-      // If we revered the uncertainty case of this empty check, that is,
-      // `!provablyNonEmpty` instead of `provablyEmpty`, that would be
-      // obviously sound, but quite restrictive. With the current formulation,
-      // we need to be careful that `provablyEmpty` covers all the conditions
-      // used to conclude disjointness in `provablyDisjoint`.
-      if (provablyEmpty(scrut))
-        NoType
-      else
-        recur(cases)
+        // If we reversed the uncertainty case of this empty check, that is,
+        // `!provablyNonEmpty` instead of `provablyEmpty`, that would be
+        // obviously sound, but quite restrictive. With the current formulation,
+        // we need to be careful that `provablyEmpty` covers all the conditions
+        // used to conclude disjointness in `provablyDisjoint`.
+        if (provablyEmpty(scrut))
+          NoType
+        else
+          recur(cases)
+      }
     }
+    finally constraint = saved
   }
 }
 
