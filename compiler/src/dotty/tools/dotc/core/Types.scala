@@ -5329,7 +5329,7 @@ object Types {
 
     protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
 
-    protected final def applyToPrefix(x: T, tp: NamedType): T =
+    protected def applyToPrefix(x: T, tp: NamedType): T =
       atVariance(variance max 0)(this(x, tp.prefix)) // see remark on NamedType case in TypeMap
 
     def foldOver(x: T, tp: Type): T = {
@@ -5452,15 +5452,29 @@ object Types {
   }
 
   class NamedPartsAccumulator(p: NamedType => Boolean,
-      widenSingletons: Boolean = false,
+      widenSingletons: Boolean = false, // if set, also consider underlying types in singleton path prefixes
       excludeLowerBounds: Boolean = false)
       (implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
+
     override def stopAtStatic: Boolean = false
-    def maybeAdd(x: mutable.Set[NamedType], tp: NamedType): mutable.Set[NamedType] = if (p(tp)) x += tp else x
+
+    def maybeAdd(x: mutable.Set[NamedType], tp: NamedType): mutable.Set[NamedType] =
+      if (p(tp)) x += tp else x
+
     val seen: util.HashSet[Type] = new util.HashSet[Type](64) {
       override def hash(x: Type): Int = System.identityHashCode(x)
       override def isEqual(x: Type, y: Type) = x.eq(y)
     }
+
+    override def applyToPrefix(x: mutable.Set[NamedType], tp: NamedType): mutable.Set[NamedType] =
+      tp.prefix match
+        case pre: TermRef if !widenSingletons =>
+          foldOver(maybeAdd(x, pre), pre)
+        case pre: ThisType if !widenSingletons =>
+          x
+        case _ =>
+          super.applyToPrefix(x, tp)
+
     def apply(x: mutable.Set[NamedType], tp: Type): mutable.Set[NamedType] =
       if (seen contains tp) x
       else {
@@ -5469,10 +5483,9 @@ object Types {
           case tp: TypeRef =>
             foldOver(maybeAdd(x, tp), tp)
           case tp: TermRef =>
-            val x1 = foldOver(maybeAdd(x, tp), tp)
-            if widenSingletons then apply(x1, tp.underlying) else x1
+            apply(foldOver(maybeAdd(x, tp), tp), tp.underlying)
           case tp: ThisType =>
-            if widenSingletons then apply(x, tp.tref) else x
+            apply(x, tp.tref)
           case NoPrefix =>
             foldOver(x, tp)
           case tp: AppliedType =>
