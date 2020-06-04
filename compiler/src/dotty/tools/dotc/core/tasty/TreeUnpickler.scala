@@ -331,12 +331,12 @@ class TreeUnpickler(reader: TastyReader,
             case TERMREFin =>
               var sname = readName()
               val prefix = readType()
-              val space = readType()
+              val owner = readType()
               sname match {
                 case SignedName(name, sig) =>
-                  TermRef(prefix, name, space.decl(name).asSeenFrom(prefix).atSignature(sig))
+                  TermRef(prefix, name, owner.decl(name).atSignature(sig).asSeenFrom(prefix))
                 case name =>
-                  TermRef(prefix, name, space.decl(name).asSeenFrom(prefix))
+                  TermRef(prefix, name, owner.decl(name).asSeenFrom(prefix))
               }
             case TYPEREFin =>
               val name = readName().toTypeName

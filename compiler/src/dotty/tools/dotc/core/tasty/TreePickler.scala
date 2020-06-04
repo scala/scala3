@@ -174,22 +174,20 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: NamedType =>
       val sym = tpe.symbol
       def pickleExternalRef(sym: Symbol) = {
-        def pickleCore() = {
-          pickleNameAndSig(sym.name, tpe.signature)
-          pickleType(tpe.prefix)
-        }
         val isShadowedRef =
           sym.isClass && tpe.prefix.member(sym.name).symbol != sym
         if (sym.is(Flags.Private) || isShadowedRef) {
           writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
           withLength {
-            pickleCore()
+            pickleNameAndSig(sym.name, tpe.symbol.signature)
+            pickleType(tpe.prefix)
             pickleType(sym.owner.typeRef)
           }
         }
         else {
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
-          pickleCore()
+          pickleNameAndSig(sym.name, tpe.signature)
+          pickleType(tpe.prefix)
         }
       }
       if (sym.is(Flags.Package)) {

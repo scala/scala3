@@ -123,7 +123,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TERMREFsymbol         sym_ASTRef qual_Type                       -- A reference `qual.sym` to a local member with prefix `qual`
                   TERMREFpkg            fullyQualified_NameRef                     -- A reference to a package member with given fully qualified name
                   TERMREF               possiblySigned_NameRef qual_Type           -- A reference `qual.name` to a non-local member
-                  TERMREFin      Length possiblySigned_NameRef qual_Type namespace_Type -- A reference `qual.name` to a non-local member that's private in `namespace`
+                  TERMREFin      Length possiblySigned_NameRef qual_Type owner_Type -- A reference `qual.name` referring to a non-local symbol declared in owner that has the given signature (see note below)
                   THIS                  clsRef_Type                                -- cls.this
                   RECthis               recType_ASTRef                             -- The `this` in a recursive refined type `recType`.
                   SHAREDtype            path_ASTRef                                -- link to previously serialized path
@@ -213,9 +213,9 @@ Standard-Section: "ASTs" TopLevelStat*
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term             -- An annotation, given (class) type of constructor, and full application tree
 
-Note: The signature of a SELECTin node is the signature of the selected symbol, not
-      the signature of the reference. The latter undergoes an asSeenFrom but the former
-      does not. TODO: Also use symbol signatures in TERMREFin
+Note: The signature of a SELECTin or TERMREFin node is the signature of the selected symbol,
+      not the signature of the reference. The latter undergoes an asSeenFrom but the former
+      does not.
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
@@ -253,7 +253,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 22
+  val MajorVersion: Int = 23
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names, should update [[nameTagToString]] if a new constant is added */
