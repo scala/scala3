@@ -393,10 +393,10 @@ object Types {
      *                             types will be ignored.
      */
     def namedPartsWith(p: NamedType => Boolean,
-        widenTermRefs: Boolean = false,
+        widenSingletons: Boolean = false,
         excludeLowerBounds: Boolean = false)
         (implicit ctx: Context): collection.Set[NamedType] =
-      new NamedPartsAccumulator(p, widenTermRefs, excludeLowerBounds).apply(mutable.LinkedHashSet(), this)
+      new NamedPartsAccumulator(p, widenSingletons, excludeLowerBounds).apply(mutable.LinkedHashSet(), this)
 
     /** Map function `f` over elements of an AndType, rebuilding with function `g` */
     def mapReduceAnd[T](f: Type => T)(g: (T, T) => T)(implicit ctx: Context): T = stripTypeVar match {
@@ -5452,7 +5452,7 @@ object Types {
   }
 
   class NamedPartsAccumulator(p: NamedType => Boolean,
-      widenTermRefs: Boolean = false,
+      widenSingletons: Boolean = false,
       excludeLowerBounds: Boolean = false)
       (implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
     override def stopAtStatic: Boolean = false
@@ -5470,9 +5470,9 @@ object Types {
             foldOver(maybeAdd(x, tp), tp)
           case tp: TermRef =>
             val x1 = foldOver(maybeAdd(x, tp), tp)
-            if widenTermRefs then apply(x1, tp.underlying) else x1
+            if widenSingletons then apply(x1, tp.underlying) else x1
           case tp: ThisType =>
-            apply(x, tp.tref)
+            if widenSingletons then apply(x, tp.tref) else x
           case NoPrefix =>
             foldOver(x, tp)
           case tp: AppliedType =>

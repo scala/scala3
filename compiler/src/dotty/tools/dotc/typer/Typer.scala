@@ -862,7 +862,7 @@ class Typer extends Namer
     lazy val locals = localSyms.toSet
     block.tpe.namedPartsWith(
       tp => locals.contains(tp.symbol) && !tp.isErroneous,
-      widenTermRefs = true)
+      widenSingletons = true)
   }
 
   /** Ensure that an expression's type can be expressed without references to locally defined

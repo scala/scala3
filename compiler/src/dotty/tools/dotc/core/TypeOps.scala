@@ -386,7 +386,7 @@ object TypeOps:
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)
       def partsToAvoid =
-        new NamedPartsAccumulator(tp => toAvoid(tp.symbol), widenTermRefs = true)
+        new NamedPartsAccumulator(tp => toAvoid(tp.symbol), widenSingletons = true)
       def apply(tp: Type): Type = tp match {
         case tp: TermRef
         if toAvoid(tp.symbol) || partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
