@@ -244,7 +244,7 @@ object Implicits {
    */
   class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
     assert(initctx.typer != null)
-    implicits.println(i"implicits of type $tp = ${companionRefs.toList}%, %")
+    implicits.println(i"implicit scope of type $tp = ${companionRefs.toList}%, %")
     @threadUnsafe lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
       for (companion <- companionRefs) buf ++= companion.implicitMembers
@@ -604,7 +604,7 @@ trait ImplicitRunInfo {
             val superAnchors = if (sym.isClass) tp.parents else anchors(tp.superType)
             for (anchor <- superAnchors) comps ++= iscopeRefs(anchor)
           case tp =>
-            for (part <- tp.namedPartsWith(_.isType)) comps ++= iscopeRefs(part)
+            for part <- tp.namedPartsWith(_.isType) do comps ++= iscopeRefs(part)
         }
         comps
       }
@@ -1153,28 +1153,27 @@ trait Implicits { self: Typer =>
              |Consider using the scala.implicits.Not class to implement similar functionality.""",
              ctx.source.atSpan(span))
 
-      /** A relation that imfluences the order in which implicits are tried.
+      /** A relation that influences the order in which implicits are tried.
        *  We prefer (in order of importance)
        *   1. more deeply nested definitions
-       *   2. definitions in subclasses
-       *   3. definitions with fewer implicit parameters
-       *  The reason for (3) is that we want to fail fast if the search type
+       *   2. definitions with fewer implicit parameters
+       *   3. definitions in subclasses
+       *  The reason for (2) is that we want to fail fast if the search type
        *  is underconstrained. So we look for "small" goals first, because that
        *  will give an ambiguity quickly.
        */
-      def prefer(cand1: Candidate, cand2: Candidate): Boolean = {
+      def prefer(cand1: Candidate, cand2: Candidate): Boolean =
         val level1 = cand1.level
         val level2 = cand2.level
-        if (level1 > level2) return true
-        if (level1 < level2) return false
+        if level1 > level2 then return true
+        if level1 < level2 then return false
         val sym1 = cand1.ref.symbol
         val sym2 = cand2.ref.symbol
         val arity1 = sym1.info.firstParamTypes.length
         val arity2 = sym2.info.firstParamTypes.length
-        if (arity1 < arity2) return true
-        if (arity1 > arity2) return false
+        if arity1 < arity2 then return true
+        if arity1 > arity2 then return false
         compareOwner(sym1, sym2) == 1
-      }
 
       /** Sort list of implicit references according to `prefer`.
        *  This is just an optimization that aims at reducing the average

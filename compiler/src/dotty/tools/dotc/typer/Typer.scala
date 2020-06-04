@@ -860,7 +860,9 @@ class Typer extends Namer
 
   def escapingRefs(block: Tree, localSyms: => List[Symbol])(using Context): collection.Set[NamedType] = {
     lazy val locals = localSyms.toSet
-    block.tpe.namedPartsWith(tp => locals.contains(tp.symbol) && !tp.isErroneous)
+    block.tpe.namedPartsWith(
+      tp => locals.contains(tp.symbol) && !tp.isErroneous,
+      widenTermRefs = true)
   }
 
   /** Ensure that an expression's type can be expressed without references to locally defined
