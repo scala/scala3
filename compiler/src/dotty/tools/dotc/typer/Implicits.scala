@@ -31,6 +31,7 @@ import transform.TypeUtils._
 import Hashable._
 import util.{SourceFile, NoSource}
 import config.{Config, Feature}
+import Feature.migrateTo3
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.trace
@@ -153,7 +154,7 @@ object Implicits {
               //
               // We keep the old behavior under -source 3.0-migration.
               val isFunctionInS2 =
-                Feature.migrateTo3
+                migrateTo3
                 && tpw.derivesFrom(defn.FunctionClass(1))
                 && ref.symbol != defn.Predef_conforms
               val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
@@ -278,7 +279,7 @@ object Implicits {
      */
     override val level: Int =
       if outerImplicits == null then 1
-      else if Feature.migrateTo3(using irefCtx)
+      else if migrateTo3(using irefCtx)
               || (irefCtx.owner eq outerImplicits.irefCtx.owner)
                  && (irefCtx.scope eq outerImplicits.irefCtx.scope)
                  && !refs.head.implicitName.is(LazyImplicitName)
@@ -512,7 +513,7 @@ trait ImplicitRunInfo {
      *  opaque type aliases, and abstract types, but not type parameters or package objects.
      */
     def isAnchor(sym: Symbol) =
-      sym.isClass && !sym.is(Package) && (!sym.isPackageObject || Feature.migrateTo3)
+      sym.isClass && !sym.is(Package) && (!sym.isPackageObject || migrateTo3)
       || sym.isOpaqueAlias
       || sym.is(Deferred, butNot = Param)
 
@@ -581,10 +582,10 @@ trait ImplicitRunInfo {
             addPath(pre.cls.sourceModule.termRef)
           case pre: TermRef =>
             if pre.symbol.is(Package) then
-              if Feature.migrateTo3 then
+              if migrateTo3 then
                 addCompanion(pre, pre.member(nme.PACKAGE).symbol)
                 addPath(pre.prefix)
-            else if !pre.symbol.isPackageObject || Feature.migrateTo3 then
+            else if !pre.symbol.isPackageObject || migrateTo3 then
               comps += pre
               addPath(pre.prefix)
           case _ =>
@@ -604,7 +605,8 @@ trait ImplicitRunInfo {
             val superAnchors = if (sym.isClass) tp.parents else anchors(tp.superType)
             for (anchor <- superAnchors) comps ++= iscopeRefs(anchor)
           case tp =>
-            for part <- tp.namedPartsWith(_.isType) do comps ++= iscopeRefs(part)
+            for part <- tp.namedPartsWith(_.isType, widenSingletons = migrateTo3) do
+              comps ++= iscopeRefs(part)
         }
         comps
       }
@@ -908,7 +910,7 @@ trait Implicits { self: Typer =>
           case result: SearchFailure if result.isAmbiguous =>
             val deepPt = pt.deepenProto
             if (deepPt ne pt) inferImplicit(deepPt, argument, span)
-            else if (Feature.migrateTo3 && !ctx.mode.is(Mode.OldOverloadingResolution))
+            else if (migrateTo3 && !ctx.mode.is(Mode.OldOverloadingResolution))
               inferImplicit(pt, argument, span)(using ctx.addMode(Mode.OldOverloadingResolution)) match {
                 case altResult: SearchSuccess =>
                   ctx.migrationWarning(
@@ -1104,7 +1106,7 @@ trait Implicits { self: Typer =>
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
                 if (fail.isAmbiguous)
-                  if Feature.migrateTo3 then
+                  if migrateTo3 then
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
                     if (result.isSuccess)
                       warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
