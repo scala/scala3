@@ -374,7 +374,7 @@ object Denotations {
      *     pick the associated denotation.
      *  3. Otherwise, if the two infos can be combined with `infoMeet`, pick that as
      *     result info, and pick the symbol that scores higher as result symbol,
-     *     or pick `sym2` as a tie breaker. The picked info and symbol are combined
+     *     or pick `sym1` as a tie breaker. The picked info and symbol are combined
      *     in a JointDenotation.
      *  4. Otherwise, if one of the two symbols scores strongly higher than the
      *     other one, pick the associated denotation.
@@ -469,16 +469,14 @@ object Denotations {
 
           val matchLoosely = sym1.matchNullaryLoosely || sym2.matchNullaryLoosely
 
-          if info2.overrides(info1, matchLoosely, checkClassInfo = false)
-             && symScore <= 0
-          then denot2
-          else if info1.overrides(info2, matchLoosely, checkClassInfo = false)
-                  && symScore >= 0
-          then denot1
+          if symScore <= 0 && info2.overrides(info1, matchLoosely, checkClassInfo = false) then
+            denot2
+          else if symScore >= 0 && info1.overrides(info2, matchLoosely, checkClassInfo = false) then
+            denot1
           else
             val jointInfo = infoMeet(info1, info2, safeIntersection)
             if jointInfo.exists then
-              val sym = if symScore > 0 then sym1 else sym2
+              val sym = if symScore >= 0 then sym1 else sym2
               JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
             else if symScore == 2 then denot1
             else if symScore == -2 then denot2
