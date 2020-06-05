@@ -3,14 +3,18 @@ package backend
 package jvm
 
 import scala.tools.asm
+import scala.tools.asm.AnnotationVisitor
 import scala.tools.asm.ClassWriter
 import scala.collection.mutable
 import dotty.tools.io.AbstractFile
 
 import dotty.tools.dotc.CompilationUnit
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.core.Annotations.Annotation
+import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.StdNames.str
+import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.Name
@@ -30,6 +34,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   //import bTypes._
   //import coreBTypes._
   import bTypes._
+  import tpd._
   import coreBTypes._
   import int._
 
@@ -273,26 +278,138 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     /*
      * must-single-thread
      */
-    def emitAnnotations(cw: asm.ClassVisitor, annotations: List[Annotation]) =
-      int.emitAnnotations(cw, annotations, BCodeHelpers.this)(this)
+    def emitAnnotations(cw: asm.ClassVisitor, annotations: List[Annotation]): Unit =
+      for(annot <- annotations; if shouldEmitAnnotation(annot)) {
+        val typ = annot.tree.tpe
+        val assocs = assocsFromApply(annot.tree)
+        val av = cw.visitAnnotation(typeDescriptor(typ.asInstanceOf[Type]), isRuntimeVisible(annot))
+        emitAssocs(av, assocs, BCodeHelpers.this)(this)
+      }
 
     /*
      * must-single-thread
      */
-    def emitAnnotations(mw: asm.MethodVisitor, annotations: List[Annotation]) =
-      int.emitAnnotations(mw, annotations, BCodeHelpers.this)(this)
+    def emitAnnotations(mw: asm.MethodVisitor, annotations: List[Annotation]): Unit =
+      for(annot <- annotations; if shouldEmitAnnotation(annot)) {
+        val typ = annot.tree.tpe
+        val assocs = assocsFromApply(annot.tree)
+        val av = mw.visitAnnotation(typeDescriptor(typ.asInstanceOf[Type]), isRuntimeVisible(annot))
+        emitAssocs(av, assocs, BCodeHelpers.this)(this)
+      }
 
     /*
      * must-single-thread
      */
-    def emitAnnotations(fw: asm.FieldVisitor, annotations: List[Annotation]) =
-      int.emitAnnotations(fw, annotations, BCodeHelpers.this)(this)
+    def emitAnnotations(fw: asm.FieldVisitor, annotations: List[Annotation]): Unit =
+      for(annot <- annotations; if shouldEmitAnnotation(annot)) {
+        val typ = annot.tree.tpe
+        val assocs = assocsFromApply(annot.tree)
+        val av = fw.visitAnnotation(typeDescriptor(typ.asInstanceOf[Type]), isRuntimeVisible(annot))
+        emitAssocs(av, assocs, BCodeHelpers.this)(this)
+      }
 
     /*
      * must-single-thread
      */
-    def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]]) =
-      int.emitParamAnnotations(jmethod, pannotss, BCodeHelpers.this)(this)
+    def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]]): Unit =
+      val annotationss = pannotss map (_ filter shouldEmitAnnotation)
+      if (annotationss forall (_.isEmpty)) return
+      for ((annots, idx) <- annotationss.zipWithIndex;
+        annot <- annots) {
+        val typ = annot.tree.tpe
+        val assocs = assocsFromApply(annot.tree)
+        val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, typeDescriptor(typ.asInstanceOf[Type]), isRuntimeVisible(annot))
+        emitAssocs(pannVisitor, assocs, BCodeHelpers.this)(this)
+      }
+
+    private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)], bcodeStore: BCodeHelpers)
+        (innerClasesStore: bcodeStore.BCInnerClassGen) = {
+      for ((name, value) <- assocs)
+        emitArgument(av, name.mangledString, value.asInstanceOf[Tree], bcodeStore)(innerClasesStore)
+      av.visitEnd()
+    }
+
+    private def emitArgument(av:   AnnotationVisitor,
+                           name: String,
+                           arg:  Tree, bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
+      val narg = normalizeArgument(arg)
+      // Transformation phases are not run on annotation trees, so we need to run
+      // `constToLiteral` at this point.
+      val t = constToLiteral(narg)(ctx.withPhase(ctx.erasurePhase))
+      t match {
+        case Literal(const @ Constant(_)) =>
+          const.tag match {
+            case BooleanTag | ByteTag | ShortTag | CharTag | IntTag | LongTag | FloatTag | DoubleTag => av.visit(name, const.value)
+            case StringTag =>
+              assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
+              av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
+            case ClazzTag => av.visit(name, typeToTypeKind(const.typeValue)(bcodeStore)(innerClasesStore).toASMType)
+            case EnumTag =>
+              val edesc = innerClasesStore.typeDescriptor(const.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
+              val evalue = const.symbolValue.name.mangledString // value the actual enumeration value.
+              av.visitEnum(name, edesc, evalue)
+          }
+        case t: TypeApply if (t.fun.symbol == defn.Predef_classOf) =>
+          av.visit(name, typeToTypeKind(t.args.head.tpe.classSymbol.denot.info)(bcodeStore)(innerClasesStore).toASMType)
+        case Ident(nme.WILDCARD) =>
+          // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
+        case t: tpd.RefTree if t.symbol.denot.owner.isAllOf(Flags.JavaEnumTrait) =>
+          val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
+          val evalue = t.symbol.name.mangledString // value the actual enumeration value.
+          av.visitEnum(name, edesc, evalue)
+        case t: SeqLiteral =>
+          val arrAnnotV: AnnotationVisitor = av.visitArray(name)
+          for (arg <- t.elems) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
+          arrAnnotV.visitEnd()
+
+        case Apply(fun, args) if fun.symbol == defn.ArrayClass.primaryConstructor ||
+          toDenot(fun.symbol).owner == defn.ArrayClass.linkedClass && fun.symbol.name == nme.apply =>
+          val arrAnnotV: AnnotationVisitor = av.visitArray(name)
+
+          var actualArgs = if (fun.tpe.isImplicitMethod) {
+            // generic array method, need to get implicit argument out of the way
+            fun.asInstanceOf[Apply].args
+          } else args
+
+          val flatArgs = actualArgs.flatMap { arg =>
+            normalizeArgument(arg) match {
+              case t: tpd.SeqLiteral => t.elems
+              case e => List(e)
+            }
+          }
+          for(arg <- flatArgs) {
+            emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore)
+          }
+          arrAnnotV.visitEnd()
+  /*
+        case sb @ ScalaSigBytes(bytes) =>
+          // see http://www.scala-lang.org/sid/10 (Storage of pickled Scala signatures in class files)
+          // also JVMS Sec. 4.7.16.1 The element_value structure and JVMS Sec. 4.4.7 The CONSTANT_Utf8_info Structure.
+          if (sb.fitsInOneString) {
+            av.visit(name, BCodeAsmCommon.strEncode(sb))
+          } else {
+            val arrAnnotV: asm.AnnotationVisitor = av.visitArray(name)
+            for(arg <- BCodeAsmCommon.arrEncode(sb)) { arrAnnotV.visit(name, arg) }
+            arrAnnotV.visitEnd()
+          }          // for the lazy val in ScalaSigBytes to be GC'ed, the invoker of emitAnnotations() should hold the ScalaSigBytes in a method-local var that doesn't escape.
+  */
+        case t @ Apply(constr, args) if t.tpe.derivesFrom(JavaAnnotationClass) =>
+          val typ = t.tpe.classSymbol.denot.info
+          val assocs = assocsFromApply(t)
+          val desc = innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the nested annotation class
+          val nestedVisitor = av.visitAnnotation(name, desc)
+          emitAssocs(nestedVisitor, assocs, bcodeStore)(innerClasesStore)
+
+        case t =>
+          ctx.error(ex"Annotation argument is not a constant", t.sourcePos)
+      }
+    }
+
+    private def normalizeArgument(arg: Tree): Tree = arg match {
+      case Trees.NamedArg(_, arg1) => normalizeArgument(arg1)
+      case Trees.Typed(arg1, _) => normalizeArgument(arg1)
+      case _ => arg
+    }
 
   } // end of trait BCAnnotGen
 
