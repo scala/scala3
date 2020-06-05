@@ -7,6 +7,7 @@ import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.transform.SymUtils._
 
 /**
  * This class mainly contains the method classBTypeFromSymbol, which extracts the necessary
@@ -89,7 +90,22 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     val superClass = if (superClassSym == NoSymbol) None
                      else Some(classBTypeFromSymbol(superClassSym))
 
-    val interfaces = symHelper(classSym).superInterfaces.map(classBTypeFromSymbol)
+    /**
+     * All interfaces implemented by a class, except for those inherited through the superclass.
+     * Redundant interfaces are removed unless there is a super call to them.
+     */
+    def (sym: Symbol).superInterfaces: List[Symbol] = {
+      val directlyInheritedTraits = sym.directlyInheritedTraits
+      val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
+      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
+      val superCalls = superCallsMap.getOrElse(sym, Set.empty)
+      val additional = (superCalls -- directlyInheritedTraitsSet).filter(_.is(Flags.Trait))
+//      if (additional.nonEmpty)
+//        println(s"$fullName: adding supertraits $additional")
+      directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCalls(t)) ++ additional
+    }
+
+    val interfaces = classSym.superInterfaces.map(classBTypeFromSymbol)
 
     val flags = javaFlags(classSym)
 
@@ -166,7 +182,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     if (!isNested) None
     else {
       // See comment in BTypes, when is a class marked static in the InnerClass table.
-      val isStaticNestedClass = symHelper(symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
+      val isStaticNestedClass = symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass.isOriginallyStaticOwner
 
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
       val enclosingClassSym = {
@@ -184,6 +200,8 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
           None
         } else {
           val outerName = symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass.fullName.mangledString.replace('.', '/')
+          def dropModule(str: String): String =
+            if (!str.isEmpty && str.last == '$') str.take(str.length - 1) else str
           // Java compatibility. See the big comment in BTypes that summarizes the InnerClass spec.
           val outerNameModule =
             if (symHelper(symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass).isTopLevelModuleClass) dropModule(outerName)
@@ -203,6 +221,18 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       Some(NestedInfo(enclosingClass, outerName, innerName, isStaticNestedClass))
     }
   }
+
+  /**
+   * This is basically a re-implementation of sym.isStaticOwner, but using the originalOwner chain.
+   *
+   * The problem is that we are interested in a source-level property. Various phases changed the
+   * symbol's properties in the meantime, mostly lambdalift modified (destructively) the owner.
+   * Therefore, `sym.isStatic` is not what we want. For example, in
+   *   object T { def f { object U } }
+   * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
+   */
+  private def (sym: Symbol).isOriginallyStaticOwner: Boolean =
+    sym.is(Flags.PackageClass) || sym.is(Flags.ModuleClass) && symHelper(sym.originalOwner).originalLexicallyEnclosingClass.isOriginallyStaticOwner
 
   /**
    * Return the Java modifiers for the given symbol.

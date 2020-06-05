@@ -57,25 +57,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
   val primitives = new DottyPrimitives(ctx)
 
-  def isRuntimeVisible(annot: Annotation): Boolean =
-    if (toDenot(annot.tree.tpe.typeSymbol).hasAnnotation(AnnotationRetentionAttr))
-      retentionPolicyOf(annot) == AnnotationRetentionRuntimeAttr
-    else {
-      // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the
-      // annotation is emitted with visibility `RUNTIME`
-      // dotty bug: #389
-      true
-    }
-
-  def shouldEmitAnnotation(annot: Annotation): Boolean = {
-    annot.symbol.is(Flags.JavaDefined) &&
-      retentionPolicyOf(annot) != AnnotationRetentionSourceAttr
-  }
-
-  private def retentionPolicyOf(annot: Annotation): Symbol =
-    annot.tree.tpe.typeSymbol.getAnnotation(AnnotationRetentionAttr).
-      flatMap(_.argumentConstant(0).map(_.symbolValue)).getOrElse(AnnotationRetentionClassAttr)
-
   private def erasureString(clazz: Class[_]): String = {
     if (clazz.isArray) "Array[" + erasureString(clazz.getComponentType) + "]"
     else clazz.getName
@@ -97,12 +78,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   def sourcePos(pos: Spans.Span)(implicit ctx: Context): util.SourcePosition =
     ctx.source.atSpan(pos)
 
-  def dumpClasses: Option[String] =
-    if (ctx.settings.Ydumpclasses.isDefault) None
-    else Some(ctx.settings.Ydumpclasses.value)
-
-  def debuglevel: Int = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
-
   val perRunCaches: Caches = new Caches {
     def newAnyRefMap[K <: AnyRef, V](): mutable.AnyRefMap[K, V] = new mutable.AnyRefMap[K, V]()
     def newWeakMap[K, V](): mutable.WeakHashMap[K, V] = new mutable.WeakHashMap[K, V]()
@@ -111,9 +86,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def newMap[K, V](): mutable.HashMap[K, V] = new mutable.HashMap[K, V]()
     def newSet[K](): mutable.Set[K] = new mutable.HashSet[K]
   }
-
-  def dropModule(str: String): String =
-    if (!str.isEmpty && str.last == '$') str.take(str.length - 1) else str
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
@@ -128,16 +100,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       }
     }
     if (found == null) None else Some(found)
-  }
-
-  // todo: remove
-  def isMaybeBoxed(sym: Symbol): Boolean = {
-    (sym == defn.ObjectClass) ||
-      (sym == defn.JavaSerializableClass) ||
-      (sym == defn.ComparableClass) ||
-      (sym derivesFrom defn.BoxedNumberClass) ||
-      (sym derivesFrom defn.BoxedCharClass) ||
-      (sym derivesFrom defn.BoxedBooleanClass)
   }
 
   // @M don't generate java generics sigs for (members of) implementation
@@ -319,21 +281,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       else Nil
 
     /**
-     * All interfaces implemented by a class, except for those inherited through the superclass.
-     * Redundant interfaces are removed unless there is a super call to them.
-     */
-    def superInterfaces: List[Symbol] = {
-      val directlyInheritedTraits = decorateSymbol(sym).directlyInheritedTraits
-      val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
-      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
-      val superCalls = superCallsMap.getOrElse(sym, Set.empty)
-      val additional = (superCalls -- directlyInheritedTraitsSet).filter(_.is(Flags.Trait))
-//      if (additional.nonEmpty)
-//        println(s"$fullName: adding supertraits $additional")
-      directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCalls(t)) ++ additional
-    }
-
-    /**
      * True for module classes of package level objects. The backend will generate a mirror class for
      * such objects.
      */
@@ -353,33 +300,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       }
     }
 
-
-    /**
-     * This is basically a re-implementation of sym.isStaticOwner, but using the originalOwner chain.
-     *
-     * The problem is that we are interested in a source-level property. Various phases changed the
-     * symbol's properties in the meantime, mostly lambdalift modified (destructively) the owner.
-     * Therefore, `sym.isStatic` is not what we want. For example, in
-     *   object T { def f { object U } }
-     * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
-     */
-     def isOriginallyStaticOwner: Boolean =
-      sym.is(Flags.PackageClass) || sym.is(Flags.ModuleClass) && symHelper(symHelper(sym.originalOwner).originalLexicallyEnclosingClass).isOriginallyStaticOwner
-  }
-
-
-  /** The members of this type that have all of `required` flags but none of `excluded` flags set.
-   *  The members are sorted by name and signature to guarantee a stable ordering.
-   */
-  def sortedMembersBasedOnFlags(tp: Type, required: Flags.Flag, excluded: Flags.FlagSet): List[Symbol] = {
-    // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
-    val names = tp.memberNames(takeAllFilter).toSeq.sorted
-    val buffer = mutable.ListBuffer[Symbol]()
-    names.foreach { name =>
-      buffer ++= tp.memberBasedOnFlags(name, required, excluded)
-        .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol)
-    }
-    buffer.toList
   }
 
   object SelectBI extends DeconstructorCommon[tpd.Tree] {

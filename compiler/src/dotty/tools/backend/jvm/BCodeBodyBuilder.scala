@@ -1351,7 +1351,15 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
        */
       val mustUseAnyComparator: Boolean = {
         val areSameFinals = l.tpe.typeSymbol.is(Flags.Final) && r.tpe.typeSymbol.is(Flags.Final) && (l.tpe =:= r.tpe)
-
+        // todo: remove
+        def isMaybeBoxed(sym: Symbol): Boolean = {
+          (sym == defn.ObjectClass) ||
+            (sym == defn.JavaSerializableClass) ||
+            (sym == defn.ComparableClass) ||
+            (sym derivesFrom defn.BoxedNumberClass) ||
+            (sym derivesFrom defn.BoxedCharClass) ||
+            (sym derivesFrom defn.BoxedBooleanClass)
+        }
         !areSameFinals && isMaybeBoxed(l.tpe.widenDealias.typeSymbol) && isMaybeBoxed(r.tpe.widenDealias.typeSymbol)
       }
       def isNull(t: Tree): Boolean = t match {

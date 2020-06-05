@@ -17,9 +17,11 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.NameKinds.ExpandedName
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Signature
 import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types
+import dotty.tools.dotc.core.Types._
 
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -183,7 +185,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
   trait BCInnerClassGen {
 
-    def debugLevel = int.debuglevel
+    def debugLevel = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
 
     final val emitSource = debugLevel >= 1
     final val emitLines  = debugLevel >= 2
@@ -323,6 +325,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         emitAssocs(pannVisitor, assocs, BCodeHelpers.this)(this)
       }
 
+
+    private def shouldEmitAnnotation(annot: Annotation): Boolean = {
+      annot.symbol.is(Flags.JavaDefined) &&
+        retentionPolicyOf(annot) != AnnotationRetentionSourceAttr
+    }
+
     private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)], bcodeStore: BCodeHelpers)
         (innerClasesStore: bcodeStore.BCInnerClassGen) = {
       for ((name, value) <- assocs)
@@ -411,6 +419,20 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       case Trees.Typed(arg1, _) => normalizeArgument(arg1)
       case _ => arg
     }
+
+    private def isRuntimeVisible(annot: Annotation): Boolean =
+      if (toDenot(annot.tree.tpe.typeSymbol).hasAnnotation(AnnotationRetentionAttr))
+        retentionPolicyOf(annot) == AnnotationRetentionRuntimeAttr
+      else {
+        // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the
+        // annotation is emitted with visibility `RUNTIME`
+        // dotty bug: #389
+        true
+      }
+
+    private def retentionPolicyOf(annot: Annotation): Symbol =
+      annot.tree.tpe.typeSymbol.getAnnotation(AnnotationRetentionAttr).
+        flatMap(_.argumentConstant(0).map(_.symbolValue)).getOrElse(AnnotationRetentionClassAttr)
 
   } // end of trait BCAnnotGen
 
@@ -525,6 +547,20 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
           addForwarder(jclass, moduleClass, m)
         }
       }
+    }
+
+    /** The members of this type that have all of `required` flags but none of `excluded` flags set.
+     *  The members are sorted by name and signature to guarantee a stable ordering.
+     */
+    private def sortedMembersBasedOnFlags(tp: Type, required: Flags.Flag, excluded: Flags.FlagSet): List[Symbol] = {
+      // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
+      val names = tp.memberNames(takeAllFilter).toSeq.sorted
+      val buffer = mutable.ListBuffer[Symbol]()
+      names.foreach { name =>
+        buffer ++= tp.memberBasedOnFlags(name, required, excluded)
+          .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol)
+      }
+      buffer.toList
     }
 
     /*

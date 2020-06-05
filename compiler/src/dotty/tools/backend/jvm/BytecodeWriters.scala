@@ -35,7 +35,7 @@ trait BytecodeWriters {
 
   def factoryNonJarBytecodeWriter(): BytecodeWriter = {
     val emitAsmp  = None
-    val doDump    = int.dumpClasses
+    val doDump    = dumpClasses
     (emitAsmp.isDefined, doDump.isDefined) match {
       case (false, false) => new ClassBytecodeWriter { }
       case (false, true ) => new ClassBytecodeWriter with DumpBytecodeWriter { }
@@ -116,7 +116,7 @@ trait BytecodeWriters {
   }
 
   trait DumpBytecodeWriter extends BytecodeWriter {
-    val baseDir = Directory(int.dumpClasses.get).createDirectory()
+    val baseDir = Directory(dumpClasses.get).createDirectory()
 
     abstract override def writeClass(label: String, jclassName: String, jclassBytes: Array[Byte], outfile: AbstractFile): Unit = {
       super.writeClass(label, jclassName, jclassBytes, outfile)
@@ -130,4 +130,8 @@ trait BytecodeWriters {
       finally outstream.close()
     }
   }
+
+  private def dumpClasses: Option[String] =
+    if (ctx.settings.Ydumpclasses.isDefault) None
+    else Some(ctx.settings.Ydumpclasses.value)
 }
