@@ -1459,7 +1459,17 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val desc = capturedParamsTypes.map(tpe => toTypeKind(tpe)).mkString(("("), "", ")") + functionalInterfaceDesc
       // TODO specialization
       val constrainedType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
-      val abstractMethod = symHelper(functionalInterface).samMethod()
+
+      val abstractMethod = ctx.atPhase(ctx.erasurePhase) {
+        val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
+        samMethods match {
+          case x :: Nil => x.symbol
+          case Nil => abort(s"${functionalInterface.show} is not a functional interface. It doesn't have abstract methods")
+          case xs => abort(s"${functionalInterface.show} is not a functional interface. " +
+            s"It has the following abstract methods: ${xs.map(_.name).mkString(", ")}")
+        }
+      }
+
       val methodName = abstractMethod.name.mangledString
       val applyN = {
         val mt = asmMethodType(abstractMethod)

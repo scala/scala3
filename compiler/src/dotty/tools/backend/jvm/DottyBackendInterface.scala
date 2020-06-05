@@ -284,17 +284,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
         toDenot(sym).owner.is(Flags.PackageClass)
       }
 
-
-    def samMethod(): Symbol = ctx.atPhase(ctx.erasurePhase) {
-      val samMethods = toDenot(sym).info.possibleSamMethods.toList
-      samMethods match {
-        case x :: Nil => x.symbol
-        case Nil => abort(s"${sym.show} is not a functional interface. It doesn't have abstract methods")
-        case xs => abort(s"${sym.show} is not a functional interface. " +
-          s"It has the following abstract methods: ${xs.map(_.name).mkString(", ")}")
-      }
-    }
-
   }
 
   object SelectBI extends DeconstructorCommon[tpd.Tree] {
