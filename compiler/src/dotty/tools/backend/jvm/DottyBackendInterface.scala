@@ -70,8 +70,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     ctx.error(msg)
     throw new RuntimeException(msg)
   }
-  def sourcePos(pos: Spans.Span)(implicit ctx: Context): util.SourcePosition =
-    ctx.source.atSpan(pos)
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
@@ -181,7 +179,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
-        ctx.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", sourcePos(field.span))
+        ctx.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", ctx.source.atSpan(field.span))
         UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems

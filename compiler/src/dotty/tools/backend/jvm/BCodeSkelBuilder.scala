@@ -407,7 +407,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val loc = Local(tk, sym.name.mangledString.toString, nxtIdx, sym.is(Flags.Synthetic))
         val existing = slots.put(sym, loc)
         if (existing.isDefined)
-          ctx.error("attempt to create duplicate local var.", sourcePos(sym.span))
+          ctx.error("attempt to create duplicate local var.", ctx.source.atSpan(sym.span))
         assert(tk.size > 0, "makeLocal called for a symbol whose type is Unit.")
         nxtIdx += tk.size
         loc
@@ -457,7 +457,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     }
     def lineNumber(tree: Tree): Unit = {
       if (!emitLines || !tree.span.exists) return;
-      val nr = sourcePos(tree.span).line + 1
+      val nr = ctx.source.atSpan(tree.span).line + 1
       if (nr != lastEmittedLineNr) {
         lastEmittedLineNr = nr
         lastInsn match {
@@ -560,7 +560,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       if (params.size > MaximumJvmParameters) {
         // SI-7324
-        ctx.error(s"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.", sourcePos(methSymbol.span))
+        ctx.error(s"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.", ctx.source.atSpan(methSymbol.span))
         return
       }
 
@@ -589,7 +589,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
               ctx.error("Concrete method has no definition: " + dd + (
                 if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
                 else ""),
-                sourcePos(NoSpan)
+                ctx.source.atSpan(NoSpan)
               )
             case _ =>
               bc emitRETURN returnType
