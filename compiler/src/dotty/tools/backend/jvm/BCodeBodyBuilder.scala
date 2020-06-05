@@ -1377,7 +1377,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             if (r.tpe <:< defn.BoxedNumberClass.info) defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumNum)
             else if (r.tpe <:< defn.BoxedCharClass.info) NoSymbol // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
             else defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
-          } else externalEquals
+          } else defn.BoxesRunTimeModule_externalEquals
         }
 
         genLoad(l, ObjectReference)

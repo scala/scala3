@@ -36,8 +36,6 @@ import Names.Name
 
 class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit val ctx: Context) {
 
-  val externalEquals: Symbol = defn.BoxesRunTimeModule.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
-
   private def erasureString(clazz: Class[_]): String = {
     if (clazz.isArray) "Array[" + erasureString(clazz.getComponentType) + "]"
     else clazz.getName
