@@ -929,6 +929,11 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       getGenericSignatureHelper(sym, moduleClass, memberTpe).orNull
     else null
   }
+
+  def abort(msg: String): Nothing = {
+    ctx.error(msg)
+    throw new RuntimeException(msg)
+  }
 }
 
 object BCodeHelpers {

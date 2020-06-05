@@ -584,6 +584,11 @@ trait BCodeIdiomatic {
       jmethod.visitTypeInsn(Opcodes.CHECKCAST, tk.classOrArrayType)
     }
 
+    def abort(msg: String): Nothing = {
+      ctx.error(msg)
+      throw new RuntimeException(msg)
+    }
+
   } // end of class JCodeMethodN
 
   /* Constant-valued val-members of JCodeMethodN at the companion object, so as to avoid re-initializing them multiple times. */

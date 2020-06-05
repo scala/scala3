@@ -50,11 +50,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     ctx.requiredModule(className)
   }
 
-  def abort(msg: String): Nothing = {
-    ctx.error(msg)
-    throw new RuntimeException(msg)
-  }
-
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
   def desugarIdentBI(i: Ident): Option[tpd.Select] = {
