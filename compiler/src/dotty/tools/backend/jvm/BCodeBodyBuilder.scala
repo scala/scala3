@@ -1144,7 +1144,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val isTraitMethodOverridingObjectMember = {
           receiver != methodOwner && // fast path - the boolean is used to pick either of these two, if they are the same it does not matter
             style.isVirtual &&
-            symHelper(receiver).isEmittedInterface &&
+            isEmittedInterface(receiver) &&
             defn.ObjectType.decl(method.name).symbol.exists && { // fast path - compute overrideChain on the next line only if necessary
               val syms = method.allOverriddenSymbols.toList
               !syms.isEmpty && syms.last.owner == defn.ObjectClass
@@ -1160,7 +1160,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val bmType   = asmMethodType(method)
       val mdescr   = bmType.descriptor
 
-      val isInterface = symHelper(receiverClass).isEmittedInterface
+      val isInterface = isEmittedInterface(receiverClass)
       import InvokeStyle._
       if (style == Super) {
         // DOTTY: this differ from how super-calls in traits are handled in the scalac backend,
@@ -1435,7 +1435,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       // Lambdas should be serializable if they implement a SAM that extends Serializable or if they
       // implement a scala.Function* class.
       val isSerializable = functionalInterface.isSerializable || defn.isFunctionClass(functionalInterface)
-      val isInterface = symHelper(lambdaTarget.owner).isEmittedInterface
+      val isInterface = isEmittedInterface(lambdaTarget.owner)
       val invokeStyle =
         if (lambdaTarget.isStaticMember) asm.Opcodes.H_INVOKESTATIC
         else if (lambdaTarget.is(Flags.Private) || lambdaTarget.isClassConstructor) asm.Opcodes.H_INVOKESPECIAL
@@ -1494,6 +1494,16 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       generatedType
     }
   }
+
+  /** Does this symbol actually correspond to an interface that will be emitted?
+   *  In the backend, this should be preferred over `isInterface` because it
+   *  also returns true for the symbols of the fake companion objects we
+   *  create for Java-defined classes as well as for Java annotations
+   *  which we represent as classes.
+   */
+  private def isEmittedInterface(sym: Symbol): Boolean = sym.isInterface ||
+    sym.is(Flags.JavaDefined) && (toDenot(sym).isAnnotation || sym.is(Flags.ModuleClass) && (sym.companionClass.is(Flags.PureInterface)) || sym.companionClass.is(Flags.Trait))
+
 }
 
 object BCodeBodyBuilder {

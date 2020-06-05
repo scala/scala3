@@ -249,16 +249,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
     // tests
 
-    /** Does this symbol actually correspond to an interface that will be emitted?
-     *  In the backend, this should be preferred over `isInterface` because it
-     *  also returns true for the symbols of the fake companion objects we
-     *  create for Java-defined classes as well as for Java annotations
-     *  which we represent as classes.
-     */
-    def isEmittedInterface: Boolean = sym.isInterface ||
-      sym.is(Flags.JavaDefined) && (toDenot(sym).isAnnotation || sym.is(Flags.ModuleClass) && (sym.companionClass.is(Flags.PureInterface)) || sym.companionClass.is(Flags.Trait))
-
-
 
     // navigation
 
