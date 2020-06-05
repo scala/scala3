@@ -434,6 +434,19 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       annot.tree.tpe.typeSymbol.getAnnotation(AnnotationRetentionAttr).
         flatMap(_.argumentConstant(0).map(_.symbolValue)).getOrElse(AnnotationRetentionClassAttr)
 
+    private def assocsFromApply(tree: Tree): List[(Name, Tree)] = {
+      tree match {
+        case Block(_, expr) => assocsFromApply(expr)
+        case Apply(fun, args) =>
+          fun.tpe.widen match {
+            case MethodType(names) =>
+              (names zip args).filter {
+                case (_, t: tpd.Ident) if (t.tpe.normalizedPrefix eq NoPrefix) => false
+                case _ => true
+              }
+          }
+      }
+    }
   } // end of trait BCAnnotGen
 
   trait BCJGenSigGen {

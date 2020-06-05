@@ -7,6 +7,7 @@ import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.SymUtils._
 
 /**
@@ -125,7 +126,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       // The lambdalift phase lifts all nested classes to the enclosing class, so if we collect
       // member classes right after lambdalift, we obtain all nested classes, including local and
       // anonymous ones.
-      val nestedClasses = symHelper(classSym).nestedClasses
+      val nestedClasses = getNestedClasses(classSym)
 
       // If this is a top-level class, and it has a companion object, the member classes of the
       // companion are added as members of the class. For example:
@@ -143,7 +144,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       val companionModuleMembers = {
         // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
         // not local classes of the companion module (E in the example) that were lifted by lambdalift.
-        if (classSym.linkedClass.isTopLevelModuleClass) /*exitingPickler*/ symHelper(classSym.linkedClass).memberClasses
+        if (classSym.linkedClass.isTopLevelModuleClass) /*exitingPickler*/ getMemberClasses(classSym.linkedClass)
         else Nil
       }
 
@@ -175,6 +176,22 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     classBType
   }
 
+  /** For currently compiled classes: All locally defined classes including local classes.
+   *  The empty list for classes that are not currently compiled.
+   */
+  private def getNestedClasses(sym: Symbol): List[Symbol] = definedClasses(sym, ctx.flattenPhase)
+
+  /** For currently compiled classes: All classes that are declared as members of this class
+   *  (but not inherited ones). The empty list for classes that are not currently compiled.
+   */
+  private def getMemberClasses(sym: Symbol): List[Symbol] = definedClasses(sym, ctx.lambdaLiftPhase)
+
+  private def definedClasses(sym: Symbol, phase: Phase) =
+    if (sym.isDefinedInCurrentRun)
+      ctx.atPhase(phase) {
+        toDenot(sym).info.decls.filter(_.isClass)
+      }
+    else Nil
 
   private def buildNestedInfo(innerClassSym: Symbol): Option[NestedInfo] = {
     assert(innerClassSym.isClass, s"Cannot build NestedInfo for non-class symbol $innerClassSym")

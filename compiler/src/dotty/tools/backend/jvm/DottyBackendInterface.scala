@@ -192,21 +192,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       None
     }
 
-
-  def assocsFromApply(tree: Tree): List[(Name, Tree)] = {
-    tree match {
-      case Block(_, expr) => assocsFromApply(expr)
-      case Apply(fun, args) =>
-        fun.tpe.widen match {
-          case MethodType(names) =>
-            (names zip args).filter {
-              case (_, t: tpd.Ident) if (t.tpe.normalizedPrefix eq NoPrefix) => false
-              case _ => true
-            }
-        }
-    }
-  }
-
   extension symExtensions on (sym: Symbol) {
 
     def isInterface: Boolean = (sym.is(Flags.PureInterface)) || sym.is(Flags.Trait)
@@ -252,30 +237,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       ctx.atPhase(ctx.flattenPhase) {
         toDenot(sym).owner.is(Flags.PackageClass)
       }
-
-  }
-
-  def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper(sym)
-
-  class SymbolHelper(sym: Symbol) {
-
-    /** For currently compiled classes: All locally defined classes including local classes.
-     *  The empty list for classes that are not currently compiled.
-
-     */
-    def nestedClasses: List[Symbol] = definedClasses(ctx.flattenPhase)
-
-    /** For currently compiled classes: All classes that are declared as members of this class
-     *  (but not inherited ones). The empty list for classes that are not currently compiled.
-     */
-    def memberClasses: List[Symbol] = definedClasses(ctx.lambdaLiftPhase)
-
-    private def definedClasses(phase: Phase) =
-      if (sym.isDefinedInCurrentRun)
-        ctx.atPhase(phase) {
-          toDenot(sym).info.decls.filter(_.isClass)
-        }
-      else Nil
 
   }
 
