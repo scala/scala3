@@ -16,7 +16,6 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.StdNames.str
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.util.Spans._
 
 /*

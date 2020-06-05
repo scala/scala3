@@ -354,7 +354,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
               av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
             case ClazzTag => av.visit(name, typeToTypeKind(const.typeValue)(bcodeStore)(innerClasesStore).toASMType)
             case EnumTag =>
-              val edesc = innerClasesStore.typeDescriptor(const.tpe) // the class descriptor of the enumeration class.
+              val edesc = innerClasesStore.typeDescriptor(const.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
               val evalue = const.symbolValue.name.mangledString // value the actual enumeration value.
               av.visitEnum(name, edesc, evalue)
           }
@@ -363,7 +363,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
         case t: tpd.RefTree if t.symbol.denot.owner.isAllOf(Flags.JavaEnumTrait) =>
-          val edesc = innerClasesStore.typeDescriptor(t.tpe) // the class descriptor of the enumeration class.
+          val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
           val evalue = t.symbol.name.mangledString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         case t: SeqLiteral =>
@@ -405,7 +405,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         case t @ Apply(constr, args) if t.tpe.derivesFrom(JavaAnnotationClass) =>
           val typ = t.tpe.classSymbol.denot.info
           val assocs = assocsFromApply(t)
-          val desc = innerClasesStore.typeDescriptor(typ) // the class descriptor of the nested annotation class
+          val desc = innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the nested annotation class
           val nestedVisitor = av.visitAnnotation(name, desc)
           emitAssocs(nestedVisitor, assocs, bcodeStore)(innerClasesStore)
 
@@ -756,8 +756,8 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     def primitiveOrClassToBType(sym: Symbol): BType = {
       assert(sym.isClass, sym)
       assert(sym != defn.ArrayClass || ctx.compilationUnit.source.file.name == "Array.scala", sym)
-      primitiveTypeMap.getOrElse(sym,
-        storage.getClassBTypeAndRegisterInnerClass(sym)).asInstanceOf[BType]
+      primitiveTypeMap.getOrElse(sym.asInstanceOf[ct.bTypes.coreBTypes.bTypes.int.Symbol],
+        storage.getClassBTypeAndRegisterInnerClass(sym.asInstanceOf[ct.int.Symbol])).asInstanceOf[BType]
     }
 
     /**
@@ -809,7 +809,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
         tp match {
           case tp: ThisType if tp.cls == defn.ArrayClass => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
-          case tp: ThisType                         => storage.getClassBTypeAndRegisterInnerClass(tp.cls)
+          case tp: ThisType                         => storage.getClassBTypeAndRegisterInnerClass(tp.cls.asInstanceOf[ct.int.Symbol])
           // case t: SingletonType                   => primitiveOrClassToBType(t.classSymbol)
           case t: SingletonType                     => typeToTypeKind(t.underlying)(ct)(storage)
           case t: RefinedType                       => typeToTypeKind(t.parent)(ct)(storage) //parents.map(_.toTypeKind(ct)(storage).asClassBType).reduceLeft((a, b) => a.jvmWiseLUB(b))
