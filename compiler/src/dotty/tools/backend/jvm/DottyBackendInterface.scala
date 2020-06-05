@@ -75,6 +75,8 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     ctx.error(msg)
     throw new RuntimeException(msg)
   }
+  def sourcePos(pos: Spans.Span)(implicit ctx: Context): util.SourcePosition =
+    ctx.source.atSpan(pos)
 
   val perRunCaches: Caches = new Caches {
     def newAnyRefMap[K <: AnyRef, V](): mutable.AnyRefMap[K, V] = new mutable.AnyRefMap[K, V]()
@@ -325,7 +327,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
-        ctx.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", field.sourcePos)
+        ctx.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", sourcePos(field.span))
         UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems
