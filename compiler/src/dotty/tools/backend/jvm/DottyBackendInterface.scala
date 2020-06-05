@@ -52,8 +52,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   @threadUnsafe lazy val AnnotationRetentionRuntimeAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
   @threadUnsafe lazy val JavaAnnotationClass: ClassSymbol = ctx.requiredClass("java.lang.annotation.Annotation")
 
-  val primitives = new DottyPrimitives(ctx)
-
   private def erasureString(clazz: Class[_]): String = {
     if (clazz.isArray) "Array[" + erasureString(clazz.getComponentType) + "]"
     else clazz.getName

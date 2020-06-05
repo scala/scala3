@@ -35,6 +35,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
   import coreBTypes._
   import BCodeBodyBuilder._
 
+  private val primitives = new DottyPrimitives(ctx)
+
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
