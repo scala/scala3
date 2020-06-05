@@ -72,7 +72,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
 
       tree match {
-        case Assign(lhs @ SelectBI(qual, _), rhs) =>
+        case Assign(lhs @ DesugaredSelect(qual, _), rhs) =>
           val isStatic = lhs.symbol.isStaticMember
           if (!isStatic) { genLoadQualifier(lhs) }
           genLoad(rhs, symInfoTK(lhs.symbol))
@@ -107,7 +107,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     /* Generate code for primitive arithmetic operations. */
     def genArithmeticOp(tree: Tree, code: Int): BType = tree match{
-      case Apply(fun @ SelectBI(larg, _), args) =>
+      case Apply(fun @ DesugaredSelect(larg, _), args) =>
       var resKind = tpeTK(larg)
 
       assert(resKind.isNumericType || (resKind == BOOL),
@@ -163,7 +163,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     /* Generate primitive array operations. */
     def genArrayOp(tree: Tree, code: Int, expectedType: BType): BType = tree match{
 
-      case Apply(SelectBI(arrayObj, _), args) =>
+      case Apply(DesugaredSelect(arrayObj, _), args) =>
       import ScalaPrimitivesOps._
       val k = tpeTK(arrayObj)
       genLoad(arrayObj, k)
@@ -225,7 +225,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     def genPrimitiveOp(tree: Apply, expectedType: BType): BType = tree match {
-      case Apply(fun @ SelectBI(receiver, _), _) =>
+      case Apply(fun @ DesugaredSelect(receiver, _), _) =>
       val sym = tree.symbol
 
       val code = primitives.getPrimitive(tree, receiver.tpe)
@@ -330,7 +330,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
           val (fun, args) = call match {
             case Apply(fun, args) => (fun, args)
-            case t @ SelectBI(_, _) => (t, Nil)
+            case t @ DesugaredSelect(_, _) => (t, Nil)
             case t @ Ident(_) => (t, Nil)
           }
 
@@ -341,7 +341,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             // but I was able to derrive it by reading
             // AbstractValidatingLambdaMetafactory.validateMetafactoryArgs
 
-            val SelectBI(prefix, _) = fun
+            val DesugaredSelect(prefix, _) = fun
             genLoad(prefix)
           }
 
@@ -365,11 +365,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               else classBTypeFromSymbol(claszSymbol)
           }
 
-        case SelectBI(Ident(nme.EMPTY_PACKAGE), module) =>
+        case DesugaredSelect(Ident(nme.EMPTY_PACKAGE), module) =>
           assert(tree.symbol.is(Flags.Module), s"Selection of non-module from empty package: $tree sym: ${tree.symbol} at: ${tree.span}")
           genLoadModule(tree)
 
-        case SelectBI(qualifier, _) =>
+        case DesugaredSelect(qualifier, _) =>
           val sym = tree.symbol
           generatedType = symInfoTK(sym)
           val qualSafeToElide = tpd.isIdempotentExpr(qualifier)
@@ -426,7 +426,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           generatedType = UNIT
           genStat(tree)
 
-        case av @ ArrayValueBI(_, _) =>
+        case av @ ArrayValue(_, _) =>
           generatedType = genArrayValue(av)
 
         case mtch @ Match(_, _) =>
@@ -622,7 +622,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     def genTypeApply(t: TypeApply): BType = t match {
-      case TypeApply(fun@SelectBI(obj, _), targs) =>
+      case TypeApply(fun@DesugaredSelect(obj, _), targs) =>
 
         val sym = fun.symbol
         val cast =
@@ -690,7 +690,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(app)
       app match {
         case Apply(_, args) if app.symbol eq defn.newArrayMethod =>
-          val List(elemClaz, Literal(c: Constant), ArrayValueBI(_, dims)) = args
+          val List(elemClaz, Literal(c: Constant), ArrayValue(_, dims)) = args
 
           generatedType = toTypeKind(c.typeValue)
           mkArrayConstructorCall(generatedType.asArrayBType, app, dims)
@@ -699,7 +699,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             if (t.symbol ne defn.Object_synchronized) genTypeApply(t)
             else genSynchronized(app, expectedType)
 
-        case Apply(fun @ SelectBI(Super(_, _), _), args) =>
+        case Apply(fun @ DesugaredSelect(Super(_, _), _), args) =>
           def initModule(): Unit = {
             // we initialize the MODULE$ field immediately after the super ctor
             if (!isModuleInitialized &&
@@ -731,7 +731,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         // thought to return an instance of what they construct,
         // we have to 'simulate' it by DUPlicating the freshly created
         // instance (on JVM, <init> methods return VOID).
-        case Apply(fun @ SelectBI(New(tpt), nme.CONSTRUCTOR), args) =>
+        case Apply(fun @ DesugaredSelect(New(tpt), nme.CONSTRUCTOR), args) =>
           val ctor = fun.symbol
           assert(ctor.isClassConstructor, s"'new' call to non-constructor: ${ctor.name}")
 
@@ -781,9 +781,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             if (invokeStyle.hasInstance) genLoadQualifier(fun)
             genLoadArguments(args, paramTKs(app))
 
-            val SelectBI(qual, _) = fun // fun is a Select, also checked in genLoadQualifier
+            val DesugaredSelect(qual, _) = fun // fun is a Select, also checked in genLoadQualifier
             val isArrayClone = fun match {
-              case SelectBI(qual, nme.clone_) if qual.tpe.widen.isInstanceOf[JavaArrayType] => true
+              case DesugaredSelect(qual, nme.clone_) if qual.tpe.widen.isInstanceOf[JavaArrayType] => true
               case _ => false
             }
             if (isArrayClone) {
@@ -826,9 +826,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       generatedType
     } // end of genApply()
 
-    private def genArrayValue(av: tpd.JavaSeqLiteral): BType = av match {
-      case ArrayValueBI(tpt, elems) =>
-      val ArrayValueBI(tpt, elems) = av
+    private def genArrayValue(av: tpd.JavaSeqLiteral): BType = {
+      val ArrayValue(tpt, elems) = av
 
       lineNumber(av)
       genArray(elems, tpt)
@@ -1013,7 +1012,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genLoadQualifier(tree: Tree): Unit = {
       lineNumber(tree)
       tree match {
-        case SelectBI(qualifier, _) => genLoad(qualifier)
+        case DesugaredSelect(qualifier, _) => genLoad(qualifier)
         case t: Ident             => // dotty specific
           desugarIdentBI(t) match {
             case Some(sel) => genLoadQualifier(sel)
@@ -1191,7 +1190,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
      * It turns a chained call like "a".+("b").+("c") into a list of arguments.
      */
     def liftStringConcat(tree: Tree): List[Tree] = tree match {
-      case tree @ Apply(fun @ SelectBI(larg, method), rarg) =>
+      case tree @ Apply(fun @ DesugaredSelect(larg, method), rarg) =>
         if (isPrimitive(fun) &&
             primitives.getPrimitive(tree, larg.tpe) == ScalaPrimitivesOps.CONCAT)
           liftStringConcat(larg) ::: rarg
@@ -1303,7 +1302,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           import ScalaPrimitivesOps.{ ZNOT, ZAND, ZOR, EQ }
 
           // lhs and rhs of test
-          lazy val SelectBI(lhs, _) = fun
+          lazy val DesugaredSelect(lhs, _) = fun
           val rhs = if (args.isEmpty) tpd.EmptyTree else args.head // args.isEmpty only for ZNOT
 
           def genZandOrZor(and: Boolean): Unit = {

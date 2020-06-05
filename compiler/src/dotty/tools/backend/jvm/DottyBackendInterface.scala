@@ -51,9 +51,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     if (found == null) None else Some(found)
   }
 
-
-
-  object SelectBI extends DeconstructorCommon[tpd.Tree] {
+  object DesugaredSelect extends DeconstructorCommon[tpd.Tree] {
 
     var desugared: tpd.Select = null
 
@@ -79,7 +77,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
   }
 
-  object ArrayValueBI extends DeconstructorCommon[tpd.JavaSeqLiteral] {
+  object ArrayValue extends DeconstructorCommon[tpd.JavaSeqLiteral] {
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
