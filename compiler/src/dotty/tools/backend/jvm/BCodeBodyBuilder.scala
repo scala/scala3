@@ -307,8 +307,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case t @ Try(_, _, _) =>
           generatedType = genLoadTry(t)
 
-        case ThrowBI(expr) =>
-          generatedType = genThrow(expr)
+        case t: Apply if t.fun.symbol eq defn.throwMethod =>
+          generatedType = genThrow(t.args.head)
 
         case New(tpt) =>
           abort(s"Unexpected New(${tpt.tpe.showSummary()}/$tpt) reached GenBCode.\n" +

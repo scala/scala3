@@ -139,21 +139,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
   }
 
-  object ThrowBI {
-    var field: tpd.Apply = _
-    def isEmpty: Boolean = field eq null
-    def isDefined = !isEmpty
-    def get: Tree = field.args.head
-    def unapply(s: tpd.Apply): ThrowBI.type = {
-      if (s.fun.symbol eq defn.throwMethod) {
-        field = s
-      } else {
-        field = null
-      }
-      this
-    }
-  }
-
   object ArrayValueBI extends DeconstructorCommon[tpd.JavaSeqLiteral] {
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem

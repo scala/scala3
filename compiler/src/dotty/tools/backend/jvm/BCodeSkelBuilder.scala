@@ -584,7 +584,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           genLoad(rhs, returnType)
 
           rhs match {
-            case (_: Return) | Block(_, (_: Return)) | ThrowBI(_) | Block(_, ThrowBI(_)) => ()
+            case (_: Return) | Block(_, (_: Return)) => ()
+            case (_: Apply) | Block(_, (_: Apply)) if rhs.symbol eq defn.throwMethod => ()
             case tpd.EmptyTree =>
               ctx.error("Concrete method has no definition: " + dd + (
                 if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
