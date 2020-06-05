@@ -4,11 +4,14 @@ package jvm
 
 import scala.tools.asm
 import scala.annotation.threadUnsafe
+import scala.collection.mutable
+import scala.collection.generic.Clearable
 
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.util.WeakHashSet
 
 /**
  * This class mainly contains the method classBTypeFromSymbol, which extracts the necessary
@@ -35,6 +38,25 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
 
   final def intializeCoreBTypes(): Unit = {
     coreBTypes.setBTypes(new CoreBTypes[this.type](this))
+  }
+
+  private[this] val perRunCaches: Caches = new Caches {
+    def newAnyRefMap[K <: AnyRef, V](): mutable.AnyRefMap[K, V] = new mutable.AnyRefMap[K, V]()
+    def newWeakMap[K, V](): mutable.WeakHashMap[K, V] = new mutable.WeakHashMap[K, V]()
+    def recordCache[T <: Clearable](cache: T): T = cache
+    def newWeakSet[K >: Null <: AnyRef](): WeakHashSet[K] = new WeakHashSet[K]()
+    def newMap[K, V](): mutable.HashMap[K, V] = new mutable.HashMap[K, V]()
+    def newSet[K](): mutable.Set[K] = new mutable.HashSet[K]
+  }
+
+  // TODO remove abstraction
+  private abstract class Caches {
+    def recordCache[T <: Clearable](cache: T): T
+    def newWeakMap[K, V](): collection.mutable.WeakHashMap[K, V]
+    def newMap[K, V](): collection.mutable.HashMap[K, V]
+    def newSet[K](): collection.mutable.Set[K]
+    def newWeakSet[K >: Null <: AnyRef](): dotty.tools.dotc.util.WeakHashSet[K]
+    def newAnyRefMap[K <: AnyRef, V](): collection.mutable.AnyRefMap[K, V]
   }
 
   @threadUnsafe protected lazy val classBTypeFromInternalNameMap = {

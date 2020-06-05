@@ -75,15 +75,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
   def sourcePos(pos: Spans.Span)(implicit ctx: Context): util.SourcePosition =
     ctx.source.atSpan(pos)
 
-  val perRunCaches: Caches = new Caches {
-    def newAnyRefMap[K <: AnyRef, V](): mutable.AnyRefMap[K, V] = new mutable.AnyRefMap[K, V]()
-    def newWeakMap[K, V](): mutable.WeakHashMap[K, V] = new mutable.WeakHashMap[K, V]()
-    def recordCache[T <: Clearable](cache: T): T = cache
-    def newWeakSet[K >: Null <: AnyRef](): WeakHashSet[K] = new WeakHashSet[K]()
-    def newMap[K, V](): mutable.HashMap[K, V] = new mutable.HashMap[K, V]()
-    def newSet[K](): mutable.Set[K] = new mutable.HashSet[K]
-  }
-
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
   def desugarIdentBI(i: Ident): Option[tpd.Select] = {
@@ -209,15 +200,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       field = s
       this
     }
-  }
-
-  abstract class Caches {
-    def recordCache[T <: Clearable](cache: T): T
-    def newWeakMap[K, V](): collection.mutable.WeakHashMap[K, V]
-    def newMap[K, V](): collection.mutable.HashMap[K, V]
-    def newSet[K](): collection.mutable.Set[K]
-    def newWeakSet[K >: Null <: AnyRef](): dotty.tools.dotc.util.WeakHashSet[K]
-    def newAnyRefMap[K <: AnyRef, V](): collection.mutable.AnyRefMap[K, V]
   }
 
   // Class symbols used in backend.
