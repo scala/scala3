@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Symbols._
  */
 final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
   import interface._
-  import interface.symExtensions
+  import DottyBackendInterface.symExtensions
 
   /**
    * True if `classSym` is an anonymous class or a local class. I.e., false if `classSym` is a
