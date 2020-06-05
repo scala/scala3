@@ -170,7 +170,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case _ => ()
       }
 
-      val ssa = getAnnotPickle(thisName, claszSymbol)
+      val ssa = None // getAnnotPickle(thisName, claszSymbol)
       cnode.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
       emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
 

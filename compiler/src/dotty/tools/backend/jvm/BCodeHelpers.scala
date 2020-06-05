@@ -93,7 +93,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
    * must-single-thread
    */
   def initBytecodeWriter(): BytecodeWriter = {
-    getSingleOutput match {
+    (None: Option[AbstractFile] /*getSingleOutput*/) match { // todo: implement
       case Some(f) if f.hasExtension("jar") =>
         new DirectToJarfileWriter(f.file)
       case _ =>
@@ -212,7 +212,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
     private def assertClassNotArray(sym: Symbol): Unit = {
       assert(sym.isClass, sym)
-      assert(sym != defn.ArrayClass || isCompilingArray, sym)
+      assert(sym != defn.ArrayClass || ctx.compilationUnit.source.file.name == "Array.scala", sym)
     }
 
     private def assertClassNotArrayNotPrimitive(sym: Symbol): Unit = {
@@ -613,7 +613,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
                                 null /* SourceDebugExtension */)
       }
 
-      val ssa = getAnnotPickle(mirrorName, if (moduleClass.is(Flags.Module)) moduleClass.companionClass else moduleClass.companionModule)
+      val ssa = None // getAnnotPickle(mirrorName, if (moduleClass.is(Flags.Module)) moduleClass.companionClass else moduleClass.companionModule)
       mirrorClass.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
       emitAnnotations(mirrorClass, moduleClass.annotations ++ ssa)
 
@@ -641,8 +641,8 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      */
     val androidFieldName = "CREATOR".toTermName
 
-    lazy val AndroidParcelableInterface : Symbol = getClassIfDefined("android.os.Parcelable")
-    lazy val AndroidCreatorClass        : Symbol = getClassIfDefined("android.os.Parcelable$Creator")
+    lazy val AndroidParcelableInterface : Symbol = NoSymbol // getClassIfDefined("android.os.Parcelable")
+    lazy val AndroidCreatorClass        : Symbol = NoSymbol // getClassIfDefined("android.os.Parcelable$Creator")
 
     /*
      * must-single-thread

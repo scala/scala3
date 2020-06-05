@@ -76,19 +76,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     annot.tree.tpe.typeSymbol.getAnnotation(AnnotationRetentionAttr).
       flatMap(_.argumentConstant(0).map(_.symbolValue)).getOrElse(AnnotationRetentionClassAttr)
 
-  private def normalizeArgument(arg: Tree): Tree = arg match {
-    case Trees.NamedArg(_, arg1) => normalizeArgument(arg1)
-    case Trees.Typed(arg1, _) => normalizeArgument(arg1)
-    case _ => arg
-  }
-
-  def getAnnotPickle(jclassName: String, sym: Symbol): Option[Annotation] = None
-
-
-  def getRequiredClass(fullname: String): Symbol = ctx.requiredClass(fullname)
-
-  def getClassIfDefined(fullname: String): Symbol = NoSymbol // used only for android. todo: implement
-
   private def erasureString(clazz: Class[_]): String = {
     if (clazz.isArray) "Array[" + erasureString(clazz.getComponentType) + "]"
     else clazz.getName
@@ -152,8 +139,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       (sym derivesFrom defn.BoxedCharClass) ||
       (sym derivesFrom defn.BoxedBooleanClass)
   }
-
-  def getSingleOutput: Option[AbstractFile] = None // todo: implement
 
   // @M don't generate java generics sigs for (members of) implementation
   // classes, as they are monomorphic (TODO: ok?)
@@ -417,7 +402,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       */
     def primitiveOrClassToBType(sym: Symbol): BType = {
       assert(sym.isClass, sym)
-      assert(sym != defn.ArrayClass || isCompilingArray, sym)
+      assert(sym != defn.ArrayClass || ctx.compilationUnit.source.file.name == "Array.scala", sym)
       primitiveTypeMap.getOrElse(sym.asInstanceOf[ct.bTypes.coreBTypes.bTypes.int.Symbol],
         storage.getClassBTypeAndRegisterInnerClass(sym.asInstanceOf[ct.int.Symbol])).asInstanceOf[BType]
     }
@@ -427,7 +412,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       * signatures, e.g. `def apply(i: Int): T`. A TyperRef to T is replaced by ObjectReference.
       */
     def nonClassTypeRefToBType(sym: Symbol): ClassBType = {
-      assert(sym.isType && isCompilingArray, sym)
+      assert(sym.isType && ctx.compilationUnit.source.file.name == "Array.scala", sym)
       ObjectReference.asInstanceOf[ct.bTypes.ClassBType]
     }
 
@@ -587,9 +572,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
   }
 
-  def isCompilingArray = {
-    ctx.compilationUnit.source.file.name == "Array.scala"
-  }
 }
 
 object DottyBackendInterface {
