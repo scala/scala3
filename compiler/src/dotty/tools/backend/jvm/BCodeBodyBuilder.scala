@@ -394,7 +394,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val tk = symInfoTK(sym)
           generatedType = tk
 
-          val desugared = desugarIdentBI(t)
+          val desugared = cachedDesugarIdent(t)
           desugared match {
             case None =>
               if (!sym.is(Flags.Package)) {
@@ -1014,7 +1014,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       tree match {
         case DesugaredSelect(qualifier, _) => genLoad(qualifier)
         case t: Ident             => // dotty specific
-          desugarIdentBI(t) match {
+          cachedDesugarIdent(t) match {
             case Some(sel) => genLoadQualifier(sel)
             case None =>
               assert(t.symbol.owner == this.claszSymbol)

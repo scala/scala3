@@ -38,7 +38,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
-  def desugarIdentBI(i: Ident): Option[tpd.Select] = {
+  def cachedDesugarIdent(i: Ident): Option[tpd.Select] = {
     var found = desugared.get(i.tpe)
     if (found == null) {
       tpd.desugarIdent(i) match {
@@ -66,7 +66,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
       s match {
         case t: tpd.Select => desugared = t
         case t: Ident  =>
-          desugarIdentBI(t) match {
+          cachedDesugarIdent(t) match {
             case Some(t) => desugared = t
             case None => desugared = null
           }
