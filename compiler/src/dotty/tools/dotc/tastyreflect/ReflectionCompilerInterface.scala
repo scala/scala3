@@ -6,7 +6,7 @@ import dotty.tools.dotc.ast.{TreeTypeMap, Trees, tpd, untpd}
 import dotty.tools.dotc.typer.{Implicits, Typer}
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Decorators._
@@ -2100,7 +2100,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
           val tpe = tpt.tpe.dropDependentRefinement
           // we checked that this is a plain Function closure, so there will be an apply method with a MethodType
           // and the expected signature based on param types
-          val expectedSig = Signature.NotAMethod.prependTermParams(paramTypes, false)
+          val expectedSig = Signature(Nil, tpnme.WILDCARD).prependTermParams(paramTypes, false)
           val method = tpt.tpe.member(nme.apply).atSignature(expectedSig)
           if method.symbol.is(Deferred) then
             val methodType = method.info.asInstanceOf[MethodType]

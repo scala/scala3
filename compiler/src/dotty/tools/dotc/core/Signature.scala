@@ -60,12 +60,7 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
     @tailrec def loop(names1: List[ParamSig], names2: List[ParamSig]): Boolean =
       if (names1.isEmpty) names2.isEmpty
       else !names2.isEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
-    if (ctx.erasedTypes && (this == NotAMethod) != (that == NotAMethod))
-      false // After erasure, we allow fields and parameterless methods with the same name.
-            // This is needed to allow both a module field and a bridge method for an abstract val.
-            // Test case is patmatch-classtag.scala
-    else
-      loop(this.paramsSig, that.paramsSig)
+    loop(this.paramsSig, that.paramsSig)
   }
 
   /** `that` signature, but keeping all corresponding parts of `this` signature. */
@@ -87,23 +82,27 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
   /** The degree to which this signature matches `that`.
    *  If parameter signatures are consistent and result types names match (i.e. they are the same
    *  or one is a wildcard), the result is `FullMatch`.
-   *  If only the parameter signatures are consistent, the result is `ParamMatch` before erasure and
-   *  `NoMatch` otherwise.
+   *  If only the parameter signatures are consistent, the result is either
+   *  `MethodNotAMethodMatch` (if one side is a method signature and the other isn't),
+   *  or `ParamMatch`.
    *  If the parameters are inconsistent, the result is always `NoMatch`.
    */
   final def matchDegree(that: Signature)(implicit ctx: Context): MatchDegree =
-    if (consistentParams(that))
-      if (resSig == that.resSig || isWildcard(resSig) || isWildcard(that.resSig)) FullMatch
-      else if (!ctx.erasedTypes) ParamMatch
-      else NoMatch
-    else NoMatch
+    if consistentParams(that) then
+      if resSig == that.resSig || isWildcard(resSig) || isWildcard(that.resSig) then
+        FullMatch
+      else if (this == NotAMethod) != (that == NotAMethod) then
+        MethodNotAMethodMatch
+      else
+        ParamMatch
+    else
+      NoMatch
 
   /** Does this signature potentially clash with `that` ? */
   def clashes(that: Signature)(implicit ctx: Context): Boolean =
     matchDegree(that) == FullMatch
 
-  /** name.toString == "" or name.toString == "_" */
-  private def isWildcard(name: TypeName) = name.isEmpty || name == tpnme.WILDCARD
+  private def isWildcard(name: TypeName) = name == tpnme.WILDCARD
 
   /** Construct a signature by prepending the signature names of the given `params`
    *  to the parameter part of this signature.
@@ -136,7 +135,17 @@ object Signature {
     // small values, so the performance hit should be minimal.
 
   enum MatchDegree {
-    case NoMatch, ParamMatch, FullMatch
+    /** The signatures are unrelated. */
+    case NoMatch
+    /** The parameter signatures are equivalent. */
+    case ParamMatch
+    /** Both signatures have no parameters, one is a method and the other isn't.
+     *
+     *  @see NotAMethod
+     */
+    case MethodNotAMethodMatch
+    /** The parameter and result type signatures are equivalent. */
+    case FullMatch
   }
   export MatchDegree._
 

@@ -2015,9 +2015,11 @@ object messages {
       def nameAnd = if (decl.name != previousDecl.name) " name and" else ""
       def details(implicit ctx: Context): String =
         if (decl.isRealMethod && previousDecl.isRealMethod) {
+          import Signature.MatchDegree._
+
           // compare the signatures when both symbols represent methods
           decl.signature.matchDegree(previousDecl.signature) match {
-            case Signature.MatchDegree.NoMatch =>
+            case NoMatch =>
               // If the signatures don't match at all at the current phase, then
               // they might match after erasure.
               val elimErasedCtx = ctx.withPhaseNoEarlier(ctx.elimErasedValueTypePhase.next)
@@ -2025,9 +2027,11 @@ object messages {
                 details(elimErasedCtx)
               else
                 "" // shouldn't be reachable
-            case Signature.MatchDegree.ParamMatch =>
+            case ParamMatch =>
               "have matching parameter types."
-            case Signature.MatchDegree.FullMatch =>
+            case MethodNotAMethodMatch =>
+              "neither has parameters."
+            case FullMatch =>
               i"have the same$nameAnd type after erasure."
           }
         }
