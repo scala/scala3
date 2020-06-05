@@ -2,11 +2,11 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.annotation.threadUnsafe
 import scala.tools.asm
 import scala.tools.asm.AnnotationVisitor
 import scala.tools.asm.ClassWriter
 import scala.collection.mutable
-import dotty.tools.io.AbstractFile
 
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
@@ -25,6 +25,7 @@ import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.GenericSignatures
+import dotty.tools.io.AbstractFile
 
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -47,6 +48,11 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   def ScalaATTRName: String = "Scala"
   def ScalaSignatureATTRName: String = "ScalaSig"
 
+  @threadUnsafe lazy val AnnotationRetentionAttr: ClassSymbol = ctx.requiredClass("java.lang.annotation.Retention")
+  @threadUnsafe lazy val AnnotationRetentionSourceAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
+  @threadUnsafe lazy val AnnotationRetentionClassAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
+  @threadUnsafe lazy val AnnotationRetentionRuntimeAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
+  @threadUnsafe lazy val JavaAnnotationClass: ClassSymbol = ctx.requiredClass("java.lang.annotation.Annotation")
 
   val bCodeAsmCommon: BCodeAsmCommon[int.type] = new BCodeAsmCommon(int)
   import bCodeAsmCommon._
