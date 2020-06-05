@@ -13,6 +13,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.Name
@@ -22,6 +23,8 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.TypeErasure
+import dotty.tools.dotc.transform.GenericSignatures
 
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -450,16 +453,27 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   } // end of trait BCAnnotGen
 
   trait BCJGenSigGen {
+    import int._
 
     def getCurrentCUnit(): CompilationUnit
 
-    /* @return
-     *   - `null` if no Java signature is to be added (`null` is what ASM expects in these cases).
-     *   - otherwise the signature in question
+    /**
+     * Generates the generic signature for `sym` before erasure.
      *
-     * must-single-thread
+     * @param sym   The symbol for which to generate a signature.
+     * @param owner The owner of `sym`.
+     * @return The generic signature of `sym` before erasure, as specified in the Java Virtual
+     *         Machine Specification, §4.3.4, or `null` if `sym` doesn't need a generic signature.
+     * @see https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.4
      */
-    def getGenericSignature(sym: Symbol, owner: Symbol): String = int.getGenericSignature(sym, owner)
+    def getGenericSignature(sym: Symbol, owner: Symbol): String = {
+      ctx.atPhase(ctx.erasurePhase) {
+        val memberTpe =
+          if (sym.is(Flags.Method)) sym.denot.info
+          else owner.denot.thisType.memberInfo(sym)
+        getGenericSignatureHelper(sym, owner, memberTpe).orNull
+      }
+    }
 
   } // end of trait BCJGenSigGen
 
@@ -828,6 +842,82 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
           case t: RefinedType                       => typeToTypeKind(t.parent)(ct)(storage) //parents.map(_.toTypeKind(ct)(storage).asClassBType).reduceLeft((a, b) => a.jvmWiseLUB(b))
         }
     }
+  }
+
+  private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(implicit ctx: Context): Option[String] = {
+    if (needsGenericSignature(sym)) {
+      val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
+      if (erasedTypeSym.isPrimitiveValueClass) {
+        // Suppress signatures for symbols whose types erase in the end to primitive
+        // value types. This is needed to fix #7416.
+        None
+      } else {
+        val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
+        if (ctx.settings.XverifySignatures.value) {
+          jsOpt.foreach(verifySignature(sym, _))
+        }
+
+        jsOpt
+      }
+    } else {
+      None
+    }
+  }
+
+  private def verifySignature(sym: Symbol, sig: String)(implicit ctx: Context): Unit = {
+    import scala.tools.asm.util.CheckClassAdapter
+    def wrap(body: => Unit): Unit = {
+      try body
+      catch {
+        case ex: Throwable =>
+          ctx.error(i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
+                      |signature: $sig
+                      |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
+                  """.trim, sym.sourcePos)
+          throw  ex
+      }
+    }
+
+    wrap {
+      if (sym.is(Flags.Method)) {
+        CheckClassAdapter.checkMethodSignature(sig)
+      }
+      else if (sym.isTerm) {
+        CheckClassAdapter.checkFieldSignature(sig)
+      }
+      else {
+        CheckClassAdapter.checkClassSignature(sig)
+      }
+    }
+  }
+
+  // @M don't generate java generics sigs for (members of) implementation
+  // classes, as they are monomorphic (TODO: ok?)
+  private final def needsGenericSignature(sym: Symbol): Boolean = !(
+    // pp: this condition used to include sym.hasexpandedname, but this leads
+    // to the total loss of generic information if a private member is
+    // accessed from a closure: both the field and the accessor were generated
+    // without it.  This is particularly bad because the availability of
+    // generic information could disappear as a consequence of a seemingly
+    // unrelated change.
+      ctx.base.settings.YnoGenericSig.value
+    || sym.is(Flags.Artifact)
+    || sym.isAllOf(Flags.LiftedMethod)
+    || sym.is(Flags.Bridge)
+  )
+
+  private def getStaticForwarderGenericSignature(sym: Symbol, moduleClass: Symbol): String = {
+    // scala/bug#3452 Static forwarder generation uses the same erased signature as the method if forwards to.
+    // By rights, it should use the signature as-seen-from the module class, and add suitable
+    // primitive and value-class boxing/unboxing.
+    // But for now, just like we did in mixin, we just avoid writing a wrong generic signature
+    // (one that doesn't erase to the actual signature). See run/t3452b for a test case.
+
+    val memberTpe = ctx.atPhase(ctx.erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
+    val erasedMemberType = TypeErasure.erasure(memberTpe)
+    if (erasedMemberType =:= sym.denot.info)
+      getGenericSignatureHelper(sym, moduleClass, memberTpe).orNull
+    else null
   }
 }
 
