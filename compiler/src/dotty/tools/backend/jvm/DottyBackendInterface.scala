@@ -205,22 +205,11 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
   }
 
-  def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper(sym)
+  extension symExtensions on (sym: Symbol) {
 
-  class SymbolHelper(sym: Symbol) {
-
-    // tests
-    def isPublic: Boolean = !sym.flags.isOneOf(Flags.Private | Flags.Protected)
     def isInterface: Boolean = (sym.is(Flags.PureInterface)) || sym.is(Flags.Trait)
 
-    /** Does this symbol actually correspond to an interface that will be emitted?
-     *  In the backend, this should be preferred over `isInterface` because it
-     *  also returns true for the symbols of the fake companion objects we
-     *  create for Java-defined classes as well as for Java annotations
-     *  which we represent as classes.
-     */
-    def isEmittedInterface: Boolean = isInterface ||
-      sym.is(Flags.JavaDefined) && (toDenot(sym).isAnnotation || sym.is(Flags.ModuleClass) && (sym.companionClass.is(Flags.PureInterface)) || sym.companionClass.is(Flags.Trait))
+    def isStaticConstructor: Boolean = (sym.isStaticMember && sym.isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
 
     def isStaticMember: Boolean = (sym ne NoSymbol) &&
       (sym.is(Flags.JavaStatic) || sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot))
@@ -241,10 +230,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
         toDenot(sym)(shiftedContext).isStatic(shiftedContext)
       }
 
-    def isStaticConstructor: Boolean = (isStaticMember && sym.isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
 
-
-    // navigation
 
     def originalLexicallyEnclosingClass: Symbol =
       // used to populate the EnclosingMethod attribute.
@@ -254,6 +240,27 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
         val shiftedContext = ctx.withPhase(validity.phaseId)
         toDenot(sym)(shiftedContext).lexicallyEnclosingClass(shiftedContext)
       } else NoSymbol
+
+  }
+
+  def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper(sym)
+
+  class SymbolHelper(sym: Symbol) {
+
+    // tests
+
+    /** Does this symbol actually correspond to an interface that will be emitted?
+     *  In the backend, this should be preferred over `isInterface` because it
+     *  also returns true for the symbols of the fake companion objects we
+     *  create for Java-defined classes as well as for Java annotations
+     *  which we represent as classes.
+     */
+    def isEmittedInterface: Boolean = sym.isInterface ||
+      sym.is(Flags.JavaDefined) && (toDenot(sym).isAnnotation || sym.is(Flags.ModuleClass) && (sym.companionClass.is(Flags.PureInterface)) || sym.companionClass.is(Flags.Trait))
+
+
+
+    // navigation
 
     // members
 

@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Symbols._
  */
 final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
   import interface._
+  import interface.symExtensions
 
   /**
    * True if `classSym` is an anonymous class or a local class. I.e., false if `classSym` is a
@@ -24,7 +25,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
     // always top-level. However, SI-8900 shows an example where the weak name-based implementation
     // of isDelambdafyFunction failed (for a function declared in a package named "lambda").
     classSym.isAnonymousClass || {
-      val originalOwnerLexicallyEnclosingClass = symHelper(classSym.originalOwner).originalLexicallyEnclosingClass
+      val originalOwnerLexicallyEnclosingClass = classSym.originalOwner.originalLexicallyEnclosingClass
       originalOwnerLexicallyEnclosingClass != NoSymbol && !originalOwnerLexicallyEnclosingClass.isClass
     }
   }
@@ -57,9 +58,9 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
     def enclosingMethod(sym: Symbol): Option[Symbol] = {
       if (sym.isClass || sym == NoSymbol) None
       else if (sym.is(Flags.Method)) Some(sym)
-      else enclosingMethod(symHelper(sym.originalOwner).originalLexicallyEnclosingClass)
+      else enclosingMethod(sym.originalOwner.originalLexicallyEnclosingClass)
     }
-    enclosingMethod(symHelper(classSym.originalOwner).originalLexicallyEnclosingClass)
+    enclosingMethod(classSym.originalOwner.originalLexicallyEnclosingClass)
   }
 
   /**
@@ -70,9 +71,9 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
     assert(classSym.isClass, classSym)
     def enclosingClass(sym: Symbol): Symbol = {
       if (sym.isClass) sym
-      else enclosingClass(symHelper(sym.originalOwner).originalLexicallyEnclosingClass)
+      else enclosingClass(sym.originalOwner.originalLexicallyEnclosingClass)
     }
-    enclosingClass(symHelper(classSym.originalOwner).originalLexicallyEnclosingClass)
+    enclosingClass(classSym.originalOwner.originalLexicallyEnclosingClass)
   }
 
   /*final*/ case class EnclosingMethodEntry(owner: String, name: String, methodDescriptor: String)

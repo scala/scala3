@@ -27,6 +27,7 @@ import dotty.tools.dotc.util.Spans._
  */
 trait BCodeSkelBuilder extends BCodeHelpers {
   import int._
+  import int.symExtensions
   import tpd._
   import bTypes._
   import coreBTypes._
@@ -96,7 +97,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       claszSymbol       = cd.symbol
       isCZParcelable    = isAndroidParcelableClass(claszSymbol)
-      isCZStaticModule  = symHelper(claszSymbol).isStaticModuleClass
+      isCZStaticModule  = claszSymbol.isStaticModuleClass
       thisName          = internalName(claszSymbol)
 
       cnode = new ClassNode1()
@@ -104,7 +105,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       initJClass(cnode)
 
       val methodSymbols = for (f <- cd.symbol.info.decls.toList if f.is(Flags.Method) && f.isTerm && !f.is(Flags.Module)) yield f
-      val hasStaticCtor = methodSymbols exists (symHelper(_).isStaticConstructor)
+      val hasStaticCtor = methodSymbols exists (_.isStaticConstructor)
       if (!hasStaticCtor) {
         // but needs one ...
         if (isCZStaticModule || isCZParcelable) {
@@ -181,7 +182,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       } else {
 
-        val skipStaticForwarders = (symHelper(claszSymbol).isInterface || claszSymbol.is(Flags.Module) || ctx.settings.XnoForwarders.value)
+        val skipStaticForwarders = (claszSymbol.isInterface || claszSymbol.is(Flags.Module) || ctx.settings.XnoForwarders.value)
         if (!skipStaticForwarders) {
           val lmoc = claszSymbol.companionModule
           // add static forwarders if there are no name conflicts; see bugs #363 and #1735
@@ -255,7 +256,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val javagensig = getGenericSignature(f, claszSymbol)
         val flags = javaFieldFlags(f)
 
-        assert(!symHelper(f).isStaticMember || !symHelper(claszSymbol).isInterface || !f.is(Flags.Mutable),
+        assert(!f.isStaticMember || !claszSymbol.isInterface || !f.is(Flags.Mutable),
           s"interface $claszSymbol cannot have non-final static field $f")
 
         val jfield = new asm.tree.FieldNode(
@@ -470,7 +471,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     // on entering a method
     def resetMethodBookkeeping(dd: DefDef) = {
       val rhs = dd.rhs
-      locals.reset(isStaticMethod = symHelper(methSymbol).isStaticMember)
+      locals.reset(isStaticMethod = methSymbol.isStaticMember)
       jumpDest = immutable.Map.empty[ /* LabelDef */ Symbol, asm.Label ]
 
       // check previous invocation of genDefDef exited as many varsInScope as it entered.
@@ -544,7 +545,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       methSymbol  = dd.symbol
       jMethodName = methSymbol.name.mangledString.toString
       returnType  = asmMethodType(dd.symbol).returnType
-      isMethSymStaticCtor = symHelper(methSymbol).isStaticConstructor
+      isMethSymStaticCtor = methSymbol.isStaticConstructor
 
       resetMethodBookkeeping(dd)
 
@@ -562,7 +563,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       }
 
       val isNative         = methSymbol.hasAnnotation(NativeAttr)
-      val isAbstractMethod = (methSymbol.is(Flags.Deferred) || (symHelper(methSymbol.owner).isInterface && ((methSymbol.is(Flags.Deferred))  || methSymbol.isClassConstructor)))
+      val isAbstractMethod = (methSymbol.is(Flags.Deferred) || (methSymbol.owner.isInterface && ((methSymbol.is(Flags.Deferred))  || methSymbol.isClassConstructor)))
       val flags = GenBCodeOps.mkFlags(
         javaFlags(methSymbol),
         if (isAbstractMethod)        asm.Opcodes.ACC_ABSTRACT   else 0,

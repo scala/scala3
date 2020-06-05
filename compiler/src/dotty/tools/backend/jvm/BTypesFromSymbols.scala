@@ -23,6 +23,7 @@ import dotty.tools.dotc.transform.SymUtils._
  */
 class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   import int._
+  import int.symExtensions
 
   val bCodeAsmCommon: BCodeAsmCommon[int.type ] = new BCodeAsmCommon(int)
   import bCodeAsmCommon._
@@ -80,11 +81,11 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     assert(
       if (classSym == defn.ObjectClass)
         superClassSym == NoSymbol
-      else if (symHelper(classSym).isInterface)
+      else if (classSym.isInterface)
         superClassSym == defn.ObjectClass
       else
         // A ClassBType for a primitive class (scala.Boolean et al) is only created when compiling these classes.
-        ((superClassSym != NoSymbol) && !symHelper(superClassSym).isInterface) || (isCompilingPrimitive && primitiveTypeMap.contains(classSym)),
+        ((superClassSym != NoSymbol) && !superClassSym.isInterface) || (isCompilingPrimitive && primitiveTypeMap.contains(classSym)),
       s"Bad superClass for $classSym: $superClassSym"
     )
     val superClass = if (superClassSym == NoSymbol) None
@@ -178,11 +179,11 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   private def buildNestedInfo(innerClassSym: Symbol): Option[NestedInfo] = {
     assert(innerClassSym.isClass, s"Cannot build NestedInfo for non-class symbol $innerClassSym")
 
-    val isNested = !symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass.is(Flags.PackageClass)
+    val isNested = !innerClassSym.originalOwner.originalLexicallyEnclosingClass.is(Flags.PackageClass)
     if (!isNested) None
     else {
       // See comment in BTypes, when is a class marked static in the InnerClass table.
-      val isStaticNestedClass = symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass.isOriginallyStaticOwner
+      val isStaticNestedClass = innerClassSym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
 
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
       val enclosingClassSym = {
@@ -199,12 +200,12 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         if (isAnonymousOrLocalClass(innerClassSym)) {
           None
         } else {
-          val outerName = symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass.fullName.mangledString.replace('.', '/')
+          val outerName = innerClassSym.originalOwner.originalLexicallyEnclosingClass.fullName.mangledString.replace('.', '/')
           def dropModule(str: String): String =
             if (!str.isEmpty && str.last == '$') str.take(str.length - 1) else str
           // Java compatibility. See the big comment in BTypes that summarizes the InnerClass spec.
           val outerNameModule =
-            if (symHelper(symHelper(innerClassSym.originalOwner).originalLexicallyEnclosingClass).isTopLevelModuleClass) dropModule(outerName)
+            if (symHelper(innerClassSym.originalOwner.originalLexicallyEnclosingClass).isTopLevelModuleClass) dropModule(outerName)
             else outerName
           Some(outerNameModule.toString)
         }
@@ -232,7 +233,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
    * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
    */
   private def (sym: Symbol).isOriginallyStaticOwner: Boolean =
-    sym.is(Flags.PackageClass) || sym.is(Flags.ModuleClass) && symHelper(sym.originalOwner).originalLexicallyEnclosingClass.isOriginallyStaticOwner
+    sym.is(Flags.PackageClass) || sym.is(Flags.ModuleClass) && sym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
 
   /**
    * Return the Java modifiers for the given symbol.
@@ -263,7 +264,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     GenBCodeOps.mkFlags(
       if (privateFlag) ACC_PRIVATE else ACC_PUBLIC,
       if (sym.is(Flags.Deferred) || sym.isOneOf(Flags.AbstractOrTrait)) ACC_ABSTRACT else 0,
-      if (symHelper(sym).isInterface) ACC_INTERFACE else 0,
+      if (sym.isInterface) ACC_INTERFACE else 0,
 
       if (finalFlag &&
         // Primitives are "abstract final" to prohibit instantiation
@@ -274,10 +275,10 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         //  Mixin forwarders are bridges and can be final, but final bridges confuse some frameworks
         !sym.is(Flags.Bridge))
         ACC_FINAL else 0,
-      if (symHelper(sym).isStaticMember) ACC_STATIC else 0,
+      if (sym.isStaticMember) ACC_STATIC else 0,
       if (sym.is(Flags.Bridge)) ACC_BRIDGE | ACC_SYNTHETIC else 0,
       if (sym.is(Flags.Artifact)) ACC_SYNTHETIC else 0,
-      if (sym.isClass && !symHelper(sym).isInterface) ACC_SUPER else 0,
+      if (sym.isClass && !sym.isInterface) ACC_SUPER else 0,
       if (sym.isAllOf(Flags.JavaEnumTrait)) ACC_ENUM else 0,
       if (sym.is(Flags.JavaVarargs)) ACC_VARARGS else 0,
       if (sym.is(Flags.Synchronized)) ACC_SYNCHRONIZED else 0,

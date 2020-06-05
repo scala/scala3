@@ -30,6 +30,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
   // import definitions._
   import tpd._
   import int._
+  import int.symExtensions
   import bTypes._
   import coreBTypes._
   import BCodeBodyBuilder._
@@ -70,7 +71,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       tree match {
         case Assign(lhs @ SelectBI(qual, _), rhs) =>
-          val isStatic = symHelper(lhs.symbol).isStaticMember
+          val isStatic = lhs.symbol.isStaticMember
           if (!isStatic) { genLoadQualifier(lhs) }
           genLoad(rhs, symInfoTK(lhs.symbol))
           lineNumber(tree)
@@ -331,7 +332,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             case t @ Ident(_) => (t, Nil)
           }
 
-          if (!symHelper(fun.symbol).isStaticMember) {
+          if (!fun.symbol.isStaticMember) {
             // load receiver of non-static implementation of lambda
 
             // darkdimius: I haven't found in spec `this` reference should go
@@ -378,7 +379,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           if (sym.is(Flags.Module)) {
             genLoadQualUnlessElidable()
             genLoadModule(tree)
-          } else if (symHelper(sym).isStaticMember) {
+          } else if (sym.isStaticMember) {
             genLoadQualUnlessElidable()
             fieldLoad(sym, receiverClass)
           } else {
@@ -466,7 +467,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val owner      = internalName(if (useSpecificReceiver) specificReceiver else field.owner)
       val fieldJName = field.name.mangledString.toString
       val fieldDescr = symInfoTK(field).descriptor
-      val isStatic   = symHelper(field).isStaticMember
+      val isStatic   = field.isStaticMember
       val opc =
         if (isLoad) { if (isStatic) asm.Opcodes.GETSTATIC else asm.Opcodes.GETFIELD }
         else        { if (isStatic) asm.Opcodes.PUTSTATIC else asm.Opcodes.PUTFIELD }
@@ -702,7 +703,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             if (!isModuleInitialized &&
               jMethodName == INSTANCE_CONSTRUCTOR_NAME &&
               fun.symbol.name.mangledString.toString == INSTANCE_CONSTRUCTOR_NAME &&
-              symHelper(claszSymbol).isStaticModuleClass) {
+              claszSymbol.isStaticModuleClass) {
               isModuleInitialized = true
               mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
               mnode.visitFieldInsn(
@@ -771,7 +772,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             generatedType = genPrimitiveOp(app, expectedType)
           } else { // normal method call
             val invokeStyle =
-              if (symHelper(sym).isStaticMember) InvokeStyle.Static
+              if (sym.isStaticMember) InvokeStyle.Static
               else if (sym.is(Flags.Private) || sym.isClassConstructor) InvokeStyle.Special
               else InvokeStyle.Virtual
 
@@ -1039,7 +1040,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     def genLoadModule(module: Symbol): Unit = {
-      def inStaticMethod = methSymbol != null && symHelper(methSymbol).isStaticMember
+      def inStaticMethod = methSymbol != null && methSymbol.isStaticMember
       if (claszSymbol == module.moduleClass && jMethodName != "readResolve" && !inStaticMethod) {
         mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
       } else {
@@ -1436,7 +1437,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val isSerializable = functionalInterface.isSerializable || defn.isFunctionClass(functionalInterface)
       val isInterface = symHelper(lambdaTarget.owner).isEmittedInterface
       val invokeStyle =
-        if (symHelper(lambdaTarget).isStaticMember) asm.Opcodes.H_INVOKESTATIC
+        if (lambdaTarget.isStaticMember) asm.Opcodes.H_INVOKESTATIC
         else if (lambdaTarget.is(Flags.Private) || lambdaTarget.isClassConstructor) asm.Opcodes.H_INVOKESPECIAL
         else if (isInterface) asm.Opcodes.H_INVOKEINTERFACE
         else asm.Opcodes.H_INVOKEVIRTUAL
