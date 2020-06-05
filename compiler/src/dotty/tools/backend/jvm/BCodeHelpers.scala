@@ -13,12 +13,13 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Constants._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.NameKinds.ExpandedName
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.Types
 
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -697,6 +698,88 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     }
 
   } // end of trait JAndroidBuilder
+
+  /**
+   * This method returns the BType for a type reference, for example a parameter type.
+   *
+   * If the result is a ClassBType for a nested class, it is added to the innerClassBufferASM.
+   *
+   * If `t` references a class, toTypeKind ensures that the class is not an implementation class.
+   * See also comment on getClassBTypeAndRegisterInnerClass, which is invoked for implementation
+   * classes.
+   */
+  private def typeToTypeKind(tp: Type)(ct: BCodeHelpers)(storage: ct.BCInnerClassGen): ct.bTypes.BType = {
+    import ct.bTypes._
+    val defn = ctx.definitions
+    import coreBTypes._
+    import Types._
+    /**
+      * Primitive types are represented as TypeRefs to the class symbol of, for example, scala.Int.
+      * The `primitiveTypeMap` maps those class symbols to the corresponding PrimitiveBType.
+      */
+    def primitiveOrClassToBType(sym: Symbol): BType = {
+      assert(sym.isClass, sym)
+      assert(sym != defn.ArrayClass || ctx.compilationUnit.source.file.name == "Array.scala", sym)
+      primitiveTypeMap.getOrElse(sym.asInstanceOf[ct.bTypes.coreBTypes.bTypes.int.Symbol],
+        storage.getClassBTypeAndRegisterInnerClass(sym.asInstanceOf[ct.int.Symbol])).asInstanceOf[BType]
+    }
+
+    /**
+      * When compiling Array.scala, the type parameter T is not erased and shows up in method
+      * signatures, e.g. `def apply(i: Int): T`. A TyperRef to T is replaced by ObjectReference.
+      */
+    def nonClassTypeRefToBType(sym: Symbol): ClassBType = {
+      assert(sym.isType && ctx.compilationUnit.source.file.name == "Array.scala", sym)
+      ObjectReference.asInstanceOf[ct.bTypes.ClassBType]
+    }
+
+    tp.widenDealias match {
+      case JavaArrayType(el) =>ArrayBType(typeToTypeKind(el)(ct)(storage)) // Array type such as Array[Int] (kept by erasure)
+      case t: TypeRef =>
+        t.info match {
+
+          case _ =>
+            if (!t.symbol.isClass) nonClassTypeRefToBType(t.symbol)  // See comment on nonClassTypeRefToBType
+            else primitiveOrClassToBType(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
+        }
+      case Types.ClassInfo(_, sym, _, _, _)           => primitiveOrClassToBType(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
+
+      /* AnnotatedType should (probably) be eliminated by erasure. However we know it happens for
+        * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
+        * The type in the AnnotationInfo is an AnnotatedTpe. Tested in jvm/annotations.scala.
+        */
+      case a @ AnnotatedType(t, _) =>
+        ctx.debuglog(s"typeKind of annotated type $a")
+        typeToTypeKind(t)(ct)(storage)
+
+      /* ExistentialType should (probably) be eliminated by erasure. We know they get here for
+        * classOf constants:
+        *   class C[T]
+        *   class T { final val k = classOf[C[_]] }
+        */
+      /* case e @ ExistentialType(_, t) =>
+        debuglog(s"typeKind of existential type $e")
+        t.toTypeKind(ctx)(storage)*/
+
+      /* The cases below should probably never occur. They are kept for now to avoid introducing
+        * new compiler crashes, but we added a warning. The compiler / library bootstrap and the
+        * test suite don't produce any warning.
+        */
+
+      case tp =>
+        ctx.warning(
+          s"an unexpected type representation reached the compiler backend while compiling ${ctx.compilationUnit}: $tp. " +
+            "If possible, please file a bug on https://github.com/lampepfl/dotty/issues")
+
+        tp match {
+          case tp: ThisType if tp.cls == defn.ArrayClass => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
+          case tp: ThisType                         => storage.getClassBTypeAndRegisterInnerClass(tp.cls.asInstanceOf[ct.int.Symbol])
+          // case t: SingletonType                   => primitiveOrClassToBType(t.classSymbol)
+          case t: SingletonType                     => typeToTypeKind(t.underlying)(ct)(storage)
+          case t: RefinedType                       => typeToTypeKind(t.parent)(ct)(storage) //parents.map(_.toTypeKind(ct)(storage).asClassBType).reduceLeft((a, b) => a.jvmWiseLUB(b))
+        }
+    }
+  }
 }
 
 object BCodeHelpers {
