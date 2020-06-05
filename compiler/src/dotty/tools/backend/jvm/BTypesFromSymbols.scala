@@ -29,6 +29,9 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   import int._
   import int.symExtensions
 
+  lazy val TransientAttr = requiredClass[scala.transient]
+  lazy val VolatileAttr = requiredClass[scala.volatile]
+
   val bCodeAsmCommon: BCodeAsmCommon[int.type ] = new BCodeAsmCommon(int)
   import bCodeAsmCommon._
 

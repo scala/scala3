@@ -44,6 +44,10 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   import coreBTypes._
   import int._
 
+  def ScalaATTRName: String = "Scala"
+  def ScalaSignatureATTRName: String = "ScalaSig"
+
+
   val bCodeAsmCommon: BCodeAsmCommon[int.type] = new BCodeAsmCommon(int)
   import bCodeAsmCommon._
 

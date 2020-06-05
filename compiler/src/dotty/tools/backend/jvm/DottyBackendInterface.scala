@@ -200,19 +200,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
   }
 
-  // Class symbols used in backend.
-  // Vals because they are to frequent in scala programs so that they are already loaded by backend
-
-  lazy val NativeAttr: Symbol = requiredClass[scala.native]
-  lazy val TransientAttr = requiredClass[scala.transient]
-  lazy val VolatileAttr = requiredClass[scala.volatile]
-
-  val ScalaATTRName: String = "Scala"
-  val ScalaSignatureATTRName: String = "ScalaSig"
-
-  // Module symbols used in backend
-  val StringModule: Symbol = requiredClass[java.lang.String].linkedClass
-  val ScalaRunTimeModule: Symbol = requiredModule[scala.runtime.ScalaRunTime.type]
 
 
   private val primitiveCompilationUnits = Set(

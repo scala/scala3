@@ -33,6 +33,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
   import coreBTypes._
   import bCodeAsmCommon._
 
+  lazy val NativeAttr: Symbol = requiredClass[scala.native]
+
   /*
    * There's a dedicated PlainClassBuilder for each CompilationUnit,
    * which simplifies the initialization of per-class data structures in `genPlainClass()` which in turn delegates to `initJClass()`
