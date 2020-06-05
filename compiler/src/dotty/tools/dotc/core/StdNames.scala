@@ -425,6 +425,7 @@ object StdNames {
     val assume_ : N             = "assume"
     val box: N                  = "box"
     val build : N               = "build"
+    val bundle: N               = "bundle"
     val bytes: N                = "bytes"
     val canEqual_ : N           = "canEqual"
     val cbnArg: N               = "<cbn-arg>"

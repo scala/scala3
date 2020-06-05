@@ -3575,7 +3575,7 @@ class Typer extends Namer
           case Select(qual, name) => untpd.Select(qual, name.toTypeName).withSpan(tree.span)
         val bundle = untpd.Apply(untpd.Select(untpd.New(ref), nme.CONSTRUCTOR), untpd.Literal(Constant(null))).withSpan(call.span)
         val bundle1 = typedExpr(bundle, defn.AnyType)
-        val bundleVal = SyntheticValDef(NameKinds.UniqueName.fresh("bundle".toTermName), bundle1)
+        val bundleVal = SyntheticValDef(NameKinds.UniqueName.fresh(nme.bundle), bundle1).withSpan(call.span)
         tpd.Block(List(bundleVal), splice(tpd.ref(bundleVal.symbol))).withSpan(call.span)
       }
     }
@@ -3590,7 +3590,7 @@ class Typer extends Namer
           }
         case untpd.TypeApply(untpd.Select(qual: untpd.RefTree, name), targs) =>
           typedPrefix(qual) { qual =>
-            val call2= untpd.TypeApply(untpd.Select(untpd.TypedSplice(qual), name), targs).withSpan(call.span)
+            val call2 = untpd.TypeApply(untpd.Select(untpd.TypedSplice(qual), name), targs).withSpan(call.span)
             typedTypeApply(call2, defn.AnyType)
           }
         case _ =>
