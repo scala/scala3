@@ -41,7 +41,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
 
 
    // require LambdaMetafactory: scalac uses getClassIfDefined, but we need those always.
-  @threadUnsafe lazy val LambdaMetaFactory: ClassSymbol = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
+  // @threadUnsafe lazy val LambdaMetaFactory: ClassSymbol = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
   @threadUnsafe lazy val MethodHandle: ClassSymbol      = ctx.requiredClass("java.lang.invoke.MethodHandle")
 
   val externalEquals: Symbol = defn.BoxesRunTimeModule.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
@@ -220,11 +220,4 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
   }
 
-}
-
-object DottyBackendInterface {
-  val ExcludedForwarderFlags: Flags.FlagSet = {
-    Flags.Specialized | Flags.Lifted | Flags.Protected | Flags.JavaStatic |
-    Flags.Private | Flags.Macro
-  }
 }

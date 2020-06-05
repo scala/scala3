@@ -563,7 +563,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       }
       ctx.debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
-      for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Flags.Method, excluded = DottyBackendInterface.ExcludedForwarderFlags)) {
+      for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Flags.Method, excluded = Flags.ExcludedForwarder)) {
         val m = if (m0.is(Flags.Bridge)) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
           ctx.log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")

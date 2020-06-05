@@ -548,9 +548,8 @@ class JSCodeGen()(implicit ctx: Context) {
     }.toSet
 
     val members = {
-      import dotty.tools.backend.jvm.DottyBackendInterface.ExcludedForwarderFlags
       moduleClass.info.membersBasedOnFlags(required = Flags.Method,
-          excluded = ExcludedForwarderFlags).map(_.symbol)
+          excluded = Flags.ExcludedForwarder).map(_.symbol)
     }
 
     def isExcluded(m: Symbol): Boolean = {
