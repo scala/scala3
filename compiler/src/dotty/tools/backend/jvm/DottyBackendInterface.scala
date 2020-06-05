@@ -40,9 +40,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     // they would be shadowed by the more deeply nested `symHelper` decorator.
 
 
-  type Symbol          = Symbols.Symbol
-  type Type            = Types.Type
-
    // require LambdaMetafactory: scalac uses getClassIfDefined, but we need those always.
   @threadUnsafe lazy val LambdaMetaFactory: ClassSymbol = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
   @threadUnsafe lazy val MethodHandle: ClassSymbol      = ctx.requiredClass("java.lang.invoke.MethodHandle")
