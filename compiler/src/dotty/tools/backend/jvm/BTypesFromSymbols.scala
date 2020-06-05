@@ -143,7 +143,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       val companionModuleMembers = {
         // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
         // not local classes of the companion module (E in the example) that were lifted by lambdalift.
-        if (symHelper(classSym.linkedClass).isTopLevelModuleClass) /*exitingPickler*/ symHelper(classSym.linkedClass).memberClasses
+        if (classSym.linkedClass.isTopLevelModuleClass) /*exitingPickler*/ symHelper(classSym.linkedClass).memberClasses
         else Nil
       }
 
@@ -205,7 +205,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
             if (!str.isEmpty && str.last == '$') str.take(str.length - 1) else str
           // Java compatibility. See the big comment in BTypes that summarizes the InnerClass spec.
           val outerNameModule =
-            if (symHelper(innerClassSym.originalOwner.originalLexicallyEnclosingClass).isTopLevelModuleClass) dropModule(outerName)
+            if (innerClassSym.originalOwner.originalLexicallyEnclosingClass.isTopLevelModuleClass) dropModule(outerName)
             else outerName
           Some(outerNameModule.toString)
         }
@@ -256,7 +256,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   final def javaFlags(sym: Symbol): Int = {
 
 
-    val privateFlag = sym.is(Flags.Private) || (sym.isPrimaryConstructor && symHelper(sym.owner).isTopLevelModuleClass)
+    val privateFlag = sym.is(Flags.Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
     val finalFlag = sym.is(Flags.Final) &&  !toDenot(sym).isClassConstructor && !(sym.is(Flags.Mutable)) &&  !(sym.enclosingClass.is(Flags.Trait))
 

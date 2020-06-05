@@ -70,6 +70,7 @@ object GenBCode {
 }
 
 class GenBCodePipeline(val int: DottyBackendInterface)(implicit ctx: Context) extends BCodeSyncAndTry {
+  import int.symExtensions
 
   private var tree: Tree = _
 
@@ -203,7 +204,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(implicit ctx: Context) ex
 
       // -------------- mirror class, if needed --------------
       val mirrorC =
-        if (int.symHelper(claszSymbol).isTopLevelModuleClass) {
+        if (claszSymbol.isTopLevelModuleClass) {
           if (claszSymbol.companionClass == NoSymbol) {
             mirrorCodeGen.genMirrorClass(claszSymbol, cunit)
           } else {

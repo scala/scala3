@@ -241,18 +241,21 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
         toDenot(sym)(shiftedContext).lexicallyEnclosingClass(shiftedContext)
       } else NoSymbol
 
+    /**
+     * True for module classes of package level objects. The backend will generate a mirror class for
+     * such objects.
+     */
+    def isTopLevelModuleClass: Boolean =
+      sym.is(Flags.ModuleClass) &&
+      ctx.atPhase(ctx.flattenPhase) {
+        toDenot(sym).owner.is(Flags.PackageClass)
+      }
+
   }
 
   def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper(sym)
 
   class SymbolHelper(sym: Symbol) {
-
-    // tests
-
-
-    // navigation
-
-    // members
 
     /** For currently compiled classes: All locally defined classes including local classes.
      *  The empty list for classes that are not currently compiled.
@@ -271,15 +274,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
           toDenot(sym).info.decls.filter(_.isClass)
         }
       else Nil
-
-    /**
-     * True for module classes of package level objects. The backend will generate a mirror class for
-     * such objects.
-     */
-    def isTopLevelModuleClass: Boolean = sym.is(Flags.ModuleClass) &&
-      ctx.atPhase(ctx.flattenPhase) {
-        toDenot(sym).owner.is(Flags.PackageClass)
-      }
 
   }
 
