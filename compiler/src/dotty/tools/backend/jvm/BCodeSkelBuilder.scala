@@ -27,7 +27,7 @@ import dotty.tools.dotc.util.Spans._
  */
 trait BCodeSkelBuilder extends BCodeHelpers {
   import int._
-  import DottyBackendInterface.symExtensions
+  import DottyBackendInterface.{symExtensions, _}
   import tpd._
   import bTypes._
   import coreBTypes._

@@ -44,6 +44,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   import tpd._
   import coreBTypes._
   import int._
+  import DottyBackendInterface._
 
   def ScalaATTRName: String = "Scala"
   def ScalaSignatureATTRName: String = "ScalaSig"

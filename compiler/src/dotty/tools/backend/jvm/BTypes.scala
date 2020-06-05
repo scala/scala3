@@ -610,7 +610,7 @@ abstract class BTypes {
       assert(!ClassBType.isInternalPhantomType(internalName), s"Cannot create ClassBType for phantom type $this")
 
       assert(
-        if (info.superClass.isEmpty) { isJLO(this) || (int.isCompilingPrimitive && ClassBType.hasNoSuper(internalName)) }
+        if (info.superClass.isEmpty) { isJLO(this) || (DottyBackendInterface.isCompilingPrimitive && ClassBType.hasNoSuper(internalName)) }
         else if (isInterface) isJLO(info.superClass.get)
         else !isJLO(this) && ifInit(info.superClass.get)(!_.isInterface),
         s"Invalid superClass in $this: ${info.superClass}"

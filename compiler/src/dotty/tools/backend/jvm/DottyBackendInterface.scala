@@ -36,20 +36,6 @@ import Names.Name
 
 class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit val ctx: Context) {
 
-  private def erasureString(clazz: Class[_]): String = {
-    if (clazz.isArray) "Array[" + erasureString(clazz.getComponentType) + "]"
-    else clazz.getName
-  }
-
-  def requiredClass[T](implicit evidence: ClassTag[T]): Symbol =
-    ctx.requiredClass(erasureString(evidence.runtimeClass))
-
-  def requiredModule[T](implicit evidence: ClassTag[T]): Symbol = {
-    val moduleName = erasureString(evidence.runtimeClass)
-    val className = if (moduleName.endsWith("$")) moduleName.dropRight(1)  else moduleName
-    ctx.requiredModule(className)
-  }
-
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
   def desugarIdentBI(i: Ident): Option[tpd.Select] = {
@@ -103,8 +89,6 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def _2: List[Tree] = field.elems
   }
 
-
-
   abstract class DeconstructorCommon[T >: Null <: AnyRef] {
     var field: T = null
     def get: this.type = this
@@ -116,31 +100,23 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     }
   }
 
-
-
-  private val primitiveCompilationUnits = Set(
-    "Unit.scala",
-    "Boolean.scala",
-    "Char.scala",
-    "Byte.scala",
-    "Short.scala",
-    "Int.scala",
-    "Float.scala",
-    "Long.scala",
-    "Double.scala"
-  )
-
-  /**
-   * True if the current compilation unit is of a primitive class (scala.Boolean et al).
-   * Used only in assertions.
-   */
-  def isCompilingPrimitive = {
-    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
-  }
-
 }
 
 object DottyBackendInterface {
+
+  private def erasureString(clazz: Class[_]): String = {
+    if (clazz.isArray) "Array[" + erasureString(clazz.getComponentType) + "]"
+    else clazz.getName
+  }
+
+  def requiredClass[T](implicit evidence: ClassTag[T], ctx: Context): Symbol =
+    ctx.requiredClass(erasureString(evidence.runtimeClass))
+
+  def requiredModule[T](implicit evidence: ClassTag[T], ctx: Context): Symbol = {
+    val moduleName = erasureString(evidence.runtimeClass)
+    val className = if (moduleName.endsWith("$")) moduleName.dropRight(1)  else moduleName
+    ctx.requiredModule(className)
+  }
 
   extension symExtensions on (sym: Symbol) {
 
@@ -189,4 +165,25 @@ object DottyBackendInterface {
       }
 
   }
+
+  private val primitiveCompilationUnits = Set(
+    "Unit.scala",
+    "Boolean.scala",
+    "Char.scala",
+    "Byte.scala",
+    "Short.scala",
+    "Int.scala",
+    "Float.scala",
+    "Long.scala",
+    "Double.scala"
+  )
+
+  /**
+   * True if the current compilation unit is of a primitive class (scala.Boolean et al).
+   * Used only in assertions.
+   */
+  def isCompilingPrimitive(using ctx: Context) = {
+    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
+  }
+
 }
