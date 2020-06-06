@@ -1540,6 +1540,7 @@ object Trees {
         receiver: tpd.Tree, method: TermName, args: List[Tree], targs: List[Type],
         expectedType: Type)(using parentCtx: Context): tpd.Tree = {
       given ctx as Context = parentCtx.retractMode(Mode.ImplicitsEnabled)
+      import dotty.tools.dotc.ast.tpd.TreeOps
 
       val typer = ctx.typer
       val proto = FunProto(args, expectedType)

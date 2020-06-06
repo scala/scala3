@@ -5451,6 +5451,10 @@ object Types {
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)
   }
 
+  class TypeHashSet extends util.HashSet[Type](64):
+    override def hash(x: Type): Int = System.identityHashCode(x)
+    override def isEqual(x: Type, y: Type) = x.eq(y)
+
   class NamedPartsAccumulator(p: NamedType => Boolean,
       widenSingletons: Boolean = false, // if set, also consider underlying types in singleton path prefixes
       excludeLowerBounds: Boolean = false)
@@ -5461,10 +5465,7 @@ object Types {
     def maybeAdd(x: mutable.Set[NamedType], tp: NamedType): mutable.Set[NamedType] =
       if (p(tp)) x += tp else x
 
-    val seen: util.HashSet[Type] = new util.HashSet[Type](64) {
-      override def hash(x: Type): Int = System.identityHashCode(x)
-      override def isEqual(x: Type, y: Type) = x.eq(y)
-    }
+    val seen = TypeHashSet()
 
     override def applyToPrefix(x: mutable.Set[NamedType], tp: NamedType): mutable.Set[NamedType] =
       tp.prefix match
