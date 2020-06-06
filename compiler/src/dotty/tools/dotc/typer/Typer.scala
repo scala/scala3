@@ -3566,16 +3566,18 @@ class Typer extends Namer
   /** Types the body Scala 2 macro declaration `def f = macro <body>` */
   private def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree =
     // TODO check that call is to a method with valid signature
-    def typedPrefix(tree: untpd.RefTree): Tree = {
+    def typedPrefix(tree: untpd.RefTree)(splice: Context ?=> Tree => Tree)(using Context): Tree = {
       tryAlternatively {
-        typedExpr(tree, defn.AnyType)
+        splice(typedExpr(tree, defn.AnyType))
       } {
         // Try to type as a macro bundle
         val ref = tree match
           case Ident(name) => untpd.Ident(name.toTypeName).withSpan(tree.span)
           case Select(qual, name) => untpd.Select(qual, name.toTypeName).withSpan(tree.span)
         val bundle = untpd.Apply(untpd.Select(untpd.New(ref), nme.CONSTRUCTOR), untpd.Literal(Constant(null))).withSpan(call.span)
-        typedExpr(bundle, defn.AnyType)
+        val bundle1 = typedExpr(bundle, defn.AnyType)
+        val bundleVal = SyntheticValDef(NameKinds.UniqueName.fresh(nme.bundle), bundle1).withSpan(call.span)
+        tpd.Block(List(bundleVal), splice(tpd.ref(bundleVal.symbol))).withSpan(call.span)
       }
     }
     if ctx.phase.isTyper then
@@ -3583,11 +3585,15 @@ class Typer extends Namer
         case call: untpd.Ident =>
           typedIdent(call, defn.AnyType)
         case untpd.Select(qual: untpd.RefTree, name) =>
-          val call2 = untpd.Select(untpd.TypedSplice(typedPrefix(qual)), name).withSpan(call.span)
-          typedSelect(call2, defn.AnyType)
+          typedPrefix(qual) { qual =>
+            val call2 = untpd.Select(untpd.TypedSplice(qual), name).withSpan(call.span)
+            typedSelect(call2, defn.AnyType)
+          }
         case untpd.TypeApply(untpd.Select(qual: untpd.RefTree, name), targs) =>
-          val call2= untpd.TypeApply(untpd.Select(untpd.TypedSplice(typedPrefix(qual)), name), targs).withSpan(call.span)
-          typedTypeApply(call2, defn.AnyType)
+          typedPrefix(qual) { qual =>
+            val call2 = untpd.TypeApply(untpd.Select(untpd.TypedSplice(qual), name), targs).withSpan(call.span)
+            typedTypeApply(call2, defn.AnyType)
+          }
         case _ =>
           ctx.error("Invalid Scala 2 macro " + call.show, call.sourcePos)
           EmptyTree
