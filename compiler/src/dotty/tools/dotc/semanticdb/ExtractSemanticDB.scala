@@ -5,6 +5,7 @@ package semanticdb
 import core._
 import Phases._
 import ast.tpd._
+import ast.Trees.mods
 import Contexts._
 import Symbols._
 import Flags._

@@ -8,6 +8,7 @@ import core.Contexts.Context
 import core.Decorators._
 import core.Flags.{JavaDefined, Extension}
 import core.StdNames.nme
+import ast.Trees.mods
 import annotation.constructorOnly
 import annotation.internal.sharable
 import reporting.Reporter

@@ -5,7 +5,7 @@ package parsing
 import org.junit.Test
 import org.junit.Assert._
 
-import ast.untpd.modsDeco
+import ast.Trees.mods
 import ast.untpd._
 import ast.{ Trees => d }
 import Parsers.Parser

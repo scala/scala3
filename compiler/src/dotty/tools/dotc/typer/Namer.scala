@@ -854,7 +854,7 @@ class Namer { typer: Typer =>
     protected def addAnnotations(sym: Symbol): Unit = original match {
       case original: untpd.MemberDef =>
         lazy val annotCtx = annotContext(original, sym)
-        for (annotTree <- untpd.modsDeco(original).mods.annotations) {
+        for (annotTree <- original.mods.annotations) {
           val cls = typedAheadAnnotationClass(annotTree)(annotCtx)
           if (cls eq sym)
             ctx.error("An annotation class cannot be annotated with iself", annotTree.sourcePos)

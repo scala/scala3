@@ -14,6 +14,7 @@ import NullOpsDecorator._
 import collection.mutable
 import config.Printers.nullables
 import ast.{tpd, untpd}
+import ast.Trees.mods
 
 /** Operations for implementing a flow analysis for nullability */
 object Nullables:
