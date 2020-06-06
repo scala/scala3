@@ -4980,10 +4980,14 @@ object Types {
 
         case tp: LazyRef =>
           LazyRef { c =>
-            val saved = mapCtx
-            mapCtx = c
-            try this(tp.ref(using c))
-            finally mapCtx = saved
+            val ref1 = tp.ref(using c)
+            if c.runId == mapCtx.runId then this(ref1)
+            else // splice in new run into map context
+              val saved = mapCtx
+              mapCtx = mapCtx.fresh
+                .setPeriod(Period(c.runId, mapCtx.phaseId))
+                .setRun(c.run)
+              try this(ref1) finally mapCtx = saved
           }
 
         case tp: ClassInfo =>
