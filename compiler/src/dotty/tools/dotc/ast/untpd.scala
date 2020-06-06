@@ -512,12 +512,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
 // ----- Accessing modifiers ----------------------------------------------------
 
-  abstract class ModsDecorator { def mods: Modifiers }
-
-  implicit class modsDeco(val mdef: DefTree)(implicit ctx: Context) {
-    def mods: Modifiers = mdef.rawMods
-  }
-
 // --------- Copier/Transformer/Accumulator classes for untyped trees -----
 
   override val cpy: UntypedTreeCopier = UntypedTreeCopier()

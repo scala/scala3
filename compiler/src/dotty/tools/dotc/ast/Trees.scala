@@ -333,6 +333,8 @@ object Trees {
     def namedType: NamedType = tpe.asInstanceOf[NamedType]
   }
 
+  def (mdef: untpd.DefTree).mods: untpd.Modifiers = mdef.rawMods
+
   abstract class NamedDefTree[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NameTree[T] with DefTree[T] {
     type ThisTree[-T >: Untyped] <: NamedDefTree[T]
 
