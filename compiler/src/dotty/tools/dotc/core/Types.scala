@@ -4862,7 +4862,7 @@ object Types {
     }
   }
 
-  abstract class TypeMap(implicit protected val mapCtx: Context)
+  abstract class TypeMap(implicit protected var mapCtx: Context)
   extends VariantTraversal with (Type => Type) { thisMap =>
 
     protected def stopAtStatic: Boolean = true
@@ -4979,7 +4979,12 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
-          LazyRef(_ => this(tp.ref))
+          LazyRef { c =>
+            val saved = mapCtx
+            mapCtx = c
+            try this(tp.ref(using c))
+            finally mapCtx = saved
+          }
 
         case tp: ClassInfo =>
           mapClassInfo(tp)
