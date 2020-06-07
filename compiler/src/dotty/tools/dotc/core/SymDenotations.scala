@@ -2199,7 +2199,10 @@ object SymDenotations {
       if (companion.isClass && !isAbsent(canForce = false) && !companion.isAbsent(canForce = false))
         myCompanion = companion
 
-    override def registeredCompanion(implicit ctx: Context) = { ensureCompleted(); myCompanion }
+    override def registeredCompanion(implicit ctx: Context) =
+      if !myCompanion.exists then
+        ensureCompleted()
+      myCompanion
     override def registeredCompanion_=(c: Symbol) = { myCompanion = c }
 
     private var myNestingLevel = -1
