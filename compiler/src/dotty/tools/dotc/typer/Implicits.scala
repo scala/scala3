@@ -500,13 +500,6 @@ trait ImplicitRunInfo:
       private var parts: mutable.LinkedHashSet[Type] = _
       private val partSeen = TypeHashSet()
 
-      def traversePrefix(pre: Type): Unit = pre match
-        case pre: TermRef =>
-          if migrateTo3 then traverse(pre.info)
-          traversePrefix(pre.prefix)
-        case _ =>
-          traverse(pre)
-
       def traverse(t: Type) =
         if partSeen.contains(t) then ()
         else if implicitScopeCache.contains(t) then parts += t
@@ -516,13 +509,13 @@ trait ImplicitRunInfo:
             case t: TypeRef =>
               if isAnchor(t.symbol) then
                 parts += t
-                traversePrefix(t.prefix)
+                traverse(t.prefix)
               else
                 traverse(t.underlying)
             case t: TermRef =>
               if !isExcluded(t.symbol) then
                 traverse(t.info)
-                traversePrefix(t.prefix)
+                traverse(t.prefix)
             case t: ThisType if t.cls.is(Module) && t.cls.isStaticOwner =>
               traverse(t.cls.sourceModule.termRef)
             case t: ConstantType =>
