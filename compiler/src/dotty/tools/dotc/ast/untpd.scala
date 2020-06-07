@@ -510,7 +510,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A repeated argument such as `arg: _*` */
   def repeated(arg: Tree)(implicit ctx: Context): Typed = Typed(arg, Ident(tpnme.WILDCARD_STAR))
 
-// ----- Accessing modifiers ----------------------------------------------------
 
 // --------- Copier/Transformer/Accumulator classes for untyped trees -----
 
