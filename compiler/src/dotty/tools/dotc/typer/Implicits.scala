@@ -617,38 +617,37 @@ trait ImplicitRunInfo:
 
   /** The implicit scope of a type `tp`, which is specified by the following definitions.
    *
-   *  A reference is an _anchor_ if it refers to a class or an abstract type or an
-   *  opaque type alias. References to object classes are also anchors, except that
-   *  references to packages and package objects are anchors only under -source:3.0-migration.
+   *  A reference is an _anchor_ if it refers to an object, a class, a trait, an
+   *  abstract type, or an opaque type alias. References to packages and package
+   *  objects are anchors only under -source:3.0-migration.
    *
-   *  The _parts_ of a type `T` is a set of type references defined as follows:
+   *  The _anchors_ of a type `T` is a set of references defined as follows:
    *
-   *   - If `T` is an alias of `T'`, the parts of `T'`.
-   *   - If `T` is a type reference to an anchor, `T` itself and the prefix parts of `T`.
-   *   - If `T` is a reference to a type parameter, the parts of its bounds.
-   *   - If `T` is a term reference, the parts of its underlying type, and the prefix parts of `T`.
-   *   - If `T` is the this-type of a static object, the parts of the term reference to that object.
-   *   - If `T` is a constant type, the parts of its underlying type.
-   *   - If `T` is some other type, the union of parts of each constituent type of `T`
-   *     that is of one of the forms above.
-   *
-   *  The _prefix parts_ of a type reference or term reference `P#A` with prefix `P` is
-   *  a set of type references defined as follows:
-   *
-   *   - If `P` is a term reference `(Q # x).type, the prefix parts of `Q`.
-   *     Under -source:3.0-migration, also include the parts of `P`'s underlying type.
-   *   - If `P` is some other singleton type, the empty set.
-   *   - If `P` is some other type, the parts of `P`.
+   *   - If `T` is a reference to an anchor, `T` itself plus, if `T` is of the form
+   *     `P#A`, the anchors of `P`.
+   *   - If `T` is an alias of `U`, the anchors of `U`.
+   *   - If `T` is a reference to a type parameter, the union of the anchors of both of its bounds.
+   *   - If `T` is a singleton reference, the anchors of its underlying type, plus,
+   *     if `T` is of the form `(P#x).type`, the anchors of `P`.
+   *   - If `T` is the this-type of a static object, the anchors of a term reference to that object.
+   *   - If `T` is some other type, the union of the anchors of each constituent type of `T`.
    *
    *  The _implicit scope_ of a type `tp` is the smallest set S of term references (i.e. TermRefs)
    *  such that
    *
    *   - If `T` is a reference to a class, S includes a reference to the companion object
    *     of the class, if it exists, as well as the implicit scopes of all of `T`'s parent classes.
-   *   - If `T` is a reference to an opaque type alias or abstract type named `A`, S includes
+   *   - If `T` is a reference to an object, S includes `T` itself as well as
+   *     the implicit scopes of all of `T`'s parent classes.
+   *   - If `T` is a reference to an opaque type alias named `A`, S includes
    *     a reference to an object `A` defined in the same scope as the type, if it exists,
    *     as well as the implicit scope of `T`'s underlying type or bounds.
-   *   - If `T` is some other type, S includes the implicit scopes of all parts of `T`.
+   *   - If `T` is a reference to an an abstract type named `A`, S includes
+   *     a reference to an object `A` defined in the same scope as the type, if it exists,
+   *     as well as the implicit scopes of `T`'s lower and upper bound.
+   *   - If `T` is a reference to an anchor of the form `p.A` then S also includes
+   *     all term references on the path `p`.
+   *   - If `T` is some other type, S includes the implicit scopes of all anchors of `T`.
    */
   def implicitScope(tp: Type)(using Context): OfTypeImplicits =
     object liftToAnchors extends TypeMap:
