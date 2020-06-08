@@ -410,7 +410,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
     }
 
     /* Does this tree have a try-catch block? */
-    def mayCleanStack(tree: Tree): Boolean = tree.find { t => t match {
+    def mayCleanStack(tree: Tree): Boolean = tree.find { t => t match { // TODO: use existsSubTree
         case Try(_, _, _) => true
         case _ => false
       }

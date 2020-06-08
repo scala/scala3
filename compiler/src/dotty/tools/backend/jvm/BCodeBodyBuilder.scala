@@ -331,7 +331,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
           val (fun, args) = call match {
             case Apply(fun, args) => (fun, args)
-            case t @ DesugaredSelect(_, _) => (t, Nil)
+            case t @ DesugaredSelect(_, _) => (t, Nil) // TODO: use Select
             case t @ Ident(_) => (t, Nil)
           }
 
@@ -517,7 +517,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val sym       = const.symbolValue
           val ownerName = internalName(sym.owner)
           val fieldName = sym.javaSimpleName
-          val underlying = sym.info match {
+          val underlying = sym.info match { // TODO: Is this actually necessary? Could it be replaced by a call to widen?
             case t: TypeProxy => t.underlying
             case t => t
           }

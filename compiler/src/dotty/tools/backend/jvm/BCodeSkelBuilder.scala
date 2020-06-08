@@ -174,7 +174,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case _ => ()
       }
 
-      val ssa = None // getAnnotPickle(thisName, claszSymbol)
+      val ssa = None // TODO: inlined form `getAnnotPickle(thisName, claszSymbol)`. Should something be done on Dotty?
       cnode.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
       emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
 
