@@ -55,7 +55,7 @@ have only `b` in its implicit search scope but not `a`.
 In more detail, here are the rules for what constitutes the implicit scope of
 a type:
 
-**Definition:** A reference is an _anchor_ if it refers to an object, a class, a trait, an abstract type, or an opaque type alias. References to packages and package objects are anchors only under -source:3.0-migration.
+**Definition:** A reference is an _anchor_ if it refers to an object, a class, a trait, an abstract type, an opaque type alias, or a match type alias. References to packages and package objects are anchors only under -source:3.0-migration.
 
 **Definition:** The _anchors_ of a type _T_ is a set of references defined as follows:
 
@@ -76,9 +76,8 @@ a type:
   - If _T_ is a reference to an opaque type alias named _A_, _S_ includes
     a reference to an object _A_ defined in the same scope as the type, if it exists,
     as well as the implicit scope of _T_'s underlying type or bounds.
-  - If _T_ is a reference to an an abstract type named _A_, _S_ includes
-    a reference to an object _A_ defined in the same scope as the type, if it exists,
-    as well as the implicit scopes of _T_'s lower and upper bound.
+  - If _T_ is a reference to an an abstract type or match type alias
+    named _A_, _S_ includes a reference to an object _A_ defined in the same scope as the type, if it exists, as well as the implicit scopes of _T_'s lower and upper bound, if present.
   - If _T_ is a reference to an anchor of the form _p.A_ then _S_ also includes
     all term references on the path _p_.
   - If _T_ is some other type, _S_ includes the implicit scopes of all anchors of _T_.

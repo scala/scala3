@@ -485,12 +485,14 @@ trait ImplicitRunInfo:
     if migrateTo3 then false else sym.is(Package) || sym.isPackageObject
 
   /** Is `sym` an anchor type for which givens may exist? Anchor types are classes,
-    *  opaque type aliases, and abstract types, but not type parameters or package objects.
+    *  opaque type aliases, match aliases and abstract types, but not type parameters
+    *  or package objects.
     */
   private def isAnchor(sym: Symbol) =
     sym.isClass && !isExcluded(sym)
     || sym.isOpaqueAlias
     || sym.is(Deferred, butNot = Param)
+    || sym.info.isInstanceOf[MatchAlias]
 
   private def computeIScope(rootTp: Type): OfTypeImplicits =
 
@@ -618,8 +620,8 @@ trait ImplicitRunInfo:
   /** The implicit scope of a type `tp`, which is specified by the following definitions.
    *
    *  A reference is an _anchor_ if it refers to an object, a class, a trait, an
-   *  abstract type, or an opaque type alias. References to packages and package
-   *  objects are anchors only under -source:3.0-migration.
+   *  abstract type, an opaque type alias, or a match type alias. References to
+   *  packages and package objects are anchors only under -source:3.0-migration.
    *
    *  The _anchors_ of a type `T` is a set of references defined as follows:
    *
@@ -642,9 +644,10 @@ trait ImplicitRunInfo:
    *   - If `T` is a reference to an opaque type alias named `A`, S includes
    *     a reference to an object `A` defined in the same scope as the type, if it exists,
    *     as well as the implicit scope of `T`'s underlying type or bounds.
-   *   - If `T` is a reference to an an abstract type named `A`, S includes
-   *     a reference to an object `A` defined in the same scope as the type, if it exists,
-   *     as well as the implicit scopes of `T`'s lower and upper bound.
+   *   - If `T` is a reference to an an abstract type or match type alias named `A`,
+   *     S includes a reference to an object `A` defined in the same scope as the type,
+   *     if it exists, as well as the implicit scopes of `T`'s lower and upper bound,
+   *     if present.
    *   - If `T` is a reference to an anchor of the form `p.A` then S also includes
    *     all term references on the path `p`.
    *   - If `T` is some other type, S includes the implicit scopes of all anchors of `T`.
