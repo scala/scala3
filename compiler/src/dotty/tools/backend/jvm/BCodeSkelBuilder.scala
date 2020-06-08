@@ -106,7 +106,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       initJClass(cnode)
 
-      val methodSymbols = for (f <- cd.symbol.info.decls.iterator if f.is(Method) && f.isTerm && !f.is(Module)) yield f
+      val methodSymbols = for (f <- cd.symbol.info.decls.toList if f.is(Method) && f.isTerm && !f.is(Module)) yield f
       val hasStaticCtor = methodSymbols exists (_.isStaticConstructor)
       if (!hasStaticCtor) {
         // but needs one ...
