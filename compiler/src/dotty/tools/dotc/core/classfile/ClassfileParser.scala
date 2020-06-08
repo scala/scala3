@@ -180,17 +180,19 @@ class ClassfileParser(
 
       for (i <- 0 until in.nextChar) parseMember(method = false)
       for (i <- 0 until in.nextChar) parseMember(method = true)
+
+      classRoot.registerCompanion(moduleRoot.symbol)
+      moduleRoot.registerCompanion(classRoot.symbol)
+
+      setClassInfo(moduleRoot, staticInfo, fromScala2 = false)
+
       classInfo = parseAttributes(classRoot.symbol, classInfo)
       if (isAnnotation)
         // classInfo must be a TempClassInfoType and not a TempPolyType,
         // because Java annotations cannot have type parameters.
         addAnnotationConstructor(classInfo.asInstanceOf[TempClassInfoType])
 
-      classRoot.registerCompanion(moduleRoot.symbol)
-      moduleRoot.registerCompanion(classRoot.symbol)
-
       setClassInfo(classRoot, classInfo, fromScala2 = false)
-      setClassInfo(moduleRoot, staticInfo, fromScala2 = false)
     }
     else if (result == Some(NoEmbedded))
       for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
@@ -916,7 +918,7 @@ class ClassfileParser(
     }
 
     /** Return the class symbol for `entry`. It looks it up in its outer class.
-     *  Forces all outer class symbols to be completed.
+     *  This might force outer class symbols.
      */
     def classSymbol(entry: InnerClassEntry)(implicit ctx: Context): Symbol = {
       def getMember(sym: Symbol, name: Name)(implicit ctx: Context): Symbol =
