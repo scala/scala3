@@ -1,0 +1,1 @@
+class C(inline: String)
