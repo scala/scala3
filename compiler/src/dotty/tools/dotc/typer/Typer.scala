@@ -3058,6 +3058,8 @@ class Typer extends Namer
         else tree match {
           case tree: Block =>
             readaptSimplified(tpd.Block(tree.stats, tpd.Apply(tree.expr, args)))
+          case tree: NamedArg =>
+            readaptSimplified(tpd.NamedArg(tree.name, tpd.Apply(tree.arg, args)))
           case _ =>
             readaptSimplified(tpd.Apply(tree, args))
         }
