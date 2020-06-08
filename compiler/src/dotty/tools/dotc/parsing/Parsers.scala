@@ -2813,13 +2813,14 @@ object Parsers {
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
       @tailrec
       def loop(mods: Modifiers): Modifiers =
-        if (allowed.contains(in.token) ||
-            in.isSoftModifier &&
-              localModifierTokens.subsetOf(allowed)) { // soft modifiers are admissible everywhere local modifiers are
+        if allowed.contains(in.token)
+           || in.isSoftModifier
+              && localModifierTokens.subsetOf(allowed) // soft modifiers are admissible everywhere local modifiers are
+              && in.lookahead.token != COLON
+        then
           val isAccessMod = accessModifierTokens contains in.token
           val mods1 = addModifier(mods)
           loop(if (isAccessMod) accessQualifierOpt(mods1) else mods1)
-        }
         else if (in.token == NEWLINE && (mods.hasFlags || mods.hasAnnotations)) {
           in.nextToken()
           loop(mods)
