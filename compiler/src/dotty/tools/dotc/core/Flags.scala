@@ -308,7 +308,7 @@ object Flags {
   val (Given @ _, _, _) = newFlags(29, "given")
 
   /** Symbol is defined by a Java class */
-  val (JavaDefined @ _, _, _) = newFlags(30, "<java>")
+  val (JavaDefined @ _, JavaDefinedVal @ _, _) = newFlags(30, "<java>")
 
   /** Symbol is implemented as a Java static */
   val (JavaStatic @ _, JavaStaticTerm @ _, JavaStaticType @ _) = newFlags(31, "<static>")
