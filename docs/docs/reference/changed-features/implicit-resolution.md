@@ -59,29 +59,28 @@ a type:
 
 **Definition:** The _anchors_ of a type _T_ is a set of references defined as follows:
 
-  - If _T_ is a reference to an anchor, _T_ itself plus, if _T_ is of the form _P#A_, the anchors of _P_.
-  - If _T_ is an alias of _U_, the anchors of _U_.
-  - If _T_ is a reference to a type parameter, the union of the anchors of both of its bounds.
-  - If _T_ is a singleton reference, the anchors of its underlying type, plus,
+  1. If _T_ is a reference to an anchor, _T_ itself plus, if _T_ is of the form _P#A_, the anchors of _P_.
+  1. If _T_ is an alias of _U_, the anchors of _U_.
+  1. If _T_ is a reference to a type parameter, the union of the anchors of both of its bounds.
+  1. If _T_ is a singleton reference, the anchors of its underlying type, plus,
     if _T_ is of the form _(P#x).type_, the anchors of _P_.
-  - If _T_ is the this-type _o.this_ of a static object _o_, the anchors of a term reference _o.type_ to that object.
-  - If _T_ is some other type, the union of the anchors of each constituent type of _T_.
+  1. If _T_ is the this-type _o.this_ of a static object _o_, the anchors of a term reference _o.type_ to that object.
+  1. If _T_ is some other type, the union of the anchors of each constituent type of _T_.
 
  **Definition:** The _implicit scope_ of a type _T_ is the smallest set _S_ of term references such that
 
-  - If _T_ is a reference to a class, _S_ includes a reference to the companion object
+  1. If _T_ is a reference to a class, _S_ includes a reference to the companion object
     of the class, if it exists, as well as the implicit scopes of all of _T_'s parent classes.
-  - If _T_ is a reference to an object, _S_ includes _T_ itself as well as
+  1. If _T_ is a reference to an object, _S_ includes _T_ itself as well as
     the implicit scopes of all of _T_'s parent classes.
-  - If _T_ is a reference to an opaque type alias named _A_, _S_ includes
+  1. If _T_ is a reference to an opaque type alias named _A_, _S_ includes
     a reference to an object _A_ defined in the same scope as the type, if it exists,
     as well as the implicit scope of _T_'s underlying type or bounds.
-  - If _T_ is a reference to an an abstract type or match type alias
-    named _A_, _S_ includes a reference to an object _A_ defined in the same scope as the type, if it exists, as well as the implicit scopes of _T_'s lower and upper bound, if present.
-  - If _T_ is a reference to an anchor of the form _p.A_ then _S_ also includes
+  1. If _T_ is a reference to an an abstract type or match type alias
+    named _A_, _S_ includes a reference to an object _A_ defined in the same scope as the type, if it exists, as well as the implicit scopes of _T_'s given bounds.
+  1. If _T_ is a reference to an anchor of the form _p.A_ then _S_ also includes
     all term references on the path _p_.
-  - If _T_ is some other type, _S_ includes the implicit scopes of all anchors of _T_.
-
+  1. If _T_ is some other type, _S_ includes the implicit scopes of all anchors of _T_.
 
 
 **4.** The treatment of ambiguity errors has changed. If an ambiguity is encountered in some recursive step of an implicit search, the ambiguity is propagated to the caller.
