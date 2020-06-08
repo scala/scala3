@@ -60,6 +60,9 @@ object Feature:
   def dependentEnabled(using Context) =
     enabled(nme.dependent, defn.LanguageExperimentalModule.moduleClass)
 
+  def scala2ExperimentalMacroEnabled(using Context) =
+    enabled("macros".toTermName, defn.LanguageExperimentalModule.moduleClass)
+
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)
 

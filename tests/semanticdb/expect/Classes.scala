@@ -1,5 +1,5 @@
 package classes
-
+import scala.language.experimental.macros
 class C1(val x1: Int) extends AnyVal
 
 class C2(val x2: Int) extends AnyVal

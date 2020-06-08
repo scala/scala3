@@ -3584,6 +3584,16 @@ class Typer extends Namer
     }
     if ctx.phase.isTyper then
       call match
+        case untpd.Ident(nme.???) => // Instinsic macros ignored
+        case _ =>
+          if !config.Feature.scala2ExperimentalMacroEnabled then
+            ctx.error(
+              """Scala 2 macro definition needs to be enabled
+                |by making the implicit value scala.language.experimental.macros visible.
+                |This can be achieved by adding the import clause 'import scala.language.experimental.macros'
+                |or by setting the compiler option -language:experimental.macros.
+              """.stripMargin, call.sourcePos)
+      call match
         case call: untpd.Ident =>
           typedIdent(call, defn.AnyType)
         case untpd.Select(qual: untpd.RefTree, name) =>
