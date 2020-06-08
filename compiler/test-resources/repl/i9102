@@ -1,0 +1,8 @@
+scala> def foo(x: => Int) = x.toString
+def foo(x: => Int): String
+scala> def bar: (=> Int) => String = x => x.toString
+def bar: (=> Int) => String
+scala> def baz: (Int => String) = x => x.toString
+def baz: Int => String
+scala> lazy val qux: ((=> Int) => String) = x => x.toString
+lazy val qux: (=> Int) => String

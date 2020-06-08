@@ -19,10 +19,6 @@ class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
     if (name.isReplAssignName) name.decode.toString.takeWhile(_ != '$')
     else super.nameString(name)
 
-  override protected def exprToText(tp: ExprType): Text =
-    if (debugPrint) super.exprToText(tp)
-    else ": " ~ toText(tp.resType)
-
   override def toText(sym: Symbol): Text =
     if (sym.name.isReplAssignName) nameString(sym.name)
     else if (debugPrint) super.toText(sym)
@@ -38,7 +34,12 @@ class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
   override def dclText(sym: Symbol): Text = if (debugPrint) super.dclText(sym) else
     ("lazy": Text).provided(sym.is(Lazy)) ~~
     toText(sym) ~ {
-      if (sym.is(Method)) toText(sym.info)
+      if (sym.is(Method)) {
+        sym.info match {
+          case tp: ExprType => ":" ~~ toText(tp.resType)
+          case _ => toText(sym.info)
+        }
+      }
       else if (sym.isType && sym.info.isTypeAlias) toText(sym.info)
       else if (sym.isType || sym.isClass) ""
       else ":" ~~ toText(sym.info)

@@ -222,8 +222,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             case _ => super.toText(tp)
           }
         else super.toText(tp)
-      case tp: ExprType =>
-        exprToText(tp)
       case ErasedValueType(tycon, underlying) =>
         "ErasedValueType(" ~ toText(tycon) ~ ", " ~ toText(underlying) ~ ")"
       case tp: ClassInfo =>
