@@ -2,7 +2,7 @@ object Test {
   def main(args: Array[String]): Unit = {
 
     val f0 = () => 0
-    val t0 = ()
+    val t0 = Tuple()
     println(f0(t0))
 
     val f1 = (x: Int) => x

@@ -6,7 +6,7 @@ case class Wrapped[T: Wrappable](value: T)
 trait Wrapper[T] { type WrappedT }
 object Wrapper { type Aux[T <: Tuple, WrappedT0 <: Tuple] = Wrapper[T] { type WrappedT = WrappedT0 } }
 
-given Wrapper[Unit] { type WrappedT = Unit }
+given Wrapper[EmptyTuple] { type WrappedT = EmptyTuple }
 
 given [T: Wrappable] as Wrapper[T] { type WrappedT = Wrapped[T] }
 

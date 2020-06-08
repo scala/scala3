@@ -34,8 +34,8 @@ object deriving {
     trait Singleton extends Product {
       type MirroredMonoType = this.type
       type MirroredType = this.type
-      type MirroredElemTypes = Unit
-      type MirroredElemLabels = Unit
+      type MirroredElemTypes = EmptyTuple
+      type MirroredElemLabels = EmptyTuple
       def fromProduct(p: scala.Product) = this
     }
 
@@ -43,8 +43,8 @@ object deriving {
     class SingletonProxy(val value: AnyRef) extends Product {
       type MirroredMonoType = value.type
       type MirroredType = value.type
-      type MirroredElemTypes = Unit
-      type MirroredElemLabels = Unit
+      type MirroredElemTypes = EmptyTuple
+      type MirroredElemLabels = EmptyTuple
       def fromProduct(p: scala.Product) = value
     }
 

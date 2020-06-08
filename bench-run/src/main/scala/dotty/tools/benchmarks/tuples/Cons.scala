@@ -12,7 +12,7 @@ class Cons {
 
   @Setup
   def setup(): Unit = {
-    tuple = ()
+    tuple = Tuple()
 
     for (i <- 1 to size)
       tuple = "elem" *: tuple

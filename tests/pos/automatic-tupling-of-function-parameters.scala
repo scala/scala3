@@ -5,7 +5,7 @@ object Test {
   val g2: Tuple2[Int, String] => Int = _ + _.length
 
   // FIXME issue #5257
-//  val h2: Int *: Int *: Unit => Int = (x, y) => x + y
+//  val h2: Int *: Int *: EmptyTuple => Int = (x, y) => x + y
 //  val k2: Int *: Tuple1[Int] => Int = (x, y) => x + y
 
   type T2 = Tuple2[Int, Int]

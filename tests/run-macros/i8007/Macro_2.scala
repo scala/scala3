@@ -7,7 +7,7 @@ object Macro2 {
   def mirrorFields[T](t: Type[T])(using qctx: QuoteContext): List[String] =
     t match {
       case '[$field *: $fields] => field.show.substring(1, field.show.length-1) :: mirrorFields(fields)
-      case '[Unit] => Nil
+      case '[EmptyTuple] => Nil
     }
 
   trait JsonEncoder[T] {

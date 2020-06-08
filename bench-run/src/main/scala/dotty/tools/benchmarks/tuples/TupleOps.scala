@@ -11,11 +11,11 @@ class TupleOps {
 
   @Setup
   def setup(): Unit = {
-    tuple1 = ()
+    tuple1 = Tuple()
     for (i <- 1 until 15)
       tuple1 = s"elem$i" *: tuple1
 
-    tuple2 = ()
+    tuple2 = Tuple()
     for (i <- 1 until 10)
       tuple2 = s"elem$i" *: tuple2
 
@@ -25,23 +25,23 @@ class TupleOps {
 
   def tupleFlatMap(tuple: Tuple, f: [A] => A => Tuple): Tuple = {
     def tailRecFlatMap(t: Tuple, acc: Tuple): Tuple = t match {
-      case () => acc
+      case Tuple() => acc
       case x *: rest => tailRecFlatMap(rest, acc ++ f(x))
     }
-    tailRecFlatMap(tuple, ())
+    tailRecFlatMap(tuple, Tuple())
   }
 
   def tupleReverse(tuple: Tuple): Tuple = {
     def tailRecReverse(t: Tuple, acc: Tuple): Tuple = t match {
-      case () => acc
+      case Tuple() => acc
       case x *: rest => tailRecReverse(rest, x *: acc)
     }
-    tailRecReverse(tuple, ())
+    tailRecReverse(tuple, Tuple())
   }
 
   def tupleMerge(tuple1: Tuple, tuple2: Tuple): Tuple = (tuple1, tuple2) match {
-    case (_, ()) => tuple1
-    case ((), _) => tuple2
+    case (_, Tuple()) => tuple1
+    case (Tuple(), _) => tuple2
     case (x *: xs, y *: ys) =>
       if (x.asInstanceOf[Int] <= y.asInstanceOf[Int]) x *: tupleMerge(xs, tuple2)
       else y *: tupleMerge(tuple1, ys)

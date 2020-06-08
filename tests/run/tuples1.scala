@@ -1,5 +1,5 @@
 object Test extends App {
-  val x0 = (); println(x0)
+  val x0 = Tuple(); println(x0)
   val x1 = 1 *: x0; println(x1)
   val x2 = ("A", 1); println(x2)
   val x3 = 2 *: x2; println(x3)
@@ -14,8 +14,8 @@ object Test extends App {
   val h2 = x2.head; val h2c: String = h2; println(s"h2 = $h2")
   val h7 = x7.head; val h7c: Int = h7; println(s"h7 = $h7")
   val h8 = x8.head; val h8c: String = h8; println(s"h8 = $h8")
-  val t1 = x1.tail; val t1c: Unit = t1; println(s"t1 = $t1")
-  val t2 = x2.tail; val t2c: Int *: Unit = t2; println(s"t2 = $t2")
+  val t1 = x1.tail; val t1c: EmptyTuple = t1; println(s"t1 = $t1")
+  val t2 = x2.tail; val t2c: Int *: EmptyTuple = t2; println(s"t2 = $t2")
   val t7 = x7.tail; val t7c: (String, Int) = t7.tail.tail.tail.tail; println(s"t7 = $t7")
   val t8 = x8.tail; val t8c: Int = t8(6); println(s"t8 = $t8")
   val a1_0 = x1(0); val a1_0c: Int = a1_0; println(s"a1_0 = $a1_0")
@@ -24,9 +24,9 @@ object Test extends App {
   val a4_3 = x4(3); val a4_3c: Int = a4_3; println(s"a4_3 = $a4_3")
   val a6_4 = x6(4); val a6_4c: String = a6_4; println(s"a6_4 = $a6_4")
   val a8_0 = x8(0); val a8_0c: String = a8_0; println(s"a8_0 = $a8_0")
-  val c0_0 = x0 ++ x0; val c0_0c: Unit = c0_0; println(s"c0_0 = $c0_0")
-  val c0_1 = x0 ++ x1; val c0_1c: Int *: Unit = c0_1; println(s"c0_1 = $c0_1")
-  val c1_0 = x1 ++ x0; val c1_0c: Int *: Unit = c1_0; println(s"c1_0 = $c1_0")
+  val c0_0 = x0 ++ x0; val c0_0c: EmptyTuple = c0_0; println(s"c0_0 = $c0_0")
+  val c0_1 = x0 ++ x1; val c0_1c: Int *: EmptyTuple = c0_1; println(s"c0_1 = $c0_1")
+  val c1_0 = x1 ++ x0; val c1_0c: Int *: EmptyTuple = c1_0; println(s"c1_0 = $c1_0")
   val c0_4 = x0 ++ x4; val c0_4c: (String, Int, String, Int) = c0_4; println(s"c0_4 = $c0_4")
   val c4_0 = x4 ++ x0; val c4_0c: (String, Int, String, Int) = c4_0; println(s"c4_0 = $c4_0")
   val c1_1 = x1 ++ x1; val c1_1c: (Int, Int) = c1_1; println(s"c1_1 = $c1_1")
@@ -42,7 +42,7 @@ object Test extends App {
 
   { val (x, xs) = decompose1
     val xc: String = x
-    val xsc: Int *: Unit = xs
+    val xsc: Int *: EmptyTuple = xs
     println(s"$x2 -> $x, $xs")
   }
 
@@ -54,7 +54,7 @@ object Test extends App {
   }
 */
   val x3s: 3 = x3.size
-  val us: 0 = ().size
+  val us: 0 = Tuple().size
 
 // dynamic operations
 
@@ -82,17 +82,17 @@ object Test extends App {
 
   def concat[X <: Tuple, Y <: Tuple](x: X, y: Y): Tuple.Concat[X, Y] = x ++ y
   def concat0(x: Tuple, y: Tuple): Tuple.Concat[x.type, y.type] = x ++ y
-  val conc1: (String, Int) = concat((), tl1)
-  val conc2: (String, Int) = concat(tl1, ())
+  val conc1: (String, Int) = concat(Tuple(), tl1)
+  val conc2: (String, Int) = concat(tl1, Tuple())
   val conc3: (String, Int, String, Int) = concat(tl1, tl1)
-  val conc4: (String, Int) = concat0((), tl1)
-  val conc5: (String, Int) = concat0(tl1, ())
+  val conc4: (String, Int) = concat0(Tuple(), tl1)
+  val conc5: (String, Int) = concat0(tl1, Tuple())
   val conc6: (String, Int, String, Int) = concat0(tl1, tl1)
 
   def size[X <: Tuple](x: X): Tuple.Size[X] = x.size
   def size0(x: Tuple): Tuple.Size[x.type] = x.size
   val x3s0: 3 = size(x3)
-  val us0: 0 = size(())
+  val us0: 0 = size(Tuple())
   val x3s1: 3 = size0(x3)
-  val us1: 0 = size0(())
+  val us1: 0 = size0(Tuple())
 }

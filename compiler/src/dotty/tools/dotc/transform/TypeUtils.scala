@@ -31,27 +31,31 @@ object TypeUtils {
       case ps => ps.reduceLeft(AndType(_, _))
     }
 
-    /** The arity of this tuple type, which can be made up of Unit, TupleX and `*:` pairs,
+    /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs,
      *  or -1 if this is not a tuple type.
      */
     def tupleArity(implicit ctx: Context): Int = self match {
       case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         val arity = tl.tupleArity
         if (arity < 0) arity else arity + 1
-      case tp1 =>
-        if (tp1.isRef(defn.UnitClass)) 0
-        else if (defn.isTupleClass(tp1.classSymbol)) tp1.dealias.argInfos.length
-        else -1
+      case self: TermRef if self.symbol == defn.EmptyTupleModule =>
+        0
+      case self if defn.isTupleClass(self.classSymbol) =>
+        self.dealias.argInfos.length
+      case _ =>
+        -1
     }
 
-    /** The element types of this tuple type, which can be made up of Unit, TupleX and `*:` pairs */
+    /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs */
     def tupleElementTypes(implicit ctx: Context): List[Type] = self match {
       case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         hd :: tl.tupleElementTypes
-      case tp1 =>
-        if (tp1.isRef(defn.UnitClass)) Nil
-        else if (defn.isTupleClass(tp1.classSymbol)) tp1.dealias.argInfos
-        else throw new AssertionError("not a tuple")
+      case self: TermRef if self.symbol == defn.EmptyTupleModule =>
+        Nil
+      case self if defn.isTupleClass(self.classSymbol) =>
+        self.dealias.argInfos
+      case _ =>
+        throw new AssertionError("not a tuple")
     }
 
     /** The `*:` equivalent of an instance of a Tuple class */

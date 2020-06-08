@@ -13,7 +13,7 @@ inline def summon[T](using t:T): T = t match {
 }
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
-  case _: Unit => Nil
+  case _: EmptyTuple => Nil
   case _: (t *: ts) => summon[Eq[t]] :: summonAll[ts]  // error
 }
 

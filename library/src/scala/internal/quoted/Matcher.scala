@@ -475,7 +475,7 @@ object Matcher {
   private object Matching {
 
     def notMatched: Matching = None
-    val matched: Matching = Some(())
+    val matched: Matching = Some(Tuple())
     def matched(x: Any): Matching = Some(Tuple1(x))
 
     def (self: Matching) asOptionOfTuple: Option[Tuple] = self

@@ -128,7 +128,7 @@ object Lst {
 
   private type ShapeOf[T] = Shape.Cases[(
     Shape.Case[Cons[T], (T, Lst[T])],
-    Shape.Case[Nil.type, Unit]
+    Shape.Case[Nil.type, EmptyTuple]
   )]
 
   implicit def GenericLst[T]: Generic[Lst[T]] { type Shape = ShapeOf[T] } =
@@ -190,8 +190,8 @@ object Either {
   import genericClass.mirror
 
   private type ShapeOf[L, R] = Shape.Cases[(
-    Shape.Case[Left[L], L *: Unit],
-    Shape.Case[Right[R], R *: Unit]
+    Shape.Case[Left[L], L *: EmptyTuple],
+    Shape.Case[Right[R], R *: EmptyTuple]
   )]
 
   implicit def GenericEither[L, R]: Generic[Either[L, R]] { type Shape = ShapeOf[L, R] } =
@@ -229,7 +229,7 @@ object Eq {
       case _: (elem *: elems1) =>
         tryEql[elem](xm(n).asInstanceOf, ym(n).asInstanceOf) &&
         eqlElems[elems1](xm, ym, n + 1)
-      case _: Unit =>
+      case _: EmptyTuple =>
         true
     }
 
@@ -238,7 +238,7 @@ object Eq {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         if (xm.ordinal == n) eqlElems[elems](xm, ym, 0)
         else eqlCases[alts1](xm, ym, n + 1)
-      case _: Unit =>
+      case _: EmptyTuple =>
         false
     }
 
@@ -280,7 +280,7 @@ object Pickler {
       case _: (elem *: elems1) =>
         tryPickle[elem](buf, elems(n).asInstanceOf[elem])
         pickleElems[elems1](buf, elems, n + 1)
-      case _: Unit =>
+      case _: EmptyTuple =>
     }
 
   inline def pickleCases[Alts <: Tuple](buf: mutable.ListBuffer[Int], xm: Mirror, n: Int): Unit =
@@ -288,7 +288,7 @@ object Pickler {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         if (xm.ordinal == n) pickleElems[elems](buf, xm, 0)
         else pickleCases[alts1](buf, xm, n + 1)
-      case _: Unit =>
+      case _: EmptyTuple =>
     }
 
   inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonInline[Pickler[T]].unpickle(buf)
@@ -298,7 +298,7 @@ object Pickler {
       case _: (elem *: elems1) =>
         elems(n) = tryUnpickle[elem](buf).asInstanceOf[AnyRef]
         unpickleElems[elems1](buf, elems, n + 1)
-      case _: Unit =>
+      case _: EmptyTuple =>
     }
 
   inline def unpickleCase[T, Elems <: Tuple](gen: Generic[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
@@ -362,7 +362,7 @@ object Show {
         val formal = elems.elementLabel(n)
         val actual = tryShow[elem](elems(n).asInstanceOf)
         s"$formal = $actual" :: showElems[elems1](elems, n + 1)
-      case _: Unit =>
+      case _: EmptyTuple =>
         Nil
     }
 
@@ -371,7 +371,7 @@ object Show {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         if (xm.ordinal == n) showElems[elems](xm, 0).mkString(", ")
         else showCases[alts1](xm, n + 1)
-      case _: Unit =>
+      case _: EmptyTuple =>
         throw new MatchError(xm)
     }
 

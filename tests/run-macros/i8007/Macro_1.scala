@@ -7,7 +7,7 @@ object Macro1 {
   def mirrorFields[T](t: Type[T])(using qctx: QuoteContext): List[String] =
     t match {
       case '[$field *: $fields] => field.show :: mirrorFields(fields)
-      case '[Unit] => Nil
+      case '[EmptyTuple] => Nil
     }
 
   // Demonstrates the use of quoted pattern matching

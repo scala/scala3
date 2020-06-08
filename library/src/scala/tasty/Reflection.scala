@@ -2574,6 +2574,18 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
     /** The type for `scala.String`. */
     def StringType: Type = internal.Definitions_StringType
+
+    /** The type for `scala.Tuple`. */
+    def TupleType: Type = internal.Definitions_TupleType
+
+    /** The type for `scala.EmptyTuple`. */
+    def EmptyTupleType: Type = internal.Definitions_EmptyTupleType
+
+    /** The type for `scala.NonEmptyTuple`. */
+    def NonEmptyTupleType: Type = internal.Definitions_NonEmptyTupleType
+
+    /** The type for `scala.*:`. */
+    def TupleConsType: Type = internal.Definitions_TupleConsType
   }
 
 

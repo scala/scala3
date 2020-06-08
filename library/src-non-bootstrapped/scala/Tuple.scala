@@ -159,6 +159,9 @@ object Tuple {
    */
   type Split[T <: Tuple, N <: Int] = (Take[T, N], Drop[T, N])
 
+  /** Empty tuple */
+  def apply(): Unit = ()
+
   /** Convert an array into a tuple of unknown arity and types */
   def fromArray[T](xs: Array[T]): Tuple = {
     val xs2 = xs match {
@@ -186,6 +189,8 @@ object Tuple {
   def fromProductTyped[P <: Product](p: P)(using m: scala.deriving.Mirror.ProductOf[P]): m.MirroredElemTypes =
     Tuple.fromArray(p.productIterator.toArray).asInstanceOf[m.MirroredElemTypes] // TODO use toIArray of Object to avoid double/triple array copy
 }
+
+def EmptyTuple: Unit = ()
 
 /** Tuple of arbitrary non-zero arity */
 sealed trait NonEmptyTuple extends Tuple with Product {

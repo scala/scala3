@@ -1523,23 +1523,65 @@ trait CompilerInterface {
   /** Symbol of scala.internal.CompileTime.fromAbove */
   def Definitions_InternalQuotedMatcher_fromAboveAnnot: Symbol
 
+  /** The type of primitive type `Unit`. */
   def Definitions_UnitType: Type
+
+  /** The type of primitive type `Byte`. */
   def Definitions_ByteType: Type
+
+  /** The type of primitive type `Short`. */
   def Definitions_ShortType: Type
+
+  /** The type of primitive type `Char`. */
   def Definitions_CharType: Type
+
+  /** The type of primitive type `Int`. */
   def Definitions_IntType: Type
+
+  /** The type of primitive type `Long`. */
   def Definitions_LongType: Type
+
+  /** The type of primitive type `Float`. */
   def Definitions_FloatType: Type
+
+  /** The type of primitive type `Double`. */
   def Definitions_DoubleType: Type
+
+  /** The type of primitive type `Boolean`. */
   def Definitions_BooleanType: Type
+
+  /** The type of core type `Any`. */
   def Definitions_AnyType: Type
+
+  /** The type of core type `AnyVal`. */
   def Definitions_AnyValType: Type
+
+  /** The type of core type `AnyRef`. */
   def Definitions_AnyRefType: Type
+
+  /** The type of core type `Object`. */
   def Definitions_ObjectType: Type
+
+  /** The type of core type `Nothing`. */
   def Definitions_NothingType: Type
+
+  /** The type of core type `Null`. */
   def Definitions_NullType: Type
+
+  /** The type for `scala.String`. */
   def Definitions_StringType: Type
 
+  /** The type for `scala.Tuple`. */
+  def Definitions_TupleType: Type
+
+  /** The type for `scala.EmptyTuple`. */
+  def Definitions_EmptyTupleType: Type
+
+  /** The type for `scala.NonEmptyTuple`. */
+  def Definitions_NonEmptyTupleType: Type
+
+  /** The type for `scala.*:`. */
+  def Definitions_TupleConsType: Type
 
   ///////////////
   // IMPLICITS //

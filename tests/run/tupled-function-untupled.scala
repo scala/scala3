@@ -1,7 +1,7 @@
 object Test {
   def main(args: Array[String]): Unit = {
 
-    val f0 = (args: Unit) => 0
+    val f0 = (args: EmptyTuple) => 0
     val g0: () => Int = f0.untupled
     println(g0())
 

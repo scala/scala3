@@ -749,11 +749,12 @@ class Definitions {
   @tu lazy val TupleTypeRef: TypeRef = ctx.requiredClassRef("scala.Tuple")
   def TupleClass(implicit ctx: Context): ClassSymbol = TupleTypeRef.symbol.asClass
     @tu lazy val Tuple_cons: Symbol = TupleClass.requiredMethod("*:")
+  @tu lazy val EmptyTupleModule: Symbol = ctx.requiredModule("scala.EmptyTuple")
   @tu lazy val NonEmptyTupleTypeRef: TypeRef = ctx.requiredClassRef("scala.NonEmptyTuple")
   def NonEmptyTupleClass(implicit ctx: Context): ClassSymbol = NonEmptyTupleTypeRef.symbol.asClass
     lazy val NonEmptyTuple_tail: Symbol = NonEmptyTupleClass.requiredMethod("tail")
-
   @tu lazy val PairClass: ClassSymbol = ctx.requiredClass("scala.*:")
+
   @tu lazy val TupleXXLClass: ClassSymbol = ctx.requiredClass("scala.runtime.TupleXXL")
   def TupleXXLModule(implicit ctx: Context): Symbol = TupleXXLClass.companionModule
 
@@ -770,6 +771,9 @@ class Definitions {
     lazy val RuntimeTuple_concat: Symbol = RuntimeTupleModule.requiredMethod("concat")
     lazy val RuntimeTuple_toArray: Symbol = RuntimeTupleModule.requiredMethod("toArray")
     lazy val RuntimeTuple_productToArray: Symbol = RuntimeTupleModule.requiredMethod("productToArray")
+    lazy val RuntimeTuple_isInstanceOfTuple: Symbol = RuntimeTupleModule.requiredMethod("isInstanceOfTuple")
+    lazy val RuntimeTuple_isInstanceOfEmptyTuple: Symbol = RuntimeTupleModule.requiredMethod("isInstanceOfEmptyTuple")
+    lazy val RuntimeTuple_isInstanceOfNonEmptyTuple: Symbol = RuntimeTupleModule.requiredMethod("isInstanceOfNonEmptyTuple")
 
   @tu lazy val TupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.TupledFunction")
   def TupledFunctionClass(implicit ctx: Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass
@@ -1185,11 +1189,11 @@ class Definitions {
   }
 
   def tupleTypes(tp: Type, bound: Int = Int.MaxValue)(implicit ctx: Context): Option[List[Type]] = {
-    @tailrec def rec(tp: Type, acc: List[Type], bound: Int): Option[List[Type]] = tp.normalized match {
+    @tailrec def rec(tp: Type, acc: List[Type], bound: Int): Option[List[Type]] = tp.normalized.dealias match {
       case _ if bound < 0 => Some(acc.reverse)
       case tp: AppliedType if defn.PairClass == tp.classSymbol => rec(tp.args(1), tp.args.head :: acc, bound - 1)
       case tp: AppliedType if defn.isTupleClass(tp.tycon.classSymbol) => Some(acc.reverse ::: tp.args)
-      case tp if tp.classSymbol == defn.UnitClass => Some(acc.reverse)
+      case tp: TermRef if tp.symbol == defn.EmptyTupleModule => Some(acc.reverse)
       case _ => None
     }
     rec(tp.stripTypeVar, Nil, bound)
@@ -1300,7 +1304,7 @@ class Definitions {
     def syntheticParent(tparams: List[TypeSymbol]): Type =
       if (tparams.isEmpty) TupleTypeRef
       else TypeOps.nestedPairs(tparams.map(_.typeRef))
-    if (isTupleClass(cls) || cls == UnitClass) parents :+ syntheticParent(tparams)
+    if (isTupleClass(cls)) parents :+ syntheticParent(tparams)
     else parents
   }
 
@@ -1397,7 +1401,7 @@ class Definitions {
       .updated(AnyClass, ObjectClass)
       .updated(AnyValClass, ObjectClass)
       .updated(SingletonClass, ObjectClass)
-      .updated(TupleClass, ObjectClass)
+      .updated(TupleClass, ProductClass)
       .updated(NonEmptyTupleClass, ProductClass)
 
   // ----- Initialization ---------------------------------------------------

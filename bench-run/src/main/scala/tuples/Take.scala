@@ -12,7 +12,7 @@ class Take {
 
   @Setup
   def setup(): Unit = {
-    tuple = ()
+    tuple = Tuple()
     half = size / 2
 
     for (i <- 1 to size)

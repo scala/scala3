@@ -1,7 +1,7 @@
 val a: (1, 2, 3) = (1, 2, 3)
 val b: (4, 5, 6) = (4, 5, 6)
 val c: (7, 8) = (7, 8)
-val d: Unit = ()
+val d: EmptyTuple = Tuple()
 
 // Zip
 val r1: ((1, 4), (2, 5), (3, 6)) = a.zip(b)
