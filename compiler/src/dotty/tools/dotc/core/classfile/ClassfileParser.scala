@@ -825,7 +825,7 @@ class ClassfileParser(
             val expectedUUID = new UUID(reader.readUncompressedLong(), reader.readUncompressedLong())
             val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
             if (expectedUUID != tastyUUID)
-              ctx.error(s"Tasty UUID ($tastyUUID) file did not correspond the tasty UUID ($expectedUUID) declared in the classfile $classfile.")
+              ctx.warning(s"$classfile is out of sync with its TASTy file. Loaded TASTy file. Try cleaning the project to fix this issue", NoSourcePosition)
             return unpickleTASTY(tastyBytes)
           }
         }
