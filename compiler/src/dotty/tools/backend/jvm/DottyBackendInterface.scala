@@ -3,7 +3,7 @@ package dotty.tools.backend.jvm
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc
-import dotty.tools.dotc.core.Flags.{termFlagSet}
+import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.transform.{Erasure, GenericSignatures}
 import dotty.tools.dotc.transform.SymUtils._
 import java.io.{File => _}
@@ -118,12 +118,12 @@ object DottyBackendInterface {
 
   extension symExtensions on (sym: Symbol) {
 
-    def isInterface(using Context): Boolean = (sym.is(Flags.PureInterface)) || sym.is(Flags.Trait)
+    def isInterface(using Context): Boolean = (sym.is(PureInterface)) || sym.is(Trait)
 
     def isStaticConstructor(using Context): Boolean = (sym.isStaticMember && sym.isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
 
     def isStaticMember(using Context): Boolean = (sym ne NoSymbol) &&
-      (sym.is(Flags.JavaStatic) || sym.isScalaStatic)
+      (sym.is(JavaStatic) || sym.isScalaStatic)
       // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
     /**
@@ -131,7 +131,7 @@ object DottyBackendInterface {
      * for such objects will get a MODULE$ flag and a corresponding static initializer.
      */
     def isStaticModuleClass(using Context): Boolean =
-      (sym.is(Flags.Module)) && {
+      (sym.is(Module)) && {
         // scalac uses atPickling here
         // this would not work if modules are created after pickling
         // for example by specialization
@@ -157,9 +157,9 @@ object DottyBackendInterface {
      * such objects.
      */
     def isTopLevelModuleClass(using Context): Boolean =
-      sym.is(Flags.ModuleClass) &&
+      sym.is(ModuleClass) &&
       ctx.atPhase(ctx.flattenPhase) {
-        toDenot(sym).owner.is(Flags.PackageClass)
+        toDenot(sym).owner.is(PackageClass)
       }
 
     def javaSimpleName(using Context): String = toDenot(sym).name.mangledString

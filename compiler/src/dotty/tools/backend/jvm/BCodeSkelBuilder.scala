@@ -13,7 +13,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames.str
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.Type
@@ -106,7 +106,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       initJClass(cnode)
 
-      val methodSymbols = for (f <- cd.symbol.info.decls.toList if f.is(Flags.Method) && f.isTerm && !f.is(Flags.Module)) yield f
+      val methodSymbols = for (f <- cd.symbol.info.decls.toList if f.is(Method) && f.isTerm && !f.is(Module)) yield f
       val hasStaticCtor = methodSymbols exists (_.isStaticConstructor)
       if (!hasStaticCtor) {
         // but needs one ...
@@ -117,7 +117,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val optSerial: Option[Long] =
         claszSymbol.getAnnotation(defn.SerialVersionUIDAnnot).flatMap { annot =>
-          if (claszSymbol.is(Flags.Trait)) {
+          if (claszSymbol.is(Trait)) {
             ctx.error("@SerialVersionUID does nothing on a trait", annot.tree.sourcePos)
             None
           } else {
@@ -184,13 +184,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       } else {
 
-        val skipStaticForwarders = (claszSymbol.isInterface || claszSymbol.is(Flags.Module) || ctx.settings.XnoForwarders.value)
+        val skipStaticForwarders = (claszSymbol.isInterface || claszSymbol.is(Module) || ctx.settings.XnoForwarders.value)
         if (!skipStaticForwarders) {
           val lmoc = claszSymbol.companionModule
           // add static forwarders if there are no name conflicts; see bugs #363 and #1735
           if (lmoc != NoSymbol) {
             // it must be a top level class (name contains no $s)
-            val isCandidateForForwarders =  (lmoc.is(Flags.Module)) && lmoc.isStatic
+            val isCandidateForForwarders =  (lmoc.is(Module)) && lmoc.isStatic
             if (isCandidateForForwarders) {
               ctx.log(s"Adding static forwarders from '$claszSymbol' to implementations in '$lmoc'")
               addForwarders(cnode, thisName, lmoc.moduleClass)
@@ -254,11 +254,11 @@ trait BCodeSkelBuilder extends BCodeHelpers {
        *  backend emits them as static).
        *  No code is needed for this module symbol.
        */
-      for (f <- claszSymbol.info.decls.filter(p => p.isTerm && !p.is(Flags.Method))) {
+      for (f <- claszSymbol.info.decls.filter(p => p.isTerm && !p.is(Method))) {
         val javagensig = getGenericSignature(f, claszSymbol)
         val flags = javaFieldFlags(f)
 
-        assert(!f.isStaticMember || !claszSymbol.isInterface || !f.is(Flags.Mutable),
+        assert(!f.isStaticMember || !claszSymbol.isInterface || !f.is(Mutable),
           s"interface $claszSymbol cannot have non-final static field $f")
 
         val jfield = new asm.tree.FieldNode(
@@ -305,7 +305,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      */
     var jumpDest: immutable.Map[ /* Labeled or LabelDef */ Symbol, asm.Label ] = null
     def programPoint(labelSym: Symbol): asm.Label = {
-      assert(labelSym.is(Flags.Label), s"trying to map a non-label symbol to an asm.Label, at: ${labelSym.span}")
+      assert(labelSym.is(Label), s"trying to map a non-label symbol to an asm.Label, at: ${labelSym.span}")
       jumpDest.getOrElse(labelSym, {
         val pp = new asm.Label
         jumpDest += (labelSym -> pp)
@@ -388,7 +388,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
        */
       def makeLocal(tk: BType, name: String, tpe: Type, pos: Span): Symbol = {
 
-        val locSym = ctx.newSymbol(methSymbol, name.toTermName, Flags.Synthetic, tpe, NoSymbol, pos)
+        val locSym = ctx.newSymbol(methSymbol, name.toTermName, Synthetic, tpe, NoSymbol, pos)
         makeLocal(locSym, tk)
         locSym
       }
@@ -404,7 +404,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       private def makeLocal(sym: Symbol, tk: BType): Local = {
         assert(nxtIdx != -1, "not a valid start index")
-        val loc = Local(tk, sym.javaSimpleName, nxtIdx, sym.is(Flags.Synthetic))
+        val loc = Local(tk, sym.javaSimpleName, nxtIdx, sym.is(Synthetic))
         val existing = slots.put(sym, loc)
         if (existing.isDefined)
           ctx.error("attempt to create duplicate local var.", ctx.source.atSpan(sym.span))
@@ -565,7 +565,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       }
 
       val isNative         = methSymbol.hasAnnotation(NativeAttr)
-      val isAbstractMethod = (methSymbol.is(Flags.Deferred) || (methSymbol.owner.isInterface && ((methSymbol.is(Flags.Deferred))  || methSymbol.isClassConstructor)))
+      val isAbstractMethod = (methSymbol.is(Deferred) || (methSymbol.owner.isInterface && ((methSymbol.is(Deferred))  || methSymbol.isClassConstructor)))
       val flags = GenBCodeOps.mkFlags(
         javaFlags(methSymbol),
         if (isAbstractMethod)        asm.Opcodes.ACC_ABSTRACT   else 0,

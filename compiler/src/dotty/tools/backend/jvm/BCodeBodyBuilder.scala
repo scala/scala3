@@ -12,7 +12,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.Flags.{Label => LabelFlag, _}
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.StdNames.{nme, str}
 import dotty.tools.dotc.core.Symbols._
@@ -353,7 +353,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           generatedType = genApply(app, expectedType)
 
         case This(qual) =>
-          val symIsModuleClass = tree.symbol.is(Flags.ModuleClass)
+          val symIsModuleClass = tree.symbol.is(ModuleClass)
           assert(tree.symbol == claszSymbol || symIsModuleClass,
                  s"Trying to access the this of another class: tree.symbol = ${tree.symbol}, class symbol = $claszSymbol compilation unit: $cunit")
           if (symIsModuleClass && tree.symbol != claszSymbol) {
@@ -367,7 +367,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
 
         case DesugaredSelect(Ident(nme.EMPTY_PACKAGE), module) =>
-          assert(tree.symbol.is(Flags.Module), s"Selection of non-module from empty package: $tree sym: ${tree.symbol} at: ${tree.span}")
+          assert(tree.symbol.is(Module), s"Selection of non-module from empty package: $tree sym: ${tree.symbol} at: ${tree.span}")
           genLoadModule(tree)
 
         case DesugaredSelect(qualifier, _) =>
@@ -379,7 +379,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
           def receiverClass = qualifier.tpe.widenDealias.typeSymbol
-          if (sym.is(Flags.Module)) {
+          if (sym.is(Module)) {
             genLoadQualUnlessElidable()
             genLoadModule(tree)
           } else if (sym.isStaticMember) {
@@ -398,8 +398,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val desugared = cachedDesugarIdent(t)
           desugared match {
             case None =>
-              if (!sym.is(Flags.Package)) {
-                if (sym.is(Flags.Module)) genLoadModule(sym)
+              if (!sym.is(Package)) {
+                if (sym.is(Module)) genLoadModule(sym)
                 else locals.load(sym)
               }
             case Some(t) =>
@@ -544,7 +544,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     private def genReturn(r: Return): Unit = {
       val expr: Tree = r.expr
-      val fromSym: Symbol = if (r.from.symbol.is(Flags.Label)) r.from.symbol else NoSymbol
+      val fromSym: Symbol = if (r.from.symbol.is(LabelFlag)) r.from.symbol else NoSymbol
 
       if (NoSymbol == fromSym) {
         // return from enclosing method
@@ -571,8 +571,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         }
       } else {
         // return from labeled
-        assert(fromSym.is(Flags.Label), fromSym)
-        assert(!fromSym.is(Flags.Method), fromSym)
+        assert(fromSym.is(LabelFlag), fromSym)
+        assert(!fromSym.is(Method), fromSym)
 
         /* TODO At the moment, we disregard cleanups, because by construction we don't have return-from-labels
          * that cross cleanup boundaries. However, in theory such crossings are valid, so we should take care
@@ -776,7 +776,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           } else { // normal method call
             val invokeStyle =
               if (sym.isStaticMember) InvokeStyle.Static
-              else if (sym.is(Flags.Private) || sym.isClassConstructor) InvokeStyle.Special
+              else if (sym.is(Private) || sym.isClassConstructor) InvokeStyle.Special
               else InvokeStyle.Virtual
 
             if (invokeStyle.hasInstance) genLoadQualifier(fun)
@@ -1030,7 +1030,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     def genLoadModule(tree: Tree): BType = {
       val module = (
-        if (!tree.symbol.is(Flags.PackageClass)) tree.symbol
+        if (!tree.symbol.is(PackageClass)) tree.symbol
         else tree.symbol.info.member(nme.PACKAGE).symbol match {
           case NoSymbol => abort(s"SI-5604: Cannot use package as value: $tree")
           case s        => abort(s"SI-5604: found package class where package object expected: $tree")
@@ -1353,7 +1353,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
        * not using the rich equality is possible (their own equals method will do ok.)
        */
       val mustUseAnyComparator: Boolean = {
-        val areSameFinals = l.tpe.typeSymbol.is(Flags.Final) && r.tpe.typeSymbol.is(Flags.Final) && (l.tpe =:= r.tpe)
+        val areSameFinals = l.tpe.typeSymbol.is(Final) && r.tpe.typeSymbol.is(Final) && (l.tpe =:= r.tpe)
         // todo: remove
         def isMaybeBoxed(sym: Symbol): Boolean = {
           (sym == defn.ObjectClass) ||
@@ -1369,7 +1369,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case Literal(Constant(null)) => true
         case _ => false
       }
-      def isNonNullExpr(t: Tree): Boolean = t.isInstanceOf[Literal] || ((t.symbol ne null) && t.symbol.is(Flags.Module))
+      def isNonNullExpr(t: Tree): Boolean = t.isInstanceOf[Literal] || ((t.symbol ne null) && t.symbol.is(Module))
 
       if (mustUseAnyComparator) {
         val equalsMethod: Symbol = {
@@ -1440,7 +1440,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val isInterface = isEmittedInterface(lambdaTarget.owner)
       val invokeStyle =
         if (lambdaTarget.isStaticMember) asm.Opcodes.H_INVOKESTATIC
-        else if (lambdaTarget.is(Flags.Private) || lambdaTarget.isClassConstructor) asm.Opcodes.H_INVOKESPECIAL
+        else if (lambdaTarget.is(Private) || lambdaTarget.isClassConstructor) asm.Opcodes.H_INVOKESPECIAL
         else if (isInterface) asm.Opcodes.H_INVOKEINTERFACE
         else asm.Opcodes.H_INVOKEVIRTUAL
 
@@ -1504,7 +1504,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
    *  which we represent as classes.
    */
   private def isEmittedInterface(sym: Symbol): Boolean = sym.isInterface ||
-    sym.is(Flags.JavaDefined) && (toDenot(sym).isAnnotation || sym.is(Flags.ModuleClass) && (sym.companionClass.is(Flags.PureInterface)) || sym.companionClass.is(Flags.Trait))
+    sym.is(JavaDefined) && (toDenot(sym).isAnnotation || sym.is(ModuleClass) && (sym.companionClass.is(PureInterface)) || sym.companionClass.is(Trait))
 
 }
 

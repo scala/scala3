@@ -7,7 +7,7 @@ import scala.annotation.threadUnsafe
 import scala.collection.mutable
 import scala.collection.generic.Clearable
 
-import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.SymUtils._
@@ -96,7 +96,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     val superClassSym: Symbol =  {
       val t = classSym.asClass.superClass
       if (t.exists) t
-      else if (classSym.is(Flags.ModuleClass)) {
+      else if (classSym.is(ModuleClass)) {
         // workaround #371
 
         println(s"Warning: mocking up superclass for $classSym")
@@ -126,7 +126,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
       val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
       val superCalls = superCallsMap.getOrElse(sym, Set.empty)
-      val additional = (superCalls -- directlyInheritedTraitsSet).filter(_.is(Flags.Trait))
+      val additional = (superCalls -- directlyInheritedTraitsSet).filter(_.is(Trait))
 //      if (additional.nonEmpty)
 //        println(s"$fullName: adding supertraits $additional")
       directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCalls(t)) ++ additional
@@ -181,7 +181,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
      * Here we get rid of the module class B, making sure that the class B is present.
      */
     val nestedClassSymbolsNoJavaModuleClasses = nestedClassSymbols.filter(s => {
-      if (s.is(Flags.JavaDefined) && s.is(Flags.ModuleClass)) {
+      if (s.is(JavaDefined) && s.is(ModuleClass)) {
         // We could also search in nestedClassSymbols for s.linkedClassOfClass, but sometimes that
         // returns NoSymbol, so it doesn't work.
         val nb = nestedClassSymbols.count(mc => mc.name == s.name && mc.owner == s.owner)
@@ -219,7 +219,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   private def buildNestedInfo(innerClassSym: Symbol): Option[NestedInfo] = {
     assert(innerClassSym.isClass, s"Cannot build NestedInfo for non-class symbol $innerClassSym")
 
-    val isNested = !innerClassSym.originalOwner.originalLexicallyEnclosingClass.is(Flags.PackageClass)
+    val isNested = !innerClassSym.originalOwner.originalLexicallyEnclosingClass.is(PackageClass)
     if (!isNested) None
     else {
       // See comment in BTypes, when is a class marked static in the InnerClass table.
@@ -273,7 +273,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
    * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
    */
   private def (sym: Symbol).isOriginallyStaticOwner: Boolean =
-    sym.is(Flags.PackageClass) || sym.is(Flags.ModuleClass) && sym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
+    sym.is(PackageClass) || sym.is(ModuleClass) && sym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
 
   /**
    * Return the Java modifiers for the given symbol.
@@ -296,14 +296,14 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   final def javaFlags(sym: Symbol): Int = {
 
 
-    val privateFlag = sym.is(Flags.Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
+    val privateFlag = sym.is(Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
-    val finalFlag = sym.is(Flags.Final) &&  !toDenot(sym).isClassConstructor && !(sym.is(Flags.Mutable)) &&  !(sym.enclosingClass.is(Flags.Trait))
+    val finalFlag = sym.is(Final) &&  !toDenot(sym).isClassConstructor && !(sym.is(Mutable)) &&  !(sym.enclosingClass.is(Trait))
 
     import asm.Opcodes._
     GenBCodeOps.mkFlags(
       if (privateFlag) ACC_PRIVATE else ACC_PUBLIC,
-      if (sym.is(Flags.Deferred) || sym.isOneOf(Flags.AbstractOrTrait)) ACC_ABSTRACT else 0,
+      if (sym.is(Deferred) || sym.isOneOf(AbstractOrTrait)) ACC_ABSTRACT else 0,
       if (sym.isInterface) ACC_INTERFACE else 0,
 
       if (finalFlag &&
@@ -311,19 +311,19 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         // without having to provide any implementations, but that is an
         // illegal combination of modifiers at the bytecode level so
         // suppress final if abstract if present.
-        !sym.isOneOf(Flags.AbstractOrTrait) &&
+        !sym.isOneOf(AbstractOrTrait) &&
         //  Mixin forwarders are bridges and can be final, but final bridges confuse some frameworks
-        !sym.is(Flags.Bridge))
+        !sym.is(Bridge))
         ACC_FINAL else 0,
       if (sym.isStaticMember) ACC_STATIC else 0,
-      if (sym.is(Flags.Bridge)) ACC_BRIDGE | ACC_SYNTHETIC else 0,
-      if (sym.is(Flags.Artifact)) ACC_SYNTHETIC else 0,
+      if (sym.is(Bridge)) ACC_BRIDGE | ACC_SYNTHETIC else 0,
+      if (sym.is(Artifact)) ACC_SYNTHETIC else 0,
       if (sym.isClass && !sym.isInterface) ACC_SUPER else 0,
-      if (sym.isAllOf(Flags.JavaEnumTrait)) ACC_ENUM else 0,
-      if (sym.is(Flags.JavaVarargs)) ACC_VARARGS else 0,
-      if (sym.is(Flags.Synchronized)) ACC_SYNCHRONIZED else 0,
+      if (sym.isAllOf(JavaEnumTrait)) ACC_ENUM else 0,
+      if (sym.is(JavaVarargs)) ACC_VARARGS else 0,
+      if (sym.is(Synchronized)) ACC_SYNCHRONIZED else 0,
       if (false /*sym.isDeprecated*/) asm.Opcodes.ACC_DEPRECATED else 0, // TODO: add an isDeprecated method in SymUtils
-      if (sym.is(Flags.Enum)) asm.Opcodes.ACC_ENUM else 0
+      if (sym.is(Enum)) asm.Opcodes.ACC_ENUM else 0
     )
   }
 
@@ -331,7 +331,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     javaFlags(sym) | GenBCodeOps.mkFlags(
       if (sym hasAnnotation TransientAttr) asm.Opcodes.ACC_TRANSIENT else 0,
       if (sym hasAnnotation VolatileAttr)  asm.Opcodes.ACC_VOLATILE  else 0,
-      if (sym.is(Flags.Mutable)) 0 else asm.Opcodes.ACC_FINAL
+      if (sym.is(Mutable)) 0 else asm.Opcodes.ACC_FINAL
     )
   }
 }

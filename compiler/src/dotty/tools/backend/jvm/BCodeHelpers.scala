@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.NameKinds.ExpandedName
 import dotty.tools.dotc.core.Signature
@@ -225,7 +225,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       // If the `sym` is a java module class, we use the java class instead. This ensures that we
       // register the class (instead of the module class) in innerClassBufferASM.
       // The two symbols have the same name, so the resulting internalName is the same.
-      val classSym = if (sym.is(Flags.JavaDefined) && sym.is(Flags.ModuleClass)) sym.linkedClass else sym
+      val classSym = if (sym.is(JavaDefined) && sym.is(ModuleClass)) sym.linkedClass else sym
       getClassBTypeAndRegisterInnerClass(classSym).internalName
     }
 
@@ -269,7 +269,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     final def asmMethodType(msym: Symbol): MethodBType = {
-      assert(msym.is(Flags.Method), s"not a method-symbol: $msym")
+      assert(msym.is(Method), s"not a method-symbol: $msym")
       val resT: BType =
         if (msym.isClassConstructor || msym.isConstructor) UNIT
         else toTypeKind(msym.info.resultType)
@@ -343,7 +343,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
 
     private def shouldEmitAnnotation(annot: Annotation): Boolean = {
-      annot.symbol.is(Flags.JavaDefined) &&
+      annot.symbol.is(JavaDefined) &&
         retentionPolicyOf(annot) != AnnotationRetentionSourceAttr
     }
 
@@ -378,7 +378,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
           av.visit(name, typeToTypeKind(t.args.head.tpe.classSymbol.denot.info)(bcodeStore)(innerClasesStore).toASMType)
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
-        case t: tpd.RefTree if t.symbol.denot.owner.isAllOf(Flags.JavaEnumTrait) =>
+        case t: tpd.RefTree if t.symbol.denot.owner.isAllOf(JavaEnumTrait) =>
           val edesc = innerClasesStore.typeDescriptor(t.tpe) // the class descriptor of the enumeration class.
           val evalue = t.symbol.javaSimpleName // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
@@ -482,7 +482,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     def getGenericSignature(sym: Symbol, owner: Symbol): String = {
       ctx.atPhase(ctx.erasurePhase) {
         val memberTpe =
-          if (sym.is(Flags.Method)) sym.denot.info
+          if (sym.is(Method)) sym.denot.info
           else owner.denot.thisType.memberInfo(sym)
         getGenericSignatureHelper(sym, owner, memberTpe).orNull
       }
@@ -509,7 +509,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       // TODO: evaluate the other flags we might be dropping on the floor here.
       // TODO: ACC_SYNTHETIC ?
       val flags = GenBCodeOps.PublicStatic | (
-        if (m.is(Flags.JavaVarargs)) asm.Opcodes.ACC_VARARGS else 0
+        if (m.is(JavaVarargs)) asm.Opcodes.ACC_VARARGS else 0
       )
 
       // TODO needed? for(ann <- m.annotations) { ann.symbol.initialize }
@@ -563,7 +563,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     def addForwarders(jclass: asm.ClassVisitor, jclassName: String, moduleClass: Symbol): Unit = {
-      assert(moduleClass.is(Flags.ModuleClass), moduleClass)
+      assert(moduleClass.is(ModuleClass), moduleClass)
       ctx.debuglog(s"Dumping mirror class for object: $moduleClass")
 
       val linkedClass  = moduleClass.companionClass
@@ -572,11 +572,11 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       }
       ctx.debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
-      for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Flags.Method, excluded = Flags.ExcludedForwarder)) {
-        val m = if (m0.is(Flags.Bridge)) m0.nextOverriddenSymbol else m0
+      for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Method, excluded = ExcludedForwarder)) {
+        val m = if (m0.is(Bridge)) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
           ctx.log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
-        else if (m.isType || m.is(Flags.Deferred) || (m.owner eq defn.ObjectClass) || m.isConstructor || m.name.is(ExpandedName))
+        else if (m.isType || m.is(Deferred) || (m.owner eq defn.ObjectClass) || m.isConstructor || m.name.is(ExpandedName))
           ctx.debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
         else if (conflictingNames(m.name))
           ctx.log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")
@@ -592,7 +592,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     /** The members of this type that have all of `required` flags but none of `excluded` flags set.
      *  The members are sorted by name and signature to guarantee a stable ordering.
      */
-    private def sortedMembersBasedOnFlags(tp: Type, required: Flags.Flag, excluded: Flags.FlagSet): List[Symbol] = {
+    private def sortedMembersBasedOnFlags(tp: Type, required: Flag, excluded: FlagSet): List[Symbol] = {
       // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
       val names = tp.memberNames(takeAllFilter).toSeq.sorted
       val buffer = mutable.ListBuffer[Symbol]()
@@ -667,7 +667,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      *  must-single-thread
      */
     def genMirrorClass(moduleClass: Symbol, cunit: CompilationUnit): asm.tree.ClassNode = {
-      assert(moduleClass.is(Flags.ModuleClass))
+      assert(moduleClass.is(ModuleClass))
       assert(moduleClass.companionClass == NoSymbol, moduleClass)
       innerClassBufferASM.clear()
       this.cunit = cunit
@@ -690,7 +690,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
                                 null /* SourceDebugExtension */)
       }
 
-      val ssa = None // getAnnotPickle(mirrorName, if (moduleClass.is(Flags.Module)) moduleClass.companionClass else moduleClass.companionModule)
+      val ssa = None // getAnnotPickle(mirrorName, if (moduleClass.is(Module)) moduleClass.companionClass else moduleClass.companionModule)
       mirrorClass.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
       emitAnnotations(mirrorClass, moduleClass.annotations ++ ssa)
 
@@ -892,7 +892,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     }
 
     wrap {
-      if (sym.is(Flags.Method)) {
+      if (sym.is(Method)) {
         CheckClassAdapter.checkMethodSignature(sig)
       }
       else if (sym.isTerm) {
@@ -914,9 +914,9 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     // generic information could disappear as a consequence of a seemingly
     // unrelated change.
       ctx.base.settings.YnoGenericSig.value
-    || sym.is(Flags.Artifact)
-    || sym.isAllOf(Flags.LiftedMethod)
-    || sym.is(Flags.Bridge)
+    || sym.is(Artifact)
+    || sym.isAllOf(LiftedMethod)
+    || sym.is(Bridge)
   )
 
   private def getStaticForwarderGenericSignature(sym: Symbol, moduleClass: Symbol): String = {
