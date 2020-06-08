@@ -227,4 +227,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   def isCollectiveExtensionClass(using Context): Boolean =
     self.is(ModuleClass) && self.sourceModule.is(Extension, butNot = Method)
+
+  def isScalaStatic(using Context): Boolean =
+    self.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
+
 }

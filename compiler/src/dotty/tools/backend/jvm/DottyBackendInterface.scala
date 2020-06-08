@@ -123,7 +123,7 @@ object DottyBackendInterface {
     def isStaticConstructor(using Context): Boolean = (sym.isStaticMember && sym.isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
 
     def isStaticMember(using Context): Boolean = (sym ne NoSymbol) &&
-      (sym.is(Flags.JavaStatic) || sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot))
+      (sym.is(Flags.JavaStatic) || sym.isScalaStatic)
       // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
     /**
