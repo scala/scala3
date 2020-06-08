@@ -162,6 +162,9 @@ object DottyBackendInterface {
         toDenot(sym).owner.is(Flags.PackageClass)
       }
 
+    def javaSimpleName(using Context): String = toDenot(sym).name.mangledString
+    def javaClassName(using Context): String = toDenot(sym).fullName.mangledString
+    def javaBinaryName(using Context): String = javaClassName.replace('.', '/')
   }
 
   private val primitiveCompilationUnits = Set(

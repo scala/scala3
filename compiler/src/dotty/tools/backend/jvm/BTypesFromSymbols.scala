@@ -83,7 +83,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
 
     convertedClasses.getOrElse(classSym, {
-      val internalName = classSym.fullName.mangledString.replace('.', '/')
+      val internalName = classSym.javaBinaryName
       // We first create and add the ClassBType to the hash map before computing its info. This
       // allows initializing cylic dependencies, see the comment on variable ClassBType._info.
       val classBType = new ClassBType(internalName)
@@ -240,7 +240,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         if (isAnonymousOrLocalClass(innerClassSym)) {
           None
         } else {
-          val outerName = innerClassSym.originalOwner.originalLexicallyEnclosingClass.fullName.mangledString.replace('.', '/')
+          val outerName = innerClassSym.originalOwner.originalLexicallyEnclosingClass.javaBinaryName
           def dropModule(str: String): String =
             if (!str.isEmpty && str.last == '$') str.take(str.length - 1) else str
           // Java compatibility. See the big comment in BTypes that summarizes the InnerClass spec.

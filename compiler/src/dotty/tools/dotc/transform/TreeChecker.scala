@@ -23,6 +23,7 @@ import scala.internal.Chars._
 import collection.mutable
 import ProtoTypes._
 
+import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
 import scala.util.control.NonFatal
 
@@ -50,7 +51,7 @@ class TreeChecker extends Phase with SymTransformer {
   val NoSuperClassFlags: FlagSet = Trait | Package
 
   def testDuplicate(sym: Symbol, registry: mutable.Map[String, Symbol], typ: String)(using Context): Unit = {
-    val name = sym.fullName.mangledString
+    val name = sym.javaClassName
     val isDuplicate = this.flatClasses && registry.contains(name)
     assert(!isDuplicate, s"$typ defined twice $sym ${sym.id} ${registry(name).id}")
     registry(name) = sym

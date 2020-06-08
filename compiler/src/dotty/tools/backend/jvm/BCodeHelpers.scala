@@ -27,6 +27,8 @@ import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.GenericSignatures
 import dotty.tools.io.AbstractFile
 
+import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
+
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
  *
@@ -369,7 +371,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
             case ClazzTag => av.visit(name, typeToTypeKind(const.typeValue)(bcodeStore)(innerClasesStore).toASMType)
             case EnumTag =>
               val edesc = innerClasesStore.typeDescriptor(const.tpe) // the class descriptor of the enumeration class.
-              val evalue = const.symbolValue.name.mangledString // value the actual enumeration value.
+              val evalue = const.symbolValue.javaSimpleName // value the actual enumeration value.
               av.visitEnum(name, edesc, evalue)
           }
         case t: TypeApply if (t.fun.symbol == defn.Predef_classOf) =>
@@ -378,7 +380,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
         case t: tpd.RefTree if t.symbol.denot.owner.isAllOf(Flags.JavaEnumTrait) =>
           val edesc = innerClasesStore.typeDescriptor(t.tpe) // the class descriptor of the enumeration class.
-          val evalue = t.symbol.name.mangledString // value the actual enumeration value.
+          val evalue = t.symbol.javaSimpleName // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         case t: SeqLiteral =>
           val arrAnnotV: AnnotationVisitor = av.visitArray(name)
@@ -517,7 +519,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       val jReturnType = toTypeKind(methodInfo.resultType)
       val mdesc = MethodBType(paramJavaTypes, jReturnType).descriptor
-      val mirrorMethodName = m.name.mangledString.toString
+      val mirrorMethodName = m.javaSimpleName
       val mirrorMethod: asm.MethodVisitor = jclass.visitMethod(
         flags,
         mirrorMethodName,

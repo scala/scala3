@@ -20,6 +20,8 @@ import parsing.Parsers.OutlineParser
 import reporting.trace
 import ast.desugar
 
+import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
+
 object SymbolLoaders {
   import ast.untpd._
 
@@ -279,7 +281,7 @@ object SymbolLoaders {
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
 
-      val packageName = if (root.isEffectiveRoot) "" else root.fullName.mangledString
+      val packageName = if (root.isEffectiveRoot) "" else root.symbol.javaClassName
 
       enterFlatClasses = Some { ctx =>
         enterFlatClasses = None

@@ -30,6 +30,8 @@ import ScopedVar.withScopedVars
 import JSDefinitions._
 import JSInterop._
 
+import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
+
 /** Encoding of symbol names for JavaScript
  *
  *  Some issues that this encoding solves:
@@ -119,7 +121,7 @@ object JSEncoding {
       js.LabelIdent(freshLabelName(base))
 
     def labelSymbolName(sym: Symbol)(implicit ctx: Context): LabelName =
-      labelSymbolNames.getOrElseUpdate(sym, freshLabelName(sym.name.mangledString))
+      labelSymbolNames.getOrElseUpdate(sym, freshLabelName(sym.javaSimpleName))
 
     def getEnclosingReturnLabel()(implicit pos: ir.Position): js.LabelIdent = {
       if (returnLabelName.isEmpty)
@@ -157,7 +159,7 @@ object JSEncoding {
     require(sym.owner.isClass && sym.isTerm && !sym.is(Flags.Method) && !sym.is(Flags.Module),
         "encodeFieldSym called with non-field symbol: " + sym)
 
-    val name0 = sym.name.mangledString
+    val name0 = sym.javaSimpleName
     val name =
       if (name0.charAt(name0.length()-1) != ' ') name0
       else name0.substring(0, name0.length()-1)
@@ -247,7 +249,7 @@ object JSEncoding {
        */
       ir.Names.BoxedUnitClass
     } else {
-      ClassName(sym1.fullName.mangledString)
+      ClassName(sym1.javaClassName)
     }
   }
 

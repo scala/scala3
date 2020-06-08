@@ -92,7 +92,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
       ctx.debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(_.enclosingClass)})")
       Some(EnclosingMethodEntry(
         classDesc(enclosingClassForEnclosingMethodAttribute(classSym)),
-        methodOpt.map(_.name.mangledString.toString).orNull,
+        methodOpt.map(_.javaSimpleName).orNull,
         methodOpt.map(methodDesc).orNull))
     } else {
       None
