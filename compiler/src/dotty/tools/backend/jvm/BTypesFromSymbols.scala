@@ -167,9 +167,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       // like D is a member of C, not C$.
       val linkedClass = classSym.linkedClass
       val companionModuleMembers = {
-        // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
-        // not local classes of the companion module (E in the example) that were lifted by lambdalift.
-        if (classSym.linkedClass.isTopLevelModuleClass) /*exitingPickler*/ getMemberClasses(classSym.linkedClass)
+        if (classSym.linkedClass.isTopLevelModuleClass) getMemberClasses(classSym.linkedClass)
         else Nil
       }
 
@@ -324,7 +322,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       if (sym.isAllOf(Flags.JavaEnumTrait)) ACC_ENUM else 0,
       if (sym.is(Flags.JavaVarargs)) ACC_VARARGS else 0,
       if (sym.is(Flags.Synchronized)) ACC_SYNCHRONIZED else 0,
-      if (false /*sym.isDeprecated*/) asm.Opcodes.ACC_DEPRECATED else 0,
+      if (false /*sym.isDeprecated*/) asm.Opcodes.ACC_DEPRECATED else 0, // TODO: add an isDeprecated method in SymUtils
       if (sym.is(Flags.Enum)) asm.Opcodes.ACC_ENUM else 0
     )
   }
