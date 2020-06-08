@@ -605,7 +605,16 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         if (defn.isSyntheticFunctionClass(sym))
           sigName(defn.erasedFunctionType(sym))
         else
-          normalizeClass(sym.asClass).fullName.asTypeName
+          val cls = normalizeClass(sym.asClass)
+          val fullName =
+            if !ctx.erasedTypes then
+              // It's important to use the initial symbol to compute the full name
+              // because the current symbol might have a different name or owner
+              // and signatures are required to be stable before erasure.
+              cls.initial.fullName
+            else
+              cls.fullName
+          fullName.asTypeName
       case tp: AppliedType =>
         val sym = tp.tycon.typeSymbol
         sigName( // todo: what about repeatedParam?

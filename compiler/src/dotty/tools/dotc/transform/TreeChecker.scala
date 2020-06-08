@@ -92,12 +92,20 @@ class TreeChecker extends Phase with SymTransformer {
     if (ctx.phaseId <= ctx.erasurePhase.id) {
       val cur = symd.info
       val initial = symd.initial.info
-      assert(cur.signature == initial.signature,
-        i"""Signature of $symd changed at phase ${ctx.phase}
+      val curSig = cur match {
+        case cur: SignatureCachingType =>
+          // Bypass the signature cache, it might hide a signature change
+          cur.computeSignature
+        case _ =>
+          cur.signature
+      }
+      assert(curSig == initial.signature,
+        i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.squashed(ctx.phase.prev)}
            |Initial info: ${initial}
            |Initial sig : ${initial.signature}
            |Current info: ${cur}
-           |Current sig : ${cur.signature}""")
+           |Current sig : ${curSig}
+           |Current cached sig: ${cur.signature}""")
     }
 
     symd
