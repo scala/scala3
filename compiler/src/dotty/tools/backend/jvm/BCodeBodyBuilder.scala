@@ -1124,7 +1124,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         if (specificReceiver != null)
           assert(style.isVirtual || specificReceiver == methodOwner, s"specificReceiver can only be specified for virtual calls. $method - $specificReceiver")
 
-        val useSpecificReceiver = specificReceiver != null && (specificReceiver ne defn.NullClass) && (specificReceiver ne defn.NothingClass) && !method.isScalaStatic
+        val useSpecificReceiver = specificReceiver != null && !defn.isBottomClass(specificReceiver) && !method.isScalaStatic
         val receiver = if (useSpecificReceiver) specificReceiver else methodOwner
 
         // workaround for a JVM bug: https://bugs.openjdk.java.net/browse/JDK-8154587
