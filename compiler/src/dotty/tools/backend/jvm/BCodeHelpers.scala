@@ -531,9 +531,9 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       emitAnnotations(mirrorMethod, others)
       val params: List[Symbol] = Nil // backend uses this to emit annotations on parameter lists of forwarders
       // to static methods of companion class
-      // in Dotty this link does not exists: there is no way to get from method type
+      // Old assumption: in Dotty this link does not exists: there is no way to get from method type
       // to inner symbols of DefDef
-      // todo: somehow handle.
+      // TODO: now we have paramSymss and could use it here.
       emitParamAnnotations(mirrorMethod, params.map(_.annotations))
 
       mirrorMethod.visitCode()
