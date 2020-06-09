@@ -614,6 +614,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     def getExceptions(excs: List[Annotation]): List[String] = {
+      // TODO: implement ThrownException
       // for (ThrownException(exc) <- excs.distinct)
       // yield internalName(exc)
       Nil
