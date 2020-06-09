@@ -3047,7 +3047,7 @@ class Typer extends Namer
             }
             tryEither {
               val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
-              if (wtp.isContextualMethod) app.setUsingApply()
+              if (wtp.isContextualMethod) app.setApplyKind(ApplyKind.Using)
               typr.println(i"try with default implicit args $app")
               typed(app, pt, locked)
             } { (_, _) =>

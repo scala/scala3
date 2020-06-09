@@ -444,20 +444,21 @@ object Trees {
   }
 
   enum ApplyKind:
-    case Regular, Using, Infix
+    case Regular      // r.f(x)
+    case Using        // r.f(using x)
+    case InfixUnit    // r f (), needs to be treated specially for an error message in typedApply
 
   /** fun(args) */
   case class Apply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends GenericApply[T] {
     type ThisTree[-T >: Untyped] = Apply[T]
 
-    def setUsingApply() =
-      putAttachment(untpd.ApplyGiven, ())
+    def setApplyKind(kind: ApplyKind) =
+      putAttachment(untpd.KindOfApply, kind)
       this
 
     def applyKind: ApplyKind =
-      if hasAttachment(untpd.ApplyGiven) then ApplyKind.Using
-      else ApplyKind.Regular
+      attachmentOrElse(untpd.KindOfApply, ApplyKind.Regular)
   }
 
 

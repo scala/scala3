@@ -537,7 +537,7 @@ object desugar {
       val nu = vparamss.foldLeft(makeNew(classTypeRef)) { (nu, vparams) =>
         val app = Apply(nu, vparams.map(refOfDef))
         vparams match {
-          case vparam :: _ if vparam.mods.is(Given) => app.setUsingApply()
+          case vparam :: _ if vparam.mods.is(Given) => app.setApplyKind(ApplyKind.Using)
           case _ => app
         }
       }
@@ -1188,18 +1188,19 @@ object desugar {
       case Assign(Ident(name), rhs) => cpy.NamedArg(arg)(name, rhs)
       case _ => arg
     }
-    def makeOp(fn: Tree, arg: Tree, selectPos: Span) = {
-      val args: List[Tree] = arg match {
-        case Parens(arg) => assignToNamedArg(arg) :: Nil
-        case Tuple(args) if args.nonEmpty =>  // this case should be dropped if auto-tupling is removed
-          args.mapConserve(assignToNamedArg)
-        case _ => arg :: Nil
-      }
+    def makeOp(fn: Tree, arg: Tree, selectPos: Span) =
       val sel = Select(fn, op.name).withSpan(selectPos)
       if (left.sourcePos.endLine < op.sourcePos.startLine)
         sel.pushAttachment(MultiLineInfix, ())
-      InfixApply(sel, args)
-    }
+      arg match
+        case Parens(arg) =>
+          Apply(sel, assignToNamedArg(arg) :: Nil)
+        case Tuple(Nil) =>
+          Apply(sel, arg :: Nil).setApplyKind(ApplyKind.InfixUnit)
+        case Tuple(args) if args.nonEmpty =>  // this case should be dropped if auto-tupling is removed
+          Apply(sel, args.mapConserve(assignToNamedArg))
+        case _ =>
+          Apply(sel, arg :: Nil)
 
     if (isLeftAssoc(op.name))
       makeOp(left, right, Span(left.span.start, op.span.end, op.span.start))

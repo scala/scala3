@@ -615,7 +615,7 @@ trait Applications extends Compatibility {
             case arg :: args1 =>
               val msg = arg match
                 case untpd.Tuple(Nil)
-                if applyKind == ApplyKind.Infix && funType.widen.isNullaryMethod =>
+                if applyKind == ApplyKind.InfixUnit && funType.widen.isNullaryMethod =>
                   i"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
                 case _ =>
                   i"too many arguments for $methString"

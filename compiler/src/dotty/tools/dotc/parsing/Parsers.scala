@@ -2354,7 +2354,7 @@ object Parsers {
 
     def mkApply(fn: Tree, args: (List[Tree], Boolean)): Tree =
       val res = Apply(fn, args._1)
-      if args._2 then res.setUsingApply()
+      if args._2 then res.setApplyKind(ApplyKind.Using)
       res
 
     val argumentExpr: () => Tree = () => expr(Location.InArgs) match
