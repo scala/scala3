@@ -301,7 +301,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val av = cw.visitAnnotation(typeDescriptor(typ.asInstanceOf[Type]), isRuntimeVisible(annot))
+        val av = cw.visitAnnotation(typeDescriptor(typ), isRuntimeVisible(annot))
         emitAssocs(av, assocs, BCodeHelpers.this)(this)
       }
 
@@ -312,7 +312,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val av = mw.visitAnnotation(typeDescriptor(typ.asInstanceOf[Type]), isRuntimeVisible(annot))
+        val av = mw.visitAnnotation(typeDescriptor(typ), isRuntimeVisible(annot))
         emitAssocs(av, assocs, BCodeHelpers.this)(this)
       }
 
@@ -323,7 +323,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val av = fw.visitAnnotation(typeDescriptor(typ.asInstanceOf[Type]), isRuntimeVisible(annot))
+        val av = fw.visitAnnotation(typeDescriptor(typ), isRuntimeVisible(annot))
         emitAssocs(av, assocs, BCodeHelpers.this)(this)
       }
 
