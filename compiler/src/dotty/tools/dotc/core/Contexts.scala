@@ -249,18 +249,16 @@ object Contexts {
     def getSource(path: TermName): SourceFile = base.sourceNamed.get(path) match {
       case Some(source) =>
         source
-      case None =>
-        val src = try {
-          val f = new PlainFile(Path(path.toString))
-          val s = getSource(f)
-          base.sourceNamed(path) = s
-          s
-        } catch {
-          case ex: InvalidPathException =>
-            ctx.error(s"invalid file path: ${ex.getMessage}")
-            NoSource
-        }
+      case None => try {
+        val f = new PlainFile(Path(path.toString))
+        val src = getSource(f)
+        base.sourceNamed(path) = src
         src
+      } catch {
+        case ex: InvalidPathException =>
+          ctx.error(s"invalid file path: ${ex.getMessage}")
+          NoSource
+      }
     }
 
     /** Sourcefile with given path, memoized */
