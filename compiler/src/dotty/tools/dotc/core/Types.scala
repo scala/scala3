@@ -1900,7 +1900,7 @@ object Types {
      *  or if there is none, the signature of the symbol. Signatures are always
      *  computed before erasure, since some symbols change their signature at erasure.
      */
-    protected def computeSignature(implicit ctx: Context): Signature =
+    protected[dotc] def computeSignature(implicit ctx: Context): Signature =
       val lastd = lastDenotation
       if lastd != null then sigFromDenot(lastd)
       else if ctx.erasedTypes then computeSignature(using ctx.withPhase(ctx.erasurePhase))
@@ -3064,7 +3064,7 @@ object Types {
     protected var mySignature: Signature = _
     protected var mySignatureRunId: Int = NoRunId
 
-    protected def computeSignature(implicit ctx: Context): Signature
+    protected[dotc] def computeSignature(implicit ctx: Context): Signature
 
     final override def signature(implicit ctx: Context): Signature = {
       if (ctx.runId != mySignatureRunId) {
@@ -3357,7 +3357,7 @@ object Types {
       companion.eq(ContextualMethodType) ||
       companion.eq(ErasedContextualMethodType)
 
-    def computeSignature(implicit ctx: Context): Signature = {
+    protected[dotc] def computeSignature(implicit ctx: Context): Signature = {
       val params = if (isErasedMethod) Nil else paramInfos
       resultSignature.prependTermParams(params, isJavaMethod)
     }
@@ -3592,7 +3592,7 @@ object Types {
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
 
-    def computeSignature(implicit ctx: Context): Signature =
+    protected[dotc] def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prependTypeParams(paramNames.length)
 
     override def isContextualMethod = resType.isContextualMethod
