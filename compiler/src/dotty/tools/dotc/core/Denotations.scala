@@ -14,6 +14,7 @@ import Periods._
 import Flags._
 import DenotTransformers._
 import Decorators._
+import Signature.MatchDegree._
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
@@ -612,12 +613,19 @@ object Denotations {
     def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation =
       if (!symbol.exists || symbol.isAccessibleFrom(pre, superAccess)) this else NoDenotation
 
-    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): SingleDenotation = {
-      val situated = if (site == NoPrefix) this else asSeenFrom(site)
-      val matches = sig.matchDegree(situated.signature).ordinal >=
-        (if (relaxed) Signature.ParamMatch else Signature.FullMatch).ordinal
-      if (matches) this else NoDenotation
-    }
+    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): SingleDenotation =
+      val situated = if site == NoPrefix then this else asSeenFrom(site)
+      val matches = sig.matchDegree(situated.signature) match
+        case FullMatch =>
+          true
+        case MethodNotAMethodMatch =>
+          // See comment in `matches`
+          relaxed && !symbol.is(JavaDefined)
+        case ParamMatch =>
+          relaxed
+        case noMatch =>
+          false
+      if matches then this else NoDenotation
 
     def matchesImportBound(bound: Type)(implicit ctx: Context): Boolean =
       if bound.isRef(defn.NothingClass) then false
@@ -961,15 +969,26 @@ object Denotations {
     final def first: SingleDenotation = this
     final def last: SingleDenotation = this
 
-    final def matches(other: SingleDenotation)(implicit ctx: Context): Boolean = {
+    final def matches(other: SingleDenotation)(implicit ctx: Context): Boolean =
       val d = signature.matchDegree(other.signature)
-      (// fast path: signatures are the same and neither denotation is a PolyType
-       // For polytypes, signatures alone do not tell us enough to be sure about matching.
-       d == Signature.FullMatch &&
-       !infoOrCompleter.isInstanceOf[PolyType] && !other.infoOrCompleter.isInstanceOf[PolyType]
-       ||
-       d != Signature.NoMatch && info.matches(other.info))
-    }
+
+      /** Slower check used if the signatures alone do not tell us enough to be sure about matching */
+      def slowCheck = info.matches(other.info)
+
+      d match
+        case FullMatch =>
+          if infoOrCompleter.isInstanceOf[PolyType] || other.infoOrCompleter.isInstanceOf[PolyType] then
+            slowCheck
+          else
+            true
+        case MethodNotAMethodMatch =>
+          // Java allows defining both a field and a zero-parameter method with the same name
+          !ctx.erasedTypes && !(symbol.is(JavaDefined) && other.symbol.is(JavaDefined))
+        case ParamMatch =>
+          !ctx.erasedTypes && slowCheck
+        case noMatch =>
+          false
+    end matches
 
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): SingleDenotation =
       if (hasUniqueSym && prevDenots.containsSym(symbol)) NoDenotation
