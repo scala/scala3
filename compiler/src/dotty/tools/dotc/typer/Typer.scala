@@ -3188,7 +3188,8 @@ class Typer extends Namer
         }
         else if (ctx.settings.XignoreScala2Macros.value) {
           ctx.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See https://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.sourcePos.startPos)
-          Throw(New(defn.MatchErrorClass.typeRef, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
+          val msg = s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros."
+          Typed(Throw(New(defn.MatchErrorClass.typeRef, Literal(Constant(msg)) :: Nil)), TypeTree(tree.tpe))
             .withType(tree.tpe)
             .withSpan(tree.span)
         }
