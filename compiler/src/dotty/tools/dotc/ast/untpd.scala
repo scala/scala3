@@ -134,6 +134,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case _ => name
   }
 
+  /** Short-lived class created by desugar.binop and used by typedApply to
+   *  improve error messages for infix applications
+   */
+  class InfixApply(fun: Tree, args: List[Tree])(implicit @constructorOnly src: SourceFile)
+  extends Apply(fun, args):
+    override def applyKind = ApplyKind.Infix
+
   case class Number(digits: String, kind: NumberKind)(implicit @constructorOnly src: SourceFile) extends TermTree
 
   enum NumberKind {
@@ -780,5 +787,5 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   protected def FunProto(args: List[Tree], resType: Type)(using Context) =
-    ProtoTypes.FunProto(args, resType)(ctx.typer, isUsingApply = false)
+    ProtoTypes.FunProto(args, resType)(ctx.typer, ApplyKind.Regular)
 }

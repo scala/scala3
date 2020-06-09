@@ -1191,13 +1191,14 @@ object desugar {
     def makeOp(fn: Tree, arg: Tree, selectPos: Span) = {
       val args: List[Tree] = arg match {
         case Parens(arg) => assignToNamedArg(arg) :: Nil
-        case Tuple(args) => args.mapConserve(assignToNamedArg)
+        case Tuple(args) if args.nonEmpty =>  // this case should be dropped if auto-tupling is removed
+          args.mapConserve(assignToNamedArg)
         case _ => arg :: Nil
       }
       val sel = Select(fn, op.name).withSpan(selectPos)
       if (left.sourcePos.endLine < op.sourcePos.startLine)
         sel.pushAttachment(MultiLineInfix, ())
-      Apply(sel, args)
+      InfixApply(sel, args)
     }
 
     if (isLeftAssoc(op.name))

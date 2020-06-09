@@ -443,14 +443,24 @@ object Trees {
     def forwardTo: Tree[T] = fun
   }
 
+  enum ApplyKind:
+    case Regular, Using, Infix
+
   /** fun(args) */
   case class Apply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends GenericApply[T] {
     type ThisTree[-T >: Untyped] = Apply[T]
 
-    def isUsingApply = hasAttachment(untpd.ApplyGiven)
-    def setUsingApply() = { putAttachment(untpd.ApplyGiven, ()); this }
+    def setUsingApply() =
+      putAttachment(untpd.ApplyGiven, ())
+      this
+
+    def applyKind: ApplyKind =
+      if hasAttachment(untpd.ApplyGiven) then ApplyKind.Using
+      else ApplyKind.Regular
   }
+
+
 
   /** fun[args] */
   case class TypeApply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)

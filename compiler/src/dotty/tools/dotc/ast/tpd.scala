@@ -1370,5 +1370,5 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
 
   protected def FunProto(args: List[Tree], resType: Type)(using Context) =
-    ProtoTypes.FunProtoTyped(args, resType)(ctx.typer, isUsingApply = false)
+    ProtoTypes.FunProtoTyped(args, resType)(ctx.typer, ApplyKind.Regular)
 }

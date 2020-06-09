@@ -1092,7 +1092,7 @@ class Typer extends Namer
               val nestedCtx = outerCtx.fresh.setNewTyperState()
               inContext(nestedCtx) {
                 val protoArgs = args map (_ withType WildcardType)
-                val callProto = FunProto(protoArgs, WildcardType)(this, app.isUsingApply)
+                val callProto = FunProto(protoArgs, WildcardType)(this, app.applyKind)
                 val expr1 = typedExpr(expr, callProto)
                 if nestedCtx.reporter.hasErrors then NoType
                 else inContext(outerCtx) {
@@ -2887,7 +2887,7 @@ class Typer extends Namer
             errorTree(tree, NoMatchingOverload(altDenots, pt))
           def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
           pt match {
-            case pt: FunOrPolyProto if !pt.isUsingApply =>
+            case pt: FunOrPolyProto if pt.applyKind != ApplyKind.Using =>
               // insert apply or convert qualifier, but only for a regular application
               tryInsertApplyOrImplicit(tree, pt, locked)(noMatches)
             case _ =>
@@ -3063,7 +3063,7 @@ class Typer extends Namer
         }
       }
       pt.revealIgnored match {
-        case pt: FunProto if pt.isUsingApply =>
+        case pt: FunProto if pt.applyKind == ApplyKind.Using =>
           // We can end up here if extension methods are called with explicit given arguments.
           // See for instance #7119.
           tree
@@ -3535,8 +3535,9 @@ class Typer extends Namer
    *  Overridden in `ReTyper`, where all applications are treated the same
    */
   protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(using Context): Boolean =
-    methType.isContextualMethod == pt.isUsingApply ||
-    methType.isImplicitMethod && pt.isUsingApply // for a transition allow `with` arguments for regular implicit parameters
+    val isUsingApply = pt.applyKind == ApplyKind.Using
+    methType.isContextualMethod == isUsingApply
+    || methType.isImplicitMethod && isUsingApply // for a transition allow `with` arguments for regular implicit parameters
 
   /** Check that `tree == x: pt` is typeable. Used when checking a pattern
    *  against a selector of type `pt`. This implementation accounts for

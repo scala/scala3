@@ -225,9 +225,8 @@ object ProtoTypes {
   class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType, NoViewsAllowed, true)
 
   trait ApplyingProto extends ProtoType   // common trait of ViewProto and FunProto
-  trait FunOrPolyProto extends ProtoType { // common trait of PolyProto and FunProto
-    def isUsingApply: Boolean = false
-  }
+  trait FunOrPolyProto extends ProtoType: // common trait of PolyProto and FunProto
+    def applyKind: ApplyKind = ApplyKind.Regular
 
   class FunProtoState {
 
@@ -249,7 +248,7 @@ object ProtoTypes {
    *  [](args): resultType
    */
   case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer,
-    override val isUsingApply: Boolean, state: FunProtoState = new FunProtoState)(using protoCtx: Context)
+    override val applyKind: ApplyKind, state: FunProtoState = new FunProtoState)(using protoCtx: Context)
   extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
     override def resultType(using Context): Type = resType
 
@@ -263,7 +262,7 @@ object ProtoTypes {
 
     def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
       if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
-      else new FunProto(args, resultType)(typer, isUsingApply)
+      else new FunProto(args, resultType)(typer, applyKind)
 
     /** @return True if all arguments have types.
      */
@@ -353,7 +352,7 @@ object ProtoTypes {
       case pt: FunProto =>
         pt
       case _ =>
-        state.tupled = new FunProto(untpd.Tuple(args) :: Nil, resultType)(typer, isUsingApply)
+        state.tupled = new FunProto(untpd.Tuple(args) :: Nil, resultType)(typer, applyKind)
         tupled
     }
 
@@ -388,15 +387,15 @@ object ProtoTypes {
 
     override def withContext(newCtx: Context): ProtoType =
       if newCtx `eq` protoCtx then this
-      else new FunProto(args, resType)(typer, isUsingApply, state)(using newCtx)
+      else new FunProto(args, resType)(typer, applyKind, state)(using newCtx)
   }
 
   /** A prototype for expressions that appear in function position
    *
    *  [](args): resultType, where args are known to be typed
    */
-  class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, isUsingApply: Boolean)(using Context)
-  extends FunProto(args, resultType)(typer, isUsingApply):
+  class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, applyKind: ApplyKind)(using Context)
+  extends FunProto(args, resultType)(typer, applyKind):
     override def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree)(using Context): List[tpd.Tree] = args
     override def typedArg(arg: untpd.Tree, formal: Type)(using Context): tpd.Tree = arg.asInstanceOf[tpd.Tree]
     override def allArgTypesAreCurrent()(using Context): Boolean = true
@@ -444,7 +443,7 @@ object ProtoTypes {
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(using Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source))(ctx) :: Nil, WildcardType)(typer, isUsingApply = false)
+    untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source))(ctx) :: Nil, WildcardType)(typer, applyKind = ApplyKind.Regular)
 
   /** A prototype for expressions [] that are type-parameterized:
    *
