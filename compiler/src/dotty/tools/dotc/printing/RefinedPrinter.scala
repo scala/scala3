@@ -277,7 +277,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   protected def toTextCore[T >: Untyped](tree: Tree[T]): Text = {
-    import untpd.{modsDeco => _, _}
+    import untpd._
 
     def isLocalThis(tree: Tree) = tree.typeOpt match {
       case tp: ThisType => tp.cls == ctx.owner.enclosingClass
@@ -645,7 +645,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   override def toText[T >: Untyped](tree: Tree[T]): Text = controlled {
-    import untpd.{modsDeco => _, _}
+    import untpd._
 
     var txt = toTextCore(tree)
 
@@ -720,11 +720,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
   }
 
-  /** Print modifiers from symbols if tree has type, overriding the untpd behavior. */
-  private implicit def modsDeco(mdef: untpd.DefTree): untpd.ModsDecorator =
-    new untpd.ModsDecorator {
-      def mods = if (mdef.hasType) Modifiers(mdef.symbol) else mdef.rawMods
-    }
+  /** Print modifiers from symbols if tree has type, overriding the behavior in Trees. */
+  def (mdef: untpd.DefTree).mods: untpd.Modifiers =
+    if mdef.hasType then Modifiers(mdef.symbol) else mdef.rawMods
 
   private def Modifiers(sym: Symbol): Modifiers = untpd.Modifiers(
     sym.flags & (if (sym.isType) ModifierFlags | VarianceFlags else ModifierFlags),
@@ -768,7 +766,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     vparamss.foldLeft(leading)((txt, params) => txt ~ paramsText(params))
 
   protected def valDefToText[T >: Untyped](tree: ValDef[T]): Text = {
-    import untpd.{modsDeco => _}
+    import untpd._
     dclTextOr(tree) {
       modText(tree.mods, tree.symbol, keywordStr(if (tree.mods.is(Mutable)) "var" else "val"), isType = false) ~~
         valDefText(nameIdText(tree)) ~ optAscription(tree.tpt) ~
@@ -782,7 +780,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         ~ toText(params, ", ") ~ ")"
 
   protected def defDefToText[T >: Untyped](tree: DefDef[T]): Text = {
-    import untpd.{modsDeco => _}
+    import untpd._
     dclTextOr(tree) {
       val defKeyword = modText(tree.mods, tree.symbol, keywordStr("def"), isType = false)
       val isExtension = tree.hasType && tree.symbol.is(Extension)

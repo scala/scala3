@@ -1111,7 +1111,6 @@ trait Checking {
    *  2. Check that case class `enum` cases do not extend java.lang.Enum.
    */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = {
-    import untpd.modsDeco
     def isEnumAnonCls =
       cls.isAnonymousClass &&
       cls.owner.isTerm &&

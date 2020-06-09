@@ -333,6 +333,8 @@ object Trees {
     def namedType: NamedType = tpe.asInstanceOf[NamedType]
   }
 
+  def (mdef: untpd.DefTree).mods: untpd.Modifiers = mdef.rawMods
+
   abstract class NamedDefTree[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NameTree[T] with DefTree[T] {
     type ThisTree[-T >: Untyped] <: NamedDefTree[T]
 
@@ -1538,6 +1540,7 @@ object Trees {
         receiver: tpd.Tree, method: TermName, args: List[Tree], targs: List[Type],
         expectedType: Type)(using parentCtx: Context): tpd.Tree = {
       given ctx as Context = parentCtx.retractMode(Mode.ImplicitsEnabled)
+      import dotty.tools.dotc.ast.tpd.TreeOps
 
       val typer = ctx.typer
       val proto = FunProto(args, expectedType)

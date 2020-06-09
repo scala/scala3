@@ -31,6 +31,7 @@ import transform.TypeUtils._
 import Hashable._
 import util.{SourceFile, NoSource}
 import config.{Config, Feature}
+import Feature.migrateTo3
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.trace
@@ -153,7 +154,7 @@ object Implicits {
               //
               // We keep the old behavior under -source 3.0-migration.
               val isFunctionInS2 =
-                Feature.migrateTo3
+                migrateTo3
                 && tpw.derivesFrom(defn.FunctionClass(1))
                 && ref.symbol != defn.Predef_conforms
               val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
@@ -244,7 +245,7 @@ object Implicits {
    */
   class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
     assert(initctx.typer != null)
-    implicits.println(i"implicits of type $tp = ${companionRefs.toList}%, %")
+    implicits.println(i"implicit scope of type $tp = ${companionRefs.toList}%, %")
     @threadUnsafe lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
       for (companion <- companionRefs) buf ++= companion.implicitMembers
@@ -278,7 +279,7 @@ object Implicits {
      */
     override val level: Int =
       if outerImplicits == null then 1
-      else if Feature.migrateTo3(using irefCtx)
+      else if migrateTo3(using irefCtx)
               || (irefCtx.owner eq outerImplicits.irefCtx.owner)
                  && (irefCtx.scope eq outerImplicits.irefCtx.scope)
                  && !refs.head.implicitName.is(LazyImplicitName)
@@ -473,173 +474,226 @@ object Implicits {
 import Implicits._
 
 /** Info relating to implicits that is kept for one run */
-trait ImplicitRunInfo {
+trait ImplicitRunInfo:
   self: Run =>
 
   private val implicitScopeCache = mutable.AnyRefMap[Type, OfTypeImplicits]()
 
   private val EmptyTermRefSet = new TermRefSet(using NoContext)
 
-  /** The implicit scope of a type `tp`, defined as follows:
-   *
-   *  The implicit scope of a type `tp` is the smallest set S of object references (i.e. TermRefs
-   *  with Module symbol) such that
-   *
-   *  - If `tp` is a class reference, S contains a reference to the companion object of the class,
-   *    if it exists, as well as the implicit scopes of all of `tp`'s parent class references.
-   *  - If `tp` is an opaque type alias `p.A` of type `tp'`, S contains a reference to an object `A` defined in the
-   *    same scope as the opaque type, if it exists, as well as the implicit scope of `tp'`.
-   *  - If `tp` is a reference `p.T` to a class or opaque type alias, S also contains all object references
-   *    on the prefix path `p`. Under Scala-2 mode, package objects of package references on `p` also
-   *    count towards the implicit scope.
-   *  - If `tp` is a (non-opaque)  alias of `tp'`, S contains the implicit scope of `tp'`.
-   *  - If `tp` is a singleton type, S contains the implicit scope of its underlying type.
-   *  - If `tp` is some other type, its implicit scope is the union of the implicit scopes of
-   *    its parts (parts defined as in the spec).
-   *
-   *  @param liftingCtx   A context to be used when computing the class symbols of
-   *                      a type. Types may contain type variables with their instances
-   *                      recorded in the current context. To find out the instance of
-   *                      a type variable, we need the current context, the current
-   *                      runinfo context does not do.
-   */
-  def implicitScope(rootTp: Type, liftingCtx: Context): OfTypeImplicits = {
+  private def isExcluded(sym: Symbol) =
+    if migrateTo3 then false else sym.is(Package) || sym.isPackageObject
 
-    val seen: mutable.Set[Type] = mutable.Set()
-    val incomplete: mutable.Set[Type] = mutable.Set()
+  /** Is `sym` an anchor type for which givens may exist? Anchor types are classes,
+    *  opaque type aliases, match aliases and abstract types, but not type parameters
+    *  or package objects.
+    */
+  private def isAnchor(sym: Symbol) =
+    sym.isClass && !isExcluded(sym)
+    || sym.isOpaqueAlias
+    || sym.is(Deferred, butNot = Param)
+    || sym.info.isInstanceOf[MatchAlias]
 
-    /** Is `sym` an anchor type for which givens may exist? Anchor types are classes,
-     *  opaque type aliases, and abstract types, but not type parameters or package objects.
-     */
-    def isAnchor(sym: Symbol) =
-      sym.isClass && !sym.is(Package) && (!sym.isPackageObject || Feature.migrateTo3)
-      || sym.isOpaqueAlias
-      || sym.is(Deferred, butNot = Param)
+  private def computeIScope(rootTp: Type): OfTypeImplicits =
 
-    def anchors(tp: Type): List[Type] = tp match {
-      case tp: NamedType if isAnchor(tp.symbol) => tp :: Nil
-      case tp: TypeProxy => anchors(tp.superType)
-      case tp: AndOrType => anchors(tp.tp1) ++ anchors(tp.tp2)
-      case _ => Nil
-    }
+    object collectParts extends TypeTraverser:
 
-    /** Replace every typeref that does not refer to a class by a conjunction of anchor types
-     *  that has the same implicit scope as the original typeref. The motivation for applying
-     *  this map is that it reduces the total number of types for which we need to
-     *  compute and cache the implicit scope; all variations wrt type parameters or
-     *  abstract types are eliminated.
-     */
-    object liftToAnchors extends TypeMap {
-      override implicit protected val mapCtx: Context = liftingCtx
-      override def stopAtStatic = true
+      private var provisional: Boolean = _
+      private var parts: mutable.LinkedHashSet[Type] = _
+      private val partSeen = TypeHashSet()
 
-      def apply(tp: Type) = tp.widenDealias match {
-        case tp: TypeRef =>
-          anchors(tp).foldLeft(defn.AnyType: Type)(AndType.make(_, _))
-        case tp: TypeVar =>
-          apply(tp.underlying)
-        case tp: AppliedType if !tp.tycon.typeSymbol.isClass =>
-          def applyArg(arg: Type) = arg match {
-            case TypeBounds(lo, hi) => AndType.make(lo, hi)
-            case WildcardType(TypeBounds(lo, hi)) => AndType.make(lo, hi)
-            case _ => arg
-          }
-          tp.args.foldLeft(apply(tp.tycon))((tc, arg) => AndType.make(tc, applyArg(arg)))
-        case tp: TypeLambda =>
-          apply(tp.resType)
-        case _ =>
-          mapOver(tp)
-      }
-    }
+      def traverse(t: Type) =
+        if partSeen.contains(t) then ()
+        else if implicitScopeCache.contains(t) then parts += t
+        else
+          partSeen.addEntry(t)
+          t.dealias match
+            case t: TypeRef =>
+              if isAnchor(t.symbol) then
+                parts += t
+                traverse(t.prefix)
+              else
+                traverse(t.underlying)
+            case t: TermRef =>
+              if !isExcluded(t.symbol) then
+                traverse(t.info)
+                traverse(t.prefix)
+            case t: ThisType if t.cls.is(Module) && t.cls.isStaticOwner =>
+              traverse(t.cls.sourceModule.termRef)
+            case t: ConstantType =>
+              traverse(t.underlying)
+            case t: TypeParamRef =>
+              traverse(t.underlying)
+              if ctx.typerState.constraint.contains(t) then provisional = true
+            case t: TermParamRef =>
+              traverse(t.underlying)
+            case t =>
+              traverseChildren(t)
 
-    def collectCompanions(tp: Type): TermRefSet =
-      trace(i"collectCompanions($tp)", implicitsDetailed) {
-        record("collectCompanions")
+      def apply(tp: Type): (collection.Set[Type], Boolean) =
+        provisional = false
+        parts = mutable.LinkedHashSet()
+        partSeen.clear()
+        traverse(tp)
+        (parts, provisional)
+    end collectParts
 
-        def iscopeRefs(t: Type): TermRefSet = implicitScopeCache.get(t) match {
+    val seen = TypeHashSet()
+    val incomplete = TypeHashSet()
+
+    def collectCompanions(tp: Type, parts: collection.Set[Type]): TermRefSet =
+      val companions = new TermRefSet
+
+      def iscopeRefs(t: Type): TermRefSet =
+        implicitScopeCache.get(t) match
           case Some(is) =>
             is.companionRefs
           case None =>
-            if (seen contains t) {
-              incomplete += tp  // all references to rootTo will be accounted for in `seen` so we return `EmptySet`.
-              EmptyTermRefSet   // on the other hand, the refs of `tp` are now not accurate, so `tp` is marked incomplete.
-            }
-            else {
-              seen += t
-              val is = iscope(t)
-              if (!implicitScopeCache.contains(t)) incomplete += tp
+            if seen.contains(t) then
+              incomplete.addEntry(tp) // all references for `t` will be accounted for in `seen` so we return `EmptySet`.
+              EmptyTermRefSet         // on the other hand, the refs of `tp` are now inaccurate, so `tp` is marked incomplete.
+            else
+              seen.addEntry(t)
+              val is = recur(t)
+              if !implicitScopeCache.contains(t) then incomplete.addEntry(tp)
               is.companionRefs
-            }
-        }
+      end iscopeRefs
 
-        val comps = new TermRefSet
-        def addCompanion(pre: Type, companion: Symbol) =
-          if (companion.exists && !companion.isAbsent()) comps += TermRef(pre, companion)
+      def addCompanion(pre: Type, companion: Symbol) =
+        if companion.exists && !companion.isAbsent() then
+          companions += TermRef(pre, companion)
 
-        def addPath(pre: Type): Unit = pre.dealias match
-          case pre: ThisType if pre.cls.is(Module) && pre.cls.isStaticOwner =>
-            addPath(pre.cls.sourceModule.termRef)
-          case pre: TermRef =>
-            if pre.symbol.is(Package) then
-              if Feature.migrateTo3 then
-                addCompanion(pre, pre.member(nme.PACKAGE).symbol)
-                addPath(pre.prefix)
-            else if !pre.symbol.isPackageObject || Feature.migrateTo3 then
-              comps += pre
+      def addCompanions(t: Type) = implicitScopeCache.get(t) match
+        case Some(iscope) =>
+          companions ++= iscope.companionRefs
+        case None => t match
+          case t: TypeRef =>
+            val sym = t.symbol
+            val pre = t.prefix
+            addPath(pre)
+            addCompanion(pre,
+              if sym.isClass then sym.companionModule
+              else pre.member(sym.name.toTermName)
+                .suchThat(companion => companion.is(Module) && companion.owner == sym.owner)
+                .symbol)
+            if sym.isClass then
+              for p <- t.parents do companions ++= iscopeRefs(p)
+            else
+              companions ++= iscopeRefs(t.underlying)
+      end addCompanions
+
+      def addPath(pre: Type): Unit = pre.dealias match
+        case pre: ThisType if pre.cls.is(Module) && pre.cls.isStaticOwner =>
+          addPath(pre.cls.sourceModule.termRef)
+        case pre: TermRef if !isExcluded(pre.symbol) =>
+          pre.info match
+            case info: SingletonType =>
+              addPath(info)
+            case info: TypeRef if info.symbol.is(Module) =>
+              addCompanion(info.prefix, info.symbol.sourceModule)
+              addPath(info.prefix)
+            case _ =>
+              companions += pre
               addPath(pre.prefix)
-          case _ =>
+        case _ =>
 
-        tp.widenDealias match {
-          case tp: TypeRef =>
-            val sym = tp.symbol
-            if (isAnchor(sym)) {
-              val pre = tp.prefix
-              addPath(pre)
-              if (sym.isClass) addCompanion(pre, sym.companionModule)
-              else addCompanion(pre,
-                pre.member(sym.name.toTermName)
-                  .suchThat(companion => companion.is(Module) && companion.owner == sym.owner)
-                  .symbol)
-            }
-            val superAnchors = if (sym.isClass) tp.parents else anchors(tp.superType)
-            for (anchor <- superAnchors) comps ++= iscopeRefs(anchor)
-          case tp =>
-            for (part <- tp.namedPartsWith(_.isType)) comps ++= iscopeRefs(part)
-        }
-        comps
-      }
+      parts.foreach(addCompanions)
+      companions
+    end collectCompanions
 
-   /** The implicit scope of type `tp`
-     *  @param isLifted    Type `tp` is the result of a `liftToAnchors` application
-     */
-    def iscope(tp: Type, isLifted: Boolean = false): OfTypeImplicits = {
-      val canCache = Config.cacheImplicitScopes && tp.hash != NotCached && !tp.isProvisional
-      def computeIScope() = {
-        val liftedTp = if (isLifted) tp else liftToAnchors(tp)
-        val refs =
-          if (liftedTp ne tp) {
-            implicitsDetailed.println(i"lifted of $tp = $liftedTp")
-            iscope(liftedTp, isLifted = true).companionRefs
-          }
-          else
-            collectCompanions(tp)
-        val result = new OfTypeImplicits(tp, refs)(runContext)
-        if (canCache &&
-            ((tp eq rootTp) ||          // first type traversed is always cached
-             !incomplete.contains(tp))) // other types are cached if they are not incomplete
-          implicitScopeCache(tp) = result
-        result
-      }
-      if (canCache) implicitScopeCache.getOrElse(tp, computeIScope())
-      else computeIScope()
-    }
+    def recur(tp: Type): OfTypeImplicits =
+      val (parts, provisional) = collectParts(tp)
+      val companions = collectCompanions(tp, parts)
+      val result = OfTypeImplicits(tp, companions)(runContext)
+      if Config.cacheImplicitScopes
+         && tp.hash != NotCached
+        && !provisional
+        && (tp eq rootTp)              // first type traversed is always cached
+           || !incomplete.contains(tp) // other types are cached if they are not incomplete
+      then implicitScopeCache(tp) = result
+      result
 
-    iscope(rootTp)
-  }
+    record(i"computeIScope")
+    recur(rootTp)
+  end computeIScope
+
+  /** The implicit scope of a type `tp`, which is specified by the following definitions.
+   *
+   *  A reference is an _anchor_ if it refers to an object, a class, a trait, an
+   *  abstract type, an opaque type alias, or a match type alias. References to
+   *  packages and package objects are anchors only under -source:3.0-migration.
+   *
+   *  The _anchors_ of a type `T` is a set of references defined as follows:
+   *
+   *   - If `T` is a reference to an anchor, `T` itself plus, if `T` is of the form
+   *     `P#A`, the anchors of `P`.
+   *   - If `T` is an alias of `U`, the anchors of `U`.
+   *   - If `T` is a reference to a type parameter, the union of the anchors of both of its bounds.
+   *   - If `T` is a singleton reference, the anchors of its underlying type, plus,
+   *     if `T` is of the form `(P#x).type`, the anchors of `P`.
+   *   - If `T` is the this-type of a static object, the anchors of a term reference to that object.
+   *   - If `T` is some other type, the union of the anchors of each constituent type of `T`.
+   *
+   *  The _implicit scope_ of a type `tp` is the smallest set S of term references (i.e. TermRefs)
+   *  such that
+   *
+   *   - If `T` is a reference to a class, S includes a reference to the companion object
+   *     of the class, if it exists, as well as the implicit scopes of all of `T`'s parent classes.
+   *   - If `T` is a reference to an object, S includes `T` itself as well as
+   *     the implicit scopes of all of `T`'s parent classes.
+   *   - If `T` is a reference to an opaque type alias named `A`, S includes
+   *     a reference to an object `A` defined in the same scope as the type, if it exists,
+   *     as well as the implicit scope of `T`'s underlying type or bounds.
+   *   - If `T` is a reference to an an abstract type or match type alias named `A`,
+   *     S includes a reference to an object `A` defined in the same scope as the type,
+   *     if it exists, as well as the implicit scopes of `T`'s lower and upper bound,
+   *     if present.
+   *   - If `T` is a reference to an anchor of the form `p.A` then S also includes
+   *     all term references on the path `p`.
+   *   - If `T` is some other type, S includes the implicit scopes of all anchors of `T`.
+   */
+  def implicitScope(tp: Type)(using Context): OfTypeImplicits =
+    object liftToAnchors extends TypeMap:
+      override def stopAtStatic = true
+      private val seen = TypeHashSet()
+
+      def applyToUnderlying(t: TypeProxy) =
+        if seen.contains(t) then
+          WildcardType
+        else
+          seen.addEntry(t)
+          apply(
+            t.underlying match
+              case TypeBounds(lo, hi) =>
+                if defn.isBottomTypeAfterErasure(lo) then hi
+                else AndType.make(lo, hi)
+              case u => u)
+
+      def apply(t: Type) = t.dealias match
+        case t: TypeRef =>
+          if isAnchor(t.symbol) then t else applyToUnderlying(t)
+        case t: TypeVar => apply(t.underlying)
+        case t: ParamRef => applyToUnderlying(t)
+        case t: ConstantType => apply(t.underlying)
+        case t => mapOver(t)
+    end liftToAnchors
+
+    record(i"implicitScope")
+    implicitScopeCache.getOrElse(tp, {
+      val liftedTp = liftToAnchors(tp)
+      if liftedTp eq tp then
+        record(i"implicitScope unlifted")
+        computeIScope(tp)
+      else
+        record(i"implicitScope lifted")
+        val liftedIScope = implicitScopeCache.getOrElse(liftedTp, computeIScope(liftedTp))
+        OfTypeImplicits(tp, liftedIScope.companionRefs)(runContext)
+    })
+  end implicitScope
 
   protected def reset(): Unit =
     implicitScopeCache.clear()
-}
+end ImplicitRunInfo
 
 /** The implicit resolution part of type checking */
 trait Implicits { self: Typer =>
@@ -906,9 +960,10 @@ trait Implicits { self: Typer =>
             implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} in ${ctx.typerState}")
             result
           case result: SearchFailure if result.isAmbiguous =>
+            //println(i"FAIL for $pt / $argument: $result0")
             val deepPt = pt.deepenProto
             if (deepPt ne pt) inferImplicit(deepPt, argument, span)
-            else if (Feature.migrateTo3 && !ctx.mode.is(Mode.OldOverloadingResolution))
+            else if (migrateTo3 && !ctx.mode.is(Mode.OldOverloadingResolution))
               inferImplicit(pt, argument, span)(using ctx.addMode(Mode.OldOverloadingResolution)) match {
                 case altResult: SearchSuccess =>
                   ctx.migrationWarning(
@@ -920,8 +975,10 @@ trait Implicits { self: Typer =>
               }
             else result
           case NoMatchingImplicitsFailure =>
+            //println(i"FAIL for $pt / $argument: $result0")
             SearchFailure(new NoMatchingImplicits(pt, argument, ctx.typerState.constraint))
           case _ =>
+            //println(i"FAIL for $pt / $argument: $result0")
             result0
         }
       // If we are at the outermost implicit search then emit the implicit dictionary, if any.
@@ -1104,7 +1161,7 @@ trait Implicits { self: Typer =>
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
                 if (fail.isAmbiguous)
-                  if Feature.migrateTo3 then
+                  if migrateTo3 then
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
                     if (result.isSuccess)
                       warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
@@ -1153,28 +1210,27 @@ trait Implicits { self: Typer =>
              |Consider using the scala.implicits.Not class to implement similar functionality.""",
              ctx.source.atSpan(span))
 
-      /** A relation that imfluences the order in which implicits are tried.
+      /** A relation that influences the order in which implicits are tried.
        *  We prefer (in order of importance)
        *   1. more deeply nested definitions
-       *   2. definitions in subclasses
-       *   3. definitions with fewer implicit parameters
-       *  The reason for (3) is that we want to fail fast if the search type
+       *   2. definitions with fewer implicit parameters
+       *   3. definitions in subclasses
+       *  The reason for (2) is that we want to fail fast if the search type
        *  is underconstrained. So we look for "small" goals first, because that
        *  will give an ambiguity quickly.
        */
-      def prefer(cand1: Candidate, cand2: Candidate): Boolean = {
+      def prefer(cand1: Candidate, cand2: Candidate): Boolean =
         val level1 = cand1.level
         val level2 = cand2.level
-        if (level1 > level2) return true
-        if (level1 < level2) return false
+        if level1 > level2 then return true
+        if level1 < level2 then return false
         val sym1 = cand1.ref.symbol
         val sym2 = cand2.ref.symbol
         val arity1 = sym1.info.firstParamTypes.length
         val arity2 = sym2.info.firstParamTypes.length
-        if (arity1 < arity2) return true
-        if (arity1 > arity2) return false
+        if arity1 < arity2 then return true
+        if arity1 > arity2 then return false
         compareOwner(sym1, sym2) == 1
-      }
 
       /** Sort list of implicit references according to `prefer`.
        *  This is just an optimization that aims at reducing the average
@@ -1246,7 +1302,7 @@ trait Implicits { self: Typer =>
           }
       }
 
-    def implicitScope(tp: Type): OfTypeImplicits = ctx.run.implicitScope(tp, ctx)
+    def implicitScope(tp: Type): OfTypeImplicits = ctx.run.implicitScope(tp)
 
     /** All available implicits, without ranking */
     def allImplicits: Set[TermRef] = {

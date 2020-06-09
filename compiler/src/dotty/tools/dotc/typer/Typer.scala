@@ -1832,7 +1832,7 @@ class Typer extends Namer
     sym.annotations.foreach(_.ensureCompleted)
     lazy val annotCtx = annotContext(mdef, sym)
     // necessary in order to mark the typed ahead annotations as definitely typed:
-    for (annot <- untpd.modsDeco(mdef).mods.annotations)
+    for (annot <- mdef.mods.annotations)
       checkAnnotApplicable(typedAnnotation(annot)(using annotCtx), sym)
   }
 

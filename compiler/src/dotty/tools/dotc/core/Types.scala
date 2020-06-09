@@ -4862,7 +4862,7 @@ object Types {
     }
   }
 
-  abstract class TypeMap(implicit protected val mapCtx: Context)
+  abstract class TypeMap(implicit protected var mapCtx: Context)
   extends VariantTraversal with (Type => Type) { thisMap =>
 
     protected def stopAtStatic: Boolean = true
@@ -4979,7 +4979,16 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
-          LazyRef(_ => this(tp.ref))
+          LazyRef { c =>
+            val ref1 = tp.ref(using c)
+            if c.runId == mapCtx.runId then this(ref1)
+            else // splice in new run into map context
+              val saved = mapCtx
+              mapCtx = mapCtx.fresh
+                .setPeriod(Period(c.runId, mapCtx.phaseId))
+                .setRun(c.run)
+              try this(ref1) finally mapCtx = saved
+          }
 
         case tp: ClassInfo =>
           mapClassInfo(tp)
@@ -5453,14 +5462,15 @@ object Types {
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)
   }
 
+  class TypeHashSet extends util.HashSet[Type](64):
+    override def hash(x: Type): Int = System.identityHashCode(x)
+    override def isEqual(x: Type, y: Type) = x.eq(y)
+
   class NamedPartsAccumulator(p: NamedType => Boolean, excludeLowerBounds: Boolean = false)
     (implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
     override def stopAtStatic: Boolean = false
     def maybeAdd(x: mutable.Set[NamedType], tp: NamedType): mutable.Set[NamedType] = if (p(tp)) x += tp else x
-    val seen: util.HashSet[Type] = new util.HashSet[Type](64) {
-      override def hash(x: Type): Int = System.identityHashCode(x)
-      override def isEqual(x: Type, y: Type) = x.eq(y)
-    }
+    val seen = TypeHashSet()
     def apply(x: mutable.Set[NamedType], tp: Type): mutable.Set[NamedType] =
       if (seen contains tp) x
       else {

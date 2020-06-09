@@ -510,13 +510,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A repeated argument such as `arg: _*` */
   def repeated(arg: Tree)(implicit ctx: Context): Typed = Typed(arg, Ident(tpnme.WILDCARD_STAR))
 
-// ----- Accessing modifiers ----------------------------------------------------
-
-  abstract class ModsDecorator { def mods: Modifiers }
-
-  implicit class modsDeco(val mdef: DefTree)(implicit ctx: Context) {
-    def mods: Modifiers = mdef.rawMods
-  }
 
 // --------- Copier/Transformer/Accumulator classes for untyped trees -----
 
