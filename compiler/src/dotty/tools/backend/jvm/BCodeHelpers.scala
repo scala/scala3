@@ -568,7 +568,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       val linkedClass  = moduleClass.companionClass
       lazy val conflictingNames: Set[Name] = {
-        (linkedClass.info.allMembers.map(_.symbol) collect { case sym if sym.name.isTermName => sym.name }).toSet
+        (linkedClass.info.allMembers.collect { case d if d.name.isTermName => d.name }).toSet
       }
       ctx.debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
