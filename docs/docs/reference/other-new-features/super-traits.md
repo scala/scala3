@@ -43,12 +43,23 @@ are treated automatically as super traits. Other traits can be turned into super
 Every trait can be declared as a super trait. Typically super traits are traits that influence the implementation of inheriting classes and traits and that are not usually used as types by themselves. Two examples from the
 standard collection library:
 
- - `IterableLike`, which provides method implementations for an `Iterable`
- - `IndexedSeqOptimized`, which optimises some of these implementations for
+ - `IterableOps`, which provides method implementations for an `Iterable`
+ - `StrictOptimizedSeqOps`, which optimises some of these implementations for
    sequences with efficient indexing.
 
 Generally, any trait that is extended recursively is a good candidate to be
 declared a super trait.
+
+### Retro-Fitting Scala 2 Libraries
+
+To allow cross-building between Scala 2 and 3, super traits can also be
+introduced by adding the `@superTrait` annotation, which is defined in package `scala.annotation`. Example:
+```scala
+import scala.annotation.superTrait
+
+@superTrait trait StrictOptimizedSeqOps[+A, +CC[_], +C] ...
+```
+The `@superTrait` annotation will be deprecated and removed in some later version of Scala when cross-building with Scala 2 will no longer be a concern.
 
 ### Rules for Inference
 

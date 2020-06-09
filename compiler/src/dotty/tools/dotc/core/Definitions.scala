@@ -1310,6 +1310,8 @@ class Definitions {
 
   @tu lazy val assumedSuperTraits =
     Set(ComparableClass, ProductClass, SerializableClass,
+      // add these for now, until we had a chance to retrofit 2.13 stdlib
+      // we should do a more through sweep through it then.
       ctx.requiredClass("scala.collection.SortedOps"),
       ctx.requiredClass("scala.collection.StrictOptimizedSortedSetOps"),
       ctx.requiredClass("scala.collection.generic.DefaultSerializable"),

@@ -300,7 +300,7 @@ trait ConstraintHandling[AbstractContext] {
    *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
    *   2. If `inst` is a union type, approximate the union type from above by an intersection
    *      of all common base types, provided the result is a subtype of `bound`.
-   *   3. If `inst` an intersection such that some operands are super trait instances
+   *   3. If `inst` is an intersection such that some operands are super trait instances
    *      and others are not, replace as many super trait instances as possible with Any
    *      as long as the result is still a subtype of `bound`. But fall back to the
    *      original type if the resulting widened type is a supertype of all dropped
