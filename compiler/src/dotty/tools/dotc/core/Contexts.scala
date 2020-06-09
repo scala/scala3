@@ -36,6 +36,7 @@ import util.Store
 import xsbti.AnalysisCallback
 import plugins._
 import java.util.concurrent.atomic.AtomicInteger
+import java.nio.file.InvalidPathException
 
 object Contexts {
 
@@ -248,11 +249,16 @@ object Contexts {
     def getSource(path: TermName): SourceFile = base.sourceNamed.get(path) match {
       case Some(source) =>
         source
-      case None =>
+      case None => try {
         val f = new PlainFile(Path(path.toString))
         val src = getSource(f)
         base.sourceNamed(path) = src
         src
+      } catch {
+        case ex: InvalidPathException =>
+          ctx.error(s"invalid file path: ${ex.getMessage}")
+          NoSource
+      }
     }
 
     /** Sourcefile with given path, memoized */
