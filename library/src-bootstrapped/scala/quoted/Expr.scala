@@ -128,7 +128,7 @@ object Expr {
    *  to an expression equivalent to
    *    `'{ ($e1, $e2, ...) }` typed as an `Expr[Tuple]`
    */
-  def ofTuple(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] = {
+  def ofTupleFromSeq(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] = {
     seq match {
       case Seq() =>
         '{ Tuple() }
@@ -184,7 +184,7 @@ object Expr {
   /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
   def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
     val elems: Seq[Expr[Any]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[Any]]]
-    ofTuple(elems).cast[Tuple.InverseMap[T, Expr]]
+    ofTupleFromSeq(elems).cast[Tuple.InverseMap[T, Expr]]
   }
 
   /** Find an implicit of type `T` in the current scope given by `qctx`.

@@ -36,13 +36,13 @@ object Macro {
     def tupleElem(name: String, info: Type): Expr[Any] = {
       val nameExpr = Expr(name)
       info.seal match { case '[$qType] =>
-          Expr.ofTuple(Seq(nameExpr, '{ $s.selectDynamic($nameExpr).asInstanceOf[$qType] }))
+          Expr.ofTupleFromSeq(Seq(nameExpr, '{ $s.selectDynamic($nameExpr).asInstanceOf[$qType] }))
       }
     }
 
     val ret = rec(repr).reverse.map(e => tupleElem(e._1, e._2))
 
-    Expr.ofTuple(ret)
+    Expr.ofTupleFromSeq(ret)
   }
 
   private def fromTupleImpl[T: Type](s: Expr[Tuple], newRecord: Expr[Array[(String, Any)] => T])(using qctx:QuoteContext) : Expr[Any] = {

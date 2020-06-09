@@ -7,7 +7,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     for (n <- 0 to 25) {
       prev = 0
-      println(run { Expr.ofTuple(Seq.fill(n)('{next})) })
+      println(run { Expr.ofTupleFromSeq(Seq.fill(n)('{next})) })
     }
   }
   var prev = 0
