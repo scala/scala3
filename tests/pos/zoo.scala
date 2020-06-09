@@ -14,7 +14,7 @@ trait Animal {
 trait Cow extends Animal {
   type IsMeat = Any
   type Food <: Grass
-  def eats(food: Grass): Unit
+  def eats(food: Food): Unit
   def gets: Food
 }
 trait Lion extends Animal {

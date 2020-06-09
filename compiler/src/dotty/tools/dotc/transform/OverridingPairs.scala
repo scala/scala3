@@ -40,7 +40,7 @@ object OverridingPairs {
      *  relative to <base>.this do
      */
     protected def matches(sym1: Symbol, sym2: Symbol): Boolean =
-      sym1.isType || self.memberInfo(sym1).matches(self.memberInfo(sym2))
+      sym1.isType || sym1.asSeenFrom(self).matches(sym2.asSeenFrom(self))
 
     /** The symbols that can take part in an overriding pair */
     private val decls = {
