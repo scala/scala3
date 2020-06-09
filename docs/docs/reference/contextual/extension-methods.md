@@ -54,7 +54,7 @@ object IntOpsEx extends IntOps {
   def (i: Int).safeDiv(x: Int): Option[Int] =
     // extension method brought into scope via inheritance from IntOps
     if x.isZero then None
-    else Some(i % x)
+    else Some(i / x)
 }
 
 trait SafeDiv {
