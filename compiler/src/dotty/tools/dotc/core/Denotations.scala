@@ -972,20 +972,15 @@ object Denotations {
     final def matches(other: SingleDenotation)(implicit ctx: Context): Boolean =
       val d = signature.matchDegree(other.signature)
 
-      /** Slower check used if the signatures alone do not tell us enough to be sure about matching */
-      def slowCheck = info.matches(other.info)
-
       d match
         case FullMatch =>
-          if infoOrCompleter.isInstanceOf[PolyType] || other.infoOrCompleter.isInstanceOf[PolyType] then
-            slowCheck
-          else
-            true
+          true
         case MethodNotAMethodMatch =>
           // Java allows defining both a field and a zero-parameter method with the same name
           !ctx.erasedTypes && !(symbol.is(JavaDefined) && other.symbol.is(JavaDefined))
         case ParamMatch =>
-          !ctx.erasedTypes && slowCheck
+           // The signatures do not tell us enough to be sure about matching
+          !ctx.erasedTypes && info.matches(other.info)
         case noMatch =>
           false
     end matches
