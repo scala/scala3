@@ -1,6 +1,6 @@
 package transactional
 object MegaBench extends Benchmark {
-  type Transactional[T] = implicit Transaction => T
+  type Transactional[T] = Transaction ?=> T
 
   def transaction[T](op: Transactional[T]): T = {
     implicit val trans: Transaction = new Transaction
