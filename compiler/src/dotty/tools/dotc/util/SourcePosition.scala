@@ -42,16 +42,16 @@ extends interfaces.SourcePosition with Showable {
   def beforeAndAfterPoint: (List[Int], List[Int]) =
     lineOffsets.partition(_ <= point)
 
-  def column: Int = if (source.file.exists) source.column(point) else -1
+  def column: Int = if (source.content().length != 0) source.column(point) else -1
 
   def start: Int = span.start
-  def startLine: Int = if (source.file.exists) source.offsetToLine(start) else -1
-  def startColumn: Int = if (source.file.exists) source.column(start) else -1
+  def startLine: Int = if (source.content().length != 0) source.offsetToLine(start) else -1
+  def startColumn: Int = if (source.content().length != 0) source.column(start) else -1
   def startColumnPadding: String = source.startColumnPadding(start)
 
   def end: Int = span.end
-  def endLine: Int = if (source.file.exists) source.offsetToLine(end) else -1
-  def endColumn: Int = if (source.file.exists) source.column(end) else -1
+  def endLine: Int = if (source.content().length != 0) source.offsetToLine(end) else -1
+  def endColumn: Int = if (source.content().length != 0) source.column(end) else -1
 
   def withOuter(outer: SourcePosition): SourcePosition = SourcePosition(source, span, outer)
   def withSpan(range: Span) = SourcePosition(source, range, outer)

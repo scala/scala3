@@ -91,7 +91,7 @@ final public class DelegatingReporter extends AbstractReporter {
           return Optional.ofNullable(src.file().file());
         }
         public Optional<Integer> line() {
-          if (!src.file().exists())
+          if (src.content().length == 0)
             return Optional.empty();
 
           int line = pos.line() + 1;
@@ -101,7 +101,7 @@ final public class DelegatingReporter extends AbstractReporter {
           return Optional.of(line);
         }
         public String lineContent() {
-          if (!src.file().exists())
+          if (src.content().length == 0)
             return "";
 
           String line = pos.lineContent();
@@ -116,13 +116,13 @@ final public class DelegatingReporter extends AbstractReporter {
           return Optional.of(pos.point());
         }
         public Optional<Integer> pointer() {
-          if (!src.file().exists())
+          if (src.content().length == 0)
             return Optional.empty();
 
           return Optional.of(pos.point() - src.startOfLine(pos.point()));
         }
         public Optional<String> pointerSpace() {
-          if (!src.file().exists())
+          if (src.content().length == 0)
             return Optional.empty();
 
           String lineContent = this.lineContent();
