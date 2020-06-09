@@ -399,6 +399,7 @@ class Definitions {
     @tu lazy val ScalaRuntime__hashCode: Symbol = ScalaRuntimeModule.requiredMethod(nme._hashCode_)
 
   @tu lazy val BoxesRunTimeModule: Symbol = ctx.requiredModule("scala.runtime.BoxesRunTime")
+    @tu lazy val BoxesRunTimeModule_externalEquals: Symbol = BoxesRunTimeModule.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
   @tu lazy val ScalaStaticsModule: Symbol = ctx.requiredModule("scala.runtime.Statics")
     def staticsMethodRef(name: PreName): TermRef = ScalaStaticsModule.requiredMethodRef(name)
     def staticsMethod(name: PreName): TermSymbol = ScalaStaticsModule.requiredMethod(name)

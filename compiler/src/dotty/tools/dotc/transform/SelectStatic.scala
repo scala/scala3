@@ -9,6 +9,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.transform.MegaPhase._
+import dotty.tools.dotc.transform.SymUtils._
 
 /** Removes selects that would be compiled into GetStatic
  * otherwise backend needs to be aware that some qualifiers need to be dropped.
@@ -25,7 +26,7 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
     def isStaticMember =
       (sym is Flags.Module) && sym.initial.maybeOwner.initial.isStaticOwner ||
       (sym is Flags.JavaStatic) ||
-      sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
+      sym.isScalaStatic
     val isStaticRef = !sym.is(Package) && !sym.maybeOwner.is(Package) && isStaticMember
     val tree1 =
       if (isStaticRef && !tree.qualifier.symbol.isAllOf(JavaModule) && !tree.qualifier.isType)

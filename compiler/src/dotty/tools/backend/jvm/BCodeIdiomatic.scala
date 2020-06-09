@@ -16,14 +16,14 @@ import scala.tools.asm.tree.MethodInsnNode
  *
  */
 trait BCodeIdiomatic {
-  val int: BackendInterface
+  val int: DottyBackendInterface
   final lazy val bTypes = new BTypesFromSymbols[int.type](int)
 
   import int._
   import bTypes._
   import coreBTypes._
 
-  lazy val classfileVersion: Int = targetPlatform match {
+  lazy val classfileVersion: Int = ctx.settings.target.value match {
     case "jvm-1.5"     => asm.Opcodes.V1_5
     case "jvm-1.6"     => asm.Opcodes.V1_6
     case "jvm-1.7"     => asm.Opcodes.V1_7
@@ -582,6 +582,11 @@ trait BCodeIdiomatic {
     final def checkCast(tk: RefBType): Unit = {
       // TODO ICode also requires: but that's too much, right? assert(!isBoxedType(tk),     "checkcast on boxed type: " + tk)
       jmethod.visitTypeInsn(Opcodes.CHECKCAST, tk.classOrArrayType)
+    }
+
+    def abort(msg: String): Nothing = {
+      ctx.error(msg)
+      throw new RuntimeException(msg)
     }
 
   } // end of class JCodeMethodN

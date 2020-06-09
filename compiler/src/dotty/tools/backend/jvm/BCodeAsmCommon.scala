@@ -2,12 +2,16 @@ package dotty.tools
 package backend
 package jvm
 
+import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Symbols._
+
 /**
  * This trait contains code shared between GenBCode and GenASM that depends on types defined in
  * the compiler cake (Global).
  */
-final class BCodeAsmCommon[I <: BackendInterface](val interface: I) {
+final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
   import interface._
+  import DottyBackendInterface.symExtensions
 
   /**
    * True if `classSym` is an anonymous class or a local class. I.e., false if `classSym` is a
@@ -53,7 +57,7 @@ final class BCodeAsmCommon[I <: BackendInterface](val interface: I) {
     assert(classSym.isClass, classSym)
     def enclosingMethod(sym: Symbol): Option[Symbol] = {
       if (sym.isClass || sym == NoSymbol) None
-      else if (sym.isMethod) Some(sym)
+      else if (sym.is(Method)) Some(sym)
       else enclosingMethod(sym.originalOwner.originalLexicallyEnclosingClass)
     }
     enclosingMethod(classSym.originalOwner.originalLexicallyEnclosingClass)
@@ -85,10 +89,10 @@ final class BCodeAsmCommon[I <: BackendInterface](val interface: I) {
   def enclosingMethodAttribute(classSym: Symbol, classDesc: Symbol => String, methodDesc: Symbol => String): Option[EnclosingMethodEntry] = {
     if (isAnonymousOrLocalClass(classSym)) {
       val methodOpt = enclosingMethodForEnclosingMethodAttribute(classSym)
-      debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(_.enclClass)})")
+      ctx.debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(_.enclosingClass)})")
       Some(EnclosingMethodEntry(
         classDesc(enclosingClassForEnclosingMethodAttribute(classSym)),
-        methodOpt.map(_.javaSimpleName.toString).orNull,
+        methodOpt.map(_.javaSimpleName).orNull,
         methodOpt.map(methodDesc).orNull))
     } else {
       None

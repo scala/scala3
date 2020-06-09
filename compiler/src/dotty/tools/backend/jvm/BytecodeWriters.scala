@@ -15,7 +15,7 @@ class FileConflictException(msg: String, val file: AbstractFile) extends IOExcep
  *  files, jars, and disassembled/javap output.
  */
 trait BytecodeWriters {
-  val int: BackendInterface
+  val int: DottyBackendInterface
   import int._
 
   /**
@@ -31,11 +31,11 @@ trait BytecodeWriters {
     ensureDirectory(dir) fileNamed pathParts.last + suffix
   }
   def getFile(sym: Symbol, clsName: String, suffix: String): AbstractFile =
-    getFile(sym.outputDirectory, clsName, suffix)
+    getFile(outputDirectory, clsName, suffix)
 
   def factoryNonJarBytecodeWriter(): BytecodeWriter = {
-    val emitAsmp  = int.emitAsmp
-    val doDump    = int.dumpClasses
+    val emitAsmp  = None
+    val doDump    = dumpClasses
     (emitAsmp.isDefined, doDump.isDefined) match {
       case (false, false) => new ClassBytecodeWriter { }
       case (false, true ) => new ClassBytecodeWriter with DumpBytecodeWriter { }
@@ -61,7 +61,7 @@ trait BytecodeWriters {
       try out.write(jclassBytes, 0, jclassBytes.length)
       finally out.flush()
 
-      informProgress("added " + label + path + " to jar")
+      ctx.informProgress("added " + label + path + " to jar")
     }
     override def close() = writer.close()
   }
@@ -77,7 +77,7 @@ trait BytecodeWriters {
   trait AsmpBytecodeWriter extends BytecodeWriter {
     import scala.tools.asm
 
-    private val baseDir = Directory(int.emitAsmp.get).createDirectory()
+    private val baseDir = Directory(None.get).createDirectory() // FIXME missing directoy
 
     private def emitAsmp(jclassBytes: Array[Byte], asmpFile: dotty.tools.io.File): Unit = {
       val pw = asmpFile.printWriter()
@@ -111,12 +111,12 @@ trait BytecodeWriters {
 
       try outstream.write(jclassBytes, 0, jclassBytes.length)
       finally outstream.close()
-      informProgress("wrote '" + label + "' to " + outfile)
+      ctx.informProgress("wrote '" + label + "' to " + outfile)
     }
   }
 
   trait DumpBytecodeWriter extends BytecodeWriter {
-    val baseDir = Directory(int.dumpClasses.get).createDirectory()
+    val baseDir = Directory(dumpClasses.get).createDirectory()
 
     abstract override def writeClass(label: String, jclassName: String, jclassBytes: Array[Byte], outfile: AbstractFile): Unit = {
       super.writeClass(label, jclassName, jclassBytes, outfile)
@@ -130,4 +130,8 @@ trait BytecodeWriters {
       finally outstream.close()
     }
   }
+
+  private def dumpClasses: Option[String] =
+    if (ctx.settings.Ydumpclasses.isDefault) None
+    else Some(ctx.settings.Ydumpclasses.value)
 }

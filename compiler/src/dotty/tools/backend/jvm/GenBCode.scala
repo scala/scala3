@@ -70,6 +70,7 @@ object GenBCode {
 }
 
 class GenBCodePipeline(val int: DottyBackendInterface)(implicit ctx: Context) extends BCodeSyncAndTry {
+  import DottyBackendInterface.symExtensions
 
   private var tree: Tree = _
 
@@ -184,7 +185,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(implicit ctx: Context) ex
           try   { /*withCurrentUnit(item.cunit)*/(visit(item)) }
           catch {
             case ex: Throwable =>
-              println(s"Error while emitting ${int.sourceFileFor(item.cunit)}")
+              println(s"Error while emitting ${item.cunit.source.file.name}")
               throw ex
           }
         }
@@ -203,7 +204,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(implicit ctx: Context) ex
 
       // -------------- mirror class, if needed --------------
       val mirrorC =
-        if (int.symHelper(claszSymbol).isTopLevelModuleClass) {
+        if (claszSymbol.isTopLevelModuleClass) {
           if (claszSymbol.companionClass == NoSymbol) {
             mirrorCodeGen.genMirrorClass(claszSymbol, cunit)
           } else {
@@ -530,7 +531,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(implicit ctx: Context) ex
         case PackageDef(_, stats) => stats foreach gen
         case ValDef(name, tpt, rhs) => () // module val not emitted
         case cd: TypeDef         =>
-          q1 add Item1(arrivalPos, cd, int.currentUnit)
+          q1 add Item1(arrivalPos, cd, int.ctx.compilationUnit)
           arrivalPos += 1
       }
     }

@@ -10,6 +10,8 @@ import dotty.tools.dotc.ast.tpd
 import Decorators._
 import reporting.messages._
 
+import dotty.tools.dotc.transform.SymUtils._
+
 /** A transformer that check that requirements of Static fields\methods are implemented:
   *  1. Only objects can have members annotated with `@static`
   *  2. The fields annotated with `@static` should precede any non-`@static` fields.
@@ -31,7 +33,7 @@ class CheckStatic extends MiniPhase {
     val defns = tree.body.collect{case t: ValOrDefDef => t}
     var hadNonStaticField = false
     for (defn <- defns)
-      if (defn.symbol.hasAnnotation(ctx.definitions.ScalaStaticAnnot)) {
+      if (defn.symbol.isScalaStatic) {
         if (!ctx.owner.is(Module))
           ctx.error(StaticFieldsOnlyAllowedInObjects(defn.symbol), defn.sourcePos)
 
