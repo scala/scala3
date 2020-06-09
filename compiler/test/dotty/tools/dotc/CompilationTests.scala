@@ -49,7 +49,6 @@ class CompilationTests extends ParallelTesting {
       compileFilesInDir("tests/pos-scala2", scala2CompatMode),
       compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-Yerased-terms")),
       compileFilesInDir("tests/pos", defaultOptions),
-      compileFilesInDir("tests/bench", defaultOptions),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
       compileFile(
         // succeeds despite -Xfatal-warnings because of -nowarn
