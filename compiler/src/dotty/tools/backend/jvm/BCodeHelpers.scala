@@ -828,15 +828,6 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         ctx.debuglog(s"typeKind of annotated type $a")
         typeToTypeKind(t)(ct)(storage)
 
-      /* ExistentialType should (probably) be eliminated by erasure. We know they get here for
-        * classOf constants:
-        *   class C[T]
-        *   class T { final val k = classOf[C[_]] }
-        */
-      /* case e @ ExistentialType(_, t) =>
-        debuglog(s"typeKind of existential type $e")
-        t.toTypeKind(ctx)(storage)*/
-
       /* The cases below should probably never occur. They are kept for now to avoid introducing
         * new compiler crashes, but we added a warning. The compiler / library bootstrap and the
         * test suite don't produce any warning.
