@@ -231,7 +231,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
     private def assertClassNotArray(sym: Symbol): Unit = {
       assert(sym.isClass, sym)
-      assert(sym != defn.ArrayClass || ctx.compilationUnit.source.file.name == "Array.scala", sym)
+      assert(sym != defn.ArrayClass || compilingArray, sym)
     }
 
     private def assertClassNotArrayNotPrimitive(sym: Symbol): Unit = {
@@ -795,7 +795,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       */
     def primitiveOrClassToBType(sym: Symbol): BType = {
       assert(sym.isClass, sym)
-      assert(sym != defn.ArrayClass || ctx.compilationUnit.source.file.name == "Array.scala", sym)
+      assert(sym != defn.ArrayClass || compilingArray, sym)
       primitiveTypeMap.getOrElse(sym,
         storage.getClassBTypeAndRegisterInnerClass(sym)).asInstanceOf[BType]
     }
@@ -805,7 +805,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       * signatures, e.g. `def apply(i: Int): T`. A TyperRef to T is replaced by ObjectReference.
       */
     def nonClassTypeRefToBType(sym: Symbol): ClassBType = {
-      assert(sym.isType && ctx.compilationUnit.source.file.name == "Array.scala", sym)
+      assert(sym.isType && compilingArray, sym)
       ObjectReference.asInstanceOf[ct.bTypes.ClassBType]
     }
 
@@ -937,6 +937,9 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     ctx.error(msg)
     throw new RuntimeException(msg)
   }
+
+  private def compilingArray(using ctx: Context) =
+    ctx.compilationUnit.source.file.name == "Array.scala"
 }
 
 object BCodeHelpers {
@@ -957,4 +960,5 @@ object BCodeHelpers {
     val Special = new InvokeStyle(2) // InvokeSpecial (private methods, constructors)
     val Super   = new InvokeStyle(3) // InvokeSpecial (super calls)
   }
+
 }
