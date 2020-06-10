@@ -386,7 +386,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else
           toTextLocal(fun)
           ~ "("
-          ~ Str("using ").provided(app.isUsingApply && !homogenizedView)
+          ~ Str("using ").provided(app.applyKind == ApplyKind.Using && !homogenizedView)
           ~ toTextGlobal(args, ", ")
           ~ ")"
       case tree: TypeApply =>

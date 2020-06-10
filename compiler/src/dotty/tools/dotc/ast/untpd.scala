@@ -344,7 +344,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   val OriginalSymbol: Property.Key[Symbol] = Property.Key()
 
   /** Property key for contextual Apply trees of the form `fn given arg` */
-  val ApplyGiven: Property.StickyKey[Unit] = Property.StickyKey()
+  val KindOfApply: Property.StickyKey[ApplyKind] = Property.StickyKey()
 
   // ------ Creation methods for untyped only -----------------
 
@@ -773,5 +773,5 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   protected def FunProto(args: List[Tree], resType: Type)(using Context) =
-    ProtoTypes.FunProto(args, resType)(ctx.typer, isUsingApply = false)
+    ProtoTypes.FunProto(args, resType)(ctx.typer, ApplyKind.Regular)
 }

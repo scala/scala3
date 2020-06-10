@@ -248,6 +248,9 @@ trait Applications extends Compatibility {
     /** The type of typed arguments: either tpd.Tree or Type */
     type TypedArg
 
+    /** The kind of application that gets typed */
+    def applyKind: ApplyKind
+
     /** Given an original argument and the type of the corresponding formal
      *  parameter, produce a typed argument.
      */
@@ -609,7 +612,14 @@ trait Applications extends Compatibility {
 
         case nil =>
           args match {
-            case arg :: args1 => fail(s"too many arguments for $methString", arg)
+            case arg :: args1 =>
+              val msg = arg match
+                case untpd.Tuple(Nil)
+                if applyKind == ApplyKind.InfixUnit && funType.widen.isNullaryMethod =>
+                  i"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
+                case _ =>
+                  i"too many arguments for $methString"
+              fail(msg, arg)
             case nil =>
           }
       }
@@ -623,6 +633,8 @@ trait Applications extends Compatibility {
   extends Application[Arg](methRef, funType, args, resultType) {
     type TypedArg = Arg
     type Result = Unit
+
+    def applyKind = ApplyKind.Regular
 
     protected def argOK(arg: TypedArg, formal: Type): Boolean = argType(arg, formal) match {
       case ref: TermRef if ref.denot.isOverloaded =>
@@ -687,7 +699,8 @@ trait Applications extends Compatibility {
    *  types of arguments are either known or unknown.
    */
   abstract class TypedApply[T >: Untyped](
-    app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Trees.Tree[T]], resultType: Type)(using Context)
+    app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Trees.Tree[T]], resultType: Type,
+    override val applyKind: ApplyKind)(using Context)
   extends Application(methRef, fun.tpe, args, resultType) {
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
@@ -795,16 +808,20 @@ trait Applications extends Compatibility {
   }
 
   /** Subclass of Application for type checking an Apply node with untyped arguments. */
-  class ApplyToUntyped(app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto, resultType: Type)(using Context)
-  extends TypedApply(app, fun, methRef, proto.args, resultType) {
+  class ApplyToUntyped(
+    app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto,
+    resultType: Type)(using Context)
+  extends TypedApply(app, fun, methRef, proto.args, resultType, proto.applyKind) {
     def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
     def typeOfArg(arg: untpd.Tree): Type = proto.typeOfArg(arg)
   }
 
   /** Subclass of Application for type checking an Apply node with typed arguments. */
-  class ApplyToTyped(app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(using Context)
-  extends TypedApply(app, fun, methRef, args, resultType) {
+  class ApplyToTyped(
+    app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Tree],
+    resultType: Type, applyKind: ApplyKind)(using Context)
+  extends TypedApply(app, fun, methRef, args, resultType, applyKind) {
     def typedArg(arg: Tree, formal: Type): TypedArg = arg
     def treeToArg(arg: Tree): Tree = arg
     def typeOfArg(arg: Tree): Type = arg.tpe
@@ -840,7 +857,8 @@ trait Applications extends Compatibility {
   def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree = {
 
     def realApply(using Context): Tree = {
-      val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this, tree.isUsingApply)(using argCtx(tree))
+      val originalProto =
+        new FunProto(tree.args, IgnoredProto(pt))(this, tree.applyKind)(using argCtx(tree))
       record("typedApply")
       val fun1 = typedFunPart(tree.fun, originalProto)
 
@@ -998,7 +1016,7 @@ trait Applications extends Compatibility {
   def ApplyTo(app: untpd.Apply, fun: tpd.Tree, methRef: TermRef, proto: FunProto, resultType: Type)(using Context): tpd.Tree =
     val typer = ctx.typer
     if (proto.allArgTypesAreCurrent())
-      typer.ApplyToTyped(app, fun, methRef, proto.typedArgs(), resultType).result
+      typer.ApplyToTyped(app, fun, methRef, proto.typedArgs(), resultType, proto.applyKind).result
     else
       typer.ApplyToUntyped(app, fun, methRef, proto, resultType)(
         using fun.nullableInArgContext(using argCtx(app))).result
@@ -1655,7 +1673,7 @@ trait Applications extends Compatibility {
     def resolve(alts: List[TermRef]): List[TermRef] =
       pt match
         case pt: FunProto =>
-          if pt.isUsingApply then
+          if pt.applyKind == ApplyKind.Using then
             val alts0 = alts.filterConserve { alt =>
               val mt = alt.widen.stripPoly
               mt.isImplicitMethod || mt.isContextualMethod
