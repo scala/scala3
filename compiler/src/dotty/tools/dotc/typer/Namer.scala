@@ -859,7 +859,7 @@ class Namer { typer: Typer =>
           if (cls eq sym)
             ctx.error("An annotation class cannot be annotated with iself", annotTree.sourcePos)
           else {
-            val ann = Annotation.deferred(cls)(typedAnnotation(annotTree))
+            val ann = Annotation.deferred(cls)(typedAnnotation(annotTree)(using annotCtx))(using annotCtx)
             sym.addAnnotation(ann)
           }
         }
