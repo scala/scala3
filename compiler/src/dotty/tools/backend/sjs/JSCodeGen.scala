@@ -1531,9 +1531,9 @@ class JSCodeGen()(implicit ctx: Context) {
           case jstpe.LongType =>
             js.BinaryOp(js.BinaryOp.Long_-, js.LongLiteral(0), genArg)
           case jstpe.FloatType =>
-            js.BinaryOp(js.BinaryOp.Float_-, js.FloatLiteral(0.0f), genArg)
+            js.BinaryOp(js.BinaryOp.Float_*, js.FloatLiteral(-1.0f), genArg)
           case jstpe.DoubleType =>
-            js.BinaryOp(js.BinaryOp.Double_-, js.DoubleLiteral(0), genArg)
+            js.BinaryOp(js.BinaryOp.Double_*, js.DoubleLiteral(-1.0), genArg)
         }
 
       case NOT =>
