@@ -427,8 +427,8 @@ class TreeChecker extends Phase with SymTransformer {
       checkOwner(impl.constr)
 
       def isNonMagicalMember(x: Symbol) =
-          !x.isValueClassConvertMethod &&
-          !x.name.is(DocArtifactName)
+        !x.isValueClassConvertMethod &&
+        !x.name.is(DocArtifactName)
 
       val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
@@ -436,9 +436,9 @@ class TreeChecker extends Phase with SymTransformer {
       val symbolsNotDefined = decls -- defined - constr.symbol
 
       assert(symbolsNotDefined.isEmpty,
-          i" $cls tree does not define methods: ${symbolsNotDefined.toList}%, %\n" +
-          i"expected: $decls%, %\n" +
-          i"defined: $defined%, %")
+          i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
+          i"expected: ${decls.toList}%, %\n" +
+          i"defined: ${defined}%, %")
 
       super.typedClassDef(cdef, cls)
     }
