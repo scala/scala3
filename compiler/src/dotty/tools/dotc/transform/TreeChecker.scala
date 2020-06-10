@@ -426,18 +426,19 @@ class TreeChecker extends Phase with SymTransformer {
       checkOwner(impl)
       checkOwner(impl.constr)
 
-      def isNonMagicalMethod(x: Symbol) =
-        x.is(Method) &&
+      def isNonMagicalMember(x: Symbol) =
           !x.isValueClassConvertMethod &&
-          !(x.is(Macro) && ctx.phase.refChecked) &&
           !x.name.is(DocArtifactName)
 
-      val symbolsNotDefined = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMethod) -- impl.body.map(_.symbol) - constr.symbol
+      val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
+      val defined = impl.body.map(_.symbol)
+
+      val symbolsNotDefined = decls -- defined - constr.symbol
 
       assert(symbolsNotDefined.isEmpty,
           i" $cls tree does not define methods: ${symbolsNotDefined.toList}%, %\n" +
-          i"expected: ${cls.classInfo.decls.toList.toSet.filter(isNonMagicalMethod)}%, %\n" +
-          i"defined: ${impl.body.map(_.symbol)}%, %")
+          i"expected: $decls%, %\n" +
+          i"defined: $defined%, %")
 
       super.typedClassDef(cdef, cls)
     }
