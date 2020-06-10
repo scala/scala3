@@ -222,8 +222,8 @@ object Flags {
   /** Labeled with `final` modifier */
   val (Final @ _, _, _) = newFlags(6, "final")
 
-  /** A method symbol */
-  val (_, Method @ _, HigherKinded @ _) = newFlags(7, "<method>", "<higher kinded>") // TODO drop HigherKinded
+  /** A method symbol / a super trait */
+  val (_, Method @ _, SuperTrait @ _) = newFlags(7, "<method>", "super")
 
   /** A (term or type) parameter to a class or method */
   val (Param @ _, TermParam @ _, TypeParam @ _) = newFlags(8, "<param>")
@@ -439,7 +439,7 @@ object Flags {
    */
   val FromStartFlags: FlagSet = commonFlags(
     Module, Package, Deferred, Method, Case, Enum,
-    HigherKinded, Param, ParamAccessor,
+    SuperTrait, Param, ParamAccessor,
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic,

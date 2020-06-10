@@ -1170,6 +1170,12 @@ object SymDenotations {
     final def isEffectivelySealed(using Context): Boolean =
       isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
 
+    final def isSuperTrait(using Context): Boolean =
+      isClass
+      && (is(SuperTrait)
+          || defn.assumedSuperTraits.contains(symbol.asClass)
+          || hasAnnotation(defn.SuperTraitAnnot))
+
     /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {
       val cls = enclosingClass

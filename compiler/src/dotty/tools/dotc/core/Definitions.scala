@@ -640,7 +640,6 @@ class Definitions {
   @tu lazy val EnumClass: ClassSymbol = ctx.requiredClass("scala.Enum")
     @tu lazy val Enum_ordinal: Symbol = EnumClass.requiredMethod(nme.ordinal)
 
-  @tu lazy val EnumValueClass: ClassSymbol = ctx.requiredClass("scala.runtime.EnumValue")
   @tu lazy val EnumValuesClass: ClassSymbol = ctx.requiredClass("scala.runtime.EnumValues")
   @tu lazy val ProductClass: ClassSymbol = ctx.requiredClass("scala.Product")
     @tu lazy val Product_canEqual          : Symbol = ProductClass.requiredMethod(nme.canEqual_)
@@ -809,6 +808,7 @@ class Definitions {
   @tu lazy val ScalaStrictFPAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.strictfp")
   @tu lazy val ScalaStaticAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.static")
   @tu lazy val SerialVersionUIDAnnot: ClassSymbol = ctx.requiredClass("scala.SerialVersionUID")
+  @tu lazy val SuperTraitAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.superTrait")
   @tu lazy val TASTYSignatureAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.TASTYSignature")
   @tu lazy val TASTYLongSignatureAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.TASTYLongSignature")
   @tu lazy val TailrecAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.tailrec")
@@ -1312,6 +1312,21 @@ class Definitions {
   /** Is synthesized symbol with alphanumeric name allowed to be used as an infix operator? */
   def isInfix(sym: Symbol)(implicit ctx: Context): Boolean =
     (sym eq Object_eq) || (sym eq Object_ne)
+
+  @tu lazy val assumedSuperTraits =
+    Set(ComparableClass, ProductClass, SerializableClass,
+      // add these for now, until we had a chance to retrofit 2.13 stdlib
+      // we should do a more through sweep through it then.
+      ctx.requiredClass("scala.collection.SortedOps"),
+      ctx.requiredClass("scala.collection.StrictOptimizedSortedSetOps"),
+      ctx.requiredClass("scala.collection.generic.DefaultSerializable"),
+      ctx.requiredClass("scala.collection.generic.IsIterable"),
+      ctx.requiredClass("scala.collection.generic.IsIterableOnce"),
+      ctx.requiredClass("scala.collection.generic.IsMap"),
+      ctx.requiredClass("scala.collection.generic.IsSeq"),
+      ctx.requiredClass("scala.collection.generic.Subtractable"),
+      ctx.requiredClass("scala.collection.immutable.StrictOptimizedSeqOps")
+    )
 
   // ----- primitive value class machinery ------------------------------------------
 

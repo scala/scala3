@@ -184,7 +184,8 @@ object Tokens extends TokensCommon {
   final val ERASED = 63;           enter(ERASED, "erased")
   final val GIVEN = 64;            enter(GIVEN, "given")
   final val EXPORT = 65;           enter(EXPORT, "export")
-  final val MACRO = 66;            enter(MACRO, "macro") // TODO: remove
+  final val SUPERTRAIT = 66;       enter(SUPERTRAIT, "super trait")
+  final val MACRO = 67;            enter(MACRO, "macro") // TODO: remove
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -233,7 +234,7 @@ object Tokens extends TokensCommon {
   final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)
 
-  final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
+  final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT, SUPERTRAIT)
 
   final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE, GIVEN)
 
