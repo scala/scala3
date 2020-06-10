@@ -270,7 +270,7 @@ object NameOps {
           original.fieldName
         }
         else getterName.fieldName
-      else FieldName(name)
+      else FieldName(name.toSimpleName)
 
     def stripScala2LocalSuffix: TermName =
       if (name.isScala2LocalSuffix) name.asSimpleName.dropRight(1) else name
