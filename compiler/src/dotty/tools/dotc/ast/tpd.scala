@@ -421,7 +421,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       t
   }
 
-  def singleton(tp: Type)(implicit ctx: Context): Tree = tp match {
+  def singleton(tp: Type)(implicit ctx: Context): Tree = tp.dealias match {
     case tp: TermRef => ref(tp)
     case tp: ThisType => This(tp.cls)
     case tp: SkolemType => singleton(tp.narrow)
