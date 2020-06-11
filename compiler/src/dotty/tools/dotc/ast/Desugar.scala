@@ -719,7 +719,10 @@ object desugar {
           DefDef(methName, derivedTparams, (unapplyParam :: Nil) :: Nil, unapplyResTp, unapplyRHS)
             .withMods(synthetic)
         }
-        companionDefs(companionParent, applyMeths ::: unapplyMeth :: companionMembers)
+        val toStringMeth =
+          DefDef(nme.toString_, Nil, Nil, TypeTree(), Literal(Constant(className.toString))).withMods(Modifiers(Override | Synthetic))
+
+        companionDefs(companionParent, applyMeths ::: unapplyMeth :: toStringMeth :: companionMembers)
       }
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum)
         companionDefs(anyRef, companionMembers)
