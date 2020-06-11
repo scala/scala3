@@ -1,13 +1,12 @@
 Dotty
 =====
-[![Build Status](http://dotty-ci.epfl.ch/api/badges/lampepfl/dotty/status.svg)](http://dotty-ci.epfl.ch/lampepfl/dotty)
 [![Dotty CI](https://github.com/lampepfl/dotty/workflows/Dotty%20CI/badge.svg?branch=master)](https://github.com/lampepfl/dotty/actions?query=branch%3Amaster)
 [![Join the chat at https://gitter.im/lampepfl/dotty](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/lampepfl/dotty?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Log Knowledge](https://img.shields.io/badge/log-knowledge-blueviolet.svg)](https://github.com/lampepfl/dotty-knowledge/issues/new/choose)
 
 
 * [Homepage](http://dotty.epfl.ch)
-* [Documentation](https://dotty.epfl.ch/docs) [![Deadlink Status](https://travis-ci.org/nicolasstucki/dotty-website-linkcheck.svg?branch=master)](https://travis-ci.org/nicolasstucki/dotty-website-linkcheck)
+* [Documentation](https://dotty.epfl.ch/docs)
 
 Try it out
 ==========
