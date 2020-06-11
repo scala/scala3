@@ -481,6 +481,23 @@ trait ImplicitRunInfo:
 
   private val EmptyTermRefSet = new TermRefSet(using NoContext)
 
+  /** Global timeout to stop looking for further implicit suggestions, in ms.
+   *  This is for the first import suggestion; subsequent suggestions
+   *  get smaller timeouts.
+   */
+  private inline val suggestFirstImplicitsTimeOut = 10000
+
+  private var importSuggestionBudget: Long = suggestFirstImplicitsTimeOut
+
+  /** The current timeout for import suggestions */
+  def nextImportSuggestionTimeout() = importSuggestionBudget
+
+  /** Reduce the import suggestion timeout by `ms`, but make sure that
+   *  the new timeout is at least half the old one.
+   */
+  def reduceImportSuggestionTimeout(ms: Long) =
+    importSuggestionBudget = (importSuggestionBudget - ms) max (importSuggestionBudget / 2)
+
   private def isExcluded(sym: Symbol) =
     if migrateTo3 then false else sym.is(Package) || sym.isPackageObject
 

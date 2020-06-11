@@ -27,9 +27,6 @@ trait ImportSuggestions:
   /** Timeout to test a single implicit value as a suggestion, in ms */
   private inline val testOneImplicitTimeOut = 500
 
-  /** Global timeout to stop looking for further implicit suggestions, in ms */
-  private inline val suggestImplicitTimeOut = 10000
-
   /** A list of TermRefs referring to the roots where suggestions for
    *  imports of givens or extension methods that might fix a type error
    *  are searched.
@@ -145,7 +142,11 @@ trait ImportSuggestions:
    */
   private def importSuggestions(pt: Type)(using Context): (List[TermRef], List[TermRef]) =
     val timer = new Timer()
-    val deadLine = System.currentTimeMillis() + suggestImplicitTimeOut
+    val allotted = ctx.run.nextImportSuggestionTimeout()
+    if allotted <= 1 then return (Nil, Nil)
+    implicits.println(i"looking for import suggestions, timeout = ${allotted}ms")
+    val start = System.currentTimeMillis()
+    val deadLine = start + allotted
 
     // Candidates that are already available without explicit import because they
     // are already provided by the context (imported or inherited) or because they
@@ -249,7 +250,9 @@ trait ImportSuggestions:
           println("caught exception when searching for suggestions")
           ex.printStackTrace()
         (Nil, Nil)
-    finally timer.cancel()
+    finally
+      timer.cancel()
+      ctx.run.reduceImportSuggestionTimeout(System.currentTimeMillis() - start)
   end importSuggestions
 
   /** The `ref` parts of this list of pairs, discarding subsequent elements that
