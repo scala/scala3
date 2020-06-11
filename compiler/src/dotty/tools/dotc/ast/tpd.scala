@@ -1214,6 +1214,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = Property.Key[List[Tree]]()
 
+  /** A key to be used in a context property that tracks the number of inlined trees */
+  private val InlinedTrees = Property.Key[Counter]()
+  final class Counter {
+    var count: Int = 0
+  }
+
   /** Record an enclosing inlined call.
    *  EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
    *  We assume parameters are never nested inside parameters.
@@ -1230,13 +1236,24 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else
         call :: oldIC
 
-    ctx.fresh.setProperty(InlinedCalls, newIC)
+    val ctx1 = ctx.fresh.setProperty(InlinedCalls, newIC)
+    if oldIC.isEmpty then ctx1.setProperty(InlinedTrees, new Counter) else ctx1
   }
 
   /** All enclosing calls that are currently inlined, from innermost to outermost.
    */
   def enclosingInlineds(implicit ctx: Context): List[Tree] =
     ctx.property(InlinedCalls).getOrElse(Nil)
+
+  /** Record inlined trees */
+  def addInlinedTrees(n: Int)(implicit ctx: Context): Unit =
+    ctx.property(InlinedTrees).foreach(_.count += n)
+
+  /** Check if the limit on the number of inlined trees has been reached */
+  def reachedInlinedTreesLimit(implicit ctx: Context): Boolean =
+    ctx.property(InlinedTrees) match
+      case Some(c) => c.count > ctx.settings.XmaxInlinedTrees.value
+      case None => false
 
   /** The source file where the symbol of the `inline` method referred to by `call`
    *  is defined

@@ -29,6 +29,7 @@ import Nullables.{given _}
 import collection.mutable
 import reporting.trace
 import util.Spans.Span
+import util.NoSourcePosition
 import dotty.tools.dotc.transform.{Splicer, TreeMapWithStages}
 
 object Inliner {
@@ -71,14 +72,17 @@ object Inliner {
    *            and body that replace it.
    */
   def inlineCall(tree: Tree)(using Context): Tree = {
+    val startId = ctx.source.nextId
+
     if tree.symbol.denot != SymDenotations.NoDenotation && tree.symbol.owner.companionModule == defn.CompiletimeTestingPackageObject
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
-   /** Set the position of all trees logically contained in the expansion of
-    *  inlined call `call` to the position of `call`. This transform is necessary
-    *  when lifting bindings from the expansion to the outside of the call.
-    */
+
+    /** Set the position of all trees logically contained in the expansion of
+     *  inlined call `call` to the position of `call`. This transform is necessary
+     *  when lifting bindings from the expansion to the outside of the call.
+     */
     def liftFromInlined(call: Tree) = new TreeMap:
       override def transform(t: Tree)(using Context) =
         if call.span.exists then
@@ -115,20 +119,28 @@ object Inliner {
 
     // assertAllPositioned(tree)   // debug
     val tree1 = liftBindings(tree, identity)
-    if (bindings.nonEmpty)
-      cpy.Block(tree)(bindings.toList, inlineCall(tree1))
-    else if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) {
-      val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
-      new Inliner(tree, body).inlined(tree.sourcePos)
-    }
-    else
-      errorTree(
-        tree,
-        i"""|Maximal number of successive inlines (${ctx.settings.XmaxInlines.value}) exceeded,
-            |Maybe this is caused by a recursive inline method?
-            |You can use -Xmax-inlines to change the limit.""",
-        (tree :: enclosingInlineds).last.sourcePos
-      )
+    val tree2 =
+      if bindings.nonEmpty then
+        cpy.Block(tree)(bindings.toList, inlineCall(tree1))
+      else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
+        val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
+        new Inliner(tree, body).inlined(tree.sourcePos)
+      else
+        val (reason, setting) =
+          if reachedInlinedTreesLimit then ("inlined trees", ctx.settings.XmaxInlinedTrees)
+          else ("successive inlines", ctx.settings.XmaxInlines)
+        errorTree(
+          tree,
+          i"""|Maximal number of $reason (${setting.value}) exceeded,
+              |Maybe this is caused by a recursive inline method?
+              |You can use ${setting.name} to change the limit.""",
+          (tree :: enclosingInlineds).last.sourcePos
+        )
+
+    val endId = ctx.source.nextId
+    addInlinedTrees(endId - startId)
+
+    tree2
   }
 
   /** Try to inline a pattern with an inline unapply method. Fail with error if the maximal
