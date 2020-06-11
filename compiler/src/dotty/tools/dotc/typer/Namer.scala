@@ -1129,6 +1129,9 @@ class Namer { typer: Typer =>
                 ctx.newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
               }
             forwarder.info = avoidPrivateLeaks(forwarder)
+            for annot <- sym.annotations do
+              if annot.tree.symbol.maybeOwner == defn.AlphaAnnot then
+                forwarder.addAnnotation(annot)
             val forwarderDef =
               if (forwarder.isType) tpd.TypeDef(forwarder.asType)
               else {
