@@ -487,16 +487,13 @@ trait ImplicitRunInfo:
    */
   private inline val suggestFirstImplicitsTimeOut = 10000
 
-  private var importSuggestionBudget: Long = suggestFirstImplicitsTimeOut
-
-  /** The current timeout for import suggestions */
-  def nextImportSuggestionTimeout() = importSuggestionBudget
-
-  /** Reduce the import suggestion timeout by `ms`, but make sure that
-   *  the new timeout is at least half the old one.
+  /** Global default timeout to stop looking for further implicit suggestions, in ms.
+   *  This is usually for the first import suggestion; subsequent suggestions
+   *  may get smaller timeouts. Specifically, the importSuggestions method reduces
+   *  the budget available after it is run by the time it took, but never less
+   *  than to half of the previous budget.
    */
-  def reduceImportSuggestionTimeout(ms: Long) =
-    importSuggestionBudget = (importSuggestionBudget - ms) max (importSuggestionBudget / 2)
+  var importSuggestionBudget: Long = 10000
 
   private def isExcluded(sym: Symbol) =
     if migrateTo3 then false else sym.is(Package) || sym.isPackageObject

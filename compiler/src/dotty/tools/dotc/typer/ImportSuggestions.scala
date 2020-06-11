@@ -142,7 +142,7 @@ trait ImportSuggestions:
    */
   private def importSuggestions(pt: Type)(using Context): (List[TermRef], List[TermRef]) =
     val timer = new Timer()
-    val allotted = ctx.run.nextImportSuggestionTimeout()
+    val allotted = ctx.run.importSuggestionBudget
     if allotted <= 1 then return (Nil, Nil)
     implicits.println(i"looking for import suggestions, timeout = ${allotted}ms")
     val start = System.currentTimeMillis()
@@ -252,7 +252,9 @@ trait ImportSuggestions:
         (Nil, Nil)
     finally
       timer.cancel()
-      ctx.run.reduceImportSuggestionTimeout(System.currentTimeMillis() - start)
+      ctx.run.importSuggestionBudget =
+        (ctx.run.importSuggestionBudget - (System.currentTimeMillis() - start))
+        `max` (ctx.run.importSuggestionBudget / 2)
   end importSuggestions
 
   /** The `ref` parts of this list of pairs, discarding subsequent elements that
