@@ -1129,6 +1129,7 @@ class Namer { typer: Typer =>
                 ctx.newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
               }
             forwarder.info = avoidPrivateLeaks(forwarder)
+            forwarder.addAnnotations(sym.annotations)
             val forwarderDef =
               if (forwarder.isType) tpd.TypeDef(forwarder.asType)
               else {
