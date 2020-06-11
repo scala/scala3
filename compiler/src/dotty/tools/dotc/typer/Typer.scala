@@ -2938,7 +2938,7 @@ class Typer extends Namer
      *   - we untuple tuple arguments of infix operations if the function
      *     does not consist only of unary alternatives.
      */
-    def needsTupledDual(funType: Type, pt: FunProto): Boolean = {
+    def needsTupledDual(funType: Type, pt: FunProto): Boolean =
       pt.args match
         case untpd.Tuple(elems) :: Nil =>
           elems.length > 1
@@ -2947,7 +2947,7 @@ class Typer extends Namer
         case args =>
           args.lengthCompare(1) > 0
           && isUnary(funType)
-    } && autoTuplingEnabled
+          && autoTuplingEnabled
 
     def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
       case wtp: MethodOrPoly =>
