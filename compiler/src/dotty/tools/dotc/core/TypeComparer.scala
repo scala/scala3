@@ -2788,7 +2788,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
               val instances = paramInstances(new Array(caseLambda.paramNames.length), pat)
               instantiateParams(instances)(body)
             case _ =>
-              body
+              body.simplified
           }
         }
       else if (provablyDisjoint(scrut, pat))

@@ -387,15 +387,20 @@ trait TypeAssigner {
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {
     val ownType =
       if (body.isType) {
-        val params = new TreeAccumulator[mutable.ListBuffer[TypeSymbol]] {
-          def apply(ps: mutable.ListBuffer[TypeSymbol], t: Tree)(using Context) = t match {
-            case t: Bind if t.symbol.isType => foldOver(ps += t.symbol.asType, t)
-            case _ => foldOver(ps, t)
-          }
+        pat match {
+          case Bind(name, _) if name == nme.WILDCARD.toTypeName =>
+            defn.MatchCase(defn.AnyType, body.tpe)
+          case pat =>
+            val params = new TreeAccumulator[mutable.ListBuffer[TypeSymbol]] {
+              def apply(ps: mutable.ListBuffer[TypeSymbol], t: Tree)(using Context) = t match {
+                case t: Bind if t.symbol.isType => foldOver(ps += t.symbol.asType, t)
+                case _ => foldOver(ps, t)
+              }
+            }
+            HKTypeLambda.fromParams(
+              params(new mutable.ListBuffer[TypeSymbol](), pat).toList,
+              defn.MatchCase(pat.tpe, body.tpe))
         }
-        HKTypeLambda.fromParams(
-          params(new mutable.ListBuffer[TypeSymbol](), pat).toList,
-          defn.MatchCase(pat.tpe, body.tpe))
       }
       else body.tpe
     tree.withType(ownType)
