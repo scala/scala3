@@ -252,10 +252,15 @@ trait ImportSuggestions:
         (Nil, Nil)
     finally
       timer.cancel()
-      ctx.run.importSuggestionBudget =
-        (ctx.run.importSuggestionBudget - (System.currentTimeMillis() - start))
-        `max` (ctx.run.importSuggestionBudget / 2)
+      reduceTimeBudget(((System.currentTimeMillis() - start) min Int.MaxValue).toInt)
   end importSuggestions
+
+  /** Reduce next timeout for import suggestions by the amount of time it took
+   *  for current search, but but never less than to half of the previous budget.
+   */
+  private def reduceTimeBudget(used: Int)(using Context) =
+    ctx.run.importSuggestionBudget =
+      (ctx.run.importSuggestionBudget - used) max (ctx.run.importSuggestionBudget / 2)
 
   /** The `ref` parts of this list of pairs, discarding subsequent elements that
    *  have the same String part. Elements are sorted by their String parts.
