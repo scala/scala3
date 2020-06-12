@@ -1,11 +1,6 @@
 trait RejectedLiterals {
-  def missingHex: Int    = { 0x }        // error: invalid literal number
-}
-/*
-// nsc: -Ywarn-octal-literal -Xfatal-warnings -deprecation
-trait RejectedLiterals {
 
-  def missingHex: Int    = { 0x }        // line 4: was: not reported, taken as zero
+  def missingHex: Int    = { 0x }        // error: invalid literal number
 
   def leadingZeros: Int  = { 01 }        // line 6: no leading zero
 
@@ -13,17 +8,17 @@ trait RejectedLiterals {
 
   def zeroOfNine: Int    = { 09 }        // line 10: no leading zero
 
-  def orphanDot: Int     = { 9. }        // line 12: ident expected
+  def orphanDot: Int     = { 9. }        // error: ident expected
 
-  def zeroOfNineDot: Int = { 09. }       // line 14: malformed integer, ident expected
+  def zeroOfNineDot: Int = { 09. }       // error: malformed integer, ident expected
 
-  def noHexFloat: Double = { 0x1.2 }     // line 16: ';' expected but double literal found.
+  def noHexFloat: Double = { 0x1.2 }     // error: ';' expected but double literal found.
 
 }
 
 trait Braceless {
 
-  def missingHex: Int    = 0x            // line 22: was: not reported, taken as zero
+  def missingHex: Int    = 0x            // error: was: not reported, taken as zero
 
   def leadingZeros: Int  = 01            // line 24: no leading zero
 
@@ -31,28 +26,27 @@ trait Braceless {
 
   def zeroOfNine: Int    = 09            // line 28: no leading zero
 
-  def orphanDot: Int     = 9.            // line 30: ident expected
+  def orphanDot: Int     = 9.            // should be: ident expected
 
-  def zeroOfNineDot: Int = 09.           // line 32: malformed integer, ident expected
+  def zeroOfNineDot: Int = 09.           // error: an identifier expected, but 'def' found, shoule be ident expected
 
-  def noHexFloat: Double = 0x1.2         // line 34: ';' expected but double literal found.
+  def noHexFloat: Double = 0x1.2         // should be: ';' expected but double literal found.
 }
 
 trait MoreSadness {
 
-  def tooTiny: Float     = { 0.7e-45f }      // floating point number too small
+  def tooTiny: Float     = { 0.7e-45f }      // error: floating point number too small
 
-  def twoTiny: Double    = { 2.0e-324 }      // double precision floating point number too small
+  def twoTiny: Double    = { 2.0e-324 }      // error: double precision floating point number too small
 
-  def tooHuge: Float     = { 3.4028236E38f } // floating point number too large
+  def tooHuge: Float     = { 3.4028236E38f } // error: floating point number too large
 
-  def twoHuge: Double    = { 1.7976931348623159e308 } // double precision floating point number too large
-}
+  def twoHuge: Double    = { 1.7976931348623159e308 } // error: double precision floating point number too large
+} // error: Found: Unit etc, sad
 
 trait Lengthy {
 
   def bad = 1l
 
   def worse = 123l
-}
-*/
+} // error: Found: Unit etc, sad // anypos-error: '}' expected, but eof found, sad
