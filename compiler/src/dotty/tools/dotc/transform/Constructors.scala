@@ -284,10 +284,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       // TODO: this happens to work only because Constructors is the last phase in group
     }
 
-    val (superCalls, followConstrStats) = constrStats.toList match {
-      case (sc: Apply) :: rest if sc.symbol.isConstructor => (sc :: Nil, rest)
-      case stats => (Nil, stats)
-    }
+    val (superCalls, followConstrStats) = splitAtSuper(constrStats.toList)
 
     val mappedSuperCalls = vparams match {
       case (outerParam @ ValDef(nme.OUTER, _, _)) :: _ =>

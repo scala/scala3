@@ -10,15 +10,17 @@ import scala.tools.asm.util.{TraceMethodVisitor, ASMifier}
 import java.io.PrintWriter
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.TreeTypeMap
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.StdNames.{nme, str}
+import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types.{MethodType, Type}
+import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.report
+import dotty.tools.dotc.transform.SymUtils._
 
 /*
  *
@@ -93,12 +95,12 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
-    def genPlainClass(cd: TypeDef) = cd match {
-      case TypeDef(_, impl) =>
+    def genPlainClass(cd0: TypeDef) = cd0 match {
+      case TypeDef(_, impl: Template) =>
       assert(cnode == null, "GenBCode detected nested methods.")
       innerClassBufferASM.clear()
 
-      claszSymbol       = cd.symbol
+      claszSymbol       = cd0.symbol
       isCZParcelable    = isAndroidParcelableClass(claszSymbol)
       isCZStaticModule  = claszSymbol.isStaticModuleClass
       thisName          = internalName(claszSymbol)
@@ -107,14 +109,70 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       initJClass(cnode)
 
+      val cd = if (isCZStaticModule) {
+        // Move statements from the primary constructor following the superclass constructor call to
+        // a newly synthesised tree representing the "<clinit>", which also assigns the MODULE$ field.
+        // Because the assigments to both the module instance fields, and the fields of the module itself
+        // are in the <clinit>, these fields can be static + final.
+
+        // TODO should we do this transformation earlier, say in Constructors? Or would that just cause
+        // pain for scala-{js, native}?
+
+        for (f <- claszSymbol.info.decls.filter(_.isField))
+          f.setFlag(JavaStatic)
+
+        val (uptoSuperStats, remainingConstrStats) = splitAtSuper(impl.constr.rhs.asInstanceOf[Block].stats)
+        val clInitSymbol = ctx.newSymbol(
+            claszSymbol,
+            nme.STATIC_CONSTRUCTOR,
+            JavaStatic | Method,
+            MethodType(Nil)(_ => Nil, _ => defn.UnitType),
+            privateWithin = NoSymbol,
+            coord = claszSymbol.coord
+          )
+
+        // We don't need to enter this field into the decls of claszSymbol.info as this is added manually to the generated class
+        // in addModuleInstanceField. TODO: try adding it to the decls and making the usual field generation do the right thing.
+        val moduleField = ctx.newSymbol(
+            claszSymbol,
+            str.MODULE_INSTANCE_FIELD.toTermName,
+            JavaStatic | Private,
+            claszSymbol.typeRef,
+            privateWithin = NoSymbol,
+            coord = claszSymbol.coord
+          )
+
+        val thisMap = new TreeTypeMap(
+          treeMap = {
+            case tree: This if tree.symbol == claszSymbol =>
+              ref(claszSymbol.sourceModule)
+            case tree =>
+              tree
+          },
+          oldOwners = claszSymbol.primaryConstructor :: Nil,
+          newOwners = clInitSymbol :: Nil
+        )
+
+        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToArgs(Nil)
+        val assignModuleField = Assign(ref(moduleField), callConstructor)
+        val remainingConstrStatsSubst = remainingConstrStats.map(thisMap(_))
+        val clinit = DefDef(
+            clInitSymbol,
+            Block(assignModuleField :: remainingConstrStatsSubst, unitLiteral)
+          )
+
+        val constr2 = {
+          val rhs = Block(uptoSuperStats, impl.constr.rhs.asInstanceOf[Block].expr)
+          cpy.DefDef(impl.constr)(rhs = rhs)
+        }
+
+        val impl2 = cpy.Template(impl)(constr = constr2, body = clinit :: impl.body)
+        cpy.TypeDef(cd0)(rhs = impl2)
+      } else cd0
+
       val methodSymbols = for (f <- cd.symbol.info.decls.toList if f.is(Method) && f.isTerm && !f.is(Module)) yield f
       val hasStaticCtor = methodSymbols exists (_.isStaticConstructor)
-      if (!hasStaticCtor) {
-        // but needs one ...
-        if (isCZStaticModule || isCZParcelable) {
-          fabricateStaticInit()
-        }
-      }
+      if (!hasStaticCtor && isCZParcelable) fabricateStaticInitAndroid()
 
       val optSerial: Option[Long] =
         claszSymbol.getAnnotation(defn.SerialVersionUIDAnnot).flatMap { annot =>
@@ -223,7 +281,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    private def fabricateStaticInit(): Unit = {
+    private def fabricateStaticInitAndroid(): Unit = {
 
       val clinit: asm.MethodVisitor = cnode.visitMethod(
         GenBCodeOps.PublicStatic, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
@@ -234,15 +292,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       )
       clinit.visitCode()
 
-      /* "legacy static initialization" */
-      if (isCZStaticModule) {
-        clinit.visitTypeInsn(asm.Opcodes.NEW, thisName)
-        clinit.visitMethodInsn(asm.Opcodes.INVOKESPECIAL,
-                               thisName, INSTANCE_CONSTRUCTOR_NAME, "()V", false)
-      }
       if (isCZParcelable) { legacyAddCreatorCode(clinit, cnode, thisName) }
-      clinit.visitInsn(asm.Opcodes.RETURN)
 
+      clinit.visitInsn(asm.Opcodes.RETURN)
       clinit.visitMaxs(0, 0) // just to follow protocol, dummy arguments
       clinit.visitEnd()
     }
@@ -679,7 +731,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /*
      *  must-single-thread
      *
-     *  TODO document, explain interplay with `fabricateStaticInit()`
+     *  TODO document, explain interplay with `fabricateStaticInitAndroid()`
      */
     private def appendToStaticCtor(dd: DefDef): Unit = {
 

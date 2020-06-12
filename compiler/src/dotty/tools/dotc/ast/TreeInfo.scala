@@ -828,6 +828,18 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     loop(tree)
   }
 
+  /** Return a pair consisting of (supercall, rest)
+   *
+   *  - supercall: the of superclass call, excluding trait constr calls
+   *
+   *  The supercall is always the first statement (if exists)
+   */
+  final def splitAtSuper(constrStats: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =
+    constrStats.toList match {
+      case (sc: Apply) :: rest if sc.symbol.isConstructor => (sc :: Nil, rest)
+      case stats => (Nil, stats)
+    }
+
   /** Structural tree comparison (since == on trees is reference equality).
    *  For the moment, only Ident, Select, Literal, Apply and TypeApply are supported
    */
