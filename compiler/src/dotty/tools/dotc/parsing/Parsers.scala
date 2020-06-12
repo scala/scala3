@@ -2004,7 +2004,12 @@ object Parsers {
           }
 
           val finalizer =
-            if (in.token == FINALLY) { in.nextToken(); subExpr() }
+            if (in.token == FINALLY) {
+              in.nextToken();
+              val expr = subExpr()
+              if expr.span.exists then expr
+              else Literal(Constant(())) // finally without an expression
+            }
             else {
               if (handler.isEmpty) warning(
                 EmptyCatchAndFinallyBlock(body),
