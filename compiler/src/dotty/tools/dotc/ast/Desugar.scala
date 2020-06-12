@@ -263,7 +263,7 @@ object desugar {
             name = DefaultGetterName(methName, n),
             tparams = meth.tparams.map(tparam => dropContextBounds(toDefParam(tparam, keepAnnotations = true))),
             vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam(_, keepAnnotations = true, keepDefault = false)), n),
-            tpt = TypeTree(),
+            tpt = vparam.tpt,
             rhs = vparam.rhs
           )
           .withMods(Modifiers(mods.flags & (AccessFlags | Synthetic), mods.privateWithin))
