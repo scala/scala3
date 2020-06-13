@@ -85,7 +85,7 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
     }
   }
 
-  private def ensureDir(dirs: mutable.Map[String, DirEntry], path: String, zipEntry: ZipEntry): DirEntry =
+  private def ensureDir(dirs: mutable.Map[String, DirEntry], path: String): DirEntry =
     //OPT inlined from getOrElseUpdate; saves ~50K closures on test run.
     // was:
     // dirs.getOrElseUpdate(path, {
@@ -97,7 +97,7 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
     dirs get path match {
       case Some(v) => v
       case None =>
-        val parent = ensureDir(dirs, dirName(path), null)
+        val parent = ensureDir(dirs, dirName(path))
         val dir    = new DirEntry(path, parent)
         parent.entries(baseName(path)) = dir
         dirs(path) = dir
@@ -105,8 +105,8 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
     }
 
   protected def getDir(dirs: mutable.Map[String, DirEntry], entry: ZipEntry): DirEntry = {
-    if (entry.isDirectory) ensureDir(dirs, entry.getName, entry)
-    else ensureDir(dirs, dirName(entry.getName), null)
+    if (entry.isDirectory) ensureDir(dirs, entry.getName)
+    else ensureDir(dirs, dirName(entry.getName))
   }
 }
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
