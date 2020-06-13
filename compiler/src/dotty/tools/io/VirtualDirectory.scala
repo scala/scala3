@@ -18,7 +18,7 @@ extends AbstractFile {
   def path: String =
     maybeContainer match {
       case None => name
-      case Some(parent) => parent.path+'/'+ name
+      case Some(parent) => parent.path + '/' + name
     }
 
   def absolute: AbstractFile = this
@@ -54,7 +54,7 @@ extends AbstractFile {
 
   override def fileNamed(name: String): AbstractFile =
     Option(lookupName(name, directory = false)) getOrElse {
-      val newFile = new VirtualFile(name, path+'/'+name)
+      val newFile = new VirtualFile(name, path + '/' + name)
       files(name) = newFile
       newFile
     }

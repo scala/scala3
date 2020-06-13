@@ -67,7 +67,7 @@ class Directory(jpath: JPath) extends Path(jpath) {
    *  until it runs out of contents.
    */
   def deepList(depth: Int = -1): Iterator[Path] =
-    if (depth < 0) list ++ (dirs flatMap (_ deepList (depth)))
+    if (depth < 0) list ++ (dirs flatMap (_ deepList depth))
     else if (depth == 0) Iterator.empty
     else list ++ (dirs flatMap (_ deepList (depth - 1)))
 }
