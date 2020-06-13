@@ -11,7 +11,7 @@ import java.nio.file.Files
 import java.util.zip.{ ZipEntry, ZipFile }
 import java.util.jar.Manifest
 import scala.collection.mutable
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /** An abstraction for zip files and streams.  Everything is written the way
  *  it is for performance: we come through here a lot on every run.  Be careful
