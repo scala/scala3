@@ -31,6 +31,20 @@ import scala.util.control.NonFatal
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
 
+  /** Default timeout to stop looking for further implicit suggestions, in ms.
+   *  This is usually for the first import suggestion; subsequent suggestions
+   *  may get smaller timeouts. @see ImportSuggestions.reduceTimeBudget
+   */
+  private var myImportSuggestionBudget: Int =
+    Int.MinValue // sentinel value; means whatever is set in command line option
+
+  def importSuggestionBudget =
+    if myImportSuggestionBudget == Int.MinValue then ictx.settings.XimportSuggestionTimeout.value
+    else myImportSuggestionBudget
+
+  def importSuggestionBudget_=(x: Int) =
+    myImportSuggestionBudget = x
+
   /** If this variable is set to `true`, some core typer operations will
    *  return immediately. Currently these early abort operations are
    *  `Typer.typed` and `Implicits.typedImplicit`.
