@@ -270,7 +270,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       )
       clinit.visitCode()
 
-      if (isCZParcelable) { legacyAddCreatorCode(clinit, cnode, thisName) }
+      legacyAddCreatorCode(clinit, cnode, thisName)
 
       clinit.visitInsn(asm.Opcodes.RETURN)
       clinit.visitMaxs(0, 0) // just to follow protocol, dummy arguments
@@ -725,21 +725,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       mnode foreachInsn { i => if (i.getOpcode() == asm.Opcodes.RETURN) { rets ::= i  } }
       if (rets.isEmpty) { return }
 
-      var insnModA: asm.tree.AbstractInsnNode = null
-      var insnModB: asm.tree.AbstractInsnNode = null
-      // call object's private ctor from static ctor
-      if (isCZStaticModule) {
-        // NEW `moduleName`
-        val className = internalName(methSymbol.enclosingClass)
-        insnModA      = new asm.tree.TypeInsnNode(asm.Opcodes.NEW, className)
-        // INVOKESPECIAL <init>
-        val callee = methSymbol.enclosingClass.primaryConstructor
-        val jname  = callee.javaSimpleName
-        val jowner = internalName(callee.owner)
-        val jtype  = asmMethodType(callee).descriptor
-        insnModB   = new asm.tree.MethodInsnNode(asm.Opcodes.INVOKESPECIAL, jowner, jname, jtype, false)
-      }
-
       var insnParcA: asm.tree.AbstractInsnNode = null
       var insnParcB: asm.tree.AbstractInsnNode = null
       // android creator code
@@ -765,7 +750,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       // insert a few instructions for initialization before each return instruction
       for(r <- rets) {
-        insertBefore(r, insnModA,  insnModB)
         insertBefore(r, insnParcA, insnParcB)
       }
 
