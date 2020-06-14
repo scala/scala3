@@ -129,10 +129,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             MethodType(Nil)(_ => Nil, _ => defn.UnitType),
             privateWithin = NoSymbol,
             coord = claszSymbol.coord
-          )
+          ).entered
 
-        // We don't need to enter this field into the decls of claszSymbol.info as this is added manually to the generated class
-        // in addModuleInstanceField. TODO: try adding it to the decls and making the usual field generation do the right thing.
         val moduleField = ctx.newSymbol(
             claszSymbol,
             str.MODULE_INSTANCE_FIELD.toTermName,
@@ -140,7 +138,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             claszSymbol.typeRef,
             privateWithin = NoSymbol,
             coord = claszSymbol.coord
-          )
+          ).entered
 
         val thisMap = new TreeTypeMap(
           treeMap = {
@@ -192,7 +190,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       addClassFields()
 
       innerClassBufferASM ++= classBTypeFromSymbol(claszSymbol).info.memberClasses
-      gen(impl)
+      gen(cd.rhs)
       addInnerClassesASM(cnode, innerClassBufferASM.toList)
 
       if (AsmUtils.traceClassEnabled && cnode.name.contains(AsmUtils.traceClassPattern))
@@ -237,12 +235,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       cnode.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
       emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
 
-      if (isCZStaticModule || isCZParcelable) {
-
-        if (isCZStaticModule) { addModuleInstanceField() }
-
-      } else {
-
+      if (!isCZStaticModule && !isCZParcelable) {
         val skipStaticForwarders = (claszSymbol.isInterface || claszSymbol.is(Module) || ctx.settings.XnoForwarders.value)
         if (!skipStaticForwarders) {
           val lmoc = claszSymbol.companionModule
@@ -262,21 +255,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // the invoker is responsible for adding a class-static constructor.
 
     } // end of method initJClass
-
-    /*
-     * can-multi-thread
-     */
-    private def addModuleInstanceField(): Unit = {
-      val fv =
-        cnode.visitField(GenBCodeOps.PublicStaticFinal, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
-                         str.MODULE_INSTANCE_FIELD,
-                         "L" + thisName + ";",
-                         null, // no java-generic-signature
-                         null  // no initial value
-        )
-
-      fv.visitEnd()
-    }
 
     /*
      * must-single-thread
