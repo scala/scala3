@@ -129,7 +129,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             MethodType(Nil)(_ => Nil, _ => defn.UnitType),
             privateWithin = NoSymbol,
             coord = claszSymbol.coord
-          ).entered
+          )
 
         val moduleField = ctx.newSymbol(
             claszSymbol,
