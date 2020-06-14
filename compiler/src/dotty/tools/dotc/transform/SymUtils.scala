@@ -218,4 +218,12 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isScalaStatic(using Context): Boolean =
     self.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
 
+  /** Is symbol assumed or declared as an infix symbol? */
+  def isDeclaredInfix(using Context): Boolean =
+    self.hasAnnotation(defn.InfixAnnot)
+    || defn.isInfix(self)
+    || self.name.isUnapplyName
+       && self.owner.is(Module)
+       && self.owner.linkedClass.is(Case)
+       && self.owner.linkedClass.isDeclaredInfix
 }

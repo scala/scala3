@@ -2930,14 +2930,31 @@ class Typer extends Namer
         false
     }
 
+    /** Should we tuple or untuple the argument before application?
+     *  If auto-tupling is enabled then
+     *
+     *   - we tuple n-ary arguments where n > 0 if the function consists
+     *     only of unary alternatives
+     *   - we untuple tuple arguments of infix operations if the function
+     *     does not consist only of unary alternatives.
+     */
+    def needsTupledDual(funType: Type, pt: FunProto): Boolean = {
+      pt.args match
+        case untpd.Tuple(elems) :: Nil =>
+          elems.length > 1
+          && pt.applyKind == ApplyKind.InfixTuple
+          && !isUnary(funType)
+        case args =>
+          args.lengthCompare(1) > 0
+          && isUnary(funType)
+    } && autoTuplingEnabled
+
     def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
       case wtp: MethodOrPoly =>
         def methodStr = methPart(tree).symbol.showLocated
         if (matchingApply(wtp, pt))
-          if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && autoTuplingEnabled)
-            adapt(tree, pt.tupled, locked)
-          else
-            tree
+          if needsTupledDual(wtp, pt) then adapt(tree, pt.tupledDual, locked)
+          else tree
         else if (wtp.isContextualMethod)
           def isContextBoundParams = wtp.stripPoly match
             case MethodType(EvidenceParamName(_) :: _) => true
@@ -3465,8 +3482,8 @@ class Typer extends Namer
         case ref: TermRef =>
           pt match {
             case pt: FunProto
-            if pt.args.lengthCompare(1) > 0 && isUnary(ref) && autoTuplingEnabled =>
-              adapt(tree, pt.tupled, locked)
+            if needsTupledDual(ref, pt) && autoTuplingEnabled =>
+              adapt(tree, pt.tupledDual, locked)
             case _ =>
               adaptOverloaded(ref)
           }

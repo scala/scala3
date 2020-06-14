@@ -236,8 +236,8 @@ object ProtoTypes {
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
     var typedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.Empty
 
-    /** The tupled version of this prototype, if it has been computed */
-    var tupled: Type = NoType
+    /** The tupled or untupled version of this prototype, if it has been computed */
+    var tupledDual: Type = NoType
 
     /** If true, the application of this prototype was canceled. */
     var toDrop: Boolean = false
@@ -348,16 +348,19 @@ object ProtoTypes {
     }
 
     /** The same proto-type but with all arguments combined in a single tuple */
-    def tupled: FunProto = state.tupled match {
+    def tupledDual: FunProto = state.tupledDual match {
       case pt: FunProto =>
         pt
       case _ =>
-        state.tupled = new FunProto(untpd.Tuple(args) :: Nil, resultType)(typer, applyKind)
-        tupled
+        val dualArgs = args match
+          case untpd.Tuple(elems) :: Nil => elems
+          case _ => untpd.Tuple(args) :: Nil
+        state.tupledDual = new FunProto(dualArgs, resultType)(typer, applyKind)
+        tupledDual
     }
 
-    /** Somebody called the `tupled` method of this prototype */
-    def isTupled: Boolean = state.tupled.isInstanceOf[FunProto]
+    /** Somebody called the `tupledDual` method of this prototype */
+    def hasTupledDual: Boolean = state.tupledDual.isInstanceOf[FunProto]
 
     /** Cancel the application of this prototype. This can happen for a nullary
      *  application `f()` if `f` refers to a symbol that exists both in parameterless

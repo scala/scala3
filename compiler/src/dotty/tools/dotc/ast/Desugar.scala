@@ -1195,10 +1195,10 @@ object desugar {
       arg match
         case Parens(arg) =>
           Apply(sel, assignToNamedArg(arg) :: Nil)
-        case Tuple(Nil) =>
-          Apply(sel, arg :: Nil).setApplyKind(ApplyKind.InfixUnit)
-        case Tuple(args) if args.nonEmpty =>  // this case should be dropped if auto-tupling is removed
+        case Tuple(args) if args.exists(_.isInstanceOf[Assign]) =>
           Apply(sel, args.mapConserve(assignToNamedArg))
+        case Tuple(args) =>
+          Apply(sel, arg :: Nil).setApplyKind(ApplyKind.InfixTuple)
         case _ =>
           Apply(sel, arg :: Nil)
 

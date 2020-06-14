@@ -615,7 +615,7 @@ trait Applications extends Compatibility {
             case arg :: args1 =>
               val msg = arg match
                 case untpd.Tuple(Nil)
-                if applyKind == ApplyKind.InfixUnit && funType.widen.isNullaryMethod =>
+                if applyKind == ApplyKind.InfixTuple && funType.widen.isNullaryMethod =>
                   i"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
                 case _ =>
                   i"too many arguments for $methString"
@@ -862,14 +862,15 @@ trait Applications extends Compatibility {
       record("typedApply")
       val fun1 = typedFunPart(tree.fun, originalProto)
 
-      // Warning: The following lines are dirty and fragile. We record that auto-tupling was demanded as
-      // a side effect in adapt. If it was, we assume the tupled proto-type in the rest of the application,
+      // Warning: The following lines are dirty and fragile.
+      // We record that auto-tupling or untupling was demanded as a side effect in adapt.
+      // If it was, we assume the tupled-dual proto-type in the rest of the application,
       // until, possibly, we have to fall back to insert an implicit on the qualifier.
       // This crucially relies on he fact that `proto` is used only in a single call of `adapt`,
       // otherwise we would get possible cross-talk between different `adapt` calls using the same
       // prototype. A cleaner alternative would be to return a modified prototype from `adapt` together with
       // a modified tree but this would be more convoluted and less efficient.
-      val proto = if (originalProto.isTupled) originalProto.tupled else originalProto
+      val proto = if (originalProto.hasTupledDual) originalProto.tupledDual else originalProto
 
       // If some of the application's arguments are function literals without explicitly declared
       // parameter types, relate the normalized result type of the application with the
