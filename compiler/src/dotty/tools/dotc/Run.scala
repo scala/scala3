@@ -35,7 +35,15 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *  This is usually for the first import suggestion; subsequent suggestions
    *  may get smaller timeouts. @see ImportSuggestions.reduceTimeBudget
    */
-  var importSuggestionBudget: Int = ictx.settings.XimportSuggestionTimeout.value
+  private var myImportSuggestionBudget: Int =
+    Int.MinValue // sentinel value; means whatever is set in command line option
+
+  def importSuggestionBudget =
+    if myImportSuggestionBudget == Int.MinValue then ictx.settings.XimportSuggestionTimeout.value
+    else myImportSuggestionBudget
+
+  def importSuggestionBudget_=(x: Int) =
+    myImportSuggestionBudget = x
 
   /** If this variable is set to `true`, some core typer operations will
    *  return immediately. Currently these early abort operations are
