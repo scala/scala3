@@ -333,8 +333,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var isMethSymStaticCtor        = false
     var returnType: BType          = null
     var methSymbol: Symbol         = null
-    // in GenASM this is local to genCode(), ie should get false whenever a new method is emitted (including fabricated ones eg addStaticInit())
-    var isModuleInitialized        = false
     // used by genLoadTry() and genSynchronized()
     var earlyReturnVar: Symbol     = null
     var shouldEmitCleanup          = false
@@ -533,7 +531,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       assert(varsInScope == null, "Unbalanced entering/exiting of GenBCode's genBlock().")
       // check previous invocation of genDefDef unregistered as many cleanups as it registered.
       assert(cleanups == Nil, "Previous invocation of genDefDef didn't unregister as many cleanups as it registered.")
-      isModuleInitialized = false
       earlyReturnVar      = null
       shouldEmitCleanup   = false
 

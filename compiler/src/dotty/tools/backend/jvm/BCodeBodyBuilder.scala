@@ -711,22 +711,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             else genSynchronized(app, expectedType)
 
         case Apply(fun @ DesugaredSelect(Super(_, _), _), args) =>
-          def initModule(): Unit = {
-            // we initialize the MODULE$ field immediately after the super ctor
-            if (!isModuleInitialized &&
-              jMethodName == INSTANCE_CONSTRUCTOR_NAME &&
-              fun.symbol.javaSimpleName == INSTANCE_CONSTRUCTOR_NAME &&
-              claszSymbol.isStaticModuleClass) {
-              isModuleInitialized = true
-              mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
-              mnode.visitFieldInsn(
-                asm.Opcodes.PUTSTATIC,
-                thisName,
-                str.MODULE_INSTANCE_FIELD,
-                "L" + thisName + ";"
-              )
-            }
-          }
           // 'super' call: Note: since constructors are supposed to
           // return an instance of what they construct, we have to take
           // special care. On JVM they are 'void', and Scala forbids (syntactically)
@@ -736,7 +720,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
           genLoadArguments(args, paramTKs(app))
           generatedType = genCallMethod(fun.symbol, InvokeStyle.Super, app.span)
-          initModule()
 
         // 'new' constructor call: Note: since constructors are
         // thought to return an instance of what they construct,
