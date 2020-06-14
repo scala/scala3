@@ -134,7 +134,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val moduleField = ctx.newSymbol(
             claszSymbol,
             str.MODULE_INSTANCE_FIELD.toTermName,
-            JavaStatic | Private,
+            JavaStatic | Final,
             claszSymbol.typeRef,
             privateWithin = NoSymbol,
             coord = claszSymbol.coord
