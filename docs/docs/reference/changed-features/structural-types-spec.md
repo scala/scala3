@@ -14,15 +14,10 @@ RefineStat    ::= ‘val’ VarDcl | ‘def’ DefDcl | ‘type’ {nl} TypeDcl
 
 ## Implementation of structural types
 
-The standard library defines a trait `Selectable` in the package
-`scala`, defined as follows:
+The standard library defines a universal marker trait `Selectable` in the package `scala`:
 
 ```scala
-trait Selectable extends Any {
-  def selectDynamic(name: String): Any
-  def applyDynamic(name: String, paramClasses: ClassTag[_]*)(args: Any*): Any =
-    new UnsupportedOperationException("applyDynamic")
-}
+trait Selectable extends Any
 ```
 
 An implementation of `Selectable` that relies on Java reflection is
@@ -30,46 +25,52 @@ available in the standard library: `scala.reflect.Selectable`. Other
 implementations can be envisioned for platforms where Java reflection
 is not available.
 
-`selectDynamic` takes a field name and returns the value associated
-with that name in the `Selectable`. Similarly, `applyDynamic`
-takes a method name, `ClassTag`s representing its parameters types and
-the arguments to pass to the function. It will return the result of
-calling this function with the given arguments.
+Implementations of `Selectable` have to make available one or both of
+the methods `selectDynamic` and `applyDynamic`. The methods could be members of the `Selectable` implementation or they could be extension methods.
+
+The `selectDynamic` method takes a field name and returns the value associated with that name in the `Selectable`.
+It should have a signature of the form:
+```scala
+def selectDynamic(name: String): T
+```
+Often, the return type `T` is `Any`.
+
+The `applyDynamic` method is used for selections that are applied to arguments. It takes a method name and possibly `ClassTag`s representing its parameters types as well as the arguments to pass to the function.
+Its signature should be of one of the two following forms:
+```scala
+def applyDynamic(name: String)(args: Any*): T
+def applyDynamic(name: String, ctags: ClassTag[?]*)(args: Any*): T
+```
+Both versions are passed the actual arguments in the `args` parameter. The second version takes in addition a vararg argument of class tags that identify the method's parameter classes. Such an argument is needed
+if `applyDynamic` is implemented using Java reflection, but it could be
+useful in other cases as well.
 
 Given a value `v` of type `C { Rs }`, where `C` is a class reference
-and `Rs` are refinement declarations, and given `v.a` of type `U`, we
-consider three distinct cases:
+and `Rs` are structural refinement declarations, and given `v.a` of type `U`, we consider three distinct cases:
 
-- If `U` is a value type, we map `v.a` to the equivalent of:
+- If `U` is a value type, we map `v.a` to:
   ```scala
-  v.a
-     --->
-  (v: Selectable).selectDynamic("a").asInstanceOf[U]
+  v.selectDynamic("a").asInstanceOf[U]
   ```
 
-- If `U` is a method type `(T11, ..., T1n)...(TN1, ..., TNn) => R` and it is not
-a dependent method type, we map `v.a(a11, ..., a1n)...(aN1, ..., aNn)` to
-  the  equivalent of:
+- If `U` is a method type `(T11, ..., T1n)...(TN1, ..., TNn): R` and it is not a dependent method type, we map `v.a(a11, ..., a1n)...(aN1, ..., aNn)` to:
   ```scala
-  v.a(arg1, ..., argn)
-     --->
-  (v: Selectable).applyDynamic("a", CT11, ..., CTn, ..., CTN1, ... CTNn)
-                              (a11, ..., a1n, ..., aN1, ..., aNn)
-                 .asInstanceOf[R]
+  v.applyDynamic("a")(a11, ..., a1n, ..., aN1, ..., aNn)
+    .asInstanceOf[R]
   ```
-where each `CT_ij` is the class tag of the type of the argument `a_ij`.
+  If this call resolves to an `applyDynamic` method of the second form that takes a `ClassTag[?]*` argument, we further rewrite this call to
+  ```scala
+  v.applyDynamic("a", CT11, ..., CT1n, ..., CTN1, ... CTNn)(
+    a11, ..., a1n, ..., aN1, ..., aNn)
+    .asInstanceOf[R]
+  ```
+   where each `CT_ij` is the class tag of the type of the formal parameter `Tij`
 
 - If `U` is neither a value nor a method type, or a dependent method
   type, an error is emitted.
 
-We make sure that `r` conforms to type `Selectable`, potentially by
-introducing an implicit conversion, and then call either
-`selectDynamic` or `applyDynamic`, passing the name of the
-member to access, along with the class tags of the formal parameters
-and the arguments in the case of a method call. These parameters
-could be used to disambiguate one of several overload variants in the
-future, but overloads are not supported in structural types at the
-moment.
+Note that `v`'s static type does not necessarily have to conform to `Selectable`, nor does it need to have `selectDynamic` and `applyDynamic` as members. It suffices that there is an implicit
+conversion that can turn `v` into a `Selectable`, and the selection methods could also be available as extension methods.
 
 ## Limitations of structural types
 
@@ -86,14 +87,8 @@ moment.
 - In Scala 2, mutable `var`s are allowed in refinements. In Scala 3,
   they are no longer allowed.
 
-## Migration
 
-Receivers of structural calls need to be instances of `Selectable`. A
-conversion from `Any` to `Selectable` is available in the standard
-library, in `scala.reflect.Selectable.reflectiveSelectable`. This is
-similar to the implementation of structural types in Scala 2.
-
-## Reference
+## Context
 
 For more info, see [Rethink Structural
 Types](https://github.com/lampepfl/dotty/issues/1886).

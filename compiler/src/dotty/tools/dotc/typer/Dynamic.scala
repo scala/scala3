@@ -131,18 +131,24 @@ trait Dynamic {
    *  and `x.a` is of type `U`, map `x.a` to the equivalent of:
    *
    *  ```scala
-   *  (x: Selectable).selectDynamic("a").asInstanceOf[U]
+   *  x1.selectDynamic("a").asInstanceOf[U]
    *  ```
+   *  where `x1` is `x` adapted to `Selectable`.
    *
    *  Given `x.a(a11, ..., a1n)...(aN1, ..., aNn)`, where `x.a` is of (widened) type
-   *  `(T11, ..., T1n)...(TN1, ..., TNn) => R`, it is desugared to:
+   *  `(T11, ..., T1n)...(TN1, ..., TNn): R`, it is desugared to:
    *
    *  ```scala
-   *  (x:selectable).applyDynamic("a", CT11, ..., CT1n, ..., CTN1, ... CTNn)
-   *                             (a11, ..., a1n, ..., aN1, ..., aNn)
-   *                .asInstanceOf[R]
+   *  x1.applyDynamic("a", (a11, ..., a1n, ..., aN1, ..., aNn)
+   *    .asInstanceOf[R]
    *  ```
-   *
+   *  If this call resolves to an `applyDynamic` method that takes a `ClassTag[?]*` as second
+   *  parameter, we further rewrite this call to
+   *  scala```
+   *  x1.applyDynamic("a", CT11, ..., CT1n, ..., CTN1, ... CTNn)
+   *                  (a11, ..., a1n, ..., aN1, ..., aNn)
+   *    .asInstanceOf[R]
+   *  ```
    *  where CT11, ..., CTNn are the class tags representing the erasure of T11, ..., TNn.
    *
    *  It's an error if U is neither a value nor a method type, or a dependent method
