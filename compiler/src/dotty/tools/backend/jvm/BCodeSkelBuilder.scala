@@ -119,8 +119,14 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         // TODO should we do this transformation earlier, say in Constructors? Or would that just cause
         // pain for scala-{js, native}?
 
-        for (f <- claszSymbol.info.decls.filter(_.isField))
-          f.setFlag(JavaStatic)
+        // TODO: enable once we change lazy val encoding
+        //
+        // Lazy val encoding assumes bitmap fields are non-static
+        //
+        // See `tests/run/given-var.scala`
+        //
+        // for (f <- claszSymbol.info.decls.filter(_.isField))
+        //   f.setFlag(JavaStatic)
 
         val (clinits, body) = impl.body.partition(stat => stat.isInstanceOf[DefDef] && stat.symbol.isStaticConstructor)
 
@@ -146,13 +152,18 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           ).entered
 
         val thisMap = new TreeMap {
-          override def transform(tree: Tree)(using Context) = tree match {
-            case tree: This if tree.symbol == claszSymbol =>
-              ref(claszSymbol.sourceModule)
-            case ident: Ident =>
-              super.transform(desugarIdent(ident))
-            case tree =>
-              super.transform(tree)
+          override def transform(tree: Tree)(using Context) = {
+            val tp = tree.tpe.substThis(claszSymbol.asClass, claszSymbol.sourceModule.termRef)
+            tree.withType(tp) match {
+              case tree: This if tree.symbol == claszSymbol =>
+                ref(claszSymbol.sourceModule)
+            case Apply(fun @ Select(Super(qual, _), _), args) if qual.symbol == claszSymbol =>
+              ref(claszSymbol.sourceModule).select(fun.symbol).appliedToArgs(args)
+              // case ident: Ident =>
+              //   super.transform(desugarIdent(ident))
+              case tree =>
+                super.transform(tree)
+            }
           }
         }
 
