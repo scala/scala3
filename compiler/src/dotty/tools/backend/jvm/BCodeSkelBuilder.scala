@@ -122,8 +122,12 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         for (f <- claszSymbol.info.decls.filter(_.isField))
           f.setFlag(JavaStatic)
 
+        val (clinits, body) = impl.body.partition(stat => stat.isInstanceOf[DefDef] && stat.symbol.isStaticConstructor)
+
         val (uptoSuperStats, remainingConstrStats) = splitAtSuper(impl.constr.rhs.asInstanceOf[Block].stats)
-        val clInitSymbol = ctx.newSymbol(
+        val clInitSymbol: TermSymbol =
+          if (clinits.nonEmpty) clinits.head.symbol.asTerm
+          else ctx.newSymbol(
             claszSymbol,
             nme.STATIC_CONSTRUCTOR,
             JavaStatic | Method,
@@ -157,17 +161,19 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToArgs(Nil)
         val assignModuleField = Assign(ref(moduleField), callConstructor)
         val remainingConstrStatsSubst = remainingConstrStats.map(rewire)
-        val clinit = DefDef(
-            clInitSymbol,
-            Block(assignModuleField :: remainingConstrStatsSubst, unitLiteral)
-          )
+        val clinit = clinits match {
+          case (ddef: DefDef) :: _ =>
+            cpy.DefDef(ddef)(rhs = Block(ddef.rhs :: assignModuleField :: remainingConstrStatsSubst, unitLiteral))
+          case _ =>
+            DefDef(clInitSymbol, Block(assignModuleField :: remainingConstrStatsSubst, unitLiteral))
+        }
 
         val constr2 = {
           val rhs = Block(uptoSuperStats, impl.constr.rhs.asInstanceOf[Block].expr)
           cpy.DefDef(impl.constr)(rhs = rhs)
         }
 
-        val impl2 = cpy.Template(impl)(constr = constr2, body = clinit :: impl.body)
+        val impl2 = cpy.Template(impl)(constr = constr2, body = clinit :: body)
         cpy.TypeDef(cd0)(rhs = impl2)
       } else cd0
 
