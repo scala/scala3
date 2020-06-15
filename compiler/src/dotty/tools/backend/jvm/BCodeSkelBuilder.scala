@@ -171,8 +171,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         cpy.TypeDef(cd0)(rhs = impl2)
       } else cd0
 
-      val methodSymbols = for (f <- cd.symbol.info.decls.toList if f.is(Method) && f.isTerm && !f.is(Module)) yield f
-      val hasStaticCtor = methodSymbols exists (_.isStaticConstructor)
+      val hasStaticCtor = isCZStaticModule || cd.symbol.info.decls.exists(_.isStaticConstructor)
       if (!hasStaticCtor && isCZParcelable) fabricateStaticInitAndroid()
 
       val optSerial: Option[Long] =
