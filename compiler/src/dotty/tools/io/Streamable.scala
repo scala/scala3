@@ -125,9 +125,9 @@ object Streamable {
     finally stream.close()
 
   def bytes(is: => InputStream): Array[Byte] =
-    (new Bytes {
+    new Bytes {
       def inputStream() = is
-    }).toByteArray()
+    }.toByteArray()
 
   def slurp(is: => InputStream)(implicit codec: Codec): String =
     new Chars { def inputStream() = is } slurp codec

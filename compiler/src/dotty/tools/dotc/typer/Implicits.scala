@@ -100,6 +100,8 @@ object Implicits {
       if (wtp.derivesFrom(SingletonClass)) defn.AnyType else wtp
     }
 
+    protected def isAccessible(ref: TermRef)(using Context): Boolean
+
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(using Context): List[Candidate] = {
       record("filterMatching")
@@ -198,7 +200,8 @@ object Implicits {
               case _ => tp
 
         var ckind =
-          if (!ref.symbol.isAccessibleFrom(ref.prefix)) Candidate.None
+          if !isAccessible(ref) then
+            Candidate.None
           else pt match {
             case pt: ViewProto =>
               viewCandidateKind(ref.widen, pt.argType, pt.resType)
@@ -258,6 +261,9 @@ object Implicits {
         if (refs.nonEmpty && monitored) record(s"check eligible refs in tpe", refs.length)
         filterMatching(tp)
       }
+
+    override def isAccessible(ref: TermRef)(using Context): Boolean =
+      ref.symbol.exists && !ref.symbol.is(Private)
 
     override def toString: String =
       i"OfTypeImplicits($tp), companions = ${companionRefs.toList}%, %; refs = $refs%, %."
@@ -325,6 +331,9 @@ object Implicits {
         outerImplicits.eligible(tp).filterNot(cand => shadowed.contains(cand.ref.implicitName))
       }
     }
+
+    override def isAccessible(ref: TermRef)(using Context): Boolean =
+      ref.symbol.isAccessibleFrom(ref.prefix)
 
     override def toString: String = {
       val own = i"(implicits: $refs%, %)"
@@ -960,7 +969,6 @@ trait Implicits { self: Typer =>
             implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} in ${ctx.typerState}")
             result
           case result: SearchFailure if result.isAmbiguous =>
-            //println(i"FAIL for $pt / $argument: $result0")
             val deepPt = pt.deepenProto
             if (deepPt ne pt) inferImplicit(deepPt, argument, span)
             else if (migrateTo3 && !ctx.mode.is(Mode.OldOverloadingResolution))
@@ -975,10 +983,8 @@ trait Implicits { self: Typer =>
               }
             else result
           case NoMatchingImplicitsFailure =>
-            //println(i"FAIL for $pt / $argument: $result0")
             SearchFailure(new NoMatchingImplicits(pt, argument, ctx.typerState.constraint))
           case _ =>
-            //println(i"FAIL for $pt / $argument: $result0")
             result0
         }
       // If we are at the outermost implicit search then emit the implicit dictionary, if any.
@@ -1024,7 +1030,9 @@ trait Implicits { self: Typer =>
             case _ =>
               tryConversion
         }
-      if (ctx.reporter.hasErrors) {
+      if ctx.reporter.hasErrors
+         || !cand.ref.symbol.isAccessibleFrom(cand.ref.prefix)
+      then
         ctx.reporter.removeBufferedMessages
         adapted.tpe match {
           case _: SearchFailureType => SearchFailure(adapted)
@@ -1036,13 +1044,11 @@ trait Implicits { self: Typer =>
             else
               SearchFailure(adapted.withType(new MismatchedImplicit(ref, pt, argument)))
         }
-      }
-      else {
+      else
         val returned =
           if (cand.isExtension) Applications.ExtMethodApply(adapted)
           else adapted
         SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
-      }
     }
 
   /** An implicit search; parameters as in `inferImplicit` */
@@ -1066,8 +1072,6 @@ trait Implicits { self: Typer =>
     val wildProto: Type = implicitProto(pt, wildApprox(_))
 
     val isNot: Boolean = wildProto.classSymbol == defn.NotClass
-
-      //println(i"search implicits $pt / ${eligible.map(_.ref)}")
 
     /** Try to type-check implicit reference, after checking that this is not
       * a diverging search

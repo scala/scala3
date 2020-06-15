@@ -858,7 +858,7 @@ class Namer { typer: Typer =>
           if (cls eq sym)
             ctx.error("An annotation class cannot be annotated with iself", annotTree.sourcePos)
           else {
-            val ann = Annotation.deferred(cls)(typedAnnotation(annotTree))
+            val ann = Annotation.deferred(cls)(typedAheadAnnotation(annotTree)(using annotCtx))
             sym.addAnnotation(ann)
           }
         }
@@ -1129,6 +1129,7 @@ class Namer { typer: Typer =>
                 ctx.newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
               }
             forwarder.info = avoidPrivateLeaks(forwarder)
+            forwarder.addAnnotations(sym.annotations)
             val forwarderDef =
               if (forwarder.isType) tpd.TypeDef(forwarder.asType)
               else {

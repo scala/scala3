@@ -251,9 +251,9 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     // Drop accessors that are not retained from class scope
     if (dropped.nonEmpty) {
       val clsInfo = cls.classInfo
-      cls.copy(
-        info = clsInfo.derivedClassInfo(
-          decls = clsInfo.decls.filteredScope(!dropped.contains(_))))
+      val decls = clsInfo.decls.filteredScope(!dropped.contains(_))
+      val clsInfo2 = clsInfo.derivedClassInfo(decls = decls)
+      cls.copySymDenotation(info = clsInfo2).installAfter(thisPhase)
       // TODO: this happens to work only because Constructors is the last phase in group
     }
 

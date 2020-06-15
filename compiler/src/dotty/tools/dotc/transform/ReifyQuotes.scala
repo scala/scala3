@@ -270,7 +270,7 @@ class ReifyQuotes extends MacroTransform {
 
       val tpe = MethodType(defn.SeqType.appliedTo(defn.AnyType) :: Nil, tree.tpe.widen)
       val meth = ctx.newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
-      Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth)).withSpan(tree.span)
+      Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeNonLocalOwners(meth)).withSpan(tree.span)
     }
 
     private def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(implicit ctx: Context): Tree = {
