@@ -18,6 +18,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.report
 import dotty.tools.dotc.transform.SymUtils._
@@ -140,20 +141,22 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             coord = claszSymbol.coord
           ).entered
 
-        val thisMap = new TreeTypeMap(
-          treeMap = {
+        val thisMap = new TreeMap {
+          override def transform(tree: Tree)(using Context) = tree match {
             case tree: This if tree.symbol == claszSymbol =>
               ref(claszSymbol.sourceModule)
+            case ident: Ident =>
+              super.transform(desugarIdent(ident))
             case tree =>
-              tree
-          },
-          oldOwners = claszSymbol.primaryConstructor :: Nil,
-          newOwners = clInitSymbol :: Nil
-        )
+              super.transform(tree)
+          }
+        }
+
+        def rewire(stat: Tree) = thisMap.transform(stat).changeOwner(claszSymbol.primaryConstructor, clInitSymbol)
 
         val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToArgs(Nil)
         val assignModuleField = Assign(ref(moduleField), callConstructor)
-        val remainingConstrStatsSubst = remainingConstrStats.map(thisMap(_))
+        val remainingConstrStatsSubst = remainingConstrStats.map(rewire)
         val clinit = DefDef(
             clInitSymbol,
             Block(assignModuleField :: remainingConstrStatsSubst, unitLiteral)
