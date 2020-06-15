@@ -495,7 +495,8 @@ object Splicer {
       def unapply(arg: Tree)(implicit ctx: Context): Option[(RefTree, List[List[Tree]])] = arg match {
         case Select(Call0(fn, args), nme.apply) if defn.isContextFunctionType(fn.tpe.widenDealias.finalResultType) =>
           Some((fn, args))
-        case fn: RefTree => Some((fn, Nil))
+        case fn: Ident => Some((tpd.desugarIdent(fn).withSpan(fn.span), Nil))
+        case fn: Select => Some((fn, Nil))
         case Apply(f @ Call0(fn, args1), args2) =>
           if (f.tpe.widenDealias.isErasedMethod) Some((fn, args1))
           else Some((fn, args2 :: args1))

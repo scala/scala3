@@ -1261,7 +1261,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def sourceFile(call: Tree)(implicit ctx: Context): SourceFile = call.symbol.source
 
   /** Desugar identifier into a select node. Return the tree itself if not possible */
-  def desugarIdent(tree: Ident)(implicit ctx: Context): Tree = {
+  def desugarIdent(tree: Ident)(implicit ctx: Context): RefTree = {
     val qual = desugarIdentPrefix(tree)
     if (qual.isEmpty) tree
     else qual.select(tree.symbol)
