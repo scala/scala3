@@ -144,6 +144,41 @@ object ErrorReporting {
     def rewriteNotice: String =
       if Feature.migrateTo3 then "\nThis patch can be inserted automatically under -rewrite."
       else ""
+
+    def selectErrorAddendum
+      (tree: untpd.RefTree, qual1: Tree, qualType: Type, suggestImports: Type => String)
+      (using Context): String =
+      val attempts: List[Tree] = qual1.getAttachment(Typer.HiddenSearchFailure) match
+        case Some(failures) =>
+          for failure <- failures
+              if !failure.reason.isInstanceOf[Implicits.NoMatchingImplicits]
+          yield failure.tree
+        case _ => Nil
+      if qualType.derivesFrom(defn.DynamicClass) then
+        "\npossible cause: maybe a wrong Dynamic method signature?"
+      else if attempts.nonEmpty then
+        val extMethods =
+          if attempts.length > 1 then "Extension methods were"
+          else "An extension method was"
+        val attemptStrings = attempts.map(_.showIndented(4))
+        i""".
+           |$extMethods tried, but could not be fully constructed:
+           |
+           |    $attemptStrings%\nor\n    %"""
+      else if tree.hasAttachment(desugar.MultiLineInfix) then
+        i""".
+           |Note that `${tree.name}` is treated as an infix operator in Scala 3.
+           |If you do not want that, insert a `;` or empty line in front
+           |or drop any spaces behind the operator."""
+      else if qualType.isBottomType then
+        ""
+      else
+        val add = suggestImports(
+          ViewProto(qualType.widen,
+            SelectionProto(tree.name, WildcardType, NoViewsAllowed, privateOK = false)))
+        if add.isEmpty then ""
+        else ", but could be made available as an extension method." ++ add
+    end selectErrorAddendum
   }
 
   def dependentStr =

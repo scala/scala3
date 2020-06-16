@@ -150,38 +150,7 @@ trait TypeAssigner {
       errorType(ex"$qualType does not have a constructor", tree.sourcePos)
     else {
       val kind = if (name.isTypeName) "type" else "value"
-      def addendum =
-        val attempts: List[Tree] = qual1.getAttachment(Typer.HiddenSearchFailure) match
-          case Some(failures) =>
-            for failure <- failures
-                if !failure.reason.isInstanceOf[Implicits.NoMatchingImplicits]
-            yield failure.tree
-          case _ => Nil
-        if qualType.derivesFrom(defn.DynamicClass) then
-          "\npossible cause: maybe a wrong Dynamic method signature?"
-        else if attempts.nonEmpty then
-          val extMethods =
-            if attempts.length > 1 then "Extension methods were"
-            else "An extension method was"
-          val attemptStrings = attempts.map(_.showIndented(4))
-          i""".
-            |$extMethods tried, but could not be fully constructed:
-            |
-            |    $attemptStrings%\nor\n    %"""
-        else if tree.hasAttachment(desugar.MultiLineInfix) then
-          i""".
-              |Note that `$name` is treated as an infix operator in Scala 3.
-              |If you do not want that, insert a `;` or empty line in front
-              |or drop any spaces behind the operator."""
-        else if qualType.isBottomType then
-          ""
-        else
-          val add = importSuggestionAddendum(
-            ViewProto(qualType.widen,
-              SelectionProto(name, WildcardType, NoViewsAllowed, privateOK = false)))
-          if add.isEmpty then ""
-          else ", but could be made available as an extension method." ++ add
-      end addendum
+      def addendum = err.selectErrorAddendum(tree, qual1, qualType, importSuggestionAddendum)
       errorType(NotAMember(qualType, name, kind, addendum), tree.sourcePos)
     }
   }
