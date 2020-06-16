@@ -478,6 +478,10 @@ object Implicits {
     def explanation(using Context): String =
       em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
+
+  class FailedExtension(extApp: Tree, val expectedType: Type) extends SearchFailureType:
+    def argument = EmptyTree
+    def explanation(using Context) = em"$extApp does not $qualify"
 }
 
 import Implicits._

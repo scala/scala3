@@ -1,0 +1,18 @@
+-- [E008] Not Found Error: tests/neg/i9185.scala:7:21 ------------------------------------------------------------------
+7 |  val value2 = "ola".pure  // error
+  |               ^^^^^^^^^^
+  |               value pure is not a member of String.
+  |               An extension method was tried, but could not be fully constructed:
+  |
+  |                   M.pure[A, F]("ola")(/* ambiguous */summon[M[F]])
+-- Error: tests/neg/i9185.scala:8:26 -----------------------------------------------------------------------------------
+8 |  val value3 = pure("ola") // error
+  |                          ^
+  |ambiguous implicit arguments: both object listMonad in object M and object optionMonad in object M match type M[F] of parameter m of method pure in object M
+-- [E008] Not Found Error: tests/neg/i9185.scala:11:16 -----------------------------------------------------------------
+11 |  val l = "abc".len  // error
+   |          ^^^^^^^^^
+   |          value len is not a member of String.
+   |          An extension method was tried, but could not be fully constructed:
+   |
+   |              M.len("abc")
