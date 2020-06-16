@@ -12,14 +12,7 @@ object testObjectInstance:
     def [T](xs: List[T]) first: T = xs.head
   }
 
-  def ff(using xs: Zip[Option]) = ???
-
-  ff // error
-
-  List(1, 2, 3).traverse(x => Option(x)) // error
-
-  locally {
-    import instances.traverseList
-    List(1, 2, 3).traverse(x => Option(x)) // error
-  }
+  List(1, 2, 3).first // error
+  List(1, 2, 3).second // error
+  Array(1, 2, 3).first // error, no hint
 end testObjectInstance
