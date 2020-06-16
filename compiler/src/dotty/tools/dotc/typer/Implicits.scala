@@ -379,10 +379,10 @@ object Implicits {
   }
 
   object SearchFailure {
-    def apply(tpe: SearchFailureType)(implicit src: SourceFile): SearchFailure = {
-      val id =
-        if (tpe.isInstanceOf[AmbiguousImplicits]) "/* ambiguous */"
-        else "/* missing */"
+    def apply(tpe: SearchFailureType)(using Context): SearchFailure = {
+      val id = tpe match
+        case tpe: AmbiguousImplicits => i"/* ambiguous: ${tpe.explanation} */"
+        case _ => "/* missing */"
       SearchFailure(untpd.SearchFailureIdent(id.toTermName).withTypeUnchecked(tpe))
     }
   }
@@ -451,7 +451,7 @@ object Implicits {
   @sharable object NoMatchingImplicits extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty)
 
   @sharable val NoMatchingImplicitsFailure: SearchFailure =
-    SearchFailure(NoMatchingImplicits)(NoSource)
+    SearchFailure(NoMatchingImplicits)(using NoContext)
 
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
