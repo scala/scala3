@@ -6,11 +6,13 @@ import java.lang.ArithmeticException
 import ast._
 import Trees._
 import core._
+import Symbols._
 import Types._
 import Constants._
 import Names._
 import StdNames._
 import Contexts._
+import transform.TypeUtils._
 
 object ConstFold {
 
@@ -31,6 +33,11 @@ object ConstFold {
           case ConstantType(x) => foldUnop(op, x)
           case _ => null
         }
+      case TypeApply(_, List(targ)) if tree.symbol eq defn.Predef_classOf =>
+        Constant(targ.tpe)
+      case Apply(TypeApply(Select(qual, nme.getClass_), _), Nil)
+          if qual.tpe.widen.isPrimitiveValueType =>
+        Constant(qual.tpe.widen)
       case _ => null
     }
   }

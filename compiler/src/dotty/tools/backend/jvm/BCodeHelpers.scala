@@ -11,7 +11,7 @@ import scala.collection.mutable
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
-import dotty.tools.dotc.core.Annotations.Annotation
+import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators._
@@ -368,14 +368,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
             case StringTag =>
               assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
               av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
-            case ClazzTag => av.visit(name, typeToTypeKind(const.typeValue)(bcodeStore)(innerClasesStore).toASMType)
+            case ClazzTag => av.visit(name, typeToTypeKind(TypeErasure.erasure(const.typeValue))(bcodeStore)(innerClasesStore).toASMType)
             case EnumTag =>
               val edesc = innerClasesStore.typeDescriptor(const.tpe) // the class descriptor of the enumeration class.
               val evalue = const.symbolValue.javaSimpleName // value the actual enumeration value.
               av.visitEnum(name, edesc, evalue)
           }
-        case t: TypeApply if (t.fun.symbol == defn.Predef_classOf) =>
-          av.visit(name, typeToTypeKind(t.args.head.tpe.classSymbol.denot.info)(bcodeStore)(innerClasesStore).toASMType)
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
         case t: tpd.RefTree if t.symbol.denot.owner.isAllOf(JavaEnumTrait) =>
@@ -514,7 +512,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       // TODO needed? for(ann <- m.annotations) { ann.symbol.initialize }
       val jgensig = getStaticForwarderGenericSignature(m, module)
-      val (throws, others) = m.annotations partition (_.tree.symbol == defn.ThrowsAnnot)
+      val (throws, others) = m.annotations.partition(_.symbol eq defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(throws)
 
       val jReturnType = toTypeKind(methodInfo.resultType)
@@ -614,12 +612,9 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     def getExceptions(excs: List[Annotation]): List[String] = {
-      // TODO: implement ThrownException
-      // for (ThrownException(exc) <- excs.distinct)
-      // yield internalName(exc)
-      Nil
+      for (case ThrownException(exc) <- excs.distinct)
+      yield internalName(TypeErasure.erasure(exc).classSymbol)
     }
-
   } // end of trait BCForwardersGen
 
   trait BCClassGen extends BCInnerClassGen {

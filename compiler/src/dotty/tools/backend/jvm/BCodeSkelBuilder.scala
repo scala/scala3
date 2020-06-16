@@ -513,7 +513,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     def initJMethod(flags: Int, paramAnnotations: List[List[Annotation]]): Unit = {
 
       val jgensig = getGenericSignature(methSymbol, claszSymbol)
-      val (excs, others) = methSymbol.annotations partition (_.tree.symbol == defn.ThrowsAnnot)
+      val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(excs)
 
       val bytecodeName =

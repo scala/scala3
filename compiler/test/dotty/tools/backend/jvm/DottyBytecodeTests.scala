@@ -823,6 +823,33 @@ class TestBCode extends DottyBytecodeTest {
   }
 
   @Test
+  def getClazz: Unit = {
+    val source = """
+                 |class Foo {
+                 |  def sideEffect(): Int = { println("hi"); 1 }
+                 |  def before1: Class[Int] = sideEffect().getClass
+                 |  def before2: Class[Int] = sideEffect().getClass[Int]
+                 |  def after: Class[Int] = { sideEffect(); classOf[Int] }
+                 |}
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+      val before1    = instructionsFromMethod(getMethod(clsNode, "before1"))
+      val before2    = instructionsFromMethod(getMethod(clsNode, "before2"))
+      val after      = instructionsFromMethod(getMethod(clsNode, "after"))
+
+      assert(before1 == after,
+        "`before1` was not translated to the same bytecode as `after`\n" +
+        diffInstructions(before1, after))
+      assert(before2 == after,
+        "`before2` was not translated to the same bytecode as `after`\n" +
+        diffInstructions(before2, after))
+    }
+  }
+
+  @Test
   def invocationReceivers(): Unit = {
     import Opcodes._
 

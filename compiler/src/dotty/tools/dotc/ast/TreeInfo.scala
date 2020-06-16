@@ -9,6 +9,7 @@ import typer.ConstFold
 import reporting.trace
 import dotty.tools.dotc.transform.SymUtils._
 import Decorators._
+import Constants.Constant
 
 import scala.annotation.tailrec
 
@@ -396,7 +397,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case New(_) | Closure(_, _, _) =>
       Pure
     case TypeApply(fn, _) =>
-      if (fn.symbol.is(Erased) || fn.symbol == defn.InternalQuoted_typeQuote) Pure else exprPurity(fn)
+      if (fn.symbol.is(Erased) || fn.symbol == defn.InternalQuoted_typeQuote || fn.symbol == defn.Predef_classOf) Pure else exprPurity(fn)
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass
@@ -512,19 +513,35 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *
    *     { pre; v }
    *
+   *  (3) An expression `pre.getClass[..]()` that has a constant type `ConstantType(v)` but where
+   *  `pre` has side-effects is translated to:
+   *
+   *     { pre; v }
+   *
    *  This avoids the situation where we have a Select node that does not have a symbol.
    */
   def constToLiteral(tree: Tree)(implicit ctx: Context): Tree = {
     val tree1 = ConstFold(tree)
     tree1.tpe.widenTermRefExpr.dealias.normalized match {
+      case ConstantType(Constant(_: Type)) if tree.isInstanceOf[Block] =>
+        // We can't rewrite `{ class A; classOf[A] }` to `classOf[A]`, so we leave
+        // blocks returning a class literal alone, even if they're idempotent.
+        tree1
       case ConstantType(value) =>
         if (isIdempotentExpr(tree1)) Literal(value).withSpan(tree.span)
-        else tree1 match {
-          case Select(qual, _) if tree1.tpe.isInstanceOf[ConstantType] =>
-            // it's a primitive unary operator; Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
-            Block(qual :: Nil, Literal(value)).withSpan(tree.span)
-          case _ =>
-            tree1
+        else {
+          def keepPrefix(pre: Tree) =
+            Block(pre :: Nil, Literal(value)).withSpan(tree.span)
+
+          tree1 match {
+            case Select(pre, _) if tree1.tpe.isInstanceOf[ConstantType] =>
+              // it's a primitive unary operator; Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
+              keepPrefix(pre)
+            case Apply(TypeApply(Select(pre, nme.getClass_), _), Nil) =>
+              keepPrefix(pre)
+            case _ =>
+              tree1
+          }
         }
       case _ => tree1
     }
