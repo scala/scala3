@@ -1443,9 +1443,6 @@ trait CompilerInterface {
   /** View this expression `quoted.Expr[Any]` as a `Term` */
   def QuotedExpr_unseal(self: scala.quoted.Expr[Any])(using ctx: Context): Term
 
-  /** Checked cast to a `quoted.Expr[U]` */
-  def QuotedExpr_cast[U](self: scala.quoted.Expr[Any])(using tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U]
-
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
   def QuotedType_unseal(self: scala.quoted.Type[_])(using ctx: Context): TypeTree
 

@@ -41,8 +41,18 @@ class Expr[+T] private[scala] {
     !scala.internal.quoted.Expr.unapply[EmptyTuple, EmptyTuple](this)(using that, false, qctx).isEmpty
 
   /** Checked cast to a `quoted.Expr[U]` */
-  def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] =
-    qctx.tasty.internal.QuotedExpr_cast[U](this)(using tp, qctx.tasty.rootContext)
+  def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] = {
+    val tree = this.unseal
+    val expectedType = tp.unseal.tpe
+    if (tree.tpe <:< expectedType)
+      this.asInstanceOf[scala.quoted.Expr[U]]
+    else
+      throw new scala.tasty.reflect.ExprCastError(
+        s"""Expr: ${tree.show}
+           |did not conform to type: ${expectedType.show}
+           |""".stripMargin
+      )
+  }
 
   /** View this expression `quoted.Expr[T]` as a `Term` */
   def unseal(using qctx: QuoteContext): qctx.tasty.Term =

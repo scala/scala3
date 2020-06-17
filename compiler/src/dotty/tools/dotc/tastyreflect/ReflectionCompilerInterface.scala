@@ -1906,20 +1906,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => Some(new scala.internal.quoted.Expr(self, compilerId))
   }
 
-  /** Checked cast to a `quoted.Expr[U]` */
-  def QuotedExpr_cast[U](self: scala.quoted.Expr[?])(using tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U] = {
-    val tree = QuotedExpr_unseal(self)
-    val expectedType = QuotedType_unseal(tp).tpe
-    if (tree.tpe <:< expectedType)
-      self.asInstanceOf[scala.quoted.Expr[U]]
-    else
-      throw new scala.tasty.reflect.ExprCastError(
-        s"""Expr: ${tree.show}
-           |did not conform to type: ${expectedType.show}
-           |""".stripMargin
-      )
-  }
-
   /** Convert `Type` to an `quoted.Type[?]` */
   def QuotedType_seal(self: Type)(using ctx: Context): scala.quoted.Type[?] = {
     val dummySpan = ctx.owner.span // FIXME
