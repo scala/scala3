@@ -1619,7 +1619,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
     /** Convert `Type` to an `quoted.Type[_]` */
     def seal(using ctx: Context): scala.quoted.Type[_] =
-      internal.QuotedType_seal(self)
+      new scala.internal.quoted.Type(Inferred(self), internal.compilerId)
 
     /** Is `self` type the same as `that` type?
      *  This is the case iff `self <:< that` and `that <:< self`.
