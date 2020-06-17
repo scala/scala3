@@ -36,4 +36,4 @@ package reflect
    ```
 */
 /** Place holder until we implement a ClassTag like abstraction that is sound for all type tests */
-type IsInstanceOf[T] = scala.reflect.ClassTag[T]
+type TypeTest[T] = scala.reflect.ClassTag[T]

@@ -483,7 +483,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       new SourceCodePrinter[self.type](self)(syntaxHighlight).showTree(tree)
   }
 
-  given (using ctx: Context) as IsInstanceOf[PackageClause] = internal.isInstanceOfPackageClause
+  given (using ctx: Context) as TypeTest[PackageClause] = internal.PackageClause_TypeTest
 
   object PackageClause {
     def apply(pid: Ref, stats: List[Tree])(using ctx: Context): PackageClause =
@@ -499,7 +499,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def stats(using ctx: Context): List[Tree] = internal.PackageClause_stats(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Import] = internal.isInstanceOfImport
+  given (using ctx: Context) as TypeTest[Import] = internal.Import_TypeTest
 
   object Import {
     def apply(expr: Term, selectors: List[ImportSelector])(using ctx: Context): Import =
@@ -516,11 +516,11 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       internal.Import_selectors(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Statement] = internal.isInstanceOfStatement
+  given (using ctx: Context) as TypeTest[Statement] = internal.Statement_TypeTest
 
   // ----- Definitions ----------------------------------------------
 
-  given (using ctx: Context) as IsInstanceOf[Definition] = internal.isInstanceOfDefinition
+  given (using ctx: Context) as TypeTest[Definition] = internal.Definition_TypeTest
 
   extension DefinitionOps on (self: Definition) {
     def name(using ctx: Context): String = internal.Definition_name(self)
@@ -528,7 +528,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   // ClassDef
 
-  given (using ctx: Context) as IsInstanceOf[ClassDef] = internal.isInstanceOfClassDef
+  given (using ctx: Context) as TypeTest[ClassDef] = internal.ClassDef_TypeTest
 
   object ClassDef {
     // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(using ctx: Context): ClassDef
@@ -548,7 +548,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   // DefDef
 
-  given (using ctx: Context) as IsInstanceOf[DefDef] = internal.isInstanceOfDefDef
+  given (using ctx: Context) as TypeTest[DefDef] = internal.DefDef_TypeTest
 
   object DefDef {
     def apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(using ctx: Context): DefDef =
@@ -568,7 +568,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   // ValDef
 
-  given (using ctx: Context) as IsInstanceOf[ValDef] = internal.isInstanceOfValDef
+  given (using ctx: Context) as TypeTest[ValDef] = internal.ValDef_TypeTest
 
   object ValDef {
     def apply(symbol: Symbol, rhs: Option[Term])(using ctx: Context): ValDef =
@@ -586,7 +586,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   // TypeDef
 
-  given (using ctx: Context) as IsInstanceOf[TypeDef] = internal.isInstanceOfTypeDef
+  given (using ctx: Context) as TypeTest[TypeDef] = internal.TypeDef_TypeTest
 
   object TypeDef {
     def apply(symbol: Symbol)(using ctx: Context): TypeDef =
@@ -603,7 +603,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   // PackageDef
 
-  given (using ctx: Context) as IsInstanceOf[PackageDef] = internal.isInstanceOfPackageDef
+  given (using ctx: Context) as TypeTest[PackageDef] = internal.PackageDef_TypeTest
 
   extension PackageDefOps on (self: PackageDef) {
     def owner(using ctx: Context): PackageDef = internal.PackageDef_owner(self)
@@ -680,9 +680,9 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def select(sym: Symbol)(using ctx: Context): Select = Select(self, sym)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Term] = internal.isInstanceOfTerm
+  given (using ctx: Context) as TypeTest[Term] = internal.Term_TypeTest
 
-  given (using ctx: Context) as IsInstanceOf[Ref] = internal.isInstanceOfRef
+  given (using ctx: Context) as TypeTest[Ref] = internal.Ref_TypeTest
 
   object Ref {
 
@@ -708,7 +708,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       internal.Ref_apply(sym)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Ident] = internal.isInstanceOfIdent
+  given (using ctx: Context) as TypeTest[Ident] = internal.Ident_TypeTest
 
   extension IdentOps on (self: Ident) {
     def name(using ctx: Context): String = internal.Ident_name(self)
@@ -727,7 +727,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       Some(tree.name)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Select] = internal.isInstanceOfSelect
+  given (using ctx: Context) as TypeTest[Select] = internal.Select_TypeTest
 
   /** Scala term selection */
   object Select {
@@ -763,8 +763,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def signature(using ctx: Context): Option[Signature] = internal.Select_signature(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Literal] =
-    internal.isInstanceOfLiteral
+  given (using ctx: Context) as TypeTest[Literal] =
+    internal.Literal_TypeTest
 
   /** Scala literal constant */
   object Literal {
@@ -785,7 +785,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def constant(using ctx: Context): Constant = internal.Literal_constant(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[This] = internal.isInstanceOfThis
+  given (using ctx: Context) as TypeTest[This] = internal.This_TypeTest
 
   /** Scala `this` or `this[id]` */
   object This {
@@ -806,7 +806,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def id(using ctx: Context): Option[Id] = internal.This_id(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[New] = internal.isInstanceOfNew
+  given (using ctx: Context) as TypeTest[New] = internal.New_TypeTest
 
   /** Scala `new` */
   object New {
@@ -826,7 +826,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def tpt(using ctx: Context): TypeTree = internal.New_tpt(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[NamedArg] = internal.isInstanceOfNamedArg
+  given (using ctx: Context) as TypeTest[NamedArg] = internal.NamedArg_TypeTest
 
   /** Scala named argument `x = y` in argument position */
   object NamedArg {
@@ -849,7 +849,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def value(using ctx: Context): Term = internal.NamedArg_value(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Apply] = internal.isInstanceOfApply
+  given (using ctx: Context) as TypeTest[Apply] = internal.Apply_TypeTest
 
   /** Scala parameter application */
   object Apply {
@@ -871,7 +871,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def args(using ctx: Context): List[Term] = internal.Apply_args(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[TypeApply] = internal.isInstanceOfTypeApply
+  given (using ctx: Context) as TypeTest[TypeApply] = internal.TypeApply_TypeTest
 
   /** Scala type parameter application */
   object TypeApply {
@@ -894,7 +894,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def args(using ctx: Context): List[TypeTree] = internal.TypeApply_args(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Super] = internal.isInstanceOfSuper
+  given (using ctx: Context) as TypeTest[Super] = internal.Super_TypeTest
 
   /** Scala `x.super` or `x.super[id]` */
 
@@ -917,7 +917,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def id(using ctx: Context): Option[Id] = internal.Super_id(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Typed] = internal.isInstanceOfTyped
+  given (using ctx: Context) as TypeTest[Typed] = internal.Typed_TypeTest
 
   /** Scala ascription `x: T` */
   object Typed {
@@ -940,7 +940,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def tpt(using ctx: Context): TypeTree = internal.Typed_tpt(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Assign] = internal.isInstanceOfAssign
+  given (using ctx: Context) as TypeTest[Assign] = internal.Assign_TypeTest
 
   /** Scala assign `x = y` */
   object Assign {
@@ -962,7 +962,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def rhs(using ctx: Context): Term = internal.Assign_rhs(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Block] = internal.isInstanceOfBlock
+  given (using ctx: Context) as TypeTest[Block] = internal.Block_TypeTest
 
   /** Scala code block `{ stat0; ...; statN; expr }` term */
 
@@ -985,7 +985,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def expr(using ctx: Context): Term = internal.Block_expr(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Closure] = internal.isInstanceOfClosure
+  given (using ctx: Context) as TypeTest[Closure] = internal.Closure_TypeTest
 
   object Closure {
 
@@ -1030,7 +1030,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   }
 
-  given (using ctx: Context) as IsInstanceOf[If] = internal.isInstanceOfIf
+  given (using ctx: Context) as TypeTest[If] = internal.If_TypeTest
 
   /** Scala `if`/`else` term */
   object If {
@@ -1054,7 +1054,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def elsep(using ctx: Context): Term = internal.If_elsep(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Match] = internal.isInstanceOfMatch
+  given (using ctx: Context) as TypeTest[Match] = internal.Match_TypeTest
 
   /** Scala `match` term */
   object Match {
@@ -1077,7 +1077,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def cases(using ctx: Context): List[CaseDef] = internal.Match_cases(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[GivenMatch] = internal.isInstanceOfGivenMatch
+  given (using ctx: Context) as TypeTest[GivenMatch] = internal.GivenMatch_TypeTest
 
   /** Scala implicit `match` term */
 
@@ -1099,7 +1099,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def cases(using ctx: Context): List[CaseDef] = internal.GivenMatch_cases(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Try] = internal.isInstanceOfTry
+  given (using ctx: Context) as TypeTest[Try] = internal.Try_TypeTest
 
   /** Scala `try`/`catch`/`finally` term */
   object Try {
@@ -1123,7 +1123,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def finalizer(using ctx: Context): Option[Term] = internal.Try_finalizer(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Return] = internal.isInstanceOfReturn
+  given (using ctx: Context) as TypeTest[Return] = internal.Return_TypeTest
 
   /** Scala local `return` */
   object Return {
@@ -1144,7 +1144,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def expr(using ctx: Context): Term = internal.Return_expr(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Repeated] = internal.isInstanceOfRepeated
+  given (using ctx: Context) as TypeTest[Repeated] = internal.Repeated_TypeTest
 
   object Repeated {
 
@@ -1164,7 +1164,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def elemtpt(using ctx: Context): TypeTree = internal.Repeated_elemtpt(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Inlined] = internal.isInstanceOfInlined
+  given (using ctx: Context) as TypeTest[Inlined] = internal.Inlined_TypeTest
 
   object Inlined {
 
@@ -1185,7 +1185,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def body(using ctx: Context): Term = internal.Inlined_body(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[SelectOuter] = internal.isInstanceOfSelectOuter
+  given (using ctx: Context) as TypeTest[SelectOuter] = internal.SelectOuter_TypeTest
 
   object SelectOuter {
 
@@ -1205,7 +1205,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def level(using ctx: Context): Int = internal.SelectOuter_level(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[While] = internal.isInstanceOfWhile
+  given (using ctx: Context) as TypeTest[While] = internal.While_TypeTest
 
   object While {
 
@@ -1234,10 +1234,10 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def tpe(using ctx: Context): Type = internal.TypeTree_tpe(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[TypeTree] =
-    internal.isInstanceOfTypeTree
+  given (using ctx: Context) as TypeTest[TypeTree] =
+    internal.TypeTree_TypeTest
 
-  given (using ctx: Context) as IsInstanceOf[Inferred] = internal.isInstanceOfInferred
+  given (using ctx: Context) as TypeTest[Inferred] = internal.Inferred_TypeTest
 
   /** TypeTree containing an inferred type */
   object Inferred {
@@ -1247,7 +1247,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def unapply(x: Inferred)(using ctx: Context): Boolean = true
   }
 
-  given (using ctx: Context) as IsInstanceOf[TypeIdent] = internal.isInstanceOfTypeIdent
+  given (using ctx: Context) as TypeTest[TypeIdent] = internal.TypeIdent_TypeTest
 
   extension TypeIdentOps on (self: TypeIdent) {
     def name(using ctx: Context): String = internal.TypeIdent_name(self)
@@ -1261,7 +1261,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def unapply(x: TypeIdent)(using ctx: Context): Option[String] = Some(x.name)
   }
 
-  given (using ctx: Context) as IsInstanceOf[TypeSelect] = internal.isInstanceOfTypeSelect
+  given (using ctx: Context) as TypeTest[TypeSelect] = internal.TypeSelect_TypeTest
 
   object TypeSelect {
     def apply(qualifier: Term, name: String)(using ctx: Context): TypeSelect =
@@ -1277,7 +1277,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def name(using ctx: Context): String = internal.TypeSelect_name(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Projection] = internal.isInstanceOfProjection
+  given (using ctx: Context) as TypeTest[Projection] = internal.Projection_TypeTest
 
   object Projection {
     // TODO def apply(qualifier: TypeTree, name: String)(using ctx: Context): Project
@@ -1292,7 +1292,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def name(using ctx: Context): String = internal.Projection_name(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Singleton] = internal.isInstanceOfSingleton
+  given (using ctx: Context) as TypeTest[Singleton] = internal.Singleton_TypeTest
 
   object Singleton {
     def apply(ref: Term)(using ctx: Context): Singleton =
@@ -1307,7 +1307,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def ref(using ctx: Context): Term = internal.Singleton_ref(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Refined] = internal.isInstanceOfRefined
+  given (using ctx: Context) as TypeTest[Refined] = internal.Refined_TypeTest
 
   object Refined {
     // TODO def apply(tpt: TypeTree, refinements: List[Definition])(using ctx: Context): Refined
@@ -1322,7 +1322,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def refinements(using ctx: Context): List[Definition] = internal.Refined_refinements(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Applied] = internal.isInstanceOfApplied
+  given (using ctx: Context) as TypeTest[Applied] = internal.Applied_TypeTest
 
   object Applied {
     def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(using ctx: Context): Applied =
@@ -1338,8 +1338,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def args(using ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = internal.Applied_args(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Annotated] =
-    internal.isInstanceOfAnnotated
+  given (using ctx: Context) as TypeTest[Annotated] =
+    internal.Annotated_TypeTest
 
   object Annotated {
     def apply(arg: TypeTree, annotation: Term)(using ctx: Context): Annotated =
@@ -1355,8 +1355,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def annotation(using ctx: Context): Term = internal.Annotated_annotation(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[MatchTypeTree] =
-    internal.isInstanceOfMatchTypeTree
+  given (using ctx: Context) as TypeTest[MatchTypeTree] =
+    internal.MatchTypeTree_TypeTest
 
   object MatchTypeTree {
     def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(using ctx: Context): MatchTypeTree =
@@ -1373,8 +1373,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def cases(using ctx: Context): List[TypeCaseDef] = internal.MatchTypeTree_cases(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[ByName] =
-    internal.isInstanceOfByName
+  given (using ctx: Context) as TypeTest[ByName] =
+    internal.ByName_TypeTest
 
   object ByName {
     def apply(result: TypeTree)(using ctx: Context): ByName =
@@ -1389,7 +1389,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def result(using ctx: Context): TypeTree = internal.ByName_result(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[LambdaTypeTree] = internal.isInstanceOfLambdaTypeTree
+  given (using ctx: Context) as TypeTest[LambdaTypeTree] = internal.LambdaTypeTree_TypeTest
 
   object LambdaTypeTree {
     def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): LambdaTypeTree =
@@ -1405,7 +1405,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def body(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.Lambdabody(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[TypeBind] = internal.isInstanceOfTypeBind
+  given (using ctx: Context) as TypeTest[TypeBind] = internal.TypeBind_TypeTest
 
   object TypeBind {
     // TODO def apply(name: String, tree: Tree)(using ctx: Context): TypeBind
@@ -1420,7 +1420,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def body(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeBind_body(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[TypeBlock] = internal.isInstanceOfTypeBlock
+  given (using ctx: Context) as TypeTest[TypeBlock] = internal.TypeBlock_TypeTest
 
   object TypeBlock {
     def apply(aliases: List[TypeDef], tpt: TypeTree)(using ctx: Context): TypeBlock =
@@ -1444,7 +1444,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def hi(using ctx: Context): TypeTree = internal.TypeBoundsTree_hi(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[TypeBoundsTree] = internal.isInstanceOfTypeBoundsTree
+  given (using ctx: Context) as TypeTest[TypeBoundsTree] = internal.TypeBoundsTree_TypeTest
 
   object TypeBoundsTree {
     def unapply(x: TypeBoundsTree)(using ctx: Context): Option[(TypeTree, TypeTree)] =
@@ -1455,7 +1455,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def tpe(using ctx: Context): TypeOrBounds = internal.WildcardTypeTree_tpe(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[WildcardTypeTree] = internal.isInstanceOfWildcardTypeTree
+  given (using ctx: Context) as TypeTest[WildcardTypeTree] = internal.WildcardTypeTree_TypeTest
 
   object WildcardTypeTree {
     /** Matches a TypeBoundsTree containing wildcard type bounds */
@@ -1470,7 +1470,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def rhs(using ctx: Context): Term = internal.CaseDef_rhs(caseDef)
   }
 
-  given (using ctx: Context) as IsInstanceOf[CaseDef] = internal.isInstanceOfCaseDef
+  given (using ctx: Context) as TypeTest[CaseDef] = internal.CaseDef_TypeTest
 
   object CaseDef {
     def apply(pattern: Tree, guard: Option[Term], rhs: Term)(using ctx: Context): CaseDef =
@@ -1488,8 +1488,8 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def rhs(using ctx: Context): TypeTree = internal.TypeCaseDef_rhs(caseDef)
   }
 
-  given (using ctx: Context) as IsInstanceOf[TypeCaseDef] =
-    internal.isInstanceOfTypeCaseDef
+  given (using ctx: Context) as TypeTest[TypeCaseDef] =
+    internal.TypeCaseDef_TypeTest
 
   object TypeCaseDef {
     def apply(pattern: TypeTree, rhs: TypeTree)(using ctx: Context): TypeCaseDef =
@@ -1504,7 +1504,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   // ----- Patterns ------------------------------------------------
 
-  given (using ctx: Context) as IsInstanceOf[Bind] = internal.isInstanceOfBind
+  given (using ctx: Context) as TypeTest[Bind] = internal.Bind_TypeTest
 
   object Bind {
     def apply(sym: Symbol, pattern: Tree)(using ctx: Context): Bind =
@@ -1520,7 +1520,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def pattern(using ctx: Context): Tree = internal.Tree_Bind_pattern(bind)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Unapply] = internal.isInstanceOfUnapply
+  given (using ctx: Context) as TypeTest[Unapply] = internal.Unapply_TypeTest
 
   object Unapply {
     // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree])(using ctx: Context): Unapply
@@ -1536,7 +1536,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def patterns(using ctx: Context): List[Tree] = internal.Tree_Unapply_patterns(unapply)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Alternatives] = internal.isInstanceOfAlternatives
+  given (using ctx: Context) as TypeTest[Alternatives] = internal.Alternatives_TypeTest
 
   object Alternatives {
     def apply(patterns: List[Tree])(using ctx: Context): Alternatives =
@@ -1561,7 +1561,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       internal.SimpleSelector_selection(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[SimpleSelector] = internal.isInstanceOfSimpleSelector
+  given (using ctx: Context) as TypeTest[SimpleSelector] = internal.SimpleSelector_TypeTest
 
   object SimpleSelector:
     def unapply(x: SimpleSelector)(using ctx: Context): Option[Id] = Some(x.selection)
@@ -1573,7 +1573,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def to(using ctx: Context): Id =
       internal.RenameSelector_to(self)
 
-  given (using ctx: Context) as IsInstanceOf[RenameSelector] = internal.isInstanceOfRenameSelector
+  given (using ctx: Context) as TypeTest[RenameSelector] = internal.RenameSelector_TypeTest
 
   object RenameSelector:
     def unapply(x: RenameSelector)(using ctx: Context): Option[(Id, Id)] = Some((x.from, x.to))
@@ -1582,7 +1582,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def omitted(using ctx: Context): Id =
       internal.SimpleSelector_omitted(self)
 
-  given (using ctx: Context) as IsInstanceOf[OmitSelector] = internal.isInstanceOfOmitSelector
+  given (using ctx: Context) as TypeTest[OmitSelector] = internal.OmitSelector_TypeTest
 
   object OmitSelector:
     def unapply(x: OmitSelector)(using ctx: Context): Option[Id] = Some(x.omitted)
@@ -1700,14 +1700,14 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def select(sym: Symbol)(using ctx: Context): Type = internal.Type_select(self)(sym)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Type] = internal.isInstanceOfType
+  given (using ctx: Context) as TypeTest[Type] = internal.Type_TypeTest
 
   object Type {
     def apply(clazz: Class[_])(using ctx: Context): Type =
       internal.Type_apply(clazz)
   }
 
-  given (using ctx: Context) as IsInstanceOf[ConstantType] = internal.isInstanceOfConstantType
+  given (using ctx: Context) as TypeTest[ConstantType] = internal.ConstantType_TypeTest
 
   object ConstantType {
     def apply(x : Constant)(using ctx: Context): ConstantType = internal.ConstantType_apply(x)
@@ -1718,7 +1718,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def constant(using ctx: Context): Constant = internal.ConstantType_constant(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[TermRef] = internal.isInstanceOfTermRef
+  given (using ctx: Context) as TypeTest[TermRef] = internal.TermRef_TypeTest
 
   object TermRef {
     def apply(qual: TypeOrBounds, name: String)(using ctx: Context): TermRef =
@@ -1732,7 +1732,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def name(using ctx: Context): String = internal.TermRef_name(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[TypeRef] = internal.isInstanceOfTypeRef
+  given (using ctx: Context) as TypeTest[TypeRef] = internal.TypeRef_TypeTest
 
   object TypeRef {
     def unapply(x: TypeRef)(using ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
@@ -1746,7 +1746,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def translucentSuperType(using ctx: Context): Type = internal.TypeRef_translucentSuperType(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[SuperType] = internal.isInstanceOfSuperType
+  given (using ctx: Context) as TypeTest[SuperType] = internal.SuperType_TypeTest
 
   object SuperType {
     def apply(thistpe: Type, supertpe: Type)(using ctx: Context): SuperType =
@@ -1761,7 +1761,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def supertpe(using ctx: Context): Type = internal.SuperType_supertpe(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[Refinement] = internal.isInstanceOfRefinement
+  given (using ctx: Context) as TypeTest[Refinement] = internal.Refinement_TypeTest
 
   object Refinement {
     def apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(using ctx: Context): Refinement =
@@ -1777,7 +1777,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def info(using ctx: Context): TypeOrBounds = internal.Refinement_info(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[AppliedType] = internal.isInstanceOfAppliedType
+  given (using ctx: Context) as TypeTest[AppliedType] = internal.AppliedType_TypeTest
 
   object AppliedType {
     def apply(tycon: Type, args: List[TypeOrBounds])(using ctx: Context): AppliedType =
@@ -1791,7 +1791,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def args(using ctx: Context): List[TypeOrBounds /* Type | TypeBounds */] = internal.AppliedType_args(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[AnnotatedType] = internal.isInstanceOfAnnotatedType
+  given (using ctx: Context) as TypeTest[AnnotatedType] = internal.AnnotatedType_TypeTest
 
   object AnnotatedType {
     def apply(underlying: Type, annot: Term)(using ctx: Context): AnnotatedType =
@@ -1805,7 +1805,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def annot(using ctx: Context): Term = internal.AnnotatedType_annot(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[AndType] = internal.isInstanceOfAndType
+  given (using ctx: Context) as TypeTest[AndType] = internal.AndType_TypeTest
 
   object AndType {
     def apply(lhs: Type, rhs: Type)(using ctx: Context): AndType =
@@ -1819,7 +1819,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def right(using ctx: Context): Type = internal.AndType_right(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[OrType] = internal.isInstanceOfOrType
+  given (using ctx: Context) as TypeTest[OrType] = internal.OrType_TypeTest
 
   object OrType {
     def apply(lhs: Type, rhs: Type)(using ctx: Context): OrType = internal.OrType_apply(lhs, rhs)
@@ -1832,7 +1832,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def right(using ctx: Context): Type = internal.OrType_right(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[MatchType] = internal.isInstanceOfMatchType
+  given (using ctx: Context) as TypeTest[MatchType] = internal.MatchType_TypeTest
 
   object MatchType {
     def apply(bound: Type, scrutinee: Type, cases: List[Type])(using ctx: Context): MatchType =
@@ -1855,7 +1855,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     Type(classOf[MatchCase[_,_]])
   }
 
-  given (using ctx: Context) as IsInstanceOf[ByNameType] = internal.isInstanceOfByNameType
+  given (using ctx: Context) as TypeTest[ByNameType] = internal.ByNameType_TypeTest
 
   object ByNameType {
     def apply(underlying: Type)(using ctx: Context): Type = internal.ByNameType_apply(underlying)
@@ -1866,7 +1866,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def underlying(using ctx: Context): Type = internal.ByNameType_underlying(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[ParamRef] = internal.isInstanceOfParamRef
+  given (using ctx: Context) as TypeTest[ParamRef] = internal.ParamRef_TypeTest
 
   object ParamRef {
     def unapply(x: ParamRef)(using ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] =
@@ -1878,7 +1878,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def paramNum(using ctx: Context): Int = internal.ParamRef_paramNum(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[ThisType] = internal.isInstanceOfThisType
+  given (using ctx: Context) as TypeTest[ThisType] = internal.ThisType_TypeTest
 
   object ThisType {
     def unapply(x: ThisType)(using ctx: Context): Option[Type] = Some(x.tref)
@@ -1888,7 +1888,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def tref(using ctx: Context): Type = internal.ThisType_tref(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[RecursiveThis] = internal.isInstanceOfRecursiveThis
+  given (using ctx: Context) as TypeTest[RecursiveThis] = internal.RecursiveThis_TypeTest
 
   object RecursiveThis {
     def unapply(x: RecursiveThis)(using ctx: Context): Option[RecursiveType] = Some(x.binder)
@@ -1898,7 +1898,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def binder(using ctx: Context): RecursiveType = internal.RecursiveThis_binder(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[RecursiveType] = internal.isInstanceOfRecursiveType
+  given (using ctx: Context) as TypeTest[RecursiveType] = internal.RecursiveType_TypeTest
 
   object RecursiveType {
 
@@ -1922,7 +1922,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def recThis(using ctx: Context): RecursiveThis = internal.RecursiveThis_recThis(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[MethodType] = internal.isInstanceOfMethodType
+  given (using ctx: Context) as TypeTest[MethodType] = internal.MethodType_TypeTest
 
   object MethodType {
     def apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType =
@@ -1941,7 +1941,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def resType(using ctx: Context): Type = internal.MethodType_resType(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[PolyType] = internal.isInstanceOfPolyType
+  given (using ctx: Context) as TypeTest[PolyType] = internal.PolyType_TypeTest
 
   object PolyType {
     def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(using ctx: Context): PolyType =
@@ -1957,7 +1957,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def resType(using ctx: Context): Type = internal.PolyType_resType(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[TypeLambda] = internal.isInstanceOfTypeLambda
+  given (using ctx: Context) as TypeTest[TypeLambda] = internal.TypeLambda_TypeTest
 
   object TypeLambda {
     def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda =
@@ -1975,7 +1975,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   // ----- TypeBounds -----------------------------------------------
 
-  given (using ctx: Context) as IsInstanceOf[TypeBounds] = internal.isInstanceOfTypeBounds
+  given (using ctx: Context) as TypeTest[TypeBounds] = internal.TypeBounds_TypeTest
 
   object TypeBounds {
     def apply(low: Type, hi: Type)(using ctx: Context): TypeBounds =
@@ -1990,7 +1990,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   // ----- NoPrefix -------------------------------------------------
 
-  given (using ctx: Context) as IsInstanceOf[NoPrefix] = internal.isInstanceOfNoPrefix
+  given (using ctx: Context) as TypeTest[NoPrefix] = internal.NoPrefix_TypeTest
 
   object NoPrefix:
     def unapply(x: NoPrefix)(using ctx: Context): Boolean = true
@@ -2067,23 +2067,23 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   def searchImplicit(tpe: Type)(using ctx: Context): ImplicitSearchResult =
     internal.searchImplicit(tpe)
 
-  given (using ctx: Context) as IsInstanceOf[ImplicitSearchSuccess] = internal.isInstanceOfImplicitSearchSuccess
+  given (using ctx: Context) as TypeTest[ImplicitSearchSuccess] = internal.ImplicitSearchSuccess_TypeTest
 
   extension successOps on (self: ImplicitSearchSuccess) {
     def tree(using ctx: Context): Term = internal.ImplicitSearchSuccess_tree(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[ImplicitSearchFailure] = internal.isInstanceOfImplicitSearchFailure
+  given (using ctx: Context) as TypeTest[ImplicitSearchFailure] = internal.ImplicitSearchFailure_TypeTest
 
   extension failureOps on (self: ImplicitSearchFailure) {
     def explanation(using ctx: Context): String = internal.ImplicitSearchFailure_explanation(self)
   }
 
-  given (using ctx: Context) as IsInstanceOf[DivergingImplicit] = internal.isInstanceOfDivergingImplicit
+  given (using ctx: Context) as TypeTest[DivergingImplicit] = internal.DivergingImplicit_TypeTest
 
-  given (using ctx: Context) as IsInstanceOf[NoMatchingImplicits] = internal.isInstanceOfNoMatchingImplicits
+  given (using ctx: Context) as TypeTest[NoMatchingImplicits] = internal.NoMatchingImplicits_TypeTest
 
-  given (using ctx: Context) as IsInstanceOf[AmbiguousImplicits] = internal.isInstanceOfAmbiguousImplicits
+  given (using ctx: Context) as TypeTest[AmbiguousImplicits] = internal.AmbiguousImplicits_TypeTest
 
 
   /////////////
