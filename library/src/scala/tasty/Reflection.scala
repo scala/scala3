@@ -621,13 +621,15 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
     /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression or throws */
     def seal(using ctx: Context): scala.quoted.Expr[Any] =
-      internal.QuotedExpr_seal(self).getOrElse {
+      sealOpt.getOrElse {
         throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
       }
 
     /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression */
     def sealOpt(using ctx: Context): Option[scala.quoted.Expr[Any]] =
-      internal.QuotedExpr_seal(self)
+      self.tpe.widen match
+        case _: MethodType | _: PolyType => None
+        case _ => Some(new scala.internal.quoted.Expr(self, internal.compilerId))
 
     /** Type of this term */
     def tpe(using ctx: Context): Type = internal.Term_tpe(self)
