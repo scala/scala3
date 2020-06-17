@@ -215,7 +215,7 @@ trait CompilerInterface {
   /** Tree representing a pacakage clause in the source code */
   type PackageClause <: Tree
 
-  def isInstanceOfPackageClause(using ctx: Context): IsInstanceOf[PackageClause]
+  def PackageClause_TypeTest(using ctx: Context): TypeTest[Tree, PackageClause]
 
   def PackageClause_pid(self: PackageClause)(using ctx: Context): Ref
   def PackageClause_stats(self: PackageClause)(using ctx: Context): List[Tree]
@@ -227,12 +227,12 @@ trait CompilerInterface {
   /** Tree representing a statement in the source code */
   type Statement <: Tree
 
-  def isInstanceOfStatement(using ctx: Context): IsInstanceOf[Statement]
+  def Statement_TypeTest(using ctx: Context): TypeTest[Tree, Statement]
 
   /** Tree representing an import in the source code */
   type Import <: Statement
 
-  def isInstanceOfImport(using ctx: Context): IsInstanceOf[Import]
+  def Import_TypeTest(using ctx: Context): TypeTest[Tree, Import]
 
   def Import_implied(self: Import): Boolean
   def Import_expr(self: Import)(using ctx: Context): Term
@@ -245,14 +245,14 @@ trait CompilerInterface {
   /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
   type Definition <: Statement
 
-  def isInstanceOfDefinition(using ctx: Context): IsInstanceOf[Definition]
+  def Definition_TypeTest(using ctx: Context): TypeTest[Tree, Definition]
 
   def Definition_name(self: Definition)(using ctx: Context): String
 
   /** Tree representing a package definition. This includes definitions in all source files */
   type PackageDef <: Definition
 
-  def isInstanceOfPackageDef(using ctx: Context): IsInstanceOf[PackageDef]
+  def PackageDef_TypeTest(using ctx: Context): TypeTest[Tree, PackageDef]
 
   def PackageDef_owner(self: PackageDef)(using ctx: Context): PackageDef
   def PackageDef_members(self: PackageDef)(using ctx: Context): List[Statement]
@@ -260,7 +260,7 @@ trait CompilerInterface {
   /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
   type ClassDef <: Definition
 
-  def isInstanceOfClassDef(using ctx: Context): IsInstanceOf[ClassDef]
+  def ClassDef_TypeTest(using ctx: Context): TypeTest[Tree, ClassDef]
 
   def ClassDef_constructor(self: ClassDef)(using ctx: Context): DefDef
   def ClassDef_parents(self: ClassDef)(using ctx: Context): List[Tree/* Term | TypeTree */]
@@ -273,7 +273,7 @@ trait CompilerInterface {
   /** Tree representing a type (parameter or member) definition in the source code */
   type TypeDef <: Definition
 
-  def isInstanceOfTypeDef(using ctx: Context): IsInstanceOf[TypeDef]
+  def TypeDef_TypeTest(using ctx: Context): TypeTest[Tree, TypeDef]
 
   def TypeDef_rhs(self: TypeDef)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
 
@@ -283,7 +283,7 @@ trait CompilerInterface {
   /** Tree representing a method definition in the source code */
   type DefDef <: Definition
 
-  def isInstanceOfDefDef(using ctx: Context): IsInstanceOf[DefDef]
+  def DefDef_TypeTest(using ctx: Context): TypeTest[Tree, DefDef]
 
   def DefDef_typeParams(self: DefDef)(using ctx: Context): List[TypeDef]
   def DefDef_paramss(self: DefDef)(using ctx: Context): List[List[ValDef]]
@@ -296,7 +296,7 @@ trait CompilerInterface {
   /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter definitions. */
   type ValDef <: Definition
 
-  def isInstanceOfValDef(using ctx: Context): IsInstanceOf[ValDef]
+  def ValDef_TypeTest(using ctx: Context): TypeTest[Tree, ValDef]
 
   def ValDef_tpt(self: ValDef)(using ctx: Context): TypeTree
   def ValDef_rhs(self: ValDef)(using ctx: Context): Option[Term]
@@ -307,7 +307,7 @@ trait CompilerInterface {
   /** Tree representing an expression in the source code */
   type Term <: Statement
 
-  def isInstanceOfTerm(using ctx: Context): IsInstanceOf[Term]
+  def Term_TypeTest(using ctx: Context): TypeTest[Tree, Term]
 
   def Term_tpe(self: Term)(using ctx: Context): Type
   def Term_underlyingArgument(self: Term)(using ctx: Context): Term
@@ -317,7 +317,7 @@ trait CompilerInterface {
   /** Tree representing a reference to definition */
   type Ref <: Term
 
-  def isInstanceOfRef(using ctx: Context): IsInstanceOf[Ref]
+  def Ref_TypeTest(using ctx: Context): TypeTest[Tree, Ref]
 
   /** A tree representing the same reference as the given type */
   def Ref_term(tp: TermRef)(using ctx: Context): Ref
@@ -327,7 +327,7 @@ trait CompilerInterface {
   /** Tree representing a reference to definition with a given name */
   type Ident <: Ref
 
-  def isInstanceOfIdent(using ctx: Context): IsInstanceOf[Ident]
+  def Ident_TypeTest(using ctx: Context): TypeTest[Tree, Ident]
 
   def Ident_name(self: Ident)(using ctx: Context): String
 
@@ -337,7 +337,7 @@ trait CompilerInterface {
   /** Tree representing a selection of definition with a given name on a given prefix */
   type Select <: Ref
 
-  def isInstanceOfSelect(using ctx: Context): IsInstanceOf[Select]
+  def Select_TypeTest(using ctx: Context): TypeTest[Tree, Select]
 
   def Select_qualifier(self: Select)(using ctx: Context): Term
   def Select_name(self: Select)(using ctx: Context): String
@@ -352,7 +352,7 @@ trait CompilerInterface {
   /** Tree representing a literal value in the source code */
   type Literal <: Term
 
-  def isInstanceOfLiteral(using ctx: Context): IsInstanceOf[Literal]
+  def Literal_TypeTest(using ctx: Context): TypeTest[Tree, Literal]
 
   def Literal_constant(self: Literal)(using ctx: Context): Constant
 
@@ -362,7 +362,7 @@ trait CompilerInterface {
   /** Tree representing `this` in the source code */
   type This <: Term
 
-  def isInstanceOfThis(using ctx: Context): IsInstanceOf[This]
+  def This_TypeTest(using ctx: Context): TypeTest[Tree, This]
 
   def This_id(self: This)(using ctx: Context): Option[Id]
 
@@ -372,7 +372,7 @@ trait CompilerInterface {
   /** Tree representing `new` in the source code */
   type New <: Term
 
-  def isInstanceOfNew(using ctx: Context): IsInstanceOf[New]
+  def New_TypeTest(using ctx: Context): TypeTest[Tree, New]
 
   def New_tpt(self: New)(using ctx: Context): TypeTree
 
@@ -382,7 +382,7 @@ trait CompilerInterface {
   /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
   type NamedArg <: Term
 
-  def isInstanceOfNamedArg(using ctx: Context): IsInstanceOf[NamedArg]
+  def NamedArg_TypeTest(using ctx: Context): TypeTest[Tree, NamedArg]
 
   def NamedArg_name(self: NamedArg)(using ctx: Context): String
   def NamedArg_value(self: NamedArg)(using ctx: Context): Term
@@ -393,7 +393,7 @@ trait CompilerInterface {
   /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s */
   type Apply <: Term
 
-  def isInstanceOfApply(using ctx: Context): IsInstanceOf[Apply]
+  def Apply_TypeTest(using ctx: Context): TypeTest[Tree, Apply]
 
   def Apply_fun(self: Apply)(using ctx: Context): Term
   def Apply_args(self: Apply)(using ctx: Context): List[Term]
@@ -404,7 +404,7 @@ trait CompilerInterface {
   /** Tree an application of type arguments */
   type TypeApply <: Term
 
-  def isInstanceOfTypeApply(using ctx: Context): IsInstanceOf[TypeApply]
+  def TypeApply_TypeTest(using ctx: Context): TypeTest[Tree, TypeApply]
 
   def TypeApply_fun(self: TypeApply)(using ctx: Context): Term
   def TypeApply_args(self: TypeApply)(using ctx: Context): List[TypeTree]
@@ -415,7 +415,7 @@ trait CompilerInterface {
   /** Tree representing `super` in the source code */
   type Super <: Term
 
-  def isInstanceOfSuper(using ctx: Context): IsInstanceOf[Super]
+  def Super_TypeTest(using ctx: Context): TypeTest[Tree, Super]
 
   def Super_qualifier(self: Super)(using ctx: Context): Term
   def Super_id(self: Super)(using ctx: Context): Option[Id]
@@ -426,7 +426,7 @@ trait CompilerInterface {
   /** Tree representing a type ascription `x: T` in the source code */
   type Typed <: Term
 
-  def isInstanceOfTyped(using ctx: Context): IsInstanceOf[Typed]
+  def Typed_TypeTest(using ctx: Context): TypeTest[Tree, Typed]
 
   def Typed_expr(self: Typed)(using ctx: Context): Term
   def Typed_tpt(self: Typed)(using ctx: Context): TypeTree
@@ -437,7 +437,7 @@ trait CompilerInterface {
   /** Tree representing an assignment `x = y` in the source code */
   type Assign <: Term
 
-  def isInstanceOfAssign(using ctx: Context): IsInstanceOf[Assign]
+  def Assign_TypeTest(using ctx: Context): TypeTest[Tree, Assign]
 
   def Assign_lhs(self: Assign)(using ctx: Context): Term
   def Assign_rhs(self: Assign)(using ctx: Context): Term
@@ -448,7 +448,7 @@ trait CompilerInterface {
   /** Tree representing a block `{ ... }` in the source code */
   type Block <: Term
 
-  def isInstanceOfBlock(using ctx: Context): IsInstanceOf[Block]
+  def Block_TypeTest(using ctx: Context): TypeTest[Tree, Block]
 
   def Block_statements(self: Block)(using ctx: Context): List[Statement]
   def Block_expr(self: Block)(using ctx: Context): Term
@@ -467,7 +467,7 @@ trait CompilerInterface {
    */
   type Closure <: Term
 
-  def isInstanceOfClosure(using ctx: Context): IsInstanceOf[Closure]
+  def Closure_TypeTest(using ctx: Context): TypeTest[Tree, Closure]
 
   def Closure_meth(self: Closure)(using ctx: Context): Term
   def Closure_tpeOpt(self: Closure)(using ctx: Context): Option[Type]
@@ -480,7 +480,7 @@ trait CompilerInterface {
   /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
   type If <: Term
 
-  def isInstanceOfIf(using ctx: Context): IsInstanceOf[If]
+  def If_TypeTest(using ctx: Context): TypeTest[Tree, If]
 
   def If_cond(self: If)(using ctx: Context): Term
   def If_thenp(self: If)(using ctx: Context): Term
@@ -492,7 +492,7 @@ trait CompilerInterface {
   /** Tree representing a pattern match `x match  { ... }` in the source code */
   type Match <: Term
 
-  def isInstanceOfMatch(using ctx: Context): IsInstanceOf[Match]
+  def Match_TypeTest(using ctx: Context): TypeTest[Tree, Match]
 
   def Match_scrutinee(self: Match)(using ctx: Context): Term
   def Match_cases(self: Match)(using ctx: Context): List[CaseDef]
@@ -503,7 +503,7 @@ trait CompilerInterface {
   /** Tree representing a pattern match `given match  { ... }` in the source code */
   type GivenMatch <: Term
 
-  def isInstanceOfGivenMatch(using ctx: Context): IsInstanceOf[GivenMatch]
+  def GivenMatch_TypeTest(using ctx: Context): TypeTest[Tree, GivenMatch]
 
   def GivenMatch_cases(self: GivenMatch)(using ctx: Context): List[CaseDef]
 
@@ -513,7 +513,7 @@ trait CompilerInterface {
   /** Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code */
   type Try <: Term
 
-  def isInstanceOfTry(using ctx: Context): IsInstanceOf[Try]
+  def Try_TypeTest(using ctx: Context): TypeTest[Tree, Try]
 
   def Try_body(self: Try)(using ctx: Context): Term
   def Try_cases(self: Try)(using ctx: Context): List[CaseDef]
@@ -525,7 +525,7 @@ trait CompilerInterface {
   /** Tree representing a `return` in the source code */
   type Return <: Term
 
-  def isInstanceOfReturn(using ctx: Context): IsInstanceOf[Return]
+  def Return_TypeTest(using ctx: Context): TypeTest[Tree, Return]
 
   def Return_expr(self: Return)(using ctx: Context): Term
 
@@ -535,7 +535,7 @@ trait CompilerInterface {
   /** Tree representing a variable argument list in the source code */
   type Repeated <: Term
 
-  def isInstanceOfRepeated(using ctx: Context): IsInstanceOf[Repeated]
+  def Repeated_TypeTest(using ctx: Context): TypeTest[Tree, Repeated]
 
   def Repeated_elems(self: Repeated)(using ctx: Context): List[Term]
   def Repeated_elemtpt(self: Repeated)(using ctx: Context): TypeTree
@@ -546,7 +546,7 @@ trait CompilerInterface {
   /** Tree representing the scope of an inlined tree */
   type Inlined <: Term
 
-  def isInstanceOfInlined(using ctx: Context): IsInstanceOf[Inlined]
+  def Inlined_TypeTest(using ctx: Context): TypeTest[Tree, Inlined]
 
   def Inlined_call(self: Inlined)(using ctx: Context): Option[Tree/* Term | TypeTree */]
   def Inlined_bindings(self: Inlined)(using ctx: Context): List[Definition]
@@ -558,7 +558,7 @@ trait CompilerInterface {
   /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
   type SelectOuter <: Term
 
-  def isInstanceOfSelectOuter(using ctx: Context): IsInstanceOf[SelectOuter]
+  def SelectOuter_TypeTest(using ctx: Context): TypeTest[Tree, SelectOuter]
 
   def SelectOuter_qualifier(self: SelectOuter)(using ctx: Context): Term
   def SelectOuter_level(self: SelectOuter)(using ctx: Context): Int
@@ -569,7 +569,7 @@ trait CompilerInterface {
   /** Tree representing a while loop */
   type While <: Term
 
-  def isInstanceOfWhile(using ctx: Context): IsInstanceOf[While]
+  def While_TypeTest(using ctx: Context): TypeTest[Tree, While]
 
   def While_cond(self: While)(using ctx: Context): Term
   def While_body(self: While)(using ctx: Context): Term
@@ -580,14 +580,14 @@ trait CompilerInterface {
   /** Type tree representing a type written in the source */
   type TypeTree <: Tree
 
-  def isInstanceOfTypeTree(using ctx: Context): IsInstanceOf[TypeTree]
+  def TypeTree_TypeTest(using ctx: Context): TypeTest[Tree, TypeTree]
 
   def TypeTree_tpe(self: TypeTree)(using ctx: Context): Type
 
   /** Type tree representing an inferred type */
   type Inferred <: TypeTree
 
-  def isInstanceOfInferred(using ctx: Context): IsInstanceOf[Inferred]
+  def Inferred_TypeTest(using ctx: Context): TypeTest[Tree, Inferred]
 
   def Inferred_apply(tpe: Type)(using ctx: Context): Inferred
 
@@ -596,7 +596,7 @@ trait CompilerInterface {
   /** Type tree representing a reference to definition with a given name */
   type TypeIdent <: TypeTree
 
-  def isInstanceOfTypeIdent(using ctx: Context): IsInstanceOf[TypeIdent]
+  def TypeIdent_TypeTest(using ctx: Context): TypeTest[Tree, TypeIdent]
 
   def TypeIdent_name(self: TypeIdent)(using ctx: Context): String
 
@@ -605,7 +605,7 @@ trait CompilerInterface {
   /** Type tree representing a selection of definition with a given name on a given term prefix */
   type TypeSelect <: TypeTree
 
-  def isInstanceOfTypeSelect(using ctx: Context): IsInstanceOf[TypeSelect]
+  def TypeSelect_TypeTest(using ctx: Context): TypeTest[Tree, TypeSelect]
 
   def TypeSelect_qualifier(self: TypeSelect)(using ctx: Context): Term
   def TypeSelect_name(self: TypeSelect)(using ctx: Context): String
@@ -616,7 +616,7 @@ trait CompilerInterface {
   /** Type tree representing a selection of definition with a given name on a given type prefix */
   type Projection <: TypeTree
 
-  def isInstanceOfProjection(using ctx: Context): IsInstanceOf[Projection]
+  def Projection_TypeTest(using ctx: Context): TypeTest[Tree, Projection]
 
   def Projection_qualifier(self: Projection)(using ctx: Context): TypeTree
   def Projection_name(self: Projection)(using ctx: Context): String
@@ -626,7 +626,7 @@ trait CompilerInterface {
   /** Type tree representing a singleton type */
   type Singleton <: TypeTree
 
-  def isInstanceOfSingleton(using ctx: Context): IsInstanceOf[Singleton]
+  def Singleton_TypeTest(using ctx: Context): TypeTest[Tree, Singleton]
 
   def Singleton_ref(self: Singleton)(using ctx: Context): Term
 
@@ -636,7 +636,7 @@ trait CompilerInterface {
   /** Type tree representing a type refinement */
   type Refined <: TypeTree
 
-  def isInstanceOfRefined(using ctx: Context): IsInstanceOf[Refined]
+  def Refined_TypeTest(using ctx: Context): TypeTest[Tree, Refined]
 
   def Refined_tpt(self: Refined)(using ctx: Context): TypeTree
   def Refined_refinements(self: Refined)(using ctx: Context): List[Definition]
@@ -646,7 +646,7 @@ trait CompilerInterface {
   /** Type tree representing a type application */
   type Applied <: TypeTree
 
-  def isInstanceOfApplied(using ctx: Context): IsInstanceOf[Applied]
+  def Applied_TypeTest(using ctx: Context): TypeTest[Tree, Applied]
 
   def Applied_tpt(self: Applied)(using ctx: Context): TypeTree
   def Applied_args(self: Applied)(using ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/]
@@ -657,7 +657,7 @@ trait CompilerInterface {
   /** Type tree representing an annotated type */
   type Annotated <: TypeTree
 
-  def isInstanceOfAnnotated(using ctx: Context): IsInstanceOf[Annotated]
+  def Annotated_TypeTest(using ctx: Context): TypeTest[Tree, Annotated]
 
   def Annotated_arg(self: Annotated)(using ctx: Context): TypeTree
   def Annotated_annotation(self: Annotated)(using ctx: Context): Term
@@ -668,7 +668,7 @@ trait CompilerInterface {
   /** Type tree representing a type match */
   type MatchTypeTree <: TypeTree
 
-  def isInstanceOfMatchTypeTree(using ctx: Context): IsInstanceOf[MatchTypeTree]
+  def MatchTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, MatchTypeTree]
 
   def MatchTypeTree_bound(self: MatchTypeTree)(using ctx: Context): Option[TypeTree]
   def MatchTypeTree_selector(self: MatchTypeTree)(using ctx: Context): TypeTree
@@ -682,7 +682,7 @@ trait CompilerInterface {
 
   def ByName_result(self: ByName)(using ctx: Context): TypeTree
 
-  def isInstanceOfByName(using ctx: Context): IsInstanceOf[ByName]
+  def ByName_TypeTest(using ctx: Context): TypeTest[Tree, ByName]
 
   def ByName_apply(result: TypeTree)(using ctx: Context): ByName
   def ByName_copy(original: Tree)(result: TypeTree)(using ctx: Context): ByName
@@ -690,7 +690,7 @@ trait CompilerInterface {
   /** Type tree representing a lambda abstraction type */
   type LambdaTypeTree <: TypeTree
 
-  def isInstanceOfLambdaTypeTree(using ctx: Context): IsInstanceOf[LambdaTypeTree]
+  def LambdaTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, LambdaTypeTree]
 
   def Lambdatparams(self: LambdaTypeTree)(using ctx: Context): List[TypeDef]
   def Lambdabody(self: LambdaTypeTree)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
@@ -701,7 +701,7 @@ trait CompilerInterface {
   /** Type tree representing a type binding */
   type TypeBind <: TypeTree
 
-  def isInstanceOfTypeBind(using ctx: Context): IsInstanceOf[TypeBind]
+  def TypeBind_TypeTest(using ctx: Context): TypeTest[Tree, TypeBind]
 
   def TypeBind_name(self: TypeBind)(using ctx: Context): String
   def TypeBind_body(self: TypeBind)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
@@ -711,7 +711,7 @@ trait CompilerInterface {
   /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
   type TypeBlock <: TypeTree
 
-  def isInstanceOfTypeBlock(using ctx: Context): IsInstanceOf[TypeBlock]
+  def TypeBlock_TypeTest(using ctx: Context): TypeTest[Tree, TypeBlock]
 
   def TypeBlock_aliases(self: TypeBlock)(using ctx: Context): List[TypeDef]
   def TypeBlock_tpt(self: TypeBlock)(using ctx: Context): TypeTree
@@ -722,7 +722,7 @@ trait CompilerInterface {
   /** Type tree representing a type bound written in the source */
   type TypeBoundsTree <: Tree /*TypeTree | TypeBoundsTree*/
 
-  def isInstanceOfTypeBoundsTree(using ctx: Context): IsInstanceOf[TypeBoundsTree]
+  def TypeBoundsTree_TypeTest(using ctx: Context): TypeTest[Tree, TypeBoundsTree]
 
   def TypeBoundsTree_tpe(self: TypeBoundsTree)(using ctx: Context): TypeBounds
   def TypeBoundsTree_low(self: TypeBoundsTree)(using ctx: Context): TypeTree
@@ -734,14 +734,14 @@ trait CompilerInterface {
     */
   type WildcardTypeTree <: Tree
 
-  def isInstanceOfWildcardTypeTree(using ctx: Context): IsInstanceOf[WildcardTypeTree]
+  def WildcardTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, WildcardTypeTree]
 
   def WildcardTypeTree_tpe(self: WildcardTypeTree)(using ctx: Context): TypeOrBounds
 
   /** Branch of a pattern match or catch clause */
   type CaseDef <: Tree
 
-  def isInstanceOfCaseDef(using ctx: Context): IsInstanceOf[CaseDef]
+  def CaseDef_TypeTest(using ctx: Context): TypeTest[Tree, CaseDef]
 
   def CaseDef_pattern(self: CaseDef)(using ctx: Context): Tree
   def CaseDef_guard(self: CaseDef)(using ctx: Context): Option[Term]
@@ -753,7 +753,7 @@ trait CompilerInterface {
   /** Branch of a type pattern match */
   type TypeCaseDef <: Tree
 
-  def isInstanceOfTypeCaseDef(using ctx: Context): IsInstanceOf[TypeCaseDef]
+  def TypeCaseDef_TypeTest(using ctx: Context): TypeTest[Tree, TypeCaseDef]
 
   def TypeCaseDef_pattern(self: TypeCaseDef)(using ctx: Context): TypeTree
   def TypeCaseDef_rhs(self: TypeCaseDef)(using ctx: Context): TypeTree
@@ -768,7 +768,7 @@ trait CompilerInterface {
   /** Tree representing a binding pattern `_ @ _` */
   type Bind <: Tree
 
-  def isInstanceOfBind(using ctx: Context): IsInstanceOf[Bind]
+  def Bind_TypeTest(using ctx: Context): TypeTest[Tree, Bind]
 
   def Tree_Bind_name(self: Bind)(using ctx: Context): String
 
@@ -781,7 +781,7 @@ trait CompilerInterface {
   /** Tree representing an unapply pattern `Xyz(...)` */
   type Unapply <: Tree
 
-  def isInstanceOfUnapply(using ctx: Context): IsInstanceOf[Unapply]
+  def Unapply_TypeTest(using ctx: Context): TypeTest[Tree, Unapply]
 
   def Tree_Unapply_fun(self: Unapply)(using ctx: Context): Term
 
@@ -794,7 +794,7 @@ trait CompilerInterface {
   /** Tree representing pattern alternatives `X | Y | ...` */
   type Alternatives <: Tree
 
-  def isInstanceOfAlternatives(using ctx: Context): IsInstanceOf[Alternatives]
+  def Alternatives_TypeTest(using ctx: Context): TypeTest[Tree, Alternatives]
 
   def Tree_Alternatives_patterns(self: Alternatives)(using ctx: Context): List[Tree]
 
@@ -812,12 +812,12 @@ trait CompilerInterface {
   /** NoPrefix for a type selection */
   type NoPrefix <: TypeOrBounds
 
-  def isInstanceOfNoPrefix(using ctx: Context): IsInstanceOf[NoPrefix]
+  def NoPrefix_TypeTest(using ctx: Context): TypeTest[Tree, NoPrefix]
 
   /** Type bounds */
   type TypeBounds <: TypeOrBounds
 
-  def isInstanceOfTypeBounds(using ctx: Context): IsInstanceOf[TypeBounds]
+  def TypeBounds_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TypeBounds]
 
   def TypeBounds_apply(low: Type, hi: Type)(using ctx: Context): TypeBounds
 
@@ -827,7 +827,7 @@ trait CompilerInterface {
   /** A type */
   type Type <: TypeOrBounds
 
-  def isInstanceOfType(using ctx: Context): IsInstanceOf[Type]
+  def Type_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, Type]
 
   def Type_apply(clazz: Class[_])(using ctx: Context): Type
 
@@ -914,7 +914,7 @@ trait CompilerInterface {
   /** A singleton type representing a known constant value */
   type ConstantType <: Type
 
-  def isInstanceOfConstantType(using ctx: Context): IsInstanceOf[ConstantType]
+  def ConstantType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ConstantType]
 
   def ConstantType_apply(const : Constant)(using ctx : Context) : ConstantType
 
@@ -923,7 +923,7 @@ trait CompilerInterface {
   /** Type of a reference to a term symbol */
   type TermRef <: Type
 
-  def isInstanceOfTermRef(using ctx: Context): IsInstanceOf[TermRef]
+  def TermRef_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TermRef]
 
   def TermRef_apply(qual: TypeOrBounds, name: String)(using ctx: Context): TermRef
 
@@ -933,7 +933,7 @@ trait CompilerInterface {
   /** Type of a reference to a type symbol */
   type TypeRef <: Type
 
-  def isInstanceOfTypeRef(using ctx: Context): IsInstanceOf[TypeRef]
+  def TypeRef_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TypeRef]
 
   def TypeRef_qualifier(self: TypeRef)(using ctx: Context): TypeOrBounds
   def TypeRef_name(self: TypeRef)(using ctx: Context): String
@@ -943,7 +943,7 @@ trait CompilerInterface {
   /** Type of a `super` reference */
   type SuperType <: Type
 
-  def isInstanceOfSuperType(using ctx: Context): IsInstanceOf[SuperType]
+  def SuperType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, SuperType]
 
   def SuperType_apply(thistpe: Type, supertpe: Type)(using ctx: Context): SuperType
 
@@ -953,7 +953,7 @@ trait CompilerInterface {
   /** A type with a type refinement `T { type U }` */
   type Refinement <: Type
 
-  def isInstanceOfRefinement(using ctx: Context): IsInstanceOf[Refinement]
+  def Refinement_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, Refinement]
 
   def Refinement_apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(using ctx: Context): Refinement
 
@@ -964,7 +964,7 @@ trait CompilerInterface {
   /** A higher kinded type applied to some types `T[U]` */
   type AppliedType <: Type
 
-  def isInstanceOfAppliedType(using ctx: Context): IsInstanceOf[AppliedType]
+  def AppliedType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AppliedType]
 
   def AppliedType_tycon(self: AppliedType)(using ctx: Context): Type
   def AppliedType_args(self: AppliedType)(using ctx: Context): List[TypeOrBounds]
@@ -974,7 +974,7 @@ trait CompilerInterface {
   /** A type with an anottation `T @foo` */
   type AnnotatedType <: Type
 
-  def isInstanceOfAnnotatedType(using ctx: Context): IsInstanceOf[AnnotatedType]
+  def AnnotatedType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AnnotatedType]
 
   def AnnotatedType_apply(underlying: Type, annot: Term)(using ctx: Context): AnnotatedType
 
@@ -984,7 +984,7 @@ trait CompilerInterface {
   /** Intersection type `T & U` */
   type AndType <: Type
 
-  def isInstanceOfAndType(using ctx: Context): IsInstanceOf[AndType]
+  def AndType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AndType]
 
   def AndType_apply(lhs: Type, rhs: Type)(using ctx: Context): AndType
 
@@ -994,7 +994,7 @@ trait CompilerInterface {
   /** Union type `T | U` */
   type OrType <: Type
 
-  def isInstanceOfOrType(using ctx: Context): IsInstanceOf[OrType]
+  def OrType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, OrType]
 
   def OrType_apply(lhs : Type, rhs : Type)(using ctx : Context): OrType
 
@@ -1004,7 +1004,7 @@ trait CompilerInterface {
   /** Type match `T match { case U => ... }` */
   type MatchType <: Type
 
-  def isInstanceOfMatchType(using ctx: Context): IsInstanceOf[MatchType]
+  def MatchType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, MatchType]
 
   def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type])(using ctx: Context): MatchType
 
@@ -1015,7 +1015,7 @@ trait CompilerInterface {
   /** Type of a by by name parameter */
   type ByNameType <: Type
 
-  def isInstanceOfByNameType(using ctx: Context): IsInstanceOf[ByNameType]
+  def ByNameType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ByNameType]
 
   def ByNameType_apply(underlying: Type)(using ctx: Context): Type
 
@@ -1024,7 +1024,7 @@ trait CompilerInterface {
   /** Type of a parameter reference */
   type ParamRef <: Type
 
-  def isInstanceOfParamRef(using ctx: Context): IsInstanceOf[ParamRef]
+  def ParamRef_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ParamRef]
 
   def ParamRef_binder(self: ParamRef)(using ctx: Context): LambdaType[TypeOrBounds]
   def ParamRef_paramNum(self: ParamRef)(using ctx: Context): Int
@@ -1032,21 +1032,21 @@ trait CompilerInterface {
   /** Type of `this` */
   type ThisType <: Type
 
-  def isInstanceOfThisType(using ctx: Context): IsInstanceOf[ThisType]
+  def ThisType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ThisType]
 
   def ThisType_tref(self: ThisType)(using ctx: Context): Type
 
   /** A type that is recursively defined `this` */
   type RecursiveThis <: Type
 
-  def isInstanceOfRecursiveThis(using ctx: Context): IsInstanceOf[RecursiveThis]
+  def RecursiveThis_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, RecursiveThis]
 
   def RecursiveThis_binder(self: RecursiveThis)(using ctx: Context): RecursiveType
 
   /** A type that is recursively defined */
   type RecursiveType <: Type
 
-  def isInstanceOfRecursiveType(using ctx: Context): IsInstanceOf[RecursiveType]
+  def RecursiveType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, RecursiveType]
 
   /** Create a RecType, normalizing its contents. This means:
    *
@@ -1070,7 +1070,7 @@ trait CompilerInterface {
   /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
   type MethodType <: LambdaType[Type]
 
-  def isInstanceOfMethodType(using ctx: Context): IsInstanceOf[MethodType]
+  def MethodType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, MethodType]
 
   def MethodType_apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType
 
@@ -1084,7 +1084,7 @@ trait CompilerInterface {
   /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
   type PolyType <: LambdaType[TypeBounds]
 
-  def isInstanceOfPolyType(using ctx: Context): IsInstanceOf[PolyType]
+  def PolyType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, PolyType]
 
   def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(using ctx: Context): PolyType
 
@@ -1096,7 +1096,7 @@ trait CompilerInterface {
   /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
   type TypeLambda <: LambdaType[TypeBounds]
 
-  def isInstanceOfTypeLambda(using ctx: Context): IsInstanceOf[TypeLambda]
+  def TypeLambda_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TypeLambda]
 
   def TypeLambda_apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda
 
@@ -1119,20 +1119,20 @@ trait CompilerInterface {
 
   type SimpleSelector <: ImportSelector
 
-  def isInstanceOfSimpleSelector(using ctx: Context): IsInstanceOf[SimpleSelector]
+  def SimpleSelector_TypeTest(using ctx: Context): TypeTest[ImportSelector, SimpleSelector]
 
   def SimpleSelector_selection(self: SimpleSelector)(using ctx: Context): Id
 
   type RenameSelector <: ImportSelector
 
-  def isInstanceOfRenameSelector(using ctx: Context): IsInstanceOf[RenameSelector]
+  def RenameSelector_TypeTest(using ctx: Context): TypeTest[ImportSelector, RenameSelector]
 
   def RenameSelector_from(self: RenameSelector)(using ctx: Context): Id
   def RenameSelector_to(self: RenameSelector)(using ctx: Context): Id
 
   type OmitSelector <: ImportSelector
 
-  def isInstanceOfOmitSelector(using ctx: Context): IsInstanceOf[OmitSelector]
+  def OmitSelector_TypeTest(using ctx: Context): TypeTest[ImportSelector, OmitSelector]
 
   def SimpleSelector_omitted(self: OmitSelector)(using ctx: Context): Id
 
@@ -1581,21 +1581,21 @@ trait CompilerInterface {
   type ImplicitSearchResult <: AnyRef
 
   type ImplicitSearchSuccess <: ImplicitSearchResult
-  def isInstanceOfImplicitSearchSuccess(using ctx: Context): IsInstanceOf[ImplicitSearchSuccess]
+  def ImplicitSearchSuccess_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, ImplicitSearchSuccess]
   def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess)(using ctx: Context): Term
 
   type ImplicitSearchFailure <: ImplicitSearchResult
-  def isInstanceOfImplicitSearchFailure(using ctx: Context): IsInstanceOf[ImplicitSearchFailure]
+  def ImplicitSearchFailure_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, ImplicitSearchFailure]
   def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure)(using ctx: Context): String
 
   type DivergingImplicit <: ImplicitSearchFailure
-  def isInstanceOfDivergingImplicit(using ctx: Context): IsInstanceOf[DivergingImplicit]
+  def DivergingImplicit_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, DivergingImplicit]
 
   type NoMatchingImplicits <: ImplicitSearchFailure
-  def isInstanceOfNoMatchingImplicits(using ctx: Context): IsInstanceOf[NoMatchingImplicits]
+  def NoMatchingImplicits_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, NoMatchingImplicits]
 
   type AmbiguousImplicits <: ImplicitSearchFailure
-  def isInstanceOfAmbiguousImplicits(using ctx: Context): IsInstanceOf[AmbiguousImplicits]
+  def AmbiguousImplicits_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, AmbiguousImplicits]
 
   /** Find an implicit of type `T` in the current scope given by `ctx`.
    *  Return an `ImplicitSearchResult`.
