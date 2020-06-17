@@ -196,7 +196,7 @@ object PickledQuotes {
   }
 
   /** Make sure that the owner of this tree is `ctx.owner` */
-  private def healOwner(tree: Tree)(implicit ctx: Context): Tree = {
+  def healOwner(tree: Tree)(implicit ctx: Context): Tree = {
     val getCurrentOwner = new TreeAccumulator[Option[Symbol]] {
       def apply(x: Option[Symbol], tree: tpd.Tree)(implicit ctx: Context): Option[Symbol] =
         if (x.isDefined) x

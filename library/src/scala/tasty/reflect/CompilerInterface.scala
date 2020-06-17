@@ -1436,17 +1436,6 @@ trait CompilerInterface {
   def Flags_Package: Flags
 
 
-  ////////////////////////
-  // QUOTED SEAL/UNSEAL //
-  ////////////////////////
-
-  /** View this expression `quoted.Expr[Any]` as a `Term` */
-  def QuotedExpr_unseal(self: scala.quoted.Expr[Any])(using ctx: Context): Term
-
-  /** View this expression `quoted.Type[T]` as a `TypeTree` */
-  def QuotedType_unseal(self: scala.quoted.Type[_])(using ctx: Context): TypeTree
-
-
   /////////////////
   // DEFINITIONS //
   /////////////////

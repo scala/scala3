@@ -3,7 +3,7 @@ package scala.quoted
 import scala.quoted.show.SyntaxHighlight
 
 /** Quoted type (or kind) `T` */
-class Type[T <: AnyKind] private[scala] {
+abstract class Type[T <: AnyKind] private[scala] {
   type `$splice` = T
 
   /** Show a source code like representation of this type without syntax highlight */
@@ -15,8 +15,7 @@ class Type[T <: AnyKind] private[scala] {
     this.unseal.showWith(syntaxHighlight)
 
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
-  def unseal(using qctx: QuoteContext): qctx.tasty.TypeTree =
-    qctx.tasty.internal.QuotedType_unseal(this)(using qctx.tasty.rootContext)
+  def unseal(using qctx: QuoteContext): qctx.tasty.TypeTree
 
 }
 

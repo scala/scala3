@@ -1889,19 +1889,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Flags_Package: Flags = core.Flags.Package
 
 
-  ////////////////////////
-  // QUOTED SEAL/UNSEAL //
-  ////////////////////////
-
-  /** View this expression `quoted.Expr[?]` as a `Term` */
-  def QuotedExpr_unseal(self: scala.quoted.Expr[?])(using ctx: Context): Term =
-    PickledQuotes.quotedExprToTree(self)
-
-  /** View this expression `quoted.Type[?]` as a `TypeTree` */
-  def QuotedType_unseal(self: scala.quoted.Type[?])(using ctx: Context): TypeTree =
-    PickledQuotes.quotedTypeToTree(self)
-
-
   /////////////////
   // DEFINITIONS //
   /////////////////
