@@ -52,7 +52,7 @@ object TestConfiguration {
 
   val yCheckOptions = Array("-Ycheck:all")
 
-  val commonOptions = Array("-indent", "-language:postfixOps") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
+  val commonOptions = Array("-indent", "-language:postfixOps", "-Ximport-suggestion-timeout", "16000") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
   val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val withCompilerOptions =
     defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
