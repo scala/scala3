@@ -1901,16 +1901,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def QuotedType_unseal(self: scala.quoted.Type[?])(using ctx: Context): TypeTree =
     PickledQuotes.quotedTypeToTree(self)
 
-  def QuotedExpr_seal(self: Term)(using ctx: Context): Option[scala.quoted.Expr[Any]] = self.tpe.widen match {
-    case _: Types.MethodType | _: Types.PolyType => None
-    case _ => Some(new scala.internal.quoted.Expr(self, compilerId))
-  }
-
-  /** Convert `Type` to an `quoted.Type[?]` */
-  def QuotedType_seal(self: Type)(using ctx: Context): scala.quoted.Type[?] = {
-    val dummySpan = ctx.owner.span // FIXME
-    new scala.internal.quoted.Type(tpd.TypeTree(self).withSpan(dummySpan), compilerId)
-  }
 
   /////////////////
   // DEFINITIONS //
