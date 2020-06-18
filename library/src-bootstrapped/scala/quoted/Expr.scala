@@ -3,7 +3,7 @@ package scala.quoted
 import scala.quoted.show.SyntaxHighlight
 
 /** Quoted expression of type `T` */
-class Expr[+T] private[scala] {
+abstract class Expr[+T] private[scala] {
 
   /** Show a source code like representation of this expression without syntax highlight */
   def show(using qctx: QuoteContext): String =
@@ -55,8 +55,7 @@ class Expr[+T] private[scala] {
   }
 
   /** View this expression `quoted.Expr[T]` as a `Term` */
-  def unseal(using qctx: QuoteContext): qctx.tasty.Term =
-    qctx.tasty.internal.QuotedExpr_unseal(this)(using qctx.tasty.rootContext)
+  def unseal(using qctx: QuoteContext): qctx.tasty.Term
 
 }
 

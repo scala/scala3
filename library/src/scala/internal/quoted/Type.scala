@@ -11,6 +11,13 @@ final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quote
       that.typeTree && scopeId == that.scopeId
     case _ => false
   }
+
+  /** View this expression `quoted.Type[T]` as a `TypeTree` */
+  def unseal(using qctx: QuoteContext): qctx.tasty.TypeTree =
+    if (qctx.tasty.internal.compilerId != scopeId)
+      throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
+    typeTree.asInstanceOf[qctx.tasty.TypeTree]
+
   override def hashCode: Int = typeTree.hashCode
   override def toString: String = "'[ ... ]"
 }

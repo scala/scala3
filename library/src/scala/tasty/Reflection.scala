@@ -1596,7 +1596,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
   /** Returns the type (Type) of T */
   def typeOf[T](using qtype: scala.quoted.Type[T], ctx: Context): Type =
-    internal.QuotedType_unseal(qtype).tpe
+    qtype.asInstanceOf[scala.internal.quoted.Type[T]].typeTree.asInstanceOf[TypeTree].tpe
 
   /** Members of `TypeOrBounds` */
   extension TypeOrBoundsOps on (tpe: TypeOrBounds) {

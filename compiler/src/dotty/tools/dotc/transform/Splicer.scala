@@ -40,13 +40,15 @@ object Splicer {
   def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(using Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
     case _ =>
-      val interpreter = new Interpreter(pos, classLoader)
       val macroOwner = ctx.newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
       try
         inContext(ctx.withOwner(macroOwner)) {
+          val interpreter = new Interpreter(pos, classLoader)
+
           // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
           val interpretedExpr = interpreter.interpret[scala.quoted.QuoteContext => scala.quoted.Expr[Any]](tree)
           val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContext())))
+
           checkEscapedVariables(interpretedTree, macroOwner)
         }.changeOwner(macroOwner, ctx.owner)
       catch {
@@ -295,10 +297,10 @@ object Splicer {
     }
 
     private def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.internal.quoted.Expr(Inlined(EmptyTree, Nil, tree).withSpan(tree.span), QuoteContext.scopeId)
+      new scala.internal.quoted.Expr(Inlined(EmptyTree, Nil, PickledQuotes.healOwner(tree)).withSpan(tree.span), QuoteContext.scopeId)
 
     private def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.internal.quoted.Type(tree, QuoteContext.scopeId)
+      new scala.internal.quoted.Type(PickledQuotes.healOwner(tree), QuoteContext.scopeId)
 
     private def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]
