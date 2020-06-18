@@ -343,17 +343,20 @@ object TypeOps:
         ).suchThat(decl.matches(_))
       val inheritedInfo = inherited.info
       val isPolyFunctionApply = decl.name == nme.apply && (parent <:< defn.PolyFunctionType)
-      if isPolyFunctionApply
-         || inheritedInfo.exists
-            && !decl.isClass
-            && decl.info.widenExpr <:< inheritedInfo.widenExpr
-            && !(inheritedInfo.widenExpr <:< decl.info.widenExpr)
-      then
-        val r = RefinedType(parent, decl.name, decl.info)
-        typr.println(i"add ref $parent $decl --> " + r)
-        r
-      else
-        parent
+      val needsRefinement =
+        isPolyFunctionApply
+        || !decl.isClass
+           && {
+            if inheritedInfo.exists then
+              decl.info.widenExpr <:< inheritedInfo.widenExpr
+              && !(inheritedInfo.widenExpr <:< decl.info.widenExpr)
+            else
+              parent.derivesFrom(defn.SelectableClass)
+          }
+      if needsRefinement then
+        RefinedType(parent, decl.name, decl.info)
+          .reporting(i"add ref $parent $decl --> " + result, typr)
+      else parent
     }
 
     def close(tp: Type) = RecType.closeOver { rt =>
