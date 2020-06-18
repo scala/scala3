@@ -2861,7 +2861,39 @@ class Typer extends Namer
   final def adapt(tree: Tree, pt: Type)(using Context): Tree =
     adapt(tree, pt, ctx.typerState.ownedVars)
 
-  private def adapt1(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree = {
+  // See https://github.com/lampepfl/dotty/issues/9203 for why this is needed
+  // So far it is guarding only `adapt1` since that's the highest known entry point
+  // stack call where the detection for the debugging of #9203 is possible.
+  private inline def spaceComplexityTracker[T](tree: Tree)(task: => T)(using Context) =
+    def size = ctx.base.uniquesSizes.values
+      .map { case (size, _, _) => size }.sum
+    val before = size
+    val res = task
+    val after = size
+    val delta = after - before
+    if delta > 100000
+      println(  // ctx.warning does not output the message in this place, probably waits
+                // for the checking to finish – which never happens under the conditions
+                // `spaceComplexityTracker` was designed to track and report.
+        s"""
+        |[${Console.YELLOW}warn${Console.RESET}] Created ${delta} unique type objects on typecheck
+        |of the following tree in ${ctx.source}:
+        |
+        |${tree.show}
+        |
+        |The meaning of this is that the compiler is doing an unreasonable amount
+        |of work while compiling your code. The compilation may take a lot of time
+        |and heap space. This situation can happen, e.g., when the lookup space for
+        |givens is too large. To resolve the problem, try to eliminate the offending
+        |code snippet from your program and rephrase your program using fewer advanced
+        |features.
+        """.stripMargin)
+      ctx.reporter.flush()
+    end if
+    res
+  end spaceComplexityTracker
+
+  private def adapt1(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree = spaceComplexityTracker(tree) {
     assert(pt.exists && !pt.isInstanceOf[ExprType] || ctx.reporter.errorsReported)
     def methodStr = err.refStr(methPart(tree).tpe)
 
