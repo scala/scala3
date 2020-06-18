@@ -139,15 +139,15 @@ object PickledQuotes {
             (tdef.symbol, tree.tpe)
         }.toMap
         class ReplaceSplicedTyped extends TypeMap() {
-          override def apply(tp: Type): Type = {
-            val tp1 = tp match {
-              case tp: TypeRef =>
-                typeSpliceMap.get(tp.symbol) match
-                  case Some(t) if tp.typeSymbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) => t
-                  case _ => tp
-              case _ => tp
-            }
-            mapOver(tp1)
+          override def apply(tp: Type): Type = tp match {
+            case tp: ClassInfo =>
+              tp.derivedClassInfo(classParents = tp.classParents.map(apply))
+            case tp: TypeRef =>
+              typeSpliceMap.get(tp.symbol) match
+                case Some(t) if tp.typeSymbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) => mapOver(t)
+                case _ => mapOver(tp)
+            case _ =>
+              mapOver(tp)
           }
         }
         val expansion2 = new TreeTypeMap(new ReplaceSplicedTyped).transform(expr1)
