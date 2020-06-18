@@ -139,7 +139,7 @@ trait Dynamic {
    *  `(T11, ..., T1n)...(TN1, ..., TNn): R`, it is desugared to:
    *
    *  ```scala
-   *  x1.applyDynamic("a", (a11, ..., a1n, ..., aN1, ..., aNn)
+   *  x1.applyDynamic("a")(a11, ..., a1n, ..., aN1, ..., aNn)
    *    .asInstanceOf[R]
    *  ```
    *  If this call resolves to an `applyDynamic` method that takes a `ClassTag[?]*` as second
