@@ -48,7 +48,7 @@ consider three distinct cases:
   ```
 
 - If `U` is a method type `(T11, ..., T1n)...(TN1, ..., TNn) => R` and it is not
-a dependent method type, we map `v.a(a11, ..., a1n)...(aN1, aNn)` to
+a dependent method type, we map `v.a(a11, ..., a1n)...(aN1, ..., aNn)` to
   the  equivalent of:
   ```scala
   v.a(arg1, ..., argn)
@@ -57,6 +57,7 @@ a dependent method type, we map `v.a(a11, ..., a1n)...(aN1, aNn)` to
                               (a11, ..., a1n, ..., aN1, ..., aNn)
                  .asInstanceOf[R]
   ```
+where each `CT_ij` is the class tag of the type of the argument `a_ij`.
 
 - If `U` is neither a value nor a method type, or a dependent method
   type, an error is emitted.

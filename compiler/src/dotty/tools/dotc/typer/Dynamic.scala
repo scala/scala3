@@ -151,20 +151,37 @@ trait Dynamic {
   def handleStructural(tree: Tree)(using Context): Tree = {
     val (fun @ Select(qual, name), targs, vargss) = decomposeCall(tree)
 
-    def structuralCall(selectorName: TermName, ctags: List[Tree]) = {
+    def structuralCall(selectorName: TermName, ctags: => List[Tree]) = {
       val selectable = adapt(qual, defn.SelectableClass.typeRef)
 
-      // ($qual: Selectable).$selectorName("$name", ..$ctags)
+      // ($qual: Selectable).$selectorName("$name")
       val base =
         untpd.Apply(
           untpd.TypedSplice(selectable.select(selectorName)).withSpan(fun.span),
-          (Literal(Constant(name.toString)) :: ctags).map(untpd.TypedSplice(_)))
+          (Literal(Constant(name.toString)) :: Nil).map(untpd.TypedSplice(_)))
 
       val scall =
         if (vargss.isEmpty) base
         else untpd.Apply(base, vargss.flatten)
 
-      typed(scall)
+      // If function is an `applyDynamic` that takes a ClassTag* parameter,
+      // add `ctags`.
+      def addClassTags(tree: Tree): Tree = tree match
+        case Apply(fn: Apply, args) =>
+          cpy.Apply(tree)(addClassTags(fn), args)
+        case Apply(fn @ Select(_, nme.applyDynamic), nameArg :: _ :: Nil) =>
+          fn.tpe.widen match
+            case mt: MethodType => mt.paramInfos match
+              case _ :: ctagsParam :: Nil
+              if ctagsParam.isRepeatedParam
+                 && ctagsParam.argInfos.head.isRef(defn.ClassTagClass) =>
+                  val ctagType = defn.ClassTagClass.typeRef.appliedTo(TypeBounds.empty)
+                  cpy.Apply(tree)(fn,
+                    nameArg :: seqToRepeated(SeqLiteral(ctags, TypeTree(ctagType))) :: Nil)
+              case _ => tree
+            case other => tree
+        case _ => tree
+      addClassTags(typed(scall))
     }
 
     def fail(name: Name, reason: String) =
@@ -187,7 +204,7 @@ trait Dynamic {
         if (isDependentMethod(tpe))
           fail(name, i"has a method type with inter-parameter dependencies")
         else {
-          val ctags = tpe.paramInfoss.flatten.map(pt =>
+          def ctags = tpe.paramInfoss.flatten.map(pt =>
             implicitArgTree(defn.ClassTagClass.typeRef.appliedTo(pt.widenDealias :: Nil), fun.span.endPos))
           structuralCall(nme.applyDynamic, ctags).cast(tpe.finalResultType)
         }

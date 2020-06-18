@@ -2,6 +2,9 @@ import scala.quoted._
 
 object Macro {
 
+  trait Selectable extends scala.Selectable:
+    def selectDynamic(name: String): Any
+
   trait SelectableRecord extends Selectable {
     transparent inline def toTuple: Tuple = ${ toTupleImpl('this)}
   }
