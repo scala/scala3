@@ -14,7 +14,7 @@ class Selectable(val receiver: Any) extends AnyVal with scala.Selectable {
     }
   }
 
-  override def applyDynamic(name: String, paramTypes: ClassTag[_]*)(args: Any*): Any = {
+  def applyDynamic(name: String, paramTypes: ClassTag[_]*)(args: Any*): Any = {
     val rcls = receiver.getClass
     val paramClasses = paramTypes.map(_.runtimeClass)
     val mth = rcls.getMethod(name, paramClasses: _*)
@@ -24,8 +24,6 @@ class Selectable(val receiver: Any) extends AnyVal with scala.Selectable {
 }
 
 object Selectable {
-  implicit def reflectiveSelectable(receiver: Any): scala.Selectable = receiver match {
-    case receiver: scala.Selectable => receiver
-    case _                          => new Selectable(receiver)
-  }
+  implicit def reflectiveSelectable(receiver: Any): Selectable =
+    new Selectable(receiver)
 }

@@ -144,7 +144,7 @@ Occurrences:
 [24:12..24:12): -> scala/reflect/Selectable.reflectiveSelectable().
 [24:12..24:13): s -> advanced/Test.s.
 [24:14..24:16): s1 -> advanced/Structural#s1().
-[24:16..24:16): -> scala/Selectable#selectDynamic().
+[24:16..24:16): -> scala/reflect/Selectable#selectDynamic().
 [25:6..25:8): s2 <- advanced/Test.s2.
 [25:11..25:12): s -> advanced/Test.s.
 [25:13..25:15): s2 -> advanced/Structural#s2().
@@ -152,7 +152,7 @@ Occurrences:
 [26:12..26:12): -> scala/reflect/Selectable.reflectiveSelectable().
 [26:12..26:13): s -> advanced/Test.s.
 [26:14..26:16): s2 -> advanced/Structural#s2().
-[26:16..26:16): -> scala/Selectable#selectDynamic().
+[26:16..26:16): -> scala/reflect/Selectable#selectDynamic().
 [27:6..27:8): s3 <- advanced/Test.s3.
 [27:11..27:12): s -> advanced/Test.s.
 [27:13..27:15): s3 -> advanced/Structural#s3().
@@ -160,7 +160,7 @@ Occurrences:
 [28:12..28:12): -> scala/reflect/Selectable.reflectiveSelectable().
 [28:12..28:13): s -> advanced/Test.s.
 [28:14..28:16): s3 -> advanced/Structural#s3().
-[28:16..28:16): -> scala/Selectable#applyDynamic().
+[28:16..28:16): -> scala/reflect/Selectable#applyDynamic().
 [28:18..28:18): -> scala/reflect/ClassTag.apply().
 [28:19..28:22): ??? -> scala/Predef.`???`().
 [30:6..30:7): e <- advanced/Test.e.

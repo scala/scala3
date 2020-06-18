@@ -24,7 +24,27 @@ object Test {
     def fun9(y: C): y.I
   }
 
-  class FooI {
+  class Foo1 {
+    def sel0: Int = 1
+    def sel1: Int => Int = x => x
+    def fun0(x: Int): Int = x
+
+    def fun1(x: Int)(y: Int): Int = x + y
+    def fun2(x: Int): Int => Int = y => x * y
+    def fun3(a1: Int, a2: Int, a3: Int)
+            (a4: Int, a5: Int, a6: Int)
+            (a7: Int, a8: Int, a9: Int): Int = -1
+
+    def fun4(implicit x: Int): Int = x
+    def fun5(x: Int)(implicit y: Int): Int = x + y
+
+    def fun6(x: C, y: x.S): Int = 1
+    def fun7(x: C, y: x.I): Int = 2
+    def fun8(y: C): y.S = "Hello"
+    def fun9(y: C): y.I = 1.asInstanceOf[y.I]
+  }
+
+  class Foo2 extends scala.Selectable {
     def sel0: Int = 1
     def sel1: Int => Int = x => x
     def fun0(x: Int): Int = x
@@ -83,7 +103,7 @@ object Test {
   }
 
   // Limited support for dependant methods
-  def dependant(x: Foo) = {
+  def dependent(x: Foo) = {
     val y = new D
 
     assert(x.fun6(y, "Hello") == 1)
@@ -97,10 +117,15 @@ object Test {
   }
 
   def main(args: Array[String]): Unit = {
-    basic(new FooI)
-    currying(new FooI)
-    etaExpansion(new FooI)
-    implicits(new FooI)
-    dependant(new FooI)
+    basic(new Foo1)
+    currying(new Foo1)
+    etaExpansion(new Foo1)
+    implicits(new Foo1)
+    dependent(new Foo1)
+    basic(new Foo2)
+    currying(new Foo2)
+    etaExpansion(new Foo2)
+    implicits(new Foo2)
+    dependent(new Foo2)
   }
 }

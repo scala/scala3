@@ -131,18 +131,24 @@ trait Dynamic {
    *  and `x.a` is of type `U`, map `x.a` to the equivalent of:
    *
    *  ```scala
-   *  (x: Selectable).selectDynamic("a").asInstanceOf[U]
+   *  x1.selectDynamic("a").asInstanceOf[U]
    *  ```
+   *  where `x1` is `x` adapted to `Selectable`.
    *
    *  Given `x.a(a11, ..., a1n)...(aN1, ..., aNn)`, where `x.a` is of (widened) type
-   *  `(T11, ..., T1n)...(TN1, ..., TNn) => R`, it is desugared to:
+   *  `(T11, ..., T1n)...(TN1, ..., TNn): R`, it is desugared to:
    *
    *  ```scala
-   *  (x:selectable).applyDynamic("a", CT11, ..., CT1n, ..., CTN1, ... CTNn)
-   *                             (a11, ..., a1n, ..., aN1, ..., aNn)
-   *                .asInstanceOf[R]
+   *  x1.applyDynamic("a")(a11, ..., a1n, ..., aN1, ..., aNn)
+   *    .asInstanceOf[R]
    *  ```
-   *
+   *  If this call resolves to an `applyDynamic` method that takes a `ClassTag[?]*` as second
+   *  parameter, we further rewrite this call to
+   *  scala```
+   *  x1.applyDynamic("a", CT11, ..., CT1n, ..., CTN1, ... CTNn)
+   *                  (a11, ..., a1n, ..., aN1, ..., aNn)
+   *    .asInstanceOf[R]
+   *  ```
    *  where CT11, ..., CTNn are the class tags representing the erasure of T11, ..., TNn.
    *
    *  It's an error if U is neither a value nor a method type, or a dependent method
@@ -151,20 +157,37 @@ trait Dynamic {
   def handleStructural(tree: Tree)(using Context): Tree = {
     val (fun @ Select(qual, name), targs, vargss) = decomposeCall(tree)
 
-    def structuralCall(selectorName: TermName, ctags: List[Tree]) = {
+    def structuralCall(selectorName: TermName, ctags: => List[Tree]) = {
       val selectable = adapt(qual, defn.SelectableClass.typeRef)
 
-      // ($qual: Selectable).$selectorName("$name", ..$ctags)
+      // ($qual: Selectable).$selectorName("$name")
       val base =
         untpd.Apply(
           untpd.TypedSplice(selectable.select(selectorName)).withSpan(fun.span),
-          (Literal(Constant(name.toString)) :: ctags).map(untpd.TypedSplice(_)))
+          (Literal(Constant(name.toString)) :: Nil).map(untpd.TypedSplice(_)))
 
       val scall =
         if (vargss.isEmpty) base
         else untpd.Apply(base, vargss.flatten)
 
-      typed(scall)
+      // If function is an `applyDynamic` that takes a ClassTag* parameter,
+      // add `ctags`.
+      def addClassTags(tree: Tree): Tree = tree match
+        case Apply(fn: Apply, args) =>
+          cpy.Apply(tree)(addClassTags(fn), args)
+        case Apply(fn @ Select(_, nme.applyDynamic), nameArg :: _ :: Nil) =>
+          fn.tpe.widen match
+            case mt: MethodType => mt.paramInfos match
+              case _ :: ctagsParam :: Nil
+              if ctagsParam.isRepeatedParam
+                 && ctagsParam.argInfos.head.isRef(defn.ClassTagClass) =>
+                  val ctagType = defn.ClassTagClass.typeRef.appliedTo(TypeBounds.empty)
+                  cpy.Apply(tree)(fn,
+                    nameArg :: seqToRepeated(SeqLiteral(ctags, TypeTree(ctagType))) :: Nil)
+              case _ => tree
+            case other => tree
+        case _ => tree
+      addClassTags(typed(scall))
     }
 
     def fail(name: Name, reason: String) =
@@ -187,7 +210,7 @@ trait Dynamic {
         if (isDependentMethod(tpe))
           fail(name, i"has a method type with inter-parameter dependencies")
         else {
-          val ctags = tpe.paramInfoss.flatten.map(pt =>
+          def ctags = tpe.paramInfoss.flatten.map(pt =>
             implicitArgTree(defn.ClassTagClass.typeRef.appliedTo(pt.widenDealias :: Nil), fun.span.endPos))
           structuralCall(nme.applyDynamic, ctags).cast(tpe.finalResultType)
         }
