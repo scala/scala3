@@ -43,7 +43,7 @@ def applyDynamic(name: String, ctags: ClassTag[?]*)(args: Any*): T
 ```
 Both versions are passed the actual arguments in the `args` parameter. The second version takes in addition a vararg argument of class tags that identify the method's parameter classes. Such an argument is needed
 if `applyDynamic` is implemented using Java reflection, but it could be
-useful in other cases as well.
+useful in other cases as well. `selectDynamic` and `applyDynamic` can also take additional context parameters in using clauses. These are resolved in the normal way at the callsite.
 
 Given a value `v` of type `C { Rs }`, where `C` is a class reference
 and `Rs` are structural refinement declarations, and given `v.a` of type `U`, we consider three distinct cases:
