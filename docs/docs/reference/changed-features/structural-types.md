@@ -55,7 +55,7 @@ that the record defines the right fields of the right types. `Record`
 itself is too weakly typed so the compiler cannot know this without
 help from the user. In practice, the connection between a structural type
 and its underlying generic representation would most likely be done by
-a database layer, and therefore would not be a concern of the end user
+a database layer, and therefore would not be a concern of the end user.
 
 `Record` extends the marker trait `scala.Selectable` and defines
 a method `selectDynamic`, which maps a field name to its value.
