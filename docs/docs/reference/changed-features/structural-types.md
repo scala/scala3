@@ -52,7 +52,7 @@ The parent type `Record` in this example is a generic class that can represent a
 sequence of pairs of labels of type `String` and values of type `Any`.
 When we create a `Person` as a `Record` we have to assert with a typecast
 that the record defines the right fields of the right types. `Record`
-itself is too weakly typed so the compiler cannot know this this without
+itself is too weakly typed so the compiler cannot know this without
 help from the user. In practice, the connection between a structural type
 and its underlying generic representation would most likely be done by
 a database layer, and therefore would not be a concern of the end user
