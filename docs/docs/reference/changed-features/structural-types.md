@@ -123,6 +123,43 @@ New instances of `Selectable` can be defined to support means of
 access other than Java reflection, which would enable usages such as
 the database access example given at the beginning of this document.
 
+## Local Selectable Instances
+
+Local and anonymous classes that extend `Selectable` get more refined types
+than other classes. Here is an example:
+```scala
+class Vehicle extends reflect.Selectable {
+  val wheels: Int
+}
+val i3 = new Vehicle { // i3: Vehicle { val range: Int }
+  val wheels = 4
+  val range = 240
+}
+i3.range
+```
+The type of `i3` in this example is `Vehicle { val range: Int }`. Hence,
+`i3.range` is well-formed. Since the base class `Vehicle` does not define a `range` field or method, we need structural dispatch to access the `range` field of the anonymous class that initializes `id3`. Structural dispatch
+is implemented by the base trait `reflect.Selectable` of `Vehicle`, which
+defines the necessary `selectDynamic` member.
+
+`Vehicle` could also extend some other subclass of `scala.Selectable` that implements `selectDynamic` and `applyDynamic` differently. But if it does not extend a `Selectable` at all, the code would no longer typecheck:
+```scala
+class Vehicle {
+  val wheels: Int
+}
+val i3 = new Vehicle { // i3: Vehicle
+  val wheels = 4
+  val range = 240
+}
+i3.range: // error: range is not a member of `Vehicle`
+```
+The difference is that the type of an anonymous class that does not extend `Selectable` is just formed from the parent type(s) of the class, without
+adding any refinements. Hence, `i3` now has just type `Vehicle` and the selection `i3.range` gives a "member not found" error.
+
+Note that in Scala 2 all local and anonymous classes could produce values with refined types. But
+members defined by such refinements could be selected only with the language import
+`reflectiveCalls`.
+
 ## Relation with `scala.Dynamic`
 
 There are clearly some connections with `scala.Dynamic` here, since
