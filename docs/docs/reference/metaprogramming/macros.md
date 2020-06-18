@@ -139,10 +139,10 @@ It is possible to convert any `Expr[T => R]` into `Expr[T] => Expr[R]` and back.
 These conversions can be implemented as follows:
 
 ```scala
-def to[T, R](f: Expr[T] => Expr[R])(using QuoteContext): Expr[T => R] =
+def to[T: Type, R: Type](f: Expr[T] => Expr[R])(using QuoteContext): Expr[T => R] =
   '{ (x: T) => ${ f('x) } }
 
-def from[T, R](f: Expr[T => R])(using QuoteContext): Expr[T] => Expr[R] =
+def from[T: Type, R: Type](f: Expr[T => R])(using QuoteContext): Expr[T] => Expr[R] =
   (x: Expr[T]) => '{ $f($x) }
 ```
 

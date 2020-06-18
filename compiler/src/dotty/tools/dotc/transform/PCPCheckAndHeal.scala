@@ -188,7 +188,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
             case _ =>
               mapOver(tp)
         case tp: ThisType if level != -1 && level != levelOf(tp.cls) =>
-          levelError(tp.cls, tp, pos, "")
+          levelError(tp.cls, tp, pos)
         case tp: AnnotatedType =>
           val newAnnotTree = transform(tp.annot.tree)
           derivedAnnotatedType(tp, apply(tp.parent), tp.annot.derivedAnnotation(newAnnotTree))
@@ -203,9 +203,9 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         case tp @ TypeRef(NoPrefix, _) if level > levelOf(tp.symbol) =>
           tryHeal(tp.symbol, tp, pos)
         case tp @ TermRef(NoPrefix, _) if !tp.symbol.isStatic && level != levelOf(tp.symbol) =>
-          levelError(tp.symbol, tp, pos, "")
+          levelError(tp.symbol, tp, pos)
         case tp: ThisType if level != -1 && level != levelOf(tp.cls) =>
-          levelError(tp.cls, tp, pos, "")
+          levelError(tp.cls, tp, pos)
         case _ =>
           if tp.typeSymbol.is(Package) then tp
           else mapOver(tp)
@@ -225,19 +225,19 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         checkStable(tp, pos, "type witness")
         getQuoteTypeTags.getTagRef(tp)
       case _: SearchFailureType =>
-        levelError(sym, tp, pos,
-            i"""
-                |
-                | The access would be accepted with the right type tag, but
-                | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
+        ctx.error(i"""Reference to $tp withing quotes requires a $reqType in scope.
+                     |${ctx.typer.missingArgMsg(tag, reqType, "")}
+                     |
+                     |""", pos)
+        tp
       case _ =>
-        levelError(sym, tp, pos,
-            i"""
-                |
-                | The access would be accepted with a given $reqType""")
+        ctx.error(i"""Reference to $tp withing quotes requires a $reqType in scope.
+                     |
+                     |""", pos)
+        tp
   }
 
-  private def levelError(sym: Symbol, tp: Type, pos: SourcePosition, errMsg: String)(using Context): tp.type = {
+  private def levelError(sym: Symbol, tp: Type, pos: SourcePosition)(using Context): tp.type = {
     def symStr =
       if (!tp.isInstanceOf[ThisType]) sym.show
       else if (sym.is(ModuleClass)) sym.sourceModule.show
@@ -245,7 +245,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     ctx.error(
       em"""access to $symStr from wrong staging level:
           | - the definition is at level ${levelOf(sym)},
-          | - but the access is at level $level.$errMsg""", pos)
+          | - but the access is at level $level.""", pos)
     tp
   }
 
