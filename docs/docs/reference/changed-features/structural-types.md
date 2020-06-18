@@ -156,7 +156,7 @@ i3.range: // error: range is not a member of `Vehicle`
 The difference is that the type of an anonymous class that does not extend `Selectable` is just formed from the parent type(s) of the class, without
 adding any refinements. Hence, `i3` now has just type `Vehicle` and the selection `i3.range` gives a "member not found" error.
 
-Note that in Scala 2 all local and anonymous classes could have refinements. But
+Note that in Scala 2 all local and anonymous classes could produce values with refined types. But
 members defined by such refinements could be selected only with the language import
 `reflectiveCalls`.
 
