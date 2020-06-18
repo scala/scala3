@@ -79,7 +79,12 @@ object Typer {
   /** An attachment that indicates a failed conversion or extension method
    *  search was tried on a tree. This will in some cases be reported in error messages
    */
-  private[typer] val HiddenSearchFailure = new Property.Key[SearchFailure]
+  private[typer] val HiddenSearchFailure = new Property.Key[List[SearchFailure]]
+
+  /** Add `fail` to the list of search failures attached to `tree` */
+  def rememberSearchFailure(tree: tpd.Tree, fail: SearchFailure) =
+    tree.putAttachment(HiddenSearchFailure,
+      fail :: tree.attachmentOrElse(HiddenSearchFailure, Nil))
 }
 class Typer extends Namer
                with TypeAssigner
@@ -3393,6 +3398,8 @@ class Typer extends Namer
             nestedCtx.typerState.commit()
             return ExtMethodApply(app)
           }
+          else if !app.isEmpty then
+            rememberSearchFailure(tree, SearchFailure(app.withType(FailedExtension(app, pt))))
         case _ =>
       }
 
@@ -3417,7 +3424,7 @@ class Typer extends Namer
               // will cause a failure at the next level out, which usually gives
               // a better error message. To compensate, store the encountered failure
               // as an attachment, so that it can be reported later as an addendum.
-              tree.putAttachment(HiddenSearchFailure, failure)
+              rememberSearchFailure(tree, failure)
               tree
             }
             else recover(failure.reason)

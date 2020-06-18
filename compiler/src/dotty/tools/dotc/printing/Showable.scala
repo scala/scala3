@@ -22,6 +22,11 @@ trait Showable extends Any {
   /** The string representation of this showable element. */
   def show(implicit ctx: Context): String = toText(ctx.printer).show
 
+  /** The string representation with each line after the first one indented
+   *  by the given given margin (in spaces).
+   */
+  def showIndented(margin: Int)(using Context): String = show.replace("\n", "\n" + " " * margin)
+
   /** The summarized string representation of this showable element.
    *  Recursion depth is limited to some smallish value. Default is
    *  Config.summarizeDepth.
