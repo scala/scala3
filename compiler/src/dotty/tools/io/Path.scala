@@ -10,9 +10,7 @@ import java.nio.file._
 import java.net.{URI, URL}
 import java.nio.file.attribute.{BasicFileAttributes, FileTime}
 import java.io.IOException
-
-import scala.collection.JavaConverters._
-
+import scala.jdk.CollectionConverters._
 import scala.util.Random.alphanumeric
 
 /** An abstraction for filesystem paths.  The differences between

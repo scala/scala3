@@ -9,7 +9,7 @@ package io
 
 import java.io.{ InputStream, OutputStream, DataOutputStream }
 import java.util.jar._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import Attributes.Name
 import scala.language.postfixOps
