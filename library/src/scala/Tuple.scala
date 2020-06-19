@@ -11,6 +11,10 @@ sealed trait Tuple extends Product {
   inline def toArray: Array[Object] =
     scala.runtime.Tuple.toArray(this)
 
+  /** Create a copy this tuple as a List */
+  inline def toList: List[Object] =
+    toArray.toList
+
   /** Create a copy this tuple as an IArray */
   inline def toIArray: IArray[Object] =
     scala.runtime.Tuple.toIArray(this)
