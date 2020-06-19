@@ -11,7 +11,7 @@ import java.io.{InputStream, OutputStream}
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
   override def isDirectory: Boolean = true
-  override def iterator(): Iterator[PlainFile] = givenPath.list filter (_.exists) map (x => new PlainFile(x))
+  override def iterator(): Iterator[PlainFile] = givenPath.list.filter(_.exists).map(new PlainFile(_))
   override def delete(): Unit = givenPath.deleteRecursively()
 }
 

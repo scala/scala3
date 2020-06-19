@@ -44,9 +44,9 @@ object Path {
     else name.substring(i + 1).toLowerCase
   }
 
-  def onlyDirs(xs: Iterator[Path]): Iterator[Directory] = xs filter (_.isDirectory) map (_.toDirectory)
-  def onlyDirs(xs: List[Path]): List[Directory] = xs filter (_.isDirectory) map (_.toDirectory)
-  def onlyFiles(xs: Iterator[Path]): Iterator[File] = xs filter (_.isFile) map (_.toFile)
+  def onlyDirs(xs: Iterator[Path]): Iterator[Directory] = xs.filter(_.isDirectory).map(_.toDirectory)
+  def onlyDirs(xs: List[Path]): List[Directory] = xs.filter(_.isDirectory).map(_.toDirectory)
+  def onlyFiles(xs: Iterator[Path]): Iterator[File] = xs.filter(_.isFile).map(_.toFile)
 
   def roots: List[Path] = FileSystems.getDefault.getRootDirectories.iterator().asScala.map(Path.apply).toList
 
@@ -103,7 +103,7 @@ class Path private[io] (val jpath: JPath) {
    */
   def walkFilter(cond: Path => Boolean): Iterator[Path] =
     if (isFile) toFile walkFilter cond
-    else if (isDirectory) toDirectory walkFilter cond
+    else if (isDirectory) toDirectory.walkFilter(cond)
     else Iterator.empty
 
   /** Equivalent to walkFilter(_ => true).
