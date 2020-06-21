@@ -499,7 +499,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
             case nil => nil
           }
         val erasedDecls = decls.filteredScope(sym => !sym.isType || sym.isClass)
-        tp.derivedClassInfo(NoPrefix, erasedParents, erasedDecls, erasedRef(tp.selfType))
+        val selfType1 = if cls.is(Module) then cls.sourceModule.termRef else NoType
+        tp.derivedClassInfo(NoPrefix, erasedParents, erasedDecls, selfType1)
           // can't replace selftype by NoType because this would lose the sourceModule link
       }
     case _: ErrorType | JavaArrayType(_) =>
