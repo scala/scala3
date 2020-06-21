@@ -4418,7 +4418,7 @@ object Types {
       decls.toList.foldLeft(this) { (cinfo, sym) =>
         if sym.isOpaqueAlias then
           cls.setFlag(Opaque)
-          def force =
+          def force(using Context) =
             if sym.isOpaqueAlias then // could have been reset because of a syntax error
               sym.infoOrCompleter match
                 case completer: LazyType =>
@@ -4429,7 +4429,7 @@ object Types {
             else defn.AnyType         // dummy type in case of errors
           def refineSelfType(selfType: Type) =
             RefinedType(selfType, sym.name,
-              TypeAlias(LazyRef(_ => force, reportCycles = true)))
+              TypeAlias(LazyRef(force(using _), reportCycles = true)))
           cinfo.selfInfo match
             case self: Type =>
               cinfo.derivedClassInfo(
