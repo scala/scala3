@@ -95,8 +95,8 @@ object RefChecks {
   private def checkParents(cls: Symbol)(using Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
       def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
-        val otherSelf = other.givenSelfType.asSeenFrom(cls.thisType, other.classSymbol)
-        if (otherSelf.exists && !(cinfo.selfType <:< otherSelf))
+        val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
+        if otherSelf.exists && !(cinfo.selfType <:< otherSelf) then
           ctx.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
             cls.sourcePos)
       }

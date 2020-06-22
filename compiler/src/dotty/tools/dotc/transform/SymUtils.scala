@@ -226,4 +226,15 @@ class SymUtils(val self: Symbol) extends AnyVal {
        && self.owner.is(Module)
        && self.owner.linkedClass.is(Case)
        && self.owner.linkedClass.isDeclaredInfix
+
+  /** The declared self type of this class, as seen from `site`, stripping
+   *  all refinements for opaque types.
+   */
+  def declaredSelfTypeAsSeenFrom(site: Type)(using Context) =
+    def (tp: Type).stripOpaques: Type = tp match
+      case RefinedType(parent, name, _) if self.info.decl(name).symbol.isOpaqueAlias =>
+        parent.stripOpaques
+      case _ =>
+        tp
+    self.asClass.givenSelfType.stripOpaques.asSeenFrom(site, self)
 }
