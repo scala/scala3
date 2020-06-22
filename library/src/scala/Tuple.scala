@@ -103,6 +103,11 @@ object Tuple {
     case x *: xs => S[Size[xs]]
   }
 
+  /** Fold a tuple `(T1, ..., Tn)` into `F[T1, F[... F[Tn, Z]...]]]` */
+  type Fold[T <: Tuple, Z, F[_, _]] = T match
+    case EmptyTuple => Z
+    case h *: t => F[h, Fold[t, Z, F]]
+
   /** Converts a tuple `(T1, ..., Tn)` to `(F[T1], ..., F[Tn])` */
   type Map[Tup <: Tuple, F[_]] <: Tuple = Tup match {
     case EmptyTuple => EmptyTuple
