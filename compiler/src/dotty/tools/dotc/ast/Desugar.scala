@@ -559,9 +559,9 @@ object desugar {
     val copiedAccessFlags = if migrateTo3 then EmptyFlags else AccessFlags
 
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
-    //     def _1: T1 = this.p1
+    //     def _1: T1 = this.p1 
     //     ...
-    //     def _N: TN = this.pN
+    //     def _N: TN = this.pN (unless already given as valdef or parameterless defdef)
     //     def copy(p1: T1 = p1: @uncheckedVariance, ...,
     //              pN: TN = pN: @uncheckedVariance)(moreParams) =
     //       new C[...](p1, ..., pN)(moreParams)
@@ -572,12 +572,21 @@ object desugar {
     val caseClassMeths = {
       def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
         DefDef(name, Nil, Nil, tpt, rhs).withMods(synthetic)
-      def productElemMeths = {
+        
+      def productElemMeths =
         val caseParams = derivedVparamss.head.toArray
-        for (i <- List.range(0, arity) if nme.selectorName(i) `ne` caseParams(i).name)
-        yield syntheticProperty(nme.selectorName(i), caseParams(i).tpt,
+        val selectorNamesInBody = normalizedBody.collect {
+          case vdef: ValDef if vdef.name.isSelectorName =>
+            vdef.name
+          case ddef: DefDef if ddef.name.isSelectorName && ddef.tparams.isEmpty && ddef.vparamss.isEmpty =>
+            ddef.name
+        }
+        for i <- List.range(0, arity)
+            selName = nme.selectorName(i)
+            if (selName ne caseParams(i).name) && !selectorNamesInBody.contains(selName)
+        yield syntheticProperty(selName, caseParams(i).tpt,
           Select(This(EmptyTypeIdent), caseParams(i).name))
-      }
+
       def ordinalMeths = if (isEnumCase) ordinalMethLit(nextOrdinal(CaseKind.Class)._1) :: Nil else Nil
       def copyMeths = {
         val hasRepeatedParam = constrVparamss.exists(_.exists {
