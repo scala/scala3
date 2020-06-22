@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
@@ -194,7 +195,24 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       for (p <- impl.parents; constr = stripBlock(p).symbol if constr.isConstructor)
       yield constr.owner -> transformConstructor(p)
     ).toMap
-    val superCalls = superCallsAndArgs.transform((_, v) => v._1)
+
+    /** Definitions in a parent trait constructor call (these can arise
+     *  due to reorderings with named and/or default parameters).
+     */
+    def prefix(tree: Tree): List[Tree] =
+      if stripBlock(tree).symbol.owner.is(Trait) then
+        tree match
+          case Block(stats, expr) => stats ::: prefix(expr)
+          case _ => Nil
+      else Nil
+
+    /** the proper trait parent constructor call, without any preceding val defs */
+    def properCall(tree: Tree): Tree =
+      val call = stripBlock(tree)
+      if call.symbol.owner.is(Trait) then call else tree
+
+    val prefixes = superCallsAndArgs.transform((_, v) => prefix(v._1))
+    val superCalls = superCallsAndArgs.transform((_, v) => properCall(v._1))
     val initArgs = superCallsAndArgs.transform((_, v) => v._2)
 
     def superCallOpt(baseCls: Symbol): List[Tree] = superCalls.get(baseCls) match {
@@ -210,6 +228,38 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
     def wasOneOf(sym: Symbol, flags: FlagSet) =
       ctx.atPhase(thisPhase) { sym.isOneOf(flags) }
+
+    /** The prefix definitions of a mixin parent constructor, lifted
+     *  to the enclosing class.
+     */
+    def traitConstrPrefix(mixin: ClassSymbol): List[Tree] =
+      prefixes.get(mixin) match
+        case Some(stats) =>
+          stats.map {
+            case stat: ValDef =>
+              stat.symbol.copySymDenotation(
+                owner = cls,
+                initFlags = stat.symbol.flags | PrivateLocal
+              ).installAfter(thisPhase)
+              stat.symbol.enteredAfter(thisPhase)
+              stat
+          }
+        case _ =>
+          Nil
+
+    /** Adapt tree so that references to valdefs that are lifted to the
+     *  class now use `this` as a prefix
+     */
+    def adaptToPrefix(stat: Tree, prefixSyms: List[Symbol]) =
+      if prefixSyms.isEmpty then stat
+      else
+        val m = new TreeMap:
+          override def transform(tree: Tree)(using Context) = tree match
+            case tree: Ident if prefixSyms.contains(tree.symbol) =>
+              This(cls).select(tree.symbol).withSpan(tree.span)
+            case _ =>
+              super.transform(tree)
+        m.transform(stat)
 
     def traitInits(mixin: ClassSymbol): List[Tree] = {
       var argNum = 0
@@ -275,7 +325,11 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         if (cls.is(Trait)) traitDefs(impl.body)
         else if (!cls.isPrimitiveValueClass) {
           val mixInits = mixins.flatMap { mixin =>
-            flatten(traitInits(mixin)) ::: superCallOpt(mixin) ::: setters(mixin) ::: mixinForwarders(mixin)
+            val prefix = traitConstrPrefix(mixin)
+            val prefixSyms = prefix.map(_.symbol)
+            val initsAndCall = (flatten(traitInits(mixin)) ::: superCallOpt(mixin))
+              .map(adaptToPrefix(_, prefixSyms))
+            prefix ::: initsAndCall ::: setters(mixin) ::: mixinForwarders(mixin)
           }
           superCallOpt(superCls) ::: mixInits ::: impl.body
         }
