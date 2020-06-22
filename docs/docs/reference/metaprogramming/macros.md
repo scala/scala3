@@ -183,28 +183,28 @@ Types are not directly affected by the phase consistency principle.
 It is possible to use types defined at any level in any other level.
 But, if a type is used in a subsequent stage it will need to be lifted to a `Type`.
 The resulting value of `Type` will be subject to PCP.
-Indeed, the definition of `reflect` above uses `T` in the next stage, there is a
+Indeed, the definition of `to` above uses `T` in the next stage, there is a
 quote but no splice between the parameter binding of `T` and its
 usage. But the code can be rewritten by adding a binding of a `Type[T]` tag:
 ```scala
-def reflect[T, U](f: Expr[T] => Expr[U])(using t: Type[T]): Expr[T => U] =
+def to[T, R: Type](f: Expr[T] => Expr[R])(using t: Type[T])(using QuoteContext): Expr[T => R] =
   '{ (x: $t) => ${ f('x) } }
 ```
-In this version of `reflect`, the type of `x` is now the result of
+In this version of `to`, the type of `x` is now the result of
 splicing the `Type` value `t`. This operation _is_ splice correct -- there
 is one quote and one splice between the use of `t` and its definition.
 
 To avoid clutter, the Scala implementation tries to convert any type
 reference to a type `T` in subsequent phases to a type-splice, by rewriting `T` to `${ summon[Type[T]] }`.
-For instance, the user-level definition of `reflect`:
+For instance, the user-level definition of `to`:
 
 ```scala
-def reflect[T: Type, U: Type](f: Expr[T] => Expr[U]): Expr[T => U] =
+def to[T: Type, R: Type](f: Expr[T] => Expr[R]): Expr[T => R] =
   '{ (x: T) => ${ f('x) } }
 ```
 would be rewritten to
 ```scala
-def reflect[T: Type, U: Type](f: Expr[T] => Expr[U]): Expr[T => U] =
+def to[T: Type, R: Type](f: Expr[T] => Expr[R]): Expr[T => R] =
   '{ (x: ${ summon[Type[T]] }) => ${ f('x) } }
 ```
 The `summon` query succeeds because there is a given instance of
