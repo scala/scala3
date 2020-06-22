@@ -210,8 +210,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       yield constr.owner -> transformConstructor(p)
     ).toMap
 
-    def superCallOpt(baseCls: Symbol): List[Tree] =
-      superCallsAndArgs.get(baseCls) match
+    def superCallOpt(baseCls: Symbol): List[Tree] = superCallsAndArgs.get(baseCls) match
       case Some((call, _, _)) =>
         if (defn.NotRuntimeClasses.contains(baseCls) || baseCls.isAllOf(NoInitsTrait)) Nil
         else call :: Nil
