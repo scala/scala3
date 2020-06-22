@@ -109,6 +109,12 @@ object Tuple {
     case h *: t => F[h] *: Map[t, F]
   }
 
+  /** Converts a tuple `(T1, ..., Tn)` to a flattened `(..F[T1], ..., ..F[Tn])` */
+  type FlatMap[Tup <: Tuple, F[_] <: Tuple] <: Tuple = Tup match {
+    case EmptyTuple => EmptyTuple
+    case h *: t => Concat[F[h], FlatMap[t, F]]
+  }
+
   /** Given two tuples, `A1 *: ... *: An * At` and `B1 *: ... *: Bn *: Bt`
    *  where at least one of `At` or `Bt` is `EmptyTuple` or `Tuple`,
    *  returns the tuple type `(A1, B1) *: ... *: (An, Bn) *: Ct`
