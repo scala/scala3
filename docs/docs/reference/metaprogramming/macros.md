@@ -199,12 +199,12 @@ reference to a type `T` in subsequent phases to a type-splice, by rewriting `T` 
 For instance, the user-level definition of `to`:
 
 ```scala
-def to[T: Type, R: Type](f: Expr[T] => Expr[R]): Expr[T => R] =
+def to[T: Type, R: Type](f: Expr[T] => Expr[R])(using QuoteContext): Expr[T => R] =
   '{ (x: T) => ${ f('x) } }
 ```
 would be rewritten to
 ```scala
-def to[T: Type, R: Type](f: Expr[T] => Expr[R]): Expr[T => R] =
+def to[T: Type, R: Type](f: Expr[T] => Expr[R])(using QuoteContext): Expr[T => R] =
   '{ (x: ${ summon[Type[T]] }) => ${ f('x) } }
 ```
 The `summon` query succeeds because there is a given instance of
