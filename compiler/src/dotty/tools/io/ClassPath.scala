@@ -106,8 +106,8 @@ object ClassPath {
       dir.list.filter(x => filt(x.name) && (x.isDirectory || isJarOrZip(x))).map(_.path).toList
 
     if (pattern == "*") lsDir(Directory("."))
-    else if (pattern endsWith wildSuffix) lsDir(Directory(pattern dropRight 2))
-    else if (pattern contains '*') {
+    else if (pattern.endsWith(wildSuffix)) lsDir(Directory(pattern dropRight 2))
+    else if (pattern.contains('*')) {
       try {
         val regexp = ("^" + pattern.replace("""\*""", """.*""") + "$").r
         lsDir(Directory(pattern).parent, regexp.findFirstIn(_).isDefined)
@@ -118,17 +118,17 @@ object ClassPath {
   }
 
   /** Split classpath using platform-dependent path separator */
-  def split(path: String): List[String] = (path split pathSeparator).toList.filterNot(_ == "").distinct
+  def split(path: String): List[String] = path.split(pathSeparator).toList.filterNot(_ == "").distinct
 
   /** Join classpath using platform-dependent path separator */
-  def join(paths: String*): String  = paths filterNot (_ == "") mkString pathSeparator
+  def join(paths: String*): String  = paths.filterNot(_ == "").mkString(pathSeparator)
 
   /** Split the classpath, apply a transformation function, and reassemble it. */
   def map(cp: String, f: String => String): String = join(split(cp) map f: _*)
 
   /** Expand path and possibly expanding stars */
   def expandPath(path: String, expandStar: Boolean = true): List[String] =
-    if (expandStar) split(path) flatMap expandS
+    if (expandStar) split(path).flatMap(expandS)
     else split(path)
 
   /** Expand dir out to contents, a la extdir */

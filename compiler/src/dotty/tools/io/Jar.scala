@@ -9,7 +9,7 @@ package io
 
 import java.io.{ InputStream, OutputStream, DataOutputStream }
 import java.util.jar._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import Attributes.Name
 import scala.language.postfixOps
@@ -46,12 +46,12 @@ class Jar(file: File) {
   lazy val jarFile: JarFile  = new JarFile(file.jpath.toFile)
   lazy val manifest: Option[Manifest] = withJarInput(s => Option(s.getManifest))
 
-  def mainClass: Option[String]     = manifest map (f => f(Name.MAIN_CLASS))
+  def mainClass: Option[String]     = manifest.map(_(Name.MAIN_CLASS))
   /** The manifest-defined classpath String if available. */
   def classPathString: Option[String] =
-    for (m <- manifest ; cp <- m.attrs get Name.CLASS_PATH) yield cp
+    for (m <- manifest ; cp <- m.attrs.get(Name.CLASS_PATH)) yield cp
   def classPathElements: List[String] = classPathString match {
-    case Some(s)  => s split "\\s+" toList
+    case Some(s)  => s.split("\\s+").toList
     case _        => Nil
   }
 
