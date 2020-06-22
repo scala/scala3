@@ -177,98 +177,61 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       }) ++ initBuf
     }
 
-    /** Map constructor call to a pair of a supercall and a list of arguments
-     *  to be used as initializers of trait parameters if the target of the call
-     *  is a trait.
+    /** Map constructor call to a triple of a supercall, and if the target
+     *  is a trait
+     *   - a list of val defs used in arguments (these can arise
+     *     due to reorderings with named and/or default parameters).
+     *   - a list of arguments to be used as initializers of trait parameters
      */
-    def transformConstructor(tree: Tree): (Tree, List[Tree]) = tree match {
+    def transformConstructor(tree: Tree): (Tree, List[Tree], List[Tree]) = tree match {
       case Block(stats, expr) =>
-        val (scall, inits) = transformConstructor(expr)
-        (cpy.Block(tree)(stats, scall), inits)
-      case _ =>
-        val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
-        val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
-        (superRef(tree.symbol, tree.span).appliedToArgs(callArgs), initArgs)
-    }
-
-    val superCallsAndArgs = (
-      for (p <- impl.parents; constr = stripBlock(p).symbol if constr.isConstructor)
-      yield constr.owner -> transformConstructor(p)
-    ).toMap
-
-    /** Definitions in a parent trait constructor call (these can arise
-     *  due to reorderings with named and/or default parameters).
-     */
-    def prefix(tree: Tree): List[Tree] =
-      if stripBlock(tree).symbol.owner.is(Trait) then
-        tree match
-          case Block(stats, expr) => stats ::: prefix(expr)
-          case _ => Nil
-      else Nil
-
-    /** the proper trait parent constructor call, without any preceding val defs */
-    def properCall(tree: Tree): Tree =
-      val call = stripBlock(tree)
-      if call.symbol.owner.is(Trait) then call else tree
-
-    val prefixes = superCallsAndArgs.transform((_, v) => prefix(v._1))
-    val superCalls = superCallsAndArgs.transform((_, v) => properCall(v._1))
-    val initArgs = superCallsAndArgs.transform((_, v) => v._2)
-
-    def superCallOpt(baseCls: Symbol): List[Tree] = superCalls.get(baseCls) match {
-      case Some(call) =>
-        if (defn.NotRuntimeClasses.contains(baseCls) || baseCls.isAllOf(NoInitsTrait)) Nil
-        else call :: Nil
-      case None =>
-        if (baseCls.isAllOf(NoInitsTrait) || defn.NoInitClasses.contains(baseCls) || defn.isFunctionClass(baseCls)) Nil
-        else
-          //println(i"synth super call ${baseCls.primaryConstructor}: ${baseCls.primaryConstructor.info}")
-          transformFollowingDeep(superRef(baseCls.primaryConstructor).appliedToNone) :: Nil
-    }
-
-    def wasOneOf(sym: Symbol, flags: FlagSet) =
-      ctx.atPhase(thisPhase) { sym.isOneOf(flags) }
-
-    /** The prefix definitions of a mixin parent constructor, lifted
-     *  to the enclosing class.
-     */
-    def traitConstrPrefix(mixin: ClassSymbol): List[Tree] =
-      prefixes.get(mixin) match
-        case Some(stats) =>
-          stats.map {
+        val (scall, inits, args) = transformConstructor(expr)
+        if args.isEmpty then
+          (cpy.Block(tree)(stats, scall), inits, args)
+        else // it's a trait constructor with parameters, lift all prefix statements to class context
+             // so that they precede argument definitions.
+          stats.foreach {
             case stat: ValDef =>
               stat.symbol.copySymDenotation(
                 owner = cls,
                 initFlags = stat.symbol.flags | PrivateLocal
               ).installAfter(thisPhase)
               stat.symbol.enteredAfter(thisPhase)
-              stat
           }
-        case _ =>
-          Nil
+          (scall, stats ::: inits, args)
+      case _ =>
+        val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
+        val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
+        (superRef(tree.symbol, tree.span).appliedToArgs(callArgs), Nil, initArgs)
+    }
 
-    /** Adapt tree so that references to valdefs that are lifted to the
-     *  class now use `this` as a prefix
-     */
-    def adaptToPrefix(stat: Tree, prefixSyms: List[Symbol]) =
-      if prefixSyms.isEmpty then stat
-      else
-        val m = new TreeMap:
-          override def transform(tree: Tree)(using Context) = tree match
-            case tree: Ident if prefixSyms.contains(tree.symbol) =>
-              This(cls).select(tree.symbol).withSpan(tree.span)
-            case _ =>
-              super.transform(tree)
-        m.transform(stat)
+    val superCallsAndArgs: Map[Symbol, (Tree, List[Tree], List[Tree])] = (
+      for (p <- impl.parents; constr = stripBlock(p).symbol if constr.isConstructor)
+      yield constr.owner -> transformConstructor(p)
+    ).toMap
+
+    def superCallOpt(baseCls: Symbol): List[Tree] =
+      superCallsAndArgs.get(baseCls) match
+      case Some((call, _, _)) =>
+        if (defn.NotRuntimeClasses.contains(baseCls) || baseCls.isAllOf(NoInitsTrait)) Nil
+        else call :: Nil
+      case None =>
+        if baseCls.isAllOf(NoInitsTrait) || defn.NoInitClasses.contains(baseCls) || defn.isFunctionClass(baseCls) then
+          Nil
+        else
+          //println(i"synth super call ${baseCls.primaryConstructor}: ${baseCls.primaryConstructor.info}")
+          transformFollowingDeep(superRef(baseCls.primaryConstructor).appliedToNone) :: Nil
+
+    def wasOneOf(sym: Symbol, flags: FlagSet) =
+      ctx.atPhase(thisPhase) { sym.isOneOf(flags) }
 
     def traitInits(mixin: ClassSymbol): List[Tree] = {
-      var argNum = 0
-      def nextArgument() = initArgs.get(mixin) match {
-        case Some(arguments) =>
-          val result = arguments(argNum)
-          argNum += 1
-          result
-        case None =>
+      val argsIt = superCallsAndArgs.get(mixin) match
+        case Some((_, _, args)) => args.iterator
+        case _ => Iterator.empty
+      def nextArgument() =
+        if argsIt.hasNext then argsIt.next
+        else
           assert(
               impl.parents.forall(_.tpe.typeSymbol != mixin),
               i"missing parameters for $mixin from $impl should have been caught in typer")
@@ -277,7 +240,6 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
                   |needs to be implemented directly so that arguments can be passed""",
               cls.sourcePos)
           EmptyTree
-      }
 
       for (getter <- mixin.info.decls.toList if getter.isGetter && !wasOneOf(getter, Deferred)) yield {
         val isScala2x = mixin.is(Scala2x)
@@ -325,13 +287,18 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         if (cls.is(Trait)) traitDefs(impl.body)
         else if (!cls.isPrimitiveValueClass) {
           val mixInits = mixins.flatMap { mixin =>
-            val prefix = traitConstrPrefix(mixin)
-            val prefixSyms = prefix.map(_.symbol)
-            val initsAndCall = (flatten(traitInits(mixin)) ::: superCallOpt(mixin))
-              .map(adaptToPrefix(_, prefixSyms))
-            prefix ::: initsAndCall ::: setters(mixin) ::: mixinForwarders(mixin)
+            val prefix = superCallsAndArgs.get(mixin) match
+              case Some((_, inits, _)) => inits
+              case _ => Nil
+            prefix
+            ::: flatten(traitInits(mixin))
+            ::: superCallOpt(mixin)
+            ::: setters(mixin)
+            ::: mixinForwarders(mixin)
           }
-          superCallOpt(superCls) ::: mixInits ::: impl.body
+          superCallOpt(superCls)
+          ::: mixInits
+          ::: impl.body
         }
         else impl.body)
   }
