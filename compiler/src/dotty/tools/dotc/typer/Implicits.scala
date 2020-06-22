@@ -786,10 +786,14 @@ trait Implicits { self: Typer =>
       case _ =>
         arg.tpe match {
           case tpe: SearchFailureType =>
+            val original = arg match
+              case Inlined(call, _, _) => call
+              case _ => arg
+
             i"""$headline.
               |I found:
               |
-              |    ${arg.show.replace("\n", "\n    ")}
+              |    ${original.show.replace("\n", "\n    ")}
               |
               |But ${tpe.explanation}."""
         }
