@@ -810,21 +810,13 @@ trait Checking {
    *  operator is alphanumeric, it must be declared `@infix`.
    */
   def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = {
-
-    def isInfix(sym: Symbol): Boolean =
-      sym.hasAnnotation(defn.InfixAnnot) ||
-      defn.isInfix(sym) ||
-      sym.name.isUnapplyName &&
-        sym.owner.is(Module) && sym.owner.linkedClass.is(Case) &&
-        isInfix(sym.owner.linkedClass)
-
     tree.op match {
       case id @ Ident(name: Name) =>
         name.toTermName match {
           case name: SimpleName
           if !untpd.isBackquoted(id) &&
              !name.isOperatorName &&
-             !isInfix(meth) &&
+             !meth.isDeclaredInfix &&
              !meth.maybeOwner.is(Scala2x) &&
              !infixOKSinceFollowedBy(tree.right) &&
              sourceVersion.isAtLeast(`3.1`) =>
