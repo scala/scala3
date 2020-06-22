@@ -64,6 +64,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/pos-special/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
       compileFile("tests/run/i5606.scala", defaultOptions.and("-Yretain-trees")),
       compileFile("tests/pos-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
+      compileFile("tests/pos-custom-args/i8875.scala", defaultOptions.and("-Xprint:getters")),
     ).checkCompile()
   }
 

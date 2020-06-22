@@ -22,6 +22,7 @@ import TypeApplications._
 import Decorators._
 import scala.internal.Chars.isOperatorPart
 import transform.TypeUtils._
+import transform.SymUtils._
 
 import language.implicitConversions
 import dotty.tools.dotc.util.{NameTransformer, SourcePosition}
@@ -784,7 +785,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     import untpd._
     dclTextOr(tree) {
       val defKeyword = modText(tree.mods, tree.symbol, keywordStr("def"), isType = false)
-      val isExtension = tree.hasType && tree.symbol.is(Extension)
+      val isExtension = tree.hasType && tree.symbol.isExtensionMethod
       withEnclosingDef(tree) {
         val (prefix, vparamss) =
           if (isExtension) (defKeyword ~~ paramsText(tree.vparamss.head) ~~ valDefText(nameIdText(tree)), tree.vparamss.tail)
