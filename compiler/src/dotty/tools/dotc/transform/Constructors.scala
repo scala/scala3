@@ -204,7 +204,8 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
                 initFlags = sym.flags &~ Private,
                 owner = constr.symbol).installAfter(thisPhase)
               constrStats += intoConstr(stat, sym)
-            }
+            } else
+              dropped += sym
           case stat @ DefDef(name, _, _, tpt, _)
               if stat.symbol.isGetter && stat.symbol.owner.is(Trait) && !stat.symbol.is(Lazy) =>
             val sym = stat.symbol
