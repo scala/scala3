@@ -21,6 +21,7 @@ import config.Feature.{warnOnMigration, migrateTo3}
 import reporting._
 import scala.util.matching.Regex._
 import Constants.Constant
+import NullOpsDecorator._
 
 object RefChecks {
   import tpd.{Tree, MemberDef, Literal, Template, DefDef}
@@ -292,7 +293,10 @@ object RefChecks {
             memberTp.overrides(otherTp,
                 member.matchNullaryLoosely || other.matchNullaryLoosely ||
                 warnOnMigration(overrideErrorMsg("no longer has compatible type"),
-                   (if (member.owner == clazz) member else clazz).srcPos))
+                   (if (member.owner == clazz) member else clazz).srcPos)) ||
+            // releaxed override check for explicit nulls
+            (ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined)) &&
+              memberTp.stripAllNulls.overrides(otherTp.stripAllNulls, true))
         catch {
           case ex: MissingType =>
             // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,

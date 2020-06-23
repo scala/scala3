@@ -1,6 +1,5 @@
-
 class S {
-
-  J.foo(null) // Java static methods are also nullified
-
+  // Java static methods are also nullified
+  val x: Int = J.foo(null)
+  val y: String | Null = J.bar(0)
 }

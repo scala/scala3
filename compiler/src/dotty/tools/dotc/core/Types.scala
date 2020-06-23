@@ -739,12 +739,10 @@ object Types {
         go(l).meet(go(r), pre, safeIntersection = ctx.base.pendingMemberSearches.contains(name))
 
       def goOr(tp: OrType) = tp match {
-        case OrUncheckedNull(tp1) =>
-          // Selecting `name` from a type `T|UncheckedNull` is like selecting `name` from `T`.
-          // This can throw at runtime, but we trade soundness for usability.
-          // We need to strip `UncheckedNull` from both the type and the prefix so that
-          // `pre <: tp` continues to hold.
-          tp1.findMember(name, pre.stripUncheckedNull, required, excluded)
+        case OrNull(tp1) if config.Feature.enabled(nme.unsafeNulls) =>
+          // Selecting `name` from a type `T | Null` is like selecting `name` from `T`, if
+          // unsafeNulls is enabled. This can throw at runtime, but we trade soundness for usability.
+          tp1.findMember(name, pre.stripNull, required, excluded)
         case _ =>
           // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
           // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
@@ -989,7 +987,12 @@ object Types {
      */
     def matches(that: Type)(using Context): Boolean = {
       record("matches")
-      TypeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes)
+      TypeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes) ||
+      (ctx.explicitNulls &&
+        // TODO: optimize, for example, add a parameter to ignore Null type?
+        TypeComparer.matchesType(
+          this.stripAllNulls, that.stripAllNulls,
+          relaxed = !ctx.phase.erasedTypes))
     }
 
     /** This is the same as `matches` except that it also matches => T with T and
@@ -3054,25 +3057,7 @@ object Types {
       OrType(tp, defn.NullType)
     def unapply(tp: Type)(using Context): Option[Type] =
       if (ctx.explicitNulls) {
-        val tp1 = tp.stripNull()
-        if tp1 ne tp then Some(tp1) else None
-      }
-      else None
-  }
-
-  /** An extractor object to pattern match against a Java-nullable union.
-   *  e.g.
-   *
-   *  (tp: Type) match
-   *    case OrUncheckedNull(tp1) => // tp had the form `tp1 | UncheckedNull`
-   *    case _ => // tp was not a Java-nullable union
-   */
-  object OrUncheckedNull {
-    def apply(tp: Type)(using Context) =
-      OrType(tp, defn.UncheckedNullAliasType)
-    def unapply(tp: Type)(using Context): Option[Type] =
-      if (ctx.explicitNulls) {
-        val tp1 = tp.stripUncheckedNull
+        val tp1 = tp.stripNull
         if tp1 ne tp then Some(tp1) else None
       }
       else None

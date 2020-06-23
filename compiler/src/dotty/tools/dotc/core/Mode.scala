@@ -112,4 +112,6 @@ object Mode {
 
   /** Are we in a quote in a pattern? */
   val QuotedPattern: Mode = newMode(25, "QuotedPattern")
+
+  val UnsafeNullConversion: Mode = newMode(26, "UnsafeNullConversion")
 }

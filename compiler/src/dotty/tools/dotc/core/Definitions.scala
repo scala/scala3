@@ -461,22 +461,6 @@ class Definitions {
   }
   def NullType: TypeRef = NullClass.typeRef
 
-  /** An alias for null values that originate in Java code.
-   *  This type gets special treatment in the Typer. Specifically, `UncheckedNull` can be selected through:
-   *  e.g.
-   *  ```
-   *  // x: String|Null
-   *  x.length // error: `Null` has no `length` field
-   *  // x2: String|UncheckedNull
-   *  x2.length // allowed by the Typer, but unsound (might throw NPE)
-   *  ```
-   */
-  lazy val UncheckedNullAlias: TypeSymbol = {
-    assert(ctx.explicitNulls)
-    enterAliasType(tpnme.UncheckedNull, NullType)
-  }
-  def UncheckedNullAliasType: TypeRef = UncheckedNullAlias.typeRef
-
   @tu lazy val ImplicitScrutineeTypeSym =
     newPermanentSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
   def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
@@ -653,14 +637,14 @@ class Definitions {
   @tu lazy val ClassCastExceptionClass: ClassSymbol   = requiredClass("java.lang.ClassCastException")
     @tu lazy val ClassCastExceptionClass_stringConstructor: TermSymbol  = ClassCastExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
       case List(pt) =>
-        val pt1 = if (ctx.explicitNulls) pt.stripNull() else pt
+        val pt1 = if (ctx.explicitNulls) pt.stripNull else pt
         pt1.isRef(StringClass)
       case _ => false
     }).symbol.asTerm
   @tu lazy val ArithmeticExceptionClass: ClassSymbol  = requiredClass("java.lang.ArithmeticException")
     @tu lazy val ArithmeticExceptionClass_stringConstructor: TermSymbol  = ArithmeticExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
       case List(pt) =>
-        val pt1 = if (ctx.explicitNulls) pt.stripNull() else pt
+        val pt1 = if (ctx.explicitNulls) pt.stripNull else pt
         pt1.isRef(StringClass)
       case _ => false
     }).symbol.asTerm
@@ -1622,8 +1606,8 @@ class Definitions {
   // ----- Initialization ---------------------------------------------------
 
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-  @tu lazy val syntheticScalaClasses: List[TypeSymbol] = {
-    val synth = List(
+  @tu lazy val syntheticScalaClasses: List[TypeSymbol] =
+    List(
       AnyClass,
       AnyRefAlias,
       AnyKindClass,
@@ -1635,9 +1619,6 @@ class Definitions {
       NullClass,
       NothingClass,
       SingletonClass)
-
-    if (ctx.explicitNulls) synth :+ UncheckedNullAlias else synth
-  }
 
   @tu lazy val syntheticCoreClasses: List[Symbol] = syntheticScalaClasses ++ List(
     EmptyPackageVal,

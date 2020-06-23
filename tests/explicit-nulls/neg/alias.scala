@@ -1,6 +1,6 @@
-
 // Test that nullability is correctly detected
 // in the presence of a type alias.
+
 class Base {
   type T >: Null <: AnyRef|Null
 }
@@ -13,7 +13,7 @@ object foo {
 }
 
 class Derived extends Base {
-  type Nullable[X] = X|Null
+  type Nullable[X] = X | Null
   type Foo = Nullable[foo.Foo]
 
   def fun(foo: Foo): Unit = {
@@ -21,4 +21,3 @@ class Derived extends Base {
     foo.doFoo() // error: foo is nullable
   }
 }
-

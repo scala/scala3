@@ -10,6 +10,7 @@ import Trees._
 import Constants._
 import util.{Stats, SimpleIdentityMap}
 import Decorators._
+import NullOpsDecorator._
 import Uniques._
 import config.Printers.typr
 import util.SourceFile
@@ -36,7 +37,15 @@ object ProtoTypes {
      *  If `pt` is a by-name type, we compare against the underlying type instead.
      */
     def isCompatible(tp: Type, pt: Type)(using Context): Boolean =
-      (tp.widenExpr relaxed_<:< pt.widenExpr) || viewExists(tp, pt)
+      (tp.widenExpr relaxed_<:< pt.widenExpr) ||
+        viewExists(tp, pt) ||
+        (ctx.explicitNulls &&
+          // If unsafeNulls is enabled, we relax the condition by striping all nulls from the types
+          // before subtype check. We use Feature to check language feature. However, when we search implicits,
+          // the context is from ContextualImplicits; hence, we don't know whether unsafeNulls is enabled.
+          // We have to add Mode.UnsafeNullConversion before implicit search.
+          (config.Feature.enabled(nme.unsafeNulls) || ctx.mode.is(Mode.UnsafeNullConversion)) &&
+          (tp.widenExpr.stripAllNulls relaxed_<:< pt.widenExpr.stripAllNulls))
 
     /** Like isCompatibe, but using a subtype comparison with necessary eithers
      *  that don't unnecessarily truncate the constraint space, returning false instead.

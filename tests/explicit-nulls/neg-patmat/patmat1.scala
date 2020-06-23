@@ -1,4 +1,3 @@
-
 class Foo {
   val s: String = ???
   s match {

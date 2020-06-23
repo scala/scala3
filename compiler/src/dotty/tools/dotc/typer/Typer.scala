@@ -422,7 +422,7 @@ class Typer extends Namer
     // If a reference is in the context, it is already trackable at the point we add it.
     // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
     !ref.usedOutOfOrder =>
-      tree.select(defn.Any_typeCast).appliedToType(AndType(ref, tpnn))
+      tree.cast(AndType(ref, tpnn))
     case _ =>
       tree
 
@@ -554,8 +554,13 @@ class Typer extends Namer
     record("typedSelect")
 
     def typeSelectOnTerm(using Context): Tree =
-      typedSelect(tree, pt, typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)))
-        .computeNullable()
+      val qual = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
+      val qual1 = qual.tpe match {
+        case OrNull(tpe1) if config.Feature.enabled(nme.unsafeNulls) =>
+          qual.cast(AndType(qual.tpe, tpe1))
+        case _ => qual
+      }
+      typedSelect(tree, pt, qual1).computeNullable()
 
     def typeSelectOnType(qual: untpd.Tree)(using Context) =
       typedSelect(untpd.cpy.Select(tree)(qual, tree.name.toTypeName), pt)
@@ -3492,26 +3497,51 @@ class Typer extends Namer
             ctx.typerState.constraint.ne(prevConstraint)) readapt(tree)
         else err.typeMismatch(tree, pt, failure)
 
-      if ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType then
-        if pt.isRef(defn.AnyValClass) || pt.isRef(defn.ObjectClass) then
-          report.error(em"the result of an implicit conversion must be more specific than $pt", tree.srcPos)
-        inferView(tree, pt) match {
+      def searchTree(t: Tree)(fail: SearchFailure => Tree)(using Context) = {
+        inferView(t, pt) match {
           case SearchSuccess(found: ExtMethodApply, _, _) =>
             found // nothing to check or adapt for extension method applications
-          case SearchSuccess(found, _, _) =>
-            checkImplicitConversionUseOK(found.symbol, tree.srcPos)
+          case SearchSuccess(found, ref, _) =>
+            checkImplicitConversionUseOK(ref.symbol, t.srcPos)
             withoutMode(Mode.ImplicitsEnabled)(readapt(found))
           case failure: SearchFailure =>
-            if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous) then
-              // don't report the failure but return the tree unchanged. This
-              // will cause a failure at the next level out, which usually gives
-              // a better error message. To compensate, store the encountered failure
-              // as an attachment, so that it can be reported later as an addendum.
-              rememberSearchFailure(tree, failure)
-              tree
-            else recover(failure.reason)
+            fail(failure)
         }
-      else recover(NoMatchingImplicits)
+      }
+
+      def tryUnsafeNullConver(fail: => Tree): Tree =
+        // If explicitNulls and unsafeNulls are enabled, and
+        if ctx.explicitNulls && config.Feature.enabled(nme.unsafeNulls) &&
+          tree.tpe.isUnsafeConvertable(pt) then {
+            tree.cast(pt)
+          }
+        else fail
+
+      def cannotFind(failure: SearchFailure) =
+        if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous) then
+          // don't report the failure but return the tree unchanged. This
+          // will cause a failure at the next level out, which usually gives
+          // a better error message. To compensate, store the encountered failure
+          // as an attachment, so that it can be reported later as an addendum.
+          rememberSearchFailure(tree, failure)
+          tree
+        else recover(failure.reason)
+
+      if ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType then
+        if pt.isRef(defn.AnyValClass) || pt.isRef(defn.ObjectClass) then
+          ctx.error(em"the result of an implicit conversion must be more specific than $pt", tree.sourcePos)
+        val searchCtx = if config.Feature.enabled(nme.unsafeNulls)
+          then ctx.addMode(Mode.UnsafeNullConversion)
+          else ctx
+        tree.tpe match {
+          case OrNull(tpe1) if ctx.explicitNulls && config.Feature.enabled(nme.unsafeNulls) =>
+            searchTree(tree.cast(tpe1)) { _ =>
+              searchTree(tree)(failure => tryUnsafeNullConver(cannotFind(failure)))(using searchCtx)
+            }(using searchCtx)
+          case _ =>
+            searchTree(tree)(failure => tryUnsafeNullConver(cannotFind(failure)))(using searchCtx)
+        }
+      else tryUnsafeNullConver(recover(NoMatchingImplicits))
     }
 
     def adaptType(tp: Type): Tree = {

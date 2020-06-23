@@ -13,6 +13,7 @@ import core.NameKinds.{DocArtifactName, OuterSelectName}
 import core.Decorators._
 import core.Phases._
 import core.Mode
+import core.NullOpsDecorator._
 import typer._
 import typer.ErrorReporting._
 import reporting._
@@ -400,7 +401,7 @@ class TreeChecker extends Phase with SymTransformer {
                ex"""symbols differ for $tree
                    |was                 : $sym
                    |alternatives by type: $memberSyms%, % of types ${memberSyms.map(_.info)}%, %
-                   |qualifier type      : ${tree.qualifier.typeOpt}
+                   |qualifier type      : ${qualTpe}
                    |tree type           : ${tree.typeOpt} of class ${tree.typeOpt.getClass}""")
       }
       checkNotRepeated(super.typedSelect(tree, pt))
