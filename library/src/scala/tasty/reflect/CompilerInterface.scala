@@ -1337,7 +1337,7 @@ trait CompilerInterface {
    *  Implementation restriction: only the default parameters in the first parameter group
    *  are returned.
    */
-  def Symbol_defaultParams(self: Symbol)(using ctx: Context): Map[String, Ref]
+  def Symbol_defaultParams(self: Symbol)(using ctx: Context): Map[String, Symbol]
 
   def Symbol_of(fullName: String)(using ctx: Context): Symbol
 

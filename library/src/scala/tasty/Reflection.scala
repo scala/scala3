@@ -2289,7 +2289,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
      *  Implementation restriction: only the default parameters in the first parameter group
      *  are returned.
      */
-    def defaultParams(using ctx: Context): Map[String, Ref] =
+    def defaultParams(using ctx: Context): Map[String, Symbol] =
       internal.Symbol_defaultParams(sym)
 
     def isTypeParam(using ctx: Context): Boolean =

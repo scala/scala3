@@ -6,6 +6,7 @@ private def defaultParamsImpl[T](
   import qctx.tasty._
   val sym = tpe.unseal.symbol
   val exprs: Map[String, Expr[Any]] =
-    sym.defaultParams.view.mapValues(_.seal.cast[Any]).toMap
+    sym.defaultParams.view.mapValues(sym =>
+      Ref(sym).seal.cast[Any]).toMap
   Expr.ofMapValues(exprs)
 end defaultParamsImpl
