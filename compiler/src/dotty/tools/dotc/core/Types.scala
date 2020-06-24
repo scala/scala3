@@ -4850,7 +4850,7 @@ object Types {
   // ----- TypeMaps --------------------------------------------------------------------
 
   /** Common base class of TypeMap and TypeAccumulator */
-  abstract class VariantTraversal {
+  abstract class VariantTraversal:
     protected[core] var variance: Int = 1
 
     inline protected def atVariance[T](v: Int)(op: => T): T = {
@@ -4860,12 +4860,21 @@ object Types {
       variance = saved
       res
     }
-  }
+
+    protected def stopAtStatic: Boolean = true
+
+    /** Can the prefix of this static reference be omitted if the reference
+     *  itself can be omitted? Overridden in TypeOps#avoid.
+     */
+    protected def isStaticPrefix(pre: Type)(using Context): Boolean = true
+
+    protected def stopBecauseStaticOrLocal(tp: NamedType)(using Context): Boolean =
+      (tp.prefix eq NoPrefix)
+      || stopAtStatic && tp.currentSymbol.isStatic && isStaticPrefix(tp.prefix)
+  end VariantTraversal
 
   abstract class TypeMap(implicit protected var mapCtx: Context)
   extends VariantTraversal with (Type => Type) { thisMap =>
-
-    protected def stopAtStatic: Boolean = true
 
     def apply(tp: Type): Type
 
@@ -4912,8 +4921,8 @@ object Types {
       implicit val ctx = this.mapCtx
       tp match {
         case tp: NamedType =>
-          if (stopAtStatic && tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
-          else {
+          if stopBecauseStaticOrLocal(tp) then tp
+          else
             val prefix1 = atVariance(variance max 0)(this(tp.prefix))
               // A prefix is never contravariant. Even if say `p.A` is used in a contravariant
               // context, we cannot assume contravariance for `p` because `p`'s lower
@@ -4922,7 +4931,6 @@ object Types {
               // if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
               // of `p`'s upper bound.
             derivedSelect(tp, prefix1)
-          }
         case _: ThisType
           | _: BoundType
           | NoPrefix => tp
@@ -5077,7 +5085,6 @@ object Types {
   }
 
   @sharable object IdentityTypeMap extends TypeMap()(NoContext) {
-    override def stopAtStatic: Boolean = true
     def apply(tp: Type): Type = tp
   }
 
@@ -5334,8 +5341,6 @@ object Types {
   abstract class TypeAccumulator[T](implicit protected val accCtx: Context)
   extends VariantTraversal with ((T, Type) => T) {
 
-    protected def stopAtStatic: Boolean = true
-
     def apply(x: T, tp: Type): T
 
     protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
@@ -5348,11 +5353,10 @@ object Types {
       record(s"foldOver total")
       tp match {
       case tp: TypeRef =>
-        if (stopAtStatic && tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) x
-        else {
+        if stopBecauseStaticOrLocal(tp) then x
+        else
           val tp1 = tp.prefix.lookupRefined(tp.name)
           if (tp1.exists) this(x, tp1) else applyToPrefix(x, tp)
-        }
 
       case tp @ AppliedType(tycon, args) =>
         @tailrec def foldArgs(x: T, tparams: List[ParamInfo], args: List[Type]): T =
@@ -5378,8 +5382,7 @@ object Types {
         this(y, restpe)
 
       case tp: TermRef =>
-        if (stopAtStatic && tp.currentSymbol.isStatic || (tp.prefix `eq` NoPrefix)) x
-        else applyToPrefix(x, tp)
+        if stopBecauseStaticOrLocal(tp) then x else applyToPrefix(x, tp)
 
       case tp: TypeVar =>
         this(x, tp.underlying)

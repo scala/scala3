@@ -389,6 +389,14 @@ object TypeOps:
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)
       def partsToAvoid = new NamedPartsAccumulator(tp => toAvoid(tp.symbol))
+
+      /** True iff all NamedTypes on this prefix are static */
+      override def isStaticPrefix(pre: Type)(using Context): Boolean = pre match
+        case pre: NamedType =>
+          val sym = pre.currentSymbol
+          sym.is(Package) || sym.isStatic && isStaticPrefix(pre.prefix)
+        case _ => true
+
       def apply(tp: Type): Type = tp match {
         case tp: TermRef
         if toAvoid(tp.symbol) || partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
