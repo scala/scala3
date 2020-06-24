@@ -38,7 +38,7 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer { this
     val cls = impl.symbol.owner.asClass
     for (mixin <- cls.mixins) {
       val erasedMixin = TypeErasure.normalizeClass(mixin)
-      if (erasedMixin.is(Scala2x) && !erasedMixin.is(Scala2xPartiallyAugmented))
+      if (erasedMixin.is(Scala2x) && !erasedMixin.is(Scala2xAugmented))
         augmentScala2Trait(erasedMixin)
     }
     impl
@@ -49,6 +49,6 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer { this
       if (sym.isSuperAccessor)
         sym.ensureNotPrivate.installAfter(thisPhase)
     }
-    mixin.setFlagFrom(thisPhase, Scala2xPartiallyAugmented)
+    mixin.setFlagFrom(thisPhase, Scala2xAugmented)
   }
 }

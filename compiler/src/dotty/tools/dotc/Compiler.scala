@@ -110,8 +110,7 @@ class Compiler {
                                         // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
          new FunctionalInterfaces,   // Rewrites closures to implement @specialized types of Functions.
          new Instrumentation) ::     // Count closure allocations under -Yinstrument-closures
-    List(//new LinkScala2Impls,        // Redirect calls to trait methods defined by Scala 2.x, so that they now go to
-         new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
+    List(new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
                                      // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
          new ElimStaticThis,         // Replace `this` references to static objects by global identifiers
          new CountOuterAccesses) ::  // Identify outer accessors that can be dropped

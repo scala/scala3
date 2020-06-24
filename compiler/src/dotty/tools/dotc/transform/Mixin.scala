@@ -160,21 +160,6 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       sym
   end transformSym
 
-  private def initializer(sym: Symbol)(using Context): TermSymbol = {
-    if (sym.is(Lazy)) sym
-    else {
-      val initName = InitializerName(sym.name.asTermName)
-      sym.owner.info.decl(initName).symbol
-        .orElse(
-          newSymbol(
-            sym.owner,
-            initName,
-            Protected | Synthetic | Method,
-            sym.info,
-            coord = sym.coord).enteredAfter(thisPhase))
-    }
-  }.asTerm
-
   private def wasOneOf(sym: Symbol, flags: FlagSet)(using Context): Boolean =
     atPhase(thisPhase) { sym.isOneOf(flags) }
 
