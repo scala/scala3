@@ -175,7 +175,8 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     atPhase(thisPhase) { sym.isOneOf(flags) }
 
   private def needsTraitSetter(sym: Symbol)(using Context): Boolean =
-    sym.isGetter && !wasOneOf(sym, DeferredOrLazy | ParamAccessor) && !sym.setter.exists
+    sym.isGetter && !wasOneOf(sym, DeferredOrLazy | ParamAccessor)
+      && atPhase(thisPhase) { !sym.setter.exists }
       && !sym.info.resultType.isInstanceOf[ConstantType]
 
   private def makeTraitSetter(getter: TermSymbol)(using Context): Symbol =
