@@ -42,13 +42,13 @@ package object compiletime {
 
   inline def constValue[T]: T = ???
 
-  inline def constValueTuple[T <: Tuple]: T =
+  inline def constValueTuple[T <: Tuple]: Tuple.Widen[T]=
     val res =
       inline erasedValue[T] match
         case _: EmptyTuple => EmptyTuple
         case _: (t *: ts) => constValue[t] *: constValueTuple[ts]
       end match
-    res.asInstanceOf[T]
+    res.asInstanceOf[Tuple.Widen[T]]
   end constValueTuple
 
   /** Summons first given matching one of the listed cases. E.g. in
@@ -83,13 +83,13 @@ package object compiletime {
    *  @tparam T the tuple containing the types of the values to be summoned
    *  @return the given values typed as elements of the tuple
    */
-  inline def summonAll[T <: Tuple]: T =
+  inline def summonAll[T <: Tuple]: Tuple.Widen[T] =
     val res =
       inline erasedValue[T] match
         case _: EmptyTuple => EmptyTuple
         case _: (t *: ts) => summonInline[t] *: summonAll[ts]
       end match
-    res.asInstanceOf[T]
+    res.asInstanceOf[Tuple.Widen[T]]
   end summonAll
 
   /** Succesor of a natural number where zero is the type 0 and successors are reduced as if the definition was
