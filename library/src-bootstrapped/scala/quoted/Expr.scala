@@ -114,6 +114,25 @@ object Expr {
   def  ofList[T](xs: Seq[Expr[T]])(using Type[T], QuoteContext): Expr[List[T]] =
     if (xs.isEmpty) Expr(Nil) else '{ List(${Varargs(xs)}: _*) }
 
+  /** Lifts the Map the values of which are expressions into an expression of Map. */
+  def ofMapValues[K: Type: Liftable, V: Type](m: Map[K, Expr[V]])(
+      using QuoteContext): Expr[Map[K, V]] =
+    ofMapKeyValues(m.map { case (k, v) => (Expr(k), v) })
+
+  /** Lifts the Map the keys of which are expressions into an expression of Map. */
+  def ofMapKeys[K: Type, V: Type: Liftable](m: Map[Expr[K], V])(
+      using QuoteContext): Expr[Map[K, V]] =
+    ofMapKeyValues(m.map { case (k, v) => (k, Expr(v)) })
+
+  /** Lifts the Map the keys and values of which are expressions into an expression of Map. */
+  def ofMapKeyValues[K: Type, V: Type](m: Map[Expr[K], Expr[V]])(
+      using QuoteContext): Expr[Map[K, V]] =
+    val listOfExprs: List[Expr[(K, V)]] =
+      m.iterator.map((k, v) => '{ ($k, $v) }).toList
+    val exprOfList: Expr[List[(K, V)]] = Expr.ofList(listOfExprs)
+    '{ Map.from($exprOfList) }
+  end ofMapKeyValues
+
   /** Lifts this sequence of expressions into an expression of a tuple
    *
    *  Transforms a sequence of expression
