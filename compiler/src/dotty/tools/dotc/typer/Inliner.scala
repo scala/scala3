@@ -1407,14 +1407,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     assert(level == 0)
     val inlinedFrom = enclosingInlineds.last
     val dependencies = macroDependencies(body)
-
+    val inREPL = ctx.compilationUnit.isREPL
     if dependencies.nonEmpty && !ctx.reporter.errorsReported then
       for sym <- dependencies do
         if ctx.compilationUnit.source.file == sym.associatedFile then
           ctx.error(em"Cannot call macro $sym defined in the same source file", call.sourcePos)
-        if (ctx.settings.XprintSuspension.value)
+        if (ctx.settings.XprintSuspension.value && !inREPL)
           ctx.echo(i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}", call.sourcePos)
-      ctx.compilationUnit.suspend() // this throws a SuspendException
+      if !inREPL then
+        ctx.compilationUnit.suspend() // this throws a SuspendException
 
     val evaluatedSplice = inContext(tastyreflect.MacroExpansion.context(inlinedFrom)) {
       Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)

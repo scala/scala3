@@ -14,6 +14,7 @@ import typer.Nullables
 import transform.SymUtils._
 import core.Decorators.{given _}
 import config.SourceVersion
+import StdNames.str
 
 class CompilationUnit protected (val source: SourceFile) {
 
@@ -24,6 +25,8 @@ class CompilationUnit protected (val source: SourceFile) {
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
   def isJava: Boolean = source.file.name.endsWith(".java")
+
+  def isREPL: Boolean = source.file.name.startsWith(str.REPL_SESSION_LINE)
 
   /** The source version for this unit, as determined by a language import */
   var sourceVersion: Option[SourceVersion] = None
