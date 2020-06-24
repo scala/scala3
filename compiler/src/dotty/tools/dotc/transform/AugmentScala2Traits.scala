@@ -20,14 +20,12 @@ object AugmentScala2Traits {
   val name: String = "augmentScala2Traits"
 }
 
-/** This phase augments Scala2 traits with additional members needed for mixin composition.
+/** This phase augments Scala2 traits to fix up super accessors.
  *
- *  These symbols would have been added between Unpickling and Mixin in the Scala2 pipeline.
+ *  Strangely, Scala 2 super accessors are pickled as private, but are compiled as public expanded.
+ *  In this phase we expand them and make them non-private, so that `ResolveSuper` does something meaningful.
  *
- *  Specifically, we:
- *   - Add trait setters for vals defined in traits.
- *   - Expand the names of all private getters and setters as well as super accessors in the trait and make
- *     not-private.
+ *  TODO Should we merge this into `ResolveSuper` at this point?
  */
 class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
@@ -47,21 +45,8 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer { this
   }
 
   private def augmentScala2Trait(mixin: ClassSymbol)(using Context): Unit = {
-    def traitSetter(getter: TermSymbol) =
-      getter.copy(
-        name = getter.ensureNotPrivate.name
-          .expandedName(getter.owner, TraitSetterName)
-          .asTermName.setterName,
-        flags = Method | Accessor,
-        info = MethodType(getter.info.resultType :: Nil, defn.UnitType))
-
     for (sym <- mixin.info.decls) {
-      if (sym.isGetter && !sym.isOneOf(DeferredOrLazy) && !sym.setter.exists &&
-          !sym.info.resultType.isInstanceOf[ConstantType])
-        traitSetter(sym.asTerm).enteredAfter(thisPhase)
-      if ((sym.isAllOf(PrivateAccessor) && !sym.name.is(ExpandedName) &&
-        (sym.isGetter || sym.isSetter)) // strangely, Scala 2 fields are also methods that have Accessor set.
-        || sym.isSuperAccessor) // scala2 superaccessors are pickled as private, but are compiled as public expanded
+      if (sym.isSuperAccessor)
         sym.ensureNotPrivate.installAfter(thisPhase)
     }
     mixin.setFlagFrom(thisPhase, Scala2xPartiallyAugmented)
