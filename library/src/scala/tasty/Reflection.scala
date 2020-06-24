@@ -2284,6 +2284,14 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     def caseFields(using ctx: Context): List[Symbol] =
       internal.Symbol_caseFields(sym)
 
+    /** Default parameters of a case class. Keys are names of the parameters and values –
+     *  symbols of the definitions sites of the default values.
+     *  Implementation restriction: only the default parameters in the first parameter group
+     *  are returned.
+     */
+    def defaultParams(using ctx: Context): Map[String, Ref] =
+      internal.Symbol_defaultParams(sym)
+
     def isTypeParam(using ctx: Context): Boolean =
       internal.Symbol_isTypeParam(sym)
 

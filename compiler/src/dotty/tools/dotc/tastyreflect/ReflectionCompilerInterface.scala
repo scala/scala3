@@ -1779,6 +1779,22 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case sym if sym.is(Flags.CaseAccessor) => sym.asTerm
     }
 
+  def Symbol_defaultParams(self: Symbol)(using ctx: Context): Map[String, Ref] =
+    assert(self.isClass && self.flags.is(Flags.Case))
+    val comp: Symbol = self.companionClass
+    val names: List[String] =
+      for p <- Symbol_caseFields(self) if p.flags.is(Flags.HasDefault)
+      yield Symbol_name(p)
+
+    val body = ClassDef_body(Symbol_tree(comp).asInstanceOf[ClassDef])
+    val idents: List[Ref] =
+      for case deff @ DefDef(name, _, _, _, tree) <- body
+      if name.toString.startsWith("$lessinit$greater$default")
+      yield Ref_apply(deff.symbol)
+
+    names.zip(idents).toMap
+  end Symbol_defaultParams
+
   def Symbol_children(self: Symbol)(using ctx: Context): List[Symbol] =
     self.children
 
