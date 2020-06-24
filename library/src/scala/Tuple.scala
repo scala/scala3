@@ -13,7 +13,8 @@ sealed trait Tuple extends Product {
 
   /** Create a copy this tuple as a List */
   inline def toList: List[Union[this.type]] =
-    toArray.toList.asInstanceOf[List[Union[this.type]]]
+    this.productIterator.toList
+      .asInstanceOf[List[Union[this.type]]]
 
   /** Create a copy this tuple as an IArray */
   inline def toIArray: IArray[Object] =
