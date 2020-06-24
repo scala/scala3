@@ -3,7 +3,9 @@ import java.io.{ OutputStream, PrintStream }
 trait T {
   val text: String
   val stream = new PrintStream(new OutputStream {
-    def write(b: Int) = Console.println(s"text: $b")
+    def write(b: Int) =
+      if b != 13 then // this filters out \r on Windows
+        Console.println(s"text: $b")
   }) {
     override def println(x: Any) = ???
   }
