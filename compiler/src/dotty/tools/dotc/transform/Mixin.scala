@@ -134,6 +134,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         else sym.copySymDenotation(initFlags = sym.flags &~ ParamAccessor | Deferred)
       sym1.ensureNotPrivate
     }
+    else if sym.isAllOf(ModuleClass | Private) && sym.owner.is(Trait) then
+      // modules in trait will be instantiated in the classes mixing in the trait; they must be made non-private
+      // do not use ensureNotPrivate because the `name` must not be expanded in this case
+      sym.copySymDenotation(initFlags = sym.flags &~ Private)
     else if (sym.isConstructor && sym.owner.is(Trait))
       sym.copySymDenotation(
         name = nme.TRAIT_CONSTRUCTOR,
