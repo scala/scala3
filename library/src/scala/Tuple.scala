@@ -12,8 +12,8 @@ sealed trait Tuple extends Product {
     scala.runtime.Tuple.toArray(this)
 
   /** Create a copy this tuple as a List */
-  inline def toList: List[Object] =
-    toArray.toList
+  inline def toList: List[Union[this.type]] =
+    toArray.toList.asInstanceOf[List[Union[this.type]]]
 
   /** Create a copy this tuple as an IArray */
   inline def toIArray: IArray[Object] =
@@ -171,6 +171,11 @@ object Tuple {
    * `(Ti+1, ..., Tn)`.
    */
   type Split[T <: Tuple, N <: Int] = (Take[T, N], Drop[T, N])
+
+  /** Given a tuple `(T1, ..., Tn)`, returns a union of its
+   *  member types: `T1 | ... | Tn`.
+   */
+  type Union[T <: Tuple] = Fold[T, Nothing, [x, y] =>> x | y]
 
   /** Empty tuple */
   def apply(): EmptyTuple = EmptyTuple
