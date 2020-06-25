@@ -125,7 +125,16 @@ object Tuple {
     case h *: t => Concat[F[h], FlatMap[t, F]]
   }
 
-  /** Filters out those members of the tuple for which the predicate `P` returns `false`. */
+  /** Filters out those members of the tuple for which the predicate `P` returns `false`.
+   *  A predicate `P[X]` is a type that can be either `true` or `false`. For example:
+   *  ```
+   *  type IsString[x] = x match {
+   *    case String => true
+   *    case _ => false
+   *  }
+   *  Filter[(1, "foo", 2, "bar"), IsString] =:= ("foo", "bar")
+   * ```
+   */
   type Filter[Tup <: Tuple, P[_] <: Boolean] <: Tuple = Tup match {
     case EmptyTuple => EmptyTuple
     case h *: t => P[h] match {
