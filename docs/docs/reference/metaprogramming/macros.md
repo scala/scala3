@@ -126,7 +126,7 @@ that program elaboration will lead to neither of the two unwanted
 situations described above.
 
 In what concerns the range of features it covers, this form of macros introduces
-a principled meta programming framework that is quite close to the MetaML family of
+a principled metaprogramming framework that is quite close to the MetaML family of
 languages. One difference is that MetaML does not have an equivalent of the PCP
 - quoted code in MetaML _can_ access variables in its immediately enclosing
 environment, with some restrictions and caveats since such accesses involve
@@ -362,8 +362,8 @@ is handled by the compiler, using the algorithm sketched above.
 
 ### Relationship with Inline
 
-Seen by itself, principled meta-programming looks more like a framework for
-runtime metaprogramming than one for compile-time meta programming with macros.
+Seen by itself, principled metaprogramming looks more like a framework for
+runtime metaprogramming than one for compile-time metaprogramming with macros.
 But combined with Dotty’s `inline` feature it can be turned into a compile-time
 system. The idea is that macro elaboration can be understood as a combination of
 a macro library and a quoted program. For instance, here’s the `assert` macro
