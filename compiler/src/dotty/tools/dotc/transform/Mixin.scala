@@ -148,9 +148,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       val classInfo = sym.asClass.classInfo
       val decls1 = classInfo.decls.cloneScope
       var modified: Boolean = false
-      for (getter <- classInfo.decls)
-        if needsTraitSetter(getter) then
-          val setter = makeTraitSetter(getter.asTerm)
+      for (decl <- classInfo.decls)
+        // !decl.isClass avoids forcing nested traits, preventing cycles
+        if !decl.isClass && needsTraitSetter(decl) then
+          val setter = makeTraitSetter(decl.asTerm)
           decls1.enter(setter)
           modified = true
       if modified then
