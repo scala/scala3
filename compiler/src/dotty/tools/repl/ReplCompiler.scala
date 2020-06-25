@@ -146,7 +146,7 @@ class ReplCompiler extends Compiler {
     val objectTermName = ctx.source.file.toString.toTermName
     objectNames.update(defs.state.objectIndex, objectTermName)
 
-    val unit = CompilationUnit(ctx.source)
+    val unit = new ReplCompilationUnit(ctx.source)
     unit.untpdTree = wrapped(defs, objectTermName, span)
     unit
   }

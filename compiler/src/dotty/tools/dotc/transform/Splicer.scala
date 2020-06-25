@@ -393,7 +393,7 @@ object Splicer {
           ex.getTargetException match {
             case ex: scala.quoted.Reporting.StopQuotedContext =>
               throw ex
-            case MissingClassDefinedInCurrentRun(sym) =>
+            case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
               if (ctx.settings.XprintSuspension.value)
                 ctx.echo(i"suspension triggered by a dependency on $sym", pos)
               ctx.compilationUnit.suspend() // this throws a SuspendException
