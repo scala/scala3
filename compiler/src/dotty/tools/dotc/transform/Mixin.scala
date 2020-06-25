@@ -128,21 +128,23 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
   override def changesMembers: Boolean = true  // the phase adds implementions of mixin accessors
 
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait)) {
+    def ownerIsTrait: Boolean = wasOneOf(sym.owner, Trait)
+
+    if (sym.is(Accessor, butNot = Deferred) && ownerIsTrait) {
       val sym1 =
         if (sym.is(Lazy)) sym
         else sym.copySymDenotation(initFlags = sym.flags &~ (ParamAccessor | Inline) | Deferred)
       sym1.ensureNotPrivate
     }
-    else if sym.isAllOf(ModuleClass | Private) && sym.owner.is(Trait) then
+    else if sym.isAllOf(ModuleClass | Private) && ownerIsTrait then
       // modules in trait will be instantiated in the classes mixing in the trait; they must be made non-private
       // do not use ensureNotPrivate because the `name` must not be expanded in this case
       sym.copySymDenotation(initFlags = sym.flags &~ Private)
-    else if (sym.isConstructor && sym.owner.is(Trait))
+    else if (sym.isConstructor && ownerIsTrait)
       sym.copySymDenotation(
         name = nme.TRAIT_CONSTRUCTOR,
         info = MethodType(Nil, sym.info.resultType))
-    else if sym.is(Trait) then
+    else if sym.is(Trait, butNot = JavaDefined) then
       val classInfo = sym.asClass.classInfo
       val decls1 = classInfo.decls.cloneScope
       var modified: Boolean = false
