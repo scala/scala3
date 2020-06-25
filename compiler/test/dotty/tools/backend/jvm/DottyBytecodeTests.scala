@@ -856,8 +856,7 @@ class TestBCode extends DottyBytecodeTest {
     checkBCode(List(invocationReceiversTestCode.definitions("Object"))) { dir =>
       val c1 = loadClassNode(dir.lookupName("C1.class", directory = false).input)
       val c2 = loadClassNode(dir.lookupName("C2.class", directory = false).input)
-      // Scala 2 uses "invokestatic T.clone$" here, see https://github.com/lampepfl/dotty/issues/5928
-      assertSameCode(getMethod(c1, "clone"), List(VarOp(ALOAD, 0), Invoke(INVOKESPECIAL, "T", "clone", "()Ljava/lang/Object;", true), Op(ARETURN)))
+      assertSameCode(getMethod(c1, "clone"), List(VarOp(ALOAD, 0), Invoke(INVOKESTATIC, "T", "clone$", "(LT;)Ljava/lang/Object;", true), Op(ARETURN)))
       assertInvoke(getMethod(c1, "f1"), "T", "clone")
       assertInvoke(getMethod(c1, "f2"), "T", "clone")
       assertInvoke(getMethod(c1, "f3"), "C1", "clone")
