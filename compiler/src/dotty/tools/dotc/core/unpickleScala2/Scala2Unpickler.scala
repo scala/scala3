@@ -573,7 +573,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
         // println("reading type for " + denot) // !!! DEBUG
         val tp = at(inforef, () => readType()(ctx))
-        if denot.is(Method) then denot.rawParamss = paramssOfType(tp)
+        if denot.is(Method) then
+          var params = paramssOfType(tp)
+          if denot.isConstructor && denot.owner.typeParams.nonEmpty then
+            params = denot.owner.typeParams :: params
+          denot.rawParamss = params
 
         denot match {
           case denot: ClassDenotation if !isRefinementClass(denot.symbol) =>

@@ -380,8 +380,7 @@ object SymDenotations {
       myParamss = pss
 
     final def setParamss(tparams: List[Symbol], vparamss: List[List[Symbol]])(using Context): Unit =
-      rawParamss = (if tparams.isEmpty then vparamss else tparams :: vparamss)
-        .filterConserve(!_.isEmpty)
+      rawParamss = (tparams :: vparamss).filterConserve(!_.isEmpty)
 
     final def setParamssFromDefs(tparams: List[TypeDef[?]], vparamss: List[List[ValDef[?]]])(using Context): Unit =
       setParamss(tparams.map(_.symbol), vparamss.map(_.map(_.symbol)))
