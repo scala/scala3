@@ -125,7 +125,13 @@ object projects:
   lazy val ujson = MillCommunityProject(
     project = "upickle",
     baseCommand = s"ujson.jvm[$compilerVersion]",
-    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck)
+    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, geny)
+  )
+
+  lazy val upickle = MillCommunityProject(
+    project = "upickle",
+    baseCommand = s"upickle.jvm[$compilerVersion]",
+    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, geny, utest)
   )
 
   lazy val geny = MillCommunityProject(
@@ -372,6 +378,7 @@ class CommunityBuildTest:
   @Test def sourcecode = projects.sourcecode.run()
   @Test def oslib = projects.oslib.run()
   @Test def ujson = projects.ujson.run()
+  @Test def upickle = projects.upickle.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
   @Test def geny = projects.geny.run()
   @Test def stdLib213 = projects.stdLib213.run()
