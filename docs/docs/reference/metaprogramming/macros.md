@@ -375,8 +375,8 @@ object Macros {
   inline def assert(inline expr: Boolean): Unit =
     ${ assertImpl('expr) }
 
-  def assertImpl(expr: Expr[Boolean]) =
-    '{ if !($expr) then throw new AssertionError("failed assertion: " + ${expr.show}) }
+  def assertImpl(expr: Expr[Boolean])(using QuoteContext) =
+    '{ if !($expr) then throw new AssertionError("failed assertion: " + ${expr.show}) }  // autolift is applied
 }
 
 object App {
@@ -502,7 +502,7 @@ function `f` and one `sum` that performs a sum by delegating to `map`.
 
 ```scala
 object Macros {
-  def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])(implicit t: Type[T]): Expr[Unit] = '{
+  def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])(using t: Type[T], qctx: QuoteContext): Expr[Unit] = '{
     var i: Int = 0
     while (i < ($arr).length) {
       val element: $t = ($arr)(i)
@@ -511,7 +511,7 @@ object Macros {
     }
   }
 
-  def sum(arr: Expr[Array[Int]]): Expr[Int] = '{
+  def sum(arr: Expr[Array[Int]])(using QuoteContext): Expr[Int] = '{
     var sum = 0
     ${ map(arr, x => '{sum += $x}) }
     sum
@@ -719,7 +719,7 @@ This might be used to then perform an implicit search as in:
 ```scala
 inline def (inline sc: StringContext).showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
 
-private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
+private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using QuoteContext): Expr[String] = {
   argsExpr match {
     case Varargs(argExprs) =>
       val argShowedExprs = argExprs.map {
@@ -765,7 +765,7 @@ the subxpression of type `Expr[Int]` is bound to `body` as an `Expr[Int => Int]`
 ```scala
 inline def eval(inline e: Int): Int = ${ evalExpr('e) }
 
-private def evalExpr(using QuoteContext)(e: Expr[Int]): Expr[Int] = {
+private def evalExpr(e: Expr[Int])(using QuoteContext): Expr[Int] = {
   e match {
     case '{ val y: Int = $x; $body(y): Int } =>
       // body: Expr[Int => Int] where the argument represents references to y
