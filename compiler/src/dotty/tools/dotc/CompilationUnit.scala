@@ -14,7 +14,6 @@ import typer.Nullables
 import transform.SymUtils._
 import core.Decorators.{given _}
 import config.SourceVersion
-import StdNames.str
 
 class CompilationUnit protected (val source: SourceFile) {
 
@@ -26,9 +25,6 @@ class CompilationUnit protected (val source: SourceFile) {
 
   /** Is this the compilation unit of a Java file */
   def isJava: Boolean = source.file.name.endsWith(".java")
-
-  /** Is this the compilation unit of a REPL input */
-  def isREPL: Boolean = source.file.name.startsWith(str.REPL_SESSION_LINE)
 
   /** The source version for this unit, as determined by a language import */
   var sourceVersion: Option[SourceVersion] = None
@@ -53,7 +49,7 @@ class CompilationUnit protected (val source: SourceFile) {
   var suspended: Boolean = false
 
   /** Can this compilation unit be suspended */
-  def isSuspendable: Boolean = !isREPL
+  def isSuspendable: Boolean = true
 
   /** Suspends the compilation unit by thowing a SuspendException
    *  and recoring the suspended compilation unit
