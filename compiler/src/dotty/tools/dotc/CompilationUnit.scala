@@ -24,8 +24,10 @@ class CompilationUnit protected (val source: SourceFile) {
 
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
+  /** Is this the compilation unit of a Java file */
   def isJava: Boolean = source.file.name.endsWith(".java")
 
+  /** Is this the compilation unit of a REPL input */
   def isREPL: Boolean = source.file.name.startsWith(str.REPL_SESSION_LINE)
 
   /** The source version for this unit, as determined by a language import */
@@ -50,7 +52,14 @@ class CompilationUnit protected (val source: SourceFile) {
 
   var suspended: Boolean = false
 
+  /** Can this compilation unit be suspended */
+  def isSuspendable: Boolean = !isREPL
+
+  /** Suspends the compilation unit by thowing a SuspendException
+   *  and recoring the suspended compilation unit
+   */
   def suspend()(using Context): Nothing =
+    assert(isSuspendable)
     if !suspended then
       if (ctx.settings.XprintSuspension.value)
         ctx.echo(i"suspended: $this")
