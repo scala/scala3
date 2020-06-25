@@ -178,7 +178,7 @@ BigFloat.FromDigits.fromDigits("1e100000000000")
 ```
 Evaluating this expression throws a `NumberTooLarge` exception at run time. We would like it to
 produce a compile-time error instead. We can achieve this by tweaking the `BigFloat` class
-with a small dose of meta-programming. The idea is to turn the `fromDigits` method
+with a small dose of metaprogramming. The idea is to turn the `fromDigits` method
 into a macro, i.e. make it an inline method with a splice as right hand side.
 To do this, replace the `FromDigits` instance in the `BigFloat` object by the following two definitions:
 ```scala

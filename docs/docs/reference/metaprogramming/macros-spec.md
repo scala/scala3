@@ -161,7 +161,7 @@ is studied [separately](./simple-smp.md).
 
 ## Going Further
 
-The meta-programming framework as presented and currently implemented is quite restrictive
+The metaprogramming framework as presented and currently implemented is quite restrictive
 in that it does not allow for the inspection of quoted expressions and
 types. It’s possible to work around this by providing all necessary
 information as normal, unquoted inline parameters. But we would gain
@@ -234,7 +234,7 @@ envisage a solution that allows the former but not the latter.
 
 ## Conclusion
 
-Meta-programming has a reputation of being difficult and confusing.
+Metaprogramming has a reputation of being difficult and confusing.
 But with explicit `Expr/Type` types and quotes and splices it can become
 downright pleasant. A simple strategy first defines the underlying quoted or unquoted
 values using `Expr` and `Type` and then inserts quotes and splices to make the types

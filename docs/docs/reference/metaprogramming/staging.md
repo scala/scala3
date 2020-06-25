@@ -3,8 +3,8 @@ layout: doc-page
 title: "Multi-Stage Programming"
 ---
 
-The framework expresses at the same time compile-time meta-programming and
-multi-stage programming. We can think of compile-time meta-programming as a
+The framework expresses at the same time compile-time metaprogramming and
+multi-stage programming. We can think of compile-time metaprogramming as a
 two stage compilation process: one that we write the code in top-level splices,
 that will be used for code generation (macros) and one that will perform all
 necessary evaluations at compile-time and an object program that we will run
