@@ -348,10 +348,10 @@ if (s != null && s.length > 0) { // s: String in `s.length > 0`
   // s: String
 }
 
-if (s == null || s.length > 0) // s: String in `s.length > 0` {
+if (s == null || s.length > 0) { // s: String in `s.length > 0`
   // s: String|Null
 } else {
-  // s: String|Null
+  // s: String
 }
 ```
 
