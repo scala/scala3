@@ -81,8 +81,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.2"
-    case Bootstrapped => "2.13.2"
+    case NonBootstrapped => "2.13.3"
+    case Bootstrapped => "2.13.3"
   }
 
   val dottyOrganization = "ch.epfl.lamp"
