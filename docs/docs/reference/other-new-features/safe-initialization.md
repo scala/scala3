@@ -16,7 +16,7 @@ Given the following code snippet:
 ``` Scala
 abstract class AbstractFile {
    def name: String
-   val extension: String = Path.extension(name)
+   val extension: String = name.substring(4)
 }
 
 class RemoteFile(url: String) extends AbstractFile {
