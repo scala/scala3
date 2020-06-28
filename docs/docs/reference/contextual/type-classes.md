@@ -105,7 +105,7 @@ The instance of `Functor` for `List` now becomes:
 
 ```scala
 given Functor[List]:
-  extension def [A, B](xs: List[A])
+  extension [A, B](xs: List[A])
     def map(f: A => B): List[B] =
       xs.map(f) // List already has a `map` method
 

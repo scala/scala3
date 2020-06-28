@@ -61,7 +61,7 @@ the two swaps cancel each other out).
 
 ### Generic Extensions
 
- It also possible to extend generic types by adding type parameters to an extension. For instance:
+ It is also possible to extend generic types by adding type parameters to an extension. For instance:
 
  ```scala
   extension [T](xs: List[T])
@@ -71,7 +71,7 @@ the two swaps cancel each other out).
     def + (y: T): T = summon[Numeric[T]].plus(x, y)
 ```
 
-If an extension method has type parameters, they come immediately after the `def` and are followed by the extended parameter.
+If an extension method has type parameters, they come immediately after `extension` and are followed by the extended parameter.
 When calling a generic extension method, any explicitly given type arguments follow the method name. So the `second` method could be instantiated as follows.
 ```scala
   List(1, 2, 3).second[Int]
@@ -79,7 +79,7 @@ When calling a generic extension method, any explicitly given type arguments fol
 Of course, the type argument here would usually be left out since it can be inferred.
 
 
-Extensions can also take using clauses. For instance the `+` extension above could equivalently be written with a using clause:
+Extensions can also take using clauses. For instance, the `+` extension above could equivalently be written with a using clause:
 ```scala
   extension [T](x: T)(using n: Numeric[T])
     def + (y: T): T = n.plus(x, y)
@@ -120,8 +120,8 @@ Collective extensions also can take type parameters and have using clauses. Exam
 extension [T](xs: List[T])(using Ordering[T]):
   def smallest(n: Int): T = xs.sorted.take(n)
   def smallestIndices(n: Int): List[Int] =
-    val X = smallest(n)
-    xs.zipWithIndex.collect { case (X, i) => i }
+    val limit = smallest(n)
+    xs.zipWithIndex.collect { case (x, i) if x <= limit => i }
 ```
 **Note**: If an extension defines type parameters in its prefix, the extension methods themselves are not allowed to have additional type parameters. This restriction might be lifted in the future once we support multiple type parameter clauses in a method.
 
@@ -173,7 +173,7 @@ given ops1 as IntOps // brings safeMod into scope
 1.safeMod(2)
 ```
 
-By the third and fourth rule, an extension method is available it is in the implicit scope of the receiver type or in a given instance in that scope. Example:
+By the third and fourth rule, an extension method is available if it is in the implicit scope of the receiver type or in a given instance in that scope. Example:
 ```scala
 class List[T]:
   ...
@@ -216,14 +216,19 @@ resolve, the identifier is rewritten to:
   - `x.m`    if the identifier appears in an extension with parameter `x`
   - `this.m` otherwise
 
-Example:
+and the rewritten term is again tried as an application of an extension method. Example:
 ```scala
   extension (s: String)
-    def position(ch: Int, n: Int) =
+    def position(ch: Char, n: Int): Int =
       if n < s.length && s(n) != ch then position(ch, n + 1)
       else n
 ```
-This recursive call `position(ch, n + 1)` expands to `s.position(ch, n + 1)` in this case.
+The recursive call `position(ch, n + 1)` expands to `s.position(ch, n + 1)` in this case. The whole extension method rewrites to
+```scala
+def extension_position(s: String)(ch: Char, n: Int): Int =
+  if n < s.length && s(n) != ch then extension_position(s)(ch, n + 1)
+  else n
+```
 
 
 ### Syntax
