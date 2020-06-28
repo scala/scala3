@@ -240,5 +240,5 @@ ExtMethods        ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}�
 ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
 ```
 `extension` is a soft keyword. It is recognized as a keyword only if it appears
-at the start of a statement and is followed by `(` and a parameter binding.
-In all other cases it is treated as an identifier.
+at the start of a statement and is followed by `[` or `(`. In all other cases
+it is treated as an identifier.
