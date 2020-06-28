@@ -248,6 +248,7 @@ Block             ::=  {BlockStat semi} [BlockResult]                           
 BlockStat         ::=  Import
                     |  {Annotation {nl}} [‘implicit’ | ‘lazy’] Def
                     |  {Annotation {nl}} {LocalModifier} TmplDef
+                    |  Extension
                     |  Expr1
                     |  EndMarker
 
@@ -392,7 +393,6 @@ TmplDef           ::=  ([‘case’] ‘class’ | [‘super’] ‘trait’) Cl
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
                     |  ‘given’ GivenDef
-                    |  ‘extension’ ExtensionDef
 ClassDef          ::=  id ClassConstr [Template]                                ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
@@ -401,10 +401,10 @@ EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   
 GivenDef          ::=  [GivenSig] Type ‘=’ Expr
                     |  [GivenSig] ConstrApps [TemplateBody]
 GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘as’
-ExtensionDef      ::=  [id] [‘on’ ExtParamClause {UsingParamClause}]
-                       TemplateBody
-ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
-ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
+Extension         ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
+                       {UsingParamClause}] ExtMethods
+ExtMethods        ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}’
+ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
@@ -419,6 +419,7 @@ TemplateStat      ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
                     |  {Annotation [nl]} {Modifier} Dcl
+                    |  Extension
                     |  Expr1
                     |  EndMarker
                     |
@@ -435,6 +436,7 @@ TopStatSeq        ::=  TopStat {semi TopStat}
 TopStat           ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
+                    |  Extension
                     |  Packaging
                     |  PackageObject
                     |  EndMarker
