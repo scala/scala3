@@ -489,15 +489,16 @@ class Namer { typer: Typer =>
         tree.pushAttachment(ExpandedTree, expanded)
       }
     tree match {
-      case tree: DefTree => record(desugar.defTree(tree))
+      case tree: DefTree    => record(desugar.defTree(tree))
       case tree: PackageDef => record(desugar.packageDef(tree))
-      case _ =>
+      case tree: ExtMethods => record(desugar.extMethods(tree))
+      case _                =>
     }
   }
 
   /** The expanded version of this tree, or tree itself if not expanded */
   def expanded(tree: Tree)(using Context): Tree = tree match {
-    case _: DefTree | _: PackageDef => tree.attachmentOrElse(ExpandedTree, tree)
+    case _: DefTree | _: PackageDef | _: ExtMethods => tree.attachmentOrElse(ExpandedTree, tree)
     case _ => tree
   }
 

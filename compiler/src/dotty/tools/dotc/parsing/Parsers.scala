@@ -3638,7 +3638,7 @@ object Parsers {
       finalizeDef(edef, addFlag(mods, Given | extensionFlag), start)
 
     /** Extension  ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
-     *                  {UsingParamClause}] ExtMethods
+     *                  {UsingParamClause} ExtMethods
      */
     def extension(): ExtMethods =
       val start = in.skipToken()

@@ -559,7 +559,7 @@ object desugar {
     val copiedAccessFlags = if migrateTo3 then EmptyFlags else AccessFlags
 
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
-    //     def _1: T1 = this.p1 
+    //     def _1: T1 = this.p1
     //     ...
     //     def _N: TN = this.pN (unless already given as valdef or parameterless defdef)
     //     def copy(p1: T1 = p1: @uncheckedVariance, ...,
@@ -572,7 +572,7 @@ object desugar {
     val caseClassMeths = {
       def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
         DefDef(name, Nil, Nil, tpt, rhs).withMods(synthetic)
-        
+
       def productElemMeths =
         val caseParams = derivedVparamss.head.toArray
         val selectorNamesInBody = normalizedBody.collect {
@@ -850,6 +850,7 @@ object desugar {
    *  where every definition in `body` is expanded to an extension method
    *  taking type parameters `tparams` and a leading paramter `(x: T)`.
    *  See: collectiveExtensionBody
+   *  TODO: drop this part
    */
   def moduleDef(mdef: ModuleDef)(implicit ctx: Context): Tree = {
     val impl = mdef.impl
@@ -904,6 +905,19 @@ object desugar {
         .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
       Thicket(modul, classDef(cls).withSpan(mdef.span))
     }
+  }
+
+  /** Transform extension construct to list of extension methods */
+  def extMethods(ext: ExtMethods)(using Context): Tree = flatTree {
+    for mdef <- ext.methods yield
+      if ext.tparams.nonEmpty && mdef.tparams.nonEmpty then
+        ctx.error(em"extension method cannot have type parameters since some were already given in extension clause",
+          mdef.tparams.head.sourcePos)
+      cpy.DefDef(mdef)(
+        name = mdef.name.toExtensionName,
+        tparams = ext.tparams ++ mdef.tparams,
+        vparamss = ext.vparamss ++ mdef.vparamss
+      ).withMods(mdef.mods | Extension)
   }
 
   /** Transform the statements of a collective extension

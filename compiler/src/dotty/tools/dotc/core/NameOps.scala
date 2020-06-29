@@ -131,6 +131,12 @@ object NameOps {
       else name.toTermName
     }
 
+    def isExtensionName: Boolean = name match
+      case name: SimpleName => name.startsWith("extension_")
+      case _ => false
+
+    def toExtensionName = termName("extension_" ++ name.toString)
+
     /** The expanded name.
      *  This is the fully qualified name of `base` with `ExpandPrefixName` as separator,
      *  followed by `kind` and the name.

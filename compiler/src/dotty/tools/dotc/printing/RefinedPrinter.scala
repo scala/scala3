@@ -541,6 +541,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         keywordText("import ") ~ importText(expr, selectors)
       case Export(expr, selectors) =>
         keywordText("export ") ~ importText(expr, selectors)
+      case ExtMethods(tparams, vparamss, mdefs) =>
+        keywordText("extension ")
+        ~ addVparamssText(tparamsText(tparams), vparamss)
+        ~ " " ~ (if mdefs.length == 1 then toText(mdefs.head) else blockText(mdefs))
       case packageDef: PackageDef =>
         packageDefText(packageDef)
       case tree: Template =>
@@ -785,10 +789,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     import untpd._
     dclTextOr(tree) {
       val defKeyword = modText(tree.mods, tree.symbol, keywordStr("def"), isType = false)
-      val isExtension = tree.hasType && tree.symbol.isExtensionMethod
+      val isOldExtension =
+        tree.hasType && tree.symbol.isExtensionMethod && !tree.name.isExtensionName
       withEnclosingDef(tree) {
         val (prefix, vparamss) =
-          if (isExtension) (defKeyword ~~ paramsText(tree.vparamss.head) ~~ valDefText(nameIdText(tree)), tree.vparamss.tail)
+          if isOldExtension then (defKeyword ~~ paramsText(tree.vparamss.head) ~~ valDefText(nameIdText(tree)), tree.vparamss.tail)
           else (defKeyword ~~ valDefText(nameIdText(tree)), tree.vparamss)
 
         addVparamssText(prefix ~ tparamsText(tree.tparams), vparamss) ~
