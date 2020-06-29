@@ -43,6 +43,3 @@ i7757.scala
 
 # splice type tag dealiased in this reference
 i8651b.scala
-
-# suspended macros need multiple runs
-i9252
