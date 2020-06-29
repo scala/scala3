@@ -1112,7 +1112,7 @@ object messages {
     def explain =
       if (Tokens.isIdentifier(expected) && Tokens.isKeyword(found))
         s"""
-         |If you want to use $foundText as identifier, you may put it in backticks: `$foundText`.""".stripMargin
+         |If you want to use $foundText as identifier, you may put it in backticks: `${Tokens.tokenString(found)}`.""".stripMargin
       else
         ""
   }
