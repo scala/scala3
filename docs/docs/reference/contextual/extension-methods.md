@@ -85,6 +85,8 @@ Extensions can also take using clauses. For instance, the `+` extension above co
     def + (y: T): T = n.plus(x, y)
 ```
 
+**Note**: If an extension defines type parameters in its prefix, the extension method itself is not allowed to have additional type parameters. This restriction might be lifted in the future once we support multiple type parameter clauses in a method.
+
 ### Collective Extensions
 
 Sometimes, one wants to define several extension methods that share the same
@@ -123,8 +125,6 @@ extension [T](xs: List[T])(using Ordering[T]):
     val limit = smallest(n)
     xs.zipWithIndex.collect { case (x, i) if x <= limit => i }
 ```
-**Note**: If an extension defines type parameters in its prefix, the extension methods themselves are not allowed to have additional type parameters. This restriction might be lifted in the future once we support multiple type parameter clauses in a method.
-
 
 ### Translation of Calls to Extension Methods
 
@@ -182,7 +182,7 @@ object List:
   extension [T](xs: List[List[T]])
     def flatten: List[T] = xs.foldLeft(Nil: List[T])(_ ++ _)
 
-  given [T: Ordering] Ordering[List[T]]:
+  given [T: Ordering] as Ordering[List[T]]:
     extension (xs: List[T]):
       def < (ys: List[T]) = ...
 end List
@@ -192,7 +192,7 @@ List(List(1, 2), List(3, 4)).flatten
 
 // extension method available since it is in the given Ordering[List[T]],
 // which is itself in the implicit scope of List[Int]
-List(1, 2) <: List(3)
+List(1, 2) < List(3)
 ```
 
 The precise rules for resolving a selection to an extension method are as follows.
