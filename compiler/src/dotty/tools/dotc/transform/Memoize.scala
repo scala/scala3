@@ -127,12 +127,12 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       val TraitSetterName(_, original) = sym.name
       val getterSimpleName = original.getterName
       val ownerInfo = sym.owner.info
-      val fastPath = ownerInfo.decl(getterSimpleName)
+      val fastPath = ownerInfo.findDecl(getterSimpleName, excluded = Bridge)
       if fastPath.exists then
         fastPath.symbol
       else
         ownerInfo.decls.find { getter =>
-          getter.is(Accessor) && getter.asTerm.name.toSimpleName == getterSimpleName
+          getter.is(Accessor, butNot = Bridge) && getter.asTerm.name.toSimpleName == getterSimpleName
         }
 
     val constantFinalVal = sym.isAllOf(Accessor | Final, butNot = Mutable) && tree.rhs.isInstanceOf[Literal]
