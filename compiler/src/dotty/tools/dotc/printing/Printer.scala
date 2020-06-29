@@ -97,8 +97,11 @@ abstract class Printer {
    */
   def toText(sym: Symbol): Text
 
-  /** Textual representation of singeton type reference */
+  /** Textual representation of singleton type reference */
   def toTextRef(tp: SingletonType): Text
+
+  /** Textual representation of a prefix of some reference, ending in `.` or `#` */
+  def toTextPrefix(tp: Type): Text
 
   /** Textual representation of symbol's declaration */
   def dclText(sym: Symbol): Text

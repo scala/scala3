@@ -948,6 +948,7 @@ object desugar {
       stat match
         case mdef: DefDef =>
           cpy.DefDef(mdef)(
+            name = mdef.name.toExtensionName,
             tparams = tparams ++ mdef.tparams,
             vparamss = vparamss ::: mdef.vparamss,
           ).withMods(mdef.mods | Extension)

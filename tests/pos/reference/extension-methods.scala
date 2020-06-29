@@ -6,7 +6,7 @@ object ExtMethods:
 
   val circle = Circle(0, 0, 1)
   circle.circumference
-  assert(circle.circumference == circumference(circle))
+  assert(circle.circumference == extension_circumference(circle))
 
   trait StringSeqOps {
     def (xs: Seq[String]).longestStrings = {
@@ -18,10 +18,18 @@ object ExtMethods:
 
   List("here", "is", "a", "list").longestStrings
 
+  trait StringSeqOps2 {
+    def (xs: Seq[String]).longestStrings2 = {
+      val maxLength = xs.map(_.length).max
+      xs.filter(_.length == maxLength)
+    }
+  }
+
   locally {
-    object ops2 extends StringSeqOps
-    import ops2.longestStrings
-    List("here", "is", "a", "list").longestStrings
+    object ops2 extends StringSeqOps2
+    import ops2.{longestStrings2, extension_longestStrings2}
+    List("here", "is", "a", "list").longestStrings2
+    extension_longestStrings2(Nil)
   }
 
   def (x: String) < (y: String) = x.compareTo(y) < 0

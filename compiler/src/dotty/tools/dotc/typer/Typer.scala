@@ -213,6 +213,9 @@ class Typer extends Namer
       def namedImportRef(imp: ImportInfo)(using Context): Type = {
         val termName = name.toTermName
 
+        def adjustExtension(name: Name) =
+          if required.is(Extension) then name.toExtensionName else name
+
         def recur(selectors: List[untpd.ImportSelector]): Type = selectors match
           case selector :: rest =>
             def checkUnambiguous(found: Type) =
@@ -221,12 +224,12 @@ class Typer extends Namer
                 refctx.error(em"reference to `$name` is ambiguous; it is imported twice", posd.sourcePos)
               found
 
-            if selector.rename == termName then
+            if adjustExtension(selector.rename) == termName then
               val memberName =
                 if selector.name == termName then name
                 else if name.isTypeName then selector.name.toTypeName
                 else selector.name
-              checkUnambiguous(selection(imp, memberName, checkBounds = false))
+              checkUnambiguous(selection(imp, adjustExtension(memberName), checkBounds = false))
             else
               recur(rest)
 
@@ -422,7 +425,7 @@ class Typer extends Namer
    *                   (2) Change imported symbols to selections.
    *                   (3) Change pattern Idents id (but not wildcards) to id @ _
    */
-  def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree = {
+  def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
     record("typedIdent")
     val name = tree.name
     def kind = if (name.isTermName) "" else "type "
@@ -439,18 +442,24 @@ class Typer extends Namer
     if (name == nme.ROOTPKG)
       return tree.withType(defn.RootPackage.termRef)
 
-    /** Convert a reference `f` to an extension method in a collective extension
-     *  on parameter `x` to `x.f`
+    /** Convert a reference `f` to an extension method select `p.f`, where
+     *  `p` is the closest enclosing extension parameter, or else `this`.
      */
-    def extensionMethodSelect(xmethod: Symbol): untpd.Tree =
-      val leadParamName = xmethod.info.paramNamess.head.head
-      def isLeadParam(sym: Symbol) =
-        sym.is(Param) && sym.owner.owner == xmethod.owner && sym.name == leadParamName
-      def leadParam(ctx: Context): Symbol =
-        ctx.scope.lookupAll(leadParamName).find(isLeadParam) match
-          case Some(param) => param
-          case None => leadParam(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next)
-      untpd.cpy.Select(tree)(untpd.ref(leadParam(ctx).termRef), name)
+    def extensionMethodSelect: untpd.Tree =
+      val xmethod = ctx.owner.enclosingExtensionMethod
+      val qualifier =
+        if xmethod.exists then // TODO: see whether we can use paramss for that
+          val leadParamName = xmethod.info.paramNamess.head.head
+          def isLeadParam(sym: Symbol) =
+            sym.is(Param) && sym.owner.owner == xmethod.owner && sym.name == leadParamName
+          def leadParam(ctx: Context): Symbol =
+            ctx.scope.lookupAll(leadParamName).find(isLeadParam) match
+              case Some(param) => param
+              case None => leadParam(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next)
+          untpd.ref(leadParam(ctx).termRef)
+        else
+          untpd.This(untpd.EmptyTypeIdent)
+      untpd.cpy.Select(tree)(qualifier, name)
 
     val rawType = {
       val saved1 = unimported
@@ -474,52 +483,49 @@ class Typer extends Namer
       }
     }
 
-    val ownType =
-      if (rawType.exists)
-        ensureAccessible(rawType, superAccess = false, tree.sourcePos)
-      else if (name == nme._scope)
-        // gross hack to support current xml literals.
-        // awaiting a better implicits based solution for library-supported xml
-        return ref(defn.XMLTopScopeModule.termRef)
-      else if (name.toTermName == nme.ERROR)
-        UnspecifiedErrorType
-      else if (ctx.owner.isConstructor && !ctx.owner.isPrimaryConstructor &&
-          ctx.owner.owner.unforcedDecls.lookup(tree.name).exists)
+    def setType(ownType: Type): Tree =
+      val tree1 = ownType match
+        case ownType: NamedType if !prefixIsElidable(ownType) =>
+          ref(ownType).withSpan(tree.span)
+        case _ =>
+          tree.withType(ownType)
+      val tree2 = toNotNullTermRef(tree1, pt)
+      checkStableIdentPattern(tree2, pt)
+      tree2
+
+    def fail: Tree =
+      if ctx.owner.isConstructor && !ctx.owner.isPrimaryConstructor
+         && ctx.owner.owner.unforcedDecls.lookup(tree.name).exists
+      then
         // we are in the arguments of a this(...) constructor call
-        errorType(ex"$tree is not accessible from constructor arguments", tree.sourcePos)
+        errorTree(tree, ex"$tree is not accessible from constructor arguments")
       else
-        errorType(MissingIdent(tree, kind, name), tree.sourcePos)
+        errorTree(tree, MissingIdent(tree, kind, name))
 
-    val tree1 = ownType match {
-      case ownType: NamedType =>
-        val sym = ownType.symbol
-        if sym.isAllOf(ExtensionMethod)
-            && sym.owner.isCollectiveExtensionClass
-            && ctx.owner.isContainedIn(sym.owner)
-        then typed(extensionMethodSelect(sym), pt)
-        else if prefixIsElidable(ownType) then tree.withType(ownType)
-        else ref(ownType).withSpan(tree.span)
-      case _ =>
-        tree.withType(ownType)
-    }
-
-    val tree2 = toNotNullTermRef(tree1, pt)
-
-    checkStableIdentPattern(tree2, pt)
-  }
+    if rawType.exists then
+      setType(ensureAccessible(rawType, superAccess = false, tree.sourcePos))
+    else if name == nme._scope then
+      // gross hack to support current xml literals.
+      // awaiting a better implicits based solution for library-supported xml
+      ref(defn.XMLTopScopeModule.termRef)
+    else if name.toTermName == nme.ERROR then
+      setType(UnspecifiedErrorType)
+    else if name.isTermName then
+      tryEither(typed(extensionMethodSelect, pt))((_, _) => fail)
+    else
+      fail
+  end typedIdent
 
   /** Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
    */
-  private def checkStableIdentPattern(tree: Tree, pt: Type)(using Context): tree.type = {
-    if (ctx.mode.is(Mode.Pattern) &&
-        !tree.isType &&
-        !pt.isInstanceOf[ApplyingProto] &&
-        !tree.tpe.isStable &&
-        !isWildcardArg(tree))
+  private def checkStableIdentPattern(tree: Tree, pt: Type)(using Context): Unit =
+    if ctx.mode.is(Mode.Pattern)
+       && !tree.isType
+       && !pt.isInstanceOf[ApplyingProto]
+       && !tree.tpe.isStable
+       && !isWildcardArg(tree)
+    then
       ctx.error(StableIdentPattern(tree, pt), tree.sourcePos)
-
-    tree
-  }
 
   def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(using Context): Tree = qual match {
     case qual @ IntegratedTypeArgs(app) =>
@@ -533,9 +539,13 @@ class Typer extends Namer
 
       if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos, "type prefix")
 
-      if (select1.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select1, pt))
-      else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select1
-      else typedDynamicSelect(tree, Nil, pt)
+      if select1.tpe ne TryDynamicCallType then
+        checkStableIdentPattern(select1, pt)
+        ConstFold(select1)
+      else if pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto then
+        select1
+      else
+        typedDynamicSelect(tree, Nil, pt)
   }
 
   def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
@@ -3383,7 +3393,7 @@ class Typer extends Namer
         case SelectionProto(name, mbrType, _, _) =>
           def tryExtension(using Context): Tree =
             try
-              findRef(name, WildcardType, ExtensionMethod, tree.posd) match {
+              findRef(name.toExtensionName, WildcardType, ExtensionMethod, tree.posd) match {
                 case ref: TermRef =>
                   extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
                 case _ => EmptyTree

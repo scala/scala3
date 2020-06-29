@@ -71,7 +71,7 @@ object Implicits {
    */
   def hasExtMethod(tp: Type, expected: Type)(using Context) = expected match
     case SelectionProto(name, _, _, _) =>
-      tp.memberBasedOnFlags(name, required = ExtensionMethod).exists
+      tp.memberBasedOnFlags(name.toExtensionName, required = ExtensionMethod).exists
     case _ => false
 
   def strictEquality(using Context): Boolean =
@@ -1027,7 +1027,7 @@ trait Implicits { self: Typer =>
           }
           pt match
             case SelectionProto(name: TermName, mbrType, _, _) if cand.isExtension =>
-              val result = extMethodApply(untpd.Select(untpdGenerated, name), argument, mbrType)
+              val result = extMethodApply(untpd.Select(untpdGenerated, name.toExtensionName), argument, mbrType)
               if !ctx.reporter.hasErrors && cand.isConversion then
                 val testCtx = ctx.fresh.setExploreTyperState()
                 tryConversion(using testCtx)

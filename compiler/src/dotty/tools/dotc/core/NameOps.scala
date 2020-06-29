@@ -131,11 +131,20 @@ object NameOps {
       else name.toTermName
     }
 
+    /** Does this name start with `extension_`? */
     def isExtensionName: Boolean = name match
       case name: SimpleName => name.startsWith("extension_")
       case _ => false
 
+    /** Add an `extension_` in front of this name */
     def toExtensionName = termName("extension_" ++ name.toString)
+
+    /** Drop `extension_` in front of this name, if it has this prefix */
+    def dropExtension = name match
+      case name: SimpleName if name.startsWith("extension_") =>
+        name.drop("extension_".length)
+      case _ =>
+        name
 
     /** The expanded name.
      *  This is the fully qualified name of `base` with `ExpandPrefixName` as separator,

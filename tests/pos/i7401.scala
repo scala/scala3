@@ -6,6 +6,6 @@ object Test {
   val x: Int = 5
   x.foo(4)
   x.foo
-  ops.foo(x)(4)
-  ops.foo(x)
+  ops.extension_foo(x)(4)
+  ops.extension_foo(x)
 }

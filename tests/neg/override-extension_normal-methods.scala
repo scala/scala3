@@ -1,9 +1,9 @@
 trait A {
-  def [T](t: T).m: String = "extrnsion method"
+  def [T](t: T).m: String = "extension method"
 }
 
 trait AAA extends A {
-  def m[T](x: T): String  = "normal method" // error: normal method, cannot override an extension method. Also needs `override' modifier (but this error should be obfuscated).
+  override def m[T](x: T): String  = "normal method" // error: does not override
 }
 
 trait B {
@@ -11,5 +11,5 @@ trait B {
 }
 
 trait BBB extends B {
-  def [T](t: T).m: String = "extrnsion method" // error: extension method, cannot override an normal method. Also needs `override' modifier (but this error should be obfuscated).
+  override def [T](t: T).m: String = "extension method" // error: does not override
 }

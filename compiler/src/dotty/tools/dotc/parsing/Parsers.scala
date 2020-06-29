@@ -3320,7 +3320,8 @@ object Parsers {
           else
             (Nil, Nil)
         val ident = termIdent()
-        val name = ident.name.asTermName
+        var name = ident.name.asTermName
+        if mods1.is(Extension) then name = name.toExtensionName
         if isInfix && !name.isOperatorName then
           val infixAnnot = Apply(wrapNew(scalaAnnotationDot(tpnme.infix)), Nil)
               .withSpan(Span(start, start))
