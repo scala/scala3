@@ -12,6 +12,7 @@ reference
 scala-days-2019-slides
 i7048e.scala
 i8052.scala
+tuple-filter.scala
 
 # Stale symbol: package object scala
 seqtype-cycle
