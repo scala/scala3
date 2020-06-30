@@ -16,11 +16,11 @@ object Givens:
 
   trait Monoid[A]:
     def empty: A
-    def (x: A).combine(y: A): A
+    extension (x: A) def combine(y: A): A
 
   given Monoid[String]:
     def empty = ""
-    def (x: String).combine(y: String) = x + y
+    extension (x: String) def combine(y: String) = x + y
 
   inline given int2String as Conversion[Int, String] = _.toString
 

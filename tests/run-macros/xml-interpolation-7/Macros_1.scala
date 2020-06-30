@@ -17,12 +17,12 @@ object XmlQuote {
   // }
   object XMLOps {
     opaque type StringContext = scala.StringContext
-    def (ctx: scala.StringContext).xml: StringContext = ctx
+    extension (ctx: scala.StringContext) def xml: StringContext = ctx
   }
 
-  inline def (inline ctx: XMLOps.StringContext).apply(inline args: Any*): Xml =
+  extension (inline ctx: XMLOps.StringContext) inline def apply(inline args: Any*): Xml =
     ${XmlQuote.impl('ctx, 'args)}
-  // inline def (inline ctx: SCOps.StringContext).unapplySeq(...): Xml = ...
+  // extension (inline ctx: SCOps.StringContext) inline def unapplySeq(...): Xml = ...
 
 
   def impl(receiver: Expr[XMLOps.StringContext], args: Expr[Seq[Any]])(using QuoteContext): Expr[Xml] = {

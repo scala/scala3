@@ -1,9 +1,9 @@
 opaque type Opt[A >: Null] = A
 
-inline def [A >: Null](x: Opt[A]) nonEmpty: Boolean = x.get != null // error: Implementation restriction
-inline def [A >: Null](x: Opt[A]) isEmpty: Boolean = x.get == null // error: Implementation restriction
-inline def [A >: Null](x: Opt[A]) isDefined: Boolean = x.nonEmpty // error: Implementation restriction
-inline def [A >: Null](x: Opt[A]) get: A = Opt.unOpt(x) // error: Implementation restriction
+extension [A >: Null](x: Opt[A]) inline def nonEmpty: Boolean = x.get != null // error: Implementation restriction
+extension [A >: Null](x: Opt[A]) inline def isEmpty: Boolean = x.get == null // error: Implementation restriction
+extension [A >: Null](x: Opt[A]) inline def isDefined: Boolean = x.nonEmpty // error: Implementation restriction
+extension [A >: Null](x: Opt[A]) inline def get: A = Opt.unOpt(x) // error: Implementation restriction
 
 object Opt
 {

@@ -1,7 +1,7 @@
 import scala.quoted._
 
 
-inline def (sc: StringContext) showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
+extension (sc: StringContext) inline def showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
   argsExpr match {

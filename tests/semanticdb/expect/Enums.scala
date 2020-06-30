@@ -12,10 +12,10 @@ object Enums:
     case Hearts, Spades, Clubs, Diamonds
 
   object Suits:
-    def (suit: Suits).isRed: Boolean =
+    extension (suit: Suits) def isRed: Boolean =
       suit == Hearts || suit == Diamonds
 
-    def (suit: Suits).isBlack: Boolean = suit match
+    extension (suit: Suits) def isBlack: Boolean = suit match
       case Spades | Clubs => true
       case _              => false
 
@@ -49,7 +49,7 @@ object Enums:
   object <:< :
     given [T] as (T <:< T) = Refl()
 
-  def [A, B](opt: Option[A]) unwrap(using ev: A <:< Option[B]): Option[B] = ev match
+  extension [A, B](opt: Option[A]) def unwrap(using ev: A <:< Option[B]): Option[B] = ev match
     case Refl() => opt.flatMap(identity[Option[B]])
 
   val some1 = Some(Some(1)).unwrap

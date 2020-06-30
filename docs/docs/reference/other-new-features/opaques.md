@@ -29,15 +29,15 @@ object Logarithms {
 }
 ```
 
-This introduces `Logarithm` as a new abstract type, which is implemented as `Double`. 
+This introduces `Logarithm` as a new abstract type, which is implemented as `Double`.
 The fact that `Logarithm` is the same as `Double` is only known in the scope where
 `Logarithm` is defined which in the above example corresponds to the object `Logarithms`.
-Or in other words, within the scope it is treated as type alias, but this is opaque to the outside world 
+Or in other words, within the scope it is treated as type alias, but this is opaque to the outside world
 where in consequence `Logarithm` is seen as an abstract type and has nothing to do with `Double`.
 
-The public API of `Logarithm` consists of the `apply` and `safe` methods defined in the companion object. 
+The public API of `Logarithm` consists of the `apply` and `safe` methods defined in the companion object.
 They convert from `Double`s to `Logarithm` values. Moreover, a collective extension `logarithmOps` provides the extension methods `toDouble` that converts the other way,
-and operations `+` and `*` on `Logarithm` values. 
+and operations `+` and `*` on `Logarithm` values.
 The following operations would be valid because they use functionality implemented in the `Logarithms` object.
 
 ```scala
@@ -68,10 +68,10 @@ object Access {
   opaque type PermissionChoice = Int
   opaque type Permission <: Permissions & PermissionChoice = Int
 
-  def (x: Permissions) & (y: Permissions): Permissions = x | y
-  def (x: PermissionChoice) | (y: PermissionChoice): PermissionChoice = x | y
-  def (granted: Permissions).is(required: Permissions) = (granted & required) == required
-  def (granted: Permissions).isOneOf(required: PermissionChoice) = (granted & required) != 0
+  extension (x: Permissions) def & (y: Permissions): Permissions = x | y
+  extension (x: PermissionChoice) def | (y: PermissionChoice): PermissionChoice = x | y
+  extension (granted: Permissions) def is(required: Permissions) = (granted & required) == required
+  extension (granted: Permissions) def isOneOf(required: PermissionChoice) = (granted & required) != 0
 
   val NoPermission: Permission = 0
   val Read: Permission = 1

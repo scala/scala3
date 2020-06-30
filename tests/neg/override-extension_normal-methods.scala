@@ -1,5 +1,5 @@
 trait A {
-  def [T](t: T).m: String = "extension method"
+  extension [T](t: T) def m: String = "extension method"
 }
 
 trait AAA extends A {
@@ -11,5 +11,5 @@ trait B {
 }
 
 trait BBB extends B {
-  override def [T](t: T).m: String = "extension method" // error: does not override
+  extension [T](t: T) override def m: String = "extension method" // error: does not override
 }

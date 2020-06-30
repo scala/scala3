@@ -6,7 +6,7 @@ import scala.language.implicitConversions
 object XmlQuote {
 
   implicit object SCOps {
-    inline def (ctx: => StringContext) xml (args: => (Scope ?=> Any)*)(using Scope): String =
+    extension (ctx: => StringContext) inline def xml (args: => (Scope ?=> Any)*)(using Scope): String =
       ${XmlQuote.impl('ctx, 'args, '{implicitly[Scope]})}
   }
 

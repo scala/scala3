@@ -1,7 +1,7 @@
 def testLocalInstance =
   trait Zip[F[_]]
   trait Traverse[F[_]] {
-    def [A, B, G[_] : Zip](fa: F[A]) traverse(f: A => G[B]): G[F[B]]
+    extension [A, B, G[_] : Zip](fa: F[A]) def traverse(f: A => G[B]): G[F[B]]
   }
 
   object instances {

@@ -3,8 +3,8 @@ import scala.quoted._
 
 object Macros {
 
-  // Should be: inline def (inline self: StringContext) ...
-  inline def (self: => StringContext) xyz(args: => String*): String = ${impl('self, 'args)}
+  // Should be: extension (inline self: StringContext) inline def ...
+  extension (self: => StringContext) inline def xyz(args: => String*): String = ${impl('self, 'args)}
 
   private def impl(self: Expr[StringContext], args: Expr[Seq[String]])(using QuoteContext): Expr[String] = {
     self match {

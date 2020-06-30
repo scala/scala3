@@ -16,7 +16,7 @@ the same way methods with context parameters are applied. For instance:
   given ec as ExecutionContext = ...
 
   def f(x: Int): ExecutionContext ?=> Int = ...
-  
+
   // could be written as follows with the type alias from above
   // def f(x: Int): Executable[Int] = ...
 
@@ -125,7 +125,7 @@ object PostConditions {
 
   def result[T](using r: WrappedResult[T]): T = r
 
-  def [T] (x: T).ensuring(condition: WrappedResult[T] ?=> Boolean): T = {
+  extension [T](x: T) def ensuring(condition: WrappedResult[T] ?=> Boolean): T = {
     assert(condition(using x))
     x
   }

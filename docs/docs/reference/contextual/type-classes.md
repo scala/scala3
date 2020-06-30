@@ -156,7 +156,7 @@ A `List` can be turned into a monad via this `given` instance:
 given listMonad as Monad[List]:
   def pure[A](x: A): List[A] =
     List(x)
-  extension def [A, B](xs: List[A])
+  extension [A, B](xs: List[A])
     def flatMap(f: A => List[B]): List[B] =
       xs.flatMap(f) // rely on the existing `flatMap` method of `List`
 ```

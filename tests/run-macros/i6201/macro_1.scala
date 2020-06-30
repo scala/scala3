@@ -1,6 +1,6 @@
 import scala.quoted._
 
-inline def (inline x: String) strip: String =
+extension (inline x: String) inline def strip: String =
   ${ stripImpl('x) }
 
 def stripImpl(x: Expr[String])(using qctx: QuoteContext) : Expr[String] =

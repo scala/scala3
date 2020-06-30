@@ -6,14 +6,14 @@ import scala.language.implicitConversions
 
 object Foo {
   implicit object StringContextOps {
-    inline def (inline ctx: StringContext) foo (inline args: Any*): String = ${ Macro.foo('ctx, 'args) }
+    extension (inline ctx: StringContext) inline def foo (inline args: Any*): String = ${ Macro.foo('ctx, 'args) }
   }
 }
 
 
 object TestFooErrors { // Defined in tests
   implicit object StringContextOps {
-    inline def (inline ctx: StringContext) foo (inline args: Any*): List[(Int, Int, Int, String)] = ${ Macro.fooErrors('ctx, 'args) }
+    extension (inline ctx: StringContext) inline def foo (inline args: Any*): List[(Int, Int, Int, String)] = ${ Macro.fooErrors('ctx, 'args) }
   }
 }
 

@@ -8,9 +8,10 @@ class C:
 
 object C:
   given AnyRef:
-    def (x: C) iop (y: Int) = ???
-    def (x: C).mop (y: Int) = ???
-    def (x: C) ++ (y: Int) = ???
+    extension (x: C):
+      @infix def iop (y: Int) = ???
+      def mop (y: Int) = ???
+      def ++ (y: Int) = ???
 
 val c = C()
 def test() = {

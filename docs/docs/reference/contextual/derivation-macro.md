@@ -120,7 +120,8 @@ Alternatively and what is shown below is that we can call the `eqv` method
 directly. The `eqGen` can trigger the derivation.
 
 ```scala
-inline def [T](x: =>T) === (y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
+extension [T](x: =>T)
+  inline def === (y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
 
 implicit inline def eqGen[T]: Eq[T] = ${ Eq.derived[T] }
 ```
@@ -216,7 +217,8 @@ object Eq {
 }
 
 object Macro3 {
-  inline def [T](x: =>T) === (y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
+  extension [T](x: =>T)
+    inline def === (y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
 
   implicit inline def eqGen[T]: Eq[T] = ${ Eq.derived[T] }
 }

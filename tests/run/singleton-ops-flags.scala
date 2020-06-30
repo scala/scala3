@@ -22,7 +22,7 @@ package example {
 
     type LastFlag = Open.idx.type
 
-    def (s: FlagSet).debug: String =
+    extension (s: FlagSet) def debug: String =
       if s == EmptyFlags then "EmptyFlags"
       else s.toSingletonSets[LastFlag].map ( [n <: Int] => (flag: SingletonFlagSet[n]) => flag match {
         case Erased      => "Erased"
@@ -48,18 +48,18 @@ package example {
 
       opaque type SingletonSets[N <: Int] = Int
 
-      private def [N <: Int](n: N).shift: 1 << N = ( 1 << n ).asInstanceOf
-      private def [N <: Int](n: N).succ : S[N]   = ( n +  1 ).asInstanceOf
+      extension [N <: Int](n: N) private def shift: 1 << N = ( 1 << n ).asInstanceOf
+      extension [N <: Int](n: N) private def succ : S[N]   = ( n +  1 ).asInstanceOf
 
       final val baseFlags: EmptyFlagSet = 0
 
-      def (s: EmptyFlagSet).next: SingletonFlagSet[0] = 1
-      def [N <: Int: ValueOf](s: SingletonFlagSet[N]).next: SingletonFlagSet[S[N]] = valueOf[N].succ.shift
-      def [N <: Int: ValueOf](s: SingletonFlagSet[N]).idx: N = valueOf[N]
-      def [N <: Int](s: FlagSet).toSingletonSets: SingletonSets[N] = s
-      def (s: FlagSet) | (t: FlagSet): FlagSet = s | t
+      extension (s: EmptyFlagSet) def next: SingletonFlagSet[0] = 1
+      extension [N <: Int: ValueOf](s: SingletonFlagSet[N]) def next: SingletonFlagSet[S[N]] = valueOf[N].succ.shift
+      extension [N <: Int: ValueOf](s: SingletonFlagSet[N]) def idx: N = valueOf[N]
+      extension [N <: Int](s: FlagSet) def toSingletonSets: SingletonSets[N] = s
+      extension (s: FlagSet) def | (t: FlagSet): FlagSet = s | t
 
-      def [A, N <: Int: ValueOf](ss: SingletonSets[N]).map(f: [t <: Int] => (s: SingletonFlagSet[t]) => A): List[A] =
+      extension [A, N <: Int: ValueOf](ss: SingletonSets[N]) def map(f: [t <: Int] => (s: SingletonFlagSet[t]) => A): List[A] =
         val maxFlag = valueOf[N]
         val buf = List.newBuilder[A]
         var current = 0

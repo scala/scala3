@@ -1,7 +1,7 @@
 object testObjectInstance:
   trait Zip[F[_]]
   trait Traverse[F[_]] {
-    def [A, B, G[_] : Zip](fa: F[A]) traverse(f: A => G[B]): G[F[B]]
+    extension [A, B, G[_] : Zip](fa: F[A]) def traverse(f: A => G[B]): G[F[B]]
   }
 
   object instances {
@@ -9,7 +9,7 @@ object testObjectInstance:
     given traverseList as Traverse[List] = ???
     extension listExtension on [T](xs: List[T]):
       def second: T = xs.tail.head
-    def [T](xs: List[T]) first: T = xs.head
+    extension [T](xs: List[T]) def first: T = xs.head
   }
 
   def ff(using xs: Zip[Option]) = ???

@@ -111,7 +111,7 @@ will map to with clauses instead.
 
 Extension methods have no direct counterpart in Scala 2, but they can be simulated with implicit classes. For instance, the extension method
 ```scala
-def (c: Circle).circumference: Double = c.radius * math.Pi * 2
+extension (c: Circle) def circumference: Double = c.radius * math.Pi * 2
 ```
 could be simulated to some degree by
 ```scala

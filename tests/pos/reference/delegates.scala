@@ -1,25 +1,25 @@
 class Common:
 
   trait Ord[T]:
-    def (x: T).compareTo(y: T): Int
-    def (x: T) < (y: T) = x.compareTo(y) < 0
-    def (x: T) > (y: T) = x.compareTo(y) > 0
+    extension (x: T) def compareTo(y: T): Int
+    extension (x: T) def < (y: T) = x.compareTo(y) < 0
+    extension (x: T) def > (y: T) = x.compareTo(y) > 0
 
   trait Convertible[From, To]:
-    def (x: From).convert: To
+    extension (x: From) def convert: To
 
   trait SemiGroup[T]:
-    def (x: T).combine(y: T): T
+    extension (x: T) def combine(y: T): T
 
   trait Monoid[T] extends SemiGroup[T]:
     def unit: T
 
   trait Functor[F[_]]:
-    def [A, B](x: F[A]) map (f: A => B): F[B]
+    extension [A, B](x: F[A]) def map (f: A => B): F[B]
 
   trait Monad[F[_]] extends Functor[F]:
-    def [A, B](x: F[A]) flatMap (f: A => F[B]): F[B]
-    def [A, B](x: F[A]) map (f: A => B) = x.flatMap(f `andThen` pure)
+    extension [A, B](x: F[A]) def flatMap (f: A => F[B]): F[B]
+    extension [A, B](x: F[A]) def map (f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
 end Common
@@ -27,11 +27,11 @@ end Common
 object Instances extends Common:
 
   given intOrd as Ord[Int]:
-    def (x: Int).compareTo(y: Int) =
+    extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
   given listOrd[T](using Ord[T]) as Ord[List[T]]:
-    def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys) match
+    extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
@@ -50,13 +50,13 @@ object Instances extends Common:
     def third = xs.tail.tail.head
 
   given listMonad as Monad[List]:
-    def [A, B](xs: List[A]) flatMap (f: A => List[B]): List[B] =
+    extension [A, B](xs: List[A]) def flatMap (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
 
   given readerMonad[Ctx] as Monad[[X] =>> Ctx => X]:
-    def [A, B](r: Ctx => A) flatMap (f: A => Ctx => B): Ctx => B =
+    extension [A, B](r: Ctx => A) def flatMap (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x
@@ -65,7 +65,7 @@ object Instances extends Common:
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
   def descending[T](using asc: Ord[T]): Ord[T] = new Ord[T]:
-    def (x: T).compareTo(y: T) = asc.extension_compareTo(y)(x)
+    extension (x: T) def compareTo(y: T) = asc.extension_compareTo(y)(x)
 
   def minimum[T](xs: List[T])(using Ord[T]) =
     maximum(xs)(using descending)
@@ -88,14 +88,14 @@ object Instances extends Common:
   trait TastyAPI:
     type Symbol
     trait SymDeco:
-      def (sym: Symbol).name: String
+      extension (sym: Symbol) def name: String
     def symDeco: SymDeco
     given SymDeco = symDeco
 
   object TastyImpl extends TastyAPI:
     type Symbol = String
     val symDeco = new SymDeco:
-      def (sym: Symbol).name = sym
+      extension (sym: Symbol) def name = sym
 
   class D[T]
 
@@ -142,11 +142,11 @@ end PostConditions
 
 object AnonymousInstances extends Common:
   given Ord[Int]:
-    def (x: Int).compareTo(y: Int) =
+    extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
   given [T: Ord] as Ord[List[T]]:
-    def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys).match
+    extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
@@ -163,10 +163,10 @@ object AnonymousInstances extends Common:
     def second = xs.tail.head
 
   given [From, To](using c: Convertible[From, To]) as Convertible[List[From], List[To]]:
-    def (x: List[From]).convert: List[To] = x.map(c.extension_convert)
+    extension (x: List[From]) def convert: List[To] = x.map(c.extension_convert)
 
   given Monoid[String]:
-    def (x: String).combine(y: String): String = x.concat(y)
+    extension (x: String) def combine(y: String): String = x.concat(y)
     def unit: String = ""
 
   def sum[T: Monoid](xs: List[T]): T =
@@ -175,11 +175,11 @@ end AnonymousInstances
 
 object Implicits extends Common:
   implicit object IntOrd extends Ord[Int]:
-    def (x: Int).compareTo(y: Int) =
+    extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
   class ListOrd[T: Ord] extends Ord[List[T]]:
-    def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys).match
+    extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
@@ -190,7 +190,7 @@ object Implicits extends Common:
 
   class given_Convertible_List_List[From, To](implicit c: Convertible[From, To])
   extends Convertible[List[From], List[To]]:
-    def (x: List[From]).convert: List[To] = x.map(c.extension_convert)
+    extension (x: List[From]) def convert: List[To] = x.map(c.extension_convert)
   implicit def given_Convertible_List_List[From, To](implicit c: Convertible[From, To])
     : Convertible[List[From], List[To]] =
     new given_Convertible_List_List[From, To]
@@ -200,7 +200,7 @@ object Implicits extends Common:
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
   def descending[T](implicit asc: Ord[T]): Ord[T] = new Ord[T]:
-    def (x: T).compareTo(y: T) = asc.extension_compareTo(y)(x)
+    extension (x: T) def compareTo(y: T) = asc.extension_compareTo(y)(x)
 
   def minimum[T](xs: List[T])(implicit cmp: Ord[T]) =
     maximum(xs)(descending)

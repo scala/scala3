@@ -1,6 +1,6 @@
 class Impl
 
-def (impl: Impl).prop(using Int) = ???//summon[Int]
+extension (impl: Impl) def prop(using Int) = ???//summon[Int]
 
 
 def main(args: Array[String]): Unit = {

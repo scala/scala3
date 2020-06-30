@@ -22,13 +22,13 @@ object Test extends App {
   // Test with extension methods in given object
   object test1 {
 
-    extension Foo:
-      def (x: Int) |+| (y: Int) = x + y
-      def (x: Int) |+| (y: String) = x + y.length
+    extension (x: Int):
+      def |+| (y: Int) = x + y
+      def |+| (y: String) = x + y.length
 
-      def [T](xs: List[T]) +++ (ys: List[T]): List[T] = xs ++ ys ++ ys
-      def [T](xs: List[T]) +++ (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
-    end Foo
+    extension [T](xs: List[T]):
+      def +++ (ys: List[T]): List[T] = xs ++ ys ++ ys
+      def +++ (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
 
     assert((1 |+| 2) == 3)
     assert((1 |+| "2") == 2)
@@ -41,7 +41,7 @@ object Test extends App {
 
   // Test with imported extension methods
   object test2 {
-    import test1.Foo._
+    import test1._
 
     assert((1 |+| 2) == 3)
     assert((1 |+| "2") == 2)
@@ -55,11 +55,11 @@ object Test extends App {
   // Test with given extension methods coming from base class
   object test3 {
     class Foo {
-      def (x: Int) |+| (y: Int) = x + y
-      def (x: Int) |+| (y: String) = x + y.length
+      extension (x: Int) def |+| (y: Int) = x + y
+      extension (x: Int) def |+| (y: String) = x + y.length
 
-      def [T](xs: List[T]) +++ (ys: List[T]): List[T] = xs ++ ys ++ ys
-      def [T](xs: List[T]) +++ (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
+      extension [T](xs: List[T]) def +++ (ys: List[T]): List[T] = xs ++ ys ++ ys
+      extension [T](xs: List[T]) def +++ (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
     }
     given Bar as Foo
 
@@ -88,13 +88,13 @@ object Test extends App {
   class C {
     def xx (x: Any) = 2
   }
-  def (c: C).xx(x: Int) = 1
+  extension (c: C) def xx(x: Int) = 1
 
   val c = new C
   assert(c.xx(1) == 2)  // member method takes precedence
 
   object D {
-    def (x: Int).yy(y: Int) = x + y
+    extension (x: Int) def yy(y: Int) = x + y
   }
 
   extension on (x: Int) {
@@ -114,8 +114,8 @@ object Test extends App {
     def b: Long = a
   }
 
-  def (rectangle: Rectangle).area: Long = 0
-  def (square: Square).area: Long = square.a * square.a
+  extension (rectangle: Rectangle) def area: Long = 0
+  extension (square: Square) def area: Long = square.a * square.a
   val rectangles = List(GenericRectangle(2, 3), Square(5))
   val areas = rectangles.map(_.area)
   assert(areas.sum == 0)

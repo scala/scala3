@@ -6,7 +6,7 @@ object Test extends App {
   class N
   object N extends N
 
-  def (x: N)._eq(y: R | N) = y eq N
+  extension (x: N) def _eq(y: R | N) = y eq N
 
   val r1, r2 = new R
   assert(r1 _eq r1)

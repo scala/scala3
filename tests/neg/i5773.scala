@@ -1,16 +1,16 @@
 trait Semigroup[T] {
-  def (lhs: T).append(rhs: T): T
-  def (lhs: Int).appendS(rhs: T): T = ???
+  extension (lhs: T) def append(rhs: T): T
+  extension (lhs: Int) def appendS(rhs: T): T = ???
 }
 
 object Semigroup {
   implicit object stringAppend extends Semigroup[String] {
-    override def (lhs: String).append(rhs: String): String = lhs + rhs
+    extension (lhs: String) override def append(rhs: String): String = lhs + rhs
   }
 
   implicit def sumSemigroup[N](implicit N: Numeric[N]): Semigroup[N] = new {
-    override def (lhs: N).append(rhs: N): N = N.plus(lhs, rhs)
-    def (lhs: Int).appendS(rhs: N): N = ??? // N.plus(lhs, rhs)
+    extension (lhs: N) override def append(rhs: N): N = N.plus(lhs, rhs)
+    extension (lhs: Int) def appendS(rhs: N): N = ??? // N.plus(lhs, rhs)
   }
 }
 
