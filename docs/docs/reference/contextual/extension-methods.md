@@ -85,7 +85,8 @@ Extensions can also take using clauses. For instance, the `+` extension above co
     def - (y: T): T = n.minus(x, y)
 ```
 
-**Note**: If an extension defines type parameters in its prefix, the extension method itself is not allowed to have additional type parameters. This restriction might be lifted in the future once we support multiple type parameter clauses in a method.
+**Note**: Type parameters have to be given after the `extension` keyword;
+they cannot be given after the `def`. This restriction might be lifted in the future once we support multiple type parameter clauses in a method.
 
 ### Collective Extensions
 
