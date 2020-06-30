@@ -30,9 +30,9 @@ because it violates the second rule of the following for trait parameters:
 
  1. If a class `C` extends a parameterized trait `T`, and its superclass does not, `C` _must_ pass arguments to `T`.
 
- 2. If a class `C` extends a parameterized trait `T`, and its superclass does as well, `C` _may not_  pass arguments to `T`.
+ 2. If a class `C` extends a parameterized trait `T`, and its superclass does as well, `C` _must not_  pass arguments to `T`.
 
- 3. Traits may never pass arguments to parent traits.
+ 3. Traits must never pass arguments to parent traits.
 
 Here's a trait extending the parameterized trait `Greeting`.
 
