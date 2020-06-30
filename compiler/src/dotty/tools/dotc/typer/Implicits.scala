@@ -1682,7 +1682,7 @@ sealed class TermRefSet(using Context):
 
 object TermRefSet:
 
-  val empty = new TermRefSet(using NoContext):
+  @sharable val empty = new TermRefSet(using NoContext):
     override def += (ref: TermRef): Unit = throw UnsupportedOperationException("+=")
 
 end TermRefSet

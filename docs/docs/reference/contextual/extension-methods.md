@@ -35,11 +35,11 @@ assert(circle.circumference == extension_circumference(circle))
 The extension method syntax can also be used to define operators. Examples:
 ```scala
 extension (x: String)
-  def < (y: String) = ...
+  def < (y: String): Boolean = ...
 extension (x: Elem)
-  def +: (xs: Seq[Elem]) = ...
+  def +: (xs: Seq[Elem]): Seq[Elem] = ...
 extension (x: Number)
-  @infix def min (y: Number) = ...
+  @infix def min (y: Number): Number = ...
 
 "ab" < "c"
 1 +: List(2, 3)
@@ -48,9 +48,9 @@ x min 3
 
 The three definitions above translate to
 ```scala
-def extension_< (x: String)(y: String) = ...
-def extension_+: (xs: Seq[Elem])(x: Elem) = ...
-@infix def extension_min(x: Number)(y: Number) = ...
+def extension_< (x: String)(y: String): Boolean = ...
+def extension_+: (xs: Seq[Elem])(x: Elem): Seq[Elem] = ...
+@infix def extension_min(x: Number)(y: Number): Number = ...
 ```
 Note the swap of the two parameters `x` and `xs` when translating
 the right-associative operator `+:` to an extension method. This is analogous
@@ -82,7 +82,7 @@ Of course, the type argument here would usually be left out since it can be infe
 Extensions can also take using clauses. For instance, the `+` extension above could equivalently be written with a using clause:
 ```scala
   extension [T](x: T)(using n: Numeric[T])
-    def + (y: T): T = n.plus(x, y)
+    def - (y: T): T = n.minus(x, y)
 ```
 
 **Note**: If an extension defines type parameters in its prefix, the extension method itself is not allowed to have additional type parameters. This restriction might be lifted in the future once we support multiple type parameter clauses in a method.
@@ -120,9 +120,9 @@ extension (ss: Seq[String])
 Collective extensions also can take type parameters and have using clauses. Example:
 ```scala
 extension [T](xs: List[T])(using Ordering[T]):
-  def smallest(n: Int): T = xs.sorted.take(n)
+  def smallest(n: Int): List[T] = xs.sorted.take(n)
   def smallestIndices(n: Int): List[Int] =
-    val limit = smallest(n)
+    val limit = smallest(n).max
     xs.zipWithIndex.collect { case (x, i) if x <= limit => i }
 ```
 
@@ -184,7 +184,7 @@ object List:
 
   given [T: Ordering] as Ordering[List[T]]:
     extension (xs: List[T]):
-      def < (ys: List[T]) = ...
+      def < (ys: List[T]): Boolean = ...
 end List
 
 // extension method available since it is in the implicit scope of List[List[Int]]

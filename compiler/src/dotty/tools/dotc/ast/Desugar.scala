@@ -913,11 +913,17 @@ object desugar {
       if ext.tparams.nonEmpty && mdef.tparams.nonEmpty then
         ctx.error(em"extension method cannot have type parameters since some were already given in extension clause",
           mdef.tparams.head.sourcePos)
-      cpy.DefDef(mdef)(
-        name = mdef.name.toExtensionName,
-        tparams = ext.tparams ++ mdef.tparams,
-        vparamss = ext.vparamss ++ mdef.vparamss
-      ).withMods(mdef.mods | Extension)
+      defDef(
+        cpy.DefDef(mdef)(
+          name = mdef.name.toExtensionName,
+          tparams = ext.tparams ++ mdef.tparams,
+          vparamss = mdef.vparamss match
+            case vparams1 :: vparamss1 if !isLeftAssoc(mdef.name) =>
+              vparams1 :: ext.vparamss ::: vparamss1
+            case _ =>
+              ext.vparamss ++ mdef.vparamss
+        ).withMods(mdef.mods | Extension)
+      )
   }
 
   /** Transform the statements of a collective extension

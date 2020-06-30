@@ -1,96 +1,116 @@
+import annotation.infix
+
 object ExtMethods:
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  def (c: Circle).circumference: Double = c.radius * math.Pi * 2
+  extension (c: Circle)
+    def circumference: Double = c.radius * math.Pi * 2
 
   val circle = Circle(0, 0, 1)
   circle.circumference
   assert(circle.circumference == extension_circumference(circle))
 
-  trait StringSeqOps {
-    def (xs: Seq[String]).longestStrings = {
-      val maxLength = xs.map(_.length).max
-      xs.filter(_.length == maxLength)
-    }
-  }
-  given ops1 as StringSeqOps
-
-  List("here", "is", "a", "list").longestStrings
-
-  trait StringSeqOps2 {
-    def (xs: Seq[String]).longestStrings2 = {
-      val maxLength = xs.map(_.length).max
-      xs.filter(_.length == maxLength)
-    }
-  }
-
-  locally {
-    object ops2 extends StringSeqOps2
-    import ops2.{longestStrings2, extension_longestStrings2}
-    List("here", "is", "a", "list").longestStrings2
-    extension_longestStrings2(Nil)
-  }
-
-  def (x: String) < (y: String) = x.compareTo(y) < 0
-  def [Elem](x: Elem) #: (xs: Seq[Elem]) = x +: xs
+  extension (x: String) def < (y: String) = x.compareTo(y) < 0
+  extension [Elem](x: Elem) def #: (xs: Seq[Elem]) = x +: xs
+  extension (x: Number) @infix def min (y: Number) = x
 
   assert("a" < "bb")
   val xs = 1 #: Vector(2, 3)
+  val n = java.lang.Integer(2) min java.lang.Double(3.0)
 
-  def [T](xs: List[T]) second =
-    xs.tail.head
-
-  def [T](xs: List[List[T]]) flattened =
-    xs.foldLeft[List[T]](Nil)(_ ++ _)
-
-  def [T: Numeric](x: T) + (y: T): T =
-    summon[Numeric[T]].plus(x, y)
-
-  List(1, 2, 3).second[Int]
-
-  extension stringOps on (xs: Seq[String]) {
-    def longestStrings: Seq[String] = {
-      val maxLength = xs.map(_.length).max
-      xs.filter(_.length == maxLength)
-    }
-  }
-
-  extension listOps on [T](xs: List[T]):
+  extension [T](xs: List[T])
     def second = xs.tail.head
-    def third: T = xs.tail.tail.head
 
+  assert(List(1, 2, 3).second[Int] == List(1, 2, 3).second)
 
-  extension on [T](xs: List[T])(using Ordering[T]):
-    def largest(n: Int) = xs.sorted.takeRight(n)
+  extension [T: Numeric](x: T)
+    def + (y: T): T = summon[Numeric[T]].plus(x, y)
 
-  extension ops:
-    def (xs: Seq[String]).longestStrings: Seq[String] =
-      val maxLength = xs.map(_.length).max
-      xs.filter(_.length == maxLength)
-    def (xs: Seq[String]).longestString: String = xs.longestStrings.head
-    def [T](xs: List[T]).second: T = xs.tail.head
+  extension [T](x: T)(using n: Numeric[T])
+    def - (y: T): T = n.minus(x, y)
 
-  extension:
-    def [T](xs: List[T]) longest (using Ordering[T])(n: Int) =
-      xs.sorted.takeRight(n)
+  extension (ss: Seq[String]):
 
-  given stringOps2 as AnyRef {
-    def (xs: Seq[String]).longestStrings: Seq[String] = {
-      val maxLength = xs.map(_.length).max
-      xs.filter(_.length == maxLength)
-    }
-  }
+    def longestStrings: Seq[String] =
+      val maxLength = ss.map(_.length).max
+      ss.filter(_.length == maxLength)
 
-  given listOps2 as AnyRef {
-    def [T](xs: List[T]) second = xs.tail.head
-    def [T](xs: List[T]) third: T = xs.tail.tail.head
-  }
+    def longestString: String = longestStrings.head
 
-  given AnyRef {
-    def [T](xs: List[T]) largest (using Ordering[T])(n: Int) =
-      xs.sorted.takeRight(n)
-  }
+  import math.Ordered.orderingToOrdered
+
+  extension [T](xs: List[T])(using Ordering[T]):
+    def smallest(n: Int): List[T] = xs.sorted.take(n)
+    def smallestIndices(n: Int): List[Int] =
+      val limit = smallest(n).max
+      xs.zipWithIndex.collect { case (x, i) if x <= limit => i }
+
+  trait IntOps:
+    extension (i: Int) def isZero: Boolean = i == 0
+
+    extension (i: Int) def safeMod(x: Int): Option[Int] =
+      // extension method defined in same scope IntOps
+      if x.isZero then None
+      else Some(i % x)
+  end IntOps
+
+  object IntOpsEx extends IntOps:
+    extension (i: Int) def safeDiv(x: Int): Option[Int] =
+      // extension method brought into scope via inheritance from IntOps
+      if x.isZero then None
+      else Some(i / x)
+
+  trait SafeDiv:
+    import IntOpsEx._ // brings safeDiv and safeMod into scope
+
+    extension (i: Int) def divide(d: Int) : Option[(Int, Int)] =
+        // extension methods imported and thus in scope
+      (i.safeDiv(d), i.safeMod(d)) match
+        case (Some(d), Some(r)) => Some((d, r))
+        case _ => None
+  end SafeDiv
+
+  def test1 =
+    given ops1 as IntOps // brings safeMod into scope
+    1.safeMod(2)
+
+  class Lst[T](xs: T*):
+    private val elems = xs.toList
+    def foldLeft[U](x: U)(op: (U, T) => U): U = elems.foldLeft(x)(op)
+    def ++ (other: Lst[T]): Lst[T] = Lst(elems ++ other.elems: _*)
+
+  trait Ord[T]:
+    extension (x: T) def less (y: T): Boolean
+  object Ord:
+    given Ord[Int]:
+      extension (x: Int) def less (y: Int): Boolean = x < y
+  end Ord
+
+  object Lst:
+
+    extension [T](xs: Lst[Lst[T]])
+      def flatten: Lst[T] = xs.foldLeft(Lst())(_ ++ _)
+
+    given ord[T: Ord] as Ord[Lst[T]]:
+      extension (xs: Lst[T])
+        def less (ys: Lst[T]): Boolean = ???
+  end Lst
+
+  def test2 =
+    val xss = Lst(Lst(1, 2), Lst(3, 4))
+    val xs: Lst[Int] = xss.flatten
+
+    summon[Ord[Lst[Lst[Int]]]]
+
+    assert(Lst.ord[Lst[Int]].extension_less(xss)(Lst(Lst(3))))
+    // fails type inference: assert(xss `less` Lst(Lst(3)))
+    assert(xss.flatten `less` Lst(3))
+
+  extension (s: String)
+    def position(ch: Char, n: Int): Int =
+      if n < s.length && s(n) != ch then position(ch, n + 1)
+      else n
 
   object DoubleOps:
     extension (x: Double) def ** (exponent: Int): Double =
@@ -99,4 +119,5 @@ object ExtMethods:
 
   import DoubleOps.{**, extension_**}
   assert(2.0 ** 3 == extension_**(2.0)(3))
+
 end ExtMethods
