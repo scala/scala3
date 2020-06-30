@@ -418,4 +418,70 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
     }
   }
+
+  @Test def i6800a = {
+    val source = """class Foo:
+                   |  inline def inlined(f: => Unit): Unit = f
+                   |  def test: Unit = inlined { println("") }
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected = List(Invoke(INVOKESTATIC, "Foo", "f$1", "()V", false), Op(RETURN))
+      assert(instructions == expected,
+        "`inlined` was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
+  @Test def i6800b = {
+    val source = """class Foo:
+                   |  inline def printIfZero(x: Int): Unit = inline x match
+                   |    case 0 => println("zero")
+                   |    case _ => ()
+                   |  def test: Unit = printIfZero(0)
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected = List(
+        Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+        Ldc(LDC, "zero"),
+        Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+        Op(RETURN)
+      )
+      assert(instructions == expected,
+        "`printIfZero` was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
+    }
+  }
+
+
+  @Test def i9246 = {
+    val source = """class Foo:
+                   |  inline def check(v:Double): Unit = if(v==0) throw new Exception()
+                   |  inline def divide(v: Double, d: Double): Double = { check(d); v / d }
+                   |  def test =  divide(10,2)
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected = List(Ldc(LDC, 5.0), Op(DRETURN))
+      assert(instructions == expected,
+        "`divide` was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
 }
