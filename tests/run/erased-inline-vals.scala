@@ -41,7 +41,7 @@ class D:
   assert(classOf[B].getDeclaredFields.isEmpty)
 
   assert(classOf[C].getDeclaredMethods.size == 2)
-  assert(classOf[C].getDeclaredFields.size == 1)
+  assert(classOf[C].getDeclaredFields.isEmpty)
 
   assert(classOf[D].getDeclaredMethods.isEmpty)
   assert(classOf[D].getFields.isEmpty)

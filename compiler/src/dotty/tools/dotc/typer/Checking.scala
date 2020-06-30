@@ -869,11 +869,9 @@ trait Checking {
   /** Check that `tree` can be right hand-side or argument to `inline` value or parameter. */
   def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = {
     if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !Inliner.inInlineMethod then
-      // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
-      val purityLevel = if (sym.is(Final)) Idempotent else Pure
       tpt.tpe.widenTermRefExpr.dealias.normalized match
         case tp: ConstantType =>
-          if !(exprPurity(tree) >= purityLevel) then
+          if !(exprPurity(tree) >= Pure) then
             ctx.error(em"inline value must be pure", tree.sourcePos)
         case _ =>
           val pos = if tpt.span.isZeroExtent then tree.sourcePos else tpt.sourcePos

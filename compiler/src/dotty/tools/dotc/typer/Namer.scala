@@ -1464,6 +1464,7 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
+      // TODO Scala 3.1: only check for inline vals (no final ones)
       def isInlineVal = sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
 
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
