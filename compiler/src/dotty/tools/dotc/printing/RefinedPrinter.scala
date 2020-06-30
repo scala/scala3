@@ -745,9 +745,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   private def useSymbol(tree: untpd.Tree) =
     tree.hasType && tree.symbol.exists && ctx.settings.YprintSyms.value
 
-  protected def nameIdText[T >: Untyped](tree: NameTree[T]): Text =
+  protected def nameIdText[T >: Untyped](tree: NameTree[T], dropExtension: Boolean = false): Text =
     if (tree.hasType && tree.symbol.exists) {
-      val str: Text = nameString(tree.symbol)
+      var str = nameString(tree.symbol)
+      if tree.symbol.isExtensionMethod && dropExtension && str.startsWith("extension_") then
+        str = str.drop("extension_".length)
       tree match {
         case tree: RefTree => withPos(str, tree.sourcePos)
         case tree: MemberDef => withPos(str, tree.sourcePos.withSpan(tree.nameSpan))
@@ -789,11 +791,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     import untpd._
     dclTextOr(tree) {
       val defKeyword = modText(tree.mods, tree.symbol, keywordStr("def"), isType = false)
-      val isOldExtension =
-        tree.hasType && tree.symbol.isExtensionMethod && !tree.name.isExtensionName
+      val isExtension = tree.hasType && tree.symbol.isExtensionMethod
       withEnclosingDef(tree) {
         val (prefix, vparamss) =
-          if isOldExtension then (defKeyword ~~ paramsText(tree.vparamss.head) ~~ valDefText(nameIdText(tree)), tree.vparamss.tail)
+          if isExtension then
+            (keywordStr("extension") ~~ paramsText(tree.vparamss.head)
+             ~~ (defKeyword ~~ valDefText(nameIdText(tree, dropExtension = true))).close,
+             tree.vparamss.tail)
           else (defKeyword ~~ valDefText(nameIdText(tree)), tree.vparamss)
 
         addVparamssText(prefix ~ tparamsText(tree.tparams), vparamss) ~
