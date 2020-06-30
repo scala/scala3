@@ -92,4 +92,11 @@ object ExtMethods:
       xs.sorted.takeRight(n)
   }
 
+  object DoubleOps:
+    extension (x: Double) def ** (exponent: Int): Double =
+      require(exponent > 0)
+      if exponent == 0 then 1 else x * (x ** (exponent - 1))
+
+  import DoubleOps.{**, extension_**}
+  assert(2.0 ** 3 == extension_**(2.0)(3))
 end ExtMethods

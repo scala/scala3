@@ -229,7 +229,22 @@ def extension_position(s: String)(ch: Char, n: Int): Int =
   if n < s.length && s(n) != ch then extension_position(s)(ch, n + 1)
   else n
 ```
+### More Details
 
+1. To avoid confusion, names of normal methods are not allowed to start with `extension_`.
+
+2. A named import such as `import a.m` of an extension method in `a` will make `m`
+only available as an extension method. To access it under
+`extension_m` that name as to be imported separately. Example:
+```scala
+object DoubleOps:
+  extension (x: Double) def ** (exponent: Int): Double =
+    require(exponent > 0)
+    if exponent == 0 then 1 else x * (x ** (exponent - 1))
+
+import DoubleOps.{**, extension_**}
+assert(2.0 ** 3 == extension_**(2.0)(3))
+```
 
 ### Syntax
 

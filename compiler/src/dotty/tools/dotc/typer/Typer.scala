@@ -1932,7 +1932,11 @@ class Typer extends Namer
     }
 
     val ddef2 = assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
+
     checkSignatureRepeatedParam(sym)
+    if name.isExtensionName && !sym.is(Extension) then
+      ctx.error(em"illegal method name: $name may not start with `extension_`",
+        ddef.source.atSpan(ddef.nameSpan))
     ddef2.setDefTree
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
