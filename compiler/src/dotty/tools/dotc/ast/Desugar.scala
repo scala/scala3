@@ -1268,7 +1268,7 @@ object desugar {
   }
 
   private def isTopLevelDef(stat: Tree)(using Context): Boolean = stat match
-    case _: ValDef | _: PatDef | _: DefDef | _: Export => true
+    case _: ValDef | _: PatDef | _: DefDef | _: Export | _: ExtMethods => true
     case stat: ModuleDef =>
       stat.mods.isOneOf(GivenOrImplicit)
     case stat: TypeDef =>
