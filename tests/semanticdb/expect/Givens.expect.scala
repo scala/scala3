@@ -16,11 +16,11 @@ object Givens/*<-a::b::Givens.*/:
 
   trait Monoid/*<-a::b::Givens.Monoid#*/[A/*<-a::b::Givens.Monoid#[A]*/]:
     def empty/*<-a::b::Givens.Monoid#empty().*/: A/*->a::b::Givens.Monoid#[A]*/
-    extension (x: A) def combine(y:/*<-a::b::Givens.Monoid#extension_combine().*//*<-a::b::Givens.Monoid#extension_combine().(x)*//*->a::b::Givens.Monoid#[A]*//*<-a::b::Givens.Monoid#extension_combine().(y)*/ A/*->a::b::Givens.Monoid#[A]*/): A/*->a::b::Givens.Monoid#[A]*/
-
+    extension (x/*<-a::b::Givens.Monoid#extension_combine().(x)*/: A/*->a::b::Givens.Monoid#[A]*/) def combine(y: A): A
+/*<-a::b::Givens.Monoid#extension_combine().*//*<-a::b::Givens.Monoid#extension_combine().(y)*//*->a::b::Givens.Monoid#[A]*//*->a::b::Givens.Monoid#[A]*/
   given Monoid[String]:
    /*<-a::b::Givens.given_Monoid_String.*//*->a::b::Givens.Monoid#*//*->scala::Predef.String#*/ def empty/*<-a::b::Givens.given_Monoid_String.empty().*/ = ""
-    extension (x: String) def combi/*<-a::b::Givens.given_Monoid_String.extension_combine().*//*<-a::b::Givens.given_Monoid_String.extension_combine().(x)*//*->scala::Predef.String#*/ne(y/*<-a::b::Givens.given_Monoid_String.extension_combine().(y)*/: String/*->scala::Predef.String#*/) = x/*->a::b::Givens.given_Monoid_String.extension_combine().(x)*/ +/*->java::lang::String#`+`().*/ y/*->a::b::Givens.given_Monoid_String.extension_combine().(y)*/
+    extension (x/*<-a::b::Givens.given_Monoid_String.extension_combine().(x)*/: String/*->scala::Predef.String#*/) def combine(y: String/*<-a::b::Givens.given_Monoid_String.extension_combine().*//*<-a::b::Givens.given_Monoid_String.extension_combine().(y)*//*->scala::Predef.String#*/) = x/*->a::b::Givens.given_Monoid_String.extension_combine().(x)*/ +/*->java::lang::String#`+`().*/ y/*->a::b::Givens.given_Monoid_String.extension_combine().(y)*/
 
   inline given int2String/*<-a::b::Givens.int2String().*/ as Conversion/*->scala::Conversion#*/[Int/*->scala::Int#*/, String/*->scala::Predef.String#*/] = _.toString/*->scala::Any#toString().*/
 
