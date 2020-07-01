@@ -3679,6 +3679,7 @@ object Parsers {
         setLastStatOffset()
         meths += extMethod()
         acceptStatSepUnlessAtEnd(meths)
+      if meths.isEmpty then syntaxError("`def` expected")
       meths.toList
     }
 

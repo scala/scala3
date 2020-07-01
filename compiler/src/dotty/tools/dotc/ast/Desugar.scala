@@ -911,7 +911,8 @@ object desugar {
   def extMethods(ext: ExtMethods)(using Context): Tree = flatTree {
     for mdef <- ext.methods yield
       if mdef.tparams.nonEmpty then
-        ctx.error("no type parameters allowed here", mdef.tparams.head.sourcePos)
+        ctx.error("extension method cannot have type parameters here, all type parameters go after `extension`",
+          mdef.tparams.head.sourcePos)
       defDef(
         cpy.DefDef(mdef)(
           name = mdef.name.toExtensionName,
