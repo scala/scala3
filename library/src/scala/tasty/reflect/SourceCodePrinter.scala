@@ -1123,7 +1123,10 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       case AppliedType(tp, args) =>
         tp match {
           case tp: TypeLambda =>
-            printType(tpe.dealias)
+            this += "("
+            printType(tp)
+            this += ")"
+            inSquare(printTypesOrBounds(args, ", "))
           case tp: TypeRef if tp.typeSymbol == ctx.requiredClass("scala.<repeated>") =>
             this += "_*"
           case _ =>
