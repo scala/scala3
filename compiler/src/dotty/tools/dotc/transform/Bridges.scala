@@ -16,9 +16,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
 
   assert(ctx.phase == ctx.erasurePhase.next)
   private val preErasureCtx = ctx.withPhase(ctx.erasurePhase)
-  private def elimErasedCtx =
-    if ctx.elimErasedValueTypePhase.exists then ctx.withPhase(ctx.elimErasedValueTypePhase.next)
-    else ctx // can happen with -Ystop-after:erasure
+  private lazy val elimErasedCtx = ctx.withPhase(ctx.elimErasedValueTypePhase.next)
 
   private class BridgesCursor(implicit ctx: Context) extends OverridingPairs.Cursor(root) {
 
