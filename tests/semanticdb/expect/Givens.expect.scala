@@ -3,16 +3,16 @@ package b
 
 object Givens/*<-a::b::Givens.*/:
 
-  extension [A](any: A):
-    def sayHel/*<-a::b::Givens.extension_extension_sayHello_A.*//*<-a::b::Givens.extension_extension_sayHello_A.extension_sayHello().[A]*//*<-a::b::Givens.extension_extension_sayHello_A.extension_sayHello().(any)*//*->a::b::Givens.extension_extension_sayHello_A.extension_sayHello().[A]*/lo = s"Hello/*<-a::b::Givens.extension_extension_sayHello_A.extension_sayHello().*//*->scala::StringContext.apply().*/, I am $any/*->a::b::Givens.extension_extension_sayHello_A.extension_sayHello().(any)*/"/*->scala::StringContext#s().*/
+  extension [A/*<-a::b::Givens.extension_sayHello().[A]*/](any/*<-a::b::Givens.extension_sayHello().(any)*/: A/*->a::b::Givens.extension_sayHello().[A]*/):
+    def sayHello = s"Hello/*<-a::b::Givens.extension_sayHello().*//*->scala::StringContext.apply().*/, I am $any/*->a::b::Givens.extension_sayHello().(any)*/"/*->scala::StringContext#s().*/
 
-  extension [B](any: B):
-    def sayGoodb/*<-a::b::Givens.extension_extension_sayGoodbye_B.*//*<-a::b::Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().[B]*//*<-a::b::Givens.extension_extension_sayGoodbye_B.extension_saySoLong().[B]*//*<-a::b::Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().(any)*//*<-a::b::Givens.extension_extension_sayGoodbye_B.extension_saySoLong().(any)*//*->a::b::Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().[B]*//*->a::b::Givens.extension_extension_sayGoodbye_B.extension_saySoLong().[B]*/ye = s"Goodb/*<-a::b::Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().*//*->scala::StringContext.apply().*/ye, from $any/*->a::b::Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().(any)*/"/*->scala::StringContext#s().*/
-    def saySoLong = s"So Lo/*<-a::b::Givens.extension_extension_sayGoodbye_B.extension_saySoLong().*//*->scala::StringContext.apply().*/ng, from $any/*->a::b::Givens.extension_extension_sayGoodbye_B.extension_saySoLong().(any)*/"/*->scala::StringContext#s().*/
+  extension [B/*<-a::b::Givens.extension_sayGoodbye().[B]*//*<-a::b::Givens.extension_saySoLong().[B]*/](any/*<-a::b::Givens.extension_sayGoodbye().(any)*//*<-a::b::Givens.extension_saySoLong().(any)*/: B/*->a::b::Givens.extension_sayGoodbye().[B]*//*->a::b::Givens.extension_saySoLong().[B]*/):
+    def sayGoodbye = s"Goodb/*<-a::b::Givens.extension_sayGoodbye().*//*->scala::StringContext.apply().*/ye, from $any/*->a::b::Givens.extension_sayGoodbye().(any)*/"/*->scala::StringContext#s().*/
+    def saySoLong = s"So Lo/*<-a::b::Givens.extension_saySoLong().*//*->scala::StringContext.apply().*/ng, from $any/*->a::b::Givens.extension_saySoLong().(any)*/"/*->scala::StringContext#s().*/
 
-  val hello1/*<-a::b::Givens.hello1.*/ = /*->a::b::Givens.extension_extension_sayHello_A.extension_sayHello().*/1.sayHello
-  val goodbye1/*<-a::b::Givens.goodbye1.*/ = /*->a::b::Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().*/1.sayGoodbye
-  val soLong1/*<-a::b::Givens.soLong1.*/ = /*->a::b::Givens.extension_extension_sayGoodbye_B.extension_saySoLong().*/1.saySoLong
+  val hello1/*<-a::b::Givens.hello1.*/ = /*->a::b::Givens.extension_sayHello().*/1.sayHello
+  val goodbye1/*<-a::b::Givens.goodbye1.*/ = /*->a::b::Givens.extension_sayGoodbye().*/1.sayGoodbye
+  val soLong1/*<-a::b::Givens.soLong1.*/ = /*->a::b::Givens.extension_saySoLong().*/1.saySoLong
 
   trait Monoid/*<-a::b::Givens.Monoid#*/[A/*<-a::b::Givens.Monoid#[A]*/]:
     def empty/*<-a::b::Givens.Monoid#empty().*/: A/*->a::b::Givens.Monoid#[A]*/

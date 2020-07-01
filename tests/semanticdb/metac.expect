@@ -1204,8 +1204,8 @@ Schema => SemanticDB v4
 Uri => Givens.scala
 Text => empty
 Language => Scala
-Symbols => 31 entries
-Occurrences => 72 entries
+Symbols => 29 entries
+Occurrences => 70 entries
 
 Symbols:
 a/b/Givens. => final object Givens
@@ -1216,17 +1216,15 @@ a/b/Givens.Monoid#empty(). => abstract method empty
 a/b/Givens.Monoid#extension_combine(). => abstract method extension_combine
 a/b/Givens.Monoid#extension_combine().(x) => param x
 a/b/Givens.Monoid#extension_combine().(y) => param y
-a/b/Givens.extension_extension_sayGoodbye_B. => final implicit object extension_extension_sayGoodbye_B
-a/b/Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye(). => method extension_sayGoodbye
-a/b/Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().(any) => param any
-a/b/Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().[B] => typeparam B
-a/b/Givens.extension_extension_sayGoodbye_B.extension_saySoLong(). => method extension_saySoLong
-a/b/Givens.extension_extension_sayGoodbye_B.extension_saySoLong().(any) => param any
-a/b/Givens.extension_extension_sayGoodbye_B.extension_saySoLong().[B] => typeparam B
-a/b/Givens.extension_extension_sayHello_A. => final implicit object extension_extension_sayHello_A
-a/b/Givens.extension_extension_sayHello_A.extension_sayHello(). => method extension_sayHello
-a/b/Givens.extension_extension_sayHello_A.extension_sayHello().(any) => param any
-a/b/Givens.extension_extension_sayHello_A.extension_sayHello().[A] => typeparam A
+a/b/Givens.extension_sayGoodbye(). => method extension_sayGoodbye
+a/b/Givens.extension_sayGoodbye().(any) => param any
+a/b/Givens.extension_sayGoodbye().[B] => typeparam B
+a/b/Givens.extension_sayHello(). => method extension_sayHello
+a/b/Givens.extension_sayHello().(any) => param any
+a/b/Givens.extension_sayHello().[A] => typeparam A
+a/b/Givens.extension_saySoLong(). => method extension_saySoLong
+a/b/Givens.extension_saySoLong().(any) => param any
+a/b/Givens.extension_saySoLong().[B] => typeparam B
 a/b/Givens.foo(). => method foo
 a/b/Givens.foo().(A) => implicit param A
 a/b/Givens.foo().[A] => typeparam A
@@ -1244,35 +1242,33 @@ Occurrences:
 [0:8..0:9): a <- a/
 [1:8..1:9): b <- a/b/
 [3:7..3:13): Givens <- a/b/Givens.
-[5:12..6:14): <- a/b/Givens.extension_extension_sayHello_A.
-[5:16..5:17): A <- a/b/Givens.extension_extension_sayHello_A.extension_sayHello().[A]
-[5:19..5:22): any <- a/b/Givens.extension_extension_sayHello_A.extension_sayHello().(any)
-[5:24..5:25): A -> a/b/Givens.extension_extension_sayHello_A.extension_sayHello().[A]
-[6:8..6:26): sayHello = s"Hello <- a/b/Givens.extension_extension_sayHello_A.extension_sayHello().
+[5:13..5:14): A <- a/b/Givens.extension_sayHello().[A]
+[5:16..5:19): any <- a/b/Givens.extension_sayHello().(any)
+[5:21..5:22): A -> a/b/Givens.extension_sayHello().[A]
+[6:8..6:26): sayHello = s"Hello <- a/b/Givens.extension_sayHello().
 [6:21..6:21): -> scala/StringContext.apply().
-[6:34..6:37): any -> a/b/Givens.extension_extension_sayHello_A.extension_sayHello().(any)
+[6:34..6:37): any -> a/b/Givens.extension_sayHello().(any)
 [6:37..6:38): " -> scala/StringContext#s().
-[8:12..9:16): <- a/b/Givens.extension_extension_sayGoodbye_B.
-[8:16..8:17): B <- a/b/Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().[B]
-[8:16..8:17): B <- a/b/Givens.extension_extension_sayGoodbye_B.extension_saySoLong().[B]
-[8:19..8:22): any <- a/b/Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().(any)
-[8:19..8:22): any <- a/b/Givens.extension_extension_sayGoodbye_B.extension_saySoLong().(any)
-[8:24..8:25): B -> a/b/Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().[B]
-[8:24..8:25): B -> a/b/Givens.extension_extension_sayGoodbye_B.extension_saySoLong().[B]
-[9:8..9:28): sayGoodbye = s"Goodb <- a/b/Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().
+[8:13..8:14): B <- a/b/Givens.extension_sayGoodbye().[B]
+[8:13..8:14): B <- a/b/Givens.extension_saySoLong().[B]
+[8:16..8:19): any <- a/b/Givens.extension_sayGoodbye().(any)
+[8:16..8:19): any <- a/b/Givens.extension_saySoLong().(any)
+[8:21..8:22): B -> a/b/Givens.extension_sayGoodbye().[B]
+[8:21..8:22): B -> a/b/Givens.extension_saySoLong().[B]
+[9:8..9:28): sayGoodbye = s"Goodb <- a/b/Givens.extension_sayGoodbye().
 [9:23..9:23): -> scala/StringContext.apply().
-[9:38..9:41): any -> a/b/Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().(any)
+[9:38..9:41): any -> a/b/Givens.extension_sayGoodbye().(any)
 [9:41..9:42): " -> scala/StringContext#s().
-[10:8..10:27): saySoLong = s"So Lo <- a/b/Givens.extension_extension_sayGoodbye_B.extension_saySoLong().
+[10:8..10:27): saySoLong = s"So Lo <- a/b/Givens.extension_saySoLong().
 [10:22..10:22): -> scala/StringContext.apply().
-[10:37..10:40): any -> a/b/Givens.extension_extension_sayGoodbye_B.extension_saySoLong().(any)
+[10:37..10:40): any -> a/b/Givens.extension_saySoLong().(any)
 [10:40..10:41): " -> scala/StringContext#s().
 [12:6..12:12): hello1 <- a/b/Givens.hello1.
-[12:15..12:15): -> a/b/Givens.extension_extension_sayHello_A.extension_sayHello().
+[12:15..12:15): -> a/b/Givens.extension_sayHello().
 [13:6..13:14): goodbye1 <- a/b/Givens.goodbye1.
-[13:17..13:17): -> a/b/Givens.extension_extension_sayGoodbye_B.extension_sayGoodbye().
+[13:17..13:17): -> a/b/Givens.extension_sayGoodbye().
 [14:6..14:13): soLong1 <- a/b/Givens.soLong1.
-[14:16..14:16): -> a/b/Givens.extension_extension_sayGoodbye_B.extension_saySoLong().
+[14:16..14:16): -> a/b/Givens.extension_saySoLong().
 [16:8..16:14): Monoid <- a/b/Givens.Monoid#
 [16:14..16:17): <- a/b/Givens.Monoid#`<init>`().
 [16:15..16:16): A <- a/b/Givens.Monoid#[A]
