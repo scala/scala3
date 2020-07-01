@@ -157,10 +157,10 @@ object ErrorReporting {
       if qualType.derivesFrom(defn.DynamicClass) then
         "\npossible cause: maybe a wrong Dynamic method signature?"
       else if attempts.nonEmpty then
+        val attemptStrings = attempts.map(_.showIndented(4)).distinct
         val extMethods =
-          if attempts.length > 1 then "Extension methods were"
+          if attemptStrings.length > 1 then "Extension methods were"
           else "An extension method was"
-        val attemptStrings = attempts.map(_.showIndented(4))
         i""".
            |$extMethods tried, but could not be fully constructed:
            |
