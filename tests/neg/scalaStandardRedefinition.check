@@ -1,6 +1,0 @@
--- [E149] Syntax Error: tests/neg/scalaStandardRedefinition.scala:2:8 --------------------------------------------------
-2 |  class Any() // error
-  |  ^^^^^^^^^^^
-  |  illegal redefinition of standard class Any
-
-longer explanation available when compiling with `-explain`
