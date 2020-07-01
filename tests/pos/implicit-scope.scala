@@ -9,7 +9,7 @@ object A {
   type FlagSet = opaques.FlagSet
   def FlagSet(bits: Long): FlagSet = opaques.FlagSet(bits)
 
-  extension on (xs: FlagSet) {
+  extension (xs: FlagSet) {
     def bits: Long = opaques.toBits(xs)
     def | (ys: FlagSet): FlagSet = FlagSet(xs.bits | ys.bits)
   }

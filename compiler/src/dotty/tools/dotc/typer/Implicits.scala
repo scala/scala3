@@ -236,8 +236,9 @@ object Implicits {
       }
 
 
-      if (refs.isEmpty) Nil
-      else {
+      if refs.isEmpty && (!considerExtension || companionRefs.isEmpty) then
+        Nil
+      else
         val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
 
         def matchingCandidate(ref: ImplicitRef, extensionOnly: Boolean): Option[Candidate] =
@@ -254,7 +255,6 @@ object Implicits {
         val implicitCandidates =
           refs.flatMap(matchingCandidate(_, extensionOnly = false))
         extensionCandidates ::: implicitCandidates
-      }
     }
   }
 
@@ -1651,6 +1651,8 @@ final class SearchRoot extends SearchHistory {
 /** A set of term references where equality is =:= */
 sealed class TermRefSet(using Context):
   private val elems = new java.util.LinkedHashMap[TermSymbol, List[Type]]
+
+  def isEmpty = elems.size == 0
 
   def += (ref: TermRef): Unit = {
     val pre = ref.prefix
