@@ -2089,7 +2089,7 @@ trait Applications extends Compatibility {
    *
    *  where <type-args> comes from `pt` if it is a (possibly ignored) PolyProto.
    */
-  def extMethodApply(methodRef: untpd.Tree, receiver: Tree, pt: Type)(using Context) = {
+  def extMethodApply(methodRef: untpd.Tree, receiver: Tree, pt: Type)(using Context): Tree = {
     /** Integrate the type arguments from `currentPt` into `methodRef`, and produce
      *  a matching expected type.
      *  If `currentPt` is ignored, the new expected type will be ignored too.

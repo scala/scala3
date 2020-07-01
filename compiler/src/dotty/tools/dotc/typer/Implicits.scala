@@ -1043,13 +1043,21 @@ trait Implicits { self: Typer =>
           }
           pt match
             case SelectionProto(name: TermName, mbrType, _, _) if cand.isExtension =>
-              val result = extMethodApply(untpd.Select(untpdGenerated, name.toExtensionName), argument, mbrType)
-              if !ctx.reporter.hasErrors && cand.isConversion then
-                val testCtx = ctx.fresh.setExploreTyperState()
-                tryConversion(using testCtx)
-                if testCtx.reporter.hasErrors then
-                  ctx.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
-              result
+              def tryExtension(using Context) =
+                extMethodApply(untpd.Select(untpdGenerated, name.toExtensionName), argument, mbrType)
+              if cand.isConversion then
+                val extensionCtx, conversionCtx = ctx.fresh.setNewTyperState()
+                val extensionResult = tryExtension(using extensionCtx)
+                val conversionResult = tryConversion(using conversionCtx)
+                if !extensionCtx.reporter.hasErrors then
+                  extensionCtx.typerState.commit()
+                  if !conversionCtx.reporter.hasErrors then
+                    ctx.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
+                  extensionResult
+                else
+                  conversionCtx.typerState.commit()
+                  conversionResult
+              else tryExtension
             case _ =>
               tryConversion
         }
