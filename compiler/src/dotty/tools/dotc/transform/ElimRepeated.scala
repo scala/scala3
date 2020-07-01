@@ -34,34 +34,34 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     elimRepeated(tp)
 
   override def transform(ref: SingleDenotation)(using Context): SingleDenotation =
-    super.transform(ref) match {
+    super.transform(ref) match
       case ref1: SymDenotation if (ref1 ne ref) && overridesJava(ref1.symbol) =>
         // This method won't override the corresponding Java method at the end of this phase,
         // only the bridge added by `addVarArgsBridge` will.
         ref1.copySymDenotation(initFlags = ref1.flags &~ Override)
       case ref1 =>
         ref1
-    }
 
   override def mayChange(sym: Symbol)(using Context): Boolean = sym.is(Method)
 
   private def overridesJava(sym: Symbol)(using Context) = sym.allOverriddenSymbols.exists(_.is(JavaDefined))
 
-  private def elimRepeated(tp: Type)(using Context): Type = tp.stripTypeVar match {
+  private def hasVargsAnnotation(sym: Symbol)(using ctx: Context) = sym.hasAnnotation(defn.VarargsAnnot)
+
+  /** Eliminate repeated parameters from method types. */
+  private def elimRepeated(tp: Type)(using Context): Type = tp.stripTypeVar match
     case tp @ MethodTpe(paramNames, paramTypes, resultType) =>
       val resultType1 = elimRepeated(resultType)
       val paramTypes1 =
-        if (paramTypes.nonEmpty && paramTypes.last.isRepeatedParam) {
+        if paramTypes.nonEmpty && paramTypes.last.isRepeatedParam then
           val last = paramTypes.last.translateFromRepeated(toArray = tp.isJavaMethod)
           paramTypes.init :+ last
-        }
         else paramTypes
       tp.derivedLambdaType(paramNames, paramTypes1, resultType1)
     case tp: PolyType =>
       tp.derivedLambdaType(tp.paramNames, tp.paramInfos, elimRepeated(tp.resultType))
     case tp =>
       tp
-  }
 
   def transformTypeOfTree(tree: Tree)(using Context): Tree =
     tree.withType(elimRepeated(tree.tpe))
@@ -72,35 +72,35 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   override def transformSelect(tree: Select)(using Context): Tree =
     transformTypeOfTree(tree)
 
-  override def transformApply(tree: Apply)(using Context): Tree = {
+  override def transformApply(tree: Apply)(using Context): Tree =
     val args = tree.args.mapConserve {
       case arg: Typed if isWildcardStarArg(arg) =>
         val isJavaDefined = tree.fun.symbol.is(JavaDefined)
         val tpe = arg.expr.tpe
-        if (isJavaDefined && tpe.derivesFrom(defn.SeqClass))
+        if isJavaDefined && tpe.derivesFrom(defn.SeqClass) then
           seqToArray(arg.expr)
-        else if (!isJavaDefined && tpe.derivesFrom(defn.ArrayClass))
+        else if !isJavaDefined && tpe.derivesFrom(defn.ArrayClass)
           arrayToSeq(arg.expr)
         else
           arg.expr
       case arg => arg
     }
     transformTypeOfTree(cpy.Apply(tree)(tree.fun, args))
-  }
 
   /** Convert sequence argument to Java array */
-  private def seqToArray(tree: Tree)(using Context): Tree = tree match {
+  private def seqToArray(tree: Tree)(using Context): Tree = tree match
     case SeqLiteral(elems, elemtpt) =>
       JavaSeqLiteral(elems, elemtpt)
     case _ =>
       val elemType = tree.tpe.elemType
       var elemClass = erasure(elemType).classSymbol
-      if (defn.NotRuntimeClasses.contains(elemClass)) elemClass = defn.ObjectClass
+      if defn.NotRuntimeClasses.contains(elemClass) then
+        elemClass = defn.ObjectClass
+      end if
       ref(defn.DottyArraysModule)
         .select(nme.seqToArray)
         .appliedToType(elemType)
         .appliedTo(tree, clsOf(elemClass.typeRef))
-  }
 
   /** Convert Java array argument to Scala Seq */
   private def arrayToSeq(tree: Tree)(using Context): Tree =
@@ -109,36 +109,44 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   override def transformTypeApply(tree: TypeApply)(using Context): Tree =
     transformTypeOfTree(tree)
 
-  /** If method overrides a Java varargs method, add a varargs bridge.
-   *  Also transform trees inside method annotation
+  /** If method overrides a Java varargs method or is annotated with @varargs, add a varargs bridge.
+   *  Also transform trees inside method annotation.
    */
   override def transformDefDef(tree: DefDef)(using Context): Tree =
     atPhase(thisPhase) {
-      if (tree.symbol.info.isVarArgsMethod && overridesJava(tree.symbol))
-        addVarArgsBridge(tree)
+      val isOverride = overridesJava(tree.symbol)
+      val hasAnnotation = hasVargsAnnotation(tree.symbol)
+      if tree.symbol.info.isVarArgsMethod && (isOverride || hasAnnotation) then
+        // non-overrides need the varargs bytecode flag and cannot be synthetic
+        // otherwise javac refuses to call them.
+        addVarArgsBridge(tree, isOverride)
       else
         tree
     }
 
   /** Add a Java varargs bridge
-   *  @param  ddef  the original method definition which is assumed to override
-   *                a Java varargs method JM up to this phase.
-   *  @return  a thicket consisting of `ddef` and a varargs bridge method
-   *           which overrides the Java varargs method JM from this phase on
-   *           and forwards to `ddef`.
+   *  @param  ddef   the original method definition
+   *  @param addFlag the flag to add to the method symbol
+
+   *  @return a thicket consisting of `ddef` and a varargs bridge method
+   *          which forwards java varargs to `ddef`. It retains all the
+   *          flags of `ddef` except `Private`.
    *
-   *  A bridge is necessary because the following hold
+   *  A bridge is necessary because the following hold:
    *    - the varargs in `ddef` will change from `RepeatedParam[T]` to `Seq[T]` after this phase
-   *    - _but_ the callers of `ddef` expect its varargs to be changed to `Array[? <: T]`, since it overrides
-   *      a Java varargs
+   *    - _but_ the callers of `ddef` expect its varargs to be changed to `Array[? <: T]`
    *  The solution is to add a "bridge" method that converts its argument from `Array[? <: T]` to `Seq[T]` and
    *  forwards it to `ddef`.
    */
-  private def addVarArgsBridge(ddef: DefDef)(using Context): Tree = {
+  private def addVarArgsBridge(ddef: DefDef, synthetic: Boolean)(using Context): Tree =
     val original = ddef.symbol.asTerm
+    // For simplicity we always set the varargs flag
+    val flags = ddef.symbol.flags | JavaVarargs &~ Private
     val bridge = original.copy(
-      flags = ddef.symbol.flags &~ Private | Artifact,
-      info = toJavaVarArgs(ddef.symbol.info)).enteredAfter(thisPhase).asTerm
+        flags = if synthetic then flags | Artifact else flags,
+        info = toJavaVarArgs(ddef.symbol.info)
+      ).enteredAfter(thisPhase).asTerm
+
     val bridgeDef = polyDefDef(bridge, trefs => vrefss => {
       val (vrefs :+ varArgRef) :: vrefss1 = vrefss
       // Can't call `.argTypes` here because the underlying array type is of the
@@ -151,15 +159,14 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     })
 
     Thicket(ddef, bridgeDef)
-  }
 
   /** Convert type from Scala to Java varargs method */
-  private def toJavaVarArgs(tp: Type)(using Context): Type = tp match {
+  private def toJavaVarArgs(tp: Type)(using Context): Type = tp match
     case tp: PolyType =>
       tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(tp.resultType))
     case tp: MethodType =>
       val inits :+ last = tp.paramInfos
       val last1 = last.translateFromRepeated(toArray = true)
       tp.derivedLambdaType(tp.paramNames, inits :+ last1, tp.resultType)
-  }
+
 }
