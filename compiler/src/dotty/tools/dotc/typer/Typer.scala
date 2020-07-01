@@ -3251,12 +3251,21 @@ class Typer extends Namer
         case IgnoredProto(_: FunOrPolyProto) => false
         case _ => true
       }
+      // If the expected type is a selection of an extension method, deepen it
+      // to also propagate the argument type (which is the receiver we have
+      // typechecked already). This is needed for i8311.scala. Doing so
+      // for all expected types does not work since it would block the case
+      // where we have an argument that must be converted with another
+      // implicit conversion to the receiver type.
+      def sharpenedPt = pt match
+        case pt: SelectionProto if pt.name.isExtensionName => pt.deepenProto
+        case _ => pt
       var resMatch: Boolean = false
       wtp match {
         case wtp: ExprType =>
           readaptSimplified(tree.withType(wtp.resultType))
         case wtp: MethodType if wtp.isImplicitMethod &&
-          ({ resMatch = constrainResult(tree.symbol, wtp, pt); resMatch } || !functionExpected) =>
+          ({ resMatch = constrainResult(tree.symbol, wtp, sharpenedPt); resMatch } || !functionExpected) =>
           if (resMatch || ctx.mode.is(Mode.ImplicitsEnabled))
             adaptNoArgsImplicitMethod(wtp)
           else

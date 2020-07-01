@@ -104,7 +104,7 @@ object ExtMethods:
     summon[Ord[Lst[Lst[Int]]]]
 
     assert(Lst.ord[Lst[Int]].extension_less(xss)(Lst(Lst(3))))
-    // fails type inference: assert(xss `less` Lst(Lst(3)))
+    assert(xss `less` Lst(Lst(3)))
     assert(xss.flatten `less` Lst(3))
 
   extension (s: String)
