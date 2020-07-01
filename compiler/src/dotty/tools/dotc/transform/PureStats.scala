@@ -21,12 +21,12 @@ class PureStats extends MiniPhase {
   override def runsAfter: Set[String] = Set(Erasure.name)
 
   override def transformBlock(tree: Block)(implicit ctx: Context): Tree =
-    val stats = Trees.flatten(
-    tree.stats.mapConserve {
+    val stats = tree.stats.mapConserve {
       case Typed(Block(stats, expr), _) if isPureExpr(expr) => Thicket(stats)
       case stat if !stat.symbol.isConstructor && isPureExpr(stat) => EmptyTree
       case stat => stat
-    })
-    cpy.Block(tree)(stats, tree.expr)
+    }
+    if stats eq tree.stats then tree
+    else cpy.Block(tree)(Trees.flatten(stats), tree.expr)
 
 }
