@@ -1313,7 +1313,7 @@ object Parsers {
         case stat: MemberDef if !stat.name.isEmpty =>
           if stat.name == nme.CONSTRUCTOR then in.token == THIS
           else in.isIdent && in.name == stat.name.toTermName
-        case ModuleDef(name, Template(_, Nil, _, _)) =>
+        case ModuleDef(_, Template(_, Nil, _, _)) | ExtMethods(_, _, _) =>
           in.token == IDENTIFIER && in.name == nme.extension
         case PackageDef(pid: RefTree, _) =>
           in.isIdent && in.name == pid.name
