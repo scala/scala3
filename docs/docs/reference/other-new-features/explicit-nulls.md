@@ -51,18 +51,18 @@ More details can be found in [safe initialization](./safe-initialization.md).
 ## Equality
 
 We don't allow the double-equal (`==` and `!=`) and reference (`eq` and `ne`) comparison between
-`AnyRef` and `Null` anymore, since a variable with non-nullable type shouldn't have null value.
+`AnyRef` and `Null` anymore, since a variable with a non-nullable type cannot have null as value.
 `null` can only be compared with `Null`, nullable union (`T | Null`), or `Any` type.
 
-For some reason, if we really want to compare `null` with non-null values, we can use cast.
+For some reason, if we really want to compare `null` with non-null values, we have to provide a type hint (e.g. `: Any`).
 
 ```scala
 val x: String = ???
 val y: String | Null = ???
 
-x == null       // error: Values of types String and Null cannot be compared with == or !=
-x eq null       // error
-"hello" == null // error
+x == null         // error: Values of types String and Null cannot be compared with == or !=
+x eq null         // error
+"hello" == null   // error
 
 y == null       // ok
 y == x          // ok
@@ -174,7 +174,7 @@ Specifically, we patch
     }
     ```
 
-    In this case, since `Box` is Scala-defined, and we will get `Box[T|UncheckedNull]|UncheckedNull`.
+    In this case, since `Box` is Scala-defined, we will get `Box[T|UncheckedNull]|UncheckedNull`.
     This is needed because our nullability function is only applied (modularly) to the Java
     classes, but not to the Scala ones, so we need a way to tell `Box` that it contains a
     nullable value.
@@ -204,7 +204,7 @@ Specifically, we patch
     }
     ```
 
-  * We don't append `UncheckedNull` to a field and the return type of a method which is annotated with a
+  * We don't append `UncheckedNull` to a field nor to a return type of a method which is annotated with a
     `NotNull` annotation.
 
     ```java
@@ -288,7 +288,7 @@ val s2 = if (ret != null) {
 
 We added a simple form of flow-sensitive type inference. The idea is that if `p` is a
 stable path or a trackable variable, then we can know that `p` is non-null if it's compared
-with the `null`. This information can then be propagated to the `then` and `else` branches
+with `null`. This information can then be propagated to the `then` and `else` branches
 of an if-statement (among other places).
 
 Example:
@@ -401,7 +401,7 @@ When dealing with local mutable variables, there are two questions:
    x = null
  }
  if (x != null) {
-   // y can be called here, which break the fact
+   // y can be called here, which would break the fact
    val a: String = x // error: x is captured and mutated by the closure, not trackable
  }
  ```
