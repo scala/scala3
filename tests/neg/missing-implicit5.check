@@ -14,7 +14,7 @@
    |
    |  The following import might fix the problem:
    |
-   |    import testObjectInstance.instances.listExtension
+   |    import testObjectInstance.instances.second
    |
 -- [E008] Not Found Error: tests/neg/missing-implicit5.scala:17:17 -----------------------------------------------------
 17 |  Array(1, 2, 3).first // error, no hint

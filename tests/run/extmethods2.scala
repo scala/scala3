@@ -16,26 +16,26 @@ object Test extends App {
   test(using TC())
 
   object A {
-    extension listOps on [T](xs: List[T]) {
+    extension [T](xs: List[T]) {
       def second: T = xs.tail.head
       def third: T = xs.tail.tail.head
       def concat(ys: List[T]) = xs ++ ys
     }
-    extension polyListOps on [T, U](xs: List[T]) {
+    extension [T, U](xs: List[T]) {
       def zipp(ys: List[U]): List[(T, U)] = xs.zip(ys)
     }
-    extension on (xs: List[Int]) {
+    extension (xs: List[Int]) {
       def prod = (1 /: xs)(_ * _)
     }
   }
 
   object B {
-    import A.{given _}
+    import A._
     val xs = List(1, 2, 3)
     assert(xs.second[Int] == 2)
     assert(xs.third == 3)
-    assert(A.listOps.extension_second[Int](xs) == 2)
-    assert(A.listOps.extension_third(xs) == 3)
+    assert(A.extension_second[Int](xs) == 2)
+    assert(A.extension_third(xs) == 3)
     assert(xs.prod == 6)
     assert(xs.concat(xs).length == 6)
     assert(xs.zipp(xs).map(_ + _).prod == 36)

@@ -1,6 +1,0 @@
--- [E154] Syntax Error: tests/neg/anonymous-instance-cannot-be-empty.scala:2:15 ----------------------------------------
-2 |  extension on[T] (t: T) { } // error
-  |               ^^^^^^^^
-  |               anonymous instance must implement a type or have at least one extension method
-
-longer explanation available when compiling with `-explain`

@@ -123,7 +123,7 @@ type T = A:
 given [T] with Ord[T] as Ord[List[T]]:
   def compare(x: List[T], y: List[T]) = ???
 
-extension on (xs: List[Int]):
+extension (xs: List[Int]):
   def second: Int = xs.tail.head
 
 new A:
@@ -256,7 +256,7 @@ For instance, the following end markers are all legal:
       end given
     end C
 
-    extension on (x: C):
+    extension (x: C):
       def ff: String = x.f ++ x.f
     end extension
 

@@ -51,7 +51,7 @@ package p1.p2:
     end given
   end C
 
-  extension on (x: C):
+  extension (x: C):
     def ff: String = x.f
   end extension
 

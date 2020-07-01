@@ -1,4 +1,4 @@
-extension myNumericOps on [T](x: T) {
+extension [T](x: T) {
   def + (y: T)(using n: Numeric[T]): T = n.plus(x,y)
 }
 def foo[T: Numeric](x: T) = 1f + x // error: no implicit argument of type Numeric[Any]

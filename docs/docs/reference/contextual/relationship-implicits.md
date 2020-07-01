@@ -61,23 +61,6 @@ The synthesized type names are formed from
 Tuples are treated as transparent, i.e. a type `F[(X, Y)]` would get the synthesized name
 `F_X_Y`. Directly implemented function types `A => B` are represented as `A_to_B`. Function types used as arguments to other type constructors are represented as `Function`.
 
-### Anonymous Collective Extensions
-
-Anonymous collective extensions also get compiler synthesized names, which are formed from
-
- - the prefix `extension_`
- - the name of the first defined extension method
- - the simple name of the first parameter type of this extension method
- - the simple name(s) of the toplevel argument type constructors to this type.
-
-For example, the extension
-```scala
-extension on [T] (xs: List[T]) {
-  def second = ...
-}
-```
-gets the synthesized name `extension_second_List_T`.
-
 ### Given Clauses
 
 Given clauses correspond largely to Scala-2's implicit parameter clauses. E.g.

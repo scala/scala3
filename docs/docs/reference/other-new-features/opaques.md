@@ -21,7 +21,7 @@ object Logarithms {
   }
 
   // Extension methods define opaque types' public APIs
-  extension logarithmOps on (x: Logarithm) {
+  extension (x: Logarithm) {
     def toDouble: Double = math.exp(x)
     def + (y: Logarithm): Logarithm = Logarithm(math.exp(x) + math.exp(y))
     def * (y: Logarithm): Logarithm = x + y
@@ -36,8 +36,7 @@ Or in other words, within the scope it is treated as type alias, but this is opa
 where in consequence `Logarithm` is seen as an abstract type and has nothing to do with `Double`.
 
 The public API of `Logarithm` consists of the `apply` and `safe` methods defined in the companion object.
-They convert from `Double`s to `Logarithm` values. Moreover, a collective extension `logarithmOps` provides the extension methods `toDouble` that converts the other way,
-and operations `+` and `*` on `Logarithm` values.
+They convert from `Double`s to `Logarithm` values. Moreover, an operation `toDouble` that converts the other way, and operations `+` and `*` are defined as extension methods on `Logarithm` values.
 The following operations would be valid because they use functionality implemented in the `Logarithms` object.
 
 ```scala

@@ -1,4 +1,0 @@
--- Error: tests/neg/extension-method-not-allowed.scala:3:15 ------------------------------------------------------------
-3 |    extension (c: T) def f: T = ??? // error : No extension method allowed here
-  |               ^^^^^^^^^^^^^^^^^^^^
-  |               extension clause can only define methods

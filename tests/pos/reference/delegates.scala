@@ -40,12 +40,12 @@ object Instances extends Common:
         if (fst != 0) fst else xs1.compareTo(ys1)
   end listOrd
 
-  extension stringOps on (xs: Seq[String]):
+  extension (xs: Seq[String]):
     def longestStrings: Seq[String] =
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
 
-  extension on [T](xs: List[T]):
+  extension [T](xs: List[T]):
     def second = xs.tail.head
     def third = xs.tail.tail.head
 
@@ -134,7 +134,7 @@ object PostConditions:
 
   def result[T](using x: WrappedResult[T]): T = x
 
-  extension on [T](x: T):
+  extension [T](x: T):
     def ensuring(condition: WrappedResult[T] ?=> Boolean): T =
       assert(condition(using x))
       x
@@ -154,12 +154,12 @@ object AnonymousInstances extends Common:
         val fst = x.compareTo(y)
         if (fst != 0) fst else xs1.compareTo(ys1)
 
-  extension on (xs: Seq[String]):
+  extension (xs: Seq[String]):
     def longestStrings: Seq[String] =
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
 
-  extension on [T](xs: List[T]):
+  extension [T](xs: List[T]):
     def second = xs.tail.head
 
   given [From, To](using c: Convertible[From, To]) as Convertible[List[From], List[To]]:
@@ -207,8 +207,7 @@ object Implicits extends Common:
 
 object Test extends App:
   Instances.test()
-  import PostConditions.result
-  import PostConditions.{given _}
+  import PostConditions.{result, ensuring}
   val s = List(1, 2, 3).sum
   s.ensuring(result == 6)
 end Test

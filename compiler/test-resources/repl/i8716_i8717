@@ -2,13 +2,13 @@ scala>extension { }
 1 |extension { }
   |^
   |anonymous instance must implement a type or have at least one extension method
-scala> extension as on
-1 | extension as on
+scala> extension as
+1 | extension as
   |                ^
   |                '(' expected, but eof found
-scala> extension as on (s
-1 | extension as on (s
+scala> extension as (s
+1 | extension as (s
   |                   ^
   |                   ':' expected, but eof found
-scala> extension as on (s: String) { def expand = ??? }
+scala> extension as (s: String) { def expand = ??? }
 // defined object as

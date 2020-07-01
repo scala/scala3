@@ -97,9 +97,10 @@ object Test extends App {
     extension (x: Int) def yy(y: Int) = x + y
   }
 
-  extension on (x: Int) {
-    def yy (y: Int) = x - y
-  }
+  given AnyRef:
+    extension (x: Int) {
+      def yy (y: Int) = x - y
+    }
 
   import D._
   assert((1 yy 2) == 3)  // imported extension method takes precedence
