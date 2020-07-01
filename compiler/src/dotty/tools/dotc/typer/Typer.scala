@@ -2998,7 +2998,9 @@ class Typer extends Namer
             arg.tpe match {
               case failed: AmbiguousImplicits =>
                 val pt1 = pt.deepenProto
-                if ((pt1 `ne` pt) && constrainResult(tree.symbol, wtp, pt1)) implicitArgs(formals, argIndex, pt1)
+                if (pt1 `ne` pt) && (pt1 ne sharpenedPt)
+                   && constrainResult(tree.symbol, wtp, pt1)
+                then implicitArgs(formals, argIndex, pt1)
                 else arg :: implicitArgs(formals1, argIndex + 1, pt1)
               case failed: SearchFailureType if !hasDefaultParams =>
                 // no need to search further, the adapt fails in any case
@@ -3243,6 +3245,16 @@ class Typer extends Namer
       case _ => tp
     }
 
+    // If the expected type is a selection of an extension method, deepen it
+    // to also propagate the argument type (which is the receiver we have
+    // typechecked already). This is needed for i8311.scala. Doing so
+    // for all expected types does not work since it would block the case
+    // where we have an argument that must be converted with another
+    // implicit conversion to the receiver type.
+    def sharpenedPt = pt match
+      case pt: SelectionProto if pt.name.isExtensionName => pt.deepenProto
+      case _ => pt
+
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
       def functionExpected = defn.isFunctionType(ptNorm)
@@ -3251,15 +3263,6 @@ class Typer extends Namer
         case IgnoredProto(_: FunOrPolyProto) => false
         case _ => true
       }
-      // If the expected type is a selection of an extension method, deepen it
-      // to also propagate the argument type (which is the receiver we have
-      // typechecked already). This is needed for i8311.scala. Doing so
-      // for all expected types does not work since it would block the case
-      // where we have an argument that must be converted with another
-      // implicit conversion to the receiver type.
-      def sharpenedPt = pt match
-        case pt: SelectionProto if pt.name.isExtensionName => pt.deepenProto
-        case _ => pt
       var resMatch: Boolean = false
       wtp match {
         case wtp: ExprType =>
