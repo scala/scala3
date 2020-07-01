@@ -249,7 +249,9 @@ object Implicits {
 
         val extensionCandidates =
           if considerExtension then
-            companionRefs.toList.flatMap(matchingCandidate(_, extensionOnly = true))
+            companionRefs.toList
+              .filterConserve(!_.symbol.isOneOf(GivenOrImplicit))  // implicit objects are already in `refs`
+              .flatMap(matchingCandidate(_, extensionOnly = true))
           else
             Nil
         val implicitCandidates =
