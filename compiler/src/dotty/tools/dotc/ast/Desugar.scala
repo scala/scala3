@@ -985,16 +985,21 @@ object desugar {
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
    *      If it does redefine, issue an error and return a mangled name instead of the original one.
-   *   2. If the name is missing (this can be the case for instance definitions), invent one instead.
+   *   2. Check that the name does not start with `extension_` unless the
+   *      method is an extension method.
+   *   3. If the name is missing (this can be the case for instance definitions), invent one instead.
    */
   def normalizeName(mdef: MemberDef, impl: Tree)(implicit ctx: Context): Name = {
     var name = mdef.name
     if (name.isEmpty) name = name.likeSpaced(inventGivenOrExtensionName(impl))
+    def errPos = mdef.source.atSpan(mdef.nameSpan)
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
       val kind = if (name.isTypeName) "class" else "object"
-      ctx.error(IllegalRedefinitionOfStandardKind(kind, name), mdef.sourcePos)
+      ctx.error(IllegalRedefinitionOfStandardKind(kind, name), errPos)
       name = name.errorName
     }
+    if name.isExtensionName && !mdef.mods.is(Extension) then
+      ctx.error(em"illegal method name: $name may not start with `extension_`", errPos)
     name
   }
 
