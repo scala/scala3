@@ -86,7 +86,7 @@ Extensions can also take using clauses. For instance, the `+` extension above co
 ```
 
 **Note**: Type parameters have to be given after the `extension` keyword;
-they cannot be given after the `def`. This restriction might be lifted in the future once we support multiple type parameter clauses in a method.
+they cannot be given after the `def`. This restriction might be lifted in the future once we support multiple type parameter clauses in a method. By contrast, there can be using clauses in front as well as after the `def`.
 
 ### Collective Extensions
 
