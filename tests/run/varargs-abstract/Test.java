@@ -8,7 +8,7 @@ public class Test {
     c.y("a", "b", "c");
     c.z("a", "b", "c");
 
-    VarargAbstractClass i = new ClassImplementsClass();
+    VarargAbstractClass<String> i = new ClassImplementsClass();
 
     i.x("a", "b", "c");
     i.y("a", "b", "c");

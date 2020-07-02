@@ -68,6 +68,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   def transformTypeOfTree(tree: Tree)(using Context): Tree =
     tree.withType(elimRepeated(tree.tpe))
 
+  override def transformTypeApply(tree: TypeApply)(using Context): Tree =
+    transformTypeOfTree(tree)
+
   override def transformIdent(tree: Ident)(using Context): Tree =
     transformTypeOfTree(tree)
 
@@ -108,24 +111,51 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   private def arrayToSeq(tree: Tree)(using Context): Tree =
     tpd.wrapArray(tree, tree.tpe.elemType)
 
-  override def transformTypeApply(tree: TypeApply)(using Context): Tree =
-    transformTypeOfTree(tree)
-
   /** If method overrides a Java varargs method or is annotated with @varargs, add a varargs bridge.
    *  Also transform trees inside method annotation.
    */
   override def transformDefDef(tree: DefDef)(using Context): Tree =
     atPhase(thisPhase) {
       val sym = tree.symbol
-      val isOverride = overridesJava(sym)
-      val hasAnnotation = hasVarargsAnnotation(sym) || parentHasAnnotation(sym)
-      if tree.symbol.info.isVarArgsMethod && (isOverride || hasAnnotation) then
-        // non-overrides need the varargs bytecode flag and cannot be synthetic
-        // otherwise javac refuses to call them.
-        addVarArgsBridge(tree, isOverride)
+      val hasAnnotation = hasVarargsAnnotation(sym)
+      if hasRepeatedParams(sym) then
+        val isOverride = overridesJava(sym)
+        if isOverride || hasAnnotation || parentHasAnnotation(sym) then
+          // java varargs are more restrictive than scala's
+          // see https://github.com/scala/bug/issues/11714
+          if !isValidJavaVarArgs(sym.info) then
+            ctx.error("""To generate java-compatible varargs:
+                      |  - there must be a single repeated parameter
+                      |  - it must be the last argument in the last parameter list
+                      |""".stripMargin,
+              tree.sourcePos)
+            tree
+          else
+            addVarArgsBridge(tree, isOverride)
+        else
+          tree
       else
+        if hasAnnotation then
+          ctx.error("A method without repeated parameters cannot be annotated with @varargs", tree.sourcePos)
         tree
     }
+
+  /** Is there a repeated parameter in some parameter list? */
+  private def hasRepeatedParams(sym: Symbol)(using Context): Boolean =
+    sym.info.paramInfoss.flatten.exists(_.isRepeatedParam)
+
+  /** Is this the type of a method that has a repeated parameter type as
+   *  its last parameter in the last parameter list?
+   */
+  private def isValidJavaVarArgs(t: Type)(using Context): Boolean = t match
+    case mt: MethodType =>
+      val initp :+ lastp = mt.paramInfoss
+      initp.forall(_.forall(!_.isRepeatedParam)) &&
+      lastp.nonEmpty &&
+      lastp.init.forall(!_.isRepeatedParam) &&
+      lastp.last.isRepeatedParam
+    case _ => false
+
 
   /** Add a Java varargs bridge
    *  @param ddef    the original method definition
@@ -141,38 +171,52 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  The solution is to add a "bridge" method that converts its argument from `Array[? <: T]` to `Seq[T]` and
    *  forwards it to `ddef`.
    */
-  private def addVarArgsBridge(ddef: DefDef, synthetic: Boolean)(using Context): Tree =
+  private def addVarArgsBridge(ddef: DefDef, javaOverride: Boolean)(using ctx: Context): Tree =
     val original = ddef.symbol.asTerm
     // For simplicity we always set the varargs flag
     // although it's not strictly necessary for overrides
-    val flags = ddef.symbol.flags | JavaVarargs &~ Private
+    // (but it is for non-overrides)
+    val flags = ddef.symbol.flags | JavaVarargs
     val bridge = original.copy(
-        flags = if synthetic then flags | Artifact else flags,
+        // non-overrides cannot be synthetic otherwise javac refuses to call them
+        flags = if javaOverride then flags | Artifact else flags,
         info = toJavaVarArgs(ddef.symbol.info)
       ).enteredAfter(thisPhase).asTerm
 
     val bridgeDef = polyDefDef(bridge, trefs => vrefss => {
-      val (vrefs :+ varArgRef) :: vrefss1 = vrefss
+      val init :+ (last :+ vararg) = vrefss
       // Can't call `.argTypes` here because the underlying array type is of the
       // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
-      val elemtp = varArgRef.tpe.widen.argInfos.head
+      val elemtp = vararg.tpe.widen.argInfos.head
       ref(original.termRef)
         .appliedToTypes(trefs)
-        .appliedToArgs(vrefs :+ tpd.wrapArray(varArgRef, elemtp))
-        .appliedToArgss(vrefss1)
+        .appliedToArgss(init)
+        .appliedToArgs(last :+ tpd.wrapArray(vararg, elemtp))
     })
 
-    Thicket(ddef, bridgeDef)
+    val bridgeDenot = bridge.denot
+    currentClass.info.member(bridge.name).alternatives.find { s =>
+      s.matches(bridgeDenot) &&
+      !(s.asSymDenotation.is(JavaDefined) && javaOverride)
+    } match
+      case Some(conflict) =>
+        ctx.error(s"@varargs produces a forwarder method that conflicts with ${conflict.showDcl}", ddef.sourcePos)
+        EmptyTree
+      case None =>
+        Thicket(ddef, bridgeDef)
 
   /** Convert type from Scala to Java varargs method */
   private def toJavaVarArgs(tp: Type)(using Context): Type = tp match
       case tp: PolyType =>
         tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(tp.resultType))
       case tp: MethodType =>
-        val inits :+ last = tp.paramInfos
-        val vararg = varargArrayType(last)
-        val params = inits :+ vararg
-        tp.derivedLambdaType(tp.paramNames, params, tp.resultType)
+        tp.resultType match
+          case m: MethodType => // multiple param lists
+            tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(m))
+          case _ =>
+            val init :+ last = tp.paramInfos
+            val vararg = varargArrayType(last)
+            tp.derivedLambdaType(tp.paramNames, init :+ vararg, tp.resultType)
 
   /** Translate a repeated type T* to an `Array[? <: Upper]`
    *  such that it is compatible with java varargs.
