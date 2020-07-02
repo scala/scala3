@@ -1,9 +1,7 @@
-// TODO: currently, OverridingParis cannot find bar in S1
-//
-// class S1 extends J {
-//   override def foo(x: (String | Null)*): Unit = ???
-//   override def bar(x: String | Null, y: (String | Null)*): Unit = ???
-// }
+class S1 extends J {
+  override def foo(x: (String | Null)*): Unit = ???
+  override def bar(x: String | Null, y: (String | Null)*): Unit = ???
+}
 
 class S2 extends J {
   override def foo(x: String*): Unit = ???

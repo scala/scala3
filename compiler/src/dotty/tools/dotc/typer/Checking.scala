@@ -15,6 +15,7 @@ import TreeInfo._
 import ProtoTypes._
 import Scopes._
 import CheckRealizable._
+import NullOpsDecorator._
 import ErrorReporting.errorTree
 import rewrites.Rewrites.patch
 import util.Spans.Span
@@ -767,7 +768,7 @@ trait Checking {
    *    - it is defined in Predef
    *    - it is the scala.reflect.Selectable.reflectiveSelectable conversion
    */
-  def checkImplicitConversionUseOK(sym: Symbol, pos: SrcPos)(using Context): Unit =
+  def checkImplicitConversionUseOK(sym: Symbol, tpe: Type, posd: SrcPos)(using Context): Unit =
     if (sym.exists) {
       val conv =
         if (sym.isOneOf(GivenOrImplicit) || sym.info.isErroneous) sym
@@ -775,9 +776,10 @@ trait Checking {
           assert(sym.name == nme.apply || ctx.reporter.errorsReported)
           sym.owner
         }
+      val tpe1 = if ctx.explicitNulls then tpe.stripNull else tpe
       val conversionOK =
         conv.is(Synthetic) ||
-        sym.info.finalResultType.classSymbols.exists(_.isLinkedWith(conv.owner)) ||
+        tpe1.classSymbols.exists(_.isLinkedWith(conv.owner)) ||
         defn.isPredefClass(conv.owner) ||
         conv.name == nme.reflectiveSelectable && conv.maybeOwner.maybeOwner.maybeOwner == defn.ScalaPackageClass
       if (!conversionOK)
@@ -1244,7 +1246,7 @@ trait NoChecking extends ReChecking {
   override def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit = ()
   override def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean)(using Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
-  override def checkImplicitConversionUseOK(sym: Symbol, pos: SrcPos)(using Context): Unit = ()
+  override def checkImplicitConversionUseOK(sym: Symbol, tpe: Type, posd: SrcPos)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
   override def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = ()
   override def checkNoAlphaConflict(stats: List[Tree])(using Context): Unit = ()

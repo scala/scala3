@@ -3502,7 +3502,7 @@ class Typer extends Namer
           case SearchSuccess(found: ExtMethodApply, _, _) =>
             found // nothing to check or adapt for extension method applications
           case SearchSuccess(found, ref, _) =>
-            checkImplicitConversionUseOK(ref.symbol, t.srcPos)
+            checkImplicitConversionUseOK(ref.symbol, found.typeOpt, t.srcPos)
             withoutMode(Mode.ImplicitsEnabled)(readapt(found))
           case failure: SearchFailure =>
             fail(failure)
