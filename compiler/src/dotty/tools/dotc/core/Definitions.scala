@@ -853,7 +853,7 @@ class Definitions {
     "lombok.NonNull" ::
     "reactor.util.annotation.NonNull" ::
     "reactor.util.annotation.NonNullApi" ::
-    "io.reactivex.annotations.NonNull" :: Nil map PreNamedString)
+    "io.reactivex.annotations.NonNull" :: Nil)
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)

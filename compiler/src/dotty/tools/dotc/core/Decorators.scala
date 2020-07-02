@@ -15,12 +15,18 @@ import printing.Formatting._
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
 
-  /** Turns Strings into PreNames, adding toType/TermName methods */
-  implicit class PreNamedString(val s: String) extends AnyVal with PreName {
-    def toTypeName: TypeName = typeName(s)
-    def toTermName: TermName = termName(s)
-    def toText(printer: Printer): Text = Str(s)
-  }
+  /** Extension methods for toType/TermName methods on strings.
+   *  They are in an implicit object for now, so that we can import decorators
+   *  with a normal wildcard. In the future, once #9255 is in trunk, replace with
+   *  a simple collective extension.
+   */
+  implicit object PreNamedString:
+    def (pn: PreName).toTypeName: TypeName = pn match
+      case s: String => typeName(s)
+      case n: Name => n.toTypeName
+    def (pn: PreName).toTermName: TermName = pn match
+      case s: String => termName(s)
+      case n: Name => n.toTermName
 
   implicit class StringDecorator(val s: String) extends AnyVal {
     def splitWhere(f: Char => Boolean, doDropIndex: Boolean): Option[(String, String)] = {

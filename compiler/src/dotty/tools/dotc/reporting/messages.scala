@@ -326,7 +326,7 @@ object messages {
       // to the name of the missing member
       def closest: List[(Int, String)] = candidates
         .toList
-        .map(n => (distance(n.show, missing), n))
+        .map(n => (distance(n, missing), n))
         .filter((d, n) => d <= maxDist && d < missing.length && d < n.length)
         .sorted  // sort by distance first, alphabetically second
 
