@@ -253,7 +253,7 @@ trait Eq[T] {
 }
 
 object Eq {
-  given Eq[Int] as {
+  given Eq[Int] {
     def eqv(x: Int, y: Int) = x == y
   }
 
