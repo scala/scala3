@@ -1,7 +1,6 @@
 package dotty.tools.backend.sjs
 
-import scala.annotation.switch
-
+import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 
 import dotty.tools.FatalError
@@ -38,6 +37,7 @@ import org.scalajs.ir.Trees.OptimizerHints
 import JSEncoding._
 import JSInterop._
 import ScopedVar.withScopedVars
+import dotty.tools.dotc.core.Constants.Constant
 
 /** Main codegen for Scala.js IR.
  *
@@ -69,11 +69,26 @@ class JSCodeGen()(implicit ctx: Context) {
 
   private val generatedClasses = mutable.ListBuffer.empty[js.ClassDef]
 
+  private sealed abstract class EnclosingLabelDefInfo {
+    var generatedReturns: Int = 0
+  }
+
+  object EnclosingLabelDefInfo {
+
+    private[JSCodeGen] final class WithResultAsReturn()
+      extends EnclosingLabelDefInfo
+
+    private[JSCodeGen] final class WithResultAsAssigns(val paramSyms: List[Symbol])
+      extends EnclosingLabelDefInfo
+
+  }
+
   private val currentClassSym = new ScopedVar[Symbol]
   private val currentMethodSym = new ScopedVar[Symbol]
   private val localNames = new ScopedVar[LocalNameGenerator]
   private val thisLocalVarIdent = new ScopedVar[Option[js.LocalIdent]]
   private val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
+  private val enclosingLabelDefInfos = new ScopedVar[Map[Symbol, EnclosingLabelDefInfo]]
 
   private def withNewLocalNameScope[A](body: => A): A = {
     withScopedVars(localNames := new LocalNameGenerator) {
@@ -1175,9 +1190,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
       /** A Match reaching the backend is supposed to be optimized as a switch */
       case mtch: Match =>
-        // TODO Correctly handle `Match` nodes
-        //genMatch(mtch, isStat)
-        js.Throw(js.Null())
+        genMatch(mtch, isStat)
 
       case tree: Closure =>
         genClosure(tree)
@@ -3110,6 +3123,665 @@ class JSCodeGen()(implicit ctx: Context) {
       }
     }
     if (found == null) None else Some(found)
+  }
+
+  /** Gen JS code for a Match, i.e., a switch-able pattern match.
+   *
+   *  In most cases, this straightforwardly translates to a Match in the IR,
+   *  which will eventually become a `switch` in JavaScript.
+   *
+   *  However, sometimes there is a guard in here, despite the fact that
+   *  matches cannot have guards (in the JVM nor in the IR). The JVM backend
+   *  emits a jump to the default clause when a guard is not fulfilled. We
+   *  cannot do that, since we do not have arbitrary jumps. We therefore use
+   *  a funny encoding with two nested `Labeled` blocks. For example,
+   *  {{{
+   *  x match {
+   *    case 1 if y > 0 => a
+   *    case 2          => b
+   *    case _          => c
+   *  }
+   *  }}}
+   *  arrives at the back-end as
+   *  {{{
+   *  x match {
+   *    case 1 =>
+   *      if (y > 0)
+   *        a
+   *      else
+   *        default()
+   *    case 2 =>
+   *      b
+   *    case _ =>
+   *      default() {
+   *        c
+   *      }
+   *  }
+   *  }}}
+   *  which we then translate into the following IR:
+   *  {{{
+   *  matchResult[I]: {
+   *    default[V]: {
+   *      x match {
+   *        case 1 =>
+   *          return(matchResult) if (y > 0)
+   *            a
+   *          else
+   *            return(default) (void 0)
+   *        case 2 =>
+   *          return(matchResult) b
+   *        case _ =>
+   *          ()
+   *      }
+   *    }
+   *    c
+   *  }
+   *  }}}
+   */
+  def genMatch(tree: Tree, isStat: Boolean): js.Tree = {
+    implicit val pos: SourcePosition = tree.sourcePos
+    val Match(selector, cases) = tree
+
+    /* Although GenBCode adapts the scrutinee and the cases to `int`, only
+     * true `int`s can reach the back-end, as asserted by the String-switch
+     * transformation in `cleanup`. Therefore, we do not adapt, preserving
+     * the `string`s and `null`s that come out of the pattern matching in
+     * Scala 2.13.2+.
+     */
+    val genSelector = genExpr(selector)
+
+    val resultType =
+      if (isStat) jstpe.NoType
+      else toIRType(tree.tpe)
+
+    val defaultLabelSym = cases.collectFirst {
+      case CaseDef(Ident(nme.WILDCARD), EmptyTree, body @ Labeled(_, rhs))
+        if hasSynthCaseSymbol(body) => body.symbol
+    }.getOrElse(NoSymbol)
+
+    var clauses: List[(List[js.Tree], js.Tree)] = Nil
+    var optElseClause: Option[js.Tree] = None
+    var optElseClauseLabel: Option[js.LabelIdent] = None
+
+    def genJumpToElseClause(implicit pos: ir.Position): js.Tree = {
+      if (optElseClauseLabel.isEmpty)
+        optElseClauseLabel = Some(localNames.freshLabelIdent("default"))
+      js.Return(js.Undefined(), optElseClauseLabel.get)
+    }
+
+    for (caze @ CaseDef(pat, guard, body) <- cases) {
+      assert(guard == EmptyTree, s"found a case guard at ${caze.sourcePos}")
+
+      def genBody(body: Tree): js.Tree = body match {
+        case app @ Apply(_, Nil) if app.symbol == defaultLabelSym =>
+          genJumpToElseClause
+        case Block(List(app @ Apply(_, Nil)), _) if app.symbol == defaultLabelSym =>
+          genJumpToElseClause
+
+        case If(cond, thenp, elsep) =>
+          js.If(genExpr(cond), genBody(thenp), genBody(elsep))(resultType)
+
+        /* For #1955. If we receive a tree with the shape
+         *   if (cond) {
+         *     thenp
+         *   } else {
+         *     elsep
+         *   }
+         *   scala.runtime.BoxedUnit.UNIT
+         * we rewrite it as
+         *   if (cond) {
+         *     thenp
+         *     scala.runtime.BoxedUnit.UNIT
+         *   } else {
+         *     elsep
+         *     scala.runtime.BoxedUnit.UNIT
+         *   }
+         * so that it fits the shape of if/elses we can deal with.
+         */
+        case Block(List(If(cond, thenp, elsep)), s: Select)
+          if s.symbol == defn.BoxedUnit_UNIT =>
+          def block(t: Tree) = Block(t :: Nil, s).withType(s.tpe).withSpan(t.span)
+          val newThenp = block(thenp)
+          val newElsep = block(elsep)
+          js.If(genExpr(cond), genBody(newThenp), genBody(newElsep))(resultType)
+
+        case _ =>
+          genStatOrExpr(body, isStat)
+      }
+
+      pat match {
+        case lit: Literal =>
+          clauses = (List(genExpr(lit)), genBody(body)) :: clauses
+        case Ident(nme.WILDCARD) =>
+          optElseClause = Some(body match {
+            case Labeled(_, rhs) if hasSynthCaseSymbol(body) =>
+              genBody(rhs)
+            case _ =>
+              genBody(body)
+          })
+        case Alternative(alts) =>
+          val genAlts = {
+            alts map {
+              case lit: Literal => genExpr(lit)
+              case _ =>
+                throw new FatalError("Invalid case in alternative in switch-like pattern match: " +
+                  tree + " at: " + tree.sourcePos)
+            }
+          }
+          clauses = (genAlts, genBody(body)) :: clauses
+        case _ =>
+          throw new FatalError("Invalid case statement in switch-like pattern match: " +
+            tree + " at: " + tree.sourcePos)
+      }
+    }
+
+    val elseClause = optElseClause.getOrElse(
+      throw new AssertionError("No elseClause in pattern match"))
+
+    /* Builds a `js.Match`, but simplifies it to a `js.If` if there is only
+     * one case with one alternative, and to a `js.Block` if there is no case
+     * at all. This happens in practice in the standard library. Having no
+     * case is a typical product of `match`es that are full of
+     * `case n if ... =>`, which are used instead of `if` chains for
+     * convenience and/or readability.
+     *
+     * When no optimization applies, and any of the case values is not a
+     * literal int, we emit a series of `if..else` instead of a `js.Match`.
+     * This became necessary in 2.13.2 with strings and nulls.
+     */
+    def buildMatch(cases: List[(List[js.Tree], js.Tree)],
+                   default: js.Tree, tpe: jstpe.Type): js.Tree = {
+
+      def isInt(tree: js.Tree): Boolean = tree.tpe == jstpe.IntType
+
+      cases match {
+        case Nil =>
+          /* Completely remove the Match. Preserve the side-effects of
+           * `genSelector`.
+           */
+          js.Block(exprToStat(genSelector), default)
+
+        case (uniqueAlt :: Nil, caseRhs) :: Nil =>
+          /* Simplify the `match` as an `if`, so that the optimizer has less
+           * work to do, and we emit less code at the end of the day.
+           * Use `Int_==` instead of `===` if possible, since it is a common
+           * case.
+           */
+          val op =
+            if (isInt(genSelector) && isInt(uniqueAlt)) js.BinaryOp.Int_==
+            else js.BinaryOp.===
+          js.If(js.BinaryOp(op, genSelector, uniqueAlt), caseRhs, default)(tpe)
+
+        case _ =>
+          if (isInt(genSelector) &&
+            cases.forall(_._1.forall(_.isInstanceOf[js.IntLiteral]))) {
+            // We have int literals only: use a js.Match
+            val intCases = cases.asInstanceOf[List[(List[js.IntLiteral], js.Tree)]]
+            js.Match(genSelector, intCases, default)(tpe)
+          } else {
+            // We have other stuff: generate an if..else chain
+            val (tempSelectorDef, tempSelectorRef) = genSelector match {
+              case varRef: js.VarRef =>
+                (js.Skip(), varRef)
+              case _ =>
+                val varDef = js.VarDef(freshLocalIdent(), NoOriginalName,
+                  genSelector.tpe, mutable = false, genSelector)
+                (varDef, varDef.ref)
+            }
+            val ifElseChain = cases.foldRight(default) { (caze, elsep) =>
+              val conds = caze._1.map { caseValue =>
+                js.BinaryOp(js.BinaryOp.===, tempSelectorRef, caseValue)
+              }
+              val cond = conds.reduceRight[js.Tree] { (left, right) =>
+                js.If(left, js.BooleanLiteral(value = true), right)(jstpe.BooleanType)
+              }
+              js.If(cond, caze._2, elsep)(tpe)
+            }
+            js.Block(tempSelectorDef, ifElseChain)
+          }
+      }
+    }
+
+    optElseClauseLabel.fold[js.Tree] {
+      buildMatch(clauses.reverse, elseClause, resultType)
+    } { elseClauseLabel =>
+      val matchResultLabel = localNames.freshLabelIdent("matchResult")
+      val patchedClauses = for ((alts, body) <- clauses) yield {
+        implicit val pos: Position = body.pos
+        val newBody =
+          if (isStat) js.Block(body, js.Return(js.Undefined(), matchResultLabel))
+          else js.Return(body, matchResultLabel)
+        (alts, newBody)
+      }
+      js.Labeled(matchResultLabel, resultType, js.Block(List(
+        js.Labeled(elseClauseLabel, jstpe.NoType, {
+          buildMatch(patchedClauses.reverse, js.Skip(), jstpe.NoType)
+        }),
+        elseClause
+      )))
+    }
+  }
+
+  private def hasSynthCaseSymbol(tree: Tree): Boolean =
+    tree.symbol.flags.isAllOf(SyntheticCase)
+
+  /** Predicate satisfied by Labeled produced by the pattern matcher,
+   *  except matchEnd's.
+   */
+  private def isCaseLabeled(tree: Tree): Boolean = {
+    tree.isInstanceOf[Labeled] && hasSynthCaseSymbol(tree) &&
+      !tree.symbol.name.startsWith("matchEnd")
+  }
+
+  /** Predicate satisfied by matchEnd Labeled produced by the pattern
+   *  matcher.
+   */
+  private def isMatchEndLabeled(tree: Labeled): Boolean =
+    hasSynthCaseSymbol(tree) && tree.symbol.name.startsWith("matchEnd")
+
+  private def genBlock(tree: Block, isStat: Boolean): js.Tree = {
+    implicit val pos: SourcePosition = tree.sourcePos
+    val Block(stats, expr) = tree
+
+    val genStatsAndExpr = if (!stats.exists(isCaseLabeled)) {
+      // fast path
+      stats.map(genStat) :+ genStatOrExpr(expr, isStat)
+    } else {
+      genBlockWithCaseLabelDefs(stats :+ expr, isStat)
+    }
+
+    /* A bit of dead code elimination: we drop all statements and
+     * expressions after the first statement of type `NothingType`.
+     * This helps other optimizations.
+     */
+    val (nonNothing, rest) = genStatsAndExpr.span(_.tpe != jstpe.NothingType)
+    if (rest.isEmpty || rest.tail.isEmpty)
+      js.Block(genStatsAndExpr)
+    else
+      js.Block(nonNothing, rest.head)
+  }
+
+  private def genBlockWithCaseLabelDefs(trees: List[Tree], isStat: Boolean)(
+    implicit pos: Position): List[js.Tree] = {
+
+    val (prologue, casesAndRest) = trees.span(!isCaseLabeled(_))
+
+    if (casesAndRest.isEmpty) {
+      if (prologue.isEmpty) Nil
+      else if (isStat) prologue.map(genStat)
+      else prologue.init.map(genStat) :+ genExpr(prologue.last)
+    } else {
+      val genPrologue = prologue.map(genStat)
+
+      val (cases0, rest) = casesAndRest.span(isCaseLabeled)
+      val cases = cases0.asInstanceOf[List[Labeled]]
+
+      val genCasesAndRest = rest match {
+        case (matchEnd: Labeled) :: more if isMatchEndLabeled(matchEnd) =>
+          val translatedMatch = genTranslatedMatch(cases, matchEnd)
+          translatedMatch :: genBlockWithCaseLabelDefs(more, isStat)
+
+        // Sometimes the pattern matcher casts its final result
+        case Apply(TypeApply(Select(matchEnd: Labeled, nme.asInstanceOfPM),
+        List(targ)), Nil) :: more
+          if isMatchEndLabeled(matchEnd) =>
+          val translatedMatch = genTranslatedMatch(cases, matchEnd)
+          genAsInstanceOf(translatedMatch, targ.tpe) :: genBlockWithCaseLabelDefs(more, isStat)
+
+        // Peculiar shape generated by `return x match {...}` - #2928
+        case Return(matchEnd: Labeled, from @ _) :: more if isMatchEndLabeled(matchEnd) =>
+          val translatedMatch = genTranslatedMatch(cases, matchEnd)
+          val genMore = genBlockWithCaseLabelDefs(more, isStat)
+          val label = localNames.getEnclosingReturnLabel()
+          if (translatedMatch.tpe == jstpe.NoType) {
+            // Could not actually reproduce this, but better be safe than sorry
+            translatedMatch :: js.Return(js.Undefined(), label) :: genMore
+          } else {
+            js.Return(translatedMatch, label) :: genMore
+          }
+
+        // Otherwise, there is no matchEnd, only consecutive cases
+        case Nil =>
+          genTranslatedCases(cases, isStat)
+        case _ =>
+          genTranslatedCases(cases, isStat = false) ::: genBlockWithCaseLabelDefs(rest, isStat)
+      }
+
+      genPrologue ::: genCasesAndRest
+    }
+  }
+
+  /** Gen JS code for a translated match.
+   *
+   *  A translated match consists of consecutive `case` Labeleds directly
+   *  followed by a `matchEnd` Labeled.
+   */
+  private def genTranslatedMatch(cases: List[Labeled], matchEnd: Labeled)(
+    implicit pos: Position): js.Tree = {
+    genMatchEnd(matchEnd) {
+      genTranslatedCases(cases, isStat = true)
+    }
+  }
+
+  /** Gen JS code for the cases of a patmat-transformed match.
+   *
+   *  This implementation relies heavily on the patterns of trees emitted
+   *  by the pattern match phase, including its variants across versions of
+   *  scalac that we support.
+   *
+   *  The trees output by the pattern matcher are assumed to follow these
+   *  rules:
+   *
+   *  - Each case LabelDef (in `cases`) must not take any argument.
+   *  - Jumps to case label-defs are restricted to jumping to the very next
+   *    case.
+   *
+   *  There is an optimization to avoid generating jumps that are in tail
+   *  position of a case, if they are in positions denoted by <jump> in:
+   *  {{{
+   *  <case-body> ::=
+   *      If(_, <case-body>, <case-body>)
+   *    | Block(_, <case-body>)
+   *    | <jump>
+   *    | _
+   *  }}}
+   *  Since all but the last case (which cannot have jumps) are in statement
+   *  position, those jumps in tail position can be replaced by `skip`.
+   */
+  private def genTranslatedCases(cases: List[Labeled], isStat: Boolean)(
+    implicit pos: Position): List[js.Tree] = {
+
+    assert(cases.nonEmpty, s"genTranslatedCases called with no cases at $pos")
+
+    val translatedCasesInit = for {
+      (caseLabelDef, nextCaseSym) <- cases.zip(cases.tail.map(_.symbol))
+    } yield {
+      implicit val pos: SourcePosition = caseLabelDef.sourcePos
+
+      val info = new EnclosingLabelDefInfo.WithResultAsAssigns(Nil)
+
+      val translatedBody = withScopedVars(
+        enclosingLabelDefInfos :=
+          enclosingLabelDefInfos.get + (nextCaseSym -> info)
+      ) {
+        /* Eager optimization of jumps in tail position, following the shapes
+         * produced by scala until 2.12.8. 2.12.9 introduced flat patmat
+         * translation, which does not trigger those optimizations.
+         * These shapes are also often produced by the async transformation.
+         */
+        def genCaseBody(tree: Tree): js.Tree = {
+          implicit val pos: SourcePosition = tree.sourcePos
+          tree match {
+            case If(cond, thenp, elsep) =>
+              js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))(
+                jstpe.NoType)
+
+            case Block(stats, Literal(Constant(()))) =>
+              // Generated a lot by the async transform
+              if (stats.isEmpty) js.Skip()
+              else js.Block(stats.init.map(genStat), genCaseBody(stats.last))
+
+            case Block(stats, expr) =>
+              js.Block((stats map genStat) :+ genCaseBody(expr))
+
+            case Apply(_, Nil) if tree.symbol == nextCaseSym =>
+              js.Skip()
+
+            case _ =>
+              genStat(tree)
+          }
+        }
+
+        genCaseBody(caseLabelDef.expr)
+      }
+
+      genOptimizedCaseLabeled(encodeLabelSym(nextCaseSym), translatedBody,
+        info.generatedReturns)
+    }
+
+    val translatedLastCase = genStatOrExpr(cases.last.expr, isStat)
+
+    translatedCasesInit :+ translatedLastCase
+  }
+
+  /** Gen JS code for a match-end labeled following match-cases.
+   *
+   *  The preceding cases, which are allowed to jump to this match-end, must
+   *  be generated in the `genTranslatedCases` callback. During the execution
+   *  of this callback, the enclosing label infos contain appropriate info
+   *  for this match-end.
+   *
+   *  The translation of the match-end itself is straightforward, but is
+   *  augmented with several optimizations to remove as many labeled blocks
+   *  as possible.
+   *
+   *  Most of the time, a match-end label has exactly one parameter. However,
+   *  with the async transform, it can sometimes have no parameter instead.
+   *  We handle those cases very differently.
+   */
+  private def genMatchEnd(matchEnd: Labeled)(
+    genTranslatedCases: => List[js.Tree])(
+                           implicit pos: Position): js.Tree = {
+
+    val sym = matchEnd.symbol
+    val labelIdent = encodeLabelSym(sym)
+    val matchEndBody = matchEnd.expr
+
+    def genMatchEndBody(): js.Tree = {
+      genStatOrExpr(matchEndBody,
+        isStat = toIRType(matchEndBody.tpe) == jstpe.NoType)
+    }
+
+    val params: List[Ident] = List.empty // FIXME
+
+    //matchEnd.params match {
+    params match {
+      // Optimizable common case produced by the regular pattern matcher
+      case List(matchEndParam) =>
+        val info = new EnclosingLabelDefInfo.WithResultAsReturn()
+
+        val translatedCases = withScopedVars(
+          enclosingLabelDefInfos := enclosingLabelDefInfos.get + (sym -> info)
+        ) {
+          genTranslatedCases
+        }
+
+        val innerResultType = toIRType(matchEndParam.tpe)
+        val optimized = genOptimizedMatchEndLabeled(encodeLabelSym(sym),
+          innerResultType, translatedCases, info.generatedReturns)
+
+        matchEndBody match {
+          case Ident(_) if matchEndParam.symbol == matchEndBody.symbol =>
+            // matchEnd is identity.
+            optimized
+
+          case Literal(Constant(())) =>
+            // Unit return type.
+            optimized
+
+          case _ =>
+            // matchEnd does something.
+            js.Block(
+              js.VarDef(encodeLocalSym(matchEndParam.symbol),
+                originalNameOfLocal(matchEndParam.symbol),
+                innerResultType, mutable = false, optimized),
+              genMatchEndBody())
+        }
+
+      /* Other cases, notably the matchEnd's produced by the async transform,
+       * which have no parameters. The case of more than one parameter is
+       * hypothetical, but it costs virtually nothing to handle it here.
+       */
+      case params =>
+        val paramSyms = params.map(_.symbol)
+        val varDefs = for (s <- paramSyms) yield {
+          implicit val pos: SourcePosition = s.sourcePos
+          val irType = toIRType(s.info.resultType)
+          js.VarDef(encodeLocalSym(s), originalNameOfLocal(s), irType,
+            mutable = true, jstpe.zeroOf(irType))
+        }
+        val info = new EnclosingLabelDefInfo.WithResultAsAssigns(paramSyms)
+        val translatedCases = withScopedVars(
+          enclosingLabelDefInfos := enclosingLabelDefInfos.get + (sym -> info)
+        ) {
+          genTranslatedCases
+        }
+        val optimized = genOptimizedMatchEndLabeled(labelIdent, jstpe.NoType,
+          translatedCases, info.generatedReturns)
+        js.Block(varDefs ::: optimized :: genMatchEndBody() :: Nil)
+    }
+  }
+
+  /** Gen JS code for a Labeled block from a pattern match'es case, while
+   *  trying to optimize it away as a reversed If.
+   *
+   *  If there was no `return` to the label at all, simply avoid generating
+   *  the `Labeled` block altogether.
+   *
+   *  If there was more than one `return`, do not optimize anything, as
+   *  nothing could be good enough for `genOptimizedMatchEndLabeled` to do
+   *  anything useful down the line.
+   *
+   *  If however there was a single `return`, we try and get rid of it by
+   *  identifying the following shape:
+   *
+   *  {{{
+   *  {
+   *    ...stats1
+   *    if (test)
+   *      return(nextCaseSym)
+   *    ...stats2
+   *  }
+   *  }}}
+   *
+   *  which we then rewrite as
+   *
+   *  {{{
+   *  {
+   *    ...stats1
+   *    if (!test) {
+   *      ...stats2
+   *    }
+   *  }
+   *  }}}
+   *
+   *  The above rewrite is important for `genOptimizedMatchEndLabeled` below
+   *  to be able to do its job, which in turn is important for the IR
+   *  optimizer to perform a better analysis.
+   *
+   *  This whole thing is only necessary in Scala 2.12.9+, with the new flat
+   *  patmat ASTs. In previous versions, `returnCount` is always 0 because
+   *  all jumps to case labels are already caught upstream by `genCaseBody()`
+   *  inside `genTranslatedMatch()`.
+   */
+  private def genOptimizedCaseLabeled(label: js.LabelIdent,
+                                      translatedBody: js.Tree, returnCount: Int)(
+                                       implicit pos: Position): js.Tree = {
+
+    def default: js.Tree =
+      js.Labeled(label, jstpe.NoType, translatedBody)
+
+    if (returnCount == 0) {
+      translatedBody
+    } else if (returnCount > 1) {
+      default
+    } else {
+      translatedBody match {
+        case js.Block(stats) =>
+          val (stats1, testAndStats2) = stats.span {
+            case js.If(_, js.Return(js.Undefined(), `label`), js.Skip()) =>
+              false
+            case _ =>
+              true
+          }
+
+          testAndStats2 match {
+            case js.If(cond, _, _) :: stats2 =>
+              val notCond = cond match {
+                case js.UnaryOp(js.UnaryOp.Boolean_!, notCond) =>
+                  notCond
+                case _ =>
+                  js.UnaryOp(js.UnaryOp.Boolean_!, cond)
+              }
+              js.Block(stats1 :+ js.If(notCond, js.Block(stats2), js.Skip())(jstpe.NoType))
+
+            case _ :: _ =>
+              throw new AssertionError("unreachable code")
+
+            case Nil =>
+              default
+          }
+
+        case _ =>
+          default
+      }
+    }
+  }
+
+  /** Gen JS code for a Labeled block from a pattern match'es match-end,
+   *  while trying to optimize it away as an If chain.
+   *
+   *  It is important to do so at compile-time because, when successful, the
+   *  resulting IR can be much better optimized by the optimizer.
+   *
+   *  The optimizer also does something similar, but *after* it has processed
+   *  the body of the Labeled block, at which point it has already lost any
+   *  information about stack-allocated values.
+   *
+   *  !!! There is quite of bit of code duplication with
+   *      OptimizerCore.tryOptimizePatternMatch.
+   */
+  def genOptimizedMatchEndLabeled(label: js.LabelIdent, tpe: jstpe.Type,
+                                  translatedCases: List[js.Tree], returnCount: Int)(
+                                   implicit pos: Position): js.Tree = {
+    def default: js.Tree =
+      js.Labeled(label, tpe, js.Block(translatedCases))
+
+    @tailrec
+    def createRevAlts(xs: List[js.Tree],
+                      acc: List[(js.Tree, js.Tree)]): (List[(js.Tree, js.Tree)], js.Tree) = xs match {
+      case js.If(cond, body, js.Skip()) :: xr =>
+        createRevAlts(xr, (cond, body) :: acc)
+      case remaining =>
+        (acc, js.Block(remaining)(remaining.head.pos))
+    }
+    val (revAlts, elsep) = createRevAlts(translatedCases, Nil)
+
+    if (revAlts.size == returnCount - 1) {
+      def tryDropReturn(body: js.Tree): Option[js.Tree] = body match {
+        case js.Return(result, `label`) =>
+          Some(result)
+
+        case js.Block(prep :+ js.Return(result, `label`)) =>
+          Some(js.Block(prep :+ result)(body.pos))
+
+        case _ =>
+          None
+      }
+
+      @tailrec
+      def constructOptimized(revAlts: List[(js.Tree, js.Tree)],
+                             elsep: js.Tree): js.Tree = {
+        revAlts match {
+          case (cond, body) :: revAltsRest =>
+            // cannot use flatMap due to tailrec
+            tryDropReturn(body) match {
+              case Some(newBody) =>
+                constructOptimized(revAltsRest,
+                  js.If(cond, newBody, elsep)(tpe)(cond.pos))
+
+              case None =>
+                default
+            }
+          case Nil =>
+            elsep
+        }
+      }
+
+      tryDropReturn(elsep).fold(default)(constructOptimized(revAlts, _))
+    } else {
+      default
+    }
   }
 }
 
