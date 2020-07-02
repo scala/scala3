@@ -46,7 +46,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   private def overridesJava(sym: Symbol)(using Context) = sym.allOverriddenSymbols.exists(_.is(JavaDefined))
 
-  private def hasVargsAnnotation(sym: Symbol)(using ctx: Context) = sym.hasAnnotation(defn.VarargsAnnot)
+  private def hasVarargsAnnotation(sym: Symbol)(using Context) = sym.hasAnnotation(defn.VarargsAnnot)
+
+  private def parentHasAnnotation(sym: Symbol)(using Context) = sym.allOverriddenSymbols.exists(hasVarargsAnnotation)
 
   /** Eliminate repeated parameters from method types. */
   private def elimRepeated(tp: Type)(using Context): Type = tp.stripTypeVar match
@@ -114,8 +116,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    */
   override def transformDefDef(tree: DefDef)(using Context): Tree =
     atPhase(thisPhase) {
-      val isOverride = overridesJava(tree.symbol)
-      val hasAnnotation = hasVargsAnnotation(tree.symbol)
+      val sym = tree.symbol
+      val isOverride = overridesJava(sym)
+      val hasAnnotation = hasVarargsAnnotation(sym) || parentHasAnnotation(sym)
       if tree.symbol.info.isVarArgsMethod && (isOverride || hasAnnotation) then
         // non-overrides need the varargs bytecode flag and cannot be synthetic
         // otherwise javac refuses to call them.
@@ -125,7 +128,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     }
 
   /** Add a Java varargs bridge
-   *  @param  ddef   the original method definition
+   *  @param ddef    the original method definition
    *  @param addFlag the flag to add to the method symbol
 
    *  @return a thicket consisting of `ddef` and a varargs bridge method
@@ -141,6 +144,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   private def addVarArgsBridge(ddef: DefDef, synthetic: Boolean)(using Context): Tree =
     val original = ddef.symbol.asTerm
     // For simplicity we always set the varargs flag
+    // although it's not strictly necessary for overrides
     val flags = ddef.symbol.flags | JavaVarargs &~ Private
     val bridge = original.copy(
         flags = if synthetic then flags | Artifact else flags,
@@ -162,11 +166,26 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Convert type from Scala to Java varargs method */
   private def toJavaVarArgs(tp: Type)(using Context): Type = tp match
-    case tp: PolyType =>
-      tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(tp.resultType))
-    case tp: MethodType =>
-      val inits :+ last = tp.paramInfos
-      val last1 = last.translateFromRepeated(toArray = true)
-      tp.derivedLambdaType(tp.paramNames, inits :+ last1, tp.resultType)
+      case tp: PolyType =>
+        tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(tp.resultType))
+      case tp: MethodType =>
+        val inits :+ last = tp.paramInfos
+        val vararg = varargArrayType(last)
+        val params = inits :+ vararg
+        tp.derivedLambdaType(tp.paramNames, params, tp.resultType)
+
+  /** Translate a repeated type T* to an `Array[? <: Upper]`
+   *  such that it is compatible with java varargs.
+   *
+   *  If T is not a primitive type, we set `Upper = T & AnyRef`
+   *  to prevent the erasure of `Array[? <: Upper]` to Object,
+   *  which would break the varargs from Java.
+   */
+  private def varargArrayType(tp: Type)(using Context): Type =
+    val array = tp.translateFromRepeated(toArray = true)
+    val element = array.elemType.typeSymbol
+
+    if element.isPrimitiveValueClass then array
+    else defn.ArrayOf(TypeBounds.upper(AndType(element.typeRef, defn.AnyRefType)))
 
 }
