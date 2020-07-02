@@ -11,7 +11,7 @@ This means the following code will no longer typecheck:
 val x: String = null // error: found `Null`,  but required `String`
 ```
 
-Instead, to mark a type as nullable we use a [type union](https://dotty.epfl.ch/docs/reference/new-types/union-types.html)
+Instead, to mark a type as nullable we use a [union type](https://dotty.epfl.ch/docs/reference/new-types/union-types.html)
 
 ```
 val x: String|Null = null // ok
@@ -51,7 +51,7 @@ More details can be found in [safe initialization](./safe-initialization.md).
 ## Equality
 
 We don't allow the double-equal (`==` and `!=`) and reference (`eq` and `ne`) comparison between
-`AnyRef` and `Null` anymore, since a variable with a non-nullable type cannot have null as value.
+`AnyRef` and `Null` anymore, since a variable with a non-nullable type cannot have `null` as value.
 `null` can only be compared with `Null`, nullable union (`T | Null`), or `Any` type.
 
 For some reason, if we really want to compare `null` with non-null values, we have to provide a type hint (e.g. `: Any`).
@@ -60,9 +60,9 @@ For some reason, if we really want to compare `null` with non-null values, we ha
 val x: String = ???
 val y: String | Null = ???
 
-x == null         // error: Values of types String and Null cannot be compared with == or !=
-x eq null         // error
-"hello" == null   // error
+x == null       // error: Values of types String and Null cannot be compared with == or !=
+x eq null       // error
+"hello" == null // error
 
 y == null       // ok
 y == x          // ok
@@ -87,7 +87,7 @@ So far, we have found the following useful:
     This means that given `x: String|Null`, `x.nn` has type `String`, so we can call all the
     usual methods on it. Of course, `x.nn` will throw a NPE if `x` is `null`.
 
-    Don't use `.nn` on mutable variables directly, which may introduce unknown value into the type.
+    Don't use `.nn` on mutable variables directly, because it may introduce an unknown type into the type of the variable.
 
 ## Java Interop
 
@@ -99,7 +99,7 @@ Specifically, we patch
 * the type of fields
 * the argument type and return type of methods
 
-`UncheckedNull` is an alias for `Null` with magic properties (see below). We illustrate the rules with following examples:
+`UncheckedNull` is an alias for `Null` with magic properties (see [below](#uncheckednull)). We illustrate the rules with following examples:
 
   * The first two rules are easy: we nullify reference types but not value types.
 
@@ -376,7 +376,7 @@ We are able to detect the nullability of some local mutable variables. A simple 
 class C(val x: Int, val next: C|Null)
 
 var xs: C|Null = C(1, C(2, null))
-// xs is trackable, since all assignments are in the same mathod
+// xs is trackable, since all assignments are in the same method
 while (xs != null) {
   // xs: C
   val xsx: Int = xs.x
