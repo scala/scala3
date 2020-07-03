@@ -147,13 +147,15 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   /** Is this the type of a method that has a repeated parameter type as
    *  its last parameter in the last parameter list?
    */
-  private def isValidJavaVarArgs(t: Type)(using Context): Boolean = t match
+  private def isValidJavaVarArgs(tp: Type)(using Context): Boolean = tp match
     case mt: MethodType =>
       val initp :+ lastp = mt.paramInfoss
       initp.forall(_.forall(!_.isRepeatedParam)) &&
       lastp.nonEmpty &&
       lastp.init.forall(!_.isRepeatedParam) &&
       lastp.last.isRepeatedParam
+    case pt: PolyType =>
+      isValidJavaVarArgs(pt.resultType)
     case _ => false
 
 
