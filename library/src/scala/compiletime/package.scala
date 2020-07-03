@@ -4,6 +4,16 @@ import scala.quoted._
 
 package object compiletime {
 
+  /** Use this method when you have a type, do not have a value for it but want to
+   *  pattern match on it. For example, given a type `Tup <: Tuple`, one can
+   *  pattern-match on it as follows:
+   *  ```
+   *  erasedValue[Tup] match {
+   *    case _: EmptyTuple => ...
+   *    case _: h *: t => ...
+   *  }
+   *  ```
+   */
   erased def erasedValue[T]: T = ???
 
   /** The error method is used to produce user-defined compile errors during inline expansion.
@@ -38,9 +48,28 @@ package object compiletime {
   transparent inline def (inline self: StringContext) code (inline args: Any*): String =
     ${ dotty.internal.CompileTimeMacros.codeExpr('self, 'args) }
 
+  /** Same as `constValue` but returns a `None` if a constant value
+   *  cannot be constructed from the provided type. Otherwise returns
+   *  that value wrapped in `Some`.
+   */
   inline def constValueOpt[T]: Option[T] = ???
 
+  /** Given a constant, singleton type `T`, convert it to a value
+   *  of the same singleton type. For example: `assert(constValue[1] == 1)`.
+   */
   inline def constValue[T]: T = ???
+
+  /** Given a tuple type `(X1, ..., Xn)`, returns a tuple value
+   *  `(constValue[X1], ..., constValue[Xn])`.
+   */
+  inline def constValueTuple[T <: Tuple]: Tuple.Widen[T]=
+    val res =
+      inline erasedValue[T] match
+        case _: EmptyTuple => EmptyTuple
+        case _: (t *: ts) => constValue[t] *: constValueTuple[ts]
+      end match
+    res.asInstanceOf[Tuple.Widen[T]]
+  end constValueTuple
 
   /** Summons first given matching one of the listed cases. E.g. in
    *
@@ -68,6 +97,20 @@ package object compiletime {
     case t: T => t
   }
 
+  /** Given a tuple T, summons each of its member types and returns them in
+   *  a Tuple.
+   *
+   *  @tparam T the tuple containing the types of the values to be summoned
+   *  @return the given values typed as elements of the tuple
+   */
+  inline def summonAll[T <: Tuple]: Tuple.Widen[T] =
+    val res =
+      inline erasedValue[T] match
+        case _: EmptyTuple => EmptyTuple
+        case _: (t *: ts) => summonInline[t] *: summonAll[ts]
+      end match
+    res.asInstanceOf[Tuple.Widen[T]]
+  end summonAll
 
   /** Succesor of a natural number where zero is the type 0 and successors are reduced as if the definition was
    *
