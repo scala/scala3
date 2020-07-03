@@ -378,7 +378,7 @@ class CommunityBuildTest:
   @Test def sourcecode = projects.sourcecode.run()
   @Test def oslib = projects.oslib.run()
   @Test def ujson = projects.ujson.run()
-  @Test def upickle = projects.upickle.run()
+  // @Test def upickle = projects.upickle.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
   @Test def geny = projects.geny.run()
   @Test def stdLib213 = projects.stdLib213.run()
