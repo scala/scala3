@@ -795,9 +795,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       withEnclosingDef(tree) {
         val (prefix, vparamss) =
           if isExtension then
-            (keywordStr("extension") ~~ paramsText(tree.vparamss.head)
+            val (leadingParams, otherParamss) = (tree.vparamss: @unchecked) match
+              case vparams1 :: vparams2 :: rest if !isLeftAssoc(tree.name) =>
+                (vparams2, vparams1 :: rest)
+              case vparams1 :: rest =>
+                (vparams1, rest)
+            (keywordStr("extension") ~~ paramsText(leadingParams)
              ~~ (defKeyword ~~ valDefText(nameIdText(tree, dropExtension = true))).close,
-             tree.vparamss.tail)
+             otherParamss)
           else (defKeyword ~~ valDefText(nameIdText(tree)), tree.vparamss)
 
         addVparamssText(prefix ~ tparamsText(tree.tparams), vparamss) ~
