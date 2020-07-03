@@ -1332,12 +1332,12 @@ trait CompilerInterface {
   /** Fields of a case class type -- only the ones declared in primary constructor */
   def Symbol_caseFields(self: Symbol)(using ctx: Context): List[Symbol]
 
-  /** Default parameters of a case class. Keys are names of the parameters and values –
-   *  symbols of the definitions sites of the default values.
+  /** Default parameters of a case class. The first elements of the pairs are names of
+   *  the parameters and values – symbols of the definitions sites of the default values.
    *  Implementation restriction: only the default parameters in the first parameter group
    *  are returned.
    */
-  def Symbol_defaultParams(self: Symbol)(using ctx: Context): Map[String, Symbol]
+  def Symbol_defaultParams(self: Symbol)(using ctx: Context): List[(String, Symbol)]
 
   def Symbol_of(fullName: String)(using ctx: Context): Symbol
 
