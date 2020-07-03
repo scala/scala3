@@ -1108,7 +1108,6 @@ trait Implicits { self: Typer =>
       * a diverging search
       */
     def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult =
-      //println(i"try $cand for $pt")
       if (ctx.searchHistory.checkDivergence(cand, pt))
         SearchFailure(new DivergingImplicit(cand.ref, pt.widenExpr, argument))
       else {
@@ -1315,7 +1314,6 @@ trait Implicits { self: Typer =>
           val eligible =
             if (contextual) ctx.implicits.eligible(wildProto)
             else implicitScope(wildProto).eligible
-          //println(i"eligible for $wildProto = $eligible%, %")
           searchImplicits(eligible, contextual) match {
             case result: SearchSuccess =>
               result
