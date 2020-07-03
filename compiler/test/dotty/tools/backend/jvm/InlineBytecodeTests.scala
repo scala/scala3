@@ -345,7 +345,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
   }
 
     // Testing that a is not boxed
-    @Test def i4522 = {
+  @Test def i4522 = {
     val source = """class Foo {
                    |  def test: Int = {
                    |    var a = 10
@@ -480,7 +480,28 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected = List(Ldc(LDC, 5.0), Op(DRETURN))
       assert(instructions == expected,
         "`divide` was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
+    }
+  }
 
+  @Test def finalVals = {
+    val source = """class Test:
+                   |  final val a = 1 // should be inlined but not erased
+                   |  inline val b = 2 // should be inlined and erased
+                   |  def test: Int = a + b
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected = List(Op(ICONST_3), Op(IRETURN))
+      assert(instructions == expected,
+        "`a and b were not properly inlined in `test`\n" + diffInstructions(instructions, expected))
+
+      val methods = clsNode.methods.asScala.toList.map(_.name)
+      assert(methods == List("<init>", "a", "test"), clsNode.methods.asScala.toList.map(_.name))
     }
   }
 

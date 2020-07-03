@@ -114,7 +114,9 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         EmptyTree
       }
 
-    if (sym.is(Accessor, butNot = NoFieldNeeded)) {
+    val constantFinalVal = sym.isAllOf(Accessor | Final, butNot = Mutable) && tree.rhs.isInstanceOf[Literal]
+
+    if (sym.is(Accessor, butNot = NoFieldNeeded) && !constantFinalVal) {
       val field = sym.field.orElse(newField).asTerm
 
       def adaptToField(tree: Tree): Tree =

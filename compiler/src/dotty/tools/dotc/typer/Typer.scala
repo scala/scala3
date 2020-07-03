@@ -1856,28 +1856,7 @@ class Typer extends Namer
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     checkSignatureRepeatedParam(sym)
     checkInlineConformant(tpt1, rhs1, sym)
-    patchFinalVals(vdef1)
     vdef1.setDefTree
-  }
-
-  /** Adds inline to final vals with idempotent rhs
-   *
-   *  duplicating scalac behavior: for final vals that have rhs as constant, we do not create a field
-   *  and instead return the value. This seemingly minor optimization has huge effect on initialization
-   *  order and the values that can be observed during superconstructor call
-   *
-   *  see remark about idempotency in TreeInfo#constToLiteral
-   */
-  private def patchFinalVals(vdef: ValDef)(using Context): Unit = {
-    def isFinalInlinableVal(sym: Symbol): Boolean =
-      sym.is(Final, butNot = Mutable) &&
-      isIdempotentExpr(vdef.rhs) /* &&
-      ctx.scala2Mode (stay compatible with Scala2 for now) */
-    val sym = vdef.symbol
-    sym.info match {
-      case info: ConstantType if isFinalInlinableVal(sym) && !ctx.settings.YnoInline.value => sym.setFlag(Inline)
-      case _ =>
-    }
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree = {
