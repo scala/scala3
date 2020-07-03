@@ -675,12 +675,11 @@ trait ImplicitRunInfo:
           WildcardType
         else
           seen.addEntry(t)
-          apply(
-            t.underlying match
-              case TypeBounds(lo, hi) =>
-                if defn.isBottomTypeAfterErasure(lo) then hi
-                else AndType.make(lo, hi)
-              case u => u)
+          t.underlying match
+            case TypeBounds(lo, hi) =>
+              if defn.isBottomTypeAfterErasure(lo) then apply(hi)
+              else AndType.make(apply(lo), apply(hi))
+            case u => apply(u)
 
       def apply(t: Type) = t.dealias match
         case t: TypeRef =>
