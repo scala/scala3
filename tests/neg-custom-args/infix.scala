@@ -8,7 +8,7 @@ class C:
 
 object C:
   given AnyRef:
-    extension (x: C):
+    extension (x: C)
       @infix def iop (y: Int) = ???
       def mop (y: Int) = ???
       def ++ (y: Int) = ???

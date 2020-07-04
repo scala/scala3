@@ -1,7 +1,7 @@
 object Test2 {
 
   // Works with extension method
-  extension [A](a: A):
+  extension [A](a: A)
     def foo[C]: C => A = _ => a   // error: extension method cannot have type parameters
 
   1.foo.foo

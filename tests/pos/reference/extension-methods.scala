@@ -30,7 +30,7 @@ object ExtMethods:
   extension [T](x: T)(using n: Numeric[T])
     def - (y: T): T = n.minus(x, y)
 
-  extension (ss: Seq[String]):
+  extension (ss: Seq[String])
 
     def longestStrings: Seq[String] =
       val maxLength = ss.map(_.length).max
@@ -40,7 +40,7 @@ object ExtMethods:
 
   import math.Ordered.orderingToOrdered
 
-  extension [T](xs: List[T])(using Ordering[T]):
+  extension [T](xs: List[T])(using Ordering[T])
     def smallest(n: Int): List[T] = xs.sorted.take(n)
     def smallestIndices(n: Int): List[Int] =
       val limit = smallest(n).max

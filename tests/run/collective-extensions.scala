@@ -1,4 +1,4 @@
-extension (x: String):
+extension (x: String)
   def foo(y: String): String = x ++ y
   def bar(y: String): String = foo(y)
   def baz(y: String): String =

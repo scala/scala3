@@ -3,10 +3,10 @@ package b
 
 object Givens/*<-a::b::Givens.*/:
 
-  extension [A/*<-a::b::Givens.extension_sayHello().[A]*/](any/*<-a::b::Givens.extension_sayHello().(any)*/: A/*->a::b::Givens.extension_sayHello().[A]*/):
+  extension [A/*<-a::b::Givens.extension_sayHello().[A]*/](any/*<-a::b::Givens.extension_sayHello().(any)*/: A/*->a::b::Givens.extension_sayHello().[A]*/)
     def sayHello = s"Hello/*<-a::b::Givens.extension_sayHello().*//*->scala::StringContext.apply().*/, I am $any/*->a::b::Givens.extension_sayHello().(any)*/"/*->scala::StringContext#s().*/
 
-  extension [B/*<-a::b::Givens.extension_sayGoodbye().[B]*//*<-a::b::Givens.extension_saySoLong().[B]*/](any/*<-a::b::Givens.extension_sayGoodbye().(any)*//*<-a::b::Givens.extension_saySoLong().(any)*/: B/*->a::b::Givens.extension_sayGoodbye().[B]*//*->a::b::Givens.extension_saySoLong().[B]*/):
+  extension [B/*<-a::b::Givens.extension_sayGoodbye().[B]*//*<-a::b::Givens.extension_saySoLong().[B]*/](any/*<-a::b::Givens.extension_sayGoodbye().(any)*//*<-a::b::Givens.extension_saySoLong().(any)*/: B/*->a::b::Givens.extension_sayGoodbye().[B]*//*->a::b::Givens.extension_saySoLong().[B]*/)
     def sayGoodbye = s"Goodb/*<-a::b::Givens.extension_sayGoodbye().*//*->scala::StringContext.apply().*/ye, from $any/*->a::b::Givens.extension_sayGoodbye().(any)*/"/*->scala::StringContext#s().*/
     def saySoLong = s"So Lo/*<-a::b::Givens.extension_saySoLong().*//*->scala::StringContext.apply().*/ng, from $any/*->a::b::Givens.extension_saySoLong().(any)*/"/*->scala::StringContext#s().*/
 

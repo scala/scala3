@@ -1,4 +1,4 @@
-extension (x: Array[Char]):
+extension (x: Array[Char])
   inline def swap(i: Int, j: Int) : Unit =
     val v = x(i)
     x(i)  = x(j)

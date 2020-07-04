@@ -3,10 +3,10 @@ package b
 
 object Givens:
 
-  extension [A](any: A):
+  extension [A](any: A)
     def sayHello = s"Hello, I am $any"
 
-  extension [B](any: B):
+  extension [B](any: B)
     def sayGoodbye = s"Goodbye, from $any"
     def saySoLong = s"So Long, from $any"
 

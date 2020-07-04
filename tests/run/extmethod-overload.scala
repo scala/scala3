@@ -22,11 +22,11 @@ object Test extends App {
   // Test with extension methods in given object
   object test1 {
 
-    extension (x: Int):
+    extension (x: Int)
       def |+| (y: Int) = x + y
       def |+| (y: String) = x + y.length
 
-    extension [T](xs: List[T]):
+    extension [T](xs: List[T])
       def +++ (ys: List[T]): List[T] = xs ++ ys ++ ys
       def +++ (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
 

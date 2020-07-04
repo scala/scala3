@@ -3646,12 +3646,12 @@ object Parsers {
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       val extParams = paramClause(0, prefix = true)
       val givenParamss = paramClauses(givenOnly = true)
-      newLinesOpt()
       val methods =
         if isDefIntro(modifierTokens) then
           extMethod() :: Nil
         else
-          possibleTemplateStart()
+          in.observeIndented()
+          newLineOptWhenFollowedBy(LBRACE)
           if in.isNestedStart then inDefScopeBraces(extMethods())
           else { syntaxError("Extension without extension methods"); Nil }
       val result = ExtMethods(tparams, extParams :: givenParamss, methods)

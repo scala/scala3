@@ -21,7 +21,7 @@ object Test1 {
 object Test2 {
 
   // Works with extension method
-  extension [A, C](a: A):
+  extension [A, C](a: A)
     def foo: C => A = _ => a
 
   1.foo.foo

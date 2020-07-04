@@ -95,7 +95,7 @@ left-hand parameter type. In this case one can "pull out" the common parameters 
 a single extension and enclose all methods in braces or an indented region following a '`:`'.
 Example:
 ```scala
-extension (ss: Seq[String]):
+extension (ss: Seq[String])
 
   def longestStrings: Seq[String] =
     val maxLength = ss.map(_.length).max
@@ -118,9 +118,9 @@ extension (ss: Seq[String])
 extension (ss: Seq[String])
   def longestString: String = ss.longestStrings.head
 ```
-Collective extensions also can take type parameters and have using clauses. Example:
+Collective extensions also can take type parameters and have using clauses. Example
 ```scala
-extension [T](xs: List[T])(using Ordering[T]):
+extension [T](xs: List[T])(using Ordering[T])
   def smallest(n: Int): List[T] = xs.sorted.take(n)
   def smallestIndices(n: Int): List[Int] =
     val limit = smallest(n).max
@@ -184,7 +184,7 @@ object List:
     def flatten: List[T] = xs.foldLeft(Nil: List[T])(_ ++ _)
 
   given [T: Ordering] as Ordering[List[T]]:
-    extension (xs: List[T]):
+    extension (xs: List[T])
       def < (ys: List[T]): Boolean = ...
 end List
 
