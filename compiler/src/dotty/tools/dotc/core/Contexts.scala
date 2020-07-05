@@ -438,7 +438,6 @@ object Contexts {
     def explicitNulls: Boolean = base.settings.YexplicitNulls.value
 
     protected def init(outer: Context, origin: Context): this.type = {
-      util.Stats.record("Context.fresh")
       _outer = outer
       _period = origin.period
       _mode = origin.mode
@@ -460,7 +459,8 @@ object Contexts {
     def fresh: FreshContext = freshOver(this)
 
     /** A fresh clone of this context embedded in the specified `outer` context. */
-    def freshOver(outer: Context): FreshContext = new FreshContext(base).init(outer, this)
+    def freshOver(outer: Context): FreshContext =
+      base.getFreshContext().init(outer, this)
 
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
@@ -514,6 +514,10 @@ object Contexts {
       _source = null
       _moreProperties = null
       _store = Store(null)
+
+    def recycle() =
+      disable()
+      base.recycle(this)
 
     def typerPhase: Phase                  = base.typerPhase
     def postTyperPhase: Phase              = base.postTyperPhase
@@ -723,7 +727,7 @@ object Contexts {
   }
 
   /** The essential mutable state of a context base, collected into a common class */
-  class ContextState {
+  class ContextState { this: ContextBase =>
     // Symbols state
 
     /** Counter for unique symbol ids */
@@ -799,6 +803,45 @@ object Contexts {
 
     protected[dotc] val indentTab: String = "  "
 
+    private var recycledCtx = Array.ofDim[Context](1024)
+    private var numRecycledCtx = 0
+    private var recycledTS = Array.ofDim[TyperState](1024)
+    private var numRecycledTS = 0
+
+    private[Contexts] def recycle(ctx: Context) =
+      if numRecycledCtx == recycledCtx.length then
+        val recycled1 = Array.ofDim[Context](numRecycledCtx * 2)
+        Array.copy(recycledCtx, 0, recycled1, 0, numRecycledCtx)
+        recycledCtx = recycled1
+      recycledCtx(numRecycledCtx) = ctx
+      numRecycledCtx += 1
+
+    private[Contexts] def getFreshContext(): FreshContext =
+      if numRecycledCtx > 0 then
+        util.Stats.record("Context.recycled")
+        numRecycledCtx -= 1
+        recycledCtx(numRecycledCtx).asInstanceOf[FreshContext]
+      else
+        util.Stats.record("Context.fresh")
+        new FreshContext(this)
+/*
+    private[core] def recycle(ts: TyperState) =
+      if numRecycledTS == recycledTS.length then
+        val recycled1 = Array.ofDim[TyperState](numRecycledTS * 2)
+        Array.copy(recycledTS, 0, recycled1, 0, numRecycledTS)
+        recycledTS = recycled1
+      recycledTS(numRecycledTS) = ts
+      numRecycledTS += 1
+
+    private[core] def getFreshTyperState(): TyperState =
+      if numRecycledTS > 0 then
+        util.Stats.record("TyperState.recycled")
+        numRecycledTS -= 1
+        recycledTS(numRecycledTS)
+      else
+        util.Stats.record("TyperState.fresh")
+        TyperState()
+*/
     def reset(): Unit = {
       for ((_, set) <- uniqueSets) set.clear()
       errorTypeMsg.clear()

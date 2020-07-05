@@ -755,7 +755,7 @@ trait Implicits { self: Typer =>
     }
   }
 
-  private var synthesizer: Synthesizer | Null = null
+  private var synthesizer: Synthesizer = null
 
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
@@ -767,7 +767,7 @@ trait Implicits { self: Typer =>
         if fail.isAmbiguous then failed
         else
           if synthesizer == null then synthesizer = Synthesizer(this)
-          synthesizer.nn.tryAll(formal, span).orElse(failed)
+          synthesizer.tryAll(formal, span).orElse(failed)
 
   /** Search an implicit argument and report error if not found */
   def implicitArgTree(formal: Type, span: Span)(using Context): Tree = {
