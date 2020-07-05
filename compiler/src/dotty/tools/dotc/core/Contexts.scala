@@ -560,25 +560,59 @@ object Contexts {
    *  of its attributes using the with... methods.
    */
   class FreshContext(base: ContextBase) extends Context(base) {
-    def setPeriod(period: Period): this.type = { this.period = period; this }
-    def setMode(mode: Mode): this.type = { this.mode = mode; this }
-    def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
-    def setTree(tree: Tree[? >: Untyped]): this.type = { this.tree = tree; this }
+    def setPeriod(period: Period): this.type =
+      util.Stats.record("Context.setPeriod")
+      this.period = period
+      this
+    def setMode(mode: Mode): this.type =
+      util.Stats.record("Context.setMode")
+      this.mode = mode
+      this
+    def setOwner(owner: Symbol): this.type =
+      util.Stats.record("Context.setOwner")
+      assert(owner != NoSymbol)
+      this.owner = owner
+      this
+    def setTree(tree: Tree[? >: Untyped]): this.type =
+      util.Stats.record("Context.setTree")
+      this.tree = tree
+      this
     def setScope(scope: Scope): this.type = { this.scope = scope; this }
     def setNewScope: this.type = { this.scope = newScope; this }
-    def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
+    def setTyperState(typerState: TyperState): this.type =
+      util.Stats.record("Context.setTyperState")
+      this.typerState = typerState
+      this
     def setNewTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(true))
     def setExploreTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(false))
     def setReporter(reporter: Reporter): this.type = setTyperState(typerState.fresh().setReporter(reporter))
-    def setTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
+    def setTypeAssigner(typeAssigner: TypeAssigner): this.type =
+      util.Stats.record("Context.setTypeAssigner")
+      this.typeAssigner = typeAssigner
+      this
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
-    def setGadt(gadt: GadtConstraint): this.type = { this.gadt = gadt; this }
+    def setGadt(gadt: GadtConstraint): this.type =
+      util.Stats.record("Context.setGadt")
+      this.gadt = gadt
+      this
     def setFreshGADTBounds: this.type = setGadt(gadt.fresh)
-    def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
-    def setSource(source: SourceFile): this.type = { this.source = source; this }
+    def setSearchHistory(searchHistory: SearchHistory): this.type =
+      util.Stats.record("Context.setSearchHistory")
+      this.searchHistory = searchHistory
+      this
+    def setSource(source: SourceFile): this.type =
+      util.Stats.record("Context.setSource")
+      this.source = source
+      this
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
-    private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
-    private def setStore(store: Store): this.type = { this.store = store; this }
+    private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type =
+      util.Stats.record("Context.setMoreProperties")
+      this.moreProperties = moreProperties
+      this
+    private def setStore(store: Store): this.type =
+      util.Stats.record("Context.setStore")
+      this.store = store
+      this
     def setImplicits(implicits: ContextualImplicits): this.type = { this.implicitsCache = implicits; this }
 
     def setCompilationUnit(compilationUnit: CompilationUnit): this.type = {
@@ -658,7 +692,7 @@ object Contexts {
     outer = NoContext
     period = InitialPeriod
     mode = Mode.None
-    typerState = new TyperState(null)
+    typerState = TyperState().init(null)
     owner = NoSymbol
     tree = untpd.EmptyTree
     typeAssigner = TypeAssigner
@@ -824,7 +858,7 @@ object Contexts {
       else
         util.Stats.record("Context.fresh")
         new FreshContext(this)
-/*
+
     private[core] def recycle(ts: TyperState) =
       if numRecycledTS == recycledTS.length then
         val recycled1 = Array.ofDim[TyperState](numRecycledTS * 2)
@@ -841,7 +875,7 @@ object Contexts {
       else
         util.Stats.record("TyperState.fresh")
         TyperState()
-*/
+
     def reset(): Unit = {
       for ((_, set) <- uniqueSets) set.clear()
       errorTypeMsg.clear()
