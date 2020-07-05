@@ -17,7 +17,7 @@ import dotc.core.Comments.{ContextDoc, ContextDocstrings}
  *  one used to compile the sources, this makes it easier to test for potential
  *  issues involving retrieving symbols defined in a previous run.
  */
-def inCompilerContext[T](classpath: String, separateRun: Boolean = true, scalaSources: String*)(op: Context ?=> T): T =
+def inCompilerContext[T](classpath: String, separateRun: Boolean = true, scalaSources: String*)(op: Ctx[T]): T =
   val compiler = Compiler()
   val rootCtx = initCtx(classpath)
   val firstRun = compiler.newRun(rootCtx)

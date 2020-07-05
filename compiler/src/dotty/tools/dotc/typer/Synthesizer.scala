@@ -22,7 +22,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   import ast.tpd._
 
   /** Handlers to synthesize implicits for special types */
-  type SpecialHandler = (Type, Span) => Context ?=> Tree
+  type SpecialHandler = (Type, Span) => Ctx[Tree]
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
 
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
@@ -362,7 +362,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   end sumMirror
 
   def makeMirror
-      (synth: (Type, Type, Span) => Context ?=> Tree, formal: Type, span: Span)
+      (synth: (Type, Type, Span) => Ctx[Tree], formal: Type, span: Span)
       (using Context): Tree =
     if checkFormal(formal) then
       formal.member(tpnme.MirroredType).info match

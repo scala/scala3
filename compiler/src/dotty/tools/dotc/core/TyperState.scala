@@ -112,7 +112,7 @@ class TyperState() {
    *  typerstate. If it is unshared, run `op` in current typerState, restoring typerState
    *  to previous state afterwards.
    */
-  def test[T](op: Context ?=> T)(implicit ctx: Context): T =
+  def test[T](op: Ctx[T])(implicit ctx: Context): T =
     if (isShared)
       util.Stats.record("TyperState.test")
       val nestedTyperState = fresh().setCommittable(false)

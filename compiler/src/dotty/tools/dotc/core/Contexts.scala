@@ -52,11 +52,13 @@ object Contexts {
 
   private val initialStore = store9
 
+  type Ctx[T] = Context ?=> T
+
   /** The current context */
   def ctx(using ctx: Context): Context = ctx
 
   /** Run `op` with given context */
-  inline def inContext[T](c: Context)(inline op: Context ?=> T): T =
+  inline def inContext[T](c: Context)(inline op: Ctx[T]): T =
     op(using c)
 
   /** A context is passed basically everywhere in dotc.
@@ -327,7 +329,7 @@ object Contexts {
     /** Run `op` as if it was run in a fresh explore typer state, but possibly
      *  optimized to re-use the current typer state.
      */
-    final def test[T](op: Context ?=> T): T = typerState.test(op)(this)
+    final def test[T](op: Ctx[T]): T = typerState.test(op)(this)
 
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =

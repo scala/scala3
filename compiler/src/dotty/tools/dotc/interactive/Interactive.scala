@@ -379,7 +379,7 @@ object Interactive {
    */
   def localize(symbol: Symbol, sourceDriver: InteractiveDriver, targetDriver: InteractiveDriver): Symbol = {
 
-    def in[T](driver: InteractiveDriver)(fn: Context ?=> T): T =
+    def in[T](driver: InteractiveDriver)(fn: Ctx[T]): T =
       fn(using driver.currentCtx)
 
     if (sourceDriver == targetDriver) symbol
