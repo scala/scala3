@@ -3646,6 +3646,8 @@ object Parsers {
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       val extParams = paramClause(0, prefix = true)
       val givenParamss = paramClauses(givenOnly = true)
+      in.observeColonEOL()
+      if (in.token == COLONEOL) in.nextToken()
       val methods =
         if isDefIntro(modifierTokens) then
           extMethod() :: Nil
