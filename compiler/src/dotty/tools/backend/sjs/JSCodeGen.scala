@@ -3194,10 +3194,12 @@ class JSCodeGen()(implicit ctx: Context) {
       if (isStat) jstpe.NoType
       else toIRType(tree.tpe)
 
-    val defaultLabelSym = cases.collectFirst {
-      case CaseDef(Ident(nme.WILDCARD), EmptyTree, body @ Labeled(_, rhs))
-        if hasSynthCaseSymbol(body) => body.symbol
-    }.getOrElse(NoSymbol)
+    val defaultLabelSym = cases
+      .collectFirst {
+        case CaseDef(Ident(nme.WILDCARD), EmptyTree, body @ Labeled(_, rhs))
+          if hasSynthCaseSymbol(body) => body.symbol
+      }
+      .getOrElse(NoSymbol)
 
     var clauses: List[(List[js.Tree], js.Tree)] = Nil
     var optElseClause: Option[js.Tree] = None
@@ -3452,8 +3454,8 @@ class JSCodeGen()(implicit ctx: Context) {
    *  A translated match consists of consecutive `case` Labeleds directly
    *  followed by a `matchEnd` Labeled.
    */
-  private def genTranslatedMatch(cases: List[Labeled], matchEnd: Labeled)(
-    implicit pos: Position): js.Tree = {
+  private def genTranslatedMatch(cases: List[Labeled], matchEnd: Labeled)
+                                (implicit pos: Position): js.Tree = {
     genMatchEnd(matchEnd) {
       genTranslatedCases(cases, isStat = true)
     }
@@ -3484,8 +3486,8 @@ class JSCodeGen()(implicit ctx: Context) {
    *  Since all but the last case (which cannot have jumps) are in statement
    *  position, those jumps in tail position can be replaced by `skip`.
    */
-  private def genTranslatedCases(cases: List[Labeled], isStat: Boolean)(
-    implicit pos: Position): List[js.Tree] = {
+  private def genTranslatedCases(cases: List[Labeled], isStat: Boolean)
+                                (implicit pos: Position): List[js.Tree] = {
 
     assert(cases.nonEmpty, s"genTranslatedCases called with no cases at $pos")
 
@@ -3497,8 +3499,7 @@ class JSCodeGen()(implicit ctx: Context) {
       val info = new EnclosingLabelDefInfo.WithResultAsAssigns(Nil)
 
       val translatedBody = withScopedVars(
-        enclosingLabelDefInfos :=
-          enclosingLabelDefInfos.get + (nextCaseSym -> info)
+        enclosingLabelDefInfos := enclosingLabelDefInfos.get + (nextCaseSym -> info)
       ) {
         /* Eager optimization of jumps in tail position, following the shapes
          * produced by scala until 2.12.8. 2.12.9 introduced flat patmat
