@@ -48,7 +48,9 @@ object Contexts {
   private val (runLoc,              store6) = store5.newLocation[Run]()
   private val (profilerLoc,         store7) = store6.newLocation[Profiler]()
   private val (notNullInfosLoc,     store8) = store7.newLocation[List[NotNullInfo]]()
-  private val initialStore = store8
+  private val (importInfoLoc,       store9) = store8.newLocation[ImportInfo]()
+
+  private val initialStore = store9
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -156,11 +158,6 @@ object Contexts {
     protected def typeAssigner_=(typeAssigner: TypeAssigner): Unit = _typeAssigner = typeAssigner
     final def typeAssigner: TypeAssigner = _typeAssigner
 
-    /** The currently active import info */
-    private var _importInfo: ImportInfo = _
-    protected def importInfo_=(importInfo: ImportInfo): Unit = _importInfo = importInfo
-    final def importInfo: ImportInfo = _importInfo
-
     /** The current bounds in force for type parameters appearing in a GADT */
     private var _gadt: GadtConstraint = _
     protected def gadt_=(gadt: GadtConstraint): Unit = _gadt = gadt
@@ -229,6 +226,9 @@ object Contexts {
 
     /** The paths currently known to be not null */
     def notNullInfos = store(notNullInfosLoc)
+
+    /** The currently active import info */
+    def importInfo = store(importInfoLoc)
 
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits = null
@@ -351,7 +351,9 @@ object Contexts {
 
     /** Is this a context that introduces an import clause? */
     def isImportContext: Boolean =
-      (this ne NoContext) && (this.importInfo ne outer.importInfo)
+      (this ne NoContext)
+      && (outer ne NoContext)
+      && (this.importInfo ne outer.importInfo)
 
     /** Is this a context that introduces a non-empty scope? */
     def isNonEmptyScopeContext: Boolean =
@@ -461,7 +463,6 @@ object Contexts {
       _scope = origin.scope
       _typerState = origin.typerState
       _typeAssigner = origin.typeAssigner
-      _importInfo = origin.importInfo
       _gadt = origin.gadt
       _searchHistory = origin.searchHistory
       _typeComparer = origin.typeComparer
@@ -550,7 +551,6 @@ object Contexts {
     def setReporter(reporter: Reporter): this.type = setTyperState(typerState.fresh().setReporter(reporter))
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
-    def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def setGadt(gadt: GadtConstraint): this.type = { this.gadt = gadt; this }
     def setFreshGADTBounds: this.type = setGadt(gadt.fresh)
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
@@ -572,6 +572,7 @@ object Contexts {
     def setRun(run: Run): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
     def setNotNullInfos(notNullInfos: List[NotNullInfo]): this.type = updateStore(notNullInfosLoc, notNullInfos)
+    def setImportInfo(importInfo: ImportInfo): this.type = updateStore(importInfoLoc, importInfo)
 
     def setProperty[T](key: Key[T], value: T): this.type =
       setMoreProperties(moreProperties.updated(key, value))
