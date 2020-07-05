@@ -3241,9 +3241,7 @@ class JSCodeGen()(implicit ctx: Context) {
         case Block(List(If(cond, thenp, elsep)), s: Select)
           if s.symbol == defn.BoxedUnit_UNIT =>
           def block(t: Tree) = Block(t :: Nil, s).withType(s.tpe).withSpan(t.span)
-          val newThenp = block(thenp)
-          val newElsep = block(elsep)
-          js.If(genExpr(cond), genBody(newThenp), genBody(newElsep))(resultType)
+          js.If(genExpr(cond), genBody(block(thenp)), genBody(block(elsep)))(resultType)
 
         case _ =>
           genStatOrExpr(body, isStat)
@@ -3253,12 +3251,10 @@ class JSCodeGen()(implicit ctx: Context) {
         case lit: Literal =>
           clauses = (List(genExpr(lit)), genBody(body)) :: clauses
         case Ident(nme.WILDCARD) =>
-          optElseClause = Some(body match {
-            case Labeled(_, rhs) if hasSynthCaseSymbol(body) =>
-              genBody(rhs)
-            case _ =>
-              genBody(body)
-          })
+          optElseClause = Some(genBody(body match {
+            case Labeled(_, rhs) if hasSynthCaseSymbol(body) => rhs
+            case _ => body
+          }))
         case Alternative(alts) =>
           val genAlts = {
             alts map {
