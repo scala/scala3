@@ -1,6 +1,5 @@
 import scala.quoted._
 import scala.quoted.staging._
-import scala.quoted.autolift
 
 object Macros {
 
@@ -9,35 +8,35 @@ object Macros {
   def impl(using QuoteContext): Expr[Unit] = {
     given Toolbox = Toolbox.make(getClass.getClassLoader)
     // 2 is a lifted constant
-    val show1 = withQuoteContext(power(2, 3.0).show)
-    val run1  = run(power(2, 3.0))
+    val show1 = withQuoteContext(power('{2}, '{3.0}).show)
+    val run1  = run(power('{2}, '{3.0}))
 
     // n is a lifted constant
     val n = 2
-    val show2 = withQuoteContext(power(n, 4.0).show)
-    val run2  = run(power(n, 4.0))
+    val show2 = withQuoteContext(power(Expr(n), '{4.0}).show)
+    val run2  = run(power(Expr(n), '{4.0}))
 
     // n is a constant in a quote
-    val show3 = withQuoteContext(power('{2}, 5.0).show)
-    val run3 =  run(power('{2}, 5.0))
+    val show3 = withQuoteContext(power('{2}, '{5.0}).show)
+    val run3  = run(power('{2}, '{5.0}))
 
     // n2 is not a constant
     def n2(using QuoteContext) = '{ println("foo"); 2 }
-    val show4 = withQuoteContext(power(n2, 6.0).show)
-    val run4  = run(power(n2, 6.0))
+    val show4 = withQuoteContext(power(n2, '{6.0}).show)
+    val run4  = run(power(n2, '{6.0}))
 
     '{
-      println(${show1})
-      println(${run1})
+      println(${Expr(show1)})
+      println(${Expr(run1)})
       println()
-      println(${show2})
-      println(${run2})
+      println(${Expr(show2)})
+      println(${Expr(run2)})
       println()
-      println(${show3})
-      println(${run3})
+      println(${Expr(show3)})
+      println(${Expr(run3)})
       println()
-      println(${show4})
-      println(${run4})
+      println(${Expr(show4)})
+      println(${Expr(run4)})
     }
   }
 

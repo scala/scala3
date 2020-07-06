@@ -1,5 +1,4 @@
 import scala.annotation.tailrec
-import scala.quoted.autolift
 
 import scala.quoted._
 
@@ -16,7 +15,7 @@ object Macro {
       println("<log> start loop")
       ${
         for (j <- new UnrolledRange(0, unrollSize.unliftOrError)) '{
-          val element = ($seq)(i + ${j})
+          val element = ($seq)(i + ${Expr(j)})
           ${Expr.betaReduce(f)('element)} // or `($f)(element)` if `f` should not be inlined
         }
       }

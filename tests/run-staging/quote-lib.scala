@@ -1,7 +1,6 @@
 
 import scala.quoted._
 import scala.quoted.staging._
-import scala.quoted.autolift
 
 import liftable.Units._
 import liftable.Lets._
@@ -21,10 +20,10 @@ object Test {
     liftedWhile('{true})('{ println(1) }).show
     liftedDoWhile('{ println(1) })('{true}).show
 
-    val t1: Expr[Tuple1[Int]] = Tuple1(4)
-    val t2: Expr[(Int, Int)] = (2, 3)
-    val t3: Expr[(Int, Int, Int)] = (2, 3, 4)
-    val t4: Expr[(Int, Int, Int, Int)] = (2, 3, 4, 5)
+    val t1: Expr[Tuple1[Int]] = Expr(Tuple1(4))
+    val t2: Expr[(Int, Int)] = Expr((2, 3))
+    val t3: Expr[(Int, Int, Int)] = Expr((2, 3, 4))
+    val t4: Expr[(Int, Int, Int, Int)] = Expr((2, 3, 4, 5))
     Expr((1, 2, 3, 4))
     Expr((1, 2, 3, 4, 5))
     Expr((1, 2, 3, 4, 5, 6))
@@ -49,25 +48,25 @@ object Test {
     Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25))
 
     val list: List[Int] = List(1, 2, 3)
-    val liftedList: Expr[List[Int]] = list
+    val liftedList: Expr[List[Int]] = Expr(list)
 
     val seq: Seq[Int] = Seq(1, 2, 3)
-    val liftedSeq: Expr[Seq[Int]] = seq
+    val liftedSeq: Expr[Seq[Int]] = Expr(seq)
 
     val set: Set[Int] = Set(1, 2, 3)
-    val liftedSet: Expr[Set[Int]] = set
+    val liftedSet: Expr[Set[Int]] = Expr(set)
 
     val map: Map[Int, Char] = Map(1 -> 'a', 2 -> 'b', 3 -> 'c')
-    val liftedMap: Expr[Map[Int, Char]] = map
+    val liftedMap: Expr[Map[Int, Char]] = Expr(map)
 
-    liftedList.foldLeft[Int](0)('{ (acc: Int, x: Int) => acc + x }).show
+    liftedList.foldLeft[Int]('{0})('{ (acc: Int, x: Int) => acc + x }).show
     liftedList.foreach('{ (x: Int) => println(x) }).show
 
-    list.unrolledFoldLeft[Int](0)('{ (acc: Int, x: Int) => acc + x }).show
+    list.unrolledFoldLeft[Int]('{0})('{ (acc: Int, x: Int) => acc + x }).show
     list.unrolledForeach('{ (x: Int) => println(x) }).show
 
     val iarray: IArray[Int] = IArray(1, 2, 3)
-    val liftedIArray: Expr[IArray[Int]] = iarray
+    val liftedIArray: Expr[IArray[Int]] = Expr(iarray)
 
     val iarray2: IArray[String] = IArray("a", "b", "c")
     Expr(iarray2)
@@ -83,7 +82,7 @@ object Test {
     Expr(IArray((1, 3)))
 
     val array: Array[Int] = Array(1, 2, 3)
-    val liftedArray: Expr[Array[Int]] = array
+    val liftedArray: Expr[Array[Int]] = Expr(array)
 
     Expr(Array(false))
     Expr(Array(1: Byte))
@@ -97,8 +96,8 @@ object Test {
 
     val some: Option[Int] = Some(2)
     val none: Option[Int] = Some(2)
-    val liftedSome: Expr[Option[Int]] = some
-    val liftedNone: Expr[Option[Int]] = none
+    val liftedSome: Expr[Option[Int]] = Expr(some)
+    val liftedNone: Expr[Option[Int]] = Expr(none)
 
     val left: Either[Int, Long] = Left(1)
     val right: Either[Int, Long] = Right(2L)
@@ -153,11 +152,11 @@ package liftable {
 
     implicit class UnrolledOps[T: Liftable](list: List[T])(implicit t: Type[T], qctx: QuoteContext) {
       def unrolledFoldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U]): Expr[U] = list match {
-        case x :: xs => xs.unrolledFoldLeft('{ ($f).apply($acc, ${x}) })(f)
+        case x :: xs => xs.unrolledFoldLeft('{ ($f).apply($acc, ${Expr(x)}) })(f)
         case Nil => acc
       }
        def unrolledForeach(f: Expr[T => Unit]): Expr[Unit] = list match {
-         case x :: xs => '{ ($f).apply(${x}); ${ xs.unrolledForeach(f) } }
+         case x :: xs => '{ ($f).apply(${Expr(x)}); ${ xs.unrolledForeach(f) } }
          case Nil => '{}
        }
     }

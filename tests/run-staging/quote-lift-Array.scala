@@ -1,7 +1,5 @@
 import scala.quoted._
 import scala.quoted.staging._
-import scala.quoted.autolift
-
 object Test {
   implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = run {
@@ -9,25 +7,25 @@ object Test {
       def p[T](arr: Array[T]): Unit = {
         println(arr.asInstanceOf[Array[_]].mkString("[", ", ", "]"))
       }
-      p(${Array.empty[Boolean]})
-      p(${Array.empty[Byte]})
-      p(${Array.empty[Short]})
-      p(${Array.empty[Char]})
-      p(${Array.empty[Int]})
-      p(${Array.empty[Long]})
-      p(${Array.empty[Float]})
-      p(${Array.empty[Double]})
-      p(${Array.empty[String]})
+      p(${Expr(Array.empty[Boolean])})
+      p(${Expr(Array.empty[Byte])})
+      p(${Expr(Array.empty[Short])})
+      p(${Expr(Array.empty[Char])})
+      p(${Expr(Array.empty[Int])})
+      p(${Expr(Array.empty[Long])})
+      p(${Expr(Array.empty[Float])})
+      p(${Expr(Array.empty[Double])})
+      p(${Expr(Array.empty[String])})
       println()
-      p(${Array(true)})
-      p(${Array[Byte](1, 2)})
-      p(${Array[Short](2, 3)})
-      p(${Array[Char]('a', 'b')})
-      p(${Array[Int](4, 5)})
-      p(${Array[Long](6L, 7L)})
-      p(${Array[Float](2.1f, 3.2f)})
-      p(${Array[Double](2.2, 3.3)})
-      p(${Array("abc", "xyz")})
+      p(${Expr(Array(true))})
+      p(${Expr(Array[Byte](1, 2))})
+      p(${Expr(Array[Short](2, 3))})
+      p(${Expr(Array[Char]('a', 'b'))})
+      p(${Expr(Array[Int](4, 5))})
+      p(${Expr(Array[Long](6L, 7L))})
+      p(${Expr(Array[Float](2.1f, 3.2f))})
+      p(${Expr(Array[Double](2.2, 3.3))})
+      p(${Expr(Array("abc", "xyz"))})
     }
   }
 }

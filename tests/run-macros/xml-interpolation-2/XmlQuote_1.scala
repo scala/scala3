@@ -1,6 +1,5 @@
 
 import scala.quoted._
-import scala.quoted.autolift
 
 
 import scala.language.implicitConversions
@@ -65,7 +64,7 @@ object XmlQuote {
 
     }
 
-    val string = parts.mkString("??")
+    val string = Expr(parts.mkString("??"))
     '{new Xml(${string}, $args2)}
   }
 }

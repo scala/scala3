@@ -1,6 +1,5 @@
 
 import scala.quoted._
-import scala.quoted.autolift
 
 object Macro {
 

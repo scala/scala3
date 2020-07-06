@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 
 object SourceFiles {
@@ -9,7 +8,7 @@ object SourceFiles {
 
   private def getThisFileImpl(using qctx: QuoteContext) : Expr[String] = {
     import qctx.tasty._
-    summon[Context].source.getFileName.toString
+    Expr(summon[Context].source.getFileName.toString)
   }
 
 }

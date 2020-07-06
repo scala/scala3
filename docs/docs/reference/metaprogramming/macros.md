@@ -328,10 +328,6 @@ def showExpr[T](expr: Expr[T])(using QuoteContext): Expr[String] = {
 That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts
 the result back to an `Expr[String]` using `Expr.apply`.
 
-**Note**: Lifting `String` to `Expr[String]` using `Expr(code)` can be omitted by importing an implicit
-conversion with `import scala.quoted.autolift`. The programmer is able to
-declutter slightly the code at the cost of readable _phase distinction_ between
-stages.
 
 ### Lifting Types
 
@@ -376,7 +372,8 @@ object Macros {
     ${ assertImpl('expr) }
 
   def assertImpl(expr: Expr[Boolean])(using QuoteContext) =
-    '{ if !($expr) then throw new AssertionError("failed assertion: " + ${expr.show}) }  // autolift is applied
+    val failMsg: Expr[String] = Expr("failed assertion: " + expr.show)
+    '{ if !($expr) then throw new AssertionError($failMsg) }
 }
 
 object App {

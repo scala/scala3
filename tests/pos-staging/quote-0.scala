@@ -1,6 +1,5 @@
 import scala.quoted._
 import scala.quoted.staging._
-import scala.quoted.autolift
 
 object Macros {
 
@@ -12,7 +11,7 @@ object Macros {
     '{ if !($expr) then throw new AssertionError(s"failed assertion: ${${showExpr(expr)}}") }
 
 
-  def showExpr[T](expr: Expr[T])(using QuoteContext): Expr[String] = expr.toString
+  def showExpr[T](expr: Expr[T])(using QuoteContext): Expr[String] = Expr(expr.toString)
 
   inline def power(inline n: Int, x: Double) = ${ powerCode('n, 'x) }
 

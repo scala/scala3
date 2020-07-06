@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 object Macros {
 
@@ -10,8 +9,8 @@ object Macros {
     import qctx.tasty._
 
     val tree = x.unseal
-    val treeStr = tree.showExtractors
-    val treeTpeStr = tree.tpe.showExtractors
+    val treeStr = Expr(tree.showExtractors)
+    val treeTpeStr = Expr(tree.tpe.showExtractors)
 
     '{
       println(${treeStr})

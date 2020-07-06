@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 object Macro {
 
@@ -24,8 +23,8 @@ object Macro {
 
     '{
       val result = $res
-      val originalCode = ${x.show}
-      val optimizeCode = ${res.show}
+      val originalCode = ${Expr(x.show)}
+      val optimizeCode = ${Expr(res.show)}
       println("Original: " + originalCode)
       println("Optimized: " + optimizeCode)
       println("Result: " + result)

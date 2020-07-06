@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 
 class Index[K, Keys](val index: String) extends AnyVal {
@@ -13,6 +12,6 @@ object Index {
 
   def succImpl[K: Type, H: Type, T: Type](prev: Expr[Index[K, T]])(using QuoteContext): Expr[Index[K, (H, T)]] = {
     val value = s"1 + {${prev.show}}"
-    '{new Index(${value})}
+    '{new Index(${Expr(value)})}
   }
 }

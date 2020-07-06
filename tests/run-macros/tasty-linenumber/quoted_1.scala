@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 class LineNumber(val value: Int) {
   override def toString: String = value.toString
@@ -12,7 +11,7 @@ object LineNumber {
 
   def lineImpl(x: Type[Unit])(using QuoteContext) : Expr[LineNumber] = {
     import qctx.tasty._
-    '{new LineNumber(${rootPosition.startLine})}
+    '{new LineNumber(${Expr(rootPosition.startLine)})}
   }
 
 }

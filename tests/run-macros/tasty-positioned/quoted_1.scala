@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 case class Position(path: String, start: Int, end: Int,
     startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)
@@ -14,13 +13,13 @@ object Positioned {
     import qctx.tasty.{Position => _, _}
     val pos = rootPosition
 
-    val path = pos.sourceFile.jpath.toString
-    val start = pos.start
-    val end = pos.end
-    val startLine = pos.startLine
-    val endLine = pos.endLine
-    val startColumn = pos.startColumn
-    val endColumn = pos.endColumn
+    val path = Expr(pos.sourceFile.jpath.toString)
+    val start = Expr(pos.start)
+    val end = Expr(pos.end)
+    val startLine = Expr(pos.startLine)
+    val endLine = Expr(pos.endLine)
+    val startColumn = Expr(pos.startColumn)
+    val endColumn = Expr(pos.endColumn)
 
     val liftedPosition = '{new Position($path, $start, $end, $startLine, $startColumn, $endLine, $endColumn)}
     '{Positioned[T]($x, $liftedPosition)}

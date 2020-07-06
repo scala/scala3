@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 
 import scala.language.implicitConversions
@@ -33,25 +32,25 @@ object Macro {
       private[this] var oldReported = false
       def partError(message : String, index : Int, offset : Int) : Unit = {
         reported = true
-        errors += '{ Tuple5(true, 0, $index, $offset, $message) }
+        errors += '{ Tuple5(true, 0, ${Expr(index)}, ${Expr(offset)}, ${Expr(message)}) }
       }
       def partWarning(message : String, index : Int, offset : Int) : Unit = {
         reported = true
-        errors += '{ Tuple5(false, 0, $index, $offset, $message) }
+        errors += '{ Tuple5(false, 0, ${Expr(index)}, ${Expr(offset)}, ${Expr(message)}) }
       }
 
       def argError(message : String, index : Int) : Unit = {
         reported = true
-        errors += '{ Tuple5(true, 1, $index, 0, $message) }
+        errors += '{ Tuple5(true, 1, ${Expr(index)}, 0, ${Expr(message)}) }
       }
 
       def strCtxError(message : String) : Unit = {
         reported = true
-        errors += '{ Tuple5(true, 2, -1, 0, $message) }
+        errors += '{ Tuple5(true, 2, -1, 0, ${Expr(message)}) }
       }
       def argsError(message : String) : Unit = {
         reported = true
-        errors += '{ Tuple5(true, 3, -1, 0, $message) }
+        errors += '{ Tuple5(true, 3, -1, 0, ${Expr(message)}) }
       }
 
       def hasReported() : Boolean = {

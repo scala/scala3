@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 
 object Macros {
@@ -35,7 +34,7 @@ object Macros {
 
     val tree = x.unseal
     output.traverseTree(tree)
-    '{print(${buff.result()})}
+    '{print(${Expr(buff.result())})}
   }
 
   def dummyShow(using qctx: QuoteContext) : scala.tasty.reflect.Printer[qctx.tasty.type] = {

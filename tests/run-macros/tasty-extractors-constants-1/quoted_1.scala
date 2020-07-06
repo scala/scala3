@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 
 
@@ -19,6 +18,6 @@ object Macros {
 
     '{new Object} match { case Const(n) => println(n); case _ => stagedPrintln("OK") }
 
-    '{print(${buff.result()})}
+    '{print(${Expr(buff.result())})}
   }
 }

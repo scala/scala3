@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 object Macros {
 
@@ -11,7 +10,7 @@ object Macros {
     classSym.classMethod("apply")
     classSym.classMethods
     classSym.method("apply")
-    classSym.methods.map(_.name).sorted.mkString("\n")
+    Expr(classSym.methods.map(_.name).sorted.mkString("\n"))
   }
 
 }

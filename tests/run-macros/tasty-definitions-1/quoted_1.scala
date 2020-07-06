@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 object Macros {
 
@@ -92,7 +91,7 @@ object Macros {
     printout(defn.StringType.showExtractors)
 
 
-    '{println(${buff.result().mkString("\n")})}
+    '{println(${Expr(buff.result().mkString("\n"))})}
   }
 
 }
