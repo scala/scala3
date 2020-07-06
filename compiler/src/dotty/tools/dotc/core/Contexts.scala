@@ -517,9 +517,7 @@ object Contexts {
       _moreProperties = null
       _store = Store(null)
 
-    def recycle() =
-      disable()
-      base.recycle(this)
+    def recycle() = base.recycle(this)
 
     def typerPhase: Phase                  = base.typerPhase
     def postTyperPhase: Phase              = base.postTyperPhase
@@ -844,7 +842,7 @@ object Contexts {
     private var recycledTS = Array.ofDim[TyperState](1024)
     private var numRecycledTS = 0
 
-    private[Contexts] def recycle(ctx: Context) =
+    private[core] def recycle(ctx: Context) =
       if numRecycledCtx == recycledCtx.length then
         val recycled1 = Array.ofDim[Context](numRecycledCtx * 2)
         Array.copy(recycledCtx, 0, recycled1, 0, numRecycledCtx)

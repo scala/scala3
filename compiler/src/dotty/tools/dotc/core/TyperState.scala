@@ -118,8 +118,7 @@ class TyperState() {
       val nestedTyperState = fresh().setCommittable(false)
       val nestedCtx = ctx.fresh.setTyperState(nestedTyperState)
       val result = op(using nestedCtx)
-      nestedCtx.recycle()
-      nestedTyperState.disable()
+      ctx.base.recycle(nestedCtx)
       ctx.base.recycle(nestedTyperState)
       result
     else {
