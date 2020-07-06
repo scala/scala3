@@ -246,7 +246,10 @@ class Namer { typer: Typer =>
     val xtree = expanded(tree)
     xtree.getAttachment(TypedAhead) match {
       case Some(ttree) => ttree.symbol
-      case none => xtree.attachment(SymOfTree)
+      case none =>
+        xtree.getAttachment(SymOfTree) match
+          case Some(sym) => sym
+          case _ => throw IllegalArgumentException(i"$xtree does not have a symbol")
     }
   }
 
@@ -443,14 +446,11 @@ class Namer { typer: Typer =>
    /** If `sym` exists, enter it in effective scope. Check that
     *  package members are not entered twice in the same run.
     */
-  def enterSymbol(sym: Symbol)(using Context): Symbol = {
+  def enterSymbol(sym: Symbol)(using Context): Unit =
     // We do not enter Scala 2 macros defined in Scala 3 as they have an equivalent Scala 3 inline method.
-    if (sym.exists && !sym.isScala2MacroInScala3) {
+    if sym.exists && !sym.isScala2MacroInScala3 then
       typr.println(s"entered: $sym in ${ctx.owner}")
       ctx.enter(sym)
-    }
-    sym
-  }
 
   /** Create package if it does not yet exist. */
   private def createPackageSymbol(pid: RefTree)(using Context): Symbol = {
@@ -539,7 +539,8 @@ class Namer { typer: Typer =>
       case imp: Import =>
         ctx.importContext(imp, createSymbol(imp))
       case mdef: DefTree =>
-        val sym = enterSymbol(createSymbol(mdef))
+        val sym = createSymbol(mdef)
+        enterSymbol(sym)
         setDocstring(sym, origStat)
         addEnumConstants(mdef, sym)
         ctx

@@ -559,7 +559,7 @@ object desugar {
     val copiedAccessFlags = if migrateTo3 then EmptyFlags else AccessFlags
 
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
-    //     def _1: T1 = this.p1 
+    //     def _1: T1 = this.p1
     //     ...
     //     def _N: TN = this.pN (unless already given as valdef or parameterless defdef)
     //     def copy(p1: T1 = p1: @uncheckedVariance, ...,
@@ -572,7 +572,7 @@ object desugar {
     val caseClassMeths = {
       def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
         DefDef(name, Nil, Nil, tpt, rhs).withMods(synthetic)
-        
+
       def productElemMeths =
         val caseParams = derivedVparamss.head.toArray
         val selectorNamesInBody = normalizedBody.collect {

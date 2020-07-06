@@ -936,7 +936,7 @@ class Typer extends Namer
    *     def double(x: Char): String = s"$x$x"
    *     "abc" flatMap double
    */
-  private def decomposeProtoFunction(pt: Type, defaultArity: Int)(using Context): (List[Type], untpd.Tree) = {
+  private def decomposeProtoFunction(pt: Type, defaultArity: Int, tree: untpd.Tree)(using Context): (List[Type], untpd.Tree) = {
     def typeTree(tp: Type) = tp match {
       case _: WildcardType => untpd.TypeTree()
       case _ => untpd.TypeTree(tp)
@@ -947,7 +947,15 @@ class Typer extends Namer
           newTypeVar(apply(bounds.orElse(TypeBounds.empty)).bounds)
         case _ => mapOver(t)
     }
-    pt.stripTypeVar.dealias match {
+    val pt1 = pt.stripTypeVar.dealias
+    if (pt1 ne pt1.dropDependentRefinement)
+       && defn.isContextFunctionType(pt1.nonPrivateMember(nme.apply).info.finalResultType)
+    then
+      ctx.error(
+        i"""Implementation restriction: Expected result type $pt1
+           |is a curried dependent context function type. Such types are not yet supported.""",
+        tree.sourcePos)
+    pt1 match {
       case pt1 if defn.isNonRefinedFunction(pt1) =>
         // if expected parameter type(s) are wildcards, approximate from below.
         // if expected result type is a wildcard, approximate from above.
@@ -960,7 +968,7 @@ class Typer extends Namer
          else
            typeTree(restpe))
       case tp: TypeParamRef =>
-        decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity)
+        decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity, tree)
       case _ =>
         (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
     }
@@ -1251,7 +1259,7 @@ class Typer extends Namer
           typedMatchFinish(tree, tpd.EmptyTree, defn.ImplicitScrutineeTypeRef, cases1, pt)
         }
         else {
-          val (protoFormals, _) = decomposeProtoFunction(pt, 1)
+          val (protoFormals, _) = decomposeProtoFunction(pt, 1, tree)
           val checkMode =
             if (pt.isRef(defn.PartialFunctionClass)) desugar.MatchCheck.None
             else desugar.MatchCheck.Exhaustive
