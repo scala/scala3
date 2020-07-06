@@ -269,9 +269,16 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 
   override def foldRight[B](z: B)(op: (A, B) => B): B = foldr(0, length, z, op)
 
-  override def reduceLeft[B >: A](op: (B, A) => B): B = if (length > 0) foldl(1, length, array(0).asInstanceOf[B], op) else super.reduceLeft(op)
+  override def reduceLeft[B >: A](op: (B, A) => B): B =
+    if (length > 0) foldl(1, length, array(0).asInstanceOf[B], op)
+    else super.reduceLeft(op)
 
-  override def reduceRight[B >: A](op: (A, B) => B): B = if (length > 0) foldr(0, length - 1, array(length - 1).asInstanceOf[B], op) else super.reduceRight(op)
+  override def reduceRight[B >: A](op: (A, B) => B): B =
+    if (length > 0) foldr(0, length - 1, array(length - 1).asInstanceOf[B], op)
+    else super.reduceRight(op)
+
+  override def sliding(size: Int, step: Int): Iterator[ArrayBuffer[A]] =
+    new MutationTracker.CheckedIterator(super.sliding(size = size, step = step), mutationCount)
 }
 
 /**

@@ -633,16 +633,8 @@ trait ArrayDequeOps[A, +CC[_], +C <: AnyRef] extends StrictOptimizedSeqOps[A, CC
     }
   }
 
-  override def sliding(window: Int, step: Int): Iterator[C] = {
-    require(window > 0 && step > 0, s"window=$window and step=$step, but both must be positive")
-    length match {
-      case 0 => Iterator.empty
-      case n if n <= window => Iterator.single(slice(0, length))
-      case n =>
-        val lag = if (window > step) window - step else 0
-        Iterator.range(start = 0, end = n - lag, step = step).map(i => slice(i, i + window))
-    }
-  }
+  override def sliding(@deprecatedName("window") size: Int, step: Int): Iterator[C] =
+    super.sliding(size = size, step = step)
 
   override def grouped(n: Int): Iterator[C] = sliding(n, n)
 }
