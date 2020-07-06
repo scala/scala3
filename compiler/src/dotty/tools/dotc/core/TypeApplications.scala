@@ -385,7 +385,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       if (self.derivesFrom(from)) {
         def elemType(tp: Type): Type = tp.widenDealias match
           case tp: AndOrType => tp.derivedAndOrType(elemType(tp.tp1), elemType(tp.tp2))
-          case _ => tp.baseType(from).argInfos.head
+          case _ => tp.baseType(from).argInfos.headOption.getOrElse(defn.NothingType)
         val arg = elemType(self)
         val arg1 = if (wildcardArg) TypeBounds.upper(arg) else arg
         to.typeRef.appliedTo(arg1)
