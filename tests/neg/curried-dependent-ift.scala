@@ -14,4 +14,6 @@ trait B
 def h(x: Boolean): A ?=> B ?=> (A, B) =
   (summon[A], summon[B]) // OK
 
-def g(x: Boolean): (c1: Ctx1) ?=> Ctx2 ?=> (c1.T, Ctx2) = ??? // error
+def g(x: Boolean): (c1: Ctx1) ?=> Ctx2 ?=> (c1.T, Ctx2) =
+  return ???  // error
+  ???
