@@ -1,11 +1,11 @@
 trait Syntax[F[_]] {
-  def [A](a: A) ret: F[A]
+  extension [A](a: A) def ret: F[A]
 }
 
 trait Instance[A]
 
 implicit val instanceSyntax: Syntax[Instance] = new Syntax[Instance] {
-  def [A](a: A) ret: Instance[A] = new Instance[A] {}
+  extension [A](a: A) def ret: Instance[A] = new Instance[A] {}
 }
 
 object Instance {

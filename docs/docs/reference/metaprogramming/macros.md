@@ -717,7 +717,7 @@ This might be used to then perform an implicit search as in:
 
 
 ```scala
-inline def (inline sc: StringContext).showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
+extension (inline sc: StringContext) inline def showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using QuoteContext): Expr[String] = {
   argsExpr match {

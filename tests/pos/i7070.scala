@@ -2,7 +2,7 @@ object Test {
 
   class C
 
-  def (str: String).foo: C ?=> Int = ???
+  extension (str: String) def foo: C ?=> Int = ???
 
   given C = ???
 

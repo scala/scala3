@@ -530,7 +530,7 @@ trait Inferencing { this: Typer =>
          *  is in i7558.scala:
          *
          *      type Tr[+V1, +O1 <: V1]
-         *      def [V2, O2 <: V2](tr: Tr[V2, O2]) sl: Tr[V2, O2] = ???
+         *      extension [V2, O2 <: V2](tr: Tr[V2, O2]) def sl: Tr[V2, O2] = ???
          *      def as[V3, O3 <: V3](tr: Tr[V3, O3]) : Tr[V3, O3] = tr.sl
          *
          *   Here we interpolate at some point V2 and O2 given the constraint

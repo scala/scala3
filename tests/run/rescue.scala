@@ -2,13 +2,13 @@ import scala.util.control.NonFatal
 import scala.util.control.NonLocalReturns._
 
 object lib {
-  inline def [T](op: => T) rescue (fallback: => T) =
+  extension [T](op: => T) inline def rescue (fallback: => T) =
     try op
     catch {
       case NonFatal(_) => fallback    // ReturnThrowable is fatal error, thus ignored
     }
 
-  inline def [T, E <: Throwable](op: => T) rescue (fallback: PartialFunction[E, T]) =
+  extension [T, E <: Throwable](op: => T) inline def rescue (fallback: PartialFunction[E, T]) =
     try op
     catch {
       // case ex: ReturnThrowable[_] => throw ex      // bug #7041

@@ -1,5 +1,5 @@
 class A {
-  extension Ext on (a: Int) {
+  extension (a: Int) {
     def foo: Int = 1
   }
 }

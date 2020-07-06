@@ -296,6 +296,10 @@ object Scanners {
       off
     }
 
+    def skipToken[T](result: T): T =
+      nextToken()
+      result
+
     def adjustSepRegions(lastToken: Token): Unit = (lastToken: @switch) match {
       case LPAREN | LBRACKET =>
         currentRegion = InParens(lastToken, currentRegion)

@@ -3,7 +3,7 @@ package implicits
 case class C()
 
 implicit object Cops {
-  def (x: C).pair(y: C) = (x, y)
+  extension (x: C) def pair(y: C) = (x, y)
 }
 
 class D {

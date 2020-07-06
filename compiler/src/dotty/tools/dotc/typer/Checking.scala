@@ -1125,7 +1125,7 @@ trait Checking {
         // would have produced the same symbol without errors
         def allowAccess(name: Name, sym: Symbol): Boolean = {
           val testCtx = caseCtx.fresh.setNewTyperState()
-          val ref = ctx.typer.typedIdent(untpd.Ident(name), WildcardType)(using testCtx)
+          val ref = ctx.typer.typedIdent(untpd.Ident(name).withSpan(stat.span), WildcardType)(using testCtx)
           ref.symbol == sym && !testCtx.reporter.hasErrors
         }
         checkRefsLegal(tree, cdef.symbol, allowAccess, "enum case")

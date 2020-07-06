@@ -1,7 +1,7 @@
-extension NameOps on (name: String):
+extension (name: String)
   def isWildcard = ???
-end NameOps
+end extension
 
-extension on (name: String):
+extension (name: String)
   def f = ???
 end extension

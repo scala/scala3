@@ -227,7 +227,7 @@ object Parsers {
       || defIntroTokens.contains(in.token)
       || allowedMods.contains(in.token)
       || in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
-      || isIdent(nme.extension) && followingIsExtension()
+      || isIdent(nme.extension) && followingIsOldExtension()
 
     def isStatSep: Boolean = in.isNewLine || in.token == SEMI
 
@@ -369,7 +369,7 @@ object Parsers {
     def acceptStatSep(): Unit =
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
-    def acceptStatSepUnlessAtEnd(stats: ListBuffer[Tree], altEnd: Token = EOF): Unit =
+    def acceptStatSepUnlessAtEnd[T <: Tree](stats: ListBuffer[T], altEnd: Token = EOF): Unit =
       in.observeOutdented()
       in.token match
         case SEMI | NEWLINE | NEWLINES =>
@@ -921,7 +921,11 @@ object Parsers {
       skipParams()
       lookahead.isIdent(nme.as)
 
-    def followingIsExtension() =
+    def followingIsNewExtension() =
+      val next = in.lookahead.token
+      next == LBRACKET || next == LPAREN
+
+    def followingIsOldExtension() =
       val lookahead = in.LookaheadScanner()
       lookahead.nextToken()
       if lookahead.isIdent && !lookahead.isIdent(nme.on) then
@@ -931,6 +935,8 @@ object Parsers {
       lookahead.isIdent(nme.on)
       || lookahead.token == LBRACE
       || lookahead.token == COLON
+
+    def followingIsExtension() = followingIsOldExtension() || followingIsNewExtension()
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -1301,13 +1307,13 @@ object Parsers {
       else
         newLineOptWhenFollowedBy(LBRACE)
 
-    def checkEndMarker(stats: ListBuffer[Tree]): Unit =
+    def checkEndMarker[T <: Tree](stats: ListBuffer[T]): Unit =
 
       def matches(stat: Tree): Boolean = stat match
         case stat: MemberDef if !stat.name.isEmpty =>
           if stat.name == nme.CONSTRUCTOR then in.token == THIS
           else in.isIdent && in.name == stat.name.toTermName
-        case ModuleDef(name, Template(_, Nil, _, _)) =>
+        case ModuleDef(_, Template(_, Nil, _, _)) | ExtMethods(_, _, _) =>
           in.token == IDENTIFIER && in.name == nme.extension
         case PackageDef(pid: RefTree, _) =>
           in.isIdent && in.name == pid.name
@@ -3177,11 +3183,6 @@ object Parsers {
       () => importSelection(simpleRef())
     }
 
-    def posMods(start: Int, mods: Modifiers): Modifiers = {
-      in.nextToken()
-      mods
-    }
-
     /** Def      ::= val PatDef
      *             | var VarDef
      *             | def DefDef
@@ -3202,9 +3203,9 @@ object Parsers {
         val mod1 = addMod(mods, mod)
         patDefOrDcl(start, mod1)
       case DEF =>
-        defDefOrDcl(start, posMods(start, mods))
+        defDefOrDcl(start, in.skipToken(mods))
       case TYPE =>
-        typeDefOrDcl(start, posMods(start, mods))
+        typeDefOrDcl(start, in.skipToken(mods))
       case CASE if inEnum =>
         enumCase(start, mods)
       case _ =>
@@ -3269,7 +3270,7 @@ object Parsers {
      *  DefSig  ::=  id [DefTypeParamClause] DefParamClauses
      *            |  ExtParamClause [nl] [‘.’] id DefParamClauses
      */
-    def defDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
+    def defDefOrDcl(start: Offset, mods: Modifiers): DefDef = atSpan(start, nameStart) {
 
       def scala2ProcedureSyntax(resultTypeStr: String) =
         def toInsert =
@@ -3319,7 +3320,8 @@ object Parsers {
           else
             (Nil, Nil)
         val ident = termIdent()
-        val name = ident.name.asTermName
+        var name = ident.name.asTermName
+        if mods1.is(Extension) then name = name.toExtensionName
         if isInfix && !name.isOperatorName then
           val infixAnnot = Apply(wrapNew(scalaAnnotationDot(tpnme.infix)), Nil)
               .withSpan(Span(start, start))
@@ -3449,23 +3451,23 @@ object Parsers {
     def tmplDef(start: Int, mods: Modifiers): Tree =
       in.token match {
         case TRAIT =>
-          classDef(start, posMods(start, addFlag(mods, Trait)))
+          classDef(start, in.skipToken(addFlag(mods, Trait)))
         case SUPERTRAIT =>
-          classDef(start, posMods(start, addFlag(mods, Trait | SuperTrait)))
+          classDef(start, in.skipToken(addFlag(mods, Trait | SuperTrait)))
         case CLASS =>
-          classDef(start, posMods(start, mods))
+          classDef(start, in.skipToken(mods))
         case CASECLASS =>
-          classDef(start, posMods(start, mods | Case))
+          classDef(start, in.skipToken(mods | Case))
         case OBJECT =>
-          objectDef(start, posMods(start, mods | Module))
+          objectDef(start, in.skipToken(mods | Module))
         case CASEOBJECT =>
-          objectDef(start, posMods(start, mods | Case | Module))
+          objectDef(start, in.skipToken(mods | Case | Module))
         case ENUM =>
-          enumDef(start, posMods(start, mods | Enum))
+          enumDef(start, in.skipToken(mods | Enum))
         case GIVEN =>
           givenDef(start, mods, atSpan(in.skipToken()) { Mod.Given() })
         case _ =>
-          if isIdent(nme.extension) && followingIsExtension() then
+          if isIdent(nme.extension) && followingIsOldExtension() then
             extensionDef(start, mods)
           else
             syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
@@ -3636,6 +3638,53 @@ object Parsers {
       val edef = atSpan(start, nameOffset, in.offset)(ModuleDef(name, templ))
       finalizeDef(edef, addFlag(mods, Given | extensionFlag), start)
 
+    /** Extension  ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
+     *                  {UsingParamClause} ExtMethods
+     */
+    def extension(): ExtMethods =
+      val start = in.skipToken()
+      val tparams = typeParamClauseOpt(ParamOwner.Def)
+      val extParams = paramClause(0, prefix = true)
+      val givenParamss = paramClauses(givenOnly = true)
+      in.observeColonEOL()
+      if (in.token == COLONEOL) in.nextToken()
+      val methods =
+        if isDefIntro(modifierTokens) then
+          extMethod() :: Nil
+        else
+          in.observeIndented()
+          newLineOptWhenFollowedBy(LBRACE)
+          if in.isNestedStart then inDefScopeBraces(extMethods())
+          else { syntaxError("Extension without extension methods"); Nil }
+      val result = ExtMethods(tparams, extParams :: givenParamss, methods)
+      val comment = in.getDocComment(start)
+      if comment.isDefined then
+        for meth <- methods do
+          if !meth.rawComment.isDefined then meth.setComment(comment)
+      result
+    end extension
+
+    /**  ExtMethod  ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
+     */
+    def extMethod(): DefDef =
+      val start = in.offset
+      val mods = defAnnotsMods(modifierTokens)
+      accept(DEF)
+      defDefOrDcl(start, mods)
+
+    /** ExtMethods ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}’
+     */
+    def extMethods(): List[DefDef] = checkNoEscapingPlaceholders {
+      val meths = new ListBuffer[DefDef]
+      val exitOnError = false
+      while !isStatSeqEnd && !exitOnError do
+        setLastStatOffset()
+        meths += extMethod()
+        acceptStatSepUnlessAtEnd(meths)
+      if meths.isEmpty then syntaxError("`def` expected")
+      meths.toList
+    }
+
 /* -------- TEMPLATES ------------------------------------------- */
 
     /** ConstrApp  ::=  SimpleType1 {Annotation} {ParArgumentExprs}
@@ -3750,6 +3799,7 @@ object Parsers {
      *            | Annotations Modifiers Def
      *            | Packaging
      *            | package object objectDef
+     *            | Extension
      *            |
      */
     def topStatSeq(outermost: Boolean = false): List[Tree] = {
@@ -3768,7 +3818,9 @@ object Parsers {
           stats ++= importClause(IMPORT, mkImport(outermost))
         else if (in.token == EXPORT)
           stats ++= importClause(EXPORT, Export.apply)
-        else if (in.token == AT || isDefIntro(modifierTokens))
+        else if isIdent(nme.extension) && followingIsNewExtension() then
+          stats += extension()
+        else if isDefIntro(modifierTokens)
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep)
           if (in.token == CASE)
@@ -3785,6 +3837,7 @@ object Parsers {
      *                     | Export
      *                     | Annotations Modifiers Def
      *                     | Annotations Modifiers Dcl
+     *                     | Extension
      *                     | Expr1
      *                     |
      *  EnumStat         ::= TemplateStat
@@ -3819,6 +3872,8 @@ object Parsers {
           stats ++= importClause(IMPORT, mkImport())
         else if (in.token == EXPORT)
           stats ++= importClause(EXPORT, Export.apply)
+        else if isIdent(nme.extension) && followingIsNewExtension() then
+          stats += extension()
         else if (isDefIntro(modifierTokensOrCase))
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else if (isExprIntro)
@@ -3884,6 +3939,7 @@ object Parsers {
      *  BlockStat    ::= Import
      *                 | Annotations [implicit] [lazy] Def
      *                 | Annotations LocalModifiers TmplDef
+     *                 | Extension
      *                 | Expr1
      *                 |
      */
@@ -3898,6 +3954,8 @@ object Parsers {
           stats += expr(Location.InBlock)
         else if in.token == IMPLICIT && !in.inModifierPosition() then
           stats += closure(in.offset, Location.InBlock, modifiers(BitSet(IMPLICIT)))
+        else if isIdent(nme.extension) && followingIsNewExtension() then
+          stats += extension()
         else if isDefIntro(localModifierTokens, excludedSoftModifiers = Set(nme.`opaque`)) then
           stats +++= localDef(in.offset)
         else if (!isStatSep && (in.token != CASE)) {

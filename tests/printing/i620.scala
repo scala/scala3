@@ -13,7 +13,7 @@ class D {
     protected[A] def f: Int = 0
                  def g: Int = 0
                  def g1(t: Int) = 0
-                 def (c: C) g1 = 0
+                 extension (c: C) def g1 = 0
   }
 
   private[D]      class E

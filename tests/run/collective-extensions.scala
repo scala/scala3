@@ -1,10 +1,10 @@
-extension on (x: String):
+extension (x: String)
   def foo(y: String): String = x ++ y
   def bar(y: String): String = foo(y)
   def baz(y: String): String =
     val x = y
     bar(x)
-  def bam(y: String): String = this.baz(x)(y)
+  def bam(y: String): String = this.extension_baz(x)(y)
   def ban(foo: String): String = x + foo
   def bao(y: String): String =
     val bam = "ABC"

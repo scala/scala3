@@ -46,11 +46,11 @@ type Env
 def notMatched = None
 def matched = Some(()) // aka Some(Tuple0())
 def matched[T](x: T) = Some(Tuple1(x))
-def (x: Matching) && (y: Matching) = if (x == None || y == None) None else Some(x.get ++ y.get)
+extension (x: Matching) def && (y: Matching) = if (x == None || y == None) None else Some(x.get ++ y.get)
 def fold[T](m: Mattching*)(using Env): Matching = m.fold(matched)(_ && _)
 
 // `a =#= b` stands for `a` matches `b`
-def (scrutinee: Tree) =#= pattern: Tree)(using Env): Matching // described by cases in the tables below
+extension (scrutinee: Tree) def =#= pattern: Tree)(using Env): Matching // described by cases in the tables below
 
 def envWith(equiv: (Symbol, Symbol)*)(using Env): Env // Adds to the current environment the fact that s1 from the scrutinee is equivalent to s2 in the pattern
 

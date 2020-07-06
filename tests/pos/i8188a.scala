@@ -1,5 +1,5 @@
 object Test {
-  extension StrDeco on (tree: String) {
+  extension (tree: String) {
     def show(using DummyImplicit): String = ???
     def show(color: Boolean)(using DummyImplicit): String = ???
   }

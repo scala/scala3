@@ -324,18 +324,18 @@ object Test {
   case class Circle(radius: Double)
 
   implicit object RectangleArea
-    def (x: Rectangle).area: Double = x.width * self.height
+    extension (x: Rectangle) def area: Double = x.width * self.height
 
   trait HasArea[T]
-    def (x: T).area: Double
+    extension (x: T) def area: Double
 
   implicit object CircleHasArea extends HasArea[Circle]
-    def (x: Circle).area = x.radius * 2 * math.Pi
+    extension (x: Circle) def area = x.radius * 2 * math.Pi
 
  ---------------------------------------------------------------------------------
 
   trait SemiGroup[T]
-    def (x: T).combine(y: T): T
+    extension (x: T) def combine(y: T): T
 
   trait Monoid[T] extends SemiGroup[T]
     def unit: T
@@ -348,23 +348,23 @@ object Test {
   // Class `Str` is not definable
 
   implicit object StringMonoid extends Monoid[String]
-    def (x: String).combine(y: String): String = x + y
+    extension (x: String) def combine(y: String): String = x + y
     def unit = ""
 
   trait Ord[T]
-    def (x: T).compareTo(y: T): Int
-    def (x: T) < (that: T) = x.compareTo(y) < 0
-    def (x: T) > (that: T) = x.compareTo(y) > 0
+    extension (x: T) def compareTo(y: T): Int
+    extension (x: T) def < (that: T) = x.compareTo(y) < 0
+    extension (x: T) def > (that: T) = x.compareTo(y) > 0
     val minimum: T
   }
 
   implicit object IntOrd {
-    def (x: Int).compareTo(y: Int) =
+    extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
   implicit class ListOrd[T: Ord] {
-    def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys) match
+    extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
@@ -381,19 +381,19 @@ object Test {
  ---------------------------------------------------------------------------------
 
   trait Functor[F[_]]
-    def (x: F[A]).map[A, B](f: A => B): F[B]
+    extension (x: F[A]) def map[A, B](f: A => B): F[B]
 
   trait Monad[F[_]] extends Functor[F]
-    def (x: F[A]).flatMap[A, B](f: A => F[B]): F[B]
-    def (x: F[A]).map[A, B](f: A => B) = x.flatMap(f `andThen` pure)
+    extension (x: F[A]) def flatMap[A, B](f: A => F[B]): F[B]
+    extension (x: F[A]) def map[A, B](f: A => B) = x.flatMap(f `andThen` pure)
     def pure[A]: F[A]
 
   implicit object ListMonad extends Monad[List]
-    def (xs: List[A]).flatMap[A, B](f: A => List[B]): List[B] = xs.flatMap(f)
+    extension (xs: List[A]) def flatMap[A, B](f: A => List[B]): List[B] = xs.flatMap(f)
     def pure[A]: List[A] = List.Nil
 
   implicit class ReaderMonad[Ctx] extends Monad[Ctx => _]
-    def (r: Ctx => A).flatMap[A, B](f: A => Ctx => B): Ctx => B =
+    extension (r: Ctx => A) def flatMap[A, B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A = ctx => x
 

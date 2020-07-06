@@ -1,2 +1,2 @@
-def (self: T).foo[T] = ??? // error
-def [T1](self: T1) bar[T2] = ??? // error // error
+extension (self: T) def foo[T] = ??? // error
+extension [T1](self: T1) def bar[T2] = ??? // error

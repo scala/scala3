@@ -1,3 +1,3 @@
 object Test {
-  extension on[T] (t: T) { } // error
+  extension [T] (t: T) { } // error
 }

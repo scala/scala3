@@ -559,7 +559,7 @@ object desugar {
     val copiedAccessFlags = if migrateTo3 then EmptyFlags else AccessFlags
 
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
-    //     def _1: T1 = this.p1 
+    //     def _1: T1 = this.p1
     //     ...
     //     def _N: TN = this.pN (unless already given as valdef or parameterless defdef)
     //     def copy(p1: T1 = p1: @uncheckedVariance, ...,
@@ -572,7 +572,7 @@ object desugar {
     val caseClassMeths = {
       def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
         DefDef(name, Nil, Nil, tpt, rhs).withMods(synthetic)
-        
+
       def productElemMeths =
         val caseParams = derivedVparamss.head.toArray
         val selectorNamesInBody = normalizedBody.collect {
@@ -850,6 +850,7 @@ object desugar {
    *  where every definition in `body` is expanded to an extension method
    *  taking type parameters `tparams` and a leading paramter `(x: T)`.
    *  See: collectiveExtensionBody
+   *  TODO: drop this part
    */
   def moduleDef(mdef: ModuleDef)(implicit ctx: Context): Tree = {
     val impl = mdef.impl
@@ -906,6 +907,25 @@ object desugar {
     }
   }
 
+  /** Transform extension construct to list of extension methods */
+  def extMethods(ext: ExtMethods)(using Context): Tree = flatTree {
+    for mdef <- ext.methods yield
+      if mdef.tparams.nonEmpty then
+        ctx.error("extension method cannot have type parameters here, all type parameters go after `extension`",
+          mdef.tparams.head.sourcePos)
+      defDef(
+        cpy.DefDef(mdef)(
+          name = mdef.name.toExtensionName,
+          tparams = ext.tparams ++ mdef.tparams,
+          vparamss = mdef.vparamss match
+            case vparams1 :: vparamss1 if !isLeftAssoc(mdef.name) =>
+              vparams1 :: ext.vparamss ::: vparamss1
+            case _ =>
+              ext.vparamss ++ mdef.vparamss
+        ).withMods(mdef.mods | Extension)
+      )
+  }
+
   /** Transform the statements of a collective extension
    *   @param stats    the original statements as they were parsed
    *   @param tparams  the collective type parameters
@@ -934,6 +954,7 @@ object desugar {
       stat match
         case mdef: DefDef =>
           cpy.DefDef(mdef)(
+            name = mdef.name.toExtensionName,
             tparams = tparams ++ mdef.tparams,
             vparamss = vparamss ::: mdef.vparamss,
           ).withMods(mdef.mods | Extension)
@@ -964,16 +985,21 @@ object desugar {
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
    *      If it does redefine, issue an error and return a mangled name instead of the original one.
-   *   2. If the name is missing (this can be the case for instance definitions), invent one instead.
+   *   2. Check that the name does not start with `extension_` unless the
+   *      method is an extension method.
+   *   3. If the name is missing (this can be the case for instance definitions), invent one instead.
    */
   def normalizeName(mdef: MemberDef, impl: Tree)(implicit ctx: Context): Name = {
     var name = mdef.name
     if (name.isEmpty) name = name.likeSpaced(inventGivenOrExtensionName(impl))
+    def errPos = mdef.source.atSpan(mdef.nameSpan)
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
       val kind = if (name.isTypeName) "class" else "object"
-      ctx.error(IllegalRedefinitionOfStandardKind(kind, name), mdef.sourcePos)
+      ctx.error(IllegalRedefinitionOfStandardKind(kind, name), errPos)
       name = name.errorName
     }
+    if name.isExtensionName && !mdef.mods.is(Extension) then
+      ctx.error(em"illegal method name: $name may not start with `extension_`", errPos)
     name
   }
 
@@ -1247,7 +1273,7 @@ object desugar {
   }
 
   private def isTopLevelDef(stat: Tree)(using Context): Boolean = stat match
-    case _: ValDef | _: PatDef | _: DefDef | _: Export => true
+    case _: ValDef | _: PatDef | _: DefDef | _: Export | _: ExtMethods => true
     case stat: ModuleDef =>
       stat.mods.isOneOf(GivenOrImplicit)
     case stat: TypeDef =>

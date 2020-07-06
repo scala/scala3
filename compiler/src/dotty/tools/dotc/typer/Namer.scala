@@ -489,15 +489,16 @@ class Namer { typer: Typer =>
         tree.pushAttachment(ExpandedTree, expanded)
       }
     tree match {
-      case tree: DefTree => record(desugar.defTree(tree))
+      case tree: DefTree    => record(desugar.defTree(tree))
       case tree: PackageDef => record(desugar.packageDef(tree))
-      case _ =>
+      case tree: ExtMethods => record(desugar.extMethods(tree))
+      case _                =>
     }
   }
 
   /** The expanded version of this tree, or tree itself if not expanded */
   def expanded(tree: Tree)(using Context): Tree = tree match {
-    case _: DefTree | _: PackageDef => tree.attachmentOrElse(ExpandedTree, tree)
+    case _: DefTree | _: PackageDef | _: ExtMethods => tree.attachmentOrElse(ExpandedTree, tree)
     case _ => tree
   }
 
@@ -1155,7 +1156,7 @@ class Namer { typer: Typer =>
 
         def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit = {
           val size = buf.size
-          val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
+          val mbrs = List(name, name.toTypeName, name.toExtensionName).flatMap(path.tpe.member(_).alternatives)
           mbrs.foreach(addForwarder(alias, _, span))
           if (buf.size == size) {
             val reason = mbrs.map(whyNoForwarder).dropWhile(_ == SKIP) match {

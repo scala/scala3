@@ -71,7 +71,7 @@ object Implicits {
    */
   def hasExtMethod(tp: Type, expected: Type)(using Context) = expected match
     case SelectionProto(name, _, _, _) =>
-      tp.memberBasedOnFlags(name, required = ExtensionMethod).exists
+      tp.memberBasedOnFlags(name.toExtensionName, required = ExtensionMethod).exists
     case _ => false
 
   def strictEquality(using Context): Boolean =
@@ -91,13 +91,18 @@ object Implicits {
     /** The implicit references */
     def refs: List[ImplicitRef]
 
-    private var SingletonClass: ClassSymbol = null
+    /** If comes from an implicit scope of a type, the companion objects making
+     *  up that implicit scope, otherwise the empty set.
+     */
+    def companionRefs: TermRefSet = TermRefSet.empty
+
+    private var mySingletonClass: ClassSymbol = null
 
     /** Widen type so that it is neither a singleton type nor a type that inherits from scala.Singleton. */
     private def widenSingleton(tp: Type)(using Context): Type = {
-      if (SingletonClass == null) SingletonClass = defn.SingletonClass
+      if (mySingletonClass == null) mySingletonClass = defn.SingletonClass
       val wtp = tp.widenSingleton
-      if (wtp.derivesFrom(SingletonClass)) defn.AnyType else wtp
+      if (wtp.derivesFrom(mySingletonClass)) defn.AnyType else wtp
     }
 
     protected def isAccessible(ref: TermRef)(using Context): Boolean
@@ -105,6 +110,10 @@ object Implicits {
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(using Context): List[Candidate] = {
       record("filterMatching")
+
+      val considerExtension = pt match
+        case ViewProto(_, _: SelectionProto) => true
+        case _ => false
 
       def candidateKind(ref: TermRef)(using Context): Candidate.Kind = { /*trace(i"candidateKind $ref $pt")*/
 
@@ -134,8 +143,9 @@ object Implicits {
                 case rtp =>
                   viewCandidateKind(wildApprox(rtp), argType, resType)
               }
-            case tpw: TermRef =>
-              Candidate.Conversion | Candidate.Extension // can't discard overloaded refs
+            case tpw: TermRef => // can't discard overloaded refs
+              Candidate.Conversion
+              | (if considerExtension then Candidate.Extension else Candidate.None)
             case tpw =>
               // Only direct instances of Function1 and direct or indirect instances of <:< are eligible as views.
               // However, Predef.$conforms is not eligible, because it is a no-op.
@@ -162,12 +172,11 @@ object Implicits {
               val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
               // An implementation of <:< counts as a view
               val isConforms = tpw.derivesFrom(defn.SubTypeClass)
-              val hasExtensions = hasExtMethod(tpw, resType)
               val conversionKind =
                 if (isFunctionInS2 || isImplicitConversion || isConforms) Candidate.Conversion
                 else Candidate.None
               val extensionKind =
-                if (hasExtensions) Candidate.Extension
+                if considerExtension && hasExtMethod(tpw, resType) then Candidate.Extension
                 else Candidate.None
               conversionKind | extensionKind
           }
@@ -227,18 +236,27 @@ object Implicits {
       }
 
 
-      if (refs.isEmpty) Nil
-      else {
+      if refs.isEmpty && (!considerExtension || companionRefs.isEmpty) then
+        Nil
+      else
         val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
 
-        def matchingCandidate(ref: ImplicitRef): Option[Candidate] =
-          nestedCtx.test(candidateKind(ref.underlyingRef)) match {
-            case Candidate.None => None
-            case ckind => Some(new Candidate(ref, ckind, level))
-          }
+        def matchingCandidate(ref: ImplicitRef, extensionOnly: Boolean): Option[Candidate] =
+          var ckind = nestedCtx.test(candidateKind(ref.underlyingRef))
+          if extensionOnly then ckind &= Candidate.Extension
+          if ckind == Candidate.None then None
+          else Some(new Candidate(ref, ckind, level))
 
-        refs.flatMap(matchingCandidate)
-      }
+        val extensionCandidates =
+          if considerExtension then
+            companionRefs.toList
+              .filterConserve(!_.symbol.isOneOf(GivenOrImplicit))  // implicit objects are already in `refs`
+              .flatMap(matchingCandidate(_, extensionOnly = true))
+          else
+            Nil
+        val implicitCandidates =
+          refs.flatMap(matchingCandidate(_, extensionOnly = false))
+        extensionCandidates ::: implicitCandidates
     }
   }
 
@@ -246,7 +264,7 @@ object Implicits {
    *  @param tp              the type determining the implicit scope
    *  @param companionRefs   the companion objects in the implicit scope.
    */
-  class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
+  class OfTypeImplicits(tp: Type, override val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
     assert(initctx.typer != null)
     implicits.println(i"implicit scope of type $tp = ${companionRefs.toList}%, %")
     @threadUnsafe lazy val refs: List[ImplicitRef] = {
@@ -492,8 +510,6 @@ trait ImplicitRunInfo:
 
   private val implicitScopeCache = mutable.AnyRefMap[Type, OfTypeImplicits]()
 
-  private val EmptyTermRefSet = new TermRefSet(using NoContext)
-
   private def isExcluded(sym: Symbol) =
     if migrateTo3 then false else sym.is(Package) || sym.isPackageObject
 
@@ -564,7 +580,7 @@ trait ImplicitRunInfo:
           case None =>
             if seen.contains(t) then
               incomplete.addEntry(tp) // all references for `t` will be accounted for in `seen` so we return `EmptySet`.
-              EmptyTermRefSet         // on the other hand, the refs of `tp` are now inaccurate, so `tp` is marked incomplete.
+              TermRefSet.empty        // on the other hand, the refs of `tp` are now inaccurate, so `tp` is marked incomplete.
             else
               seen.addEntry(t)
               val is = recur(t)
@@ -755,7 +771,7 @@ trait Implicits { self: Typer =>
     }
   }
 
-  private var synthesizer: Synthesizer | Null = null
+  private var synthesizer: Synthesizer = null
 
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
@@ -767,7 +783,7 @@ trait Implicits { self: Typer =>
         if fail.isAmbiguous then failed
         else
           if synthesizer == null then synthesizer = Synthesizer(this)
-          synthesizer.nn.tryAll(formal, span).orElse(failed)
+          synthesizer.tryAll(formal, span).orElse(failed)
 
   /** Search an implicit argument and report error if not found */
   def implicitArgTree(formal: Type, span: Span)(using Context): Tree = {
@@ -1027,13 +1043,21 @@ trait Implicits { self: Typer =>
           }
           pt match
             case SelectionProto(name: TermName, mbrType, _, _) if cand.isExtension =>
-              val result = extMethodApply(untpd.Select(untpdGenerated, name), argument, mbrType)
-              if !ctx.reporter.hasErrors && cand.isConversion then
-                val testCtx = ctx.fresh.setExploreTyperState()
-                tryConversion(using testCtx)
-                if testCtx.reporter.hasErrors then
-                  ctx.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
-              result
+              def tryExtension(using Context) =
+                extMethodApply(untpd.Select(untpdGenerated, name.toExtensionName), argument, mbrType)
+              if cand.isConversion then
+                val extensionCtx, conversionCtx = ctx.fresh.setNewTyperState()
+                val extensionResult = tryExtension(using extensionCtx)
+                val conversionResult = tryConversion(using conversionCtx)
+                if !extensionCtx.reporter.hasErrors then
+                  extensionCtx.typerState.commit()
+                  if !conversionCtx.reporter.hasErrors then
+                    ctx.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
+                  extensionResult
+                else
+                  conversionCtx.typerState.commit()
+                  conversionResult
+              else tryExtension
             case _ =>
               tryConversion
         }
@@ -1633,8 +1657,10 @@ final class SearchRoot extends SearchHistory {
 }
 
 /** A set of term references where equality is =:= */
-final class TermRefSet(using Context) {
+sealed class TermRefSet(using Context):
   private val elems = new java.util.LinkedHashMap[TermSymbol, List[Type]]
+
+  def isEmpty = elems.size == 0
 
   def += (ref: TermRef): Unit = {
     val pre = ref.prefix
@@ -1663,4 +1689,11 @@ final class TermRefSet(using Context) {
   }
 
   override def toString = toList.toString
-}
+
+object TermRefSet:
+
+  @sharable val empty = new TermRefSet(using NoContext):
+    override def += (ref: TermRef): Unit = throw UnsupportedOperationException("+=")
+
+end TermRefSet
+

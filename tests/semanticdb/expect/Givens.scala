@@ -3,10 +3,10 @@ package b
 
 object Givens:
 
-  extension on [A](any: A):
+  extension [A](any: A)
     def sayHello = s"Hello, I am $any"
 
-  extension on [B](any: B):
+  extension [B](any: B)
     def sayGoodbye = s"Goodbye, from $any"
     def saySoLong = s"So Long, from $any"
 
@@ -16,12 +16,12 @@ object Givens:
 
   trait Monoid[A]:
     def empty: A
-    def (x: A).combine(y: A): A
+    extension (x: A) def combine(y: A): A
 
   given Monoid[String]:
     def empty = ""
-    def (x: String).combine(y: String) = x + y
+    extension (x: String) def combine(y: String) = x + y
 
   inline given int2String as Conversion[Int, String] = _.toString
 
-  def foo[A](using A: Monoid[A]): A = A.combine(A.empty)(A.empty)
+  def foo[A](using A: Monoid[A]): A = A.extension_combine(A.empty)(A.empty)

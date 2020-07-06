@@ -12,7 +12,7 @@ object Logarithms {
   }
 
   // Extension methods define opaque types' public APIs
-  extension on (x: Logarithm) {
+  extension (x: Logarithm) {
     def toDouble: Double = math.exp(x)
     def + (y: Logarithm): Logarithm = Logarithm(math.exp(x) + math.exp(y))
     def * (y: Logarithm): Logarithm = Logarithm(x + y)
@@ -36,10 +36,10 @@ object Access {
   opaque type PermissionChoice = Int
   opaque type Permission <: Permissions & PermissionChoice = Int
 
-  def (x: Permissions) & (y: Permissions): Permissions = x & y
-  def (x: PermissionChoice) | (y: PermissionChoice): PermissionChoice = x | y
-  def (x: Permissions).is(y: Permissions) = (x & y) == y
-  def (x: Permissions).isOneOf(y: PermissionChoice) = (x & y) != 0
+  extension (x: Permissions) def & (y: Permissions): Permissions = x & y
+  extension (x: PermissionChoice) def | (y: PermissionChoice): PermissionChoice = x | y
+  extension (x: Permissions) def is(y: Permissions) = (x & y) == y
+  extension (x: Permissions) def isOneOf(y: PermissionChoice) = (x & y) != 0
 
   val NoPermission: Permission = 0
   val ReadOnly: Permission = 1

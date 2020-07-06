@@ -33,7 +33,7 @@ object Test {
     *  @tparam GArgs the tuple type with the same types as the function arguments of G
     *  @tparam R the return type of F
     */
-  def [F, G, FArgs <: Tuple, GArgs <: Tuple, R](f: F) compose (g: G)(using tg: TupledFunction[G, GArgs => FArgs], tf: TupledFunction[F, FArgs => R]): GArgs => R = {
+  extension [F, G, FArgs <: Tuple, GArgs <: Tuple, R](f: F) def compose (g: G)(using tg: TupledFunction[G, GArgs => FArgs], tf: TupledFunction[F, FArgs => R]): GArgs => R = {
     x => tf.tupled(f)(tg.tupled(g)(x))
   }
 

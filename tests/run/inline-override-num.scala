@@ -8,12 +8,12 @@ object Num {
   }
   given IntNum
 
-  extension Extension on [T](inline x: T)(using inline num: Num[T]) {
+  extension [T](inline x: T)(using inline num: Num[T]) {
     inline def +(inline y: T): T = num.plus(x, y)
   }
 }
 
-import Num.Extension._
+import Num.+
 
 inline def twiceInlined[T: Num](x : T): T = x + x
 def twice[T: Num](x : T): T = x + x

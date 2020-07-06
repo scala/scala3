@@ -541,6 +541,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         keywordText("import ") ~ importText(expr, selectors)
       case Export(expr, selectors) =>
         keywordText("export ") ~ importText(expr, selectors)
+      case ExtMethods(tparams, vparamss, mdefs) =>
+        keywordText("extension ")
+        ~ addVparamssText(tparamsText(tparams), vparamss)
+        ~ " " ~ (if mdefs.length == 1 then toText(mdefs.head) else blockText(mdefs))
       case packageDef: PackageDef =>
         packageDefText(packageDef)
       case tree: Template =>
@@ -741,9 +745,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   private def useSymbol(tree: untpd.Tree) =
     tree.hasType && tree.symbol.exists && ctx.settings.YprintSyms.value
 
-  protected def nameIdText[T >: Untyped](tree: NameTree[T]): Text =
+  protected def nameIdText[T >: Untyped](tree: NameTree[T], dropExtension: Boolean = false): Text =
     if (tree.hasType && tree.symbol.exists) {
-      val str: Text = nameString(tree.symbol)
+      var str = nameString(tree.symbol)
+      if tree.symbol.isExtensionMethod && dropExtension && str.startsWith("extension_") then
+        str = str.drop("extension_".length)
       tree match {
         case tree: RefTree => withPos(str, tree.sourcePos)
         case tree: MemberDef => withPos(str, tree.sourcePos.withSpan(tree.nameSpan))
@@ -788,7 +794,15 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       val isExtension = tree.hasType && tree.symbol.isExtensionMethod
       withEnclosingDef(tree) {
         val (prefix, vparamss) =
-          if (isExtension) (defKeyword ~~ paramsText(tree.vparamss.head) ~~ valDefText(nameIdText(tree)), tree.vparamss.tail)
+          if isExtension then
+            val (leadingParams, otherParamss) = (tree.vparamss: @unchecked) match
+              case vparams1 :: vparams2 :: rest if !isLeftAssoc(tree.name) =>
+                (vparams2, vparams1 :: rest)
+              case vparams1 :: rest =>
+                (vparams1, rest)
+            (keywordStr("extension") ~~ paramsText(leadingParams)
+             ~~ (defKeyword ~~ valDefText(nameIdText(tree, dropExtension = true))).close,
+             otherParamss)
           else (defKeyword ~~ valDefText(nameIdText(tree)), tree.vparamss)
 
         addVparamssText(prefix ~ tparamsText(tree.tparams), vparamss) ~

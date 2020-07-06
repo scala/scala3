@@ -6,7 +6,7 @@ type F[T] = T match {
   case G[a] => String
 }
 
-extension on [T](tup: T) {
+extension [T](tup: T) {
   def g(using Foo: F[T]) = ???
 }
 

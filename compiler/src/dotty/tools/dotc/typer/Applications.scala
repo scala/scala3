@@ -18,6 +18,7 @@ import ErrorReporting._
 import Trees._
 import Names._
 import StdNames._
+import NameOps._
 import NameKinds.DefaultGetterName
 import ProtoTypes._
 import Inferencing._
@@ -1338,13 +1339,14 @@ trait Applications extends Compatibility {
       followApply && tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
   }
 
-  /** Does `tp` have an extension method named `name` with this-argument `argType` and
+  /** Does `tp` have an extension method named `extension_name` with this-argument `argType` and
    *  result matching `resultType`?
    */
   def hasExtensionMethod(tp: Type, name: TermName, argType: Type, resultType: Type)(using Context) = {
+    val xname = name.toExtensionName
     def qualifies(mbr: Denotation) =
-      mbr.exists && isApplicableType(tp.select(name, mbr), argType :: Nil, resultType)
-    tp.memberBasedOnFlags(name, required = ExtensionMethod) match {
+      mbr.exists && isApplicableType(tp.select(xname, mbr), argType :: Nil, resultType)
+    tp.memberBasedOnFlags(xname, required = ExtensionMethod) match {
       case mbr: SingleDenotation => qualifies(mbr)
       case mbr => mbr.hasAltWith(qualifies(_))
     }
@@ -2087,7 +2089,7 @@ trait Applications extends Compatibility {
    *
    *  where <type-args> comes from `pt` if it is a (possibly ignored) PolyProto.
    */
-  def extMethodApply(methodRef: untpd.Tree, receiver: Tree, pt: Type)(using Context) = {
+  def extMethodApply(methodRef: untpd.Tree, receiver: Tree, pt: Type)(using Context): Tree = {
     /** Integrate the type arguments from `currentPt` into `methodRef`, and produce
      *  a matching expected type.
      *  If `currentPt` is ignored, the new expected type will be ignored too.

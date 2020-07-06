@@ -9,8 +9,8 @@ that serve for synthesizing arguments to [context parameters](./using-clauses.ht
 ```scala
 trait Ord[T] {
   def compare(x: T, y: T): Int
-  def (x: T) < (y: T) = compare(x, y) < 0
-  def (x: T) > (y: T) = compare(x, y) > 0
+  extension (x: T) def < (y: T) = compare(x, y) < 0
+  extension (x: T) def > (y: T) = compare(x, y) > 0
 }
 
 given intOrd as Ord[Int] {

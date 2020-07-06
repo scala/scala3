@@ -12,7 +12,7 @@ object Test extends App {
 
   class Scanner {
     def scan() = println("scanning")
-    def (x: Any).scanned = scan()
+    extension (x: Any) def scanned = scan()
   }
   object Scanner extends Scanner
 

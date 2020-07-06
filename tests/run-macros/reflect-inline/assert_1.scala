@@ -1,7 +1,7 @@
 import scala.quoted._
 
 object api {
-  inline def (inline x: String) stripMargin: String =
+  extension (inline x: String) inline def stripMargin: String =
     ${ stripImpl('x) }
 
   private def stripImpl(x: Expr[String])(using qctx: QuoteContext): Expr[String] =

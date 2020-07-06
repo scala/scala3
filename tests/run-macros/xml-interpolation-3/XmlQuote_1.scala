@@ -8,7 +8,7 @@ case class Xml(parts: String, args: List[Any])
 object XmlQuote {
 
   implicit object SCOps {
-    inline def (inline ctx: StringContext) xml (args: => Any*): Xml =
+    extension (inline ctx: StringContext) inline def xml (args: => Any*): Xml =
       ${XmlQuote.impl('ctx, 'args)}
   }
 

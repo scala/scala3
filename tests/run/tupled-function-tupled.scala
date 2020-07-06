@@ -24,5 +24,5 @@ object Test {
     *  @tparam Args the tuple type with the same types as the function arguments of F
     *  @tparam R the return type of F
     */
-  def [F, Args <: Tuple, R](f: F) tupled (using tf: TupledFunction[F, Args => R]): Args => R = tf.tupled(f)
+  extension [F, Args <: Tuple, R](f: F) def tupled (using tf: TupledFunction[F, Args => R]): Args => R = tf.tupled(f)
 }

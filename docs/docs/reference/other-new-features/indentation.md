@@ -59,6 +59,7 @@ There are two rules:
     An indentation region can start
 
      - after the condition of an `if-else`, or
+     - after the leading parameters of an `extension`, or
      - after a ": at end of line" token (see below)
      - after one of the following tokens:
     ```
@@ -94,7 +95,7 @@ at the toplevel, inside braces `{...}`, but not inside parentheses `(...)`, patt
 
 ### Optional Braces Around Template Bodies
 
-The Scala grammar uses the term _template body_ for the definitions of a class, trait, object, given instance or extension that are normally enclosed in braces. The braces around a template body can also be omitted by means of the following rule:
+The Scala grammar uses the term _template body_ for the definitions of a class, trait, object or given instance that are normally enclosed in braces. The braces around a template body can also be omitted by means of the following rule
 
 If at the point where a template body can start there is a `:` that occurs at the end
 of a line, and that is followed by at least one indented statement, the recognized
@@ -120,10 +121,10 @@ enum Color:
 type T = A:
   def f: Int
 
-given [T] with Ord[T] as Ord[List[T]]:
+given [T](using Ord[T]) as Ord[List[T]]:
   def compare(x: List[T], y: List[T]) = ???
 
-extension on (xs: List[Int]):
+extension (xs: List[Int])
   def second: Int = xs.tail.head
 
 new A:
@@ -256,7 +257,7 @@ For instance, the following end markers are all legal:
       end given
     end C
 
-    extension on (x: C):
+    extension (x: C)
       def ff: String = x.f ++ x.f
     end extension
 

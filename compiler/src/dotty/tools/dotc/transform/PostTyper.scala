@@ -10,7 +10,7 @@ import dotty.tools.dotc.typer.VarianceChecker
 import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
 import Decorators._
-import Symbols._, SymUtils._
+import Symbols._, SymUtils._, NameOps._
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import reporting.messages._
@@ -349,7 +349,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val seen = mutable.Set.empty[Name]
 
           def checkIdent(sel: untpd.ImportSelector): Unit =
-            if !exprTpe.member(sel.name).exists && !exprTpe.member(sel.name.toTypeName).exists then
+            if !exprTpe.member(sel.name).exists
+               && !exprTpe.member(sel.name.toTypeName).exists
+               && !exprTpe.member(sel.name.toExtensionName).exists then
               ctx.error(NotAMember(exprTpe, sel.name, "value"), sel.imported.sourcePos)
             if seen.contains(sel.name) then
               ctx.error(ImportRenamedTwice(sel.imported), sel.imported.sourcePos)

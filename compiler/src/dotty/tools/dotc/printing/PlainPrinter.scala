@@ -308,7 +308,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }
 
   /** The string representation of this type used as a prefix, including separator */
-  protected def toTextPrefix(tp: Type): Text = controlled {
+  def toTextPrefix(tp: Type): Text = controlled {
     homogenize(tp) match {
       case NoPrefix => ""
       case tp: SingletonType => toTextRef(tp) ~ "."

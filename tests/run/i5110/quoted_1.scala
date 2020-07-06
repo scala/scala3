@@ -8,9 +8,9 @@ object Macro {
     throw new Boom
   }
 
-  inline def (boom: Bomb) foo(): Unit = ()
+  extension (boom: Bomb) inline def foo(): Unit = ()
 
   // By name Boom is used to elide the evaluation of the prefix
-  inline def (boom: => Bomb) bar(): Unit = ()
+  extension (boom: => Bomb) inline def bar(): Unit = ()
 
 }

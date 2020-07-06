@@ -6,6 +6,7 @@ import core._
 import Contexts._, Types._, Symbols._, Names._, Decorators._, ProtoTypes._
 import Flags._, SymDenotations._
 import NameKinds.FlatName
+import NameOps._
 import config.Printers.{implicits, implicitsDetailed}
 import util.Spans.Span
 import ast.{untpd, tpd}
@@ -215,7 +216,7 @@ trait ImportSuggestions:
      *  applicable to `argType`.
      */
     def extensionMethod(site: TermRef, name: TermName, argType: Type): Option[TermRef] =
-      site.member(name)
+      site.member(name.toExtensionName)
         .alternatives
         .map(mbr => TermRef(site, mbr.symbol))
         .filter(ref =>
@@ -300,7 +301,7 @@ trait ImportSuggestions:
       if filled < n && rest.nonEmpty then rest.toList.best(n - filled)
       else Nil
     top.take(filled).toList ++ remaining
-  end best
+  //end best  TODO: re-enable with new syntax
 
   /** An addendum to an error message where the error might be fixed
    *  by some implicit value of type `pt` that is however not found.
@@ -315,7 +316,12 @@ trait ImportSuggestions:
       if fullMatches.nonEmpty then (fullMatches, "fix")
       else (headMatches, "make progress towards fixing")
     def importString(ref: TermRef): String =
-      s"  import ${ctx.printer.toTextRef(ref).show}"
+      val imported =
+        if ref.symbol.isAllOf(ExtensionMethod) then
+          s"${ctx.printer.toTextPrefix(ref.prefix).show}${ref.symbol.name.dropExtension}"
+        else
+          ctx.printer.toTextRef(ref).show
+      s"  import $imported"
     val suggestions = suggestedRefs
       .zip(suggestedRefs.map(importString))
       .filter((ref, str) => str.contains('.')) // must be a real import with `.`

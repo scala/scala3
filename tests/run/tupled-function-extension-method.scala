@@ -34,14 +34,17 @@ object Test {
   class Expr[T](val x: T)
 
   // Specialized only for arity 0 and one as auto tupling will not provide the disired effect
-  def [R](e: Expr[() => R]) apply (): R = e.x()
-  def [Arg, R](e: Expr[Arg => R]) apply (arg: Arg): R = e.x(arg)
-  def [Arg, R](e: Expr[Arg ?=> R]) applyGiven(arg: Arg): R = e.x(using arg)
+  extension [R](e: Expr[() => R])
+    def apply (): R = e.x()
+  extension [Arg, R](e: Expr[Arg => R])
+    def apply (arg: Arg): R = e.x(arg)
+  extension [Arg, R](e: Expr[Arg ?=> R])
+    def applyGiven(arg: Arg): R = e.x(using arg)
 
   // Applied to all funtions of arity 2 or more (including more than 22 parameters)
-  def [F, Args <: Tuple, R](e: Expr[F]) apply (args: Args)(using tf: TupledFunction[F, Args => R]): R =
+  extension [F, Args <: Tuple, R](e: Expr[F]) def apply (args: Args)(using tf: TupledFunction[F, Args => R]): R =
     tf.tupled(e.x)(args)
-  def [F, Args <: Tuple, R](e: Expr[F]) applyGiven (args: Args)(using tf: TupledFunction[F, Args ?=> R]): R =
+  extension [F, Args <: Tuple, R](e: Expr[F]) def applyGiven (args: Args)(using tf: TupledFunction[F, Args ?=> R]): R =
     tf.tupled(e.x)(using args)
 
 }

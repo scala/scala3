@@ -4,7 +4,7 @@ import scala.quoted.autolift
 
 
 object Macro {
-  inline def (inline sc: StringContext).foo(args: String*): Unit = ${ impl('sc) }
+  extension (inline sc: StringContext) inline def foo(args: String*): Unit = ${ impl('sc) }
 
   def impl(sc: Expr[StringContext])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty._

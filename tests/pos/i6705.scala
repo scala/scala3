@@ -5,7 +5,7 @@ trait StringTempl {
 
 
 object Test {
-  def (x: String) shouldBe(y: String): Boolean = ???
+  extension (x: String) def shouldBe(y: String): Boolean = ???
 
   def test(tmpl: StringTempl): Unit = {
     tmpl.mkString shouldBe "hello"                       // error

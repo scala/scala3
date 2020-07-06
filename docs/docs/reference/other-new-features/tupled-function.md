@@ -44,7 +44,8 @@ The following defines `tupled` as [extension method](../contextual/extension-met
  *  @tparam Args the tuple type with the same types as the function arguments of F
  *  @tparam R the return type of F
  */
-def [F, Args <: Tuple, R](f: F).tupled(using tf: TupledFunction[F, Args => R]): Args => R = tf.tupled(f)
+extension [F, Args <: Tuple, R](f: F)
+  def tupled(using tf: TupledFunction[F, Args => R]): Args => R = tf.tupled(f)
 ```
 
 `TupledFunction` can be used to generalize the `Function.untupled` to a function of any arities ([full example](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-untupled.scala))
@@ -59,7 +60,8 @@ def [F, Args <: Tuple, R](f: F).tupled(using tf: TupledFunction[F, Args => R]): 
  *  @tparam Args the tuple type with the same types as the function arguments of F
  *  @tparam R the return type of F
  */
-def [F, Args <: Tuple, R](f: Args => R).untupled(using tf: TupledFunction[F, Args => R]): F = tf.untupled(f)
+extension [F, Args <: Tuple, R](f: Args => R)
+  def untupled(using tf: TupledFunction[F, Args => R]): F = tf.untupled(f)
 ```
 
 `TupledFunction` can also be used to generalize the [`Tuple1.compose`](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-compose.scala) and [`Tuple1.andThen`](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-andThen.scala) methods to compose functions of larger arities and with functions that return tuples.
@@ -73,7 +75,8 @@ def [F, Args <: Tuple, R](f: Args => R).untupled(using tf: TupledFunction[F, Arg
  *  @tparam GArgs the tuple type with the same types as the function arguments of G
  *  @tparam R the return type of F
  */
-def [F, G, FArgs <: Tuple, GArgs <: Tuple, R](f: F).compose(g: G)(using tg: TupledFunction[G, GArgs => FArgs], tf: TupledFunction[F, FArgs => R]): GArgs => R = {
+extension [F, G, FArgs <: Tuple, GArgs <: Tuple, R](f: F)
+  def compose(g: G)(using tg: TupledFunction[G, GArgs => FArgs], tf: TupledFunction[F, FArgs => R]): GArgs => R = {
   (x: GArgs) => tf.tupled(f)(tg.tupled(g)(x))
 }
 ```

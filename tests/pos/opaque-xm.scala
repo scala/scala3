@@ -16,9 +16,9 @@ object opaquetypes {
     // Extension methods define opaque types' public APIs
 
     // This is the second way to unlift the logarithm type
-    def (x: Logarithm).toDouble: Double = math.exp(x)
-    def (x: Logarithm) + (y: Logarithm) = Logarithm(math.exp(x) + math.exp(y))
-    def (x: Logarithm) * (y: Logarithm): Logarithm = Logarithm(x + y)
+    extension (x: Logarithm) def toDouble: Double = math.exp(x)
+    extension (x: Logarithm) def + (y: Logarithm) = Logarithm(math.exp(x) + math.exp(y))
+    extension (x: Logarithm) def * (y: Logarithm): Logarithm = Logarithm(x + y)
   }
 }
 object usesites {
@@ -30,6 +30,6 @@ object usesites {
                    // as a contextual implicit this takes precedence over the
                    // implicit scope implicit LogarithmOps.
                    // TODO: Remove any2stringadd
-  val d = Logarithm.toDouble(l3)
+  val d = Logarithm.extension_toDouble(l3)
   val l5: Logarithm = (1.0).asInstanceOf[Logarithm]
 }
