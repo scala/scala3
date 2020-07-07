@@ -41,7 +41,7 @@ class CheckStatic extends MiniPhase {
           ctx.error(StaticFieldsShouldPrecedeNonStatic(defn.symbol, defns), defn.sourcePos)
 
         val companion = ctx.owner.companionClass
-        def clashes = companion.asClass.membersNamed(defn.name)
+        def clashes = companion.classDenot.membersNamed(defn.name)
 
         if (!companion.exists)
           ctx.error(MissingCompanionForStatic(defn.symbol), defn.sourcePos)

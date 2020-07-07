@@ -554,7 +554,7 @@ trait Applications extends Compatibility {
 
             val defaultExpr =
               if (isJavaAnnotConstr(sym)) {
-                val cinfo = sym.owner.asClass.classInfo
+                val cinfo = sym.owner.classDenot.classInfo
                 val pname = methodType.paramNames(n)
                 val hasDefault = cinfo.member(pname)
                   .suchThat(d => d.is(Method) && d.hasAnnotation(defn.AnnotationDefaultAnnot)).exists

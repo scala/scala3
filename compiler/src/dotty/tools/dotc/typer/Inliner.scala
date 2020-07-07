@@ -823,7 +823,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
                   false
               }
             }
-          val idx = cls.asClass.paramAccessors.indexWhere(matches(_, tree.symbol))
+          val idx = cls.classDenot.paramAccessors.indexWhere(matches(_, tree.symbol))
           if (idx >= 0 && idx < args.length) {
             def finish(arg: Tree) =
               new TreeTypeMap().transform(arg) // make sure local bindings in argument have fresh symbols
@@ -1102,11 +1102,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
                 }
 
                 val paramType = mt.paramInfos.head
-                val paramCls = paramType.classSymbol
-                if (paramCls.is(Case) && unapp.symbol.is(Synthetic) && scrut <:< paramType) {
+                val paramClsD = paramType.classSymbol.classDenot
+                if (paramClsD.is(Case) && unapp.symbol.is(Synthetic) && scrut <:< paramType) {
                   val caseAccessors =
-                    if (paramCls.is(Scala2x)) paramCls.caseAccessors.filter(_.is(Method))
-                    else paramCls.asClass.paramAccessors
+                    if (paramClsD.is(Scala2x)) paramClsD.caseAccessors.filter(_.is(Method))
+                    else paramClsD.paramAccessors
                   val selectors =
                     for (accessor <- caseAccessors)
                     yield constToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))

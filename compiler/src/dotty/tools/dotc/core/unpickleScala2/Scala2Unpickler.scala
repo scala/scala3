@@ -79,7 +79,7 @@ object Scala2Unpickler {
     if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) {
       val constr = ctx.newDefaultConstructor(cls)
       addConstructorTypeParams(constr)
-      cls.enter(constr, scope)
+      cls.classDenot.enter(constr, scope)
     }
   }
 
@@ -491,7 +491,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       if (!(isRefinementClass(sym) || isUnpickleRoot(sym) || sym.is(Scala2Existential))) {
         val owner = sym.owner
         if (owner.isClass)
-          owner.asClass.enter(sym, symScope(owner))
+          owner.classDenot.enter(sym, symScope(owner))
         else if (isRefinementClass(owner))
           symScope(owner).openForMutations.enter(sym)
       }

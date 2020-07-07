@@ -38,12 +38,11 @@ class RestoreScopes extends MiniPhase with IdentityDenotTransformer { thisPhase 
           restoredDecls.enter(stat.symbol)
       // Enter class in enclosing package scope, in case it was an inner class before flatten.
       // For top-level classes this does nothing.
-      val cls = tree.symbol.asClass
-      val pkg = cls.owner.asClass
-
-      pkg.enter(cls)
+      val cls = tree.symbol
+      val clsd = cls.classDenot
+      clsd.owner.classDenot.enter(cls)
       tree.symbol.copySymDenotation(
-        info =  cls.classInfo.derivedClassInfo(
+        info =  clsd.classInfo.derivedClassInfo(
           decls = restoredDecls: Scope)).installAfter(thisPhase)
       tree
     case tree => tree

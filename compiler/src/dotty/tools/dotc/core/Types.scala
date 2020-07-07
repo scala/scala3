@@ -495,7 +495,7 @@ object Types {
         case tp: TypeProxy =>
           tp.underlying.baseClasses
         case tp: ClassInfo =>
-          tp.cls.baseClasses
+          tp.cls.classDenot.baseClasses
         case _ => Nil
       }
     }
@@ -776,7 +776,7 @@ object Types {
      */
     final def memberNames(keepOnly: NameFilter, pre: Type = this)(implicit ctx: Context): Set[Name] = this match {
       case tp: ClassInfo =>
-        tp.cls.memberNames(keepOnly) filter (keepOnly(pre, _))
+        tp.cls.classDenot.memberNames(keepOnly) filter (keepOnly(pre, _))
       case tp: RefinedType =>
         val ns = tp.parent.memberNames(keepOnly, pre)
         if (keepOnly(pre, tp.refinedName)) ns + tp.refinedName else ns
@@ -2124,7 +2124,7 @@ object Types {
 
     private def checkSymAssign(sym: Symbol)(implicit ctx: Context) = {
       def selfTypeOf(sym: Symbol) =
-        if (sym.isClass) sym.asClass.givenSelfType else NoType
+        if (sym.isClass) sym.classDenot.givenSelfType else NoType
       assert(
         (lastSymbol eq sym)
         ||
@@ -4371,11 +4371,12 @@ object Types {
      *   - the fully applied reference to the class itself.
      */
     def selfType(implicit ctx: Context): Type = {
+      val clsd = cls.classDenot
       if (selfTypeCache == null)
         selfTypeCache = {
-          val givenSelf = cls.givenSelfType
+          val givenSelf = clsd.givenSelfType
           if (!givenSelf.isValueType) appliedRef
-          else if (cls.is(Module)) givenSelf
+          else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
           else AndType(givenSelf, appliedRef)
         }
@@ -4385,7 +4386,7 @@ object Types {
     def appliedRef(implicit ctx: Context): Type = {
       if (appliedRefCache == null)
         appliedRefCache =
-          TypeRef(prefix, cls).appliedTo(cls.typeParams.map(_.typeRef))
+          TypeRef(prefix, cls).appliedTo(cls.classDenot.typeParams.map(_.typeRef))
       appliedRefCache
     }
 

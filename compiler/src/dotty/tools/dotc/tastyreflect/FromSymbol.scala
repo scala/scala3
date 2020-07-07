@@ -26,13 +26,14 @@ object FromSymbol {
   def classDef(cls: ClassSymbol)(implicit ctx: Context): tpd.TypeDef = cls.defTree match {
     case tree: tpd.TypeDef => tree
     case tpd.EmptyTree =>
-      val constrSym = cls.unforcedDecls.find(_.isPrimaryConstructor).orElse(
+      val clsd = cls.classDenot
+      val constrSym = clsd.unforcedDecls.find(_.isPrimaryConstructor).orElse(
         // Dummy constructor for classes such as `<refinement>`
         ctx.newSymbol(cls, nme.CONSTRUCTOR, EmptyFlags, NoType)
       )
       val constr = tpd.DefDef(constrSym.asTerm)
-      val parents = cls.classParents.map(tpd.TypeTree(_))
-      val body = cls.unforcedDecls.filter(!_.isPrimaryConstructor).map(s => definitionFromSym(s))
+      val parents = clsd.classParents.map(tpd.TypeTree(_))
+      val body = clsd.unforcedDecls.filter(!_.isPrimaryConstructor).map(s => definitionFromSym(s))
       tpd.ClassDefWithParents(cls, constr, parents, body)
   }
 

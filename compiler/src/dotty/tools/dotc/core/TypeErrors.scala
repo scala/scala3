@@ -30,7 +30,7 @@ class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name]) extends
 
 class MissingType(pre: Type, name: Name) extends TypeError {
   private def otherReason(pre: Type)(implicit ctx: Context): String = pre match {
-    case pre: ThisType if pre.cls.givenSelfType.exists =>
+    case pre: ThisType if pre.cls.classDenot.givenSelfType.exists =>
       i"\nor the self type of $pre might not contain all transitive dependencies"
     case _ => ""
   }

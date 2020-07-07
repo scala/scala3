@@ -69,8 +69,8 @@ class TreeTypeMap(
         case pdef: MemberDef =>
           val prevSym = pdef.symbol
           val newSym = newStats.head.symbol
-          val newCls = newSym.owner.asClass
-          if (prevSym != newSym) newCls.replace(prevSym, newSym)
+          if prevSym != newSym then
+            newSym.owner.classDenot.replace(prevSym, newSym)
         case _ =>
       }
       updateDecls(prevStats.tail, newStats.tail)
@@ -191,7 +191,7 @@ class TreeTypeMap(
       val mappedDcls = ctx.mapSymbols(origDcls, tmap)
       val tmap1 = tmap.withMappedSyms(origDcls, mappedDcls)
       if (symsChanged)
-        origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
+        origDcls.lazyZip(mappedDcls).foreach(cls.classDenot.replace)
       tmap1
     }
     if (symsChanged || (fullMap eq substMap)) fullMap

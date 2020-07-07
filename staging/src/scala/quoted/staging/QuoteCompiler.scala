@@ -64,7 +64,7 @@ private class QuoteCompiler extends Compiler:
           // `package __root__ { class ' { def apply: Any = <expr> } }`
           val cls = unitCtx.newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
             defn.ObjectType :: Nil, newScope, coord = pos, assocFile = assocFile).entered.asClass
-          cls.enter(unitCtx.newDefaultConstructor(cls), EmptyScope)
+          cls.classDenot.enter(unitCtx.newDefaultConstructor(cls), EmptyScope)
           val meth = unitCtx.newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
 
           val quoted =

@@ -41,7 +41,7 @@ class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
   def transformIfParamAlias(mdef: ValOrDefDef)(using Context): Tree =
 
     def inheritedAccessor(sym: Symbol)(using Context): Symbol =
-      val candidate = sym.owner.asClass.superClass
+      val candidate = sym.owner.classDenot.superClass
         .info.decl(sym.name).suchThat(_.is(ParamAccessor, butNot = Mutable))
         .symbol
       if !candidate.is(Private)  // candidate might be private and accessible if it is in an outer class

@@ -94,7 +94,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
 
   private def setClassInfo(classSym: Symbol, classBType: ClassBType): ClassBType = {
     val superClassSym: Symbol =  {
-      val t = classSym.asClass.superClass
+      val t = classSym.classDenot.superClass
       if (t.exists) t
       else if (classSym.is(ModuleClass)) {
         // workaround #371
@@ -124,7 +124,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     def (sym: Symbol).superInterfaces: List[Symbol] = {
       val directlyInheritedTraits = sym.directlyInheritedTraits
       val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
-      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
+      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.classDenot.baseClasses.drop(1)).toSet
       val superCalls = superCallsMap.getOrElse(sym, Set.empty)
       val additional = (superCalls -- directlyInheritedTraitsSet).filter(_.is(Trait))
 //      if (additional.nonEmpty)

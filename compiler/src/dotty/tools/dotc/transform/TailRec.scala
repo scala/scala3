@@ -216,7 +216,6 @@ class TailRec extends MiniPhase {
   }
 
   class TailRecElimination(method: Symbol, enclosingClass: ClassSymbol, paramSyms: List[Symbol], isMandatory: Boolean) extends TreeMap {
-
     var rewrote: Boolean = false
     var failureReported: Boolean = false
 
@@ -236,12 +235,13 @@ class TailRec extends MiniPhase {
     var varsForRewrittenParamSyms: List[Symbol] = Nil
 
     private def getVarForRewrittenThis()(implicit ctx: Context): Symbol =
+      val enclosingClassDenot = enclosingClass.classDenot
       varForRewrittenThis match {
         case Some(sym) => sym
         case none =>
           val tpe =
-            if (enclosingClass.is(Module)) enclosingClass.thisType
-            else enclosingClass.classInfo.selfType
+            if (enclosingClassDenot.is(Module)) enclosingClassDenot.thisType
+            else enclosingClassDenot.classInfo.selfType
           val sym = ctx.newSymbol(method, nme.SELF, Synthetic | Mutable, tpe)
           varForRewrittenThis = Some(sym)
           sym
@@ -321,7 +321,7 @@ class TailRec extends MiniPhase {
         val isRecursiveCall = calledMethod eq method
         def isRecursiveSuperCall = (method.name eq calledMethod.name) &&
           method.matches(calledMethod) &&
-          enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
+          enclosingClass.classDenot.appliedRef.widen <:< prefix.tpe.widenDealias
 
         if (isRecursiveCall)
           if (inTailPosition) {

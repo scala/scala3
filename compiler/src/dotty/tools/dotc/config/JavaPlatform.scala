@@ -39,11 +39,12 @@ class JavaPlatform extends Platform {
 
   /** Is the SAMType `cls` also a SAM under the rules of the JVM? */
   def isSam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
-    cls.isAllOf(NoInitsTrait) &&
-    cls.superClass == defn.ObjectClass &&
-    cls.directlyInheritedTraits.forall(_.is(NoInits)) &&
+    val clsd = cls.classDenot
+    clsd.isAllOf(NoInitsTrait) &&
+    clsd.superClass == defn.ObjectClass &&
+    clsd.directlyInheritedTraits.forall(_.is(NoInits)) &&
     !ExplicitOuter.needsOuterIfReferenced(cls) &&
-    cls.typeRef.fields.isEmpty // Superaccessors already show up as abstract methods here, so no test necessary
+    clsd.typeRef.fields.isEmpty // Superaccessors already show up as abstract methods here, so no test necessary
 
   /** We could get away with excluding BoxedBooleanClass for the
    *  purpose of equality testing since it need not compare equal

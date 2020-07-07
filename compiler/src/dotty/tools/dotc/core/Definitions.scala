@@ -1478,7 +1478,7 @@ class Definitions {
     if (!isInitialized) {
       // Enter all symbols from the scalaShadowing package in the scala package
       for (m <- ScalaShadowingPackage.info.decls)
-        ScalaPackageClass.enter(m)
+        ScalaPackageClass.classDenot.enter(m)
 
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass

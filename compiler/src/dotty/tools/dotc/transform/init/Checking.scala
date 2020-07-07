@@ -86,11 +86,11 @@ object Checking {
         if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef])
         else checkSecondaryConstructor(ctor)
       }
-      else if (!cls.isOneOf(Flags.EffectivelyOpenFlags))
+      else if (!cls.denot.isOneOf(Flags.EffectivelyOpenFlags))
         ctx.warning("Inheriting non-open class may cause initialization errors", source.sourcePos)
     }
 
-    cls.paramAccessors.foreach { acc =>
+    cls.classDenot.paramAccessors.foreach { acc =>
       if (!acc.is(Flags.Method)) {
         traceIndented(acc.show + " initialized", init)
         state.fieldsInited += acc
@@ -112,8 +112,9 @@ object Checking {
 
       case ref =>
         val cls = ref.tpe.classSymbol.asClass
-        if (!state.parentsInited.contains(cls) && cls.primaryConstructor.exists)
-          checkCtor(cls.primaryConstructor, ref.tpe, ref)
+        val clsd = cls.classDenot
+        if (!state.parentsInited.contains(cls) && clsd.primaryConstructor.exists)
+          checkCtor(clsd.primaryConstructor, ref.tpe, ref)
     }
 
     // check class body

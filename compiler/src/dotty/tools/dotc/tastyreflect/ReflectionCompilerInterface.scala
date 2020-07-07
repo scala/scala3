@@ -1775,7 +1775,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Symbol_caseFields(self: Symbol)(using ctx: Context): List[Symbol] =
     if (!self.isClass) Nil
-    else self.asClass.paramAccessors.collect {
+    else self.classDenot.paramAccessors.collect {
       case sym if sym.is(Flags.CaseAccessor) => sym.asTerm
     }
 

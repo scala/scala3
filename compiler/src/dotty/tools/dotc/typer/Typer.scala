@@ -1940,7 +1940,8 @@ class Typer extends Namer
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = {
-    if (!cls.info.isInstanceOf[ClassInfo]) return EmptyTree.assertingErrorsReported
+    val clsd = cls.classDenot
+    if (!clsd.info.isInstanceOf[ClassInfo]) return EmptyTree.assertingErrorsReported
 
     val TypeDef(name, impl @ Template(constr, _, self, _)) = cdef
     val parents = impl.parents
@@ -1981,7 +1982,7 @@ class Typer extends Namer
         if isTreeType(tree) then typedType(tree)(using superCtx)
         else typedExpr(tree)(using superCtx)
       val psym = result.tpe.dealias.typeSymbol
-      if (seenParents.contains(psym) && !cls.isRefinementClass) {
+      if (seenParents.contains(psym) && !clsd.isRefinementClass) {
         // Desugaring can adds parents to classes, but we don't want to emit an
         // error if the same parent was explicitly added in user code.
         if (!tree.span.isSourceDerived)
@@ -1992,7 +1993,7 @@ class Typer extends Namer
       else seenParents += psym
       if (tree.isType) {
         checkSimpleKinded(result) // Not needed for constructor calls, as type arguments will be inferred.
-        if (psym.is(Trait) && !cls.is(Trait) && !cls.superClass.isSubClass(psym))
+        if (psym.is(Trait) && !clsd.is(Trait) && !clsd.superClass.isSubClass(psym))
           result = maybeCall(result, psym, psym.primaryConstructor.info)
       }
       else checkParentCall(result, cls)
@@ -2025,7 +2026,7 @@ class Typer extends Namer
     val parents1 = ensureConstrCall(cls, parentsWithClass)(using superCtx)
 
     val self1 = typed(self)(using ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
-    if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1))
+    if (self1.tpt.tpe.isError || classExistsOnSelf(clsd.unforcedDecls, self1))
       // fail fast to avoid typing the body with an error type
       cdef.withType(UnspecifiedErrorType)
     else {
@@ -2036,9 +2037,9 @@ class Typer extends Namer
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
         .withType(dummy.termRef)
-      if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
+      if (!clsd.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
-      if (cls.derivesFrom(defn.EnumClass)) {
+      if (clsd.derivesFrom(defn.EnumClass)) {
         val firstParent = parents1.head.tpe.dealias.typeSymbol
         checkEnum(cdef, cls, firstParent)
       }
@@ -2054,14 +2055,14 @@ class Typer extends Namer
         ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef.sourcePos)
       }
 
-      checkNonCyclicInherited(cls.thisType, cls.classParents, cls.info.decls, cdef.posd)
+      checkNonCyclicInherited(clsd.thisType, clsd.classParents, clsd.info.decls, cdef.posd)
 
       // check value class constraints
       checkDerivedValueClass(cls, body1)
 
-      val effectiveOwner = cls.owner.skipWeakOwner
-      if !cls.isRefinementClass
-         && !cls.isAllOf(PrivateLocal)
+      val effectiveOwner = clsd.owner.skipWeakOwner
+      if !clsd.isRefinementClass
+         && !clsd.isAllOf(PrivateLocal)
          && effectiveOwner.is(Trait)
          && !effectiveOwner.derivesFrom(defn.ObjectClass)
         ctx.error(i"$cls cannot be defined in universal $effectiveOwner", cdef.sourcePos)
@@ -2101,8 +2102,8 @@ class Typer extends Namer
   def ensureFirstIsClass(parents: List[Type], span: Span)(using Context): List[Type] = {
     def realClassParent(cls: Symbol): ClassSymbol =
       if (!cls.isClass) defn.ObjectClass
-      else if (!cls.is(Trait)) cls.asClass
-      else cls.asClass.classParents match {
+      else if (!cls.classDenot.is(Trait)) cls.asClass
+      else cls.classDenot.classParents match {
         case parentRef :: _ => realClassParent(parentRef.typeSymbol)
         case nil => defn.ObjectClass
       }
@@ -2130,8 +2131,9 @@ class Typer extends Namer
    *  constructor call. Cannot simply use a type. Overridden in ReTyper.
    */
   def ensureConstrCall(cls: ClassSymbol, parents: List[Tree])(using Context): List[Tree] = {
+    val clsd = cls.classDenot
     val firstParent :: otherParents = parents
-    if (firstParent.isType && !cls.is(Trait) && !cls.is(JavaDefined))
+    if (firstParent.isType && !clsd.is(Trait) && !clsd.is(JavaDefined))
       typed(untpd.New(untpd.TypedSplice(firstParent), Nil)) :: otherParents
     else parents
   }

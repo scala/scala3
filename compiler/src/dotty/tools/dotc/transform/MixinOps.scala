@@ -3,6 +3,7 @@ package transform
 
 import core._
 import Symbols._, Types._, Contexts._, DenotTransformers._, Flags._
+import SymDenotations._
 import util.Spans._
 import SymUtils._
 import StdNames._, NameOps._
@@ -11,8 +12,9 @@ import Decorators._
 class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Context) {
   import ast.tpd._
 
-  val superCls: Symbol = cls.superClass
-  val mixins: List[ClassSymbol] = cls.mixins
+  val clsd: ClassDenotation = cls.classDenot
+  val superCls: Symbol = clsd.superClass
+  val mixins: List[ClassSymbol] = clsd.mixins
 
   lazy val JUnit4Annotations: List[Symbol] = List("Test", "Ignore", "Before", "After", "BeforeClass", "AfterClass").
     map(n => ctx.getClassIfDefined("org.junit." + n)).
@@ -23,7 +25,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
       owner = cls,
       name = member.name.stripScala2LocalSuffix,
       flags = member.flags &~ Deferred &~ Module | Synthetic | extraFlags,
-      info = cls.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
+      info = clsd.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
     res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
     res
   }
@@ -44,7 +46,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
    */
   def isCurrent(sym: Symbol): Boolean =
     ctx.atPhase(thisPhase) {
-      cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
+      clsd.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
     }
 
   /** Does `method` need a forwarder to in  class `cls`
@@ -84,7 +86,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   }
 
   private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] =
-    cls.baseClasses.iterator
+    clsd.baseClasses.iterator
       .filter(_ ne meth.owner)
       .map(base => meth.overriddenSymbol(base, cls))
       .filter(_.exists)

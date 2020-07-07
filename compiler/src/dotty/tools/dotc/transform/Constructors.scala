@@ -125,13 +125,14 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
   override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = {
     val cls = ctx.owner.asClass
+    val clsd = cls.classDenot
 
     val constr @ DefDef(nme.CONSTRUCTOR, Nil, vparams :: Nil, _, EmptyTree) = tree.constr
 
     // Produce aligned accessors and constructor parameters. We have to adjust
     // for any outer parameters, which are last in the sequence of original
     // parameter accessors but come first in the constructor parameter list.
-    val accessors = cls.paramAccessors.filterNot(x => x.isSetter)
+    val accessors = clsd.paramAccessors.filterNot(x => x.isSetter)
     val vparamsWithOuterLast = vparams match {
       case vparam :: rest if vparam.name == nme.OUTER => rest ::: vparam :: Nil
       case _ => vparams
@@ -250,10 +251,10 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
     // Drop accessors that are not retained from class scope
     if (dropped.nonEmpty) {
-      val clsInfo = cls.classInfo
+      val clsInfo = clsd.classInfo
       val decls = clsInfo.decls.filteredScope(!dropped.contains(_))
       val clsInfo2 = clsInfo.derivedClassInfo(decls = decls)
-      cls.copySymDenotation(info = clsInfo2).installAfter(thisPhase)
+      clsd.copySymDenotation(info = clsInfo2).installAfter(thisPhase)
       // TODO: this happens to work only because Constructors is the last phase in group
     }
 
@@ -278,7 +279,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
     val finalConstrStats = copyParams ::: mappedSuperCalls ::: lazyAssignments ::: stats
     val expandedConstr =
-      if (cls.isAllOf(NoInitsTrait)) {
+      if (clsd.isAllOf(NoInitsTrait)) {
         assert(finalConstrStats.isEmpty)
         constr
       }

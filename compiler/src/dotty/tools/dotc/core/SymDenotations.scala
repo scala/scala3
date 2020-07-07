@@ -495,7 +495,7 @@ object SymDenotations {
                 throw CyclicReference(this)
             case _ =>
               recur(parent)
-        recur(owner.asClass.givenSelfType)
+        recur(owner.classDenot.givenSelfType)
       end setAlias
 
       def bounds(t: tpd.Tree): TypeBounds = t match
@@ -1295,7 +1295,7 @@ object SymDenotations {
         case _ =>
           NoType
       }
-      recur(owner.asClass.givenSelfType)
+      recur(owner.classDenot.givenSelfType)
     }
 
     /** The non-private symbol whose name and type matches the type of this symbol
@@ -1357,7 +1357,7 @@ object SymDenotations {
     /** Returns all matching symbols defined in parents of the selftype. */
     final def extendedOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
       if (!canMatchInheritedSymbols) Iterator.empty
-      else overriddenFromType(owner.asClass.classInfo.selfType)
+      else overriddenFromType(owner.classDenot.classInfo.selfType)
 
     private def overriddenFromType(tp: Type)(implicit ctx: Context): Iterator[Symbol] =
       tp.baseClasses match {
@@ -1822,7 +1822,7 @@ object SymDenotations {
       def traverse(parents: List[Type]): Unit = parents match {
         case p :: parents1 =>
           p.classSymbol match {
-            case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
+            case pcls: ClassSymbol => builder.addAll(pcls.classDenot.baseClasses)
             case _ => assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
           }
           traverse(parents1)
@@ -1878,7 +1878,7 @@ object SymDenotations {
         if (nxt.validFor.code > this.validFor.code)
           this.nextInRun.asSymDenotation.asClass.enter(sym)
         if (defn.isScalaShadowingPackageClass(sym.owner))
-          defn.ScalaPackageClass.enter(sym)  // ScalaShadowing members are mirrored in ScalaPackage
+          defn.ScalaPackageClass.classDenot.enter(sym)  // ScalaShadowing members are mirrored in ScalaPackage
       }
     }
 
@@ -2143,7 +2143,7 @@ object SymDenotations {
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       try {
         for (p <- classParents if p.classSymbol.isClass)
-          for (name <- p.classSymbol.asClass.memberNames(keepOnly))
+          for (name <- p.classSymbol.classDenot.memberNames(keepOnly))
             maybeAdd(name)
         val ownSyms =
           if (keepOnly eq implicitFilter)

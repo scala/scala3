@@ -142,7 +142,7 @@ object ExplicitOuter {
   private def outerClass(cls: ClassSymbol)(implicit ctx: Context): Symbol = {
     val encl = cls.owner.enclosingClass
     if (cls.is(Scala2x))
-      encl.asClass.classInfo.selfInfo match {
+      encl.classDenot.classInfo.selfInfo match {
         case tp: TypeRef => tp.classSymbol
         case self: Symbol => self
         case _ => encl

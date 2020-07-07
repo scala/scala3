@@ -31,8 +31,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   /** All traits implemented by a class or trait except for those inherited through the superclass. */
   def directlyInheritedTraits(implicit ctx: Context): List[ClassSymbol] = {
-    val superCls = self.asClass.superClass
-    val baseClasses = self.asClass.baseClasses
+    val superCls = self.classDenot.superClass
+    val baseClasses = self.classDenot.baseClasses
     if (baseClasses.isEmpty) Nil
     else baseClasses.tail.takeWhile(_ ne superCls).reverse
   }
@@ -243,5 +243,5 @@ class SymUtils(val self: Symbol) extends AnyVal {
         parent.stripOpaques
       case _ =>
         tp
-    self.asClass.givenSelfType.stripOpaques.asSeenFrom(site, self)
+    self.classDenot.givenSelfType.stripOpaques.asSeenFrom(site, self)
 }

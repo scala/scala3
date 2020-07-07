@@ -190,7 +190,7 @@ object TypeOps:
     def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
       case c :: rest =>
         val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
-        if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
+        if (cs == c.classDenot.baseClasses) accu1 else dominators(rest, accu1)
       case Nil => // this case can happen because after erasure we do not have a top class anymore
         assert(ctx.erasedTypes || ctx.reporter.errorsReported)
         defn.ObjectClass :: Nil
@@ -416,7 +416,7 @@ object TypeOps:
               emptyRange // should happen only in error cases
           }
         case tp: ThisType if toAvoid(tp.cls) =>
-          range(defn.NothingType, apply(classBound(tp.cls.classInfo)))
+          range(defn.NothingType, apply(classBound(tp.cls.classDenot.classInfo)))
         case tp: SkolemType if partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
           range(defn.NothingType, apply(tp.info))
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>

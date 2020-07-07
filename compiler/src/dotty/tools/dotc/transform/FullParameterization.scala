@@ -91,18 +91,19 @@ trait FullParameterization {
    *                            This is needed if created member stays inside scope of Foo(as in tailrec)
    */
   def fullyParameterizedType(info: Type, clazz: ClassSymbol, abstractOverClass: Boolean = true, liftThisType: Boolean = false)(implicit ctx: Context): Type = {
+    val classd = clazz.classDenot
     val (mtparamCount, origResult) = info match {
       case info: PolyType => (info.paramNames.length, info.resultType)
       case info: ExprType => (0, info.resultType)
       case _ => (0, info)
     }
-    val ctparams = if (abstractOverClass) clazz.typeParams else Nil
+    val ctparams = if (abstractOverClass) classd.typeParams else Nil
     val ctnames = ctparams.map(_.name)
 
     /** The method result type */
     def resultType(mapClassParams: Type => Type) = {
-      val thisParamType = mapClassParams(clazz.classInfo.selfType)
-      val firstArgType = if (liftThisType) thisParamType & clazz.thisType else thisParamType
+      val thisParamType = mapClassParams(classd.classInfo.selfType)
+      val firstArgType = if (liftThisType) thisParamType & classd.thisType else thisParamType
       MethodType(nme.SELF :: Nil)(
           mt => firstArgType :: Nil,
           mt => mapClassParams(origResult).substThisUnlessStatic(clazz, mt.newParamRef(0)))

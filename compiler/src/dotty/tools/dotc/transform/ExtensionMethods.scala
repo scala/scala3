@@ -54,12 +54,12 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
   override def changesMembers: Boolean = true // the phase adds extension methods
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
-    case moduleClassSym: ClassDenotation if moduleClassSym.is(ModuleClass) =>
-      moduleClassSym.linkedClass match {
+    case moduleClassDenot: ClassDenotation if moduleClassDenot.is(ModuleClass) =>
+      moduleClassDenot.linkedClass match {
         case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
-          val cinfo = moduleClassSym.classInfo
+          val cinfo = moduleClassDenot.classInfo
           val decls1 = cinfo.decls.cloneScope
-          val moduleSym = moduleClassSym.symbol.asClass
+          val moduleSym = moduleClassDenot.symbol.asClass
 
           def enterInModuleClass(sym: Symbol): Unit = {
             decls1.enter(sym)
@@ -77,9 +77,9 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           // Create extension methods, except if the class comes from Scala 2
           // because it adds extension methods before pickling.
           if (!(valueClass.is(Scala2x)))
-            for (decl <- valueClass.classInfo.decls)
+            for (decl <- valueClass.classDenot.classInfo.decls)
               if (isMethodWithExtension(decl))
-                enterInModuleClass(createExtensionMethod(decl, moduleClassSym.symbol))
+                enterInModuleClass(createExtensionMethod(decl, moduleSym))
 
           // Create synthetic methods to cast values between the underlying type
           // and the ErasedValueType. These methods are removed in ElimErasedValueType.
@@ -92,9 +92,9 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           enterInModuleClass(u2evtSym)
           enterInModuleClass(evt2uSym)
 
-          moduleClassSym.copySymDenotation(info = cinfo.derivedClassInfo(decls = decls1))
+          moduleClassDenot.copySymDenotation(info = cinfo.derivedClassInfo(decls = decls1))
         case _ =>
-          moduleClassSym
+          moduleClassDenot
       }
     case ref: SymDenotation =>
       var ref1 = ref

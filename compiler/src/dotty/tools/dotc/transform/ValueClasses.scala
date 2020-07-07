@@ -35,21 +35,21 @@ object ValueClasses {
   /** The member of a derived value class that unboxes it. */
   def valueClassUnbox(cls: ClassSymbol)(implicit ctx: Context): Symbol =
     // (info.decl(nme.unbox)).orElse(...)      uncomment once we accept unbox methods
-    cls.classInfo.decls.find(_.is(ParamAccessor))
+    cls.classDenot.classInfo.decls.find(_.is(ParamAccessor))
 
   /** For a value class `d`, this returns the synthetic cast from the underlying type to
    *  ErasedValueType defined in the companion module. This method is added to the module
    *  and further described in [[ExtensionMethods]].
    */
   def u2evt(cls: ClassSymbol)(implicit ctx: Context): Symbol =
-    cls.linkedClass.info.decl(nme.U2EVT).symbol
+    cls.classDenot.linkedClass.info.decl(nme.U2EVT).symbol
 
   /** For a value class `d`, this returns the synthetic cast from ErasedValueType to the
    *  underlying type defined in the companion module. This method is added to the module
    *  and further described in [[ExtensionMethods]].
    */
   def evt2u(cls: ClassSymbol)(implicit ctx: Context): Symbol =
-    cls.linkedClass.info.decl(nme.EVT2U).symbol
+    cls.classDenot.linkedClass.info.decl(nme.EVT2U).symbol
 
   /** The unboxed type that underlies a derived value class */
   def underlyingOfValueClass(sym: ClassSymbol)(implicit ctx: Context): Type =

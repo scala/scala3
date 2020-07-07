@@ -75,7 +75,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   def enumCaseSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myEnumCaseSymbols }
 
   private def existingDef(sym: Symbol, clazz: ClassSymbol)(implicit ctx: Context): Symbol = {
-    val existing = sym.matchingMember(clazz.thisType)
+    val existing = sym.matchingMember(clazz.denot.thisType)
     if (existing != sym && !existing.is(Deferred)) existing
     else NoSymbol
   }
@@ -87,15 +87,16 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *  otherwise return nothing.
    */
   def caseAndValueMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
-    val clazzType = clazz.appliedRef
+    val classd = clazz.classDenot
+    val clazzType = classd.appliedRef
     lazy val accessors =
-      if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
-      else clazz.caseAccessors
-    val isEnumCase = clazz.derivesFrom(defn.EnumClass) && clazz != defn.EnumClass
+      if (isDerivedValueClass(clazz)) classd.paramAccessors.take(1) // Tail parameters can only be `erased`
+      else classd.caseAccessors
+    val isEnumCase = classd.derivesFrom(defn.EnumClass) && clazz != defn.EnumClass
 
     val symbolsToSynthesize: List[Symbol] =
-      if (clazz.is(Case))
-        if (clazz.is(Module)) caseModuleSymbols
+      if (classd.is(Case))
+        if (classd.is(Module)) caseModuleSymbols
         else if (isEnumCase) caseSymbols ++ enumCaseSymbols
         else caseSymbols
       else if (isEnumCase) enumCaseSymbols
@@ -109,19 +110,19 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val synthetic = sym.copy(
         owner = clazz,
         flags = sym.flags &~ Deferred | Synthetic | Override,
-        info = clazz.thisType.memberInfo(sym),
+        info = classd.thisType.memberInfo(sym),
         coord = clazz.coord).enteredAfter(thisPhase).asTerm
 
       def forwardToRuntime(vrefs: List[Tree]): Tree =
         ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefs)
 
       def ownName: Tree =
-        Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
+        Literal(Constant(classd.name.stripModuleClassSuffix.toString))
 
       def syntheticRHS(vrefss: List[List[Tree]])(implicit ctx: Context): Tree = synthetic.name match {
         case nme.hashCode_ if isDerivedValueClass(clazz) => valueHashCodeBody
         case nme.hashCode_ => chooseHashcode
-        case nme.toString_ => if (clazz.is(ModuleClass)) ownName else forwardToRuntime(vrefss.head)
+        case nme.toString_ => if (classd.is(ModuleClass)) ownName else forwardToRuntime(vrefss.head)
         case nme.equals_ => equalsBody(vrefss.head.head)
         case nme.canEqual_ => canEqualBody(vrefss.head.head)
         case nme.productArity => Literal(Constant(accessors.length))
@@ -287,8 +288,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  else if either `T` or `U` are primitive, gets the `hashCode` method implemented by [[caseHashCodeBody]]
      */
     def chooseHashcode(implicit ctx: Context) =
-      if (clazz.is(ModuleClass))
-        Literal(Constant(clazz.name.stripModuleClassSuffix.toString.hashCode))
+      if (classd.is(ModuleClass))
+        Literal(Constant(classd.name.stripModuleClassSuffix.toString.hashCode))
       else if (accessors.exists(_.info.finalResultType.classSymbol.isPrimitiveValueClass))
         caseHashCodeBody
       else
@@ -363,11 +364,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *  unless an implementation already exists, otherwise do nothing.
    */
   def serializableObjectMethod(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
+    val classd = clazz.classDenot
     def hasWriteReplace: Boolean =
-      clazz.membersNamed(nme.writeReplace)
+      classd.membersNamed(nme.writeReplace)
         .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, isJava = false))
         .exists
-    if (clazz.is(Module) && clazz.isStatic && clazz.isSerializable && !hasWriteReplace) {
+    if (classd.is(Module) && classd.isStatic && classd.isSerializable && !hasWriteReplace) {
       val writeReplace = ctx.newSymbol(clazz, nme.writeReplace, Method | Private | Synthetic,
         MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
       List(
@@ -466,15 +468,16 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    */
   def addMirrorSupport(impl: Template)(implicit ctx: Context): Template = {
     val clazz = ctx.owner.asClass
+    val classd = clazz.classDenot
 
     var newBody = impl.body
     var newParents = impl.parents
     def addParent(parent: Type): Unit = {
       newParents = newParents :+ TypeTree(parent)
-      val oldClassInfo = clazz.classInfo
+      val oldClassInfo = classd.classInfo
       val newClassInfo = oldClassInfo.derivedClassInfo(
         classParents = oldClassInfo.classParents :+ parent)
-      clazz.copySymDenotation(info = newClassInfo).installAfter(thisPhase)
+      classd.copySymDenotation(info = newClassInfo).installAfter(thisPhase)
     }
     def addMethod(name: TermName, info: Type, cls: Symbol, body: (Symbol, Tree, Context) => Tree): Unit = {
       val meth = ctx.newSymbol(clazz, name, Synthetic | Method, info, coord = clazz.coord)
@@ -484,9 +487,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           synthesizeDef(meth, vrefss => ctx => body(cls, vrefss.head.head, ctx))
       }
     }
-    val linked = clazz.linkedClass
+    val linked = classd.linkedClass
     lazy val monoType = {
-      val existing = clazz.info.member(tpnme.MirroredMonoType).symbol
+      val existing = classd.info.member(tpnme.MirroredMonoType).symbol
       if (existing.exists && !existing.is(Deferred)) existing
       else {
         val monoType =
@@ -508,8 +511,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         ordinalBody(_, _)(_))
     }
 
-    if (clazz.is(Module)) {
-      if (clazz.is(Case)) makeSingletonMirror()
+    if (classd.is(Module)) {
+      if (classd.is(Case)) makeSingletonMirror()
       else if (linked.isGenericProduct) makeProductMirror(linked)
       else if (linked.isGenericSum) makeSumMirror(linked)
       else if (linked.is(Sealed))

@@ -34,13 +34,14 @@ class Checker extends MiniPhase {
     if (!tree.isClassDef) return tree
 
     val cls = tree.symbol.asClass
+    val clsd = cls.classDenot
     val instantiable: Boolean =
-      cls.is(Flags.Module) ||
-      !cls.isOneOf(Flags.AbstractOrTrait) && {
+      clsd.is(Flags.Module) ||
+      !clsd.isOneOf(Flags.AbstractOrTrait) && {
         // see `Checking.checkInstantiable` in typer
-        val tp = cls.appliedRef
+        val tp = clsd.appliedRef
         val stp = SkolemType(tp)
-        val selfType = cls.givenSelfType.asSeenFrom(stp, cls)
+        val selfType = clsd.givenSelfType.asSeenFrom(stp, cls)
         !selfType.exists || stp <:< selfType
       }
 

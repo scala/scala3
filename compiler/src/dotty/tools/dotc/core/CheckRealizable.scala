@@ -174,7 +174,7 @@ class CheckRealizable(implicit ctx: Context) {
         }
     }
     val baseProblems =
-      tp.baseClasses.map(_.baseTypeOf(tp)).flatMap(baseTypeProblems)
+      tp.baseClasses.map(_.classDenot.baseTypeOf(tp)).flatMap(baseTypeProblems)
 
     baseProblems.foldLeft(
       refinementProblems.foldLeft(

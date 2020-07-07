@@ -37,7 +37,7 @@ object SymbolLoaders {
       completer.isInstanceOf[SourcefileLoader]
     assert(comesFromScan || scope.lookup(member.name) == NoSymbol,
            s"${owner.fullName}.${member.name} already has a symbol")
-    owner.asClass.enter(member, scope)
+    owner.classDenot.enter(member, scope)
     member
   }
 
@@ -77,7 +77,7 @@ object SymbolLoaders {
       if (ctx.settings.YtermConflict.value == "package" || ctx.mode.is(Mode.Interactive)) {
         ctx.warning(
           s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
-        owner.asClass.delete(preExisting)
+        owner.classDenot.delete(preExisting)
       }
       else if (ctx.settings.YtermConflict.value == "object") {
         ctx.warning(

@@ -198,26 +198,27 @@ private class ExtractAPICollector(implicit ctx: Context) extends ThunkHolder {
 
   private def computeClass(sym: ClassSymbol): api.ClassLikeDef = {
     import xsbti.api.{DefinitionType => dt}
+    val clsd = sym.classDenot
     val defType =
-      if (sym.is(Trait)) dt.Trait
-      else if (sym.is(ModuleClass)) {
-        if (sym.is(PackageClass)) dt.PackageModule
+      if (clsd.is(Trait)) dt.Trait
+      else if (clsd.is(ModuleClass)) {
+        if (clsd.is(PackageClass)) dt.PackageModule
         else dt.Module
       } else dt.ClassDef
 
-    val selfType = apiType(sym.givenSelfType)
+    val selfType = apiType(clsd.givenSelfType)
 
-    val name = sym.fullName.stripModuleClassSuffix.toString
+    val name = clsd.fullName.stripModuleClassSuffix.toString
       // We strip module class suffix. Zinc relies on a class and its companion having the same name
 
-    val tparams = sym.typeParams.map(apiTypeParameter).toArray
+    val tparams = clsd.typeParams.map(apiTypeParameter).toArray
 
     val structure = apiClassStructure(sym)
     val acc = apiAccess(sym)
     val modifiers = apiModifiers(sym)
     val anns = apiAnnotations(sym).toArray
-    val topLevel = sym.isTopLevelClass
-    val childrenOfSealedClass = sym.children.sorted(classFirstSort).map(c =>
+    val topLevel = clsd.isTopLevelClass
+    val childrenOfSealedClass = clsd.children.sorted(classFirstSort).map(c =>
       if (c.isClass)
         apiType(c.typeRef)
       else
@@ -230,7 +231,7 @@ private class ExtractAPICollector(implicit ctx: Context) extends ThunkHolder {
 
     allNonLocalClassesInSrc += cl
 
-    if (sym.isStatic && !sym.is(Trait) && ctx.platform.hasMainMethod(sym)) {
+    if (sym.isStatic && !clsd.is(Trait) && ctx.platform.hasMainMethod(sym)) {
        // If sym is an object, all main methods count, otherwise only @static ones count.
       _mainClasses += name
     }
@@ -239,7 +240,8 @@ private class ExtractAPICollector(implicit ctx: Context) extends ThunkHolder {
   }
 
   def apiClassStructure(csym: ClassSymbol): api.Structure = {
-    val cinfo = csym.classInfo
+    val cdenot = csym.classDenot
+    val cinfo = cdenot.classInfo
 
     val bases = {
       val ancestorTypes0 =
@@ -265,7 +267,7 @@ private class ExtractAPICollector(implicit ctx: Context) extends ThunkHolder {
 
     // Synthetic methods that are always present do not affect the API
     // and can therefore be ignored.
-    def alwaysPresent(s: Symbol) = csym.is(ModuleClass) && s.isConstructor
+    def alwaysPresent(s: Symbol) = cdenot.is(ModuleClass) && s.isConstructor
     val decls = cinfo.decls.filter(!alwaysPresent(_))
     val apiDecls = apiDefinitions(decls)
 
@@ -274,7 +276,7 @@ private class ExtractAPICollector(implicit ctx: Context) extends ThunkHolder {
     // should have a lazy `parentStructures` field.
     val inherited = cinfo.baseClasses
       .filter(bc => !bc.is(Scala2x))
-      .flatMap(_.classInfo.decls.filter(s => !(s.is(Private) || declSet.contains(s))))
+      .flatMap(_.classDenot.classInfo.decls.filter(s => !(s.is(Private) || declSet.contains(s))))
     // Inherited members need to be computed lazily because a class might contain
     // itself as an inherited member, like in `class A { class B extends A }`,
     // this works because of `classLikeCache`

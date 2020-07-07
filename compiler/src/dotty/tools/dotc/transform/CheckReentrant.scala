@@ -65,7 +65,7 @@ class CheckReentrant extends MiniPhase {
     if (!seen.contains(cls) && !isIgnored(cls)) {
       seen += cls
       scanning(cls) {
-        for (sym <- cls.classInfo.decls)
+        for (sym <- cls.classDenot.classInfo.decls)
           if (sym.isTerm && !sym.isSetter && !isIgnored(sym))
             if (sym.is(Mutable)) {
               ctx.error(
@@ -77,7 +77,7 @@ class CheckReentrant extends MiniPhase {
               scanning(sym) {
                 sym.info.widenExpr.classSymbols.foreach(addVars)
               }
-        for (parent <- cls.classInfo.classParents)
+        for (parent <- cls.classDenot.classInfo.classParents)
           addVars(parent.classSymbol.asClass)
       }
     }

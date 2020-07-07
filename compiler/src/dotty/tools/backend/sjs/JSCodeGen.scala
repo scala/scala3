@@ -205,11 +205,12 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genScalaClass(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
+    val symd = sym.classDenot
     implicit val pos: SourcePosition = sym.sourcePos
 
-    assert(!sym.is(Trait),
+    assert(!symd.is(Trait),
         "genScalaClass() must be called only for normal classes: "+sym)
-    assert(sym.superClass != NoSymbol, sym)
+    assert(symd.superClass != NoSymbol, sym)
 
     /*if (hasDefaultCtorArgsAndRawJSModule(sym)) {
       reporter.error(pos,
@@ -225,20 +226,20 @@ class JSCodeGen()(implicit ctx: Context) {
     // Optimizer hints
 
     def isStdLibClassWithAdHocInlineAnnot(sym: Symbol): Boolean = {
-      val fullName = sym.fullName.toString
+      val fullName = symd.fullName.toString
       (fullName.startsWith("scala.Tuple") && !fullName.endsWith("$")) ||
       (fullName.startsWith("scala.collection.mutable.ArrayOps$of"))
     }
 
     val shouldMarkInline = (
-        sym.hasAnnotation(jsdefn.InlineAnnot) ||
-        (sym.isAnonymousFunction && !sym.isSubClass(defn.PartialFunctionClass)) ||
+        symd.hasAnnotation(jsdefn.InlineAnnot) ||
+        (symd.isAnonymousFunction && !symd.isSubClass(defn.PartialFunctionClass)) ||
         isStdLibClassWithAdHocInlineAnnot(sym))
 
     val optimizerHints = {
       OptimizerHints.empty
         .withInline(shouldMarkInline)
-        .withNoinline(sym.hasAnnotation(jsdefn.NoinlineAnnot))
+        .withNoinline(symd.hasAnnotation(jsdefn.NoinlineAnnot))
     }
 
     // Generate members (constructor + methods)
@@ -301,7 +302,7 @@ class JSCodeGen()(implicit ctx: Context) {
       // Initialization of reflection data, if required
       val reflectInit = {
         val enableReflectiveInstantiation = {
-          sym.baseClasses.exists { ancestor =>
+          symd.baseClasses.exists { ancestor =>
             ancestor.hasAnnotation(jsdefn.EnableReflectiveInstantiationAnnot)
           }
         }
@@ -330,7 +331,7 @@ class JSCodeGen()(implicit ctx: Context) {
          * hold the static forwarders. Otherwise, this is going to be handled
          * when generating the companion class.
          */
-        if (!sym.linkedClass.exists) {
+        if (!symd.linkedClass.exists) {
           val forwarders = genStaticForwardersFromModuleClass(Nil, sym)
           if (forwarders.nonEmpty) {
             val forwardersClassDef = js.ClassDef(
@@ -370,7 +371,7 @@ class JSCodeGen()(implicit ctx: Context) {
         originalName,
         kind,
         None,
-        Some(encodeClassNameIdent(sym.superClass)),
+        Some(encodeClassNameIdent(symd.superClass)),
         genClassInterfaces(sym),
         None,
         None,
@@ -390,20 +391,21 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genRawJSClassData(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
+    val symd = sym.classDenot
     implicit val pos: Position = sym.span
 
     val classIdent = encodeClassNameIdent(sym)
     val kind = {
-      if (sym.is(Trait)) ClassKind.AbstractJSType
-      else if (sym.is(ModuleClass)) ClassKind.NativeJSModuleClass
+      if (symd.is(Trait)) ClassKind.AbstractJSType
+      else if (symd.is(ModuleClass)) ClassKind.NativeJSModuleClass
       else ClassKind.NativeJSClass
     }
     val superClass =
-      if (sym.is(Trait)) None
-      else Some(encodeClassNameIdent(sym.superClass))
+      if (symd.is(Trait)) None
+      else Some(encodeClassNameIdent(symd.superClass))
     val jsNativeLoadSpec = {
-      if (sym.is(Trait)) None
-      else if (sym.hasAnnotation(jsdefn.JSGlobalScopeAnnot)) None
+      if (symd.is(Trait)) None
+      else if (symd.hasAnnotation(jsdefn.JSGlobalScopeAnnot)) None
       else {
         val path = fullJSNameOf(sym).split('.').toList
         Some(js.JSNativeLoadSpec.Global(path.head, path.tail))

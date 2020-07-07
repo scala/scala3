@@ -582,7 +582,7 @@ class TreeUnpickler(reader: TastyReader,
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
       ctx.owner match {
-        case cls: ClassSymbol if !isScala2MacroDefinedInScala3 => cls.enter(sym)
+        case cls: ClassSymbol if !isScala2MacroDefinedInScala3 => cls.classDenot.enter(sym)
         case _ =>
       }
       registerSym(start, sym)

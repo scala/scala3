@@ -44,7 +44,7 @@ trait NamerContextOps {
    */
   def enter(sym: Symbol): Symbol =
     thisCtx.owner match
-      case cls: ClassSymbol => cls.enter(sym)
+      case cls: ClassSymbol => cls.classDenot.enter(sym)
       case _ => thisCtx.scope.openForMutations.enter(sym)
     sym
 
@@ -1239,6 +1239,7 @@ class Namer { typer: Typer =>
 
     /** The type signature of a ClassDef with given symbol */
     override def completeInCreationContext(denot: SymDenotation): Unit = {
+      val clsd = cls.classDenot
       val parents = impl.parents
 
       /* The type of a parent constructor. Types constructor arguments
@@ -1275,7 +1276,7 @@ class Namer { typer: Typer =>
        */
       def checkedParentType(parent: untpd.Tree): Type = {
         val ptype = parentType(parent)(completerCtx.superCallContext).dealiasKeepAnnots
-        if (cls.isRefinementClass) ptype
+        if (clsd.isRefinementClass) ptype
         else {
           val pt = checkClassType(ptype, parent.sourcePos,
               traitReq = parent ne parents.head, stablePrefixReq = true)
@@ -1308,13 +1309,13 @@ class Namer { typer: Typer =>
       completeConstructor(denot)
       denot.info = tempInfo
 
-      val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
+      val parentTypes = defn.adjustForTuple(cls, clsd.typeParams,
         ensureFirstIsClass(parents.map(checkedParentType(_)), cls.span))
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
 
       if (impl.derived.nonEmpty) {
         val (derivingClass, derivePos) = original.removeAttachment(desugar.DerivingCompanion) match {
-          case Some(pos) => (cls.companionClass.orElse(cls).asClass, pos)
+          case Some(pos) => (clsd.companionClass.orElse(cls).asClass, pos)
           case None => (cls, impl.sourcePos.startPos)
         }
         val deriver = new Deriver(derivingClass, derivePos)(localCtx)
@@ -1326,11 +1327,11 @@ class Namer { typer: Typer =>
       tempInfo = null // The temporary info can now be garbage-collected
 
       Checking.checkWellFormed(cls)
-      if (isDerivedValueClass(cls)) cls.setFlag(Final)
-      cls.info = avoidPrivateLeaks(cls)
-      cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
-      cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest))
-      if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
+      if (isDerivedValueClass(cls)) clsd.setFlag(Final)
+      clsd.info = avoidPrivateLeaks(cls)
+      clsd.baseClasses.foreach(_.classDenot.invalidateBaseTypeCache()) // we might have looked before and found nothing
+      clsd.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest))
+      if (clsd.isNoInitsClass) clsd.primaryConstructor.setFlag(StableRealizable)
       processExports(localCtx)
     }
   }

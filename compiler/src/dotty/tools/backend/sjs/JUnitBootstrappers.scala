@@ -122,13 +122,14 @@ class JUnitBootstrappers extends MiniPhase {
 
     @tailrec
     def hasTests(sym: ClassSymbol): Boolean = {
-      sym.info.decls.exists(m => m.is(Method) && m.hasAnnotation(junitdefn.TestAnnotClass)) ||
-      sym.superClass.exists && hasTests(sym.superClass.asClass)
+      val symd = sym.classDenot
+      symd.info.decls.exists(m => m.is(Method) && m.hasAnnotation(junitdefn.TestAnnotClass)) ||
+      symd.superClass.exists && hasTests(symd.superClass.asClass)
     }
 
     def isTestClass(sym: Symbol): Boolean = {
       sym.isClass &&
-      !sym.isOneOf(ModuleClass | Abstract | Trait) &&
+      !sym.denot.isOneOf(ModuleClass | Abstract | Trait) &&
       hasTests(sym.asClass)
     }
 

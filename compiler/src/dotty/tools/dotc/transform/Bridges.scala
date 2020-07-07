@@ -25,7 +25,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
      *  are also counted. This is necessary because we generate bridge methods
      *  only in classes, never in traits.
      */
-    override def parents = Array(root.superClass)
+    override def parents = Array(root.classDenot.superClass)
 
     override def exclude(sym: Symbol) =
       !sym.isOneOf(MethodOrModule) || super.exclude(sym)
@@ -94,7 +94,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     bridgesScope.enter(bridge)
 
     if (other.owner == root) {
-      root.delete(other)
+      root.classDenot.delete(other)
       toBeRemoved += other
     }
 

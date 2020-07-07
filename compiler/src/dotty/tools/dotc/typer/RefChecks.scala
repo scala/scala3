@@ -43,7 +43,7 @@ object RefChecks {
       if defaultGetterClass.isClass
     }
     {
-      val defaultGetterNames = defaultGetterClass.asClass.memberNames(defaultMethodFilter)
+      val defaultGetterNames = defaultGetterClass.classDenot.memberNames(defaultMethodFilter)
       val defaultMethodNames = defaultGetterNames map { _ replace {
         case DefaultGetterName(methName, _) => methName
       }}
@@ -97,12 +97,12 @@ object RefChecks {
       def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
         val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
         if otherSelf.exists && !(cinfo.selfType <:< otherSelf) then
-          ctx.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
+          ctx.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other),
             cls.sourcePos)
       }
       for (parent <- cinfo.classParents)
         checkSelfConforms(parent.classSymbol.asClass, "illegal inheritance", "parent")
-      for (reqd <- cinfo.cls.givenSelfType.classSymbols)
+      for (reqd <- cinfo.cls.classDenot.givenSelfType.classSymbols)
         checkSelfConforms(reqd, "missing requirement", "required")
     case _ =>
   }
@@ -170,7 +170,8 @@ object RefChecks {
    *       before, but it looks too complicated and method bodies are far too large.
    */
   private def checkAllOverrides(clazz: ClassSymbol)(using Context): Unit = {
-    val self = clazz.thisType
+    val classd = clazz.classDenot
+    val self = classd.thisType
     val upwardsSelf = upwardsThisType(clazz)
     var hasErrors = false
 
@@ -300,7 +301,7 @@ object RefChecks {
         if (subOther(member.owner) && deferredCheck)
           //Console.println(infoString(member) + " shadows1 " + infoString(other) " in " + clazz);//DEBUG
           return
-        val parentSymbols = clazz.info.parents.map(_.typeSymbol)
+        val parentSymbols = classd.info.parents.map(_.typeSymbol)
         if (parentSymbols exists (p => subOther(p) && subMember(p) && deferredCheck))
           //Console.println(infoString(member) + " shadows2 " + infoString(other) + " in " + clazz);//DEBUG
           return
@@ -432,7 +433,7 @@ object RefChecks {
     printMixinOverrideErrors()
 
     // Verifying a concrete class has nothing unimplemented.
-    if (!clazz.isOneOf(AbstractOrTrait)) {
+    if (!classd.isOneOf(AbstractOrTrait)) {
       val abstractErrors = new mutable.ListBuffer[String]
       def abstractErrorMessage =
         // a little formatting polish
@@ -441,7 +442,7 @@ object RefChecks {
 
       def abstractClassError(mustBeMixin: Boolean, msg: String): Unit = {
         def prelude = (
-          if (clazz.isAnonymousClass || clazz.is(Module)) "object creation impossible"
+          if (classd.isAnonymousClass || classd.is(Module)) "object creation impossible"
           else if (mustBeMixin) s"$clazz needs to be a mixin"
           else s"$clazz needs to be abstract") + ", since"
 
@@ -452,7 +453,7 @@ object RefChecks {
       def hasJavaErasedOverriding(sym: Symbol): Boolean =
         !ctx.erasurePhase.exists || // can't do the test, assume the best
           ctx.atPhase(ctx.erasurePhase.next) {
-            clazz.info.nonPrivateMember(sym.name).hasAltWith { alt =>
+            classd.info.nonPrivateMember(sym.name).hasAltWith { alt =>
               alt.symbol.is(JavaDefined, butNot = Deferred) &&
                 !sym.owner.derivesFrom(alt.symbol.owner) &&
                 alt.matches(sym)
@@ -465,9 +466,9 @@ object RefChecks {
         || mbr.is(JavaDefined) && hasJavaErasedOverriding(mbr)
 
       def isImplemented(mbr: Symbol) =
-        val mbrType = clazz.thisType.memberInfo(mbr)
+        val mbrType = classd.thisType.memberInfo(mbr)
         def (sym: Symbol).isConcrete = sym.exists && !sym.is(Deferred)
-        clazz.nonPrivateMembersNamed(mbr.name)
+        classd.nonPrivateMembersNamed(mbr.name)
           .filterWithPredicate(
             impl => impl.symbol.isConcrete && mbrType.matchesLoosely(impl.info))
           .exists
@@ -479,7 +480,7 @@ object RefChecks {
        */
       def missingTermSymbols: List[Symbol] =
         val buf = new mutable.ListBuffer[Symbol]
-        for bc <- clazz.baseClasses
+        for bc <- classd.baseClasses
             sym <- bc.info.decls.toList
             if sym.is(DeferredTerm) && !isImplemented(sym) && !ignoreDeferred(sym)
         do buf += sym
@@ -548,7 +549,7 @@ object RefChecks {
             // abstract method, and a cursory examination of the difference reveals
             // something obvious to us, let's make it more obvious to them.
             val abstractParams = underlying.info.firstParamTypes
-            val matchingName = clazz.info.nonPrivateMember(underlying.name).alternatives
+            val matchingName = classd.info.nonPrivateMember(underlying.name).alternatives
             val matchingArity = matchingName filter { m =>
               !m.symbol.is(Deferred) &&
                 m.info.firstParamTypes.length == abstractParams.length
@@ -607,18 +608,19 @@ object RefChecks {
       def checkNoAbstractDecls(bc: Symbol): Unit = {
         for (decl <- bc.info.decls)
           if (decl.is(Deferred)) {
-            val impl = decl.matchingMember(clazz.thisType)
+            val impl = decl.matchingMember(classd.thisType)
             if (impl == NoSymbol || decl.owner.isSubClass(impl.owner))
                && !ignoreDeferred(decl)
             then
-              val impl1 = clazz.thisType.nonPrivateMember(decl.name) // DEBUG
+              val impl1 = classd.thisType.nonPrivateMember(decl.name) // DEBUG
               ctx.log(i"${impl1}: ${impl1.info}") // DEBUG
-              ctx.log(i"${clazz.thisType.memberInfo(decl)}") // DEBUG
+              ctx.log(i"${classd.thisType.memberInfo(decl)}") // DEBUG
               abstractClassError(false, "there is a deferred declaration of " + infoString(decl) +
                 " which is not implemented in a subclass" + err.abstractVarMessage(decl))
           }
-        if (bc.asClass.superClass.is(Abstract))
-          checkNoAbstractDecls(bc.asClass.superClass)
+        val bcd = bc.classDenot
+        if bcd.superClass.is(Abstract) then
+          checkNoAbstractDecls(bcd.superClass)
       }
 
       // Check that every term member of this concrete class has a symbol that matches the member's type
@@ -672,7 +674,7 @@ object RefChecks {
        *  can assume invariant refinement for case classes in `constrainPatternType`.
        */
       def checkCaseClassInheritanceInvariant() =
-        for (caseCls <- clazz.info.baseClasses.tail.find(_.is(Case)))
+        for (caseCls <- classd.info.baseClasses.tail.find(_.is(Case)))
           for (baseCls <- caseCls.info.baseClasses.tail)
             if (baseCls.typeParams.exists(_.paramVarianceSign != 0))
               for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
@@ -687,10 +689,10 @@ object RefChecks {
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()
     }
-    else if (clazz.is(Trait) && !(clazz derivesFrom defn.AnyValClass))
+    else if (classd.is(Trait) && !(classd derivesFrom defn.AnyValClass))
       // For non-AnyVal classes, prevent abstract methods in interfaces that override
       // final members in Object; see #4431
-      for (decl <- clazz.info.decls) {
+      for (decl <- classd.info.decls) {
         // Have to use matchingSymbol, not a method involving overridden symbols,
         // because the scala type system understands that an abstract method here does not
         // override a concrete method in Object. The jvm, however, does not.
@@ -699,7 +701,7 @@ object RefChecks {
           ctx.error(TraitRedefinedFinalMethodFromAnyRef(overridden), decl.sourcePos)
       }
 
-    if (!clazz.is(Trait)) {
+    if (!classd.is(Trait)) {
       // check that parameterized base classes and traits are typed in the same way as from the superclass
       // I.e. say we have
       //
@@ -712,13 +714,13 @@ object RefChecks {
       // This is necessary because parameter values are determined directly or indirectly
       // by `Super`. So we cannot pretend they have a different type when seen from `Sub`.
       def checkParameterizedTraitsOK() = {
-        val mixins = clazz.mixins
-        for {
-          cls <- clazz.info.baseClasses.tail
-          if cls.paramAccessors.nonEmpty && !mixins.contains(cls)
-          problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized", "super")
-        }
-        ctx.error(problem(), clazz.sourcePos)
+        val mixins = classd.mixins
+        for
+          bc <- classd.info.baseClasses.tail
+          if bc.classDenot.paramAccessors.nonEmpty && !mixins.contains(bc)
+          problem <- variantInheritanceProblems(bc, classd.superClass, "parameterized", "super")
+        do
+          ctx.error(problem(), clazz.sourcePos)
       }
 
       checkParameterizedTraitsOK()
@@ -870,9 +872,9 @@ object RefChecks {
        && (sym.isOneOf(MethodOrLazyOrMutable) || !sym.is(Local)) // in these cases we'll produce a getter later
        && !sym.isConstructor
     then
-      val cls = sym.owner.asClass
-      for bc <- cls.baseClasses.tail do
-        val other = sym.matchingDecl(bc, cls.thisType)
+      val clsd = sym.owner.classDenot
+      for bc <- clsd.baseClasses.tail do
+        val other = sym.matchingDecl(bc, clsd.thisType)
         if other.exists then
           ctx.error(i"private $sym cannot override ${other.showLocated}", sym.sourcePos)
   end checkNoPrivateOverrides

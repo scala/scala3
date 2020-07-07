@@ -72,7 +72,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     if (sym.isClass && !sym.isAbsent()) {
       val validSuperclass = sym.isPrimitiveValueClass || defn.syntheticCoreClasses.contains(sym) ||
-        (sym eq defn.ObjectClass) || sym.isOneOf(NoSuperClassFlags) || (sym.asClass.superClass.exists) ||
+        (sym eq defn.ObjectClass) || sym.isOneOf(NoSuperClassFlags) || (sym.classDenot.superClass.exists) ||
         sym.isRefinementClass
 
       assert(validSuperclass, i"$sym has no superclass set")
@@ -420,10 +420,11 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = {
       val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef
+      val clsd = cls.classDenot
       assert(cdef.symbol == cls)
       assert(impl.symbol.owner == cls)
       assert(constr.symbol.owner == cls)
-      assert(cls.primaryConstructor == constr.symbol, i"mismatch, primary constructor ${cls.primaryConstructor}, in tree = ${constr.symbol}")
+      assert(clsd.primaryConstructor == constr.symbol, i"mismatch, primary constructor ${clsd.primaryConstructor}, in tree = ${constr.symbol}")
       checkOwner(impl)
       checkOwner(impl.constr)
 
@@ -431,7 +432,7 @@ class TreeChecker extends Phase with SymTransformer {
         !x.isValueClassConvertMethod &&
         !x.name.is(DocArtifactName)
 
-      val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
+      val decls   = clsd.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
 
       val symbolsNotDefined = decls -- defined - constr.symbol

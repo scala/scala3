@@ -78,9 +78,9 @@ object CompilationUnit {
 
   class SuspendException extends Exception
 
-  /** Make a compilation unit for top class `clsd` with the contents of the `unpickled` tree */
-  def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =
-    apply(new SourceFile(clsd.symbol.associatedFile, Array.empty[Char]), unpickled, forceTrees)
+  /** Make a compilation unit for top class `cls` with the contents of the `unpickled` tree */
+  def apply(cls: ClassSymbol, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =
+    apply(new SourceFile(cls.associatedFile, Array.empty[Char]), unpickled, forceTrees)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
   def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit = {

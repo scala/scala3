@@ -196,10 +196,10 @@ class ClassfileParser(
     }
     else if (result == Some(NoEmbedded))
       for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
-        classRoot.owner.asClass.delete(sym)
+        classRoot.owner.classDenot.delete(sym)
         if (classRoot.owner == defn.ScalaShadowingPackage.moduleClass)
           // Symbols in scalaShadowing are also added to scala
-          defn.ScalaPackageClass.delete(sym)
+          defn.ScalaPackageClass.classDenot.delete(sym)
         sym.markAbsent()
       }
 
@@ -454,7 +454,7 @@ class ClassfileParser(
         val s = ctx.newSymbol(
           owner, tpname, owner.typeParamCreationFlags,
           typeParamCompleter(index), coord = indexCoord(index))
-        if (owner.isClass) owner.asClass.enter(s)
+        if owner.isClass then owner.classDenot.enter(s)
         tparams = tparams + (tpname -> s)
         sig2typeBounds(tparams, skiptvs = true)
         newTParams += s

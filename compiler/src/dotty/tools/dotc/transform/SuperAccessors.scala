@@ -136,8 +136,8 @@ class SuperAccessors(thisPhase: DenotTransformer) {
           def hasClassOverride(member: Symbol, subCls: ClassSymbol): Boolean =
             if (subCls == defn.ObjectClass || subCls == member.owner) false
             else if (member.overridingSymbol(subCls).exists) true
-            else hasClassOverride(member, subCls.superClass.asClass)
-          val superCls = clazz.asClass.superClass.asClass
+            else hasClassOverride(member, subCls.classDenot.superClass.asClass)
+          val superCls = clazz.classDenot.superClass.asClass
           if (owner != superCls && hasClassOverride(sym, superCls))
             ctx.error(
               em"""Super call cannot be emitted: the selected $sym is declared in $owner, which is not the direct superclass of $clazz.

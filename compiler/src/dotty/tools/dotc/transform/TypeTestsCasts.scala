@@ -150,7 +150,7 @@ object TypeTestsCasts {
           case _ =>
             // always false test warnings are emitted elsewhere
             X.classSymbol.exists && P.classSymbol.exists &&
-              !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass) ||
+              !X.classSymbol.classDenot.mayHaveCommonChild(P.classSymbol.asClass) ||
             // first try without striping type parameters for performance
             typeArgsTrivial(X, tpe) ||
             typeArgsTrivial(stripTypeParam(X), tpe)

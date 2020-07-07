@@ -843,8 +843,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         case pre1: ThisType =>
           pre2 match
             case pre2: ThisType =>
-              if pre1.cls.classInfo.selfType.derivesFrom(pre2.cls)
-                 && pre2.cls.classInfo.selfType.derivesFrom(pre1.cls)
+              if pre1.cls.classDenot.classInfo.selfType.derivesFrom(pre2.cls)
+                 && pre2.cls.classDenot.classInfo.selfType.derivesFrom(pre1.cls)
               then
                 subtyping.println(i"assume equal prefixes $pre1 $pre2")
                 return true

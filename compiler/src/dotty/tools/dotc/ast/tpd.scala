@@ -310,14 +310,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree])(implicit ctx: Context): TypeDef = {
+    val clsd = cls.classDenot
     val selfType =
-      if (cls.classInfo.selfInfo ne NoType) ValDef(ctx.newSelfSym(cls))
+      if (clsd.classInfo.selfInfo ne NoType) ValDef(ctx.newSelfSym(cls))
       else EmptyValDef
     def isOwnTypeParam(stat: Tree) =
       stat.symbol.is(TypeParam) && stat.symbol.owner == cls
     val bodyTypeParams = body filter isOwnTypeParam map (_.symbol)
     val newTypeParams =
-      for (tparam <- cls.typeParams if !(bodyTypeParams contains tparam))
+      for (tparam <- clsd.typeParams if !(bodyTypeParams contains tparam))
       yield TypeDef(tparam)
     val findLocalDummy = FindLocalDummyAccumulator(cls)
     val localDummy = body.foldLeft(NoSymbol: Symbol)(findLocalDummy.apply)

@@ -181,7 +181,7 @@ object Completion {
     def addScopeCompletions(implicit ctx: Context): Unit = {
       if (ctx.owner.isClass) {
         addAccessibleMembers(ctx.owner.thisType)
-        ctx.owner.asClass.classInfo.selfInfo match {
+        ctx.owner.classDenot.classInfo.selfInfo match {
           case selfSym: Symbol => add(selfSym, selfSym.name)
           case _ =>
         }

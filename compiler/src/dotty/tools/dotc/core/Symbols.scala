@@ -269,7 +269,7 @@ trait Symbols { thisCtx: Context =>
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
   def newSelfSym(cls: ClassSymbol, name: TermName = nme.WILDCARD, selfInfo: Type = NoType): TermSymbol =
-    newSymbol(cls, name, SelfSymFlags, selfInfo orElse cls.classInfo.selfType, coord = cls.coord)
+    newSymbol(cls, name, SelfSymFlags, selfInfo orElse cls.classDenot.classInfo.selfType, coord = cls.coord)
 
   /** Create new type parameters with given owner, names, and flags.
    *  @param boundsFn  A function that, given type refs to the newly created
@@ -508,6 +508,9 @@ object Symbols {
     final def lastKnownDenotation: SymDenotation =
       lastDenot
 
+    final def classDenot(using Context): ClassDenotation =
+      denot.asInstanceOf[ClassDenotation]
+
     private[core] def defRunId: RunId =
       if (lastDenot == null) NoRunId else lastDenot.validFor.runId
 
@@ -569,13 +572,11 @@ object Symbols {
       lastDenot != null && lastDenot.initial.isStatic
 
     /** This symbol entered into owner's scope (owner must be a class). */
-    final def entered(implicit ctx: Context): this.type = {
-      if (this.owner.isClass) {
-        this.owner.asClass.enter(this)
-        if (this.is(Module)) this.owner.asClass.enter(this.moduleClass)
-      }
+    final def entered(implicit ctx: Context): this.type =
+      if this.owner.isClass then
+        this.owner.classDenot.enter(this)
+        if this.is(Module) then this.owner.classDenot.enter(this.moduleClass)
       this
-    }
 
     /** Enter this symbol in its class owner after given `phase`. Create a fresh
      *  denotation for its owner class if the class has not yet already one
@@ -590,7 +591,7 @@ object Symbols {
             denot.validFor |= InitialPeriod
             if (this.is(Module)) this.moduleClass.validFor |= InitialPeriod
           }
-          else owner.ensureFreshScopeAfter(phase)
+          else owner.classDenot.ensureFreshScopeAfter(phase)
           assert(isPrivate || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
           entered
         case _ => this
@@ -598,8 +599,8 @@ object Symbols {
 
     /** Remove symbol from scope of owning class */
     final def drop()(implicit ctx: Context): Unit = {
-      this.owner.asClass.delete(this)
-      if (this.is(Module)) this.owner.asClass.delete(this.moduleClass)
+      this.owner.classDenot.delete(this)
+      if (this.is(Module)) this.owner.classDenot.delete(this.moduleClass)
     }
 
     /** Remove symbol from scope of owning class after given `phase`. Create a fresh
@@ -610,7 +611,7 @@ object Symbols {
       if (ctx.phaseId != phase.next.id) dropAfter(phase)(ctx.withPhase(phase.next))
       else {
         assert (!this.owner.is(Package))
-        this.owner.asClass.ensureFreshScopeAfter(phase)
+        this.owner.classDenot.ensureFreshScopeAfter(phase)
         assert(isPrivate || phase.changesMembers, i"$this deleted in ${this.owner} at undeclared phase $phase")
         drop()
       }
@@ -818,9 +819,6 @@ object Symbols {
       mySource
     }
 
-    final def classDenot(implicit ctx: Context): ClassDenotation =
-      denot.asInstanceOf[ClassDenotation]
-
     override protected def prefixString: String = "ClassSymbol"
   }
 
@@ -859,7 +857,7 @@ object Symbols {
   implicit def toDenot(sym: Symbol)(implicit ctx: Context): SymDenotation = sym.denot
 
   /** Makes all class denotation operations available on class symbols */
-  implicit def toClassDenot(cls: ClassSymbol)(implicit ctx: Context): ClassDenotation = cls.classDenot
+  def toClassDenot(cls: ClassSymbol)(using Context): ClassDenotation = cls.classDenot
 
   /** The Definitions object */
   def defn(implicit ctx: Context): Definitions = ctx.definitions

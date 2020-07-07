@@ -29,7 +29,7 @@ import ErrorReporting.{err, errorType}
 import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
 import NameOps._
-import SymDenotations.{NoCompleter, NoDenotation}
+import SymDenotations.{NoCompleter, NoDenotation, ClassDenotation}
 import Applications.unapplyArgs
 import transform.patmat.SpaceEngine.isIrrefutableUnapply
 import config.Feature._
@@ -607,7 +607,7 @@ object Checking {
       if (isCyclic(clazz.asClass))
         ctx.error(ValueClassesMayNotWrapItself(clazz), clazz.sourcePos)
       else {
-        val clParamAccessors = clazz.asClass.paramAccessors.filter { param =>
+        val clParamAccessors = clazz.classDenot.paramAccessors.filter { param =>
           param.isTerm && !param.is(Flags.Accessor)
         }
         clParamAccessors match {
@@ -919,13 +919,14 @@ trait Checking {
   def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit =
     if (!ctx.isAfterTyper) {
       val called = call.tpe.classSymbol
-      if (caller.is(Trait))
+      val callerd = caller.classDenot
+      if (callerd.is(Trait))
         ctx.error(i"$caller may not call constructor of $called", call.sourcePos)
-      else if (called.is(Trait) && !caller.mixins.contains(called))
-        ctx.error(i"""$called is already implemented by super${caller.superClass},
+      else if (called.is(Trait) && !callerd.mixins.contains(called))
+        ctx.error(i"""$called is already implemented by super${callerd.superClass},
                    |its constructor cannot be called again""", call.sourcePos)
 
-      if (caller.is(Module)) {
+      if (callerd.is(Module)) {
         val traverser = new TreeTraverser {
           def traverse(tree: Tree)(using Context) = tree match {
             case tree: RefTree if tree.isTerm && (tree.tpe.widen.classSymbol eq caller) =>
@@ -980,12 +981,12 @@ trait Checking {
    *  The standard library relies on this idiom.
    */
   def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: SourcePosition)(using Context): Unit =
-    parent match {
-      case parent: ClassSymbol if parent.is(Trait) =>
-        val psuper = parent.superClass
-        val csuper = cls.superClass
+    parent.denot match {
+      case parentd: ClassDenotation if parentd.is(Trait) =>
+        val psuper = parentd.superClass
+        val csuper = cls.classDenot.superClass
         val ok = csuper.derivesFrom(psuper) ||
-          parent.is(JavaDefined) && csuper == defn.AnyClass &&
+          parentd.is(JavaDefined) && csuper == defn.AnyClass &&
           (parent == defn.JavaSerializableClass || parent == defn.ComparableClass)
         if (!ok)
           ctx.error(em"illegal trait inheritance: super$csuper does not derive from $parent's super$psuper", pos)
@@ -995,12 +996,12 @@ trait Checking {
   /** Check that case classes are not inherited by case classes.
    */
   def checkCaseInheritance(parent: Symbol, caseCls: ClassSymbol, pos: SourcePosition)(using Context): Unit =
-    parent match {
-      case parent: ClassSymbol =>
-        if (parent.is(Case))
+    parent.denot match {
+      case parentd: ClassDenotation =>
+        if (parentd.is(Case))
           ctx.error(ex"""case $caseCls has case ancestor $parent, but case-to-case inheritance is prohibited.
                         |To overcome this limitation, use extractors to pattern match on non-leaf nodes.""", pos)
-        else checkCaseInheritance(parent.superClass, caseCls, pos)
+        else checkCaseInheritance(parentd.superClass, caseCls, pos)
       case _ =>
     }
 
