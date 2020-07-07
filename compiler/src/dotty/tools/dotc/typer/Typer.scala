@@ -33,7 +33,7 @@ import collection.mutable
 import annotation.tailrec
 import Implicits._
 import util.Stats.record
-import config.Printers.{gadts, typr}
+import config.Printers.{gadts, typr, debug}
 import config.Feature._
 import config.SourceVersion._
 import rewrites.Rewrites.patch
@@ -3407,16 +3407,16 @@ class Typer extends Namer
         case _ =>
       }
 
-      val approximation = Inferencing.approximateGADT(wtp)
+      val gadtApprox = Inferencing.approximateGADT(wtp)
       gadts.println(
         i"""GADT approximation {
-        approximation = $approximation
+        approximation = $gadtApprox
         pt.isInstanceOf[SelectionProto] = ${pt.isInstanceOf[SelectionProto]}
         ctx.gadt.nonEmpty = ${ctx.gadt.nonEmpty}
         ctx.gadt = ${ctx.gadt.debugBoundsDescription}
         pt.isMatchedBy = ${
           if (pt.isInstanceOf[SelectionProto])
-            pt.asInstanceOf[SelectionProto].isMatchedBy(approximation).toString
+            pt.asInstanceOf[SelectionProto].isMatchedBy(gadtApprox).toString
           else
             "<not a SelectionProto>"
         }
@@ -3424,8 +3424,8 @@ class Typer extends Namer
         """
       )
       pt match {
-        case pt: SelectionProto if ctx.gadt.nonEmpty && pt.isMatchedBy(approximation) =>
-          return tpd.Typed(tree, TypeTree(approximation))
+        case pt: SelectionProto if ctx.gadt.nonEmpty && pt.isMatchedBy(gadtApprox) =>
+          return tpd.Typed(tree, TypeTree(gadtApprox))
         case _ => ;
       }
 
@@ -3455,10 +3455,38 @@ class Typer extends Namer
 
       // try an implicit conversion
       val prevConstraint = ctx.typerState.constraint
-      def recover(failure: SearchFailureType) =
+      def recover(failure: SearchFailureType) = {
+        def canTryGADTHealing: Boolean = {
+          def isDummy = tree.hasAttachment(dummyTreeOfType.IsDummyTree)
+          tryGadtHealing // allow GADT healing only once to avoid a loop
+          && ctx.gadt.nonEmpty // GADT healing only makes sense if there are GADT constraints present
+          && !isDummy // avoid healing a dummy tree as it can lead to an error in a very specific case
+        }
+
         if (isFullyDefined(wtp, force = ForceDegree.all) &&
             ctx.typerState.constraint.ne(prevConstraint)) readapt(tree)
-        else err.typeMismatch(tree, pt, failure)
+        else if (canTryGADTHealing) {
+          // try recovering with a GADT approximation
+          // note: this seems be be important only in a very specific case
+          // where we select a member from so
+          val nestedCtx = ctx.fresh.setNewTyperState()
+          val ascribed = tpd.Typed(tree, TypeTree(gadtApprox))
+          val res =
+            readapt(
+              tree = ascribed,
+              shouldTryGadtHealing = false,
+            )(using nestedCtx)
+          if (!nestedCtx.reporter.hasErrors) {
+            // GADT recovery successful
+            nestedCtx.typerState.commit()
+            res
+          } else {
+            // otherwise fail with the error that would have been reported without the GADT recovery
+            err.typeMismatch(tree, pt, failure)
+          }
+        } else err.typeMismatch(tree, pt, failure)
+      }
+
       if ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType then
         if pt.isRef(defn.AnyValClass) || pt.isRef(defn.ObjectClass) then
           ctx.error(em"the result of an implicit conversion must be more specific than $pt", tree.sourcePos)
@@ -3469,14 +3497,13 @@ class Typer extends Namer
             checkImplicitConversionUseOK(found.symbol, tree.posd)
             readapt(found)(using ctx.retractMode(Mode.ImplicitsEnabled))
           case failure: SearchFailure =>
-            if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous) {
+            if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous) then
               // don't report the failure but return the tree unchanged. This
               // will cause a failure at the next level out, which usually gives
               // a better error message. To compensate, store the encountered failure
               // as an attachment, so that it can be reported later as an addendum.
               rememberSearchFailure(tree, failure)
               tree
-            }
             else recover(failure.reason)
         }
       else recover(NoMatchingImplicits)

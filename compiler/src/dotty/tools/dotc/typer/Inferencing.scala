@@ -11,7 +11,7 @@ import NameKinds.UniqueName
 import util.Spans._
 import util.{Stats, SimpleIdentityMap}
 import Decorators._
-import config.Printers.{gadts, typr}
+import config.Printers.{gadts, typr, debug}
 import annotation.tailrec
 import reporting._
 import collection.mutable
@@ -171,37 +171,45 @@ object Inferencing {
     res
   }
 
-  /** This class is mostly based on IsFullyDefinedAccumulator.
-    * It tries to approximate the given type based on the available GADT constraints.
-    */
+  /** Approximates a type to get rid of as many GADT-constrained abstract types as possible. */
   private class ApproximateGadtAccumulator(using Context) extends TypeMap {
 
     var failed = false
 
-    private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type = {
-      val inst = tvar.instantiate(fromBelow)
-      typr.println(i"forced instantiation of ${tvar.origin} = $inst")
-      inst
-    }
-
-    private def instDirection2(sym: Symbol)(using Context): Int = {
-      val constrained = ctx.gadt.fullBounds(sym)
-      val original = sym.info.bounds
-      val cmp = ctx.typeComparer
-      val approxBelow =
-        if (!cmp.isSubTypeWhenFrozen(constrained.lo, original.lo)) 1 else 0
-      val approxAbove =
-        if (!cmp.isSubTypeWhenFrozen(original.hi, constrained.hi)) 1 else 0
-      approxAbove - approxBelow
-    }
-
-    private[this] var toMaximize: Boolean = false
-
+    /** GADT approximation proceeds differently from type variable approximation.
+      *
+      * Essentially, what we're doing is we're inferring a type ascription that
+      * will remove as many GADT-constrained types as possible. This means that
+      * we want to approximate type T to type S in such a way that no matter how
+      * GADT-constrained types are instantiated, T <: S. In other words, the
+      * relationship _necessarily_ must hold.
+      *
+      * We accomplish that by:
+      *   - replacing covariant occurences with upper GADT bound
+      *   - replacing contravariant occurences with lower GADT bound
+      *   - leaving invariant occurences alone
+      *
+      * Examples:
+      *   - If we have GADT cstr A <: Int, then for all A <: Int, Option[A] <: Option[Int].
+      *     Therefore, we can approximate Option[A] ~~ Option[Int].
+      *   - If we have A >: S <: T, then for all such A, A => A <: S => T. This
+      *     illustrates that it's fine to differently approximate different
+      *     occurences of same type.
+      *   - If we have A <: Int and F <: [A] => Option[A] (note the invariance),
+      *     then we should approximate F[A] ~~ Option[A]. That is, we should
+      *     respect the invariance of the type constructor.
+      *   - If we have A <: Option[B] and B <: Int, we approximate A ~~ Option[Int].
+      *     That is, we recursively approximate all nested GADT-constrained types.
+      *     This is certain to be sound (because we maintain necessary subtyping),
+      *     but not accurate.
+      */
     def apply(tp: Type): Type = tp.dealias match {
-      case tp @ TypeRef(qual, nme) if (qual eq NoPrefix) && ctx.gadt.contains(tp.symbol) =>
+      case tp @ TypeRef(qual, nme) if (qual eq NoPrefix)
+                                   && variance != 0
+                                   && ctx.gadt.contains(tp.symbol)
+                                   =>
         val sym = tp.symbol
-        val res =
-          ctx.gadt.approximation(sym, fromBelow = variance < 0)
+        val res = ctx.gadt.approximation(sym, fromBelow = variance < 0)
         gadts.println(i"approximated $tp  ~~  $res")
         res
 
