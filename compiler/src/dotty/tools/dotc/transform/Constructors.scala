@@ -149,7 +149,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
         case Ident(_) | Select(This(_), _) =>
           var sym = tree.symbol
           if (sym.is(ParamAccessor, butNot = Mutable)) sym = sym.subst(accessors, paramSyms)
-          if (sym.owner.isConstructor) ref(sym).withSpan(tree.span) else tree
+          if (sym.maybeOwner.isConstructor) ref(sym).withSpan(tree.span) else tree
         case Apply(fn, Nil) =>
           val fn1 = transform(fn)
           if ((fn1 ne fn) && fn1.symbol.is(Param) && fn1.symbol.owner.isPrimaryConstructor)
