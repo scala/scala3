@@ -946,7 +946,7 @@ class Typer extends Namer
    *     def double(x: Char): String = s"$x$x"
    *     "abc" flatMap double
    */
-  private def decomposeProtoFunction(pt: Type, defaultArity: Int)(using Context): (List[Type], untpd.Tree) = {
+  private def decomposeProtoFunction(pt: Type, defaultArity: Int, tree: untpd.Tree)(using Context): (List[Type], untpd.Tree) = {
     def typeTree(tp: Type) = tp match {
       case _: WildcardType => untpd.TypeTree()
       case _ => untpd.TypeTree(tp)
@@ -957,7 +957,15 @@ class Typer extends Namer
           newTypeVar(apply(bounds.orElse(TypeBounds.empty)).bounds)
         case _ => mapOver(t)
     }
-    pt.stripTypeVar.dealias match {
+    val pt1 = pt.stripTypeVar.dealias
+    if (pt1 ne pt1.dropDependentRefinement)
+       && defn.isContextFunctionType(pt1.nonPrivateMember(nme.apply).info.finalResultType)
+    then
+      ctx.error(
+        i"""Implementation restriction: Expected result type $pt1
+           |is a curried dependent context function type. Such types are not yet supported.""",
+        tree.sourcePos)
+    pt1 match {
       case pt1 if defn.isNonRefinedFunction(pt1) =>
         // if expected parameter type(s) are wildcards, approximate from below.
         // if expected result type is a wildcard, approximate from above.
@@ -970,7 +978,7 @@ class Typer extends Namer
          else
            typeTree(restpe))
       case tp: TypeParamRef =>
-        decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity)
+        decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity, tree)
       case _ =>
         (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
     }
@@ -1131,7 +1139,7 @@ class Typer extends Namer
       case _ =>
     }
 
-    val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length)
+    val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree)
 
     /** The inferred parameter type for a parameter in a lambda that does
      *  not have an explicit type given.
@@ -1261,7 +1269,7 @@ class Typer extends Namer
           typedMatchFinish(tree, tpd.EmptyTree, defn.ImplicitScrutineeTypeRef, cases1, pt)
         }
         else {
-          val (protoFormals, _) = decomposeProtoFunction(pt, 1)
+          val (protoFormals, _) = decomposeProtoFunction(pt, 1, tree)
           val checkMode =
             if (pt.isRef(defn.PartialFunctionClass)) desugar.MatchCheck.None
             else desugar.MatchCheck.Exhaustive
@@ -1447,17 +1455,40 @@ class Typer extends Namer
   }
 
   def typedReturn(tree: untpd.Return)(using Context): Return = {
+
+    /** If `pt` is a context function type, its return type. If the CFT
+     * is dependent, instantiate with the parameters of the associated
+     * anonymous function.
+     * @param  paramss  the parameters of the anonymous functions
+     *                  enclosing the return expression
+     */
+    def instantiateCFT(pt: Type, paramss: => List[List[Symbol]]): Type =
+      val ift = defn.asContextFunctionType(pt)
+      if ift.exists then
+        ift.nonPrivateMember(nme.apply).info match
+          case appType: MethodType =>
+            instantiateCFT(appType.instantiate(paramss.head.map(_.termRef)), paramss.tail)
+      else pt
+
     def returnProto(owner: Symbol, locals: Scope): Type =
       if (owner.isConstructor) defn.UnitType
-      else owner.info match {
-        case info: PolyType =>
-          val tparams = locals.toList.takeWhile(_ is TypeParam)
-          assert(info.paramNames.length == tparams.length,
-                 i"return mismatch from $owner, tparams = $tparams, locals = ${locals.toList}%, %")
-          info.instantiate(tparams.map(_.typeRef)).finalResultType
-        case info =>
-          info.finalResultType
-      }
+      else
+        val rt = owner.info match
+          case info: PolyType =>
+            val tparams = locals.toList.takeWhile(_ is TypeParam)
+            assert(info.paramNames.length == tparams.length,
+                  i"return mismatch from $owner, tparams = $tparams, locals = ${locals.toList}%, %")
+            info.instantiate(tparams.map(_.typeRef)).finalResultType
+          case info =>
+            info.finalResultType
+        def iftParamss = ctx.owner.ownersIterator
+          .filter(_.is(Method, butNot = Accessor))
+          .takeWhile(_.isAnonymousFunction)
+          .toList
+          .reverse
+          .map(_.paramSymss.head)
+        instantiateCFT(rt, iftParamss)
+
     def enclMethInfo(cx: Context): (Tree, Type) = {
       val owner = cx.owner
       if (owner.isType) {
@@ -3155,7 +3186,7 @@ class Typer extends Namer
 
     def isContextFunctionRef(wtp: Type): Boolean = wtp match {
       case RefinedType(parent, nme.apply, _) =>
-        isContextFunctionRef(parent) // apply refinements indicate a dependent IFT
+        isContextFunctionRef(parent) // apply refinements indicate a dependent CFT
       case _ =>
         val underlying = wtp.underlyingClassRef(refinementOK = false) // other refinements are not OK
         defn.isContextFunctionClass(underlying.classSymbol)
