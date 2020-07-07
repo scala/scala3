@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 case class Location(owners: List[String])
 
@@ -15,7 +14,7 @@ object Location {
       else listOwnerNames(sym.owner, sym.name :: acc)
 
     val list = listOwnerNames(rootContext.owner, Nil)
-    '{new Location(${list})}
+    '{new Location(${Expr(list)})}
   }
 
 }

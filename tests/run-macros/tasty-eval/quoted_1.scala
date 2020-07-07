@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 object Macros {
 
@@ -7,7 +6,7 @@ object Macros {
     ${ impl('i) }
 
   def impl(i: Expr[Int]) (using QuoteContext): Expr[String] = {
-    value(i).toString
+    Expr(value(i).toString)
   }
 
   inline implicit def value[X](e: Expr[X])(implicit qctx: QuoteContext, ev: Valuable[X]): Option[X] = ev.value(e)

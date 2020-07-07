@@ -1,6 +1,5 @@
 
 import scala.quoted._
-import scala.quoted.autolift
 
 
 object E {
@@ -27,7 +26,7 @@ trait E[T] {
 }
 
 case class I(n: Int) extends E[Int] {
-  def lift (using QuoteContext): Expr[Int] = n
+  def lift (using QuoteContext): Expr[Int] = Expr(n)
 }
 
 case class Plus[T](x: E[T], y: E[T])(implicit op: Plus2[T]) extends E[T] {

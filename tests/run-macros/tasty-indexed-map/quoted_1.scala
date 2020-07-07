@@ -1,6 +1,5 @@
 
 import scala.quoted._
-import scala.quoted.autolift
 
 class MyMap[Keys](private val underlying: Array[Int]) extends AnyVal {
   def get[K <: String](implicit i: Index[K, Keys]): Int = underlying(i.index)
@@ -42,6 +41,6 @@ object Index {
 
     val index = keys.indexOf(key)
 
-    '{new Index(${index})}
+    '{new Index(${Expr(index)})}
   }
 }

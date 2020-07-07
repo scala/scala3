@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 object Macros {
 
@@ -8,25 +7,25 @@ object Macros {
   private def testTypeOfImpl(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty._
     '{
-      assert(${(typeOf[Unit] =:= defn.UnitType)}, "Unit")
-      assert(${(typeOf[Byte] =:= defn.ByteType)}, "Byte")
-      assert(${(typeOf[Short] =:= defn.ShortType)}, "Short")
-      assert(${(typeOf[Int] =:= defn.IntType)}, "Int")
-      assert(${(typeOf[Long] =:= defn.LongType)}, "Long")
-      assert(${(typeOf[Float] =:= defn.FloatType)}, "Float")
-      assert(${(typeOf[Double] =:= defn.DoubleType)}, "Double")
-      assert(${(typeOf[Char] =:= defn.CharType)}, "Char")
-      assert(${(typeOf[String] =:= defn.StringType)}, "String")
+      assert(${Expr(typeOf[Unit] =:= defn.UnitType)}, "Unit")
+      assert(${Expr(typeOf[Byte] =:= defn.ByteType)}, "Byte")
+      assert(${Expr(typeOf[Short] =:= defn.ShortType)}, "Short")
+      assert(${Expr(typeOf[Int] =:= defn.IntType)}, "Int")
+      assert(${Expr(typeOf[Long] =:= defn.LongType)}, "Long")
+      assert(${Expr(typeOf[Float] =:= defn.FloatType)}, "Float")
+      assert(${Expr(typeOf[Double] =:= defn.DoubleType)}, "Double")
+      assert(${Expr(typeOf[Char] =:= defn.CharType)}, "Char")
+      assert(${Expr(typeOf[String] =:= defn.StringType)}, "String")
 
-      assert(${(typeOf[Any] =:= defn.AnyType)}, "Any")
-      assert(${(typeOf[AnyRef] =:= defn.AnyRefType)}, "AnyRef")
-      assert(${(typeOf[AnyVal] =:= defn.AnyValType)}, "AnyVal")
-      assert(${(typeOf[Object] =:= defn.ObjectType)}, "Object")
-      assert(${(typeOf[Nothing] =:= defn.NothingType)}, "Nothing")
+      assert(${Expr(typeOf[Any] =:= defn.AnyType)}, "Any")
+      assert(${Expr(typeOf[AnyRef] =:= defn.AnyRefType)}, "AnyRef")
+      assert(${Expr(typeOf[AnyVal] =:= defn.AnyValType)}, "AnyVal")
+      assert(${Expr(typeOf[Object] =:= defn.ObjectType)}, "Object")
+      assert(${Expr(typeOf[Nothing] =:= defn.NothingType)}, "Nothing")
 
-      println(${typeOf[List[Int]].show})
-      println(${typeOf[Macros].show})
-      println(${typeOf[Macros.type].show})
+      println(${Expr(typeOf[List[Int]].show)})
+      println(${Expr(typeOf[Macros].show)})
+      println(${Expr(typeOf[Macros.type].show)})
     }
   }
 

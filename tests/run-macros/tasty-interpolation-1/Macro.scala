@@ -1,7 +1,6 @@
 
 import scala.quoted._
 import scala.language.implicitConversions
-import scala.quoted.autolift
 import scala.quoted.Reporting.error
 
 object Macro {
@@ -16,17 +15,17 @@ object Macro {
 
 object SIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using QuoteContext): Expr[String] =
-    '{(${strCtx}).s(${Expr.ofList(args)}: _*)}
+    '{(${Expr(strCtx)}).s(${Expr.ofList(args)}: _*)}
 }
 
 object RawIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using QuoteContext): Expr[String] =
-    '{(${strCtx}).raw(${Expr.ofList(args)}: _*)}
+    '{(${Expr(strCtx)}).raw(${Expr.ofList(args)}: _*)}
 }
 
 object FooIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using QuoteContext): Expr[String] =
-    '{(${strCtx}).s(${Expr.ofList(args.map(_ => '{"foo"}))}: _*)}
+    '{(${Expr(strCtx)}).s(${Expr.ofList(args.map(_ => '{"foo"}))}: _*)}
 }
 
 // TODO put this class in the stdlib or separate project?
@@ -78,7 +77,7 @@ abstract class MacroStringInterpolator[T] {
   }
 
   protected implicit def StringContextIsLiftable: Liftable[StringContext] = new Liftable[StringContext] {
-    def toExpr(strCtx: StringContext) = '{StringContext(${strCtx.parts.toSeq}: _*)}
+    def toExpr(strCtx: StringContext) = '{StringContext(${Expr(strCtx.parts.toSeq)}: _*)}
   }
 
   protected class NotStaticlyKnownError(msg: String, expr: Expr[Any]) extends Exception(msg)

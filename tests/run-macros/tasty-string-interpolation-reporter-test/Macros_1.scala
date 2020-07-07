@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 
 import scala.language.implicitConversions
@@ -40,7 +39,7 @@ object Macro {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
             import qctx.tasty._
             val pos = parts(partIdx).unseal.pos
-            errors += '{ Tuple4($partIdx, ${pos.start}, ${pos.end}, $msg) }
+            errors += '{ Tuple4(${Expr(partIdx)}, ${Expr(pos.start)}, ${Expr(pos.end)}, ${Expr(msg)}) }
           }
         }
         fooCore(parts, args, reporter) // Discard result

@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 // This test checks the correct interpretation of the inlined value class
 
@@ -18,7 +17,7 @@ object FInterpolation {
   }
 
   def fInterpolation(sc: StringContext, args: Seq[Expr[Any]])(using QuoteContext): Expr[String] = {
-    val str: Expr[String] = sc.parts.mkString("")
+    val str: Expr[String] = Expr(sc.parts.mkString(""))
     val args1: Expr[Seq[Any]] = liftSeq(args)
     '{ $str.format($args1: _*) }
   }

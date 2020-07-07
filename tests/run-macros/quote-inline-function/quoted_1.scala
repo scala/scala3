@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 object Macros {
 
@@ -22,6 +21,6 @@ object Macros {
         i < j
       } do ()
     }
-    res.show
+    Expr(res.show)
   }
 }

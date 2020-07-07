@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.autolift
 
 object Macros {
 
@@ -15,7 +14,7 @@ object Macros {
 
     val tree = x.unseal
     output.traverseTree(tree)
-    '{print(${buff.result()})}
+    '{print(${Expr(buff.result())})}
   }
 
   class MyTraverser[R <: scala.tasty.Reflection & Singleton](val reflect: R)(buff: StringBuilder) extends scala.tasty.reflect.TreeTraverser {

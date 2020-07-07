@@ -7,6 +7,9 @@ case class Sta[T](x: T) extends PV[T]
 
 case class Dyn[T](x: Expr[T]) extends PV[T]
 
+object Dyn:
+  def apply[T: Liftable](x: T)(using QuoteContext): Dyn[T] = Dyn(Expr(x))
+
 object Dyns {
   def dyn[T: Liftable](pv: PV[T])(using QuoteContext): Expr[T] = pv match {
     case Sta(x) => Expr(x)
