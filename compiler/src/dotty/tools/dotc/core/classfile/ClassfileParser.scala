@@ -63,7 +63,7 @@ class ClassfileParser(
 
   protected val in: AbstractFileReader = new AbstractFileReader(classfile)
 
-  protected val staticModule: Symbol = moduleRoot.sourceModule(ictx)
+  protected val staticModule: Symbol = moduleRoot.sourceModule(using ictx)
 
   protected val instanceScope: MutableScope = newScope     // the scope of all instance definitions
   protected val staticScope: MutableScope = newScope       // the scope of all static definitions

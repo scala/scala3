@@ -49,7 +49,7 @@ class Erasure extends Phase with DenotTransformer {
     case ref: SymDenotation =>
       def isCompacted(sym: Symbol) =
         sym.isAnonymousFunction && {
-          sym.info(ctx.withPhase(ctx.phase.next)) match {
+          sym.info(using ctx.withPhase(ctx.phase.next)) match {
             case MethodType(nme.ALLARGS :: Nil) => true
             case _                              => false
           }

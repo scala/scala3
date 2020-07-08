@@ -233,7 +233,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
             toDenot(innerClassSym).owner.enclosingClass
           }
         }
-        else innerClassSym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
+        else innerClassSym.enclosingClass(using ctx.withPhase(ctx.flattenPhase.prev))
       } //todo is handled specially for JavaDefined symbols in scalac
 
       val enclosingClass: ClassBType = classBTypeFromSymbol(enclosingClassSym)
