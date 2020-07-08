@@ -31,12 +31,12 @@ trait Phases {
     }
 
   /** Execute `op` at given phase */
-  inline def atPhase[T](phase: Phase)(inline op: Context ?=> T): T =
+  inline def atPhase[T](phase: Phase)(inline op: Ctx[T]): T =
     atPhase(phase.id)(op)
 
-  def atNextPhase[T](op: Context ?=> T): T = atPhase(phase.next)(op)
+  def atNextPhase[T](op: Ctx[T]): T = atPhase(phase.next)(op)
 
-  def atPhaseNotLaterThan[T](limit: Phase)(op: Context ?=> T): T =
+  def atPhaseNotLaterThan[T](limit: Phase)(op: Ctx[T]): T =
     if (!limit.exists || phase <= limit) op(using this) else atPhase(limit)(op)
 
   def isAfterTyper: Boolean = base.isAfterTyper(phase)

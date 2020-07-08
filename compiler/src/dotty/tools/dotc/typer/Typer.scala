@@ -564,7 +564,7 @@ class Typer extends Namer
       case _                  => errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
     }
 
-    def selectWithFallback(fallBack: Context ?=> Tree) =
+    def selectWithFallback(fallBack: Ctx[Tree]) =
       tryAlternatively(typeSelectOnTerm)(fallBack)
 
     if (tree.qualifier.isType) {
@@ -2673,7 +2673,7 @@ class Typer extends Namer
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(using Context): Tree =
     typed(tree, selType)(using ctx.addMode(Mode.Pattern))
 
-  def tryEither[T](op: Context ?=> T)(fallBack: (T, TyperState) => T)(using Context): T = {
+  def tryEither[T](op: Ctx[T])(fallBack: (T, TyperState) => T)(using Context): T = {
     val nestedCtx = ctx.fresh.setNewTyperState()
     val result = op(using nestedCtx)
     if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors) {
@@ -2690,7 +2690,7 @@ class Typer extends Namer
   /** Try `op1`, if there are errors, try `op2`, if `op2` also causes errors, fall back
    *  to errors and result of `op1`.
    */
-  def tryAlternatively[T](op1: Context ?=> T)(op2: Context ?=> T)(using Context): T =
+  def tryAlternatively[T](op1: Ctx[T])(op2: Ctx[T])(using Context): T =
     tryEither(op1) { (failedVal, failedState) =>
       tryEither(op2) { (_, _) =>
         failedState.commit()
@@ -3605,7 +3605,7 @@ class Typer extends Namer
   /** Types the body Scala 2 macro declaration `def f = macro <body>` */
   private def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree =
     // TODO check that call is to a method with valid signature
-    def typedPrefix(tree: untpd.RefTree)(splice: Context ?=> Tree => Tree)(using Context): Tree = {
+    def typedPrefix(tree: untpd.RefTree)(splice: Ctx[Tree => Tree])(using Context): Tree = {
       tryAlternatively {
         splice(typedExpr(tree, defn.AnyType))
       } {

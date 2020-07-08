@@ -12,7 +12,7 @@ import Types._
 import Decorators._
 import NameKinds._
 import StdNames.nme
-import Contexts.{Context, ctx}
+import Contexts.{Context, Ctx, ctx}
 import Names.Name
 import NameKinds.{InlineAccessorName, UniqueInlineName}
 import NameOps._
@@ -218,7 +218,7 @@ object PrepareInlineable {
    *                     to have the inline method as owner.
    */
   def registerInlineInfo(
-      inlined: Symbol, treeExpr: Context ?=> Tree)(using Context): Unit =
+      inlined: Symbol, treeExpr: Ctx[Tree])(using Context): Unit =
     inlined.unforcedAnnotation(defn.BodyAnnot) match {
       case Some(ann: ConcreteBodyAnnotation) =>
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated || ann.isEvaluating =>

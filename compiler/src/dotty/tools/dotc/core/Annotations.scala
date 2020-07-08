@@ -123,7 +123,7 @@ object Annotations {
   }
 
   object LazyBodyAnnotation {
-    def apply(bodyFn: Context ?=> Tree): LazyBodyAnnotation =
+    def apply(bodyFn: Ctx[Tree]): LazyBodyAnnotation =
       new LazyBodyAnnotation:
         protected var myTree: Tree | (Context => Tree) = ctx => bodyFn(using ctx)
   }
@@ -154,14 +154,14 @@ object Annotations {
       apply(New(atp, args))
 
     /** Create an annotation where the tree is computed lazily. */
-    def deferred(sym: Symbol)(treeFn: Context ?=> Tree)(implicit ctx: Context): Annotation =
+    def deferred(sym: Symbol)(treeFn: Ctx[Tree])(implicit ctx: Context): Annotation =
       new LazyAnnotation {
         protected var myTree: Tree | (Context => Tree) = ctx => treeFn(using ctx)
         protected var mySym: Symbol | (Context => Symbol) = sym
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
-    def deferredSymAndTree(symFn: Context ?=> Symbol)(treeFn: Context ?=> Tree)(implicit ctx: Context): Annotation =
+    def deferredSymAndTree(symFn: Ctx[Symbol])(treeFn: Ctx[Tree])(implicit ctx: Context): Annotation =
       new LazyAnnotation {
         protected var mySym: Symbol | (Context => Symbol) = ctx => symFn(using ctx)
         protected var myTree: Tree | (Context => Tree) = ctx => treeFn(using ctx)
@@ -177,7 +177,7 @@ object Annotations {
     object Child {
 
       /** A deferred annotation to the result of a given child computation */
-      def later(delayedSym: Context ?=> Symbol, span: Span)(implicit ctx: Context): Annotation = {
+      def later(delayedSym: Ctx[Symbol], span: Span)(implicit ctx: Context): Annotation = {
         def makeChildLater(using Context) = {
           val sym = delayedSym
           New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
