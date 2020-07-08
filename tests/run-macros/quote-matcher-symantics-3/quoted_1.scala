@@ -66,7 +66,7 @@ object Macros {
       case FromEnv(expr) => expr.asInstanceOf[Expr[R[T]]]
 
       case _ =>
-        summon[QuoteContext].error("Expected explicit value but got: " + e.show, e)
+        Reporting.error("Expected explicit value but got: " + e.show, e)
         '{ ??? }
 
     })

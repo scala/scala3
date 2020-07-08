@@ -35,9 +35,3 @@ trait QuoteContext { self =>
   }
 
 }
-
-object QuoteContext {
-  // TODO remove in 0.26.0
-  @deprecated("Errors and warnings have been moved to scala.quoted.Reporting", "0.25.0")
-  given error_and_warining_on_QuoteContext as Conversion[QuoteContext, Reporting.type] = _ => Reporting
-}
