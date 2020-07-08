@@ -30,7 +30,21 @@ object Potentials {
   /** The object pointed by `this` */
   case class ThisRef()(val source: Tree) extends Potential {
     val size: Int = 1
-    def show(using Context): String = classSymbol.name.show + ".this"
+    def show(using Context): String = "this"
+
+    /** Effects of a method call or a lazy val access
+     */
+    def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
+      val cls = sym.owner.asClass
+      env.summaryOf(cls).effectsOf(sym)
+    }
+
+    /** Potentials of a field, a method call or a lazy val access
+     */
+    def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = trace("potentials of " + sym.show, init, r => Potentials.show(r.asInstanceOf)) {
+      val cls = sym.owner.asClass
+      env.summaryOf(cls).potentialsOf(sym)
+    }
   }
 
   /** The object pointed by `C.super.this`, mainly used for override resolution */
@@ -76,20 +90,20 @@ object Potentials {
       if (outerCache.contains(cls)) outerCache(cls)
       else if (cls `eq` classSymbol) outer.toPots
       else {
-        val pots = resolveOuter(classSymbol, outer, cls)
+        val pots = Potentials.resolveOuter(classSymbol, outer.toPots, cls)
         outerCache(cls) = pots
         pots
       }
   }
 
-  private def resolveOuter(cur: ClassSymbol, outerPot: Potential, cls: ClassSymbol) =
-    if (cur == cls) thisPot.toPots
+  private def resolveOuter(cur: ClassSymbol, outerPots: Potentials, cls: ClassSymbol)(implicit env: Env): Potentials =
+    if (cur == cls) outerPots
     else {
-      val bottomClsSummary = env.summaryOf(classSymbol)
+      val bottomClsSummary = env.summaryOf(cur)
       bottomClsSummary.parentOuter.find((k, v) => k.derivesFrom(cls)) match {
         case Some((parentCls, pots)) =>
-          val rebased: Potentials = Potentials.asSeenFrom(pots, thisPot)
-          rebased.map { resolveOuter(parentCls, _, cls) }
+          val rebased: Potentials = outerPots.flatMap { Potentials.asSeenFrom(pots, _) }
+          resolveOuter(parentCls, outerPots, cls)
         case None => ??? // impossible
       }
     }
@@ -159,27 +173,27 @@ object Potentials {
 
   extension (ps: Potentials) def promote(source: Tree): Effects = ps.map(Promote(_)(source))
 
-  def asSeenFrom(pot: Potential, thisValue: Potential)(implicit env: Env): Potentials =
-    trace(pot.show + " asSeenFrom " + thisValue.show, init, pots => show(pots.asInstanceOf[Potentials])) { pot match {
+  def asSeenFrom(pot: Potential, thisValue: Potential)(implicit env: Env): Potential = trace(pot.show + " asSeenFrom " + thisValue.show, init, pot => pot.asInstanceOf[Potential].show) {
+    pot match {
       case MethodReturn(pot1, sym) =>
-        val pots = asSeenFrom(pot1, thisValue)
-        pots.map { MethodReturn(_, sym)(pot.source) }
+        val pot = asSeenFrom(pot1, thisValue)
+        MethodReturn(pot, sym)(pot.source)
 
       case FieldReturn(pot1, sym) =>
-        val pots = asSeenFrom(pot1, thisValue)
-        pots.map { FieldReturn(_, sym)(pot.source) }
+        val pot = asSeenFrom(pot1, thisValue)
+        FieldReturn(pot, sym)(pot.source)
 
       case Outer(pot1, cls) =>
-        val pots = asSeenFrom(pot1, thisValue)
-        pots map { Outer(_, cls)(pot.source) }
+        val pot = asSeenFrom(pot1, thisValue)
+        Outer(pot, cls)(pot.source)
 
-      case ThisRef() =>
-        thisValue.toPots
+      case _: ThisRef =>
+        thisValue
 
       case Fun(pots, effs) =>
         val pots1 = Potentials.asSeenFrom(pots, thisValue)
         val effs1 = Effects.asSeenFrom(effs, thisValue)
-        Fun(pots1, effs1)(pot.source).toPots
+        Fun(pots1, effs1)(pot.source)
 
       case Warm(cls, outer2) =>
         // widening to terminate
@@ -189,16 +203,17 @@ object Potentials {
         }
 
         val outer3 = asSeenFrom(outer2, thisValue2)
-        outer3.map { Warm(cls, _)(pot.source) }
+        Warm(cls, outer3)(pot.source)
 
       case _: Cold =>
-        pot.toPots
+        pot
 
-      case SuperRef(pot, supercls) =>
-        val pots = asSeenFrom(pot, thisValue)
-        pots.map { SuperRef(_, supercls)(pot.source) }
-    } }
+      case SuperRef(potThis, supercls) =>
+        val pot1 = asSeenFrom(potThis, thisValue)
+        SuperRef(pot1, supercls)(pot.source)
+    }
+  }
 
   def asSeenFrom(pots: Potentials, thisValue: Potential)(implicit env: Env): Potentials =
-    pots.flatMap(asSeenFrom(_, thisValue))
+    pots.map(asSeenFrom(_, thisValue))
 }

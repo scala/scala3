@@ -152,8 +152,7 @@ object Checking {
       eff match {
         case Promote(pot) =>
           pot match {
-            case pot @ ThisRef(cls) =>
-              assert(cls == state.thisClass, "unexpected potential " + pot.show)
+            case pot: ThisRef =>
               PromoteThis(pot, eff.source, state2.path).toErrors
 
             case _: Cold =>
@@ -179,18 +178,14 @@ object Checking {
         case FieldAccess(pot, field) =>
 
           pot match {
-            case ThisRef(cls) =>
-              assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-              val target = resolve(cls, field)
+            case _: ThisRef =>
+              val target = resolve(state.thisClass, field)
               if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
               else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state2.path).toErrors
               else Errors.empty
 
-            case SuperRef(ThisRef(cls), supercls) =>
-              assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-              val target = resolveSuper(cls, supercls, field)
+            case SuperRef(_: ThisRef, supercls) =>
+              val target = resolveSuper(state.thisClass, supercls, field)
               if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
               else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state2.path).toErrors
               else Errors.empty
@@ -216,10 +211,8 @@ object Checking {
 
         case MethodCall(pot, sym) =>
           pot match {
-            case thisRef @ ThisRef(cls) =>
-              assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-              val target = resolve(cls, sym)
+            case thisRef: ThisRef =>
+              val target = resolve(state.thisClass, sym)
               if (!target.isOneOf(Flags.Method | Flags.Lazy))
                 check(FieldAccess(pot, target)(eff.source))
               else if (target.isInternal) {
@@ -228,10 +221,8 @@ object Checking {
               }
               else CallUnknown(target, eff.source, state2.path).toErrors
 
-            case SuperRef(thisRef @ ThisRef(cls), supercls) =>
-              assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-              val target = resolveSuper(cls, supercls, sym)
+            case SuperRef(thisRef: ThisRef, supercls) =>
+              val target = resolveSuper(state.thisClass, supercls, sym)
               if (!target.is(Flags.Method))
                 check(FieldAccess(pot, target)(eff.source))
               else if (target.isInternal) {
@@ -271,17 +262,13 @@ object Checking {
     pot match {
       case MethodReturn(pot1, sym) =>
         pot1 match {
-          case thisRef @ ThisRef(cls) =>
-            assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-            val target = resolve(cls, sym)
+          case thisRef: ThisRef =>
+            val target = resolve(state.thisClass, sym)
             if (target.isInternal) (thisRef.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
-          case SuperRef(thisRef @ ThisRef(cls), supercls) =>
-            assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-            val target = resolveSuper(cls, supercls, sym)
+          case SuperRef(thisRef: ThisRef, supercls) =>
+            val target = resolveSuper(state.thisClass, supercls, sym)
             if (target.isInternal) (thisRef.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
@@ -313,17 +300,13 @@ object Checking {
 
       case FieldReturn(pot1, sym) =>
         pot1 match {
-          case thisRef @ ThisRef(cls) =>
-            assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-            val target = resolve(cls, sym)
+          case thisRef: ThisRef =>
+            val target = resolve(state.thisClass, sym)
             if (sym.isInternal) (thisRef.potentialsOf(target), Effects.empty)
             else (Cold()(pot.source).toPots, Effects.empty)
 
-          case SuperRef(thisRef @ ThisRef(cls), supercls) =>
-            assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-            val target = resolveSuper(cls, supercls, sym)
+          case SuperRef(thisRef: ThisRef, supercls) =>
+            val target = resolveSuper(state.thisClass, supercls, sym)
             if (target.isInternal) (thisRef.potentialsOf(target), Effects.empty)
             else (Cold()(pot.source).toPots, Effects.empty)
 
@@ -346,7 +329,7 @@ object Checking {
 
       case Outer(pot1, cls) =>
         pot1 match {
-          case ThisRef() =>
+          case _: ThisRef =>
             // all outers for `this` are assumed to be hot
             Summary.empty
 

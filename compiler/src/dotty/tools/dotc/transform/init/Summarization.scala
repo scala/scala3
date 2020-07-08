@@ -37,10 +37,7 @@ object Summarization {
         analyze(expr.tpe, expr)
 
       case supert: Super =>
-        val SuperType(thisTp, superTp) = supert.tpe.asInstanceOf[SuperType]
-        val thisRef = ThisRef(thisTp.widen.classSymbol.asClass)(supert)
-        val pots = superTp.classSymbols.map { cls => SuperRef(thisRef, cls.asClass)(supert) }
-        (pots.toSet, Effects.empty)
+        analyze(supert.tpe, supert)
 
       case Select(qualifier, name) =>
         val (pots, effs) = analyze(qualifier)
@@ -54,11 +51,7 @@ object Summarization {
         }
 
       case _: This =>
-        val enclosing = env.ctx.owner.enclosingClass
-        val cls = expr.tpe match
-          case ThisType(tref) => tref.symbol.asClass
-
-        resolveThis(cls, ThisRef()(expr), enclosing)
+        analyze(expr.tpe, expr)
 
       case Apply(fun, args) =>
         val summary = analyze(fun)
@@ -93,8 +86,7 @@ object Summarization {
         val cls = tref.classSymbol.asClass
         // local class may capture, thus we need to track it
         if (tref.prefix == NoPrefix) {
-          val enclosingCls = cls.enclosingClass.asClass
-          val thisRef = ThisRef(enclosingCls)(expr)
+          val thisRef = ThisRef()(expr)
           Summary.empty + Warm(cls, thisRef)(expr)
         }
         else {
@@ -227,17 +219,18 @@ object Summarization {
           (pots2, effs ++ effs2)
         }
 
-      case ThisType(tref: TypeRef) if tref.classSymbol.is(Flags.Package) =>
-        Summary.empty
-
-      case thisTp: ThisType =>
-        val cls = thisTp.tref.classSymbol.asClass
-        Summary.empty + ThisRef(cls)(source)
+      case ThisType(tref) =>
+        val enclosing = env.ctx.owner.enclosingClass.asClass
+        val cls = tref.symbol.asClass
+        resolveThis(cls, ThisRef()(source), enclosing, source)
 
       case SuperType(thisTp, superTp) =>
-        val thisRef = ThisRef(thisTp.classSymbol.asClass)(source)
-        val pot = SuperRef(thisRef, superTp.classSymbol.asClass)(source)
-        Summary.empty + pot
+        val (pots, effs) = analyze(thisTp, source)
+        val pots2 = pots.map {
+          // TODO: properly handle super of the form A & B
+          SuperRef(_, superTp.classSymbols.head.asClass)(source): Potential
+        }
+        (pots2, effs)
 
       case _ =>
         throw new Exception("unexpected type: " + tp.show)
@@ -258,13 +251,13 @@ object Summarization {
     analyze(vdef.rhs)(env.withOwner(sym))
   }
 
-  def resolveThis(cls: ClassSymbol, pot: Potential, cur: ClassSymbol) =
-    if (cls.is(Package)) (Potentials.empty, Effects.empty)
+  def resolveThis(cls: ClassSymbol, pot: Potential, cur: ClassSymbol, source: Tree)(implicit env: Env): Summary =
+    if (cls.is(Flags.Package)) (Potentials.empty, Effects.empty)
     else if (cls == cur) (pot.toPots, Effects.empty)
-    else if (pot.size > 2) (Potentials.empty, pot.promote)
+    else if (pot.size > 2) (Potentials.empty, Promote(pot)(source).toEffs)
     else {
       val pot2 = Outer(pot, cur)(pot.source)
-      resolveThis(cls, pot2, cur.owner)
+      resolveThis(cls, pot2, cur.enclosingClass.asClass, source)
     }
 
   /** Summarize secondary constructors or class body */
@@ -276,7 +269,7 @@ object Summarization {
       val effs = analyze(Block(tpl.body, unitLiteral))._2
 
       def parentArgEffsWithInit(stats: List[Tree], ctor: Symbol, source: Tree): Effects =
-        val initCall = MethodCall(ThisRef(cls)(source), ctor)(source)
+        val initCall = MethodCall(ThisRef()(source), ctor)(source)
         stats.foldLeft(Set(initCall)) { (acc, stat) =>
           val (_, effs) = Summarization.analyze(stat)
           acc ++ effs
@@ -303,7 +296,7 @@ object Summarization {
             else {
               val ctor = cls.primaryConstructor
               Summarization.analyze(tref.prefix, ref)._2 +
-                MethodCall(ThisRef(cls)(ref), ctor)(ref)
+                MethodCall(ThisRef()(ref), ctor)(ref)
             }
         })
       }
