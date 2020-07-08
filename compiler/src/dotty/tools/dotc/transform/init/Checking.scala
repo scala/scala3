@@ -30,7 +30,7 @@ object Checking {
    *
    */
   case class State(
-    visited: mutable.Set[Effect],              // effects that have been expanded
+    visited: mutable.Set[Effect],              // effects that have been checked
     path: Vector[Tree],                        // the path that leads to the current effect
     thisClass: ClassSymbol,                    // the concrete class of `this`
     fieldsInited: mutable.Set[Symbol],
@@ -139,9 +139,8 @@ object Checking {
   }
 
   private def checkEffectsIn(effs: Effects, cls: ClassSymbol)(implicit state: State): Unit = traceOp("checking effects " + Effects.show(effs), init) {
-    val rebased = Effects.asSeenFrom(effs, ThisRef(state.thisClass)(null), cls, Potentials.empty)
     for {
-      eff <- rebased
+      eff <- effs
       error <- check(eff)
     } error.issue
   }
@@ -347,19 +346,15 @@ object Checking {
 
       case Outer(pot1, cls) =>
         pot1 match {
-          case ThisRef(cls) =>
-            assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
+          case ThisRef() =>
+            // all outers for `this` are assumed to be hot
             Summary.empty
 
           case _: Fun =>
             throw new Exception("Unexpected code reached")
 
           case warm: Warm =>
-            (warm.outerFor(cls), Effects.empty)
-
-          case _: Cold =>
-            throw new Exception("Unexpected code reached")
+            (warm.resolveOuter(cls), Effects.empty)
 
           case _ =>
             val (pots, effs) = expand(pot1)

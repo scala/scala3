@@ -52,34 +52,6 @@ object Summary {
         ", parents = " + parentOuter.map { case (k, v) => k.show + "->" + "[" + Potentials.show(v) + "]" }
   }
 
-  /** Part of object.
-   *
-   *  It makes prefix and outer substitution easier in effect checking.
-   */
-  case class ObjectPart(
-    thisValue: Warm,                            // the potential for `this`, it can be Warm or ThisRef
-    currentClass: ClassSymbol,                  // current class
-    currentOuter: Potentials,                   // the immediate outer for current class, empty for local and top-level classes
-    parentOuter: Map[ClassSymbol, Potentials]   // outers for direct parents
-  ) {
-    private val summaryCache: mutable.Map[Symbol, Summary] = mutable.Map.empty
-
-    def outerFor(cls: ClassSymbol)(implicit env: Env): Potentials =
-      if (cls `eq` currentClass) currentOuter
-      else parentOuter.find((k, v) => k.derivesFrom(cls)) match {
-        case Some((parentCls, pots)) =>
-          val bottomClsSummary = env.summaryOf(parentCls)
-          val rebased: Potentials = Potentials.asSeenFrom(pots, thisValue, currentClass, currentOuter)
-          val objPart = ObjectPart(thisValue, parentCls, rebased, bottomClsSummary.parentOuter)
-          objPart.outerFor(cls)
-        case None => ??? // impossible
-      }
-
-    def show(using Context): String =
-      "ObjectPart(this = " + thisValue.show + ","  + currentClass.name.show + ", outer = " + Potentials.show(currentOuter) +
-        "parents = " + parentOuter.map { case (k, v) => k.show + "->" + "[" + Potentials.show(v) + "]" }
-  }
-
   def show(summary: Summary)(using Context): String = {
     val pots = Potentials.show(summary._1)
     val effs = Effects.show(summary._2)

@@ -66,7 +66,7 @@ object Errors {
       "Access non-initialized field " + field.name.show + "."
 
     override def issue(using Context): Unit =
-      report.error(show + stacktrace, field.srcPos)
+      report.warning(show + stacktrace, field.srcPos)
   }
 
   /** Promote `this` under initialization to fully-initialized */

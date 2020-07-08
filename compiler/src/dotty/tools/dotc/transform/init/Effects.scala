@@ -63,22 +63,22 @@ object Effects {
 
   extension (eff: Effect) def toEffs: Effects = Effects.empty + eff
 
-  def asSeenFrom(eff: Effect, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
-    trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show + ", outer = " + Potentials.show(outer), init, effs => show(effs.asInstanceOf[Effects])) { eff match {
+  def asSeenFrom(eff: Effect, thisValue: Potential)(implicit env: Env): Effects =
+    trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show, init, effs => show(effs.asInstanceOf[Effects])) { eff match {
       case Promote(pot) =>
-        Potentials.asSeenFrom(pot, thisValue, currentClass, outer).promote(eff.source)
+        Potentials.asSeenFrom(pot, thisValue).promote(eff.source)
 
       case FieldAccess(pot, field) =>
-        Potentials.asSeenFrom(pot, thisValue, currentClass, outer).map { pot =>
+        Potentials.asSeenFrom(pot, thisValue).map { pot =>
           FieldAccess(pot, field)(eff.source)
         }
 
       case MethodCall(pot, sym) =>
-        Potentials.asSeenFrom(pot, thisValue, currentClass, outer).map { pot =>
+        Potentials.asSeenFrom(pot, thisValue).map { pot =>
           MethodCall(pot, sym)(eff.source)
         }
     } }
 
-  def asSeenFrom(effs: Effects, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
-    effs.flatMap(asSeenFrom(_, thisValue, currentClass, outer))
+  def asSeenFrom(effs: Effects, thisValue: Potential)(implicit env: Env): Effects =
+    effs.flatMap(asSeenFrom(_, thisValue))
 }
