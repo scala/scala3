@@ -147,12 +147,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   import Scala2Unpickler._
 
-  val moduleRoot: SymDenotation = moduleClassRoot.sourceModule(ictx).denot(ictx)
+  val moduleRoot: SymDenotation = inContext(ictx) { moduleClassRoot.sourceModule.denot }
   assert(moduleRoot.isTerm)
 
   checkVersion(ictx)
 
-  private val loadingMirror = defn(ictx) // was: mirrorThatLoaded(classRoot)
+  private val loadingMirror = defn(using ictx) // was: mirrorThatLoaded(classRoot)
 
   /** A map from entry numbers to array offsets */
   private val index = createIndex

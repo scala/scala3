@@ -8,6 +8,7 @@ import scala.collection.mutable
 import scala.collection.generic.Clearable
 
 import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Contexts.inContext
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.SymUtils._
@@ -228,8 +229,9 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
       val enclosingClassSym = {
         if (innerClassSym.isClass) {
-          val ct = ctx.withPhase(ctx.flattenPhase.prev)
-          toDenot(innerClassSym)(ct).owner.enclosingClass(ct)
+          inContext(ctx.withPhase(ctx.flattenPhase.prev)) {
+            toDenot(innerClassSym).owner.enclosingClass
+          }
         }
         else innerClassSym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
       } //todo is handled specially for JavaDefined symbols in scalac
@@ -255,7 +257,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         if (innerClassSym.isAnonymousClass || innerClassSym.isAnonymousFunction) None
         else {
           val original = innerClassSym.initial
-          Some(innerClassSym.name(ctx.withPhase(original.validFor.phaseId)).mangledString) // moduleSuffix for module classes
+          Some(innerClassSym.name(using ctx.withPhase(original.validFor.phaseId)).mangledString) // moduleSuffix for module classes
         }
       }
 

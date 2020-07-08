@@ -93,7 +93,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def prepareForValDef(vdef: ValDef)(implicit ctx: Context): Context = {
     val sym = vdef.symbol(ctx.withPhase(thisPhase))
     if (captured contains sym) {
-      val newd = sym.denot(ctx.withPhase(thisPhase)).copySymDenotation(
+      val newd = sym.denot(using ctx.withPhase(thisPhase)).copySymDenotation(
         info = refClass(sym.info.classSymbol, sym.hasAnnotation(defn.VolatileAnnot)).typeRef,
         initFlags = sym.flags &~ Mutable)
       newd.removeAnnotation(defn.VolatileAnnot)
@@ -117,7 +117,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def transformIdent(id: Ident)(implicit ctx: Context): Tree = {
     val vble = id.symbol
     if (captured.contains(vble))
-      id.select(nme.elem).ensureConforms(vble.denot(ctx.withPhase(thisPhase)).info)
+      id.select(nme.elem).ensureConforms(vble.denot(using ctx.withPhase(thisPhase)).info)
     else id
   }
 

@@ -23,7 +23,7 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
 
   /** The info of the tree's symbol before it is potentially transformed in this phase */
   private def originalDenotation(tree: Tree)(implicit ctx: Context) =
-    tree.symbol.denot(ctx.withPhase(thisPhase))
+    tree.symbol.denot(using ctx.withPhase(thisPhase))
 
   /** If denotation had an ExprType before, it now gets a function type */
   protected def exprBecomesFunction(symd: SymDenotation)(implicit ctx: Context): Boolean =

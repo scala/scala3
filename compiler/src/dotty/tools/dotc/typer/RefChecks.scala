@@ -534,7 +534,7 @@ object RefChecks {
           // Give a specific error message for abstract vars based on why it fails:
           // It could be unimplemented, have only one accessor, or be uninitialized.
           if (underlying.is(Mutable)) {
-            val isMultiple = grouped.getOrElse(underlying.name(ctx), Nil).size > 1
+            val isMultiple = grouped.getOrElse(underlying.name, Nil).size > 1
 
             // If both getter and setter are missing, squelch the setter error.
             if (member.isSetter && isMultiple) ()

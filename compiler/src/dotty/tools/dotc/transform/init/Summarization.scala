@@ -327,7 +327,7 @@ object Summarization {
       cls.info match {
         case cinfo: ClassInfo =>
           val source = {
-            implicit val ctx2: Context = theCtx.withSource(cls.source(theCtx))
+            implicit val ctx2: Context = theCtx.withSource(cls.source(using theCtx))
             TypeTree(cls.typeRef).withSpan(cls.span)
           }
 
