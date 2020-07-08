@@ -107,17 +107,15 @@ By _reasonable usage_, we include the following use cases (but not restricted to
 - Instantiate inner class and call methods on such instances during initialization
 - Capture fields in functions
 
-## Principles and Rules
+## Principles
 
 To achieve the goals, we uphold three fundamental principles:
 _stackability_, _monotonicity_ and _scopability_.
 
-Stackability means that objects are initialized in stack order: if the
-object `b` is created during the initialization of object `a`, then
-all fields of `b` should become initialized before or at the same time
-as `a`.  Scala enforces this property in syntax by demanding that all
-fields are initialized at the end of the primary constructor, except
-for the language feature below:
+Stackability means that all fields of a class are initialized at the end of the
+class body. Scala enforces this property in syntax by demanding that all fields
+are initialized at the end of the primary constructor, except for the language
+feature below:
 
 ``` scala
 var x: T = _
@@ -163,21 +161,28 @@ as it may indirectly reach uninitialized fields.
 
 Monotonicity is based on a well-known technique called _heap monotonic
 typestate_ to ensure soundness in the presence of aliasing
-[1]. Otherwise, either soundness will be compromised or we have to
-disallow the usage of already initialized fields.
+[1]. Roughly, it means initialization state should not go backwards.
 
-Scopability means that an expression may only access existing objects via formal
-parameters and `this`. More precisely, given any environment `ρ` (which are the
-value bindings for method parameters and `this`) and heap `σ` for evaluating an expression
-`e`, if the resulting value reaches an object `o` pre-existent in `σ`, then `o`
-is reachable from `ρ` in `σ`. Control effects like coroutines, delimited
+Scopability means that access to partially constructed objects should be
+controlled by static scoping. Control effects like coroutines, delimited
 control, resumable exceptions may break the property, as they can transport a
 value upper in the stack (not in scope) to be reachable from the current scope.
 Static fields can also serve as a teleport thus breaks this property.  In the
 implementation, we need to enforce that teleported values are transitively
 initialized.
 
+The principles enable _local reasoning_ of initialization, which means:
+
+> An initialized environment can only produce initialized values.
+
+For example, if the arguments to an `new`-expression are transitively
+initialized, so is the result. If the receiver and arguments in a method call
+are transitively initialized, so is the result.
+
+## Rules
+
 With the established principles and design goals, following rules are imposed:
+
 
 1. In an assignment `o.x = e`, the expression `e` may only point to transitively initialized objects.
 
@@ -203,7 +208,10 @@ With the established principles and design goals, following rules are imposed:
    reasoning about initialization: programmers may safely assume that all local
    definitions only point to transitively initialized objects.
 
-## Modularity
+## Modularity (considered)
+
+Note: _the rules proposed in the section are under consideration, but not
+implemented. The feedback from the community is welcome._
 
 For modularity, we forbid subtle initialization interaction beyond project
 boundaries. For example, the following code passes the check when the two
@@ -227,8 +235,8 @@ and avoids accidental violation of contracts across library versions.
 
 We impose the following rules to enforce modularity:
 
-1. A class or trait that may be extended in another project should not
-   call virtual methods on `this` in its template/mixin evaluation,
+4. A class or trait that may be extended in another project should not
+   call _virtual_ methods on `this` in its template/mixin evaluation,
    directly or indirectly.
 
 2. The method call `o.m(args)` is forbidden if `o` is not transitively
@@ -237,32 +245,26 @@ We impose the following rules to enforce modularity:
 3. The expression `new p.C(args)` is forbidden, if `p` is not transitively
    initialized and `C` is defined in an external project.
 
-Theoretically, we may analyze across project boundaries based on tasty. However,
-from our experience with Dotty community projects, most subtle initialization
-patterns are restricted in the same project. As the rules only report warnings
-instead of errors, we think it is good to first impose more strict rules, The
-feedback from the community is welcome.
-
 ## Theory
 
 The theory is based on type-and-effect systems [2]. We introduce two concepts,
 _effects_ and _potentials_:
 
 ```
-π = C.this | Warm(C, π) | π.f | π.m | π.super[D] | Cold | Fun(Π, Φ) | Outer(C, π)
+π = this | Warm(C, π) | π.f | π.m | π.super[D] | Cold | Fun(Π, Φ) | π.outer[C]
 ϕ = π↑ | π.f! | π.m!
 ```
 
 Potentials (π) represent values that are possibly under initialization.
 
-- `C.this`: current object
+- `this`: current object
 - `Warm(C, π)`: an object of type `C` where all its fields are assigned, and the potential for `this` of its enclosing class is `π`.
 - `π.f`: the potential of the field `f` in the potential `π`
 - `π.m`: the potential of the field `f` in the potential `π`
 - `π.super[D]`: essentially the object π, used for virtual method resolution
 - `Cold`: an object with unknown initialization status
 - `Fun(Π, Φ)`: a function, when called produce effects Φ and return potentials Π.
-- `Outer(C, π)`: the potential of `this` for the enclosing class of `C` when `C.this` is `π`.
+- `π.outer[C]`: the potential of `this` for the enclosing class of `C` when `C.this` is `π`.
 
 Effects are triggered from potentials:
 
@@ -289,8 +291,6 @@ progresses, and check that only initialized fields are accessed during
 the initialization and there is no leaking of values under initialization.
 Virtual method calls on `this` is not a problem,
 as they can always be resolved statically.
-
-More details can be found in a forthcoming paper.
 
 ## Back Doors
 
