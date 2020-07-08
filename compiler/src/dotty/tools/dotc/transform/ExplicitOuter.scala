@@ -298,7 +298,7 @@ object ExplicitOuter {
           else tpe.prefix
         case _ =>
           // Need to be careful to dealias before erasure, otherwise we lose prefixes.
-          outerPrefix(tpe.underlying(ctx.withPhaseNoLater(ctx.erasurePhase)))
+          outerPrefix(tpe.underlying(using ctx.withPhaseNoLater(ctx.erasurePhase)))
       }
     case tpe: TypeProxy =>
       outerPrefix(tpe.underlying)
