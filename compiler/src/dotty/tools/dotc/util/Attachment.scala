@@ -1,5 +1,7 @@
 package dotty.tools.dotc.util
 
+import dotty.tools.dotc.core.Contexts.Context
+
 /** A class inheriting from Attachment.Container supports
  *  adding, removing and lookup of attachments. Attachments are typed key/value pairs.
  *
@@ -103,19 +105,19 @@ object Attachment {
     final def withAttachmentsFrom(container: Container): this.type = {
       var current: Link[?] = container.next
       while (current != null) {
-        if (current.key.isInstanceOf[StickyKey[?]]) pushAttachment(current.key, current.value)
+        if (current.key.isInstanceOf[StickyKey[?]]) putAttachment(current.key, current.value)
         current = current.next
       }
       this
     }
 
     def withAttachment[V](key: Key[V], value: V): this.type = {
-      pushAttachment(key, value)
+      putAttachment(key, value)
       this
     }
 
-    final def pushAttachment[V](key: Key[V], value: V): Unit = {
-      assert(!hasAttachment(key), s"duplicate attachment for key $key")
+    final def pushAttachment[V](key: Key[V], value: V)(using ctx: Context): Unit = {
+      assert(!hasAttachment(key) || ctx.reporter.errorsReported, s"duplicate attachment for key $key")
       next = new Link(key, value, next)
     }
 
