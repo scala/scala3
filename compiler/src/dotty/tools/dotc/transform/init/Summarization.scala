@@ -54,17 +54,11 @@ object Summarization {
         }
 
       case _: This =>
-        // With self type, the type can be `A & B`.
-        def classes(tp: Type): Set[ClassSymbol] = tp.widen match {
-          case AndType(tp1, tp2)  =>
-            classes(tp1) ++ classes(tp2)
+        val enclosing = env.ctx.owner.enclosingClass
+        val cls = expr.tpe match
+          case ThisType(tref) => tref.symbol.asClass
 
-          case tp =>
-            Set(tp.classSymbol.asClass)
-        }
-
-        val pots: Potentials = classes(expr.tpe).map{ ThisRef(_)(expr) }
-        (pots, Effects.empty)
+        resolveThis(cls, ThisRef()(expr), enclosing)
 
       case Apply(fun, args) =>
         val summary = analyze(fun)
@@ -263,6 +257,15 @@ object Summarization {
     val vdef = sym.defTree.asInstanceOf[ValDef]
     analyze(vdef.rhs)(env.withOwner(sym))
   }
+
+  def resolveThis(cls: ClassSymbol, pot: Potential, cur: ClassSymbol) =
+    if (cls.is(Package)) (Potentials.empty, Effects.empty)
+    else if (cls == cur) (pot.toPots, Effects.empty)
+    else if (pot.size > 2) (Potentials.empty, pot.promote)
+    else {
+      val pot2 = Outer(pot, cur)(pot.source)
+      resolveThis(cls, pot2, cur.owner)
+    }
 
   /** Summarize secondary constructors or class body */
   def analyzeConstructor(ctor: Symbol)(implicit env: Env): Summary =

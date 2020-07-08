@@ -27,29 +27,10 @@ object Potentials {
     def source: Tree
   }
 
-  /** The object pointed by `C.this` */
-  case class ThisRef(classSymbol: ClassSymbol)(val source: Tree) extends Potential {
+  /** The object pointed by `this` */
+  case class ThisRef()(val source: Tree) extends Potential {
     val size: Int = 1
     def show(using Context): String = classSymbol.name.show + ".this"
-
-    /** Effects of a method call or a lazy val access
-     *
-     *  It assumes all the outer `this` are fully initialized.
-     */
-    def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
-      val cls = sym.owner.asClass
-      val effs = env.summaryOf(cls).effectsOf(sym)
-      Effects.asSeenFrom(effs, this, cls, Potentials.empty)
-    }
-
-    /** Potentials of a field, a method call or a lazy val access
-     *
-     */
-    def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = trace("potentials of " + sym.show, init, r => Potentials.show(r.asInstanceOf)) {
-      val cls = sym.owner.asClass
-      val pots = env.summaryOf(cls).potentialsOf(sym)
-      Potentials.asSeenFrom(pots, this, cls, Potentials.empty)
-    }
   }
 
   /** The object pointed by `C.super.this`, mainly used for override resolution */
@@ -112,7 +93,7 @@ object Potentials {
    *        and may be potentially faster.
    */
   case class Outer(pot: Potential, classSymbol: ClassSymbol)(val source: Tree) extends Potential {
-    def size: Int = 1
+    def size: Int = 1 + pot.size
     def show(using Context): String = "Outer[" + pot.show + ", " + classSymbol.show + "]"
   }
 
