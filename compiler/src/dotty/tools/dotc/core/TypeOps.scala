@@ -461,7 +461,13 @@ object TypeOps:
   def makePackageObjPrefixExplicit(tpe: NamedType)(using Context): Type = {
     def tryInsert(pkgClass: SymDenotation): Type = pkgClass match {
       case pkg: PackageClassDenotation =>
-        val pobj = pkg.packageObjFor(tpe.symbol)
+        var sym = tpe.symbol
+        if !sym.exists && tpe.denot.isOverloaded then
+          // we know that all alternatives must come from the same package object, since
+          // otherwise we would get "is already defined" errors. So we can take the first
+          // symbol we see.
+          sym = tpe.denot.alternatives.head.symbol
+        val pobj = pkg.packageObjFor(sym)
         if (pobj.exists) tpe.derivedSelect(pobj.termRef)
         else tpe
       case _ =>
