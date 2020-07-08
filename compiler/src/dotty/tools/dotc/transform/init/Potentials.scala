@@ -70,7 +70,6 @@ object Potentials {
     def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
       val effs = env.summaryOf(cls).effectsOf(sym)
-      val outer = Outer(this, cls)(this.source)
       Effects.asSeenFrom(effs, this)
     }
 
@@ -81,22 +80,14 @@ object Potentials {
     def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = trace("potentials of " + sym.show, init, r => Potentials.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
       val pots = env.summaryOf(cls).potentialsOf(sym)
-      val outer = Outer(this, cls)(this.source)
       Potentials.asSeenFrom(pots, this)
     }
 
-    private val outerCache: mutable.Map[ClassSymbol, Potentials] = mutable.Map.empty
     def resolveOuter(cls: ClassSymbol)(implicit env: Env): Potentials =
-      if (outerCache.contains(cls)) outerCache(cls)
-      else if (cls `eq` classSymbol) outer.toPots
-      else {
-        val pots = Potentials.resolveOuter(classSymbol, outer.toPots, cls)
-        outerCache(cls) = pots
-        pots
-      }
+      env.resolveOuter(this, cls)
   }
 
-  private def resolveOuter(cur: ClassSymbol, outerPots: Potentials, cls: ClassSymbol)(implicit env: Env): Potentials =
+  def resolveOuter(cur: ClassSymbol, outerPots: Potentials, cls: ClassSymbol)(implicit env: Env): Potentials =
     if (cur == cls) outerPots
     else {
       val bottomClsSummary = env.summaryOf(cur)
