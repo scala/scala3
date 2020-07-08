@@ -57,13 +57,13 @@ trait ImportSuggestions:
   private def suggestionRoots(using Context) =
     val seen = mutable.Set[TermRef]()
 
-    def lookInside(root: Symbol)(using Context): Boolean =
+    def lookInside(root: Symbol): Ctx[Boolean] =
       if root.is(Package) then root.isTerm && root.isCompleted
       else !root.name.is(FlatName)
         && !root.name.lastPart.contains('$')
         && root.is(ModuleVal, butNot = JavaDefined)
 
-    def nestedRoots(site: Type)(using Context): List[Symbol] =
+    def nestedRoots(site: Type): Ctx[List[Symbol]] =
       val seenNames = mutable.Set[Name]()
       site.baseClasses.flatMap { bc =>
         bc.info.decls.filter { dcl =>
@@ -73,7 +73,7 @@ trait ImportSuggestions:
         }
       }
 
-    def rootsStrictlyIn(ref: Type)(using Context): List[TermRef] =
+    def rootsStrictlyIn(ref: Type): Ctx[List[TermRef]] =
       val site = ref.widen
       val refSym = site.typeSymbol
       val nested =
@@ -95,18 +95,18 @@ trait ImportSuggestions:
         .flatMap(rootsIn)
         .toList
 
-    def rootsIn(ref: TermRef)(using Context): List[TermRef] =
+    def rootsIn(ref: TermRef): Ctx[List[TermRef]] =
       if seen.contains(ref) then Nil
       else
         implicitsDetailed.println(i"search for suggestions in ${ref.symbol.fullName}")
         seen += ref
         ref :: rootsStrictlyIn(ref)
 
-    def rootsOnPath(tp: Type)(using Context): List[TermRef] = tp match
+    def rootsOnPath(tp: Type): Ctx[List[TermRef]] = tp match
       case ref: TermRef => rootsIn(ref) ::: rootsOnPath(ref.prefix)
       case _ => Nil
 
-    def recur(using Context): List[TermRef] =
+    def recur: Ctx[List[TermRef]] =
       if ctx.owner.exists then
         val defined =
           if ctx.owner.isClass then
@@ -141,7 +141,7 @@ trait ImportSuggestions:
    *   return instead a list of all possible references to extension methods named
    *   `name` that are applicable to `T`.
    */
-  private def importSuggestions(pt: Type)(using Context): (List[TermRef], List[TermRef]) =
+  private def importSuggestions(pt: Type): Ctx[(List[TermRef], List[TermRef])] =
     val timer = new Timer()
     val allotted = ctx.run.importSuggestionBudget
     if allotted <= 1 then return (Nil, Nil)
@@ -266,7 +266,7 @@ trait ImportSuggestions:
   /** The `ref` parts of this list of pairs, discarding subsequent elements that
    *  have the same String part. Elements are sorted by their String parts.
    */
-  def (refs: List[(TermRef, String)]).distinctRefs(using Context): List[TermRef] = refs match
+  def (refs: List[(TermRef, String)]).distinctRefs: Ctx[List[TermRef]] = refs match
     case (ref, str) :: refs1 =>
       ref :: refs1.dropWhile(_._2 == str).distinctRefs
     case Nil =>
@@ -276,7 +276,7 @@ trait ImportSuggestions:
    *  `compare` is a partial order. If there's a tie, we take elements
    *  in the order thy appear in the list.
    */
-  def (refs: List[TermRef]).best(n: Int)(using Context): List[TermRef] =
+  def (refs: List[TermRef]).best(n: Int): Ctx[List[TermRef]] =
     val top = new Array[TermRef](n)
     var filled = 0
     val rest = new mutable.ListBuffer[TermRef]
@@ -308,7 +308,7 @@ trait ImportSuggestions:
    *  The addendum suggests given imports that might fix the problem.
    *  If there's nothing to suggest, an empty string is returned.
    */
-  override def importSuggestionAddendum(pt: Type)(using Context): String =
+  override def importSuggestionAddendum(pt: Type): Ctx[String] =
     val (fullMatches, headMatches) =
       importSuggestions(pt)(using ctx.fresh.setExploreTyperState())
     implicits.println(i"suggestions for $pt in ${ctx.owner} = ($fullMatches%, %, $headMatches%, %)")

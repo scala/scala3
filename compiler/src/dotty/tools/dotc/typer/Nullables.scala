@@ -151,11 +151,11 @@ object Nullables:
    *  given pattern `pat`. If the pattern can only match non-null values, this
    *  will assert that the selector `sel` is not null in these regions.
    */
-  def caseContext(sel: Tree, pat: Tree)(using Context): Context = sel match
+  def caseContext(sel: Tree, pat: Tree): Ctx[Context] = sel match
     case TrackedRef(ref) if matchesNotNull(pat) => ctx.addNotNullRefs(Set(ref))
     case _ => ctx
 
-  private def matchesNotNull(pat: Tree)(using Context): Boolean = pat match
+  private def matchesNotNull(pat: Tree): Ctx[Boolean] = pat match
     case _: Typed | _: UnApply => true
     case Alternative(pats) => pats.forall(matchesNotNull)
     // TODO: Add constant pattern if the constant type is not nullable
@@ -230,7 +230,7 @@ object Nullables:
      *  }
      *  ```
      */
-    def usedOutOfOrder(using Context): Boolean =
+    def usedOutOfOrder: Ctx[Boolean] =
       val refSym = ref.symbol
       val refOwner = refSym.owner
 
@@ -255,13 +255,13 @@ object Nullables:
       tree
 
     /* The nullability info of `tree` */
-    def notNullInfo(using Context): NotNullInfo =
+    def notNullInfo: Ctx[NotNullInfo] =
       stripInlined(tree).getAttachment(NNInfo) match
         case Some(info) if !ctx.erasedTypes => info
         case _ => NotNullInfo.empty
 
     /* The nullability info of `tree`, assuming it is a condition that evaluates to `c` */
-    def notNullInfoIf(c: Boolean)(using Context): NotNullInfo =
+    def notNullInfoIf(c: Boolean): Ctx[NotNullInfo] =
       val cond = tree.notNullConditional
       if cond.isEmpty then tree.notNullInfo
       else tree.notNullInfo.seq(NotNullInfo(if c then cond.ifTrue else cond.ifFalse, Set()))
@@ -270,13 +270,13 @@ object Nullables:
      *  by `tree` yields `true` or `false`. Two empty sets if `tree` is not
      *  a condition.
      */
-    def notNullConditional(using Context): NotNullConditional =
+    def notNullConditional: Ctx[NotNullConditional] =
       stripBlock(tree).getAttachment(NNConditional) match
         case Some(cond) if !ctx.erasedTypes => cond
         case _ => NotNullConditional.empty
 
     /** The current context augmented with nullability information of `tree` */
-    def nullableContext(using Context): Context =
+    def nullableContext: Ctx[Context] =
       val info = tree.notNullInfo
       if info.isEmpty then ctx else ctx.addNotNullInfo(info)
 
@@ -284,7 +284,7 @@ object Nullables:
      *  assuming the result of the condition represented by `tree` is the same as
      *  the value of `c`.
      */
-    def nullableContextIf(c: Boolean)(using Context): Context =
+    def nullableContextIf(c: Boolean): Ctx[Context] =
       val info = tree.notNullInfoIf(c)
       if info.isEmpty then ctx else ctx.addNotNullInfo(info)
 
@@ -292,7 +292,7 @@ object Nullables:
      *  This is the current context, augmented with nullability information
      *  of the left argument, if the application is a boolean `&&` or `||`.
      */
-    def nullableInArgContext(using Context): Context = tree match
+    def nullableInArgContext: Ctx[Context] = tree match
       case Select(x, _) if !ctx.erasedTypes =>
         if tree.symbol == defn.Boolean_&& then x.nullableContextIf(true)
         else if tree.symbol == defn.Boolean_|| then x.nullableContextIf(false)
@@ -306,7 +306,7 @@ object Nullables:
      *     a path (i.e. a stable TermRef)
      *  2. Boolean &&, ||, !
      */
-    def computeNullable()(using Context): tree.type =
+    def computeNullable(): Ctx[tree.type] =
       def setConditional(ifTrue: Set[TermRef], ifFalse: Set[TermRef]) =
         tree.putAttachment(NNConditional, NotNullConditional(ifTrue, ifFalse))
       if !ctx.erasedTypes && analyzedOps.contains(tree.symbol.name.toTermName) then
@@ -330,7 +330,7 @@ object Nullables:
       tree
 
     /** Compute nullability information for this tree and all its subtrees */
-    def computeNullableDeeply()(using Context): Unit =
+    def computeNullableDeeply(): Ctx[Unit] =
       new TreeTraverser {
         def traverse(tree: Tree)(using Context) =
           traverseChildren(tree)
@@ -339,7 +339,7 @@ object Nullables:
   end treeOps
 
   extension assignOps on (tree: Assign):
-    def computeAssignNullable()(using Context): tree.type = tree.lhs match
+    def computeAssignNullable(): Ctx[tree.type] = tree.lhs match
       case TrackedRef(ref) =>
         val rhstp = tree.rhs.typeOpt
         if ctx.explicitNulls && ref.isNullableUnion then
@@ -371,7 +371,7 @@ object Nullables:
    *  Note: we track the local variables through their offset and not through their name
    *  because of shadowing.
    */
-  def assignmentSpans(using Context): Map[Int, List[Span]] =
+  def assignmentSpans: Ctx[Map[Int, List[Span]]] =
     import ast.untpd._
 
     object populate extends UntypedTreeTraverser:
@@ -447,7 +447,7 @@ object Nullables:
    *       ys = Links(xs.elem, ys.next)  // error in unrefined: ys is potentially null here
    *       xs = xs.next
    */
-  def whileContext(whileSpan: Span)(using Context): Context =
+  def whileContext(whileSpan: Span): Ctx[Context] =
 
     def isRetracted(ref: TermRef): Boolean =
       val sym = ref.symbol
@@ -469,7 +469,7 @@ object Nullables:
    *  flow assumptions about mutable variables and suggest that it is enclosed
    *  in a `byName(...)` call instead.
    */
-  def postProcessByNameArgs(fn: TermRef, app: Tree)(using Context): Tree =
+  def postProcessByNameArgs(fn: TermRef, app: Tree): Ctx[Tree] =
     fn.widen match
       case mt: MethodType
       if mt.paramInfos.exists(_.isInstanceOf[ExprType]) && !fn.symbol.is(Inline) =>
@@ -489,7 +489,7 @@ object Nullables:
                 case _ => super.transform(t)
 
             object retyper extends ReTyper:
-              override def typedUnadapted(t: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = t match
+              override def typedUnadapted(t: untpd.Tree, pt: Type, locked: TypeVars): Ctx[Tree] = t match
                 case t: untpd.ValDef if !t.symbol.is(Lazy) => super.typedUnadapted(t, pt, locked)
                 case t: untpd.MemberDef => promote(t)
                 case _ => super.typedUnadapted(t, pt, locked)

@@ -25,7 +25,7 @@ object ProtoTypes {
   trait Compatibility {
 
     /** Is there an implicit conversion from `tp` to `pt`? */
-    def viewExists(tp: Type, pt: Type)(using Context): Boolean
+    def viewExists(tp: Type, pt: Type): Ctx[Boolean]
 
     /** A type `tp` is compatible with a type `pt` if one of the following holds:
      *    1. `tp` is a subtype of `pt`
@@ -34,14 +34,14 @@ object ProtoTypes {
      *    4. `tp` is a numeric subtype of `pt` (this case applies even if implicit conversions are disabled)
      *  If `pt` is a by-name type, we compare against the underlying type instead.
      */
-    def isCompatible(tp: Type, pt: Type)(using Context): Boolean =
+    def isCompatible(tp: Type, pt: Type): Ctx[Boolean] =
       (tp.widenExpr relaxed_<:< pt.widenExpr) || viewExists(tp, pt)
 
     /** Test compatibility after normalization.
      *  Do this in a fresh typerstate unless `keepConstraint` is true.
      */
-    def normalizedCompatible(tp: Type, pt: Type, keepConstraint: Boolean)(using Context): Boolean = {
-      def testCompat(using Context): Boolean = {
+    def normalizedCompatible(tp: Type, pt: Type, keepConstraint: Boolean): Ctx[Boolean] = {
+      def testCompat: Ctx[Boolean] = {
         val normTp = normalize(tp, pt)
         isCompatible(normTp, pt) || pt.isRef(defn.UnitClass) && normTp.isParameterless
       }
@@ -60,13 +60,13 @@ object ProtoTypes {
       else ctx.test(testCompat)
     }
 
-    private def disregardProto(pt: Type)(using Context): Boolean =
+    private def disregardProto(pt: Type): Ctx[Boolean] =
       pt.dealias.isRef(defn.UnitClass)
 
     /** Check that the result type of the current method
      *  fits the given expected result type.
      */
-    def constrainResult(mt: Type, pt: Type)(using Context): Boolean =
+    def constrainResult(mt: Type, pt: Type): Ctx[Boolean] =
       inContext(ctx.addMode(Mode.ConstrainResult)) {
         val savedConstraint = ctx.typerState.constraint
         val res = pt.widenExpr match {
@@ -92,7 +92,7 @@ object ProtoTypes {
      *  However, we should constrain parameters of the declared return type. This distinction is
      *  achieved by replacing expected type parameters with wildcards.
      */
-    def constrainResult(meth: Symbol, mt: Type, pt: Type)(using Context): Boolean =
+    def constrainResult(meth: Symbol, mt: Type, pt: Type): Ctx[Boolean] =
       if (Inliner.isInlineable(meth)) {
         constrainResult(mt, wildApprox(pt))
         true
@@ -101,7 +101,7 @@ object ProtoTypes {
   }
 
   object NoViewsAllowed extends Compatibility {
-    override def viewExists(tp: Type, pt: Type)(using Context): Boolean = false
+    override def viewExists(tp: Type, pt: Type): Ctx[Boolean] = false
   }
 
   /** A trait for prototypes that match all types */
