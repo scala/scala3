@@ -185,17 +185,6 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         info = toJavaVarArgs(ddef.symbol.info)
       ).enteredAfter(thisPhase).asTerm
 
-    val bridgeDef = polyDefDef(bridge, trefs => vrefss => {
-      val init :+ (last :+ vararg) = vrefss
-      // Can't call `.argTypes` here because the underlying array type is of the
-      // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
-      val elemtp = vararg.tpe.widen.argInfos.head
-      ref(original.termRef)
-        .appliedToTypes(trefs)
-        .appliedToArgss(init)
-        .appliedToArgs(last :+ tpd.wrapArray(vararg, elemtp))
-    })
-
     val bridgeDenot = bridge.denot
     currentClass.info.member(bridge.name).alternatives.find { s =>
       s.matches(bridgeDenot) &&
@@ -205,6 +194,21 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         ctx.error(s"@varargs produces a forwarder method that conflicts with ${conflict.showDcl}", ddef.sourcePos)
         EmptyTree
       case None =>
+        val bridgeDef = polyDefDef(bridge, trefs => vrefss => {
+          val init :+ (last :+ vararg) = vrefss
+          // Can't call `.argTypes` here because the underlying array type is of the
+          // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
+          val elemtp = vararg.tpe.widen.argInfos.head
+
+          // The generation of the forwarding call needs to be deferred, otherwise
+          // generic and curried methods won't pass the tree checker.
+          atNextPhase {
+            ref(original.termRef)
+              .appliedToTypes(trefs)
+              .appliedToArgss(init)
+              .appliedToArgs(last :+ tpd.wrapArray(vararg, elemtp))
+            }
+          })
         Thicket(ddef, bridgeDef)
 
   /** Convert type from Scala to Java varargs method */

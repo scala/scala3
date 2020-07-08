@@ -7,7 +7,7 @@ object Test {
     def v1(a: Int, b: Array[String]) = a
   }
 
-  trait B extends A { // error (could we get rid of that one?)
+  trait B extends A {
     @varargs def v1(a: Int, b: String*) = a + b.length // error
   }
 
