@@ -17,13 +17,10 @@ import scala.annotation.internal.sharable
 object Names {
   import NameKinds._
 
-  /** A common class for things that can be turned into names.
-   *  Instances are both names and strings, the latter via a decorator.
+  /** Things that can be turned into names with `totermName` and `toTypeName`
+   *  Decorators defines implements these as extension methods for strings.
    */
-  trait PreName extends Any with Showable {
-    def toTypeName: TypeName
-    def toTermName: TermName
-  }
+  type PreName = Name | String
 
   /** A common superclass of Name and Symbol. After bootstrap, this should be
    *  just the type alias Name | Symbol
@@ -35,7 +32,7 @@ object Names {
    *  in a name table. A derived term name adds a tag, and possibly a number
    *  or a further simple name to some other name.
    */
-  abstract class Name extends Designator, PreName derives Eql {
+  abstract class Name extends Designator, Showable derives Eql {
 
     /** A type for names of the same kind as this name */
     type ThisName <: Name
