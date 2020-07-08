@@ -48,7 +48,7 @@ object Implicits {
    *  Gets generated if an implicit ref is imported via a renaming import.
    */
   class RenamedImplicitRef(val underlyingRef: TermRef, val alias: TermName) extends ImplicitRef {
-    def implicitName(using Context): TermName = alias
+    def implicitName: Ctx[TermName] = alias
   }
 
   /** An eligible implicit candidate, consisting of an implicit reference and a nesting level */
@@ -426,7 +426,7 @@ object Implicits {
     /** An explanation of the cause of the failure as a string */
     def explanation(using Context): String
 
-    def msg(using Context): Message = explanation
+    def msg: Ctx[Message] = explanation
 
     /** If search was for an implicit conversion, a note describing the failure
      *  in more detail - this is either empty or starts with a '\n'

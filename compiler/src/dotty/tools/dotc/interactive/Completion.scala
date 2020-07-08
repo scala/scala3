@@ -5,7 +5,7 @@ import java.nio.charset.Charset
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.config.Printers.interactiv
-import dotty.tools.dotc.core.Contexts.{Context, NoContext}
+import dotty.tools.dotc.core.Contexts.{Context, NoContext, Ctx}
 import dotty.tools.dotc.core.CheckRealizable
 import dotty.tools.dotc.core.Decorators.StringInterpolators
 import dotty.tools.dotc.core.Denotations.SingleDenotation
@@ -317,7 +317,7 @@ object Completion {
 
     /** Filter for names that should appear when looking for completions. */
     private object completionsFilter extends NameFilter {
-      def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
+      def apply(pre: Type, name: Name): Ctx[Boolean] =
         !name.isConstructorName && name.toTermName.info.kind == SimpleNameKind
     }
   }

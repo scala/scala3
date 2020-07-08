@@ -50,7 +50,7 @@ object Contexts {
   private val (notNullInfosLoc,     store8) = store7.newLocation[List[NotNullInfo]]()
   private val initialStore = store8
 
-  type Ctx[T] = Context ?=> T
+  type Ctx[+T] = Context ?=> T
 
   /** The current context */
   def ctx(using ctx: Context): Context = ctx

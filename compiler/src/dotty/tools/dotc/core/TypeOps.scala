@@ -391,7 +391,7 @@ object TypeOps:
       def partsToAvoid = new NamedPartsAccumulator(tp => toAvoid(tp.symbol))
 
       /** True iff all NamedTypes on this prefix are static */
-      override def isStaticPrefix(pre: Type)(using Context): Boolean = pre match
+      override def isStaticPrefix(pre: Type): Ctx[Boolean] = pre match
         case pre: NamedType =>
           val sym = pre.currentSymbol
           sym.is(Package) || sym.isStatic && isStaticPrefix(pre.prefix)

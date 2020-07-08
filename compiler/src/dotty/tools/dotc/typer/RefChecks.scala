@@ -27,7 +27,7 @@ object RefChecks {
   val name: String = "refchecks"
 
   private val defaultMethodFilter = new NameFilter {
-    def apply(pre: Type, name: Name)(using Context): Boolean = name.is(DefaultGetterName)
+    def apply(pre: Type, name: Name): Ctx[Boolean] = name.is(DefaultGetterName)
   }
 
   /** Only one overloaded alternative is allowed to define default arguments */
