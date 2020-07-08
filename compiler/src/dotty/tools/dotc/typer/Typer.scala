@@ -2463,21 +2463,26 @@ class Typer extends Namer
           case _ => typedUnadapted(desugar(tree), pt, locked)
         }
 
-        val ifpt = defn.asContextFunctionType(pt)
-        val result =
-          if ifpt.exists
-             && xtree.isTerm
-             && !untpd.isContextualClosure(xtree)
-             && !ctx.mode.is(Mode.Pattern)
-             && !ctx.isAfterTyper
-             && !ctx.isInlineContext
-          then
-            makeContextualFunction(xtree, ifpt)
-          else xtree match
-            case xtree: untpd.NameTree => typedNamed(xtree, pt)
-            case xtree => typedUnnamed(xtree)
+        try
+          val ifpt = defn.asContextFunctionType(pt)
+          val result =
+            if ifpt.exists
+              && xtree.isTerm
+              && !untpd.isContextualClosure(xtree)
+              && !ctx.mode.is(Mode.Pattern)
+              && !ctx.isAfterTyper
+              && !ctx.isInlineContext
+            then
+              makeContextualFunction(xtree, ifpt)
+            else xtree match
+              case xtree: untpd.NameTree => typedNamed(xtree, pt)
+              case xtree => typedUnnamed(xtree)
 
-        simplify(result, pt, locked)
+          simplify(result, pt, locked)
+        catch case ex: TypeError => errorTree(xtree, ex, xtree.sourcePos.focus)
+          // use focussed sourcePos since tree might be a large definition
+          // and a large error span would hide all errors in interior.
+          // TODO: Not clear that hiding is what we want, actually
     }
   }
 
@@ -2534,22 +2539,13 @@ class Typer extends Namer
     trace(i"typing $tree, pt = $pt", typr, show = true) {
       record(s"typed $getClass")
       record("typed total")
-      if (ctx.phase.isTyper)
+      if ctx.phase.isTyper then
         assertPositioned(tree)
-      if (tree.source != ctx.source && tree.source.exists)
+      if tree.source != ctx.source && tree.source.exists then
         typed(tree, pt, locked)(using ctx.withSource(tree.source))
-      else
-        try
-          if ctx.run.isCancelled then tree.withType(WildcardType)
-          else adapt(typedUnadapted(tree, pt, locked), pt, locked)
-        catch {
-          case ex: TypeError =>
-            errorTree(tree, ex, tree.sourcePos.focus)
-            // This uses tree.span.focus instead of the default tree.span, because:
-            // - since tree can be a top-level definition, tree.span can point to the whole definition
-            // - that would in turn hide all other type errors inside tree.
-            // TODO: might be even better to store positions inside TypeErrors.
-        }
+      else if ctx.run.isCancelled then
+        tree.withType(WildcardType)
+      else adapt(typedUnadapted(tree, pt, locked), pt, locked)
     }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
@@ -2875,12 +2871,13 @@ class Typer extends Namer
    *  If all this fails, error
    *  Parameters as for `typedUnadapted`.
    */
-  def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean = true)(using Context): Tree = {
-    trace(i"adapting $tree to $pt ${if (tryGadtHealing) "" else "(tryGadtHealing=false)" }\n", typr, show = true) {
-      record("adapt")
-      adapt1(tree, pt, locked, tryGadtHealing)
-    }
-  }
+  def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean = true)(using Context): Tree =
+    try
+      trace(i"adapting $tree to $pt ${if (tryGadtHealing) "" else "(tryGadtHealing=false)" }\n", typr, show = true) {
+        record("adapt")
+        adapt1(tree, pt, locked, tryGadtHealing)
+      }
+    catch case ex: TypeError => errorTree(tree, ex, tree.sourcePos.focus)
 
   final def adapt(tree: Tree, pt: Type)(using Context): Tree =
     adapt(tree, pt, ctx.typerState.ownedVars)
