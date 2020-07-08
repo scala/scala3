@@ -699,7 +699,7 @@ trait ImplicitRunInfo:
 
       def apply(t: Type) = t.dealias match
         case t: TypeRef =>
-          if isAnchor(t.symbol) then t else applyToUnderlying(t)
+          if t.symbol.isClass || isAnchor(t.symbol) then t else applyToUnderlying(t)
         case t: TypeVar => apply(t.underlying)
         case t: ParamRef => applyToUnderlying(t)
         case t: ConstantType => apply(t.underlying)
