@@ -3,7 +3,7 @@ package printing
 
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
-import Contexts.{Context}
+import Contexts.{Context, ctx}
 import Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
 import ast.Trees._
@@ -20,7 +20,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    *  Overridden in RefinedPrinter.
    */
   protected def curCtx: Context = _ctx.addMode(Mode.Printing)
-  protected given ctx[Dummy] as Context = curCtx
+  protected given [DummyToEnforceDef] as Context = curCtx
 
   protected def printDebug = ctx.settings.YprintDebug.value
 

@@ -9,7 +9,7 @@ import Names._
 import Symbols._
 import NameOps._
 import TypeErasure.ErasedValueType
-import Contexts.{Context}
+import Contexts.{Context, ctx}
 import Annotations.Annotation
 import Denotations._
 import SymDenotations._
