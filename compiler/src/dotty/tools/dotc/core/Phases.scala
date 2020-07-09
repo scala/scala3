@@ -53,22 +53,22 @@ object Phases {
     object NoPhase extends Phase {
       override def exists: Boolean = false
       def phaseName: String = "<no phase>"
-      def run(implicit ctx: Context): Unit = unsupported("run")
-      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = unsupported("transform")
+      def run(using Context): Unit = unsupported("run")
+      def transform(ref: SingleDenotation)(using Context): SingleDenotation = unsupported("transform")
     }
 
     object SomePhase extends Phase {
       def phaseName: String = "<some phase>"
-      def run(implicit ctx: Context): Unit = unsupported("run")
+      def run(using Context): Unit = unsupported("run")
     }
 
     /** A sentinel transformer object */
     class TerminalPhase extends DenotTransformer {
       def phaseName: String = "terminal"
-      def run(implicit ctx: Context): Unit = unsupported("run")
-      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
+      def run(using Context): Unit = unsupported("run")
+      def transform(ref: SingleDenotation)(using Context): SingleDenotation =
         unsupported("transform")
-      override def lastPhaseId(implicit ctx: Context): Int = id
+      override def lastPhaseId(using Context): Int = id
     }
 
     final def phasePlan: List[List[Phase]] = this.phasesPlan
@@ -82,7 +82,7 @@ object Phases {
                            phasesToSkip: List[String],
                            stopBeforePhases: List[String],
                            stopAfterPhases: List[String],
-                           YCheckAfter: List[String])(implicit ctx: Context): List[Phase] = {
+                           YCheckAfter: List[String])(using Context): List[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
       val YCheckAll = YCheckAfter.contains("all")
@@ -290,7 +290,7 @@ object Phases {
      */
     def phaseName: String
 
-    def isRunnable(implicit ctx: Context): Boolean =
+    def isRunnable(using Context): Boolean =
       !ctx.reporter.hasErrors
         // TODO: This might test an unintended condition.
         // To find out whether any errors have been reported during this
@@ -309,13 +309,13 @@ object Phases {
     def runsAfter: Set[String] = Set.empty
 
     /** @pre `isRunnable` returns true */
-    def run(implicit ctx: Context): Unit
+    def run(using Context): Unit
 
     /** @pre `isRunnable` returns true */
-    def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
+    def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
       units.map { unit =>
         val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
-        run(unitCtx)
+        run(using unitCtx)
         unitCtx.compilationUnit
       }
 
@@ -326,7 +326,7 @@ object Phases {
 
     /** Check what the phase achieves, to be called at any point after it is finished.
      */
-    def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = ()
+    def checkPostCondition(tree: tpd.Tree)(using Context): Unit = ()
 
     /** Is this phase the standard typerphase? True for FrontEnd, but
      *  not for other first phases (such as FromTasty). The predicate
@@ -344,7 +344,7 @@ object Phases {
     /** Can this transform change the base types of a type? */
     def changesBaseTypes: Boolean = changesParents
 
-    def isEnabled(implicit ctx: Context): Boolean = true
+    def isEnabled(using Context): Boolean = true
 
     def exists: Boolean = true
 

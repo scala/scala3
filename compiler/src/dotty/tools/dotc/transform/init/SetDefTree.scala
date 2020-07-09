@@ -18,7 +18,7 @@ class SetDefTree extends MiniPhase {
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     val ctx2 = ctx.fresh.setSetting(ctx.settings.YretainTrees, true)
-    super.runOn(units)(ctx2)
+    super.runOn(units)(using ctx2)
   }
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree = tree.setDefTree

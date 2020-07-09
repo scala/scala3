@@ -107,7 +107,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       ctx.error("Cannot have a quote in an annotation", quote.sourcePos)
 
     val contextWithQuote =
-      if level == 0 then contextWithQuoteTypeTags(taggedTypes)(quoteContext)
+      if level == 0 then contextWithQuoteTypeTags(taggedTypes)(using quoteContext)
       else quoteContext
     val body1 = transform(body)(contextWithQuote)
     val body2 =

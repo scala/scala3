@@ -799,7 +799,7 @@ object StdNames {
       case _  => termName("_" + j)
     }
 
-    def localDummyName(clazz: Symbol)(implicit ctx: Context): TermName =
+    def localDummyName(clazz: Symbol)(using Context): TermName =
       termName(str.LOCALDUMMY_PREFIX + clazz.name + ">")
 
     def newBitmapName(bitmapPrefix: TermName, n: Int): TermName = bitmapPrefix ++ n.toString

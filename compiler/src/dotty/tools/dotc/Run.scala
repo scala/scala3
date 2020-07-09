@@ -66,7 +66,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     val bootstrap = ctx.fresh
       .setPeriod(Period(comp.nextRunId, FirstPhaseId))
       .setScope(rootScope)
-    rootScope.enter(ctx.definitions.RootPackage)(bootstrap)
+    rootScope.enter(ctx.definitions.RootPackage)(using bootstrap)
     val start = bootstrap.fresh
       .setOwner(defn.RootClass)
       .setTyper(new Typer)
