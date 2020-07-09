@@ -494,9 +494,9 @@ object Contexts {
       }
 
     override def toString: String = {
-      def iinfo(implicit ctx: Context) = if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
+      def iinfo(using Context) = if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
       "Context(\n" +
-      (outersIterator map ( ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(ctx)}") mkString "\n")
+      (outersIterator.map(ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(using ctx)}").mkString("\n"))
     }
 
     def typerPhase: Phase                  = base.typerPhase
@@ -525,7 +525,7 @@ object Contexts {
     def uniques: util.HashSet[Type]                = base.uniques
     def nextSymId: Int                     = base.nextSymId
 
-    def initialize()(implicit ctx: Context): Unit = base.initialize()(ctx)
+    def initialize()(using Context): Unit = base.initialize()
   }
 
   /** A condensed context provides only a small memory footprint over
@@ -681,12 +681,12 @@ object Contexts {
       _platform
     }
 
-    protected def newPlatform(implicit ctx: Context): Platform =
+    protected def newPlatform(using Context): Platform =
       if (settings.scalajs.value) new SJSPlatform
       else new JavaPlatform
 
     /** The loader that loads the members of _root_ */
-    def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)
+    def rootLoader(root: TermSymbol)(using Context): SymbolLoader = platform.rootLoader(root)
 
     // Set up some phases to get started */
     usePhases(List(SomePhase))
@@ -697,7 +697,7 @@ object Contexts {
     /** Initializes the `ContextBase` with a starting context.
      *  This initializes the `platform` and the `definitions`.
      */
-    def initialize()(implicit ctx: Context): Unit = {
+    def initialize()(using Context): Unit = {
       _platform = newPlatform
       definitions.init()
     }

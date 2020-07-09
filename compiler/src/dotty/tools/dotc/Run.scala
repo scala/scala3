@@ -60,7 +60,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *    imports      For each element of RootImports, an import context
    */
   protected def rootContext(implicit ctx: Context): Context = {
-    ctx.initialize()(ctx)
+    ctx.initialize()
     ctx.base.setPhasePlan(comp.phases)
     val rootScope = new MutableScope
     val bootstrap = ctx.fresh
@@ -72,7 +72,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       .setTyper(new Typer)
       .addMode(Mode.ImplicitsEnabled)
       .setTyperState(new TyperState(ctx.typerState))
-    ctx.initialize()(start) // re-initialize the base context with start
+    ctx.initialize()(using start) // re-initialize the base context with start
     def addImport(ctx: Context, rootRef: ImportInfo.RootRef) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(rootRef))
     defn.RootImportFns.foldLeft(start.setRun(this))(addImport)

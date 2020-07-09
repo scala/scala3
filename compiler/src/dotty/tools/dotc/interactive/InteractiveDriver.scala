@@ -31,7 +31,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     val ctx = setup(settings.toArray, rootCtx)._2
-    ctx.initialize()(ctx)
+    ctx.initialize()(using ctx)
     ctx
   }
 

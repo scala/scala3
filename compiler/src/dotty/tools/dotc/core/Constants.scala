@@ -37,7 +37,7 @@ object Constants {
     def isNonUnitAnyVal: Boolean = BooleanTag <= tag && tag <= DoubleTag
     def isAnyVal: Boolean        = UnitTag <= tag && tag <= DoubleTag
 
-    def tpe(implicit ctx: Context): Type = tag match {
+    def tpe(using Context): Type = tag match {
       case UnitTag        => defn.UnitType
       case BooleanTag     => defn.BooleanType
       case ByteTag        => defn.ByteType
@@ -150,7 +150,7 @@ object Constants {
 
     /** Convert constant value to conform to given type.
      */
-    def convertTo(pt: Type)(implicit ctx: Context): Constant = {
+    def convertTo(pt: Type)(using Context): Constant = {
       def classBound(pt: Type): Type = pt.dealias.stripTypeVar match {
         case tref: TypeRef if !tref.symbol.isClass && tref.info.exists =>
           classBound(tref.info.bounds.lo)

@@ -190,7 +190,7 @@ trait ConstraintHandling[AbstractContext] {
     res
   }
 
-  def location(implicit ctx: Context) = "" // i"in ${ctx.typerState.stateChainStr}" // use for debugging
+  def location(using Context) = "" // i"in ${ctx.typerState.stateChainStr}" // use for debugging
 
   /** Make p2 = p1, transfer all bounds of p2 to p1
    *  @pre  less(p1)(p2)

@@ -12,7 +12,7 @@ trait ConstraintRunInfo { self: Run =>
       maxSize = size
       maxConstraint = c
     }
-  def printMaxConstraint()(implicit ctx: Context): Unit = {
+  def printMaxConstraint()(using Context): Unit = {
     val printer = if (ctx.settings.YdetailedStats.value) default else typr
     if (maxSize > 0) printer.println(s"max constraint = ${maxConstraint.show}")
   }
