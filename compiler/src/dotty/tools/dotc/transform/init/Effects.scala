@@ -18,10 +18,12 @@ object Effects {
   def show(effs: Effects)(using Context): String =
     effs.map(_.show).mkString(", ")
 
-  /** Effects that are related to safe initialization */
+  /** Effects that are related to safe initialization performed on potentials */
   sealed trait Effect {
-    def size: Int
+    def potential: Potential
+
     def show(using Context): String
+
     def source: Tree
   }
 

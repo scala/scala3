@@ -22,14 +22,18 @@ object Potentials {
 
   /** A potential represents an aliasing of a value that is possibly under initialization */
   sealed trait Potential {
-    def size: Int
+    /** Length of the potential. Used for widening */
+    def size: Int = 1
+
+    /** Nested levels of the potential. Used for widening */
+    def level: Int = 1
+
     def show(using Context): String
     def source: Tree
   }
 
   /** The object pointed by `this` */
   case class ThisRef()(val source: Tree) extends Potential {
-    val size: Int = 1
     def show(using Context): String = "this"
 
     /** Effects of a method call or a lazy val access
@@ -49,7 +53,8 @@ object Potentials {
 
   /** The object pointed by `C.super.this`, mainly used for override resolution */
   case class SuperRef(pot: Potential, supercls: ClassSymbol)(val source: Tree) extends Potential {
-    val size: Int = 1
+    override def size: Int = pot.size
+    override def level: Int = pot.level
     def show(using Context): String = pot.show + ".super[" + supercls.name.show + "]"
   }
 
@@ -60,7 +65,7 @@ object Potentials {
    *  @param outer        The potential for `this` of the enclosing class
    */
   case class Warm(classSymbol: ClassSymbol, outer: Potential)(val source: Tree) extends Potential {
-    def size: Int = 1
+    override def level: Int = 1 + outer.level
     def show(using Context): String = "Warm[" + classSymbol.show + ", outer = " + outer.show + "]"
 
     /** Effects of a method call or a lazy val access
@@ -111,7 +116,8 @@ object Potentials {
    */
   case class Outer(pot: Potential, classSymbol: ClassSymbol)(val source: Tree) extends Potential {
     // be lenient with size of outer selection, no worry for non-termination
-    def size: Int = pot.size
+    override def size: Int = pot.size
+    override def level: Int = pot.size
     def show(using Context): String = pot.show + ".outer[" + classSymbol.show + "]"
   }
 
@@ -119,7 +125,8 @@ object Potentials {
   case class FieldReturn(potential: Potential, field: Symbol)(val source: Tree) extends Potential {
     assert(field != NoSymbol)
 
-    def size: Int = potential.size + 1
+    override def size: Int = potential.size + 1
+    override def level: Int = potential.size
     def show(using Context): String = potential.show + "." + field.name.show
   }
 
@@ -127,19 +134,26 @@ object Potentials {
   case class MethodReturn(potential: Potential, method: Symbol)(val source: Tree) extends Potential {
     assert(method != NoSymbol)
 
-    def size: Int = potential.size + 1
+    override def size: Int = potential.size + 1
+    override def level: Int = potential.size
     def show(using Context): String = potential.show + "." + method.name.show
   }
 
   /** The object whose initialization status is unknown */
   case class Cold()(val source: Tree) extends Potential {
-    def size: Int = 1
     def show(using Context): String = "Cold"
   }
 
   /** A function when called will produce the `effects` and return the `potentials` */
   case class Fun(potentials: Potentials, effects: Effects)(val source: Tree) extends Potential {
-    def size: Int = 1
+    override def size: Int = 1
+
+    override def level: Int = {
+      val max1 = potentials.map(_.level).max
+      val max2 = effects.map(_.potential.level).max
+      if max1 > max2 then max1 else max2
+    }
+
     def show(using Context): String =
       "Fun[pots = " + potentials.map(_.show).mkString(";") + ", effs = " + effects.map(_.show).mkString(";") + "]"
   }
@@ -192,8 +206,11 @@ object Potentials {
       case Warm(cls, outer2) =>
         // widening to terminate
         val thisValue2 = thisValue match {
-          case Warm(cls, outer) => Warm(cls, Cold()(outer2.source))(thisValue.source)
-          case _                => thisValue
+          case Warm(cls, outer) if outer.level > 2 =>
+            Warm(cls, Cold()(outer2.source))(thisValue.source)
+
+          case _  =>
+            thisValue
         }
 
         val outer3 = asSeenFrom(outer2, thisValue2)
