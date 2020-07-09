@@ -95,7 +95,7 @@ object Potentials {
       bottomClsSummary.parentOuter.find((k, v) => k.derivesFrom(cls)) match {
         case Some((parentCls, pots)) =>
           val rebased: Potentials = outerPots.flatMap { Potentials.asSeenFrom(pots, _) }
-          resolveOuter(parentCls, outerPots, cls)
+          resolveOuter(parentCls, rebased, cls)
         case None => ??? // impossible
       }
     }
