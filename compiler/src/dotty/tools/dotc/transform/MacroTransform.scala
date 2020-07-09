@@ -16,28 +16,28 @@ abstract class MacroTransform extends Phase {
 
   import ast.tpd._
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     unit.tpdTree = newTransformer.transform(unit.tpdTree)(using ctx.withPhase(transformPhase))
   }
 
-  protected def newTransformer(implicit ctx: Context): Transformer
+  protected def newTransformer(using Context): Transformer
 
   /** The phase in which the transformation should be run.
    *  By default this is the phase given by the this macro transformer,
    *  but it could be overridden to be the phase following that one.
    */
-  protected def transformPhase(implicit ctx: Context): Phase = this
+  protected def transformPhase(using Context): Phase = this
 
   class Transformer extends TreeMap(cpy = cpyBetweenPhases) {
 
-    protected def localCtx(tree: Tree)(implicit ctx: Context): FreshContext = {
+    protected def localCtx(tree: Tree)(using Context): FreshContext = {
       val sym = tree.symbol
       val owner = if (sym.is(PackageVal)) sym.moduleClass else sym
       ctx.fresh.setTree(tree).setOwner(owner)
     }
 
-    def transformStats(trees: List[Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
+    def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] = {
       def transformStat(stat: Tree): Tree = stat match {
         case _: Import | _: DefTree => transform(stat)
         case _ => transform(stat)(using ctx.exprContext(stat, exprOwner))
@@ -68,7 +68,7 @@ abstract class MacroTransform extends Phase {
           tree
       }
 
-    def transformSelf(vd: ValDef)(implicit ctx: Context): ValDef =
+    def transformSelf(vd: ValDef)(using Context): ValDef =
       cpy.ValDef(vd)(tpt = transform(vd.tpt))
   }
 }

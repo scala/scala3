@@ -132,7 +132,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         val rhsClass = tree.tpt.tpe.widenDealias.classSymbol
         val getterRhs =
           if (isErasableBottomField(rhsClass)) erasedBottomTree(rhsClass)
-          else transformFollowingDeep(ref(field))(ctx.withOwner(sym))
+          else transformFollowingDeep(ref(field))(using ctx.withOwner(sym))
         val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
         addAnnotations(fieldDef.denot)
         removeAnnotations(sym)
@@ -144,7 +144,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         val initializer =
           if (isErasableBottomField(tree.vparamss.head.head.tpt.tpe.classSymbol)) Literal(Constant(()))
           else Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
-        val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym)))
+        val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(using ctx.withOwner(sym)))
         removeAnnotations(sym)
         setterDef
       }

@@ -26,7 +26,7 @@ object LambdaLift {
   val name: String = "lambdaLift"
 
   /** The core lambda lift functionality. */
-  class Lifter(thisPhase: MiniPhase with DenotTransformer)(implicit ctx: Context) {
+  class Lifter(thisPhase: MiniPhase with DenotTransformer)(using Context) {
 
     private type SymSet = TreeSet[Symbol]
 
@@ -84,7 +84,7 @@ object LambdaLift {
     /** A symbol is local if it is owned by a term or a local trait,
      *  or if it is a constructor of a local symbol.
      */
-    def isLocal(sym: Symbol)(implicit ctx: Context): Boolean = {
+    def isLocal(sym: Symbol)(using Context): Boolean = {
       val owner = sym.maybeOwner
       owner.isTerm ||
       owner.is(Trait) && isLocal(owner) ||
@@ -94,7 +94,7 @@ object LambdaLift {
     /** Set `liftedOwner(sym)` to `owner` if `owner` is more deeply nested
      *  than the previous value of `liftedowner(sym)`.
      */
-    def narrowLiftedOwner(sym: Symbol, owner: Symbol)(implicit ctx: Context): Unit =
+    def narrowLiftedOwner(sym: Symbol, owner: Symbol)(using Context): Unit =
       if (sym.maybeOwner.isTerm &&
         owner.isProperlyContainedIn(liftedOwner(sym)) &&
         owner != sym) {
@@ -147,7 +147,7 @@ object LambdaLift {
      *    }
      *  }
      */
-    private def markFree(sym: Symbol, enclosure: Symbol)(implicit ctx: Context): Symbol = try {
+    private def markFree(sym: Symbol, enclosure: Symbol)(using Context): Symbol = try {
       if (!enclosure.exists) throw new NoPath
       if (enclosure == sym.enclosure) NoSymbol
       else {
@@ -184,7 +184,7 @@ object LambdaLift {
         throw ex
     }
 
-    private def markCalled(callee: Symbol, caller: Symbol)(implicit ctx: Context): Unit = {
+    private def markCalled(callee: Symbol, caller: Symbol)(using Context): Unit = {
       ctx.debuglog(i"mark called: $callee of ${callee.owner} is called by $caller in ${caller.owner}")
       assert(isLocal(callee))
       symSet(called, caller) += callee
@@ -192,7 +192,7 @@ object LambdaLift {
     }
 
     private class CollectDependencies extends TreeTraverser {
-      def traverse(tree: Tree)(implicit ctx: Context) = try { //debug
+      def traverse(tree: Tree)(using Context) = try { //debug
         val sym = tree.symbol
 
         def enclosure = ctx.owner.enclosingMethod
@@ -257,7 +257,7 @@ object LambdaLift {
     }
 
     /** Compute final free variables map `fvs by closing over caller dependencies. */
-    private def computeFreeVars()(implicit ctx: Context): Unit =
+    private def computeFreeVars()(using Context): Unit =
       while ({
         changedFreeVars = false
         for {
@@ -272,7 +272,7 @@ object LambdaLift {
       ()
 
     /** Compute final liftedOwner map by closing over caller dependencies */
-    private def computeLiftedOwners()(implicit ctx: Context): Unit =
+    private def computeLiftedOwners()(using Context): Unit =
       while ({
         changedLiftedOwner = false
         for {
@@ -296,14 +296,14 @@ object LambdaLift {
       })
       ()
 
-    private def newName(sym: Symbol)(implicit ctx: Context): Name =
+    private def newName(sym: Symbol)(using Context): Name =
       if (sym.isAnonymousFunction && sym.owner.is(Method))
         sym.name.replace {
           case name: SimpleName => ExpandPrefixName(sym.owner.name.asTermName, name)
         }.freshened
       else sym.name.freshened
 
-    private def generateProxies()(implicit ctx: Context): Unit =
+    private def generateProxies()(using Context): Unit =
       for ((owner, freeValues) <- free.iterator) {
         val newFlags = Synthetic | (if (owner.isClass) ParamAccessor | Private else Param)
         ctx.debuglog(i"free var proxy of ${owner.showLocated}: ${freeValues.toList}%, %")
@@ -318,7 +318,7 @@ object LambdaLift {
         }.toMap
       }
 
-    private def liftedInfo(local: Symbol)(implicit ctx: Context): Type = local.info match {
+    private def liftedInfo(local: Symbol)(using Context): Type = local.info match {
       case MethodTpe(pnames, ptypes, restpe) =>
         val ps = proxies(local)
         MethodType(
@@ -328,7 +328,7 @@ object LambdaLift {
       case info => info
     }
 
-    private def liftLocals()(implicit ctx: Context): Unit = {
+    private def liftLocals()(using Context): Unit = {
       for ((local, lOwner) <- liftedOwner) {
         val (newOwner, maybeStatic) =
           if (lOwner is Package) {
@@ -378,13 +378,13 @@ object LambdaLift {
       liftLocals()(using ctx.withPhase(thisPhase.next))
     }
 
-    def currentEnclosure(implicit ctx: Context): Symbol =
+    def currentEnclosure(using Context): Symbol =
       ctx.owner.enclosingMethodOrClass
 
-    private def inCurrentOwner(sym: Symbol)(implicit ctx: Context) =
+    private def inCurrentOwner(sym: Symbol)(using Context) =
       sym.enclosure == currentEnclosure
 
-    private def proxy(sym: Symbol)(implicit ctx: Context): Symbol = {
+    private def proxy(sym: Symbol)(using Context): Symbol = {
       def liftedEnclosure(sym: Symbol) = liftedOwner.getOrElse(sym, sym.enclosure)
       def searchIn(enclosure: Symbol): Symbol = {
         if (!enclosure.exists) {
@@ -406,7 +406,7 @@ object LambdaLift {
       if (inCurrentOwner(sym)) sym else searchIn(currentEnclosure)
     }
 
-    def memberRef(sym: Symbol)(implicit ctx: Context): Tree = {
+    def memberRef(sym: Symbol)(using Context): Tree = {
       val clazz = sym.enclosingClass
       val qual =
         if (clazz.isStaticOwner || ctx.owner.enclosingClass == clazz)
@@ -420,18 +420,18 @@ object LambdaLift {
       thisPhase.transformFollowingDeep(qual.select(sym))
     }
 
-    def proxyRef(sym: Symbol)(implicit ctx: Context): Tree = {
+    def proxyRef(sym: Symbol)(using Context): Tree = {
       val psym = proxy(sym)(using ctx.withPhase(thisPhase))
       thisPhase.transformFollowingDeep(if (psym.owner.isTerm) ref(psym) else memberRef(psym))
     }
 
-    def addFreeArgs(sym: Symbol, args: List[Tree])(implicit ctx: Context): List[Tree] =
+    def addFreeArgs(sym: Symbol, args: List[Tree])(using Context): List[Tree] =
       free get sym match {
         case Some(fvs) => fvs.toList.map(proxyRef(_)) ++ args
         case _ => args
       }
 
-    def addFreeParams(tree: Tree, proxies: List[Symbol])(implicit ctx: Context): Tree = proxies match {
+    def addFreeParams(tree: Tree, proxies: List[Symbol])(using Context): Tree = proxies match {
       case Nil => tree
       case proxies =>
         val sym = tree.symbol
@@ -461,7 +461,7 @@ object LambdaLift {
         }
     }
 
-    def liftDef(tree: MemberDef)(implicit ctx: Context): Tree = {
+    def liftDef(tree: MemberDef)(using Context): Tree = {
       val buf = liftedDefs(tree.symbol.owner)
       thisPhase.transformFollowing(rename(tree, tree.symbol.name)).foreachInThicket(buf += _)
       EmptyTree
@@ -520,15 +520,15 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     // this effect in scalac.
 
   private var Lifter: Store.Location[Lifter] = _
-  private def lifter(implicit ctx: Context) = ctx.store(Lifter)
+  private def lifter(using Context) = ctx.store(Lifter)
 
   override def initContext(ctx: FreshContext): Unit =
     Lifter = ctx.addLocation[Lifter]()
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context =
+  override def prepareForUnit(tree: Tree)(using Context): Context =
     ctx.fresh.updateStore(Lifter, new Lifter(thisPhase))
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree = {
+  override def transformIdent(tree: Ident)(using Context): Tree = {
     val sym = tree.symbol
     tree.tpe match {
       case tpe @ TermRef(prefix, _) =>
@@ -547,13 +547,13 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     }
   }
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Apply =
+  override def transformApply(tree: Apply)(using Context): Apply =
     cpy.Apply(tree)(tree.fun, lifter.addFreeArgs(tree.symbol, tree.args)).withSpan(tree.span)
 
-  override def transformClosure(tree: Closure)(implicit ctx: Context): Closure =
+  override def transformClosure(tree: Closure)(using Context): Closure =
     cpy.Closure(tree)(env = lifter.addFreeArgs(tree.meth.symbol, tree.env))
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
+  override def transformDefDef(tree: DefDef)(using Context): Tree = {
     val sym = tree.symbol
     val lft = lifter
     val paramsAdded =
@@ -563,20 +563,20 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     else paramsAdded
   }
 
-  override def transformReturn(tree: Return)(implicit ctx: Context): Tree = tree.expr match {
+  override def transformReturn(tree: Return)(using Context): Tree = tree.expr match {
     case Block(stats, value) =>
       Block(stats, Return(value, tree.from)).withSpan(tree.span)
     case _ =>
       tree
   }
 
-  override def transformTemplate(tree: Template)(implicit ctx: Context): Template = {
+  override def transformTemplate(tree: Template)(using Context): Template = {
     val cls = ctx.owner
     val lft = lifter
     val impl = lft.addFreeParams(tree, lft.proxies(cls)).asInstanceOf[Template]
     cpy.Template(impl)(body = impl.body ++ lft.liftedDefs.remove(cls).get)
   }
 
-  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context): Tree =
+  override def transformTypeDef(tree: TypeDef)(using Context): Tree =
     if (lifter.needsLifting(tree.symbol)) lifter.liftDef(tree) else tree
 }
