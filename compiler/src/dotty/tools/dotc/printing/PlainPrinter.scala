@@ -3,7 +3,8 @@ package printing
 
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
-import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
+import Contexts.{Context}
+import Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
 import ast.Trees._
 import typer.Implicits._
@@ -18,7 +19,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** The context of all public methods in Printer and subclasses.
    *  Overridden in RefinedPrinter.
    */
-  protected implicit def ctx: Context = _ctx.addMode(Mode.Printing)
+  protected def curCtx: Context = _ctx.addMode(Mode.Printing)
+  protected given ctx[Dummy] as Context = curCtx
 
   protected def printDebug = ctx.settings.YprintDebug.value
 
