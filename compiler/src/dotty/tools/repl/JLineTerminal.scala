@@ -116,7 +116,7 @@ final class JLineTerminal extends java.io.Closeable {
       case class TokenData(token: Token, start: Int, end: Int)
       def currentToken: TokenData /* | Null */ = {
         val source = SourceFile.virtual("<completions>", input)
-        val scanner = new Scanner(source)(ctx.fresh.setReporter(Reporter.NoReporter))
+        val scanner = new Scanner(source)(using ctx.fresh.setReporter(Reporter.NoReporter))
         while (scanner.token != EOF) {
           val start = scanner.offset
           val token = scanner.token

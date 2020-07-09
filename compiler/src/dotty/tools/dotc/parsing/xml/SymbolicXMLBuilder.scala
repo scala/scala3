@@ -23,7 +23,7 @@ import Parsers.Parser
  *  @author  Burak Emir
  *  @version 1.0
  */
-class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Context) {
+class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
   import Constants.Constant
   import untpd._

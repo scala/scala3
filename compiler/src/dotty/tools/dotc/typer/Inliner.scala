@@ -295,7 +295,7 @@ object Inliner {
         case ConstantType(Constant(code: String)) =>
           val source2 = SourceFile.virtual("tasty-reflect", code)
           val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer).setSource(source2)
-          val tree2 = new Parser(source2)(ctx2).block()
+          val tree2 = new Parser(source2)(using ctx2).block()
           val res = collection.mutable.ListBuffer.empty[(ErrorKind, Error)]
 
           val parseErrors = ctx2.reporter.allErrors.toList

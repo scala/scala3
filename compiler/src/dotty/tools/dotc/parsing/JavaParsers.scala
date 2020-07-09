@@ -28,7 +28,7 @@ object JavaParsers {
 
   import ast.untpd._
 
-  class JavaParser(source: SourceFile)(implicit ctx: Context) extends ParserCommon(source) {
+  class JavaParser(source: SourceFile)(using Context) extends ParserCommon(source) {
 
     val definitions: Definitions = ctx.definitions
     import definitions._
@@ -988,7 +988,7 @@ object JavaParsers {
    *  This is necessary even for Java, because the filename defining a non-public classes cannot be determined from the
    *  classname alone.
    */
-  class OutlineJavaParser(source: SourceFile)(implicit ctx: Context) extends JavaParser(source) with OutlineParserCommon {
+  class OutlineJavaParser(source: SourceFile)(using Context) extends JavaParser(source) with OutlineParserCommon {
     override def skipBracesHook(): Option[Tree] = None
     override def typeBody(leadingToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) = {
       skipBraces()
