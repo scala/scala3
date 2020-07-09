@@ -17,20 +17,20 @@ object Potentials {
   type Potentials = Set[Potential]
   val empty: Potentials = Set.empty
 
-  def show(pots: Potentials)(implicit ctx: Context): String =
+  def show(pots: Potentials)(using Context): String =
     pots.map(_.show).mkString(", ")
 
   /** A potential represents an aliasing of a value that is possibly under initialization */
   sealed trait Potential {
     def size: Int
-    def show(implicit ctx: Context): String
+    def show(using Context): String
     def source: Tree
   }
 
   /** The object pointed by `C.this` */
   case class ThisRef(classSymbol: ClassSymbol)(val source: Tree) extends Potential {
     val size: Int = 1
-    def show(implicit ctx: Context): String = classSymbol.name.show + ".this"
+    def show(using Context): String = classSymbol.name.show + ".this"
 
     /** Effects of a method call or a lazy val access
      *
@@ -55,7 +55,7 @@ object Potentials {
   /** The object pointed by `C.super.this`, mainly used for override resolution */
   case class SuperRef(pot: Potential, supercls: ClassSymbol)(val source: Tree) extends Potential {
     val size: Int = 1
-    def show(implicit ctx: Context): String = pot.show + ".super[" + supercls.name.show + "]"
+    def show(using Context): String = pot.show + ".super[" + supercls.name.show + "]"
   }
 
   /** A warm potential represents an object of which all fields are initialized, but it may contain
@@ -66,7 +66,7 @@ object Potentials {
    */
   case class Warm(classSymbol: ClassSymbol, outer: Potential)(val source: Tree) extends Potential {
     def size: Int = 1
-    def show(implicit ctx: Context): String = "Warm[" + classSymbol.show + ", outer = " + outer.show + "]"
+    def show(using Context): String = "Warm[" + classSymbol.show + ", outer = " + outer.show + "]"
 
     /** Effects of a method call or a lazy val access
      *
@@ -113,7 +113,7 @@ object Potentials {
    */
   case class Outer(pot: Potential, classSymbol: ClassSymbol)(val source: Tree) extends Potential {
     def size: Int = 1
-    def show(implicit ctx: Context): String = "Outer[" + pot.show + ", " + classSymbol.show + "]"
+    def show(using Context): String = "Outer[" + pot.show + ", " + classSymbol.show + "]"
   }
 
   /** The object pointed by `this.f` */
@@ -121,7 +121,7 @@ object Potentials {
     assert(field != NoSymbol)
 
     def size: Int = potential.size + 1
-    def show(implicit ctx: Context): String = potential.show + "." + field.name.show
+    def show(using Context): String = potential.show + "." + field.name.show
   }
 
   /** The object returned by `this.m()` */
@@ -129,19 +129,19 @@ object Potentials {
     assert(method != NoSymbol)
 
     def size: Int = potential.size + 1
-    def show(implicit ctx: Context): String = potential.show + "." + method.name.show
+    def show(using Context): String = potential.show + "." + method.name.show
   }
 
   /** The object whose initialization status is unknown */
   case class Cold()(val source: Tree) extends Potential {
     def size: Int = 1
-    def show(implicit ctx: Context): String = "Cold"
+    def show(using Context): String = "Cold"
   }
 
   /** A function when called will produce the `effects` and return the `potentials` */
   case class Fun(potentials: Potentials, effects: Effects)(val source: Tree) extends Potential {
     def size: Int = 1
-    def show(implicit ctx: Context): String =
+    def show(using Context): String =
       "Fun[pots = " + potentials.map(_.show).mkString(";") + ", effs = " + effects.map(_.show).mkString(";") + "]"
   }
 
@@ -149,7 +149,7 @@ object Potentials {
 
   def (pot: Potential) toPots: Potentials = Potentials.empty + pot
 
-  def (ps: Potentials) select (symbol: Symbol, source: Tree)(implicit ctx: Context): Summary =
+  def (ps: Potentials) select (symbol: Symbol, source: Tree)(using Context): Summary =
     ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
       // max potential length
       // TODO: it can be specified on a project basis via compiler options

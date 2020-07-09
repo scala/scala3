@@ -10,23 +10,23 @@ import config.Printers.Printer
 import annotation.tailrec
 
 object Util {
-  def traceIndented(msg: String, printer: Printer)(implicit ctx: Context): Unit =
+  def traceIndented(msg: String, printer: Printer)(using Context): Unit =
     printer.println(s"${ctx.base.indentTab * ctx.base.indent} $msg")
 
-  def traceOp(msg: String, printer: Printer)(op: => Unit)(implicit ctx: Context): Unit = {
+  def traceOp(msg: String, printer: Printer)(op: => Unit)(using Context): Unit = {
     traceIndented(s"==> ${msg}", printer)
     op
     traceIndented(s"<== ${msg}", printer)
   }
 
-  def (symbol: Symbol) isInternal(implicit ctx: Context): Boolean =
+  def (symbol: Symbol) isInternal(using Context): Boolean =
     !symbol.defTree.isEmpty
 
-  def resolve(cls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol =
+  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol =
     if (sym.isEffectivelyFinal || sym.isConstructor) sym
     else sym.matchingMember(cls.appliedRef)
 
-  def resolveSuper(cls: ClassSymbol, superCls: ClassSymbol, sym: Symbol)(implicit ctx: Context): Symbol = {
+  def resolveSuper(cls: ClassSymbol, superCls: ClassSymbol, sym: Symbol)(using Context): Symbol = {
     // println(s"bases of $cls: " + cls.info.baseClasses)
     @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
       case bc :: bcs1 =>

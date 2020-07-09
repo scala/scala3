@@ -22,21 +22,21 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
   import ast.tpd._
 
   /** The info of the tree's symbol before it is potentially transformed in this phase */
-  private def originalDenotation(tree: Tree)(implicit ctx: Context) =
+  private def originalDenotation(tree: Tree)(using Context) =
     tree.symbol.denot(using ctx.withPhase(thisPhase))
 
   /** If denotation had an ExprType before, it now gets a function type */
-  protected def exprBecomesFunction(symd: SymDenotation)(implicit ctx: Context): Boolean =
+  protected def exprBecomesFunction(symd: SymDenotation)(using Context): Boolean =
     symd.is(Param) || symd.is(ParamAccessor, butNot = Method)
 
-  protected def isByNameRef(tree: Tree)(implicit ctx: Context): Boolean = {
+  protected def isByNameRef(tree: Tree)(using Context): Boolean = {
     val origDenot = originalDenotation(tree)
     origDenot.info.isInstanceOf[ExprType] && exprBecomesFunction(origDenot)
   }
 
-  def mkByNameClosure(arg: Tree, argType: Type)(implicit ctx: Context): Tree = unsupported(i"mkClosure($arg)")
+  def mkByNameClosure(arg: Tree, argType: Type)(using Context): Tree = unsupported(i"mkClosure($arg)")
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
+  override def transformApply(tree: Apply)(using Context): Tree =
     trace(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
 
       def transformArg(arg: Tree, formal: Type): Tree = formal.dealias match {

@@ -117,7 +117,7 @@ trait SpaceLogic {
    *
    *                    This reduces noise in counterexamples.
    */
-  def simplify(space: Space, aggressive: Boolean = false)(implicit ctx: Context): Space = trace(s"simplify ${show(space)}, aggressive = $aggressive --> ", debug, x => show(x.asInstanceOf[Space]))(space match {
+  def simplify(space: Space, aggressive: Boolean = false)(using Context): Space = trace(s"simplify ${show(space)}, aggressive = $aggressive --> ", debug, x => show(x.asInstanceOf[Space]))(space match {
     case Prod(tp, fun, spaces, full) =>
       val sp = Prod(tp, fun, spaces.map(simplify(_)), full)
       if (sp.params.contains(Empty)) Empty
@@ -147,7 +147,7 @@ trait SpaceLogic {
   })
 
   /** Flatten space to get rid of `Or` for pretty print */
-  def flatten(space: Space)(implicit ctx: Context): List[Space] = space match {
+  def flatten(space: Space)(using Context): List[Space] = space match {
     case Prod(tp, fun, spaces, full) =>
       spaces.map(flatten) match {
         case Nil => Prod(tp, fun, Nil, full) :: Nil
@@ -163,7 +163,7 @@ trait SpaceLogic {
   }
 
   /** Is `a` a subspace of `b`? Equivalent to `a - b == Empty`, but faster */
-  def isSubspace(a: Space, b: Space)(implicit ctx: Context): Boolean = trace(s"${show(a)} < ${show(b)}", debug) {
+  def isSubspace(a: Space, b: Space)(using Context): Boolean = trace(s"${show(a)} < ${show(b)}", debug) {
     def tryDecompose1(tp: Type) = canDecompose(tp) && isSubspace(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = canDecompose(tp) && isSubspace(a, Or(decompose(tp)))
 
@@ -189,7 +189,7 @@ trait SpaceLogic {
   }
 
   /** Intersection of two spaces  */
-  def intersect(a: Space, b: Space)(implicit ctx: Context): Space = trace(s"${show(a)} & ${show(b)}", debug, x => show(x.asInstanceOf[Space])) {
+  def intersect(a: Space, b: Space)(using Context): Space = trace(s"${show(a)} & ${show(b)}", debug, x => show(x.asInstanceOf[Space])) {
     def tryDecompose1(tp: Type) = intersect(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = intersect(a, Or(decompose(tp)))
 
@@ -229,7 +229,7 @@ trait SpaceLogic {
   }
 
   /** The space of a not covered by b */
-  def minus(a: Space, b: Space)(implicit ctx: Context): Space = trace(s"${show(a)} - ${show(b)}", debug, x => show(x.asInstanceOf[Space])) {
+  def minus(a: Space, b: Space)(using Context): Space = trace(s"${show(a)} - ${show(b)}", debug, x => show(x.asInstanceOf[Space])) {
     def tryDecompose1(tp: Type) = minus(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = minus(a, Or(decompose(tp)))
 
@@ -286,7 +286,7 @@ object SpaceEngine {
   /** Is the unapply irrefutable?
    *  @param  unapp   The unapply function reference
    */
-  def isIrrefutableUnapply(unapp: tpd.Tree, patSize: Int)(implicit ctx: Context): Boolean = {
+  def isIrrefutableUnapply(unapp: tpd.Tree, patSize: Int)(using Context): Boolean = {
     val unappResult = unapp.tpe.widen.finalResultType
     unappResult.isRef(defn.SomeClass) ||
     unappResult <:< ConstantType(Constant(true)) ||
@@ -300,7 +300,7 @@ object SpaceEngine {
   /** Is the unapplySeq irrefutable?
    *  @param  unapp   The unapplySeq function reference
    */
-  def isIrrefutableUnapplySeq(unapp: tpd.Tree, patSize: Int)(implicit ctx: Context): Boolean = {
+  def isIrrefutableUnapplySeq(unapp: tpd.Tree, patSize: Int)(using Context): Boolean = {
     val unappResult = unapp.tpe.widen.finalResultType
     unappResult.isRef(defn.SomeClass) ||
     (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||  // scala2 compatibility
@@ -314,7 +314,7 @@ object SpaceEngine {
 }
 
 /** Scala implementation of space logic */
-class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
+class SpaceEngine(using Context) extends SpaceLogic {
   import tpd._
   import SpaceEngine._
 
@@ -422,7 +422,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case tp => Typ(tp, decomposed = true)
   }
 
-  private def unapplySeqInfo(resTp: Type, pos: SourcePosition)(implicit ctx: Context): (Int, Type, Type) = {
+  private def unapplySeqInfo(resTp: Type, pos: SourcePosition)(using Context): (Int, Type, Type) = {
     var resultTp = resTp
     var elemTp = unapplySeqTypeElemTp(resultTp)
     var arity = productArity(resultTp, pos)
@@ -716,7 +716,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case _ => impossible
     }
 
-    def checkConstraint(constrs: List[(Type, Type)])(implicit ctx: Context): Boolean = {
+    def checkConstraint(constrs: List[(Type, Type)])(using Context): Boolean = {
       val tvarMap = collection.mutable.Map.empty[Symbol, TypeVar]
       val typeParamMap = new TypeMap() {
         override def apply(tp: Type): Type = tp match {
@@ -729,7 +729,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       constrs.forall { case (tp1, tp2) => typeParamMap(tp1) <:< typeParamMap(tp2) }
     }
 
-    checkConstraint(genConstraint(sp))(ctx.fresh.setNewTyperState())
+    checkConstraint(genConstraint(sp))(using ctx.fresh.setNewTyperState())
   }
 
   def show(ss: Seq[Space]): String = ss.map(show).mkString(", ")

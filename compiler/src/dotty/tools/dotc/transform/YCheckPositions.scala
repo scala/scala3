@@ -16,14 +16,14 @@ class YCheckPositions extends Phases.Phase {
 
   def phaseName: String = "inlinedPositions"
 
-  override def run(implicit ctx: Context): Unit = () // YCheck only
+  override def run(using Context): Unit = () // YCheck only
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
+  override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
       case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
         new TreeTraverser {
           private var sources: List[SourceFile] = ctx.source :: Nil
-          def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+          def traverse(tree: tpd.Tree)(using Context): Unit = {
 
             // Check current context is correct
             assert(ctx.source == sources.head)
@@ -39,13 +39,13 @@ class YCheckPositions extends Phases.Phase {
                 assert(bindings.isEmpty)
                 val old = sources
                 sources = old.tail
-                traverse(expansion)(inlineContext(EmptyTree).withSource(sources.head))
+                traverse(expansion)(using inlineContext(EmptyTree).withSource(sources.head))
                 sources = old
               case Inlined(call, bindings, expansion) =>
                 bindings.foreach(traverse(_))
                 sources = call.symbol.topLevelClass.source :: sources
                 if (!isMacro(call)) // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
-                  traverse(expansion)(inlineContext(call).withSource(sources.head))
+                  traverse(expansion)(using inlineContext(call).withSource(sources.head))
                 sources = sources.tail
               case _ => traverseChildren(tree)
             }
@@ -54,7 +54,7 @@ class YCheckPositions extends Phases.Phase {
       case _ =>
     }
 
-  private def isMacro(call: Tree)(implicit ctx: Context) =
+  private def isMacro(call: Tree)(using Context) =
     if (ctx.phase <= ctx.postTyperPhase) call.symbol.is(Macro)
     else call.isInstanceOf[Select] // The call of a macro after typer is encoded as a Select while other inlines are Ident
                                    // TODO remove this distinction once Inline nodes of expanded macros can be trusted (also in Inliner.inlineCallTrace)

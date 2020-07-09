@@ -23,7 +23,7 @@ class StringInterpolatorOpt extends MiniPhase {
 
   override def phaseName: String = "stringInterpolatorOpt"
 
-  override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+  override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = {
     tree match {
       case tree: RefTree =>
         val sym = tree.symbol
@@ -35,7 +35,7 @@ class StringInterpolatorOpt extends MiniPhase {
 
   /** Matches a list of constant literals */
   private object Literals {
-    def unapply(tree: SeqLiteral)(implicit ctx: Context): Option[List[Literal]] = {
+    def unapply(tree: SeqLiteral)(using Context): Option[List[Literal]] = {
       tree.elems match {
         case literals if literals.forall(_.isInstanceOf[Literal]) =>
           Some(literals.map(_.asInstanceOf[Literal]))
@@ -45,7 +45,7 @@ class StringInterpolatorOpt extends MiniPhase {
   }
 
   private object StringContextApply {
-    def unapply(tree: Select)(implicit ctx: Context): Boolean = {
+    def unapply(tree: Select)(using Context): Boolean = {
       tree.symbol.eq(defn.StringContextModule_apply) &&
       tree.qualifier.symbol.eq(defn.StringContextModule)
     }
@@ -53,7 +53,7 @@ class StringInterpolatorOpt extends MiniPhase {
 
   /** Matches an s or raw string interpolator */
   private object SOrRawInterpolator {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Literal], List[Tree])] = {
+    def unapply(tree: Tree)(using Context): Option[(List[Literal], List[Tree])] = {
       tree match {
         case Apply(Select(Apply(StringContextApply(), List(Literals(strs))), _),
         List(SeqLiteral(elems, _))) if elems.length == strs.length - 1 =>
@@ -83,7 +83,7 @@ class StringInterpolatorOpt extends MiniPhase {
     * the variable references.
     */
   private object StringContextIntrinsic {
-    def unapply(tree: Apply)(implicit ctx: Context): Option[(List[Literal], List[Tree])] = {
+    def unapply(tree: Apply)(using Context): Option[(List[Literal], List[Tree])] = {
       tree match {
         case SOrRawInterpolator(strs, elems) =>
           if (tree.symbol == defn.StringContext_raw) Some(strs, elems)
@@ -111,7 +111,7 @@ class StringInterpolatorOpt extends MiniPhase {
     }
   }
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
+  override def transformApply(tree: Apply)(using Context): Tree = {
     val sym = tree.symbol
     val isInterpolatedMethod = // Test names first to avoid loading scala.StringContext if not used
       (sym.name == nme.raw_ && sym.eq(defn.StringContext_raw)) ||

@@ -12,7 +12,7 @@ import SymUtils._
 /** Methods that apply to user-defined value classes */
 object ValueClasses {
 
-  def isDerivedValueClass(sym: Symbol)(implicit ctx: Context): Boolean = {
+  def isDerivedValueClass(sym: Symbol)(using Context): Boolean = {
     val d = sym.denot
     !ctx.settings.XnoValueClasses.value &&
     !d.isRefinementClass &&
@@ -21,7 +21,7 @@ object ValueClasses {
     !d.isPrimitiveValueClass
   }
 
-  def isMethodWithExtension(sym: Symbol)(implicit ctx: Context): Boolean =
+  def isMethodWithExtension(sym: Symbol)(using Context): Boolean =
     ctx.atPhaseNotLaterThan(ctx.extensionMethodsPhase) {
       val d = sym.denot
       d.validFor.containsPhaseId(summon[Context].phaseId) &&
@@ -33,7 +33,7 @@ object ValueClasses {
     }
 
   /** The member of a derived value class that unboxes it. */
-  def valueClassUnbox(cls: ClassSymbol)(implicit ctx: Context): Symbol =
+  def valueClassUnbox(cls: ClassSymbol)(using Context): Symbol =
     // (info.decl(nme.unbox)).orElse(...)      uncomment once we accept unbox methods
     cls.classInfo.decls.find(_.is(ParamAccessor))
 
@@ -41,23 +41,23 @@ object ValueClasses {
    *  ErasedValueType defined in the companion module. This method is added to the module
    *  and further described in [[ExtensionMethods]].
    */
-  def u2evt(cls: ClassSymbol)(implicit ctx: Context): Symbol =
+  def u2evt(cls: ClassSymbol)(using Context): Symbol =
     cls.linkedClass.info.decl(nme.U2EVT).symbol
 
   /** For a value class `d`, this returns the synthetic cast from ErasedValueType to the
    *  underlying type defined in the companion module. This method is added to the module
    *  and further described in [[ExtensionMethods]].
    */
-  def evt2u(cls: ClassSymbol)(implicit ctx: Context): Symbol =
+  def evt2u(cls: ClassSymbol)(using Context): Symbol =
     cls.linkedClass.info.decl(nme.EVT2U).symbol
 
   /** The unboxed type that underlies a derived value class */
-  def underlyingOfValueClass(sym: ClassSymbol)(implicit ctx: Context): Type =
+  def underlyingOfValueClass(sym: ClassSymbol)(using Context): Type =
     valueClassUnbox(sym).info.resultType
 
   /** Whether a value class wraps itself */
-  def isCyclic(cls: ClassSymbol)(implicit ctx: Context): Boolean = {
-    def recur(seen: Set[Symbol], clazz: ClassSymbol)(implicit ctx: Context): Boolean =
+  def isCyclic(cls: ClassSymbol)(using Context): Boolean = {
+    def recur(seen: Set[Symbol], clazz: ClassSymbol)(using Context): Boolean =
       (seen contains clazz) || {
         val unboxed = underlyingOfValueClass(clazz).typeSymbol
         (isDerivedValueClass(unboxed)) && recur(seen + clazz, unboxed.asClass)

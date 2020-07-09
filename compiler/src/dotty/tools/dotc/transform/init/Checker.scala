@@ -27,10 +27,10 @@ class Checker extends MiniPhase {
 
   override val runsAfter = Set(Pickler.name)
 
-  override def isEnabled(implicit ctx: Context): Boolean =
+  override def isEnabled(using Context): Boolean =
     super.isEnabled && ctx.settings.YcheckInit.value
 
-  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context): tpd.Tree = {
+  override def transformTypeDef(tree: TypeDef)(using Context): tpd.Tree = {
     if (!tree.isClassDef) return tree
 
     val cls = tree.symbol.asClass
@@ -46,7 +46,7 @@ class Checker extends MiniPhase {
 
     // A concrete class may not be instantiated if the self type is not satisfied
     if (instantiable) {
-      implicit val state = Checking.State(
+      implicit val state: Checking.State = Checking.State(
         visited = mutable.Set.empty,
         path = Vector.empty,
         thisClass = cls,

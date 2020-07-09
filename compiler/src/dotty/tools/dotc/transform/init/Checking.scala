@@ -58,7 +58,7 @@ object Checking {
     // mark current class as initialized, required for linearization
     state.parentsInited += cls
 
-    def checkClassBodyStat(tree: Tree)(implicit ctx: Context): Unit = traceOp("checking " + tree.show, init) {
+    def checkClassBodyStat(tree: Tree)(using Context): Unit = traceOp("checking " + tree.show, init) {
       tree match {
         case vdef : ValDef =>
           val (pots, effs) = Summarization.analyze(vdef.rhs)(theEnv.withOwner(vdef.symbol))
@@ -79,7 +79,7 @@ object Checking {
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
 
-    def checkCtor(ctor: Symbol, tp: Type, source: Tree)(implicit ctx: Context): Unit = {
+    def checkCtor(ctor: Symbol, tp: Type, source: Tree)(using Context): Unit = {
       val cls = ctor.owner
       val classDef = cls.defTree
       if (!classDef.isEmpty) {

@@ -23,7 +23,7 @@ object Summary {
   case class ClassSummary(currentClass: ClassSymbol, parentOuter: Map[ClassSymbol, Potentials]) {
     private val summaryCache: mutable.Map[Symbol, Summary] = mutable.Map.empty
 
-    def cacheFor(member: Symbol, summary: Summary)(implicit ctx: Context): Unit = {
+    def cacheFor(member: Symbol, summary: Summary)(using Context): Unit = {
       traceIndented("cache for " + member.show + ", summary = " + Summary.show(summary), init)
       assert(member.owner == currentClass, "owner = " + member.owner.show + ", current = " + currentClass.show)
       summaryCache(member) = summary
@@ -47,7 +47,7 @@ object Summary {
     def effectsOf(member: Symbol)(implicit env: Env): Effects = summaryOf(member)._2
     def potentialsOf(member: Symbol)(implicit env: Env): Potentials = summaryOf(member)._1
 
-    def show(implicit ctx: Context): String =
+    def show(using Context): String =
       "ClassSummary(" + currentClass.name.show +
         ", parents = " + parentOuter.map { case (k, v) => k.show + "->" + "[" + Potentials.show(v) + "]" }
   }
@@ -75,12 +75,12 @@ object Summary {
         case None => ??? // impossible
       }
 
-    def show(implicit ctx: Context): String =
+    def show(using Context): String =
       "ObjectPart(this = " + thisValue.show + ","  + currentClass.name.show + ", outer = " + Potentials.show(currentOuter) +
         "parents = " + parentOuter.map { case (k, v) => k.show + "->" + "[" + Potentials.show(v) + "]" }
   }
 
-  def show(summary: Summary)(implicit ctx: Context): String = {
+  def show(summary: Summary)(using Context): String = {
     val pots = Potentials.show(summary._1)
     val effs = Effects.show(summary._2)
     s"([$pots], [$effs])"
