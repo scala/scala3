@@ -81,7 +81,7 @@ object Checking {
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
 
-    def checkCtor(ctor: Symbol, tp: Type, source: Tree)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
+    def checkConstructor(ctor: Symbol, tp: Type, source: Tree)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
       val cls = ctor.owner
       val classDef = cls.defTree
       if (!classDef.isEmpty) {
@@ -120,20 +120,20 @@ object Checking {
     tpl.parents.foreach {
       case tree @ Block(_, parent) =>
         val (ctor, _, _) = decomposeCall(parent)
-        checkCtor(ctor.symbol, parent.tpe, tree)
+        checkConstructor(ctor.symbol, parent.tpe, tree)
 
       case tree @ Apply(Block(_, parent), _) =>
         val (ctor, _, _) = decomposeCall(parent)
-        checkCtor(ctor.symbol, tree.tpe, tree)
+        checkConstructor(ctor.symbol, tree.tpe, tree)
 
       case parent : Apply =>
         val (ctor, _, argss) = decomposeCall(parent)
-        checkCtor(ctor.symbol, parent.tpe, parent)
+        checkConstructor(ctor.symbol, parent.tpe, parent)
 
       case ref =>
         val cls = ref.tpe.classSymbol.asClass
         if (!state.parentsInited.contains(cls) && cls.primaryConstructor.exists)
-          checkCtor(cls.primaryConstructor, ref.tpe, ref)
+          checkConstructor(cls.primaryConstructor, ref.tpe, ref)
     }
 
     // check class body
