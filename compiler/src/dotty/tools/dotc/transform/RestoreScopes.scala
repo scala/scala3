@@ -3,7 +3,7 @@ package transform
 
 import core._
 import DenotTransformers.IdentityDenotTransformer
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Symbols._
 import Scopes._
 import MegaPhase.MiniPhase

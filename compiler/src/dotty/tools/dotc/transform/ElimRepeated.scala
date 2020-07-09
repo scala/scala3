@@ -7,7 +7,7 @@ import Types._
 import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
 import Flags._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Symbols._
 import Constants._
 import Decorators._

@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import core._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation

@@ -4,7 +4,7 @@ package transform
 import dotty.tools.dotc.util.Positions._
 import MegaPhase.MiniPhase
 import core._
-import Contexts.Context, Types._, Constants._, Decorators._, Symbols._
+import Contexts.{Context, ctx}, Types._, Constants._, Decorators._, Symbols._
 import TypeUtils._, TypeErasure._, Flags._
 
 /** Implements partial evaluation of `sc.isInstanceOf[Sel]` according to:

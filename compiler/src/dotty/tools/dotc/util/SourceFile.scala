@@ -9,7 +9,7 @@ import java.io.IOException
 import scala.internal.Chars._
 import Spans._
 import scala.io.Codec
-import core.Contexts.Context
+import core.Contexts.{Context, ctx}
 import scala.annotation.internal.sharable
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
@@ -49,7 +49,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   }
 
   private var _maybeInComplete: Boolean = false
-  
+
   def maybeIncomplete: Boolean = _maybeInComplete
 
   def this(file: AbstractFile, codec: Codec) =

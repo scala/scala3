@@ -7,7 +7,7 @@ import ast.Trees._
 import core.Types._
 import core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.Spans.Span
 

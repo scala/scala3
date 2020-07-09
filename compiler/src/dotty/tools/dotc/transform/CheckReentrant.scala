@@ -4,7 +4,7 @@ package transform
 import core._
 import dotty.tools.dotc.transform.MegaPhase._
 import Flags._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Symbols._
 import Decorators._
 

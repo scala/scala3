@@ -4,7 +4,7 @@ package fromtasty
 
 import core._
 import Decorators._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Symbols.{Symbol, ClassSymbol}
 import SymDenotations.ClassDenotation
 import NameOps._

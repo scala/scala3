@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core.Annotations._
-import core.Contexts.Context
+import core.Contexts.{Context, ctx}
 import core.Definitions
 import core.Flags._
 import core.Names.{DerivedName, Name, SimpleName, TypeName}

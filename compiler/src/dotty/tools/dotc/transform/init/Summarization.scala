@@ -3,7 +3,7 @@ package transform
 package init
 
 import core._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Decorators._
 import StdNames._
 import Symbols._

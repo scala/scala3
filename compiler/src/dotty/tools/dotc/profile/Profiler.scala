@@ -8,7 +8,7 @@ import javax.management.openmbean.CompositeData
 import javax.management.{Notification, NotificationEmitter, NotificationListener}
 
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.io.AbstractFile
 
 object Profiler {

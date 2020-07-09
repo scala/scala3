@@ -2,7 +2,7 @@ package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Annotations.Annotation
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.DenotTransformers.SymTransformer
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.NameOps._

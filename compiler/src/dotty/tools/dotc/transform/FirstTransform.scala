@@ -9,7 +9,7 @@ import ast.untpd
 import Flags._
 import Types._
 import Constants.Constant
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Symbols._
 import Decorators._
 import scala.collection.mutable

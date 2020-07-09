@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 
-import core.Contexts.Context
+import core.Contexts.{Context, ctx}
 import reporting.Reporter
 
 import scala.annotation.internal.sharable

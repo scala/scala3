@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Flags._
 import SymUtils._
 import Symbols._

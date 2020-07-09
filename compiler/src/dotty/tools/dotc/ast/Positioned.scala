@@ -4,7 +4,7 @@ package ast
 
 import util.Spans._
 import util.{SourceFile, NoSource, SourcePosition}
-import core.Contexts.Context
+import core.Contexts.{Context, ctx}
 import core.Decorators._
 import core.Flags.{JavaDefined, Extension}
 import core.StdNames.nme
@@ -156,7 +156,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
    *  - Parent spans contain child spans
    *  - If item is a non-empty tree, it has a position
    */
-  def checkPos(nonOverlapping: Boolean)(implicit ctx: Context): Unit = try {
+  def checkPos(nonOverlapping: Boolean)(using Context): Unit = try {
     import untpd._
     var lastPositioned: Positioned = null
     var lastSpan = NoSpan
@@ -239,6 +239,6 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
 object Positioned {
   @sharable private[Positioned] var debugId = Int.MinValue
 
-  def updateDebugPos(implicit ctx: Context): Unit =
+  def updateDebugPos(using Context): Unit =
     debugId = ctx.settings.YdebugTreeWithId.value
 }

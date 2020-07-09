@@ -269,7 +269,7 @@ object Interactive {
     case first :: _ if first eq stat =>
       ctx.exprContext(stat, exprOwner)
     case (imp: Import) :: rest =>
-      contextOfStat(rest, stat, exprOwner, ctx.importContext(imp, imp.symbol(ctx)))
+      contextOfStat(rest, stat, exprOwner, ctx.importContext(imp, imp.symbol(using ctx)))
     case _ :: rest =>
       contextOfStat(rest, stat, exprOwner, ctx)
   }

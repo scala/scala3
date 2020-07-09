@@ -2,7 +2,7 @@ package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Phases.Phase
 
 /** Set the `rootTreeOrProvider` property of class symbols. */

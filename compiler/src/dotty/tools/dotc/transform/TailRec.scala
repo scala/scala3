@@ -4,7 +4,7 @@ package transform
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
 import dotty.tools.dotc.config.Printers.tailrec
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._

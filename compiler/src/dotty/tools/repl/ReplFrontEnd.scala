@@ -3,7 +3,7 @@ package repl
 
 import dotc.typer.FrontEnd
 import dotc.CompilationUnit
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 
 /** A customized `FrontEnd` for the REPL
  *

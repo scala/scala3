@@ -1,6 +1,6 @@
 package dotty.tools.dotc.transform
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.DenotTransformers.SymTransformer
 import dotty.tools.dotc.core.Flags._

@@ -5,7 +5,7 @@ import java.util.IdentityHashMap
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 import dotty.tools.dotc.core.Flags._

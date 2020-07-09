@@ -38,7 +38,7 @@ class TreeTypeMap(
   val oldOwners: List[Symbol] = Nil,
   val newOwners: List[Symbol] = Nil,
   val substFrom: List[Symbol] = Nil,
-  val substTo: List[Symbol] = Nil)(implicit ctx: Context) extends tpd.TreeMap {
+  val substTo: List[Symbol] = Nil)(using Context) extends tpd.TreeMap {
   import tpd._
 
   /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
@@ -76,7 +76,7 @@ class TreeTypeMap(
       updateDecls(prevStats.tail, newStats.tail)
     }
 
-  override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = treeMap(tree) match {
+  override def transform(tree: tpd.Tree)(using Context): tpd.Tree = treeMap(tree) match {
     case impl @ Template(constr, parents, self, _) =>
       val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
       cpy.Template(impl)(
@@ -84,7 +84,7 @@ class TreeTypeMap(
           parents = parents.mapconserve(transform),
           self = tmap.transformSub(self),
           body = impl.body mapconserve
-            (tmap.transform(_)(ctx.withOwner(mapOwner(impl.symbol.owner))))
+            (tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner))))
         ).withType(tmap.mapType(impl.tpe))
     case tree1 =>
       tree1.withType(mapType(tree1.tpe)) match {
@@ -129,10 +129,10 @@ class TreeTypeMap(
       }
   }
 
-  override def transformStats(trees: List[tpd.Tree])(implicit ctx: Context): List[Tree] =
+  override def transformStats(trees: List[tpd.Tree])(using Context): List[Tree] =
     transformDefs(trees)._2
 
-  def transformDefs[TT <: tpd.Tree](trees: List[TT])(implicit ctx: Context): (TreeTypeMap, List[TT]) = {
+  def transformDefs[TT <: tpd.Tree](trees: List[TT])(using Context): (TreeTypeMap, List[TT]) = {
     val tmap = withMappedSyms(tpd.localSyms(trees))
     (tmap, tmap.transformSub(trees))
   }

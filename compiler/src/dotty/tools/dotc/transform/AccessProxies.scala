@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Symbols._
 import Flags._
 import Names._

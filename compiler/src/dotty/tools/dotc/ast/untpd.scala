@@ -31,7 +31,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   object TypedSplice {
-    def apply(tree: tpd.Tree)(implicit ctx: Context): TypedSplice =
+    def apply(tree: tpd.Tree)(using Context): TypedSplice =
       new TypedSplice(tree)(ctx.owner) {}
   }
 
@@ -39,7 +39,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ModuleDef(name: TermName, impl: Template)(implicit @constructorOnly src: SourceFile)
     extends MemberDef {
     type ThisTree[-T >: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
-    def withName(name: Name)(implicit ctx: Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
+    def withName(name: Name)(using Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
   /** An untyped template with a derives clause. Derived parents are added to the end
@@ -328,10 +328,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     /** A hook to ensure that all necessary symbols are completed so that
      *  OriginalSymbol attachments are propagated to this tree
      */
-    def ensureCompletions(implicit ctx: Context): Unit = ()
+    def ensureCompletions(using Context): Unit = ()
 
     /** The method that computes the tree with the derived type */
-    def derivedTree(originalSym: Symbol)(implicit ctx: Context): tpd.Tree
+    def derivedTree(originalSym: Symbol)(using Context): tpd.Tree
   }
 
   /** Property key containing TypeTrees whose type is computed
@@ -411,13 +411,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  navigation into these arguments from the IDE, and to do the right thing in
    *  PrepareInlineable.
    */
-  def New(tpt: Tree, argss: List[List[Tree]])(implicit ctx: Context): Tree =
+  def New(tpt: Tree, argss: List[List[Tree]])(using Context): Tree =
     ensureApplied(argss.foldLeft(makeNew(tpt))(Apply(_, _)))
 
   /** A new expression with constrictor and possibly type arguments. See
    *  `New(tpt, argss)` for details.
    */
-  def makeNew(tpt: Tree)(implicit ctx: Context): Tree = {
+  def makeNew(tpt: Tree)(using Context): Tree = {
     val (tycon, targs) = tpt match {
       case AppliedTypeTree(tycon, targs) =>
         (tycon, targs)
@@ -446,11 +446,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def AppliedTypeTree(tpt: Tree, arg: Tree)(implicit src: SourceFile): AppliedTypeTree =
     AppliedTypeTree(tpt, arg :: Nil)
 
-  def TypeTree(tpe: Type)(implicit ctx: Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
+  def TypeTree(tpe: Type)(using Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 
   def unitLiteral(implicit src: SourceFile): Literal = Literal(Constant(()))
 
-  def ref(tp: NamedType)(implicit ctx: Context): Tree =
+  def ref(tp: NamedType)(using Context): Tree =
     TypedSplice(tpd.ref(tp))
 
   def rootDot(name: Name)(implicit src: SourceFile): Select = Select(Ident(nme.ROOTPKG), name)
@@ -461,35 +461,35 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)
   def javaDotLangDot(name: Name)(implicit src: SourceFile): Select = Select(Select(Ident(nme.java), nme.lang), name)
 
-  def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
+  def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, tparams, vparamss, TypeTree(), rhs)
 
-  def emptyConstructor(implicit ctx: Context): DefDef =
+  def emptyConstructor(using Context): DefDef =
     makeConstructor(Nil, Nil)
 
-  def makeSelfDef(name: TermName, tpt: Tree)(implicit ctx: Context): ValDef =
+  def makeSelfDef(name: TermName, tpt: Tree)(using Context): ValDef =
     ValDef(name, tpt, EmptyTree).withFlags(PrivateLocal)
 
-  def makeTupleOrParens(ts: List[Tree])(implicit ctx: Context): Tree = ts match {
+  def makeTupleOrParens(ts: List[Tree])(using Context): Tree = ts match {
     case t :: Nil => Parens(t)
     case _ => Tuple(ts)
   }
 
-  def makeTuple(ts: List[Tree])(implicit ctx: Context): Tree = ts match {
+  def makeTuple(ts: List[Tree])(using Context): Tree = ts match {
     case t :: Nil => t
     case _ => Tuple(ts)
   }
 
-  def makeAndType(left: Tree, right: Tree)(implicit ctx: Context): AppliedTypeTree =
+  def makeAndType(left: Tree, right: Tree)(using Context): AppliedTypeTree =
     AppliedTypeTree(ref(defn.andType.typeRef), left :: right :: Nil)
 
-  def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers, isBackquoted: Boolean = false)(implicit ctx: Context): ValDef = {
+  def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers, isBackquoted: Boolean = false)(using Context): ValDef = {
     val vdef = ValDef(pname, tpe, EmptyTree)
     if (isBackquoted) vdef.pushAttachment(Backquoted, ())
     vdef.withMods(mods | Param)
   }
 
-  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null, flags: FlagSet = SyntheticTermParam)(implicit ctx: Context): ValDef =
+  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null, flags: FlagSet = SyntheticTermParam)(using Context): ValDef =
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
       .withFlags(flags)
 
@@ -505,13 +505,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A reference to given definition. If definition is a repeated
    *  parameter, the reference will be a repeated argument.
    */
-  def refOfDef(tree: MemberDef)(implicit ctx: Context): Tree = tree match {
+  def refOfDef(tree: MemberDef)(using Context): Tree = tree match {
     case ValDef(_, PostfixOp(_, Ident(tpnme.raw.STAR)), _) => repeated(Ident(tree.name))
     case _ => Ident(tree.name)
   }
 
   /** A repeated argument such as `arg: _*` */
-  def repeated(arg: Tree)(implicit ctx: Context): Typed = Typed(arg, Ident(tpnme.WILDCARD_STAR))
+  def repeated(arg: Tree)(using Context): Typed = Typed(arg, Ident(tpnme.WILDCARD_STAR))
 
 
 // --------- Copier/Transformer/Accumulator classes for untyped trees -----
@@ -530,117 +530,117 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       }
     }.asInstanceOf[copied.ThisTree[Untyped]]
 
-    def ModuleDef(tree: Tree)(name: TermName, impl: Template)(implicit ctx: Context): ModuleDef = tree match {
+    def ModuleDef(tree: Tree)(name: TermName, impl: Template)(using Context): ModuleDef = tree match {
       case tree: ModuleDef if (name eq tree.name) && (impl eq tree.impl) => tree
       case _ => finalize(tree, untpd.ModuleDef(name, impl)(tree.source))
     }
-    def ParsedTry(tree: Tree)(expr: Tree, handler: Tree, finalizer: Tree)(implicit ctx: Context): TermTree = tree match {
+    def ParsedTry(tree: Tree)(expr: Tree, handler: Tree, finalizer: Tree)(using Context): TermTree = tree match {
       case tree: ParsedTry if (expr eq tree.expr) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
       case _ => finalize(tree, untpd.ParsedTry(expr, handler, finalizer)(tree.source))
     }
-    def SymbolLit(tree: Tree)(str: String)(implicit ctx: Context): TermTree = tree match {
+    def SymbolLit(tree: Tree)(str: String)(using Context): TermTree = tree match {
       case tree: SymbolLit if str == tree.str => tree
       case _ => finalize(tree, untpd.SymbolLit(str)(tree.source))
     }
-    def InterpolatedString(tree: Tree)(id: TermName, segments: List[Tree])(implicit ctx: Context): TermTree = tree match {
+    def InterpolatedString(tree: Tree)(id: TermName, segments: List[Tree])(using Context): TermTree = tree match {
       case tree: InterpolatedString if (id eq tree.id) && (segments eq tree.segments) => tree
       case _ => finalize(tree, untpd.InterpolatedString(id, segments)(tree.source))
     }
-    def Function(tree: Tree)(args: List[Tree], body: Tree)(implicit ctx: Context): Tree = tree match {
+    def Function(tree: Tree)(args: List[Tree], body: Tree)(using Context): Tree = tree match {
       case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
       case _ => finalize(tree, untpd.Function(args, body)(tree.source))
     }
-    def PolyFunction(tree: Tree)(targs: List[Tree], body: Tree)(implicit ctx: Context): Tree = tree match {
+    def PolyFunction(tree: Tree)(targs: List[Tree], body: Tree)(using Context): Tree = tree match {
       case tree: PolyFunction if (targs eq tree.targs) && (body eq tree.body) => tree
       case _ => finalize(tree, untpd.PolyFunction(targs, body)(tree.source))
     }
-    def InfixOp(tree: Tree)(left: Tree, op: Ident, right: Tree)(implicit ctx: Context): Tree = tree match {
+    def InfixOp(tree: Tree)(left: Tree, op: Ident, right: Tree)(using Context): Tree = tree match {
       case tree: InfixOp if (left eq tree.left) && (op eq tree.op) && (right eq tree.right) => tree
       case _ => finalize(tree, untpd.InfixOp(left, op, right)(tree.source))
     }
-    def PostfixOp(tree: Tree)(od: Tree, op: Ident)(implicit ctx: Context): Tree = tree match {
+    def PostfixOp(tree: Tree)(od: Tree, op: Ident)(using Context): Tree = tree match {
       case tree: PostfixOp if (od eq tree.od) && (op eq tree.op) => tree
       case _ => finalize(tree, untpd.PostfixOp(od, op)(tree.source))
     }
-    def PrefixOp(tree: Tree)(op: Ident, od: Tree)(implicit ctx: Context): Tree = tree match {
+    def PrefixOp(tree: Tree)(op: Ident, od: Tree)(using Context): Tree = tree match {
       case tree: PrefixOp if (op eq tree.op) && (od eq tree.od) => tree
       case _ => finalize(tree, untpd.PrefixOp(op, od)(tree.source))
     }
-    def Parens(tree: Tree)(t: Tree)(implicit ctx: Context): ProxyTree = tree match {
+    def Parens(tree: Tree)(t: Tree)(using Context): ProxyTree = tree match {
       case tree: Parens if t eq tree.t => tree
       case _ => finalize(tree, untpd.Parens(t)(tree.source))
     }
-    def Tuple(tree: Tree)(trees: List[Tree])(implicit ctx: Context): Tree = tree match {
+    def Tuple(tree: Tree)(trees: List[Tree])(using Context): Tree = tree match {
       case tree: Tuple if trees eq tree.trees => tree
       case _ => finalize(tree, untpd.Tuple(trees)(tree.source))
     }
-    def Throw(tree: Tree)(expr: Tree)(implicit ctx: Context): TermTree = tree match {
+    def Throw(tree: Tree)(expr: Tree)(using Context): TermTree = tree match {
       case tree: Throw if expr eq tree.expr => tree
       case _ => finalize(tree, untpd.Throw(expr)(tree.source))
     }
-    def Quote(tree: Tree)(quoted: Tree)(implicit ctx: Context): Tree = tree match {
+    def Quote(tree: Tree)(quoted: Tree)(using Context): Tree = tree match {
       case tree: Quote if quoted eq tree.quoted => tree
       case _ => finalize(tree, untpd.Quote(quoted)(tree.source))
     }
-    def Splice(tree: Tree)(expr: Tree)(implicit ctx: Context): Tree = tree match {
+    def Splice(tree: Tree)(expr: Tree)(using Context): Tree = tree match {
       case tree: Splice if expr eq tree.expr => tree
       case _ => finalize(tree, untpd.Splice(expr)(tree.source))
     }
-    def TypSplice(tree: Tree)(expr: Tree)(implicit ctx: Context): Tree = tree match {
+    def TypSplice(tree: Tree)(expr: Tree)(using Context): Tree = tree match {
       case tree: TypSplice if expr eq tree.expr => tree
       case _ => finalize(tree, untpd.TypSplice(expr)(tree.source))
     }
-    def ForYield(tree: Tree)(enums: List[Tree], expr: Tree)(implicit ctx: Context): TermTree = tree match {
+    def ForYield(tree: Tree)(enums: List[Tree], expr: Tree)(using Context): TermTree = tree match {
       case tree: ForYield if (enums eq tree.enums) && (expr eq tree.expr) => tree
       case _ => finalize(tree, untpd.ForYield(enums, expr)(tree.source))
     }
-    def ForDo(tree: Tree)(enums: List[Tree], body: Tree)(implicit ctx: Context): TermTree = tree match {
+    def ForDo(tree: Tree)(enums: List[Tree], body: Tree)(using Context): TermTree = tree match {
       case tree: ForDo if (enums eq tree.enums) && (body eq tree.body) => tree
       case _ => finalize(tree, untpd.ForDo(enums, body)(tree.source))
     }
-    def GenFrom(tree: Tree)(pat: Tree, expr: Tree, checkMode: GenCheckMode)(implicit ctx: Context): Tree = tree match {
+    def GenFrom(tree: Tree)(pat: Tree, expr: Tree, checkMode: GenCheckMode)(using Context): Tree = tree match {
       case tree: GenFrom if (pat eq tree.pat) && (expr eq tree.expr) && (checkMode == tree.checkMode) => tree
       case _ => finalize(tree, untpd.GenFrom(pat, expr, checkMode)(tree.source))
     }
-    def GenAlias(tree: Tree)(pat: Tree, expr: Tree)(implicit ctx: Context): Tree = tree match {
+    def GenAlias(tree: Tree)(pat: Tree, expr: Tree)(using Context): Tree = tree match {
       case tree: GenAlias if (pat eq tree.pat) && (expr eq tree.expr) => tree
       case _ => finalize(tree, untpd.GenAlias(pat, expr)(tree.source))
     }
-    def ContextBounds(tree: Tree)(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit ctx: Context): TypTree = tree match {
+    def ContextBounds(tree: Tree)(bounds: TypeBoundsTree, cxBounds: List[Tree])(using Context): TypTree = tree match {
       case tree: ContextBounds if (bounds eq tree.bounds) && (cxBounds eq tree.cxBounds) => tree
       case _ => finalize(tree, untpd.ContextBounds(bounds, cxBounds)(tree.source))
     }
-    def PatDef(tree: Tree)(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit ctx: Context): Tree = tree match {
+    def PatDef(tree: Tree)(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(using Context): Tree = tree match {
       case tree: PatDef if (mods eq tree.mods) && (pats eq tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
       case _ => finalize(tree, untpd.PatDef(mods, pats, tpt, rhs)(tree.source))
     }
-    def Export(tree: Tree)(expr: Tree, selectors: List[ImportSelector])(implicit ctx: Context): Tree = tree match {
+    def Export(tree: Tree)(expr: Tree, selectors: List[ImportSelector])(using Context): Tree = tree match {
       case tree: Export if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
       case _ => finalize(tree, untpd.Export(expr, selectors)(tree.source))
     }
     def ExtMethods(tree: Tree)(tparams: List[TypeDef], vparamss: List[List[ValDef]], methods: List[DefDef])(using Context): Tree = tree match
       case tree: ExtMethods if (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (methods == tree.methods) => tree
       case _ => finalize(tree, untpd.ExtMethods(tparams, vparamss, methods)(tree.source))
-    def ImportSelector(tree: Tree)(imported: Ident, renamed: Tree, bound: Tree)(implicit ctx: Context): Tree = tree match {
+    def ImportSelector(tree: Tree)(imported: Ident, renamed: Tree, bound: Tree)(using Context): Tree = tree match {
       case tree: ImportSelector if (imported eq tree.imported) && (renamed eq tree.renamed) && (bound eq tree.bound) => tree
       case _ => finalize(tree, untpd.ImportSelector(imported, renamed, bound)(tree.source))
     }
-    def Number(tree: Tree)(digits: String, kind: NumberKind)(implicit ctx: Context): Tree = tree match {
+    def Number(tree: Tree)(digits: String, kind: NumberKind)(using Context): Tree = tree match {
       case tree: Number if (digits == tree.digits) && (kind == tree.kind) => tree
       case _ => finalize(tree, untpd.Number(digits, kind))
     }
-    def TypedSplice(tree: Tree)(splice: tpd.Tree)(implicit ctx: Context): ProxyTree = tree match {
+    def TypedSplice(tree: Tree)(splice: tpd.Tree)(using Context): ProxyTree = tree match {
       case tree: TypedSplice if splice `eq` tree.splice => tree
-      case _ => finalize(tree, untpd.TypedSplice(splice)(ctx))
+      case _ => finalize(tree, untpd.TypedSplice(splice)(using ctx))
     }
-    def MacroTree(tree: Tree)(expr: Tree)(implicit ctx: Context): Tree = tree match {
+    def MacroTree(tree: Tree)(expr: Tree)(using Context): Tree = tree match {
       case tree: MacroTree if expr `eq` tree.expr => tree
       case _ => finalize(tree, untpd.MacroTree(expr)(tree.source))
     }
   }
 
   abstract class UntypedTreeMap(cpy: UntypedTreeCopier = untpd.cpy) extends TreeMap(cpy) {
-    override def transformMoreCases(tree: Tree)(implicit ctx: Context): Tree = tree match {
+    override def transformMoreCases(tree: Tree)(using Context): Tree = tree match {
       case ModuleDef(name, impl) =>
         cpy.ModuleDef(tree)(name, transformSub(impl))
       case tree: DerivingTemplate =>
@@ -701,7 +701,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   abstract class UntypedTreeAccumulator[X] extends TreeAccumulator[X] { self =>
-    override def foldMoreCases(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
+    override def foldMoreCases(x: X, tree: Tree)(using Context): X = tree match {
       case ModuleDef(name, impl) =>
         this(x, impl)
       case tree: DerivingTemplate =>
@@ -764,20 +764,20 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   abstract class UntypedTreeTraverser extends UntypedTreeAccumulator[Unit] {
-    def traverse(tree: Tree)(implicit ctx: Context): Unit
-    def apply(x: Unit, tree: Tree)(implicit ctx: Context): Unit = traverse(tree)
-    protected def traverseChildren(tree: Tree)(implicit ctx: Context): Unit = foldOver((), tree)
+    def traverse(tree: Tree)(using Context): Unit
+    def apply(x: Unit, tree: Tree)(using Context): Unit = traverse(tree)
+    protected def traverseChildren(tree: Tree)(using Context): Unit = foldOver((), tree)
   }
 
   /** Fold `f` over all tree nodes, in depth-first, prefix order */
   class UntypedDeepFolder[X](f: (X, Tree) => X) extends UntypedTreeAccumulator[X] {
-    def apply(x: X, tree: Tree)(implicit ctx: Context): X = foldOver(f(x, tree), tree)
+    def apply(x: X, tree: Tree)(using Context): X = foldOver(f(x, tree), tree)
   }
 
   /** Is there a subtree of this tree that satisfies predicate `p`? */
-  def (tree: Tree) existsSubTree(p: Tree => Boolean)(implicit ctx: Context): Boolean = {
+  def (tree: Tree) existsSubTree(p: Tree => Boolean)(using Context): Boolean = {
     val acc = new UntypedTreeAccumulator[Boolean] {
-      def apply(x: Boolean, t: Tree)(implicit ctx: Context) = x || p(t) || foldOver(x, t)
+      def apply(x: Boolean, t: Tree)(using Context) = x || p(t) || foldOver(x, t)
     }
     acc(false, tree)
   }

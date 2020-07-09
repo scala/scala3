@@ -59,7 +59,7 @@ class JSPrimitives(ctx: Context) extends DottyPrimitives(ctx) {
     jsPrimitives.getOrElse(app.fun.symbol, super.getPrimitive(app, tpe))
 
   override def isPrimitive(fun: Tree): Boolean =
-    jsPrimitives.contains(fun.symbol(ctx)) || super.isPrimitive(fun)
+    jsPrimitives.contains(fun.symbol(using ctx)) || super.isPrimitive(fun)
 
   /** Initialize the primitive map */
   private def initJSPrimitives(implicit ctx: Context): Map[Symbol, Int] = {

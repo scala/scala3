@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package config
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.io.{ Directory, PlainDirectory, AbstractFile }
 import PathResolver.Defaults
 import rewrites.Rewrites

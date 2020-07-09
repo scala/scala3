@@ -653,7 +653,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
 
     def inlinedFromOutside(tree: Tree)(span: Span): Tree =
-      Inlined(EmptyTree, Nil, tree)(ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
+      Inlined(EmptyTree, Nil, tree)(using ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
 
     // A tree type map to prepare the inlined body for typechecked.
     // The translation maps references to `this` and parameters to
@@ -701,7 +701,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       },
       oldOwners = inlinedMethod :: Nil,
       newOwners = ctx.owner :: Nil
-    )(inlineCtx)
+    )(using inlineCtx)
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
@@ -718,7 +718,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         // call. This way, a defensively written rewrite methid can always
         // report bad inputs at the point of call instead of revealing its internals.
         val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
-        val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(_).nonEmpty).next
+        val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(using _).nonEmpty).next
         inContext(ctxToReport) {
           ctx.error(message, callToReport.sourcePos)
         }

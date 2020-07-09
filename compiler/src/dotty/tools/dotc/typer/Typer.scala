@@ -1424,7 +1424,7 @@ class Typer extends Namer
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
       var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toList)
       if (pt1.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
-        body1 = body1.ensureConforms(pt1)(originalCtx)
+        body1 = body1.ensureConforms(pt1)(using originalCtx)
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
     }
 
@@ -1588,7 +1588,7 @@ class Typer extends Namer
 
   def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree = {
     val (bindings1, exprCtx) = typedBlockStats(tree.bindings)
-    val expansion1 = typed(tree.expansion, pt)(using inlineContext(tree.call)(exprCtx))
+    val expansion1 = typed(tree.expansion, pt)(using inlineContext(tree.call)(using exprCtx))
     assignType(cpy.Inlined(tree)(tree.call, bindings1.asInstanceOf[List[MemberDef]], expansion1),
         bindings1, expansion1)
   }
@@ -1999,7 +1999,7 @@ class Typer extends Namer
      */
     def maybeCall(ref: Tree, psym: Symbol, cinfo: Type): Tree = cinfo.stripPoly match {
       case cinfo @ MethodType(Nil) if cinfo.resultType.isImplicitMethod =>
-        typedExpr(untpd.New(untpd.TypedSplice(ref)(superCtx), Nil))(using superCtx)
+        typedExpr(untpd.New(untpd.TypedSplice(ref)(using superCtx), Nil))(using superCtx)
       case cinfo @ MethodType(Nil) if !cinfo.resultType.isInstanceOf[MethodType] =>
         ref
       case cinfo: MethodType =>

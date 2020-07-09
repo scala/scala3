@@ -11,14 +11,14 @@ object CheckTrees {
 
   import tpd._
 
-  def check(p: Boolean, msg: => String = "")(implicit ctx: Context): Unit = assert(p, msg)
+  def check(p: Boolean, msg: => String = "")(using Context): Unit = assert(p, msg)
 
-  def checkTypeArg(arg: Tree, bounds: TypeBounds)(implicit ctx: Context): Unit = {
+  def checkTypeArg(arg: Tree, bounds: TypeBounds)(using Context): Unit = {
     check(arg.isValueType)
     check(bounds contains arg.tpe)
   }
 
-  def escapingRefs(block: Block)(implicit ctx: Context): collection.Set[NamedType] = {
+  def escapingRefs(block: Block)(using Context): collection.Set[NamedType] = {
     var hoisted: Set[Symbol] = Set()
     lazy val locals = ctx.typeAssigner.localSyms(block.stats).toSet
     def isLocal(sym: Symbol): Boolean =
@@ -40,7 +40,7 @@ object CheckTrees {
     leakingTypes(block.tpe)
   }
 
-  def checkType(tree: Tree)(implicit ctx: Context): Unit = tree match {
+  def checkType(tree: Tree)(using Context): Unit = tree match {
     case Ident(name) =>
     case Select(qualifier, name) =>
       check(qualifier.isValue)
