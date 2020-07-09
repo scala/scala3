@@ -502,7 +502,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
    *    of a containing object so they are merely idempotent.
    */
   object isElideableExpr {
-    def isStatElideable(tree: Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
+    def isStatElideable(tree: Tree)(using Context): Boolean = unsplice(tree) match {
       case EmptyTree
          | TypeDef(_, _)
          | Import(_, _)

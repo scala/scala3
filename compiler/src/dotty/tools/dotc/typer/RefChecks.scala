@@ -1257,7 +1257,7 @@ class RefChecks extends MiniPhase { thisPhase =>
         }
       )
   }
-    private def checkTypeRef(tp: Type, tree: Tree, skipBounds: Boolean)(implicit ctx: Context) = tp match {
+    private def checkTypeRef(tp: Type, tree: Tree, skipBounds: Boolean)(using Context) = tp match {
       case TypeRef(pre, sym, args) =>
         tree match {
           case tt: TypeTree if tt.original == null => // SI-7783 don't warn about inferred types
@@ -1292,7 +1292,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     }
     private def doTypeTraversal(tree: Tree)(f: Type => Unit) = if (!inPattern) tree.tpe foreach f
 
-    private def applyRefchecksToAnnotations(tree: Tree)(implicit ctx: Context): Unit = {
+    private def applyRefchecksToAnnotations(tree: Tree)(using Context): Unit = {
       def applyChecks(annots: List[Annotation]) = {
         checkAnnotations(annots map (_.atp), tree)
         transformTrees(annots flatMap (_.args))
@@ -1434,7 +1434,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     }
 
     /* Convert a reference to a case factory of type `tpe` to a new of the class it produces. */
-    def toConstructor(pos: Position, tpe: Type)(implicit ctx: Context): Tree = {
+    def toConstructor(pos: Position, tpe: Type)(using Context): Tree = {
       val rtpe = tpe.finalResultType
       assert(rtpe.typeSymbol.is(Case), tpe)
       New(rtpe).withPos(pos).select(rtpe.typeSymbol.primaryConstructor)
@@ -1532,7 +1532,7 @@ class RefChecks extends MiniPhase { thisPhase =>
         case _ =>
       }
     }
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+    override def transform(tree: Tree)(using Context): Tree = {
       //val savedLocalTyper = localTyper
       try {
         val sym = tree.symbol

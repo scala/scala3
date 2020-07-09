@@ -56,7 +56,7 @@ object Docstrings {
     newComment
   }
 
-  private def expandComment(sym: Symbol)(implicit ctx: Context, docCtx: ContextDocstrings): Option[Comment] =
+  private def expandComment(sym: Symbol)(using Context)(using docCtx: ContextDocstrings): Option[Comment] =
     if (sym eq NoSymbol) None
     else
       for {

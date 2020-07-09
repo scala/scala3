@@ -28,7 +28,7 @@ trait Deriving {
    *                   synthesized infrastructure code that is not connected with a
    *                   `derives` instance.
    */
-  class Deriver(cls: ClassSymbol, codePos: SourcePosition)(implicit ctx: Context) {
+  class Deriver(cls: ClassSymbol, codePos: SourcePosition)(using Context) {
 
     /** A buffer for synthesized symbols for type class instances */
     private var synthetics = new mutable.ListBuffer[Symbol]
@@ -268,7 +268,7 @@ trait Deriving {
       import tpd._
 
       /** The type class instance definition with symbol `sym` */
-      def typeclassInstance(sym: Symbol)(implicit ctx: Context): List[Type] => (List[List[tpd.Tree]] => tpd.Tree) = {
+      def typeclassInstance(sym: Symbol)(using Context): List[Type] => (List[List[tpd.Tree]] => tpd.Tree) = {
         (tparamRefs: List[Type]) => (paramRefss: List[List[tpd.Tree]]) =>
           val tparams = tparamRefs.map(_.typeSymbol.asType)
           val params = if (paramRefss.isEmpty) Nil else paramRefss.head.map(_.symbol.asTerm)
@@ -291,8 +291,9 @@ trait Deriving {
           typed(rhs, resultType)
       }
 
-      def syntheticDef(sym: Symbol): Tree =
-        tpd.polyDefDef(sym.asTerm, typeclassInstance(sym)(ctx.fresh.setOwner(sym).setNewScope))
+      def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope) {
+        tpd.polyDefDef(sym.asTerm, typeclassInstance(sym))
+      }
 
       synthetics.map(syntheticDef).toList
     }

@@ -165,7 +165,7 @@ class Typer extends Namer
        *                   previous and new contexts do not have the same scope, we select
        *                   the previous (inner) definition. This models what scalac does.
        */
-      def checkNewOrShadowed(found: Type, newPrec: BindingPrec, scala2pkg: Boolean = false)(implicit ctx: Context): Type =
+      def checkNewOrShadowed(found: Type, newPrec: BindingPrec, scala2pkg: Boolean = false)(using Context): Type =
         if !previous.exists || ctx.typeComparer.isSameRef(previous, found) then
            found
         else if (prevCtx.scope eq ctx.scope)
@@ -1402,7 +1402,7 @@ class Typer extends Namer
    *  typing of a match), instantiate that type lambda with the pattern
    *  variables found in the pattern `pat`.
    */
-  def instantiateMatchTypeProto(pat: Tree, pt: Type)(implicit ctx: Context) = pt match {
+  def instantiateMatchTypeProto(pat: Tree, pt: Type)(using Context) = pt match {
     case caseTp: HKTypeLambda =>
       val bindingsSyms = tpd.patVars(pat).reverse
       val bindingsTps = bindingsSyms.collect { case sym if sym.isType => sym.typeRef }

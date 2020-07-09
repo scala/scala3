@@ -16,7 +16,7 @@ package object tastyreflect {
   case class PackageDefinitionImpl[-T >: Untyped] private[tastyreflect] (sym: Symbol)(implicit @constructorOnly src: SourceFile) extends Tree[T] {
     type ThisTree[-T >: Untyped] = PackageDefinitionImpl[T]
 
-    override def denot(implicit ctx: Context): SymDenotation = sym.denot
+    override def denot(using Context): SymDenotation = sym.denot
   }
 }
 
