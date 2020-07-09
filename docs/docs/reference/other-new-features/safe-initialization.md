@@ -210,12 +210,13 @@ With the established principles and design goals, following rules are imposed:
 
 ## Modularity (considered)
 
-Note: _the rules proposed in the section are under consideration, but not
-implemented. The feedback from the community is welcome._
+Currently, the analysis works across project boundaries based on TASTy.
+The following is a proposal to make the checking more modular.
+The feedback from the community is welcome.
 
-For modularity, we forbid subtle initialization interaction beyond project
-boundaries. For example, the following code passes the check when the two
-classes are defined in the same project:
+For modularity, we need to forbid subtle initialization interaction beyond
+project boundaries. For example, the following code passes the check when the
+two classes are defined in the same project:
 
 ```Scala
 class Base {
@@ -229,11 +230,11 @@ class Child extends Base {
 ```
 
 However, when the class `Base` and `Child` are defined in two different
-projects, the check will emit a warning for the calls to `enter` in the class
+projects, the check can emit a warning for the calls to `enter` in the class
 `Child`. This restricts subtle initialization within project boundaries,
 and avoids accidental violation of contracts across library versions.
 
-We impose the following rules to enforce modularity:
+We can impose the following rules to enforce modularity:
 
 4. A class or trait that may be extended in another project should not
    call _virtual_ methods on `this` in its template/mixin evaluation,
