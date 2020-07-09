@@ -39,16 +39,16 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   override def phaseName: String = FirstTransform.name
 
   /** eliminate self symbol in ClassInfo */
-  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
+  override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
     case tp @ ClassInfo(_, _, _, _, self: Symbol) =>
       tp.derivedClassInfo(selfInfo = self.info)
     case _ =>
       tp
   }
 
-  override protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isClass
+  override protected def mayChange(sym: Symbol)(using Context): Boolean = sym.isClass
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
+  override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
       case Select(qual, name) if !name.is(OuterSelectName) && tree.symbol.exists =>
         val qualTpe = if (ctx.explicitNulls) {
@@ -77,7 +77,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     }
 
   /** Reorder statements so that module classes always come after their companion classes */
-  private def reorderAndComplete(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
+  private def reorderAndComplete(stats: List[Tree])(using Context): List[Tree] = {
     val moduleClassDefs, singleClassDefs = mutable.Map[Name, Tree]()
 
     /* Returns the result of reordering stats and prepending revPrefix in reverse order to it.
@@ -113,10 +113,10 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   /** eliminate self in Template */
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Tree =
+  override def transformTemplate(impl: Template)(using Context): Tree =
     cpy.Template(impl)(self = EmptyValDef)
 
-  override def transformDefDef(ddef: DefDef)(implicit ctx: Context): Tree = {
+  override def transformDefDef(ddef: DefDef)(using Context): Tree = {
     val meth = ddef.symbol.asTerm
     if (meth.hasAnnotation(defn.NativeAnnot)) {
       meth.resetFlag(Deferred)
@@ -128,11 +128,11 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     else ddef
   }
 
-  override def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] =
+  override def transformStats(trees: List[Tree])(using Context): List[Tree] =
     ast.Trees.flatten(reorderAndComplete(trees)(using ctx.withPhase(thisPhase.next)))
 
   private object collectBinders extends TreeAccumulator[List[Ident]] {
-    def apply(annots: List[Ident], t: Tree)(implicit ctx: Context): List[Ident] = t match {
+    def apply(annots: List[Ident], t: Tree)(using Context): List[Ident] = t match {
       case t @ Bind(_, body) =>
         val annot = untpd.Ident(tpnme.BOUNDTYPE_ANNOT).withType(t.symbol.typeRef)
         apply(annot :: annots, body)
@@ -145,19 +145,19 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
    *  nested Bind nodes in annotations. These are interpreted in TreeTypeMaps
    *  so that bound symbols can be properly copied.
    */
-  private def toTypeTree(tree: Tree)(implicit ctx: Context) = {
+  private def toTypeTree(tree: Tree)(using Context) = {
     val binders = collectBinders.apply(Nil, tree)
     val result: Tree = TypeTree(tree.tpe).withSpan(tree.span)
     binders.foldLeft(result)(Annotated(_, _))
   }
 
-  override def transformOther(tree: Tree)(implicit ctx: Context): Tree = tree match {
+  override def transformOther(tree: Tree)(using Context): Tree = tree match {
     case tree: Import => EmptyTree
     case tree: NamedArg => transformAllDeep(tree.arg)
     case tree => if (tree.isType) toTypeTree(tree) else tree
   }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
+  override def transformIdent(tree: Ident)(using Context): Tree =
     if (tree.isType) {
       toTypeTree(tree)
     } else if (tree.name != nme.WILDCARD) {
@@ -169,24 +169,24 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
       constToLiteral(tree)
     } else tree
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: Select)(using Context): Tree =
     if (tree.isType) toTypeTree(tree) else constToLiteral(tree)
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
+  override def transformTypeApply(tree: TypeApply)(using Context): Tree =
     constToLiteral(tree)
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
+  override def transformApply(tree: Apply)(using Context): Tree =
     constToLiteral(foldCondition(tree))
 
-  override def transformTyped(tree: Typed)(implicit ctx: Context): Tree =
+  override def transformTyped(tree: Typed)(using Context): Tree =
     // Singleton type cases (such as `case _: "a"`) are constant-foldable.
     // We avoid constant-folding those as doing so would change the meaning of the pattern (see transformIdent).
     if (!ctx.mode.is(Mode.Pattern)) constToLiteral(tree) else tree
 
-  override def transformBlock(tree: Block)(implicit ctx: Context): Tree =
+  override def transformBlock(tree: Block)(using Context): Tree =
     constToLiteral(tree)
 
-  override def transformIf(tree: If)(implicit ctx: Context): Tree =
+  override def transformIf(tree: If)(using Context): Tree =
     tree.cond.tpe match {
       case ConstantType(Constant(c: Boolean)) if isPureExpr(tree.cond) =>
         if (c) tree.thenp else tree.elsep
@@ -200,7 +200,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
    *      true  || y   ==>  true
    *      false || y   ==>  y
    */
-  private def foldCondition(tree: Apply)(implicit ctx: Context) = tree.fun match {
+  private def foldCondition(tree: Apply)(using Context) = tree.fun match {
     case Select(x @ Literal(Constant(c: Boolean)), op) =>
       tree.args match {
         case y :: Nil if y.tpe.widen.isRef(defn.BooleanClass) =>

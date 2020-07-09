@@ -29,7 +29,7 @@ class CheckStatic extends MiniPhase {
 
   override def phaseName: String = CheckStatic.name
 
-  override def transformTemplate(tree: tpd.Template)(implicit ctx: Context): tpd.Tree = {
+  override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree = {
     val defns = tree.body.collect{case t: ValOrDefDef => t}
     var hadNonStaticField = false
     for (defn <- defns)
@@ -59,7 +59,7 @@ class CheckStatic extends MiniPhase {
     tree
   }
 
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): tpd.Tree =
+  override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree =
     if (tree.symbol.hasAnnotation(defn.ScalaStaticAnnot)) {
       val symbolWhitelist = tree.symbol.ownersIterator.flatMap(x => if (x.is(Flags.Module)) List(x, x.companionModule) else List(x)).toSet
       def isSafeQual(t: Tree): Boolean = // follow the desugared paths created by typer

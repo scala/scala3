@@ -63,7 +63,7 @@ object Rewrites {
   /** If -rewrite is set, record a patch that replaces the range
    *  given by `span` in `source` by `replacement`
    */
-  def patch(source: SourceFile, span: Span, replacement: String)(implicit ctx: Context): Unit =
+  def patch(source: SourceFile, span: Span, replacement: String)(using Context): Unit =
     if (ctx.reporter != Reporter.NoReporter) // NoReporter is used for syntax highlighting
       for (rewrites <- ctx.settings.rewrite.value)
         rewrites.patched
@@ -71,7 +71,7 @@ object Rewrites {
           .addPatch(span, replacement)
 
   /** Patch position in `ctx.compilationUnit.source`. */
-  def patch(span: Span, replacement: String)(implicit ctx: Context): Unit =
+  def patch(span: Span, replacement: String)(using Context): Unit =
     patch(ctx.compilationUnit.source, span, replacement)
 
   /** Does `span` overlap with a patch region of `source`? */
@@ -82,7 +82,7 @@ object Rewrites {
 
   /** If -rewrite is set, apply all patches and overwrite patched source files.
    */
-  def writeBack()(implicit ctx: Context): Unit =
+  def writeBack()(using Context): Unit =
     for (rewrites <- ctx.settings.rewrite.value; source <- rewrites.patched.keys) {
       ctx.echo(s"[patched file ${source.file.path}]")
       rewrites.patched(source).writeBack()

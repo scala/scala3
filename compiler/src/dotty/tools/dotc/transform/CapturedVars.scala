@@ -27,12 +27,12 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     // lifting tries changes what variables are considered to be captured
 
   private[this] var Captured: Store.Location[collection.Set[Symbol]] = _
-  private def captured(implicit ctx: Context) = ctx.store(Captured)
+  private def captured(using Context) = ctx.store(Captured)
 
   override def initContext(ctx: FreshContext): Unit =
     Captured = ctx.addLocation(Set.empty)
 
-  private class RefInfo(implicit ctx: Context) {
+  private class RefInfo(using Context) {
     /** The classes for which a Ref type exists. */
     val refClassKeys: collection.Set[Symbol] =
       defn.ScalaNumericValueClasses() `union` Set(defn.BooleanClass, defn.ObjectClass)
@@ -48,14 +48,14 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   }
 
   private var myRefInfo: RefInfo = null
-  private def refInfo(implicit ctx: Context) = {
+  private def refInfo(using Context) = {
     if (myRefInfo == null) myRefInfo = new RefInfo()
     myRefInfo
   }
 
   private class CollectCaptured extends TreeTraverser {
     private val captured = mutable.HashSet[Symbol]()
-    def traverse(tree: Tree)(implicit ctx: Context) = tree match {
+    def traverse(tree: Tree)(using Context) = tree match {
       case id: Ident =>
         val sym = id.symbol
         if (sym.is(Mutable, butNot = Method) && sym.owner.isTerm) {
@@ -68,13 +68,13 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
       case _ =>
         traverseChildren(tree)
     }
-    def runOver(tree: Tree)(implicit ctx: Context): collection.Set[Symbol] = {
+    def runOver(tree: Tree)(using Context): collection.Set[Symbol] = {
       traverse(tree)
       captured
     }
   }
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context = {
+  override def prepareForUnit(tree: Tree)(using Context): Context = {
     val captured = (new CollectCaptured)
       .runOver(ctx.compilationUnit.tpdTree)(using ctx.withPhase(thisPhase))
     ctx.fresh.updateStore(Captured, captured)
@@ -83,14 +83,14 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   /** The {Volatile|}{Int|Double|...|Object}Ref class corresponding to the class `cls`,
     *  depending on whether the reference should be @volatile
     */
-  def refClass(cls: Symbol, isVolatile: Boolean)(implicit ctx: Context): Symbol = {
+  def refClass(cls: Symbol, isVolatile: Boolean)(using Context): Symbol = {
     val refMap = if (isVolatile) refInfo.volatileRefClass else refInfo.refClass
     if (cls.isClass)
       refMap.getOrElse(cls, refMap(defn.ObjectClass))
     else refMap(defn.ObjectClass)
   }
 
-  override def prepareForValDef(vdef: ValDef)(implicit ctx: Context): Context = {
+  override def prepareForValDef(vdef: ValDef)(using Context): Context = {
     val sym = vdef.symbol(using ctx.withPhase(thisPhase))
     if (captured contains sym) {
       val newd = sym.denot(using ctx.withPhase(thisPhase)).copySymDenotation(
@@ -102,7 +102,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     ctx
   }
 
-  override def transformValDef(vdef: ValDef)(implicit ctx: Context): Tree = {
+  override def transformValDef(vdef: ValDef)(using Context): Tree = {
     val vble = vdef.symbol
     if (captured.contains(vble)) {
       def boxMethod(name: TermName): Tree =
@@ -114,7 +114,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     else vdef
   }
 
-  override def transformIdent(id: Ident)(implicit ctx: Context): Tree = {
+  override def transformIdent(id: Ident)(using Context): Tree = {
     val vble = id.symbol
     if (captured.contains(vble))
       id.select(nme.elem).ensureConforms(vble.denot(using ctx.withPhase(thisPhase)).info)
@@ -137,7 +137,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     *  Also: If the ref type lhs is followed by a cast (can be an artifact of nested translation),
     *  drop the cast.
     */
-  override def transformAssign(tree: Assign)(implicit ctx: Context): Tree = {
+  override def transformAssign(tree: Assign)(using Context): Tree = {
     def recur(lhs: Tree): Tree = lhs match {
       case TypeApply(Select(qual, nme.asInstanceOf_), _) =>
         val Select(_, nme.elem) = qual

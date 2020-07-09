@@ -33,7 +33,7 @@ class DropEmptyCompanions extends MiniPhase { thisTransform =>
   override def phaseName = "dropEmptyCompanions"
   override def runsAfter = Set(Flatten.name)
 
-  override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context) = {
+  override def transformPackageDef(pdef: PackageDef)(using Context) = {
 
     /** Is `tree` an empty companion object? */
     def isEmptyCompanion(tree: Tree) = tree match {

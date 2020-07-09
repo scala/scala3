@@ -14,17 +14,17 @@ class ElimPackagePrefixes extends MiniPhase {
 
   override def phaseName: String = "elimPackagePrefixes"
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: Select)(using Context): Tree =
     if (isPackageClassRef(tree)) Ident(tree.tpe.asInstanceOf[TypeRef]) else tree
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
+  override def checkPostCondition(tree: Tree)(using Context): Unit = tree match {
     case tree: Select =>
       assert(!isPackageClassRef(tree), i"Unexpected reference to package in $tree")
     case _ =>
   }
 
   /** Is the given tree a reference to a type in a package? */
-  private def isPackageClassRef(tree: Select)(implicit ctx: Context): Boolean = tree.tpe match {
+  private def isPackageClassRef(tree: Select)(using Context): Boolean = tree.tpe match {
     case TypeRef(prefix, _) => prefix.termSymbol.is(Package)
     case _ => false
   }

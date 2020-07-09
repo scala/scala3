@@ -27,7 +27,7 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
 
   override def phaseName: String = "functionXXLForwarders"
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
+  override def transformTemplate(impl: Template)(using Context): Template = {
 
     def forwarderRhs(receiver: Tree, xsTree: Tree): Tree = {
       val argsApply = ref(xsTree.symbol).select(nme.apply)

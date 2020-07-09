@@ -46,7 +46,7 @@ class CountOuterAccesses extends MiniPhase:
     override def default(s: Symbol): Int = 0
   }
 
-  private def markAccessed(tree: RefTree)(implicit ctx: Context): Tree =
+  private def markAccessed(tree: RefTree)(using Context): Tree =
     val sym = tree.symbol
     if CountOuterAccesses.mightBeDropped(sym) then outerAccessCount(sym) += 1
     tree

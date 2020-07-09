@@ -28,7 +28,7 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
   // base types of opaque aliases change
   override def changesBaseTypes = true
 
-  def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
+  def transform(ref: SingleDenotation)(using Context): SingleDenotation = {
     val sym = ref.symbol
     ref match {
       case ref: SymDenotation if sym.isOpaqueAlias =>

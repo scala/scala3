@@ -14,7 +14,7 @@ import core.Contexts.{Context, ctx}
 class CtxLazy[T](expr: Context ?=> T) {
   private var myValue: T = _
   private var forced = false
-  def apply()(implicit ctx: Context): T = {
+  def apply()(using Context): T = {
     if (!forced) {
       myValue = expr(using ctx)
       forced = true
