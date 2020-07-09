@@ -8,9 +8,9 @@ import Phases._
 class GenSJSIR extends Phase {
   def phaseName: String = "genSJSIR"
 
-  override def isRunnable(implicit ctx: Context): Boolean =
+  override def isRunnable(using Context): Boolean =
     super.isRunnable && ctx.settings.scalajs.value
 
-  def run(implicit ctx: Context): Unit =
+  def run(using Context): Unit =
     new JSCodeGen().run()
 }

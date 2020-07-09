@@ -844,7 +844,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     }
   }
 
-  private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(implicit ctx: Context): Option[String] = {
+  private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(using Context): Option[String] = {
     if (needsGenericSignature(sym)) {
       val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
       if (erasedTypeSym.isPrimitiveValueClass) {
@@ -864,7 +864,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     }
   }
 
-  private def verifySignature(sym: Symbol, sig: String)(implicit ctx: Context): Unit = {
+  private def verifySignature(sym: Symbol, sig: String)(using Context): Unit = {
     import scala.tools.asm.util.CheckClassAdapter
     def wrap(body: => Unit): Unit = {
       try body

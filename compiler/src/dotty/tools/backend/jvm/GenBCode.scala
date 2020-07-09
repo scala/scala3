@@ -40,18 +40,18 @@ class GenBCode extends Phase {
 
   private var myOutput: AbstractFile = _
 
-  private def outputDir(implicit ctx: Context): AbstractFile = {
+  private def outputDir(using Context): AbstractFile = {
     if (myOutput eq null)
       myOutput = ctx.settings.outputDir.value
     myOutput
   }
 
-  def run(implicit ctx: Context): Unit = {
+  def run(using Context): Unit = {
     new GenBCodePipeline(new DottyBackendInterface(
       outputDir, superCallsMap.toMap)(using ctx))(using ctx).run(ctx.compilationUnit.tpdTree)
   }
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     try super.runOn(units)
     finally myOutput match {
       case jar: JarArchive =>

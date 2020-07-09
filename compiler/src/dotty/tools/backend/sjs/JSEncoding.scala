@@ -88,7 +88,7 @@ object JSEncoding {
     def freshLocalIdent(base: TermName)(implicit pos: ir.Position): js.LocalIdent =
       freshLocalIdent(base.mangledString)
 
-    def localSymbolName(sym: Symbol)(implicit ctx: Context): LocalName = {
+    def localSymbolName(sym: Symbol)(using Context): LocalName = {
       localSymbolNames.getOrElseUpdate(sym, {
         /* The emitter does not like local variables that start with a '$',
          * because it needs to encode them not to clash with emitter-generated
@@ -120,7 +120,7 @@ object JSEncoding {
     def freshLabelIdent(base: String)(implicit pos: ir.Position): js.LabelIdent =
       js.LabelIdent(freshLabelName(base))
 
-    def labelSymbolName(sym: Symbol)(implicit ctx: Context): LabelName =
+    def labelSymbolName(sym: Symbol)(using Context): LabelName =
       labelSymbolNames.getOrElseUpdate(sym, freshLabelName(sym.javaSimpleName))
 
     def getEnclosingReturnLabel()(implicit pos: ir.Position): js.LabelIdent = {
@@ -206,7 +206,7 @@ object JSEncoding {
   }
 
   /** Computes the type ref for a type, to be used in a method signature. */
-  private def paramOrResultTypeRef(tpe: Type)(implicit ctx: Context): jstpe.TypeRef = {
+  private def paramOrResultTypeRef(tpe: Type)(using Context): jstpe.TypeRef = {
     toTypeRef(tpe) match {
       case jstpe.ClassRef(ScalaNullClassName)    => jstpe.NullRef
       case jstpe.ClassRef(ScalaNothingClassName) => jstpe.NothingRef
@@ -221,7 +221,7 @@ object JSEncoding {
     js.LocalIdent(localNames.localSymbolName(sym))
   }
 
-  def encodeClassType(sym: Symbol)(implicit ctx: Context): jstpe.Type = {
+  def encodeClassType(sym: Symbol)(using Context): jstpe.Type = {
     if (sym == defn.ObjectClass) jstpe.AnyType
     else if (isJSType(sym)) jstpe.AnyType
     else {
@@ -231,14 +231,14 @@ object JSEncoding {
     }
   }
 
-  def encodeClassRef(sym: Symbol)(implicit ctx: Context): jstpe.ClassRef =
+  def encodeClassRef(sym: Symbol)(using Context): jstpe.ClassRef =
     jstpe.ClassRef(encodeClassName(sym))
 
   def encodeClassNameIdent(sym: Symbol)(
       implicit ctx: Context, pos: ir.Position): js.ClassIdent =
     js.ClassIdent(encodeClassName(sym))
 
-  def encodeClassName(sym: Symbol)(implicit ctx: Context): ClassName = {
+  def encodeClassName(sym: Symbol)(using Context): ClassName = {
     val sym1 =
       if (sym.isAllOf(ModuleClass | JavaDefined)) sym.linkedClass
       else sym
@@ -253,7 +253,7 @@ object JSEncoding {
     }
   }
 
-  def toIRType(tp: Type)(implicit ctx: Context): jstpe.Type = {
+  def toIRType(tp: Type)(using Context): jstpe.Type = {
     val typeRefInternal = toTypeRefInternal(tp)
     typeRefInternal._1 match {
       case jstpe.PrimRef(irTpe) =>
@@ -275,10 +275,10 @@ object JSEncoding {
     }
   }
 
-  def toTypeRef(tp: Type)(implicit ctx: Context): jstpe.TypeRef =
+  def toTypeRef(tp: Type)(using Context): jstpe.TypeRef =
     toTypeRefInternal(tp)._1
 
-  private def toTypeRefInternal(tp: Type)(implicit ctx: Context): (jstpe.TypeRef, Symbol) = {
+  private def toTypeRefInternal(tp: Type)(using Context): (jstpe.TypeRef, Symbol) = {
     def primitiveOrClassToTypeRef(sym: Symbol): (jstpe.TypeRef, Symbol) = {
       assert(sym.isClass, sym)
       //assert(sym != defn.ArrayClass || isCompilingArray, sym)
@@ -343,7 +343,7 @@ object JSEncoding {
    *  This method returns `UnitType` for constructor methods, and otherwise
    *  `sym.info.resultType`.
    */
-  def patchedResultType(sym: Symbol)(implicit ctx: Context): Type =
+  def patchedResultType(sym: Symbol)(using Context): Type =
     if (sym.isConstructor) defn.UnitType
     else sym.info.resultType
 
@@ -355,13 +355,13 @@ object JSEncoding {
     else OriginalName(originalName)
   }
 
-  def originalNameOfField(sym: Symbol)(implicit ctx: Context): OriginalName =
+  def originalNameOfField(sym: Symbol)(using Context): OriginalName =
     originalNameOf(sym.name)
 
-  def originalNameOfMethod(sym: Symbol)(implicit ctx: Context): OriginalName =
+  def originalNameOfMethod(sym: Symbol)(using Context): OriginalName =
     originalNameOf(sym.name)
 
-  def originalNameOfClass(sym: Symbol)(implicit ctx: Context): OriginalName =
+  def originalNameOfClass(sym: Symbol)(using Context): OriginalName =
     originalNameOf(sym.fullName)
 
   private def originalNameOf(name: Name): OriginalName = {
