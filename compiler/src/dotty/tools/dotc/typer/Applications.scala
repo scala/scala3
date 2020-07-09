@@ -1454,10 +1454,7 @@ trait Applications extends Compatibility {
         isApplicableMethodRef(alt2, formals1, WildcardType) ||
         tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
       case tp1: PolyType => // (2)
-        val nestedCtx = ctx.fresh.setExploreTyperState()
-        locally {
-          implicit val ctx = nestedCtx
-
+        inContext(ctx.fresh.setExploreTyperState()) {
           // Fully define the PolyType parameters so that the infos of the
           // tparams created below never contain TypeRefs whose underling types
           // contain uninstantiated TypeVars, this could lead to cycles in

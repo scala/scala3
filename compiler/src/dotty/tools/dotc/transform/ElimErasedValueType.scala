@@ -78,7 +78,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
    *  this phase, yet do not have matching types before erasure.
    */
   private def checkNoClashes(root: Symbol)(implicit ctx: Context) = {
-    val opc = new OverridingPairs.Cursor(root)(ctx.withPhase(thisPhase)) {
+    val opc = new OverridingPairs.Cursor(root)(using ctx.withPhase(thisPhase)) {
       override def exclude(sym: Symbol) =
         !sym.is(Method) || sym.is(Bridge) || super.exclude(sym)
       override def matches(sym1: Symbol, sym2: Symbol) =

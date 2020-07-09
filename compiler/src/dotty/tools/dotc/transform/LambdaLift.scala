@@ -162,7 +162,7 @@ object LambdaLift {
         if (intermediate.exists) narrowLiftedOwner(enclosure, intermediate)
         if !intermediate.isRealClass || nestedInConstructor(enclosure) then
           // Constructors and methods nested inside traits get the free variables
-          // of the enclosing trait or class. 
+          // of the enclosing trait or class.
           // Conversely, local traits do not get free variables.
           // Methods inside constructors also don't have intermediates,
           // need to get all their free variables passed directly.
@@ -374,8 +374,8 @@ object LambdaLift {
       (new CollectDependencies).traverse(ctx.compilationUnit.tpdTree)
       computeFreeVars()
       computeLiftedOwners()
-      generateProxies()(ctx.withPhase(thisPhase.next))
-      liftLocals()(ctx.withPhase(thisPhase.next))
+      generateProxies()(using ctx.withPhase(thisPhase.next))
+      liftLocals()(using ctx.withPhase(thisPhase.next))
     }
 
     def currentEnclosure(implicit ctx: Context): Symbol =
@@ -421,7 +421,7 @@ object LambdaLift {
     }
 
     def proxyRef(sym: Symbol)(implicit ctx: Context): Tree = {
-      val psym = proxy(sym)(ctx.withPhase(thisPhase))
+      val psym = proxy(sym)(using ctx.withPhase(thisPhase))
       thisPhase.transformFollowingDeep(if (psym.owner.isTerm) ref(psym) else memberRef(psym))
     }
 

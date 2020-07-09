@@ -4,7 +4,7 @@ import java.io.{File => JFile, PrintStream}
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx, inContext}
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Mode
@@ -207,10 +207,11 @@ class ReplDriver(settings: Array[String],
       case _ => // new line, empty tree
         state
     }
-    implicit val ctx: Context = newState.context
-    if (!ctx.settings.XreplDisableDisplay.value)
-      out.println()
-    newState
+    inContext(newState.context) {
+      if (!ctx.settings.XreplDisableDisplay.value)
+        out.println()
+      newState
+    }
   }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
@@ -244,25 +245,26 @@ class ReplDriver(settings: Array[String],
               .removeBufferedMessages(newState.context)
               .map(rendering.formatError)
 
-            implicit val ctx: Context = newState.context
-            val (updatedState, definitions) =
-              if (!ctx.settings.XreplDisableDisplay.value)
-                renderDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
-              else
-                (newStateWithImports, Seq.empty)
+            inContext(newState.context) {
+              val (updatedState, definitions) =
+                if (!ctx.settings.XreplDisableDisplay.value)
+                  renderDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
+                else
+                  (newStateWithImports, Seq.empty)
 
-            // output is printed in the order it was put in. warnings should be
-            // shown before infos (eg. typedefs) for the same line. column
-            // ordering is mostly to make tests deterministic
-            implicit val diagnosticOrdering: Ordering[Diagnostic] =
-              Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
+              // output is printed in the order it was put in. warnings should be
+              // shown before infos (eg. typedefs) for the same line. column
+              // ordering is mostly to make tests deterministic
+              implicit val diagnosticOrdering: Ordering[Diagnostic] =
+                Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
 
-            (definitions ++ warnings)
-              .sorted
-              .map(_.msg)
-              .foreach(out.println)
+              (definitions ++ warnings)
+                .sorted
+                .map(_.msg)
+                .foreach(out.println)
 
-            updatedState
+              updatedState
+            }
         }
       )
   }

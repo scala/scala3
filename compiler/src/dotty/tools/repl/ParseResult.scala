@@ -3,7 +3,7 @@ package repl
 
 import dotc.CompilationUnit
 import dotc.ast.untpd
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, inContext}
 import dotc.core.StdNames.str
 import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
@@ -142,18 +142,18 @@ object ParseResult {
         }
       }
       case _ =>
-        implicit val ctx: Context = state.context
+        inContext(state.context) {
+          val reporter = newStoreReporter
+          val stats = parseStats(state.context.fresh.setReporter(reporter).withSource(source))
 
-        val reporter = newStoreReporter
-        val stats = parseStats(state.context.fresh.setReporter(reporter).withSource(source))
-
-        if (reporter.hasErrors)
-          SyntaxErrors(
-            sourceCode,
-            reporter.removeBufferedMessages,
-            stats)
-        else
-          Parsed(source, stats)
+          if (reporter.hasErrors)
+            SyntaxErrors(
+              sourceCode,
+              reporter.removeBufferedMessages,
+              stats)
+          else
+            Parsed(source, stats)
+        }
     }
   }
 

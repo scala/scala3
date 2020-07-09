@@ -155,12 +155,12 @@ class Driver {
    */
   final def process(args: Array[String], reporter: Reporter = null,
     callback: interfaces.CompilerCallback = null): Reporter = {
-    val ctx = initCtx.fresh
+    val compileCtx = initCtx.fresh
     if (reporter != null)
-      ctx.setReporter(reporter)
+      compileCtx.setReporter(reporter)
     if (callback != null)
-      ctx.setCompilerCallback(callback)
-    process(args, ctx)
+      compileCtx.setCompilerCallback(callback)
+    process(args, compileCtx)
   }
 
   /** Entry point to the compiler with no optional arguments.
@@ -190,8 +190,8 @@ class Driver {
    *                    if compilation succeeded.
    */
   def process(args: Array[String], rootCtx: Context): Reporter = {
-    val (fileNames, ctx) = setup(args, rootCtx)
-    doCompile(newCompiler(ctx), fileNames)(ctx)
+    val (fileNames, compileCtx) = setup(args, rootCtx)
+    doCompile(newCompiler(compileCtx), fileNames)(compileCtx)
   }
 
   def main(args: Array[String]): Unit = {

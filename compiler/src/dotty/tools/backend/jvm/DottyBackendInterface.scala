@@ -34,7 +34,7 @@ import Names.TermName
 import Annotations.Annotation
 import Names.Name
 
-class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit val ctx: Context) {
+class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(using val ctx: Context) {
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
@@ -107,10 +107,10 @@ object DottyBackendInterface {
     else clazz.getName
   }
 
-  def requiredClass[T](implicit evidence: ClassTag[T], ctx: Context): Symbol =
+  def requiredClass[T](using evidence: ClassTag[T], ctx: Context): Symbol =
     ctx.requiredClass(erasureString(evidence.runtimeClass))
 
-  def requiredModule[T](implicit evidence: ClassTag[T], ctx: Context): Symbol = {
+  def requiredModule[T](using evidence: ClassTag[T], ctx: Context): Symbol = {
     val moduleName = erasureString(evidence.runtimeClass)
     val className = if (moduleName.endsWith("$")) moduleName.dropRight(1)  else moduleName
     ctx.requiredModule(className)

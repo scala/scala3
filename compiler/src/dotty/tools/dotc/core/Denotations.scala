@@ -3,7 +3,7 @@ package dotc
 package core
 
 import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation, LazyType }
-import Contexts.{Context, Ctx, ctx, ContextBase}
+import Contexts.{Context, ctx, ContextBase}
 import Names._
 import NameKinds._
 import StdNames._
@@ -797,7 +797,7 @@ object Denotations {
               val transformer = ctx.base.denotTransformers(nextTransformerId)
               //println(s"transforming $this with $transformer")
               try
-                next = transformer.transform(cur)(ctx.withPhase(transformer))
+                next = transformer.transform(cur)(using ctx.withPhase(transformer))
               catch {
                 case ex: CyclicReference =>
                   println(s"error while transforming $this") // DEBUG

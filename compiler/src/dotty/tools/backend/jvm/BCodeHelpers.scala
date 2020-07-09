@@ -45,7 +45,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   import bTypes._
   import tpd._
   import coreBTypes._
-  import int._
+  import int.{_, given _}
   import DottyBackendInterface._
 
   def ScalaATTRName: String = "Scala"
@@ -360,7 +360,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       val narg = normalizeArgument(arg)
       // Transformation phases are not run on annotation trees, so we need to run
       // `constToLiteral` at this point.
-      val t = constToLiteral(narg)(ctx.withPhase(ctx.erasurePhase))
+      val t = constToLiteral(narg)(using ctx.withPhase(ctx.erasurePhase))
       t match {
         case Literal(const @ Constant(_)) =>
           const.tag match {
@@ -464,7 +464,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   } // end of trait BCAnnotGen
 
   trait BCJGenSigGen {
-    import int._
+    import int.{_, given _}
 
     def getCurrentCUnit(): CompilationUnit
 

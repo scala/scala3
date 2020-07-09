@@ -939,7 +939,7 @@ class ClassfileParser(
       val outerName = entry.outerName.stripModuleClassSuffix
       val innerName = entry.originalName
       val owner = classNameToSymbol(outerName)
-      val result = getMember(owner, innerName.toTypeName)(ctx.withPhase(ctx.typerPhase))
+      val result = getMember(owner, innerName.toTypeName)(using ctx.withPhase(ctx.typerPhase))
       assert(result ne NoSymbol,
         i"""failure to resolve inner class:
            |externalName = ${entry.externalName},

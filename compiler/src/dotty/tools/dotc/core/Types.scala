@@ -4919,7 +4919,8 @@ object Types {
     def mapOver(tp: Type): Type = {
       record(s"mapOver ${getClass}")
       record("mapOver total")
-      implicit val ctx = this.mapCtx
+      val ctx = this.mapCtx // optimization for performance
+      given Context = ctx
       tp match {
         case tp: NamedType =>
           if stopBecauseStaticOrLocal(tp) then tp

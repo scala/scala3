@@ -31,7 +31,7 @@ class PrivateToStatic extends MiniPhase with SymTransformer { thisTransform =>
   private val Immovable = Deferred | Accessor | JavaStatic
 
   def shouldBeStatic(sd: SymDenotation)(implicit ctx: Context) =
-    sd.current(ctx.withPhase(thisTransform)).asSymDenotation
+    sd.current(using ctx.withPhase(thisTransform)).asSymDenotation
       .is(PrivateMethod, butNot = Immovable) &&
     sd.owner.is(Trait)
 

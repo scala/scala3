@@ -847,7 +847,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         traverser.traverse(tree)
         tree
       }
-      else changeOwnerAfter(from, to, trans)(ctx.withPhase(trans.next))
+      else changeOwnerAfter(from, to, trans)(using ctx.withPhase(trans.next))
 
     /** A select node with the given selector name and a computed type */
     def select(name: Name)(implicit ctx: Context): Select =

@@ -29,16 +29,16 @@ class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
 
     val run = decompiler.newRun(myInitCtx.fresh.setReporter(reporter))
 
-    implicit val ctx = run.runContext
+    inContext(run.runContext) {
+      run.compile(List(className))
+      run.printSummary()
+      val unit = ctx.run.units.head
 
-    run.compile(List(className))
-    run.printSummary()
-    val unit = ctx.run.units.head
+      val decompiled = ReflectionImpl.showTree(unit.tpdTree)
+      val tree = new TastyHTMLPrinter(unit.pickled.head._2).printContents()
 
-    val decompiled = ReflectionImpl.showTree(unit.tpdTree)
-    val tree = new TastyHTMLPrinter(unit.pickled.head._2).printContents()
-
-    reporter.removeBufferedMessages.foreach(message => System.err.println(message))
-    (tree, decompiled)
+      reporter.removeBufferedMessages.foreach(message => System.err.println(message))
+      (tree, decompiled)
+    }
   }
 }

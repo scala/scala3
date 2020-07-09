@@ -129,7 +129,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] =
-    ast.Trees.flatten(reorderAndComplete(trees)(ctx.withPhase(thisPhase.next)))
+    ast.Trees.flatten(reorderAndComplete(trees)(using ctx.withPhase(thisPhase.next)))
 
   private object collectBinders extends TreeAccumulator[List[Ident]] {
     def apply(annots: List[Ident], t: Tree)(implicit ctx: Context): List[Ident] = t match {

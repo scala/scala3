@@ -71,10 +71,8 @@ class ReplCompiler extends Compiler {
 
   private case class Definitions(stats: List[untpd.Tree], state: State)
 
-  private def definitions(trees: List[untpd.Tree], state: State): Definitions = {
+  private def definitions(trees: List[untpd.Tree], state: State): Definitions = inContext(state.context) {
     import untpd._
-
-    implicit val ctx: Context = state.context
 
     // If trees is of the form `{ def1; def2; def3 }` then `List(def1, def2, def3)`
     val flattened = trees match {
@@ -127,17 +125,16 @@ class ReplCompiler extends Compiler {
    *  }
    *  ```
    */
-  private def wrapped(defs: Definitions, objectTermName: TermName, span: Span): untpd.PackageDef = {
-    import untpd._
+  private def wrapped(defs: Definitions, objectTermName: TermName, span: Span): untpd.PackageDef =
+    inContext(defs.state.context) {
+      import untpd._
 
-    implicit val ctx: Context = defs.state.context
+      val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, defs.stats)
+      val module = ModuleDef(objectTermName, tmpl)
+        .withSpan(span)
 
-    val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, defs.stats)
-    val module = ModuleDef(objectTermName, tmpl)
-      .withSpan(span)
-
-    PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
-  }
+      PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
+    }
 
   private def createUnit(defs: Definitions, span: Span)(implicit ctx: Context): CompilationUnit = {
     val objectName = ctx.source.file.toString
@@ -179,8 +176,7 @@ class ReplCompiler extends Compiler {
       }
     }
 
-  def docOf(expr: String)(implicit state: State): Result[String] = {
-    implicit val ctx: Context = state.context
+  def docOf(expr: String)(implicit state: State): Result[String] = inContext(state.context) {
 
     /** Extract the "selected" symbol from `tree`.
      *
@@ -274,19 +270,20 @@ class ReplCompiler extends Compiler {
 
 
     val src = SourceFile.virtual("<typecheck>", expr)
-    implicit val ctx: Context = state.context.fresh
+    inContext(state.context.fresh
       .setReporter(newStoreReporter)
       .setSetting(state.context.settings.YstopAfter, List("typer"))
+    ) {
+      wrapped(expr, src, state).flatMap { pkg =>
+        val unit = CompilationUnit(src)
+        unit.untpdTree = pkg
+        ctx.run.compileUnits(unit :: Nil, ctx)
 
-    wrapped(expr, src, state).flatMap { pkg =>
-      val unit = CompilationUnit(src)
-      unit.untpdTree = pkg
-      ctx.run.compileUnits(unit :: Nil, ctx)
-
-      if (errorsAllowed || !ctx.reporter.hasErrors)
-        unwrapped(unit.tpdTree, src)
-      else
-        ctx.reporter.removeBufferedMessages.errors[tpd.ValDef] // Workaround #4988
+        if (errorsAllowed || !ctx.reporter.hasErrors)
+          unwrapped(unit.tpdTree, src)
+        else
+          ctx.reporter.removeBufferedMessages.errors[tpd.ValDef] // Workaround #4988
+      }
     }
   }
 }

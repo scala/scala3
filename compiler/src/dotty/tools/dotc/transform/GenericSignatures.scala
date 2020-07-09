@@ -34,7 +34,7 @@ object GenericSignatures {
   def javaSig(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] =
     // Avoid generating a signature for local symbols.
     if (sym0.isLocal) None
-    else javaSig0(sym0, info)(ctx.withPhase(ctx.erasurePhase))
+    else javaSig0(sym0, info)(using ctx.withPhase(ctx.erasurePhase))
 
   @noinline
   private final def javaSig0(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] = {

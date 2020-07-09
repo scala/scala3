@@ -15,7 +15,7 @@ import scala.tools.asm
 abstract class BTypes {
 
   val int: DottyBackendInterface
-  import int._
+  import int.{_, given _}
   /**
    * A map from internal names to ClassBTypes. Every ClassBType is added to this map on its
    * construction.

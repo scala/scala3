@@ -30,7 +30,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
   // import global._
   // import definitions._
   import tpd._
-  import int._
+  import int.{_, given _}
   import DottyBackendInterface.symExtensions
   import bTypes._
   import coreBTypes._

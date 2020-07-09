@@ -55,7 +55,7 @@ call-graph. To run, e.g. some compiler function `f` at a given phase `phase`,
 we invoke `f` with an explicit context parameter, like this
 
 ```scala
-f(/*normal args*/)(ctx.withPhase(phase))
+f(/*normal args*/)(using ctx.withPhase(phase))
 ```
 
 This assumes that `f` is defined in the way most compiler functions are:

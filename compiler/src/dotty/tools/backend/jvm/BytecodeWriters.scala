@@ -16,7 +16,7 @@ class FileConflictException(msg: String, val file: AbstractFile) extends IOExcep
  */
 trait BytecodeWriters {
   val int: DottyBackendInterface
-  import int._
+  import int.{_, given _}
 
   /**
    * @param clsName cls.getName

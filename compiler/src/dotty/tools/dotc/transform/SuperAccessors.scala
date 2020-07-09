@@ -147,7 +147,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     }
     if (name.isTermName && mix.name.isEmpty &&
         (clazz.is(Trait) || clazz != ctx.owner.enclosingClass || !validCurrentClass))
-      superAccessorCall(sel)(ctx.withPhase(thisPhase.next))
+      superAccessorCall(sel)(using ctx.withPhase(thisPhase.next))
     else sel
   }
 
