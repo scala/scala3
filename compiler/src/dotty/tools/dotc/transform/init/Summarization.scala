@@ -220,7 +220,7 @@ object Summarization {
         }
 
       case ThisType(tref) =>
-        val enclosing = env.ctx.owner.enclosingClass.asClass
+        val enclosing = env.ctx.owner.lexicallyEnclosingClass.asClass
         val cls = tref.symbol.asClass
         resolveThis(cls, ThisRef()(source), enclosing, source)
 
@@ -252,13 +252,15 @@ object Summarization {
   }
 
   def resolveThis(cls: ClassSymbol, pot: Potential, cur: ClassSymbol, source: Tree)(implicit env: Env): Summary =
+  trace("resolve " + cls.show + ", pot = " + pot.show + ", cur = " + cur.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
     if (cls.is(Flags.Package)) (Potentials.empty, Effects.empty)
     else if (cls == cur) (pot.toPots, Effects.empty)
     else if (pot.size > 2) (Potentials.empty, Promote(pot)(source).toEffs)
     else {
       val pot2 = Outer(pot, cur)(pot.source)
-      resolveThis(cls, pot2, cur.enclosingClass.asClass, source)
+      resolveThis(cls, pot2, cur.lexicallyEnclosingClass.asClass, source)
     }
+  }
 
   /** Summarize secondary constructors or class body */
   def analyzeConstructor(ctor: Symbol)(implicit env: Env): Summary =

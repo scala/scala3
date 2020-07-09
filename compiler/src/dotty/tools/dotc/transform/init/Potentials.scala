@@ -109,7 +109,7 @@ object Potentials {
    */
   case class Outer(pot: Potential, classSymbol: ClassSymbol)(val source: Tree) extends Potential {
     def size: Int = 1 + pot.size
-    def show(using Context): String = "Outer[" + pot.show + ", " + classSymbol.show + "]"
+    def show(using Context): String = pot.show + ".outer[" + classSymbol.show + "]"
   }
 
   /** The object pointed by `this.f` */
