@@ -119,11 +119,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     true
   }
 
-  protected def gadtBounds(sym: Symbol)(implicit ctx: Context) = ctx.gadt.bounds(sym)
+  protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
   protected def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = false)
   protected def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = true)
 
-  protected def typeVarInstance(tvar: TypeVar)(implicit ctx: Context): Type = tvar.underlying
+  protected def typeVarInstance(tvar: TypeVar)(using Context): Type = tvar.underlying
 
   // Subtype testing `<:<`
 
@@ -1860,7 +1860,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   /** The greatest lower bound of a list types */
   final def glb(tps: List[Type]): Type = tps.foldLeft(AnyType: Type)(glb)
 
-  def widenInUnions(implicit ctx: Context): Boolean =
+  def widenInUnions(using Context): Boolean =
     migrateTo3 || ctx.erasedTypes
 
   /** The least upper bound of two types
@@ -2175,7 +2175,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   }
 
   /** Show type, handling type types better than the default */
-  private def showType(tp: Type)(implicit ctx: Context) = tp match {
+  private def showType(tp: Type)(using Context) = tp match {
     case ClassInfo(_, cls, _, _, _) => cls.showLocated
     case bounds: TypeBounds => "type bounds" + bounds.show
     case _ => tp.show
@@ -2231,7 +2231,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     }
 
   /** Show subtype goal that led to an assertion failure */
-  def showGoal(tp1: Type, tp2: Type)(implicit ctx: Context): Unit = {
+  def showGoal(tp1: Type, tp2: Type)(using Context): Unit = {
     ctx.echo(i"assertion failure for ${show(tp1)} <:< ${show(tp2)}, frozen = $frozenConstraint")
     def explainPoly(tp: Type) = tp match {
       case tp: TypeParamRef => ctx.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
@@ -2310,7 +2310,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  property that in all possible contexts, the same match type expression
    *  is either stuck or reduces to the same case.
    */
-  def provablyDisjoint(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = {
+  def provablyDisjoint(tp1: Type, tp2: Type)(using Context): Boolean = {
     // println(s"provablyDisjoint(${tp1.show}, ${tp2.show})")
     /** Can we enumerate all instantiations of this type? */
     def isClosedSum(tp: Symbol): Boolean =
@@ -2432,7 +2432,7 @@ object TypeComparer {
     var tpe: Type = NoType
   }
 
-  private[core] def show(res: Any)(implicit ctx: Context): String = res match {
+  private[core] def show(res: Any)(using Context): String = res match {
     case res: printing.Showable if !ctx.settings.YexplainLowlevel.value => res.show
     case _ => String.valueOf(res)
   }
@@ -2467,14 +2467,14 @@ object TypeComparer {
   val FreshApprox: ApproxState = new ApproxState(4)
 
   /** Show trace of comparison operations when performing `op` */
-  def explaining[T](say: String => Unit)(op: Context ?=> T)(implicit ctx: Context): T = {
+  def explaining[T](say: String => Unit)(op: Context ?=> T)(using Context): T = {
     val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
     val res = try { op(using nestedCtx) } finally { say(nestedCtx.typeComparer.lastTrace()) }
     res
   }
 
   /** Like [[explaining]], but returns the trace instead */
-  def explained[T](op: Context ?=> T)(implicit ctx: Context): String = {
+  def explained[T](op: Context ?=> T)(using Context): String = {
     var trace: String = null
     try { explaining(trace = _)(op) } catch { case ex: Throwable => ex.printStackTrace }
     trace
@@ -2496,7 +2496,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     super.addOneBound(param, bound, isUpper)
   }
 
-  override def gadtBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
+  override def gadtBounds(sym: Symbol)(using Context): TypeBounds = {
     if (sym.exists) footprint += sym.typeRef
     super.gadtBounds(sym)
   }
@@ -2511,12 +2511,12 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     super.gadtAddUpperBound(sym, b)
   }
 
-  override def typeVarInstance(tvar: TypeVar)(implicit ctx: Context): Type = {
+  override def typeVarInstance(tvar: TypeVar)(using Context): Type = {
     footprint += tvar
     super.typeVarInstance(tvar)
   }
 
-  def matchCases(scrut: Type, cases: List[Type])(implicit ctx: Context): Type = {
+  def matchCases(scrut: Type, cases: List[Type])(using Context): Type = {
     def paramInstances = new TypeAccumulator[Array[Type]] {
       def apply(inst: Array[Type], t: Type) = t match {
         case t @ TypeParamRef(b, n) if b `eq` caseLambda =>
