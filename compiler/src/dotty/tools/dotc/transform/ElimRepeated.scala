@@ -128,7 +128,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
                       |  - there must be a single repeated parameter
                       |  - it must be the last argument in the last parameter list
                       |""".stripMargin,
-              tree.sourcePos)
+              sym.sourcePos)
             tree
           else
             addVarArgsBridge(tree, isOverride)
@@ -136,7 +136,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
           tree
       else
         if hasAnnotation then
-          ctx.error("A method without repeated parameters cannot be annotated with @varargs", tree.sourcePos)
+          ctx.error("A method without repeated parameters cannot be annotated with @varargs", sym.sourcePos)
         tree
     }
 
@@ -156,7 +156,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       lastp.last.isRepeatedParam
     case pt: PolyType =>
       isValidJavaVarArgs(pt.resultType)
-    case _ => false
+    case _ =>
+      throw new Exception("Match error in @varargs bridge logic. This should not happen, please open an issue " + tp)
 
 
   /** Add a Java varargs bridge
@@ -179,22 +180,23 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     // although it's not strictly necessary for overrides
     // (but it is for non-overrides)
     val flags = ddef.symbol.flags | JavaVarargs
+
+    // The java-compatible bridge symbol
     val bridge = original.copy(
         // non-overrides cannot be synthetic otherwise javac refuses to call them
         flags = if javaOverride then flags | Artifact else flags,
         info = toJavaVarArgs(ddef.symbol.info)
-      ).enteredAfter(thisPhase).asTerm
+      ).asTerm
 
-    val bridgeDenot = bridge.denot
     currentClass.info.member(bridge.name).alternatives.find { s =>
-      s.matches(bridgeDenot) &&
-      !(s.asSymDenotation.is(JavaDefined) && javaOverride)
+      s.matches(bridge) &&
+      !(javaOverride && s.asSymDenotation.is(JavaDefined))
     } match
       case Some(conflict) =>
-        ctx.error(s"@varargs produces a forwarder method that conflicts with ${conflict.showDcl}", ddef.sourcePos)
-        EmptyTree
+        ctx.error(s"@varargs produces a forwarder method that conflicts with ${conflict.showDcl}", original.sourcePos)
+        ddef
       case None =>
-        val bridgeDef = polyDefDef(bridge, trefs => vrefss => {
+        val bridgeDef = polyDefDef(bridge.enteredAfter(thisPhase), trefs => vrefss => {
           val init :+ (last :+ vararg) = vrefss
           // Can't call `.argTypes` here because the underlying array type is of the
           // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
@@ -213,16 +215,16 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Convert type from Scala to Java varargs method */
   private def toJavaVarArgs(tp: Type)(using Context): Type = tp match
-      case tp: PolyType =>
-        tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(tp.resultType))
-      case tp: MethodType =>
-        tp.resultType match
-          case m: MethodType => // multiple param lists
-            tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(m))
-          case _ =>
-            val init :+ last = tp.paramInfos
-            val vararg = varargArrayType(last)
-            tp.derivedLambdaType(tp.paramNames, init :+ vararg, tp.resultType)
+    case tp: PolyType =>
+      tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(tp.resultType))
+    case tp: MethodType =>
+      tp.resultType match
+        case m: MethodType => // multiple param lists
+          tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(m))
+        case _ =>
+          val init :+ last = tp.paramInfos
+          val vararg = varargArrayType(last)
+          tp.derivedLambdaType(tp.paramNames, init :+ vararg, tp.resultType)
 
   /** Translate a repeated type T* to an `Array[? <: Upper]`
    *  such that it is compatible with java varargs.
