@@ -333,7 +333,7 @@ object Interactive {
    * @return The definitions for the symbol at the end of `path`.
    */
   def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver): List[SourceTree] = {
-    implicit val ctx = driver.currentCtx
+    given Context = driver.currentCtx
     val enclTree = enclosingTree(path)
     val includeOverridden = enclTree.isInstanceOf[MemberDef]
     val symbols = enclosingSourceSymbols(path, pos)
@@ -355,7 +355,7 @@ object Interactive {
                       driver: InteractiveDriver,
                       includeOverridden: Boolean,
                       includeExternal: Boolean): List[SourceTree] = {
-    implicit val ctx = driver.currentCtx
+    given Context = driver.currentCtx
     val include = Include.definitions | Include.overriding |
       (if (includeOverridden) Include.overridden else Include.empty)
     symbols.flatMap { sym =>

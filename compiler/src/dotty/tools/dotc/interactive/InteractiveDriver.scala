@@ -149,7 +149,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       val run = compiler.newRun(myInitCtx.fresh.setReporter(reporter))
       myCtx = run.runContext
 
-      implicit val ctx = myCtx
+      given Context = myCtx
 
       myOpenedFiles(uri) = source
 

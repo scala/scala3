@@ -111,7 +111,7 @@ class ReplDriver(settings: Array[String],
         val comps = completions(line.cursor, line.line, state)
         candidates.addAll(comps.asJava)
       }
-      implicit val ctx = state.context
+      given Context = state.context
       try {
         val line = terminal.readLine(completer)
         ParseResult(line)(state)
@@ -181,7 +181,7 @@ class ReplDriver(settings: Array[String],
         val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
         val unit = CompilationUnit(file)(state.context)
         unit.tpdTree = tree
-        implicit val ctx = state.context.fresh.setCompilationUnit(unit)
+        given Context = state.context.fresh.setCompilationUnit(unit)
         val srcPos = SourcePosition(file, Span(cursor))
         val (_, completions) = Completion.completions(srcPos)
         completions.map(makeCandidate)
@@ -270,7 +270,7 @@ class ReplDriver(settings: Array[String],
   }
 
   private def renderDefinitions(tree: tpd.Tree, newestWrapper: Name)(implicit state: State): (State, Seq[Diagnostic]) = {
-    implicit val ctx = state.context
+    given Context = state.context
 
     def resAndUnit(denot: Denotation) = {
       import scala.util.{Success, Try}

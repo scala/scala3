@@ -165,7 +165,7 @@ class ReplCompiler extends Compiler {
 
   final def typeOf(expr: String)(implicit state: State): Result[String] =
     typeCheck(expr).map { tree =>
-      implicit val ctx = state.context
+      given Context = state.context
       tree.rhs match {
         case Block(xs, _) => xs.last.tpe.widen.show
         case _ =>

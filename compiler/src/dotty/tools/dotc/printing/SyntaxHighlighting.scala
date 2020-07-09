@@ -35,7 +35,7 @@ object SyntaxHighlighting {
     else {
       val source = SourceFile.virtual("<highlighting>", in)
 
-      implicit val ctx = freshCtx.setCompilationUnit(CompilationUnit(source, mustExist = false)(freshCtx))
+      given Context = freshCtx.setCompilationUnit(CompilationUnit(source, mustExist = false)(freshCtx))
 
       val colorAt = Array.fill(in.length)(NoColor)
 
