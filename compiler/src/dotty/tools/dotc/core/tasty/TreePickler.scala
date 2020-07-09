@@ -53,7 +53,7 @@ class TreePickler(pickler: TastyPickler) {
   def addrOfSym(sym: Symbol): Option[Addr] =
     symRefs.get(sym)
 
-  def preRegister(tree: Tree)(implicit ctx: Context): Unit = tree match {
+  def preRegister(tree: Tree)(using Context): Unit = tree match {
     case tree: MemberDef =>
       if (!symRefs.contains(tree.symbol)) symRefs(tree.symbol) = NoAddr
     case _ =>
@@ -76,7 +76,7 @@ class TreePickler(pickler: TastyPickler) {
       if (sig eq Signature.NotAMethod) name
       else SignedName(name.toTermName, sig))
 
-  private def pickleSymRef(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
+  private def pickleSymRef(sym: Symbol)(using Context) = symRefs.get(sym) match {
     case Some(label) =>
       if (label != NoAddr) writeRef(label) else pickleForwardSymRef(sym)
     case None =>
@@ -88,16 +88,16 @@ class TreePickler(pickler: TastyPickler) {
       pickleForwardSymRef(sym)
   }
 
-  private def pickleForwardSymRef(sym: Symbol)(implicit ctx: Context) = {
+  private def pickleForwardSymRef(sym: Symbol)(using Context) = {
     val ref = reserveRef(relative = false)
     assert(!sym.is(Flags.Package), sym)
     forwardSymRefs(sym) = ref :: forwardSymRefs.getOrElse(sym, Nil)
   }
 
-  private def isLocallyDefined(sym: Symbol)(implicit ctx: Context) =
+  private def isLocallyDefined(sym: Symbol)(using Context) =
     sym.topLevelClass.isLinkedWith(pickler.rootCls)
 
-  def pickleConstant(c: Constant)(implicit ctx: Context): Unit = c.tag match {
+  def pickleConstant(c: Constant)(using Context): Unit = c.tag match {
     case UnitTag =>
       writeByte(UNITconst)
     case BooleanTag =>
@@ -145,7 +145,7 @@ class TreePickler(pickler: TastyPickler) {
           else STABLE)
     case _ =>
 
-  def pickleType(tpe0: Type, richTypes: Boolean = false)(implicit ctx: Context): Unit = {
+  def pickleType(tpe0: Type, richTypes: Boolean = false)(using Context): Unit = {
     val tpe = tpe0.stripTypeVar
     try {
       val prev = pickledTypes.get(tpe)
@@ -165,7 +165,7 @@ class TreePickler(pickler: TastyPickler) {
     }
   }
 
-  private def pickleNewType(tpe: Type, richTypes: Boolean)(implicit ctx: Context): Unit = tpe match {
+  private def pickleNewType(tpe: Type, richTypes: Boolean)(using Context): Unit = tpe match {
     case AppliedType(tycon, args) =>
       writeByte(APPLIEDtype)
       withLength { pickleType(tycon); args.foreach(pickleType(_)) }
@@ -281,7 +281,7 @@ class TreePickler(pickler: TastyPickler) {
       pickleType(tpe.ref)
   }
 
-  def pickleMethodic(tag: Int, tpe: LambdaType, mods: FlagSet)(implicit ctx: Context): Unit = {
+  def pickleMethodic(tag: Int, tpe: LambdaType, mods: FlagSet)(using Context): Unit = {
     writeByte(tag)
     withLength {
       pickleType(tpe.resultType, richTypes = true)
@@ -292,7 +292,7 @@ class TreePickler(pickler: TastyPickler) {
     }
   }
 
-  def pickleParamRef(tpe: ParamRef)(implicit ctx: Context): Boolean = {
+  def pickleParamRef(tpe: ParamRef)(using Context): Boolean = {
     val binder = pickledTypes.get(tpe.binder)
     val pickled = binder != null
     if (pickled) {
@@ -302,14 +302,14 @@ class TreePickler(pickler: TastyPickler) {
     pickled
   }
 
-  def pickleTpt(tpt: Tree)(implicit ctx: Context): Unit =
+  def pickleTpt(tpt: Tree)(using Context): Unit =
     pickleTree(tpt)
 
-  def pickleTreeUnlessEmpty(tree: Tree)(implicit ctx: Context): Unit = {
+  def pickleTreeUnlessEmpty(tree: Tree)(using Context): Unit = {
     if (!tree.isEmpty) pickleTree(tree)
   }
 
-  def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(implicit ctx: Context): Unit = {
+  def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(using Context): Unit = {
     assert(symRefs(sym) == NoAddr, sym)
     registerDef(sym)
     writeByte(tag)
@@ -325,7 +325,7 @@ class TreePickler(pickler: TastyPickler) {
     }
   }
 
-  def pickleParam(tree: Tree)(implicit ctx: Context): Unit = {
+  def pickleParam(tree: Tree)(using Context): Unit = {
     registerTreeAddr(tree)
     tree match {
       case tree: ValDef => pickleDef(PARAM, tree.symbol, tree.tpt)
@@ -334,17 +334,17 @@ class TreePickler(pickler: TastyPickler) {
     }
   }
 
-  def pickleParams(trees: List[Tree])(implicit ctx: Context): Unit = {
+  def pickleParams(trees: List[Tree])(using Context): Unit = {
     trees.foreach(preRegister)
     trees.foreach(pickleParam)
   }
 
-  def pickleStats(stats: List[Tree])(implicit ctx: Context): Unit = {
+  def pickleStats(stats: List[Tree])(using Context): Unit = {
     stats.foreach(preRegister)
     stats.foreach(stat => if (!stat.isEmpty) pickleTree(stat))
   }
 
-  def pickleTree(tree: Tree)(implicit ctx: Context): Unit = {
+  def pickleTree(tree: Tree)(using Context): Unit = {
     val addr = registerTreeAddr(tree)
     if (addr != currentAddr) {
       writeByte(SHAREDterm)
@@ -629,7 +629,7 @@ class TreePickler(pickler: TastyPickler) {
       }
   }
 
-  def pickleSelectors(selectors: List[untpd.ImportSelector])(implicit ctx: Context): Unit =
+  def pickleSelectors(selectors: List[untpd.ImportSelector])(using Context): Unit =
     for sel <- selectors do
       pickleSelector(IMPORTED, sel.imported)
       sel.renamed match
@@ -642,13 +642,13 @@ class TreePickler(pickler: TastyPickler) {
           pickleTree(tpt)
         case _ =>
 
-  def pickleSelector(tag: Int, id: untpd.Ident)(implicit ctx: Context): Unit = {
+  def pickleSelector(tag: Int, id: untpd.Ident)(using Context): Unit = {
     registerTreeAddr(id)
     writeByte(tag)
     pickleName(id.name)
   }
 
-  def pickleModifiers(sym: Symbol)(implicit ctx: Context): Unit = {
+  def pickleModifiers(sym: Symbol)(using Context): Unit = {
     import Flags._
     var flags = sym.flags
     val privateWithin = sym.privateWithin
@@ -663,7 +663,7 @@ class TreePickler(pickler: TastyPickler) {
     sym.annotations.foreach(pickleAnnotation(sym, _))
   }
 
-  def pickleFlags(flags: FlagSet, isTerm: Boolean)(implicit ctx: Context): Unit = {
+  def pickleFlags(flags: FlagSet, isTerm: Boolean)(using Context): Unit = {
     import Flags._
     def writeModTag(tag: Int) = {
       assert(isModifierTag(tag))
@@ -713,7 +713,7 @@ class TreePickler(pickler: TastyPickler) {
     }
   }
 
-  private def isUnpicklable(owner: Symbol, ann: Annotation)(implicit ctx: Context) = ann match {
+  private def isUnpicklable(owner: Symbol, ann: Annotation)(using Context) = ann match {
     case Annotation.Child(sym) => sym.isInaccessibleChildOf(owner)
       // If child annotation refers to a local class or enum value under
       // a different toplevel class, it is impossible to pickle a reference to it.
@@ -723,7 +723,7 @@ class TreePickler(pickler: TastyPickler) {
       ann.symbol == defn.BodyAnnot // inline bodies are reconstituted automatically when unpickling
   }
 
-  def pickleAnnotation(owner: Symbol, ann: Annotation)(implicit ctx: Context): Unit = {
+  def pickleAnnotation(owner: Symbol, ann: Annotation)(using Context): Unit = {
     if (!isUnpicklable(owner, ann)) {
       writeByte(ANNOTATION)
       withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
@@ -732,7 +732,7 @@ class TreePickler(pickler: TastyPickler) {
 
 // ---- main entry points ---------------------------------------
 
-  def pickle(trees: List[Tree])(implicit ctx: Context): Unit = {
+  def pickle(trees: List[Tree])(using Context): Unit = {
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
     def missing = forwardSymRefs.keysIterator.map(sym => sym.showLocated + "(line " + sym.sourcePos.line + ")").toList
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: $missing%, % when pickling ${ctx.source}")

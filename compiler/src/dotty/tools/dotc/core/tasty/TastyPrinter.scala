@@ -11,7 +11,7 @@ import TastyUnpickler._
 import util.Spans.offsetToInt
 import printing.Highlighting._
 
-class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
+class TastyPrinter(bytes: Array[Byte])(using Context) {
 
   private val sb: StringBuilder = new StringBuilder
 
