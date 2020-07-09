@@ -177,7 +177,7 @@ object ParsedComment {
    */
   private def toCodeFence(language: String)(ctx: Context, snippet: String): String =
     if (colorEnabled(ctx))
-      SyntaxHighlighting.highlight(snippet)(ctx)
+      SyntaxHighlighting.highlight(snippet)(using ctx)
     else
       s"""```$language
          |$snippet

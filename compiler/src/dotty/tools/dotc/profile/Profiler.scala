@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.io.AbstractFile
 
 object Profiler {
-  def apply()(implicit ctx: Context): Profiler =
+  def apply()(using Context): Profiler =
     if (!ctx.settings.YprofileEnabled.value) NoOpProfiler
     else {
       val reporter = if (ctx.settings.YprofileDestination.value != "")
@@ -90,7 +90,7 @@ private [profile] object RealProfiler {
   private val idGen = new AtomicInteger()
 }
 
-private [profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: Context) extends Profiler with NotificationListener {
+private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) extends Profiler with NotificationListener {
   def completeBackground(threadRange: ProfileRange): Unit =
     reporter.reportBackground(this, threadRange)
 

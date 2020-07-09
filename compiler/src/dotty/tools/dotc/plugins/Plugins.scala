@@ -23,7 +23,7 @@ trait Plugins {
    *  test for same-named phases or other problems that are
    *  filtered from the final list of plugins.
    */
-  protected def loadRoughPluginsList(implicit ctx: Context): List[Plugin] = {
+  protected def loadRoughPluginsList(using Context): List[Plugin] = {
     def asPath(p: String) = ClassPath split p
     val paths  = ctx.settings.plugin.value filter (_ != "") map (s => asPath(s) map Path.apply)
     val dirs   = {
@@ -43,7 +43,7 @@ trait Plugins {
   }
 
   private var _roughPluginsList: List[Plugin] = _
-  protected def roughPluginsList(implicit ctx: Context): List[Plugin] =
+  protected def roughPluginsList(using Context): List[Plugin] =
     if (_roughPluginsList == null) {
       _roughPluginsList = loadRoughPluginsList
       _roughPluginsList
@@ -54,7 +54,7 @@ trait Plugins {
    *  either have the same name as another one, or which
    *  define a phase name that another one does.
    */
-  protected def loadPlugins(implicit ctx: Context): List[Plugin] = {
+  protected def loadPlugins(using Context): List[Plugin] = {
     // remove any with conflicting names or subcomponent names
     def pick(
       plugins: List[Plugin],
@@ -95,7 +95,7 @@ trait Plugins {
   }
 
   private var _plugins: List[Plugin] = _
-  def plugins(implicit ctx: Context): List[Plugin] =
+  def plugins(using Context): List[Plugin] =
     if (_plugins == null) {
       _plugins = loadPlugins
       _plugins
@@ -113,7 +113,7 @@ trait Plugins {
     }).mkString
 
   /** Add plugin phases to phase plan */
-  def addPluginPhases(plan: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = {
+  def addPluginPhases(plan: List[List[Phase]])(using Context): List[List[Phase]] = {
     // plugin-specific options.
     // The user writes `-P:plugname:opt1,opt2`, but the plugin sees `List(opt1, opt2)`.
     def options(plugin: Plugin): List[String] = {

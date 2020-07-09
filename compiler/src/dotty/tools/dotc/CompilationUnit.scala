@@ -79,11 +79,11 @@ object CompilationUnit {
   class SuspendException extends Exception
 
   /** Make a compilation unit for top class `clsd` with the contents of the `unpickled` tree */
-  def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =
+  def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
     apply(new SourceFile(clsd.symbol.associatedFile, Array.empty[Char]), unpickled, forceTrees)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
-  def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit = {
+  def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit = {
     assert(!unpickled.isEmpty, unpickled)
     val unit1 = new CompilationUnit(source)
     unit1.tpdTree = unpickled
@@ -98,7 +98,7 @@ object CompilationUnit {
   /** Create a compilation unit corresponding to `source`.
    *  If `mustExist` is true, this will fail if `source` does not exist.
    */
-  def apply(source: SourceFile, mustExist: Boolean = true)(implicit ctx: Context): CompilationUnit = {
+  def apply(source: SourceFile, mustExist: Boolean = true)(using Context): CompilationUnit = {
     val src =
       if (!mustExist)
         source
@@ -117,7 +117,7 @@ object CompilationUnit {
   /** Force the tree to be loaded */
   private class Force extends TreeTraverser {
     var needsStaging = false
-    def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+    def traverse(tree: Tree)(using Context): Unit = {
       if (tree.symbol.isQuote)
         needsStaging = true
       traverseChildren(tree)

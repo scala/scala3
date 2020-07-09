@@ -29,13 +29,14 @@ object SyntaxHighlighting {
   val TypeColor: String       = Console.MAGENTA
   val AnnotationColor: String = Console.MAGENTA
 
-  def highlight(in: String)(implicit ctx: Context): String = {
+  def highlight(in: String)(using Context): String = {
     def freshCtx = ctx.fresh.setReporter(Reporter.NoReporter)
     if (in.isEmpty || ctx.settings.color.value == "never") in
     else {
       val source = SourceFile.virtual("<highlighting>", in)
 
-      given Context = freshCtx.setCompilationUnit(CompilationUnit(source, mustExist = false)(freshCtx))
+      given Context = freshCtx
+        .setCompilationUnit(CompilationUnit(source, mustExist = false)(using freshCtx))
 
       val colorAt = Array.fill(in.length)(NoColor)
 
@@ -96,10 +97,10 @@ object SyntaxHighlighting {
           for (annotation <- tree.rawMods.annotations)
             highlightPosition(annotation.span, AnnotationColor)
 
-        def highlight(trees: List[Tree])(implicit ctx: Context): Unit =
+        def highlight(trees: List[Tree])(using Context): Unit =
           trees.foreach(traverse)
 
-        def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+        def traverse(tree: Tree)(using Context): Unit = {
           tree match {
             case tree: NameTree if ignored(tree) =>
               ()

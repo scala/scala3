@@ -235,8 +235,8 @@ class JUnitBootstrappers extends MiniPhase {
             if timeoutName.toString == "timeout" => Some(timeoutLiteral)
           case other => {
             val shownName = other match {
-              case NamedArg(name, _) => name.show(ctx)
-              case other => other.show(ctx)
+              case NamedArg(name, _) => name.show(using ctx)
+              case other => other.show(using ctx)
             }
             ctx.error(s"$shownName is an unsupported argument for the JUnit @Test annotation in this position", other.sourcePos)
             None

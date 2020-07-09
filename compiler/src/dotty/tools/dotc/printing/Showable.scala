@@ -20,7 +20,7 @@ trait Showable extends Any {
   def fallbackToText(printer: Printer): Text = toString
 
   /** The string representation of this showable element. */
-  def show(implicit ctx: Context): String = toText(ctx.printer).show
+  def show(using Context): String = toText(ctx.printer).show
 
   /** The string representation with each line after the first one indented
    *  by the given given margin (in spaces).

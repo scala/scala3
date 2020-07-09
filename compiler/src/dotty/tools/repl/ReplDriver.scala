@@ -179,7 +179,7 @@ class ReplDriver(settings: Array[String],
       .typeCheck(expr, errorsAllowed = true)
       .map { tree =>
         val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
-        val unit = CompilationUnit(file)(state.context)
+        val unit = CompilationUnit(file)(using state.context)
         unit.tpdTree = tree
         given Context = state.context.fresh.setCompilationUnit(unit)
         val srcPos = SourcePosition(file, Span(cursor))
@@ -360,7 +360,7 @@ class ReplDriver(settings: Array[String],
       for {
         objectIndex <- 1 to state.objectIndex
         imp <- state.imports.getOrElse(objectIndex, Nil)
-      } out.println(imp.show(state.context))
+      } out.println(imp.show(using state.context))
       state
 
     case Load(path) =>
@@ -377,7 +377,7 @@ class ReplDriver(settings: Array[String],
     case TypeOf(expr) =>
       compiler.typeOf(expr)(newRun(state)).fold(
         displayErrors,
-        res => out.println(SyntaxHighlighting.highlight(res)(state.context))
+        res => out.println(SyntaxHighlighting.highlight(res)(using state.context))
       )
       state
 

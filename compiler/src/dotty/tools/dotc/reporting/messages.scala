@@ -280,7 +280,7 @@ object messages {
           else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
       val (where, printCtx) = Formatting.disambiguateTypes(found2, expected2)
       val whereSuffix = if (where.isEmpty) where else s"\n\n$where"
-      val (foundStr, expectedStr) = Formatting.typeDiff(found2, expected2)(printCtx)
+      val (foundStr, expectedStr) = Formatting.typeDiff(found2, expected2)(using printCtx)
       s"""|Found:    $foundStr
           |Required: $expectedStr""".stripMargin
         + whereSuffix + err.whyNoMatchStr(found, expected) + postScript

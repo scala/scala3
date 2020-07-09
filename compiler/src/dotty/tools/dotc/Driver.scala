@@ -25,13 +25,13 @@ import fromtasty.{TASTYCompiler, TastyFileUtil}
  */
 class Driver {
 
-  protected def newCompiler(implicit ctx: Context): Compiler =
+  protected def newCompiler(using Context): Compiler =
     if (ctx.settings.fromTasty.value) new TASTYCompiler
     else new Compiler
 
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
-  protected def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
+  protected def doCompile(compiler: Compiler, fileNames: List[String])(using Context): Reporter =
     if (fileNames.nonEmpty)
       try
         val run = compiler.newRun
@@ -191,7 +191,7 @@ class Driver {
    */
   def process(args: Array[String], rootCtx: Context): Reporter = {
     val (fileNames, compileCtx) = setup(args, rootCtx)
-    doCompile(newCompiler(compileCtx), fileNames)(compileCtx)
+    doCompile(newCompiler(using compileCtx), fileNames)(using compileCtx)
   }
 
   def main(args: Array[String]): Unit = {

@@ -41,7 +41,7 @@ class Resident extends Driver {
   final override def process(args: Array[String], rootCtx: Context): Reporter = {
     @tailrec def loop(args: Array[String], prevCtx: Context): Reporter = {
       var (fileNames, ctx) = setup(args, prevCtx)
-      doCompile(residentCompiler, fileNames)(ctx)
+      doCompile(residentCompiler, fileNames)(using ctx)
       var nextCtx = ctx
       var line = getLine()
       while (line == reset) {

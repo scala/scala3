@@ -27,7 +27,7 @@ class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
   def run(className: String): (String, String) = {
     val reporter = new StoreReporter(null) with HideNonSensicalMessages
 
-    val run = decompiler.newRun(myInitCtx.fresh.setReporter(reporter))
+    val run = decompiler.newRun(using myInitCtx.fresh.setReporter(reporter))
 
     inContext(run.runContext) {
       run.compile(List(className))

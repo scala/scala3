@@ -146,7 +146,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       val reporter =
         new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
-      val run = compiler.newRun(myInitCtx.fresh.setReporter(reporter))
+      val run = compiler.newRun(using myInitCtx.fresh.setReporter(reporter))
       myCtx = run.runContext
 
       given Context = myCtx
@@ -312,7 +312,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * late-compilation is needed).
    */
   private def initialize(): Unit = {
-    val run = compiler.newRun(myInitCtx.fresh)
+    val run = compiler.newRun(using myInitCtx.fresh)
     myCtx = run.runContext
     run.compileUnits(Nil, myCtx)
   }
