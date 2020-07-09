@@ -186,10 +186,11 @@ object GenericSignatures {
         case defn.ArrayOf(elemtp) =>
           if (isUnboundedGeneric(elemtp))
             jsig(defn.ObjectType)
-          else {
+          else
             builder.append(ClassfileConstants.ARRAY_TAG)
-            jsig(elemtp)
-          }
+            elemtp match
+              case TypeBounds(lo, hi) => jsig(hi.widenDealias)
+              case _ => jsig(elemtp)
 
         case RefOrAppliedType(sym, pre, args) =>
           if (sym == defn.PairClass && tp.tupleArity > Definitions.MaxTupleArity)

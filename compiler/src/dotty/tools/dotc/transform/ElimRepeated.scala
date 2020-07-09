@@ -227,15 +227,14 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   /** Translate a repeated type T* to an `Array[? <: Upper]`
    *  such that it is compatible with java varargs.
    *
-   *  If T is not a primitive type, we set `Upper = T & AnyRef`
+   *  When necessary we set `Upper = T & AnyRef`
    *  to prevent the erasure of `Array[? <: Upper]` to Object,
    *  which would break the varargs from Java.
    */
   private def varargArrayType(tp: Type)(using Context): Type =
-    val array = tp.translateFromRepeated(toArray = true)
-    val element = array.elemType.typeSymbol
+    val array = tp.translateFromRepeated(toArray = true) // Array[? <: T]
+    val element = array.elemType.hiBound // T
 
-    if element.isPrimitiveValueClass then array
-    else defn.ArrayOf(TypeBounds.upper(AndType(element.typeRef, defn.AnyRefType)))
-
+    if element <:< defn.AnyRefType || element.typeSymbol.isPrimitiveValueClass then array
+    else defn.ArrayOf(TypeBounds.upper(AndType(element, defn.AnyRefType))) // Array[? <: T & AnyRef]
 }
