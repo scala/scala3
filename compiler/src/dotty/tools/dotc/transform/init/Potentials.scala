@@ -110,7 +110,8 @@ object Potentials {
    *        and may be potentially faster.
    */
   case class Outer(pot: Potential, classSymbol: ClassSymbol)(val source: Tree) extends Potential {
-    def size: Int = 1 + pot.size
+    // be lenient with size of outer selection, no worry for non-termination
+    def size: Int = pot.size
     def show(using Context): String = pot.show + ".outer[" + classSymbol.show + "]"
   }
 

@@ -259,6 +259,7 @@ object Summarization {
     else {
       val pot2 = Outer(pot, cur)(pot.source)
       val enclosing = cur.owner.lexicallyEnclosingClass.asClass
+      assert(!enclosing.is(Flags.Package), "enclosing = " + enclosing.show + ", cls = " + cls.show + ", pot = " + pot.show + ", cur = " + cur.show)
       resolveThis(cls, pot2, enclosing, source)
     }
   }
