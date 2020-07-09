@@ -32,6 +32,7 @@ object Summary {
     def summaryOf(member: Symbol)(implicit env: Env): Summary =
       if (summaryCache.contains(member)) summaryCache(member)
       else trace("summary for " + member.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
+        implicit val env2 = env.withOwner(member)
         val summary =
           if (member.isConstructor)
             Summarization.analyzeConstructor(member)

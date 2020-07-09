@@ -88,6 +88,7 @@ object Potentials {
   }
 
   def resolveOuter(cur: ClassSymbol, outerPots: Potentials, cls: ClassSymbol)(implicit env: Env): Potentials =
+  trace("resolveOuter for " + cls.show + ", outer = " + show(outerPots) + ", cur = " + cur.show, init, s => Potentials.show(s.asInstanceOf[Potentials])) {
     if (cur == cls) outerPots
     else {
       val bottomClsSummary = env.summaryOf(cur)
@@ -98,6 +99,7 @@ object Potentials {
         case None => ??? // impossible
       }
     }
+  }
 
   /** The Outer potential for `classSymbol` of the object `pot`
    *

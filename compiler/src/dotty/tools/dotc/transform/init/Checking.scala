@@ -146,7 +146,8 @@ object Checking {
   }
 
   private def check(eff: Effect)(implicit state: State): Errors =
-    if (state.visited.contains(eff)) Errors.empty else trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
+    if (state.visited.contains(eff)) Errors.empty
+    else trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
       implicit val state2: State = state.withVisited(eff)
 
       eff match {
