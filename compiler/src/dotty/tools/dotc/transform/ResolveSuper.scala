@@ -39,7 +39,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
   override def changesMembers: Boolean = true // the phase adds super accessors
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
+  override def transformTemplate(impl: Template)(using Context): Template = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisPhase)
     import ops._
@@ -56,7 +56,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
     cpy.Template(impl)(body = overrides ::: impl.body)
   }
 
-  override def transformDefDef(ddef: DefDef)(implicit ctx: Context): Tree = {
+  override def transformDefDef(ddef: DefDef)(using Context): Tree = {
     val meth = ddef.symbol.asTerm
     if (meth.isSuperAccessor && !meth.is(Deferred)) {
       assert(ddef.rhs.isEmpty)
@@ -77,7 +77,7 @@ object ResolveSuper {
    *  @param base       The class in which everything is mixed together
    *  @param acc        The symbol statically referred to by the superaccessor in the trait
    */
-  def rebindSuper(base: Symbol, acc: Symbol)(implicit ctx: Context): Symbol = {
+  def rebindSuper(base: Symbol, acc: Symbol)(using Context): Symbol = {
     var bcs = base.info.baseClasses.dropWhile(acc.owner != _).tail
     var sym: Symbol = NoSymbol
     val SuperAccessorName(memberName) = acc.name.unexpandedName

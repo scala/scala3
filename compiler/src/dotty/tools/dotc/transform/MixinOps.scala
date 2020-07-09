@@ -8,7 +8,7 @@ import SymUtils._
 import StdNames._, NameOps._
 import Decorators._
 
-class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Context) {
+class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd._
 
   val superCls: Symbol = cls.superClass

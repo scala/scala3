@@ -74,7 +74,7 @@ class ReifyQuotes extends MacroTransform {
 
   override def allowsImplicitSearch: Boolean = true
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
+  override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
       case tree: RefTree if !Inliner.inInlineMethod =>
         assert(!tree.symbol.isQuote)
@@ -85,11 +85,11 @@ class ReifyQuotes extends MacroTransform {
       case _ =>
     }
 
-  override def run(implicit ctx: Context): Unit =
+  override def run(using Context): Unit =
     if (ctx.compilationUnit.needsStaging) super.run(using freshStagingContext)
 
-  protected def newTransformer(implicit ctx: Context): Transformer = new Transformer {
-    override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree =
+  protected def newTransformer(using Context): Transformer = new Transformer {
+    override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       new QuoteReifier(null, new mutable.HashMap[Symbol, Tree => Tree], new Embedded, ctx.owner)(ctx).transform(tree)
   }
 
@@ -114,7 +114,7 @@ class ReifyQuotes extends MacroTransform {
     import StagingContext._
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
-    def nested(isQuote: Boolean)(implicit ctx: Context): QuoteReifier = {
+    def nested(isQuote: Boolean)(using Context): QuoteReifier = {
       val nestedEmbedded = if (level > 1 || (level == 1 && isQuote)) embedded else new Embedded
       new QuoteReifier(this, capturers, nestedEmbedded, ctx.owner)(ctx)
     }
@@ -125,14 +125,14 @@ class ReifyQuotes extends MacroTransform {
      *  `scala.quoted.Unpickler.unpickleExpr` that matches `tpe` with
      *  core and splices as arguments.
      */
-    override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
+    override protected def transformQuotation(body: Tree, quote: Tree)(using Context): Tree = {
       val isType = quote.symbol eq defn.InternalQuoted_typeQuote
       if (level > 0) {
-        val body1 = nested(isQuote = true).transform(body)(quoteContext)
+        val body1 = nested(isQuote = true).transform(body)(using quoteContext)
         super.transformQuotation(body1, quote)
       }
       else {
-        val (body1, splices) = nested(isQuote = true).splitQuote(body)(quoteContext)
+        val (body1, splices) = nested(isQuote = true).splitQuote(body)(using quoteContext)
         if (level == 0) {
           val body2 =
             if (body1.isType) body1
@@ -144,7 +144,7 @@ class ReifyQuotes extends MacroTransform {
       }
     }
 
-    private def pickledQuote(body: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(implicit ctx: Context) = {
+    private def pickledQuote(body: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(using Context) = {
       def pickleAsLiteral(lit: Literal) = {
         def liftedValue(lifter: Symbol) =
           ref(lifter).appliedToType(originalTp).select(nme.toExpr).appliedTo(lit)
@@ -187,9 +187,9 @@ class ReifyQuotes extends MacroTransform {
      *  and make a hole from these parts. Otherwise issue an error, unless we
      *  are in the body of an inline method.
      */
-    protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree =
+    protected def transformSplice(body: Tree, splice: Tree)(using Context): Tree =
       if (level > 1) {
-        val body1 = nested(isQuote = false).transform(body)(spliceContext)
+        val body1 = nested(isQuote = false).transform(body)(using spliceContext)
         splice match {
           case splice: Apply => cpy.Apply(splice)(splice.fun, body1 :: Nil)
           case splice: Select => cpy.Select(splice)(body1, splice.name)
@@ -197,7 +197,7 @@ class ReifyQuotes extends MacroTransform {
       }
       else {
         assert(level == 1, "unexpected top splice outside quote")
-        val (body1, quotes) = nested(isQuote = false).splitSplice(body)(spliceContext)
+        val (body1, quotes) = nested(isQuote = false).splitSplice(body)(using spliceContext)
         val tpe = outer.embedded.getHoleType(body, splice)
         val hole = makeHole(splice.isTerm, body1, quotes, tpe).withSpan(splice.span)
         // We do not place add the inline marker for trees that where lifted as they come from the same file as their
@@ -234,8 +234,8 @@ class ReifyQuotes extends MacroTransform {
      *        Hole(0 | x, y)
      *      }
      */
-    private def makeLambda(tree: Tree)(implicit ctx: Context): Tree = {
-      def body(arg: Tree)(implicit ctx: Context): Tree = {
+    private def makeLambda(tree: Tree)(using Context): Tree = {
+      def body(arg: Tree)(using Context): Tree = {
         var i = 0
         transformWithCapturer(tree)(
           (captured: mutable.Map[Symbol, Tree]) => {
@@ -270,10 +270,10 @@ class ReifyQuotes extends MacroTransform {
 
       val tpe = MethodType(defn.SeqType.appliedTo(defn.AnyType) :: Nil, tree.tpe.widen)
       val meth = ctx.newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
-      Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeNonLocalOwners(meth)).withSpan(tree.span)
+      Closure(meth, tss => body(tss.head.head)(using ctx.withOwner(meth)).changeNonLocalOwners(meth)).withSpan(tree.span)
     }
 
-    private def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(implicit ctx: Context): Tree = {
+    private def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(using Context): Tree = {
       val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
       val captured2 = capturer(captured)
 
@@ -288,18 +288,18 @@ class ReifyQuotes extends MacroTransform {
     }
 
     /** Returns true if this tree will be captured by `makeLambda`. Checks phase consistency and presence of capturer. */
-    private def isCaptured(sym: Symbol, level: Int)(implicit ctx: Context): Boolean =
+    private def isCaptured(sym: Symbol, level: Int)(using Context): Boolean =
       level == 1 && levelOf(sym) == 1 && capturers.contains(sym)
 
     /** Transform `tree` and return the resulting tree and all `embedded` quotes
      *  or splices as a pair.
      */
-    private def splitQuote(tree: Tree)(implicit ctx: Context): (Tree, List[Tree]) = {
+    private def splitQuote(tree: Tree)(using Context): (Tree, List[Tree]) = {
       val tree1 = stipTypeAnnotations(transform(tree))
       (tree1, embedded.getTrees)
     }
 
-    private def splitSplice(tree: Tree)(implicit ctx: Context): (Tree, List[Tree]) = {
+    private def splitSplice(tree: Tree)(using Context): (Tree, List[Tree]) = {
       val tree1 = makeLambda(tree)
       (tree1, embedded.getTrees)
     }
@@ -310,7 +310,7 @@ class ReifyQuotes extends MacroTransform {
     /** Register `body` as an `embedded` quote or splice
      *  and return a hole with `splices` as arguments and the given type `tpe`.
      */
-    private def makeHole(isTermHole: Boolean, body: Tree, splices: List[Tree], tpe: Type)(implicit ctx: Context): Hole = {
+    private def makeHole(isTermHole: Boolean, body: Tree, splices: List[Tree], tpe: Type)(using Context): Hole = {
       val idx = embedded.addTree(body, NoSymbol)
 
       /** Remove references to local types that will not be defined in this quote */
@@ -345,9 +345,9 @@ class ReifyQuotes extends MacroTransform {
       Hole(isTermHole, idx, splices).withType(holeType).asInstanceOf[Hole]
     }
 
-    override def transform(tree: Tree)(implicit ctx: Context): Tree =
+    override def transform(tree: Tree)(using Context): Tree =
       if (tree.source != ctx.source && tree.source.exists)
-        transform(tree)(ctx.withSource(tree.source))
+        transform(tree)(using ctx.withSource(tree.source))
       else reporting.trace(i"Reifier.transform $tree at $level", show = true) {
         tree match {
           case Apply(Select(TypeApply(fn, (body: RefTree) :: Nil), _), _) if fn.symbol == defn.InternalQuoted_typeQuote && isCaptured(body.symbol, level + 1) =>
@@ -380,7 +380,7 @@ class ReifyQuotes extends MacroTransform {
         }
       }
 
-    private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree =
+    private def liftList(list: List[Tree], tpe: Type)(using Context): Tree =
       list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>
         acc.select("::".toTermName).appliedToType(tpe).appliedTo(x)
       }
@@ -410,13 +410,13 @@ object ReifyQuotes {
     }
 
     /** Type used for the hole that will replace this splice */
-    def getHoleType(body: tpd.Tree, splice: tpd.Tree)(implicit ctx: Context): Type =
+    def getHoleType(body: tpd.Tree, splice: tpd.Tree)(using Context): Type =
       // For most expressions the splice.tpe but there are some types that are lost by lifting
       // that can be recoverd from the original tree. Currently the cases are:
       //  * Method types: the splice represents a method reference
       map.get(body.symbol).map(_.tpe.widen).getOrElse(splice.tpe)
 
-    def isLiftedSymbol(sym: Symbol)(implicit ctx: Context): Boolean = map.contains(sym)
+    def isLiftedSymbol(sym: Symbol)(using Context): Boolean = map.contains(sym)
 
     /** Get the list of embedded trees */
     def getTrees: List[tpd.Tree] = trees.toList

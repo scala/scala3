@@ -23,7 +23,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
   import tpd._
   override def phaseName: String = MoveStatics.name
 
-  def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
+  def transformSym(sym: SymDenotation)(using Context): SymDenotation =
     if (sym.hasAnnotation(defn.ScalaStaticAnnot) && sym.owner.is(Flags.Module) && sym.owner.companionClass.exists &&
         (sym.is(Flags.Method) || !(sym.is(Flags.Mutable) && sym.owner.companionClass.is(Flags.Trait)))) {
       sym.owner.asClass.delete(sym.symbol)
@@ -32,7 +32,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
     }
     else sym
 
-  override def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] =
+  override def transformStats(trees: List[Tree])(using Context): List[Tree] =
     if (ctx.owner.is(Flags.Package)) {
       val (classes, others) = trees.partition(x => x.isInstanceOf[TypeDef] && x.symbol.isClass)
       val pairs = classes.groupBy(_.symbol.name.stripModuleClassSuffix).asInstanceOf[Map[Name, List[TypeDef]]]

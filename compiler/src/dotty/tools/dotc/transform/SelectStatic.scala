@@ -21,7 +21,7 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
 
   override def phaseName: String = "selectStatic"
 
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): tpd.Tree = {
+  override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree = {
     val sym = tree.symbol
     def isStaticMember =
       (sym is Flags.Module) && sym.initial.maybeOwner.initial.isStaticOwner ||
@@ -36,7 +36,7 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
     normalize(tree1)
   }
 
-  private def normalize(t: Tree)(implicit ctx: Context) = t match {
+  private def normalize(t: Tree)(using Context) = t match {
     case Select(Block(stats, qual), nm) =>
       Block(stats, cpy.Select(t)(qual, nm))
     case Apply(Block(stats, qual), nm) =>
@@ -48,12 +48,12 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
     case _ => t
   }
 
-  override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree =
+  override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
     normalize(tree)
 
-  override def transformTypeApply(tree: tpd.TypeApply)(implicit ctx: Context): tpd.Tree =
+  override def transformTypeApply(tree: tpd.TypeApply)(using Context): tpd.Tree =
     normalize(tree)
 
-  override def transformClosure(tree: tpd.Closure)(implicit ctx: Context): tpd.Tree =
+  override def transformClosure(tree: tpd.Closure)(using Context): tpd.Tree =
     normalize(tree)
 }

@@ -25,12 +25,12 @@ class RestoreScopes extends MiniPhase with IdentityDenotTransformer { thisPhase 
    * enclosing package definitions. So by the time RestoreScopes gets to
    * see a typedef or template, it still might be changed by DropEmptyConstructors.
    */
-  override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context): PackageDef = {
+  override def transformPackageDef(pdef: PackageDef)(using Context): PackageDef = {
     pdef.stats.foreach(restoreScope)
     pdef
   }
 
-  private def restoreScope(tree: Tree)(implicit ctx: Context) = tree match {
+  private def restoreScope(tree: Tree)(using Context) = tree match {
     case TypeDef(_, impl: Template) =>
       val restoredDecls = newScope
       for (stat <- impl.constr :: impl.body)

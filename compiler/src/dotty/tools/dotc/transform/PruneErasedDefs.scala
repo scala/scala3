@@ -28,22 +28,22 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
 
   override def runsAfterGroupsOf: Set[String] = Set(RefChecks.name, ExplicitOuter.name)
 
-  override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
+  override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
     if (sym.isEffectivelyErased && !sym.is(Private) && sym.owner.isClass)
       sym.copySymDenotation(initFlags = sym.flags | Private)
     else sym
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
+  override def transformApply(tree: Apply)(using Context): Tree =
     if (tree.fun.tpe.widen.isErasedMethod)
       cpy.Apply(tree)(tree.fun, tree.args.map(trivialErasedTree))
     else tree
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
+  override def transformValDef(tree: ValDef)(using Context): Tree =
     if (tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty)
       cpy.ValDef(tree)(rhs = trivialErasedTree(tree))
     else tree
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree =
+  override def transformDefDef(tree: DefDef)(using Context): Tree =
     if (tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty)
       cpy.DefDef(tree)(rhs = trivialErasedTree(tree))
     else tree

@@ -41,7 +41,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
   /* Makes sure that, after getters and constructors gen, there doesn't
    * exist non-deferred definitions that are not implemented. */
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+  override def checkPostCondition(tree: Tree)(using Context): Unit = {
     def errorLackImplementation(t: Tree) = {
       val firstPhaseId = t.symbol.initial.validFor.firstPhaseId
       val definingPhase = ctx.withPhase(firstPhaseId).phase.prev
@@ -68,7 +68,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
    */
   override def runsAfter: Set[String] = Set(Mixin.name)
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
+  override def transformDefDef(tree: DefDef)(using Context): Tree = {
     val sym = tree.symbol
 
     def newField = {

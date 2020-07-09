@@ -120,7 +120,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
   override def changesMembers: Boolean = true  // the phase adds implementions of mixin accessors
 
-  override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
+  override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
     if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait)) {
       val sym1 =
         if (sym.is(Lazy)) sym
@@ -134,7 +134,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     else
       sym
 
-  private def initializer(sym: Symbol)(implicit ctx: Context): TermSymbol = {
+  private def initializer(sym: Symbol)(using Context): TermSymbol = {
     if (sym.is(Lazy)) sym
     else {
       val initName = InitializerName(sym.name.asTermName)
@@ -149,7 +149,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     }
   }.asTerm
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
+  override def transformTemplate(impl: Template)(using Context): Template = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisPhase)
     import ops._

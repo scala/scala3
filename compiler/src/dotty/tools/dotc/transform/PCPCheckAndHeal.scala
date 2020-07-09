@@ -60,9 +60,9 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
 
   private val InAnnotation = Property.Key[Unit]()
 
-  override def transform(tree: Tree)(implicit ctx: Context): Tree =
+  override def transform(tree: Tree)(using Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
-      transform(tree)(ctx.withSource(tree.source))
+      transform(tree)(using ctx.withSource(tree.source))
     else if !isInQuoteOrSplice then
       checkAnnotations(tree)
       super.transform(tree)
@@ -100,7 +100,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     }
 
   /** Transform quoted trees while maintaining phase correctness */
-  override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
+  override protected def transformQuotation(body: Tree, quote: Tree)(using Context): Tree = {
     val taggedTypes = new PCPCheckAndHeal.QuoteTypeTags(quote.span)(using ctx)
 
     if (ctx.property(InAnnotation).isDefined)
@@ -109,7 +109,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     val contextWithQuote =
       if level == 0 then contextWithQuoteTypeTags(taggedTypes)(using quoteContext)
       else quoteContext
-    val body1 = transform(body)(contextWithQuote)
+    val body1 = transform(body)(using contextWithQuote)
     val body2 =
       taggedTypes.getTypeTags match
         case Nil  => body1
@@ -123,8 +123,8 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  - If inside inlined code, expand the macro code.
    *  - If inside of a macro definition, check the validity of the macro.
    */
-  protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree = {
-    val body1 = transform(body)(spliceContext)
+  protected def transformSplice(body: Tree, splice: Tree)(using Context): Tree = {
+    val body1 = transform(body)(using spliceContext)
     splice match {
       case Apply(fun @ TypeApply(_, _ :: Nil), _) if splice.isTerm =>
         // Type of the splice itsel must also be healed
@@ -216,7 +216,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  refercence to a type alias containing the equivalent of `${summon[quoted.Type[T]]}`.
    *  Emits and error if `T` cannot be healed and returns `T`.
    */
-  protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(implicit ctx: Context): TypeRef = {
+  protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(using Context): TypeRef = {
     val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
     val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
     tag.tpe match
