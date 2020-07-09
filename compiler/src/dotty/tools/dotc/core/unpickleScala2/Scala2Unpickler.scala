@@ -436,7 +436,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
     // symbols that were pickled with Pickler.writeSymInfo
     val nameref = readNat()
-    var name = at(nameref, () => readName()(ctx))
+    var name = at(nameref, () => readName()(using ctx))
     val owner = readSymbolRef()
 
     if (name eq nme.getClass_) && defn.hasProblematicGetClass(owner.name) then
@@ -572,7 +572,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if (isSymbolRef(inforef)) inforef = readNat()
 
         // println("reading type for " + denot) // !!! DEBUG
-        val tp = at(inforef, () => readType()(ctx))
+        val tp = at(inforef, () => readType()(using ctx))
         if denot.is(Method) then
           var params = paramssOfType(tp)
           if denot.isConstructor && denot.owner.typeParams.nonEmpty then
@@ -623,12 +623,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       val end = readNat() + readIndex
       if (tag == POLYtpe) {
         val unusedRestpeRef = readNat()
-        until(end, () => readSymbolRef()(ctx)).asInstanceOf[List[TypeSymbol]]
+        until(end, () => readSymbolRef()(using ctx)).asInstanceOf[List[TypeSymbol]]
       }
       else Nil
     }
     private def loadTypeParams(implicit ctx: Context) =
-      atReadPos(index(infoRef), () => readTypeParams()(ctx))
+      atReadPos(index(infoRef), () => readTypeParams()(using ctx))
 
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
     def init()(implicit ctx: Context): List[TypeSymbol] = loadTypeParams

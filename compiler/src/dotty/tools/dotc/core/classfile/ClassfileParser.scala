@@ -751,7 +751,7 @@ class ClassfileParser(
         }
 
         val unpickler = new unpickleScala2.Scala2Unpickler(bytes, classRoot, moduleRoot)(ctx)
-        unpickler.run()(ctx.addMode(Scala2UnpicklingMode))
+        unpickler.run()(using ctx.addMode(Scala2UnpicklingMode))
         Some(unpickler)
       }
 

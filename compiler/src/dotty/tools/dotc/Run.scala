@@ -149,7 +149,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   def compileUnits(us: List[CompilationUnit], ctx: Context): Unit = {
     units = us
-    compileUnits()(ctx)
+    compileUnits()(using ctx)
   }
 
   private def compileUnits()(implicit ctx: Context) = Stats.maybeMonitored {

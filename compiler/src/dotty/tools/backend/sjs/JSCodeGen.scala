@@ -62,7 +62,7 @@ class JSCodeGen()(implicit ctx: Context) {
   private val jsdefn = JSDefinitions.jsdefn
   private val primitives = new JSPrimitives(ctx)
 
-  private val positionConversions = new JSPositions()(ctx)
+  private val positionConversions = new JSPositions()(using ctx)
   import positionConversions._
 
   // Some state --------------------------------------------------------------

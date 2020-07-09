@@ -241,7 +241,7 @@ class TreeUnpickler(reader: TastyReader,
       case Some(sym) =>
         sym
       case None =>
-        val sym = forkAt(addr).createSymbol()(ctx.withOwner(ownerTree.findOwner(addr)))
+        val sym = forkAt(addr).createSymbol()(using ctx.withOwner(ownerTree.findOwner(addr)))
         ctx.log(i"forward reference to $sym")
         sym
     }
@@ -968,7 +968,7 @@ class TreeUnpickler(reader: TastyReader,
           setSpan(start, PackageDef(pid, readIndexedStats(exprOwner, end)(ctx)))
         }
       case _ =>
-        readTerm()(ctx.withOwner(exprOwner))
+        readTerm()(using ctx.withOwner(exprOwner))
     }
 
     def readImport()(implicit ctx: Context): Tree = {
@@ -1054,7 +1054,7 @@ class TreeUnpickler(reader: TastyReader,
         ConstFold(untpd.Select(qual, name).withType(tpe))
 
       def completeSelect(name: Name, sig: Signature): Select =
-        val qual = readTerm()(ctx)
+        val qual = readTerm()(using ctx)
         val denot = accessibleDenot(qual.tpe.widenIfUnstable, name, sig)
         makeSelect(qual, name, denot)
 
@@ -1292,9 +1292,9 @@ class TreeUnpickler(reader: TastyReader,
       collectWhile((nextUnsharedTag == CASEDEF) && currentAddr != end) {
         if (nextByte == SHAREDterm) {
           readByte()
-          forkAt(readAddr()).readCase()(ctx.fresh.setNewScope)
+          forkAt(readAddr()).readCase()(using ctx.fresh.setNewScope)
         }
-        else readCase()(ctx.fresh.setNewScope)
+        else readCase()(using ctx.fresh.setNewScope)
       }
 
     def readCase()(implicit ctx: Context): CaseDef = {

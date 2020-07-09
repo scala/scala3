@@ -30,7 +30,7 @@ trait DottyTest extends ContextEscapeDetection {
     initializeCtx(ctx)
     // when classpath is changed in ctx, we need to re-initialize to get the
     // correct classpath from PathResolver
-    base.initialize()(ctx)
+    base.initialize()(using ctx)
     ctx
   }
 
