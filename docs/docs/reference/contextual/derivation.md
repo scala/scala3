@@ -10,8 +10,8 @@ on. Common examples are `Eq`, `Ordering`, or `Show`. For example, given the foll
 
 ```scala
 enum Tree[T] derives Eq, Ordering, Show {
-  case Branch[T](left: Tree[T], right: Tree[T])
-  case Leaf[T](elem: T)
+  case Branch(left: Tree[T], right: Tree[T])
+  case Leaf(elem: T)
 }
 ```
 
