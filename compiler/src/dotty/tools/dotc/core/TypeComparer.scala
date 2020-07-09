@@ -751,7 +751,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
                 case _ => false
             }
           case _ => false
-        comparePaths || isNewSubType(tp1.underlying.widenExpr)
+        comparePaths || isSubType(tp1.underlying.widenExpr, tp2, approx.addLow)
       case tp1: RefinedType =>
         isNewSubType(tp1.parent)
       case tp1: RecType =>

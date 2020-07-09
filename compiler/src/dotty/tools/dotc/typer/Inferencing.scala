@@ -198,10 +198,12 @@ object Inferencing {
       *   - If we have A <: Int and F <: [A] => Option[A] (note the invariance),
       *     then we should approximate F[A] ~~ Option[A]. That is, we should
       *     respect the invariance of the type constructor.
-      *   - If we have A <: Option[B] and B <: Int, we approximate A ~~ Option[Int].
-      *     That is, we recursively approximate all nested GADT-constrained types.
-      *     This is certain to be sound (because we maintain necessary subtyping),
-      *     but not accurate.
+      *   - If we have A <: Option[B] and B <: Int, we approximate A ~~
+      *     Option[B]. That is, we don't recurse into already approximated
+      *     types. Since GADT approximation is (for now) only used for member
+      *     selection, this behaviour is expected, as nested types cannot affect
+      *     member selection (note that given/extension lookup doesn't need GADT
+      *     approx, see gadt-approximation-interaction.scala).
       */
     def apply(tp: Type): Type = tp.dealias match {
       case tp @ TypeRef(qual, nme) if (qual eq NoPrefix)

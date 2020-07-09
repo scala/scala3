@@ -3455,37 +3455,10 @@ class Typer extends Namer
 
       // try an implicit conversion
       val prevConstraint = ctx.typerState.constraint
-      def recover(failure: SearchFailureType) = {
-        def canTryGADTHealing: Boolean = {
-          def isDummy = tree.hasAttachment(dummyTreeOfType.IsDummyTree)
-          tryGadtHealing // allow GADT healing only once to avoid a loop
-          && ctx.gadt.nonEmpty // GADT healing only makes sense if there are GADT constraints present
-          && !isDummy // avoid healing a dummy tree as it can lead to an error in a very specific case
-        }
-
+      def recover(failure: SearchFailureType) =
         if (isFullyDefined(wtp, force = ForceDegree.all) &&
             ctx.typerState.constraint.ne(prevConstraint)) readapt(tree)
-        else if (canTryGADTHealing) {
-          // try recovering with a GADT approximation
-          // note: this seems be be important only in a very specific case
-          // where we select a member from so
-          val nestedCtx = ctx.fresh.setNewTyperState()
-          val ascribed = tpd.Typed(tree, TypeTree(gadtApprox))
-          val res =
-            readapt(
-              tree = ascribed,
-              shouldTryGadtHealing = false,
-            )(using nestedCtx)
-          if (!nestedCtx.reporter.hasErrors) {
-            // GADT recovery successful
-            nestedCtx.typerState.commit()
-            res
-          } else {
-            // otherwise fail with the error that would have been reported without the GADT recovery
-            err.typeMismatch(tree, pt, failure)
-          }
-        } else err.typeMismatch(tree, pt, failure)
-      }
+        else err.typeMismatch(tree, pt, failure)
 
       if ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType then
         if pt.isRef(defn.AnyValClass) || pt.isRef(defn.ObjectClass) then
