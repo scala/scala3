@@ -217,7 +217,7 @@ final class ProperGadtConstraint private(
 
   // ---- Protected/internal -----------------------------------------------
 
-  implicit override def ctx(implicit ctx: Context): Context = ctx
+  override def comparerCtx(using ctx: Context): Context = ctx
 
   override protected def constraint = myConstraint
   override protected def constraint_=(c: Constraint) = myConstraint = c

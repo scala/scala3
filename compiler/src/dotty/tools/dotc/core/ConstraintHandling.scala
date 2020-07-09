@@ -26,7 +26,9 @@ trait ConstraintHandling[AbstractContext] {
 
   def constr: config.Printers.Printer = config.Printers.constr
 
-  implicit def ctx(implicit ac: AbstractContext): Context
+  def comparerCtx(using AbstractContext): Context
+
+  given (using AbstractContext) as Context = comparerCtx
 
   protected def isSubType(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Boolean
   protected def isSameType(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Boolean

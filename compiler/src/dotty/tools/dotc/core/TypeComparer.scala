@@ -32,7 +32,7 @@ object AbsentContext {
  */
 class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] with PatternTypeConstrainer {
   import TypeComparer._
-  implicit def ctx(implicit nc: AbsentContext): Context = initctx
+  def comparerCtx(using AbsentContext): Context = initctx
 
   val state = ctx.typerState
   def constraint: Constraint = state.constraint
@@ -237,7 +237,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     def firstTry: Boolean = tp2 match {
       case tp2: NamedType =>
         def compareNamed(tp1: Type, tp2: NamedType): Boolean =
-          val ctx = this.ctx
+          val ctx = comparerCtx
           given Context = ctx // optimization for performance
           val info2 = tp2.info
           info2 match

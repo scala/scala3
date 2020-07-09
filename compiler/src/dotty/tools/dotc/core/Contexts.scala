@@ -160,7 +160,7 @@ object Contexts {
     private var _typeComparer: TypeComparer = _
     protected def typeComparer_=(typeComparer: TypeComparer): Unit = _typeComparer = typeComparer
     def typeComparer: TypeComparer = {
-      if (_typeComparer.ctx ne this)
+      if (_typeComparer.comparerCtx ne this)
         _typeComparer = _typeComparer.copyIn(this)
       _typeComparer
     }

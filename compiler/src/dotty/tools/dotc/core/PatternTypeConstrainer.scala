@@ -6,6 +6,7 @@ import Decorators._
 import Symbols._
 import Types._
 import Flags._
+import Contexts.ctx
 import dotty.tools.dotc.reporting.trace
 import config.Feature.migrateTo3
 import config.Printers._
