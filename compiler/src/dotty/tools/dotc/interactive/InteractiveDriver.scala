@@ -62,7 +62,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   // We also need something like sbt server-mode to be informed of changes on
   // the classpath.
 
-  private val (zipClassPaths, dirClassPaths) = currentCtx.platform.classPath(currentCtx) match {
+  private val (zipClassPaths, dirClassPaths) = currentCtx.platform.classPath(using currentCtx) match {
     case AggregateClassPath(cps) =>
       // FIXME: We shouldn't assume that ClassPath doesn't have other
       // subclasses. For now, the only other subclass is JrtClassPath on Java

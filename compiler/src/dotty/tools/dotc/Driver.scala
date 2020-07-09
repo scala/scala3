@@ -67,7 +67,7 @@ class Driver {
 
   def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
     val ictx = rootCtx.fresh
-    val summary = CompilerCommand.distill(args)(ictx)
+    val summary = CompilerCommand.distill(args)(using ictx)
     ictx.setSettings(summary.sstate)
     MacroClassLoader.init(ictx)
     Positioned.updateDebugPos(using ictx)
@@ -84,7 +84,7 @@ class Driver {
 
   /** Setup extra classpath and figure out class names for tasty file inputs */
   protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) =
-    if (ctx0.settings.fromTasty.value(ctx0)) {
+    if (ctx0.settings.fromTasty.value(using ctx0)) {
       // Resolve classpath and class names of tasty files
       val (classPaths, classNames) = fileNames0.flatMap { name =>
         val path = Paths.get(name)
@@ -109,7 +109,7 @@ class Driver {
       }.unzip
       val ctx1 = ctx0.fresh
       val classPaths1 = classPaths.distinct.filter(_ != "")
-      val fullClassPath = (classPaths1 :+ ctx1.settings.classpath.value(ctx1)).mkString(java.io.File.pathSeparator)
+      val fullClassPath = (classPaths1 :+ ctx1.settings.classpath.value(using ctx1)).mkString(java.io.File.pathSeparator)
       ctx1.setSetting(ctx1.settings.classpath, fullClassPath)
       (classNames, ctx1)
     }

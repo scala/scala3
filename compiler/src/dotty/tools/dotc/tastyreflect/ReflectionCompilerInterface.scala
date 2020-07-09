@@ -100,7 +100,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   type Settings = config.ScalaSettings
 
-  def Settings_color(self: Settings): Boolean = self.color.value(rootContext) == "always"
+  def Settings_color(self: Settings): Boolean = self.color.value(using rootContext) == "always"
 
 
   ///////////

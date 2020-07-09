@@ -81,7 +81,7 @@ class ReplDriver(settings: Array[String],
    */
   protected def resetToInitial(): Unit = {
     rootCtx = initialCtx
-    if (rootCtx.settings.outputDir.isDefault(rootCtx))
+    if (rootCtx.settings.outputDir.isDefault(using rootCtx))
       rootCtx = rootCtx.fresh
         .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
     compiler = new ReplCompiler

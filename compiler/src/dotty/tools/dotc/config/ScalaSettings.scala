@@ -98,8 +98,8 @@ class ScalaSettings extends Settings.SettingGroup {
     default = "true")
 
   object mixinForwarderChoices {
-    def isTruthy(implicit ctx: Context) = XmixinForceForwarders.value == "true"
-    def isAtLeastJunit(implicit ctx: Context) = isTruthy || XmixinForceForwarders.value == "junit"
+    def isTruthy(using Context) = XmixinForceForwarders.value == "true"
+    def isAtLeastJunit(using Context) = isTruthy || XmixinForceForwarders.value == "junit"
   }
 
   /** -Y "Private" settings */

@@ -34,7 +34,7 @@ object CompilerCommand {
   def versionMsg: String = s"Dotty compiler $versionString -- $copyrightString"
 
   /** Distill arguments into summary detailing settings, errors and files to compiler */
-  def distill(args: Array[String])(implicit ctx: Context): ArgsSummary = {
+  def distill(args: Array[String])(using Context): ArgsSummary = {
     /**
      * Expands all arguments starting with @ to the contents of the
      * file named like each argument.
@@ -64,7 +64,7 @@ object CompilerCommand {
    *  are already applied in context.
    *  @return  The list of files to compile.
    */
-  def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(implicit ctx: Context): List[String] = {
+  def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(using Context): List[String] = {
     val settings = ctx.settings
 
     /** Creates a help message for a subset of options based on cond */

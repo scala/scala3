@@ -128,7 +128,7 @@ object PathResolver {
       )
   }
 
-  def fromPathString(path: String)(implicit ctx: Context): ClassPath = {
+  def fromPathString(path: String)(using Context): ClassPath = {
     val settings = ctx.settings.classpath.update(path)
     new PathResolver()(using ctx.fresh.setSettings(settings)).result
   }
@@ -159,8 +159,8 @@ object PathResolver {
 
 import PathResolver.{Defaults, ppcp}
 
-class PathResolver(implicit ctx: Context) {
-  import ctx.base.settings
+class PathResolver(using c: Context) {
+  import c.base.settings
 
   private val classPathFactory = new ClassPathFactory
 

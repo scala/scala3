@@ -46,7 +46,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     if (myClassLoader != null) myClassLoader
     else {
       val parent = parentClassLoader.getOrElse {
-        val compilerClasspath = ctx.platform.classPath(ctx).asURLs
+        val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
         new java.net.URLClassLoader(compilerClasspath.toArray, null)
       }
 
