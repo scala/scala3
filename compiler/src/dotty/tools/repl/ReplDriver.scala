@@ -242,7 +242,7 @@ class ReplDriver(settings: Array[String],
             val newStateWithImports = newState.copy(imports = allImports)
 
             val warnings = newState.context.reporter
-              .removeBufferedMessages(newState.context)
+              .removeBufferedMessages(using newState.context)
               .map(rendering.formatError)
 
             inContext(newState.context) {

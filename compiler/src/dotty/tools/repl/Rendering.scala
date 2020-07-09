@@ -97,7 +97,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
   /** Formats errors using the `messageRenderer` */
   def formatError(dia: Diagnostic)(implicit state: State): Diagnostic =
     new Diagnostic(
-      messageRenderer.messageAndPos(dia.msg, dia.pos, messageRenderer.diagnosticLevel(dia))(state.context),
+      messageRenderer.messageAndPos(dia.msg, dia.pos, messageRenderer.diagnosticLevel(dia))(using state.context),
       dia.pos,
       dia.level
     )

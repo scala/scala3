@@ -153,7 +153,7 @@ class ReplCompiler extends Compiler {
     ctx.run.compileUnits(unit :: Nil)
 
     if (!ctx.reporter.hasErrors) (unit, state).result
-    else ctx.reporter.removeBufferedMessages(ctx).errors
+    else ctx.reporter.removeBufferedMessages(using ctx).errors
   }
 
   final def compile(parsed: Parsed)(implicit state: State): Result[(CompilationUnit, State)] = {
