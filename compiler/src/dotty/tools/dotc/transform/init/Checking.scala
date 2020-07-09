@@ -41,6 +41,8 @@ object Checking {
       visited += eff
       copy(path = this.path :+ eff.source)
     }
+
+    def withOwner(sym: Symbol): State = copy(env = env.withOwner(sym))
   }
 
   private implicit def theEnv(implicit state: State): Env = state.env
@@ -58,10 +60,10 @@ object Checking {
     // mark current class as initialized, required for linearization
     state.parentsInited += cls
 
-    def checkClassBodyStat(tree: Tree)(using Context): Unit = traceOp("checking " + tree.show, init) {
+    def checkClassBodyStat(tree: Tree)(implicit state: State): Unit = traceOp("checking " + tree.show, init) {
       tree match {
         case vdef : ValDef =>
-          val (pots, effs) = Summarization.analyze(vdef.rhs)(theEnv.withOwner(vdef.symbol))
+          val (pots, effs) = Summarization.analyze(vdef.rhs)
           theEnv.summaryOf(cls).cacheFor(vdef.symbol, (pots, effs))
           if (!vdef.symbol.is(Flags.Lazy)) {
             checkEffectsIn(effs, cls)
@@ -79,15 +81,33 @@ object Checking {
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
 
-    def checkCtor(ctor: Symbol, tp: Type, source: Tree)(using Context): Unit = {
+    def checkCtor(ctor: Symbol, tp: Type, source: Tree)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
       val cls = ctor.owner
       val classDef = cls.defTree
       if (!classDef.isEmpty) {
-        if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef])
-        else checkSecondaryConstructor(ctor)
+        if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef])(state.withOwner(cls))
+        else checkSecondaryConstructor(ctor)(state.withOwner(cls))
       }
       else if (!cls.isOneOf(Flags.EffectivelyOpenFlags))
         report.warning("Inheriting non-open class may cause initialization errors", source.srcPos)
+    }
+
+    def checkSecondaryConstructor(ctor: Symbol)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
+      val Block(ctorCall :: stats, expr) = ctor.defTree.asInstanceOf[DefDef].rhs
+      val cls = ctor.owner.asClass
+
+      traceOp("check ctor: " + ctorCall.show, init) {
+        val ctor = ctorCall.symbol
+        if (ctor.isPrimaryConstructor)
+          checkClassBody(cls.defTree.asInstanceOf[TypeDef])
+        else
+          checkSecondaryConstructor(ctor)
+      }
+
+      (stats :+ expr).foreach { stat =>
+        val (_, effs) = Summarization.analyze(stat)(theEnv.withOwner(ctor))
+        checkEffectsIn(effs, cls)
+      }
     }
 
     cls.paramAccessors.foreach { acc =>
@@ -118,24 +138,6 @@ object Checking {
 
     // check class body
     tpl.body.foreach { checkClassBodyStat(_) }
-  }
-
-  def checkSecondaryConstructor(ctor: Symbol)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
-    val Block(ctorCall :: stats, expr) = ctor.defTree.asInstanceOf[DefDef].rhs
-    val cls = ctor.owner.asClass
-
-    traceOp("check ctor: " + ctorCall.show, init) {
-      val ctor = ctorCall.symbol
-      if (ctor.isPrimaryConstructor)
-        checkClassBody(cls.defTree.asInstanceOf[TypeDef])
-      else
-        checkSecondaryConstructor(ctor)
-    }
-
-    (stats :+ expr).foreach { stat =>
-      val (_, effs) = Summarization.analyze(stat)(theEnv.withOwner(ctor))
-      checkEffectsIn(effs, cls)
-    }
   }
 
   private def checkEffectsIn(effs: Effects, cls: ClassSymbol)(implicit state: State): Unit = traceOp("checking effects " + Effects.show(effs), init) {
