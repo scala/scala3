@@ -2,18 +2,24 @@ import java.util.Comparator;
 
 public class Test {
   public static void main(String[] args) {
-    ClassImplementsClass c = new ClassImplementsClass();
+    VarargImplClass c = new VarargImplClass();
 
-    c.x("a", "b", "c");
+    c.x(0, 1, 2);
     c.y("a", "b", "c");
     c.z("a", "b", "c");
+    c.generic("a", "b", "c");
+    c.genericBounded("a", "b", "c");
 
-    VarargAbstractClass<String> i = new ClassImplementsClass();
+    VarargAbstractClass<String> i = new VarargImplClass();
 
-    i.x("a", "b", "c");
+    i.x(0, 1, 2);
     i.y("a", "b", "c");
-    // i.z("a", "b", "c");
-    // ClassCastException at runtime because the generated
-    // signature of z doesn't mention the type parameter (it should)
+    i.z("a", "b", "c");
+    i.generic("a", "b", "c");
+    i.genericBounded("a", "b", "c");
+
+    VarargClassBounded<String> b = new VarargClassBounded<>();
+    b.v1("a", "b", "c");
+    b.v2("a", "b", "c");
   }
 }
