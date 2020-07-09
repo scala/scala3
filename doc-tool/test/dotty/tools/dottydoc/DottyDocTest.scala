@@ -39,7 +39,7 @@ trait DottyDocTest extends MessageRendering {
       (TestConfiguration.basicClasspath :: extraClasspath).mkString(java.io.File.pathSeparator)
     )
     ctx.setReporter(new StoreReporter(ctx.reporter))
-    base.initialize()(ctx)
+    base.initialize()(using ctx)
     ctx
   }
   implicit val ctx: FreshContext = freshCtx(Nil)

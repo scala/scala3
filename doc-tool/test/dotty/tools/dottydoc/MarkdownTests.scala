@@ -27,7 +27,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
       ctx.settings.classpath,
       TestConfiguration.basicClasspath
     )
-    base.initialize()(ctx)
+    base.initialize()(using ctx)
     ctx
   }
 
