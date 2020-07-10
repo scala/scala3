@@ -411,6 +411,9 @@ object Phases {
     override def toString: String = phaseName
   }
 
+  def curPhases(using Context): Array[Phase] = ctx.base.phases
+
+
   /** Replace all instances of `oldPhaseClass` in `current` phases
    *  by the result of `newPhases` applied to the old phase.
    */

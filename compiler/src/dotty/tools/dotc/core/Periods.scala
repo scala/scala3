@@ -1,6 +1,7 @@
 package dotty.tools.dotc.core
 
 import Contexts._
+import Phases.curPhases
 
 /** Periods are the central "clock" of the compiler
  *  A period consists of a run id and a phase id.
@@ -34,8 +35,8 @@ abstract class Periods { thisCtx: Context =>
     val period = thisCtx.period
     period == p ||
     period.runId == p.runId &&
-      thisCtx.phases(period.phaseId).sameBaseTypesStartId ==
-      thisCtx.phases(p.phaseId).sameBaseTypesStartId
+      curPhases(period.phaseId).sameBaseTypesStartId ==
+      curPhases(p.phaseId).sameBaseTypesStartId
   }
 }
 

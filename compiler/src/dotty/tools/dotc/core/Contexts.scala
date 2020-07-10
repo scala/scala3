@@ -533,7 +533,6 @@ object Contexts {
     def lambdaLiftPhase: Phase             = base.lambdaLiftPhase
     def flattenPhase: Phase                = base.flattenPhase
     def genBCodePhase: Phase               = base.genBCodePhase
-    def phases: Array[Phase]               = base.phases
 
     def settings: ScalaSettings            = base.settings
     def definitions: Definitions           = base.definitions

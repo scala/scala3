@@ -5,6 +5,7 @@ import java.io.{File => JFile, PrintStream}
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Phases.curPhases
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Mode
@@ -222,7 +223,7 @@ class ReplDriver(settings: Array[String],
     }
 
     def extractTopLevelImports(ctx: Context): List[tpd.Import] =
-      ctx.phases.collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
+      curPhases(using ctx).collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
 
     implicit val state = {
       val state0 = newRun(istate)

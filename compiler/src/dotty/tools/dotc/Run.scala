@@ -10,6 +10,7 @@ import Scopes._
 import typer.{ImportInfo, Typer}
 import Decorators._
 import io.{AbstractFile, PlainFile}
+import Phases.curPhases
 
 import scala.io.Codec
 import util.{Set => _, _}
@@ -194,7 +195,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
     val runCtx = ctx.fresh
     runCtx.setProfiler(Profiler())
-    ctx.phases.foreach(_.initContext(runCtx))
+    curPhases.foreach(_.initContext(runCtx))
     runPhases(using runCtx)
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
     while (finalizeActions.nonEmpty) {
