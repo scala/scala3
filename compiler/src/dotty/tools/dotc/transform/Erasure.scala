@@ -717,7 +717,9 @@ object Erasure {
       }
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
-      val ntree = interceptTypeApply(tree.asInstanceOf[TypeApply])(using ctx.withPhase(erasurePhase)).withSpan(tree.span)
+      val ntree = atPhase(erasurePhase)(
+        interceptTypeApply(tree.asInstanceOf[TypeApply])
+      ).withSpan(tree.span)
 
       ntree match {
         case TypeApply(fun, args) =>
@@ -953,7 +955,7 @@ object Erasure {
         if ctx.phase != erasurePhase && ctx.phase != erasurePhase.next then
           // this can happen when reading annotations loaded during erasure,
           // since these are loaded at phase typer.
-          adapt(tree, pt, locked)(using ctx.withPhase(erasurePhase.next))
+          atPhase(erasurePhase.next)(adapt(tree, pt, locked))
         else if (tree.isEmpty) tree
         else if (ctx.mode is Mode.Pattern) tree // TODO: replace with assertion once pattern matcher is active
         else adaptToType(tree, pt)

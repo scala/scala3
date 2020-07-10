@@ -585,7 +585,7 @@ object Symbols {
      */
     def enteredAfter(phase: DenotTransformer)(using Context): this.type =
       if ctx.phaseId != phase.next.id then
-        enteredAfter(phase)(using ctx.withPhase(phase.next))
+        atPhase(phase.next)(enteredAfter(phase))
       else this.owner match {
         case owner: ClassSymbol =>
           if (owner.is(Package)) {
@@ -610,7 +610,7 @@ object Symbols {
      */
     def dropAfter(phase: DenotTransformer)(using Context): Unit =
       if ctx.phaseId != phase.next.id then
-        dropAfter(phase)(using ctx.withPhase(phase.next))
+        atPhase(phase.next)(dropAfter(phase))
       else {
         assert (!this.owner.is(Package))
         this.owner.asClass.ensureFreshScopeAfter(phase)

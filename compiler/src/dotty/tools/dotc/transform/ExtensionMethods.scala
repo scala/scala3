@@ -117,7 +117,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
         case ClassInfo(pre, cls, _, _, _) if cls is ModuleClass =>
           cls.linkedClass match {
             case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
-              val info1 = cls.denot(using ctx.withPhase(ctx.phase.next)).asClass.classInfo.derivedClassInfo(prefix = pre)
+              val info1 = atPhase(ctx.phase.next)(cls.denot).asClass.classInfo.derivedClassInfo(prefix = pre)
               ref.derivedSingleDenotation(ref.symbol, info1)
             case _ => ref
           }
@@ -135,7 +135,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       (imeth.flags | Final) &~ (Override | Protected | AbsOverride),
       fullyParameterizedType(imeth.info, imeth.owner.asClass),
       privateWithin = imeth.privateWithin, coord = imeth.coord)
-    extensionMeth.addAnnotations(imeth.annotations)(using ctx.withPhase(thisPhase))
+    atPhase(thisPhase)(extensionMeth.addAnnotations(imeth.annotations))
       // need to change phase to add tailrec annotation which gets removed from original method in the same phase.
     extensionMeth
   }

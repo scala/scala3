@@ -424,7 +424,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   override def run(using Context): Unit =
     ctx.compilationUnit.tpdTree =
-      transformUnit(ctx.compilationUnit.tpdTree)(using ctx.withPhase(miniPhases.last.next))
+      atPhase(miniPhases.last.next)(transformUnit(ctx.compilationUnit.tpdTree))
 
   // Initialization code
 

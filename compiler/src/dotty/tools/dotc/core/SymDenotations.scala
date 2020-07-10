@@ -243,7 +243,7 @@ object SymDenotations {
         myFlags |= Touched
 
         // completions.println(s"completing ${this.debugString}")
-        try completer.complete(this)(using ctx.withPhase(validFor.firstPhaseId))
+        try atPhase(validFor.firstPhaseId)(completer.complete(this))
         catch {
           case ex: CyclicReference =>
             println(s"error while completing ${this.debugString}")
@@ -257,7 +257,7 @@ object SymDenotations {
       else {
         if (myFlags.is(Touched)) throw CyclicReference(this)
         myFlags |= Touched
-        completer.complete(this)(using ctx.withPhase(validFor.firstPhaseId))
+        atPhase(validFor.firstPhaseId)(completer.complete(this))
       }
 
     protected[dotc] def info_=(tp: Type): Unit = {
@@ -847,13 +847,12 @@ object SymDenotations {
       isClass && derivesFrom(defn.JavaSerializableClass)
 
     /** Is this symbol a class that extends `AnyVal`? */
-    final def isValueClass(using Context): Boolean = {
+    final def isValueClass(using Context): Boolean =
       val di = initial
-      di.isClass &&
-      di.derivesFrom(defn.AnyValClass)(using ctx.withPhase(di.validFor.firstPhaseId))
+      di.isClass
+      && atPhase(di.validFor.firstPhaseId)(di.derivesFrom(defn.AnyValClass))
         // We call derivesFrom at the initial phase both because AnyVal does not exist
         // after Erasure and to avoid cyclic references caused by forcing denotations
-    }
 
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
@@ -2200,7 +2199,7 @@ object SymDenotations {
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
      */
     def ensureFreshScopeAfter(phase: DenotTransformer)(using Context): Unit =
-      if (ctx.phaseId != phase.next.id) ensureFreshScopeAfter(phase)(using ctx.withPhase(phase.next))
+      if (ctx.phaseId != phase.next.id) atPhase(phase.next)(ensureFreshScopeAfter(phase))
       else {
         val prevClassInfo = atPhase(phase) {
           current.asInstanceOf[ClassDenotation].classInfo

@@ -374,8 +374,10 @@ object LambdaLift {
       (new CollectDependencies).traverse(ctx.compilationUnit.tpdTree)
       computeFreeVars()
       computeLiftedOwners()
-      generateProxies()(using ctx.withPhase(thisPhase.next))
-      liftLocals()(using ctx.withPhase(thisPhase.next))
+    }
+    atPhase(thisPhase.next) {
+      generateProxies()
+      liftLocals()
     }
 
     def currentEnclosure(using Context): Symbol =
@@ -421,7 +423,7 @@ object LambdaLift {
     }
 
     def proxyRef(sym: Symbol)(using Context): Tree = {
-      val psym = proxy(sym)(using ctx.withPhase(thisPhase))
+      val psym = atPhase(thisPhase)(proxy(sym))
       thisPhase.transformFollowingDeep(if (psym.owner.isTerm) ref(psym) else memberRef(psym))
     }
 

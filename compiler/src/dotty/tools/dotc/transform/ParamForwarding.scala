@@ -56,7 +56,7 @@ class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
     val sym = mdef.symbol.asTerm
     if sym.is(SuperParamAlias) then
       assert(sym.is(ParamAccessor, butNot = Mutable))
-      val alias = inheritedAccessor(sym)(using ctx.withPhase(thisPhase))
+      val alias = atPhase(thisPhase)(inheritedAccessor(sym))
       if alias.exists then
         sym.copySymDenotation(
             name = ParamAccessorName(sym.name),

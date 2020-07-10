@@ -9,7 +9,7 @@ import ast.untpd
 import Flags._
 import Types._
 import Constants.Constant
-import Contexts.{Context, ctx}
+import Contexts._
 import Symbols._
 import Decorators._
 import scala.collection.mutable
@@ -129,7 +129,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformStats(trees: List[Tree])(using Context): List[Tree] =
-    ast.Trees.flatten(reorderAndComplete(trees)(using ctx.withPhase(thisPhase.next)))
+    ast.Trees.flatten(atPhase(thisPhase.next)(reorderAndComplete(trees)))
 
   private object collectBinders extends TreeAccumulator[List[Ident]] {
     def apply(annots: List[Ident], t: Tree)(using Context): List[Ident] = t match {

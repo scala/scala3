@@ -1904,7 +1904,7 @@ object Types {
     protected[dotc] def computeSignature(using Context): Signature =
       val lastd = lastDenotation
       if lastd != null then sigFromDenot(lastd)
-      else if ctx.erasedTypes then computeSignature(using ctx.withPhase(erasurePhase))
+      else if ctx.erasedTypes then atPhase(erasurePhase)(computeSignature)
       else symbol.asSeenFrom(prefix).signature
 
     /** The signature computed from the current denotation with `sigFromDenot` if it is
@@ -1918,7 +1918,7 @@ object Types {
       else
         val lastd = lastDenotation
         if lastd != null then sigFromDenot(lastd)
-        else if ctx.erasedTypes then currentSignature(using ctx.withPhase(erasurePhase))
+        else if ctx.erasedTypes then atPhase(erasurePhase)(currentSignature)
         else
           val sym = currentSymbol
           if sym.exists then sym.asSeenFrom(prefix).signature
@@ -2053,7 +2053,7 @@ object Types {
         d = memberDenot(prefix, name, true)
       if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation])
         // name has changed; try load in earlier phase and make current
-        d = memberDenot(name, allowPrivate)(using ctx.withPhase(ctx.phaseId - 1)).current
+        d = atPhase(ctx.phaseId - 1)(memberDenot(name, allowPrivate)).current
       if (d.isOverloaded)
         d = disambiguate(d)
       d

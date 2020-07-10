@@ -986,7 +986,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val atp = readTypeRef()
     val phase = ctx.phase
     Annotation.deferred(atp.typeSymbol)(
-        atReadPos(start, () => readAnnotationContents(end)(using ctx.withPhase(phase))))
+        atReadPos(start, () => atPhase(phase)(readAnnotationContents(end))))
   }
 
   /* Read an abstract syntax tree */

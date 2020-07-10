@@ -3,7 +3,7 @@ package dotc
 package core
 
 import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation, LazyType }
-import Contexts.{Context, ctx, ContextBase}
+import Contexts._
 import Names._
 import NameKinds._
 import StdNames._
@@ -797,7 +797,7 @@ object Denotations {
               val transformer = ctx.base.denotTransformers(nextTransformerId)
               //println(s"transforming $this with $transformer")
               try
-                next = transformer.transform(cur)(using ctx.withPhase(transformer))
+                next = atPhase(transformer)(transformer.transform(cur))
               catch {
                 case ex: CyclicReference =>
                   println(s"error while transforming $this") // DEBUG
@@ -834,7 +834,7 @@ object Denotations {
             // 10 times. Best out of 10: 18154ms with `prev` field, 17777ms without.
             cnt += 1
             if (cnt > MaxPossiblePhaseId)
-              return current(using ctx.withPhase(coveredInterval.firstPhaseId))
+              return atPhase(coveredInterval.firstPhaseId)(current)
           }
           cur
         }
@@ -851,7 +851,7 @@ object Denotations {
      */
     protected def installAfter(phase: DenotTransformer)(using Context): Unit = {
       val targetId = phase.next.id
-      if (ctx.phaseId != targetId) installAfter(phase)(using ctx.withPhase(phase.next))
+      if (ctx.phaseId != targetId) atPhase(phase.next)(installAfter(phase))
       else {
         val current = symbol.current
         // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")

@@ -18,7 +18,7 @@ abstract class MacroTransform extends Phase {
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
-    unit.tpdTree = newTransformer.transform(unit.tpdTree)(using ctx.withPhase(transformPhase))
+    unit.tpdTree = atPhase(transformPhase)(newTransformer.transform(unit.tpdTree))
   }
 
   protected def newTransformer(using Context): Transformer

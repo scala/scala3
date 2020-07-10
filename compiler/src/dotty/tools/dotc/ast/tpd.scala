@@ -833,7 +833,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           def traverse(tree: Tree)(using Context) = tree match {
             case tree: DefTree =>
               val sym = tree.symbol
-              val prevDenot = sym.denot(using ctx.withPhase(trans))
+              val prevDenot = atPhase(trans)(sym.denot)
               if (prevDenot.effectiveOwner == from.skipWeakOwner) {
                 val d = sym.copySymDenotation(owner = to)
                 d.installAfter(trans)
@@ -847,7 +847,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         traverser.traverse(tree)
         tree
       }
-      else changeOwnerAfter(from, to, trans)(using ctx.withPhase(trans.next))
+      else atPhase(trans.next)(changeOwnerAfter(from, to, trans))
 
     /** A select node with the given selector name and a computed type */
     def select(name: Name)(using Context): Select =
