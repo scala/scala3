@@ -478,17 +478,19 @@ object Matcher {
     val matched: Matching = Some(Tuple())
     def matched(x: Any): Matching = Some(Tuple1(x))
 
-    def (self: Matching) asOptionOfTuple: Option[Tuple] = self
+    extension (self: Matching):
+      def asOptionOfTuple: Option[Tuple] = self
 
-    /** Concatenates the contents of two successful matchings or return a `notMatched` */
-    def (self: Matching) &&& (that: => Matching): Matching = self match {
-      case Some(x) =>
-        that match {
-          case Some(y) => Some(x ++ y)
-          case _ => None
-        }
-      case _ => None
-    }
+      /** Concatenates the contents of two successful matchings or return a `notMatched` */
+      def &&& (that: => Matching): Matching = self match {
+        case Some(x) =>
+          that match {
+            case Some(y) => Some(x ++ y)
+            case _ => None
+          }
+        case _ => None
+      }
+    end extension
 
   }
 
