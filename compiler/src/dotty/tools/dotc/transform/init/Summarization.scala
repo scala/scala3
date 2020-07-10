@@ -3,7 +3,7 @@ package transform
 package init
 
 import core._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Decorators._
 import StdNames._
 import Symbols._
@@ -327,7 +327,7 @@ object Summarization {
       cls.info match {
         case cinfo: ClassInfo =>
           val source = {
-            implicit val ctx2: Context = theCtx.withSource(cls.source(theCtx))
+            implicit val ctx2: Context = theCtx.withSource(cls.source(using theCtx))
             TypeTree(cls.typeRef).withSpan(cls.span)
           }
 

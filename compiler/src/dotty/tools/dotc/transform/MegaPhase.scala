@@ -46,89 +46,89 @@ object MegaPhase {
 
     val cpy: TypedTreeCopier = cpyBetweenPhases
 
-    def prepareForIdent(tree: Ident)(implicit ctx: Context): Context = ctx
-    def prepareForSelect(tree: Select)(implicit ctx: Context): Context = ctx
-    def prepareForThis(tree: This)(implicit ctx: Context): Context = ctx
-    def prepareForSuper(tree: Super)(implicit ctx: Context): Context = ctx
-    def prepareForApply(tree: Apply)(implicit ctx: Context): Context = ctx
-    def prepareForTypeApply(tree: TypeApply)(implicit ctx: Context): Context = ctx
-    def prepareForLiteral(tree: Literal)(implicit ctx: Context): Context = ctx
-    def prepareForNew(tree: New)(implicit ctx: Context): Context = ctx
-    def prepareForTyped(tree: Typed)(implicit ctx: Context): Context = ctx
-    def prepareForAssign(tree: Assign)(implicit ctx: Context): Context = ctx
-    def prepareForBlock(tree: Block)(implicit ctx: Context): Context = ctx
-    def prepareForIf(tree: If)(implicit ctx: Context): Context = ctx
-    def prepareForClosure(tree: Closure)(implicit ctx: Context): Context = ctx
-    def prepareForMatch(tree: Match)(implicit ctx: Context): Context = ctx
-    def prepareForCaseDef(tree: CaseDef)(implicit ctx: Context): Context = ctx
-    def prepareForLabeled(tree: Labeled)(implicit ctx: Context): Context = ctx
-    def prepareForReturn(tree: Return)(implicit ctx: Context): Context = ctx
-    def prepareForWhileDo(tree: WhileDo)(implicit ctx: Context): Context = ctx
-    def prepareForTry(tree: Try)(implicit ctx: Context): Context = ctx
-    def prepareForSeqLiteral(tree: SeqLiteral)(implicit ctx: Context): Context = ctx
-    def prepareForInlined(tree: Inlined)(implicit ctx: Context): Context = ctx
-    def prepareForTypeTree(tree: TypeTree)(implicit ctx: Context): Context = ctx
-    def prepareForBind(tree: Bind)(implicit ctx: Context): Context = ctx
-    def prepareForAlternative(tree: Alternative)(implicit ctx: Context): Context = ctx
-    def prepareForUnApply(tree: UnApply)(implicit ctx: Context): Context = ctx
-    def prepareForValDef(tree: ValDef)(implicit ctx: Context): Context = ctx
-    def prepareForDefDef(tree: DefDef)(implicit ctx: Context): Context = ctx
-    def prepareForTypeDef(tree: TypeDef)(implicit ctx: Context): Context = ctx
-    def prepareForTemplate(tree: Template)(implicit ctx: Context): Context = ctx
-    def prepareForPackageDef(tree: PackageDef)(implicit ctx: Context): Context = ctx
-    def prepareForStats(trees: List[Tree])(implicit ctx: Context): Context = ctx
-    def prepareForUnit(tree: Tree)(implicit ctx: Context): Context = ctx
-    def prepareForOther(tree: Tree)(implicit ctx: Context): Context = ctx
+    def prepareForIdent(tree: Ident)(using Context): Context = ctx
+    def prepareForSelect(tree: Select)(using Context): Context = ctx
+    def prepareForThis(tree: This)(using Context): Context = ctx
+    def prepareForSuper(tree: Super)(using Context): Context = ctx
+    def prepareForApply(tree: Apply)(using Context): Context = ctx
+    def prepareForTypeApply(tree: TypeApply)(using Context): Context = ctx
+    def prepareForLiteral(tree: Literal)(using Context): Context = ctx
+    def prepareForNew(tree: New)(using Context): Context = ctx
+    def prepareForTyped(tree: Typed)(using Context): Context = ctx
+    def prepareForAssign(tree: Assign)(using Context): Context = ctx
+    def prepareForBlock(tree: Block)(using Context): Context = ctx
+    def prepareForIf(tree: If)(using Context): Context = ctx
+    def prepareForClosure(tree: Closure)(using Context): Context = ctx
+    def prepareForMatch(tree: Match)(using Context): Context = ctx
+    def prepareForCaseDef(tree: CaseDef)(using Context): Context = ctx
+    def prepareForLabeled(tree: Labeled)(using Context): Context = ctx
+    def prepareForReturn(tree: Return)(using Context): Context = ctx
+    def prepareForWhileDo(tree: WhileDo)(using Context): Context = ctx
+    def prepareForTry(tree: Try)(using Context): Context = ctx
+    def prepareForSeqLiteral(tree: SeqLiteral)(using Context): Context = ctx
+    def prepareForInlined(tree: Inlined)(using Context): Context = ctx
+    def prepareForTypeTree(tree: TypeTree)(using Context): Context = ctx
+    def prepareForBind(tree: Bind)(using Context): Context = ctx
+    def prepareForAlternative(tree: Alternative)(using Context): Context = ctx
+    def prepareForUnApply(tree: UnApply)(using Context): Context = ctx
+    def prepareForValDef(tree: ValDef)(using Context): Context = ctx
+    def prepareForDefDef(tree: DefDef)(using Context): Context = ctx
+    def prepareForTypeDef(tree: TypeDef)(using Context): Context = ctx
+    def prepareForTemplate(tree: Template)(using Context): Context = ctx
+    def prepareForPackageDef(tree: PackageDef)(using Context): Context = ctx
+    def prepareForStats(trees: List[Tree])(using Context): Context = ctx
+    def prepareForUnit(tree: Tree)(using Context): Context = ctx
+    def prepareForOther(tree: Tree)(using Context): Context = ctx
 
-    def transformIdent(tree: Ident)(implicit ctx: Context): Tree = tree
-    def transformSelect(tree: Select)(implicit ctx: Context): Tree = tree
-    def transformThis(tree: This)(implicit ctx: Context): Tree = tree
-    def transformSuper(tree: Super)(implicit ctx: Context): Tree = tree
-    def transformApply(tree: Apply)(implicit ctx: Context): Tree = tree
-    def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = tree
-    def transformLiteral(tree: Literal)(implicit ctx: Context): Tree = tree
-    def transformNew(tree: New)(implicit ctx: Context): Tree = tree
-    def transformTyped(tree: Typed)(implicit ctx: Context): Tree = tree
-    def transformAssign(tree: Assign)(implicit ctx: Context): Tree = tree
-    def transformBlock(tree: Block)(implicit ctx: Context): Tree = tree
-    def transformIf(tree: If)(implicit ctx: Context): Tree = tree
-    def transformClosure(tree: Closure)(implicit ctx: Context): Tree = tree
-    def transformMatch(tree: Match)(implicit ctx: Context): Tree = tree
-    def transformCaseDef(tree: CaseDef)(implicit ctx: Context): Tree = tree
-    def transformLabeled(tree: Labeled)(implicit ctx: Context): Tree = tree
-    def transformReturn(tree: Return)(implicit ctx: Context): Tree = tree
-    def transformWhileDo(tree: WhileDo)(implicit ctx: Context): Tree = tree
-    def transformTry(tree: Try)(implicit ctx: Context): Tree = tree
-    def transformSeqLiteral(tree: SeqLiteral)(implicit ctx: Context): Tree = tree
-    def transformInlined(tree: Inlined)(implicit ctx: Context): Tree = tree
-    def transformTypeTree(tree: TypeTree)(implicit ctx: Context): Tree = tree
-    def transformBind(tree: Bind)(implicit ctx: Context): Tree = tree
-    def transformAlternative(tree: Alternative)(implicit ctx: Context): Tree = tree
-    def transformUnApply(tree: UnApply)(implicit ctx: Context): Tree = tree
-    def transformValDef(tree: ValDef)(implicit ctx: Context): Tree = tree
-    def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = tree
-    def transformTypeDef(tree: TypeDef)(implicit ctx: Context): Tree = tree
-    def transformTemplate(tree: Template)(implicit ctx: Context): Tree = tree
-    def transformPackageDef(tree: PackageDef)(implicit ctx: Context): Tree = tree
-    def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] = trees
-    def transformUnit(tree: Tree)(implicit ctx: Context): Tree = tree
-    def transformOther(tree: Tree)(implicit ctx: Context): Tree = tree
+    def transformIdent(tree: Ident)(using Context): Tree = tree
+    def transformSelect(tree: Select)(using Context): Tree = tree
+    def transformThis(tree: This)(using Context): Tree = tree
+    def transformSuper(tree: Super)(using Context): Tree = tree
+    def transformApply(tree: Apply)(using Context): Tree = tree
+    def transformTypeApply(tree: TypeApply)(using Context): Tree = tree
+    def transformLiteral(tree: Literal)(using Context): Tree = tree
+    def transformNew(tree: New)(using Context): Tree = tree
+    def transformTyped(tree: Typed)(using Context): Tree = tree
+    def transformAssign(tree: Assign)(using Context): Tree = tree
+    def transformBlock(tree: Block)(using Context): Tree = tree
+    def transformIf(tree: If)(using Context): Tree = tree
+    def transformClosure(tree: Closure)(using Context): Tree = tree
+    def transformMatch(tree: Match)(using Context): Tree = tree
+    def transformCaseDef(tree: CaseDef)(using Context): Tree = tree
+    def transformLabeled(tree: Labeled)(using Context): Tree = tree
+    def transformReturn(tree: Return)(using Context): Tree = tree
+    def transformWhileDo(tree: WhileDo)(using Context): Tree = tree
+    def transformTry(tree: Try)(using Context): Tree = tree
+    def transformSeqLiteral(tree: SeqLiteral)(using Context): Tree = tree
+    def transformInlined(tree: Inlined)(using Context): Tree = tree
+    def transformTypeTree(tree: TypeTree)(using Context): Tree = tree
+    def transformBind(tree: Bind)(using Context): Tree = tree
+    def transformAlternative(tree: Alternative)(using Context): Tree = tree
+    def transformUnApply(tree: UnApply)(using Context): Tree = tree
+    def transformValDef(tree: ValDef)(using Context): Tree = tree
+    def transformDefDef(tree: DefDef)(using Context): Tree = tree
+    def transformTypeDef(tree: TypeDef)(using Context): Tree = tree
+    def transformTemplate(tree: Template)(using Context): Tree = tree
+    def transformPackageDef(tree: PackageDef)(using Context): Tree = tree
+    def transformStats(trees: List[Tree])(using Context): List[Tree] = trees
+    def transformUnit(tree: Tree)(using Context): Tree = tree
+    def transformOther(tree: Tree)(using Context): Tree = tree
 
     /** Transform tree using all transforms of current group (including this one) */
-    def transformAllDeep(tree: Tree)(implicit ctx: Context): Tree =
+    def transformAllDeep(tree: Tree)(using Context): Tree =
       superPhase.transformTree(tree, 0)
 
     /** Transform tree using all transforms following the current one in this group */
-    def transformFollowingDeep(tree: Tree)(implicit ctx: Context): Tree =
+    def transformFollowingDeep(tree: Tree)(using Context): Tree =
       superPhase.transformTree(tree, idxInGroup + 1)
 
     /** Transform single node using all transforms following the current one in this group */
-    def transformFollowing(tree: Tree)(implicit ctx: Context): Tree =
+    def transformFollowing(tree: Tree)(using Context): Tree =
       superPhase.transformNode(tree, idxInGroup + 1)
 
     protected def singletonGroup: MegaPhase = new MegaPhase(Array(this))
 
-    override def run(implicit ctx: Context): Unit =
+    override def run(using Context): Unit =
       singletonGroup.run
   }
 }
@@ -155,7 +155,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   private val cpy: TypedTreeCopier = cpyBetweenPhases
 
   /** Transform node using all phases in this group that have idxInGroup >= start */
-  def transformNode(tree: Tree, start: Int)(implicit ctx: Context): Tree = {
+  def transformNode(tree: Tree, start: Int)(using Context): Tree = {
     def goNamed(tree: Tree, start: Int) =
       try
         tree match {
@@ -212,8 +212,8 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   }
 
   /** Transform full tree using all phases in this group that have idxInGroup >= start */
-  def transformTree(tree: Tree, start: Int)(implicit ctx: Context): Tree = {
-    def localContext(implicit ctx: Context) = {
+  def transformTree(tree: Tree, start: Int)(using Context): Tree = {
+    def localContext(using Context) = {
       val sym = tree.symbol
       val owner = if (sym.is(PackageVal)) sym.moduleClass else sym
       ctx.fresh.setOwner(owner)
@@ -221,210 +221,210 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
     def transformNamed(tree: Tree, start: Int, outerCtx: Context): Tree = tree match {
       case tree: Ident =>
-        implicit val ctx = prepIdent(tree, start)(outerCtx)
+        given Context = prepIdent(tree, start)(using outerCtx)
         goIdent(tree, start)
       case tree: Select =>
-        implicit val ctx = prepSelect(tree, start)(outerCtx)
+        given Context = prepSelect(tree, start)(using outerCtx)
         val qual = transformTree(tree.qualifier, start)
         goSelect(cpy.Select(tree)(qual, tree.name), start)
       case tree: ValDef =>
-        implicit val ctx = prepValDef(tree, start)(outerCtx)
-        def mapValDef(implicit ctx: Context) = {
+        given Context = prepValDef(tree, start)(using outerCtx)
+        def mapValDef(using Context) = {
           val tpt = transformTree(tree.tpt, start)
           val rhs = transformTree(tree.rhs, start)
           cpy.ValDef(tree)(tree.name, tpt, rhs)
         }
         if (tree.isEmpty) tree
-        else goValDef(mapValDef(if (tree.symbol.exists) localContext else ctx), start)
+        else goValDef(mapValDef(using if (tree.symbol.exists) localContext else ctx), start)
       case tree: DefDef =>
-        implicit val ctx = prepDefDef(tree, start)(outerCtx)
-        def mapDefDef(implicit ctx: Context) = {
+        given Context = prepDefDef(tree, start)(using outerCtx)
+        def mapDefDef(using Context) = {
           val tparams = transformSpecificTrees(tree.tparams, start)
           val vparamss = tree.vparamss.mapConserve(transformSpecificTrees(_, start))
           val tpt = transformTree(tree.tpt, start)
           val rhs = transformTree(tree.rhs, start)
           cpy.DefDef(tree)(tree.name, tparams, vparamss, tpt, rhs)
         }
-        goDefDef(mapDefDef(localContext), start)
+        goDefDef(mapDefDef(using localContext), start)
       case tree: TypeDef =>
-        implicit val ctx = prepTypeDef(tree, start)(outerCtx)
-        val rhs = transformTree(tree.rhs, start)(localContext)
+        given Context = prepTypeDef(tree, start)(using outerCtx)
+        val rhs = transformTree(tree.rhs, start)(using localContext)
         goTypeDef(cpy.TypeDef(tree)(tree.name, rhs), start)
       case tree: Labeled =>
-        implicit val ctx = prepLabeled(tree, start)(outerCtx)
+        given Context = prepLabeled(tree, start)(using outerCtx)
         val bind = transformTree(tree.bind, start).asInstanceOf[Bind]
         val expr = transformTree(tree.expr, start)
         goLabeled(cpy.Labeled(tree)(bind, expr), start)
       case tree: Bind =>
-        implicit val ctx = prepBind(tree, start)(outerCtx)
+        given Context = prepBind(tree, start)(using outerCtx)
         val body = transformTree(tree.body, start)
         goBind(cpy.Bind(tree)(tree.name, body), start)
       case _ =>
-        implicit val ctx = prepOther(tree, start)(outerCtx)
+        given Context = prepOther(tree, start)(using outerCtx)
         goOther(tree, start)
     }
 
     def transformUnnamed(tree: Tree, start: Int, outerCtx: Context): Tree = tree match {
       case tree: Apply =>
-        implicit val ctx = prepApply(tree, start)(outerCtx)
+        given Context = prepApply(tree, start)(using outerCtx)
         val fun = transformTree(tree.fun, start)
         val args = transformTrees(tree.args, start)
         goApply(cpy.Apply(tree)(fun, args), start)
       case tree: TypeTree =>
-        implicit val ctx = prepTypeTree(tree, start)(outerCtx)
+        given Context = prepTypeTree(tree, start)(using outerCtx)
         goTypeTree(tree, start)
       case tree: Thicket =>
         cpy.Thicket(tree)(transformTrees(tree.trees, start))
       case tree: This =>
-        implicit val ctx = prepThis(tree, start)(outerCtx)
+        given Context = prepThis(tree, start)(using outerCtx)
         goThis(tree, start)
       case tree: Literal =>
-        implicit val ctx = prepLiteral(tree, start)(outerCtx)
+        given Context = prepLiteral(tree, start)(using outerCtx)
         goLiteral(tree, start)
       case tree: Block =>
-        implicit val ctx = prepBlock(tree, start)(outerCtx)
+        given Context = prepBlock(tree, start)(using outerCtx)
         val stats = transformStats(tree.stats, ctx.owner, start)
         val expr = transformTree(tree.expr, start)
         goBlock(cpy.Block(tree)(stats, expr), start)
       case tree: TypeApply =>
-        implicit val ctx = prepTypeApply(tree, start)(outerCtx)
+        given Context = prepTypeApply(tree, start)(using outerCtx)
         val fun = transformTree(tree.fun, start)
         val args = transformTrees(tree.args, start)
         goTypeApply(cpy.TypeApply(tree)(fun, args), start)
       case tree: If =>
-        implicit val ctx = prepIf(tree, start)(outerCtx)
+        given Context = prepIf(tree, start)(using outerCtx)
         val cond = transformTree(tree.cond, start)
         val thenp = transformTree(tree.thenp, start)
         val elsep = transformTree(tree.elsep, start)
         goIf(cpy.If(tree)(cond, thenp, elsep), start)
       case tree: New =>
-        implicit val ctx = prepNew(tree, start)(outerCtx)
+        given Context = prepNew(tree, start)(using outerCtx)
         val tpt = transformTree(tree.tpt, start)
         goNew(cpy.New(tree)(tpt), start)
       case tree: Typed =>
-        implicit val ctx = prepTyped(tree, start)(outerCtx)
+        given Context = prepTyped(tree, start)(using outerCtx)
         val expr = transformTree(tree.expr, start)
         val tpt = transformTree(tree.tpt, start)
         goTyped(cpy.Typed(tree)(expr, tpt), start)
       case tree: CaseDef =>
-        implicit val ctx = prepCaseDef(tree, start)(outerCtx)
-        val pat = transformTree(tree.pat, start)(ctx.addMode(Mode.Pattern))
+        given Context = prepCaseDef(tree, start)(using outerCtx)
+        val pat = transformTree(tree.pat, start)(using ctx.addMode(Mode.Pattern))
         val guard = transformTree(tree.guard, start)
         val body = transformTree(tree.body, start)
         goCaseDef(cpy.CaseDef(tree)(pat, guard, body), start)
       case tree: Closure =>
-        implicit val ctx = prepClosure(tree, start)(outerCtx)
+        given Context = prepClosure(tree, start)(using outerCtx)
         val env = transformTrees(tree.env, start)
         val meth = transformTree(tree.meth, start)
         val tpt = transformTree(tree.tpt, start)
         goClosure(cpy.Closure(tree)(env, meth, tpt), start)
       case tree: Assign =>
-        implicit val ctx = prepAssign(tree, start)(outerCtx)
+        given Context = prepAssign(tree, start)(using outerCtx)
         val lhs = transformTree(tree.lhs, start)
         val rhs = transformTree(tree.rhs, start)
         goAssign(cpy.Assign(tree)(lhs, rhs), start)
       case tree: SeqLiteral =>
-        implicit val ctx = prepSeqLiteral(tree, start)(outerCtx)
+        given Context = prepSeqLiteral(tree, start)(using outerCtx)
         val elems = transformTrees(tree.elems, start)
         val elemtpt = transformTree(tree.elemtpt, start)
         goSeqLiteral(cpy.SeqLiteral(tree)(elems, elemtpt), start)
       case tree: Super =>
-        implicit val ctx = prepSuper(tree, start)(outerCtx)
+        given Context = prepSuper(tree, start)(using outerCtx)
         goSuper(tree, start)
       case tree: Template =>
-        implicit val ctx = prepTemplate(tree, start)(outerCtx)
+        given Context = prepTemplate(tree, start)(using outerCtx)
         val constr = transformSpecificTree(tree.constr, start)
-        val parents = transformTrees(tree.parents, start)(ctx.superCallContext)
+        val parents = transformTrees(tree.parents, start)(using ctx.superCallContext)
         val self = transformSpecificTree(tree.self, start)
         val body = transformStats(tree.body, tree.symbol, start)
         goTemplate(cpy.Template(tree)(constr, parents, Nil, self, body), start)
       case tree: Match =>
-        implicit val ctx = prepMatch(tree, start)(outerCtx)
+        given Context = prepMatch(tree, start)(using outerCtx)
         val selector = transformTree(tree.selector, start)
         val cases = transformSpecificTrees(tree.cases, start)
         goMatch(cpy.Match(tree)(selector, cases), start)
       case tree: UnApply =>
-        implicit val ctx = prepUnApply(tree, start)(outerCtx)
+        given Context = prepUnApply(tree, start)(using outerCtx)
         val fun = transformTree(tree.fun, start)
         val implicits = transformTrees(tree.implicits, start)
         val patterns = transformTrees(tree.patterns, start)
         goUnApply(cpy.UnApply(tree)(fun, implicits, patterns), start)
       case tree: PackageDef =>
-        implicit val ctx = prepPackageDef(tree, start)(outerCtx)
-        def mapPackage(implicit ctx: Context) = {
+        given Context = prepPackageDef(tree, start)(using outerCtx)
+        def mapPackage(using Context) = {
           val pid = transformSpecificTree(tree.pid, start)
           val stats = transformStats(tree.stats, tree.symbol, start)
           cpy.PackageDef(tree)(pid, stats)
         }
-        goPackageDef(mapPackage(localContext), start)
+        goPackageDef(mapPackage(using localContext), start)
       case tree: Try =>
-        implicit val ctx = prepTry(tree, start)(outerCtx)
+        given Context = prepTry(tree, start)(using outerCtx)
         val expr = transformTree(tree.expr, start)
         val cases = transformSpecificTrees(tree.cases, start)
         val finalizer = transformTree(tree.finalizer, start)
         goTry(cpy.Try(tree)(expr, cases, finalizer), start)
       case tree: Inlined =>
-        implicit val ctx = prepInlined(tree, start)(outerCtx)
+        given Context = prepInlined(tree, start)(using outerCtx)
         val bindings = transformSpecificTrees(tree.bindings, start)
-        val expansion = transformTree(tree.expansion, start)(inlineContext(tree.call))
+        val expansion = transformTree(tree.expansion, start)(using inlineContext(tree.call))
         goInlined(cpy.Inlined(tree)(tree.call, bindings, expansion), start)
       case tree: Return =>
-        implicit val ctx = prepReturn(tree, start)(outerCtx)
+        given Context = prepReturn(tree, start)(using outerCtx)
         val expr = transformTree(tree.expr, start)
         goReturn(cpy.Return(tree)(expr, tree.from), start)
           // don't transform `tree.from`, as this is not a normal ident, but
           // a pointer to the enclosing method.
       case tree: WhileDo =>
-        implicit val ctx = prepWhileDo(tree, start)(outerCtx)
+        given Context = prepWhileDo(tree, start)(using outerCtx)
         val cond = transformTree(tree.cond, start)
         val body = transformTree(tree.body, start)
         goWhileDo(cpy.WhileDo(tree)(cond, body), start)
       case tree: Alternative =>
-        implicit val ctx = prepAlternative(tree, start)(outerCtx)
+        given Context = prepAlternative(tree, start)(using outerCtx)
         val trees = transformTrees(tree.trees, start)
         goAlternative(cpy.Alternative(tree)(trees), start)
       case tree =>
-        implicit val ctx = prepOther(tree, start)(outerCtx)
+        given Context = prepOther(tree, start)(using outerCtx)
         goOther(tree, start)
     }
 
     if (tree.source != ctx.source && tree.source.exists)
-      transformTree(tree, start)(ctx.withSource(tree.source))
+      transformTree(tree, start)(using ctx.withSource(tree.source))
     else if (tree.isInstanceOf[NameTree])
       transformNamed(tree, start, ctx)
     else
       transformUnnamed(tree, start, ctx)
   }
 
-  def transformSpecificTree[T <: Tree](tree: T, start: Int)(implicit ctx: Context): T =
+  def transformSpecificTree[T <: Tree](tree: T, start: Int)(using Context): T =
     transformTree(tree, start).asInstanceOf[T]
 
-  def transformStats(trees: List[Tree], exprOwner: Symbol, start: Int)(implicit ctx: Context): List[Tree] = {
-    def transformStat(stat: Tree)(implicit ctx: Context): Tree = stat match {
+  def transformStats(trees: List[Tree], exprOwner: Symbol, start: Int)(using Context): List[Tree] = {
+    def transformStat(stat: Tree)(using Context): Tree = stat match {
       case _: Import | _: DefTree => transformTree(stat, start)
       case Thicket(stats) => cpy.Thicket(stat)(stats.mapConserve(transformStat))
-      case _ => transformTree(stat, start)(ctx.exprContext(stat, exprOwner))
+      case _ => transformTree(stat, start)(using ctx.exprContext(stat, exprOwner))
     }
-    val nestedCtx = prepStats(trees, start)(ctx)
-    val trees1 = flatten(trees.mapConserve(transformStat(_)(nestedCtx)))
-    goStats(trees1, start)(nestedCtx)
+    val nestedCtx = prepStats(trees, start)
+    val trees1 = flatten(trees.mapConserve(transformStat(_)(using nestedCtx)))
+    goStats(trees1, start)(using nestedCtx)
   }
 
-  def transformUnit(tree: Tree)(implicit ctx: Context): Tree = {
-    val nestedCtx = prepUnit(tree, 0)(ctx)
-    val tree1 = transformTree(tree, 0)(nestedCtx)
-    goUnit(tree1, 0)(nestedCtx)
+  def transformUnit(tree: Tree)(using Context): Tree = {
+    val nestedCtx = prepUnit(tree, 0)
+    val tree1 = transformTree(tree, 0)(using nestedCtx)
+    goUnit(tree1, 0)(using nestedCtx)
   }
 
-  def transformTrees(trees: List[Tree], start: Int)(implicit ctx: Context): List[Tree] =
+  def transformTrees(trees: List[Tree], start: Int)(using Context): List[Tree] =
     flatten(trees.mapConserve(transformTree(_, start)))
 
-  def transformSpecificTrees[T <: Tree](trees: List[T], start: Int)(implicit ctx: Context): List[T] =
+  def transformSpecificTrees[T <: Tree](trees: List[T], start: Int)(using Context): List[T] =
     transformTrees(trees, start).asInstanceOf[List[T]]
 
-  override def run(implicit ctx: Context): Unit =
+  override def run(using Context): Unit =
     ctx.compilationUnit.tpdTree =
-      transformUnit(ctx.compilationUnit.tpdTree)(ctx.withPhase(miniPhases.last.next))
+      atPhase(miniPhases.last.next)(transformUnit(ctx.compilationUnit.tpdTree))
 
   // Initialization code
 
@@ -539,489 +539,489 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   // Boilerplate snippets
 
-  def prepIdent(tree: Ident, start: Int)(implicit ctx: Context): Context = {
+  def prepIdent(tree: Ident, start: Int)(using Context): Context = {
     val phase = nxIdentPrepPhase(start)
     if (phase == null) ctx
-    else prepIdent(tree, phase.idxInGroup + 1)(phase.prepareForIdent(tree))
+    else prepIdent(tree, phase.idxInGroup + 1)(using phase.prepareForIdent(tree))
   }
 
-  def goIdent(tree: Ident, start: Int)(implicit ctx: Context): Tree = {
+  def goIdent(tree: Ident, start: Int)(using Context): Tree = {
     val phase = nxIdentTransPhase(start)
     if (phase == null) tree
-    else phase.transformIdent(tree)(ctx) match {
+    else phase.transformIdent(tree) match {
       case tree1: Ident => goIdent(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepSelect(tree: Select, start: Int)(implicit ctx: Context): Context = {
+  def prepSelect(tree: Select, start: Int)(using Context): Context = {
     val phase = nxSelectPrepPhase(start)
     if (phase == null) ctx
-    else prepSelect(tree, phase.idxInGroup + 1)(phase.prepareForSelect(tree))
+    else prepSelect(tree, phase.idxInGroup + 1)(using phase.prepareForSelect(tree))
   }
 
-  def goSelect(tree: Select, start: Int)(implicit ctx: Context): Tree = {
+  def goSelect(tree: Select, start: Int)(using Context): Tree = {
     val phase = nxSelectTransPhase(start)
     if (phase == null) tree
-    else phase.transformSelect(tree)(ctx) match {
+    else phase.transformSelect(tree) match {
       case tree1: Select => goSelect(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepThis(tree: This, start: Int)(implicit ctx: Context): Context = {
+  def prepThis(tree: This, start: Int)(using Context): Context = {
     val phase = nxThisPrepPhase(start)
     if (phase == null) ctx
-    else prepThis(tree, phase.idxInGroup + 1)(phase.prepareForThis(tree))
+    else prepThis(tree, phase.idxInGroup + 1)(using phase.prepareForThis(tree))
   }
 
-  def goThis(tree: This, start: Int)(implicit ctx: Context): Tree = {
+  def goThis(tree: This, start: Int)(using Context): Tree = {
     val phase = nxThisTransPhase(start)
     if (phase == null) tree
-    else phase.transformThis(tree)(ctx) match {
+    else phase.transformThis(tree) match {
       case tree1: This => goThis(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepSuper(tree: Super, start: Int)(implicit ctx: Context): Context = {
+  def prepSuper(tree: Super, start: Int)(using Context): Context = {
     val phase = nxSuperPrepPhase(start)
     if (phase == null) ctx
-    else prepSuper(tree, phase.idxInGroup + 1)(phase.prepareForSuper(tree))
+    else prepSuper(tree, phase.idxInGroup + 1)(using phase.prepareForSuper(tree))
   }
 
-  def goSuper(tree: Super, start: Int)(implicit ctx: Context): Tree = {
+  def goSuper(tree: Super, start: Int)(using Context): Tree = {
     val phase = nxSuperTransPhase(start)
     if (phase == null) tree
-    else phase.transformSuper(tree)(ctx) match {
+    else phase.transformSuper(tree) match {
       case tree1: Super => goSuper(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepApply(tree: Apply, start: Int)(implicit ctx: Context): Context = {
+  def prepApply(tree: Apply, start: Int)(using Context): Context = {
     val phase = nxApplyPrepPhase(start)
     if (phase == null) ctx
-    else prepApply(tree, phase.idxInGroup + 1)(phase.prepareForApply(tree))
+    else prepApply(tree, phase.idxInGroup + 1)(using phase.prepareForApply(tree))
   }
 
-  def goApply(tree: Apply, start: Int)(implicit ctx: Context): Tree = {
+  def goApply(tree: Apply, start: Int)(using Context): Tree = {
     val phase = nxApplyTransPhase(start)
     if (phase == null) tree
-    else phase.transformApply(tree)(ctx) match {
+    else phase.transformApply(tree) match {
       case tree1: Apply => goApply(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepTypeApply(tree: TypeApply, start: Int)(implicit ctx: Context): Context = {
+  def prepTypeApply(tree: TypeApply, start: Int)(using Context): Context = {
     val phase = nxTypeApplyPrepPhase(start)
     if (phase == null) ctx
-    else prepTypeApply(tree, phase.idxInGroup + 1)(phase.prepareForTypeApply(tree))
+    else prepTypeApply(tree, phase.idxInGroup + 1)(using phase.prepareForTypeApply(tree))
   }
 
-  def goTypeApply(tree: TypeApply, start: Int)(implicit ctx: Context): Tree = {
+  def goTypeApply(tree: TypeApply, start: Int)(using Context): Tree = {
     val phase = nxTypeApplyTransPhase(start)
     if (phase == null) tree
-    else phase.transformTypeApply(tree)(ctx) match {
+    else phase.transformTypeApply(tree) match {
       case tree1: TypeApply => goTypeApply(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepLiteral(tree: Literal, start: Int)(implicit ctx: Context): Context = {
+  def prepLiteral(tree: Literal, start: Int)(using Context): Context = {
     val phase = nxLiteralPrepPhase(start)
     if (phase == null) ctx
-    else prepLiteral(tree, phase.idxInGroup + 1)(phase.prepareForLiteral(tree))
+    else prepLiteral(tree, phase.idxInGroup + 1)(using phase.prepareForLiteral(tree))
   }
 
-  def goLiteral(tree: Literal, start: Int)(implicit ctx: Context): Tree = {
+  def goLiteral(tree: Literal, start: Int)(using Context): Tree = {
     val phase = nxLiteralTransPhase(start)
     if (phase == null) tree
-    else phase.transformLiteral(tree)(ctx) match {
+    else phase.transformLiteral(tree) match {
       case tree1: Literal => goLiteral(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepNew(tree: New, start: Int)(implicit ctx: Context): Context = {
+  def prepNew(tree: New, start: Int)(using Context): Context = {
     val phase = nxNewPrepPhase(start)
     if (phase == null) ctx
-    else prepNew(tree, phase.idxInGroup + 1)(phase.prepareForNew(tree))
+    else prepNew(tree, phase.idxInGroup + 1)(using phase.prepareForNew(tree))
   }
 
-  def goNew(tree: New, start: Int)(implicit ctx: Context): Tree = {
+  def goNew(tree: New, start: Int)(using Context): Tree = {
     val phase = nxNewTransPhase(start)
     if (phase == null) tree
-    else phase.transformNew(tree)(ctx) match {
+    else phase.transformNew(tree) match {
       case tree1: New => goNew(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepTyped(tree: Typed, start: Int)(implicit ctx: Context): Context = {
+  def prepTyped(tree: Typed, start: Int)(using Context): Context = {
     val phase = nxTypedPrepPhase(start)
     if (phase == null) ctx
-    else prepTyped(tree, phase.idxInGroup + 1)(phase.prepareForTyped(tree))
+    else prepTyped(tree, phase.idxInGroup + 1)(using phase.prepareForTyped(tree))
   }
 
-  def goTyped(tree: Typed, start: Int)(implicit ctx: Context): Tree = {
+  def goTyped(tree: Typed, start: Int)(using Context): Tree = {
     val phase = nxTypedTransPhase(start)
     if (phase == null) tree
-    else phase.transformTyped(tree)(ctx) match {
+    else phase.transformTyped(tree) match {
       case tree1: Typed => goTyped(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepAssign(tree: Assign, start: Int)(implicit ctx: Context): Context = {
+  def prepAssign(tree: Assign, start: Int)(using Context): Context = {
     val phase = nxAssignPrepPhase(start)
     if (phase == null) ctx
-    else prepAssign(tree, phase.idxInGroup + 1)(phase.prepareForAssign(tree))
+    else prepAssign(tree, phase.idxInGroup + 1)(using phase.prepareForAssign(tree))
   }
 
-  def goAssign(tree: Assign, start: Int)(implicit ctx: Context): Tree = {
+  def goAssign(tree: Assign, start: Int)(using Context): Tree = {
     val phase = nxAssignTransPhase(start)
     if (phase == null) tree
-    else phase.transformAssign(tree)(ctx) match {
+    else phase.transformAssign(tree) match {
       case tree1: Assign => goAssign(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepBlock(tree: Block, start: Int)(implicit ctx: Context): Context = {
+  def prepBlock(tree: Block, start: Int)(using Context): Context = {
     val phase = nxBlockPrepPhase(start)
     if (phase == null) ctx
-    else prepBlock(tree, phase.idxInGroup + 1)(phase.prepareForBlock(tree))
+    else prepBlock(tree, phase.idxInGroup + 1)(using phase.prepareForBlock(tree))
   }
 
-  def goBlock(tree: Block, start: Int)(implicit ctx: Context): Tree = {
+  def goBlock(tree: Block, start: Int)(using Context): Tree = {
     val phase = nxBlockTransPhase(start)
     if (phase == null) tree
-    else phase.transformBlock(tree)(ctx) match {
+    else phase.transformBlock(tree) match {
       case tree1: Block => goBlock(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepIf(tree: If, start: Int)(implicit ctx: Context): Context = {
+  def prepIf(tree: If, start: Int)(using Context): Context = {
     val phase = nxIfPrepPhase(start)
     if (phase == null) ctx
-    else prepIf(tree, phase.idxInGroup + 1)(phase.prepareForIf(tree))
+    else prepIf(tree, phase.idxInGroup + 1)(using phase.prepareForIf(tree))
   }
 
-  def goIf(tree: If, start: Int)(implicit ctx: Context): Tree = {
+  def goIf(tree: If, start: Int)(using Context): Tree = {
     val phase = nxIfTransPhase(start)
     if (phase == null) tree
-    else phase.transformIf(tree)(ctx) match {
+    else phase.transformIf(tree) match {
       case tree1: If => goIf(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepClosure(tree: Closure, start: Int)(implicit ctx: Context): Context = {
+  def prepClosure(tree: Closure, start: Int)(using Context): Context = {
     val phase = nxClosurePrepPhase(start)
     if (phase == null) ctx
-    else prepClosure(tree, phase.idxInGroup + 1)(phase.prepareForClosure(tree))
+    else prepClosure(tree, phase.idxInGroup + 1)(using phase.prepareForClosure(tree))
   }
 
-  def goClosure(tree: Closure, start: Int)(implicit ctx: Context): Tree = {
+  def goClosure(tree: Closure, start: Int)(using Context): Tree = {
     val phase = nxClosureTransPhase(start)
     if (phase == null) tree
-    else phase.transformClosure(tree)(ctx) match {
+    else phase.transformClosure(tree) match {
       case tree1: Closure => goClosure(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepMatch(tree: Match, start: Int)(implicit ctx: Context): Context = {
+  def prepMatch(tree: Match, start: Int)(using Context): Context = {
     val phase = nxMatchPrepPhase(start)
     if (phase == null) ctx
-    else prepMatch(tree, phase.idxInGroup + 1)(phase.prepareForMatch(tree))
+    else prepMatch(tree, phase.idxInGroup + 1)(using phase.prepareForMatch(tree))
   }
 
-  def goMatch(tree: Match, start: Int)(implicit ctx: Context): Tree = {
+  def goMatch(tree: Match, start: Int)(using Context): Tree = {
     val phase = nxMatchTransPhase(start)
     if (phase == null) tree
-    else phase.transformMatch(tree)(ctx) match {
+    else phase.transformMatch(tree) match {
       case tree1: Match => goMatch(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepCaseDef(tree: CaseDef, start: Int)(implicit ctx: Context): Context = {
+  def prepCaseDef(tree: CaseDef, start: Int)(using Context): Context = {
     val phase = nxCaseDefPrepPhase(start)
     if (phase == null) ctx
-    else prepCaseDef(tree, phase.idxInGroup + 1)(phase.prepareForCaseDef(tree))
+    else prepCaseDef(tree, phase.idxInGroup + 1)(using phase.prepareForCaseDef(tree))
   }
 
-  def goCaseDef(tree: CaseDef, start: Int)(implicit ctx: Context): Tree = {
+  def goCaseDef(tree: CaseDef, start: Int)(using Context): Tree = {
     val phase = nxCaseDefTransPhase(start)
     if (phase == null) tree
-    else phase.transformCaseDef(tree)(ctx) match {
+    else phase.transformCaseDef(tree) match {
       case tree1: CaseDef => goCaseDef(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepLabeled(tree: Labeled, start: Int)(implicit ctx: Context): Context = {
+  def prepLabeled(tree: Labeled, start: Int)(using Context): Context = {
     val phase = nxLabeledPrepPhase(start)
     if (phase == null) ctx
-    else prepLabeled(tree, phase.idxInGroup + 1)(phase.prepareForLabeled(tree))
+    else prepLabeled(tree, phase.idxInGroup + 1)(using phase.prepareForLabeled(tree))
   }
 
-  def goLabeled(tree: Labeled, start: Int)(implicit ctx: Context): Tree = {
+  def goLabeled(tree: Labeled, start: Int)(using Context): Tree = {
     val phase = nxLabeledTransPhase(start)
     if (phase == null) tree
-    else phase.transformLabeled(tree)(ctx) match {
+    else phase.transformLabeled(tree) match {
       case tree1: Labeled => goLabeled(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepReturn(tree: Return, start: Int)(implicit ctx: Context): Context = {
+  def prepReturn(tree: Return, start: Int)(using Context): Context = {
     val phase = nxReturnPrepPhase(start)
     if (phase == null) ctx
-    else prepReturn(tree, phase.idxInGroup + 1)(phase.prepareForReturn(tree))
+    else prepReturn(tree, phase.idxInGroup + 1)(using phase.prepareForReturn(tree))
   }
 
-  def goReturn(tree: Return, start: Int)(implicit ctx: Context): Tree = {
+  def goReturn(tree: Return, start: Int)(using Context): Tree = {
     val phase = nxReturnTransPhase(start)
     if (phase == null) tree
-    else phase.transformReturn(tree)(ctx) match {
+    else phase.transformReturn(tree) match {
       case tree1: Return => goReturn(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepWhileDo(tree: WhileDo, start: Int)(implicit ctx: Context): Context = {
+  def prepWhileDo(tree: WhileDo, start: Int)(using Context): Context = {
     val phase = nxWhileDoPrepPhase(start)
     if (phase == null) ctx
-    else prepWhileDo(tree, phase.idxInGroup + 1)(phase.prepareForWhileDo(tree))
+    else prepWhileDo(tree, phase.idxInGroup + 1)(using phase.prepareForWhileDo(tree))
   }
 
-  def goWhileDo(tree: WhileDo, start: Int)(implicit ctx: Context): Tree = {
+  def goWhileDo(tree: WhileDo, start: Int)(using Context): Tree = {
     val phase = nxWhileDoTransPhase(start)
     if (phase == null) tree
-    else phase.transformWhileDo(tree)(ctx) match {
+    else phase.transformWhileDo(tree) match {
       case tree1: WhileDo => goWhileDo(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepTry(tree: Try, start: Int)(implicit ctx: Context): Context = {
+  def prepTry(tree: Try, start: Int)(using Context): Context = {
     val phase = nxTryPrepPhase(start)
     if (phase == null) ctx
-    else prepTry(tree, phase.idxInGroup + 1)(phase.prepareForTry(tree))
+    else prepTry(tree, phase.idxInGroup + 1)(using phase.prepareForTry(tree))
   }
 
-  def goTry(tree: Try, start: Int)(implicit ctx: Context): Tree = {
+  def goTry(tree: Try, start: Int)(using Context): Tree = {
     val phase = nxTryTransPhase(start)
     if (phase == null) tree
-    else phase.transformTry(tree)(ctx) match {
+    else phase.transformTry(tree) match {
       case tree1: Try => goTry(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepSeqLiteral(tree: SeqLiteral, start: Int)(implicit ctx: Context): Context = {
+  def prepSeqLiteral(tree: SeqLiteral, start: Int)(using Context): Context = {
     val phase = nxSeqLiteralPrepPhase(start)
     if (phase == null) ctx
-    else prepSeqLiteral(tree, phase.idxInGroup + 1)(phase.prepareForSeqLiteral(tree))
+    else prepSeqLiteral(tree, phase.idxInGroup + 1)(using phase.prepareForSeqLiteral(tree))
   }
 
-  def goSeqLiteral(tree: SeqLiteral, start: Int)(implicit ctx: Context): Tree = {
+  def goSeqLiteral(tree: SeqLiteral, start: Int)(using Context): Tree = {
     val phase = nxSeqLiteralTransPhase(start)
     if (phase == null) tree
-    else phase.transformSeqLiteral(tree)(ctx) match {
+    else phase.transformSeqLiteral(tree) match {
       case tree1: SeqLiteral => goSeqLiteral(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepInlined(tree: Inlined, start: Int)(implicit ctx: Context): Context = {
+  def prepInlined(tree: Inlined, start: Int)(using Context): Context = {
     val phase = nxInlinedPrepPhase(start)
     if (phase == null) ctx
-    else prepInlined(tree, phase.idxInGroup + 1)(phase.prepareForInlined(tree))
+    else prepInlined(tree, phase.idxInGroup + 1)(using phase.prepareForInlined(tree))
   }
 
-  def goInlined(tree: Inlined, start: Int)(implicit ctx: Context): Tree = {
+  def goInlined(tree: Inlined, start: Int)(using Context): Tree = {
     val phase = nxInlinedTransPhase(start)
     if (phase == null) tree
-    else phase.transformInlined(tree)(ctx) match {
+    else phase.transformInlined(tree) match {
       case tree1: Inlined => goInlined(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepTypeTree(tree: TypeTree, start: Int)(implicit ctx: Context): Context = {
+  def prepTypeTree(tree: TypeTree, start: Int)(using Context): Context = {
     val phase = nxTypeTreePrepPhase(start)
     if (phase == null) ctx
-    else prepTypeTree(tree, phase.idxInGroup + 1)(phase.prepareForTypeTree(tree))
+    else prepTypeTree(tree, phase.idxInGroup + 1)(using phase.prepareForTypeTree(tree))
   }
 
-  def goTypeTree(tree: TypeTree, start: Int)(implicit ctx: Context): Tree = {
+  def goTypeTree(tree: TypeTree, start: Int)(using Context): Tree = {
     val phase = nxTypeTreeTransPhase(start)
     if (phase == null) tree
-    else phase.transformTypeTree(tree)(ctx) match {
+    else phase.transformTypeTree(tree) match {
       case tree1: TypeTree => goTypeTree(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepBind(tree: Bind, start: Int)(implicit ctx: Context): Context = {
+  def prepBind(tree: Bind, start: Int)(using Context): Context = {
     val phase = nxBindPrepPhase(start)
     if (phase == null) ctx
-    else prepBind(tree, phase.idxInGroup + 1)(phase.prepareForBind(tree))
+    else prepBind(tree, phase.idxInGroup + 1)(using phase.prepareForBind(tree))
   }
 
-  def goBind(tree: Bind, start: Int)(implicit ctx: Context): Tree = {
+  def goBind(tree: Bind, start: Int)(using Context): Tree = {
     val phase = nxBindTransPhase(start)
     if (phase == null) tree
-    else phase.transformBind(tree)(ctx) match {
+    else phase.transformBind(tree) match {
       case tree1: Bind => goBind(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepAlternative(tree: Alternative, start: Int)(implicit ctx: Context): Context = {
+  def prepAlternative(tree: Alternative, start: Int)(using Context): Context = {
     val phase = nxAlternativePrepPhase(start)
     if (phase == null) ctx
-    else prepAlternative(tree, phase.idxInGroup + 1)(phase.prepareForAlternative(tree))
+    else prepAlternative(tree, phase.idxInGroup + 1)(using phase.prepareForAlternative(tree))
   }
 
-  def goAlternative(tree: Alternative, start: Int)(implicit ctx: Context): Tree = {
+  def goAlternative(tree: Alternative, start: Int)(using Context): Tree = {
     val phase = nxAlternativeTransPhase(start)
     if (phase == null) tree
-    else phase.transformAlternative(tree)(ctx) match {
+    else phase.transformAlternative(tree) match {
       case tree1: Alternative => goAlternative(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepUnApply(tree: UnApply, start: Int)(implicit ctx: Context): Context = {
+  def prepUnApply(tree: UnApply, start: Int)(using Context): Context = {
     val phase = nxUnApplyPrepPhase(start)
     if (phase == null) ctx
-    else prepUnApply(tree, phase.idxInGroup + 1)(phase.prepareForUnApply(tree))
+    else prepUnApply(tree, phase.idxInGroup + 1)(using phase.prepareForUnApply(tree))
   }
 
-  def goUnApply(tree: UnApply, start: Int)(implicit ctx: Context): Tree = {
+  def goUnApply(tree: UnApply, start: Int)(using Context): Tree = {
     val phase = nxUnApplyTransPhase(start)
     if (phase == null) tree
-    else phase.transformUnApply(tree)(ctx) match {
+    else phase.transformUnApply(tree) match {
       case tree1: UnApply => goUnApply(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepValDef(tree: ValDef, start: Int)(implicit ctx: Context): Context = {
+  def prepValDef(tree: ValDef, start: Int)(using Context): Context = {
     val phase = nxValDefPrepPhase(start)
     if (phase == null) ctx
-    else prepValDef(tree, phase.idxInGroup + 1)(phase.prepareForValDef(tree))
+    else prepValDef(tree, phase.idxInGroup + 1)(using phase.prepareForValDef(tree))
   }
 
-  def goValDef(tree: ValDef, start: Int)(implicit ctx: Context): Tree = {
+  def goValDef(tree: ValDef, start: Int)(using Context): Tree = {
     val phase = nxValDefTransPhase(start)
     if (phase == null) tree
-    else phase.transformValDef(tree)(ctx) match {
+    else phase.transformValDef(tree) match {
       case tree1: ValDef => goValDef(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepDefDef(tree: DefDef, start: Int)(implicit ctx: Context): Context = {
+  def prepDefDef(tree: DefDef, start: Int)(using Context): Context = {
     val phase = nxDefDefPrepPhase(start)
     if (phase == null) ctx
-    else prepDefDef(tree, phase.idxInGroup + 1)(phase.prepareForDefDef(tree))
+    else prepDefDef(tree, phase.idxInGroup + 1)(using phase.prepareForDefDef(tree))
   }
 
-  def goDefDef(tree: DefDef, start: Int)(implicit ctx: Context): Tree = {
+  def goDefDef(tree: DefDef, start: Int)(using Context): Tree = {
     val phase = nxDefDefTransPhase(start)
     if (phase == null) tree
-    else phase.transformDefDef(tree)(ctx) match {
+    else phase.transformDefDef(tree) match {
       case tree1: DefDef => goDefDef(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepTypeDef(tree: TypeDef, start: Int)(implicit ctx: Context): Context = {
+  def prepTypeDef(tree: TypeDef, start: Int)(using Context): Context = {
     val phase = nxTypeDefPrepPhase(start)
     if (phase == null) ctx
-    else prepTypeDef(tree, phase.idxInGroup + 1)(phase.prepareForTypeDef(tree))
+    else prepTypeDef(tree, phase.idxInGroup + 1)(using phase.prepareForTypeDef(tree))
   }
 
-  def goTypeDef(tree: TypeDef, start: Int)(implicit ctx: Context): Tree = {
+  def goTypeDef(tree: TypeDef, start: Int)(using Context): Tree = {
     val phase = nxTypeDefTransPhase(start)
     if (phase == null) tree
-    else phase.transformTypeDef(tree)(ctx) match {
+    else phase.transformTypeDef(tree) match {
       case tree1: TypeDef => goTypeDef(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepTemplate(tree: Template, start: Int)(implicit ctx: Context): Context = {
+  def prepTemplate(tree: Template, start: Int)(using Context): Context = {
     val phase = nxTemplatePrepPhase(start)
     if (phase == null) ctx
-    else prepTemplate(tree, phase.idxInGroup + 1)(phase.prepareForTemplate(tree))
+    else prepTemplate(tree, phase.idxInGroup + 1)(using phase.prepareForTemplate(tree))
   }
 
-  def goTemplate(tree: Template, start: Int)(implicit ctx: Context): Tree = {
+  def goTemplate(tree: Template, start: Int)(using Context): Tree = {
     val phase = nxTemplateTransPhase(start)
     if (phase == null) tree
-    else phase.transformTemplate(tree)(ctx) match {
+    else phase.transformTemplate(tree) match {
       case tree1: Template => goTemplate(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepPackageDef(tree: PackageDef, start: Int)(implicit ctx: Context): Context = {
+  def prepPackageDef(tree: PackageDef, start: Int)(using Context): Context = {
     val phase = nxPackageDefPrepPhase(start)
     if (phase == null) ctx
-    else prepPackageDef(tree, phase.idxInGroup + 1)(phase.prepareForPackageDef(tree))
+    else prepPackageDef(tree, phase.idxInGroup + 1)(using phase.prepareForPackageDef(tree))
   }
 
-  def goPackageDef(tree: PackageDef, start: Int)(implicit ctx: Context): Tree = {
+  def goPackageDef(tree: PackageDef, start: Int)(using Context): Tree = {
     val phase = nxPackageDefTransPhase(start)
     if (phase == null) tree
-    else phase.transformPackageDef(tree)(ctx) match {
+    else phase.transformPackageDef(tree) match {
       case tree1: PackageDef => goPackageDef(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }
 
-  def prepStats(trees: List[Tree], start: Int)(implicit ctx: Context): Context = {
+  def prepStats(trees: List[Tree], start: Int)(using Context): Context = {
     val phase = nxStatsPrepPhase(start)
     if (phase == null) ctx
-    else prepStats(trees, phase.idxInGroup + 1)(phase.prepareForStats(trees))
+    else prepStats(trees, phase.idxInGroup + 1)(using phase.prepareForStats(trees))
   }
 
-  def goStats(trees: List[Tree], start: Int)(implicit ctx: Context): List[Tree] = {
+  def goStats(trees: List[Tree], start: Int)(using Context): List[Tree] = {
     val phase = nxStatsTransPhase(start)
     if (phase == null) trees
-    else goStats(phase.transformStats(trees)(ctx), phase.idxInGroup + 1)
+    else goStats(phase.transformStats(trees), phase.idxInGroup + 1)
   }
 
-  def prepUnit(tree: Tree, start: Int)(implicit ctx: Context): Context = {
+  def prepUnit(tree: Tree, start: Int)(using Context): Context = {
     val phase = nxUnitPrepPhase(start)
     if (phase == null) ctx
-    else prepUnit(tree, phase.idxInGroup + 1)(phase.prepareForUnit(tree))
+    else prepUnit(tree, phase.idxInGroup + 1)(using phase.prepareForUnit(tree))
   }
 
-  def goUnit(tree: Tree, start: Int)(implicit ctx: Context): Tree = {
+  def goUnit(tree: Tree, start: Int)(using Context): Tree = {
     val phase = nxUnitTransPhase(start)
     if (phase == null) tree
-    else goUnit(phase.transformUnit(tree)(ctx), phase.idxInGroup + 1)
+    else goUnit(phase.transformUnit(tree), phase.idxInGroup + 1)
   }
 
-  def prepOther(tree: Tree, start: Int)(implicit ctx: Context): Context = {
+  def prepOther(tree: Tree, start: Int)(using Context): Context = {
     val phase = nxOtherPrepPhase(start)
     if (phase == null) ctx
-    else prepOther(tree, phase.idxInGroup + 1)(phase.prepareForOther(tree))
+    else prepOther(tree, phase.idxInGroup + 1)(using phase.prepareForOther(tree))
   }
 
-  def goOther(tree: Tree, start: Int)(implicit ctx: Context): Tree = {
+  def goOther(tree: Tree, start: Int)(using Context): Tree = {
     val phase = nxOtherTransPhase(start)
     if (phase == null) tree
-    else goOther(phase.transformOther(tree)(ctx), phase.idxInGroup + 1)
+    else goOther(phase.transformOther(tree), phase.idxInGroup + 1)
   }
 }

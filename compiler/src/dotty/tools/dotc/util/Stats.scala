@@ -50,7 +50,7 @@ import collection.mutable
       hits(s"Total $prefix") += hits(name)
   }
 
-  def maybeMonitored[T](op: => T)(implicit ctx: Context): T =
+  def maybeMonitored[T](op: => T)(using Context): T =
     if (ctx.settings.YdetailedStats.value) {
       monitored = true
       try op

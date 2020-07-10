@@ -56,7 +56,7 @@ object TypeTestsCasts {
   def checkable(X: Type, P: Type, span: Span)(using Context): Boolean = {
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
 
-    def replaceP(tp: Type)(implicit ctx: Context) = new TypeMap {
+    def replaceP(tp: Type)(using Context) = new TypeMap {
       def apply(tp: Type) = tp match {
         case tref: TypeRef if tref.typeSymbol.isPatternBound =>
           WildcardType
@@ -66,7 +66,7 @@ object TypeTestsCasts {
       }
     }.apply(tp)
 
-    def replaceX(tp: Type)(implicit ctx: Context) = new TypeMap {
+    def replaceX(tp: Type)(using Context) = new TypeMap {
       def apply(tp: Type) = tp match {
         case tref: TypeRef if tref.typeSymbol.isPatternBound =>
           if (variance == 1) tref.info.hiBound
@@ -77,7 +77,7 @@ object TypeTestsCasts {
     }.apply(tp)
 
     /** Approximate type parameters depending on variance */
-    def stripTypeParam(tp: Type)(implicit ctx: Context) = new ApproximatingTypeMap {
+    def stripTypeParam(tp: Type)(using Context) = new ApproximatingTypeMap {
       def apply(tp: Type): Type = tp match {
         case _: MatchType =>
           tp // break cycles

@@ -4,7 +4,7 @@ package transform
 import core._
 import MegaPhase._
 import dotty.tools.dotc.ast.tpd._
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.StdNames._
 import ast._
 import Trees._
@@ -53,7 +53,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   // 3. It is accessed on an object other than `this`
   // 4. It is a mutable parameter accessor
   // 5. It is has a wildcard initializer `_`
-  private def markUsedPrivateSymbols(tree: RefTree)(implicit ctx: Context): Unit = {
+  private def markUsedPrivateSymbols(tree: RefTree)(using Context): Unit = {
 
     val sym = tree.symbol
     def retain() = retainedPrivateVals.add(sym)
@@ -78,17 +78,17 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     }
   }
 
-  override def transformIdent(tree: tpd.Ident)(implicit ctx: Context): tpd.Tree = {
+  override def transformIdent(tree: tpd.Ident)(using Context): tpd.Tree = {
     markUsedPrivateSymbols(tree)
     tree
   }
 
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): tpd.Tree = {
+  override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree = {
     markUsedPrivateSymbols(tree)
     tree
   }
 
-  override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context): tpd.Tree = {
+  override def transformValDef(tree: tpd.ValDef)(using Context): tpd.Tree = {
     if (mightBeDropped(tree.symbol)) seenPrivateVals += tree.symbol
     tree
   }
@@ -97,7 +97,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
    *  All non-abstract methods should be implemented (this is assured for constructors
    *  in this phase and for other methods in memoize).
    */
-  override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+  override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = {
     def emptyRhsOK(sym: Symbol) =
       sym.isOneOf(DeferredOrLazy) || sym.isConstructor && sym.owner.isAllOf(NoInitsTrait)
     tree match {
@@ -112,18 +112,18 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   /** @return true  if after ExplicitOuter, all references from this tree go via an
    *                outer link, so no parameter accessors need to be rewired to parameters
    */
-  private def noDirectRefsFrom(tree: Tree)(implicit ctx: Context) =
+  private def noDirectRefsFrom(tree: Tree)(using Context) =
     tree.isDef && tree.symbol.isClass
 
   /** Class members that can be eliminated if referenced only from their own
    *  constructor.
    */
-  private def mightBeDropped(sym: Symbol)(implicit ctx: Context) =
+  private def mightBeDropped(sym: Symbol)(using Context) =
     sym.is(Private, butNot = MethodOrLazy) && !sym.isAllOf(MutableParamAccessor)
 
   private final val MutableParamAccessor = Mutable | ParamAccessor
 
-  override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = {
+  override def transformTemplate(tree: Template)(using Context): Tree = {
     val cls = ctx.owner.asClass
 
     val constr @ DefDef(nme.CONSTRUCTOR, Nil, vparams :: Nil, _, EmptyTree) = tree.constr
@@ -145,7 +145,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     //  (2) If the parameter accessor reference was to an alias getter,
     //      drop the () when replacing by the parameter.
     object intoConstr extends TreeMap {
-      override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      override def transform(tree: Tree)(using Context): Tree = tree match {
         case Ident(_) | Select(This(_), _) =>
           var sym = tree.symbol
           if (sym.is(ParamAccessor, butNot = Mutable)) sym = sym.subst(accessors, paramSyms)
@@ -159,7 +159,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
           if (noDirectRefsFrom(tree)) tree else super.transform(tree)
       }
 
-      def apply(tree: Tree, prevOwner: Symbol)(implicit ctx: Context): Tree =
+      def apply(tree: Tree, prevOwner: Symbol)(using Context): Tree =
         transform(tree).changeOwnerAfter(prevOwner, constr.symbol, thisPhase)
     }
 
@@ -170,7 +170,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
     /** Map outer getters $outer and outer accessors $A$B$$$outer to the given outer parameter. */
     def mapOuter(outerParam: Symbol) = new TreeMap {
-      override def transform(tree: Tree)(implicit ctx: Context) = tree match {
+      override def transform(tree: Tree)(using Context) = tree match {
         case Apply(fn, Nil)
           if (fn.symbol.is(OuterAccessor)
              || fn.symbol.isGetter && fn.symbol.name == nme.OUTER

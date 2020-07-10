@@ -3,7 +3,7 @@ package dotc
 package core
 
 import scala.annotation.{threadUnsafe => tu}
-import Types._, Contexts._, Symbols._, SymDenotations._, StdNames._, Names._
+import Types._, Contexts._, Symbols._, SymDenotations._, StdNames._, Names._, Phases._
 import Flags._, Scopes._, Decorators._, NameOps._, Periods._, NullOpsDecorator._
 import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
@@ -63,7 +63,7 @@ class Definitions {
   // See <http://docs.scala-lang.org/sips/pending/repeated-byname.html>.
   private def enterSpecialPolyClass(name: TypeName, paramFlags: FlagSet, parentConstrs: => Seq[Type]): ClassSymbol = {
     val completer = new LazyType {
-      def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+      def complete(denot: SymDenotation)(using Context): Unit = {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
         val typeParam = enterSyntheticTypeParam(cls, paramFlags, paramDecls)
@@ -112,7 +112,7 @@ class Definitions {
    */
   def newFunctionNTrait(name: TypeName): ClassSymbol = {
     val completer = new LazyType {
-      def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+      def complete(denot: SymDenotation)(using Context): Unit = {
         val cls = denot.asClass.classSymbol
         val decls = newScope
         val arity = name.functionArity
@@ -164,7 +164,7 @@ class Definitions {
     val info =
       if (useCompleter)
         new LazyType {
-          def complete(denot: SymDenotation)(implicit ctx: Context): Unit =
+          def complete(denot: SymDenotation)(using Context): Unit =
             denot.info = ptype
         }
       else ptype
@@ -388,10 +388,10 @@ class Definitions {
     @tu lazy val Predef_identity : Symbol = ScalaPredefModule.requiredMethod(nme.identity)
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
 
-  def SubTypeClass(implicit ctx: Context): ClassSymbol = ctx.requiredClass("scala.<:<")
+  def SubTypeClass(using Context): ClassSymbol = ctx.requiredClass("scala.<:<")
   @tu lazy val SubType_refl: Symbol = SubTypeClass.companionModule.requiredMethod(nme.refl)
 
-  def DummyImplicitClass(implicit ctx: Context): ClassSymbol = ctx.requiredClass("scala.DummyImplicit")
+  def DummyImplicitClass(using Context): ClassSymbol = ctx.requiredClass("scala.DummyImplicit")
 
   @tu lazy val ScalaRuntimeModule: Symbol = ctx.requiredModule("scala.runtime.ScalaRunTime")
     def runtimeMethodRef(name: PreName): TermRef = ScalaRuntimeModule.requiredMethodRef(name)
@@ -416,8 +416,8 @@ class Definitions {
   private var myDottyPredefModule: Symbol = _
 
   @tu lazy val DottyArraysModule: Symbol = ctx.requiredModule("dotty.runtime.Arrays")
-    def newGenericArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
-    def newArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
+    def newGenericArrayMethod(using Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
+    def newArrayMethod(using Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
   def getWrapVarargsArrayModule: Symbol = ScalaRuntimeModule
 
@@ -584,7 +584,7 @@ class Definitions {
     cls.infoOrCompleter match {
       case completer: ClassfileLoader =>
         cls.info = new ClassfileLoader(completer.classfile) {
-          override def complete(root: SymDenotation)(implicit ctx: Context): Unit = {
+          override def complete(root: SymDenotation)(using Context): Unit = {
             super.complete(root)
             val constr = cls.primaryConstructor
             val newInfo = constr.info match {
@@ -649,7 +649,7 @@ class Definitions {
     @tu lazy val Product_productPrefix     : Symbol = ProductClass.requiredMethod(nme.productPrefix)
 
   @tu lazy val IteratorClass: ClassSymbol = ctx.requiredClass("scala.collection.Iterator")
-  def IteratorModule(implicit ctx: Context): Symbol = IteratorClass.companionModule
+  def IteratorModule(using Context): Symbol = IteratorClass.companionModule
 
   @tu lazy val ModuleSerializationProxyClass: ClassSymbol = ctx.requiredClass("scala.runtime.ModuleSerializationProxy")
     @tu lazy val ModuleSerializationProxyConstructor: TermSymbol =
@@ -720,7 +720,7 @@ class Definitions {
   @tu lazy val Unpickler_unpickleType: Symbol = ctx.requiredMethod("scala.internal.quoted.Unpickler.unpickleType")
 
   @tu lazy val EqlClass: ClassSymbol = ctx.requiredClass("scala.Eql")
-    def Eql_eqlAny(implicit ctx: Context): TermSymbol = EqlClass.companionModule.requiredMethod(nme.eqlAny)
+    def Eql_eqlAny(using Context): TermSymbol = EqlClass.companionModule.requiredMethod(nme.eqlAny)
 
   @tu lazy val TypeBoxClass: ClassSymbol = ctx.requiredClass("scala.internal.TypeBox")
     @tu lazy val TypeBox_CAP: TypeSymbol = TypeBoxClass.requiredType(tpnme.CAP)
@@ -747,18 +747,18 @@ class Definitions {
     @tu lazy val CLP_showError: Symbol = CommandLineParserModule.requiredMethod("showError")
 
   @tu lazy val TupleTypeRef: TypeRef = ctx.requiredClassRef("scala.Tuple")
-  def TupleClass(implicit ctx: Context): ClassSymbol = TupleTypeRef.symbol.asClass
+  def TupleClass(using Context): ClassSymbol = TupleTypeRef.symbol.asClass
     @tu lazy val Tuple_cons: Symbol = TupleClass.requiredMethod("*:")
   @tu lazy val EmptyTupleModule: Symbol = ctx.requiredModule("scala.EmptyTuple")
   @tu lazy val NonEmptyTupleTypeRef: TypeRef = ctx.requiredClassRef("scala.NonEmptyTuple")
-  def NonEmptyTupleClass(implicit ctx: Context): ClassSymbol = NonEmptyTupleTypeRef.symbol.asClass
+  def NonEmptyTupleClass(using Context): ClassSymbol = NonEmptyTupleTypeRef.symbol.asClass
     lazy val NonEmptyTuple_tail: Symbol = NonEmptyTupleClass.requiredMethod("tail")
   @tu lazy val PairClass: ClassSymbol = ctx.requiredClass("scala.*:")
 
   @tu lazy val TupleXXLClass: ClassSymbol = ctx.requiredClass("scala.runtime.TupleXXL")
-  def TupleXXLModule(implicit ctx: Context): Symbol = TupleXXLClass.companionModule
+  def TupleXXLModule(using Context): Symbol = TupleXXLClass.companionModule
 
-    def TupleXXL_fromIterator(implicit ctx: Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")
+    def TupleXXL_fromIterator(using Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")
 
   @tu lazy val RuntimeTupleModule: Symbol = ctx.requiredModule("scala.runtime.Tuple")
   @tu lazy val RuntimeTupleModuleClass: Symbol = RuntimeTupleModule.moduleClass
@@ -776,11 +776,11 @@ class Definitions {
     lazy val RuntimeTuple_isInstanceOfNonEmptyTuple: Symbol = RuntimeTupleModule.requiredMethod("isInstanceOfNonEmptyTuple")
 
   @tu lazy val TupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.TupledFunction")
-  def TupledFunctionClass(implicit ctx: Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass
+  def TupledFunctionClass(using Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass
 
   @tu lazy val InternalTupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.internal.TupledFunction")
-  def InternalTupleFunctionClass(implicit ctx: Context): ClassSymbol = InternalTupledFunctionTypeRef.symbol.asClass
-  def InternalTupleFunctionModule(implicit ctx: Context): Symbol = ctx.requiredModule("scala.internal.TupledFunction")
+  def InternalTupleFunctionClass(using Context): ClassSymbol = InternalTupledFunctionTypeRef.symbol.asClass
+  def InternalTupleFunctionModule(using Context): Symbol = ctx.requiredModule("scala.internal.TupledFunction")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = ctx.requiredClass("scala.annotation.Annotation")
@@ -864,13 +864,13 @@ class Definitions {
 
   def RepeatedParamType: TypeRef = RepeatedParamClass.typeRef
 
-  def ClassType(arg: Type)(implicit ctx: Context): Type = {
+  def ClassType(arg: Type)(using Context): Type = {
     val ctype = ClassClass.typeRef
     if (ctx.phase.erasedTypes) ctype else ctype.appliedTo(arg)
   }
 
   /** The enumeration type, goven a value of the enumeration */
-  def EnumType(sym: Symbol)(implicit ctx: Context): TypeRef =
+  def EnumType(sym: Symbol)(using Context): TypeRef =
     // given (in java): "class A { enum E { VAL1 } }"
     //  - sym: the symbol of the actual enumeration value (VAL1)
     //  - .owner: the ModuleClassSymbol of the enumeration (object E)
@@ -878,9 +878,9 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionOf {
-    def apply(args: List[Type], resultType: Type, isContextual: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): Type =
+    def apply(args: List[Type], resultType: Type, isContextual: Boolean = false, isErased: Boolean = false)(using Context): Type =
       FunctionType(args.length, isContextual, isErased).appliedTo(args ::: resultType :: Nil)
-    def unapply(ft: Type)(implicit ctx: Context): Option[(List[Type], Type, Boolean, Boolean)] = {
+    def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean, Boolean)] = {
       val tsym = ft.typeSymbol
       if (isFunctionClass(tsym)) {
         val targs = ft.dealias.argInfos
@@ -892,9 +892,9 @@ class Definitions {
   }
 
   object PartialFunctionOf {
-    def apply(arg: Type, result: Type)(implicit ctx: Context): Type =
+    def apply(arg: Type, result: Type)(using Context): Type =
       PartialFunctionClass.typeRef.appliedTo(arg :: result :: Nil)
-    def unapply(pft: Type)(implicit ctx: Context): Option[(Type, List[Type])] =
+    def unapply(pft: Type)(using Context): Option[(Type, List[Type])] =
       if (pft.isRef(PartialFunctionClass)) {
         val targs = pft.dealias.argInfos
         if (targs.length == 2) Some((targs.head, targs.tail)) else None
@@ -903,25 +903,25 @@ class Definitions {
   }
 
   object ArrayOf {
-    def apply(elem: Type)(implicit ctx: Context): Type =
+    def apply(elem: Type)(using Context): Type =
       if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayType.appliedTo(elem :: Nil)
-    def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
+    def unapply(tp: Type)(using Context): Option[Type] = tp.dealias match {
       case AppliedType(at, arg :: Nil) if at.isRef(ArrayType.symbol) => Some(arg)
       case _ => None
     }
   }
 
   object MatchCase {
-    def apply(pat: Type, body: Type)(implicit ctx: Context): Type =
+    def apply(pat: Type, body: Type)(using Context): Type =
       MatchCaseClass.typeRef.appliedTo(pat, body)
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Type)] = tp match {
+    def unapply(tp: Type)(using Context): Option[(Type, Type)] = tp match {
       case AppliedType(tycon, pat :: body :: Nil) if tycon.isRef(MatchCaseClass) =>
         Some((pat, body))
       case _ =>
         None
     }
-    def isInstance(tp: Type)(implicit ctx: Context): Boolean = tp match {
+    def isInstance(tp: Type)(using Context): Boolean = tp match {
       case AppliedType(tycon: TypeRef, _) =>
         tycon.name == tpnme.MatchCase && // necessary pre-filter to avoid forcing symbols
         tycon.isRef(MatchCaseClass)
@@ -940,9 +940,9 @@ class Definitions {
    *     MultiArrayOf(<Number>, 2)
    */
   object MultiArrayOf {
-    def apply(elem: Type, ndims: Int)(implicit ctx: Context): Type =
+    def apply(elem: Type, ndims: Int)(using Context): Type =
       if (ndims == 0) elem else ArrayOf(apply(elem, ndims - 1))
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp match {
+    def unapply(tp: Type)(using Context): Option[(Type, Int)] = tp match {
       case ArrayOf(elemtp) =>
         def recur(elemtp: Type): Option[(Type, Int)] = elemtp.dealias match {
           case TypeBounds(lo, hi) => recur(hi)
@@ -955,7 +955,7 @@ class Definitions {
     }
   }
 
-  final def isCompiletime_S(sym: Symbol)(implicit ctx: Context): Boolean =
+  final def isCompiletime_S(sym: Symbol)(using Context): Boolean =
     sym.name == tpnme.S && sym.owner == CompiletimePackageObject.moduleClass
 
   private val compiletimePackageAnyTypes: Set[Name] = Set(tpnme.Equals, tpnme.NotEquals)
@@ -968,7 +968,7 @@ class Definitions {
   private val compiletimePackageBooleanTypes: Set[Name] = Set(tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or)
   private val compiletimePackageStringTypes: Set[Name] = Set(tpnme.Plus)
 
-  final def isCompiletimeAppliedType(sym: Symbol)(implicit ctx: Context): Boolean = {
+  final def isCompiletimeAppliedType(sym: Symbol)(using Context): Boolean = {
     def isOpsPackageObjectAppliedType: Boolean =
       sym.owner == CompiletimeOpsPackageObjectAny.moduleClass && compiletimePackageAnyTypes.contains(sym.name) ||
       sym.owner == CompiletimeOpsPackageObjectInt.moduleClass && compiletimePackageIntTypes.contains(sym.name) ||
@@ -983,7 +983,7 @@ class Definitions {
 
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0)
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(implicit ctx => AbstractFunctionType.map(_.symbol.asClass))
-  def AbstractFunctionClass(n: Int)(implicit ctx: Context): Symbol = AbstractFunctionClassPerRun()(ctx)(n)
+  def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)
   @tu private lazy val ImplementedFunctionType = mkArityArray("scala.Function", MaxImplementedFunctionArity, 0)
   def FunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(implicit ctx => ImplementedFunctionType.map(_.symbol.asClass))
 
@@ -1004,7 +1004,7 @@ class Definitions {
 
   @tu lazy val TupleType: Array[TypeRef] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
-  def FunctionClass(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): Symbol =
+  def FunctionClass(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(using Context): Symbol =
     if (isContextual && isErased)
       ctx.requiredClass("scala.ErasedContextFunction" + n.toString)
     else if (isContextual)
@@ -1012,13 +1012,13 @@ class Definitions {
     else if (isErased)
       ctx.requiredClass("scala.ErasedFunction" + n.toString)
     else if (n <= MaxImplementedFunctionArity)
-      FunctionClassPerRun()(ctx)(n)
+      FunctionClassPerRun()(n)
     else
       ctx.requiredClass("scala.Function" + n.toString)
 
   @tu lazy val Function0_apply: Symbol = ImplementedFunctionType(0).symbol.requiredMethod(nme.apply)
 
-  def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): TypeRef =
+  def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(using Context): TypeRef =
     if (n <= MaxImplementedFunctionArity && (!isContextual || ctx.erasedTypes) && !isErased) ImplementedFunctionType(n)
     else FunctionClass(n, isContextual, isErased).typeRef
 
@@ -1026,11 +1026,11 @@ class Definitions {
   def PolyFunctionType = PolyFunctionClass.typeRef
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
-  def scalaClassName(cls: Symbol)(implicit ctx: Context): TypeName =
+  def scalaClassName(cls: Symbol)(using Context): TypeName =
     if (cls.isClass && cls.owner == ScalaPackageClass) cls.asClass.name else EmptyTypeName
 
   /** If type `ref` refers to a class in the scala package, its name, otherwise EmptyTypeName */
-  def scalaClassName(ref: Type)(implicit ctx: Context): TypeName = scalaClassName(ref.classSymbol)
+  def scalaClassName(ref: Type)(using Context): TypeName = scalaClassName(ref.classSymbol)
 
   private def isVarArityClass(cls: Symbol, prefix: String) =
     cls.isClass && cls.owner.eq(ScalaPackageClass) &&
@@ -1178,7 +1178,7 @@ class Definitions {
   def isPolymorphicAfterErasure(sym: Symbol): Boolean =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf) || (sym eq Object_synchronized)
 
-  def isTupleType(tp: Type)(implicit ctx: Context): Boolean = {
+  def isTupleType(tp: Type)(using Context): Boolean = {
     val arity = tp.dealias.argInfos.length
     arity <= MaxTupleArity && TupleType(arity) != null && tp.isRef(TupleType(arity).symbol)
   }
@@ -1189,7 +1189,7 @@ class Definitions {
     else TypeOps.nestedPairs(elems)
   }
 
-  def tupleTypes(tp: Type, bound: Int = Int.MaxValue)(implicit ctx: Context): Option[List[Type]] = {
+  def tupleTypes(tp: Type, bound: Int = Int.MaxValue)(using Context): Option[List[Type]] = {
     @tailrec def rec(tp: Type, acc: List[Type], bound: Int): Option[List[Type]] = tp.normalized.dealias match {
       case _ if bound < 0 => Some(acc.reverse)
       case tp: AppliedType if defn.PairClass == tp.classSymbol => rec(tp.args(1), tp.args.head :: acc, bound - 1)
@@ -1200,12 +1200,12 @@ class Definitions {
     rec(tp.stripTypeVar, Nil, bound)
   }
 
-  def isProductSubType(tp: Type)(implicit ctx: Context): Boolean = tp.derivesFrom(ProductClass)
+  def isProductSubType(tp: Type)(using Context): Boolean = tp.derivesFrom(ProductClass)
 
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ContextFunctionN
    *  instance?
    */
-  def isNonRefinedFunction(tp: Type)(implicit ctx: Context): Boolean = {
+  def isNonRefinedFunction(tp: Type)(using Context): Boolean = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
 
@@ -1216,7 +1216,7 @@ class Definitions {
   }
 
   /** Is `tp` a representation of a (possibly depenent) function type or an alias of such? */
-  def isFunctionType(tp: Type)(implicit ctx: Context): Boolean =
+  def isFunctionType(tp: Type)(using Context): Boolean =
     isNonRefinedFunction(tp.dropDependentRefinement)
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
@@ -1242,7 +1242,7 @@ class Definitions {
   @tu lazy val Function2SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
     new PerRun(implicit ctx => Function2SpecializedReturnTypes.map(_.symbol))
 
-  def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(implicit ctx: Context): Boolean =
+  def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(using Context): Boolean =
     paramTypes.length <= 2 && cls.derivesFrom(FunctionClass(paramTypes.length)) && (paramTypes match {
       case Nil =>
         Function0SpecializedReturnClasses().contains(retType.typeSymbol)
@@ -1257,7 +1257,7 @@ class Definitions {
         false
     })
 
-  def functionArity(tp: Type)(implicit ctx: Context): Int = tp.dropDependentRefinement.dealias.argInfos.length - 1
+  def functionArity(tp: Type)(using Context): Int = tp.dropDependentRefinement.dealias.argInfos.length - 1
 
   /** Return underlying context function type (i.e. instance of an ContextFunctionN class)
    *  or NoType if none exists. The following types are considered as underlying types:
@@ -1265,7 +1265,7 @@ class Definitions {
    *   - the instance or origin of a TypeVar (i.e. the result of a stripTypeVar)
    *   - the upper bound of a TypeParamRef in the current constraint
    */
-  def asContextFunctionType(tp: Type)(implicit ctx: Context): Type =
+  def asContextFunctionType(tp: Type)(using Context): Type =
     tp.stripTypeVar.dealias match {
       case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
         asContextFunctionType(ctx.typeComparer.bounds(tp1).hiBound)
@@ -1275,7 +1275,7 @@ class Definitions {
     }
 
   /** Is `tp` an context function type? */
-  def isContextFunctionType(tp: Type)(implicit ctx: Context): Boolean =
+  def isContextFunctionType(tp: Type)(using Context): Boolean =
     asContextFunctionType(tp).exists
 
   /** An extractor for context function types `As ?=> B`, possibly with
@@ -1285,7 +1285,7 @@ class Definitions {
   object ContextFunctionType:
     def unapply(tp: Type)(using Context): Option[(List[Type], Type, Boolean)] =
       if ctx.erasedTypes then
-        unapply(tp)(using ctx.withPhase(ctx.erasurePhase))
+        atPhase(erasurePhase)(unapply(tp))
       else
         val tp1 = tp.dealias
         if isContextFunctionClass(tp1.typeSymbol) then
@@ -1293,7 +1293,7 @@ class Definitions {
           Some((args.init, args.last, tp1.typeSymbol.name.isErasedFunction))
         else None
 
-  def isErasedFunctionType(tp: Type)(implicit ctx: Context): Boolean =
+  def isErasedFunctionType(tp: Type)(using Context): Boolean =
     isFunctionType(tp) && tp.dealias.typeSymbol.name.isErasedFunction
 
   /** A whitelist of Scala-2 classes that are known to be pure */
@@ -1331,7 +1331,7 @@ class Definitions {
     HasProblematicGetClass.contains(className)
 
   /** Is synthesized symbol with alphanumeric name allowed to be used as an infix operator? */
-  def isInfix(sym: Symbol)(implicit ctx: Context): Boolean =
+  def isInfix(sym: Symbol)(using Context): Boolean =
     (sym eq Object_eq) || (sym eq Object_ne)
 
   @tu lazy val assumedSuperTraits =
@@ -1355,7 +1355,7 @@ class Definitions {
   class PerRun[T](generate: Context => T) {
     private var current: RunId = NoRunId
     private var cached: T = _
-    def apply()(implicit ctx: Context): T = {
+    def apply()(using Context): T = {
       if (current != ctx.runId) {
         cached = generate(ctx)
         current = ctx.runId
@@ -1395,7 +1395,7 @@ class Definitions {
   }
 
   /** The type of the boxed class corresponding to primitive value type `tp`. */
-  def boxedType(tp: Type)(implicit ctx: Context): TypeRef = {
+  def boxedType(tp: Type)(using Context): TypeRef = {
     val cls = tp.classSymbol
     if (cls eq ByteClass)         BoxedByteClass
     else if (cls eq ShortClass)   BoxedShortClass
@@ -1410,10 +1410,10 @@ class Definitions {
   }.typeRef
 
   /** The JVM tag for `tp` if it's a primitive, `java.lang.Object` otherwise. */
-  def typeTag(tp: Type)(implicit ctx: Context): Name = typeTags(scalaClassName(tp))
+  def typeTag(tp: Type)(using Context): Name = typeTags(scalaClassName(tp))
 
 //  /** The `Class[?]` of a primitive value type name */
-//  def valueTypeNameToJavaType(name: TypeName)(implicit ctx: Context): Option[Class[?]] =
+//  def valueTypeNameToJavaType(name: TypeName)(using Context): Option[Class[?]] =
 //    valueTypeNamesToJavaType.get(if (name.firstPart eq nme.scala) name.lastPart.toTypeName else name)
 
   type PrimitiveClassEnc = Int
@@ -1428,7 +1428,7 @@ class Definitions {
   val BooleanEnc: Int = 17
   val UnitEnc: Int = 19
 
-  def isValueSubType(tref1: TypeRef, tref2: TypeRef)(implicit ctx: Context): Boolean =
+  def isValueSubType(tref1: TypeRef, tref2: TypeRef)(using Context): Boolean =
     valueTypeEnc(tref2.name) % valueTypeEnc(tref1.name) == 0
   def isValueSubClass(sym1: Symbol, sym2: Symbol): Boolean =
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
@@ -1473,7 +1473,7 @@ class Definitions {
 
   private var isInitialized = false
 
-  def init()(implicit ctx: Context): Unit = {
+  def init()(using Context): Unit = {
     this.initCtx = ctx
     if (!isInitialized) {
       // Enter all symbols from the scalaShadowing package in the scala package

@@ -128,9 +128,9 @@ object PathResolver {
       )
   }
 
-  def fromPathString(path: String)(implicit ctx: Context): ClassPath = {
+  def fromPathString(path: String)(using Context): ClassPath = {
     val settings = ctx.settings.classpath.update(path)
-    new PathResolver()(ctx.fresh.setSettings(settings)).result
+    new PathResolver()(using ctx.fresh.setSettings(settings)).result
   }
 
   /** Show values in Environment and Defaults when no argument is provided.
@@ -146,7 +146,7 @@ object PathResolver {
       val ArgsSummary(sstate, rest, errors, warnings) =
         ctx.settings.processArguments(args.toList, true)
       errors.foreach(println)
-      val pr = new PathResolver()(ctx.fresh.setSettings(sstate))
+      val pr = new PathResolver()(using ctx.fresh.setSettings(sstate))
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))
       println("RESIDUAL: 'scala %s'\n".format(rest.mkString(" ")))
 
@@ -159,8 +159,8 @@ object PathResolver {
 
 import PathResolver.{Defaults, ppcp}
 
-class PathResolver(implicit ctx: Context) {
-  import ctx.base.settings
+class PathResolver(using c: Context) {
+  import c.base.settings
 
   private val classPathFactory = new ClassPathFactory
 

@@ -818,11 +818,11 @@ class Namer { typer: Typer =>
     protected def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
         if (sym.is(Module)) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, Nil, Nil, identity)(localContext(sym).setNewScope)
+        else valOrDefDefSig(original, sym, Nil, Nil, identity)(using localContext(sym).setNewScope)
       case original: DefDef =>
         val typer1 = ctx.typer.newLikeThis
         nestedTyper(sym) = typer1
-        typer1.defDefSig(original, sym)(localContext(sym).setTyper(typer1))
+        typer1.defDefSig(original, sym)(using localContext(sym).setTyper(typer1))
       case imp: Import =>
         try {
           val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
@@ -863,7 +863,7 @@ class Namer { typer: Typer =>
       case original: untpd.MemberDef =>
         lazy val annotCtx = annotContext(original, sym)
         for (annotTree <- original.mods.annotations) {
-          val cls = typedAheadAnnotationClass(annotTree)(annotCtx)
+          val cls = typedAheadAnnotationClass(annotTree)(using annotCtx)
           if (cls eq sym)
             ctx.error("An annotation class cannot be annotated with iself", annotTree.sourcePos)
           else {
@@ -908,7 +908,7 @@ class Namer { typer: Typer =>
     /** If completed symbol is an enum value or a named class, register it as a child
      *  in all direct parent classes which are sealed.
      */
-    def registerIfChild(denot: SymDenotation)(implicit ctx: Context): Unit = {
+    def registerIfChild(denot: SymDenotation)(using Context): Unit = {
       val sym = denot.symbol
 
       def register(child: Symbol, parentCls: ClassSymbol) = {
@@ -952,7 +952,7 @@ class Namer { typer: Typer =>
     private var nestedCtx: Context = null
     assert(!original.isClassDef)
 
-    override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
+    override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
       if myTypeParams == null then
         //println(i"completing type params of $sym in ${sym.owner}")
         nestedCtx = localContext(sym).setNewScope
@@ -975,7 +975,7 @@ class Namer { typer: Typer =>
     end completerTypeParams
 
     override final def typeSig(sym: Symbol): Type =
-      val tparamSyms = completerTypeParams(sym)(ictx)
+      val tparamSyms = completerTypeParams(sym)(using ictx)
       given ctx as Context = nestedCtx
 
       def abstracted(tp: TypeBounds): TypeBounds =
@@ -1075,7 +1075,7 @@ class Namer { typer: Typer =>
     def init(): Context = index(params)
 
     /** Add forwarders as required by the export statements in this class */
-    private def processExports(implicit ctx: Context): Unit = {
+    private def processExports(using Context): Unit = {
 
       /** A string indicating that no forwarders for this kind of symbol are emitted */
       val SKIP = "(skip)"
@@ -1246,7 +1246,7 @@ class Namer { typer: Typer =>
       /* The type of a parent constructor. Types constructor arguments
        * only if parent type contains uninstantiated type parameters.
        */
-      def parentType(parent: untpd.Tree)(implicit ctx: Context): Type =
+      def parentType(parent: untpd.Tree)(using Context): Type =
         if (parent.isType)
           typedAheadType(parent, AnyTypeConstructorProto).tpe
         else {
@@ -1276,7 +1276,7 @@ class Namer { typer: Typer =>
        *  (4) If the class is sealed, it is defined in the same compilation unit as the current class
        */
       def checkedParentType(parent: untpd.Tree): Type = {
-        val ptype = parentType(parent)(completerCtx.superCallContext).dealiasKeepAnnots
+        val ptype = parentType(parent)(using completerCtx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
           val pt = checkClassType(ptype, parent.sourcePos,
@@ -1319,7 +1319,7 @@ class Namer { typer: Typer =>
           case Some(pos) => (cls.companionClass.orElse(cls).asClass, pos)
           case None => (cls, impl.sourcePos.startPos)
         }
-        val deriver = new Deriver(derivingClass, derivePos)(localCtx)
+        val deriver = new Deriver(derivingClass, derivePos)(using localCtx)
         deriver.enterDerived(impl.derived)
         original.putAttachment(Deriver, deriver)
       }
@@ -1333,19 +1333,19 @@ class Namer { typer: Typer =>
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
-      processExports(localCtx)
+      processExports(using localCtx)
     }
   }
 
   class SuspendCompleter extends LazyType, SymbolLoaders.SecondCompleter {
 
-    final override def complete(denot: SymDenotation)(implicit ctx: Context): Unit =
+    final override def complete(denot: SymDenotation)(using Context): Unit =
       denot.resetFlag(Touched) // allow one more completion
       ctx.compilationUnit.suspend()
   }
 
   /** Typecheck `tree` during completion using `typed`, and remember result in TypedAhead map */
-  def typedAhead(tree: Tree, typed: untpd.Tree => tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+  def typedAhead(tree: Tree, typed: untpd.Tree => tpd.Tree)(using Context): tpd.Tree = {
     val xtree = expanded(tree)
     xtree.getAttachment(TypedAhead) match {
       case Some(ttree) => ttree
@@ -1356,16 +1356,16 @@ class Namer { typer: Typer =>
     }
   }
 
-  def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
+  def typedAheadType(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
     typedAhead(tree, typer.typed(_, pt)(using ctx.retractMode(Mode.PatternOrTypeBits).addMode(Mode.Type)))
 
-  def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
+  def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
     typedAhead(tree, typer.typed(_, pt)(using ctx.retractMode(Mode.PatternOrTypeBits)))
 
-  def typedAheadAnnotation(tree: Tree)(implicit ctx: Context): tpd.Tree =
+  def typedAheadAnnotation(tree: Tree)(using Context): tpd.Tree =
     typedAheadExpr(tree, defn.AnnotationClass.typeRef)
 
-  def typedAheadAnnotationClass(tree: Tree)(implicit ctx: Context): Symbol = tree match {
+  def typedAheadAnnotationClass(tree: Tree)(using Context): Symbol = tree match {
     case Apply(fn, _) => typedAheadAnnotationClass(fn)
     case TypeApply(fn, _) => typedAheadAnnotationClass(fn)
     case Select(qual, nme.CONSTRUCTOR) => typedAheadAnnotationClass(qual)
@@ -1373,7 +1373,7 @@ class Namer { typer: Typer =>
   }
 
   /** Enter and typecheck parameter list */
-  def completeParams(params: List[MemberDef])(implicit ctx: Context): Unit = {
+  def completeParams(params: List[MemberDef])(using Context): Unit = {
     index(params)
     for (param <- params) typedAheadExpr(param)
   }
@@ -1383,7 +1383,7 @@ class Namer { typer: Typer =>
    *  without going through the defined type of the ValDef. This is necessary
    *  to avoid cyclic references involving imports and module val defs.
    */
-  def moduleValSig(sym: Symbol)(implicit ctx: Context): Type = {
+  def moduleValSig(sym: Symbol)(using Context): Type = {
     val clsName = sym.name.moduleClassName
     val cls = ctx.denotNamed(clsName).suchThat(_.is(ModuleClass))
       .orElse(ctx.newStubSymbol(ctx.owner, clsName).assertingErrorsReported)
@@ -1396,7 +1396,7 @@ class Namer { typer: Typer =>
    *  @param paramFn  A wrapping function that produces the type of the
    *                  defined symbol, given its final return type
    */
-  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, typeParams: List[Symbol], paramss: List[List[Symbol]], paramFn: Type => Type)(implicit ctx: Context): Type = {
+  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, typeParams: List[Symbol], paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
     def inferredType = {
       /** A type for this definition that might be inherited from elsewhere:
@@ -1492,7 +1492,7 @@ class Namer { typer: Typer =>
         rhsCtx.setFreshGADTBounds
         rhsCtx.gadt.addToConstraint(typeParams)
       }
-      def rhsType = typedAheadExpr(mdef.rhs, (inherited orElse rhsProto).widenExpr)(rhsCtx).tpe
+      def rhsType = typedAheadExpr(mdef.rhs, (inherited orElse rhsProto).widenExpr)(using rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.
       val deskolemize = new ApproximatingTypeMap {
@@ -1563,7 +1563,7 @@ class Namer { typer: Typer =>
   }
 
   /** The type signature of a DefDef with given symbol */
-  def defDefSig(ddef: DefDef, sym: Symbol)(implicit ctx: Context): Type = {
+  def defDefSig(ddef: DefDef, sym: Symbol)(using Context): Type = {
     // Beware: ddef.name need not match sym.name if sym was freshened!
     val DefDef(_, tparams, vparamss, _, _) = ddef
     val isConstructor = sym.name == nme.CONSTRUCTOR

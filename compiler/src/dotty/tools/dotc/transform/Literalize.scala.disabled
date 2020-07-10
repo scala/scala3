@@ -51,7 +51,7 @@ class Literalize extends MiniPhase { thisTransform =>
    *  Revisit this issue once we have implemented `inline`. Then we can demand
    *  purity of the prefix unless the selection goes to an inline val.
    */
-  def literalize(tree: Tree)(implicit ctx: Context): Tree = {
+  def literalize(tree: Tree)(using Context): Tree = {
     def recur(tp: Type): Tree = tp match {
       case ConstantType(value) if isIdempotentExpr(tree) => Literal(value)
       case tp: TermRef if tp.symbol.isStable => recur(tp.info.widenExpr)
@@ -60,26 +60,26 @@ class Literalize extends MiniPhase { thisTransform =>
     recur(tree.tpe)
   }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
+  override def transformIdent(tree: Ident)(using Context): Tree =
     literalize(tree)
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: Select)(using Context): Tree =
     literalize(tree)
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
+  override def transformApply(tree: Apply)(using Context): Tree =
     literalize(tree)
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
+  override def transformTypeApply(tree: TypeApply)(using Context): Tree =
     literalize(tree)
 
-  override def transformLiteral(tree: Literal)(implicit ctx: Context): Tree = tree.tpe match {
+  override def transformLiteral(tree: Literal)(using Context): Tree = tree.tpe match {
     case ConstantType(const) if tree.const.value != const.value || (tree.const.tag != const.tag) => Literal(const)
     case _ => tree
   }
 
   /** Check that all literals have types match underlying constants
     */
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+  override def checkPostCondition(tree: Tree)(using Context): Unit = {
     tree match {
       case Literal(c @ Constant(treeValue)) =>
         tree.tpe match {

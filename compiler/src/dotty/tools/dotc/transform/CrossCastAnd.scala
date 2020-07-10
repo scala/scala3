@@ -1,7 +1,7 @@
 package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Types.AndType
 import dotty.tools.dotc.transform.MegaPhase._
@@ -18,7 +18,7 @@ class CrossCastAnd extends MiniPhase {
 
   override def phaseName: String = "crossCast"
 
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): tpd.Tree = {
+  override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree = {
 
     lazy val qtype = tree.qualifier.tpe.widen
     val sym = tree.symbol

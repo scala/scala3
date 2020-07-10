@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Symbols._
 import Flags._
 import SymDenotations._
@@ -24,25 +24,25 @@ class Instrumentation extends MiniPhase { thisPhase =>
 
   override def phaseName: String = "instrumentation"
 
-  override def isEnabled(implicit ctx: Context) =
+  override def isEnabled(using Context) =
     ctx.settings.YinstrumentClosures.value ||
     ctx.settings.YinstrumentAllocations.value
 
   private var consName: TermName = _
   private var consEqName: TermName = _
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context = {
+  override def prepareForUnit(tree: Tree)(using Context): Context = {
     consName = "::".toTermName
     consEqName = "+=".toTermName
     ctx
   }
 
-  private def record(category: String, tree: Tree)(implicit ctx: Context): Tree = {
+  private def record(category: String, tree: Tree)(using Context): Tree = {
     val key = Literal(Constant(s"$category${tree.sourcePos.show}"))
     ref(defn.Stats_doRecord).appliedTo(key, Literal(Constant(1)))
   }
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = tree.fun match {
+  override def transformApply(tree: Apply)(using Context): Tree = tree.fun match {
     case Select(nu: New, _) =>
       cpy.Block(tree)(record(i"alloc/${nu.tpe}@", tree) :: Nil, tree)
     case Select(_, name) if name == consName || name == consEqName =>
@@ -51,7 +51,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
       tree
   }
 
-  override def transformBlock(tree: Block)(implicit ctx: Context): Block = tree.expr match {
+  override def transformBlock(tree: Block)(using Context): Block = tree.expr match {
     case _: Closure =>
       cpy.Block(tree)(record("closure/", tree) :: tree.stats, tree.expr)
     case _ =>

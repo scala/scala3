@@ -4,7 +4,7 @@ package transform
 import ast.{Trees, tpd}
 import core._, core.Decorators._
 import MegaPhase._
-import Types._, Contexts._, Flags._, DenotTransformers._
+import Types._, Contexts._, Flags._, DenotTransformers._, Phases._
 import Symbols._, StdNames._, Trees._
 import TypeErasure.ErasedValueType, ValueClasses._
 import reporting.messages.DoubleDefinition
@@ -29,7 +29,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def runsAfter: Set[String] = Set(Erasure.name)
 
-  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = sym match {
+  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = sym match {
     case sym: ClassSymbol if sym.is(ModuleClass) =>
       sym.companionClass match {
         case origClass: ClassSymbol if isDerivedValueClass(origClass) =>
@@ -47,7 +47,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
       elimEVT(tp)
   }
 
-  def elimEVT(tp: Type)(implicit ctx: Context): Type = tp match {
+  def elimEVT(tp: Type)(using Context): Type = tp match {
     case ErasedValueType(_, underlying) =>
       elimEVT(underlying)
     case tp: MethodType =>
@@ -58,10 +58,10 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
       tp
   }
 
-  def transformTypeOfTree(tree: Tree)(implicit ctx: Context): Tree =
+  def transformTypeOfTree(tree: Tree)(using Context): Tree =
     tree.withType(elimEVT(tree.tpe))
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
+  override def transformApply(tree: Apply)(using Context): Tree = {
     val Apply(fun, args) = tree
 
     // The casts to and from ErasedValueType are no longer needed once ErasedValueType
@@ -77,15 +77,15 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
   /** Check that we don't have pairs of methods that override each other after
    *  this phase, yet do not have matching types before erasure.
    */
-  private def checkNoClashes(root: Symbol)(implicit ctx: Context) = {
-    val opc = new OverridingPairs.Cursor(root)(ctx.withPhase(thisPhase)) {
+  private def checkNoClashes(root: Symbol)(using Context) = {
+    val opc = new OverridingPairs.Cursor(root)(using ctx.withPhase(thisPhase)) {
       override def exclude(sym: Symbol) =
         !sym.is(Method) || sym.is(Bridge) || super.exclude(sym)
       override def matches(sym1: Symbol, sym2: Symbol) =
         sym1.signature == sym2.signature
     }
 
-    def checkNoConflict(sym1: Symbol, sym2: Symbol, info: Type)(implicit ctx: Context): Unit = {
+    def checkNoConflict(sym1: Symbol, sym2: Symbol, info: Type)(using Context): Unit = {
       val site = root.thisType
       val info1 = site.memberInfo(sym1)
       val info2 = site.memberInfo(sym2)
@@ -103,30 +103,30 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
           !info1.matchesLoosely(info2) && !bothPolyApply)
         ctx.error(DoubleDefinition(sym1, sym2, root), root.sourcePos)
     }
-    val earlyCtx = ctx.withPhase(ctx.elimRepeatedPhase.next)
+    val earlyCtx = ctx.withPhase(elimRepeatedPhase.next)
     while (opc.hasNext) {
       val sym1 = opc.overriding
       val sym2 = opc.overridden
       // Do the test at the earliest phase where both symbols existed.
       val phaseId =
         sym1.originDenotation.validFor.firstPhaseId max sym2.originDenotation.validFor.firstPhaseId
-      checkNoConflict(sym1, sym2, sym1.info)(earlyCtx)
+      checkNoConflict(sym1, sym2, sym1.info)(using earlyCtx)
       opc.next()
     }
   }
 
-  override def prepareForTypeDef(tree: TypeDef)(implicit ctx: Context): Context = {
+  override def prepareForTypeDef(tree: TypeDef)(using Context): Context = {
     checkNoClashes(tree.symbol)
     ctx
   }
 
-  override def transformInlined(tree: Inlined)(implicit ctx: Context): Tree =
+  override def transformInlined(tree: Inlined)(using Context): Tree =
     transformTypeOfTree(tree)
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
+  override def transformIdent(tree: Ident)(using Context): Tree =
     transformTypeOfTree(tree)
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: Select)(using Context): Tree =
     transformTypeOfTree(tree)
-  override def transformTypeTree(tree: TypeTree)(implicit ctx: Context): Tree =
+  override def transformTypeTree(tree: TypeTree)(using Context): Tree =
     transformTypeOfTree(tree)
 }

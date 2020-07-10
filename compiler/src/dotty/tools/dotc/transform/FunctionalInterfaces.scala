@@ -8,6 +8,7 @@ import Symbols._
 import Contexts._
 import Decorators._
 import NameOps._
+import Phases._
 import dotty.tools.dotc.ast.tpd
 
 
@@ -26,7 +27,7 @@ class FunctionalInterfaces extends MiniPhase {
   private val functionName = "JFunction".toTermName
   private val functionPackage = "dotty.runtime.function.".toTermName
 
-  override def transformClosure(tree: Closure)(implicit ctx: Context): Tree = {
+  override def transformClosure(tree: Closure)(using Context): Tree = {
     val cls = tree.tpe.widen.classSymbol.asClass
 
     val implType = tree.meth.tpe.widen
@@ -35,11 +36,11 @@ class FunctionalInterfaces extends MiniPhase {
 
     if (defn.isSpecializableFunction(cls, implParamTypes, implResultType) &&
         !ctx.settings.scalajs.value) { // never do anything for Scala.js, but do this test as late as possible not to slow down Scala/JVM
-      val names = ctx.atPhase(ctx.erasurePhase) { cls.typeParams.map(_.name) }
+      val names = atPhase(erasurePhase) { cls.typeParams.map(_.name) }
       val interfaceName = (functionName ++ implParamTypes.length.toString).specializedFor(implParamTypes ::: implResultType :: Nil, names, Nil, Nil)
 
       // symbols loaded from classpath aren't defined in periods earlier than when they where loaded
-      val interface = ctx.withPhase(ctx.typerPhase).requiredClass(functionPackage ++ interfaceName)
+      val interface = ctx.withPhase(typerPhase).requiredClass(functionPackage ++ interfaceName)
       val tpt = tpd.TypeTree(interface.asType.appliedRef)
       tpd.Closure(tree.env, tree.meth, tpt)
     }

@@ -8,7 +8,7 @@ import SymUtils._
 import StdNames._, NameOps._
 import Decorators._
 
-class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Context) {
+class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd._
 
   val superCls: Symbol = cls.superClass
@@ -43,7 +43,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
    *  The test is performed at phase `thisPhase`.
    */
   def isCurrent(sym: Symbol): Boolean =
-    ctx.atPhase(thisPhase) {
+    atPhase(thisPhase) {
       cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
     }
 

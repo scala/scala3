@@ -28,7 +28,7 @@ object PickledQuotes {
   import tpd._
 
   /** Pickle the tree of the quote into strings */
-  def pickleQuote(tree: Tree)(implicit ctx: Context): PickledQuote =
+  def pickleQuote(tree: Tree)(using Context): PickledQuote =
     if (ctx.reporter.hasErrors) Nil
     else {
       assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'{$x}` which should be optimized to `x`
@@ -37,23 +37,23 @@ object PickledQuotes {
     }
 
   /** Transform the expression into its fully spliced Tree */
-  def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = {
+  def quotedExprToTree[T](expr: quoted.Expr[T])(using Context): Tree = {
     val expr1 = expr.asInstanceOf[scala.internal.quoted.Expr[Tree]]
     QuoteContext.checkScopeId(expr1.scopeId)
     healOwner(expr1.tree)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
-  def quotedTypeToTree(tpe: quoted.Type[?])(implicit ctx: Context): Tree = {
+  def quotedTypeToTree(tpe: quoted.Type[?])(using Context): Tree = {
     val tpe1 = tpe.asInstanceOf[scala.internal.quoted.Type[Tree]]
     QuoteContext.checkScopeId(tpe1.scopeId)
     healOwner(tpe1.typeTree)
   }
 
   /** Unpickle the tree contained in the TastyExpr */
-  def unpickleExpr(tasty: PickledQuote, splices: PickledArgs)(implicit ctx: Context): Tree = {
+  def unpickleExpr(tasty: PickledQuote, splices: PickledArgs)(using Context): Tree = {
     val tastyBytes = TastyString.unpickle(tasty)
-    val unpickled = unpickle(tastyBytes, splices, isType = false)(ctx.addMode(Mode.ReadPositions))
+    val unpickled = unpickle(tastyBytes, splices, isType = false)(using ctx.addMode(Mode.ReadPositions))
     val Inlined(call, Nil, expnasion) = unpickled
     val inlineCtx = inlineContext(call)
     val expansion1 = spliceTypes(expnasion, splices)(using inlineCtx)
@@ -62,16 +62,16 @@ object PickledQuotes {
   }
 
   /** Unpickle the tree contained in the TastyType */
-  def unpickleType(tasty: PickledQuote, args: PickledArgs)(implicit ctx: Context): Tree = {
+  def unpickleType(tasty: PickledQuote, args: PickledArgs)(using Context): Tree = {
     val tastyBytes = TastyString.unpickle(tasty)
-    val unpickled = unpickle(tastyBytes, args, isType = true)(ctx.addMode(Mode.ReadPositions))
+    val unpickled = unpickle(tastyBytes, args, isType = true)(using ctx.addMode(Mode.ReadPositions))
     spliceTypes(unpickled, args)
   }
 
   /** Replace all term holes with the spliced terms */
   private def spliceTerms(tree: Tree, splices: PickledArgs)(using Context): Tree = {
     val evaluateHoles = new TreeMap {
-      override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+      override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args) =>
           val reifiedArgs = args.map { arg =>
             if (arg.isTerm) (using qctx: scala.quoted.QuoteContext) => new scala.internal.quoted.Expr(arg, QuoteContext.scopeId)
@@ -160,7 +160,7 @@ object PickledQuotes {
   // TASTY picklingtests/pos/quoteTest.scala
 
   /** Pickle tree into it's TASTY bytes s*/
-  private def pickle(tree: Tree)(implicit ctx: Context): Array[Byte] = {
+  private def pickle(tree: Tree)(using Context): Array[Byte] = {
     quotePickling.println(i"**** pickling quote of\n$tree")
     val pickler = new TastyPickler(defn.RootClass)
     val treePkl = pickler.treePkl
@@ -177,7 +177,7 @@ object PickledQuotes {
   }
 
   /** Unpickle TASTY bytes into it's tree */
-  private def unpickle(bytes: Array[Byte], splices: Seq[Any], isType: Boolean)(implicit ctx: Context): Tree = {
+  private def unpickle(bytes: Array[Byte], splices: Seq[Any], isType: Boolean)(using Context): Tree = {
     quotePickling.println(s"**** unpickling quote from TASTY\n${new TastyPrinter(bytes).printContents()}")
 
     val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
@@ -188,7 +188,7 @@ object PickledQuotes {
 
     // Make sure trees and positions are fully loaded
     new TreeTraverser {
-      def traverse(tree: Tree)(implicit ctx: Context): Unit = traverseChildren(tree)
+      def traverse(tree: Tree)(using Context): Unit = traverseChildren(tree)
     }.traverse(tree)
 
     quotePickling.println(i"**** unpickled quote\n$tree")
@@ -196,9 +196,9 @@ object PickledQuotes {
   }
 
   /** Make sure that the owner of this tree is `ctx.owner` */
-  def healOwner(tree: Tree)(implicit ctx: Context): Tree = {
+  def healOwner(tree: Tree)(using Context): Tree = {
     val getCurrentOwner = new TreeAccumulator[Option[Symbol]] {
-      def apply(x: Option[Symbol], tree: tpd.Tree)(implicit ctx: Context): Option[Symbol] =
+      def apply(x: Option[Symbol], tree: tpd.Tree)(using Context): Option[Symbol] =
         if (x.isDefined) x
         else tree match {
           case tree: DefTree => Some(tree.symbol.owner)

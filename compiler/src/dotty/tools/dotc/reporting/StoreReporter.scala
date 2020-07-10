@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.Context
+import core.Contexts.{Context, ctx}
 import collection.mutable
 import config.Printers.typr
 import Diagnostic._
@@ -21,7 +21,7 @@ class StoreReporter(outer: Reporter) extends Reporter {
 
   protected var infos: mutable.ListBuffer[Diagnostic] = null
 
-  def doReport(dia: Diagnostic)(implicit ctx: Context): Unit = {
+  def doReport(dia: Diagnostic)(using Context): Unit = {
     typr.println(s">>>> StoredError: ${dia.message}") // !!! DEBUG
     if (infos == null) infos = new mutable.ListBuffer
     infos += dia
@@ -33,7 +33,7 @@ class StoreReporter(outer: Reporter) extends Reporter {
   override def hasStickyErrors: Boolean =
     infos != null && infos.exists(_.isInstanceOf[StickyError])
 
-  override def removeBufferedMessages(implicit ctx: Context): List[Diagnostic] =
+  override def removeBufferedMessages(using Context): List[Diagnostic] =
     if (infos != null) try infos.toList finally infos = null
     else Nil
 

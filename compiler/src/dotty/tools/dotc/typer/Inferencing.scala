@@ -164,7 +164,7 @@ object Inferencing {
       )
   }
 
-  def approximateGADT(tp: Type)(implicit ctx: Context): Type = {
+  def approximateGADT(tp: Type)(using Context): Type = {
     val map = new ApproximateGadtAccumulator
     val res = map(tp)
     assert(!map.failed)
@@ -174,7 +174,7 @@ object Inferencing {
   /** This class is mostly based on IsFullyDefinedAccumulator.
     * It tries to approximate the given type based on the available GADT constraints.
     */
-  private class ApproximateGadtAccumulator(implicit ctx: Context) extends TypeMap {
+  private class ApproximateGadtAccumulator(using Context) extends TypeMap {
 
     var failed = false
 
@@ -184,7 +184,7 @@ object Inferencing {
       inst
     }
 
-    private def instDirection2(sym: Symbol)(implicit ctx: Context): Int = {
+    private def instDirection2(sym: Symbol)(using Context): Int = {
       val constrained = ctx.gadt.fullBounds(sym)
       val original = sym.info.bounds
       val cmp = ctx.typeComparer

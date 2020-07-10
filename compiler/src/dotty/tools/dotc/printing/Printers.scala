@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package printing
 
-import core.Contexts.Context
+import core.Contexts.{Context, ctx}
 
 trait Printers { this: Context =>
 

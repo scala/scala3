@@ -46,23 +46,23 @@ object JSPrimitives {
 
 }
 
-class JSPrimitives(ctx: Context) extends DottyPrimitives(ctx) {
+class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
   import JSPrimitives._
   import dotty.tools.backend.ScalaPrimitivesOps._
 
-  private lazy val jsPrimitives: Map[Symbol, Int] = initJSPrimitives(ctx)
+  private lazy val jsPrimitives: Map[Symbol, Int] = initJSPrimitives(using ictx)
 
   override def getPrimitive(sym: Symbol): Int =
     jsPrimitives.getOrElse(sym, super.getPrimitive(sym))
 
-  override def getPrimitive(app: Apply, tpe: Type)(implicit ctx: Context): Int =
+  override def getPrimitive(app: Apply, tpe: Type)(using Context): Int =
     jsPrimitives.getOrElse(app.fun.symbol, super.getPrimitive(app, tpe))
 
   override def isPrimitive(fun: Tree): Boolean =
-    jsPrimitives.contains(fun.symbol(ctx)) || super.isPrimitive(fun)
+    jsPrimitives.contains(fun.symbol(using ictx)) || super.isPrimitive(fun)
 
   /** Initialize the primitive map */
-  private def initJSPrimitives(implicit ctx: Context): Map[Symbol, Int] = {
+  private def initJSPrimitives(using Context): Map[Symbol, Int] = {
 
     val primitives = newMutableSymbolMap[Int]
 
@@ -73,7 +73,7 @@ class JSPrimitives(ctx: Context) extends DottyPrimitives(ctx) {
       primitives(s) = code
     }
 
-    def addPrimitives(cls: Symbol, method: TermName, code: Int)(implicit ctx: Context): Unit = {
+    def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit = {
       val alts = cls.info.member(method).alternatives.map(_.symbol)
       if (alts.isEmpty) {
         ctx.error(s"Unknown primitive method $cls.$method")

@@ -1,6 +1,6 @@
 package dotty.tools.repl
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.parsing.Scanners.Scanner
 import dotty.tools.dotc.parsing.Tokens._
 import dotty.tools.dotc.printing.SyntaxHighlighting
@@ -24,11 +24,11 @@ final class JLineTerminal extends java.io.Closeable {
     .build()
   private val history = new DefaultHistory
 
-  private def blue(str: String)(implicit ctx: Context) =
+  private def blue(str: String)(using Context) =
     if (ctx.settings.color.value != "never") Console.BLUE + str + Console.RESET
     else str
-  private def prompt(implicit ctx: Context)        = blue("scala> ")
-  private def newLinePrompt(implicit ctx: Context) = blue("     | ")
+  private def prompt(using Context)        = blue("scala> ")
+  private def newLinePrompt(using Context) = blue("     | ")
 
   /** Blockingly read line from `System.in`
    *
@@ -45,7 +45,7 @@ final class JLineTerminal extends java.io.Closeable {
    */
   def readLine(
     completer: Completer // provide auto-completions
-  )(implicit ctx: Context): String = {
+  )(using Context): String = {
     import LineReader.Option._
     import LineReader._
     val userHome = System.getProperty("user.home")
@@ -74,7 +74,7 @@ final class JLineTerminal extends java.io.Closeable {
   def close(): Unit = terminal.close()
 
   /** Provide syntax highlighting */
-  private class Highlighter(implicit ctx: Context) extends reader.Highlighter {
+  private class Highlighter(using Context) extends reader.Highlighter {
     def highlight(reader: LineReader, buffer: String): AttributedString = {
       val highlighted = SyntaxHighlighting.highlight(buffer)
       AttributedString.fromAnsi(highlighted)
@@ -84,7 +84,7 @@ final class JLineTerminal extends java.io.Closeable {
   }
 
   /** Provide multi-line editing support */
-  private class Parser(implicit ctx: Context) extends reader.Parser {
+  private class Parser(using Context) extends reader.Parser {
 
     /**
      * @param cursor     The cursor position within the line
@@ -116,7 +116,7 @@ final class JLineTerminal extends java.io.Closeable {
       case class TokenData(token: Token, start: Int, end: Int)
       def currentToken: TokenData /* | Null */ = {
         val source = SourceFile.virtual("<completions>", input)
-        val scanner = new Scanner(source)(ctx.fresh.setReporter(Reporter.NoReporter))
+        val scanner = new Scanner(source)(using ctx.fresh.setReporter(Reporter.NoReporter))
         while (scanner.token != EOF) {
           val start = scanner.offset
           val token = scanner.token

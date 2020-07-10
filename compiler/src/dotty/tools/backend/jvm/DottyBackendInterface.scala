@@ -34,7 +34,7 @@ import Names.TermName
 import Annotations.Annotation
 import Names.Name
 
-class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit val ctx: Context) {
+class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(using val ctx: Context) {
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
@@ -107,10 +107,10 @@ object DottyBackendInterface {
     else clazz.getName
   }
 
-  def requiredClass[T](implicit evidence: ClassTag[T], ctx: Context): Symbol =
+  def requiredClass[T](using evidence: ClassTag[T], ctx: Context): Symbol =
     ctx.requiredClass(erasureString(evidence.runtimeClass))
 
-  def requiredModule[T](implicit evidence: ClassTag[T], ctx: Context): Symbol = {
+  def requiredModule[T](using evidence: ClassTag[T], ctx: Context): Symbol = {
     val moduleName = erasureString(evidence.runtimeClass)
     val className = if (moduleName.endsWith("$")) moduleName.dropRight(1)  else moduleName
     ctx.requiredModule(className)
@@ -137,8 +137,9 @@ object DottyBackendInterface {
         // for example by specialization
         val original = toDenot(sym).initial
         val validity = original.validFor
-        val shiftedContext = ctx.withPhase(validity.phaseId)
-        toDenot(sym)(shiftedContext).isStatic(shiftedContext)
+        atPhase(validity.phaseId) {
+          toDenot(sym).isStatic
+        }
       }
 
 
@@ -148,8 +149,9 @@ object DottyBackendInterface {
       // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
       if (sym.exists) {
         val validity = toDenot(sym).initial.validFor
-        val shiftedContext = ctx.withPhase(validity.phaseId)
-        toDenot(sym)(shiftedContext).lexicallyEnclosingClass(shiftedContext)
+        atPhase(validity.phaseId) {
+          toDenot(sym).lexicallyEnclosingClass
+        }
       } else NoSymbol
 
     /**
@@ -158,7 +160,7 @@ object DottyBackendInterface {
      */
     def isTopLevelModuleClass(using Context): Boolean =
       sym.is(ModuleClass) &&
-      ctx.atPhase(ctx.flattenPhase) {
+      atPhase(flattenPhase) {
         toDenot(sym).owner.is(PackageClass)
       }
 

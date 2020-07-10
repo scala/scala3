@@ -12,14 +12,14 @@ object MacroClassLoader {
   private val MacroClassLoaderKey = new Property.Key[ClassLoader]
 
   /** Get the macro class loader */
-  def fromContext(implicit ctx: Context): ClassLoader =
+  def fromContext(using Context): ClassLoader =
     ctx.property(MacroClassLoaderKey).getOrElse(makeMacroClassLoader)
 
   /** Context with a cached macro class loader that can be accessed with `macroClassLoader` */
   def init(ctx: FreshContext): ctx.type =
-    ctx.setProperty(MacroClassLoaderKey, makeMacroClassLoader(ctx))
+    ctx.setProperty(MacroClassLoaderKey, makeMacroClassLoader(using ctx))
 
-  private def makeMacroClassLoader(implicit ctx: Context): ClassLoader = trace("new macro class loader") {
+  private def makeMacroClassLoader(using Context): ClassLoader = trace("new macro class loader") {
     val urls = ctx.settings.classpath.value.split(java.io.File.pathSeparatorChar).map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
     val out = ctx.settings.outputDir.value.jpath.toUri.toURL // to find classes in case of suspended compilation
     new java.net.URLClassLoader(urls :+ out, getClass.getClassLoader)

@@ -30,7 +30,7 @@ trait DottyTest extends ContextEscapeDetection {
     initializeCtx(ctx)
     // when classpath is changed in ctx, we need to re-initialize to get the
     // correct classpath from PathResolver
-    base.initialize()(ctx)
+    base.initialize()(using ctx)
     ctx
   }
 
@@ -54,7 +54,7 @@ trait DottyTest extends ContextEscapeDetection {
       val lastGroup = allPhases.find(x => x.contains(targetPhase)).get.takeWhile(x => !(x eq targetPhase))
       val checker = new Phase {
         def phaseName = "assertionChecker"
-        override def run(implicit ctx: Context): Unit = assertion(ctx.compilationUnit.tpdTree, ctx)
+        override def run(using ctx: Context): Unit = assertion(ctx.compilationUnit.tpdTree, ctx)
       }
       val lastGroupAppended = List(lastGroup ::: targetPhase :: Nil)
 
@@ -80,7 +80,7 @@ trait DottyTest extends ContextEscapeDetection {
     val gatheredSource = s"${source}\nobject A$dummyName {$vals}"
     checkCompile("typer", gatheredSource) {
       (tree, context) =>
-        implicit val ctx = context
+        given Context = context
         val findValDef: (List[tpd.ValDef], tpd.Tree) => List[tpd.ValDef] =
           (acc , tree) =>  {
             tree match {

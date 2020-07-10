@@ -107,7 +107,7 @@ object Scanners {
     def isNestedEnd = token == RBRACE || token == OUTDENT
   }
 
-  abstract class ScannerCommon(source: SourceFile)(implicit ctx: Context) extends CharArrayReader with TokenData {
+  abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
     val buf: Array[Char] = source.content
     def nextToken(): Unit
 
@@ -179,7 +179,7 @@ object Scanners {
         errorButContinue("trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(using Context) extends ScannerCommon(source) {
     val keepComments = !ctx.settings.YdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */

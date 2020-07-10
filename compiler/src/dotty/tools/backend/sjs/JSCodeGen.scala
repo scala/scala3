@@ -55,14 +55,14 @@ import ScopedVar.withScopedVars
  *  - `genMethod()` and similar methods generate the declarations of methods.
  *  - `genStatOrExpr()` and everything else generate the bodies of methods.
  */
-class JSCodeGen()(implicit ctx: Context) {
+class JSCodeGen()(using genCtx: Context) {
   import JSCodeGen._
   import tpd._
 
   private val jsdefn = JSDefinitions.jsdefn
-  private val primitives = new JSPrimitives(ctx)
+  private val primitives = new JSPrimitives(genCtx)
 
-  private val positionConversions = new JSPositions()(ctx)
+  private val positionConversions = new JSPositions()(using genCtx)
   import positionConversions._
 
   // Some state --------------------------------------------------------------
@@ -2121,7 +2121,7 @@ class JSCodeGen()(implicit ctx: Context) {
     if (isStat) {
       boxedResult
     } else {
-      val tpe = ctx.atPhase(ctx.elimErasedValueTypePhase) {
+      val tpe = atPhase(elimErasedValueTypePhase) {
         sym.info.finalResultType
       }
       unbox(boxedResult, tpe)
@@ -2732,17 +2732,17 @@ class JSCodeGen()(implicit ctx: Context) {
   private def genActualJSArgs(sym: Symbol, args: List[Tree])(
       implicit pos: Position): List[js.TreeOrJSSpread] = {
 
-    def paramNamesAndTypes(implicit ctx: Context): List[(Names.TermName, Type)] =
+    def paramNamesAndTypes(using Context): List[(Names.TermName, Type)] =
       sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
 
-    val wereRepeated = ctx.atPhase(ctx.elimRepeatedPhase) {
+    val wereRepeated = atPhase(elimRepeatedPhase) {
       val list =
         for ((name, tpe) <- paramNamesAndTypes)
         yield (name -> tpe.isRepeatedParam)
       list.toMap
     }
 
-    val paramTypes = ctx.atPhase(ctx.elimErasedValueTypePhase) {
+    val paramTypes = atPhase(elimErasedValueTypePhase) {
       paramNamesAndTypes.toMap
     }
 

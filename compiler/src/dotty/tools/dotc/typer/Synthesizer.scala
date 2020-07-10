@@ -391,9 +391,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         if mirroredType.termSymbol.is(CaseVal)
            || mirroredType.classSymbol.isGenericProduct
         then
-          synthesizedProductMirror(formal, span)(using ctx)
+          synthesizedProductMirror(formal, span)
         else
-          synthesizedSumMirror(formal, span)(using ctx)
+          synthesizedSumMirror(formal, span)
       case _ => EmptyTree
 
   val specialHandlers = List(

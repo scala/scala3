@@ -10,7 +10,7 @@ import java.nio.file.attribute.{BasicFileAttributes, FileTime}
 
 import scala.annotation.tailrec
 import dotty.tools.io.{AbstractFile, ClassPath, ClassRepresentation, FileZipArchive, ManifestResources}
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import FileUtils._
 
 /**
@@ -21,7 +21,7 @@ import FileUtils._
 sealed trait ZipAndJarFileLookupFactory {
   private val cache = new FileBasedCache[ClassPath]
 
-  def create(zipFile: AbstractFile)(implicit ctx: Context): ClassPath =
+  def create(zipFile: AbstractFile)(using Context): ClassPath =
     if (ctx.settings.YdisableFlatCpCaching.value || zipFile.file == null) createForZipFile(zipFile)
     else createUsingCache(zipFile)
 

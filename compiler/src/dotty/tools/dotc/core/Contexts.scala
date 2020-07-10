@@ -51,11 +51,29 @@ object Contexts {
   private val initialStore = store8
 
   /** The current context */
-  def ctx(using ctx: Context): Context = ctx
+  inline def ctx(using ctx: Context): Context = ctx
 
   /** Run `op` with given context */
   inline def inContext[T](c: Context)(inline op: Context ?=> T): T =
     op(using c)
+
+  /** Execute `op` at given period */
+  inline def atPeriod[T](pd: Period)(inline op: Context ?=> T)(using Context): T =
+    op(using ctx.fresh.setPeriod(pd))
+
+  /** Execute `op` at given phase id */
+  inline def atPhase[T](pid: PhaseId)(inline op: Context ?=> T)(using Context): T =
+    op(using ctx.withPhase(pid))
+
+  /** Execute `op` at given phase */
+  inline def atPhase[T](phase: Phase)(inline op: Context ?=> T)(using Context): T =
+    atPhase(phase.id)(op)
+
+  inline def atNextPhase[T](inline op: Context ?=> T)(using Context): T =
+    atPhase(ctx.phase.next)(op)
+
+  inline def atPhaseNotLaterThan[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
+    op(using if !limit.exists || ctx.phase <= limit then ctx else ctx.withPhase(limit))
 
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
@@ -78,14 +96,12 @@ object Contexts {
    */
   abstract class Context(val base: ContextBase)
     extends Periods
-       with Substituters
        with Phases
        with Printers
        with Symbols
        with SymDenotations
        with Reporting
        with NamerContextOps
-       with Plugins
        with Cloneable { thiscontext =>
 
     given Context = this
@@ -161,7 +177,7 @@ object Contexts {
     private var _typeComparer: TypeComparer = _
     protected def typeComparer_=(typeComparer: TypeComparer): Unit = _typeComparer = typeComparer
     def typeComparer: TypeComparer = {
-      if (_typeComparer.ctx ne this)
+      if (_typeComparer.comparerCtx ne this)
         _typeComparer = _typeComparer.copyIn(this)
       _typeComparer
     }
@@ -327,7 +343,7 @@ object Contexts {
     /** Run `op` as if it was run in a fresh explore typer state, but possibly
      *  optimized to re-use the current typer state.
      */
-    final def test[T](op: Context ?=> T): T = typerState.test(op)(this)
+    final def test[T](op: Context ?=> T): T = typerState.test(op)(using this)
 
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
@@ -495,28 +511,10 @@ object Contexts {
       }
 
     override def toString: String = {
-      def iinfo(implicit ctx: Context) = if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
+      def iinfo(using Context) = if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
       "Context(\n" +
-      (outersIterator map ( ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(ctx)}") mkString "\n")
+      (outersIterator.map(ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(using ctx)}").mkString("\n"))
     }
-
-    def typerPhase: Phase                  = base.typerPhase
-    def postTyperPhase: Phase              = base.postTyperPhase
-    def sbtExtractDependenciesPhase: Phase = base.sbtExtractDependenciesPhase
-    def picklerPhase: Phase                = base.picklerPhase
-    def reifyQuotesPhase: Phase            = base.reifyQuotesPhase
-    def refchecksPhase: Phase              = base.refchecksPhase
-    def patmatPhase: Phase                 = base.patmatPhase
-    def elimRepeatedPhase: Phase           = base.elimRepeatedPhase
-    def extensionMethodsPhase: Phase       = base.extensionMethodsPhase
-    def explicitOuterPhase: Phase          = base.explicitOuterPhase
-    def gettersPhase: Phase                = base.gettersPhase
-    def erasurePhase: Phase                = base.erasurePhase
-    def elimErasedValueTypePhase: Phase    = base.elimErasedValueTypePhase
-    def lambdaLiftPhase: Phase             = base.lambdaLiftPhase
-    def flattenPhase: Phase                = base.flattenPhase
-    def genBCodePhase: Phase               = base.genBCodePhase
-    def phases: Array[Phase]               = base.phases
 
     def settings: ScalaSettings            = base.settings
     def definitions: Definitions           = base.definitions
@@ -524,9 +522,8 @@ object Contexts {
     def pendingUnderlying: mutable.HashSet[Type]   = base.pendingUnderlying
     def uniqueNamedTypes: Uniques.NamedTypeUniques = base.uniqueNamedTypes
     def uniques: util.HashSet[Type]                = base.uniques
-    def nextSymId: Int                     = base.nextSymId
 
-    def initialize()(implicit ctx: Context): Unit = base.initialize()(ctx)
+    def initialize()(using Context): Unit = base.initialize()
   }
 
   /** A condensed context provides only a small memory footprint over
@@ -663,7 +660,8 @@ object Contexts {
    */
   class ContextBase extends ContextState
                        with Denotations.DenotationsBase
-                       with Phases.PhasesBase {
+                       with Phases.PhasesBase
+                       with Plugins {
 
     /** The applicable settings */
     val settings: ScalaSettings = new ScalaSettings
@@ -682,12 +680,12 @@ object Contexts {
       _platform
     }
 
-    protected def newPlatform(implicit ctx: Context): Platform =
+    protected def newPlatform(using Context): Platform =
       if (settings.scalajs.value) new SJSPlatform
       else new JavaPlatform
 
     /** The loader that loads the members of _root_ */
-    def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)
+    def rootLoader(root: TermSymbol)(using Context): SymbolLoader = platform.rootLoader(root)
 
     // Set up some phases to get started */
     usePhases(List(SomePhase))
@@ -698,7 +696,7 @@ object Contexts {
     /** Initializes the `ContextBase` with a starting context.
      *  This initializes the `platform` and the `definitions`.
      */
-    def initialize()(implicit ctx: Context): Unit = {
+    def initialize()(using Context): Unit = {
       _platform = newPlatform
       definitions.init()
     }

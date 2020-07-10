@@ -50,7 +50,7 @@ class EntryPointsTest {
   private class CustomReporter extends Reporter
       with UniqueMessagePositions
       with HideNonSensicalMessages {
-    def doReport(m: Diagnostic)(implicit ctx: Context): Unit = {
+    def doReport(m: Diagnostic)(using Context): Unit = {
     }
   }
 

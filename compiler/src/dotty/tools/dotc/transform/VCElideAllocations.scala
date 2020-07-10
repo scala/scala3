@@ -22,7 +22,7 @@ class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
 
   override def runsAfter: Set[String] = Set(ElimErasedValueType.name)
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
+  override def transformApply(tree: Apply)(using Context): Tree =
     tree match {
       // new V(u1) == new V(u2) => u1 == u2
       // (We don't handle != because it has been eliminated by InterceptedMethods)

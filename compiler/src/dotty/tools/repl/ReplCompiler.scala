@@ -41,11 +41,11 @@ class ReplCompiler extends Compiler {
   def newRun(initCtx: Context, state: State): Run = new Run(this, initCtx) {
 
     /** Import previous runs and user defined imports */
-    override protected def rootContext(implicit ctx: Context): Context = {
-      def importContext(imp: tpd.Import)(implicit ctx: Context) =
+    override protected def rootContext(using Context): Context = {
+      def importContext(imp: tpd.Import)(using Context) =
         ctx.importContext(imp, imp.symbol)
 
-      def importPreviousRun(id: Int)(implicit ctx: Context) = {
+      def importPreviousRun(id: Int)(using Context) = {
         // we first import the wrapper object id
         val path = nme.EMPTY_PACKAGE ++ "." ++ objectNames(id)
         def importWrapper(c: Context, importGiven: Boolean) = {
@@ -59,11 +59,11 @@ class ReplCompiler extends Compiler {
         val imports = state.imports.getOrElse(id, Nil)
         if (imports.isEmpty) ctx0
         else imports.foldLeft(ctx0.fresh.setNewScope)((ctx, imp) =>
-          importContext(imp)(ctx))
+          importContext(imp)(using ctx))
       }
 
       (1 to state.objectIndex).foldLeft(super.rootContext)((ctx, id) =>
-        importPreviousRun(id)(ctx))
+        importPreviousRun(id)(using ctx))
     }
   }
 
@@ -71,10 +71,8 @@ class ReplCompiler extends Compiler {
 
   private case class Definitions(stats: List[untpd.Tree], state: State)
 
-  private def definitions(trees: List[untpd.Tree], state: State): Definitions = {
+  private def definitions(trees: List[untpd.Tree], state: State): Definitions = inContext(state.context) {
     import untpd._
-
-    implicit val ctx: Context = state.context
 
     // If trees is of the form `{ def1; def2; def3 }` then `List(def1, def2, def3)`
     val flattened = trees match {
@@ -127,19 +125,18 @@ class ReplCompiler extends Compiler {
    *  }
    *  ```
    */
-  private def wrapped(defs: Definitions, objectTermName: TermName, span: Span): untpd.PackageDef = {
-    import untpd._
+  private def wrapped(defs: Definitions, objectTermName: TermName, span: Span): untpd.PackageDef =
+    inContext(defs.state.context) {
+      import untpd._
 
-    implicit val ctx: Context = defs.state.context
+      val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, defs.stats)
+      val module = ModuleDef(objectTermName, tmpl)
+        .withSpan(span)
 
-    val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, defs.stats)
-    val module = ModuleDef(objectTermName, tmpl)
-      .withSpan(span)
+      PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
+    }
 
-    PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
-  }
-
-  private def createUnit(defs: Definitions, span: Span)(implicit ctx: Context): CompilationUnit = {
+  private def createUnit(defs: Definitions, span: Span)(using Context): CompilationUnit = {
     val objectName = ctx.source.file.toString
     assert(objectName.startsWith(str.REPL_SESSION_LINE))
     assert(objectName.endsWith(defs.state.objectIndex.toString))
@@ -156,19 +153,19 @@ class ReplCompiler extends Compiler {
     ctx.run.compileUnits(unit :: Nil)
 
     if (!ctx.reporter.hasErrors) (unit, state).result
-    else ctx.reporter.removeBufferedMessages(ctx).errors
+    else ctx.reporter.removeBufferedMessages(using ctx).errors
   }
 
   final def compile(parsed: Parsed)(implicit state: State): Result[(CompilationUnit, State)] = {
     assert(!parsed.trees.isEmpty)
     val defs = definitions(parsed.trees, state)
-    val unit = createUnit(defs, Span(0, parsed.trees.last.span.end))(state.context)
+    val unit = createUnit(defs, Span(0, parsed.trees.last.span.end))(using state.context)
     runCompilationUnit(unit, defs.state)
   }
 
   final def typeOf(expr: String)(implicit state: State): Result[String] =
     typeCheck(expr).map { tree =>
-      implicit val ctx = state.context
+      given Context = state.context
       tree.rhs match {
         case Block(xs, _) => xs.last.tpe.widen.show
         case _ =>
@@ -179,8 +176,7 @@ class ReplCompiler extends Compiler {
       }
     }
 
-  def docOf(expr: String)(implicit state: State): Result[String] = {
-    implicit val ctx: Context = state.context
+  def docOf(expr: String)(implicit state: State): Result[String] = inContext(state.context) {
 
     /** Extract the "selected" symbol from `tree`.
      *
@@ -229,7 +225,7 @@ class ReplCompiler extends Compiler {
 
   final def typeCheck(expr: String, errorsAllowed: Boolean = false)(implicit state: State): Result[tpd.ValDef] = {
 
-    def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
+    def wrapped(expr: String, sourceFile: SourceFile, state: State)(using Context): Result[untpd.PackageDef] = {
       def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
         import untpd._
 
@@ -256,7 +252,7 @@ class ReplCompiler extends Compiler {
       }
     }
 
-    def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: Context): Result[tpd.ValDef] = {
+    def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(using Context): Result[tpd.ValDef] = {
       def error: Result[tpd.ValDef] =
         List(new Diagnostic.Error(s"Invalid scala expression",
           sourceFile.atSpan(Span(0, sourceFile.content.length)))).errors
@@ -274,19 +270,20 @@ class ReplCompiler extends Compiler {
 
 
     val src = SourceFile.virtual("<typecheck>", expr)
-    implicit val ctx: Context = state.context.fresh
+    inContext(state.context.fresh
       .setReporter(newStoreReporter)
       .setSetting(state.context.settings.YstopAfter, List("typer"))
+    ) {
+      wrapped(expr, src, state).flatMap { pkg =>
+        val unit = CompilationUnit(src)
+        unit.untpdTree = pkg
+        ctx.run.compileUnits(unit :: Nil, ctx)
 
-    wrapped(expr, src, state).flatMap { pkg =>
-      val unit = CompilationUnit(src)
-      unit.untpdTree = pkg
-      ctx.run.compileUnits(unit :: Nil, ctx)
-
-      if (errorsAllowed || !ctx.reporter.hasErrors)
-        unwrapped(unit.tpdTree, src)
-      else
-        ctx.reporter.removeBufferedMessages.errors[tpd.ValDef] // Workaround #4988
+        if (errorsAllowed || !ctx.reporter.hasErrors)
+          unwrapped(unit.tpdTree, src)
+        else
+          ctx.reporter.removeBufferedMessages.errors[tpd.ValDef] // Workaround #4988
+      }
     }
   }
 }

@@ -37,7 +37,7 @@ object ErrorReporting {
   }
 
   def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: SourcePosition)(using Context): ErrorType =
-    errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual)(ctx), pos)
+    errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual), pos)
 
   class Errors(using Context) {
 

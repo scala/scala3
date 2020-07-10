@@ -15,13 +15,13 @@ object Effects {
   type Effects = Set[Effect]
   val empty: Effects = Set.empty
 
-  def show(effs: Effects)(implicit ctx: Context): String =
+  def show(effs: Effects)(using Context): String =
     effs.map(_.show).mkString(", ")
 
   /** Effects that are related to safe initialization */
   sealed trait Effect {
     def size: Int
-    def show(implicit ctx: Context): String
+    def show(using Context): String
     def source: Tree
   }
 
@@ -38,7 +38,7 @@ object Effects {
    */
   case class Promote(potential: Potential)(val source: Tree) extends Effect {
     def size: Int = potential.size
-    def show(implicit ctx: Context): String =
+    def show(using Context): String =
       potential.show + "↑"
   }
 
@@ -47,7 +47,7 @@ object Effects {
     assert(field != NoSymbol)
 
     def size: Int = potential.size
-    def show(implicit ctx: Context): String =
+    def show(using Context): String =
       potential.show + "." + field.name.show + "!"
   }
 
@@ -56,7 +56,7 @@ object Effects {
     assert(method != NoSymbol)
 
     def size: Int = potential.size
-    def show(implicit ctx: Context): String = potential.show + "." + method.name.show + "!"
+    def show(using Context): String = potential.show + "." + method.name.show + "!"
   }
 
   // ------------------ operations on effects ------------------

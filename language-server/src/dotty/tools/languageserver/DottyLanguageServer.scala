@@ -307,7 +307,7 @@ class DottyLanguageServer extends LanguageServer
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val items = driver.compilationUnits.get(uri) match {
-      case Some(unit) => Completion.completions(pos)(ctx.fresh.setCompilationUnit(unit))._2
+      case Some(unit) => Completion.completions(pos)(using ctx.fresh.setCompilationUnit(unit))._2
       case None => Nil
     }
 
@@ -360,10 +360,10 @@ class DottyLanguageServer extends LanguageServer
 
       perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
         definitions.flatMap { definition =>
-          val name = definition.name(ctx).sourceModuleName.toString
-          val trees = remoteDriver.sourceTreesContaining(name)(ctx)
-          val matches = Interactive.findTreesMatching(trees, includes, definition)(ctx)
-          matches.map(tree => location(tree.namePos(ctx)))
+          val name = definition.name(using ctx).sourceModuleName.toString
+          val trees = remoteDriver.sourceTreesContaining(name)(using ctx)
+          val matches = Interactive.findTreesMatching(trees, includes, definition)(using ctx)
+          matches.map(tree => location(tree.namePos(using ctx)))
         }
       }
     }.toList
@@ -418,12 +418,12 @@ class DottyLanguageServer extends LanguageServer
 
           perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
             definitions.flatMap { definition =>
-              val name = definition.name(ctx).sourceModuleName.toString
-              val trees = remoteDriver.sourceTreesContaining(name)(ctx)
+              val name = definition.name(using ctx).sourceModuleName.toString
+              val trees = remoteDriver.sourceTreesContaining(name)(using ctx)
               Interactive.findTreesMatching(trees,
                                             include,
                                             definition,
-                                            t => names.exists(Interactive.sameName(t.name, _)))(ctx)
+                                            t => names.exists(Interactive.sameName(t.name, _)))(using ctx)
             }
           }
       }
@@ -535,13 +535,13 @@ class DottyLanguageServer extends LanguageServer
       val perProjectInfo = inProjectsSeeing(driver, definitions, originalSymbols)
 
       perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
-        val trees = remoteDriver.sourceTrees(ctx)
+        val trees = remoteDriver.sourceTrees(using ctx)
         val predicate: NameTree => Boolean = {
-          val predicates = definitions.map(Interactive.implementationFilter(_)(ctx))
+          val predicates = definitions.map(Interactive.implementationFilter(_)(using ctx))
           tree => predicates.exists(_(tree))
         }
-        val matches = Interactive.namedTrees(trees, Include.local, predicate)(ctx)
-        matches.map(tree => location(tree.namePos(ctx)))
+        val matches = Interactive.namedTrees(trees, Include.local, predicate)(using ctx)
+        matches.map(tree => location(tree.namePos(using ctx)))
       }
     }.toList
 

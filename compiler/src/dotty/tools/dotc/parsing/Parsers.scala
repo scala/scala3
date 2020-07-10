@@ -75,14 +75,14 @@ object Parsers {
   /** The parse starting point depends on whether the source file is self-contained:
    *  if not, the AST will be supplemented.
    */
-  def parser(source: SourceFile)(implicit ctx: Context): Parser =
+  def parser(source: SourceFile)(using Context): Parser =
     if source.isSelfContained then new ScriptParser(source)
     else new Parser(source)
 
   private val InCase: Region => Region = Scanners.InCase
   private val InCond: Region => Region = Scanners.InBraces
 
-  abstract class ParserCommon(val source: SourceFile)(implicit ctx: Context) {
+  abstract class ParserCommon(val source: SourceFile)(using Context) {
 
     val in: ScannerCommon
 
@@ -151,7 +151,7 @@ object Parsers {
     def syntaxError(msg: Message, span: Span): Unit =
       ctx.error(msg, source.atSpan(span))
 
-    def unimplementedExpr(implicit ctx: Context): Select =
+    def unimplementedExpr(using Context): Select =
       Select(Select(rootDot(nme.scala), nme.Predef), nme.???)
   }
 
@@ -171,7 +171,7 @@ object Parsers {
     }
   }
 
-  class Parser(source: SourceFile)(implicit ctx: Context) extends ParserCommon(source) {
+  class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
 
     val in: Scanner = new Scanner(source)
 
@@ -4017,7 +4017,7 @@ object Parsers {
   /** OutlineParser parses top-level declarations in `source` to find declared classes, ignoring their bodies (which
    *  must only have balanced braces). This is used to map class names to defining sources.
    */
-  class OutlineParser(source: SourceFile)(implicit ctx: Context) extends Parser(source) with OutlineParserCommon {
+  class OutlineParser(source: SourceFile)(using Context) extends Parser(source) with OutlineParserCommon {
 
     def skipBracesHook(): Option[Tree] =
       if (in.token == XMLSTART) Some(xmlLiteral()) else None

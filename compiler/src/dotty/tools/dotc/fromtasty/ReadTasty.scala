@@ -4,7 +4,7 @@ package fromtasty
 
 import core._
 import Decorators._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Symbols.{Symbol, ClassSymbol}
 import SymDenotations.ClassDenotation
 import NameOps._
@@ -17,13 +17,13 @@ class ReadTasty extends Phase {
 
   def phaseName: String = "readTasty"
 
-  override def isRunnable(implicit ctx: Context): Boolean =
+  override def isRunnable(using Context): Boolean =
     ctx.settings.fromTasty.value
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
-    units.flatMap(readTASTY(_)(ctx.addMode(Mode.ReadPositions)))
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    units.flatMap(readTASTY(_)(using ctx.addMode(Mode.ReadPositions)))
 
-  def readTASTY(unit: CompilationUnit)(implicit ctx: Context): Option[CompilationUnit] = unit match {
+  def readTASTY(unit: CompilationUnit)(using Context): Option[CompilationUnit] = unit match {
     case unit: TASTYCompilationUnit =>
       val className = unit.className.toTypeName
 
@@ -75,5 +75,5 @@ class ReadTasty extends Phase {
      Some(unit)
   }
 
-  def run(implicit ctx: Context): Unit = unsupported("run")
+  def run(using Context): Unit = unsupported("run")
 }

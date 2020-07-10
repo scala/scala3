@@ -580,11 +580,11 @@ object TypeOps:
         val hiBound = instantiate(bounds.hi, skolemizedArgTypes)
         val loBound = instantiate(bounds.lo, skolemizedArgTypes)
 
-        def check(implicit ctx: Context) = {
+        def check(using Context) = {
           if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
           if (!(loBound <:< hi)) violations += ((arg, "lower", loBound))
         }
-        check(checkCtx)
+        check(using checkCtx)
       }
       arg.tpe match {
         case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi)
@@ -643,7 +643,7 @@ object TypeOps:
    */
   private def instantiateToSubType(tp1: NamedType, tp2: Type)(using Context): Type = {
     /** expose abstract type references to their bounds or tvars according to variance */
-    class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends TypeMap {
+    class AbstractTypeMap(maximize: Boolean)(using Context) extends TypeMap {
       def expose(lo: Type, hi: Type): Type =
         if (variance == 0)
           newTypeVar(TypeBounds(lo, hi))
@@ -677,8 +677,8 @@ object TypeOps:
       }
     }
 
-    def minTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false)
-    def maxTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true)
+    def minTypeMap(using Context) = new AbstractTypeMap(maximize = false)
+    def maxTypeMap(using Context) = new AbstractTypeMap(maximize = true)
 
     // Prefix inference, replace `p.C.this.Child` with `X.Child` where `X <: p.C`
     // Note: we need to strip ThisType in `p` recursively.

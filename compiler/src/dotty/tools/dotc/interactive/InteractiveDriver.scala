@@ -31,7 +31,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     val ctx = setup(settings.toArray, rootCtx)._2
-    ctx.initialize()(ctx)
+    ctx.initialize()(using ctx)
     ctx
   }
 
@@ -62,7 +62,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   // We also need something like sbt server-mode to be informed of changes on
   // the classpath.
 
-  private val (zipClassPaths, dirClassPaths) = currentCtx.platform.classPath(currentCtx) match {
+  private val (zipClassPaths, dirClassPaths) = currentCtx.platform.classPath(using currentCtx) match {
     case AggregateClassPath(cps) =>
       // FIXME: We shouldn't assume that ClassPath doesn't have other
       // subclasses. For now, the only other subclass is JrtClassPath on Java
@@ -92,7 +92,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * This includes the trees for the buffers that are presently open in the IDE, and the trees
    * from the target directory.
    */
-  def sourceTrees(implicit ctx: Context): List[SourceTree] = sourceTreesContaining("")
+  def sourceTrees(using Context): List[SourceTree] = sourceTreesContaining("")
 
   /**
    * The trees for all the source files in this project that contain `id`.
@@ -100,7 +100,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * This includes the trees for the buffers that are presently open in the IDE, and the trees
    * from the target directory.
    */
-  def sourceTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
+  def sourceTreesContaining(id: String)(using Context): List[SourceTree] = {
     val fromBuffers = openedTrees.values.flatten.toList
     val fromCompilationOutput = {
       val classNames = new mutable.ListBuffer[TypeName]
@@ -122,7 +122,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * This includes the trees of the sources of this project, along with the trees that are found
    * on this project's classpath.
    */
-  def allTrees(implicit ctx: Context): List[SourceTree] = allTreesContaining("")
+  def allTrees(using Context): List[SourceTree] = allTreesContaining("")
 
   /**
    * All the trees for this project that contain `id`.
@@ -130,7 +130,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * This includes the trees of the sources of this project, along with the trees that are found
    * on this project's classpath.
    */
-  def allTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
+  def allTreesContaining(id: String)(using Context): List[SourceTree] = {
     val fromSource = openedTrees.values.flatten.toList
     val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
       treesFromClassName(cls, id)
@@ -146,10 +146,10 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       val reporter =
         new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
-      val run = compiler.newRun(myInitCtx.fresh.setReporter(reporter))
+      val run = compiler.newRun(using myInitCtx.fresh.setReporter(reporter))
       myCtx = run.runContext
 
-      implicit val ctx = myCtx
+      given Context = myCtx
 
       myOpenedFiles(uri) = source
 
@@ -182,7 +182,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    *
    * @see SourceTree.fromSymbol
    */
-  private def treesFromClassName(className: TypeName, id: String)(implicit ctx: Context): List[SourceTree] = {
+  private def treesFromClassName(className: TypeName, id: String)(using Context): List[SourceTree] = {
     def trees(className: TypeName, id: String): List[SourceTree] = {
       val clsd = ctx.base.staticRef(className)
       clsd match {
@@ -270,7 +270,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    *  of a previous run. Note that typed trees can have untyped or partially
    *  typed children if the source contains errors.
    */
-  private def cleanup(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+  private def cleanup(tree: tpd.Tree)(using Context): Unit = {
     val seen = mutable.Set.empty[tpd.Tree]
     def cleanupTree(tree: tpd.Tree): Unit = {
       seen += tree
@@ -312,7 +312,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * late-compilation is needed).
    */
   private def initialize(): Unit = {
-    val run = compiler.newRun(myInitCtx.fresh)
+    val run = compiler.newRun(using myInitCtx.fresh)
     myCtx = run.runContext
     run.compileUnits(Nil, myCtx)
   }

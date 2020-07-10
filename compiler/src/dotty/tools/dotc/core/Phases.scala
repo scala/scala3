@@ -30,15 +30,6 @@ trait Phases {
       phase :: (if (rest.hasNext) rest.next().phasesStack else Nil)
     }
 
-  /** Execute `op` at given phase */
-  inline def atPhase[T](phase: Phase)(inline op: Context ?=> T): T =
-    atPhase(phase.id)(op)
-
-  def atNextPhase[T](op: Context ?=> T): T = atPhase(phase.next)(op)
-
-  def atPhaseNotLaterThan[T](limit: Phase)(op: Context ?=> T): T =
-    if (!limit.exists || phase <= limit) op(using this) else atPhase(limit)(op)
-
   def isAfterTyper: Boolean = base.isAfterTyper(phase)
 }
 
@@ -53,22 +44,22 @@ object Phases {
     object NoPhase extends Phase {
       override def exists: Boolean = false
       def phaseName: String = "<no phase>"
-      def run(implicit ctx: Context): Unit = unsupported("run")
-      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = unsupported("transform")
+      def run(using Context): Unit = unsupported("run")
+      def transform(ref: SingleDenotation)(using Context): SingleDenotation = unsupported("transform")
     }
 
     object SomePhase extends Phase {
       def phaseName: String = "<some phase>"
-      def run(implicit ctx: Context): Unit = unsupported("run")
+      def run(using Context): Unit = unsupported("run")
     }
 
     /** A sentinel transformer object */
     class TerminalPhase extends DenotTransformer {
       def phaseName: String = "terminal"
-      def run(implicit ctx: Context): Unit = unsupported("run")
-      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
+      def run(using Context): Unit = unsupported("run")
+      def transform(ref: SingleDenotation)(using Context): SingleDenotation =
         unsupported("transform")
-      override def lastPhaseId(implicit ctx: Context): Int = id
+      override def lastPhaseId(using Context): Int = id
     }
 
     final def phasePlan: List[List[Phase]] = this.phasesPlan
@@ -82,7 +73,7 @@ object Phases {
                            phasesToSkip: List[String],
                            stopBeforePhases: List[String],
                            stopAfterPhases: List[String],
-                           YCheckAfter: List[String])(implicit ctx: Context): List[Phase] = {
+                           YCheckAfter: List[String])(using Context): List[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
       val YCheckAll = YCheckAfter.contains("all")
@@ -290,7 +281,7 @@ object Phases {
      */
     def phaseName: String
 
-    def isRunnable(implicit ctx: Context): Boolean =
+    def isRunnable(using Context): Boolean =
       !ctx.reporter.hasErrors
         // TODO: This might test an unintended condition.
         // To find out whether any errors have been reported during this
@@ -309,13 +300,13 @@ object Phases {
     def runsAfter: Set[String] = Set.empty
 
     /** @pre `isRunnable` returns true */
-    def run(implicit ctx: Context): Unit
+    def run(using Context): Unit
 
     /** @pre `isRunnable` returns true */
-    def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
+    def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
       units.map { unit =>
         val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
-        run(unitCtx)
+        run(using unitCtx)
         unitCtx.compilationUnit
       }
 
@@ -326,7 +317,7 @@ object Phases {
 
     /** Check what the phase achieves, to be called at any point after it is finished.
      */
-    def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = ()
+    def checkPostCondition(tree: tpd.Tree)(using Context): Unit = ()
 
     /** Is this phase the standard typerphase? True for FrontEnd, but
      *  not for other first phases (such as FromTasty). The predicate
@@ -344,7 +335,7 @@ object Phases {
     /** Can this transform change the base types of a type? */
     def changesBaseTypes: Boolean = changesParents
 
-    def isEnabled(implicit ctx: Context): Boolean = true
+    def isEnabled(using Context): Boolean = true
 
     def exists: Boolean = true
 
@@ -420,10 +411,28 @@ object Phases {
     override def toString: String = phaseName
   }
 
+  def typerPhase(using Context): Phase                  = ctx.base.typerPhase
+  def postTyperPhase(using Context): Phase              = ctx.base.postTyperPhase
+  def sbtExtractDependenciesPhase(using Context): Phase = ctx.base.sbtExtractDependenciesPhase
+  def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
+  def reifyQuotesPhase(using Context): Phase            = ctx.base.reifyQuotesPhase
+  def refchecksPhase(using Context): Phase              = ctx.base.refchecksPhase
+  def elimRepeatedPhase(using Context): Phase           = ctx.base.elimRepeatedPhase
+  def extensionMethodsPhase(using Context): Phase       = ctx.base.extensionMethodsPhase
+  def explicitOuterPhase(using Context): Phase          = ctx.base.explicitOuterPhase
+  def gettersPhase(using Context): Phase                = ctx.base.gettersPhase
+  def erasurePhase(using Context): Phase                = ctx.base.erasurePhase
+  def elimErasedValueTypePhase(using Context): Phase    = ctx.base.elimErasedValueTypePhase
+  def lambdaLiftPhase(using Context): Phase             = ctx.base.lambdaLiftPhase
+  def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
+  def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase
+
+  def curPhases(using Context): Array[Phase] = ctx.base.phases
+
   /** Replace all instances of `oldPhaseClass` in `current` phases
    *  by the result of `newPhases` applied to the old phase.
    */
-  def replace(oldPhaseClass: Class[? <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
+  private def replace(oldPhaseClass: Class[? <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
     current.map(_.flatMap(phase =>
       if (oldPhaseClass.isInstance(phase)) newPhases(phase) else phase :: Nil))
 }

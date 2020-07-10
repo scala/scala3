@@ -6,6 +6,7 @@ import Flags._
 import Symbols._
 import NameOps._
 import StdNames._
+import Phases._
 import NameKinds.DefaultGetterName
 
 import JSDefinitions._
@@ -14,15 +15,15 @@ import JSDefinitions._
 object JSInterop {
 
   /** Is this symbol a JavaScript type? */
-  def isJSType(sym: Symbol)(implicit ctx: Context): Boolean = {
+  def isJSType(sym: Symbol)(using Context): Boolean = {
     //sym.hasAnnotation(jsdefn.RawJSTypeAnnot)
-    ctx.atPhase(ctx.erasurePhase) {
+    atPhase(erasurePhase) {
       sym.derivesFrom(jsdefn.JSAnyClass)
     }
   }
 
   /** Is this symbol a Scala.js-defined JS class, i.e., a non-native JS class? */
-  def isScalaJSDefinedJSClass(sym: Symbol)(implicit ctx: Context): Boolean =
+  def isScalaJSDefinedJSClass(sym: Symbol)(using Context): Boolean =
     isJSType(sym) && !sym.hasAnnotation(jsdefn.JSNativeAnnot)
 
   /** Should this symbol be translated into a JS getter?
@@ -31,8 +32,8 @@ object JSInterop {
    *  Unlike `SymDenotations.isGetter`, it applies to user-defined methods as
    *  much as *accessor* methods created for `val`s and `var`s.
    */
-  def isJSGetter(sym: Symbol)(implicit ctx: Context): Boolean = {
-    sym.info.firstParamTypes.isEmpty && ctx.atPhase(ctx.erasurePhase) {
+  def isJSGetter(sym: Symbol)(using Context): Boolean = {
+    sym.info.firstParamTypes.isEmpty && atPhase(erasurePhase) {
       sym.info.isParameterless
     }
   }
@@ -43,21 +44,21 @@ object JSInterop {
    *  Unlike `SymDenotations.isGetter`, it applies to user-defined methods as
    *  much as *accessor* methods created for `var`s.
    */
-  def isJSSetter(sym: Symbol)(implicit ctx: Context): Boolean =
+  def isJSSetter(sym: Symbol)(using Context): Boolean =
     sym.name.isSetterName && sym.is(Method)
 
   /** Should this symbol be translated into a JS bracket access?
    *
    *  This is true for methods annotated with `@JSBracketAccess`.
    */
-  def isJSBracketAccess(sym: Symbol)(implicit ctx: Context): Boolean =
+  def isJSBracketAccess(sym: Symbol)(using Context): Boolean =
     sym.hasAnnotation(jsdefn.JSBracketAccessAnnot)
 
   /** Should this symbol be translated into a JS bracket call?
    *
    *  This is true for methods annotated with `@JSBracketCall`.
    */
-  def isJSBracketCall(sym: Symbol)(implicit ctx: Context): Boolean =
+  def isJSBracketCall(sym: Symbol)(using Context): Boolean =
     sym.hasAnnotation(jsdefn.JSBracketCallAnnot)
 
   /** Is this symbol a default param accessor for a JS method?
@@ -66,7 +67,7 @@ object JSInterop {
    *  the companion *class* of the owner is a JS type; not whether the owner
    *  is a JS type.
    */
-  def isJSDefaultParam(sym: Symbol)(implicit ctx: Context): Boolean = {
+  def isJSDefaultParam(sym: Symbol)(using Context): Boolean = {
     sym.name.is(DefaultGetterName) && {
       val owner = sym.owner
       if (owner.is(ModuleClass)) {
@@ -89,7 +90,7 @@ object JSInterop {
    *  If it is not explicitly specified with an `@JSName` annotation, the
    *  JS name is inferred from the Scala name.
    */
-  def jsNameOf(sym: Symbol)(implicit ctx: Context): String = {
+  def jsNameOf(sym: Symbol)(using Context): String = {
     sym.getAnnotation(jsdefn.JSNameAnnot).flatMap(_.argumentConstant(0)).fold {
       val base = sym.name.unexpandedName.decode.toString.stripSuffix("_=")
       if (sym.is(ModuleClass)) base.stripSuffix("$")
@@ -105,7 +106,7 @@ object JSInterop {
    *  This is the JS name of the symbol qualified by the fully qualified JS
    *  name of its original owner if the latter is a native JS object.
    */
-  def fullJSNameOf(sym: Symbol)(implicit ctx: Context): String = {
+  def fullJSNameOf(sym: Symbol)(using Context): String = {
     assert(sym.isClass, s"fullJSNameOf called for non-class symbol $sym")
     sym.getAnnotation(jsdefn.JSFullNameAnnot).flatMap(_.argumentConstant(0)).fold {
       jsNameOf(sym)

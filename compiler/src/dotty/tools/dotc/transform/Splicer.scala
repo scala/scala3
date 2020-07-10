@@ -75,9 +75,9 @@ object Splicer {
   def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(using Context): tree.type =
     new TreeTraverser {
       private[this] var locals = Set.empty[Symbol]
-      private def markSymbol(sym: Symbol)(implicit ctx: Context): Unit =
+      private def markSymbol(sym: Symbol)(using Context): Unit =
           locals = locals + sym
-      private def markDef(tree: Tree)(implicit ctx: Context): Unit = tree match {
+      private def markDef(tree: Tree)(using Context): Unit = tree match {
         case tree: DefTree => markSymbol(tree.symbol)
         case _ =>
       }
@@ -117,7 +117,7 @@ object Splicer {
     *
     *  See: `Staging`
     */
-  def checkValidMacroBody(tree: Tree)(implicit ctx: Context): Unit = tree match {
+  def checkValidMacroBody(tree: Tree)(using Context): Unit = tree match {
     case Quoted(_) => // ok
     case _ =>
       type Env = Set[Symbol]
@@ -203,7 +203,7 @@ object Splicer {
   }
 
   /** Tree interpreter that evaluates the tree */
-  private class Interpreter(pos: SourcePosition, classLoader: ClassLoader)(implicit ctx: Context) {
+  private class Interpreter(pos: SourcePosition, classLoader: ClassLoader)(using Context) {
 
     type Env = Map[Symbol, Object]
 
@@ -490,11 +490,11 @@ object Splicer {
     /** Matches an expression that is either a field access or an application
      *  It retruns a TermRef containing field accessed or a method reference and the arguments passed to it.
      */
-    def unapply(arg: Tree)(implicit ctx: Context): Option[(RefTree, List[List[Tree]])] =
+    def unapply(arg: Tree)(using Context): Option[(RefTree, List[List[Tree]])] =
       Call0.unapply(arg).map((fn, args) => (fn, args.reverse))
 
     private object Call0 {
-      def unapply(arg: Tree)(implicit ctx: Context): Option[(RefTree, List[List[Tree]])] = arg match {
+      def unapply(arg: Tree)(using Context): Option[(RefTree, List[List[Tree]])] = arg match {
         case Select(Call0(fn, args), nme.apply) if defn.isContextFunctionType(fn.tpe.widenDealias.finalResultType) =>
           Some((fn, args))
         case fn: Ident => Some((tpd.desugarIdent(fn).withSpan(fn.span), Nil))

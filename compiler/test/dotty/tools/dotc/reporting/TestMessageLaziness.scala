@@ -9,11 +9,11 @@ import core.Contexts._
 class TestMessageLaziness extends DottyTest {
   ctx = ctx.fresh.setReporter(new NonchalantReporter)
 
-  class NonchalantReporter(implicit ctx: Context) extends Reporter
+  class NonchalantReporter(using Context) extends Reporter
   with UniqueMessagePositions with HideNonSensicalMessages {
-    def doReport(dia: Diagnostic)(implicit ctx: Context) = ???
+    def doReport(dia: Diagnostic)(using Context) = ???
 
-    override def report(dia: Diagnostic)(implicit ctx: Context) = ()
+    override def report(dia: Diagnostic)(using Context) = ()
   }
 
   case class LazyError() extends Message(ErrorMessageID.LazyErrorId) {

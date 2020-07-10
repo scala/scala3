@@ -20,7 +20,7 @@ object OverridingPairs {
   /** The cursor class
    *  @param base   the base class that contains the overriding pairs
    */
-  class Cursor(base: Symbol)(implicit ctx: Context) {
+  class Cursor(base: Symbol)(using Context) {
 
     private val self = base.thisType
 

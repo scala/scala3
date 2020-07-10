@@ -6,7 +6,7 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Types._

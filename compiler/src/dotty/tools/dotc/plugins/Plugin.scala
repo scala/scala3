@@ -60,7 +60,7 @@ trait ResearchPlugin extends Plugin {
    *  @param plan: the given phase plan
    *  @return the new phase plan
    */
-  def init(options: List[String], plan: List[List[Phase]])(implicit ctx: Context): List[List[Phase]]
+  def init(options: List[String], plan: List[List[Phase]])(using Context): List[List[Phase]]
 }
 
 object Plugin {

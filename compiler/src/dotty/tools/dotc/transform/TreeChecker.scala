@@ -11,7 +11,7 @@ import core.Flags._
 import core.StdNames._
 import core.NameKinds.{DocArtifactName, OuterSelectName}
 import core.Decorators._
-import core.Phases.Phase
+import core.Phases._
 import core.Mode
 import typer._
 import typer.ErrorReporting._
@@ -59,7 +59,7 @@ class TreeChecker extends Phase with SymTransformer {
 
   def checkCompanion(symd: SymDenotation)(using Context): Unit = {
     val cur = symd.linkedClass
-    val prev = ctx.atPhase(ctx.phase.prev) {
+    val prev = atPhase(ctx.phase.prev) {
       symd.symbol.linkedClass
     }
 
@@ -90,7 +90,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     // Signatures are used to disambiguate overloads and need to stay stable
     // until erasure, see the comment above `Compiler#phases`.
-    if (ctx.phaseId <= ctx.erasurePhase.id) {
+    if (ctx.phaseId <= erasurePhase.id) {
       val cur = symd.info
       val initial = symd.initial.info
       val curSig = cur match {
@@ -137,19 +137,24 @@ class TreeChecker extends Phase with SymTransformer {
     val squahsedPhase = ctx.base.squashed(prevPhase)
     ctx.echo(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
 
-    assertSelectWrapsNew(ctx.compilationUnit.tpdTree)(using ctx)
+    inContext(ctx) {
+      assertSelectWrapsNew(ctx.compilationUnit.tpdTree)
+    }
 
     val checkingCtx = ctx
         .fresh
         .setMode(Mode.ImplicitsEnabled)
         .setReporter(new ThrowingReporter(ctx.reporter))
 
-    val checker = new Checker(previousPhases(phasesToRun.toList)(using ctx))
+    val checker = inContext(ctx) {
+      new Checker(previousPhases(phasesToRun.toList))
+    }
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(using checkingCtx)
     catch {
       case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped
-        implicit val ctx = checkingCtx
-        println(i"*** error while checking ${ctx.compilationUnit} after phase ${checkingCtx.phase.prev} ***")
+        inContext(checkingCtx) {
+          println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prev} ***")
+        }
         throw ex
     }
   }

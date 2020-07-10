@@ -32,7 +32,7 @@ object SymbolLoaders {
 
   private def enterNew(
       owner: Symbol, member: Symbol,
-      completer: SymbolLoader, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
+      completer: SymbolLoader, scope: Scope = EmptyScope)(using Context): Symbol = {
     val comesFromScan =
       completer.isInstanceOf[SourcefileLoader]
     assert(comesFromScan || scope.lookup(member.name) == NoSymbol,
@@ -45,7 +45,7 @@ object SymbolLoaders {
    */
   def enterClass(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
     val cls = ctx.newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, assocFile = completer.sourceFileOrNull)
     enterNew(owner, cls, completer, scope)
   }
@@ -54,7 +54,7 @@ object SymbolLoaders {
    */
   def enterModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
+      modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
     val module = ctx.newModuleSymbol(
       owner, name.toTermName.decode, modFlags, clsFlags,
       (module, _) => completer.proxy withDecls newScope withSourceModule (_ => module),
@@ -66,7 +66,7 @@ object SymbolLoaders {
   /** Enter package with given `name` into scope of `owner`
    *  and give them `completer` as type.
    */
-  def enterPackage(owner: Symbol, pname: TermName, completer: (TermSymbol, ClassSymbol) => PackageLoader)(implicit ctx: Context): Symbol = {
+  def enterPackage(owner: Symbol, pname: TermName, completer: (TermSymbol, ClassSymbol) => PackageLoader)(using Context): Symbol = {
     val preExisting = owner.info.decls lookup pname
     if (preExisting != NoSymbol)
       // Some jars (often, obfuscated ones) include a package and
@@ -97,7 +97,7 @@ object SymbolLoaders {
    */
   def enterClassAndModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Unit = {
     val clazz = enterClass(owner, name, completer, flags, scope)
     val module = enterModule(
       owner, name, completer,
@@ -114,7 +114,7 @@ object SymbolLoaders {
    */
   def enterToplevelsFromSource(
       owner: Symbol, name: PreName, src: AbstractFile,
-      scope: Scope = EmptyScope)(implicit ctx: Context): Unit =
+      scope: Scope = EmptyScope)(using Context): Unit =
     if src.exists && !src.isDirectory
       val completer = new SourcefileLoader(src)
       val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
@@ -125,7 +125,7 @@ object SymbolLoaders {
         case _ => path
       }
 
-      def enterScanned(unit: CompilationUnit)(implicit ctx: Context) = {
+      def enterScanned(unit: CompilationUnit)(using Context) = {
 
         def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
           val ok = filePath == path
@@ -168,7 +168,7 @@ object SymbolLoaders {
       }
 
       val unit = CompilationUnit(ctx.getSource(src.path))
-      enterScanned(unit)(ctx.fresh.setCompilationUnit(unit))
+      enterScanned(unit)(using ctx.fresh.setCompilationUnit(unit))
 
   /** The package objects of scala and scala.reflect should always
    *  be loaded in binary if classfiles are available, even if sourcefiles
@@ -177,13 +177,13 @@ object SymbolLoaders {
    *  Note: We do a name-base comparison here because the method is called before we even
    *  have ReflectPackage defined.
    */
-  def binaryOnly(owner: Symbol, name: String)(implicit ctx: Context): Boolean =
+  def binaryOnly(owner: Symbol, name: String)(using Context): Boolean =
     name == "package" &&
       (owner.fullName.toString == "scala" || owner.fullName.toString == "scala.reflect")
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
-  def initializeFromClassPath(owner: Symbol, classRep: ClassRepresentation)(implicit ctx: Context): Unit =
+  def initializeFromClassPath(owner: Symbol, classRep: ClassRepresentation)(using Context): Unit =
     ((classRep.binary, classRep.source): @unchecked) match {
       case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
         if (ctx.settings.verbose.value) ctx.inform("[symloader] picked up newer source file for " + src.path)
@@ -203,8 +203,8 @@ object SymbolLoaders {
   class PackageLoader(_sourceModule: TermSymbol, classPath: ClassPath)
       extends SymbolLoader {
     override def sourceFileOrNull: AbstractFile = null
-    override def sourceModule(implicit ctx: Context): TermSymbol = _sourceModule
-    def description(implicit ctx: Context): String = "package loader " + sourceModule.fullName
+    override def sourceModule(using Context): TermSymbol = _sourceModule
+    def description(using Context): String = "package loader " + sourceModule.fullName
 
     private var enterFlatClasses: Option[Context => Unit] = None
 
@@ -217,10 +217,10 @@ object SymbolLoaders {
 	   *   2. Some function types in the `scala` package are synthesized.
   	 */
     final class PackageScope extends MutableScope {
-      override def newScopeEntry(name: Name, sym: Symbol)(implicit ctx: Context): ScopeEntry =
+      override def newScopeEntry(name: Name, sym: Symbol)(using Context): ScopeEntry =
         super.newScopeEntry(name.mangled, sym)
 
-      override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
+      override def lookupEntry(name: Name)(using Context): ScopeEntry = {
         val mangled = name.mangled
         val e = super.lookupEntry(mangled)
         if (e != null) e
@@ -232,7 +232,7 @@ object SymbolLoaders {
         else e
       }
 
-      override def ensureComplete()(implicit ctx: Context): Unit =
+      override def ensureComplete()(using Context): Unit =
         for (enter <- enterFlatClasses) enter(ctx)
 
       override def newScopeLikeThis(): PackageScope = new PackageScope
@@ -256,7 +256,7 @@ object SymbolLoaders {
 
     def maybeModuleClass(classRep: ClassRepresentation): Boolean = classRep.name.last == '$'
 
-    private def enterClasses(root: SymDenotation, packageName: String, flat: Boolean)(implicit ctx: Context) = {
+    private def enterClasses(root: SymDenotation, packageName: String, flat: Boolean)(using Context) = {
       def isAbsent(classRep: ClassRepresentation) =
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
@@ -274,7 +274,7 @@ object SymbolLoaders {
       }
     }
 
-    def doComplete(root: SymDenotation)(implicit ctx: Context): Unit = {
+    def doComplete(root: SymDenotation)(using Context): Unit = {
       assert(root is PackageClass, root)
       val pre = root.owner.thisType
       root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre select sourceModule)
@@ -285,7 +285,7 @@ object SymbolLoaders {
 
       enterFlatClasses = Some { ctx =>
         enterFlatClasses = None
-        enterClasses(root, packageName, flat = true)(ctx)
+        inContext(ctx){enterClasses(root, packageName, flat = true)}
       }
       enterClasses(root, packageName, flat = false)
       if (!root.isEmptyPackage)
@@ -307,24 +307,24 @@ object SymbolLoaders {
  */
 abstract class SymbolLoader extends LazyType { self =>
   /** Load source or class file for `root`, return */
-  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit
+  def doComplete(root: SymDenotation)(using Context): Unit
 
   def sourceFileOrNull: AbstractFile
 
   /** Description of the resource (ClassPath, AbstractFile)
    *  being processed by this loader
    */
-  def description(implicit ctx: Context): String
+  def description(using Context): String
 
   /** A proxy to this loader that keeps the doComplete operation
    *  but provides fresh slots for scope/sourceModule/moduleClass
    */
   def proxy: SymbolLoader = new SymbolLoader {
     export self.{doComplete, sourceFileOrNull}
-    def description(implicit ctx: Context): String = "proxy to ${self.description}"
+    def description(using Context): String = "proxy to ${self.description}"
   }
 
-  override def complete(root: SymDenotation)(implicit ctx: Context): Unit = {
+  override def complete(root: SymDenotation)(using Context): Unit = {
     def signalError(ex: Exception): Unit = {
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
@@ -363,7 +363,7 @@ abstract class SymbolLoader extends LazyType { self =>
     }
   }
 
-  protected def rootDenots(rootDenot: ClassDenotation)(implicit ctx: Context): (ClassDenotation, ClassDenotation) = {
+  protected def rootDenots(rootDenot: ClassDenotation)(using Context): (ClassDenotation, ClassDenotation) = {
     val linkedDenot = rootDenot.scalacLinkedClass.denot match {
       case d: ClassDenotation => d
       case d =>
@@ -391,12 +391,12 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
   override def sourceFileOrNull: AbstractFile = classfile
 
-  def description(implicit ctx: Context): String = "class file " + classfile.toString
+  def description(using Context): String = "class file " + classfile.toString
 
-  override def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
+  override def doComplete(root: SymDenotation)(using Context): Unit =
     load(root)
 
-  def load(root: SymDenotation)(implicit ctx: Context): Unit = {
+  def load(root: SymDenotation)(using Context): Unit = {
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
     val classfileParser = new ClassfileParser(classfile, classRoot, moduleRoot)(ctx)
     val result = classfileParser.run()
@@ -409,23 +409,23 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
       }
   }
 
-  private def mayLoadTreesFromTasty(implicit ctx: Context): Boolean =
+  private def mayLoadTreesFromTasty(using Context): Boolean =
     ctx.settings.YretainTrees.value || ctx.settings.fromTasty.value
 }
 
 class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
-  def description(implicit ctx: Context): String = "source file " + srcfile.toString
+  def description(using Context): String = "source file " + srcfile.toString
   override def sourceFileOrNull: AbstractFile = srcfile
-  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
+  def doComplete(root: SymDenotation)(using Context): Unit =
     ctx.run.lateCompile(srcfile, typeCheck = ctx.settings.YretainTrees.value)
 }
 
 /** A NoCompleter which is also a SymbolLoader. */
 class NoLoader extends SymbolLoader with NoCompleter {
-  def description(implicit ctx: Context): String = "NoLoader"
+  def description(using Context): String = "NoLoader"
   override def sourceFileOrNull: AbstractFile = null
-  override def complete(root: SymDenotation)(implicit ctx: Context): Unit =
+  override def complete(root: SymDenotation)(using Context): Unit =
     super[NoCompleter].complete(root)
-  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
+  def doComplete(root: SymDenotation)(using Context): Unit =
     unsupported("doComplete")
 }

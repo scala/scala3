@@ -112,12 +112,12 @@ class JUnitBootstrappers extends MiniPhase {
 
   def phaseName: String = "junitBootstrappers"
 
-  override def isEnabled(implicit ctx: Context): Boolean =
+  override def isEnabled(using Context): Boolean =
     super.isEnabled && ctx.settings.scalajs.value
 
   // The actual transform -------------------------------
 
-  override def transformPackageDef(tree: PackageDef)(implicit ctx: Context): Tree = {
+  override def transformPackageDef(tree: PackageDef)(using Context): Tree = {
     val junitdefn = jsdefn.junit
 
     @tailrec
@@ -141,7 +141,7 @@ class JUnitBootstrappers extends MiniPhase {
     else cpy.PackageDef(tree)(tree.pid, tree.stats ::: bootstrappers)
   }
 
-  private def genBootstrapper(testClass: ClassSymbol)(implicit ctx: Context): TypeDef = {
+  private def genBootstrapper(testClass: ClassSymbol)(using Context): TypeDef = {
     val junitdefn = jsdefn.junit
 
     /* The name of the boostrapper module. It is derived from the test class name by
@@ -177,7 +177,7 @@ class JUnitBootstrappers extends MiniPhase {
     ClassDef(classSym, constr, defs)
   }
 
-  private def genConstructor(owner: ClassSymbol)(implicit ctx: Context): DefDef = {
+  private def genConstructor(owner: ClassSymbol)(using Context): DefDef = {
     val sym = ctx.newDefaultConstructor(owner).entered
     DefDef(sym, {
       Block(
@@ -187,7 +187,7 @@ class JUnitBootstrappers extends MiniPhase {
     })
   }
 
-  private def genCallOnModule(owner: ClassSymbol, name: TermName, module: Symbol, annot: Symbol)(implicit ctx: Context): DefDef = {
+  private def genCallOnModule(owner: ClassSymbol, name: TermName, module: Symbol, annot: Symbol)(using Context): DefDef = {
     val sym = ctx.newSymbol(owner, name, Synthetic | Method,
       MethodType(Nil, Nil, defn.UnitType)).entered
 
@@ -202,7 +202,7 @@ class JUnitBootstrappers extends MiniPhase {
     })
   }
 
-  private def genCallOnParam(owner: ClassSymbol, name: TermName, testClass: ClassSymbol, annot: Symbol)(implicit ctx: Context): DefDef = {
+  private def genCallOnParam(owner: ClassSymbol, name: TermName, testClass: ClassSymbol, annot: Symbol)(using Context): DefDef = {
     val sym = ctx.newSymbol(owner, name, Synthetic | Method,
       MethodType(junitNme.instance :: Nil, defn.ObjectType :: Nil, defn.UnitType)).entered
 
@@ -214,7 +214,7 @@ class JUnitBootstrappers extends MiniPhase {
     })
   }
 
-  private def genTests(owner: ClassSymbol, tests: List[Symbol])(implicit ctx: Context): DefDef = {
+  private def genTests(owner: ClassSymbol, tests: List[Symbol])(using Context): DefDef = {
     val junitdefn = jsdefn.junit
 
     val sym = ctx.newSymbol(owner, junitNme.tests, Synthetic | Method,
@@ -235,8 +235,8 @@ class JUnitBootstrappers extends MiniPhase {
             if timeoutName.toString == "timeout" => Some(timeoutLiteral)
           case other => {
             val shownName = other match {
-              case NamedArg(name, _) => name.show(ctx)
-              case other => other.show(ctx)
+              case NamedArg(name, _) => name.show(using ctx)
+              case other => other.show(using ctx)
             }
             ctx.error(s"$shownName is an unsupported argument for the JUnit @Test annotation in this position", other.sourcePos)
             None
@@ -250,7 +250,7 @@ class JUnitBootstrappers extends MiniPhase {
     })
   }
 
-  private def genInvokeTest(owner: ClassSymbol, testClass: ClassSymbol, tests: List[Symbol])(implicit ctx: Context): DefDef = {
+  private def genInvokeTest(owner: ClassSymbol, testClass: ClassSymbol, tests: List[Symbol])(using Context): DefDef = {
     val junitdefn = jsdefn.junit
 
     val sym = ctx.newSymbol(owner, junitNme.invokeTest, Synthetic | Method,
@@ -273,7 +273,7 @@ class JUnitBootstrappers extends MiniPhase {
     })
   }
 
-  private def genTestInvocation(testClass: ClassSymbol, testMethod: Symbol, instance: Tree)(implicit ctx: Context): Tree = {
+  private def genTestInvocation(testClass: ClassSymbol, testMethod: Symbol, instance: Tree)(using Context): Tree = {
     val junitdefn = jsdefn.junit
 
     val resultType = testMethod.info.resultType
@@ -292,17 +292,17 @@ class JUnitBootstrappers extends MiniPhase {
     }
   }
 
-  private def genNewInstance(owner: ClassSymbol, testClass: ClassSymbol)(implicit ctx: Context): DefDef = {
+  private def genNewInstance(owner: ClassSymbol, testClass: ClassSymbol)(using Context): DefDef = {
     val sym = ctx.newSymbol(owner, junitNme.newInstance, Synthetic | Method,
       MethodType(Nil, defn.ObjectType)).entered
 
     DefDef(sym, New(testClass.typeRef, Nil))
   }
 
-  private def castParam(param: Symbol, clazz: Symbol)(implicit ctx: Context): Tree =
+  private def castParam(param: Symbol, clazz: Symbol)(using Context): Tree =
     ref(param).cast(clazz.typeRef)
 
-  private def annotatedMethods(owner: ClassSymbol, annot: Symbol)(implicit ctx: Context): List[Symbol] =
+  private def annotatedMethods(owner: ClassSymbol, annot: Symbol)(using Context): List[Symbol] =
     owner.info.decls.filter(m => m.is(Method) && m.hasAnnotation(annot))
 }
 

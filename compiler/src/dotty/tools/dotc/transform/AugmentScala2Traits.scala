@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Flags._
 import SymUtils._
 import Symbols._
@@ -36,7 +36,7 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer { this
 
   override def phaseName: String = AugmentScala2Traits.name
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
+  override def transformTemplate(impl: Template)(using Context): Template = {
     val cls = impl.symbol.owner.asClass
     for (mixin <- cls.mixins) {
       val erasedMixin = TypeErasure.normalizeClass(mixin)
@@ -46,7 +46,7 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer { this
     impl
   }
 
-  private def augmentScala2Trait(mixin: ClassSymbol)(implicit ctx: Context): Unit = {
+  private def augmentScala2Trait(mixin: ClassSymbol)(using Context): Unit = {
     def traitSetter(getter: TermSymbol) =
       getter.copy(
         name = getter.ensureNotPrivate.name

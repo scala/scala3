@@ -12,7 +12,7 @@ import scala.internal.Chars._
 
 object JavaScanners {
 
-  class JavaScanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
+  class JavaScanner(source: SourceFile, override val startFrom: Offset = 0)(using Context) extends ScannerCommon(source) {
 
     override def decodeUni: Boolean = true
 

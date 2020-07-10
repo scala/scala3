@@ -60,7 +60,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
   /** the following two members override abstract members in Transform */
   override def phaseName: String = PostTyper.name
 
-  override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
+  override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = tree match {
     case tree: ValOrDefDef =>
       assert(!tree.symbol.signature.isUnderDefined)
     case _ =>
@@ -68,9 +68,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
   override def changesMembers: Boolean = true // the phase adds super accessors and synthetic members
 
-  override def transformPhase(implicit ctx: Context): Phase = thisPhase.next
+  override def transformPhase(using Context): Phase = thisPhase.next
 
-  protected def newTransformer(implicit ctx: Context): Transformer =
+  protected def newTransformer(using Context): Transformer =
     new PostTyperTransformer
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
@@ -81,7 +81,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     case _ => None
   }
 
-  private def checkValidJavaAnnotation(annot: Tree)(implicit ctx: Context): Unit = {
+  private def checkValidJavaAnnotation(annot: Tree)(using Context): Unit = {
     // TODO fill in
   }
 
@@ -123,7 +123,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           case _ =>
       case _ =>
 
-    private def transformAnnot(annot: Tree)(implicit ctx: Context): Tree = {
+    private def transformAnnot(annot: Tree)(using Context): Tree = {
       val saved = inJavaAnnot
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
@@ -131,10 +131,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       finally inJavaAnnot = saved
     }
 
-    private def transformAnnot(annot: Annotation)(implicit ctx: Context): Annotation =
+    private def transformAnnot(annot: Annotation)(using Context): Annotation =
       annot.derivedAnnotation(transformAnnot(annot.tree))
 
-    private def processMemberDef(tree: Tree)(implicit ctx: Context): tree.type = {
+    private def processMemberDef(tree: Tree)(using Context): tree.type = {
       val sym = tree.symbol
       Checking.checkValidOperator(sym)
       sym.transformAnnotations(transformAnnot)
@@ -164,7 +164,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         => Checking.checkAppliedTypesIn(tree)
       case _ =>
 
-    private def transformSelect(tree: Select, targs: List[Tree])(implicit ctx: Context): Tree = {
+    private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
       val qual = tree.qualifier
       qual.symbol.moduleClass.denot match {
         case pkg: PackageClassDenotation =>
@@ -180,7 +180,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
     }
 
-    private def normalizeTypeArgs(tree: TypeApply)(implicit ctx: Context): TypeApply = tree.tpe match {
+    private def normalizeTypeArgs(tree: TypeApply)(using Context): TypeApply = tree.tpe match {
       case pt: PolyType => // wait for more arguments coming
         tree
       case _ =>
@@ -216,7 +216,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     }
 
     private object dropInlines extends TreeMap {
-      override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      override def transform(tree: Tree)(using Context): Tree = tree match {
         case Inlined(call, _, expansion) =>
           val newExpansion = tree.tpe match
             case ConstantType(c) => Literal(c)
@@ -226,7 +226,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
     }
 
-    override def transform(tree: Tree)(implicit ctx: Context): Tree =
+    override def transform(tree: Tree)(using Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
           tree.tpe match {
@@ -390,7 +390,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
      *  Performed to shrink the tree that is known to be erased later.
      */
-    private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) =
+    private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
   }
 }

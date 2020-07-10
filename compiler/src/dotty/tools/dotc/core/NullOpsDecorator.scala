@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types._
 
@@ -9,7 +9,7 @@ object NullOpsDecorator {
 
   implicit class NullOps(val self: Type) {
     /** Is this type exactly `UncheckedNull` (no vars, aliases, refinements etc allowed)? */
-    def isUncheckedNullType(implicit ctx: Context): Boolean = {
+    def isUncheckedNullType(using Context): Boolean = {
       assert(ctx.explicitNulls)
       // We can't do `self == defn.UncheckedNull` because when trees are unpickled new references
       // to `UncheckedNull` could be created that are different from `defn.UncheckedNull`.
@@ -24,7 +24,7 @@ object NullOpsDecorator {
      *
      *  @param onlyUncheckedNull whether we only remove `UncheckedNull`, the default value is false
      */
-    def stripNull(onlyUncheckedNull: Boolean = false)(implicit ctx: Context): Type = {
+    def stripNull(onlyUncheckedNull: Boolean = false)(using Context): Type = {
       assert(ctx.explicitNulls)
 
       def isNull(tp: Type) =
@@ -56,14 +56,14 @@ object NullOpsDecorator {
     }
 
     /** Like `stripNull`, but removes only the `UncheckedNull`s. */
-    def stripUncheckedNull(implicit ctx: Context): Type = self.stripNull(true)
+    def stripUncheckedNull(using Context): Type = self.stripNull(true)
 
     /** Collapses all `UncheckedNull` unions within this type, and not just the outermost ones (as `stripUncheckedNull` does).
      *  e.g. (Array[String|UncheckedNull]|UncheckedNull).stripUncheckedNull => Array[String|UncheckedNull]
      *       (Array[String|UncheckedNull]|UncheckedNull).stripAllUncheckedNull => Array[String]
      *  If no `UncheckedNull` unions are found within the type, then returns the input type unchanged.
      */
-    def stripAllUncheckedNull(implicit ctx: Context): Type = {
+    def stripAllUncheckedNull(using Context): Type = {
       object RemoveNulls extends TypeMap {
         override def apply(tp: Type): Type = mapOver(tp.stripNull(true))
       }
@@ -72,13 +72,13 @@ object NullOpsDecorator {
     }
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
-    def isNullableUnion(implicit ctx: Context): Boolean = {
+    def isNullableUnion(using Context): Boolean = {
       val stripped = self.stripNull()
       stripped ne self
     }
 
     /** Is self (after widening and dealiasing) a type of the form `T | UncheckedNull`? */
-    def isUncheckedNullableUnion(implicit ctx: Context): Boolean = {
+    def isUncheckedNullableUnion(using Context): Boolean = {
       val stripped = self.stripNull(true)
       stripped ne self
     }

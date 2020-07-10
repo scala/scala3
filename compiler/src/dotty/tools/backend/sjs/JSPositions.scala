@@ -9,7 +9,7 @@ import dotty.tools.dotc.util.Spans.Span
 import org.scalajs.ir
 
 /** Conversion utilities from dotty Positions to IR Positions. */
-class JSPositions()(implicit ctx: Context) {
+class JSPositions()(using Context) {
 
   private def sourceAndSpan2irPos(source: SourceFile, span: Span): ir.Position = {
     if (!span.exists) ir.Position.NoPosition

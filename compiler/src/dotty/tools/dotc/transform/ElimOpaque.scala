@@ -5,7 +5,7 @@ import core._
 import dotty.tools.dotc.transform.MegaPhase._
 import Flags._
 import Types._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Symbols._
 import Decorators._
 import Denotations.{SingleDenotation, NonSymSingleDenotation}
@@ -28,7 +28,7 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
   // base types of opaque aliases change
   override def changesBaseTypes = true
 
-  def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
+  def transform(ref: SingleDenotation)(using Context): SingleDenotation = {
     val sym = ref.symbol
     ref match {
       case ref: SymDenotation if sym.isOpaqueAlias =>

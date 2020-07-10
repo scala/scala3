@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.Context
+import core.Contexts.{Context, ctx}
 import config.Config
 import config.Printers
 import core.Mode
@@ -25,40 +25,40 @@ object trace extends TraceSyntax {
 abstract class TraceSyntax {
   val isForced: Boolean
 
-  inline def onDebug[TD](inline question: String)(inline op: TD)(implicit ctx: Context): TD =
+  inline def onDebug[TD](inline question: String)(inline op: TD)(using Context): TD =
     conditionally(ctx.settings.YdebugTrace.value, question, false)(op)
 
-  inline def conditionally[TC](inline cond: Boolean, inline question: String, inline show: Boolean)(op: => TC)(implicit ctx: Context): TC =
+  inline def conditionally[TC](inline cond: Boolean, inline question: String, inline show: Boolean)(op: => TC)(using Context): TC =
     inline if (isForced || Config.tracingEnabled) {
       if (cond) apply[TC](question, Printers.default, show)(op)
       else op
     }
     else op
 
-  inline def apply[T](inline question: String, inline printer: Printers.Printer, inline showOp: Any => String)(op: => T)(implicit ctx: Context): T =
+  inline def apply[T](inline question: String, inline printer: Printers.Printer, inline showOp: Any => String)(op: => T)(using Context): T =
     inline if (isForced || Config.tracingEnabled) {
       if (!isForced && printer.eq(config.Printers.noPrinter)) op
       else doTrace[T](question, printer, showOp)(op)
     }
     else op
 
-  inline def apply[T](inline question: String, inline printer: Printers.Printer, inline show: Boolean)(op: => T)(implicit ctx: Context): T =
+  inline def apply[T](inline question: String, inline printer: Printers.Printer, inline show: Boolean)(op: => T)(using Context): T =
     inline if (isForced || Config.tracingEnabled) {
       if (!isForced && printer.eq(config.Printers.noPrinter)) op
       else doTrace[T](question, printer, if (show) showShowable(_) else alwaysToString)(op)
     }
     else op
 
-  inline def apply[T](inline question: String, inline printer: Printers.Printer)(inline op: T)(implicit ctx: Context): T =
+  inline def apply[T](inline question: String, inline printer: Printers.Printer)(inline op: T)(using Context): T =
     apply[T](question, printer, false)(op)
 
-  inline def apply[T](inline question: String, inline show: Boolean)(inline op: T)(implicit ctx: Context): T =
+  inline def apply[T](inline question: String, inline show: Boolean)(inline op: T)(using Context): T =
     apply[T](question, Printers.default, show)(op)
 
-  inline def apply[T](inline question: String)(inline op: T)(implicit ctx: Context): T =
+  inline def apply[T](inline question: String)(inline op: T)(using Context): T =
     apply[T](question, Printers.default, false)(op)
 
-  private def showShowable(x: Any)(implicit ctx: Context) = x match {
+  private def showShowable(x: Any)(using Context) = x match {
     case x: printing.Showable => x.show
     case _ => String.valueOf(x)
   }
@@ -68,14 +68,14 @@ abstract class TraceSyntax {
   private def doTrace[T](question: => String,
                          printer: Printers.Printer = Printers.default,
                          showOp: Any => String = alwaysToString)
-                        (op: => T)(implicit ctx: Context): T = {
+                        (op: => T)(using Context): T = {
     // Avoid evaluating question multiple time, since each evaluation
     // may cause some extra logging output.
     lazy val q: String = question
     apply[T](s"==> $q?", (res: Any) => s"<== $q = ${showOp(res)}")(op)
   }
 
-  def apply[T](leading: => String, trailing: Any => String)(op: => T)(implicit ctx: Context): T = {
+  def apply[T](leading: => String, trailing: Any => String)(op: => T)(using Context): T = {
     val log: String => Unit = if (isForced) Console.println else {
       var logctx = ctx
       while (logctx.reporter.isInstanceOf[StoreReporter]) logctx = logctx.outer
@@ -84,7 +84,7 @@ abstract class TraceSyntax {
     doApply(leading, trailing, log)(op)
   }
 
-  def doApply[T](leading: => String, trailing: Any => String, log: String => Unit)(op: => T)(implicit ctx: Context): T =
+  def doApply[T](leading: => String, trailing: Any => String, log: String => Unit)(op: => T)(using Context): T =
     if (ctx.mode.is(Mode.Printing)) op
     else {
       var finalized = false

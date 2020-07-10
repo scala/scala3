@@ -24,7 +24,7 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
         |}
       """.stripMargin
     }.expect { (itcx, messages) =>
-      implicit val ctx: Context = itcx
+      given Context = itcx
 
       assertMessageCount(1, messages)
       val (m: NoExplanation) :: Nil = messages
@@ -48,7 +48,7 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
         |}
       """.stripMargin
     }.expect { (itcx, messages) =>
-      implicit val ctx: Context = itcx
+      given Context = itcx
 
       assertMessageCount(1, messages)
       val (m: NoExplanation) :: Nil = messages
@@ -73,7 +73,7 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
         |}
       """.stripMargin
     }.expect { (itcx, messages) =>
-      implicit val ctx: Context = itcx
+      given Context = itcx
 
       assertMessageCount(1, messages)
       val (m: NoExplanation) :: Nil = messages
@@ -95,7 +95,7 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
         |}
       """.stripMargin
     }.expect { (itcx, messages) =>
-      implicit val ctx: Context = itcx
+      given Context = itcx
 
       assertMessageCount(1, messages)
       val (m: NoExplanation) :: Nil = messages
@@ -117,7 +117,7 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
         |}
       """.stripMargin
     }.expect { (itcx, messages) =>
-      implicit val ctx: Context = itcx
+      given Context = itcx
 
       assertMessageCount(1, messages)
       val (m: NoExplanation) :: Nil = messages

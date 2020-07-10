@@ -170,7 +170,7 @@ object Decorators {
       xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
 
   implicit class TextToString(val text: Text) extends AnyVal {
-    def show(implicit ctx: Context): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
+    def show(using Context): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
   }
 
   /** Test whether a list of strings representing phases contains
@@ -205,11 +205,11 @@ object Decorators {
   }
 
   implicit class genericDeco[T](val x: T) extends AnyVal {
-    def assertingErrorsReported(implicit ctx: Context): T = {
+    def assertingErrorsReported(using Context): T = {
       assert(ctx.reporter.errorsReported)
       x
     }
-    def assertingErrorsReported(msg: => String)(implicit ctx: Context): T = {
+    def assertingErrorsReported(msg: => String)(using Context): T = {
       assert(ctx.reporter.errorsReported, msg)
       x
     }
@@ -217,19 +217,19 @@ object Decorators {
 
   implicit class StringInterpolators(val sc: StringContext) extends AnyVal {
     /** General purpose string formatting */
-    def i(args: Any*)(implicit ctx: Context): String =
+    def i(args: Any*)(using Context): String =
       new StringFormatter(sc).assemble(args)
 
     /** Formatting for error messages: Like `i` but suppress follow-on
      *  error messages after the first one if some of their arguments are "non-sensical".
      */
-    def em(args: Any*)(implicit ctx: Context): String =
+    def em(args: Any*)(using Context): String =
       new ErrorMessageFormatter(sc).assemble(args)
 
     /** Formatting with added explanations: Like `em`, but add explanations to
      *  give more info about type variables and to disambiguate where needed.
      */
-    def ex(args: Any*)(implicit ctx: Context): String =
+    def ex(args: Any*)(using Context): String =
       explained(em(args: _*))
   }
 

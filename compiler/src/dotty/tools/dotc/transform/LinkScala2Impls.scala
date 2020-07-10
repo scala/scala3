@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Flags._
 import SymUtils._
 import Symbols._
@@ -34,7 +34,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
     // Adds as a side effect static members to traits which can confuse Mixin,
     // that's why it is runsAfterGroupOf
 
-  private def addStaticForwarders(mixin: ClassSymbol)(implicit ctx: Context): Unit = {
+  private def addStaticForwarders(mixin: ClassSymbol)(using Context): Unit = {
     val ops = new MixinOps(mixin, thisPhase)
     import ops._
 
@@ -63,14 +63,14 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
     mixin.resetFlag(Scala2xPartiallyAugmented)
   }
 
-  override def prepareForTemplate(impl: Template)(implicit ctx: Context): Context = {
+  override def prepareForTemplate(impl: Template)(using Context): Context = {
     val cls = impl.symbol.owner.asClass
     for (mixin <- cls.mixins if (mixin.is(Scala2xPartiallyAugmented)))
       addStaticForwarders(mixin)
     ctx
   }
 
-  override def transformApply(app: Apply)(implicit ctx: Context): Tree = {
+  override def transformApply(app: Apply)(using Context): Tree = {
     def currentClass = ctx.owner.enclosingClass.asClass
     app match {
       case Apply(sel @ Select(Super(_, _), _), args)
@@ -84,7 +84,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
   }
 
   /** The 2.12 implementation method of a super call or implementation class target */
-  private def implMethod(meth: Symbol)(implicit ctx: Context): Symbol = {
+  private def implMethod(meth: Symbol)(using Context): Symbol = {
     val implName = ImplMethName(meth.name.asTermName)
     val cls = meth.owner
     if (cls.isAllOf(Scala2xTrait))

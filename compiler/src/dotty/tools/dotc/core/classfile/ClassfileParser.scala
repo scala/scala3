@@ -7,6 +7,7 @@ import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Spans._
+import Phases._
 import NameKinds.DefaultGetterName
 import ast.{ tpd, untpd }
 import ast.tpd._, util._
@@ -32,7 +33,7 @@ object ClassfileParser {
   object NoEmbedded extends Embedded
 
   /** Replace raw types with wildcard applications */
-  def cook(implicit ctx: Context): TypeMap = new TypeMap {
+  def cook(using Context): TypeMap = new TypeMap {
     def apply(tp: Type): Type = tp match {
       case tp: TypeRef if tp.symbol.typeParams.nonEmpty =>
         AppliedType(tp, tp.symbol.typeParams.map(Function.const(TypeBounds.empty)))
@@ -63,7 +64,7 @@ class ClassfileParser(
 
   protected val in: AbstractFileReader = new AbstractFileReader(classfile)
 
-  protected val staticModule: Symbol = moduleRoot.sourceModule(ictx)
+  protected val staticModule: Symbol = moduleRoot.sourceModule(using ictx)
 
   protected val instanceScope: MutableScope = newScope     // the scope of all instance definitions
   protected val staticScope: MutableScope = newScope       // the scope of all static definitions
@@ -77,12 +78,12 @@ class ClassfileParser(
   classRoot.info = NoLoader().withDecls(instanceScope)
   moduleRoot.info = NoLoader().withDecls(staticScope).withSourceModule(_ => staticModule)
 
-  private def currentIsTopLevel(implicit ctx: Context) = classRoot.owner.is(Flags.PackageClass)
+  private def currentIsTopLevel(using Context) = classRoot.owner.is(Flags.PackageClass)
 
   private def mismatchError(className: SimpleName) =
     throw new IOException(s"class file '${in.file.canonicalPath}' has location not matching its contents: contains class $className")
 
-  def run()(implicit ctx: Context): Option[Embedded] = try {
+  def run()(using Context): Option[Embedded] = try {
     ctx.debuglog("[class] >> " + classRoot.fullName)
     parseHeader()
     this.pool = new ConstantPool
@@ -110,14 +111,14 @@ class ClassfileParser(
   }
 
   /** Return the class symbol of the given name. */
-  def classNameToSymbol(name: Name)(implicit ctx: Context): Symbol = innerClasses.get(name) match {
+  def classNameToSymbol(name: Name)(using Context): Symbol = innerClasses.get(name) match {
     case Some(entry) => innerClasses.classSymbol(entry)
     case None => ctx.requiredClass(name)
   }
 
   var sawPrivateConstructor: Boolean = false
 
-  def parseClass()(implicit ctx: Context): Option[Embedded] = {
+  def parseClass()(using Context): Option[Embedded] = {
     val jflags       = in.nextChar
     val isAnnotation = hasAnnotation(jflags)
     val sflags       = classTranslation.flags(jflags)
@@ -207,7 +208,7 @@ class ClassfileParser(
   }
 
   /** Add type parameters of enclosing classes */
-  def addEnclosingTParams()(implicit ctx: Context): Unit = {
+  def addEnclosingTParams()(using Context): Unit = {
     var sym = classRoot.owner
     while (sym.isClass && !sym.is(Flags.ModuleClass)) {
       for (tparam <- sym.typeParams)
@@ -216,7 +217,7 @@ class ClassfileParser(
     }
   }
 
-  def parseMember(method: Boolean)(implicit ctx: Context): Unit = {
+  def parseMember(method: Boolean)(using Context): Unit = {
     val start = indexCoord(in.bp)
     val jflags = in.nextChar
     val sflags =
@@ -236,7 +237,7 @@ class ClassfileParser(
 
   val memberCompleter: LazyType = new LazyType {
 
-    def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+    def complete(denot: SymDenotation)(using Context): Unit = {
       val oldbp = in.bp
       try {
         in.bp = denot.symbol.coord.toIndex
@@ -307,7 +308,7 @@ class ClassfileParser(
   }
 
   /** Map direct references to Object to references to Any */
-  final def objToAny(tp: Type)(implicit ctx: Context): Type =
+  final def objToAny(tp: Type)(using Context): Type =
     if (tp.isDirectRef(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else tp
 
   def constantTagToType(tag: Int)(using Context): Type =
@@ -323,7 +324,7 @@ class ClassfileParser(
       case BOOL_TAG   => defn.BooleanType
     }
 
-  private def sigToType(sig: SimpleName, owner: Symbol = null)(implicit ctx: Context): Type = {
+  private def sigToType(sig: SimpleName, owner: Symbol = null)(using Context): Type = {
     var index = 0
     val end = sig.length
     def accept(ch: Char): Unit = {
@@ -337,7 +338,7 @@ class ClassfileParser(
     }
     // Warning: sigToType contains nested completers which might be forced in a later run!
     // So local methods need their own ctx parameters.
-    def sig2type(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean)(implicit ctx: Context): Type = {
+    def sig2type(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean)(using Context): Type = {
       val tag = sig(index); index += 1
       (tag: @switch) match {
         case 'L' =>
@@ -415,7 +416,7 @@ class ClassfileParser(
     }
     // sig2type(tparams, skiptvs)
 
-    def sig2typeBounds(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean)(implicit ctx: Context): Type = {
+    def sig2typeBounds(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean)(using Context): Type = {
       val ts = new ListBuffer[Type]
       while (sig(index) == ':') {
         index += 1
@@ -429,7 +430,7 @@ class ClassfileParser(
     var tparams = classTParams
 
     def typeParamCompleter(start: Int) = new LazyType {
-      def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+      def complete(denot: SymDenotation)(using Context): Unit = {
         val savedIndex = index
         try {
           index = start
@@ -476,7 +477,7 @@ class ClassfileParser(
   }
   // sigToType
 
-  def parseAnnotArg(skip: Boolean = false)(implicit ctx: Context): Option[untpd.Tree] = {
+  def parseAnnotArg(skip: Boolean = false)(using Context): Option[untpd.Tree] = {
 
     // If we encounter an empty array literal, we need the type of the corresponding
     // parameter to properly type it, but that would require forcing the annotation
@@ -534,7 +535,7 @@ class ClassfileParser(
   /** Parse and return a single annotation.  If it is malformed,
    *  return None.
    */
-  def parseAnnotation(attrNameIndex: Char, skip: Boolean = false)(implicit ctx: Context): Option[Annotation] = try {
+  def parseAnnotation(attrNameIndex: Char, skip: Boolean = false)(using Context): Option[Annotation] = try {
     val attrType = pool.getType(attrNameIndex)
     attrType match
       case tp: TypeRef =>
@@ -573,7 +574,7 @@ class ClassfileParser(
       None // ignore malformed annotations
   }
 
-  def parseAttributes(sym: Symbol, symtype: Type)(implicit ctx: Context): Type = {
+  def parseAttributes(sym: Symbol, symtype: Type)(using Context): Type = {
     var newType = symtype
 
     def parseAttribute(): Unit = {
@@ -662,7 +663,7 @@ class ClassfileParser(
   /** Annotations in Scala are assumed to get all their arguments as constructor
    *  parameters. For Java annotations we need to fake it by making up the constructor.
    */
-  def addAnnotationConstructor(classInfo: TempClassInfoType)(implicit ctx: Context): Unit =
+  def addAnnotationConstructor(classInfo: TempClassInfoType)(using Context): Unit =
     ctx.newSymbol(
       owner = classRoot.symbol,
       name = nme.CONSTRUCTOR,
@@ -671,7 +672,7 @@ class ClassfileParser(
     ).entered
 
   class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
-    def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+    def complete(denot: SymDenotation)(using Context): Unit = {
       val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol)
       val paramNames = attrs.map(_.name.asTermName)
       val paramTypes = attrs.map(_.info.resultType)
@@ -682,7 +683,7 @@ class ClassfileParser(
   /** Enter own inner classes in the right scope. It needs the scopes to be set up,
    *  and implicitly current class' superclasses.
    */
-  private def enterOwnInnerClasses()(implicit ctx: Context): Unit = {
+  private def enterOwnInnerClasses()(using Context): Unit = {
     def className(name: Name): Name = {
       val name1 = name.toSimpleName
       name1.drop(name1.lastIndexOf('.') + 1)
@@ -715,7 +716,7 @@ class ClassfileParser(
    *  Restores the old `bp`.
    *  @return true iff classfile is from Scala, so no Java info needs to be read.
    */
-  def unpickleOrParseInnerClasses()(implicit ctx: Context): Option[Embedded] = {
+  def unpickleOrParseInnerClasses()(using Context): Option[Embedded] = {
     val oldbp = in.bp
     try {
       skipSuperclasses()
@@ -751,13 +752,13 @@ class ClassfileParser(
         }
 
         val unpickler = new unpickleScala2.Scala2Unpickler(bytes, classRoot, moduleRoot)(ctx)
-        unpickler.run()(ctx.addMode(Scala2UnpicklingMode))
+        unpickler.run()(using ctx.addMode(Scala2UnpicklingMode))
         Some(unpickler)
       }
 
       def unpickleTASTY(bytes: Array[Byte]): Some[Embedded]  = {
         val unpickler = new tasty.DottyUnpickler(bytes)
-        unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(ctx.withSource(util.NoSource))
+        unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
         Some(unpickler)
       }
 
@@ -905,7 +906,7 @@ class ClassfileParser(
     /** Return the Symbol of the top level class enclosing `name`,
      *  or 'name's symbol if no entry found for `name`.
      */
-    def topLevelClass(name: Name)(implicit ctx: Context): Symbol = {
+    def topLevelClass(name: Name)(using Context): Symbol = {
       val tlName = if (isDefinedAt(name)) {
         var entry = this(name)
         while (isDefinedAt(entry.outerName))
@@ -920,8 +921,8 @@ class ClassfileParser(
     /** Return the class symbol for `entry`. It looks it up in its outer class.
      *  This might force outer class symbols.
      */
-    def classSymbol(entry: InnerClassEntry)(implicit ctx: Context): Symbol = {
-      def getMember(sym: Symbol, name: Name)(implicit ctx: Context): Symbol =
+    def classSymbol(entry: InnerClassEntry)(using Context): Symbol = {
+      def getMember(sym: Symbol, name: Name)(using Context): Symbol =
         if (isStatic(entry.jflags))
           if (sym == classRoot.symbol)
             staticScope.lookup(name)
@@ -939,7 +940,7 @@ class ClassfileParser(
       val outerName = entry.outerName.stripModuleClassSuffix
       val innerName = entry.originalName
       val owner = classNameToSymbol(outerName)
-      val result = getMember(owner, innerName.toTypeName)(ctx.withPhase(ctx.typerPhase))
+      val result = atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
       assert(result ne NoSymbol,
         i"""failure to resolve inner class:
            |externalName = ${entry.externalName},
@@ -977,7 +978,7 @@ class ClassfileParser(
   protected def getScope(flags: Int): MutableScope =
     if (isStatic(flags)) staticScope else instanceScope
 
-  private def getPrivateWithin(jflags: Int)(implicit ctx: Context): Symbol =
+  private def getPrivateWithin(jflags: Int)(using Context): Symbol =
     if ((jflags & (JAVA_ACC_PRIVATE | JAVA_ACC_PUBLIC)) == 0)
       classRoot.enclosingPackageClass
     else
@@ -1048,7 +1049,7 @@ class ClassfileParser(
       internalized(index)
     }
 
-    def getClassSymbol(index: Int)(implicit ctx: Context): Symbol = {
+    def getClassSymbol(index: Int)(using Context): Symbol = {
       if (index <= 0 || len <= index) errorBadIndex(index)
       var c = values(index).asInstanceOf[Symbol]
       if (c eq null) {
@@ -1077,7 +1078,7 @@ class ClassfileParser(
      *  arrays are considered to be class types, they might
      *  appear as entries in 'newarray' or 'cast' opcodes.
      */
-    def getClassOrArrayType(index: Int)(implicit ctx: Context): Type = {
+    def getClassOrArrayType(index: Int)(using Context): Type = {
       if (index <= 0 || len <= index) errorBadIndex(index)
       val value = values(index)
       var c: Type = null
@@ -1102,15 +1103,15 @@ class ClassfileParser(
       c
     }
 
-    def getType(index: Int)(implicit ctx: Context): Type =
+    def getType(index: Int)(using Context): Type =
       sigToType(getExternalName(index))
 
-    def getSuperClass(index: Int)(implicit ctx: Context): Symbol = {
+    def getSuperClass(index: Int)(using Context): Symbol = {
       assert(index != 0, "attempt to parse java.lang.Object from classfile")
       getClassSymbol(index)
     }
 
-    def getConstant(index: Int, pt: Type = WildcardType)(implicit ctx: Context): Constant = {
+    def getConstant(index: Int, pt: Type = WildcardType)(using Context): Constant = {
       if (index <= 0 || len <= index) errorBadIndex(index)
       var value = values(index)
       if (value eq null) {

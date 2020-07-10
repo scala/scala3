@@ -37,7 +37,7 @@ object APIUtils {
    *  to be constructed, but if the class is never accessed by Scala source code,
    *  a dummy empty class can be registered instead, using this method.
    */
-  def registerDummyClass(classSym: ClassSymbol)(implicit ctx: Context): Unit = {
+  def registerDummyClass(classSym: ClassSymbol)(using Context): Unit = {
     if (ctx.sbtCallback != null) {
       val classLike = emptyClassLike(classSym)
       ctx.sbtCallback.api(ctx.compilationUnit.source.file.file, classLike)
@@ -45,7 +45,7 @@ object APIUtils {
   }
 
   // See APIUtils.emptyClassLike
-  private def emptyClassLike(classSym: ClassSymbol)(implicit ctx: Context): api.ClassLike = {
+  private def emptyClassLike(classSym: ClassSymbol)(using Context): api.ClassLike = {
     val name = classSym.fullName.stripModuleClassSuffix.toString
     val definitionType =
       if (classSym.is(Trait)) api.DefinitionType.Trait

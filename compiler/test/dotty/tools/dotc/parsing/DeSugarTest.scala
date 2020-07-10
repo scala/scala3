@@ -31,11 +31,11 @@ class DeSugarTest extends ParserTest {
       finally curMode = saved
     }
 
-    def transform(tree: Tree, mode: Mode)(implicit ctx: Context): Tree = withMode(mode) { transform(tree) }
-    def transform(trees: List[Tree], mode: Mode)(implicit ctx: Context): List[Tree] = withMode(mode) { transform(trees) }
+    def transform(tree: Tree, mode: Mode)(using Context): Tree = withMode(mode) { transform(tree) }
+    def transform(trees: List[Tree], mode: Mode)(using Context): List[Tree] = withMode(mode) { transform(trees) }
 
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-      val tree1 = desugar(tree)(ctx.withModeBits(curMode))
+    override def transform(tree: Tree)(using Context): Tree = {
+      val tree1 = desugar(tree)(using ctx.withModeBits(curMode))
       tree1 match {
         case TypedSplice(t) =>
           tree1

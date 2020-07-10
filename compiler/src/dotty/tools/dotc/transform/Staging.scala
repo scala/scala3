@@ -5,6 +5,7 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd, untpd}
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.quoted._
@@ -37,13 +38,13 @@ class Staging extends MacroTransform {
 
   override def allowsImplicitSearch: Boolean = true
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
-    if (ctx.phase <= ctx.reifyQuotesPhase) {
+  override def checkPostCondition(tree: Tree)(using Context): Unit =
+    if (ctx.phase <= reifyQuotesPhase) {
       // Recheck that PCP holds but do not heal any inconsistent types as they should already have been heald
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
           val checker = new PCPCheckAndHeal(freshStagingContext) {
-            override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(implicit ctx: Context): TypeRef = {
+            override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(using Context): TypeRef = {
               def symStr =
                 if (sym.is(ModuleClass)) sym.sourceModule.show
                 else i"${sym.name}.this"
@@ -72,11 +73,11 @@ class Staging extends MacroTransform {
       }
     }
 
-  override def run(implicit ctx: Context): Unit =
-    if (ctx.compilationUnit.needsStaging) super.run(freshStagingContext)
+  override def run(using Context): Unit =
+    if (ctx.compilationUnit.needsStaging) super.run(using freshStagingContext)
 
-  protected def newTransformer(implicit ctx: Context): Transformer = new Transformer {
-    override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree =
+  protected def newTransformer(using Context): Transformer = new Transformer {
+    override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       new PCPCheckAndHeal(ctx).transform(tree)
   }
 }

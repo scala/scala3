@@ -3,7 +3,7 @@ package dotc
 package config
 
 import core._
-import Contexts._, Symbols._, Names._, NameOps._
+import Contexts._, Symbols._, Names._, NameOps._, Phases._
 import StdNames.nme
 import Decorators.{given _}
 import util.SourcePosition
@@ -36,7 +36,7 @@ object Feature:
    *       import owner.{ feature => _ }
    */
   def enabledByImport(feature: TermName, owner: Symbol = NoSymbol)(using Context): Boolean =
-    ctx.atPhase(ctx.typerPhase) {
+    atPhase(typerPhase) {
       ctx.importInfo != null
       && ctx.importInfo.featureImported(feature,
           if owner.exists then owner else defn.LanguageModule.moduleClass)

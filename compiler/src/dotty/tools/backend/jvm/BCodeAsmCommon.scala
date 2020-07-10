@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.Symbols._
  * the compiler cake (Global).
  */
 final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
-  import interface._
+  import interface.{_, given _}
   import DottyBackendInterface.symExtensions
 
   /**

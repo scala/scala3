@@ -4,7 +4,8 @@ import java.io.{File => JFile, PrintStream}
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Phases.{curPhases, typerPhase}
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Mode
@@ -66,7 +67,7 @@ class ReplDriver(settings: Array[String],
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive | Mode.ReadComments)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     val ictx = setup(settings, rootCtx)._2
-    ictx.base.initialize()(ictx)
+    ictx.base.initialize()(using ictx)
     ictx
   }
 
@@ -81,7 +82,7 @@ class ReplDriver(settings: Array[String],
    */
   protected def resetToInitial(): Unit = {
     rootCtx = initialCtx
-    if (rootCtx.settings.outputDir.isDefault(rootCtx))
+    if (rootCtx.settings.outputDir.isDefault(using rootCtx))
       rootCtx = rootCtx.fresh
         .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
     compiler = new ReplCompiler
@@ -111,7 +112,7 @@ class ReplDriver(settings: Array[String],
         val comps = completions(line.cursor, line.line, state)
         candidates.addAll(comps.asJava)
       }
-      implicit val ctx = state.context
+      given Context = state.context
       try {
         val line = terminal.readLine(completer)
         ParseResult(line)(state)
@@ -179,9 +180,9 @@ class ReplDriver(settings: Array[String],
       .typeCheck(expr, errorsAllowed = true)
       .map { tree =>
         val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
-        val unit = CompilationUnit(file)(state.context)
+        val unit = CompilationUnit(file)(using state.context)
         unit.tpdTree = tree
-        implicit val ctx = state.context.fresh.setCompilationUnit(unit)
+        given Context = state.context.fresh.setCompilationUnit(unit)
         val srcPos = SourcePosition(file, Span(cursor))
         val (_, completions) = Completion.completions(srcPos)
         completions.map(makeCandidate)
@@ -207,10 +208,11 @@ class ReplDriver(settings: Array[String],
       case _ => // new line, empty tree
         state
     }
-    implicit val ctx: Context = newState.context
-    if (!ctx.settings.XreplDisableDisplay.value)
-      out.println()
-    newState
+    inContext(newState.context) {
+      if (!ctx.settings.XreplDisableDisplay.value)
+        out.println()
+      newState
+    }
   }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
@@ -221,7 +223,7 @@ class ReplDriver(settings: Array[String],
     }
 
     def extractTopLevelImports(ctx: Context): List[tpd.Import] =
-      ctx.phases.collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
+      curPhases(using ctx).collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
 
     implicit val state = {
       val state0 = newRun(istate)
@@ -241,34 +243,35 @@ class ReplDriver(settings: Array[String],
             val newStateWithImports = newState.copy(imports = allImports)
 
             val warnings = newState.context.reporter
-              .removeBufferedMessages(newState.context)
+              .removeBufferedMessages(using newState.context)
               .map(rendering.formatError)
 
-            implicit val ctx: Context = newState.context
-            val (updatedState, definitions) =
-              if (!ctx.settings.XreplDisableDisplay.value)
-                renderDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
-              else
-                (newStateWithImports, Seq.empty)
+            inContext(newState.context) {
+              val (updatedState, definitions) =
+                if (!ctx.settings.XreplDisableDisplay.value)
+                  renderDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
+                else
+                  (newStateWithImports, Seq.empty)
 
-            // output is printed in the order it was put in. warnings should be
-            // shown before infos (eg. typedefs) for the same line. column
-            // ordering is mostly to make tests deterministic
-            implicit val diagnosticOrdering: Ordering[Diagnostic] =
-              Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
+              // output is printed in the order it was put in. warnings should be
+              // shown before infos (eg. typedefs) for the same line. column
+              // ordering is mostly to make tests deterministic
+              implicit val diagnosticOrdering: Ordering[Diagnostic] =
+                Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
 
-            (definitions ++ warnings)
-              .sorted
-              .map(_.msg)
-              .foreach(out.println)
+              (definitions ++ warnings)
+                .sorted
+                .map(_.msg)
+                .foreach(out.println)
 
-            updatedState
+              updatedState
+            }
         }
       )
   }
 
   private def renderDefinitions(tree: tpd.Tree, newestWrapper: Name)(implicit state: State): (State, Seq[Diagnostic]) = {
-    implicit val ctx = state.context
+    given Context = state.context
 
     def resAndUnit(denot: Denotation) = {
       import scala.util.{Success, Try}
@@ -318,7 +321,7 @@ class ReplDriver(settings: Array[String],
           rendering.renderTypeDef(x)
       }
 
-    ctx.atPhase(ctx.typerPhase.next) {
+    atPhase(typerPhase.next) {
       // Display members of wrapped module:
       tree.symbol.info.memberClasses
         .find(_.symbol.name == newestWrapper.moduleClassName)
@@ -358,7 +361,7 @@ class ReplDriver(settings: Array[String],
       for {
         objectIndex <- 1 to state.objectIndex
         imp <- state.imports.getOrElse(objectIndex, Nil)
-      } out.println(imp.show(state.context))
+      } out.println(imp.show(using state.context))
       state
 
     case Load(path) =>
@@ -375,7 +378,7 @@ class ReplDriver(settings: Array[String],
     case TypeOf(expr) =>
       compiler.typeOf(expr)(newRun(state)).fold(
         displayErrors,
-        res => out.println(SyntaxHighlighting.highlight(res)(state.context))
+        res => out.println(SyntaxHighlighting.highlight(res)(using state.context))
       )
       state
 

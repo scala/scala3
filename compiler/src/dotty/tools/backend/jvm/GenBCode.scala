@@ -15,6 +15,7 @@ import java.util.Optional
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.sbt.ExtractDependencies
 import Contexts._
+import Phases._
 import Symbols._
 import Decorators._
 
@@ -40,18 +41,21 @@ class GenBCode extends Phase {
 
   private var myOutput: AbstractFile = _
 
-  private def outputDir(implicit ctx: Context): AbstractFile = {
+  private def outputDir(using Context): AbstractFile = {
     if (myOutput eq null)
       myOutput = ctx.settings.outputDir.value
     myOutput
   }
 
-  def run(implicit ctx: Context): Unit = {
-    new GenBCodePipeline(new DottyBackendInterface(
-      outputDir, superCallsMap.toMap)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
-  }
+  def run(using Context): Unit =
+    new GenBCodePipeline(
+      new DottyBackendInterface(
+        outputDir, superCallsMap.toMap
+      )
+    ).run(ctx.compilationUnit.tpdTree)
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     try super.runOn(units)
     finally myOutput match {
       case jar: JarArchive =>
@@ -69,7 +73,7 @@ object GenBCode {
   val name: String = "genBCode"
 }
 
-class GenBCodePipeline(val int: DottyBackendInterface)(implicit ctx: Context) extends BCodeSyncAndTry {
+class GenBCodePipeline(val int: DottyBackendInterface)(using ctx: Context) extends BCodeSyncAndTry {
   import DottyBackendInterface.symExtensions
 
   private var tree: Tree = _
@@ -163,7 +167,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(implicit ctx: Context) ex
             if (classSymbol.effectiveName.toString < dupClassSym.effectiveName.toString) (classSymbol, dupClassSym)
             else (dupClassSym, classSymbol)
           val same = classSymbol.effectiveName.toString == dupClassSym.effectiveName.toString
-          ctx.atPhase(ctx.typerPhase) {
+          atPhase(typerPhase) {
             if (same)
               summon[Context].warning( // FIXME: This should really be an error, but then FromTasty tests fail
                 s"${cl1.show} and ${cl2.showLocated} produce classes that overwrite one another", cl1.sourcePos)
@@ -268,7 +272,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(implicit ctx: Context) ex
 
       // ----------- compiler and sbt's callbacks
 
-      val (fullClassName, isLocal) = ctx.atPhase(ctx.sbtExtractDependenciesPhase) {
+      val (fullClassName, isLocal) = atPhase(sbtExtractDependenciesPhase) {
         (ExtractDependencies.classNameAsString(claszSymbol), claszSymbol.isLocal)
       }
 

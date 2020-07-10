@@ -21,14 +21,14 @@ class DocDriver extends Driver {
 
   override def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
     val ctx     = rootCtx.fresh
-    val summary = CompilerCommand.distill(args)(ctx)
+    val summary = CompilerCommand.distill(args)(using ctx)
 
     ctx.setSettings(summary.sstate)
     ctx.setSetting(ctx.settings.YcookComments, true)
     ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setProperty(ContextDoc, new ContextDottydoc)
 
-    val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
+    val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(using ctx)
     fromTastySetup(fileNames, ctx)
   }
 

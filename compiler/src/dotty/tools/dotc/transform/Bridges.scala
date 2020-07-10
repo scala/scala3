@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core._
-import Symbols._, Types._, Contexts._, Decorators._, Flags._, Scopes._
+import Symbols._, Types._, Contexts._, Decorators._, Flags._, Scopes._, Phases._
 import DenotTransformers._
 import ast.untpd
 import collection.{mutable, immutable}
@@ -11,14 +11,14 @@ import util.Spans.Span
 import util.SourcePosition
 
 /** A helper class for generating bridge methods in class `root`. */
-class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Context) {
+class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd._
 
-  assert(ctx.phase == ctx.erasurePhase.next)
-  private val preErasureCtx = ctx.withPhase(ctx.erasurePhase)
-  private lazy val elimErasedCtx = ctx.withPhase(ctx.elimErasedValueTypePhase.next)
+  assert(ctx.phase == erasurePhase.next)
+  private val preErasureCtx = ctx.withPhase(erasurePhase)
+  private lazy val elimErasedCtx = ctx.withPhase(elimErasedValueTypePhase.next)
 
-  private class BridgesCursor(implicit ctx: Context) extends OverridingPairs.Cursor(root) {
+  private class BridgesCursor(using Context) extends OverridingPairs.Cursor(root) {
 
     /** Only use the superclass of `root` as a parent class. This means
      *  overriding pairs that have a common implementation in a trait parent
@@ -57,9 +57,9 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     def bridgeExists =
       bridgesScope.lookupAll(member.name).exists(bridge =>
         bridgeTarget(bridge) == member && bridge.signature == other.signature)
-    def info(sym: Symbol)(implicit ctx: Context) = sym.info
+    def info(sym: Symbol)(using Context) = sym.info
     def desc(sym: Symbol)= {
-      val infoStr = info(sym)(preErasureCtx) match {
+      val infoStr = info(sym)(using preErasureCtx) match {
         case ExprType(info) => i": $info"
         case info => info.show
       }
@@ -69,7 +69,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
       if (!member.info.matches(other.info))
         ctx.error(em"""bridge generated for member ${desc(member)}
                       |which overrides ${desc(other)}
-                      |clashes with definition of the member itself; both have erased type ${info(member)(elimErasedCtx)}."""",
+                      |clashes with definition of the member itself; both have erased type ${info(member)(using elimErasedCtx)}."""",
                   bridgePosFor(member))
     }
     else if (!bridgeExists)
@@ -112,7 +112,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
    *  time deferred methods in `stats` that are replaced by a bridge with the same signature.
    */
   def add(stats: List[untpd.Tree]): List[untpd.Tree] =
-    val opc = new BridgesCursor()(preErasureCtx)
+    val opc = new BridgesCursor()(using preErasureCtx)
     val ectx = ctx.withPhase(thisPhase)
     while opc.hasNext do
       if !opc.overriding.is(Deferred) then

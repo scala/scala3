@@ -20,7 +20,7 @@ class ConsoleReporter(
   def printMessage(msg: String): Unit = { writer.print(msg + "\n"); writer.flush() }
 
   /** Prints the message with the given position indication. */
-  def doReport(dia: Diagnostic)(implicit ctx: Context): Unit = {
+  def doReport(dia: Diagnostic)(using Context): Unit = {
     val didPrint = dia match {
       case dia: Error =>
         printMessage(messageAndPos(dia.msg, dia.pos, diagnosticLevel(dia)))
@@ -39,5 +39,5 @@ class ConsoleReporter(
       printMessage("\nlonger explanation available when compiling with `-explain`")
   }
 
-  override def flush()(implicit ctx: Context): Unit = { writer.flush() }
+  override def flush()(using Context): Unit = { writer.flush() }
 }

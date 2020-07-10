@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core._
-import Contexts._, Symbols._, Types._, Annotations._, Constants._
+import Contexts._, Symbols._, Types._, Annotations._, Constants._, Phases._
 import StdNames.nme
 import ast.untpd
 import ast.tpd._
@@ -100,7 +100,7 @@ object ContextFunctionResults:
    *  parameter count.
    */
   def contextFunctionResultTypeCovering(meth: Symbol, paramCount: Int)(using Context) =
-    inContext(ctx.withPhase(ctx.erasurePhase)) {
+    inContext(ctx.withPhase(erasurePhase)) {
       // Recursive instances return pairs of context types and the
       // # of parameters they represent.
       def missingCR(tp: Type, crCount: Int): (Type, Int) =
@@ -121,7 +121,7 @@ object ContextFunctionResults:
    */
   def integrateSelect(tree: untpd.Tree, n: Int = 0)(using Context): Boolean =
     if ctx.erasedTypes then
-      integrateSelect(tree, n)(using ctx.withPhase(ctx.erasurePhase))
+      atPhase(erasurePhase)(integrateSelect(tree, n))
     else tree match
       case Select(qual, name) =>
         if name == nme.apply && defn.isContextFunctionClass(tree.symbol.maybeOwner) then

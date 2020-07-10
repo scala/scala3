@@ -7,6 +7,7 @@ import org.junit.Test
 import dotc.ast.Trees._
 import dotc.core.Decorators._
 import dotc.core.Contexts._
+import dotc.core.Phases._
 import dotc.core.Types._
 
 import java.io.File
@@ -25,7 +26,7 @@ class AnnotationsTest:
         val annotCls = ctx.requiredClass("Annot")
         val arrayOfString = defn.ArrayType.appliedTo(List(defn.StringType))
 
-        ctx.atPhase(ctx.erasurePhase.next) {
+        atPhase(erasurePhase.next) {
           val annot = cls.getAnnotation(annotCls)
           // Even though we're forcing the annotation after erasure,
           // the typed trees should be unerased, so the type of

@@ -14,7 +14,7 @@ object parsePackage extends ParserTest {
   var nodes = 0
 
   val transformer = new UntypedTreeMap {
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+    override def transform(tree: Tree)(using Context): Tree = {
       nodes += 1
       tree match {
         case Ident(name) =>
@@ -70,7 +70,7 @@ object parsePackage extends ParserTest {
     val buf = parsedTrees map transformer.transform
     val ms2 = (System.nanoTime() - start)/1000000
     println(s"$parsed files parsed in ${ms1}ms, $nodes nodes transformed in ${ms2-ms1}ms, total trees created = ${Trees.ntrees}")
-    ctx.reporter.printSummary(ctx)
+    ctx.reporter.printSummary
   }
 
   def main(args: Array[String]): Unit = {

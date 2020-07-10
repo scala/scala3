@@ -25,13 +25,13 @@ import fromtasty.{TASTYCompiler, TastyFileUtil}
  */
 class Driver {
 
-  protected def newCompiler(implicit ctx: Context): Compiler =
+  protected def newCompiler(using Context): Compiler =
     if (ctx.settings.fromTasty.value) new TASTYCompiler
     else new Compiler
 
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
-  protected def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
+  protected def doCompile(compiler: Compiler, fileNames: List[String])(using Context): Reporter =
     if (fileNames.nonEmpty)
       try
         val run = compiler.newRun
@@ -67,10 +67,10 @@ class Driver {
 
   def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
     val ictx = rootCtx.fresh
-    val summary = CompilerCommand.distill(args)(ictx)
+    val summary = CompilerCommand.distill(args)(using ictx)
     ictx.setSettings(summary.sstate)
     MacroClassLoader.init(ictx)
-    Positioned.updateDebugPos(ictx)
+    Positioned.updateDebugPos(using ictx)
 
     inContext(ictx) {
       if !ctx.settings.YdropComments.value || ctx.mode.is(Mode.ReadComments) then
@@ -84,7 +84,7 @@ class Driver {
 
   /** Setup extra classpath and figure out class names for tasty file inputs */
   protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) =
-    if (ctx0.settings.fromTasty.value(ctx0)) {
+    if (ctx0.settings.fromTasty.value(using ctx0)) {
       // Resolve classpath and class names of tasty files
       val (classPaths, classNames) = fileNames0.flatMap { name =>
         val path = Paths.get(name)
@@ -109,7 +109,7 @@ class Driver {
       }.unzip
       val ctx1 = ctx0.fresh
       val classPaths1 = classPaths.distinct.filter(_ != "")
-      val fullClassPath = (classPaths1 :+ ctx1.settings.classpath.value(ctx1)).mkString(java.io.File.pathSeparator)
+      val fullClassPath = (classPaths1 :+ ctx1.settings.classpath.value(using ctx1)).mkString(java.io.File.pathSeparator)
       ctx1.setSetting(ctx1.settings.classpath, fullClassPath)
       (classNames, ctx1)
     }
@@ -155,12 +155,12 @@ class Driver {
    */
   final def process(args: Array[String], reporter: Reporter = null,
     callback: interfaces.CompilerCallback = null): Reporter = {
-    val ctx = initCtx.fresh
+    val compileCtx = initCtx.fresh
     if (reporter != null)
-      ctx.setReporter(reporter)
+      compileCtx.setReporter(reporter)
     if (callback != null)
-      ctx.setCompilerCallback(callback)
-    process(args, ctx)
+      compileCtx.setCompilerCallback(callback)
+    process(args, compileCtx)
   }
 
   /** Entry point to the compiler with no optional arguments.
@@ -190,8 +190,8 @@ class Driver {
    *                    if compilation succeeded.
    */
   def process(args: Array[String], rootCtx: Context): Reporter = {
-    val (fileNames, ctx) = setup(args, rootCtx)
-    doCompile(newCompiler(ctx), fileNames)(ctx)
+    val (fileNames, compileCtx) = setup(args, rootCtx)
+    doCompile(newCompiler(using compileCtx), fileNames)(using compileCtx)
   }
 
   def main(args: Array[String]): Unit = {

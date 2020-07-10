@@ -41,7 +41,7 @@ import scala.collection.mutable
 class ExtractAPI extends Phase {
   override def phaseName: String = "sbt-api"
 
-  override def isRunnable(implicit ctx: Context): Boolean = {
+  override def isRunnable(using Context): Boolean = {
     def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
     super.isRunnable && (ctx.sbtCallback != null || forceRun)
   }
@@ -56,7 +56,7 @@ class ExtractAPI extends Phase {
   // definitions, and `PostTyper` does not change definitions).
   override def runsAfter: Set[String] = Set(transform.PostTyper.name)
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     val sourceFile = unit.source.file
     if (ctx.sbtCallback != null)
@@ -124,7 +124,7 @@ class ExtractAPI extends Phase {
  *  without going through an intermediate representation, see
  *  http://www.scala-sbt.org/0.13/docs/Understanding-Recompilation.html#Hashing+an+API+representation
  */
-private class ExtractAPICollector(implicit ctx: Context) extends ThunkHolder {
+private class ExtractAPICollector(using Context) extends ThunkHolder {
   import tpd._
   import xsbti.api
 

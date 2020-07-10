@@ -5,6 +5,7 @@ import org.junit.Assert.{ assertFalse, assertTrue, fail }
 
 import dotc.ast.Trees._
 import dotc.core.Decorators._
+import dotc.core.Contexts.{Context, ctx}
 
 class CheckTypeTest extends DottyTest {
   @Test
@@ -27,7 +28,7 @@ class CheckTypeTest extends DottyTest {
 
     checkTypes(source, types: _*) {
       case (List(a, b, lu, li, lr, ls, la, lb), context) =>
-        implicit val ctx = context
+        given Context = context
 
         assertTrue  ( b <:<  a)
         assertTrue  (li <:< lu)
@@ -59,7 +60,7 @@ class CheckTypeTest extends DottyTest {
 
     checkTypes(source, List(typesA, typesB)) {
       case (List(sups, subs), context) =>
-        implicit val ctx = context
+        given Context = context
 
         sups.lazyZip(subs).foreach { (sup, sub) => assertTrue(sub <:< sup) }
 

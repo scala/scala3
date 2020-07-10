@@ -777,7 +777,7 @@ trait Implicits { self: Typer =>
    *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
   def inferImplicitArg(formal: Type, span: Span)(using Context): Tree =
-    inferImplicit(formal, EmptyTree, span)(using ctx) match
+    inferImplicit(formal, EmptyTree, span) match
       case SearchSuccess(arg, _, _) => arg
       case fail @ SearchFailure(failed) =>
         if fail.isAmbiguous then failed
@@ -1625,7 +1625,7 @@ final class SearchRoot extends SearchHistory {
             // Substitute dictionary references into dictionary entry RHSs
             val rhsMap = new TreeTypeMap(treeMap = {
               case id: Ident if vsymMap.contains(id.symbol) =>
-                tpd.ref(vsymMap(id.symbol))(ctx.withSource(id.source)).withSpan(id.span)
+                tpd.ref(vsymMap(id.symbol))(using ctx.withSource(id.source)).withSpan(id.span)
               case tree => tree
             })
             val nrhss = rhss.map(rhsMap(_))

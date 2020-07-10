@@ -8,6 +8,8 @@ import scala.collection.mutable
 import scala.collection.generic.Clearable
 
 import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Contexts.{inContext, atPhase}
+import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.SymUtils._
@@ -26,7 +28,7 @@ import dotty.tools.dotc.util.WeakHashSet
  * not have access to the compiler instance.
  */
 class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
-  import int._
+  import int.{_, given _}
   import DottyBackendInterface.{symExtensions, _}
 
   lazy val TransientAttr = requiredClass[scala.transient]
@@ -202,16 +204,16 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   /** For currently compiled classes: All locally defined classes including local classes.
    *  The empty list for classes that are not currently compiled.
    */
-  private def getNestedClasses(sym: Symbol): List[Symbol] = definedClasses(sym, ctx.flattenPhase)
+  private def getNestedClasses(sym: Symbol): List[Symbol] = definedClasses(sym, flattenPhase)
 
   /** For currently compiled classes: All classes that are declared as members of this class
    *  (but not inherited ones). The empty list for classes that are not currently compiled.
    */
-  private def getMemberClasses(sym: Symbol): List[Symbol] = definedClasses(sym, ctx.lambdaLiftPhase)
+  private def getMemberClasses(sym: Symbol): List[Symbol] = definedClasses(sym, lambdaLiftPhase)
 
   private def definedClasses(sym: Symbol, phase: Phase) =
     if (sym.isDefinedInCurrentRun)
-      ctx.atPhase(phase) {
+      atPhase(phase) {
         toDenot(sym).info.decls.filter(_.isClass)
       }
     else Nil
@@ -228,10 +230,11 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
       val enclosingClassSym = {
         if (innerClassSym.isClass) {
-          val ct = ctx.withPhase(ctx.flattenPhase.prev)
-          toDenot(innerClassSym)(ct).owner.enclosingClass(ct)
+          atPhase(flattenPhase.prev) {
+            toDenot(innerClassSym).owner.enclosingClass
+          }
         }
-        else innerClassSym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
+        else atPhase(flattenPhase.prev)(innerClassSym.enclosingClass)
       } //todo is handled specially for JavaDefined symbols in scalac
 
       val enclosingClass: ClassBType = classBTypeFromSymbol(enclosingClassSym)
@@ -255,7 +258,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         if (innerClassSym.isAnonymousClass || innerClassSym.isAnonymousFunction) None
         else {
           val original = innerClassSym.initial
-          Some(innerClassSym.name(ctx.withPhase(original.validFor.phaseId)).mangledString) // moduleSuffix for module classes
+          Some(atPhase(original.validFor.phaseId)(innerClassSym.name).mangledString) // moduleSuffix for module classes
         }
       }
 

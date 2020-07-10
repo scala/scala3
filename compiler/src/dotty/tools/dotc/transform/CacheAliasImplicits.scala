@@ -46,7 +46,7 @@ class CacheAliasImplicits extends MiniPhase with IdentityDenotTransformer { this
 
   override def phaseName: String = CacheAliasImplicits.name
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
+  override def transformDefDef(tree: DefDef)(using Context): Tree = {
     val sym = tree.symbol
     val isCached = !sym.is(Inline) && {
       sym.info match {

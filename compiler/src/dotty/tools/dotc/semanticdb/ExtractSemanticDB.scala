@@ -35,13 +35,13 @@ class ExtractSemanticDB extends Phase:
 
   override val phaseName: String = ExtractSemanticDB.name
 
-  override def isRunnable(implicit ctx: Context) =
+  override def isRunnable(using Context) =
     super.isRunnable && ctx.settings.Ysemanticdb.value
 
   // Check not needed since it does not transform trees
   override def isCheckable: Boolean = false
 
-  override def run(implicit ctx: Context): Unit =
+  override def run(using Context): Unit =
     val unit = ctx.compilationUnit
     val extract = Extractor()
     extract.traverse(unit.tpdTree)

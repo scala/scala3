@@ -11,7 +11,7 @@ class SubtypingInvariantTests extends DottyTest {
   @Test
   def typeVarInvariant(): Unit = {
     checkCompile("typer", "class A") { (_, ctx0) =>
-      implicit val ctx: Context = ctx0
+      given Context = ctx0
       val a = newTypeVar(TypeBounds.empty)
       val b = newTypeVar(TypeBounds.empty)
       assert(a <:< b)

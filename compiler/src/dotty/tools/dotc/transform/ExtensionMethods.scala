@@ -10,7 +10,7 @@ import ValueClasses._
 import dotty.tools.dotc.ast.tpd
 import scala.collection.mutable
 import core._
-import Types._, Contexts._, Names._, Flags._, DenotTransformers._
+import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, Symbols._, StdNames._, Denotations._
 import TypeErasure.{ valueErasure, ErasedValueType }
 import NameKinds.{ExtMethName, UniqueExtMethName}
@@ -53,7 +53,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
 
   override def changesMembers: Boolean = true // the phase adds extension methods
 
-  override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
+  override def transform(ref: SingleDenotation)(using Context): SingleDenotation = ref match {
     case moduleClassSym: ClassDenotation if moduleClassSym.is(ModuleClass) =>
       moduleClassSym.linkedClass match {
         case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
@@ -117,7 +117,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
         case ClassInfo(pre, cls, _, _, _) if cls is ModuleClass =>
           cls.linkedClass match {
             case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
-              val info1 = cls.denot(ctx.withPhase(ctx.phase.next)).asClass.classInfo.derivedClassInfo(prefix = pre)
+              val info1 = atPhase(ctx.phase.next)(cls.denot).asClass.classInfo.derivedClassInfo(prefix = pre)
               ref.derivedSingleDenotation(ref.symbol, info1)
             case _ => ref
           }
@@ -125,17 +125,17 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       }
   }
 
-  protected def rewiredTarget(target: Symbol, derived: Symbol)(implicit ctx: Context): Symbol =
+  protected def rewiredTarget(target: Symbol, derived: Symbol)(using Context): Symbol =
     if (isMethodWithExtension(target) &&
         target.owner.linkedClass == derived.owner) extensionMethod(target)
     else NoSymbol
 
-  private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(implicit ctx: Context): TermSymbol = {
+  private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(using Context): TermSymbol = {
     val extensionMeth = ctx.newSymbol(staticClass, extensionName(imeth),
       (imeth.flags | Final) &~ (Override | Protected | AbsOverride),
       fullyParameterizedType(imeth.info, imeth.owner.asClass),
       privateWithin = imeth.privateWithin, coord = imeth.coord)
-    extensionMeth.addAnnotations(imeth.annotations)(ctx.withPhase(thisPhase))
+    atPhase(thisPhase)(extensionMeth.addAnnotations(imeth.annotations))
       // need to change phase to add tailrec annotation which gets removed from original method in the same phase.
     extensionMeth
   }
@@ -144,7 +144,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
   // TODO: this is state and should be per-run
   // todo: check that when transformation finished map is empty
 
-  override def transformTemplate(tree: tpd.Template)(implicit ctx: Context): tpd.Tree =
+  override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree =
     if (isDerivedValueClass(ctx.owner))
       /* This is currently redundant since value classes may not
          wrap over other value classes anyway.
@@ -160,7 +160,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       }
     else tree
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree =
+  override def transformDefDef(tree: tpd.DefDef)(using Context): tpd.Tree =
     if (isMethodWithExtension(tree.symbol)) {
       val origMeth = tree.symbol
       val origClass = ctx.owner.asClass
@@ -179,12 +179,12 @@ object ExtensionMethods {
   val name: String = "extmethods"
 
   /** Name of the extension method that corresponds to given instance method `meth`. */
-  def extensionName(imeth: Symbol)(implicit ctx: Context): TermName =
+  def extensionName(imeth: Symbol)(using Context): TermName =
     ExtMethName(imeth.name.asTermName)
 
   /** Return the extension method that corresponds to given instance method `meth`. */
-  def extensionMethod(imeth: Symbol)(implicit ctx: Context): TermSymbol =
-    ctx.atPhase(ctx.extensionMethodsPhase.next) {
+  def extensionMethod(imeth: Symbol)(using Context): TermSymbol =
+    atPhase(extensionMethodsPhase.next) {
       // FIXME use toStatic instead?
       val companion = imeth.owner.companionModule
       val companionInfo = companion.info

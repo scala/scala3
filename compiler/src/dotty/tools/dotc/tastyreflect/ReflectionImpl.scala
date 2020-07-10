@@ -11,7 +11,7 @@ object ReflectionImpl {
   def apply(rootContext: Contexts.Context): scala.tasty.Reflection =
     new scala.tasty.Reflection(new ReflectionCompilerInterface(rootContext))
 
-  def showTree(tree: tpd.Tree)(implicit ctx: Contexts.Context): String = {
+  def showTree(tree: tpd.Tree)(using Contexts.Context): String = {
     val refl = new scala.tasty.Reflection(new ReflectionCompilerInterface(MacroExpansion.context(tree)))
     val reflCtx = ctx.asInstanceOf[refl.Context]
     val reflTree = tree.asInstanceOf[refl.Tree]

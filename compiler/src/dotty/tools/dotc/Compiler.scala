@@ -138,12 +138,12 @@ class Compiler {
     runId += 1; runId
   }
 
-  def reset()(implicit ctx: Context): Unit = {
+  def reset()(using Context): Unit = {
     ctx.base.reset()
     if (ctx.run != null) ctx.run.reset()
   }
 
-  def newRun(implicit ctx: Context): Run = {
+  def newRun(using Context): Run = {
     reset()
     val rctx =
       if ctx.settings.Ysemanticdb.value

@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Decorators._
 import tasty._
 import config.Printers.{noPrinter, pickling}
@@ -25,7 +25,7 @@ class Pickler extends Phase {
   override def phaseName: String = Pickler.name
 
   // No need to repickle trees coming from TASTY
-  override def isRunnable(implicit ctx: Context): Boolean =
+  override def isRunnable(using Context): Boolean =
     super.isRunnable && !ctx.settings.fromTasty.value
 
   private def output(name: String, msg: String) = {
@@ -39,13 +39,13 @@ class Pickler extends Phase {
   private val picklers = new mutable.HashMap[ClassSymbol, TastyPickler]
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
-  private def dropCompanionModuleClasses(clss: List[ClassSymbol])(implicit ctx: Context): List[ClassSymbol] = {
+  private def dropCompanionModuleClasses(clss: List[ClassSymbol])(using Context): List[ClassSymbol] = {
     val companionModuleClasses =
       clss.filterNot(_.is(Module)).map(_.linkedClass).filterNot(_.isAbsent())
     clss.filterNot(companionModuleClasses.contains)
   }
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     pickling.println(i"unpickling in run ${ctx.runId}")
 
@@ -87,11 +87,11 @@ class Pickler extends Phase {
     }
   }
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     val result = super.runOn(units)
     if (ctx.settings.YtestPickler.value)
       testUnpickler(
-          ctx.fresh
+        using ctx.fresh
             .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
             .setReporter(new ThrowingReporter(ctx.reporter))
             .addMode(Mode.ReadPositions)
@@ -100,7 +100,7 @@ class Pickler extends Phase {
     result
   }
 
-  private def testUnpickler(implicit ctx: Context): Unit = {
+  private def testUnpickler(using Context): Unit = {
     pickling.println(i"testing unpickler at run ${ctx.runId}")
     ctx.initialize()
     val unpicklers =
@@ -116,7 +116,7 @@ class Pickler extends Phase {
     }
   }
 
-  private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(implicit ctx: Context) =
+  private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(using Context) =
     if (previous != unpickled) {
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)

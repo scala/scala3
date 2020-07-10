@@ -6,7 +6,7 @@ import java.lang.{ ClassLoader, ExceptionInInitializerError }
 import java.lang.reflect.InvocationTargetException
 
 import dotc.ast.tpd
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags
 import dotc.core.Flags._
@@ -33,7 +33,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
   /** A `MessageRenderer` for the REPL without file positions */
   private val messageRenderer = new MessageRendering {
-    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String = ""
+    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(using Context): String = ""
   }
 
   private var myClassLoader: ClassLoader = _
@@ -42,11 +42,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
 
   /** Class loader used to load compiled code */
-  private[repl] def classLoader()(implicit ctx: Context) =
+  private[repl] def classLoader()(using Context) =
     if (myClassLoader != null) myClassLoader
     else {
       val parent = parentClassLoader.getOrElse {
-        val compilerClasspath = ctx.platform.classPath(ctx).asURLs
+        val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
         new java.net.URLClassLoader(compilerClasspath.toArray, null)
       }
 
@@ -65,7 +65,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     }
 
   /** Return a String representation of a value we got from `classLoader()`. */
-  private[repl] def replStringOf(value: Object)(implicit ctx: Context): String = {
+  private[repl] def replStringOf(value: Object)(using Context): String = {
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
     myReplStringOf(value)
@@ -75,7 +75,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private def valueOf(sym: Symbol)(implicit ctx: Context): Option[String] = {
+  private def valueOf(sym: Symbol)(using Context): Option[String] = {
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
     val value =
@@ -97,23 +97,23 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
   /** Formats errors using the `messageRenderer` */
   def formatError(dia: Diagnostic)(implicit state: State): Diagnostic =
     new Diagnostic(
-      messageRenderer.messageAndPos(dia.msg, dia.pos, messageRenderer.diagnosticLevel(dia))(state.context),
+      messageRenderer.messageAndPos(dia.msg, dia.pos, messageRenderer.diagnosticLevel(dia))(using state.context),
       dia.pos,
       dia.level
     )
 
-  def renderTypeDef(d: Denotation)(implicit ctx: Context): Diagnostic =
+  def renderTypeDef(d: Denotation)(using Context): Diagnostic =
     infoDiagnostic("// defined " ++ d.symbol.showUser, d)
 
-  def renderTypeAlias(d: Denotation)(implicit ctx: Context): Diagnostic =
+  def renderTypeAlias(d: Denotation)(using Context): Diagnostic =
     infoDiagnostic("// defined alias " ++ d.symbol.showUser, d)
 
   /** Render method definition result */
-  def renderMethod(d: Denotation)(implicit ctx: Context): Diagnostic =
+  def renderMethod(d: Denotation)(using Context): Diagnostic =
     infoDiagnostic(d.symbol.showUser, d)
 
   /** Render value definition result */
-  def renderVal(d: Denotation)(implicit ctx: Context): Option[Diagnostic] = {
+  def renderVal(d: Denotation)(using Context): Option[Diagnostic] = {
     val dcl = d.symbol.showUser
 
     try {
@@ -135,7 +135,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     sw.toString
   }
 
-  private def infoDiagnostic(msg: String, d: Denotation)(implicit ctx: Context): Diagnostic =
+  private def infoDiagnostic(msg: String, d: Denotation)(using Context): Diagnostic =
     new Diagnostic.Info(msg, d.symbol.sourcePos)
 
 }
@@ -143,7 +143,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 object Rendering {
 
   implicit class ShowUser(val s: Symbol) extends AnyVal {
-    def showUser(implicit ctx: Context): String = {
+    def showUser(using Context): String = {
       val printer = new ReplPrinter(ctx)
       val text = printer.dclText(s)
       text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)

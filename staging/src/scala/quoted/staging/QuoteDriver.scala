@@ -57,7 +57,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
 
   override def initCtx: Context =
     val ictx = contextBase.initialCtx
-    ictx.settings.classpath.update(ClasspathFromClassloader(appClassloader))(ictx)
+    ictx.settings.classpath.update(ClasspathFromClassloader(appClassloader))(using ictx)
     ictx
 
   private def setToolboxSettings(ctx: FreshContext, settings: Toolbox.Settings): ctx.type =

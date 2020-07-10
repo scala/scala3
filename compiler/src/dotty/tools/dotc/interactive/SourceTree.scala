@@ -17,10 +17,10 @@ import util._, util.Spans._
 case class SourceTree(tree: tpd.Import | tpd.NameTree, source: SourceFile) {
 
   /** The position of `tree` */
-  final def pos(implicit ctx: Context): SourcePosition = source.atSpan(tree.span)
+  final def pos(using Context): SourcePosition = source.atSpan(tree.span)
 
   /** The position of the name in `tree` */
-  def namePos(implicit ctx: Context): SourcePosition = tree match {
+  def namePos(using Context): SourcePosition = tree match {
     case tree: tpd.NameTree =>
       // FIXME: Merge with NameTree#namePos ?
       val treeSpan = tree.span
@@ -51,7 +51,7 @@ case class SourceTree(tree: tpd.Import | tpd.NameTree, source: SourceFile) {
 }
 
 object SourceTree {
-  def fromSymbol(sym: ClassSymbol, id: String = "")(implicit ctx: Context): List[SourceTree] =
+  def fromSymbol(sym: ClassSymbol, id: String = "")(using Context): List[SourceTree] =
     if (sym == defn.SourceFileAnnot || // FIXME: No SourceFile annotation on SourceFile itself
         !sym.source.exists) // FIXME: We cannot deal with external projects yet
       Nil

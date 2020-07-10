@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.Context
+import core.Contexts.{Context, ctx}
 import Diagnostic.Error
 
 /**
@@ -10,7 +10,7 @@ import Diagnostic.Error
  * info to the underlying reporter.
  */
 class ThrowingReporter(reportInfo: Reporter) extends Reporter {
-  def doReport(dia: Diagnostic)(implicit ctx: Context): Unit = dia match {
+  def doReport(dia: Diagnostic)(using Context): Unit = dia match {
     case _: Error => throw dia
     case _ => reportInfo.doReport(dia)
   }

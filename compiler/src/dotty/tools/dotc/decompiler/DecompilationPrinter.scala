@@ -19,7 +19,7 @@ class DecompilationPrinter extends Phase {
 
   override def phaseName: String = "decompilationPrinter"
 
-  override def run(implicit ctx: Context): Unit =
+  override def run(using Context): Unit =
     if (ctx.settings.outputDir.isDefault) printToOutput(System.out)
     else {
       val outputDir = ctx.settings.outputDir.value
@@ -36,7 +36,7 @@ class DecompilationPrinter extends Phase {
       }
     }
 
-  private def printToOutput(out: PrintStream)(implicit ctx: Context): Unit = {
+  private def printToOutput(out: PrintStream)(using Context): Unit = {
     val unit = ctx.compilationUnit
     if (ctx.settings.printTasty.value)
       println(new TastyPrinter(unit.pickled.head._2).printContents())

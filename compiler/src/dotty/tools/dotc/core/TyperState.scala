@@ -39,7 +39,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
     else previous.constraint
 
   def constraint: Constraint = myConstraint
-  def constraint_=(c: Constraint)(implicit ctx: Context): Unit = {
+  def constraint_=(c: Constraint)(using Context): Unit = {
     if (Config.debugCheckConstraintsClosed && isGlobalCommittable) c.checkClosed()
     myConstraint = c
   }
@@ -96,7 +96,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
    *  typerstate. If it is unshared, run `op` in current typerState, restoring typerState
    *  to previous state afterwards.
    */
-  def test[T](op: Context ?=> T)(implicit ctx: Context): T =
+  def test[T](op: Context ?=> T)(using Context): T =
     if (isShared)
       op(using ctx.fresh.setExploreTyperState())
     else {
@@ -113,7 +113,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
         testReporter.inUse = true
         testReporter
       }
-      try op(using ctx)
+      try op
       finally {
         testReporter.inUse = false
         resetConstraintTo(savedConstraint)
@@ -141,7 +141,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
    * isApplicableSafe but also for (e.g. erased-lubs.scala) as well as
    * many parts of dotty itself.
    */
-  def commit()(implicit ctx: Context): Unit = {
+  def commit()(using Context): Unit = {
     Stats.record("typerState.commit")
     val targetState = ctx.typerState
     if (constraint ne targetState.constraint)
@@ -158,14 +158,14 @@ class TyperState(private val previous: TyperState /* | Null */) {
     isCommitted = true
   }
 
-  def mergeConstraintWith(that: TyperState)(implicit ctx: Context): Unit =
+  def mergeConstraintWith(that: TyperState)(using Context): Unit =
     constraint = constraint & (that.constraint, otherHasErrors = that.reporter.errorsReported)
 
   /** Make type variable instances permanent by assigning to `inst` field if
    *  type variable instantiation cannot be retracted anymore. Then, remove
    *  no-longer needed constraint entries.
    */
-  def gc()(implicit ctx: Context): Unit = {
+  def gc()(using Context): Unit = {
     val toCollect = new mutable.ListBuffer[TypeLambda]
     constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {
