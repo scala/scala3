@@ -13,9 +13,9 @@ import dotc.core.Contexts.{Context, ctx}
  */
 private[repl] class REPLFrontEnd extends FrontEnd {
 
-  override def isRunnable(implicit ctx: Context): Boolean = true
+  override def isRunnable(using Context): Boolean = true
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     assert(units.size == 1) // REPl runs one compilation unit at a time
 
     val unitContext = ctx.fresh.setCompilationUnit(units.head)

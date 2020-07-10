@@ -41,11 +41,11 @@ class ReplCompiler extends Compiler {
   def newRun(initCtx: Context, state: State): Run = new Run(this, initCtx) {
 
     /** Import previous runs and user defined imports */
-    override protected def rootContext(implicit ctx: Context): Context = {
-      def importContext(imp: tpd.Import)(implicit ctx: Context) =
+    override protected def rootContext(using Context): Context = {
+      def importContext(imp: tpd.Import)(using Context) =
         ctx.importContext(imp, imp.symbol)
 
-      def importPreviousRun(id: Int)(implicit ctx: Context) = {
+      def importPreviousRun(id: Int)(using Context) = {
         // we first import the wrapper object id
         val path = nme.EMPTY_PACKAGE ++ "." ++ objectNames(id)
         def importWrapper(c: Context, importGiven: Boolean) = {
@@ -59,11 +59,11 @@ class ReplCompiler extends Compiler {
         val imports = state.imports.getOrElse(id, Nil)
         if (imports.isEmpty) ctx0
         else imports.foldLeft(ctx0.fresh.setNewScope)((ctx, imp) =>
-          importContext(imp)(ctx))
+          importContext(imp)(using ctx))
       }
 
       (1 to state.objectIndex).foldLeft(super.rootContext)((ctx, id) =>
-        importPreviousRun(id)(ctx))
+        importPreviousRun(id)(using ctx))
     }
   }
 
@@ -136,7 +136,7 @@ class ReplCompiler extends Compiler {
       PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
     }
 
-  private def createUnit(defs: Definitions, span: Span)(implicit ctx: Context): CompilationUnit = {
+  private def createUnit(defs: Definitions, span: Span)(using Context): CompilationUnit = {
     val objectName = ctx.source.file.toString
     assert(objectName.startsWith(str.REPL_SESSION_LINE))
     assert(objectName.endsWith(defs.state.objectIndex.toString))
@@ -159,7 +159,7 @@ class ReplCompiler extends Compiler {
   final def compile(parsed: Parsed)(implicit state: State): Result[(CompilationUnit, State)] = {
     assert(!parsed.trees.isEmpty)
     val defs = definitions(parsed.trees, state)
-    val unit = createUnit(defs, Span(0, parsed.trees.last.span.end))(state.context)
+    val unit = createUnit(defs, Span(0, parsed.trees.last.span.end))(using state.context)
     runCompilationUnit(unit, defs.state)
   }
 
@@ -225,7 +225,7 @@ class ReplCompiler extends Compiler {
 
   final def typeCheck(expr: String, errorsAllowed: Boolean = false)(implicit state: State): Result[tpd.ValDef] = {
 
-    def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
+    def wrapped(expr: String, sourceFile: SourceFile, state: State)(using Context): Result[untpd.PackageDef] = {
       def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
         import untpd._
 
@@ -252,7 +252,7 @@ class ReplCompiler extends Compiler {
       }
     }
 
-    def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: Context): Result[tpd.ValDef] = {
+    def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(using Context): Result[tpd.ValDef] = {
       def error: Result[tpd.ValDef] =
         List(new Diagnostic.Error(s"Invalid scala expression",
           sourceFile.atSpan(Span(0, sourceFile.content.length)))).errors
