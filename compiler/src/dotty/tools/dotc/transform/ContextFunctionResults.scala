@@ -121,7 +121,7 @@ object ContextFunctionResults:
    */
   def integrateSelect(tree: untpd.Tree, n: Int = 0)(using Context): Boolean =
     if ctx.erasedTypes then
-      integrateSelect(tree, n)(using ctx.withPhase(erasurePhase))
+      atPhase(erasurePhase)(integrateSelect(tree, n))
     else tree match
       case Select(qual, name) =>
         if name == nme.apply && defn.isContextFunctionClass(tree.symbol.maybeOwner) then
