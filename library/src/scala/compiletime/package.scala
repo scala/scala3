@@ -29,24 +29,26 @@ package object compiletime {
    */
   inline def error(inline msg: String): Nothing = ???
 
-  /** Returns the string representation of interpolated elaborated code:
-   *
-   *  ```scala
-   *  inline def logged(p1: => Any) = {
-   *    val c = code"code: $p1"
-   *    val res = p1
-   *    (c, p1)
-   *  }
-   *  logged(identity("foo"))
-   *  // above is equivalent to:
-   *  // ("code: scala.Predef.identity("foo")", identity("foo"))
-   *  ```
-   *
-   * @note only by-name arguments will be displayed as "code".
-   *       Other values may display unintutively.
-   */
-  transparent inline def (inline self: StringContext) code (inline args: Any*): String =
-    ${ dotty.internal.CompileTimeMacros.codeExpr('self, 'args) }
+  extension (inline self: StringContext):
+   /** Returns the string representation of interpolated elaborated code:
+    *
+    *  ```scala
+    *  inline def logged(p1: => Any) = {
+    *    val c = code"code: $p1"
+    *    val res = p1
+    *    (c, p1)
+    *  }
+    *  logged(identity("foo"))
+    *  // above is equivalent to:
+    *  // ("code: scala.Predef.identity("foo")", identity("foo"))
+    *  ```
+    *
+    * @note only by-name arguments will be displayed as "code".
+    *       Other values may display unintutively.
+    */
+    transparent inline def code (inline args: Any*): String =
+      ${ dotty.internal.CompileTimeMacros.codeExpr('self, 'args) }
+  end extension
 
   /** Same as `constValue` but returns a `None` if a constant value
    *  cannot be constructed from the provided type. Otherwise returns

@@ -206,14 +206,12 @@ object Matcher {
       case _ => notMatched
     }
 
-    private extension treeListOps on (scrutinees: List[Tree]) {
+    extension (scrutinees: List[Tree]):
       /** Check that all trees match with =?= and concatenate the results with &&& */
-      def =?= (patterns: List[Tree])(using Context, Env): Matching =
+      private def =?= (patterns: List[Tree])(using Context, Env): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
-    }
 
-    private extension treeOps on (scrutinee0: Tree) {
-
+    extension (scrutinee0: Tree):
       /** Check that the trees match and return the contents from the pattern holes.
        *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
        *
@@ -222,7 +220,7 @@ object Matcher {
        *  @param `summon[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
        *  @return `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
        */
-      def =?= (pattern0: Tree)(using Context, Env): Matching = {
+      private def =?= (pattern0: Tree)(using Context, Env): Matching = {
 
         /* Match block flattening */ // TODO move to cases
         /** Normalize the tree */
@@ -426,7 +424,7 @@ object Matcher {
             notMatched
         }
       }
-    }
+    end extension
 
     private object ClosedPatternTerm {
       /** Matches a term that does not contain free variables defined in the pattern (i.e. not defined in `Env`) */
@@ -478,17 +476,19 @@ object Matcher {
     val matched: Matching = Some(Tuple())
     def matched(x: Any): Matching = Some(Tuple1(x))
 
-    def (self: Matching) asOptionOfTuple: Option[Tuple] = self
+    extension (self: Matching):
+      def asOptionOfTuple: Option[Tuple] = self
 
-    /** Concatenates the contents of two successful matchings or return a `notMatched` */
-    def (self: Matching) &&& (that: => Matching): Matching = self match {
-      case Some(x) =>
-        that match {
-          case Some(y) => Some(x ++ y)
-          case _ => None
-        }
-      case _ => None
-    }
+      /** Concatenates the contents of two successful matchings or return a `notMatched` */
+      def &&& (that: => Matching): Matching = self match {
+        case Some(x) =>
+          that match {
+            case Some(y) => Some(x ++ y)
+            case _ => None
+          }
+        case _ => None
+      }
+    end extension
 
   }
 
