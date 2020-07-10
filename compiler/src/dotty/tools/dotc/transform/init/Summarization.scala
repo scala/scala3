@@ -316,14 +316,14 @@ object Summarization {
     }
   }
 
-  def classSummary(cls: ClassSymbol)(implicit env: Env): ClassSummary =
+  def classSummary(cls: ClassSymbol)(implicit env: Env): ClassSummary = trace("summarizing " + cls.show, init) {
     def extractParentOuters(parent: Type, source: Tree): (ClassSymbol, Potentials) = {
       val tref = parent.typeConstructor.stripAnnots.asInstanceOf[TypeRef]
       val parentCls = tref.classSymbol.asClass
       if (tref.prefix != NoPrefix)
-        parentCls ->analyze(tref.prefix, source)._1
+        parentCls -> analyze(tref.prefix, source)(env.withOwner(cls))._1
       else
-        parentCls -> analyze(cls.enclosingClass.thisType, source)._1
+        parentCls -> analyze(cls.enclosingClass.thisType, source)(env.withOwner(cls))._1
     }
 
     if (cls.defTree.isEmpty)
@@ -344,5 +344,6 @@ object Summarization {
       val parentOuter = parents.map { parent => extractParentOuters(parent.tpe, parent) }
       ClassSummary(cls, parentOuter.toMap)
     }
+  }
 
 }
