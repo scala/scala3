@@ -238,7 +238,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
    *  all refinements for opaque types.
    */
   def declaredSelfTypeAsSeenFrom(site: Type)(using Context) =
-    def (tp: Type).stripOpaques: Type = tp match
+    extension (tp: Type) def stripOpaques: Type = tp match
       case RefinedType(parent, name, _) if self.info.decl(name).symbol.isOpaqueAlias =>
         parent.stripOpaques
       case _ =>

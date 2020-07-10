@@ -466,7 +466,7 @@ object RefChecks {
 
       def isImplemented(mbr: Symbol) =
         val mbrType = clazz.thisType.memberInfo(mbr)
-        def (sym: Symbol).isConcrete = sym.exists && !sym.is(Deferred)
+        extension (sym: Symbol) def isConcrete = sym.exists && !sym.is(Deferred)
         clazz.nonPrivateMembersNamed(mbr.name)
           .filterWithPredicate(
             impl => impl.symbol.isConcrete && mbrType.matchesLoosely(impl.info))

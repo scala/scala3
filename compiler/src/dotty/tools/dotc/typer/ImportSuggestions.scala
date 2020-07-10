@@ -266,7 +266,7 @@ trait ImportSuggestions:
   /** The `ref` parts of this list of pairs, discarding subsequent elements that
    *  have the same String part. Elements are sorted by their String parts.
    */
-  def (refs: List[(TermRef, String)]).distinctRefs(using Context): List[TermRef] = refs match
+  extension (refs: List[(TermRef, String)]) def distinctRefs(using Context): List[TermRef] = refs match
     case (ref, str) :: refs1 =>
       ref :: refs1.dropWhile(_._2 == str).distinctRefs
     case Nil =>
@@ -276,7 +276,7 @@ trait ImportSuggestions:
    *  `compare` is a partial order. If there's a tie, we take elements
    *  in the order thy appear in the list.
    */
-  def (refs: List[TermRef]).best(n: Int)(using Context): List[TermRef] =
+  extension (refs: List[TermRef]) def best(n: Int)(using Context): List[TermRef] =
     val top = new Array[TermRef](n)
     var filled = 0
     val rest = new mutable.ListBuffer[TermRef]

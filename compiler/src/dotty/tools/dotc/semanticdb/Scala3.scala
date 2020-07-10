@@ -105,7 +105,7 @@ object Scala3:
 
       val setterName = sym.name.toTermName.setterName
 
-      inline def (t: Type) matchingType = t.paramInfoss match
+      extension (t: Type) inline def matchingType = t.paramInfoss match
         case (arg::Nil)::Nil => t.resultType == defn.UnitType && arg == sym.info
         case _               => false
 
@@ -139,9 +139,10 @@ object Scala3:
 
   end LocalSymbol
 
-  private inline def (char: Char) isGlobalTerminal = (char: @switch) match
-    case '/' | '.' | '#' | ']' | ')' => true
-    case _                           => false
+  extension (char: Char):
+    private inline def isGlobalTerminal = (char: @switch) match
+      case '/' | '.' | '#' | ']' | ')' => true
+      case _                           => false
 
   extension StringOps on (symbol: String):
 

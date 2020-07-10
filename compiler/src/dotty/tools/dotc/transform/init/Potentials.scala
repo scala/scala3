@@ -147,9 +147,9 @@ object Potentials {
 
   // ------------------ operations on potentials ------------------
 
-  def (pot: Potential) toPots: Potentials = Potentials.empty + pot
+  extension (pot: Potential) def toPots: Potentials = Potentials.empty + pot
 
-  def (ps: Potentials) select (symbol: Symbol, source: Tree)(using Context): Summary =
+  extension (ps: Potentials) def select (symbol: Symbol, source: Tree)(using Context): Summary =
     ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
       // max potential length
       // TODO: it can be specified on a project basis via compiler options
@@ -166,7 +166,7 @@ object Potentials {
         (pots + FieldReturn(pot, symbol)(source), effs + FieldAccess(pot, symbol)(source))
     }
 
-  def (ps: Potentials) promote(source: Tree): Effects = ps.map(Promote(_)(source))
+  extension (ps: Potentials) def promote(source: Tree): Effects = ps.map(Promote(_)(source))
 
   def asSeenFrom(pot: Potential, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Potentials =
     trace(pot.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show + ", outer = " + show(outer), init, pots => show(pots.asInstanceOf[Potentials])) { pot match {

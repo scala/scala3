@@ -21,10 +21,10 @@ object Decorators {
    *  a simple collective extension.
    */
   implicit object PreNamedString:
-    def (pn: PreName).toTypeName: TypeName = pn match
+    extension (pn: PreName) def toTypeName: TypeName = pn match
       case s: String => typeName(s)
       case n: Name => n.toTypeName
-    def (pn: PreName).toTermName: TermName = pn match
+    extension (pn: PreName) def toTermName: TermName = pn match
       case s: String => termName(s)
       case n: Name => n.toTermName
 

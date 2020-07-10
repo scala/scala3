@@ -22,7 +22,7 @@ object Flags {
 
   type Flag = opaques.Flag
 
-  extension on (x: FlagSet) {
+  extension (x: FlagSet) {
 
     def bits: Long = opaques.toBits(x)
 
