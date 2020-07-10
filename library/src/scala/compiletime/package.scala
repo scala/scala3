@@ -30,7 +30,7 @@ package object compiletime {
   inline def error(inline msg: String): Nothing = ???
 
   extension (inline self: StringContext):
-    /** Returns the string representation of interpolated elaborated code:
+   /** Returns the string representation of interpolated elaborated code:
     *
     *  ```scala
     *  inline def logged(p1: => Any) = {
