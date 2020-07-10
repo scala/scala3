@@ -327,10 +327,11 @@ object Summarization {
     def extractParentOuters(parent: Type, source: Tree): (ClassSymbol, Potentials) = {
       val tref = parent.typeConstructor.stripAnnots.asInstanceOf[TypeRef]
       val parentCls = tref.classSymbol.asClass
+      val env2: Env = env.withOwner(cls.owner.lexicallyEnclosingClass)
       if (tref.prefix != NoPrefix)
-        parentCls -> analyze(tref.prefix, source)(env.withOwner(cls))._1
+        parentCls -> analyze(tref.prefix, source)(env2)._1
       else
-        parentCls -> analyze(cls.owner.lexicallyEnclosingClass.thisType, source)(env.withOwner(cls))._1
+        parentCls -> analyze(cls.owner.lexicallyEnclosingClass.thisType, source)(env2)._1
     }
 
     if (cls.defTree.isEmpty)

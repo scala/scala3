@@ -53,7 +53,9 @@ object Checking {
    *  However, summarization can be done lazily on-demand to improve
    *  performance.
    */
-  def checkClassBody(cdef: TypeDef)(implicit state: State): Unit = traceOp("checking " + cdef.symbol.show, init) {
+  def checkClassBody(cdef: TypeDef)(implicit state: State): Unit = {
+    traceIndented("\n\n>>>> checking " + cdef.symbol.show, init)
+
     val cls = cdef.symbol.asClass
     val tpl = cdef.rhs.asInstanceOf[Template]
 
