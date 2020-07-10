@@ -86,8 +86,15 @@ object Summarization {
         val cls = tref.classSymbol.asClass
         // local class may capture, thus we need to track it
         if (tref.prefix == NoPrefix) {
+          val cur = theCtx.owner.lexicallyEnclosingClass.asClass
           val thisRef = ThisRef()(expr)
-          Summary.empty + Warm(cls, thisRef)(expr)
+          val enclosing = cls.owner.lexicallyEnclosingClass.asClass
+          val (pots, effs) = resolveThis(enclosing, thisRef, cur, expr)
+          if pots.isEmpty then (Potentials.empty, effs)
+          else {
+            assert(pots.size == 1)
+            (Warm(cls, pots.head)(expr).toPots, effs)
+          }
         }
         else {
           val (pots, effs) = analyze(tref.prefix, expr)
@@ -323,7 +330,7 @@ object Summarization {
       if (tref.prefix != NoPrefix)
         parentCls -> analyze(tref.prefix, source)(env.withOwner(cls))._1
       else
-        parentCls -> analyze(cls.enclosingClass.thisType, source)(env.withOwner(cls))._1
+        parentCls -> analyze(cls.owner.lexicallyEnclosingClass.thisType, source)(env.withOwner(cls))._1
     }
 
     if (cls.defTree.isEmpty)
