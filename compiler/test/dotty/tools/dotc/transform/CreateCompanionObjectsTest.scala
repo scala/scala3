@@ -25,7 +25,7 @@ class CreateCompanionObjectsTest extends DottyTest {
   @Test
   def shouldCreateNonExistingObjectsInPackage = checkCompile("typer", "class A{} ") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
 
       val transformer = new PostTyperTransformer {
         override def transformations = Array(new CreateCompanionObjects {
@@ -51,7 +51,7 @@ class CreateCompanionObjectsTest extends DottyTest {
   @Test
   def shouldCreateNonExistingObjectsInBlock = checkCompile("typer", "class D {def p = {class A{}; 1}} ") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       val transformer = new PostTyperTransformer {
         override def transformations = Array(new CreateCompanionObjects {
 
@@ -76,7 +76,7 @@ class CreateCompanionObjectsTest extends DottyTest {
   @Test
   def shouldCreateNonExistingObjectsInTemplate = checkCompile("typer", "class D {class A{}; } ") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       val transformer = new PostTyperTransformer {
         override def transformations = Array(new CreateCompanionObjects {
           override def name: String = "create all companion modules"
@@ -100,7 +100,7 @@ class CreateCompanionObjectsTest extends DottyTest {
   @Test
   def shouldCreateOnlyIfAskedFor = checkCompile("typer", "class DONT {class CREATE{}; } ") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       val transformer = new PostTyperTransformer {
         override def transformations = Array(new CreateCompanionObjects {
           override def name: String = "create all companion modules"

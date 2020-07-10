@@ -14,7 +14,7 @@ import core.Contexts._
 import core.Flags
 
 object ModifiersParsingTest {
-  implicit val ctx: Context = (new ContextBase).initialCtx
+  given Context = (new ContextBase).initialCtx
 
   def parse(code: String): Tree = {
     val (_, stats) = new Parser(SourceFile.virtual("<meta>", code)).templateStatSeq()
@@ -74,7 +74,7 @@ object ModifiersParsingTest {
 
 
 class ModifiersParsingTest {
-  import ModifiersParsingTest._
+  import ModifiersParsingTest.{_, given _}
 
 
   @Test def valDef = {

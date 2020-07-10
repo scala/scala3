@@ -13,7 +13,7 @@ class TreeTransformerTest extends DottyTest {
   @Test
   def shouldReturnSameTreeIfUnchanged: Unit = checkCompile("typer", "class A{ val d = 1}") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       class EmptyTransform extends MiniPhase {
         override def phaseName: String = "empty"
         init(ctx.base, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -29,7 +29,7 @@ class TreeTransformerTest extends DottyTest {
   // Disabled, awaiting resolution. @Test
   def canReplaceConstant: Unit = checkCompile("typer", "class A{ val d = 1}") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       class ConstantTransform extends MiniPhase {
 
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context): tpd.Tree = tpd.Literal(Constant(2))
@@ -47,7 +47,7 @@ class TreeTransformerTest extends DottyTest {
   @Test
   def canOverwrite: Unit = checkCompile("typer", "class A{ val d = 1}") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       class Transformation extends MiniPhase {
 
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context): tpd.Tree = tpd.Literal(Constant(-1))
@@ -73,7 +73,7 @@ class TreeTransformerTest extends DottyTest {
   @Test
   def transformationOrder: Unit = checkCompile("typer", "class A{ val d = 1}") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       class Transformation1 extends MiniPhase {
         override def phaseName: String = "transformationOrder1"
 
@@ -115,7 +115,7 @@ class TreeTransformerTest extends DottyTest {
   @Test
   def invocationCount: Unit = checkCompile("typer", "class A{ val d = 1}") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       var transformed1 = 0
       class Transformation1 extends MiniPhase {
         override def phaseName: String = "invocationCount1"

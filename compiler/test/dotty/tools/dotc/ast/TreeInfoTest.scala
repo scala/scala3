@@ -8,6 +8,7 @@ import core.StdNames.nme
 import core.Types._
 import core.Symbols._
 import org.junit.Assert._
+import core.Contexts.{Context, ctx}
 
 class TreeInfoTest extends DottyTest {
 
@@ -16,7 +17,7 @@ class TreeInfoTest extends DottyTest {
   @Test
   def testDefPath: Unit = checkCompile("typer", "class A { def bar = { val x = { val z = 0; 0} }} ") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       val xTree = tree.find(tree => tree.symbol.name == termName("x")).get
       val path = defPath(xTree.symbol, tree)
       assertEquals(List(

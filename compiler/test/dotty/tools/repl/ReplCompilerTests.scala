@@ -4,6 +4,7 @@ import java.util.regex.Pattern
 
 import org.junit.Assert.{assertTrue => assert, _}
 import org.junit.{Ignore, Test}
+import dotty.tools.dotc.core.Contexts.Context
 
 class ReplCompilerTests extends ReplTest {
   import ReplCompilerTests._
@@ -189,7 +190,7 @@ class ReplCompilerTests extends ReplTest {
     }
 
   @Test def i7934: Unit = fromInitialState { state =>
-    implicit val ctx = state.context
+    given Context = state.context
     assertFalse(ParseResult.isIncomplete("_ + 1"))  // was: assertThrows[NullPointerException]
   }
 

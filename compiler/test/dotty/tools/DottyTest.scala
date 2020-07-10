@@ -80,7 +80,7 @@ trait DottyTest extends ContextEscapeDetection {
     val gatheredSource = s"${source}\nobject A$dummyName {$vals}"
     checkCompile("typer", gatheredSource) {
       (tree, context) =>
-        implicit val ctx = context
+        given Context = context
         val findValDef: (List[tpd.ValDef], tpd.Tree) => List[tpd.ValDef] =
           (acc , tree) =>  {
             tree match {
