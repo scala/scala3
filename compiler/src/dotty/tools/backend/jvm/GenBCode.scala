@@ -46,10 +46,13 @@ class GenBCode extends Phase {
     myOutput
   }
 
-  def run(using Context): Unit = {
-    new GenBCodePipeline(new DottyBackendInterface(
-      outputDir, superCallsMap.toMap)(using ctx))(using ctx).run(ctx.compilationUnit.tpdTree)
-  }
+  def run(using Context): Unit =
+    new GenBCodePipeline(
+      new DottyBackendInterface(
+        outputDir, superCallsMap.toMap
+      )
+    ).run(ctx.compilationUnit.tpdTree)
+
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     try super.runOn(units)

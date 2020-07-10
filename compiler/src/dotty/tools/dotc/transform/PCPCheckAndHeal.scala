@@ -101,7 +101,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
 
   /** Transform quoted trees while maintaining phase correctness */
   override protected def transformQuotation(body: Tree, quote: Tree)(using Context): Tree = {
-    val taggedTypes = new PCPCheckAndHeal.QuoteTypeTags(quote.span)(using ctx)
+    val taggedTypes = new PCPCheckAndHeal.QuoteTypeTags(quote.span)
 
     if (ctx.property(InAnnotation).isDefined)
       ctx.error("Cannot have a quote in an annotation", quote.sourcePos)

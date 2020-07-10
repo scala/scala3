@@ -137,14 +137,18 @@ class TreeChecker extends Phase with SymTransformer {
     val squahsedPhase = ctx.base.squashed(prevPhase)
     ctx.echo(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
 
-    assertSelectWrapsNew(ctx.compilationUnit.tpdTree)(using ctx)
+    inContext(ctx) {
+      assertSelectWrapsNew(ctx.compilationUnit.tpdTree)
+    }
 
     val checkingCtx = ctx
         .fresh
         .setMode(Mode.ImplicitsEnabled)
         .setReporter(new ThrowingReporter(ctx.reporter))
 
-    val checker = new Checker(previousPhases(phasesToRun.toList)(using ctx))
+    val checker = inContext(ctx) {
+      new Checker(previousPhases(phasesToRun.toList))
+    }
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(using checkingCtx)
     catch {
       case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped

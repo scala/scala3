@@ -415,7 +415,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
    *  The tests in sbt `types-in-used-names-a`, `types-in-used-names-b`,
    *  `as-seen-from-a` and `as-seen-from-b` rely on this.
    */
-  private abstract class TypeDependencyTraverser(using Context) extends TypeTraverser()(using ctx) {
+  private abstract class TypeDependencyTraverser(using Context) extends TypeTraverser() {
     protected def addDependency(symbol: Symbol): Unit
 
     val seen = new mutable.HashSet[Type]

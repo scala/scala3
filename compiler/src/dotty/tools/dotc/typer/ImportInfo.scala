@@ -52,7 +52,7 @@ class ImportInfo(symf: Context ?=> Symbol,
 
   def sym(using Context): Symbol = {
     if (mySym == null) {
-      mySym = symf(using ctx)
+      mySym = symf
       assert(mySym != null)
     }
     mySym

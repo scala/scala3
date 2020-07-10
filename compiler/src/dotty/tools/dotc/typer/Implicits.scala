@@ -777,7 +777,7 @@ trait Implicits { self: Typer =>
    *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
   def inferImplicitArg(formal: Type, span: Span)(using Context): Tree =
-    inferImplicit(formal, EmptyTree, span)(using ctx) match
+    inferImplicit(formal, EmptyTree, span) match
       case SearchSuccess(arg, _, _) => arg
       case fail @ SearchFailure(failed) =>
         if fail.isAmbiguous then failed

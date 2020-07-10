@@ -285,7 +285,7 @@ object SymbolLoaders {
 
       enterFlatClasses = Some { ctx =>
         enterFlatClasses = None
-        enterClasses(root, packageName, flat = true)(using ctx)
+        inContext(ctx){enterClasses(root, packageName, flat = true)}
       }
       enterClasses(root, packageName, flat = false)
       if (!root.isEmptyPackage)

@@ -1,7 +1,7 @@
 package dotty.tools.dotc.util
 
 import dotty.tools.dotc.core.Comments.{Comment, CommentsContext}
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts.{Context, ctx, inContext}
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.printing.SyntaxHighlighting
@@ -135,10 +135,10 @@ object ParsedComment {
    * @param items The items to format into a list.
    * @return A markdown list of descriptions.
    */
-  private def toDescriptionList(ctx: Context, items: List[String]): String = {
+  private def toDescriptionList(ctx: Context, items: List[String]): String = inContext(ctx) {
     val formattedItems = items.map { p =>
       val name :: rest = p.split(" ", 2).toList
-      s"${bold(name)(using ctx)} ${rest.mkString("").trim}"
+      s"${bold(name)} ${rest.mkString("").trim}"
     }
     toMarkdownList(ctx, formattedItems)
   }
@@ -175,13 +175,14 @@ object ParsedComment {
    * @param snippet  The code snippet
    * @return `snippet`, wrapped in a code fence.
    */
-  private def toCodeFence(language: String)(ctx: Context, snippet: String): String =
-    if (colorEnabled(using ctx))
-      SyntaxHighlighting.highlight(snippet)(using ctx)
+  private def toCodeFence(language: String)(ctx: Context, snippet: String): String = inContext(ctx) {
+    if colorEnabled then
+      SyntaxHighlighting.highlight(snippet)
     else
       s"""```$language
          |$snippet
          |```""".stripMargin
+  }
 
   /**
    * Format the elements of documentation associated with a given tag using `fn`, and starts the

@@ -113,7 +113,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
         testReporter.inUse = true
         testReporter
       }
-      try op(using ctx)
+      try op
       finally {
         testReporter.inUse = false
         resetConstraintTo(savedConstraint)

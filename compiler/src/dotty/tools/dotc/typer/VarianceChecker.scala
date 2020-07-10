@@ -20,7 +20,7 @@ import reporting.trace
 object VarianceChecker {
   case class VarianceError(tvar: Symbol, required: Variance)
   def check(tree: tpd.Tree)(using Context): Unit =
-    new VarianceChecker(using ctx).Traverser.traverse(tree)
+    VarianceChecker().Traverser.traverse(tree)
 
   /** Check that variances of type lambda correspond to their occurrences in its body.
    *  Note: this is achieved by a mechanism separate from checking class type parameters.

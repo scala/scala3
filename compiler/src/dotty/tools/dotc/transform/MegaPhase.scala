@@ -405,13 +405,13 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       case Thicket(stats) => cpy.Thicket(stat)(stats.mapConserve(transformStat))
       case _ => transformTree(stat, start)(using ctx.exprContext(stat, exprOwner))
     }
-    val nestedCtx = prepStats(trees, start)(using ctx)
+    val nestedCtx = prepStats(trees, start)
     val trees1 = flatten(trees.mapConserve(transformStat(_)(using nestedCtx)))
     goStats(trees1, start)(using nestedCtx)
   }
 
   def transformUnit(tree: Tree)(using Context): Tree = {
-    val nestedCtx = prepUnit(tree, 0)(using ctx)
+    val nestedCtx = prepUnit(tree, 0)
     val tree1 = transformTree(tree, 0)(using nestedCtx)
     goUnit(tree1, 0)(using nestedCtx)
   }
@@ -548,7 +548,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goIdent(tree: Ident, start: Int)(using Context): Tree = {
     val phase = nxIdentTransPhase(start)
     if (phase == null) tree
-    else phase.transformIdent(tree)(using ctx) match {
+    else phase.transformIdent(tree) match {
       case tree1: Ident => goIdent(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -563,7 +563,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goSelect(tree: Select, start: Int)(using Context): Tree = {
     val phase = nxSelectTransPhase(start)
     if (phase == null) tree
-    else phase.transformSelect(tree)(using ctx) match {
+    else phase.transformSelect(tree) match {
       case tree1: Select => goSelect(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -578,7 +578,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goThis(tree: This, start: Int)(using Context): Tree = {
     val phase = nxThisTransPhase(start)
     if (phase == null) tree
-    else phase.transformThis(tree)(using ctx) match {
+    else phase.transformThis(tree) match {
       case tree1: This => goThis(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -593,7 +593,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goSuper(tree: Super, start: Int)(using Context): Tree = {
     val phase = nxSuperTransPhase(start)
     if (phase == null) tree
-    else phase.transformSuper(tree)(using ctx) match {
+    else phase.transformSuper(tree) match {
       case tree1: Super => goSuper(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -608,7 +608,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goApply(tree: Apply, start: Int)(using Context): Tree = {
     val phase = nxApplyTransPhase(start)
     if (phase == null) tree
-    else phase.transformApply(tree)(using ctx) match {
+    else phase.transformApply(tree) match {
       case tree1: Apply => goApply(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -623,7 +623,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goTypeApply(tree: TypeApply, start: Int)(using Context): Tree = {
     val phase = nxTypeApplyTransPhase(start)
     if (phase == null) tree
-    else phase.transformTypeApply(tree)(using ctx) match {
+    else phase.transformTypeApply(tree) match {
       case tree1: TypeApply => goTypeApply(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -638,7 +638,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goLiteral(tree: Literal, start: Int)(using Context): Tree = {
     val phase = nxLiteralTransPhase(start)
     if (phase == null) tree
-    else phase.transformLiteral(tree)(using ctx) match {
+    else phase.transformLiteral(tree) match {
       case tree1: Literal => goLiteral(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -653,7 +653,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goNew(tree: New, start: Int)(using Context): Tree = {
     val phase = nxNewTransPhase(start)
     if (phase == null) tree
-    else phase.transformNew(tree)(using ctx) match {
+    else phase.transformNew(tree) match {
       case tree1: New => goNew(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -668,7 +668,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goTyped(tree: Typed, start: Int)(using Context): Tree = {
     val phase = nxTypedTransPhase(start)
     if (phase == null) tree
-    else phase.transformTyped(tree)(using ctx) match {
+    else phase.transformTyped(tree) match {
       case tree1: Typed => goTyped(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -683,7 +683,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goAssign(tree: Assign, start: Int)(using Context): Tree = {
     val phase = nxAssignTransPhase(start)
     if (phase == null) tree
-    else phase.transformAssign(tree)(using ctx) match {
+    else phase.transformAssign(tree) match {
       case tree1: Assign => goAssign(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -698,7 +698,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goBlock(tree: Block, start: Int)(using Context): Tree = {
     val phase = nxBlockTransPhase(start)
     if (phase == null) tree
-    else phase.transformBlock(tree)(using ctx) match {
+    else phase.transformBlock(tree) match {
       case tree1: Block => goBlock(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -713,7 +713,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goIf(tree: If, start: Int)(using Context): Tree = {
     val phase = nxIfTransPhase(start)
     if (phase == null) tree
-    else phase.transformIf(tree)(using ctx) match {
+    else phase.transformIf(tree) match {
       case tree1: If => goIf(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -728,7 +728,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goClosure(tree: Closure, start: Int)(using Context): Tree = {
     val phase = nxClosureTransPhase(start)
     if (phase == null) tree
-    else phase.transformClosure(tree)(using ctx) match {
+    else phase.transformClosure(tree) match {
       case tree1: Closure => goClosure(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -743,7 +743,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goMatch(tree: Match, start: Int)(using Context): Tree = {
     val phase = nxMatchTransPhase(start)
     if (phase == null) tree
-    else phase.transformMatch(tree)(using ctx) match {
+    else phase.transformMatch(tree) match {
       case tree1: Match => goMatch(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -758,7 +758,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goCaseDef(tree: CaseDef, start: Int)(using Context): Tree = {
     val phase = nxCaseDefTransPhase(start)
     if (phase == null) tree
-    else phase.transformCaseDef(tree)(using ctx) match {
+    else phase.transformCaseDef(tree) match {
       case tree1: CaseDef => goCaseDef(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -773,7 +773,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goLabeled(tree: Labeled, start: Int)(using Context): Tree = {
     val phase = nxLabeledTransPhase(start)
     if (phase == null) tree
-    else phase.transformLabeled(tree)(using ctx) match {
+    else phase.transformLabeled(tree) match {
       case tree1: Labeled => goLabeled(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -788,7 +788,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goReturn(tree: Return, start: Int)(using Context): Tree = {
     val phase = nxReturnTransPhase(start)
     if (phase == null) tree
-    else phase.transformReturn(tree)(using ctx) match {
+    else phase.transformReturn(tree) match {
       case tree1: Return => goReturn(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -803,7 +803,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goWhileDo(tree: WhileDo, start: Int)(using Context): Tree = {
     val phase = nxWhileDoTransPhase(start)
     if (phase == null) tree
-    else phase.transformWhileDo(tree)(using ctx) match {
+    else phase.transformWhileDo(tree) match {
       case tree1: WhileDo => goWhileDo(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -818,7 +818,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goTry(tree: Try, start: Int)(using Context): Tree = {
     val phase = nxTryTransPhase(start)
     if (phase == null) tree
-    else phase.transformTry(tree)(using ctx) match {
+    else phase.transformTry(tree) match {
       case tree1: Try => goTry(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -833,7 +833,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goSeqLiteral(tree: SeqLiteral, start: Int)(using Context): Tree = {
     val phase = nxSeqLiteralTransPhase(start)
     if (phase == null) tree
-    else phase.transformSeqLiteral(tree)(using ctx) match {
+    else phase.transformSeqLiteral(tree) match {
       case tree1: SeqLiteral => goSeqLiteral(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -848,7 +848,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goInlined(tree: Inlined, start: Int)(using Context): Tree = {
     val phase = nxInlinedTransPhase(start)
     if (phase == null) tree
-    else phase.transformInlined(tree)(using ctx) match {
+    else phase.transformInlined(tree) match {
       case tree1: Inlined => goInlined(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -863,7 +863,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goTypeTree(tree: TypeTree, start: Int)(using Context): Tree = {
     val phase = nxTypeTreeTransPhase(start)
     if (phase == null) tree
-    else phase.transformTypeTree(tree)(using ctx) match {
+    else phase.transformTypeTree(tree) match {
       case tree1: TypeTree => goTypeTree(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -878,7 +878,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goBind(tree: Bind, start: Int)(using Context): Tree = {
     val phase = nxBindTransPhase(start)
     if (phase == null) tree
-    else phase.transformBind(tree)(using ctx) match {
+    else phase.transformBind(tree) match {
       case tree1: Bind => goBind(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -893,7 +893,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goAlternative(tree: Alternative, start: Int)(using Context): Tree = {
     val phase = nxAlternativeTransPhase(start)
     if (phase == null) tree
-    else phase.transformAlternative(tree)(using ctx) match {
+    else phase.transformAlternative(tree) match {
       case tree1: Alternative => goAlternative(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -908,7 +908,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goUnApply(tree: UnApply, start: Int)(using Context): Tree = {
     val phase = nxUnApplyTransPhase(start)
     if (phase == null) tree
-    else phase.transformUnApply(tree)(using ctx) match {
+    else phase.transformUnApply(tree) match {
       case tree1: UnApply => goUnApply(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -923,7 +923,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goValDef(tree: ValDef, start: Int)(using Context): Tree = {
     val phase = nxValDefTransPhase(start)
     if (phase == null) tree
-    else phase.transformValDef(tree)(using ctx) match {
+    else phase.transformValDef(tree) match {
       case tree1: ValDef => goValDef(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -938,7 +938,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goDefDef(tree: DefDef, start: Int)(using Context): Tree = {
     val phase = nxDefDefTransPhase(start)
     if (phase == null) tree
-    else phase.transformDefDef(tree)(using ctx) match {
+    else phase.transformDefDef(tree) match {
       case tree1: DefDef => goDefDef(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -953,7 +953,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goTypeDef(tree: TypeDef, start: Int)(using Context): Tree = {
     val phase = nxTypeDefTransPhase(start)
     if (phase == null) tree
-    else phase.transformTypeDef(tree)(using ctx) match {
+    else phase.transformTypeDef(tree) match {
       case tree1: TypeDef => goTypeDef(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -968,7 +968,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goTemplate(tree: Template, start: Int)(using Context): Tree = {
     val phase = nxTemplateTransPhase(start)
     if (phase == null) tree
-    else phase.transformTemplate(tree)(using ctx) match {
+    else phase.transformTemplate(tree) match {
       case tree1: Template => goTemplate(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -983,7 +983,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goPackageDef(tree: PackageDef, start: Int)(using Context): Tree = {
     val phase = nxPackageDefTransPhase(start)
     if (phase == null) tree
-    else phase.transformPackageDef(tree)(using ctx) match {
+    else phase.transformPackageDef(tree) match {
       case tree1: PackageDef => goPackageDef(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
@@ -998,7 +998,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goStats(trees: List[Tree], start: Int)(using Context): List[Tree] = {
     val phase = nxStatsTransPhase(start)
     if (phase == null) trees
-    else goStats(phase.transformStats(trees)(using ctx), phase.idxInGroup + 1)
+    else goStats(phase.transformStats(trees), phase.idxInGroup + 1)
   }
 
   def prepUnit(tree: Tree, start: Int)(using Context): Context = {
@@ -1010,7 +1010,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goUnit(tree: Tree, start: Int)(using Context): Tree = {
     val phase = nxUnitTransPhase(start)
     if (phase == null) tree
-    else goUnit(phase.transformUnit(tree)(using ctx), phase.idxInGroup + 1)
+    else goUnit(phase.transformUnit(tree), phase.idxInGroup + 1)
   }
 
   def prepOther(tree: Tree, start: Int)(using Context): Context = {
@@ -1022,6 +1022,6 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def goOther(tree: Tree, start: Int)(using Context): Tree = {
     val phase = nxOtherTransPhase(start)
     if (phase == null) tree
-    else goOther(phase.transformOther(tree)(using ctx), phase.idxInGroup + 1)
+    else goOther(phase.transformOther(tree), phase.idxInGroup + 1)
   }
 }

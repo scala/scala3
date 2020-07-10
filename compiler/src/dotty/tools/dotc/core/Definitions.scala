@@ -1012,7 +1012,7 @@ class Definitions {
     else if (isErased)
       ctx.requiredClass("scala.ErasedFunction" + n.toString)
     else if (n <= MaxImplementedFunctionArity)
-      FunctionClassPerRun()(using ctx)(n)
+      FunctionClassPerRun()(n)
     else
       ctx.requiredClass("scala.Function" + n.toString)
 

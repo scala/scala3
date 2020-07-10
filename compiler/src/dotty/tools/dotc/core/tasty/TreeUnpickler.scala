@@ -964,8 +964,9 @@ class TreeUnpickler(reader: TastyReader,
         readImport()
       case PACKAGE =>
         val start = currentAddr
-        processPackage { (pid, end) => implicit ctx =>
-          setSpan(start, PackageDef(pid, readIndexedStats(exprOwner, end)(using ctx)))
+        processPackage { (pid, end) => ctx =>
+          given Context = ctx
+          setSpan(start, PackageDef(pid, readIndexedStats(exprOwner, end)))
         }
       case _ =>
         readTerm()(using ctx.withOwner(exprOwner))
@@ -1054,7 +1055,7 @@ class TreeUnpickler(reader: TastyReader,
         ConstFold(untpd.Select(qual, name).withType(tpe))
 
       def completeSelect(name: Name, sig: Signature): Select =
-        val qual = readTerm()(using ctx)
+        val qual = readTerm()
         val denot = accessibleDenot(qual.tpe.widenIfUnstable, name, sig)
         makeSelect(qual, name, denot)
 

@@ -146,7 +146,7 @@ trait Reporting { thisCtx: Context =>
     error(msg.mapMsg("Implementation restriction: " + _), pos)
 
   def incompleteInputError(msg: Message, pos: SourcePosition = NoSourcePosition)(using Context): Unit =
-    reporter.incomplete(new Error(msg, pos))(using ctx)
+    reporter.incomplete(new Error(msg, pos))
 
   /** Log msg if settings.log contains the current phase.
    *  See [[config.CompilerCommand#explainAdvanced]] for the exact meaning of
