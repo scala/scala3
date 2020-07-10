@@ -47,9 +47,9 @@ class Erasure extends Phase with DenotTransformer {
 
   def transform(ref: SingleDenotation)(using Context): SingleDenotation = ref match {
     case ref: SymDenotation =>
-      def isCompacted(sym: Symbol) =
-        sym.isAnonymousFunction && {
-          sym.info(using ctx.withPhase(ctx.phase.next)) match {
+      def isCompacted(symd: SymDenotation) =
+        symd.isAnonymousFunction && {
+          atPhase(ctx.phase.next)(symd.info) match {
             case MethodType(nme.ALLARGS :: Nil) => true
             case _                              => false
           }
@@ -81,7 +81,7 @@ class Erasure extends Phase with DenotTransformer {
         val newInfo = transformInfo(oldSymbol, oldInfo)
         val oldFlags = ref.flags
         var newFlags =
-          if (oldSymbol.is(Flags.TermParam) && isCompacted(oldSymbol.owner)) oldFlags &~ Flags.Param
+          if (oldSymbol.is(Flags.TermParam) && isCompacted(oldSymbol.owner.denot)) oldFlags &~ Flags.Param
           else oldFlags
         val oldAnnotations = ref.annotations
         var newAnnotations = oldAnnotations
