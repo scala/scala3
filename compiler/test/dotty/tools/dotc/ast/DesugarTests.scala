@@ -11,7 +11,7 @@ import org.junit.Assert._
 class DesugarTests extends DottyTest {
   import tpd._
 
-  private def validSym(sym: Symbol)(implicit ctx: Context): Unit = {
+  private def validSym(sym: Symbol)(using Context): Unit = {
       assert(
         // remaining symbols must be either synthetic:
         sym.is(Synthetic) ||
