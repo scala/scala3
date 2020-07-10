@@ -6,12 +6,12 @@ import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Phases
+import dotty.tools.dotc.core.Phases.{Phase, postTyperPhase}
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 
 /** Ycheck inlined positions */
-class YCheckPositions extends Phases.Phase {
+class YCheckPositions extends Phase {
   import tpd._
 
   def phaseName: String = "inlinedPositions"
@@ -55,7 +55,7 @@ class YCheckPositions extends Phases.Phase {
     }
 
   private def isMacro(call: Tree)(using Context) =
-    if (ctx.phase <= ctx.postTyperPhase) call.symbol.is(Macro)
+    if (ctx.phase <= postTyperPhase) call.symbol.is(Macro)
     else call.isInstanceOf[Select] // The call of a macro after typer is encoded as a Select while other inlines are Ident
                                    // TODO remove this distinction once Inline nodes of expanded macros can be trusted (also in Inliner.inlineCallTrace)
 }

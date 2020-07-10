@@ -5,6 +5,7 @@ package core
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
 import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._
 import NameOps._, NameKinds._, Phases._
+import Phases.typerPhase
 import Constants.Constant
 import TypeApplications.TypeParamInfo
 import Scopes.Scope
@@ -53,7 +54,7 @@ trait SymDenotations { thisCtx: Context =>
     if (denot.isOneOf(ValidForeverFlags) || denot.isRefinementClass || denot.isImport) true
     else {
       val initial = denot.initial
-      val firstPhaseId = initial.validFor.firstPhaseId.max(thisCtx.typerPhase.id)
+      val firstPhaseId = initial.validFor.firstPhaseId.max(typerPhase.id)
       if ((initial ne denot) || thisCtx.phaseId != firstPhaseId)
         thisCtx.withPhase(firstPhaseId).stillValidInOwner(initial)
       else

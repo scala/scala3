@@ -2,6 +2,7 @@ package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags.Trait
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
@@ -32,7 +33,7 @@ class CollectSuperCalls extends MiniPhase {
   }
 
   private def registerSuperCall(sym: ClassSymbol, calls: ClassSymbol)(using Context) = {
-    ctx.genBCodePhase match {
+    genBCodePhase match {
       case genBCodePhase: GenBCode =>
         genBCodePhase.registerSuperCall(sym, calls)
       case _ =>

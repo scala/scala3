@@ -6,6 +6,7 @@ import MegaPhase._
 import core.DenotTransformers._
 import core.Symbols._
 import core.Contexts._
+import core.Phases._
 import core.Types._
 import core.Flags._
 import core.Decorators._
@@ -127,9 +128,9 @@ object ExplicitOuter {
 
   /** Ensure that class `cls` has outer accessors */
   def ensureOuterAccessors(cls: ClassSymbol)(using Context): Unit =
-    atPhase(ctx.explicitOuterPhase.next) {
+    atPhase(explicitOuterPhase.next) {
       if (!hasOuter(cls))
-        newOuterAccessors(cls).foreach(_.enteredAfter(ctx.explicitOuterPhase.asInstanceOf[DenotTransformer]))
+        newOuterAccessors(cls).foreach(_.enteredAfter(explicitOuterPhase.asInstanceOf[DenotTransformer]))
     }
 
   /** The outer accessor and potentially outer param accessor needed for class `cls` */
@@ -173,7 +174,7 @@ object ExplicitOuter {
         outerThis.baseType(outerCls).orElse(
   		    outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty)))
     val info = if (flags.is(Method)) ExprType(target) else target
-    ctx.withPhaseNoEarlier(ctx.explicitOuterPhase.next) // outer accessors are entered at explicitOuter + 1, should not be defined before.
+    ctx.withPhaseNoEarlier(explicitOuterPhase.next) // outer accessors are entered at explicitOuter + 1, should not be defined before.
        .newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
   }
 
@@ -298,7 +299,7 @@ object ExplicitOuter {
           else tpe.prefix
         case _ =>
           // Need to be careful to dealias before erasure, otherwise we lose prefixes.
-          outerPrefix(tpe.underlying(using ctx.withPhaseNoLater(ctx.erasurePhase)))
+          outerPrefix(tpe.underlying(using ctx.withPhaseNoLater(erasurePhase)))
       }
     case tpe: TypeProxy =>
       outerPrefix(tpe.underlying)
@@ -395,7 +396,7 @@ object ExplicitOuter {
       try
         @tailrec def loop(tree: Tree, count: Int): Tree =
           val treeCls = tree.tpe.widen.classSymbol
-          val outerAccessorCtx = ctx.withPhaseNoLater(ctx.lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
+          val outerAccessorCtx = ctx.withPhaseNoLater(lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
           ctx.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${outerAccName(treeCls.asClass)(using outerAccessorCtx)} in $treeCls")
           if (count == 0 || count < 0 && treeCls == toCls) tree
           else

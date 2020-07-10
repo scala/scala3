@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core._
-import Symbols._, Types._, Contexts._, Decorators._, Flags._, Scopes._
+import Symbols._, Types._, Contexts._, Decorators._, Flags._, Scopes._, Phases._
 import DenotTransformers._
 import ast.untpd
 import collection.{mutable, immutable}
@@ -14,9 +14,9 @@ import util.SourcePosition
 class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd._
 
-  assert(ctx.phase == ctx.erasurePhase.next)
-  private val preErasureCtx = ctx.withPhase(ctx.erasurePhase)
-  private lazy val elimErasedCtx = ctx.withPhase(ctx.elimErasedValueTypePhase.next)
+  assert(ctx.phase == erasurePhase.next)
+  private val preErasureCtx = ctx.withPhase(erasurePhase)
+  private lazy val elimErasedCtx = ctx.withPhase(elimErasedValueTypePhase.next)
 
   private class BridgesCursor(using Context) extends OverridingPairs.Cursor(root) {
 

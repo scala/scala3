@@ -6,6 +6,7 @@ import Flags._
 import Symbols._
 import NameOps._
 import StdNames._
+import Phases._
 import NameKinds.DefaultGetterName
 
 import JSDefinitions._
@@ -16,7 +17,7 @@ object JSInterop {
   /** Is this symbol a JavaScript type? */
   def isJSType(sym: Symbol)(using Context): Boolean = {
     //sym.hasAnnotation(jsdefn.RawJSTypeAnnot)
-    atPhase(ctx.erasurePhase) {
+    atPhase(erasurePhase) {
       sym.derivesFrom(jsdefn.JSAnyClass)
     }
   }
@@ -32,7 +33,7 @@ object JSInterop {
    *  much as *accessor* methods created for `val`s and `var`s.
    */
   def isJSGetter(sym: Symbol)(using Context): Boolean = {
-    sym.info.firstParamTypes.isEmpty && atPhase(ctx.erasurePhase) {
+    sym.info.firstParamTypes.isEmpty && atPhase(erasurePhase) {
       sym.info.isParameterless
     }
   }

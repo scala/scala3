@@ -20,6 +20,7 @@ import dotty.tools.dotc.transform.Erasure
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.core.Contexts.{inContext, atPhase}
+import dotty.tools.dotc.core.Phases._
 
 /*
  *
@@ -1461,7 +1462,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       // TODO specialization
       val constrainedType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
 
-      val abstractMethod = atPhase(ctx.erasurePhase) {
+      val abstractMethod = atPhase(erasurePhase) {
         val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
         samMethods match {
           case x :: Nil => x.symbol

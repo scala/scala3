@@ -3,7 +3,7 @@ package dotc
 package core
 
 import scala.annotation.{threadUnsafe => tu}
-import Types._, Contexts._, Symbols._, SymDenotations._, StdNames._, Names._
+import Types._, Contexts._, Symbols._, SymDenotations._, StdNames._, Names._, Phases._
 import Flags._, Scopes._, Decorators._, NameOps._, Periods._, NullOpsDecorator._
 import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
@@ -1285,7 +1285,7 @@ class Definitions {
   object ContextFunctionType:
     def unapply(tp: Type)(using Context): Option[(List[Type], Type, Boolean)] =
       if ctx.erasedTypes then
-        unapply(tp)(using ctx.withPhase(ctx.erasurePhase))
+        unapply(tp)(using ctx.withPhase(erasurePhase))
       else
         val tp1 = tp.dealias
         if isContextFunctionClass(tp1.typeSymbol) then

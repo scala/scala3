@@ -3,7 +3,7 @@ package dotc
 package core
 
 import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
-import Decorators._
+import Decorators._, Phases._
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
@@ -807,7 +807,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           case _ => tp2.isAnyRef
         }
         compareJavaArray
-      case tp1: ExprType if ctx.phase.id > ctx.gettersPhase.id =>
+      case tp1: ExprType if ctx.phase.id > gettersPhase.id =>
         // getters might have converted T to => T, need to compensate.
         recur(tp1.widenExpr, tp2)
       case _ =>

@@ -411,13 +411,28 @@ object Phases {
     override def toString: String = phaseName
   }
 
-  def curPhases(using Context): Array[Phase] = ctx.base.phases
+  def typerPhase(using Context): Phase                  = ctx.base.typerPhase
+  def postTyperPhase(using Context): Phase              = ctx.base.postTyperPhase
+  def sbtExtractDependenciesPhase(using Context): Phase = ctx.base.sbtExtractDependenciesPhase
+  def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
+  def reifyQuotesPhase(using Context): Phase            = ctx.base.reifyQuotesPhase
+  def refchecksPhase(using Context): Phase              = ctx.base.refchecksPhase
+  def elimRepeatedPhase(using Context): Phase           = ctx.base.elimRepeatedPhase
+  def extensionMethodsPhase(using Context): Phase       = ctx.base.extensionMethodsPhase
+  def explicitOuterPhase(using Context): Phase          = ctx.base.explicitOuterPhase
+  def gettersPhase(using Context): Phase                = ctx.base.gettersPhase
+  def erasurePhase(using Context): Phase                = ctx.base.erasurePhase
+  def elimErasedValueTypePhase(using Context): Phase    = ctx.base.elimErasedValueTypePhase
+  def lambdaLiftPhase(using Context): Phase             = ctx.base.lambdaLiftPhase
+  def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
+  def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase
 
+  def curPhases(using Context): Array[Phase] = ctx.base.phases
 
   /** Replace all instances of `oldPhaseClass` in `current` phases
    *  by the result of `newPhases` applied to the old phase.
    */
-  def replace(oldPhaseClass: Class[? <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
+  private def replace(oldPhaseClass: Class[? <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
     current.map(_.flatMap(phase =>
       if (oldPhaseClass.isInstance(phase)) newPhases(phase) else phase :: Nil))
 }

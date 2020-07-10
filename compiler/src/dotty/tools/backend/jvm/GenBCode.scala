@@ -15,6 +15,7 @@ import java.util.Optional
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.sbt.ExtractDependencies
 import Contexts._
+import Phases._
 import Symbols._
 import Decorators._
 
@@ -166,7 +167,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using ctx: Context) exten
             if (classSymbol.effectiveName.toString < dupClassSym.effectiveName.toString) (classSymbol, dupClassSym)
             else (dupClassSym, classSymbol)
           val same = classSymbol.effectiveName.toString == dupClassSym.effectiveName.toString
-          atPhase(ctx.typerPhase) {
+          atPhase(typerPhase) {
             if (same)
               summon[Context].warning( // FIXME: This should really be an error, but then FromTasty tests fail
                 s"${cl1.show} and ${cl2.showLocated} produce classes that overwrite one another", cl1.sourcePos)
@@ -271,7 +272,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using ctx: Context) exten
 
       // ----------- compiler and sbt's callbacks
 
-      val (fullClassName, isLocal) = atPhase(ctx.sbtExtractDependenciesPhase) {
+      val (fullClassName, isLocal) = atPhase(sbtExtractDependenciesPhase) {
         (ExtractDependencies.classNameAsString(claszSymbol), claszSymbol.isLocal)
       }
 

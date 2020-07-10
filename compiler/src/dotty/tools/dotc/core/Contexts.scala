@@ -517,30 +517,12 @@ object Contexts {
       (outersIterator.map(ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(using ctx)}").mkString("\n"))
     }
 
-    def typerPhase: Phase                  = base.typerPhase
-    def postTyperPhase: Phase              = base.postTyperPhase
-    def sbtExtractDependenciesPhase: Phase = base.sbtExtractDependenciesPhase
-    def picklerPhase: Phase                = base.picklerPhase
-    def reifyQuotesPhase: Phase            = base.reifyQuotesPhase
-    def refchecksPhase: Phase              = base.refchecksPhase
-    def patmatPhase: Phase                 = base.patmatPhase
-    def elimRepeatedPhase: Phase           = base.elimRepeatedPhase
-    def extensionMethodsPhase: Phase       = base.extensionMethodsPhase
-    def explicitOuterPhase: Phase          = base.explicitOuterPhase
-    def gettersPhase: Phase                = base.gettersPhase
-    def erasurePhase: Phase                = base.erasurePhase
-    def elimErasedValueTypePhase: Phase    = base.elimErasedValueTypePhase
-    def lambdaLiftPhase: Phase             = base.lambdaLiftPhase
-    def flattenPhase: Phase                = base.flattenPhase
-    def genBCodePhase: Phase               = base.genBCodePhase
-
     def settings: ScalaSettings            = base.settings
     def definitions: Definitions           = base.definitions
     def platform: Platform                 = base.platform
     def pendingUnderlying: mutable.HashSet[Type]   = base.pendingUnderlying
     def uniqueNamedTypes: Uniques.NamedTypeUniques = base.uniqueNamedTypes
     def uniques: util.HashSet[Type]                = base.uniques
-    def nextSymId: Int                     = base.nextSymId
 
     def initialize()(using Context): Unit = base.initialize()
   }

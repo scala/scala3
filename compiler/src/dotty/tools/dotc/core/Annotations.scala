@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Symbols._, Types._, Contexts._, Constants._, ast.tpd._
+import Symbols._, Types._, Contexts._, Constants._, ast.tpd._, Phases._
 import config.ScalaVersion
 import StdNames._
 import dotty.tools.dotc.ast.tpd
@@ -58,7 +58,7 @@ object Annotations {
     // seems to be enough to ensure this (note that after erasure, `ctx.typer`
     // will be the Erasure typer, but that doesn't seem to affect the annotation
     // trees we create, so we leave it as is)
-    ctx.withPhaseNoLater(ctx.picklerPhase)
+    ctx.withPhaseNoLater(picklerPhase)
 
   abstract class LazyAnnotation extends Annotation {
     protected var mySym: Symbol | (Context => Symbol)

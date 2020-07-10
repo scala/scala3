@@ -9,6 +9,7 @@ import Flags._
 import Decorators._
 import Symbols._
 import Contexts._
+import Phases._
 import SymDenotations._
 import printing.Texts._
 import printing.Printer
@@ -45,11 +46,11 @@ trait Symbols { thisCtx: Context =>
    *  it's debug-friendlier not to create an anonymous class here.
    */
   def newNakedSymbol[N <: Name](coord: Coord = NoCoord)(using Context): Symbol { type ThisName = N } =
-    new Symbol(coord, ctx.nextSymId).asInstanceOf[Symbol { type ThisName = N }]
+    new Symbol(coord, ctx.base.nextSymId).asInstanceOf[Symbol { type ThisName = N }]
 
   /** Create a class symbol without a denotation. */
   def newNakedClassSymbol(coord: Coord = NoCoord, assocFile: AbstractFile = null)(using Context): ClassSymbol =
-    new ClassSymbol(coord, assocFile, ctx.nextSymId)
+    new ClassSymbol(coord, assocFile, ctx.base.nextSymId)
 
 // ---- Symbol creation methods ----------------------------------
 
@@ -814,7 +815,7 @@ object Symbols {
                 }
                 case none => NoSource
               }
-            sourceFromTopLevel(using ctx.withPhaseNoLater(ctx.flattenPhase))
+            sourceFromTopLevel(using ctx.withPhaseNoLater(flattenPhase))
           }
         }
       mySource

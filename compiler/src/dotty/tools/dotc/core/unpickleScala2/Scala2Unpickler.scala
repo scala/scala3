@@ -8,7 +8,7 @@ import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
-import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
+import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._, Phases._
 import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
 import util.Spans._
 import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd._
@@ -608,7 +608,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       }
       atReadPos(startCoord(denot).toIndex,
           () => parseToCompletion(denot)(
-            using ctx.addMode(Mode.Scala2Unpickling).withPhaseNoLater(ctx.picklerPhase)))
+            using ctx.addMode(Mode.Scala2Unpickling).withPhaseNoLater(picklerPhase)))
     }
     catch {
       case ex: RuntimeException => handleRuntimeException(ex)

@@ -514,7 +514,7 @@ object Erasure {
           val app = untpd.cpy.Apply(tree1)(tree1, args)
           assert(ctx.typer.isInstanceOf[Erasure.Typer])
           ctx.typer.typed(app, pt)
-            .changeOwnerAfter(origOwner, ctx.owner, ctx.erasurePhase.asInstanceOf[Erasure])
+            .changeOwnerAfter(origOwner, ctx.owner, erasurePhase.asInstanceOf[Erasure])
 
       seq(defs.toList, abstracted(Nil, origType, pt))
     end etaExpand
@@ -717,7 +717,7 @@ object Erasure {
       }
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
-      val ntree = interceptTypeApply(tree.asInstanceOf[TypeApply])(using ctx.withPhase(ctx.erasurePhase)).withSpan(tree.span)
+      val ntree = interceptTypeApply(tree.asInstanceOf[TypeApply])(using ctx.withPhase(erasurePhase)).withSpan(tree.span)
 
       ntree match {
         case TypeApply(fun, args) =>
@@ -904,7 +904,7 @@ object Erasure {
         case stat: DefDef @unchecked if stat.symbol.name.is(BodyRetainerName) =>
           val retainer = stat.symbol
           val origName = retainer.name.asTermName.exclude(BodyRetainerName)
-          val inlineMeth = atPhase(ctx.typerPhase) {
+          val inlineMeth = atPhase(typerPhase) {
             retainer.owner.info.decl(origName)
               .matchingDenotation(retainer.owner.thisType, stat.symbol.info)
               .symbol
@@ -950,10 +950,10 @@ object Erasure {
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree =
       trace(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
-        if ctx.phase != ctx.erasurePhase && ctx.phase != ctx.erasurePhase.next then
+        if ctx.phase != erasurePhase && ctx.phase != erasurePhase.next then
           // this can happen when reading annotations loaded during erasure,
           // since these are loaded at phase typer.
-          adapt(tree, pt, locked)(using ctx.withPhase(ctx.erasurePhase.next))
+          adapt(tree, pt, locked)(using ctx.withPhase(erasurePhase.next))
         else if (tree.isEmpty) tree
         else if (ctx.mode is Mode.Pattern) tree // TODO: replace with assertion once pattern matcher is active
         else adaptToType(tree, pt)

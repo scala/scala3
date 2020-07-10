@@ -14,6 +14,7 @@ import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts.{Context, atPhase}
+import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names.Name
@@ -360,7 +361,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       val narg = normalizeArgument(arg)
       // Transformation phases are not run on annotation trees, so we need to run
       // `constToLiteral` at this point.
-      val t = constToLiteral(narg)(using ctx.withPhase(ctx.erasurePhase))
+      val t = atPhase(erasurePhase)(constToLiteral(narg))
       t match {
         case Literal(const @ Constant(_)) =>
           const.tag match {
@@ -478,7 +479,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * @see https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.4
      */
     def getGenericSignature(sym: Symbol, owner: Symbol): String = {
-      atPhase(ctx.erasurePhase) {
+      atPhase(erasurePhase) {
         val memberTpe =
           if (sym.is(Method)) sym.denot.info
           else owner.denot.thisType.memberInfo(sym)
@@ -913,7 +914,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     // But for now, just like we did in mixin, we just avoid writing a wrong generic signature
     // (one that doesn't erase to the actual signature). See run/t3452b for a test case.
 
-    val memberTpe = atPhase(ctx.erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
+    val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
     val erasedMemberType = TypeErasure.erasure(memberTpe)
     if (erasedMemberType =:= sym.denot.info)
       getGenericSignatureHelper(sym, moduleClass, memberTpe).orNull

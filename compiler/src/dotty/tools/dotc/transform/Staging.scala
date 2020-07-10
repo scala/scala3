@@ -5,6 +5,7 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd, untpd}
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.quoted._
@@ -38,7 +39,7 @@ class Staging extends MacroTransform {
   override def allowsImplicitSearch: Boolean = true
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
-    if (ctx.phase <= ctx.reifyQuotesPhase) {
+    if (ctx.phase <= reifyQuotesPhase) {
       // Recheck that PCP holds but do not heal any inconsistent types as they should already have been heald
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>

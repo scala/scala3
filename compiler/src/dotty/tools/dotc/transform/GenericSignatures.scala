@@ -4,6 +4,7 @@ package transform
 
 import core.Annotations._
 import core.Contexts._
+import core.Phases._
 import core.Definitions
 import core.Flags._
 import core.Names.{DerivedName, Name, SimpleName, TypeName}
@@ -34,7 +35,7 @@ object GenericSignatures {
   def javaSig(sym0: Symbol, info: Type)(using Context): Option[String] =
     // Avoid generating a signature for local symbols.
     if (sym0.isLocal) None
-    else javaSig0(sym0, info)(using ctx.withPhase(ctx.erasurePhase))
+    else javaSig0(sym0, info)(using ctx.withPhase(erasurePhase))
 
   @noinline
   private final def javaSig0(sym0: Symbol, info: Type)(using Context): Option[String] = {
@@ -112,7 +113,7 @@ object GenericSignatures {
     // a type parameter or similar) must go through here or the signature is
     // likely to end up with Foo<T>.Empty where it needs Foo<T>.Empty$.
     def fullNameInSig(sym: Symbol): Unit = {
-      val name = atPhase(ctx.genBCodePhase) { sanitizeName(sym.fullName).replace('.', '/') }
+      val name = atPhase(genBCodePhase) { sanitizeName(sym.fullName).replace('.', '/') }
       builder.append('L').append(name)
     }
 

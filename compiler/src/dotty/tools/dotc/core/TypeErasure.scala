@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._
+import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Phases._
 import Flags.JavaDefined
 import Uniques.unique
 import TypeOps.makePackageObjPrefixExplicit
@@ -132,7 +132,7 @@ object TypeErasure {
 
   /** The current context with a phase no later than erasure */
   def preErasureCtx(using Context) =
-    if (ctx.erasedTypes) ctx.withPhase(ctx.erasurePhase) else ctx
+    if (ctx.erasedTypes) ctx.withPhase(erasurePhase) else ctx
 
   /** The standard erasure of a Scala type. Value classes are erased as normal classes.
    *

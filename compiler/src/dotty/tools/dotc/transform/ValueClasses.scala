@@ -5,6 +5,7 @@ import core._
 import Types._
 import Symbols._
 import Contexts._
+import Phases._
 import Flags._
 import StdNames._
 import SymUtils._
@@ -22,7 +23,7 @@ object ValueClasses {
   }
 
   def isMethodWithExtension(sym: Symbol)(using Context): Boolean =
-    atPhaseNotLaterThan(ctx.extensionMethodsPhase) {
+    atPhaseNotLaterThan(extensionMethodsPhase) {
       val d = sym.denot
       d.validFor.containsPhaseId(summon[Context].phaseId) &&
       d.isRealMethod &&

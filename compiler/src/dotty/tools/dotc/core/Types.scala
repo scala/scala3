@@ -12,6 +12,7 @@ import NameKinds.SkolemName
 import Scopes._
 import Constants._
 import Contexts._
+import Phases._
 import Annotations._
 import SymDenotations._
 import Decorators._
@@ -1903,7 +1904,7 @@ object Types {
     protected[dotc] def computeSignature(using Context): Signature =
       val lastd = lastDenotation
       if lastd != null then sigFromDenot(lastd)
-      else if ctx.erasedTypes then computeSignature(using ctx.withPhase(ctx.erasurePhase))
+      else if ctx.erasedTypes then computeSignature(using ctx.withPhase(erasurePhase))
       else symbol.asSeenFrom(prefix).signature
 
     /** The signature computed from the current denotation with `sigFromDenot` if it is
@@ -1917,7 +1918,7 @@ object Types {
       else
         val lastd = lastDenotation
         if lastd != null then sigFromDenot(lastd)
-        else if ctx.erasedTypes then currentSignature(using ctx.withPhase(ctx.erasurePhase))
+        else if ctx.erasedTypes then currentSignature(using ctx.withPhase(erasurePhase))
         else
           val sym = currentSymbol
           if sym.exists then sym.asSeenFrom(prefix).signature
@@ -1925,7 +1926,7 @@ object Types {
 
     /** The signature of a pre-erasure version of denotation `lastd`. */
     private def sigFromDenot(lastd: Denotation)(using Context) =
-      if lastd.validFor.firstPhaseId <= ctx.erasurePhase.id then lastd.signature
+      if lastd.validFor.firstPhaseId <= erasurePhase.id then lastd.signature
       else lastd match
         case lastd: SingleDenotation => lastd.initial.signature
         case _ => Signature.OverloadedSignature

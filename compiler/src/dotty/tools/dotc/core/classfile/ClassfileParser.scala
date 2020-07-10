@@ -7,6 +7,7 @@ import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Spans._
+import Phases._
 import NameKinds.DefaultGetterName
 import ast.{ tpd, untpd }
 import ast.tpd._, util._
@@ -939,7 +940,7 @@ class ClassfileParser(
       val outerName = entry.outerName.stripModuleClassSuffix
       val innerName = entry.originalName
       val owner = classNameToSymbol(outerName)
-      val result = getMember(owner, innerName.toTypeName)(using ctx.withPhase(ctx.typerPhase))
+      val result = getMember(owner, innerName.toTypeName)(using ctx.withPhase(typerPhase))
       assert(result ne NoSymbol,
         i"""failure to resolve inner class:
            |externalName = ${entry.externalName},

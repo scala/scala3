@@ -5,6 +5,7 @@ package tasty
 
 import Comments.CommentsContext
 import Contexts._
+import Phases._
 import Symbols._
 import Types._
 import Scopes._
@@ -115,7 +116,7 @@ class TreeUnpickler(reader: TastyReader,
     def complete(denot: SymDenotation)(using Context): Unit =
       treeAtAddr(currentAddr) =
         new TreeReader(reader).readIndexedDef()(
-          using ctx.withPhaseNoLater(ctx.picklerPhase).withOwner(owner).withSource(source))
+          using ctx.withPhaseNoLater(picklerPhase).withOwner(owner).withSource(source))
   }
 
   class TreeReader(val reader: TastyReader) {
@@ -1378,7 +1379,7 @@ class TreeUnpickler(reader: TastyReader,
     def complete(using Context): T = {
       pickling.println(i"starting to read at ${reader.reader.currentAddr} with owner $owner")
       op(reader)(ctx
-        .withPhaseNoLater(ctx.picklerPhase)
+        .withPhaseNoLater(picklerPhase)
         .withOwner(owner)
         .withModeBits(mode)
         .withSource(source))

@@ -4,7 +4,7 @@ package ast
 
 import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
-import Symbols._, StdNames._, Trees._
+import Symbols._, StdNames._, Trees._, Phases._
 import Decorators.{given _}, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.{FrontEnd, Namer}
@@ -1402,7 +1402,7 @@ object desugar {
    */
   def makeAnnotated(fullName: String, tree: Tree)(using Context): Annotated = {
     val parts = fullName.split('.')
-    val ttree = ctx.typerPhase match {
+    val ttree = typerPhase match {
       case phase: FrontEnd if phase.stillToBeEntered(parts.last) =>
         val prefix =
           parts.init.foldLeft(Ident(nme.ROOTPKG): Tree)((qual, name) =>

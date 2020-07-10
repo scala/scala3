@@ -10,7 +10,7 @@ import ValueClasses._
 import dotty.tools.dotc.ast.tpd
 import scala.collection.mutable
 import core._
-import Types._, Contexts._, Names._, Flags._, DenotTransformers._
+import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, Symbols._, StdNames._, Denotations._
 import TypeErasure.{ valueErasure, ErasedValueType }
 import NameKinds.{ExtMethName, UniqueExtMethName}
@@ -184,7 +184,7 @@ object ExtensionMethods {
 
   /** Return the extension method that corresponds to given instance method `meth`. */
   def extensionMethod(imeth: Symbol)(using Context): TermSymbol =
-    atPhase(ctx.extensionMethodsPhase.next) {
+    atPhase(extensionMethodsPhase.next) {
       // FIXME use toStatic instead?
       val companion = imeth.owner.companionModule
       val companionInfo = companion.info

@@ -160,7 +160,7 @@ object DottyBackendInterface {
      */
     def isTopLevelModuleClass(using Context): Boolean =
       sym.is(ModuleClass) &&
-      atPhase(ctx.flattenPhase) {
+      atPhase(flattenPhase) {
         toDenot(sym).owner.is(PackageClass)
       }
 

@@ -4,7 +4,7 @@ package reporting
 
 import core._
 import Contexts.{Context, ctx}
-import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._
+import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._, Phases._
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
 import util.SourcePosition
@@ -2022,7 +2022,7 @@ object messages {
             case NoMatch =>
               // If the signatures don't match at all at the current phase, then
               // they might match after erasure.
-              val elimErasedCtx = ctx.withPhaseNoEarlier(ctx.elimErasedValueTypePhase.next)
+              val elimErasedCtx = ctx.withPhaseNoEarlier(elimErasedValueTypePhase.next)
               if (elimErasedCtx != ctx)
                 details(using elimErasedCtx)
               else

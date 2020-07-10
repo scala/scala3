@@ -4,7 +4,7 @@ package typer
 import transform._
 import core._
 import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._
-import StdNames._, Denotations._, SymUtils._
+import StdNames._, Denotations._, SymUtils._, Phases._
 import NameKinds.DefaultGetterName
 import Annotations._
 import util.Spans._
@@ -450,8 +450,8 @@ object RefChecks {
       }
 
       def hasJavaErasedOverriding(sym: Symbol): Boolean =
-        !ctx.erasurePhase.exists || // can't do the test, assume the best
-          atPhase(ctx.erasurePhase.next) {
+        !erasurePhase.exists || // can't do the test, assume the best
+          atPhase(erasurePhase.next) {
             clazz.info.nonPrivateMember(sym.name).hasAltWith { alt =>
               alt.symbol.is(JavaDefined, butNot = Deferred) &&
                 !sym.owner.derivesFrom(alt.symbol.owner) &&

@@ -11,7 +11,7 @@ import core.Flags._
 import core.StdNames._
 import core.NameKinds.{DocArtifactName, OuterSelectName}
 import core.Decorators._
-import core.Phases.Phase
+import core.Phases._
 import core.Mode
 import typer._
 import typer.ErrorReporting._
@@ -90,7 +90,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     // Signatures are used to disambiguate overloads and need to stay stable
     // until erasure, see the comment above `Compiler#phases`.
-    if (ctx.phaseId <= ctx.erasurePhase.id) {
+    if (ctx.phaseId <= erasurePhase.id) {
       val cur = symd.info
       val initial = symd.initial.info
       val curSig = cur match {

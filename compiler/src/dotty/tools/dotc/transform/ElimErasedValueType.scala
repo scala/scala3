@@ -4,7 +4,7 @@ package transform
 import ast.{Trees, tpd}
 import core._, core.Decorators._
 import MegaPhase._
-import Types._, Contexts._, Flags._, DenotTransformers._
+import Types._, Contexts._, Flags._, DenotTransformers._, Phases._
 import Symbols._, StdNames._, Trees._
 import TypeErasure.ErasedValueType, ValueClasses._
 import reporting.messages.DoubleDefinition
@@ -103,7 +103,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
           !info1.matchesLoosely(info2) && !bothPolyApply)
         ctx.error(DoubleDefinition(sym1, sym2, root), root.sourcePos)
     }
-    val earlyCtx = ctx.withPhase(ctx.elimRepeatedPhase.next)
+    val earlyCtx = ctx.withPhase(elimRepeatedPhase.next)
     while (opc.hasNext) {
       val sym1 = opc.overriding
       val sym2 = opc.overridden

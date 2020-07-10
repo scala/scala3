@@ -18,6 +18,7 @@ import CheckRealizable._
 import ErrorReporting.errorTree
 import rewrites.Rewrites.patch
 import util.Spans.Span
+import Phases.refchecksPhase
 
 import util.SourcePosition
 import util.Spans.Span
@@ -740,7 +741,7 @@ trait Checking {
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
         if (traitReq && !tref.symbol.is(Trait)) ctx.error(TraitIsExpected(tref.symbol), pos)
-        if (stablePrefixReq && ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos, "class prefix")
+        if (stablePrefixReq && ctx.phase <= refchecksPhase) checkStable(tref.prefix, pos, "class prefix")
         tp
       case _ =>
         ctx.error(ex"$tp is not a class type", pos)
