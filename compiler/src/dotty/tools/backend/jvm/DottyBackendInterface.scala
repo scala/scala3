@@ -137,7 +137,7 @@ object DottyBackendInterface {
         // for example by specialization
         val original = toDenot(sym).initial
         val validity = original.validFor
-        inContext(ctx.withPhase(validity.phaseId)) {
+        atPhase(validity.phaseId) {
           toDenot(sym).isStatic
         }
       }
@@ -149,7 +149,7 @@ object DottyBackendInterface {
       // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
       if (sym.exists) {
         val validity = toDenot(sym).initial.validFor
-        inContext(ctx.withPhase(validity.phaseId)) {
+        atPhase(validity.phaseId) {
           toDenot(sym).lexicallyEnclosingClass
         }
       } else NoSymbol

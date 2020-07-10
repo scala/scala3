@@ -229,7 +229,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
       val enclosingClassSym = {
         if (innerClassSym.isClass) {
-          inContext(ctx.withPhase(ctx.flattenPhase.prev)) {
+          atPhase(ctx.flattenPhase.prev) {
             toDenot(innerClassSym).owner.enclosingClass
           }
         }

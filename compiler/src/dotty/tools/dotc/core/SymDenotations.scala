@@ -2201,7 +2201,7 @@ object SymDenotations {
     def ensureFreshScopeAfter(phase: DenotTransformer)(using Context): Unit =
       if (ctx.phaseId != phase.next.id) ensureFreshScopeAfter(phase)(using ctx.withPhase(phase.next))
       else {
-        val prevClassInfo = inContext(ctx.withPhase(phase)) {
+        val prevClassInfo = atPhase(phase) {
           current.asInstanceOf[ClassDenotation].classInfo
         }
         val ClassInfo(pre, _, ps, decls, selfInfo) = classInfo
