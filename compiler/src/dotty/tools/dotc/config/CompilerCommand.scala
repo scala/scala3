@@ -127,7 +127,7 @@ object CompilerCommand {
       if (help.value) usageMessage
       else if (Xhelp.value) xusageMessage
       else if (Yhelp.value) yusageMessage
-      else if (showPlugins.value) ctx.pluginDescriptions
+      else if (showPlugins.value) ctx.base.pluginDescriptions
       else if (XshowPhases.value) phasesMessage
       else ""
     }

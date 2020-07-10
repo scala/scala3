@@ -164,7 +164,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       if (ctx.settings.YtestPickler.value) List("pickler")
       else ctx.settings.YstopAfter.value
 
-    val pluginPlan = ctx.addPluginPhases(ctx.base.phasePlan)
+    val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
     val phases = ctx.base.squashPhases(pluginPlan,
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases)

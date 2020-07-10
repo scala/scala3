@@ -102,7 +102,6 @@ object Contexts {
        with SymDenotations
        with Reporting
        with NamerContextOps
-       with Plugins
        with Cloneable { thiscontext =>
 
     given Context = this
@@ -661,7 +660,8 @@ object Contexts {
    */
   class ContextBase extends ContextState
                        with Denotations.DenotationsBase
-                       with Phases.PhasesBase {
+                       with Phases.PhasesBase
+                       with Plugins {
 
     /** The applicable settings */
     val settings: ScalaSettings = new ScalaSettings

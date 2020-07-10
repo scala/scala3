@@ -16,7 +16,7 @@ import config.Printers.plugins.{ println => debug }
  *  Updated 2009/1/2 by Anders Bach Nielsen: Added features to implement SIP 00002
  */
 trait Plugins {
-  self: Context =>
+  self: ContextBase =>
 
   /** Load a rough list of the plugins.  For speed, it
    *  does not instantiate a compiler run.  Therefore it cannot
@@ -35,8 +35,8 @@ trait Plugins {
     // Explicit parameterization of recover to avoid -Xlint warning about inferred Any
     errors foreach (_.recover[Any] {
       // legacy behavior ignores altogether, so at least warn devs
-      case e: MissingPluginException => warning(e.getMessage)
-      case e: Exception              => inform(e.getMessage)
+      case e: MissingPluginException => ctx.warning(e.getMessage)
+      case e: Exception              => ctx.inform(e.getMessage)
     })
 
     goods map (_.get)
@@ -65,7 +65,7 @@ trait Plugins {
       def withoutPlug       = pick(tail, plugNames)
       def withPlug          = plug :: pick(tail, plugNames + plug.name)
 
-      def note(msg: String): Unit = if (ctx.settings.verbose.value) inform(msg format plug.name)
+      def note(msg: String): Unit = if (ctx.settings.verbose.value) ctx.inform(msg format plug.name)
       def fail(msg: String)       = { note(msg) ; withoutPlug }
 
       if (plugNames contains plug.name)
@@ -103,11 +103,11 @@ trait Plugins {
     else _plugins
 
   /** A description of all the plugins that are loaded */
-  def pluginDescriptions: String =
+  def pluginDescriptions(using Context): String =
     roughPluginsList map (x => "%s - %s".format(x.name, x.description)) mkString "\n"
 
   /** Summary of the options for all loaded plugins */
-  def pluginOptionsHelp: String =
+  def pluginOptionsHelp(using Context): String =
     (for (plug <- roughPluginsList ; help <- plug.optionsHelp) yield {
       "\nOptions for plugin '%s':\n%s\n".format(plug.name, help)
     }).mkString
