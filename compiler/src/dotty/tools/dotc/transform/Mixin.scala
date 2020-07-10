@@ -4,7 +4,7 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.{Context, ctx}
+import Contexts.{Context, ctx, atPhase}
 import Flags._
 import SymUtils._
 import Symbols._
@@ -222,7 +222,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           transformFollowingDeep(superRef(baseCls.primaryConstructor).appliedToNone) :: Nil
 
     def wasOneOf(sym: Symbol, flags: FlagSet) =
-      ctx.atPhase(thisPhase) { sym.isOneOf(flags) }
+      atPhase(thisPhase) { sym.isOneOf(flags) }
 
     def traitInits(mixin: ClassSymbol): List[Tree] = {
       val argsIt = superCallsAndArgs.get(mixin) match

@@ -184,7 +184,7 @@ object ExtensionMethods {
 
   /** Return the extension method that corresponds to given instance method `meth`. */
   def extensionMethod(imeth: Symbol)(using Context): TermSymbol =
-    ctx.atPhase(ctx.extensionMethodsPhase.next) {
+    atPhase(ctx.extensionMethodsPhase.next) {
       // FIXME use toStatic instead?
       val companion = imeth.owner.companionModule
       val companionInfo = companion.info

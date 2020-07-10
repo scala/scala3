@@ -2,7 +2,7 @@ package dotty.tools.dotc.core
 
 import Contexts._
 
-/** Periods are the central "clock" of the compiler.
+/** Periods are the central "clock" of the compiler
  *  A period consists of a run id and a phase id.
  *  run ids represent compiler runs
  *  phase ids represent compiler phases
@@ -15,14 +15,6 @@ abstract class Periods { thisCtx: Context =>
 
   /** The current run identifier */
   def runId: Int = period.runId
-
-  /** Execute `op` at given period */
-  def atPeriod[T](pd: Period)(op: Context => T): T =
-    op(thisCtx.fresh.setPeriod(pd))
-
-  /** Execute `op` at given phase id */
-  inline def atPhase[T](pid: PhaseId)(inline op: Context ?=> T): T =
-    op(using thisCtx.withPhase(pid))
 
   /** The period containing the current period where denotations do not change.
    *  We compute this by taking as first phase the first phase less or equal to

@@ -57,6 +57,24 @@ object Contexts {
   inline def inContext[T](c: Context)(inline op: Context ?=> T): T =
     op(using c)
 
+  /** Execute `op` at given period */
+  inline def atPeriod[T](pd: Period)(inline op: Context ?=> T)(using Context): T =
+    op(using ctx.fresh.setPeriod(pd))
+
+  /** Execute `op` at given phase id */
+  inline def atPhase[T](pid: PhaseId)(inline op: Context ?=> T)(using Context): T =
+    op(using ctx.withPhase(pid))
+
+  /** Execute `op` at given phase */
+  inline def atPhase[T](phase: Phase)(inline op: Context ?=> T)(using Context): T =
+    atPhase(phase.id)(op)
+
+  inline def atNextPhase[T](inline op: Context ?=> T)(using Context): T =
+    atPhase(ctx.phase.next)(op)
+
+  inline def atPhaseNotLaterThan[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
+    op(using if !limit.exists || ctx.phase <= limit then ctx else ctx.withPhase(limit))
+
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
    *  objects that turn into space leaks. To combat this risk, here are some

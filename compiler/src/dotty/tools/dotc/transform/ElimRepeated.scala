@@ -7,7 +7,7 @@ import Types._
 import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
 import Flags._
-import Contexts.{Context, ctx}
+import Contexts._
 import Symbols._
 import Constants._
 import Decorators._
@@ -113,7 +113,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  Also transform trees inside method annotation
    */
   override def transformDefDef(tree: DefDef)(using Context): Tree =
-    ctx.atPhase(thisPhase) {
+    atPhase(thisPhase) {
       if (tree.symbol.info.isVarArgsMethod && overridesJava(tree.symbol))
         addVarArgsBridge(tree)
       else

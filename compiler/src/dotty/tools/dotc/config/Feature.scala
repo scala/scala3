@@ -36,7 +36,7 @@ object Feature:
    *       import owner.{ feature => _ }
    */
   def enabledByImport(feature: TermName, owner: Symbol = NoSymbol)(using Context): Boolean =
-    ctx.atPhase(ctx.typerPhase) {
+    atPhase(ctx.typerPhase) {
       ctx.importInfo != null
       && ctx.importInfo.featureImported(feature,
           if owner.exists then owner else defn.LanguageModule.moduleClass)

@@ -8,7 +8,7 @@ import scala.collection.mutable
 import scala.collection.generic.Clearable
 
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Contexts.inContext
+import dotty.tools.dotc.core.Contexts.{inContext, atPhase}
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.SymUtils._
@@ -212,7 +212,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
 
   private def definedClasses(sym: Symbol, phase: Phase) =
     if (sym.isDefinedInCurrentRun)
-      ctx.atPhase(phase) {
+      atPhase(phase) {
         toDenot(sym).info.decls.filter(_.isClass)
       }
     else Nil

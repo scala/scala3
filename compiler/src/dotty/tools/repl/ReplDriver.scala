@@ -4,7 +4,7 @@ import java.io.{File => JFile, PrintStream}
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
-import dotty.tools.dotc.core.Contexts.{Context, ctx, inContext}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Mode
@@ -320,7 +320,7 @@ class ReplDriver(settings: Array[String],
           rendering.renderTypeDef(x)
       }
 
-    ctx.atPhase(ctx.typerPhase.next) {
+    atPhase(ctx.typerPhase.next) {
       // Display members of wrapped module:
       tree.symbol.info.memberClasses
         .find(_.symbol.name == newestWrapper.moduleClassName)

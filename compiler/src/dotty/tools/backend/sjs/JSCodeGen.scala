@@ -2121,7 +2121,7 @@ class JSCodeGen()(using genCtx: Context) {
     if (isStat) {
       boxedResult
     } else {
-      val tpe = ctx.atPhase(ctx.elimErasedValueTypePhase) {
+      val tpe = atPhase(ctx.elimErasedValueTypePhase) {
         sym.info.finalResultType
       }
       unbox(boxedResult, tpe)
@@ -2735,14 +2735,14 @@ class JSCodeGen()(using genCtx: Context) {
     def paramNamesAndTypes(using Context): List[(Names.TermName, Type)] =
       sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
 
-    val wereRepeated = ctx.atPhase(ctx.elimRepeatedPhase) {
+    val wereRepeated = atPhase(ctx.elimRepeatedPhase) {
       val list =
         for ((name, tpe) <- paramNamesAndTypes)
         yield (name -> tpe.isRepeatedParam)
       list.toMap
     }
 
-    val paramTypes = ctx.atPhase(ctx.elimErasedValueTypePhase) {
+    val paramTypes = atPhase(ctx.elimErasedValueTypePhase) {
       paramNamesAndTypes.toMap
     }
 

@@ -15,12 +15,12 @@ import java.nio.file._
 class SignatureTest:
   @Test def signatureCaching: Unit =
     inCompilerContext(TestConfiguration.basicClasspath, separateRun = true, "case class Foo(value: Unit)") {
-      val (ref, refSig) = ctx.atPhase(ctx.erasurePhase.next) {
+      val (ref, refSig) = atPhase(ctx.erasurePhase.next) {
         val cls = ctx.requiredClass("Foo")
         val ref = cls.requiredMethod("value").termRef
         (ref, ref.signature)
       }
-      ctx.atPhase(ctx.typerPhase) {
+      atPhase(ctx.typerPhase) {
         // NamedType#signature is always computed before erasure, which ensures
         // that it stays stable and therefore can be cached as long as
         // signatures are guaranteed to be stable before erasure, see the

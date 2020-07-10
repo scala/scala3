@@ -370,7 +370,7 @@ object LambdaLift {
     }
 
     // initialization
-    ctx.atPhase(thisPhase) {
+    atPhase(thisPhase) {
       (new CollectDependencies).traverse(ctx.compilationUnit.tpdTree)
       computeFreeVars()
       computeLiftedOwners()

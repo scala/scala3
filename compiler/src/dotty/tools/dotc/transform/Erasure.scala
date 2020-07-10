@@ -904,7 +904,7 @@ object Erasure {
         case stat: DefDef @unchecked if stat.symbol.name.is(BodyRetainerName) =>
           val retainer = stat.symbol
           val origName = retainer.name.asTermName.exclude(BodyRetainerName)
-          val inlineMeth = ctx.atPhase(ctx.typerPhase) {
+          val inlineMeth = atPhase(ctx.typerPhase) {
             retainer.owner.info.decl(origName)
               .matchingDenotation(retainer.owner.thisType, stat.symbol.info)
               .symbol

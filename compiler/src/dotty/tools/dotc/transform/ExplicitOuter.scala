@@ -127,7 +127,7 @@ object ExplicitOuter {
 
   /** Ensure that class `cls` has outer accessors */
   def ensureOuterAccessors(cls: ClassSymbol)(using Context): Unit =
-    ctx.atPhase(ctx.explicitOuterPhase.next) {
+    atPhase(ctx.explicitOuterPhase.next) {
       if (!hasOuter(cls))
         newOuterAccessors(cls).foreach(_.enteredAfter(ctx.explicitOuterPhase.asInstanceOf[DenotTransformer]))
     }

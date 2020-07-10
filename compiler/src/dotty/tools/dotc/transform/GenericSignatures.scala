@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core.Annotations._
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import core.Definitions
 import core.Flags._
 import core.Names.{DerivedName, Name, SimpleName, TypeName}
@@ -112,7 +112,7 @@ object GenericSignatures {
     // a type parameter or similar) must go through here or the signature is
     // likely to end up with Foo<T>.Empty where it needs Foo<T>.Empty$.
     def fullNameInSig(sym: Symbol): Unit = {
-      val name = ctx.atPhase(ctx.genBCodePhase) { sanitizeName(sym.fullName).replace('.', '/') }
+      val name = atPhase(ctx.genBCodePhase) { sanitizeName(sym.fullName).replace('.', '/') }
       builder.append('L').append(name)
     }
 
