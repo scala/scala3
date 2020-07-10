@@ -115,7 +115,7 @@ trait DottyDocTest extends MessageRendering {
         ctx.setSetting(ctx.settings.outputDir, AbstractFile.getDirectory(out))
       }
       val dotc = new Compiler
-      val run = dotc.newRun(dotcCtx)
+      val run = dotc.newRun(using dotcCtx)
       run.compileSources(sources)
       assert(!dotcCtx.reporter.hasErrors)
 

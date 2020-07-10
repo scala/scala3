@@ -20,10 +20,10 @@ import dotc.core.Comments.{ContextDoc, ContextDocstrings}
 def inCompilerContext[T](classpath: String, separateRun: Boolean = true, scalaSources: String*)(op: Context ?=> T): T =
   val compiler = Compiler()
   val rootCtx = initCtx(classpath)
-  val firstRun = compiler.newRun(rootCtx)
+  val firstRun = compiler.newRun(using rootCtx)
   firstRun.compileFromStrings(scalaSources.toList)
   val opRun = if separateRun
-    then compiler.newRun(rootCtx)
+    then compiler.newRun(using rootCtx)
     else firstRun
   op(using opRun.runContext)
 
