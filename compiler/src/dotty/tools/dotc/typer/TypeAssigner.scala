@@ -140,9 +140,19 @@ trait TypeAssigner {
     val name = tree.name
     val pre = maybeSkolemizePrefix(qualType, name)
     val mbr = qualType.findMember(name, pre)
+    def isDynamicExpansion(tree: untpd.RefTree): Boolean = {
+      Dynamic.isDynamicMethod(name) || (
+        tree match
+          case Select(Apply(fun: untpd.RefTree, _), nme.apply) if defn.isContextFunctionClass(fun.symbol.owner) =>
+            isDynamicExpansion(fun)
+          case  Select(qual, nme.apply) =>
+            Dynamic.isDynamicMethod(qual.symbol.name) && tree.span.isSynthetic
+          case _ => false
+      )
+    }
     if (reallyExists(mbr))
       qualType.select(name, mbr)
-    else if (qualType.derivesFrom(defn.DynamicClass) && name.isTermName && !Dynamic.isDynamicMethod(name))
+    else if (qualType.derivesFrom(defn.DynamicClass) && name.isTermName && !isDynamicExpansion(tree))
       TryDynamicCallType
     else if (qualType.isErroneous || name.toTermName == nme.ERROR)
       UnspecifiedErrorType
