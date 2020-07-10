@@ -157,10 +157,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             tree.withType(tp) match {
               case tree: This if tree.symbol == claszSymbol =>
                 ref(claszSymbol.sourceModule)
-            case Apply(fun @ Select(Super(qual, _), _), args) if qual.symbol == claszSymbol =>
-              ref(claszSymbol.sourceModule).select(fun.symbol).appliedToArgs(args)
-              // case ident: Ident =>
-              //   super.transform(desugarIdent(ident))
               case tree =>
                 super.transform(tree)
             }
