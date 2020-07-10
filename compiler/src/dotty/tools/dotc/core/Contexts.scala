@@ -51,7 +51,7 @@ object Contexts {
   private val initialStore = store8
 
   /** The current context */
-  def ctx(using ctx: Context): Context = ctx
+  inline def ctx(using ctx: Context): Context = ctx
 
   /** Run `op` with given context */
   inline def inContext[T](c: Context)(inline op: Context ?=> T): T =
