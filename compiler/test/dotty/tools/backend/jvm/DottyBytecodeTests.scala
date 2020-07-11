@@ -953,6 +953,12 @@ class TestBCode extends DottyBytecodeTest {
     val code =
       """@deprecated
         |class Test {
+        |  @deprecated
+        |  val v = 0
+        |
+        |  @deprecated
+        |  var x = 0
+        |
         |  @deprecated("do not use this function!")
         |  def f(): Unit = ()
         |}
@@ -962,6 +968,13 @@ class TestBCode extends DottyBytecodeTest {
       val c = loadClassNode(dir.lookupName("Test.class", directory = false).input)
       assert((c.access & Opcodes.ACC_DEPRECATED) != 0)
       assert((getMethod(c, "f").access & Opcodes.ACC_DEPRECATED) != 0)
+
+      assert((getField(c, "v").access & Opcodes.ACC_DEPRECATED) != 0)
+      assert((getMethod(c, "v").access & Opcodes.ACC_DEPRECATED) != 0)
+
+      assert((getField(c, "x").access & Opcodes.ACC_DEPRECATED) != 0)
+      assert((getMethod(c, "x").access & Opcodes.ACC_DEPRECATED) != 0)
+      assert((getMethod(c, "x_$eq").access & Opcodes.ACC_DEPRECATED) != 0)
     }
   }
 }

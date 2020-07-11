@@ -96,10 +96,12 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         case _ => ()
       }
 
-    def removeAnnotations(denot: SymDenotation): Unit =
+    def removeUnwantedAnnotations(denot: SymDenotation): Unit =
       if (sym.annotations.nonEmpty) {
         val cpy = sym.copySymDenotation()
-        cpy.annotations = Nil
+        // Keep @deprecated annotation so that accessors can
+        // be marked as deprecated in the bytecode
+        cpy.filterAnnotations(_.matches(defn.DeprecatedAnnot))
         cpy.installAfter(thisPhase)
       }
 
@@ -135,7 +137,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
           else transformFollowingDeep(ref(field))(using ctx.withOwner(sym))
         val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
         addAnnotations(fieldDef.denot)
-        removeAnnotations(sym)
+        removeUnwantedAnnotations(sym)
         Thicket(fieldDef, getterDef)
       }
       else if (sym.isSetter) {
@@ -145,7 +147,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
           if (isErasableBottomField(tree.vparamss.head.head.tpt.tpe.classSymbol)) Literal(Constant(()))
           else Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
         val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(using ctx.withOwner(sym)))
-        removeAnnotations(sym)
+        removeUnwantedAnnotations(sym)
         setterDef
       }
       else tree // curiously, some accessors from Scala2 have ' ' suffixes. They count as
