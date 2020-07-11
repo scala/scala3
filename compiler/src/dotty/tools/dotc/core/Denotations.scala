@@ -540,7 +540,7 @@ object Denotations {
         tp2 match
           case tp2: MethodType
           if ctx.typeComparer.matchingMethodParams(tp1, tp2)
-             && (tp1.isImplicitMethod || tp1.isContextualMethod) == (tp2.isImplicitMethod || tp2.isContextualMethod)
+             && tp1.isImplicitMethod == tp2.isImplicitMethod
              && tp1.isErasedMethod == tp2.isErasedMethod =>
             val resType = infoMeet(tp1.resType, tp2.resType.subst(tp2, tp1), safeIntersection)
             if resType.exists then
