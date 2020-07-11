@@ -28,7 +28,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def phaseName: String = ElimRepeated.name
 
-  override def changesMembers: Boolean = true // the phase adds vararg bridges
+  override def changesMembers: Boolean = true // the phase adds vararg forwarders
 
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type =
     elimRepeated(tp)
@@ -37,7 +37,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     super.transform(ref) match
       case ref1: SymDenotation if (ref1 ne ref) && overridesJava(ref1.symbol) =>
         // This method won't override the corresponding Java method at the end of this phase,
-        // only the bridge added by `addVarArgsBridge` will.
+        // only the forwarder added by `addVarArgsForwarder` will.
         ref1.copySymDenotation(initFlags = ref1.flags &~ Override)
       case ref1 =>
         ref1
@@ -131,7 +131,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
               sym.sourcePos)
             tree
           else
-            addVarArgsBridge(tree, isOverride)
+            addVarArgsForwarder(tree, isOverride)
         else
           tree
       else
@@ -157,46 +157,46 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     case pt: PolyType =>
       isValidJavaVarArgs(pt.resultType)
     case _ =>
-      throw new Exception("Match error in @varargs bridge logic. This should not happen, please open an issue " + tp)
+      throw new Exception("Match error in @varargs checks. This should not happen, please open an issue " + tp)
 
 
-  /** Add a Java varargs bridge
-   *  @param ddef    the original method definition
-   *  @param addFlag the flag to add to the method symbol
-
-   *  @return a thicket consisting of `ddef` and a varargs bridge method
-   *          which forwards java varargs to `ddef`. It retains all the
+  /** Add a Java varargs forwarder
+   *  @param ddef     the original method definition
+   *  @param isBridge true if we are generating a "bridge" (synthetic override forwarder)
+   *
+   *  @return a thicket consisting of `ddef` and an additional method
+   *          that forwards java varargs to `ddef`. It retains all the
    *          flags of `ddef` except `Private`.
    *
-   *  A bridge is necessary because the following hold:
+   *  A forwarder is necessary because the following hold:
    *    - the varargs in `ddef` will change from `RepeatedParam[T]` to `Seq[T]` after this phase
    *    - _but_ the callers of `ddef` expect its varargs to be changed to `Array[? <: T]`
-   *  The solution is to add a "bridge" method that converts its argument from `Array[? <: T]` to `Seq[T]` and
+   *  The solution is to add a method that converts its argument from `Array[? <: T]` to `Seq[T]` and
    *  forwards it to `ddef`.
    */
-  private def addVarArgsBridge(ddef: DefDef, javaOverride: Boolean)(using ctx: Context): Tree =
+  private def addVarArgsForwarder(ddef: DefDef, isBridge: Boolean)(using ctx: Context): Tree =
     val original = ddef.symbol.asTerm
     // For simplicity we always set the varargs flag
     // although it's not strictly necessary for overrides
     // (but it is for non-overrides)
     val flags = ddef.symbol.flags | JavaVarargs
 
-    // The java-compatible bridge symbol
-    val bridge = original.copy(
+    // The java-compatible forwarder symbol
+    val sym = original.copy(
         // non-overrides cannot be synthetic otherwise javac refuses to call them
-        flags = if javaOverride then flags | Artifact else flags,
+        flags = if isBridge then flags | Artifact else flags,
         info = toJavaVarArgs(ddef.symbol.info)
       ).asTerm
 
-    currentClass.info.member(bridge.name).alternatives.find { s =>
-      s.matches(bridge) &&
-      !(javaOverride && s.asSymDenotation.is(JavaDefined))
+    currentClass.info.member(sym.name).alternatives.find { s =>
+      s.matches(sym) &&
+      !(isBridge && s.asSymDenotation.is(JavaDefined))
     } match
       case Some(conflict) =>
         ctx.error(s"@varargs produces a forwarder method that conflicts with ${conflict.showDcl}", original.sourcePos)
         ddef
       case None =>
-        val bridgeDef = polyDefDef(bridge.enteredAfter(thisPhase), trefs => vrefss => {
+        val bridgeDef = polyDefDef(sym.enteredAfter(thisPhase), trefs => vrefss => {
           val init :+ (last :+ vararg) = vrefss
           // Can't call `.argTypes` here because the underlying array type is of the
           // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
