@@ -13,6 +13,7 @@ object Test {
 
   @varargs def nov(a: Int) = 0 // error: A method without repeated parameters cannot be annotated with @varargs
   @varargs def v(a: Int, b: String*) = a + b.length // ok
+  def v(a: Int, b: String) = a // ok
 
   @varargs def v2(a: Int, b: String*) = 0 // error
   def v2(a: Int, b: Array[String]) = 0
