@@ -11,17 +11,16 @@ import util.Spans._
 import util.{Store, SourcePosition}
 import scala.collection.{ mutable, immutable }
 import ast._
-import Trees._
 import MegaPhase._
 import config.Printers.{checks, noPrinter}
-import scala.util.Failure
-import config.NoScalaVersion
+import scala.util.{Try, Failure, Success}
+import config.{ScalaVersion, NoScalaVersion}
 import Decorators._
 import typer.ErrorReporting._
 import config.Feature.warnOnMigration
 
 object RefChecks {
-  import tpd._
+  import tpd.{Tree, MemberDef}
   import reporting.messages._
 
   val name: String = "refchecks"
@@ -817,24 +816,39 @@ object RefChecks {
   // I assume that's a consequence of some code trying to avoid noise by suppressing
   // warnings after the first, but I think it'd be better if we didn't have to
   // arbitrarily choose one as more important than the other.
-  private def checkUndesiredProperties(sym: Symbol, pos: SourcePosition)(using Context): Unit = {
-    // If symbol is deprecated, and the point of reference is not enclosed
-    // in either a deprecated member or a scala bridge method, issue a warning.
-    if (sym.isDeprecated && !ctx.owner.ownersIterator.exists(_.isDeprecated))
-      ctx.deprecationWarning("%s is deprecated%s".format(
-        sym.showLocated, sym.deprecationMessage map (": " + _) getOrElse ""), pos)
-    // Similar to deprecation: check if the symbol is marked with @migration
-    // indicating it has changed semantics between versions.
+  private def checkUndesiredProperties(sym: Symbol, pos: SourcePosition)(using Context): Unit =
+    checkDeprecated(sym, pos)
+
     val xMigrationValue = ctx.settings.Xmigration.value
-    if (sym.hasAnnotation(defn.MigrationAnnot) && xMigrationValue != NoScalaVersion)
-      sym.migrationVersion.get match {
-        case scala.util.Success(symVersion) if xMigrationValue < symVersion=>
-          ctx.warning(SymbolChangedSemanticsInVersion(sym, symVersion), pos)
+    if xMigrationValue != NoScalaVersion then
+      checkMigration(sym, pos, xMigrationValue)
+
+
+  /** If @deprecated is present, and the point of reference is not enclosed
+   * in either a deprecated member or a scala bridge method, issue a warning.
+   */
+  private def checkDeprecated(sym: Symbol, pos: SourcePosition)(using Context): Unit =
+    for
+      annot <- sym.getAnnotation(defn.DeprecatedAnnot)
+      if !ctx.owner.ownersIterator.exists(_.isDeprecated)
+    do
+      val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
+      val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
+      ctx.deprecationWarning(s"${sym.showLocated} is deprecated${since}${msg}", pos)
+
+  /** If @migration is present (indicating that the symbol has changed semantics between versions),
+   *  emit a warning.
+   */
+  private def checkMigration(sym: Symbol, pos: SourcePosition, xMigrationValue: ScalaVersion)(using Context): Unit =
+    for annot <- sym.getAnnotation(defn.MigrationAnnot) do
+      val migrationVersion = ScalaVersion.parse(annot.argumentConstant(1).get.stringValue)
+      migrationVersion match
+        case Success(symVersion) if xMigrationValue < symVersion =>
+          val msg = annot.argumentConstant(0).get.stringValue
+          ctx.warning(SymbolChangedSemanticsInVersion(sym, symVersion, msg), pos)
         case Failure(ex) =>
-          ctx.warning(SymbolHasUnparsableVersionNumber(sym, ex.getMessage()), pos)
+          ctx.warning(SymbolHasUnparsableVersionNumber(sym, ex.getMessage), pos)
         case _ =>
-      }
-  }
 
   /** Check that a deprecated val or def does not override a
    *  concrete, non-deprecated method.  If it does, then

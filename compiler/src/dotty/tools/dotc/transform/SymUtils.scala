@@ -223,7 +223,10 @@ class SymUtils(val self: Symbol) extends AnyVal {
     self.is(ModuleClass) && self.sourceModule.is(Extension) && !self.sourceModule.isExtensionMethod
 
   def isScalaStatic(using Context): Boolean =
-    self.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
+    self.hasAnnotation(defn.ScalaStaticAnnot)
+
+  def isDeprecated(using Context): Boolean =
+    self.hasAnnotation(defn.DeprecatedAnnot)
 
   /** Is symbol assumed or declared as an infix symbol? */
   def isDeclaredInfix(using Context): Boolean =

@@ -211,9 +211,6 @@ object Annotations {
    */
   implicit class AnnotInfo(val sym: Symbol) extends AnyVal {
 
-    def isDeprecated(using Context): Boolean =
-      sym.hasAnnotation(defn.DeprecatedAnnot)
-
     def deprecationMessage(using Context): Option[String] =
       for {
         annot <- sym.getAnnotation(defn.DeprecatedAnnot)

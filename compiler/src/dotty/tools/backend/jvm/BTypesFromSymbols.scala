@@ -298,10 +298,9 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
    */
   final def javaFlags(sym: Symbol): Int = {
 
-
     val privateFlag = sym.is(Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
-    val finalFlag = sym.is(Final) &&  !toDenot(sym).isClassConstructor && !(sym.is(Mutable)) &&  !(sym.enclosingClass.is(Trait))
+    val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.is(Mutable) && !sym.enclosingClass.is(Trait)
 
     import asm.Opcodes._
     GenBCodeOps.mkFlags(
@@ -318,6 +317,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         //  Mixin forwarders are bridges and can be final, but final bridges confuse some frameworks
         !sym.is(Bridge))
         ACC_FINAL else 0,
+
       if (sym.isStaticMember) ACC_STATIC else 0,
       if (sym.is(Bridge)) ACC_BRIDGE | ACC_SYNTHETIC else 0,
       if (sym.is(Artifact)) ACC_SYNTHETIC else 0,
@@ -325,16 +325,17 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       if (sym.isAllOf(JavaEnumTrait)) ACC_ENUM else 0,
       if (sym.is(JavaVarargs)) ACC_VARARGS else 0,
       if (sym.is(Synchronized)) ACC_SYNCHRONIZED else 0,
-      if (false /*sym.isDeprecated*/) asm.Opcodes.ACC_DEPRECATED else 0, // TODO: add an isDeprecated method in SymUtils
-      if (sym.is(Enum)) asm.Opcodes.ACC_ENUM else 0
+      if (sym.isDeprecated) ACC_DEPRECATED else 0,
+      if (sym.is(Enum)) ACC_ENUM else 0
     )
   }
 
   def javaFieldFlags(sym: Symbol) = {
+    import asm.Opcodes._
     javaFlags(sym) | GenBCodeOps.mkFlags(
-      if (sym hasAnnotation TransientAttr) asm.Opcodes.ACC_TRANSIENT else 0,
-      if (sym hasAnnotation VolatileAttr)  asm.Opcodes.ACC_VOLATILE  else 0,
-      if (sym.is(Mutable)) 0 else asm.Opcodes.ACC_FINAL
+      if (sym.hasAnnotation(TransientAttr)) ACC_TRANSIENT else 0,
+      if (sym.hasAnnotation(VolatileAttr)) ACC_VOLATILE else 0,
+      if (sym.is(Mutable)) 0 else ACC_FINAL
     )
   }
 }
