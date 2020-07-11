@@ -115,30 +115,34 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  Also transform trees inside method annotation.
    */
   override def transformDefDef(tree: DefDef)(using Context): Tree =
-    atPhase(thisPhase) {
-      val sym = tree.symbol
-      val hasAnnotation = hasVarargsAnnotation(sym)
-      if hasRepeatedParams(sym) then
-        val isOverride = overridesJava(sym)
-        if isOverride || hasAnnotation || parentHasAnnotation(sym) then
-          // java varargs are more restrictive than scala's
-          // see https://github.com/scala/bug/issues/11714
-          if !isValidJavaVarArgs(sym.info) then
-            ctx.error("""To generate java-compatible varargs:
-                      |  - there must be a single repeated parameter
-                      |  - it must be the last argument in the last parameter list
-                      |""".stripMargin,
-              sym.sourcePos)
-            tree
-          else
-            addVarArgsForwarder(tree, isOverride)
-        else
+    val sym = tree.symbol
+    val hasAnnotation = hasVarargsAnnotation(sym)
+
+    // atPhase(thisPhase) is used where necessary to see the repeated
+    // parameters before their elimination
+    val hasRepeatedParam = atPhase(thisPhase)(hasRepeatedParams(sym))
+    if hasRepeatedParam then
+      val isOverride = atPhase(thisPhase)(overridesJava(sym))
+      if isOverride || hasAnnotation || parentHasAnnotation(sym) then
+        // java varargs are more restrictive than scala's
+        // see https://github.com/scala/bug/issues/11714
+        val validJava = atPhase(thisPhase)(isValidJavaVarArgs(sym.info))
+        if !validJava then
+          ctx.error("""To generate java-compatible varargs:
+                    |  - there must be a single repeated parameter
+                    |  - it must be the last argument in the last parameter list
+                    |""".stripMargin,
+            sym.sourcePos)
           tree
+        else
+          // non-overrides cannot be synthetic otherwise javac refuses to call them
+          addVarArgsForwarder(tree, isBridge = isOverride)
       else
-        if hasAnnotation then
-          ctx.error("A method without repeated parameters cannot be annotated with @varargs", sym.sourcePos)
         tree
-    }
+    else
+      if hasAnnotation then
+        ctx.error("A method without repeated parameters cannot be annotated with @varargs", sym.sourcePos)
+      tree
 
   /** Is there a repeated parameter in some parameter list? */
   private def hasRepeatedParams(sym: Symbol)(using Context): Boolean =
@@ -175,23 +179,30 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  forwards it to `ddef`.
    */
   private def addVarArgsForwarder(ddef: DefDef, isBridge: Boolean)(using ctx: Context): Tree =
-    val original = ddef.symbol.asTerm
-    // For simplicity we always set the varargs flag
-    // although it's not strictly necessary for overrides
-    // (but it is for non-overrides)
-    val flags = ddef.symbol.flags | JavaVarargs
+    val original = ddef.symbol
 
     // The java-compatible forwarder symbol
-    val sym = original.copy(
-        // non-overrides cannot be synthetic otherwise javac refuses to call them
+    val sym = atPhase(thisPhase) {
+      // Capture the flags before they get modified by #transform.
+      // For simplicity we always set the varargs flag,
+      // although it's not strictly necessary for overrides.
+      val flags = original.flags | JavaVarargs
+      original.copy(
         flags = if isBridge then flags | Artifact else flags,
         info = toJavaVarArgs(ddef.symbol.info)
       ).asTerm
+    }
 
-    currentClass.info.member(sym.name).alternatives.find { s =>
-      s.matches(sym) &&
-      !(isBridge && s.asSymDenotation.is(JavaDefined))
-    } match
+    // Find a method that would conflict with the forwarder if the latter existed.
+    // This needs to be done at thisPhase so that parent @varargs don't conflict.
+    val conflict = atPhase(thisPhase) {
+      currentClass.info.member(sym.name).alternatives.find { s =>
+        s.matches(sym) &&
+        !(isBridge && s.asSymDenotation.is(JavaDefined))
+      }
+    }
+
+    conflict match
       case Some(conflict) =>
         ctx.error(s"@varargs produces a forwarder method that conflicts with ${conflict.showDcl}", original.sourcePos)
         ddef
@@ -201,15 +212,10 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
           // Can't call `.argTypes` here because the underlying array type is of the
           // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
           val elemtp = vararg.tpe.widen.argInfos.head
-
-          // The generation of the forwarding call needs to be deferred, otherwise
-          // generic and curried methods won't pass the tree checker.
-          atNextPhase {
-            ref(original.termRef)
-              .appliedToTypes(trefs)
-              .appliedToArgss(init)
-              .appliedToArgs(last :+ tpd.wrapArray(vararg, elemtp))
-            }
+          ref(original.termRef)
+            .appliedToTypes(trefs)
+            .appliedToArgss(init)
+            .appliedToArgs(last :+ tpd.wrapArray(vararg, elemtp))
           })
         Thicket(ddef, bridgeDef)
 
