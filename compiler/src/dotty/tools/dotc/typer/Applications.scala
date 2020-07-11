@@ -533,19 +533,17 @@ trait Applications extends Compatibility {
         case formal :: formals1 =>
 
           /** Add result of typing argument `arg` against parameter type `formal`.
-           *  @return  A type transformation to apply to all arguments following this one.
+           *  @return  The remaining formal parameter types. If the method is parameter-dependent
+           *           this means substituting the actual argument type for the current formal parameter
+           *           in the remaining formal parameters.
            */
-          def addTyped(arg: Arg, formal: Type): Type => Type = {
+          def addTyped(arg: Arg, formal: Type): List[Type] =
             addArg(typedArg(arg, formal), formal)
-            if (methodType.isParamDependent && typeOfArg(arg).exists)
+            if methodType.isParamDependent && typeOfArg(arg).exists then
               // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-              safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg))
-            else identity
-          }
-
-          def addTypedAndSubstitute(arg: Arg, formal: Type): List[Type] =
-            val substParam = addTyped(arg, formal)
-            formals1.mapconserve(substParam)
+              formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
+            else
+              formals1
 
           def missingArg(n: Int): Unit = {
             val pname = methodType.paramNames(n)
@@ -587,11 +585,11 @@ trait Applications extends Compatibility {
             def implicitArg = implicitArgTree(formal, appPos.span)
 
             if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
-              matchArgs(args1, addTypedAndSubstitute(treeToArg(implicitArg), formal), n + 1)
+              matchArgs(args1, addTyped(treeToArg(implicitArg), formal), n + 1)
             else
               val defaultArg = defaultExpr
               if !defaultArg.isEmpty then
-                matchArgs(args1, addTypedAndSubstitute(treeToArg(defaultArg), formal), n + 1)
+                matchArgs(args1, addTyped(treeToArg(defaultArg), formal), n + 1)
               else
                 missingArg(n)
           }
@@ -613,7 +611,7 @@ trait Applications extends Compatibility {
             case EmptyTree :: args1 =>
               tryDefault(n, args1)
             case arg :: args1 =>
-              matchArgs(args1, addTypedAndSubstitute(arg, formal), n + 1)
+              matchArgs(args1, addTyped(arg, formal), n + 1)
             case nil =>
               tryDefault(n, args)
           }
