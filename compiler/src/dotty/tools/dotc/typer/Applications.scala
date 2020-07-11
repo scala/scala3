@@ -555,7 +555,7 @@ trait Applications extends Compatibility {
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
             val sym = methRef.symbol
 
-            def defaultExpr =
+            val defaultArg =
               if (isJavaAnnotConstr(sym)) {
                 val cinfo = sym.owner.asClass.classInfo
                 val pname = methodType.paramNames(n)
@@ -584,14 +584,12 @@ trait Applications extends Compatibility {
 
             def implicitArg = implicitArgTree(formal, appPos.span)
 
-            if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
+            if !defaultArg.isEmpty then
+              matchArgs(args1, addTyped(treeToArg(defaultArg), formal), n + 1)
+            else if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
               matchArgs(args1, addTyped(treeToArg(implicitArg), formal), n + 1)
             else
-              val defaultArg = defaultExpr
-              if !defaultArg.isEmpty then
-                matchArgs(args1, addTyped(treeToArg(defaultArg), formal), n + 1)
-              else
-                missingArg(n)
+              missingArg(n)
           }
 
           if (formal.isRepeatedParam)
