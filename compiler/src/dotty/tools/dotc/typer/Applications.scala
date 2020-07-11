@@ -543,6 +543,10 @@ trait Applications extends Compatibility {
             else identity
           }
 
+          def addTypedAndSubstitute(arg: Arg, formal: Type): List[Type] =
+            val substParam = addTyped(arg, formal)
+            formals1.mapconserve(substParam)
+
           def missingArg(n: Int): Unit = {
             val pname = methodType.paramNames(n)
             fail(
@@ -553,7 +557,7 @@ trait Applications extends Compatibility {
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
             val sym = methRef.symbol
 
-            val defaultExpr =
+            def defaultExpr =
               if (isJavaAnnotConstr(sym)) {
                 val cinfo = sym.owner.asClass.classInfo
                 val pname = methodType.paramNames(n)
@@ -580,12 +584,16 @@ trait Applications extends Compatibility {
                   EmptyTree
               }
 
-            if (!defaultExpr.isEmpty) {
-              val substParam = addTyped(treeToArg(defaultExpr), formal)
-              matchArgs(args1, formals1.mapconserve(substParam), n + 1)
-            }
+            def implicitArg = implicitArgTree(formal, appPos.span)
+
+            if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
+              matchArgs(args1, addTypedAndSubstitute(treeToArg(implicitArg), formal), n + 1)
             else
-              missingArg(n)
+              val defaultArg = defaultExpr
+              if !defaultArg.isEmpty then
+                matchArgs(args1, addTypedAndSubstitute(treeToArg(defaultArg), formal), n + 1)
+              else
+                missingArg(n)
           }
 
           if (formal.isRepeatedParam)
@@ -605,8 +613,7 @@ trait Applications extends Compatibility {
             case EmptyTree :: args1 =>
               tryDefault(n, args1)
             case arg :: args1 =>
-              val substParam = addTyped(arg, formal)
-              matchArgs(args1, formals1.mapconserve(substParam), n + 1)
+              matchArgs(args1, addTypedAndSubstitute(arg, formal), n + 1)
             case nil =>
               tryDefault(n, args)
           }
@@ -1674,10 +1681,7 @@ trait Applications extends Compatibility {
       pt match
         case pt: FunProto =>
           if pt.applyKind == ApplyKind.Using then
-            val alts0 = alts.filterConserve { alt =>
-              val mt = alt.widen.stripPoly
-              mt.isImplicitMethod || mt.isContextualMethod
-            }
+            val alts0 = alts.filterConserve(_.widen.stripPoly.isImplicitMethod)
             if alts0 ne alts then return resolve(alts0)
           else if alts.exists(_.widen.stripPoly.isContextualMethod) then
             return resolveMapped(alts, alt => stripImplicit(alt.widen), pt)
