@@ -61,7 +61,7 @@ For instance, assuming the object
 ```scala
 object Instances {
   given intOrd as Ordering[Int]
-  given [T: Ordering] listOrd as Ordering[List[T]]
+  given listOrd[T: Ordering] as Ordering[List[T]]
   given ec as ExecutionContext = ...
   given im as Monoid[Int]
 }
