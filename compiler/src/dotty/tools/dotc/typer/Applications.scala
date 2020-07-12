@@ -533,15 +533,17 @@ trait Applications extends Compatibility {
         case formal :: formals1 =>
 
           /** Add result of typing argument `arg` against parameter type `formal`.
-           *  @return  A type transformation to apply to all arguments following this one.
+           *  @return  The remaining formal parameter types. If the method is parameter-dependent
+           *           this means substituting the actual argument type for the current formal parameter
+           *           in the remaining formal parameters.
            */
-          def addTyped(arg: Arg, formal: Type): Type => Type = {
+          def addTyped(arg: Arg, formal: Type): List[Type] =
             addArg(typedArg(arg, formal), formal)
-            if (methodType.isParamDependent && typeOfArg(arg).exists)
+            if methodType.isParamDependent && typeOfArg(arg).exists then
               // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-              safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg))
-            else identity
-          }
+              formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
+            else
+              formals1
 
           def missingArg(n: Int): Unit = {
             val pname = methodType.paramNames(n)
@@ -553,7 +555,7 @@ trait Applications extends Compatibility {
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
             val sym = methRef.symbol
 
-            val defaultExpr =
+            val defaultArg =
               if (isJavaAnnotConstr(sym)) {
                 val cinfo = sym.owner.asClass.classInfo
                 val pname = methodType.paramNames(n)
@@ -580,10 +582,12 @@ trait Applications extends Compatibility {
                   EmptyTree
               }
 
-            if (!defaultExpr.isEmpty) {
-              val substParam = addTyped(treeToArg(defaultExpr), formal)
-              matchArgs(args1, formals1.mapconserve(substParam), n + 1)
-            }
+            def implicitArg = implicitArgTree(formal, appPos.span)
+
+            if !defaultArg.isEmpty then
+              matchArgs(args1, addTyped(treeToArg(defaultArg), formal), n + 1)
+            else if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
+              matchArgs(args1, addTyped(treeToArg(implicitArg), formal), n + 1)
             else
               missingArg(n)
           }
@@ -605,8 +609,7 @@ trait Applications extends Compatibility {
             case EmptyTree :: args1 =>
               tryDefault(n, args1)
             case arg :: args1 =>
-              val substParam = addTyped(arg, formal)
-              matchArgs(args1, formals1.mapconserve(substParam), n + 1)
+              matchArgs(args1, addTyped(arg, formal), n + 1)
             case nil =>
               tryDefault(n, args)
           }
@@ -1674,10 +1677,7 @@ trait Applications extends Compatibility {
       pt match
         case pt: FunProto =>
           if pt.applyKind == ApplyKind.Using then
-            val alts0 = alts.filterConserve { alt =>
-              val mt = alt.widen.stripPoly
-              mt.isImplicitMethod || mt.isContextualMethod
-            }
+            val alts0 = alts.filterConserve(_.widen.stripPoly.isImplicitMethod)
             if alts0 ne alts then return resolve(alts0)
           else if alts.exists(_.widen.stripPoly.isContextualMethod) then
             return resolveMapped(alts, alt => stripImplicit(alt.widen), pt)

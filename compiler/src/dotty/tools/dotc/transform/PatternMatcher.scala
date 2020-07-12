@@ -380,7 +380,7 @@ object PatternMatcher {
           else {
             def applyImplicits(acc: Tree, implicits: List[Tree], mt: Type): Tree = mt match {
               case mt: MethodType =>
-                assert(mt.isImplicitMethod || mt.isContextualMethod)
+                assert(mt.isImplicitMethod)
                 val (args, rest) = implicits.splitAt(mt.paramNames.size)
                 applyImplicits(acc.appliedToArgs(args), rest, mt.resultType)
               case _ =>
