@@ -100,7 +100,8 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (sym.annotations.nonEmpty) {
         val cpy = sym.copySymDenotation()
         // Keep @deprecated annotation so that accessors can
-        // be marked as deprecated in the bytecode
+        // be marked as deprecated in the bytecode.
+        // TODO check the meta-annotations to know what to keep
         cpy.filterAnnotations(_.matches(defn.DeprecatedAnnot))
         cpy.installAfter(thisPhase)
       }
