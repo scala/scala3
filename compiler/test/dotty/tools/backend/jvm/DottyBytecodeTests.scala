@@ -938,13 +938,43 @@ class TestBCode extends DottyBytecodeTest {
         |
         |}
       """.stripMargin
-    checkBCode(List(code)) { dir =>
+    checkBCode(code) { dir =>
       val c = loadClassNode(dir.lookupName("C.class", directory = false).input)
 
       assertInvoke(getMethod(c, "f1"), "[Ljava/lang/String;", "clone") // array descriptor as receiver
       assertInvoke(getMethod(c, "f2"), "java/lang/Object", "hashCode") // object receiver
       assertInvoke(getMethod(c, "f3"), "java/lang/Object", "hashCode")
       assertInvoke(getMethod(c, "f4"), "java/lang/Object", "toString")
+    }
+  }
+
+  @Test
+  def deprecation(): Unit = {
+    val code =
+      """@deprecated
+        |class Test {
+        |  @deprecated
+        |  val v = 0
+        |
+        |  @deprecated
+        |  var x = 0
+        |
+        |  @deprecated("do not use this function!")
+        |  def f(): Unit = ()
+        |}
+      """.stripMargin
+
+    checkBCode(code) { dir =>
+      val c = loadClassNode(dir.lookupName("Test.class", directory = false).input)
+      assert((c.access & Opcodes.ACC_DEPRECATED) != 0)
+      assert((getMethod(c, "f").access & Opcodes.ACC_DEPRECATED) != 0)
+
+      assert((getField(c, "v").access & Opcodes.ACC_DEPRECATED) != 0)
+      assert((getMethod(c, "v").access & Opcodes.ACC_DEPRECATED) != 0)
+
+      assert((getField(c, "x").access & Opcodes.ACC_DEPRECATED) != 0)
+      assert((getMethod(c, "x").access & Opcodes.ACC_DEPRECATED) != 0)
+      assert((getMethod(c, "x_$eq").access & Opcodes.ACC_DEPRECATED) != 0)
     }
   }
 }

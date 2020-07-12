@@ -206,36 +206,6 @@ object Annotations {
     Annotation(defn.ThrowsAnnot.typeRef.appliedTo(tref), Ident(tref))
   }
 
-  /** A decorator that provides queries for specific annotations
-   *  of a symbol.
-   */
-  implicit class AnnotInfo(val sym: Symbol) extends AnyVal {
-
-    def isDeprecated(using Context): Boolean =
-      sym.hasAnnotation(defn.DeprecatedAnnot)
-
-    def deprecationMessage(using Context): Option[String] =
-      for {
-        annot <- sym.getAnnotation(defn.DeprecatedAnnot)
-        arg <- annot.argumentConstant(0)
-      }
-      yield arg.stringValue
-
-    def migrationVersion(using Context): Option[Try[ScalaVersion]] =
-      for {
-        annot <- sym.getAnnotation(defn.MigrationAnnot)
-        arg <- annot.argumentConstant(1)
-      }
-      yield ScalaVersion.parse(arg.stringValue)
-
-    def migrationMessage(using Context): Option[Try[ScalaVersion]] =
-      for {
-        annot <- sym.getAnnotation(defn.MigrationAnnot)
-        arg <- annot.argumentConstant(0)
-      }
-      yield ScalaVersion.parse(arg.stringValue)
-  }
-
   /** Extracts the type of the thrown exception from an annotation.
    *
    *  Supports both "old-style" `@throws(classOf[Exception])`

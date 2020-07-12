@@ -1925,27 +1925,25 @@ object messages {
     def explain = "A sealed class or trait can only be extended in the same file as its declaration"
   }
 
-  class SymbolHasUnparsableVersionNumber(symbol: Symbol, migrationMessage: => String)(using Context)
+  class SymbolHasUnparsableVersionNumber(symbol: Symbol, errorMessage: String)(using Context)
   extends SyntaxMsg(SymbolHasUnparsableVersionNumberID) {
-    def msg = em"${symbol.showLocated} has an unparsable version number: $migrationMessage"
+    def msg = em"${symbol.showLocated} has an unparsable version number: $errorMessage"
     def explain =
-      em"""$migrationMessage
-          |
-          |The ${symbol.showLocated} is marked with ${hl("@migration")} indicating it has changed semantics
+      em"""The ${symbol.showLocated} is marked with ${hl("@migration")} indicating it has changed semantics
           |between versions and the ${hl("-Xmigration")} settings is used to warn about constructs
           |whose behavior may have changed since version change."""
   }
 
   class SymbolChangedSemanticsInVersion(
     symbol: Symbol,
-    migrationVersion: ScalaVersion
+    migrationVersion: ScalaVersion,
+    migrationMessage: String
   )(using Context) extends SyntaxMsg(SymbolChangedSemanticsInVersionID) {
-    def msg = em"${symbol.showLocated} has changed semantics in version $migrationVersion"
-    def explain = {
+    def msg = em"${symbol.showLocated} has changed semantics in version $migrationVersion: $migrationMessage"
+    def explain =
       em"""The ${symbol.showLocated} is marked with ${hl("@migration")} indicating it has changed semantics
           |between versions and the ${hl("-Xmigration")} settings is used to warn about constructs
           |whose behavior may have changed since version change."""
-    }
   }
 
   class UnableToEmitSwitch(tooFewCases: Boolean)(using Context)
