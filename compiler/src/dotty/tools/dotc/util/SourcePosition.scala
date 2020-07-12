@@ -22,7 +22,7 @@ extends interfaces.SourcePosition with Showable {
 
   def point: Int = span.point
 
-  def line: Int = if (source.file.exists) source.offsetToLine(point) else -1
+  def line: Int = if (source.content().length != 0) source.offsetToLine(point) else -1
 
   /** Extracts the lines from the underlying source file as `Array[Char]`*/
   def linesSlice: Array[Char] =
