@@ -186,10 +186,11 @@ object GenericSignatures {
         case defn.ArrayOf(elemtp) =>
           if (isUnboundedGeneric(elemtp))
             jsig(defn.ObjectType)
-          else {
+          else
             builder.append(ClassfileConstants.ARRAY_TAG)
-            jsig(elemtp)
-          }
+            elemtp match
+              case TypeBounds(lo, hi) => jsig(hi.widenDealias)
+              case _ => jsig(elemtp)
 
         case RefOrAppliedType(sym, pre, args) =>
           if (sym == defn.PairClass && tp.tupleArity > Definitions.MaxTupleArity)
@@ -313,8 +314,8 @@ object GenericSignatures {
     *  - If the list contains one or more occurrences of scala.Array with
     *    type parameters El1, El2, ... then the dominator is scala.Array with
     *    type parameter of intersectionDominator(List(El1, El2, ...)).           <--- @PP: not yet in spec.
-    *  - Otherwise, the list is reduced to a subsequence containing only types
-    *    which are not subtypes of other listed types (the span.)
+    *  - Otherwise, the list is reduced to a subsequence containing only the
+    *    types that are not supertypes of other listed types (the span.)
     *  - If the span is empty, the dominator is Object.
     *  - If the span contains a class Tc which is not a trait and which is
     *    not Object, the dominator is Tc.                                        <--- @PP: "which is not Object" not in spec.
