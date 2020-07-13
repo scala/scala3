@@ -3407,13 +3407,14 @@ class Typer extends Namer
         case _ =>
       }
 
-      val gadtApprox = Inferencing.approximateGADT(wtp)
+      // try GADT approximation, but only if we're trying to select a member
+      // Member lookup cannot take GADTs into account b/c of cache, so we
+      // approximate types based on GADT constraints instead. For an example,
+      // see MemberHealing in gadt-approximation-interaction.scala.
+      lazy val gadtApprox = Inferencing.approximateGADT(wtp)
       gadts.println(
         i"""GADT approximation {
         approximation = $gadtApprox
-        pt.isInstanceOf[SelectionProto] = ${pt.isInstanceOf[SelectionProto]}
-        ctx.gadt.nonEmpty = ${ctx.gadt.nonEmpty}
-        ctx.gadt = ${ctx.gadt.debugBoundsDescription}
         pt.isMatchedBy = ${
           if (pt.isInstanceOf[SelectionProto])
             pt.asInstanceOf[SelectionProto].isMatchedBy(gadtApprox).toString
