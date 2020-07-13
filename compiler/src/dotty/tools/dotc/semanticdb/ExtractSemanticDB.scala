@@ -260,9 +260,10 @@ class ExtractSemanticDB extends Phase:
 
         case _ => None
 
-      private inline def (tpe: Types.Type) isAnnotatedByUnchecked(using Context) = tpe match
-        case Types.AnnotatedType(_, annot) => annot.symbol == defn.UncheckedAnnot
-        case _                             => false
+      extension (tpe: Types.Type):
+        private inline def isAnnotatedByUnchecked(using Context) = tpe match
+          case Types.AnnotatedType(_, annot) => annot.symbol == defn.UncheckedAnnot
+          case _                             => false
 
       def collectPats(pat: Tree): List[Tree] =
 
@@ -282,11 +283,12 @@ class ExtractSemanticDB extends Phase:
 
     end PatternValDef
 
-    private def (tree: NamedDefTree) adjustedNameSpan(using Context): Span =
-      if tree.span.exists && tree.name.isAnonymousFunctionName || tree.name.isAnonymousClassName
-        Span(tree.span.point)
-      else
-        tree.nameSpan
+    extension (tree: NamedDefTree):
+      private def adjustedNameSpan(using Context): Span =
+        if tree.span.exists && tree.name.isAnonymousFunctionName || tree.name.isAnonymousClassName
+          Span(tree.span.point)
+        else
+          tree.nameSpan
 
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
@@ -496,12 +498,14 @@ class ExtractSemanticDB extends Phase:
       val start = if idx >= 0 then idx else span.start
       Span(start, start + sym.name.show.length, start)
 
-    private inline def (list: List[List[ValDef]]) isSingleArg = list match
-      case (_::Nil)::Nil => true
-      case _             => false
+    extension (list: List[List[ValDef]]):
+      private  inline def isSingleArg = list match
+        case (_::Nil)::Nil => true
+        case _             => false
 
-    private def (tree: DefDef) isSetterDef(using Context): Boolean =
-      tree.name.isSetterName && tree.mods.is(Accessor) && tree.vparamss.isSingleArg
+    extension (tree: DefDef):
+      private def isSetterDef(using Context): Boolean =
+        tree.name.isSetterName && tree.mods.is(Accessor) && tree.vparamss.isSingleArg
 
     private def findGetters(ctorParams: Set[Names.TermName], body: List[Tree])(using Context): Map[Names.TermName, ValDef] =
       if ctorParams.isEmpty || body.isEmpty then
@@ -525,26 +529,27 @@ class ExtractSemanticDB extends Phase:
         else limit
       Span(start max limit, end)
 
-    private extension on (span: Span):
-      def hasLength: Boolean = span.start != span.end
-      def zeroLength: Boolean = span.start == span.end
+    extension (span: Span):
+      private def hasLength: Boolean = span.start != span.end
+      private def zeroLength: Boolean = span.start == span.end
 
     /**Consume head while not an import statement.
      * Returns the rest of the list after the first import, or else the empty list
      */
-    @tailrec
-    private def (body: List[Tree]) foreachUntilImport(op: Tree => Unit): List[Tree] = body match
-      case ((_: Import) :: rest) => rest
-      case stat :: rest =>
-        op(stat)
-        rest.foreachUntilImport(op)
-      case Nil => Nil
+    extension (body: List[Tree]):
+      @tailrec private def foreachUntilImport(op: Tree => Unit): List[Tree] = body match
+        case ((_: Import) :: rest) => rest
+        case stat :: rest =>
+          op(stat)
+          rest.foreachUntilImport(op)
+        case Nil => Nil
 
-    private def (sym: Symbol) adjustIfCtorTyparam(using Context) =
-      if sym.isType && sym.owner.exists && sym.owner.isConstructor
-        matchingMemberType(sym, sym.owner.owner)
-      else
-        sym
+    extension (sym: Symbol):
+      private def adjustIfCtorTyparam(using Context) =
+        if sym.isType && sym.owner.exists && sym.owner.isConstructor
+          matchingMemberType(sym, sym.owner.owner)
+        else
+          sym
 
     private inline def matchingMemberType(ctorTypeParam: Symbol, classSym: Symbol)(using Context) =
       classSym.info.member(ctorTypeParam.name).symbol

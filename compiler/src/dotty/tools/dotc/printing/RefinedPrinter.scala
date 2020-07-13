@@ -727,7 +727,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   /** Print modifiers from symbols if tree has type, overriding the behavior in Trees. */
-  def (mdef: untpd.DefTree).mods: untpd.Modifiers =
+  extension (mdef: untpd.DefTree) def mods: untpd.Modifiers =
     if mdef.hasType then Modifiers(mdef.symbol) else mdef.rawMods
 
   private def Modifiers(sym: Symbol): Modifiers = untpd.Modifiers(

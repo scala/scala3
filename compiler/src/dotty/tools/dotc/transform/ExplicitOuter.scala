@@ -324,7 +324,7 @@ object ExplicitOuter {
       tpe
   }
 
-  def (sym: Symbol).isOuterParamAccessor(using Context): Boolean =
+  extension (sym: Symbol) def isOuterParamAccessor(using Context): Boolean =
     sym.is(ParamAccessor) && sym.name == nme.OUTER
 
   def outer(using Context): OuterOps = new OuterOps(ctx)

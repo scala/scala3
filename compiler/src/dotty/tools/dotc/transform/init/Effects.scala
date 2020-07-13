@@ -61,7 +61,7 @@ object Effects {
 
   // ------------------ operations on effects ------------------
 
-  def (eff: Effect) toEffs: Effects = Effects.empty + eff
+  extension (eff: Effect) def toEffs: Effects = Effects.empty + eff
 
   def asSeenFrom(eff: Effect, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
     trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show + ", outer = " + Potentials.show(outer), init, effs => show(effs.asInstanceOf[Effects])) { eff match {

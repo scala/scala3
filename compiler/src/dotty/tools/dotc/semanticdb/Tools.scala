@@ -137,4 +137,5 @@ object Tools:
     sb.append(if occ.role.isReference then " -> " else " <- ").append(occ.symbol).nl
   end processOccurrence
 
-  private inline def (sb: StringBuilder) nl = sb.append(System.lineSeparator)
+  extension (sb: StringBuilder):
+    private inline def nl = sb.append(System.lineSeparator)

@@ -123,7 +123,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
      * All interfaces implemented by a class, except for those inherited through the superclass.
      * Redundant interfaces are removed unless there is a super call to them.
      */
-    def (sym: Symbol).superInterfaces: List[Symbol] = {
+    extension (sym: Symbol) def superInterfaces: List[Symbol] = {
       val directlyInheritedTraits = sym.directlyInheritedTraits
       val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
       val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
@@ -275,8 +275,9 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
    *   object T { def f { object U } }
    * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
    */
-  private def (sym: Symbol).isOriginallyStaticOwner: Boolean =
-    sym.is(PackageClass) || sym.is(ModuleClass) && sym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
+  extension (sym: Symbol):
+    private def isOriginallyStaticOwner: Boolean =
+      sym.is(PackageClass) || sym.is(ModuleClass) && sym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
 
   /**
    * Return the Java modifiers for the given symbol.
