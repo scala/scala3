@@ -3411,22 +3411,14 @@ class Typer extends Namer
       // Member lookup cannot take GADTs into account b/c of cache, so we
       // approximate types based on GADT constraints instead. For an example,
       // see MemberHealing in gadt-approximation-interaction.scala.
-      lazy val gadtApprox = Inferencing.approximateGADT(wtp)
-      gadts.println(
-        i"""GADT approximation {
-        approximation = $gadtApprox
-        pt.isMatchedBy = ${
-          if (pt.isInstanceOf[SelectionProto])
-            pt.asInstanceOf[SelectionProto].isMatchedBy(gadtApprox).toString
-          else
-            "<not a SelectionProto>"
-        }
-        }
-        """
-      )
       pt match {
-        case pt: SelectionProto if ctx.gadt.nonEmpty && pt.isMatchedBy(gadtApprox) =>
-          return tpd.Typed(tree, TypeTree(gadtApprox))
+        case pt: SelectionProto if ctx.gadt.nonEmpty =>
+          gadts.println(i"Trying to heal member selection by GADT-approximating $wtp")
+          val gadtApprox = Inferencing.approximateGADT(wtp)
+          gadts.println(i"GADT-approximated $wtp ~~ $gadtApprox")
+          if pt.isMatchedBy(gadtApprox) then
+            gadts.println(i"Member selection healed by GADT approximation")
+            return tpd.Typed(tree, TypeTree(gadtApprox))
         case _ => ;
       }
 
