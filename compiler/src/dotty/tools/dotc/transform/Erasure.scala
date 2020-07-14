@@ -20,6 +20,7 @@ import core.Annotations.BodyAnnotation
 import typer.{NoChecking, LiftErased}
 import typer.Inliner
 import typer.ProtoTypes._
+import typer.ErrorReporting.errorTree
 import core.TypeErasure._
 import core.Decorators._
 import dotty.tools.dotc.ast.{tpd, untpd}
@@ -700,8 +701,17 @@ object Erasure {
           else
             val castTarget = // Avoid inaccessible cast targets, see i8661
               if sym.owner.isAccessibleFrom(qual1.tpe)(using preErasureCtx)
-              then sym.owner.typeRef
-              else erasure(tree.qualifier.typeOpt.widen)
+              then
+                sym.owner.typeRef
+              else
+                // If the owner is inaccessible, try going through the qualifier,
+                // but be careful to not go in an infinite loop in case that doesn't
+                // work either.
+                val tp = erasure(tree.qualifier.typeOpt.widen)
+                if tp =:= qual1.tpe.widen then
+                  return errorTree(qual1,
+                    ex"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
+                tp
             recur(cast(qual1, castTarget))
         }
       }
