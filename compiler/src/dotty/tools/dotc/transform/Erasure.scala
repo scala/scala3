@@ -688,12 +688,16 @@ object Erasure {
       def recur(qual: Tree): Tree = {
         val qualIsPrimitive = qual.tpe.widen.isPrimitiveValueType
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
+
+        def originalQual: Type =
+          erasure(tree.qualifier.typeOpt.widen.finalResultType)
+
         if (qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType)
           recur(box(qual))
         else if (!qualIsPrimitive && symIsPrimitive)
           recur(unbox(qual, sym.owner.typeRef))
         else if (sym.owner eq defn.ArrayClass)
-          selectArrayMember(qual, erasure(tree.qualifier.typeOpt.widen.finalResultType))
+          selectArrayMember(qual, originalQual)
         else {
           val qual1 = adaptIfSuper(qual)
           if (qual1.tpe.derivesFrom(sym.owner) || qual1.isInstanceOf[Super])
@@ -707,7 +711,7 @@ object Erasure {
                 // If the owner is inaccessible, try going through the qualifier,
                 // but be careful to not go in an infinite loop in case that doesn't
                 // work either.
-                val tp = erasure(tree.qualifier.typeOpt.widen)
+                val tp = originalQual
                 if tp =:= qual1.tpe.widen then
                   return errorTree(qual1,
                     ex"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
