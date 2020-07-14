@@ -33,7 +33,7 @@ import collection.mutable
 import annotation.tailrec
 import Implicits._
 import util.Stats.record
-import config.Printers.{gadts, typr}
+import config.Printers.{gadts, typr, debug}
 import config.Feature._
 import config.SourceVersion._
 import rewrites.Rewrites.patch
@@ -3407,25 +3407,18 @@ class Typer extends Namer
         case _ =>
       }
 
-      val approximation = Inferencing.approximateGADT(wtp)
-      gadts.println(
-        i"""GADT approximation {
-        approximation = $approximation
-        pt.isInstanceOf[SelectionProto] = ${pt.isInstanceOf[SelectionProto]}
-        ctx.gadt.nonEmpty = ${ctx.gadt.nonEmpty}
-        ctx.gadt = ${ctx.gadt.debugBoundsDescription}
-        pt.isMatchedBy = ${
-          if (pt.isInstanceOf[SelectionProto])
-            pt.asInstanceOf[SelectionProto].isMatchedBy(approximation).toString
-          else
-            "<not a SelectionProto>"
-        }
-        }
-        """
-      )
+      // try GADT approximation, but only if we're trying to select a member
+      // Member lookup cannot take GADTs into account b/c of cache, so we
+      // approximate types based on GADT constraints instead. For an example,
+      // see MemberHealing in gadt-approximation-interaction.scala.
       pt match {
-        case pt: SelectionProto if ctx.gadt.nonEmpty && pt.isMatchedBy(approximation) =>
-          return tpd.Typed(tree, TypeTree(approximation))
+        case pt: SelectionProto if ctx.gadt.nonEmpty =>
+          gadts.println(i"Trying to heal member selection by GADT-approximating $wtp")
+          val gadtApprox = Inferencing.approximateGADT(wtp)
+          gadts.println(i"GADT-approximated $wtp ~~ $gadtApprox")
+          if pt.isMatchedBy(gadtApprox) then
+            gadts.println(i"Member selection healed by GADT approximation")
+            return tpd.Typed(tree, TypeTree(gadtApprox))
         case _ => ;
       }
 
@@ -3459,6 +3452,7 @@ class Typer extends Namer
         if (isFullyDefined(wtp, force = ForceDegree.all) &&
             ctx.typerState.constraint.ne(prevConstraint)) readapt(tree)
         else err.typeMismatch(tree, pt, failure)
+
       if ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType then
         if pt.isRef(defn.AnyValClass) || pt.isRef(defn.ObjectClass) then
           ctx.error(em"the result of an implicit conversion must be more specific than $pt", tree.sourcePos)
@@ -3469,14 +3463,13 @@ class Typer extends Namer
             checkImplicitConversionUseOK(found.symbol, tree.posd)
             readapt(found)(using ctx.retractMode(Mode.ImplicitsEnabled))
           case failure: SearchFailure =>
-            if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous) {
+            if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous) then
               // don't report the failure but return the tree unchanged. This
               // will cause a failure at the next level out, which usually gives
               // a better error message. To compensate, store the encountered failure
               // as an attachment, so that it can be reported later as an addendum.
               rememberSearchFailure(tree, failure)
               tree
-            }
             else recover(failure.reason)
         }
       else recover(NoMatchingImplicits)

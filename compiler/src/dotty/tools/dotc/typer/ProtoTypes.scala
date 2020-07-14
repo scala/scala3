@@ -687,14 +687,8 @@ object ProtoTypes {
 
   /** Dummy tree to be used as an argument of a FunProto or ViewProto type */
   object dummyTreeOfType {
-    /*
-     * A property indicating that the given tree was created with dummyTreeOfType.
-     * It is sometimes necessary to detect the dummy trees to avoid unwanted readaptations on them.
-     */
-    val IsDummyTree = new Property.Key[Unit]
-
     def apply(tp: Type)(implicit src: SourceFile): Tree =
-      (untpd.Literal(Constant(null)) withTypeUnchecked tp).withAttachment(IsDummyTree, ())
+      untpd.Literal(Constant(null)) withTypeUnchecked tp
     def unapply(tree: untpd.Tree): Option[Type] = tree match {
       case Literal(Constant(null)) => Some(tree.typeOpt)
       case _ => None
