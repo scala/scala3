@@ -65,21 +65,21 @@ the two swaps cancel each other out).
 
 ### Generic Extensions
 
- It is also possible to extend generic types by adding type parameters to an extension. For instance:
+It is also possible to extend generic types by adding type parameters to an extension. For instance:
 
- ```scala
-  extension [T](xs: List[T])
-    def second = xs.tail.head
+```scala
+extension [T](xs: List[T])
+  def second = xs.tail.head
 
-  extension [T: Numeric](x: T)
-    def + (y: T): T = summon[Numeric[T]].plus(x, y)
+extension [T: Numeric](x: T)
+  def + (y: T): T = summon[Numeric[T]].plus(x, y)
 ```
 
 If an extension method has type parameters, they come immediately after `extension` and are followed by the extended parameter.
 When calling a generic extension method, any explicitly given type arguments follow the method name. So the `second` method could be instantiated as follows.
 
 ```scala
-  List(1, 2, 3).second[Int]
+List(1, 2, 3).second[Int]
 ```
 
 Of course, the type argument here would usually be left out since it can be inferred.
@@ -87,8 +87,8 @@ Of course, the type argument here would usually be left out since it can be infe
 Extensions can also take using clauses. For instance, the `+` extension above could equivalently be written with a using clause:
 
 ```scala
-  extension [T](x: T)(using n: Numeric[T])
-    def - (y: T): T = n.minus(x, y)
+extension [T](x: T)(using n: Numeric[T])
+  def + (y: T): T = n.plus(x, y)
 ```
 
 **Note**: Type parameters have to be given after the `extension` keyword;
