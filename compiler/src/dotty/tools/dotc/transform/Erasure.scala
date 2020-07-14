@@ -685,6 +685,21 @@ object Erasure {
           qual
       }
 
+      /** Can we safely use `cls` as a qualifier without getting a runtime error on
+       *  the JVM due to its accessibility checks?
+       */
+      def isJvmAccessible(cls: Symbol): Boolean =
+        // Scala classes are always emitted as public, unless the
+        // `private` modifier is used, but a non-private class can never
+        // extend a private class, so such a class will never be a cast target.
+        !cls.is(Flags.JavaDefined) || {
+          // We can't rely on `isContainedWith` here because packages are
+          // not nested from the JVM point of view.
+          val boundary = cls.accessBoundary(cls.owner)(using preErasureCtx)
+          (boundary eq defn.RootClass) ||
+          (ctx.owner.enclosingPackageClass eq boundary)
+        }
+
       def recur(qual: Tree): Tree = {
         val qualIsPrimitive = qual.tpe.widen.isPrimitiveValueType
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
@@ -704,7 +719,7 @@ object Erasure {
             select(qual1, sym)
           else
             val castTarget = // Avoid inaccessible cast targets, see i8661
-              if sym.owner.isAccessibleFrom(qual1.tpe)(using preErasureCtx)
+              if isJvmAccessible(sym.owner)
               then
                 sym.owner.typeRef
               else
