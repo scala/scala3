@@ -104,7 +104,7 @@ yield
 ### Soft keywords
 
 ```
-as  derives  end  extension  inline  on  opaque  open  transparent  using
+as  derives  end  extension  inline  opaque  open  transparent  using
 *  +  -
 ```
 
