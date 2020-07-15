@@ -1,0 +1,34 @@
+
+*.class
+*.log
+
+# sbt specific
+.cache
+.history
+.lib/
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+
+# Intellij
+.idea
+
+#integration tests dir
+/test-ws
+
+# to test deploy
+private-*
+repo
+
+.metals
+.bloop
+
+# custom things
+output
