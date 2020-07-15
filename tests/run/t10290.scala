@@ -21,8 +21,8 @@ object Test {
   def main(args : Array[String]) : Unit = {
     val b = new B
     val c = new b.C
-    assert(c.t1 == "A1")
-    assert(c.t2 == "A2")
-    assert(c.t3 == "B")
+    assert(c.t1 == "A1", c.t1)
+    assert(c.t2 == "A2", c.t2)
+    assert(c.t3 == "B", c.t3)
   }
 }
