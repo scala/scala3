@@ -364,9 +364,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
           else {
             mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
-            generatedType =
-              if (tree.symbol == defn.ArrayClass) ObjectReference
-              else classBTypeFromSymbol(claszSymbol)
+            // When compiling Array.scala, the constructor invokes `Array.this.super.<init>`. The expectedType
+            // is `[Object` (computed by typeToBType, the type of This(Array) is `Array[T]`). If we would set
+            // the generatedType to `Array` below, the call to adapt at the end would fail. The situation is
+            // similar for primitives (`I` vs `Int`).
+            if (tree.symbol != defn.ArrayClass && !tree.symbol.isPrimitiveValueClass) {
+              generatedType = classBTypeFromSymbol(claszSymbol)
+            }
           }
 
         case DesugaredSelect(Ident(nme.EMPTY_PACKAGE), module) =>
