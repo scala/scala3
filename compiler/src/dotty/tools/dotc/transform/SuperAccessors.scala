@@ -5,7 +5,7 @@ import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.mutable
 import ValueClasses.isMethodWithExtension
 import core._
-import Contexts._, Flags._, Symbols._, NameOps._, Trees._
+import Contexts._, Flags._, Symbols._, NameOps._, Trees._, Types.SuperType
 import TypeUtils._, SymUtils._
 import DenotTransformers.DenotTransformer
 import Symbols._
@@ -99,6 +99,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     val sym   = sel.symbol
     assert(sup.symbol.exists, s"missing symbol in $sel: ${sup.tpe}")
     val clazz = sup.symbol
+    val currentClass = ctx.owner.enclosingClass
 
     if (sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.isAllOf(ParamForwarder))
       // ParamForwaders as installed ParamForwarding.scala do use super calls to vals
@@ -145,9 +146,20 @@ class SuperAccessors(thisPhase: DenotTransformer) {
               sel.sourcePos)
         }
     }
-    if (name.isTermName && mix.name.isEmpty &&
-        (clazz.is(Trait) || clazz != ctx.owner.enclosingClass || !validCurrentClass))
-      atPhase(thisPhase.next)(superAccessorCall(sel))
+
+    def mixIsTrait = sup.tpe match {
+      case SuperType(thisTpe, superTpe) => superTpe.typeSymbol.is(Trait)
+    }
+
+    val needAccessor = name.isTermName && {
+      mix.name.isEmpty && (clazz.is(Trait) || clazz != currentClass || !validCurrentClass) ||
+      // SI-8803. If we access super[A] from an inner class (!= currentClass) or closure (validCurrentClass),
+      // where A is the superclass we need an accessor. If A is a parent trait we don't: in this case mixin
+      // will re-route the super call directly to the impl class (it's statically known).
+      !mix.name.isEmpty && (clazz != currentClass || !validCurrentClass) && !mixIsTrait
+    }
+
+    if (needAccessor) atPhase(thisPhase.next)(superAccessorCall(sel))
     else sel
   }
 
