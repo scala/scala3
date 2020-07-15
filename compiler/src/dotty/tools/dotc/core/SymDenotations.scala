@@ -573,21 +573,24 @@ object SymDenotations {
 
     /** The name given in an `@alpha` annotation if one is present, `name` otherwise */
     final def erasedName(using Context): Name =
-      getAnnotation(defn.AlphaAnnot) match {
+      // If there is no `@alpha` annotation, use the parent's one.
+      // Clashes between @alpha annotations are detected in RefChecks, not here
+      val alpha: Option[Annotation] = getAnnotation(defn.AlphaAnnot).orElse {
+        allOverriddenSymbols.flatMap(_.getAnnotation(defn.AlphaAnnot)).nextOption
+      }
+      alpha match
         case Some(ann) =>
-          ann.arguments match {
+          ann.arguments match
             case Literal(Constant(str: String)) :: Nil =>
-              if (isType)
-                if (is(ModuleClass))
+              if isType then
+                if is(ModuleClass) then
                   str.toTypeName.moduleClassName
                 else
                   str.toTypeName
               else
                 str.toTermName
             case _ => name
-          }
         case _ => name
-      }
 
     // ----- Tests -------------------------------------------------
 
