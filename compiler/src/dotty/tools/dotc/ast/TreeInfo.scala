@@ -837,6 +837,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   final def splitAtSuper(constrStats: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =
     constrStats.toList match {
       case (sc: Apply) :: rest if sc.symbol.isConstructor => (sc :: Nil, rest)
+      case (block @ Block(_, sc: Apply)) :: rest if sc.symbol.isConstructor => (block :: Nil, rest)
       case stats => (Nil, stats)
     }
 
