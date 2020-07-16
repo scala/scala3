@@ -92,6 +92,10 @@ trait TypeAssigner {
             test(NamedType(pre, name, d2), false)
           else if (pre.derivesFrom(defn.DynamicClass) && name.isTermName)
             TryDynamicCallType
+          else if ctx.typer.isInstanceOf[Inliner#InlineTyper] && tpe.denot.symbol.is(Inline) then
+            // Call to an inline method that has been inlined but is not accessible at this place.
+            // It is fine to keep it even if not accessible as it will be inlined and the call will not exist at runtime.
+            tpe
           else {
             val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
             var packageAccess = false
