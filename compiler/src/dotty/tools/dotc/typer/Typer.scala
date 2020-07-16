@@ -1936,11 +1936,11 @@ class Typer extends Namer
     }
 
     if (sym.isInlineMethod) rhsCtx.addMode(Mode.InlineableBody)
-    val rhs1 =
+    val rhs1 = PrepareInlineable.dropInlineIfError(sym,
       if sym.isScala2Macro then typedScala2MacroBody(ddef.rhs)(using rhsCtx)
-      else typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(using rhsCtx)
+      else typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(using rhsCtx))
 
-    if (sym.isInlineMethod)
+    if sym.isInlineMethod then
       val rhsToInline = PrepareInlineable.wrapRHS(ddef, tpt1, rhs1)
       PrepareInlineable.registerInlineInfo(sym, rhsToInline)
 
