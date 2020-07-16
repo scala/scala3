@@ -150,6 +150,12 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
           // When transforming the getter, we determined that no field was needed.
           // In that case we can keep the setter as is, with a () rhs.
           tree
+        else if field.getter.is(ParamAccessor, butNot = Mutable) then
+          // This is a trait setter (because not Mutable) for a param accessor.
+          // We must keep the () rhs of the trait setter, otherwise the value
+          // inherited from the trait will overwrite the value of the parameter.
+          // See tests/run/traitValOverriddenByParamAccessor.scala
+          tree
         else
           field.setFlag(Mutable) // Necessary for vals mixed in from traits
           val initializer =
