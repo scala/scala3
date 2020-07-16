@@ -161,10 +161,4 @@ abstract class Constraint extends Showable {
 
   /** Check that constraint only refers to TypeParamRefs bound by itself */
   def checkClosed()(using Context): Unit
-
-  /** Constraint has not yet been retracted from a typer state */
-  def isRetracted: Boolean
-
-  /** Indicate that constraint has been retracted from a typer state */
-  def markRetracted(): Unit
 }

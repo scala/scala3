@@ -192,10 +192,9 @@ object Scopes {
       extends Scope {
 
     /** Scope shares elements with `base` */
-    protected[Scopes] def this(base: Scope)(using Context) = {
+    protected[Scopes] def this(base: Scope)(using Context) =
       this(base.lastEntry, base.size, base.nestingLevel + 1)
       ensureCapacity(MinHashedScopeSize)
-    }
 
     def this() = this(null, 0, 0)
 

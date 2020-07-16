@@ -1133,11 +1133,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         if (recCount >= Config.LogPendingSubTypesThreshold) monitored = true
         val result = if (monitored) monitoredIsSubType else firstTry
         recCount = recCount - 1
-        if (!result) state.resetConstraintTo(saved)
-        else if (recCount == 0 && needsGc) {
+        if !result then
+          state.constraint = saved
+        else if recCount == 0 && needsGc then
           state.gc()
           needsGc = false
-        }
         if (Stats.monitored) recordStatistics(result, savedSuccessCount)
         result
       }
@@ -1145,7 +1145,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         case NonFatal(ex) =>
           if (ex.isInstanceOf[AssertionError]) showGoal(tp1, tp2)
           recCount -= 1
-          state.resetConstraintTo(saved)
+          state.constraint = saved
           successCount = savedSuccessCount
           throw ex
       }

@@ -125,7 +125,7 @@ object Implicits {
             else if (mt.paramInfos.lengthCompare(1) == 0 && {
                   var formal = widenSingleton(mt.paramInfos.head)
                   if (approx) formal = wildApprox(formal)
-                  ctx.test(argType relaxed_<:< formal.widenExpr)
+                  explore(argType relaxed_<:< formal.widenExpr)
                 })
               Candidate.Conversion
             else
@@ -242,7 +242,7 @@ object Implicits {
         val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
 
         def matchingCandidate(ref: ImplicitRef, extensionOnly: Boolean): Option[Candidate] =
-          var ckind = nestedCtx.test(candidateKind(ref.underlyingRef))
+          var ckind = explore(candidateKind(ref.underlyingRef))(using nestedCtx)
           if extensionOnly then ckind &= Candidate.Extension
           if ckind == Candidate.None then None
           else Some(new Candidate(ref, ckind, level))
@@ -1131,7 +1131,7 @@ trait Implicits { self: Typer =>
       def compareCandidate(prev: SearchSuccess, ref: TermRef, level: Int): Int =
         if (prev.ref eq ref) 0
         else if (prev.level != level) prev.level - level
-        else nestedContext().test(compare(prev.ref, ref))
+        else explore(compare(prev.ref, ref))(using nestedContext())
 
       /** If `alt1` is also a search success, try to disambiguate as follows:
        *    - If alt2 is preferred over alt1, pick alt2, otherwise return an

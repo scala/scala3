@@ -1302,20 +1302,20 @@ trait Applications extends Compatibility {
   def isApplicableMethodRef(methRef: TermRef, args: List[Tree], resultType: Type, keepConstraint: Boolean)(using Context): Boolean = {
     def isApp(using Context): Boolean =
       new ApplicableToTrees(methRef, args, resultType).success
-    if (keepConstraint) isApp else ctx.test(isApp)
+    if (keepConstraint) isApp else explore(isApp)
   }
 
   /** Is given method reference applicable to argument trees `args` without inferring views?
     *  @param  resultType   The expected result type of the application
     */
   def isDirectlyApplicableMethodRef(methRef: TermRef, args: List[Tree], resultType: Type)(using Context): Boolean =
-    ctx.test(new ApplicableToTreesDirectly(methRef, args, resultType).success)
+    explore(new ApplicableToTreesDirectly(methRef, args, resultType).success)
 
   /** Is given method reference applicable to argument types `args`?
    *  @param  resultType   The expected result type of the application
    */
   def isApplicableMethodRef(methRef: TermRef, args: List[Type], resultType: Type)(using Context): Boolean =
-    ctx.test(new ApplicableToTypes(methRef, args, resultType).success)
+    explore(new ApplicableToTypes(methRef, args, resultType).success)
 
   /** Is given type applicable to argument trees `args`, possibly after inserting an `apply`?
    *  @param  resultType   The expected result type of the application
@@ -1474,7 +1474,7 @@ trait Applications extends Compatibility {
           case tp2: MethodType => true // (3a)
           case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
           case tp2: PolyType => // (3b)
-            ctx.test(isAsSpecificValueType(tp1, constrained(tp2).resultType))
+            explore(isAsSpecificValueType(tp1, constrained(tp2).resultType))
           case _ => // (3b)
             isAsSpecificValueType(tp1, tp2)
         }
@@ -1658,9 +1658,9 @@ trait Applications extends Compatibility {
      *  do they prune much, on average.
      */
     def adaptByResult(chosen: TermRef, alts: List[TermRef]) = pt match {
-      case pt: FunProto if !ctx.test(resultConforms(chosen.symbol, chosen, pt.resultType)) =>
+      case pt: FunProto if !explore(resultConforms(chosen.symbol, chosen, pt.resultType)) =>
         val conformingAlts = alts.filter(alt =>
-          (alt ne chosen) && ctx.test(resultConforms(alt.symbol, alt, pt.resultType)))
+          (alt ne chosen) && explore(resultConforms(alt.symbol, alt, pt.resultType)))
         conformingAlts match {
           case Nil => chosen
           case alt2 :: Nil => alt2
