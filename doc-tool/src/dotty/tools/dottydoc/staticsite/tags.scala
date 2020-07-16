@@ -3,7 +3,7 @@ package dottydoc
 package staticsite
 
 import model.references._
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 
 import liqp.tags.Tag
 import liqp.TemplateContext
@@ -19,7 +19,7 @@ object tags {
     def params: Map[String, AnyRef]
 
     private[this] var _baseurl: String = _
-    def baseurl(implicit ctx: Context): String = {
+    def baseurl(using Context): String = {
       if (_baseurl eq null) {
         _baseurl =
           params.get("site").flatMap {
@@ -40,7 +40,7 @@ object tags {
   /** Renders a `MaterializableLink` into a HTML anchor tag. If the link is
     * `NoLink` it will just return a string with the link's title.
     */
-  final case class RenderLink(params: Map[String, AnyRef])(implicit ctx: Context)
+  final case class RenderLink(params: Map[String, AnyRef])(using Context)
   extends Tag("renderLink") with ParamConverter {
     override def render(tctx: TemplateContext, nodes: LNode*): AnyRef = nodes(0).render(tctx) match {
       case map: JMap[String, AnyRef] @unchecked =>
@@ -58,14 +58,14 @@ object tags {
   }
 
 
-  private[this] def renderLink(baseurl: String, link: MaterializableLink)(implicit ctx: Context): String =
+  private[this] def renderLink(baseurl: String, link: MaterializableLink)(using Context): String =
     link match {
       case MaterializedLink(title, target) =>
         s"""<a href="$baseurl/api/$target">$title</a>"""
       case _ => link.title
     }
 
-  final case class RenderReference(params: Map[String, AnyRef])(implicit ctx: Context)
+  final case class RenderReference(params: Map[String, AnyRef])(using Context)
   extends Tag("renderRef") with ParamConverter {
 
     private def renderReference(ref: Reference): String = ref match {
@@ -125,7 +125,7 @@ object tags {
     }
   }
 
-  case class ResourceInclude(params: Map[String, AnyRef], includes: Map[String, Include])(implicit ctx: Context)
+  case class ResourceInclude(params: Map[String, AnyRef], includes: Map[String, Include])(using Context)
   extends Tag("include") {
     import scala.collection.JavaConverters._
     val DefaultExtension = ".html"
@@ -160,7 +160,7 @@ object tags {
     * {% renderTitle title, page.url %}
     * ```
     */
-  case class RenderTitle(params: Map[String, AnyRef])(implicit ctx: Context)
+  case class RenderTitle(params: Map[String, AnyRef])(using Context)
   extends Tag("renderTitle") with ParamConverter {
     private def isParent(t: Title, htmlPath: String): Boolean = {
       t.url match {

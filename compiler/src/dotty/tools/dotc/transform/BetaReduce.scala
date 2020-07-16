@@ -38,7 +38,7 @@ class BetaReduce extends MiniPhase:
   override def transformApply(app: Apply)(using ctx: Context): Tree = app.fun match
     case Select(fn, nme.apply) if defn.isFunctionType(fn.tpe) =>
       val app1 = betaReduce(app, fn, app.args)
-      if app1 ne app then ctx.log(i"beta reduce $app -> $app1")
+      if app1 ne app then report.log(i"beta reduce $app -> $app1")
       app1
     case _ =>
       app
@@ -65,7 +65,7 @@ object BetaReduce:
             ref.symbol
           case _ =>
             val flags = Synthetic | (param.symbol.flags & Erased)
-            val binding = ValDef(ctx.newSymbol(ctx.owner, param.name, flags, arg.tpe.widen, coord = arg.span), arg)
+            val binding = ValDef(newSymbol(ctx.owner, param.name, flags, arg.tpe.widen, coord = arg.span), arg)
             bindings += binding
             binding.symbol
 

@@ -177,7 +177,7 @@ class TreeTypeMap(
    *  between original and mapped symbols.
    */
   def withMappedSyms(syms: List[Symbol], mapAlways: Boolean = false): TreeTypeMap =
-    withMappedSyms(syms, ctx.mapSymbols(syms, this, mapAlways))
+    withMappedSyms(syms, mapSymbols(syms, this, mapAlways))
 
   /** The tree map with the substitution between originals `syms`
    *  and mapped symbols `mapped`. Also goes into mapped classes
@@ -188,7 +188,7 @@ class TreeTypeMap(
     val substMap = withSubstitution(syms, mapped)
     val fullMap = mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
       val origDcls = cls.info.decls.toList
-      val mappedDcls = ctx.mapSymbols(origDcls, tmap)
+      val mappedDcls = mapSymbols(origDcls, tmap)
       val tmap1 = tmap.withMappedSyms(origDcls, mappedDcls)
       if (symsChanged)
         origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)

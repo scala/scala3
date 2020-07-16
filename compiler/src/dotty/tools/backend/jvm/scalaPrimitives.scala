@@ -8,6 +8,7 @@ import Contexts.{Context, ctx}
 import Names.TermName, StdNames._
 import Types.{JavaArrayType, UnspecifiedErrorType, Type}
 import Symbols.{Symbol, NoSymbol}
+import dotc.report
 
 import scala.annotation.threadUnsafe
 import scala.collection.immutable
@@ -66,7 +67,7 @@ class DottyPrimitives(ictx: Context) {
       case defn.ArrayOf(el) => el
       case JavaArrayType(el) => el
       case _ =>
-        ctx.error(s"expected Array $tpe")
+        report.error(s"expected Array $tpe")
         UnspecifiedErrorType
     }
 
@@ -133,7 +134,7 @@ class DottyPrimitives(ictx: Context) {
     def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit = {
       val alts = cls.info.member(method).alternatives.map(_.symbol)
       if (alts.isEmpty)
-        ctx.error(s"Unknown primitive method $cls.$method")
+        report.error(s"Unknown primitive method $cls.$method")
       else alts foreach (s =>
         addPrimitive(s,
           s.info.paramInfoss match {

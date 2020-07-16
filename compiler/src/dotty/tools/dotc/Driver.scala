@@ -42,7 +42,7 @@ class Driver {
           if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
             val suspendedUnits = run.suspendedUnits.toList
             if (ctx.settings.XprintSuspension.value)
-              ctx.echo(i"compiling suspended $suspendedUnits%, %")
+              report.echo(i"compiling suspended $suspendedUnits%, %")
             val run1 = compiler.newRun
             for unit <- suspendedUnits do unit.suspended = false
             run1.compileUnits(suspendedUnits)
@@ -51,7 +51,7 @@ class Driver {
         finish(run)
       catch
         case ex: FatalError  =>
-          ctx.error(ex.getMessage) // signals that we should fail compilation.
+          report.error(ex.getMessage) // signals that we should fail compilation.
         case ex: TypeError =>
           println(s"${ex.toMessage} while compiling ${fileNames.mkString(", ")}")
           throw ex
@@ -76,7 +76,7 @@ class Driver {
       if !ctx.settings.YdropComments.value || ctx.mode.is(Mode.ReadComments) then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       if Feature.enabledBySetting(nme.Scala2Compat) && false then // TODO: enable
-        ctx.warning("-language:Scala2Compat will go away; use -source 3.0-migration instead")
+        report.warning("-language:Scala2Compat will go away; use -source 3.0-migration instead")
       val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)
       fromTastySetup(fileNames, ctx)
     }
@@ -84,7 +84,8 @@ class Driver {
 
   /** Setup extra classpath and figure out class names for tasty file inputs */
   protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) =
-    if (ctx0.settings.fromTasty.value(using ctx0)) {
+    given Context = ctx0
+    if (ctx0.settings.fromTasty.value) {
       // Resolve classpath and class names of tasty files
       val (classPaths, classNames) = fileNames0.flatMap { name =>
         val path = Paths.get(name)
@@ -99,11 +100,11 @@ class Driver {
           TastyFileUtil.getClassName(path) match {
             case Some(res) => res:: Nil
             case _ =>
-              ctx0.error(s"Could not load classname from $name.")
+              report.error(s"Could not load classname from $name.")
               ("", name) :: Nil
           }
         else {
-          ctx0.error(s"File $name does not exist.")
+          report.error(s"File $name does not exist.")
           ("", name) :: Nil
         }
       }.unzip

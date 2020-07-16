@@ -42,7 +42,7 @@ object Scopes {
    *  the given name in the given context. Returns `NoSymbol` if the
    *  no symbol should be synthesized for the given name.
    */
-  type SymbolSynthesizer = Name => Context => Symbol
+  type SymbolSynthesizer = Name => Context ?=> Symbol
 
   class ScopeEntry private[Scopes] (val name: Name, _sym: Symbol, val owner: Scope) {
 
@@ -265,7 +265,7 @@ object Scopes {
 
     /** enter a symbol in this scope. */
     final def enter[T <: Symbol](sym: T)(using Context): T = {
-      if (sym.isType && ctx.phaseId <= typerPhase.id)
+      if (sym.isType && currentPhaseId <= typerPhase.id)
         assert(lookup(sym.name) == NoSymbol,
           s"duplicate ${sym.debugString}; previous was ${lookup(sym.name).debugString}") // !!! DEBUG
       newScopeEntry(sym)
@@ -369,7 +369,7 @@ object Scopes {
           e = e.prev
       }
       if ((e eq null) && (synthesize != null)) {
-        val sym = synthesize(name)(ctx)
+        val sym = synthesize(name)
         if (sym.exists) newScopeEntry(sym) else e
       }
       else e

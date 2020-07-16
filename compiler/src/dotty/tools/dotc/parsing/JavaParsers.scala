@@ -19,7 +19,7 @@ import Symbols._
 import ast.Trees._
 import Decorators._
 import StdNames._
-import dotty.tools.dotc.reporting.messages.IdentifierExpected
+import reporting._
 import dotty.tools.dotc.util.SourceFile
 import util.Spans._
 import scala.collection.mutable.ListBuffer

@@ -1,15 +1,16 @@
-package dotty.tools.dotc.util
+package dotty.tools.dotc
+package util
 
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-import dotty.tools.dotc.core.Flags.Implicit
-import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.core.Types.{ErrorType, MethodType, PolyType}
-import dotty.tools.dotc.reporting.messages
+import ast.Trees._
+import ast.tpd
+import core.Constants.Constant
+import core.Contexts.{Context, ctx}
+import core.Denotations.SingleDenotation
+import core.Flags.Implicit
+import core.Names.TermName
+import util.Spans.Span
+import core.Types.{ErrorType, MethodType, PolyType}
+import reporting._
 
 import scala.collection.JavaConverters._
 
@@ -163,8 +164,8 @@ object Signatures {
   private def alternativesFromError(err: ErrorType, params: List[tpd.Tree])(using Context): (Int, List[SingleDenotation]) = {
     val alternatives =
       err.msg match
-        case msg: messages.AmbiguousOverload  => msg.alternatives
-        case msg: messages.NoMatchingOverload => msg.alternatives
+        case msg: AmbiguousOverload  => msg.alternatives
+        case msg: NoMatchingOverload => msg.alternatives
         case _                                => Nil
 
     // If the user writes `foo(bar, <cursor>)`, the typer will insert a synthetic

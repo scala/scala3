@@ -26,8 +26,7 @@ import Decorators._
 import scala.internal.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
-import reporting.Message
-import reporting.messages._
+import reporting._
 import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion._
 import config.SourceVersion
@@ -149,7 +148,7 @@ object Parsers {
      *  updating lastErrorOffset.
      */
     def syntaxError(msg: Message, span: Span): Unit =
-      ctx.error(msg, source.atSpan(span))
+      report.error(msg, source.atSpan(span))
 
     def unimplementedExpr(using Context): Select =
       Select(Select(rootDot(nme.scala), nme.Predef), nme.???)
@@ -315,17 +314,17 @@ object Parsers {
     }
 
     def warning(msg: Message, sourcePos: SourcePosition): Unit =
-      ctx.warning(msg, sourcePos)
+      report.warning(msg, sourcePos)
 
     def warning(msg: Message, offset: Int = in.offset): Unit =
-      ctx.warning(msg, source.atSpan(Span(offset)))
+      report.warning(msg, source.atSpan(Span(offset)))
 
     def deprecationWarning(msg: Message, offset: Int = in.offset): Unit =
-      ctx.deprecationWarning(msg, source.atSpan(Span(offset)))
+      report.deprecationWarning(msg, source.atSpan(Span(offset)))
 
     /** Issue an error at current offset that input is incomplete */
     def incompleteInputError(msg: Message): Unit =
-      ctx.incompleteInputError(msg, source.atSpan(Span(in.offset)))
+      report.incompleteInputError(msg, source.atSpan(Span(in.offset)))
 
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
@@ -455,7 +454,7 @@ object Parsers {
       case Tuple(ts) =>
         ts.map(convertToParam(_, mods))
       case t: Typed =>
-        ctx.errorOrMigrationWarning(
+        report.errorOrMigrationWarning(
           em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
           in.sourcePos())
         if migrateTo3 then
@@ -1198,7 +1197,7 @@ object Parsers {
             Quote(t)
           }
           else {
-            ctx.errorOrMigrationWarning(
+            report.errorOrMigrationWarning(
               em"""symbol literal '${in.name} is no longer supported,
                   |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
                   |or enclose in braces '{${in.name}} if you want a quoted expression.""",
@@ -1243,7 +1242,7 @@ object Parsers {
                 if (inPattern) Block(Nil, inBraces(pattern()))
                 else expr()
               else {
-                ctx.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
+                report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
                 EmptyTree
               }
             })
@@ -1291,7 +1290,7 @@ object Parsers {
       if migrateTo3 && in.token == NEWLINE && in.next.token == LBRACE then
         in.nextToken()
         if in.indentWidth(in.offset) == in.currentRegion.indentWidth then
-          ctx.errorOrMigrationWarning(
+          report.errorOrMigrationWarning(
             i"""This opening brace will start a new statement in Scala 3.
                |It needs to be indented to the right to keep being treated as
                |an argument to the previous expression.${rewriteNotice()}""",
@@ -1816,7 +1815,7 @@ object Parsers {
           AppliedTypeTree(toplevelTyp(), Ident(pname))
         } :: contextBounds(pname)
       case VIEWBOUND =>
-        ctx.errorOrMigrationWarning(
+        report.errorOrMigrationWarning(
           "view bounds `<%' are deprecated, use a context bound `:' instead",
           in.sourcePos())
         atSpan(in.skipToken()) {
@@ -1963,7 +1962,7 @@ object Parsers {
           WhileDo(cond, body)
         }
       case DO =>
-        ctx.errorOrMigrationWarning(
+        report.errorOrMigrationWarning(
           i"""`do <body> while <cond>` is no longer supported,
              |use `while <body> ; <cond> do ()` instead.${rewriteNotice()}""",
           in.sourcePos())
@@ -2091,7 +2090,7 @@ object Parsers {
             in.nextToken()
             if !(location.inArgs && in.token == RPAREN) then
               if opStack.nonEmpty
-                ctx.errorOrMigrationWarning(
+                report.errorOrMigrationWarning(
                   em"""`_*` can be used only for last argument of method application.
                       |It is no longer allowed in operands of infix operations.""",
                   in.sourcePos(uscoreStart))
@@ -2170,7 +2169,7 @@ object Parsers {
             if sourceVersion.isAtLeast(`3.1`)
                 // Don't error in non-strict mode, as the alternative syntax "implicit (x: T) => ... "
                 // is not supported by Scala2.x
-              ctx.errorOrMigrationWarning(
+              report.errorOrMigrationWarning(
                 s"This syntax is no longer supported; parameter needs to be enclosed in (...)",
                 in.sourcePos())
             in.nextToken()
@@ -2654,7 +2653,7 @@ object Parsers {
         infixPattern() match {
           case pt @ Ident(tpnme.WILDCARD_STAR) =>
             if sourceVersion.isAtLeast(`3.1`) then
-              ctx.errorOrMigrationWarning(
+              report.errorOrMigrationWarning(
                 "The syntax `x @ _*` is no longer supported; use `x : _*` instead",
                 in.sourcePos(startOffset(p)))
             atSpan(startOffset(p), offset) { Typed(p, pt) }
@@ -2664,7 +2663,7 @@ object Parsers {
       case p @ Ident(tpnme.WILDCARD_STAR) =>
         // compatibility for Scala2 `_*` syntax
         if sourceVersion.isAtLeast(`3.1`) then
-          ctx.errorOrMigrationWarning(
+          report.errorOrMigrationWarning(
             "The syntax `_*` is no longer supported; use `x : _*` instead",
             in.sourcePos(startOffset(p)))
         atSpan(startOffset(p)) { Typed(Ident(nme.WILDCARD), p) }
@@ -3277,7 +3276,7 @@ object Parsers {
           if in.token == LBRACE then s"$resultTypeStr ="
           else ": Unit "  // trailing space ensures that `def f()def g()` works.
         if migrateTo3 then
-          ctx.errorOrMigrationWarning(
+          report.errorOrMigrationWarning(
             s"Procedure syntax no longer supported; `$toInsert` should be inserted here",
             in.sourcePos())
           patch(source, Span(in.lastOffset), toInsert)
@@ -3721,7 +3720,7 @@ object Parsers {
         if (in.token == EXTENDS) {
           in.nextToken()
           if (in.token == LBRACE || in.token == COLONEOL) {
-            ctx.errorOrMigrationWarning(
+            report.errorOrMigrationWarning(
               "`extends` must be followed by at least one parent",
               in.sourcePos())
             Nil

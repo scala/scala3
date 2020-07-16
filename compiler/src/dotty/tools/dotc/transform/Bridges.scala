@@ -14,7 +14,7 @@ import util.SourcePosition
 class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd._
 
-  assert(ctx.phase == erasurePhase.next)
+  assert(currentPhase == erasurePhase.next)
   private val preErasureCtx = ctx.withPhase(erasurePhase)
   private lazy val elimErasedCtx = ctx.withPhase(elimErasedValueTypePhase.next)
 
@@ -67,7 +67,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     }
     if (member.signature == other.signature) {
       if (!member.info.matches(other.info))
-        ctx.error(em"""bridge generated for member ${desc(member)}
+        report.error(em"""bridge generated for member ${desc(member)}
                       |which overrides ${desc(other)}
                       |clashes with definition of the member itself; both have erased type ${info(member)(using elimErasedCtx)}."""",
                   bridgePosFor(member))
@@ -85,7 +85,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
         (Accessor | ParamAccessor | CaseAccessor | Deferred | Lazy | Module),
       coord = bridgePosFor(member).span).enteredAfter(thisPhase).asTerm
 
-    ctx.debuglog(
+    report.debuglog(
       i"""generating bridge from ${other.showLocated}: ${other.info}
              |to ${member.showLocated}: ${member.info} @ ${member.span}
              |bridge: ${bridge.showLocated} with flags: ${bridge.flagsString}""")
@@ -113,7 +113,6 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
    */
   def add(stats: List[untpd.Tree]): List[untpd.Tree] =
     val opc = new BridgesCursor()(using preErasureCtx)
-    val ectx = ctx.withPhase(thisPhase)
     while opc.hasNext do
       if !opc.overriding.is(Deferred) then
         addBridgeIfNeeded(opc.overriding, opc.overridden)

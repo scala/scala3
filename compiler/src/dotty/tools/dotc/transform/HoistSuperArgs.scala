@@ -91,7 +91,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         val argTypeWrtConstr = argType.subst(origParams, allParamRefs(constr.info))
         // argType with references to paramRefs of the primary constructor instead of
         // local parameter accessors
-        ctx.newSymbol(
+        newSymbol(
           owner = methOwner,
           name = SuperArgName.fresh(cls.name.toTermName),
           flags = Synthetic | Private | Method | staticFlag,
@@ -166,7 +166,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
           val res = ref(superMeth)
             .appliedToTypes(typeParams.map(_.typeRef))
             .appliedToArgss(termParamRefs(constr.info, termParams))
-          ctx.log(i"hoist $arg, cls = $cls = $res")
+          report.log(i"hoist $arg, cls = $cls = $res")
           res
         case _ => arg
       }

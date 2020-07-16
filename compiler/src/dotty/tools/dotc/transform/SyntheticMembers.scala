@@ -80,8 +80,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     else NoSymbol
   }
 
-  private def synthesizeDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Context => Tree)(using Context): Tree =
-    DefDef(sym, rhsFn(_)(ctx.withOwner(sym))).withSpan(ctx.owner.span.focus)
+  private def synthesizeDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Context ?=> Tree)(using Context): Tree =
+    DefDef(sym, rhsFn(_)(using ctx.withOwner(sym))).withSpan(ctx.owner.span.focus)
 
   /** If this is a case or value class, return the appropriate additional methods,
    *  otherwise return nothing.
@@ -130,8 +130,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
         case nme.ordinal => Select(This(clazz), nme.ordinalDollar)
       }
-      ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
-      synthesizeDef(synthetic, treess => ctx => syntheticRHS(treess)(using ctx))
+      report.log(s"adding $synthetic to $clazz at ${currentPhase}")
+      synthesizeDef(synthetic, syntheticRHS)
     }
 
     /** The class
@@ -224,7 +224,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *
      */
     def equalsBody(that: Tree)(using Context): Tree = {
-      val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic | Case, clazzType, coord = ctx.owner.span) // x$0
+      val thatAsClazz = newSymbol(ctx.owner, nme.x_0, Synthetic | Case, clazzType, coord = ctx.owner.span) // x$0
       def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
       val pattern = Bind(thatAsClazz, wildcardAscription(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))) // x$0 @ (_: C @unchecked)
       // compare primitive fields first, slow equality checks of non-primitive fields can be skipped when primitives differ
@@ -313,7 +313,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  ```
      */
     def caseHashCodeBody(using Context): Tree = {
-      val acc = ctx.newSymbol(ctx.owner, nme.acc, Mutable | Synthetic, defn.IntType, coord = ctx.owner.span)
+      val acc = newSymbol(ctx.owner, nme.acc, Mutable | Synthetic, defn.IntType, coord = ctx.owner.span)
       val accDef = ValDef(acc, Literal(Constant(0xcafebabe)))
       val mixPrefix = Assign(ref(acc),
         ref(defn.staticsMethod("mix")).appliedTo(ref(acc), This(clazz).select(defn.Product_productPrefix).select(defn.Any_hashCode).appliedToNone))
@@ -368,7 +368,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, isJava = false))
         .exists
     if (clazz.is(Module) && clazz.isStatic && clazz.isSerializable && !hasWriteReplace) {
-      val writeReplace = ctx.newSymbol(clazz, nme.writeReplace, Method | Private | Synthetic,
+      val writeReplace = newSymbol(clazz, nme.writeReplace, Method | Private | Synthetic,
         MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
       List(
         DefDef(writeReplace,
@@ -476,12 +476,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         classParents = oldClassInfo.classParents :+ parent)
       clazz.copySymDenotation(info = newClassInfo).installAfter(thisPhase)
     }
-    def addMethod(name: TermName, info: Type, cls: Symbol, body: (Symbol, Tree, Context) => Tree): Unit = {
-      val meth = ctx.newSymbol(clazz, name, Synthetic | Method, info, coord = clazz.coord)
+    def addMethod(name: TermName, info: Type, cls: Symbol, body: (Symbol, Tree) => Context ?=> Tree): Unit = {
+      val meth = newSymbol(clazz, name, Synthetic | Method, info, coord = clazz.coord)
       if (!existingDef(meth, clazz).exists) {
         meth.entered
         newBody = newBody :+
-          synthesizeDef(meth, vrefss => ctx => body(cls, vrefss.head.head, ctx))
+          synthesizeDef(meth, vrefss => body(cls, vrefss.head.head))
       }
     }
     val linked = clazz.linkedClass
@@ -490,7 +490,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       if (existing.exists && !existing.is(Deferred)) existing
       else {
         val monoType =
-          ctx.newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.rawTypeRef), coord = clazz.coord)
+          newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.rawTypeRef), coord = clazz.coord)
         newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
         monoType.entered
       }
@@ -500,12 +500,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def makeProductMirror(cls: Symbol) = {
       addParent(defn.Mirror_ProductClass.typeRef)
       addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
-        fromProductBody(_, _)(using _).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
+        fromProductBody(_, _).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
     }
     def makeSumMirror(cls: Symbol) = {
       addParent(defn.Mirror_SumClass.typeRef)
       addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType), cls,
-        ordinalBody(_, _)(using _))
+        ordinalBody(_, _))
     }
 
     if (clazz.is(Module)) {

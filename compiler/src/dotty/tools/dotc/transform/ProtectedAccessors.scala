@@ -57,7 +57,7 @@ class ProtectedAccessors extends MiniPhase {
       override def ifNoHost(reference: RefTree)(using Context): Tree = {
         val curCls = ctx.owner.enclosingClass
         transforms.println(i"${curCls.ownersIterator.toList}%, %")
-        ctx.error(i"illegal access to protected ${reference.symbol.showLocated} from $curCls",
+        report.error(i"illegal access to protected ${reference.symbol.showLocated} from $curCls",
           reference.sourcePos)
         reference
       }

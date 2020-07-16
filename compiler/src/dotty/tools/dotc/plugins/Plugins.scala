@@ -8,7 +8,6 @@ import dotty.tools.io._
 import Phases._
 import config.Printers.plugins.{ println => debug }
 
-
 /** Support for run-time loading of compiler plugins.
  *
  *  @author Lex Spoon
@@ -35,8 +34,8 @@ trait Plugins {
     // Explicit parameterization of recover to avoid -Xlint warning about inferred Any
     errors foreach (_.recover[Any] {
       // legacy behavior ignores altogether, so at least warn devs
-      case e: MissingPluginException => ctx.warning(e.getMessage)
-      case e: Exception              => ctx.inform(e.getMessage)
+      case e: MissingPluginException => report.warning(e.getMessage)
+      case e: Exception              => report.inform(e.getMessage)
     })
 
     goods map (_.get)
@@ -65,7 +64,7 @@ trait Plugins {
       def withoutPlug       = pick(tail, plugNames)
       def withPlug          = plug :: pick(tail, plugNames + plug.name)
 
-      def note(msg: String): Unit = if (ctx.settings.verbose.value) ctx.inform(msg format plug.name)
+      def note(msg: String): Unit = if (ctx.settings.verbose.value) report.inform(msg format plug.name)
       def fail(msg: String)       = { note(msg) ; withoutPlug }
 
       if (plugNames contains plug.name)
@@ -82,14 +81,14 @@ trait Plugins {
 
     // Verify required plugins are present.
     for (req <- ctx.settings.require.value ; if !(plugs exists (_.name == req)))
-      ctx.error("Missing required plugin: " + req)
+      report.error("Missing required plugin: " + req)
 
     // Verify no non-existent plugin given with -P
     for {
       opt <- ctx.settings.pluginOptions.value
       if !(plugs exists (opt startsWith _.name + ":"))
     }
-    ctx.error("bad option: -P:" + opt)
+    report.error("bad option: -P:" + opt)
 
     plugs
   }

@@ -11,8 +11,7 @@ import ValueClasses._
 import SymUtils._
 import core.Flags._
 import util.Spans._
-import reporting.messages.TypeTestAlwaysSucceeds
-import reporting.trace
+import reporting._
 import config.Printers.{ transforms => debug }
 
 /** This transform normalizes type tests and type casts,
@@ -199,8 +198,8 @@ object TypeTestsCasts {
 
           def unreachable(why: => String)(using ctx: Context): Boolean = {
             if (flagUnrelated)
-              if (inMatch) ctx.error(em"this case is unreachable since $why", expr.sourcePos)
-              else ctx.warning(em"this will always yield false since $why", expr.sourcePos)
+              if (inMatch) report.error(em"this case is unreachable since $why", expr.sourcePos)
+              else report.warning(em"this will always yield false since $why", expr.sourcePos)
             false
           }
 
@@ -242,14 +241,14 @@ object TypeTestsCasts {
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
 
             if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
-              ctx.error(i"cannot test if value of $exprType is a reference of $testCls", tree.sourcePos)
+              report.error(i"cannot test if value of $exprType is a reference of $testCls", tree.sourcePos)
               false
             else foundClasses.exists(check)
           end checkSensical
 
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
-              if (!inMatch) ctx.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.sourcePos)
+              if (!inMatch) report.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.sourcePos)
               constant(expr, Literal(Constant(true)))
             }
             else expr.testNotNull
@@ -350,7 +349,7 @@ object TypeTestsCasts {
           val argType = tree.args.head.tpe
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
           if (!isTrusted && !checkable(expr.tpe, argType, tree.span))
-            ctx.warning(i"the type test for $argType cannot be checked at runtime", tree.sourcePos)
+            report.warning(i"the type test for $argType cannot be checked at runtime", tree.sourcePos)
           transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
         }
         else if (sym.isTypeCast)

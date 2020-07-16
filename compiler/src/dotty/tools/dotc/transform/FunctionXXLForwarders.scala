@@ -49,7 +49,7 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
       yield {
         val xsType = defn.ArrayType.appliedTo(List(defn.ObjectType))
         val methType = MethodType(List(nme.args))(_ => List(xsType), _ => defn.ObjectType)
-        val meth = ctx.newSymbol(tree.symbol.owner, nme.apply, Synthetic | Method, methType)
+        val meth = newSymbol(tree.symbol.owner, nme.apply, Synthetic | Method, methType)
         DefDef(meth, paramss => forwarderRhs(tree, paramss.head.head))
       }
 

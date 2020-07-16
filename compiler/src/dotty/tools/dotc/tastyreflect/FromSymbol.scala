@@ -28,7 +28,7 @@ object FromSymbol {
     case tpd.EmptyTree =>
       val constrSym = cls.unforcedDecls.find(_.isPrimaryConstructor).orElse(
         // Dummy constructor for classes such as `<refinement>`
-        ctx.newSymbol(cls, nme.CONSTRUCTOR, EmptyFlags, NoType)
+        newSymbol(cls, nme.CONSTRUCTOR, EmptyFlags, NoType)
       )
       val constr = tpd.DefDef(constrSym.asTerm)
       val parents = cls.classParents.map(tpd.TypeTree(_))

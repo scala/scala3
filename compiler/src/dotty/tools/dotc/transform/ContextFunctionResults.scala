@@ -100,7 +100,7 @@ object ContextFunctionResults:
    *  parameter count.
    */
   def contextFunctionResultTypeCovering(meth: Symbol, paramCount: Int)(using Context) =
-    inContext(ctx.withPhase(erasurePhase)) {
+    atPhase(erasurePhase) {
       // Recursive instances return pairs of context types and the
       // # of parameters they represent.
       def missingCR(tp: Type, crCount: Int): (Type, Int) =
@@ -120,7 +120,7 @@ object ContextFunctionResults:
    *  @param `n` the select nodes seen in previous recursive iterations of this method
    */
   def integrateSelect(tree: untpd.Tree, n: Int = 0)(using Context): Boolean =
-    if ctx.erasedTypes then
+    if currentlyAfterErasure then
       atPhase(erasurePhase)(integrateSelect(tree, n))
     else tree match
       case Select(qual, name) =>

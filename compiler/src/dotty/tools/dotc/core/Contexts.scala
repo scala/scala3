@@ -15,7 +15,7 @@ import ast.Trees._
 import ast.untpd
 import Flags.GivenOrImplicit
 import util.{NoSource, SimpleIdentityMap, SourceFile}
-import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
+import typer.{Implicits, ImportInfo, Inliner, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import Nullables.{NotNullInfo, given _}
 import Implicits.ContextualImplicits
 import config.Settings._
@@ -72,10 +72,35 @@ object Contexts {
     atPhase(phase.id)(op)
 
   inline def atNextPhase[T](inline op: Context ?=> T)(using Context): T =
-    atPhase(ctx.phase.next)(op)
+    atPhase(currentPhase.next)(op)
 
-  inline def atPhaseNotLaterThan[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
-    op(using if !limit.exists || ctx.phase <= limit then ctx else ctx.withPhase(limit))
+  inline def atPhaseNoLater[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
+    op(using if !limit.exists || currentPhase <= limit then ctx else ctx.withPhase(limit))
+
+  inline def atPhaseNoEarlier[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
+    op(using if !limit.exists || limit <= currentPhase then ctx else ctx.withPhase(limit))
+
+  inline def currentPeriod(using ctx: Context): Period = ctx.period
+
+  inline def currentPhase(using ctx: Context): Phase = ctx.base.phases(ctx.period.firstPhaseId)
+
+  inline def currentRunId(using ctx: Context): Int = ctx.period.runId
+
+  inline def currentPhaseId(using ctx: Context): Int = ctx.period.phaseId
+
+  def currentlyAfterTyper(using Context): Boolean = ctx.base.isAfterTyper(currentPhase)
+
+  /** Does current phase use an erased types interpretation? */
+  def currentlyAfterErasure(using Context): Boolean = currentPhase.erasedTypes
+
+  inline def inMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
+    op(using if mode != ctx.mode then ctx.fresh.setMode(mode) else ctx)
+
+  inline def withMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
+    inMode(ctx.mode | mode)(op)
+
+  inline def withoutMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
+    inMode(ctx.mode &~ mode)(op)
 
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
@@ -96,15 +121,7 @@ object Contexts {
    *      of all class fields of type context; allow them only in whitelisted
    *      classes (which should be short-lived).
    */
-  abstract class Context(val base: ContextBase)
-    extends Periods
-       with Phases
-       with Printers
-       with Symbols
-       with SymDenotations
-       with Reporting
-       with NamerContextOps
-       with Cloneable { thiscontext =>
+  abstract class Context(val base: ContextBase) { thiscontext =>
 
     given Context = this
 
@@ -212,6 +229,11 @@ object Contexts {
     /** The current plain printer */
     def printerFn: Context => Printer = store(printerFnLoc)
 
+    /** A function creating a printer */
+    def printer: Printer =
+      val pr = printerFn(this)
+      if this.settings.YplainPrinter.value then pr.plain else pr
+
     /** The current settings values */
     def settingsState: SettingsState = store(settingsStateLoc)
 
@@ -255,6 +277,13 @@ object Contexts {
       implicitsCache
     }
 
+    /** Either the current scope, or, if the current context owner is a class,
+     *  the declarations of the current class.
+     */
+    def effectiveScope(using Context): Scope =
+      if owner != null && owner.isClass then owner.asClass.unforcedDecls
+      else scope
+
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
       util.Stats.record("getSource")
@@ -272,7 +301,7 @@ object Contexts {
         src
       } catch {
         case ex: InvalidPathException =>
-          ctx.error(s"invalid file path: ${ex.getMessage}")
+          report.error(s"invalid file path: ${ex.getMessage}")
           NoSource
       }
     }
@@ -292,8 +321,8 @@ object Contexts {
      *  This method will always return a phase period equal to phaseId, thus will never return squashed phases
      */
     final def withPhase(phaseId: PhaseId): Context =
-      if (this.phaseId == phaseId) this
-      else if (phasedCtx.phaseId == phaseId) phasedCtx
+      if (this.period.phaseId == phaseId) this
+      else if (phasedCtx.period.phaseId == phaseId) phasedCtx
       else if (phasedCtxs != null && phasedCtxs(phaseId) != null) phasedCtxs(phaseId)
       else {
         val ctx1 = fresh.setPhase(phaseId)
@@ -309,10 +338,10 @@ object Contexts {
       withPhase(phase.id)
 
     final def withPhaseNoLater(phase: Phase): Context =
-      if (phase.exists && this.phase.id > phase.id) withPhase(phase) else this
+      if (phase.exists && period.phaseId > phase.id) withPhase(phase) else this
 
     final def withPhaseNoEarlier(phase: Phase): Context =
-      if (phase.exists && this.phase.id < phase.id) withPhase(phase) else this
+      if (phase.exists && period.phaseId < phase.id) withPhase(phase) else this
 
     // `creationTrace`-related code. To enable, uncomment the code below and the
     // call to `setCreationTrace()` in this file.
@@ -432,9 +461,6 @@ object Contexts {
       fresh.setImportInfo(ImportInfo(sym, imp.selectors, impNameOpt))
     }
 
-    /** Does current phase use an erased types interpretation? */
-    def erasedTypes: Boolean = phase.erasedTypes
-
     /** Is the debug option set? */
     def debug: Boolean = base.settings.Ydebug.value
 
@@ -515,6 +541,11 @@ object Contexts {
         case Some(v) => fresh.setProperty(key, v)
         case None => fresh.dropProperty(key)
       }
+
+    def typer: Typer = this.typeAssigner match {
+      case typer: Typer => typer
+      case _ => new Typer
+    }
 
     override def toString: String = {
       def iinfo(using Context) = if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
@@ -634,8 +665,8 @@ object Contexts {
     def updateStore[T](loc: Store.Location[T], value: T): this.type =
       setStore(store.updated(loc, value))
 
-    def setPhase(pid: PhaseId): this.type = setPeriod(Period(runId, pid))
-    def setPhase(phase: Phase): this.type = setPeriod(Period(runId, phase.start, phase.end))
+    def setPhase(pid: PhaseId): this.type = setPeriod(Period(period.runId, pid))
+    def setPhase(phase: Phase): this.type = setPeriod(Period(period.runId, phase.start, phase.end))
 
     def setSetting[T](setting: Setting[T], value: T): this.type =
       setSettings(setting.updateIn(settingsState, value))
@@ -661,13 +692,11 @@ object Contexts {
       if (mode != c.mode) c.fresh.setMode(mode) else c
 
     final def addMode(mode: Mode): Context = withModeBits(c.mode | mode)
-    final def maskMode(mode: Mode): Context = withModeBits(c.mode & mode)
     final def retractMode(mode: Mode): Context = withModeBits(c.mode &~ mode)
   }
 
   implicit class FreshModeChanges(val c: FreshContext) extends AnyVal {
     final def addMode(mode: Mode): c.type = c.setMode(c.mode | mode)
-    final def maskMode(mode: Mode): c.type = c.setMode(c.mode & mode)
     final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
   }
 
@@ -729,7 +758,6 @@ object Contexts {
    *  compiler run.
    */
   class ContextBase extends ContextState
-                       with Denotations.DenotationsBase
                        with Phases.PhasesBase
                        with Plugins {
 
@@ -840,7 +868,7 @@ object Contexts {
     private[dotc] var phases: Array[Phase] = _
 
     /** Phases with consecutive Transforms grouped into a single phase, Empty array if squashing is disabled */
-    private[core] var squashedPhases: Array[Phase] = Array.empty[Phase]
+    private[core] var fusedPhases: Array[Phase] = Array.empty[Phase]
 
     /** Next denotation transformer id */
     private[core] var nextDenotTransformerId: Array[Int] = _

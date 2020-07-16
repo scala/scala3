@@ -15,8 +15,7 @@ import core.Phases._
 import core.Mode
 import typer._
 import typer.ErrorReporting._
-import reporting.ThrowingReporter
-import reporting.messages.TypeMismatch
+import reporting._
 import ast.Trees._
 import ast.{tpd, untpd}
 import scala.internal.Chars._
@@ -59,7 +58,7 @@ class TreeChecker extends Phase with SymTransformer {
 
   def checkCompanion(symd: SymDenotation)(using Context): Unit = {
     val cur = symd.linkedClass
-    val prev = atPhase(ctx.phase.prev) {
+    val prev = atPhase(currentPhase.prev) {
       symd.symbol.linkedClass
     }
 
@@ -90,7 +89,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     // Signatures are used to disambiguate overloads and need to stay stable
     // until erasure, see the comment above `Compiler#phases`.
-    if (ctx.phaseId <= erasurePhase.id) {
+    if (currentPhaseId <= erasurePhase.id) {
       val cur = symd.info
       val initial = symd.initial.info
       val curSig = cur match {
@@ -101,7 +100,7 @@ class TreeChecker extends Phase with SymTransformer {
           cur.signature
       }
       assert(curSig == initial.signature,
-        i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.squashed(ctx.phase.prev)}
+        i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.squashed(currentPhase.prev)}
            |Initial info: ${initial}
            |Initial sig : ${initial.signature}
            |Current info: ${cur}
@@ -115,9 +114,9 @@ class TreeChecker extends Phase with SymTransformer {
   def phaseName: String = "Ycheck"
 
   def run(using Context): Unit =
-    if (ctx.settings.YtestPickler.value && ctx.phase.prev.isInstanceOf[Pickler])
-      ctx.echo("Skipping Ycheck after pickling with -Ytest-pickler, the returned tree contains stale symbols")
-    else if (ctx.phase.prev.isCheckable)
+    if (ctx.settings.YtestPickler.value && currentPhase.prev.isInstanceOf[Pickler])
+      report.echo("Skipping Ycheck after pickling with -Ytest-pickler, the returned tree contains stale symbols")
+    else if (currentPhase.prev.isCheckable)
       check(ctx.base.allPhases.toIndexedSeq, ctx)
 
   private def previousPhases(phases: List[Phase])(using Context): List[Phase] = phases match {
@@ -126,16 +125,16 @@ class TreeChecker extends Phase with SymTransformer {
       val previousSubPhases = previousPhases(subPhases.toList)
       if (previousSubPhases.length == subPhases.length) previousSubPhases ::: previousPhases(phases1)
       else previousSubPhases
-    case phase :: phases1 if phase ne ctx.phase =>
+    case phase :: phases1 if phase ne currentPhase =>
       phase :: previousPhases(phases1)
     case _ =>
       Nil
   }
 
   def check(phasesToRun: Seq[Phase], ctx: Context): Tree = {
-    val prevPhase = ctx.phase.prev // can be a mini-phase
-    val squahsedPhase = ctx.base.squashed(prevPhase)
-    ctx.echo(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
+    val prevPhase = currentPhase(using ctx).prev // can be a mini-phase
+    val squashedPhase = ctx.base.squashed(prevPhase)
+    report.echo(s"checking ${ctx.compilationUnit} after phase ${squashedPhase}")(using ctx)
 
     inContext(ctx) {
       assertSelectWrapsNew(ctx.compilationUnit.tpdTree)
@@ -153,7 +152,7 @@ class TreeChecker extends Phase with SymTransformer {
     catch {
       case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped
         inContext(checkingCtx) {
-          println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prev} ***")
+          println(i"*** error while checking ${ctx.compilationUnit} after phase ${currentPhase.prev} ***")
         }
         throw ex
     }
@@ -178,7 +177,7 @@ class TreeChecker extends Phase with SymTransformer {
             everDefinedSyms.get(sym) match {
               case Some(t)  =>
                 if (t ne tree)
-                  ctx.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
+                  report.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
               // should become an error
               case None =>
                 everDefinedSyms(sym) = tree
@@ -188,7 +187,7 @@ class TreeChecker extends Phase with SymTransformer {
             if (ctx.settings.YcheckMods.value)
               tree match {
                 case t: untpd.MemberDef =>
-                  if (t.name ne sym.name) ctx.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
+                  if (t.name ne sym.name) report.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
                 // todo: compare trees inside annotations
                 case _ =>
               }
@@ -238,7 +237,7 @@ class TreeChecker extends Phase with SymTransformer {
           i"undefined symbol ${sym} at line " + tree.sourcePos.line
         )
 
-        if (!ctx.phase.patternTranslated)
+        if (!currentPhase.patternTranslated)
           assert(
             !sym.isPatternBound || patBoundSyms.contains(sym),
             i"sym.isPatternBound => patBoundSyms.contains(sym) is broken, sym = $sym, line " + tree.sourcePos.line
@@ -317,7 +316,7 @@ class TreeChecker extends Phase with SymTransformer {
     override def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree = {
       val tpdTree = super.typed(tree, pt)
       Typer.assertPositioned(tree)
-      if (ctx.erasedTypes)
+      if (currentlyAfterErasure)
         // Can't be checked in earlier phases since `checkValue` is only run in
         // Erasure (because running it in Typer would force too much)
         checkIdentNotJavaClass(tpdTree)
@@ -367,7 +366,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree = {
-      assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
+      assert(tree.isTerm || !currentlyAfterTyper, tree.show + " at " + currentPhase)
       assert(tree.isType || ctx.mode.is(Mode.Pattern) && untpd.isWildcardArg(tree) || !needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
       assertDefined(tree)
 
@@ -379,11 +378,11 @@ class TreeChecker extends Phase with SymTransformer {
      *  Approximately means: The two symbols might be different but one still overrides the other.
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
-      assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
+      assert(tree.isTerm || !currentlyAfterTyper, tree.show + " at " + currentPhase)
       val tpe = tree.typeOpt
       val sym = tree.symbol
       val symIsFixed = tpe match {
-        case tpe: TermRef => ctx.erasedTypes || !tpe.isMemberRef
+        case tpe: TermRef => currentlyAfterErasure || !tpe.isMemberRef
         case _ => false
       }
       if (sym.exists && !sym.is(Private) &&
@@ -454,7 +453,7 @@ class TreeChecker extends Phase with SymTransformer {
         (ddef.tparams :: ddef.vparamss).filter(!_.isEmpty).map(_.map(_.symbol))
       def layout(symss: List[List[Symbol]]): String =
         symss.map(syms => i"($syms%, %)").mkString
-      assert(ctx.erasedTypes || sym.rawParamss == defParamss,
+      assert(currentlyAfterErasure || sym.rawParamss == defParamss,
         i"""param mismatch for ${sym.showLocated}:
            |defined in tree  = ${layout(defParamss)}
            |stored in symbol = ${layout(sym.rawParamss)}""")
@@ -482,7 +481,7 @@ class TreeChecker extends Phase with SymTransformer {
       }
 
     override def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree = {
-      if (!ctx.phase.lambdaLifted) nestingBlock match {
+      if (!currentPhase.lambdaLifted) nestingBlock match {
         case block @ Block((meth : untpd.DefDef) :: Nil, closure: untpd.Closure) =>
           assert(meth.symbol == closure.meth.symbol, "closure.meth symbol not equal to method symbol. Block: " + block.show)
 
@@ -532,7 +531,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def typedWhileDo(tree: untpd.WhileDo)(using Context): Tree = {
-      assert((tree.cond ne EmptyTree) || ctx.phase.refChecked, i"invalid empty condition in while at $tree")
+      assert((tree.cond ne EmptyTree) || currentPhase.refChecked, i"invalid empty condition in while at $tree")
       super.typedWhileDo(tree)
     }
 

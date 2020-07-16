@@ -4,6 +4,8 @@ package jvm
 
 import java.io.{ DataOutputStream, FileOutputStream, IOException, OutputStream, File => JFile }
 import dotty.tools.io._
+import dotty.tools.dotc.report
+
 import java.util.jar.Attributes.Name
 import scala.language.postfixOps
 
@@ -61,7 +63,7 @@ trait BytecodeWriters {
       try out.write(jclassBytes, 0, jclassBytes.length)
       finally out.flush()
 
-      ctx.informProgress("added " + label + path + " to jar")
+      report.informProgress("added " + label + path + " to jar")
     }
     override def close() = writer.close()
   }
@@ -111,7 +113,7 @@ trait BytecodeWriters {
 
       try outstream.write(jclassBytes, 0, jclassBytes.length)
       finally outstream.close()
-      ctx.informProgress("wrote '" + label + "' to " + outfile)
+      report.informProgress("wrote '" + label + "' to " + outfile)
     }
   }
 

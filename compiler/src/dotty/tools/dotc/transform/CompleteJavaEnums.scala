@@ -63,8 +63,8 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    *  with given flags (either `Param` or `ParamAccessor`)
    */
   private def addedParams(owner: Symbol, flag: FlagSet)(using Context): List[ValDef] = {
-    val nameParam = ctx.newSymbol(owner, nameParamName, flag | Synthetic, defn.StringType, coord = owner.span)
-    val ordinalParam = ctx.newSymbol(owner, ordinalParamName, flag | Synthetic, defn.IntType, coord = owner.span)
+    val nameParam = newSymbol(owner, nameParamName, flag | Synthetic, defn.StringType, coord = owner.span)
+    val ordinalParam = newSymbol(owner, ordinalParamName, flag | Synthetic, defn.IntType, coord = owner.span)
     List(ValDef(nameParam), ValDef(ordinalParam))
   }
 
@@ -98,7 +98,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue))
     for { enumValue <- enums }
     yield {
-      val fieldSym = ctx.newSymbol(clazz, enumValue.name.asTermName, EnumValue | JavaStatic, enumValue.info)
+      val fieldSym = newSymbol(clazz, enumValue.name.asTermName, EnumValue | JavaStatic, enumValue.info)
       fieldSym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
       ValDef(fieldSym, moduleRef.select(enumValue))
     }

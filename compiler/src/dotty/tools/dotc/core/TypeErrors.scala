@@ -10,15 +10,14 @@ import Contexts._
 import SymDenotations._
 import Denotations._
 import Decorators._
-import reporting.{Message, NoExplanation}
-import reporting.messages._
+import reporting._
 import ast.untpd
 import config.Printers.cyclicErrors
 
 class TypeError(msg: String) extends Exception(msg) {
   def this() = this("")
   final def toMessage(using Context): Message =
-    produceMessage(using ctx.addMode(Mode.Printing))
+    withMode(Mode.Printing)(produceMessage)
   def produceMessage(using Context): Message = super.getMessage
   override def getMessage: String = super.getMessage
 }

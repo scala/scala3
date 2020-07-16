@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import Decorators._
 import tasty._
 import config.Printers.{noPrinter, pickling}
@@ -47,7 +47,7 @@ class Pickler extends Phase {
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
-    pickling.println(i"unpickling in run ${ctx.runId}")
+    pickling.println(i"unpickling in run ${currentRunId}")
 
     for {
       cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
@@ -92,7 +92,7 @@ class Pickler extends Phase {
     if (ctx.settings.YtestPickler.value)
       testUnpickler(
         using ctx.fresh
-            .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
+            .setPeriod(Period(currentRunId + 1, FirstPhaseId))
             .setReporter(new ThrowingReporter(ctx.reporter))
             .addMode(Mode.ReadPositions)
             .addMode(Mode.ReadComments)
@@ -101,7 +101,7 @@ class Pickler extends Phase {
   }
 
   private def testUnpickler(using Context): Unit = {
-    pickling.println(i"testing unpickler at run ${ctx.runId}")
+    pickling.println(i"testing unpickler at run ${currentRunId}")
     ctx.initialize()
     val unpicklers =
       for ((cls, pickler) <- picklers) yield {
@@ -120,7 +120,7 @@ class Pickler extends Phase {
     if (previous != unpickled) {
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
-      ctx.error(s"""pickling difference for $cls in ${cls.source}, for details:
+      report.error(s"""pickling difference for $cls in ${cls.source}, for details:
                    |
                    |  diff before-pickling.txt after-pickling.txt""".stripMargin)
     }

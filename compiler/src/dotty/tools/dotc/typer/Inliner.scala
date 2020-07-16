@@ -165,8 +165,8 @@ object Inliner {
 
     val UnApply(fun, implicits, patterns) = unapp
     val sym = unapp.symbol
-    val cls = ctx.newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), coord = sym.coord)
-    val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil, coord = sym.coord).entered
+    val cls = newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), coord = sym.coord)
+    val constr = newConstructor(cls, Synthetic, Nil, Nil, coord = sym.coord).entered
 
     val targs = fun match
       case TypeApply(_, targs) => targs
@@ -175,7 +175,7 @@ object Inliner {
       case info: PolyType => info.instantiate(targs.map(_.tpe))
       case info => info
 
-    val unappplySym = ctx.newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
+    val unappplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
     val unapply = DefDef(unappplySym, argss =>
       inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unappplySym))
     )
@@ -306,7 +306,7 @@ object Inliner {
             res ++= typerErrors.map(e => ErrorKind.Typer -> e)
           res.toList
         case t =>
-          ctx.error("argument to compileError must be a statically known String", underlyingCodeArg.sourcePos)
+          report.error("argument to compileError must be a statically known String", underlyingCodeArg.sourcePos)
           Nil
       }
 
@@ -395,7 +395,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
   private val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
 
   private def newSym(name: Name, flags: FlagSet, info: Type)(using Context): Symbol =
-    ctx.newSymbol(ctx.owner, name, flags, info, coord = call.span)
+    newSymbol(ctx.owner, name, flags, info, coord = call.span)
 
   /** A binding for the parameter of an inline method. This is a `val` def for
    *  by-value parameters and a `def` def for by-name parameters. `val` defs inherit
@@ -443,7 +443,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       computeParamBindings(tp.resultType, Nil, argss)
     case tp: MethodType =>
       if argss.isEmpty then
-        ctx.error(i"missing arguments for inline method $inlinedMethod", call.sourcePos)
+        report.error(i"missing arguments for inline method $inlinedMethod", call.sourcePos)
         false
       else
         tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head).foreach { (name, paramtp, arg) =>
@@ -625,7 +625,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       if (inlinedMethod == defn.Compiletime_constValue) {
         val constVal = tryConstValue
         if (!constVal.isEmpty) return constVal
-        ctx.error(em"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.sourcePos)
+        report.error(em"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.sourcePos)
       }
       else if (inlinedMethod == defn.Compiletime_constValueOpt) {
         val constVal = tryConstValue
@@ -720,7 +720,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
         val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(using _).nonEmpty).next
         inContext(ctxToReport) {
-          ctx.error(message, callToReport.sourcePos)
+          report.error(message, callToReport.sourcePos)
         }
       case _ =>
     }
@@ -989,7 +989,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(using evCtx)
           evidence.tpe match {
             case fail: Implicits.AmbiguousImplicits =>
-              ctx.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.sourcePos)
+              report.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.sourcePos)
               true // hard error: return true to stop implicit search here
             case fail: Implicits.SearchFailureType =>
               false
@@ -1411,9 +1411,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     if dependencies.nonEmpty && !ctx.reporter.errorsReported then
       for sym <- dependencies do
         if ctx.compilationUnit.source.file == sym.associatedFile then
-          ctx.error(em"Cannot call macro $sym defined in the same source file", call.sourcePos)
+          report.error(em"Cannot call macro $sym defined in the same source file", call.sourcePos)
         if (suspendable && ctx.settings.XprintSuspension.value)
-          ctx.echo(i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}", call.sourcePos)
+          report.echo(i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}", call.sourcePos)
       if suspendable then
         ctx.compilationUnit.suspend() // this throws a SuspendException
 

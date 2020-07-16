@@ -139,7 +139,7 @@ class ExtractDependencies extends Phase {
             binaryDependency(pf.file, binaryClassName(classSegments))
 
         case _ =>
-          ctx.warning(s"sbt-deps: Ignoring dependency $depFile of class ${depFile.getClass}}")
+          report.warning(s"sbt-deps: Ignoring dependency $depFile of class ${depFile.getClass}}")
       }
     }
 
@@ -235,7 +235,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       val tree = ctx.compilationUnit.tpdTree
       _responsibleForImports = firstClassOrModule(tree)
       if (!_responsibleForImports.exists)
-          ctx.warning("""|No class, trait or object is defined in the compilation unit.
+          report.warning("""|No class, trait or object is defined in the compilation unit.
                          |The incremental compiler cannot record the dependency information in such case.
                          |Some errors like unused import referring to a non-existent class might not be reported.
                          |""".stripMargin, tree.sourcePos)

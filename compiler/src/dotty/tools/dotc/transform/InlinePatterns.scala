@@ -40,7 +40,7 @@ class InlinePatterns extends MiniPhase:
       app match
         case App(Select(fn, name), argss) =>
           val app1 = betaReduce(app, fn, name, argss.flatten)
-          if app1 ne app then ctx.log(i"beta reduce $app -> $app1")
+          if app1 ne app then report.log(i"beta reduce $app -> $app1")
           app1
         case _ =>
           app

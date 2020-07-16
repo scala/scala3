@@ -9,6 +9,8 @@ import scala.collection.mutable
 import scala.collection.JavaConverters._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.interfaces
+import dotty.tools.dotc.report
+
 import dotty.tools.dotc.util.SourceFile
 import java.util.Optional
 
@@ -62,7 +64,7 @@ class GenBCode extends Phase {
         if (ctx.run.suspendedUnits.nonEmpty)
           // If we close the jar the next run will not be able to write on the jar.
           // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
-          ctx.error("Can not suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
+          report.error("Can not suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
         jar.close()
       case _ =>
     }
@@ -169,10 +171,10 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using ctx: Context) exten
           val same = classSymbol.effectiveName.toString == dupClassSym.effectiveName.toString
           atPhase(typerPhase) {
             if (same)
-              summon[Context].warning( // FIXME: This should really be an error, but then FromTasty tests fail
+              report.warning( // FIXME: This should really be an error, but then FromTasty tests fail
                 s"${cl1.show} and ${cl2.showLocated} produce classes that overwrite one another", cl1.sourcePos)
             else
-              summon[Context].warning(s"${cl1.show} differs only in case from ${cl2.showLocated}. " +
+              report.warning(s"${cl1.show} differs only in case from ${cl2.showLocated}. " +
                 "Such classes will overwrite one another on case-insensitive filesystems.", cl1.sourcePos)
           }
       }
@@ -212,7 +214,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using ctx: Context) exten
           if (claszSymbol.companionClass == NoSymbol) {
             mirrorCodeGen.genMirrorClass(claszSymbol, cunit)
           } else {
-            ctx.log(s"No mirror class for module with linked class: ${claszSymbol.showFullName}")
+            report.log(s"No mirror class for module with linked class: ${claszSymbol.showFullName}")
             null
           }
         } else null
@@ -264,7 +266,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using ctx: Context) exten
             getFileForClassfile(outF, cls.name, ".class")
           } catch {
             case e: FileConflictException =>
-              ctx.error(s"error writing ${cls.name}: ${e.getMessage}")
+              report.error(s"error writing ${cls.name}: ${e.getMessage}")
               null
           }
         } else null

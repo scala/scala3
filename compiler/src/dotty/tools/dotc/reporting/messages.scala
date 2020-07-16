@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._, Phases._
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
@@ -20,6 +20,9 @@ import typer.ProtoTypes.ViewProto
 import scala.util.control.NonFatal
 import StdNames.nme
 import printing.Formatting.hl
+import ast.Trees._
+import ast.untpd
+import ast.tpd
 
 /**  Messages
   *  ========
@@ -33,16 +36,6 @@ import printing.Formatting.hl
   *  EmptyCatchBlock(tree).warning(pos) // res: Warning
   *  ```
   */
-object messages {
-
-  import ast.Trees._
-  import ast.untpd
-  import ast.tpd
-
-  /** Helper methods for messages */
-  def implicitClassRestrictionsText(using Context): String =
-    em"""|For a full list of restrictions on implicit classes visit
-         |${Blue("http://docs.scala-lang.org/overviews/core/implicit-classes.html")}"""
 
   abstract class SyntaxMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Syntax"
@@ -407,9 +400,7 @@ object messages {
            |the implicit class and a case class automatically gets a companion object with
            |the same name created by the compiler which would cause a naming conflict if it
            |were allowed.
-           |
-           |""" + implicitClassRestrictionsText + em"""|
-           |
+           |           |
            |To resolve the conflict declare ${cdef.name} inside of an ${hl("object")} then import the class
            |from the object at the use site if needed, for example:
            |
@@ -431,7 +422,7 @@ object messages {
            |
            |implicit class ${cdef.name}...
            |
-           |""" + implicitClassRestrictionsText
+           |"""
   }
 
   class ImplicitClassPrimaryConstructorArity()(using Context)
@@ -445,7 +436,7 @@ object messages {
           |
           |While it’s possible to create an implicit class with more than one non-implicit argument,
           |such classes aren’t used during implicit lookup.
-          |""" + implicitClassRestrictionsText
+          |"""
     }
   }
 
@@ -2020,9 +2011,8 @@ object messages {
             case NoMatch =>
               // If the signatures don't match at all at the current phase, then
               // they might match after erasure.
-              val elimErasedCtx = ctx.withPhaseNoEarlier(elimErasedValueTypePhase.next)
-              if (elimErasedCtx != ctx)
-                details(using elimErasedCtx)
+              if currentPhase.id <= elimErasedValueTypePhase.id then
+                atPhase(elimErasedValueTypePhase.next)(details)
               else
                 "" // shouldn't be reachable
             case ParamMatch =>
@@ -2400,4 +2390,3 @@ object messages {
     def msg = s"Modifier `${flag.flagsString}` is not allowed for this definition"
     def explain = ""
   }
-}

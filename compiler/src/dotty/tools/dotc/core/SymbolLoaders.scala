@@ -46,7 +46,7 @@ object SymbolLoaders {
   def enterClass(
       owner: Symbol, name: PreName, completer: SymbolLoader,
       flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
-    val cls = ctx.newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, assocFile = completer.sourceFileOrNull)
+    val cls = newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, assocFile = completer.sourceFileOrNull)
     enterNew(owner, cls, completer, scope)
   }
 
@@ -55,9 +55,9 @@ object SymbolLoaders {
   def enterModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
       modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
-    val module = ctx.newModuleSymbol(
+    val module = newModuleSymbol(
       owner, name.toTermName.decode, modFlags, clsFlags,
-      (module, _) => completer.proxy withDecls newScope withSourceModule (_ => module),
+      (module, _) => completer.proxy.withDecls(newScope).withSourceModule(module),
       assocFile = completer.sourceFileOrNull)
     enterNew(owner, module, completer, scope)
     enterNew(owner, module.moduleClass, completer, scope)
@@ -75,12 +75,12 @@ object SymbolLoaders {
       // This was motivated by the desire to use YourKit probes, which
       // require yjp.jar at runtime. See SI-2089.
       if (ctx.settings.YtermConflict.value == "package" || ctx.mode.is(Mode.Interactive)) {
-        ctx.warning(
+        report.warning(
           s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
         owner.asClass.delete(preExisting)
       }
       else if (ctx.settings.YtermConflict.value == "object") {
-        ctx.warning(
+        report.warning(
           s"Resolving package/object name conflict in favor of object ${preExisting.fullName}.  The package will be inaccessible.")
         return NoSymbol
       }
@@ -88,7 +88,7 @@ object SymbolLoaders {
         throw new TypeError(
           i"""$owner contains object and package with same name: $pname
              |one of them needs to be removed from classpath""")
-    ctx.newModuleSymbol(owner, pname, PackageCreationFlags, PackageCreationFlags,
+    newModuleSymbol(owner, pname, PackageCreationFlags, PackageCreationFlags,
       completer).entered
   }
 
@@ -130,7 +130,7 @@ object SymbolLoaders {
         def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
           val ok = filePath == path
           if (!ok)
-            ctx.warning(i"""$what ${tree.name} is in the wrong directory.
+            report.warning(i"""$what ${tree.name} is in the wrong directory.
                            |It was declared to be in package ${path.reverse.mkString(".")}
                            |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
               tree.sourcePos.focus)
@@ -186,10 +186,10 @@ object SymbolLoaders {
   def initializeFromClassPath(owner: Symbol, classRep: ClassRepresentation)(using Context): Unit =
     ((classRep.binary, classRep.source): @unchecked) match {
       case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
-        if (ctx.settings.verbose.value) ctx.inform("[symloader] picked up newer source file for " + src.path)
+        if (ctx.settings.verbose.value) report.inform("[symloader] picked up newer source file for " + src.path)
         enterToplevelsFromSource(owner, classRep.name, src)
       case (None, Some(src)) =>
-        if (ctx.settings.verbose.value) ctx.inform("[symloader] no class, picked up source file for " + src.path)
+        if (ctx.settings.verbose.value) report.inform("[symloader] no class, picked up source file for " + src.path)
         enterToplevelsFromSource(owner, classRep.name, src)
       case (Some(bin), _) =>
         enterClassAndModule(owner, classRep.name, ctx.platform.newClassLoader(bin))
@@ -206,7 +206,7 @@ object SymbolLoaders {
     override def sourceModule(using Context): TermSymbol = _sourceModule
     def description(using Context): String = "package loader " + sourceModule.fullName
 
-    private var enterFlatClasses: Option[Context => Unit] = None
+    private var enterFlatClasses: Option[() => Context ?=> Unit] = None
 
     Stats.record("package scopes")
 
@@ -226,14 +226,14 @@ object SymbolLoaders {
         if (e != null) e
         else if (isFlatName(mangled.toSimpleName) && enterFlatClasses.isDefined) {
           Stats.record("package scopes with flatnames entered")
-          enterFlatClasses.get(ctx)
+          enterFlatClasses.get()
           lookupEntry(name)
         }
         else e
       }
 
       override def ensureComplete()(using Context): Unit =
-        for (enter <- enterFlatClasses) enter(ctx)
+        for (enter <- enterFlatClasses) enter()
 
       override def newScopeLikeThis(): PackageScope = new PackageScope
     }
@@ -283,7 +283,7 @@ object SymbolLoaders {
 
       val packageName = if (root.isEffectiveRoot) "" else root.symbol.javaClassName
 
-      enterFlatClasses = Some { ctx =>
+      enterFlatClasses = Some { () =>
         enterFlatClasses = None
         inContext(ctx){enterClasses(root, packageName, flat = true)}
       }
@@ -328,7 +328,7 @@ abstract class SymbolLoader extends LazyType { self =>
     def signalError(ex: Exception): Unit = {
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
-      ctx.error(
+      report.error(
         if (msg eq null) "i/o error while loading " + root.name
         else "error while loading " + root.name + ",\n" + msg)
     }
@@ -340,7 +340,7 @@ abstract class SymbolLoader extends LazyType { self =>
         }
       else
         doComplete(root)
-      ctx.informTime("loaded " + description, start)
+      report.informTime("loaded " + description, start)
     }
     catch {
       case ex: IOException =>
@@ -373,13 +373,13 @@ abstract class SymbolLoader extends LazyType { self =>
         // An example for this situation is scala.reflect.Manifest, which exists
         // as a class in scala.reflect and as a val in scala.reflect.package.
         if (rootDenot.is(ModuleClass))
-          ctx.newClassSymbol(
+          newClassSymbol(
             rootDenot.owner, rootDenot.name.stripModuleClassSuffix.asTypeName, Synthetic,
               _ => NoType).classDenot
         else
-          ctx.newModuleSymbol(
+          newModuleSymbol(
             rootDenot.owner, rootDenot.name.toTermName, Synthetic, Synthetic,
-            (module, _) => NoLoader().withDecls(newScope).withSourceModule(_ => module))
+            (module, _) => NoLoader().withDecls(newScope).withSourceModule(module))
             .moduleClass.denot.asClass
     }
     if (rootDenot.is(ModuleClass)) (linkedDenot, rootDenot)

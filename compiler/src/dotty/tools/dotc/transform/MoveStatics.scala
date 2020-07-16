@@ -44,7 +44,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
         val newBodyWithStaticConstr =
           if (staticFields.nonEmpty) {
             /* do NOT put Flags.JavaStatic here. It breaks .enclosingClass */
-            val staticCostructor = ctx.newSymbol(orig.symbol, nme.STATIC_CONSTRUCTOR, Flags.Synthetic | Flags.Method | Flags.Private, MethodType(Nil, defn.UnitType))
+            val staticCostructor = newSymbol(orig.symbol, nme.STATIC_CONSTRUCTOR, Flags.Synthetic | Flags.Method | Flags.Private, MethodType(Nil, defn.UnitType))
             staticCostructor.addAnnotation(Annotation(defn.ScalaStaticAnnot))
             staticCostructor.entered
 

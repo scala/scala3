@@ -18,8 +18,7 @@ import Applications._
 import Inferencing._
 import ProtoTypes._
 import transform.SymUtils._
-import reporting.messages._
-import reporting.trace
+import reporting._
 import config.Printers.{exhaustivity => debug}
 import util.SourcePosition
 import NullOpsDecorator._
@@ -318,10 +317,10 @@ class SpaceEngine(using Context) extends SpaceLogic {
   import tpd._
   import SpaceEngine._
 
-  private val scalaSeqFactoryClass = ctx.requiredClass("scala.collection.SeqFactory")
-  private val scalaListType        = ctx.requiredClassRef("scala.collection.immutable.List")
-  private val scalaNilType         = ctx.requiredModuleRef("scala.collection.immutable.Nil")
-  private val scalaConsType        = ctx.requiredClassRef("scala.collection.immutable.::")
+  private val scalaSeqFactoryClass = requiredClass("scala.collection.SeqFactory")
+  private val scalaListType        = requiredClassRef("scala.collection.immutable.List")
+  private val scalaNilType         = requiredModuleRef("scala.collection.immutable.Nil")
+  private val scalaConsType        = requiredClassRef("scala.collection.immutable.::")
 
   private val constantNullType     = ConstantType(Constant(null))
   private val constantNullSpace    = Typ(constantNullType)
@@ -836,7 +835,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       }
 
     if (uncovered.nonEmpty)
-      ctx.warning(PatternMatchExhaustivity(show(uncovered)), sel.sourcePos)
+      report.warning(PatternMatchExhaustivity(show(uncovered)), sel.sourcePos)
   }
 
   private def redundancyCheckable(sel: Tree): Boolean =
@@ -885,7 +884,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
         if (covered == Empty && !isNullLit(pat)) covered = curr
 
         if (isSubspace(covered, prevs)) {
-          ctx.warning(MatchCaseUnreachable(), pat.sourcePos)
+          report.warning(MatchCaseUnreachable(), pat.sourcePos)
         }
 
         // if last case is `_` and only matches `null`, produce a warning
@@ -894,7 +893,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
         if (!ctx.explicitNulls && i == cases.length - 1 && !isNullLit(pat) ) {
           simplify(minus(covered, prevs)) match {
             case Typ(`constantNullType`, _) =>
-              ctx.warning(MatchCaseOnlyNullWarning(), pat.sourcePos)
+              report.warning(MatchCaseOnlyNullWarning(), pat.sourcePos)
             case _ =>
           }
         }

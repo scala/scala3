@@ -133,23 +133,23 @@ object CompilerCommand {
     }
 
     // Print all warnings encountered during arguments parsing
-    summary.warnings.foreach(ctx.warning(_))
+    summary.warnings.foreach(report.warning(_))
 
     if (summary.errors.nonEmpty) {
-      summary.errors foreach (ctx.error(_))
-      ctx.echo("  dotc -help  gives more information")
+      summary.errors foreach (report.error(_))
+      report.echo("  dotc -help  gives more information")
       Nil
     }
     else if (settings.version.value) {
-      ctx.echo(versionMsg)
+      report.echo(versionMsg)
       Nil
     }
     else if (shouldStopWithInfo) {
-      ctx.echo(infoMessage)
+      report.echo(infoMessage)
       Nil
     }
     else {
-      if (sourcesRequired && summary.arguments.isEmpty) ctx.echo(usageMessage)
+      if (sourcesRequired && summary.arguments.isEmpty) report.echo(usageMessage)
       summary.arguments
     }
   }

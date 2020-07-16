@@ -282,7 +282,7 @@ class ReifyQuotes extends MacroTransform {
       val lambdaOwner = if (level == -1) ctx.owner else outer.owner
 
       val tpe = MethodType(defn.SeqType.appliedTo(defn.AnyType) :: Nil, tree.tpe.widen)
-      val meth = ctx.newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
+      val meth = newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
       Closure(meth, tss => body(tss.head.head)(using ctx.withOwner(meth)).changeNonLocalOwners(meth)).withSpan(tree.span)
     }
 

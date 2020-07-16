@@ -13,7 +13,7 @@ import ast.Trees._
 import NameOps._
 import ProtoTypes._
 import collection.mutable
-import reporting.messages._
+import reporting._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 
 trait TypeAssigner {
@@ -32,7 +32,7 @@ trait TypeAssigner {
       case Some(c) if packageOK || !c.is(Package) =>
         c
       case _ =>
-        ctx.error(
+        report.error(
           if (qual.isEmpty) tree.show + " can be used only in a class, object, or template"
           else qual.show + " is not an enclosing class", tree.sourcePos)
         NoSymbol
@@ -190,7 +190,7 @@ trait TypeAssigner {
       qualType match {
         case JavaArrayType(elemtp) => elemtp
         case _ =>
-          ctx.error("Expected Array but was " + qualType.show, tree.sourcePos)
+          report.error("Expected Array but was " + qualType.show, tree.sourcePos)
           defn.NothingType
       }
     }
@@ -228,7 +228,7 @@ trait TypeAssigner {
       value.tag match {
         case UnitTag => defn.UnitType
         case NullTag => defn.NullType
-        case _ => if (ctx.erasedTypes) value.tpe else ConstantType(value)
+        case _ => if (currentlyAfterErasure) value.tpe else ConstantType(value)
       }
     }
 
@@ -256,7 +256,7 @@ trait TypeAssigner {
         val owntype =
           if (mixinClass.exists) mixinClass.appliedRef
           else if (!mix.isEmpty) findMixinSuper(cls.info)
-          else if (ctx.erasedTypes) cls.info.firstParent.typeConstructor
+          else if (currentlyAfterErasure) cls.info.firstParent.typeConstructor
           else {
             val ps = cls.classInfo.parents
             if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
@@ -289,11 +289,11 @@ trait TypeAssigner {
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(using Context): Apply = {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
-        if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping)
+        if (sameLength(fntpe.paramInfos, args) || currentPhase.prev.relaxedTyping)
           if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
           else fntpe.resultType
         else
-          errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.sourcePos)
+          errorType(i"wrong number of arguments at ${currentPhase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.sourcePos)
       case t =>
         if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
         errorType(err.takesNoParamsStr(fn, ""), tree.sourcePos)
@@ -314,9 +314,9 @@ trait TypeAssigner {
             val namedArgMap = new mutable.HashMap[Name, Type]
             for (NamedArg(name, arg) <- args)
               if (namedArgMap.contains(name))
-                ctx.error(DuplicateNamedTypeParameter(name), arg.sourcePos)
+                report.error(DuplicateNamedTypeParameter(name), arg.sourcePos)
               else if (!paramNames.contains(name))
-                ctx.error(UndefinedNamedTypeParameter(name, paramNames), arg.sourcePos)
+                report.error(UndefinedNamedTypeParameter(name, paramNames), arg.sourcePos)
               else
                 namedArgMap(name) = arg.tpe
 
@@ -431,7 +431,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.SeqLiteral, elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral = {
     val ownType = tree match {
       case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemtpt.tpe)
-      case _ => if (ctx.erasedTypes) defn.SeqType else defn.SeqType.appliedTo(elemtpt.tpe)
+      case _ => if (currentlyAfterErasure) defn.SeqType else defn.SeqType.appliedTo(elemtpt.tpe)
     }
     tree.withType(ownType)
   }

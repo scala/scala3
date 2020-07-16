@@ -539,7 +539,7 @@ object Types {
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, excluded)
       case err: ErrorType =>
-        ctx.newErrorSymbol(classSymbol orElse defn.RootClass, name, err.msg)
+        newErrorSymbol(classSymbol orElse defn.RootClass, name, err.msg)
       case _ =>
         NoDenotation
     }
@@ -620,7 +620,7 @@ object Types {
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
         case err: ErrorType =>
-          ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg)
+          newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg)
         case _ =>
           NoDenotation
       }
@@ -677,7 +677,7 @@ object Types {
         }
         else
           val joint = pdenot.meet(
-            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre),
+            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(currentRunId), pre),
             pre,
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
           joint match
@@ -980,7 +980,7 @@ object Types {
      */
     def matches(that: Type)(using Context): Boolean = {
       record("matches")
-      ctx.typeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes)
+      ctx.typeComparer.matchesType(this, that, relaxed = !currentPhase.erasedTypes)
     }
 
     /** This is the same as `matches` except that it also matches => T with T and
@@ -1209,7 +1209,7 @@ object Types {
           case Atoms.Unknown => Atoms.Unknown
       case _ => Atoms.Unknown
 
-    private def dealias1(keep: AnnotatedType => Context => Boolean)(using Context): Type = this match {
+    private def dealias1(keep: AnnotatedType => Context ?=> Boolean)(using Context): Type = this match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
@@ -1225,7 +1225,7 @@ object Types {
         if (tp1.exists) tp1.dealias1(keep) else tp
       case tp: AnnotatedType =>
         val tp1 = tp.parent.dealias1(keep)
-        if (keep(tp)(ctx)) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
+        if keep(tp) then tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
         tp.ref.dealias1(keep)
       case _ => this
@@ -1260,7 +1260,7 @@ object Types {
      */
     def tryNormalize(using Context): Type = NoType
 
-    private def widenDealias1(keep: AnnotatedType => Context => Boolean)(using Context): Type = {
+    private def widenDealias1(keep: AnnotatedType => Context ?=> Boolean)(using Context): Type = {
       val res = this.widen.dealias1(keep)
       if (res eq this) res else res.widenDealias1(keep)
     }
@@ -1334,7 +1334,7 @@ object Types {
      *  that has the given type as info.
      */
     def narrow(using Context): TermRef =
-      TermRef(NoPrefix, ctx.newSkolem(this))
+      TermRef(NoPrefix, newSkolem(this))
 
     /** Useful for diagnostics: The underlying type if this type is a type proxy,
      *  otherwise NoType
@@ -1413,7 +1413,7 @@ object Types {
       TermRef(this, name, member(name))
 
     def select(name: TermName, sig: Signature)(using Context): TermRef =
-      TermRef(this, name, member(name).atSignature(sig, relaxed = !ctx.erasedTypes))
+      TermRef(this, name, member(name).atSignature(sig, relaxed = !currentlyAfterErasure))
 
 // ----- Access to parts --------------------------------------------
 
@@ -1601,8 +1601,8 @@ object Types {
     def toFunctionType(dropLast: Int = 0)(using Context): Type = this match {
       case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
-        val isContextual = mt.isContextualMethod && !ctx.erasedTypes
-        val isErased = mt.isErasedMethod && !ctx.erasedTypes
+        val isContextual = mt.isContextualMethod && !currentlyAfterErasure
+        val isErased = mt.isErasedMethod && !currentlyAfterErasure
         val result1 = mt.nonDependentResultApprox match {
           case res: MethodType => res.toFunctionType()
           case res => res
@@ -1904,7 +1904,7 @@ object Types {
     protected[dotc] def computeSignature(using Context): Signature =
       val lastd = lastDenotation
       if lastd != null then sigFromDenot(lastd)
-      else if ctx.erasedTypes then atPhase(erasurePhase)(computeSignature)
+      else if currentlyAfterErasure then atPhase(erasurePhase)(computeSignature)
       else symbol.asSeenFrom(prefix).signature
 
     /** The signature computed from the current denotation with `sigFromDenot` if it is
@@ -1914,11 +1914,11 @@ object Types {
      *  some symbols change their signature at erasure.
      */
     private def currentSignature(using Context): Signature =
-      if ctx.runId == mySignatureRunId then mySignature
+      if currentRunId == mySignatureRunId then mySignature
       else
         val lastd = lastDenotation
         if lastd != null then sigFromDenot(lastd)
-        else if ctx.erasedTypes then atPhase(erasurePhase)(currentSignature)
+        else if currentlyAfterErasure then atPhase(erasurePhase)(currentSignature)
         else
           val sym = currentSymbol
           if sym.exists then sym.asSeenFrom(prefix).signature
@@ -1934,7 +1934,7 @@ object Types {
     final def symbol(using Context): Symbol =
       // We can rely on checkedPeriod (unlike in the definition of `denot` below)
       // because SymDenotation#installAfter never changes the symbol
-      if (checkedPeriod == ctx.period) lastSymbol else computeSymbol
+      if (checkedPeriod == currentPeriod) lastSymbol else computeSymbol
 
     private def computeSymbol(using Context): Symbol =
       designator match {
@@ -1948,7 +1948,7 @@ object Types {
      *  current run.
      */
     def denotationIsCurrent(using Context): Boolean =
-      lastDenotation != null && lastDenotation.validFor.runId == ctx.runId
+      lastDenotation != null && lastDenotation.validFor.runId == currentRunId
 
     /** If the reference is symbolic or the denotation is current, its symbol, otherwise NoDenotation.
      *
@@ -1969,7 +1969,7 @@ object Types {
      *  Used to get the class underlying a ThisType.
      */
     private[Types] def stableInRunSymbol(using Context): Symbol =
-      if (checkedPeriod.runId == ctx.runId) lastSymbol
+      if (checkedPeriod.runId == currentRunId) lastSymbol
       else symbol
 
     def info(using Context): Type = denot.info
@@ -1977,7 +1977,7 @@ object Types {
     /** The denotation currently denoted by this type */
     final def denot(using Context): Denotation = {
       util.Stats.record("NamedType.denot")
-      val now = ctx.period
+      val now = currentPeriod
       // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
       // as it may have been mutated by SymDenotation#installAfter
       if (checkedPeriod != Nowhere && lastDenotation.validFor.contains(now)) {
@@ -2008,7 +2008,7 @@ object Types {
           finish(memberDenot(name, allowPrivate))
         case sym: Symbol =>
           val symd = sym.lastKnownDenotation
-          if (symd.validFor.runId != ctx.runId && !ctx.stillValid(symd))
+          if (symd.validFor.runId != currentRunId && !stillValid(symd))
             finish(memberDenot(symd.initial.name, allowPrivate = false))
           else if (prefix.isArgPrefixOf(symd))
             finish(argDenot(sym.asType))
@@ -2021,10 +2021,10 @@ object Types {
       lastDenotation match {
         case lastd0: SingleDenotation =>
           val lastd = lastd0.skipRemoved
-          if (lastd.validFor.runId == ctx.runId && (checkedPeriod != Nowhere)) finish(lastd.current)
+          if (lastd.validFor.runId == currentRunId && (checkedPeriod != Nowhere)) finish(lastd.current)
           else lastd match {
             case lastd: SymDenotation =>
-              if (ctx.stillValid(lastd) && (checkedPeriod != Nowhere)) finish(lastd.current)
+              if (stillValid(lastd) && (checkedPeriod != Nowhere)) finish(lastd.current)
               else finish(memberDenot(lastd.initial.name, allowPrivate = false))
             case _ =>
               fromDesignator
@@ -2038,7 +2038,7 @@ object Types {
 
     private def disambiguate(d: Denotation, sig: Signature)(using Context): Denotation =
       if (sig != null)
-        d.atSignature(sig, relaxed = !ctx.erasedTypes) match {
+        d.atSignature(sig, relaxed = !currentlyAfterErasure) match {
           case d1: SingleDenotation => d1
           case d1 =>
             d1.atSignature(sig, relaxed = false) match {
@@ -2053,9 +2053,9 @@ object Types {
       if (!d.exists && !allowPrivate && ctx.mode.is(Mode.Interactive))
         // In the IDE we might change a public symbol to private, and would still expect to find it.
         d = memberDenot(prefix, name, true)
-      if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation])
+      if (!d.exists && currentPhaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation])
         // name has changed; try load in earlier phase and make current
-        d = atPhase(ctx.phaseId - 1)(memberDenot(name, allowPrivate)).current
+        d = atPhase(currentPhaseId - 1)(memberDenot(name, allowPrivate)).current
       if (d.isOverloaded)
         d = disambiguate(d)
       d
@@ -2094,7 +2094,7 @@ object Types {
       else {
         if (!ctx.reporter.errorsReported)
           throw new TypeError(
-            i"""bad parameter reference $this at ${ctx.phase}
+            i"""bad parameter reference $this at ${currentPhase}
                |the parameter is ${param.showLocated} but the prefix $prefix
                |does not define any corresponding arguments.""")
         NoDenotation
@@ -2114,7 +2114,7 @@ object Types {
 
       lastDenotation = denot
       lastSymbol = denot.symbol
-      checkedPeriod = if (prefix.isProvisional) Nowhere else ctx.period
+      checkedPeriod = if (prefix.isProvisional) Nowhere else currentPeriod
       designator match {
         case sym: Symbol if designator ne lastSymbol =>
           designator = lastSymbol.asInstanceOf[Designator{ type ThisName = self.ThisName }]
@@ -2155,7 +2155,7 @@ object Types {
         s"""data race? overwriting $lastSymbol with $sym in type $this,
            |last sym id = ${lastSymbol.id}, new sym id = ${sym.id},
            |last owner = ${lastSymbol.owner}, new owner = ${sym.owner},
-           |period = ${ctx.phase} at run ${ctx.runId}""")
+           |period = ${currentPhase} at run ${currentRunId}""")
     }
 
     /** A reference with the initial symbol in `symd` has an info that
@@ -2451,11 +2451,11 @@ object Types {
      *  based tests.
      */
     def canDropAlias(using Context) =
-      if myCanDropAliasPeriod != ctx.period then
+      if myCanDropAliasPeriod != currentPeriod then
         myCanDropAlias =
           !symbol.canMatchInheritedSymbols
           || !prefix.baseClasses.exists(_.info.decls.lookup(name).is(Deferred))
-        myCanDropAliasPeriod = ctx.period
+        myCanDropAliasPeriod = currentPeriod
       myCanDropAlias
 
     override def designator: Designator = myDesignator
@@ -2489,7 +2489,7 @@ object Types {
 
   /** Assert current phase does not have erasure semantics */
   private def assertUnerased()(using Context) =
-    if (Config.checkUnerased) assert(!ctx.phase.erasedTypes)
+    if (Config.checkUnerased) assert(!currentPhase.erasedTypes)
 
   /** The designator to be used for a named type creation with given prefix, name, and denotation.
    *  This is the denotation's symbol, if it exists and the prefix is not the this type
@@ -2561,7 +2561,7 @@ object Types {
     }
 
     override def underlying(using Context): Type =
-      if (ctx.erasedTypes) tref
+      if (currentlyAfterErasure) tref
       else cls.info match {
         case cinfo: ClassInfo => cinfo.selfType
         case _: ErrorType | NoType if ctx.mode.is(Mode.Interactive) => cls.info
@@ -2629,7 +2629,7 @@ object Types {
     }
   }
 
-  case class LazyRef(private var refFn: Context => Type, reportCycles: Boolean = false) extends UncachedProxyType with ValueType {
+  case class LazyRef(private var refFn: Context ?=> Type, reportCycles: Boolean = false) extends UncachedProxyType with ValueType {
     private var myRef: Type = null
     private var computed = false
 
@@ -2642,7 +2642,7 @@ object Types {
           throw CyclicReference(NoDenotation)
       else
         computed = true
-        val result = refFn(ctx)
+        val result = refFn
         refFn = null
         if result != null then myRef = result
         else assert(myRef != null)  // must have been `update`d
@@ -2729,7 +2729,7 @@ object Types {
       else make(RefinedType(parent, names.head, infos.head), names.tail, infos.tail)
 
     def apply(parent: Type, name: Name, info: Type)(using Context): RefinedType = {
-      assert(!ctx.erasedTypes)
+      assert(!currentlyAfterErasure)
       unique(new CachedRefinedType(parent, name, info)).checkInst
     }
   }
@@ -2875,7 +2875,7 @@ object Types {
     private var myBaseClasses: List[ClassSymbol] = _
     /** Base classes of are the merge of the operand base classes. */
     override final def baseClasses(using Context): List[ClassSymbol] = {
-      if (myBaseClassesPeriod != ctx.period) {
+      if (myBaseClassesPeriod != currentPeriod) {
         val bcs1 = tp1.baseClasses
         val bcs1set = BaseClassSet(bcs1)
         def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
@@ -2887,7 +2887,7 @@ object Types {
           case nil => bcs1
         }
         myBaseClasses = recur(tp2.baseClasses)
-        myBaseClassesPeriod = ctx.period
+        myBaseClassesPeriod = currentPeriod
       }
       myBaseClasses
     }
@@ -2940,7 +2940,7 @@ object Types {
     private var myBaseClasses: List[ClassSymbol] = _
     /** Base classes of are the intersection of the operand base classes. */
     override final def baseClasses(using Context): List[ClassSymbol] = {
-      if (myBaseClassesPeriod != ctx.period) {
+      if (myBaseClassesPeriod != currentPeriod) {
         val bcs1 = tp1.baseClasses
         val bcs1set = BaseClassSet(bcs1)
         def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
@@ -2953,7 +2953,7 @@ object Types {
             bcs2
         }
         myBaseClasses = recur(tp2.baseClasses)
-        myBaseClassesPeriod = ctx.period
+        myBaseClassesPeriod = currentPeriod
       }
       myBaseClasses
     }
@@ -2966,11 +2966,11 @@ object Types {
 
     /** Replace or type by the closest non-or type above it */
     def join(using Context): Type = {
-      if (myJoinPeriod != ctx.period) {
+      if (myJoinPeriod != currentPeriod) {
         myJoin = TypeOps.orDominator(this)
         core.println(i"join of $this == $myJoin")
         assert(myJoin != this)
-        myJoinPeriod = ctx.period
+        myJoinPeriod = currentPeriod
       }
       myJoin
     }
@@ -2980,12 +2980,12 @@ object Types {
     private var myWidened: Type = _
 
     private def ensureAtomsComputed()(using Context): Unit =
-      if atomsRunId != ctx.runId then
+      if atomsRunId != currentRunId then
         myAtoms = tp1.atoms | tp2.atoms
         val tp1w = tp1.widenSingletons
         val tp2w = tp2.widenSingletons
         myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
-        atomsRunId = ctx.runId
+        atomsRunId = currentRunId
 
     override def atoms(using Context): Atoms =
       ensureAtomsComputed()
@@ -3070,9 +3070,9 @@ object Types {
     protected[dotc] def computeSignature(using Context): Signature
 
     final override def signature(using Context): Signature = {
-      if (ctx.runId != mySignatureRunId) {
+      if (currentRunId != mySignatureRunId) {
         mySignature = computeSignature
-        if (!mySignature.isUnderDefined) mySignatureRunId = ctx.runId
+        if (!mySignature.isUnderDefined) mySignatureRunId = currentRunId
       }
       mySignature
     }
@@ -3790,14 +3790,14 @@ object Types {
     override def underlying(using Context): Type = tycon
 
     override def superType(using Context): Type = {
-      if (ctx.period != validSuper) {
+      if (currentPeriod != validSuper) {
         cachedSuper = tycon match {
           case tycon: HKTypeLambda => defn.AnyType
           case tycon: TypeRef if tycon.symbol.isClass => tycon
           case tycon: TypeProxy => tycon.superType.applyIfParameterized(args)
           case _ => defn.AnyType
         }
-        validSuper = if (tycon.isProvisional) Nowhere else ctx.period
+        validSuper = if (tycon.isProvisional) Nowhere else currentPeriod
       }
       cachedSuper
     }
@@ -4380,7 +4380,7 @@ object Types {
           val givenSelf = clsd.givenSelfType
           if (!givenSelf.isValueType) appliedRef
           else if (clsd.is(Module)) givenSelf
-          else if (ctx.erasedTypes) appliedRef
+          else if (currentlyAfterErasure) appliedRef
           else AndType(givenSelf, appliedRef)
         }
       selfTypeCache
@@ -4433,7 +4433,7 @@ object Types {
             else defn.AnyType         // dummy type in case of errors
           def refineSelfType(selfType: Type) =
             RefinedType(selfType, sym.name,
-              TypeAlias(LazyRef(force(using _), reportCycles = true)))
+              TypeAlias(LazyRef(force, reportCycles = true)))
           cinfo.selfInfo match
             case self: Type =>
               cinfo.derivedClassInfo(
@@ -4992,14 +4992,14 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
-          LazyRef { c =>
-            val ref1 = tp.ref(using c)
-            if c.runId == mapCtx.runId then this(ref1)
+          LazyRef {
+            val ref1 = tp.ref
+            if currentRunId == currentRunId(using mapCtx) then this(ref1)
             else // splice in new run into map context
               val saved = mapCtx
               mapCtx = mapCtx.fresh
-                .setPeriod(Period(c.runId, mapCtx.phaseId))
-                .setRun(c.run)
+                .setPeriod(Period(currentRunId, currentPhaseId(using mapCtx)))
+                .setRun(ctx.run)
               try this(ref1) finally mapCtx = saved
           }
 
@@ -5041,7 +5041,7 @@ object Types {
 
     private def treeTypeMap = new TreeTypeMap(typeMap = this)
 
-    def mapOver(syms: List[Symbol]): List[Symbol] = mapCtx.mapSymbols(syms, treeTypeMap)
+    def mapOver(syms: List[Symbol]): List[Symbol] = mapSymbols(syms, treeTypeMap)
 
     def mapOver(scope: Scope): Scope = {
       val elems = scope.toList
@@ -5660,9 +5660,9 @@ object Types {
       }
   }
 
-  private val keepAlways: AnnotatedType => Context => Boolean = _ => _ => true
-  private val keepNever: AnnotatedType => Context => Boolean = _ => _ => false
-  private val keepIfRefining: AnnotatedType => Context => Boolean = tp => ctx => tp.isRefining(using ctx)
+  private val keepAlways: AnnotatedType => Context ?=> Boolean = _ => true
+  private val keepNever: AnnotatedType => Context ?=> Boolean = _ => false
+  private val keepIfRefining: AnnotatedType => Context ?=> Boolean = _.isRefining
 
   val isBounds: Type => Boolean = _.isInstanceOf[TypeBounds]
 }

@@ -4,8 +4,8 @@ package core
 
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
 import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._
-import NameOps._, NameKinds._, Phases._
-import Phases.typerPhase
+import NameOps._, NameKinds._
+import Phases.{Phase, typerPhase, unfusedPhases}
 import Constants.Constant
 import TypeApplications.TypeParamInfo
 import Scopes.Scope
@@ -21,105 +21,11 @@ import util.Stats
 import java.util.WeakHashMap
 import scala.util.control.NonFatal
 import config.Config
-import reporting.{Message, trace}
-import reporting.messages.BadSymbolicReference
+import reporting._
 import collection.mutable
 import transform.TypeUtils._
 
 import scala.annotation.internal.sharable
-
-trait SymDenotations { thisCtx: Context =>
-  import SymDenotations._
-
-  /** Factory method for SymDenotion creation. All creations
-   *  should be done via this method.
-   */
-  def SymDenotation(
-    symbol: Symbol,
-    owner: Symbol,
-    name: Name,
-    initFlags: FlagSet,
-    initInfo: Type,
-    initPrivateWithin: Symbol = NoSymbol)(using Context): SymDenotation = {
-    val result =
-      if (symbol.isClass)
-        if (initFlags.is(Package)) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
-        else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
-      else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
-    result.validFor = stablePeriod
-    result
-  }
-
-  def stillValid(denot: SymDenotation): Boolean =
-    if (denot.isOneOf(ValidForeverFlags) || denot.isRefinementClass || denot.isImport) true
-    else {
-      val initial = denot.initial
-      val firstPhaseId = initial.validFor.firstPhaseId.max(typerPhase.id)
-      if ((initial ne denot) || thisCtx.phaseId != firstPhaseId)
-        thisCtx.withPhase(firstPhaseId).stillValidInOwner(initial)
-      else
-        stillValidInOwner(denot)
-    }
-
-  private[SymDenotations] def stillValidInOwner(denot: SymDenotation): Boolean = try {
-    val owner = denot.owner.denot
-    stillValid(owner) && (
-      !owner.isClass
-      || owner.isRefinementClass
-      || owner.is(Scala2x)
-      || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
-      || denot.isSelfSym
-      || denot.isLocalDummy)
-  }
-  catch {
-    case ex: StaleSymbol => false
-  }
-
-  /** Explain why symbol is invalid; used for debugging only */
-  def traceInvalid(denot: Denotation): Boolean = {
-    def show(d: Denotation) = s"$d#${d.symbol.id}"
-    def explain(msg: String) = {
-      println(s"${show(denot)} is invalid at ${thisCtx.period} because $msg")
-      false
-    }
-    denot match {
-      case denot: SymDenotation =>
-        def explainSym(msg: String) = explain(s"$msg\ndefined = ${denot.definedPeriodsString}")
-        if (denot.isOneOf(ValidForeverFlags) || denot.isRefinementClass) true
-        else inContext(thisCtx) {
-          val initial = denot.initial
-          if ((initial ne denot) || ctx.phaseId != initial.validFor.firstPhaseId)
-            ctx.withPhase(initial.validFor.firstPhaseId).traceInvalid(initial)
-          else try {
-            val owner = denot.owner.denot
-            if (!traceInvalid(owner)) explainSym("owner is invalid")
-            else if (!owner.isClass || owner.isRefinementClass || denot.isSelfSym) true
-            else if (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol) true
-            else explainSym(s"decls of ${show(owner)} are ${owner.unforcedDecls.lookupAll(denot.name).toList}, do not contain ${denot.symbol}")
-          }
-          catch {
-            case ex: StaleSymbol => explainSym(s"$ex was thrown")
-          }
-        }
-      case _ =>
-        explain("denotation is not a SymDenotation")
-    }
-  }
-
-  /** Configurable: Accept stale symbol with warning if in IDE
-   *  Always accept stale symbols when testing pickling.
-   */
-  def staleOK: Boolean =
-    Config.ignoreStaleInIDE && mode.is(Mode.Interactive) ||
-    settings.YtestPickler.value
-
-  /** Possibly accept stale symbol with warning if in IDE */
-  def acceptStale(denot: SingleDenotation): Boolean =
-    staleOK && {
-      thisCtx.debugwarn(denot.staleSymbolMsg)
-      true
-    }
-}
 
 object SymDenotations {
 
@@ -407,7 +313,7 @@ object SymDenotations {
       def recurWithoutParamss(info: Type): List[List[Symbol]] = info match
         case info: LambdaType =>
           val params = info.paramNames.lazyZip(info.paramInfos).map((pname, ptype) =>
-            ctx.newSymbol(symbol, pname, SyntheticParam, ptype))
+            newSymbol(symbol, pname, SyntheticParam, ptype))
           val prefs = params.map(_.namedType)
           for param <- params do
             param.info = param.info.substParams(info, prefs)
@@ -856,7 +762,7 @@ object SymDenotations {
 
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
-      if (ctx.explicitNulls && !ctx.phase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyClass
+      if (ctx.explicitNulls && !currentPhase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyClass
       else isNullableClassAfterErasure
 
     /** Is this symbol a class of which `null` is a value after erasure?
@@ -943,7 +849,7 @@ object SymDenotations {
         || this.is(Protected) &&
              (  superAccess
              || pre.isInstanceOf[ThisType]
-             || ctx.phase.erasedTypes
+             || currentPhase.erasedTypes
              || isProtectedAccessOK
              )
         )
@@ -956,7 +862,7 @@ object SymDenotations {
     def membersNeedAsSeenFrom(pre: Type)(using Context): Boolean =
       !(  this.isTerm
        || this.isStaticOwner && !this.seesOpaques
-       || ctx.erasedTypes
+       || currentlyAfterErasure
        || (pre eq NoPrefix)
        || (pre eq thisType)
        )
@@ -969,7 +875,7 @@ object SymDenotations {
      *  Default parameters are recognized until erasure.
      */
     def hasDefaultParams(using Context): Boolean =
-      if ctx.erasedTypes then false
+      if currentlyAfterErasure then false
       else if is(HasDefaultParams) then true
       else if is(NoDefaultParams) then false
       else
@@ -1419,7 +1325,7 @@ object SymDenotations {
     final def accessBoundary(base: Symbol)(using Context): Symbol =
       if (this.is(Private)) owner
       else if (this.isAllOf(StaticProtected)) defn.RootClass
-      else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
+      else if (privateWithin.exists && !currentPhase.erasedTypes) privateWithin
       else if (this.is(Protected)) base
       else defn.RootClass
 
@@ -1544,12 +1450,12 @@ object SymDenotations {
       // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
       val info1 = if (info != null) info else this.info
-      if (ctx.isAfterTyper && changedClassParents(info, info1, completersMatter = false))
-        assert(ctx.phase.changesParents, i"undeclared parent change at ${ctx.phase} for $this, was: $info, now: $info1")
+      if (currentlyAfterTyper && changedClassParents(info, info1, completersMatter = false))
+        assert(currentPhase.changesParents, i"undeclared parent change at ${currentPhase} for $this, was: $info, now: $info1")
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
       val rawParamss1 = if rawParamss != null then rawParamss else this.rawParamss
-      val d = ctx.SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
+      val d = SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
       d.annotations = annotations1
       d.rawParamss = rawParamss1
       d.registeredCompanion = registeredCompanion
@@ -1661,18 +1567,17 @@ object SymDenotations {
     private var memberNamesCache: MemberNames = MemberNames.None
 
     private def memberCache(using Context): LRUCache[Name, PreDenotation] = {
-      if (myMemberCachePeriod != ctx.period) {
+      if (myMemberCachePeriod != currentPeriod) {
         myMemberCache = new LRUCache
-        myMemberCachePeriod = ctx.period
+        myMemberCachePeriod = currentPeriod
       }
       myMemberCache
     }
 
     private def baseTypeCache(using Context): BaseTypeMap = {
-      if (!ctx.hasSameBaseTypesAs(myBaseTypeCachePeriod)) {
+      if !currentHasSameBaseTypesAs(myBaseTypeCachePeriod) then
         myBaseTypeCache = new BaseTypeMap
-        myBaseTypeCachePeriod = ctx.period
-      }
+        myBaseTypeCachePeriod = currentPeriod
       myBaseTypeCache
     }
 
@@ -1736,7 +1641,7 @@ object SymDenotations {
     override final def typeParams(using Context): List[TypeSymbol] = {
       if (myTypeParams == null)
         myTypeParams =
-          if (ctx.erasedTypes || is(Module)) Nil // fast return for modules to avoid scanning package decls
+          if (currentlyAfterErasure || is(Module)) Nil // fast return for modules to avoid scanning package decls
           else {
             val di = initial
             if (this ne di) di.typeParams
@@ -1824,7 +1729,7 @@ object SymDenotations {
 
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       def emptyParentsExpected =
-        is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
+        is(Package) || (symbol == defn.AnyClass) || currentlyAfterErasure && (symbol == defn.ObjectClass)
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
@@ -1920,7 +1825,7 @@ object SymDenotations {
      */
     def ensureTypeParamsInCorrectOrder()(using Context): Unit = {
       val tparams = typeParams
-      if (!ctx.erasedTypes && !typeParamsFromDecls.corresponds(tparams)(_.name == _.name)) {
+      if (!currentlyAfterErasure && !typeParamsFromDecls.corresponds(tparams)(_.name == _.name)) {
         val decls = info.decls
         val decls1 = newScope
         for (tparam <- typeParams) decls1.enter(decls.lookup(tparam.name))
@@ -2199,7 +2104,7 @@ object SymDenotations {
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
      */
     def ensureFreshScopeAfter(phase: DenotTransformer)(using Context): Unit =
-      if (ctx.phaseId != phase.next.id) atPhase(phase.next)(ensureFreshScopeAfter(phase))
+      if (currentPhaseId != phase.next.id) atPhase(phase.next)(ensureFreshScopeAfter(phase))
       else {
         val prevClassInfo = atPhase(phase) {
           current.asInstanceOf[ClassDenotation].classInfo
@@ -2249,8 +2154,8 @@ object SymDenotations {
 
     /** The package objects in this class */
     def packageObjs(using Context): List[ClassDenotation] = {
-      if (packageObjsRunId != ctx.runId) {
-        packageObjsRunId = ctx.runId
+      if (packageObjsRunId != currentRunId) {
+        packageObjsRunId = currentRunId
         packageObjsCache = Nil // break cycle in case we are looking for package object itself
         packageObjsCache = {
           val pkgObjBuf = new mutable.ListBuffer[ClassDenotation]
@@ -2346,7 +2251,7 @@ object SymDenotations {
               try f.container == chosen.container catch case NonFatal(ex) => true
             if !ambiguityWarningIssued then
               for conflicting <- assocFiles.find(!sameContainer(_)) do
-                ctx.warning(i"""${ambiguousFilesMsg(conflicting)}
+                report.warning(i"""${ambiguousFilesMsg(conflicting)}
                                |Keeping only the definition in $chosen""")
                 ambiguityWarningIssued = true
             multi.filterWithPredicate(_.symbol.associatedFile == chosen)
@@ -2391,7 +2296,7 @@ object SymDenotations {
       for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
-        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
+        if (sym.defRunId != currentRunId && sym.isClass && sym.asClass.assocFile == file)
           scope.unlink(sym, sym.lastKnownDenotation.name)
     }
   }
@@ -2419,7 +2324,95 @@ object SymDenotations {
   def canBeLocal(name: Name, flags: FlagSet)(using Context) =
     !name.isConstructorName && !flags.is(Param) && !flags.is(ParamAccessor)
 
-  // ---- Completion --------------------------------------------------------
+  /** Factory method for SymDenotion creation. All creations
+   *  should be done via this method.
+   */
+  def SymDenotation(
+    symbol: Symbol,
+    owner: Symbol,
+    name: Name,
+    initFlags: FlagSet,
+    initInfo: Type,
+    initPrivateWithin: Symbol = NoSymbol)(using Context): SymDenotation = {
+    val result =
+      if (symbol.isClass)
+        if (initFlags.is(Package)) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+        else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+      else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+    result.validFor = currentStablePeriod
+    result
+  }
+
+  def stillValid(denot: SymDenotation)(using Context): Boolean =
+    if (denot.isOneOf(ValidForeverFlags) || denot.isRefinementClass || denot.isImport) true
+    else {
+      val initial = denot.initial
+      val firstPhaseId = initial.validFor.firstPhaseId.max(typerPhase.id)
+      if ((initial ne denot) || currentPhaseId != firstPhaseId)
+        atPhase(firstPhaseId)(stillValidInOwner(initial))
+      else
+        stillValidInOwner(denot)
+    }
+
+  private[SymDenotations] def stillValidInOwner(denot: SymDenotation)(using Context): Boolean = try {
+    val owner = denot.owner.denot
+    stillValid(owner) && (
+      !owner.isClass
+      || owner.isRefinementClass
+      || owner.is(Scala2x)
+      || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
+      || denot.isSelfSym
+      || denot.isLocalDummy)
+  }
+  catch {
+    case ex: StaleSymbol => false
+  }
+
+  /** Explain why symbol is invalid; used for debugging only */
+  def traceInvalid(denot: Denotation)(using Context): Boolean = {
+    def show(d: Denotation) = s"$d#${d.symbol.id}"
+    def explain(msg: String) = {
+      println(s"${show(denot)} is invalid at ${currentPeriod} because $msg")
+      false
+    }
+    denot match {
+      case denot: SymDenotation =>
+        def explainSym(msg: String) = explain(s"$msg\ndefined = ${denot.definedPeriodsString}")
+        if (denot.isOneOf(ValidForeverFlags) || denot.isRefinementClass) true
+        else
+          val initial = denot.initial
+          if ((initial ne denot) || currentPhaseId != initial.validFor.firstPhaseId)
+            atPhase(initial.validFor.firstPhaseId)(traceInvalid(initial))
+          else try {
+            val owner = denot.owner.denot
+            if (!traceInvalid(owner)) explainSym("owner is invalid")
+            else if (!owner.isClass || owner.isRefinementClass || denot.isSelfSym) true
+            else if (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol) true
+            else explainSym(s"decls of ${show(owner)} are ${owner.unforcedDecls.lookupAll(denot.name).toList}, do not contain ${denot.symbol}")
+          }
+          catch {
+            case ex: StaleSymbol => explainSym(s"$ex was thrown")
+          }
+      case _ =>
+        explain("denotation is not a SymDenotation")
+    }
+  }
+
+  /** Configurable: Accept stale symbol with warning if in IDE
+   *  Always accept stale symbols when testing pickling.
+   */
+  def staleOK(using Context): Boolean =
+    Config.ignoreStaleInIDE && ctx.mode.is(Mode.Interactive)
+    || ctx.settings.YtestPickler.value
+
+  /** Possibly accept stale symbol with warning if in IDE */
+  def acceptStale(denot: SingleDenotation)(using Context): Boolean =
+    staleOK && {
+      report.debugwarn(denot.staleSymbolMsg)
+      true
+    }
+
+// ---- Completion --------------------------------------------------------
 
   /** Instances of LazyType are carried by uncompleted symbols.
    *  Note: LazyTypes double up as (constant) functions from Symbol and
@@ -2437,10 +2430,9 @@ object SymDenotations {
     def apply(sym: Symbol): LazyType = this
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this
 
-    private val NoSymbolFn = (_: Context) => NoSymbol
     private var myDecls: Scope = EmptyScope
-    private var mySourceModuleFn: Context => Symbol = NoSymbolFn
-    private var myModuleClassFn: Context => Symbol = NoSymbolFn
+    private var mySourceModuleFn: Context ?=> Symbol = LazyType.NoSymbolFn
+    private var myModuleClassFn: Context ?=> Symbol = LazyType.NoSymbolFn
 
     /** The type parameters computed by the completer before completion has finished */
     def completerTypeParams(sym: Symbol)(using Context): List[TypeParamInfo] =
@@ -2448,15 +2440,18 @@ object SymDenotations {
       else sym.info.typeParams
 
     def decls: Scope = myDecls
-    def sourceModule(using Context): Symbol = mySourceModuleFn(ctx)
-    def moduleClass(using Context): Symbol = myModuleClassFn(ctx)
+    def sourceModule(using Context): Symbol = mySourceModuleFn
+    def moduleClass(using Context): Symbol = myModuleClassFn
 
     def withDecls(decls: Scope): this.type = { myDecls = decls; this }
-    def withSourceModule(sourceModuleFn: Context => Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
-    def withModuleClass(moduleClassFn: Context => Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
+    def withSourceModule(sourceModuleFn: Context ?=> Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
+    def withModuleClass(moduleClassFn: Context ?=> Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
 
     override def toString: String = getClass.toString
   }
+
+  object LazyType:
+    private val NoSymbolFn = (using _: Context) => NoSymbol
 
   /** A subtrait of LazyTypes where completerTypeParams yields a List[TypeSymbol], which
    *  should be completed independently of the info.
@@ -2509,7 +2504,7 @@ object SymDenotations {
     def complete(denot: SymDenotation)(using Context): Unit = {
       val sym = denot.symbol
       val errMsg = BadSymbolicReference(denot)
-      ctx.error(errMsg, sym.sourcePos)
+      report.error(errMsg, sym.sourcePos)
       if (ctx.debug) throw new scala.Error()
       initializeToDefaults(denot, errMsg)
     }
@@ -2540,7 +2535,7 @@ object SymDenotations {
     implicit val None: MemberNames = new InvalidCache with MemberNames {
       def apply(keepOnly: NameFilter, clsd: ClassDenotation)(implicit onBehalf: MemberNames, ctx: Context) = ???
     }
-    def newCache()(using Context): MemberNames = new MemberNamesImpl(ctx.period)
+    def newCache()(using Context): MemberNames = new MemberNamesImpl(currentPeriod)
   }
 
   /** A cache for baseclasses, as a sequence in linearization order and as a set that
@@ -2557,7 +2552,7 @@ object SymDenotations {
       def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context) = ???
       def signalProvisional() = ()
     }
-    def newCache()(using Context): BaseData = new BaseDataImpl(ctx.period)
+    def newCache()(using Context): BaseData = new BaseDataImpl(currentPeriod)
   }
 
   private abstract class InheritedCacheImpl(val createdAt: Period) extends InheritedCache {
@@ -2580,11 +2575,11 @@ object SymDenotations {
     }
 
     def isValidAt(phase: Phase)(using Context) =
-      checkedPeriod == ctx.period ||
-        createdAt.runId == ctx.runId &&
-        createdAt.phaseId < curPhases.length &&
-        sameGroup(curPhases(createdAt.phaseId), phase) &&
-        { checkedPeriod = ctx.period; true }
+      checkedPeriod == currentPeriod ||
+        createdAt.runId == currentRunId &&
+        createdAt.phaseId < unfusedPhases.length &&
+        sameGroup(unfusedPhases(createdAt.phaseId), phase) &&
+        { checkedPeriod = currentPeriod; true }
   }
 
   private class InvalidCache extends InheritedCache {
@@ -2597,7 +2592,7 @@ object SymDenotations {
     private var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.Empty
 
     final def isValid(using Context): Boolean =
-      cache != null && isValidAt(ctx.phase)
+      cache != null && isValidAt(currentPhase)
 
     private var locked = false
 
@@ -2639,7 +2634,7 @@ object SymDenotations {
     private var locked = false
     private var provisional = false
 
-    final def isValid(using Context): Boolean = valid && isValidAt(ctx.phase)
+    final def isValid(using Context): Boolean = valid && isValidAt(currentPhase)
 
     def invalidate(): Unit =
       if (valid && !locked) {

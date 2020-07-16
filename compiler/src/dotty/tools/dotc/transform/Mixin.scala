@@ -140,7 +140,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       val initName = InitializerName(sym.name.asTermName)
       sym.owner.info.decl(initName).symbol
         .orElse(
-          ctx.newSymbol(
+          newSymbol(
             sym.owner,
             initName,
             Protected | Synthetic | Method,
@@ -234,7 +234,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           assert(
               impl.parents.forall(_.tpe.typeSymbol != mixin),
               i"missing parameters for $mixin from $impl should have been caught in typer")
-          ctx.error(
+          report.error(
               em"""parameterized $mixin is indirectly implemented,
                   |needs to be implemented directly so that arguments can be passed""",
               cls.sourcePos)

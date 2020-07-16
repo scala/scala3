@@ -41,7 +41,7 @@ class InterceptedMethods extends MiniPhase {
         case sel: Select => sel.qualifier
       }
       val rewritten = poundPoundValue(qual)
-      ctx.log(s"$phaseName rewrote $tree to $rewritten")
+      report.log(s"$phaseName rewrote $tree to $rewritten")
       rewritten
     }
     else tree

@@ -23,9 +23,9 @@ object ValueClasses {
   }
 
   def isMethodWithExtension(sym: Symbol)(using Context): Boolean =
-    atPhaseNotLaterThan(extensionMethodsPhase) {
+    atPhaseNoLater(extensionMethodsPhase) {
       val d = sym.denot
-      d.validFor.containsPhaseId(summon[Context].phaseId) &&
+      d.validFor.containsPhaseId(currentPhaseId) &&
       d.isRealMethod &&
       isDerivedValueClass(d.owner) &&
       !d.isConstructor &&

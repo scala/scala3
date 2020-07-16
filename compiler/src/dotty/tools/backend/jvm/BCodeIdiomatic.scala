@@ -7,6 +7,7 @@ import scala.annotation.switch
 import scala.collection.mutable
 import Primitives.{NE, EQ, TestOp, ArithmeticOp}
 import scala.tools.asm.tree.MethodInsnNode
+import dotty.tools.dotc.report
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -585,7 +586,7 @@ trait BCodeIdiomatic {
     }
 
     def abort(msg: String): Nothing = {
-      ctx.error(msg)
+      report.error(msg)
       throw new RuntimeException(msg)
     }
 

@@ -115,7 +115,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
     if (tree.tpt ne EmptyTree) {
       val cls = tree.tpt.asInstanceOf[TypeTree].tpe.classSymbol
       if (cls.exists && hasOuter(cls.asClass))
-        ctx.error("Not a single abstract method type, requires an outer pointer", tree.sourcePos)
+        report.error("Not a single abstract method type, requires an outer pointer", tree.sourcePos)
     }
     tree
   }
@@ -174,8 +174,9 @@ object ExplicitOuter {
         outerThis.baseType(outerCls).orElse(
   		    outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty)))
     val info = if (flags.is(Method)) ExprType(target) else target
-    ctx.withPhaseNoEarlier(explicitOuterPhase.next) // outer accessors are entered at explicitOuter + 1, should not be defined before.
-       .newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
+    atPhaseNoEarlier(explicitOuterPhase.next) { // outer accessors are entered at explicitOuter + 1, should not be defined before.
+      newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
+    }
   }
 
   /** A new param accessor for the outer field in class `cls` */
@@ -299,7 +300,7 @@ object ExplicitOuter {
           else tpe.prefix
         case _ =>
           // Need to be careful to dealias before erasure, otherwise we lose prefixes.
-          outerPrefix(tpe.underlying(using ctx.withPhaseNoLater(erasurePhase)))
+          atPhaseNoLater(erasurePhase)(outerPrefix(tpe.underlying))
       }
     case tpe: TypeProxy =>
       outerPrefix(tpe.underlying)
@@ -397,7 +398,7 @@ object ExplicitOuter {
         @tailrec def loop(tree: Tree, count: Int): Tree =
           val treeCls = tree.tpe.widen.classSymbol
           val outerAccessorCtx = ctx.withPhaseNoLater(lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
-          ctx.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${outerAccName(treeCls.asClass)(using outerAccessorCtx)} in $treeCls")
+          report.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${outerAccName(treeCls.asClass)(using outerAccessorCtx)} in $treeCls")
           if (count == 0 || count < 0 && treeCls == toCls) tree
           else
             val enclClass = ctx.owner.lexicallyEnclosingClass.asClass
@@ -410,7 +411,7 @@ object ExplicitOuter {
                 i"failure to construct path from ${ctx.owner.ownersIterator.toList}%/% to `this` of ${toCls.showLocated};\n${treeCls.showLocated} does not have an outer accessor")
             loop(tree.select(outerAcc).ensureApplied, count - 1)
 
-        ctx.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toList}")
+        report.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toList}")
         loop(start, count)
       catch case ex: ClassCastException =>
         throw new ClassCastException(i"no path exists from ${ctx.owner.enclosingClass} to $toCls")

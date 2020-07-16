@@ -84,7 +84,7 @@ object Rewrites {
    */
   def writeBack()(using Context): Unit =
     for (rewrites <- ctx.settings.rewrite.value; source <- rewrites.patched.keys) {
-      ctx.echo(s"[patched file ${source.file.path}]")
+      report.echo(s"[patched file ${source.file.path}]")
       rewrites.patched(source).writeBack()
     }
 }

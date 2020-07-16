@@ -27,8 +27,7 @@ import classfile.ClassfileParser
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
-import reporting.trace
-import dotty.tools.dotc.reporting.messages.FailureToEliminateExistential
+import reporting._
 
 object Scala2Unpickler {
 
@@ -77,7 +76,7 @@ object Scala2Unpickler {
 
   def ensureConstructor(cls: ClassSymbol, scope: Scope)(using Context): Unit = {
     if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) {
-      val constr = ctx.newDefaultConstructor(cls)
+      val constr = newDefaultConstructor(cls)
       addConstructorTypeParams(constr)
       cls.enter(constr, scope)
     }
@@ -411,7 +410,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           // (3) Try as a nested object symbol.
           nestedObjectSymbol orElse {
             // (4) Call the mirror's "missing" hook.
-            adjust(ctx.base.missingHook(owner, name)) orElse {
+            adjust(missingHook(owner, name)) orElse {
               // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
@@ -421,7 +420,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               if (slowSearch(name).exists)
                 System.err.println(i"**** slow search found: ${slowSearch(name)}")
               if (ctx.settings.YdebugMissingRefs.value) Thread.dumpStack()
-              ctx.newStubSymbol(owner, name, source)
+              newStubSymbol(owner, name, source)
             }
           }
         }
@@ -513,7 +512,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         var name1 = name.asTypeName
         var flags1 = flags
         if (flags.is(TypeParam)) flags1 |= owner.typeParamCreationFlags
-        ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, privateWithin, coord = start)
+        newSymbol(owner, name1, flags1, localMemberUnpickler, privateWithin, coord = start)
       case CLASSsym =>
         if (isClassRoot)
           completeRoot(
@@ -525,21 +524,21 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           def completer(cls: Symbol) = {
             val unpickler = new ClassUnpickler(infoRef) withDecls symScope(cls)
             if (flags.is(ModuleClass))
-              unpickler withSourceModule (implicit ctx =>
+              unpickler.withSourceModule(
                 cls.owner.info.decls.lookup(cls.name.sourceModuleName)
                   .suchThat(_.is(Module)).symbol)
             else unpickler
           }
-          ctx.newClassSymbol(owner, name.asTypeName, flags, completer, privateWithin, coord = start)
+          newClassSymbol(owner, name.asTypeName, flags, completer, privateWithin, coord = start)
         }
       case VALsym =>
-        ctx.newSymbol(owner, name.asTermName, flags, localMemberUnpickler, privateWithin, coord = start)
+        newSymbol(owner, name.asTermName, flags, localMemberUnpickler, privateWithin, coord = start)
       case MODULEsym =>
         if (isModuleRoot) {
           moduleRoot setFlag flags
           moduleRoot.symbol
-        } else ctx.newSymbol(owner, name.asTermName, flags,
-          new LocalUnpickler() withModuleClass(implicit ctx =>
+        } else newSymbol(owner, name.asTermName, flags,
+          new LocalUnpickler().withModuleClass(
             owner.info.decls.lookup(name.moduleClassName)
               .suchThat(_.is(Module)).symbol)
           , privateWithin, coord = start)
@@ -607,8 +606,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         // println(s"unpickled ${denot.debugString}, info = ${denot.info}") !!! DEBUG
       }
       atReadPos(startCoord(denot).toIndex,
-          () => parseToCompletion(denot)(
-            using ctx.addMode(Mode.Scala2Unpickling).withPhaseNoLater(picklerPhase)))
+          () => withMode(Mode.Scala2Unpickling) {
+            atPhaseNoLater(picklerPhase) {
+              parseToCompletion(denot)
+            }
+          })
     }
     catch {
       case ex: RuntimeException => handleRuntimeException(ex)
@@ -640,7 +642,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol, infoRef: Int): ClassUnpickler =
     (new ClassUnpickler(infoRef) with SymbolLoaders.SecondCompleter {
       override def startCoord(denot: SymDenotation): Coord = start
-    }) withDecls symScope(cls) withSourceModule (_ => module)
+    }).withDecls(symScope(cls)).withSourceModule(module)
 
   /** Convert
    *    tp { type name = sym } forSome { sym >: L <: H }
@@ -703,7 +705,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       val anyTypes = boundSyms map (_ => defn.AnyType)
       val boundBounds = boundSyms map (_.info.bounds.hi)
       val tp2 = tp1.subst(boundSyms, boundBounds).subst(boundSyms, anyTypes)
-      ctx.warning(FailureToEliminateExistential(tp, tp1, tp2, boundSyms))
+      report.warning(FailureToEliminateExistential(tp, tp1, tp2, boundSyms))
       tp2
     }
     else tp1
@@ -984,7 +986,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   protected def deferredAnnot(end: Int)(using Context): Annotation = {
     val start = readIndex
     val atp = readTypeRef()
-    val phase = ctx.phase
+    val phase = currentPhase
     Annotation.deferred(atp.typeSymbol)(
         atReadPos(start, () => atPhase(phase)(readAnnotationContents(end))))
   }
@@ -1133,7 +1135,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val body = readTreeRef()
         val vparams = until(end, () => readValDefRef())
         val applyType = MethodType(vparams map (_.name), vparams map (_.tpt.tpe), body.tpe)
-        val applyMeth = ctx.newSymbol(symbol.owner, nme.apply, Method, applyType)
+        val applyMeth = newSymbol(symbol.owner, nme.apply, Method, applyType)
         Closure(applyMeth, Function.const(body.changeOwner(symbol, applyMeth)) _)
 
       case ASSIGNtree =>

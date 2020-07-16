@@ -2,7 +2,7 @@ package dotty.tools
 package dottydoc
 package util
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import dotc.core.Comments.{_, given _}
 import model.Package
 import core.ContextDottydoc
@@ -20,7 +20,7 @@ object syntax {
   }
 
   implicit class SymbolExtensions(val sym: Symbol) extends AnyVal {
-    def sourcePosition(span: Span)(implicit ctx: Context): SourcePosition =
+    def sourcePosition(span: Span)(using Context): SourcePosition =
       sym.source.atSpan(span)
   }
 }

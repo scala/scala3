@@ -7,7 +7,7 @@ import ast._
 import ast.Trees._
 import StdNames._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
-import ProtoTypes._
+import ProtoTypes._, ContextOps._
 import util.Spans._
 import util.SourcePosition
 import collection.mutable
@@ -49,13 +49,13 @@ trait Deriving {
     private def addDerivedInstance(clsName: Name, info: Type, pos: SourcePosition): Unit = {
       val instanceName = s"derived$$$clsName".toTermName
       if (ctx.denotNamed(instanceName).exists)
-        ctx.error(i"duplicate type class derivation for $clsName", pos)
+        report.error(i"duplicate type class derivation for $clsName", pos)
       else
         // If we set the Synthetic flag here widenGiven will widen too far and the
         // derived instance will have too low a priority to be selected over a freshly
         // derived instance at the summoning site.
         synthetics +=
-          ctx.newSymbol(ctx.owner, instanceName, Given | Method, info, coord = pos.span)
+          newSymbol(ctx.owner, instanceName, Given | Method, info, coord = pos.span)
             .entered
     }
 
@@ -91,7 +91,7 @@ trait Deriving {
         xs.corresponds(ys)((x, y) => x.paramInfo.hasSameKindAs(y.paramInfo))
 
       def cannotBeUnified =
-        ctx.error(i"${cls.name} cannot be unified with the type argument of ${typeClass.name}", derived.sourcePos)
+        report.error(i"${cls.name} cannot be unified with the type argument of ${typeClass.name}", derived.sourcePos)
 
       def addInstance(derivedParams: List[TypeSymbol], evidenceParamInfos: List[List[Type]], instanceTypes: List[Type]): Unit = {
         val resultType = typeClassType.appliedTo(instanceTypes)
@@ -251,7 +251,7 @@ trait Deriving {
       if (typeClassArity == 1) deriveSingleParameter
       else if (typeClass == defn.EqlClass) deriveEql
       else if (typeClassArity == 0)
-        ctx.error(i"type ${typeClass.name} in derives clause of ${cls.name} has no type parameters", derived.sourcePos)
+        report.error(i"type ${typeClass.name} in derives clause of ${cls.name} has no type parameters", derived.sourcePos)
       else
         cannotBeUnified
     }
@@ -272,8 +272,8 @@ trait Deriving {
         (tparamRefs: List[Type]) => (paramRefss: List[List[tpd.Tree]]) =>
           val tparams = tparamRefs.map(_.typeSymbol.asType)
           val params = if (paramRefss.isEmpty) Nil else paramRefss.head.map(_.symbol.asTerm)
-          tparams.foreach(ctx.enter)
-          params.foreach(ctx.enter)
+          tparams.foreach(ctx.enter(_))
+          params.foreach(ctx.enter(_))
           def instantiated(info: Type): Type = info match {
             case info: PolyType => instantiated(info.instantiate(tparamRefs))
             case info: MethodType => info.instantiate(params.map(_.termRef))

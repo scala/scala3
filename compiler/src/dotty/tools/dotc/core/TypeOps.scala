@@ -122,7 +122,7 @@ object TypeOps:
   }
 
   def isLegalPrefix(pre: Type)(using Context): Boolean =
-    pre.isStable || !ctx.phase.isTyper
+    pre.isStable || !currentPhase.isTyper
 
   /** Implementation of Types#simplified */
   def simplify(tp: Type, theMap: SimplifyMap)(using Context): Type = {
@@ -193,7 +193,7 @@ object TypeOps:
         val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
       case Nil => // this case can happen because after erasure we do not have a top class anymore
-        assert(ctx.erasedTypes || ctx.reporter.errorsReported)
+        assert(currentlyAfterErasure || ctx.reporter.errorsReported)
         defn.ObjectClass :: Nil
     }
 

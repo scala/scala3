@@ -51,36 +51,27 @@ object Annotations {
     def tree(using Context): Tree = t
   }
 
-  /** The context to use to evaluate an annotation */
-  private def annotCtx(using Context): Context =
-    // We should always produce the same annotation tree, no matter when the
-    // annotation is evaluated. Setting the phase to a pre-transformation phase
-    // seems to be enough to ensure this (note that after erasure, `ctx.typer`
-    // will be the Erasure typer, but that doesn't seem to affect the annotation
-    // trees we create, so we leave it as is)
-    ctx.withPhaseNoLater(picklerPhase)
-
   abstract class LazyAnnotation extends Annotation {
-    protected var mySym: Symbol | (Context => Symbol)
+    protected var mySym: Symbol | (Context ?=> Symbol)
     override def symbol(using parentCtx: Context): Symbol =
       assert(mySym != null)
       mySym match {
-        case symFn: (Context => Symbol) @unchecked =>
+        case symFn: (Context ?=> Symbol) @unchecked =>
           mySym = null
-          mySym = symFn(annotCtx)
-        case sym: Symbol if sym.defRunId != parentCtx.runId =>
+          mySym = atPhaseNoLater(picklerPhase)(symFn)
+        case sym: Symbol if sym.defRunId != currentRunId(using parentCtx) =>
           mySym = sym.denot.current.symbol
         case _ =>
       }
       mySym.asInstanceOf[Symbol]
 
-    protected var myTree: Tree | (Context => Tree)
+    protected var myTree: Tree | (Context ?=> Tree)
     def tree(using Context): Tree =
       assert(myTree != null)
       myTree match {
-        case treeFn: (Context => Tree) @unchecked =>
+        case treeFn: (Context ?=> Tree) @unchecked =>
           myTree = null
-          myTree = treeFn(annotCtx)
+          myTree = atPhaseNoLater(picklerPhase)(treeFn)
         case _ =>
       }
       myTree.asInstanceOf[Tree]
@@ -107,13 +98,13 @@ object Annotations {
 
   abstract class LazyBodyAnnotation extends BodyAnnotation {
     // Copy-pasted from LazyAnnotation to avoid having to turn it into a trait
-    protected var myTree: Tree | (Context => Tree)
+    protected var myTree: Tree | (Context ?=> Tree)
     def tree(using Context): Tree =
       assert(myTree != null)
       myTree match {
-        case treeFn: (Context => Tree) @unchecked =>
+        case treeFn: (Context ?=> Tree) @unchecked =>
           myTree = null
-          myTree = treeFn(annotCtx)
+          myTree = atPhaseNoLater(picklerPhase)(treeFn)
         case _ =>
       }
       myTree.asInstanceOf[Tree]
@@ -125,7 +116,7 @@ object Annotations {
   object LazyBodyAnnotation {
     def apply(bodyFn: Context ?=> Tree): LazyBodyAnnotation =
       new LazyBodyAnnotation:
-        protected var myTree: Tree | (Context => Tree) = ctx => bodyFn(using ctx)
+        protected var myTree: Tree | (Context ?=> Tree) = (using ctx) => bodyFn(using ctx)
   }
 
   object Annotation {
@@ -156,15 +147,15 @@ object Annotations {
     /** Create an annotation where the tree is computed lazily. */
     def deferred(sym: Symbol)(treeFn: Context ?=> Tree)(using Context): Annotation =
       new LazyAnnotation {
-        protected var myTree: Tree | (Context => Tree) = ctx => treeFn(using ctx)
-        protected var mySym: Symbol | (Context => Symbol) = sym
+        protected var myTree: Tree | (Context ?=> Tree) = (using ctx) => treeFn(using ctx)
+        protected var mySym: Symbol | (Context ?=> Symbol) = sym
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
     def deferredSymAndTree(symFn: Context ?=> Symbol)(treeFn: Context ?=> Tree)(using Context): Annotation =
       new LazyAnnotation {
-        protected var mySym: Symbol | (Context => Symbol) = ctx => symFn(using ctx)
-        protected var myTree: Tree | (Context => Tree) = ctx => treeFn(using ctx)
+        protected var mySym: Symbol | (Context ?=> Symbol) = (using ctx) => symFn(using ctx)
+        protected var myTree: Tree | (Context ?=> Tree) = (using ctx) => treeFn(using ctx)
       }
 
     def deferred(atp: Type, args: List[Tree])(using Context): Annotation =

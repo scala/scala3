@@ -55,7 +55,7 @@ class YCheckPositions extends Phase {
     }
 
   private def isMacro(call: Tree)(using Context) =
-    if (ctx.phase <= postTyperPhase) call.symbol.is(Macro)
+    if (currentPhase <= postTyperPhase) call.symbol.is(Macro)
     else call.isInstanceOf[Select] // The call of a macro after typer is encoded as a Select while other inlines are Ident
                                    // TODO remove this distinction once Inline nodes of expanded macros can be trusted (also in Inliner.inlineCallTrace)
 }

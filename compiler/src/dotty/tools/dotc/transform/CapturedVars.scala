@@ -38,10 +38,10 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
       defn.ScalaNumericValueClasses() `union` Set(defn.BooleanClass, defn.ObjectClass)
 
     val refClass: Map[Symbol, Symbol] =
-      refClassKeys.map(rc => rc -> ctx.requiredClass(s"scala.runtime.${rc.name}Ref")).toMap
+      refClassKeys.map(rc => rc -> requiredClass(s"scala.runtime.${rc.name}Ref")).toMap
 
     val volatileRefClass: Map[Symbol, Symbol] =
-      refClassKeys.map(rc => rc -> ctx.requiredClass(s"scala.runtime.Volatile${rc.name}Ref")).toMap
+      refClassKeys.map(rc => rc -> requiredClass(s"scala.runtime.Volatile${rc.name}Ref")).toMap
 
     val boxedRefClasses: collection.Set[Symbol] =
       refClassKeys.flatMap(k => Set(refClass(k), volatileRefClass(k)))
@@ -61,7 +61,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
         if (sym.is(Mutable, butNot = Method) && sym.owner.isTerm) {
           val enclMeth = ctx.owner.enclosingMethod
           if (sym.enclosingMethod != enclMeth) {
-            ctx.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
+            report.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
             captured += sym
           }
         }

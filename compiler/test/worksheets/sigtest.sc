@@ -7,7 +7,7 @@ import Types._, Symbols._
 
 object sigtest extends DottyTest {
   println("Welcome to the Scala worksheet")       //> Welcome to the Scala worksheet
-  val int = ctx.requiredClass("scala.Int")        //> int  : dotty.tools.dotc.core.Symbols.ClassSymbol = class Int
+  val int = requiredClass("scala.Int")            //> int  : dotty.tools.dotc.core.Symbols.ClassSymbol = class Int
   int.signature                                   //> res0: dotty.tools.dotc.core.Denotations.Signature = List()
   val intmeth = methType("x")(int.symbolicRef)()  //> intmeth  : dotty.tools.dotc.core.Types.MethodType = MethodType(List(x), List
                                                   //| (TypeRef(ThisType(module class scala),Int)), TypeRef(ThisType(module class s
@@ -18,8 +18,8 @@ object sigtest extends DottyTest {
                                                   //| e class scala),Array), scala$Array$$T, TypeAlias(TypeRef(ThisType(module cla
                                                   //| ss scala),Int)) | hash = 1907214242)
   val arraymeth = methType("x")(arr)()            //> arraymeth  : dotty.tools.dotc.core.Types.MethodType = MethodType(List(x), Li
-                                                  //| st(RefinedType(TypeRef(ThisType(module class scala),Array), scala$Array$$T, 
-                                                  //| TypeAlias(TypeRef(ThisType(module class scala),Int)) | hash = 1907214242)), 
+                                                  //| st(RefinedType(TypeRef(ThisType(module class scala),Array), scala$Array$$T,
+                                                  //| TypeAlias(TypeRef(ThisType(module class scala),Int)) | hash = 1907214242)),
                                                   //| TypeRef(ThisType(module class scala),Unit))
   arraymeth.signature                             //> res2: dotty.tools.dotc.core.Denotations.Signature = List(Int[])
   val curriedmeth = methType("x", "y")(defn.IntType, defn.BooleanType)(methType("z")(defn.ArrayType.appliedTo(defn.IntType))())

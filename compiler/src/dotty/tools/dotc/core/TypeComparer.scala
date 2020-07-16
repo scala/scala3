@@ -3,7 +3,8 @@ package dotc
 package core
 
 import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
-import Decorators._, Phases._
+import Decorators._
+import Phases.gettersPhase
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
@@ -196,14 +197,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
         pendingSubTypes = new mutable.HashSet[(Type, Type)]
-        ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
-        ctx.log(s"!!! constraint = ${constraint.show}")
+        report.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
+        report.log(s"!!! constraint = ${constraint.show}")
         //if (ctx.settings.YnoDeepSubtypes.value) {
         //  new Error("deep subtype").printStackTrace()
         //}
         assert(!ctx.settings.YnoDeepSubtypes.value)
         if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
-          ctx.log(TypeComparer.explained(summon[Context].typeComparer.isSubType(tp1, tp2, approx)))
+          report.log(TypeComparer.explained(summon[Context].typeComparer.isSubType(tp1, tp2, approx)))
       }
       // Eliminate LazyRefs before checking whether we have seen a type before
       val normalize = new TypeMap {
@@ -260,7 +261,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
                 // This is safe because X$ self-type is X.type
                 sym1 = sym1.companionModule
               if ((sym1 ne NoSymbol) && (sym1 eq sym2))
-                ctx.erasedTypes ||
+                currentlyAfterErasure ||
                 sym1.isStaticOwner ||
                 isSubPrefix(tp1.prefix, tp2.prefix) ||
                 thirdTryNamed(tp2)
@@ -363,7 +364,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           if (!frozenConstraint && tp2.isRef(NothingClass) && state.isGlobalCommittable) {
             def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
             if (Config.failOnInstantiationToNothing) assert(false, msg)
-            else ctx.log(msg)
+            else report.log(msg)
           }
           true
         }
@@ -387,7 +388,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         }
       case tp1: SkolemType =>
         tp2 match {
-          case tp2: SkolemType if !ctx.phase.isTyper && recur(tp1.info, tp2.info) => true
+          case tp2: SkolemType if !currentPhase.isTyper && recur(tp1.info, tp2.info) => true
           case _ => thirdTry
         }
       case tp1: TypeVar =>
@@ -807,7 +808,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           case _ => tp2.isAnyRef
         }
         compareJavaArray
-      case tp1: ExprType if ctx.phase.id > gettersPhase.id =>
+      case tp1: ExprType if currentPhase.id > gettersPhase.id =>
         // getters might have converted T to => T, need to compensate.
         recur(tp1.widenExpr, tp2)
       case _ =>
@@ -1232,7 +1233,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
      *  for equality would give the wrong result, so we should not use the sets
      *  for comparisons.
      */
-    def canCompare(ts: Set[Type]) = ctx.phase.isTyper || {
+    def canCompare(ts: Set[Type]) = currentPhase.isTyper || {
       val hasSkolems = new ExistsAccumulator(_.isInstanceOf[SkolemType]) {
         override def stopAtStatic = true
       }
@@ -1311,7 +1312,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
          */
         def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
           case tparam: Symbol =>
-            if (leftRoot.isStable || (ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
+            if (leftRoot.isStable || (currentlyAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
                 && leftRoot.member(tparam.name).exists) {
               val captured = TypeRef(leftRoot, tparam)
               try isSubArg(captured, arg2)
@@ -1861,7 +1862,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   final def glb(tps: List[Type]): Type = tps.foldLeft(AnyType: Type)(glb)
 
   def widenInUnions(using Context): Boolean =
-    migrateTo3 || ctx.erasedTypes
+    migrateTo3 || currentlyAfterErasure
 
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
@@ -2020,7 +2021,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     }
 
   private def andTypeGen(tp1: Type, tp2: Type, op: (Type, Type) => Type,
-      original: (Type, Type) => Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
+      original: (Type, Type) => Type = _ & _, isErased: Boolean = currentlyAfterErasure): Type = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
     else {
@@ -2048,7 +2049,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  Finally, refined types with the same refined name are
    *  opportunistically merged.
    */
-  final def andType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type =
+  final def andType(tp1: Type, tp2: Type, isErased: Boolean = currentlyAfterErasure): Type =
     andTypeGen(tp1, tp2, AndType(_, _), isErased = isErased)
 
   final def simplifyAndTypeWithFallback(tp1: Type, tp2: Type, fallback: Type): Type =
@@ -2063,7 +2064,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  @param isErased Apply erasure semantics. If erased is true, instead of creating
    *                  an OrType, the lub will be computed using TypeCreator#erasedLub.
    */
-  final def orType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type = {
+  final def orType(tp1: Type, tp2: Type, isErased: Boolean = currentlyAfterErasure): Type = {
     val t1 = distributeOr(tp1, tp2)
     if (t1.exists) t1
     else {
@@ -2232,12 +2233,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
   /** Show subtype goal that led to an assertion failure */
   def showGoal(tp1: Type, tp2: Type)(using Context): Unit = {
-    ctx.echo(i"assertion failure for ${show(tp1)} <:< ${show(tp2)}, frozen = $frozenConstraint")
+    report.echo(i"assertion failure for ${show(tp1)} <:< ${show(tp2)}, frozen = $frozenConstraint")
     def explainPoly(tp: Type) = tp match {
-      case tp: TypeParamRef => ctx.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
-      case tp: TypeRef if tp.symbol.exists => ctx.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
-      case tp: TypeVar => ctx.echo(s"typevar ${tp.show}, origin = ${tp.origin}")
-      case _ => ctx.echo(s"${tp.show} is a ${tp.getClass}")
+      case tp: TypeParamRef => report.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
+      case tp: TypeRef if tp.symbol.exists => report.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
+      case tp: TypeVar => report.echo(s"typevar ${tp.show}, origin = ${tp.origin}")
+      case _ => report.echo(s"${tp.show} is a ${tp.getClass}")
     }
     if (Config.verboseExplainSubtype) {
       explainPoly(tp1)

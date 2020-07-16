@@ -152,7 +152,7 @@ class JUnitBootstrappers extends MiniPhase {
     val bootstrapperName = (testClass.name ++ "$scalajs$junit$bootstrapper").toTermName
 
     val owner = testClass.owner
-    val moduleSym = ctx.newCompleteModuleSymbol(owner, bootstrapperName,
+    val moduleSym = newCompleteModuleSymbol(owner, bootstrapperName,
       Synthetic, Synthetic,
       List(defn.ObjectType, junitdefn.BootstrapperType), newScope,
       coord = testClass.span, assocFile = testClass.assocFile).entered
@@ -178,7 +178,7 @@ class JUnitBootstrappers extends MiniPhase {
   }
 
   private def genConstructor(owner: ClassSymbol)(using Context): DefDef = {
-    val sym = ctx.newDefaultConstructor(owner).entered
+    val sym = newDefaultConstructor(owner).entered
     DefDef(sym, {
       Block(
         Super(This(owner), tpnme.EMPTY).select(defn.ObjectClass.primaryConstructor).appliedToNone :: Nil,
@@ -188,7 +188,7 @@ class JUnitBootstrappers extends MiniPhase {
   }
 
   private def genCallOnModule(owner: ClassSymbol, name: TermName, module: Symbol, annot: Symbol)(using Context): DefDef = {
-    val sym = ctx.newSymbol(owner, name, Synthetic | Method,
+    val sym = newSymbol(owner, name, Synthetic | Method,
       MethodType(Nil, Nil, defn.UnitType)).entered
 
     DefDef(sym, {
@@ -203,7 +203,7 @@ class JUnitBootstrappers extends MiniPhase {
   }
 
   private def genCallOnParam(owner: ClassSymbol, name: TermName, testClass: ClassSymbol, annot: Symbol)(using Context): DefDef = {
-    val sym = ctx.newSymbol(owner, name, Synthetic | Method,
+    val sym = newSymbol(owner, name, Synthetic | Method,
       MethodType(junitNme.instance :: Nil, defn.ObjectType :: Nil, defn.UnitType)).entered
 
     DefDef(sym, { (paramRefss: List[List[Tree]]) =>
@@ -217,7 +217,7 @@ class JUnitBootstrappers extends MiniPhase {
   private def genTests(owner: ClassSymbol, tests: List[Symbol])(using Context): DefDef = {
     val junitdefn = jsdefn.junit
 
-    val sym = ctx.newSymbol(owner, junitNme.tests, Synthetic | Method,
+    val sym = newSymbol(owner, junitNme.tests, Synthetic | Method,
       MethodType(Nil, defn.ArrayOf(junitdefn.TestMetadataType))).entered
 
     DefDef(sym, {
@@ -238,7 +238,7 @@ class JUnitBootstrappers extends MiniPhase {
               case NamedArg(name, _) => name.show(using ctx)
               case other => other.show(using ctx)
             }
-            ctx.error(s"$shownName is an unsupported argument for the JUnit @Test annotation in this position", other.sourcePos)
+            report.error(s"$shownName is an unsupported argument for the JUnit @Test annotation in this position", other.sourcePos)
             None
           }
         }
@@ -253,12 +253,12 @@ class JUnitBootstrappers extends MiniPhase {
   private def genInvokeTest(owner: ClassSymbol, testClass: ClassSymbol, tests: List[Symbol])(using Context): DefDef = {
     val junitdefn = jsdefn.junit
 
-    val sym = ctx.newSymbol(owner, junitNme.invokeTest, Synthetic | Method,
+    val sym = newSymbol(owner, junitNme.invokeTest, Synthetic | Method,
       MethodType(List(junitNme.instance, junitNme.name), List(defn.ObjectType, defn.StringType), junitdefn.FutureType)).entered
 
     DefDef(sym, { (paramRefss: List[List[Tree]]) =>
       val List(List(instanceParamRef, nameParamRef)) = paramRefss
-      val castInstanceSym = ctx.newSymbol(sym, junitNme.castInstance, Synthetic, testClass.typeRef, coord = owner.span)
+      val castInstanceSym = newSymbol(sym, junitNme.castInstance, Synthetic, testClass.typeRef, coord = owner.span)
       Block(
         ValDef(castInstanceSym, instanceParamRef.cast(testClass.typeRef)) :: Nil,
         tests.foldRight[Tree] {
@@ -287,13 +287,13 @@ class JUnitBootstrappers extends MiniPhase {
       instance.select(testMethod).appliedToNone
     } else {
       // We lie in the error message to not expose that we support async testing.
-      ctx.error("JUnit test must have Unit return type", testMethod.sourcePos)
+      report.error("JUnit test must have Unit return type", testMethod.sourcePos)
       EmptyTree
     }
   }
 
   private def genNewInstance(owner: ClassSymbol, testClass: ClassSymbol)(using Context): DefDef = {
-    val sym = ctx.newSymbol(owner, junitNme.newInstance, Synthetic | Method,
+    val sym = newSymbol(owner, junitNme.newInstance, Synthetic | Method,
       MethodType(Nil, defn.ObjectType)).entered
 
     DefDef(sym, New(testClass.typeRef, Nil))

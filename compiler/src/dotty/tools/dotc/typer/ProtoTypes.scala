@@ -67,7 +67,7 @@ object ProtoTypes {
      *  fits the given expected result type.
      */
     def constrainResult(mt: Type, pt: Type)(using Context): Boolean =
-      inContext(ctx.addMode(Mode.ConstrainResult)) {
+      withMode(Mode.ConstrainResult) {
         val savedConstraint = ctx.typerState.constraint
         val res = pt.widenExpr match {
           case pt: FunProto =>

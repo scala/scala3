@@ -12,7 +12,7 @@ import DenotTransformers._
 import NameOps._
 import NameKinds._
 import ResolveSuper._
-import reporting.messages.IllegalSuperAccessor
+import reporting.IllegalSuperAccessor
 
 /** This phase implements super accessors in classes that need them.
  *
@@ -81,11 +81,11 @@ object ResolveSuper {
     var bcs = base.info.baseClasses.dropWhile(acc.owner != _).tail
     var sym: Symbol = NoSymbol
     val SuperAccessorName(memberName) = acc.name.unexpandedName
-    ctx.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
+    report.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
     while (bcs.nonEmpty && sym == NoSymbol) {
       val other = bcs.head.info.nonPrivateDecl(memberName)
         .matchingDenotation(base.thisType, base.thisType.memberInfo(acc))
-      ctx.debuglog(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
+      report.debuglog(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
       if other.exists && !other.symbol.is(Deferred) then
         sym = other.symbol
         // Having a matching denotation is not enough: it should also be a subtype
@@ -93,7 +93,7 @@ object ResolveSuper {
         val otherTp = other.asSeenFrom(base.typeRef).info
         val accTp = acc.asSeenFrom(base.typeRef).info
         if (!(otherTp.overrides(accTp, matchLoosely = true)))
-          ctx.error(IllegalSuperAccessor(base, memberName, acc, accTp, other.symbol, otherTp), base.sourcePos)
+          report.error(IllegalSuperAccessor(base, memberName, acc, accTp, other.symbol, otherTp), base.sourcePos)
 
       bcs = bcs.tail
     }

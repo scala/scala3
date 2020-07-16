@@ -50,7 +50,7 @@ class ReplCompiler extends Compiler {
         val path = nme.EMPTY_PACKAGE ++ "." ++ objectNames(id)
         def importWrapper(c: Context, importGiven: Boolean) = {
           val importInfo = ImportInfo.rootImport(() =>
-            c.requiredModuleRef(path), importGiven)
+            requiredModuleRef(path), importGiven)(using c)
           c.fresh.setNewScope.setImportInfo(importInfo)
         }
         val ctx0 = importWrapper(importWrapper(ctx, false), true)

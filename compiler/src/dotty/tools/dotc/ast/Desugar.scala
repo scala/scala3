@@ -4,7 +4,7 @@ package ast
 
 import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
-import Symbols._, StdNames._, Trees._, Phases._
+import Symbols._, StdNames._, Trees._, Phases._, ContextOps._
 import Decorators.{given _}, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.{FrontEnd, Namer}
@@ -12,8 +12,7 @@ import util.{Property, SourceFile, SourcePosition}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion._
 import collection.mutable.ListBuffer
-import reporting.messages._
-import reporting.trace
+import reporting._
 import annotation.constructorOnly
 import printing.Formatting.hl
 import config.Printers
@@ -425,11 +424,11 @@ object desugar {
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass)
-          ctx.error(CaseClassMissingParamList(cdef), namePos)
+          report.error(CaseClassMissingParamList(cdef), namePos)
         ListOfNil
       }
       else if (isCaseClass && originalVparamss.head.exists(_.mods.isOneOf(GivenOrImplicit))) {
-        ctx.error(CaseClassMissingNonImplicitParamList(cdef), namePos)
+        report.error(CaseClassMissingNonImplicitParamList(cdef), namePos)
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam(_, keepAnnotations = true, keepDefault = true))
@@ -476,7 +475,7 @@ object desugar {
       if (isEnum) {
         val (enumCases, enumStats) = stats.partition(DesugarEnums.isEnumCase)
         if (enumCases.isEmpty)
-          ctx.error(EnumerationsShouldNotBeEmpty(cdef), namePos)
+          report.error(EnumerationsShouldNotBeEmpty(cdef), namePos)
         val enumCompanionRef = TermRefTree()
         val enumImport =
           Import(enumCompanionRef, enumCases.flatMap(caseIds).map(ImportSelector(_)))
@@ -533,7 +532,7 @@ object desugar {
       else if (originalTparams.isEmpty)
         appliedRef(enumClassRef)
       else {
-        ctx.error(TypedCaseDoesNotExplicitlyExtendTypedEnum(enumClass, cdef)
+        report.error(TypedCaseDoesNotExplicitlyExtendTypedEnum(enumClass, cdef)
             , cdef.sourcePos.startPos)
         appliedTypeTree(enumClassRef, constrTparams map (_ => anyRef))
       }
@@ -742,19 +741,19 @@ object desugar {
       if (!mods.isOneOf(GivenOrImplicit))
         Nil
       else if (ctx.owner.is(Package)) {
-        ctx.error(TopLevelImplicitClass(cdef), cdef.sourcePos)
+        report.error(TopLevelImplicitClass(cdef), cdef.sourcePos)
         Nil
       }
       else if (mods.is(Trait)) {
-        ctx.error(TypesAndTraitsCantBeImplicit(), cdef.sourcePos)
+        report.error(TypesAndTraitsCantBeImplicit(), cdef.sourcePos)
         Nil
       }
       else if (isCaseClass) {
-        ctx.error(ImplicitCaseClass(cdef), cdef.sourcePos)
+        report.error(ImplicitCaseClass(cdef), cdef.sourcePos)
         Nil
       }
       else if (arity != 1 && !mods.is(Given)) {
-        ctx.error(ImplicitClassPrimaryConstructorArity(), cdef.sourcePos)
+        report.error(ImplicitClassPrimaryConstructorArity(), cdef.sourcePos)
         Nil
       }
       else {
@@ -874,12 +873,12 @@ object desugar {
     def flagSourcePos(flag: FlagSet) = mods.mods.find(_.flags == flag).fold(mdef.sourcePos)(_.sourcePos)
 
     if (mods.is(Abstract))
-      ctx.error(AbstractCannotBeUsedForObjects(mdef), flagSourcePos(Abstract))
+      report.error(AbstractCannotBeUsedForObjects(mdef), flagSourcePos(Abstract))
     if (mods.is(Sealed))
-      ctx.error(ModifierRedundantForObjects(mdef, "sealed"), flagSourcePos(Sealed))
+      report.error(ModifierRedundantForObjects(mdef, "sealed"), flagSourcePos(Sealed))
     // Maybe this should be an error; see https://github.com/scala/bug/issues/11094.
     if (mods.is(Final) && !mods.is(Synthetic))
-      ctx.warning(ModifierRedundantForObjects(mdef, "final"), flagSourcePos(Final))
+      report.warning(ModifierRedundantForObjects(mdef, "final"), flagSourcePos(Final))
 
     if (mods.is(Package))
       packageModuleDef(mdef)
@@ -896,7 +895,7 @@ object desugar {
         .withSpan(mdef.span.startPos)
       val ValDef(selfName, selfTpt, _) = impl.self
       val selfMods = impl.self.mods
-      if (!selfTpt.isEmpty) ctx.error(ObjectMayNotHaveSelfType(mdef), impl.self.sourcePos)
+      if (!selfTpt.isEmpty) report.error(ObjectMayNotHaveSelfType(mdef), impl.self.sourcePos)
       val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(moduleName)), impl.self.rhs)
         .withMods(selfMods)
         .withSpan(impl.self.span.orElse(impl.span.startPos))
@@ -911,7 +910,7 @@ object desugar {
   def extMethods(ext: ExtMethods)(using Context): Tree = flatTree {
     for mdef <- ext.methods yield
       if mdef.tparams.nonEmpty then
-        ctx.error("extension method cannot have type parameters here, all type parameters go after `extension`",
+        report.error("extension method cannot have type parameters here, all type parameters go after `extension`",
           mdef.tparams.head.sourcePos)
       defDef(
         cpy.DefDef(mdef)(
@@ -995,11 +994,11 @@ object desugar {
     def errPos = mdef.source.atSpan(mdef.nameSpan)
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
       val kind = if (name.isTypeName) "class" else "object"
-      ctx.error(IllegalRedefinitionOfStandardKind(kind, name), errPos)
+      report.error(IllegalRedefinitionOfStandardKind(kind, name), errPos)
       name = name.errorName
     }
     if name.isExtensionName && !mdef.mods.is(Extension) then
-      ctx.error(em"illegal method name: $name may not start with `extension_`", errPos)
+      report.error(em"illegal method name: $name may not start with `extension_`", errPos)
     name
   }
 
@@ -1016,7 +1015,7 @@ object desugar {
             case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
               s"extension_${name}_${inventTypeName(vparam.tpt)}"
             case _ =>
-              ctx.error(AnonymousInstanceCannotBeEmpty(impl), impl.sourcePos)
+              report.error(AnonymousInstanceCannotBeEmpty(impl), impl.sourcePos)
               nme.ERROR.toString
         else
           impl.parents.map(inventTypeName(_)).mkString("given_", "_", "")
@@ -1190,7 +1189,7 @@ object desugar {
       var tested: MemberDef = tree
       def checkApplicable(flag: Flag, test: MemberDefTest): Unit =
         if (tested.mods.is(flag) && !test.applyOrElse(tree, (md: MemberDef) => false)) {
-          ctx.error(ModifierNotAllowedForDefinition(flag), tree.sourcePos)
+          report.error(ModifierNotAllowedForDefinition(flag), tree.sourcePos)
           tested = tested.withMods(tested.mods.withoutFlags(flag))
         }
       checkApplicable(Opaque, legalOpaque)
@@ -1409,7 +1408,7 @@ object desugar {
             Select(qual, name.toTermName))
         Select(prefix, parts.last.toTypeName)
       case _ =>
-        TypeTree(ctx.requiredClass(fullName).typeRef)
+        TypeTree(requiredClass(fullName).typeRef)
     }
     Annotated(tree, New(ttree, Nil))
   }
@@ -1693,7 +1692,7 @@ object desugar {
         else {
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           if (!enabled(nme.postfixOps)) {
-            ctx.error(
+            report.error(
               s"""postfix operator `${op.name}` needs to be enabled
                  |by making the implicit value scala.language.postfixOps visible.
                  |----
@@ -1820,7 +1819,7 @@ object desugar {
         elems foreach collect
       case Alternative(trees) =>
         for (tree <- trees; (vble, _) <- getVariables(tree))
-          ctx.error(IllegalVariableInPatternAlternative(), vble.sourcePos)
+          report.error(IllegalVariableInPatternAlternative(), vble.sourcePos)
       case Annotated(arg, _) =>
         collect(arg)
       case InterpolatedString(_, segments) =>
@@ -1843,7 +1842,7 @@ object desugar {
           def traverse(tree: untpd.Tree)(using Context): Unit = tree match {
             case Splice(expr) => collect(expr)
             case TypSplice(expr) =>
-              ctx.error(TypeSpliceInValPattern(expr), tree.sourcePos)
+              report.error(TypeSpliceInValPattern(expr), tree.sourcePos)
             case _ => traverseChildren(tree)
           }
         }.traverse(expr)

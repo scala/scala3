@@ -61,10 +61,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Context_GADT_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type =
     self.gadt.approximation(sym, fromBelow)
 
-  def Context_requiredPackage(self: Context)(path: String): Symbol = self.requiredPackage(path)
-  def Context_requiredClass(self: Context)(path: String): Symbol = self.requiredClass(path)
-  def Context_requiredModule(self: Context)(path: String): Symbol = self.requiredModule(path)
-  def Context_requiredMethod(self: Context)(path: String): Symbol = self.requiredMethod(path)
+  def Context_requiredPackage(self: Context)(path: String): Symbol = requiredPackage(path)(using self)
+  def Context_requiredClass(self: Context)(path: String): Symbol = requiredClass(path)(using self)
+  def Context_requiredModule(self: Context)(path: String): Symbol = requiredModule(path)(using self)
+  def Context_requiredMethod(self: Context)(path: String): Symbol = requiredMethod(path)(using self)
   def Context_isJavaCompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.JavaCompilationUnit]
   def Context_isScala2CompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.Scala2CompilationUnit]
   def Context_isAlreadyLoadedCompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.AlreadyLoadedCompilationUnit]
@@ -82,16 +82,16 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   ///////////////
 
   def error(msg: => String, pos: Position)(using ctx: Context): Unit =
-    ctx.error(msg, pos)
+    report.error(msg, pos)
 
   def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(using ctx: Context): Unit =
-    ctx.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
+    report.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
 
   def warning(msg: => String, pos: Position)(using ctx: Context): Unit =
-    ctx.warning(msg, pos)
+    report.warning(msg, pos)
 
   def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(using ctx: Context): Unit =
-    ctx.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
+    report.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
 
 
   //////////////
@@ -287,7 +287,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
         case t => t
       }
       val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
-      val closureMethod = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
+      val closureMethod = newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
       tpd.Closure(closureMethod, tss => Term_etaExpand(new tpd.TreeOps(term).appliedToArgs(tss.head)))
     case _ => term
   }
@@ -1175,7 +1175,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       else
         enclosing.classSymbol.companionModule.termRef.select(name)
     }
-    else ctx.getClassIfDefined(clazz.getCanonicalName).typeRef
+    else getClassIfDefined(clazz.getCanonicalName).typeRef
 
   def Type_isTypeEq(self: Type)(that: Type)(using ctx: Context): Boolean = self =:= that
 
@@ -1785,16 +1785,16 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   private def isField(sym: Symbol)(using ctx: Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
 
   def Symbol_of(fullName: String)(using ctx: Context): Symbol =
-    ctx.requiredClass(fullName)
+    requiredClass(fullName)
 
   def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol =
-    ctx.newSymbol(parent, name.toTermName, flags | Flags.Method, tpe, privateWithin)
+    newSymbol(parent, name.toTermName, flags | Flags.Method, tpe, privateWithin)
 
   def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol =
-    ctx.newSymbol(parent, name.toTermName, flags, tpe, privateWithin)
+    newSymbol(parent, name.toTermName, flags, tpe, privateWithin)
 
   def Symbol_newBind(parent: Symbol, name: String, flags: Flags, tpe: Type)(using ctx: Context): Symbol =
-    ctx.newSymbol(parent, name.toTermName, flags | Case, tpe)
+    newSymbol(parent, name.toTermName, flags | Case, tpe)
 
   def Symbol_isTypeParam(self: Symbol)(using ctx: Context): Boolean =
     self.isTypeParam

@@ -287,7 +287,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     val typParams = self.typeParams
     val stripped = self.stripTypeVar
     val dealiased = stripped.safeDealias
-    if (args.isEmpty || ctx.erasedTypes) self
+    if (args.isEmpty || currentlyAfterErasure) self
     else dealiased match {
       case dealiased: HKTypeLambda =>
         def tryReduce =
@@ -337,7 +337,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case dealiased: TypeBounds =>
         dealiased.derivedTypeBounds(dealiased.lo.appliedTo(args), dealiased.hi.appliedTo(args))
       case dealiased: LazyRef =>
-        LazyRef(c => dealiased.ref(using c).appliedTo(args)(using c))
+        LazyRef(dealiased.ref.appliedTo(args))
       case dealiased: WildcardType =>
         WildcardType(dealiased.optBounds.orElse(TypeBounds.empty).appliedTo(args).bounds)
       case dealiased: TypeRef if dealiased.symbol == defn.NothingClass =>

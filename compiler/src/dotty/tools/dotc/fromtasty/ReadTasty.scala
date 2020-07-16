@@ -4,9 +4,10 @@ package fromtasty
 
 import core._
 import Decorators._
-import Contexts.{Context, ctx}
+import Contexts._
 import Symbols.{Symbol, ClassSymbol}
 import SymDenotations.ClassDenotation
+import Denotations.staticRef
 import NameOps._
 import ast.Trees.Tree
 import Phases.Phase
@@ -21,14 +22,14 @@ class ReadTasty extends Phase {
     ctx.settings.fromTasty.value
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    units.flatMap(readTASTY(_)(using ctx.addMode(Mode.ReadPositions)))
+    withMode(Mode.ReadPositions)(units.flatMap(readTASTY(_)))
 
   def readTASTY(unit: CompilationUnit)(using Context): Option[CompilationUnit] = unit match {
     case unit: TASTYCompilationUnit =>
       val className = unit.className.toTypeName
 
       def cannotUnpickle(reason: String): None.type = {
-        ctx.error(s"class $className cannot be unpickled because $reason")
+        report.error(s"class $className cannot be unpickled because $reason")
         None
       }
 
@@ -59,7 +60,7 @@ class ReadTasty extends Phase {
       // Note that if both the class and the object are present, then loading the class will also load
       // the object, this is why we use orElse here, otherwise we could load the object twice and
       // create ambiguities!
-      ctx.base.staticRef(className) match {
+      staticRef(className) match {
         case clsd: ClassDenotation =>
           clsd.infoOrCompleter match {
             case info: ClassfileLoader =>

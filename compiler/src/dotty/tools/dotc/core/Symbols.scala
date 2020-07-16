@@ -11,6 +11,7 @@ import Symbols._
 import Contexts._
 import Phases._
 import SymDenotations._
+import Denotations._
 import printing.Texts._
 import printing.Printer
 import Types._
@@ -33,391 +34,6 @@ import util.{SourceFile, NoSource, Property, SourcePosition}
 import scala.collection.JavaConverters._
 import scala.annotation.internal.sharable
 import config.Printers.typr
-
-/** Creation methods for symbols */
-trait Symbols { thisCtx: Context =>
-
-// ---- Factory methods for symbol creation ----------------------
-//
-// All symbol creations should be done via the next two methods.
-
-  /** Create a symbol without a denotation.
-   *  Note this uses a cast instead of a direct type refinement because
-   *  it's debug-friendlier not to create an anonymous class here.
-   */
-  def newNakedSymbol[N <: Name](coord: Coord = NoCoord)(using Context): Symbol { type ThisName = N } =
-    new Symbol(coord, ctx.base.nextSymId).asInstanceOf[Symbol { type ThisName = N }]
-
-  /** Create a class symbol without a denotation. */
-  def newNakedClassSymbol(coord: Coord = NoCoord, assocFile: AbstractFile = null)(using Context): ClassSymbol =
-    new ClassSymbol(coord, assocFile, ctx.base.nextSymId)
-
-// ---- Symbol creation methods ----------------------------------
-
-  /** Create a symbol from its fields (info may be lazy) */
-  def newSymbol[N <: Name](
-      owner: Symbol,
-      name: N,
-      flags: FlagSet,
-      info: Type,
-      privateWithin: Symbol = NoSymbol,
-      coord: Coord = NoCoord): Symbol { type ThisName = N } = {
-    val sym = newNakedSymbol[N](coord)
-    val denot = SymDenotation(sym, owner, name, flags, info, privateWithin)
-    sym.denot = denot
-    sym
-  }
-
-  /** Create a class symbol from a function producing its denotation */
-  def newClassSymbolDenoting(denotFn: ClassSymbol => SymDenotation, coord: Coord = NoCoord, assocFile: AbstractFile = null): ClassSymbol = {
-    val cls = newNakedClassSymbol(coord, assocFile)
-    cls.denot = denotFn(cls)
-    cls
-  }
-
-  /** Create a class symbol from its non-info fields and a function
-   *  producing its info (the produced info may be lazy).
-   */
-  def newClassSymbol(
-      owner: Symbol,
-      name: TypeName,
-      flags: FlagSet,
-      infoFn: ClassSymbol => Type,
-      privateWithin: Symbol = NoSymbol,
-      coord: Coord = NoCoord,
-      assocFile: AbstractFile = null): ClassSymbol
-  = {
-    val cls = newNakedClassSymbol(coord, assocFile)
-    val denot = SymDenotation(cls, owner, name, flags, infoFn(cls), privateWithin)
-    cls.denot = denot
-    cls
-  }
-
-  /** Create a class symbol from its non-info fields and the fields of its info. */
-  def newCompleteClassSymbol(
-      owner: Symbol,
-      name: TypeName,
-      flags: FlagSet,
-      parents: List[TypeRef],
-      decls: Scope = newScope,
-      selfInfo: Type = NoType,
-      privateWithin: Symbol = NoSymbol,
-      coord: Coord = NoCoord,
-      assocFile: AbstractFile = null): ClassSymbol =
-    newClassSymbol(
-        owner, name, flags,
-        ClassInfo(owner.thisType, _, parents, decls, selfInfo),
-        privateWithin, coord, assocFile)
-
-  /** Same as `newCompleteClassSymbol` except that `parents` can be a list of arbitrary
-   *  types which get normalized into type refs and parameter bindings.
-   */
-  def newNormalizedClassSymbol(
-      owner: Symbol,
-      name: TypeName,
-      flags: FlagSet,
-      parentTypes: List[Type],
-      decls: Scope = newScope,
-      selfInfo: Type = NoType,
-      privateWithin: Symbol = NoSymbol,
-      coord: Coord = NoCoord,
-      assocFile: AbstractFile = null): ClassSymbol = {
-    def completer = new LazyType {
-      def complete(denot: SymDenotation)(using Context): Unit = {
-        val cls = denot.asClass.classSymbol
-        val decls = newScope
-        denot.info = ClassInfo(owner.thisType, cls, parentTypes.map(_.dealias), decls)
-      }
-    }
-    newClassSymbol(owner, name, flags, completer, privateWithin, coord, assocFile)
-  }
-
-  def newRefinedClassSymbol(coord: Coord = NoCoord): ClassSymbol =
-    newCompleteClassSymbol(thisCtx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, coord = coord)
-
-  /** Create a module symbol with associated module class
-   *  from its non-info fields and a function producing the info
-   *  of the module class (this info may be lazy).
-   */
-  def newModuleSymbol(
-      owner: Symbol,
-      name: TermName,
-      modFlags: FlagSet,
-      clsFlags: FlagSet,
-      infoFn: (TermSymbol, ClassSymbol) => Type, // typically a ModuleClassCompleterWithDecls
-      privateWithin: Symbol = NoSymbol,
-      coord: Coord = NoCoord,
-      assocFile: AbstractFile = null): TermSymbol
-  = {
-    val base = owner.thisType
-    val module = newNakedSymbol[TermName](coord)
-    val modcls = newNakedClassSymbol(coord, assocFile)
-    val modclsFlags = clsFlags | ModuleClassCreationFlags
-    val modclsName = name.toTypeName.adjustIfModuleClass(modclsFlags)
-    val cdenot = SymDenotation(
-        modcls, owner, modclsName, modclsFlags,
-        infoFn(module, modcls), privateWithin)
-    val mdenot = SymDenotation(
-        module, owner, name, modFlags | ModuleValCreationFlags,
-        if (cdenot.isCompleted) TypeRef(owner.thisType, modcls)
-        else new ModuleCompleter(modcls))
-    module.denot = mdenot
-    modcls.denot = cdenot
-    module
-  }
-
-  /** Create a module symbol with associated module class
-   *  from its non-info fields and the fields of the module class info.
-   *  @param flags  The combined flags of the module and the module class
-   *                These are masked with RetainedModuleValFlags/RetainedModuleClassFlags.
-   */
-  def newCompleteModuleSymbol(
-      owner: Symbol,
-      name: TermName,
-      modFlags: FlagSet,
-      clsFlags: FlagSet,
-      parents: List[TypeRef],
-      decls: Scope,
-      privateWithin: Symbol = NoSymbol,
-      coord: Coord = NoCoord,
-      assocFile: AbstractFile = null): TermSymbol =
-    newModuleSymbol(
-        owner, name, modFlags, clsFlags,
-        (module, modcls) => ClassInfo(
-          owner.thisType, modcls, parents, decls, TermRef(owner.thisType, module)),
-        privateWithin, coord, assocFile)
-
-  val companionMethodFlags: FlagSet = Flags.Synthetic | Flags.Private | Flags.Method
-
-  /** Create a package symbol with associated package class
-   *  from its non-info fields and a lazy type for loading the package's members.
-   */
-  def newPackageSymbol(
-      owner: Symbol,
-      name: TermName,
-      infoFn: (TermSymbol, ClassSymbol) => LazyType): TermSymbol =
-    newModuleSymbol(owner, name, PackageCreationFlags, PackageCreationFlags, infoFn)
-
-  /** Create a package symbol with associated package class
-   *  from its non-info fields its member scope.
-   */
-  def newCompletePackageSymbol(
-      owner: Symbol,
-      name: TermName,
-      modFlags: FlagSet = EmptyFlags,
-      clsFlags: FlagSet = EmptyFlags,
-      decls: Scope = newScope): TermSymbol =
-    newCompleteModuleSymbol(
-      owner, name,
-      modFlags | PackageCreationFlags, clsFlags | PackageCreationFlags,
-      Nil, decls)
-
-  /** Define a new symbol associated with a Bind or pattern wildcard and, by default, make it gadt narrowable. */
-  def newPatternBoundSymbol(name: Name, info: Type, span: Span, addToGadt: Boolean = true, flags: FlagSet = EmptyFlags): Symbol = {
-    val sym = newSymbol(owner, name, Case | flags, info, coord = span)
-    if (addToGadt && name.isTypeName) gadt.addToConstraint(sym)
-    sym
-  }
-
-  /** Create a stub symbol that will issue a missing reference error
-   *  when attempted to be completed.
-   */
-  def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
-    def stubCompleter = new StubInfo()
-    val normalizedOwner = if (owner.is(ModuleVal)) owner.moduleClass else owner
-    typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
-    typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
-    //if (base.settings.debug.value) throw new Error()
-    val stub = name match {
-      case name: TermName =>
-        newModuleSymbol(normalizedOwner, name, EmptyFlags, EmptyFlags, stubCompleter, assocFile = file)
-      case name: TypeName =>
-        newClassSymbol(normalizedOwner, name, EmptyFlags, stubCompleter, assocFile = file)
-    }
-    stub
-  }
-
-  /** Create the local template dummy of given class `cls`.
-   *  In a template
-   *
-   *     trait T { val fld: Int; { val x: int = 2 }; val fld2 = { val y = 2; y }}
-   *
-   *  the owner of `x` is the local dummy of the template. The owner of the local
-   *  dummy is then the class of the template itself. By contrast, the owner of `y`
-   *  would be `fld2`. There is a single local dummy per template.
-   */
-  def newLocalDummy(cls: Symbol, coord: Coord = NoCoord): TermSymbol =
-    newSymbol(cls, nme.localDummyName(cls), NonMember, NoType)
-
-  /** Create an import symbol pointing back to given qualifier `expr`. */
-  def newImportSymbol(owner: Symbol, expr: Tree, coord: Coord = NoCoord): TermSymbol =
-    newImportSymbol(owner, ImportType(expr), coord = coord)
-
-  /** Create an import symbol with given `info`. */
-  def newImportSymbol(owner: Symbol, info: Type, coord: Coord): TermSymbol =
-    newSymbol(owner, nme.IMPORT, Synthetic | NonMember, info, coord = coord)
-
-  /** Create a class constructor symbol for given class `cls`. */
-  def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord): TermSymbol =
-    newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes, cls.typeRef), privateWithin, coord)
-
-  /** Create an empty default constructor symbol for given class `cls`. */
-  def newDefaultConstructor(cls: ClassSymbol): TermSymbol =
-    newConstructor(cls, EmptyFlags, Nil, Nil)
-
-  def newLazyImplicit(info: Type, coord: Coord = NoCoord): TermSymbol =
-    newSymbol(owner, LazyImplicitName.fresh(), EmptyFlags, info, coord = coord)
-
-  /** Create a symbol representing a selftype declaration for class `cls`. */
-  def newSelfSym(cls: ClassSymbol, name: TermName = nme.WILDCARD, selfInfo: Type = NoType): TermSymbol =
-    newSymbol(cls, name, SelfSymFlags, selfInfo orElse cls.classInfo.selfType, coord = cls.coord)
-
-  /** Create new type parameters with given owner, names, and flags.
-   *  @param boundsFn  A function that, given type refs to the newly created
-   *                   parameters returns a list of their bounds.
-   */
-  def newTypeParams(
-    owner: Symbol,
-    names: List[TypeName],
-    flags: FlagSet,
-    boundsFn: List[TypeRef] => List[Type]): List[TypeSymbol] = {
-
-    val tparamBuf = new mutable.ListBuffer[TypeSymbol]
-    val trefBuf = new mutable.ListBuffer[TypeRef]
-    for (name <- names) {
-      val tparam = newSymbol(
-        owner, name, flags | owner.typeParamCreationFlags, NoType, coord = owner.coord)
-      tparamBuf += tparam
-      trefBuf += TypeRef(owner.thisType, tparam)
-    }
-    val tparams = tparamBuf.toList
-    val bounds = boundsFn(trefBuf.toList)
-    for (tparam, bound) <- tparams.lazyZip(bounds) do
-      tparam.info = bound
-    tparams
-  }
-
-  /** Create a new skolem symbol. This is not the same as SkolemType, even though the
-   *  motivation (create a singleton referencing to a type) is similar.
-   */
-  def newSkolem(tp: Type): TermSymbol = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
-
-  def newErrorSymbol(owner: Symbol, name: Name, msg: Message): Symbol = {
-    val errType = ErrorType(msg)
-    newSymbol(owner, name, SyntheticArtifact,
-        if (name.isTypeName) TypeAlias(errType) else errType)
-  }
-
-  /** Map given symbols, subjecting their attributes to the mappings
-   *  defined in the given TreeTypeMap `ttmap`.
-   *  Cross symbol references are brought over from originals to copies.
-   *  Do not copy any symbols if all attributes of all symbols stay the same.
-   */
-  def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false): List[Symbol] =
-    if (originals.forall(sym =>
-        (ttmap.mapType(sym.info) eq sym.info) &&
-        !(ttmap.oldOwners contains sym.owner)) && !mapAlways)
-      originals
-    else {
-      val copies: List[Symbol] = for (original <- originals) yield
-        original match {
-          case original: ClassSymbol =>
-            newNakedClassSymbol(original.coord, original.assocFile)
-          case _ =>
-            newNakedSymbol[original.ThisName](original.coord)
-        }
-      val ttmap1 = ttmap.withSubstitution(originals, copies)
-      originals.lazyZip(copies) foreach { (original, copy) =>
-        val odenot = original.denot
-        val oinfo = original.info match {
-          case ClassInfo(pre, _, parents, decls, selfInfo) =>
-            assert(original.isClass)
-            ClassInfo(pre, copy.asClass, parents, decls.cloneScope, selfInfo)
-          case oinfo => oinfo
-        }
-
-        val completer = new LazyType {
-          def complete(denot: SymDenotation)(using Context): Unit = {
-            denot.info = oinfo // needed as otherwise we won't be able to go from Sym -> parents & etc
-                               // Note that this is a hack, but hack commonly used in Dotty
-                               // The same thing is done by other completers all the time
-            denot.info = ttmap1.mapType(oinfo)
-            denot.annotations = odenot.annotations.mapConserve(ttmap1.apply)
-          }
-        }
-
-        copy.denot = odenot.copySymDenotation(
-          symbol = copy,
-          owner = ttmap1.mapOwner(odenot.owner),
-          initFlags = odenot.flags &~ Touched,
-          info = completer,
-          privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
-          annotations = odenot.annotations)
-        copy.registeredCompanion =
-          copy.registeredCompanion.subst(originals, copies)
-      }
-
-      copies.foreach(_.ensureCompleted()) // avoid memory leak
-      copies
-    }
-
-// ----- Locating predefined symbols ----------------------------------------
-
-  def requiredPackage(path: PreName): TermSymbol = {
-    val name = path.toTermName
-    base.staticRef(name, isPackage = true).requiredSymbol("package", name)(_.is(Package)).asTerm
-  }
-
-  def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
-
-  def requiredClass(path: PreName): ClassSymbol = {
-    val name = path.toTypeName
-    base.staticRef(name).requiredSymbol("class", name)(_.isClass) match {
-      case cls: ClassSymbol => cls
-      case sym => defn.AnyClass
-    }
-  }
-
-  def requiredClassRef(path: PreName): TypeRef = requiredClass(path).typeRef
-
-  /** Get ClassSymbol if class is either defined in current compilation run
-   *  or present on classpath.
-   *  Returns NoSymbol otherwise. */
-  def getClassIfDefined(path: PreName): Symbol = {
-    val name = path.toTypeName
-    base.staticRef(name, generateStubs = false)
-      .requiredSymbol("class", name, generateStubs = false)(_.isClass)
-  }
-
-  /** Get a List of ClassSymbols which are either defined in current compilation
-   *  run or present on classpath.
-   */
-  def getClassesIfDefined(paths: List[PreName]): List[ClassSymbol] =
-    paths.map(getClassIfDefined).filter(_.exists).map(_.asInstanceOf[ClassSymbol])
-
-  /** Get ClassSymbol if package is either defined in current compilation run
-   *  or present on classpath.
-   *  Returns NoSymbol otherwise. */
-  def getPackageClassIfDefined(path: PreName): Symbol = {
-    val name = path.toTypeName
-    base.staticRef(name, isPackage = true, generateStubs = false)
-      .requiredSymbol("package", name, generateStubs = false)(_ is PackageClass)
-  }
-
-  def requiredModule(path: PreName): TermSymbol = {
-    val name = path.toTermName
-    base.staticRef(name).requiredSymbol("object", name)(_.is(Module)).asTerm
-  }
-
-  def requiredModuleRef(path: PreName): TermRef = requiredModule(path).termRef
-
-  def requiredMethod(path: PreName): TermSymbol = {
-    val name = path.toTermName
-    base.staticRef(name).requiredSymbol("method", name)(_.is(Method)).asTerm
-  }
-
-  def requiredMethodRef(path: PreName): TermRef = requiredMethod(path).termRef
-}
 
 object Symbols {
 
@@ -486,13 +102,13 @@ object Symbols {
     final def denot(using Context): SymDenotation = {
       util.Stats.record("Symbol.denot")
       val lastd = lastDenot
-      if (checkedPeriod == ctx.period) lastd
+      if (checkedPeriod == currentPeriod) lastd
       else computeDenot(lastd)
     }
 
     private def computeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.computeDenot")
-      val now = ctx.period
+      val now = currentPeriod
       checkedPeriod = now
       if (lastd.validFor contains now) lastd else recomputeDenot(lastd)
     }
@@ -518,14 +134,14 @@ object Symbols {
 
     /** Does this symbol come from a currently compiled source file? */
     final def isDefinedInCurrentRun(using Context): Boolean =
-      span.exists && defRunId == ctx.runId && {
+      span.exists && defRunId == currentRunId && {
         val file = associatedFile
         file != null && ctx.run.files.contains(file)
       }
 
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(using Context): Boolean =
-      (lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)) &&
+      (lastDenot.validFor.runId == currentRunId || stillValid(lastDenot)) &&
       (lastDenot.symbol eq this)
         // the last condition is needed because under ctx.staleOK overwritten
         // members keep denotations pointing to the new symbol, so the validity
@@ -533,9 +149,9 @@ object Symbols {
         // valid. If the option would be removed, the check would be no longer needed.
 
     final def isTerm(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
+      (if (defRunId == currentRunId) lastDenot else denot).isTerm
     final def isType(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isType
+      (if (defRunId == currentRunId) lastDenot else denot).isType
     final def asTerm(using Context): TermSymbol = {
       assert(isTerm, s"asTerm called on not-a-Term $this" );
       asInstanceOf[TermSymbol]
@@ -588,7 +204,7 @@ object Symbols {
      *  @pre  Symbol is a class member
      */
     def enteredAfter(phase: DenotTransformer)(using Context): this.type =
-      if ctx.phaseId != phase.next.id then
+      if currentPhaseId != phase.next.id then
         atPhase(phase.next)(enteredAfter(phase))
       else this.owner match {
         case owner: ClassSymbol =>
@@ -613,7 +229,7 @@ object Symbols {
      *  @pre  Symbol is a class member
      */
     def dropAfter(phase: DenotTransformer)(using Context): Unit =
-      if ctx.phaseId != phase.next.id then
+      if currentPhaseId != phase.next.id then
         atPhase(phase.next)(dropAfter(phase))
       else {
         assert (!this.owner.is(Package))
@@ -819,7 +435,7 @@ object Symbols {
                 }
                 case none => NoSource
               }
-            sourceFromTopLevel(using ctx.withPhaseNoLater(flattenPhase))
+            atPhaseNoLater(flattenPhase)(sourceFromTopLevel)
           }
         }
       mySource
@@ -856,9 +472,9 @@ object Symbols {
       val associatedFile1 = if (associatedFile == null) owner.associatedFile else associatedFile
 
       if (sym.isClass)
-        ctx.newClassSymbol(owner, name.asTypeName, flags, _ => info, privateWithin, coord1, associatedFile1)
+        newClassSymbol(owner, name.asTypeName, flags, _ => info, privateWithin, coord1, associatedFile1)
       else
-        ctx.newSymbol(owner, name, flags, info, privateWithin, coord1)
+        newSymbol(owner, name, flags, info, privateWithin, coord1)
     }
   }
 
@@ -929,4 +545,398 @@ object Symbols {
 
   inline def newMutableSymbolMap[T]: MutableSymbolMap[T] =
     new MutableSymbolMap(new java.util.IdentityHashMap[Symbol, T]())
+
+// ---- Factory methods for symbol creation ----------------------
+//
+// All symbol creations should be done via the next two methods.
+
+  /** Create a symbol without a denotation.
+   *  Note this uses a cast instead of a direct type refinement because
+   *  it's debug-friendlier not to create an anonymous class here.
+   */
+  def newNakedSymbol[N <: Name](coord: Coord = NoCoord)(using Context): Symbol { type ThisName = N } =
+    new Symbol(coord, ctx.base.nextSymId).asInstanceOf[Symbol { type ThisName = N }]
+
+  /** Create a class symbol without a denotation. */
+  def newNakedClassSymbol(coord: Coord = NoCoord, assocFile: AbstractFile = null)(using Context): ClassSymbol =
+    new ClassSymbol(coord, assocFile, ctx.base.nextSymId)
+
+// ---- Symbol creation methods ----------------------------------
+
+  /** Create a symbol from its fields (info may be lazy) */
+  def newSymbol[N <: Name](
+      owner: Symbol,
+      name: N,
+      flags: FlagSet,
+      info: Type,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord)(using Context): Symbol { type ThisName = N } = {
+    val sym = newNakedSymbol[N](coord)
+    val denot = SymDenotation(sym, owner, name, flags, info, privateWithin)
+    sym.denot = denot
+    sym
+  }
+
+  /** Create a class symbol from a function producing its denotation */
+  def newClassSymbolDenoting(denotFn: ClassSymbol => SymDenotation,
+       coord: Coord = NoCoord, assocFile: AbstractFile = null)(using Context): ClassSymbol = {
+    val cls = newNakedClassSymbol(coord, assocFile)
+    cls.denot = denotFn(cls)
+    cls
+  }
+
+  /** Create a class symbol from its non-info fields and a function
+   *  producing its info (the produced info may be lazy).
+   */
+  def newClassSymbol(
+      owner: Symbol,
+      name: TypeName,
+      flags: FlagSet,
+      infoFn: ClassSymbol => Type,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      assocFile: AbstractFile = null)(using Context): ClassSymbol
+  = {
+    val cls = newNakedClassSymbol(coord, assocFile)
+    val denot = SymDenotation(cls, owner, name, flags, infoFn(cls), privateWithin)
+    cls.denot = denot
+    cls
+  }
+
+  /** Create a class symbol from its non-info fields and the fields of its info. */
+  def newCompleteClassSymbol(
+      owner: Symbol,
+      name: TypeName,
+      flags: FlagSet,
+      parents: List[TypeRef],
+      decls: Scope = newScope,
+      selfInfo: Type = NoType,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      assocFile: AbstractFile = null)(using Context): ClassSymbol =
+    newClassSymbol(
+        owner, name, flags,
+        ClassInfo(owner.thisType, _, parents, decls, selfInfo),
+        privateWithin, coord, assocFile)
+
+  /** Same as `newCompleteClassSymbol` except that `parents` can be a list of arbitrary
+   *  types which get normalized into type refs and parameter bindings.
+   */
+  def newNormalizedClassSymbol(
+      owner: Symbol,
+      name: TypeName,
+      flags: FlagSet,
+      parentTypes: List[Type],
+      decls: Scope = newScope,
+      selfInfo: Type = NoType,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      assocFile: AbstractFile = null)(using Context): ClassSymbol = {
+    def completer = new LazyType {
+      def complete(denot: SymDenotation)(using Context): Unit = {
+        val cls = denot.asClass.classSymbol
+        val decls = newScope
+        denot.info = ClassInfo(owner.thisType, cls, parentTypes.map(_.dealias), decls)
+      }
+    }
+    newClassSymbol(owner, name, flags, completer, privateWithin, coord, assocFile)
+  }
+
+  def newRefinedClassSymbol(coord: Coord = NoCoord)(using Context): ClassSymbol =
+    newCompleteClassSymbol(ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, coord = coord)
+
+  /** Create a module symbol with associated module class
+   *  from its non-info fields and a function producing the info
+   *  of the module class (this info may be lazy).
+   */
+  def newModuleSymbol(
+      owner: Symbol,
+      name: TermName,
+      modFlags: FlagSet,
+      clsFlags: FlagSet,
+      infoFn: (TermSymbol, ClassSymbol) => Type, // typically a ModuleClassCompleterWithDecls
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      assocFile: AbstractFile = null)(using Context): TermSymbol
+  = {
+    val base = owner.thisType
+    val module = newNakedSymbol[TermName](coord)
+    val modcls = newNakedClassSymbol(coord, assocFile)
+    val modclsFlags = clsFlags | ModuleClassCreationFlags
+    val modclsName = name.toTypeName.adjustIfModuleClass(modclsFlags)
+    val cdenot = SymDenotation(
+        modcls, owner, modclsName, modclsFlags,
+        infoFn(module, modcls), privateWithin)
+    val mdenot = SymDenotation(
+        module, owner, name, modFlags | ModuleValCreationFlags,
+        if (cdenot.isCompleted) TypeRef(owner.thisType, modcls)
+        else new ModuleCompleter(modcls))
+    module.denot = mdenot
+    modcls.denot = cdenot
+    module
+  }
+
+  /** Create a module symbol with associated module class
+   *  from its non-info fields and the fields of the module class info.
+   *  @param flags  The combined flags of the module and the module class
+   *                These are masked with RetainedModuleValFlags/RetainedModuleClassFlags.
+   */
+  def newCompleteModuleSymbol(
+      owner: Symbol,
+      name: TermName,
+      modFlags: FlagSet,
+      clsFlags: FlagSet,
+      parents: List[TypeRef],
+      decls: Scope,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      assocFile: AbstractFile = null)(using Context): TermSymbol =
+    newModuleSymbol(
+        owner, name, modFlags, clsFlags,
+        (module, modcls) => ClassInfo(
+          owner.thisType, modcls, parents, decls, TermRef(owner.thisType, module)),
+        privateWithin, coord, assocFile)
+
+  /** Create a package symbol with associated package class
+   *  from its non-info fields and a lazy type for loading the package's members.
+   */
+  def newPackageSymbol(
+      owner: Symbol,
+      name: TermName,
+      infoFn: (TermSymbol, ClassSymbol) => LazyType)(using Context): TermSymbol =
+    newModuleSymbol(owner, name, PackageCreationFlags, PackageCreationFlags, infoFn)
+  /** Create a package symbol with associated package class
+   *  from its non-info fields its member scope.
+   */
+  def newCompletePackageSymbol(
+      owner: Symbol,
+      name: TermName,
+      modFlags: FlagSet = EmptyFlags,
+      clsFlags: FlagSet = EmptyFlags,
+      decls: Scope = newScope)(using Context): TermSymbol =
+    newCompleteModuleSymbol(
+      owner, name,
+      modFlags | PackageCreationFlags, clsFlags | PackageCreationFlags,
+      Nil, decls)
+
+  /** Define a new symbol associated with a Bind or pattern wildcard and, by default, make it gadt narrowable. */
+  def newPatternBoundSymbol(
+      name: Name,
+      info: Type,
+      span: Span,
+      addToGadt: Boolean = true,
+      flags: FlagSet = EmptyFlags)(using Context): Symbol = {
+    val sym = newSymbol(ctx.owner, name, Case | flags, info, coord = span)
+    if (addToGadt && name.isTypeName) ctx.gadt.addToConstraint(sym)
+    sym
+  }
+
+  /** Create a stub symbol that will issue a missing reference error
+   *  when attempted to be completed.
+   */
+  def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null)(using Context): Symbol = {
+    def stubCompleter = new StubInfo()
+    val normalizedOwner = if (owner.is(ModuleVal)) owner.moduleClass else owner
+    typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
+    typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    //if (base.settings.debug.value) throw new Error()
+    val stub = name match {
+      case name: TermName =>
+        newModuleSymbol(normalizedOwner, name, EmptyFlags, EmptyFlags, stubCompleter, assocFile = file)
+      case name: TypeName =>
+        newClassSymbol(normalizedOwner, name, EmptyFlags, stubCompleter, assocFile = file)
+    }
+    stub
+  }
+
+  /** Create the local template dummy of given class `cls`.
+   *  In a template
+   *
+   *     trait T { val fld: Int; { val x: int = 2 }; val fld2 = { val y = 2; y }}
+   *
+   *  the owner of `x` is the local dummy of the template. The owner of the local
+   *  dummy is then the class of the template itself. By contrast, the owner of `y`
+   *  would be `fld2`. There is a single local dummy per template.
+   */
+  def newLocalDummy(cls: Symbol, coord: Coord = NoCoord)(using Context): TermSymbol =
+    newSymbol(cls, nme.localDummyName(cls), NonMember, NoType)
+
+  /** Create an import symbol pointing back to given qualifier `expr`. */
+  def newImportSymbol(owner: Symbol, expr: Tree, coord: Coord = NoCoord)(using Context): TermSymbol =
+    newImportSymbol(owner, ImportType(expr), coord = coord)
+
+  /** Create an import symbol with given `info`. */
+  def newImportSymbol(owner: Symbol, info: Type, coord: Coord)(using Context): TermSymbol =
+    newSymbol(owner, nme.IMPORT, Synthetic | NonMember, info, coord = coord)
+
+  /** Create a class constructor symbol for given class `cls`. */
+  def newConstructor(
+      cls: ClassSymbol,
+      flags: FlagSet,
+      paramNames: List[TermName],
+      paramTypes: List[Type],
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord)(using Context): TermSymbol =
+    newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes, cls.typeRef), privateWithin, coord)
+
+  /** Create an empty default constructor symbol for given class `cls`. */
+  def newDefaultConstructor(cls: ClassSymbol)(using Context): TermSymbol =
+    newConstructor(cls, EmptyFlags, Nil, Nil)
+
+  def newLazyImplicit(info: Type, coord: Coord = NoCoord)(using Context): TermSymbol =
+    newSymbol(ctx.owner, LazyImplicitName.fresh(), EmptyFlags, info, coord = coord)
+
+  /** Create a symbol representing a selftype declaration for class `cls`. */
+  def newSelfSym(
+      cls: ClassSymbol,
+      name: TermName = nme.WILDCARD,
+      selfInfo: Type = NoType)(using Context): TermSymbol =
+    newSymbol(cls, name, SelfSymFlags, selfInfo orElse cls.classInfo.selfType, coord = cls.coord)
+
+  /** Create new type parameters with given owner, names, and flags.
+   *  @param boundsFn  A function that, given type refs to the newly created
+   *                   parameters returns a list of their bounds.
+   */
+  def newTypeParams(
+    owner: Symbol,
+    names: List[TypeName],
+    flags: FlagSet,
+    boundsFn: List[TypeRef] => List[Type])(using Context): List[TypeSymbol] = {
+
+    val tparamBuf = new mutable.ListBuffer[TypeSymbol]
+    val trefBuf = new mutable.ListBuffer[TypeRef]
+    for (name <- names) {
+      val tparam = newSymbol(
+        owner, name, flags | owner.typeParamCreationFlags, NoType, coord = owner.coord)
+      tparamBuf += tparam
+      trefBuf += TypeRef(owner.thisType, tparam)
+    }
+    val tparams = tparamBuf.toList
+    val bounds = boundsFn(trefBuf.toList)
+    for (tparam, bound) <- tparams.lazyZip(bounds) do
+      tparam.info = bound
+    tparams
+  }
+
+  /** Create a new skolem symbol. This is not the same as SkolemType, even though the
+   *  motivation (create a singleton referencing to a type) is similar.
+   */
+  def newSkolem(tp: Type)(using Context): TermSymbol =
+    newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
+
+  def newErrorSymbol(owner: Symbol, name: Name, msg: Message)(using Context): Symbol = {
+    val errType = ErrorType(msg)
+    newSymbol(owner, name, SyntheticArtifact,
+        if (name.isTypeName) TypeAlias(errType) else errType)
+  }
+
+  /** Map given symbols, subjecting their attributes to the mappings
+   *  defined in the given TreeTypeMap `ttmap`.
+   *  Cross symbol references are brought over from originals to copies.
+   *  Do not copy any symbols if all attributes of all symbols stay the same.
+   */
+  def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): List[Symbol] =
+    if (originals.forall(sym =>
+        (ttmap.mapType(sym.info) eq sym.info) &&
+        !(ttmap.oldOwners contains sym.owner)) && !mapAlways)
+      originals
+    else {
+      val copies: List[Symbol] = for (original <- originals) yield
+        original match {
+          case original: ClassSymbol =>
+            newNakedClassSymbol(original.coord, original.assocFile)
+          case _ =>
+            newNakedSymbol[original.ThisName](original.coord)
+        }
+      val ttmap1 = ttmap.withSubstitution(originals, copies)
+      originals.lazyZip(copies) foreach { (original, copy) =>
+        val odenot = original.denot
+        val oinfo = original.info match {
+          case ClassInfo(pre, _, parents, decls, selfInfo) =>
+            assert(original.isClass)
+            ClassInfo(pre, copy.asClass, parents, decls.cloneScope, selfInfo)
+          case oinfo => oinfo
+        }
+
+        val completer = new LazyType {
+          def complete(denot: SymDenotation)(using Context): Unit = {
+            denot.info = oinfo // needed as otherwise we won't be able to go from Sym -> parents & etc
+                               // Note that this is a hack, but hack commonly used in Dotty
+                               // The same thing is done by other completers all the time
+            denot.info = ttmap1.mapType(oinfo)
+            denot.annotations = odenot.annotations.mapConserve(ttmap1.apply)
+          }
+        }
+
+        copy.denot = odenot.copySymDenotation(
+          symbol = copy,
+          owner = ttmap1.mapOwner(odenot.owner),
+          initFlags = odenot.flags &~ Touched,
+          info = completer,
+          privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
+          annotations = odenot.annotations)
+        copy.registeredCompanion =
+          copy.registeredCompanion.subst(originals, copies)
+      }
+
+      copies.foreach(_.ensureCompleted()) // avoid memory leak
+      copies
+    }
+
+// ----- Locating predefined symbols ----------------------------------------
+
+  def requiredPackage(path: PreName)(using Context): TermSymbol = {
+    val name = path.toTermName
+    staticRef(name, isPackage = true).requiredSymbol("package", name)(_.is(Package)).asTerm
+  }
+
+  def requiredPackageRef(path: PreName)(using Context): TermRef = requiredPackage(path).termRef
+
+  def requiredClass(path: PreName)(using Context): ClassSymbol = {
+    val name = path.toTypeName
+    staticRef(name).requiredSymbol("class", name)(_.isClass) match {
+      case cls: ClassSymbol => cls
+      case sym => defn.AnyClass
+    }
+  }
+
+  def requiredClassRef(path: PreName)(using Context): TypeRef = requiredClass(path).typeRef
+
+  /** Get ClassSymbol if class is either defined in current compilation run
+   *  or present on classpath.
+   *  Returns NoSymbol otherwise. */
+  def getClassIfDefined(path: PreName)(using Context): Symbol = {
+    val name = path.toTypeName
+    staticRef(name, generateStubs = false)
+      .requiredSymbol("class", name, generateStubs = false)(_.isClass)
+  }
+
+  /** Get a List of ClassSymbols which are either defined in current compilation
+   *  run or present on classpath.
+   */
+  def getClassesIfDefined(paths: List[PreName])(using Context): List[ClassSymbol] =
+    paths.map(getClassIfDefined).filter(_.exists).map(_.asInstanceOf[ClassSymbol])
+
+  /** Get ClassSymbol if package is either defined in current compilation run
+   *  or present on classpath.
+   *  Returns NoSymbol otherwise. */
+  def getPackageClassIfDefined(path: PreName)(using Context): Symbol = {
+    val name = path.toTypeName
+    staticRef(name, isPackage = true, generateStubs = false)
+      .requiredSymbol("package", name, generateStubs = false)(_ is PackageClass)
+  }
+
+  def requiredModule(path: PreName)(using Context): TermSymbol = {
+    val name = path.toTermName
+    staticRef(name).requiredSymbol("object", name)(_.is(Module)).asTerm
+  }
+
+  def requiredModuleRef(path: PreName)(using Context): TermRef = requiredModule(path).termRef
+
+  def requiredMethod(path: PreName)(using Context): TermSymbol = {
+    val name = path.toTermName
+    staticRef(name).requiredSymbol("method", name)(_.is(Method)).asTerm
+  }
+
+  def requiredMethodRef(path: PreName)(using Context): TermRef = requiredMethod(path).termRef
 }

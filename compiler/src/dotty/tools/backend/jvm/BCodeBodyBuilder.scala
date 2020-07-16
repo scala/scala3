@@ -21,6 +21,7 @@ import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.core.Contexts.{inContext, atPhase}
 import dotty.tools.dotc.core.Phases._
+import dotty.tools.dotc.report
 
 /*
  *
@@ -277,7 +278,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       tree match {
         case ValDef(nme.THIS, _, _) =>
-          ctx.debuglog("skipping trivial assign to _$this: " + tree)
+          report.debuglog("skipping trivial assign to _$this: " + tree)
 
         case tree@ValDef(_, _, _) =>
           val sym = tree.symbol
@@ -326,9 +327,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             else {
               val arity = app.meth.tpe.widenDealias.firstParamTypes.size - env.size
               val returnsUnit = app.meth.tpe.widenDealias.resultType.classSymbol == defn.UnitClass
-              if (returnsUnit) ctx.requiredClass(("dotty.runtime.function.JProcedure" + arity))
-              else if (arity <= 2) ctx.requiredClass(("dotty.runtime.function.JFunction" + arity))
-              else ctx.requiredClass(("scala.Function" + arity))
+              if (returnsUnit) requiredClass(("dotty.runtime.function.JProcedure" + arity))
+              else if (arity <= 2) requiredClass(("dotty.runtime.function.JFunction" + arity))
+              else requiredClass(("scala.Function" + arity))
             }
           }
           val (fun, args) = call match {
@@ -669,7 +670,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       var elemKind = arr.elementType
       val argsSize = args.length
       if (argsSize > dims) {
-        ctx.error(s"too many arguments for array constructor: found ${args.length} but array has only $dims dimension(s)", ctx.source.atSpan(app.span))
+        report.error(s"too many arguments for array constructor: found ${args.length} but array has only $dims dimension(s)", ctx.source.atSpan(app.span))
       }
       if (argsSize < dims) {
         /* In one step:
@@ -1431,7 +1432,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genInvokeDynamicLambda(ctor: Symbol, lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol): BType = {
       import java.lang.invoke.LambdaMetafactory.FLAG_SERIALIZABLE
 
-      ctx.debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
+      report.debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
       val generatedType = classBTypeFromSymbol(functionalInterface)
       // Lambdas should be serializable if they implement a SAM that extends Serializable or if they
       // implement a scala.Function* class.

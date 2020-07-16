@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation, LazyType }
+import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation, LazyType, stillValid, acceptStale, traceInvalid }
 import Contexts._
 import Names._
 import NameKinds._
@@ -131,10 +131,10 @@ object Denotations {
     /** The denotation with info(s) as seen from prefix type */
     final def asSeenFrom(pre: Type)(using Context): AsSeenFromResult =
       if (Config.cacheAsSeenFrom) {
-        if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
+        if ((cachedPrefix ne pre) || currentPeriod != validAsSeenFrom) {
           cachedAsSeenFrom = computeAsSeenFrom(pre)
           cachedPrefix = pre
-          validAsSeenFrom = if (pre.isProvisional) Nowhere else ctx.period
+          validAsSeenFrom = if (pre.isProvisional) Nowhere else currentPeriod
         }
         cachedAsSeenFrom
       }
@@ -298,7 +298,7 @@ object Denotations {
         case m @ MissingRef(ownerd, name) =>
           if (generateStubs) {
             if (ctx.settings.YdebugMissingRefs.value) m.ex.printStackTrace()
-            ctx.newStubSymbol(ownerd.symbol, name, source)
+            newStubSymbol(ownerd.symbol, name, source)
           }
           else NoSymbol
         case NoDenotation | _: NoQualifyingRef =>
@@ -586,7 +586,7 @@ object Denotations {
           try info.signature
           catch { // !!! DEBUG
             case scala.util.control.NonFatal(ex) =>
-              ctx.echo(s"cannot take signature of ${info.show}")
+              report.echo(s"cannot take signature of ${info.show}")
               throw ex
           }
         case _ => Signature.NotAMethod
@@ -686,14 +686,14 @@ object Denotations {
 
     private def updateValidity()(using Context): this.type = {
       assert(
-        ctx.runId >= validFor.runId
+        currentRunId >= validFor.runId
         || ctx.settings.YtestPickler.value // mixing test pickler with debug printing can travel back in time
         || ctx.mode.is(Mode.Printing)  // no use to be picky when printing error messages
         || symbol.isOneOf(ValidForeverFlags),
-        s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
+        s"denotation $this invalid in run ${currentRunId}. ValidFor: $validFor")
       var d: SingleDenotation = this
       while ({
-        d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
+        d.validFor = Period(currentPeriod.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
         d.invalidateInheritedInfo()
         d = d.nextInRun
         d ne this
@@ -706,7 +706,7 @@ object Denotations {
      *  if denotation is no longer valid.
      *  However, StaleSymbol error is not thrown in the following situations:
      *
-     *   - If ctx.acceptStale returns true (e.g. because we are in the IDE),
+     *   - If acceptStale returns true (e.g. because we are in the IDE),
      *     update the symbol to the new version if it exists, or return
      *     the old version otherwise.
      *   - If the symbol did not have a denotation that was defined at the current phase
@@ -715,13 +715,13 @@ object Denotations {
     private def bringForward()(using Context): SingleDenotation = {
       this match {
         case symd: SymDenotation =>
-          if (ctx.stillValid(symd)) return updateValidity()
-          if (ctx.acceptStale(symd)) return symd.currentSymbol.denot.orElse(symd).updateValidity()
+          if (stillValid(symd)) return updateValidity()
+          if (acceptStale(symd)) return symd.currentSymbol.denot.orElse(symd).updateValidity()
         case _ =>
       }
       if (!symbol.exists) return updateValidity()
-      if (!coveredInterval.containsPhaseId(ctx.phaseId)) return NoDenotation
-      if (ctx.debug) ctx.traceInvalid(this)
+      if (!coveredInterval.containsPhaseId(currentPhaseId)) return NoDenotation
+      if (ctx.debug) traceInvalid(this)
       staleSymbolError
     }
 
@@ -746,7 +746,7 @@ object Denotations {
       if (myValidFor.code <= 0) nextDefined else this
 
     /** Produce a denotation that is valid for the given context.
-     *  Usually called when !(validFor contains ctx.period)
+     *  Usually called when !(validFor contains currentPeriod)
      *  (even though this is not a precondition).
      *  If the runId of the context is the same as runId of this denotation,
      *  the right flock member is located, or, if it does not exist yet,
@@ -758,7 +758,7 @@ object Denotations {
      *  the symbol is stale, which constitutes an internal error.
      */
     def current(using Context): SingleDenotation = {
-      val currentPeriod = ctx.period
+      val currentPeriod = Contexts.currentPeriod
       val valid = myValidFor
       if (valid.code <= 0) {
         // can happen if we sit on a stale denotation which has been replaced
@@ -808,7 +808,7 @@ object Denotations {
               else {
                 next match {
                   case next: ClassDenotation =>
-                    assert(!next.is(Package), s"illegal transformation of package denotation by transformer ${ctx.withPhase(transformer).phase}")
+                    assert(!next.is(Package), s"illegal transformation of package denotation by transformer $transformer")
                   case _ =>
                 }
                 next.insertAfter(cur)
@@ -842,7 +842,7 @@ object Denotations {
     }
 
     private def demandOutsideDefinedMsg(using Context): String =
-      s"demanding denotation of $this at phase ${ctx.phase}(${ctx.phaseId}) outside defined interval: defined periods are${definedPeriodsString}"
+      s"demanding denotation of $this at phase ${currentPhase}(${currentPhaseId}) outside defined interval: defined periods are${definedPeriodsString}"
 
     /** Install this denotation to be the result of the given denotation transformer.
      *  This is the implementation of the same-named method in SymDenotations.
@@ -851,16 +851,16 @@ object Denotations {
      */
     protected def installAfter(phase: DenotTransformer)(using Context): Unit = {
       val targetId = phase.next.id
-      if (ctx.phaseId != targetId) atPhase(phase.next)(installAfter(phase))
+      if (currentPhaseId != targetId) atPhase(phase.next)(installAfter(phase))
       else {
         val current = symbol.current
         // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
         // printPeriods(current)
-        this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
+        this.validFor = Period(currentRunId, targetId, current.validFor.lastPhaseId)
         if (current.validFor.firstPhaseId >= targetId)
           current.replaceWith(this)
         else {
-          current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
+          current.validFor = Period(currentRunId, current.validFor.firstPhaseId, targetId - 1)
           insertAfter(current)
         }
       }
@@ -919,7 +919,7 @@ object Denotations {
         case denot: SymDenotation => s"in ${denot.owner}"
         case _ => ""
       }
-      s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${myValidFor}, is referred to in run ${ctx.period}"
+      s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${myValidFor}, is referred to in run ${currentPeriod}"
     }
 
     /** The period (interval of phases) for which there exists
@@ -977,10 +977,10 @@ object Denotations {
           true
         case MethodNotAMethodMatch =>
           // Java allows defining both a field and a zero-parameter method with the same name
-          !ctx.erasedTypes && !(symbol.is(JavaDefined) && other.symbol.is(JavaDefined))
+          !currentlyAfterErasure && !(symbol.is(JavaDefined) && other.symbol.is(JavaDefined))
         case ParamMatch =>
            // The signatures do not tell us enough to be sure about matching
-          !ctx.erasedTypes && info.matches(other.info)
+          !currentlyAfterErasure && info.matches(other.info)
         case noMatch =>
           false
     end matches
@@ -1071,7 +1071,7 @@ object Denotations {
   class ErrorDenotation(using Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
     override def exists: Boolean = false
     override def hasUniqueSym: Boolean = false
-    validFor = Period.allInRun(ctx.runId)
+    validFor = Period.allInRun(currentRunId)
     protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
       this
   }
@@ -1189,71 +1189,66 @@ object Denotations {
         s"multi-denotation with alternatives $alternatives does not implement operation $op")
   }
 
-  // --------------- Context Base Trait -------------------------------
-
-  trait DenotationsBase { this: ContextBase =>
-
-    /** The current denotation of the static reference given by path,
-     *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
-     *  if generateStubs is set, generates stubs for missing top-level symbols
-     */
-    def staticRef(path: Name, generateStubs: Boolean = true, isPackage: Boolean = false)(using Context): Denotation = {
-      def select(prefix: Denotation, selector: Name): Denotation = {
-        val owner = prefix.disambiguate(_.info.isParameterless)
-        def isPackageFromCoreLibMissing: Boolean =
-          owner.symbol == defn.RootClass &&
-          (
-            selector == nme.scala || // if the scala package is missing, the stdlib must be missing
-            selector == nme.scalaShadowing // if the scalaShadowing package is missing, the dotty library must be missing
-          )
-        if (owner.exists) {
-          val result = if (isPackage) owner.info.decl(selector) else owner.info.member(selector)
-          if (result.exists) result
-          else if (isPackageFromCoreLibMissing) throw new MissingCoreLibraryException(selector.toString)
-          else {
-            val alt =
-              if (generateStubs) missingHook(owner.symbol.moduleClass, selector)
-              else NoSymbol
-            if (alt.exists) alt.denot
-            else MissingRef(owner, selector)
-          }
+  /** The current denotation of the static reference given by path,
+    *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
+    *  if generateStubs is set, generates stubs for missing top-level symbols
+    */
+  def staticRef(path: Name, generateStubs: Boolean = true, isPackage: Boolean = false)(using Context): Denotation = {
+    def select(prefix: Denotation, selector: Name): Denotation = {
+      val owner = prefix.disambiguate(_.info.isParameterless)
+      def isPackageFromCoreLibMissing: Boolean =
+        owner.symbol == defn.RootClass &&
+        (
+          selector == nme.scala || // if the scala package is missing, the stdlib must be missing
+          selector == nme.scalaShadowing // if the scalaShadowing package is missing, the dotty library must be missing
+        )
+      if (owner.exists) {
+        val result = if (isPackage) owner.info.decl(selector) else owner.info.member(selector)
+        if (result.exists) result
+        else if (isPackageFromCoreLibMissing) throw new MissingCoreLibraryException(selector.toString)
+        else {
+          val alt =
+            if (generateStubs) missingHook(owner.symbol.moduleClass, selector)
+            else NoSymbol
+          if (alt.exists) alt.denot
+          else MissingRef(owner, selector)
         }
-        else owner
       }
-      def recur(path: Name, wrap: TermName => Name = identity): Denotation = path match {
-        case path: TypeName =>
-          recur(path.toTermName, n => n.toTypeName)
-        case ModuleClassName(underlying) =>
-          recur(underlying, n => wrap(ModuleClassName(n)))
-        case QualifiedName(prefix, selector) =>
-          select(recur(prefix), wrap(selector))
-        case qn @ AnyQualifiedName(prefix, _) =>
-          recur(prefix, n => wrap(qn.info.mkString(n).toTermName))
-        case path: SimpleName =>
-          def recurSimple(len: Int, wrap: TermName => Name): Denotation = {
-            val point = path.lastIndexOf('.', len - 1)
-            val selector = wrap(path.slice(point + 1, len).asTermName)
-            val prefix =
-              if (point > 0) recurSimple(point, identity)
-              else if (selector.isTermName) defn.RootClass.denot
-              else defn.EmptyPackageClass.denot
-            select(prefix, selector)
-          }
-          recurSimple(path.length, wrap)
-      }
-      recur(path)
+      else owner
     }
-
-    /** If we are looking for a non-existing term name in a package,
-     *  assume it is a package for which we do not have a directory and
-     *  enter it.
-     */
-    def missingHook(owner: Symbol, name: Name)(using Context): Symbol =
-      if (owner.is(Package) && name.isTermName)
-        ctx.newCompletePackageSymbol(owner, name.asTermName).entered
-      else
-        NoSymbol
+    def recur(path: Name, wrap: TermName => Name = identity): Denotation = path match {
+      case path: TypeName =>
+        recur(path.toTermName, n => n.toTypeName)
+      case ModuleClassName(underlying) =>
+        recur(underlying, n => wrap(ModuleClassName(n)))
+      case QualifiedName(prefix, selector) =>
+        select(recur(prefix), wrap(selector))
+      case qn @ AnyQualifiedName(prefix, _) =>
+        recur(prefix, n => wrap(qn.info.mkString(n).toTermName))
+      case path: SimpleName =>
+        def recurSimple(len: Int, wrap: TermName => Name): Denotation = {
+          val point = path.lastIndexOf('.', len - 1)
+          val selector = wrap(path.slice(point + 1, len).asTermName)
+          val prefix =
+            if (point > 0) recurSimple(point, identity)
+            else if (selector.isTermName) defn.RootClass.denot
+            else defn.EmptyPackageClass.denot
+          select(prefix, selector)
+        }
+        recurSimple(path.length, wrap)
+    }
+    recur(path)
   }
+
+  /** If we are looking for a non-existing term name in a package,
+    *  assume it is a package for which we do not have a directory and
+    *  enter it.
+    */
+  def missingHook(owner: Symbol, name: Name)(using Context): Symbol =
+    if (owner.is(Package) && name.isTermName)
+      newCompletePackageSymbol(owner, name.asTermName).entered
+    else
+      NoSymbol
 
   /** An exception for accessing symbols that are no longer valid in current run */
   class StaleSymbol(msg: => String) extends Exception {
