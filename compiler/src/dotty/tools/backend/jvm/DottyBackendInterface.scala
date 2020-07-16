@@ -116,58 +116,62 @@ object DottyBackendInterface {
     ctx.requiredModule(className)
   }
 
-  extension symExtensions on (sym: Symbol) {
+  given symExtensions as AnyRef:
+    extension (sym: Symbol):
 
-    def isInterface(using Context): Boolean = (sym.is(PureInterface)) || sym.is(Trait)
+      def isInterface(using Context): Boolean = (sym.is(PureInterface)) || sym.is(Trait)
 
-    def isStaticConstructor(using Context): Boolean = (sym.isStaticMember && sym.isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
+      def isStaticConstructor(using Context): Boolean = (sym.isStaticMember && sym.isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
 
-    def isStaticMember(using Context): Boolean = (sym ne NoSymbol) &&
-      (sym.is(JavaStatic) || sym.isScalaStatic)
-      // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
+      def isStaticMember(using Context): Boolean = (sym ne NoSymbol) &&
+        (sym.is(JavaStatic) || sym.isScalaStatic)
+        // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
-    /**
-     * True for module classes of modules that are top-level or owned only by objects. Module classes
-     * for such objects will get a MODULE$ flag and a corresponding static initializer.
-     */
-    def isStaticModuleClass(using Context): Boolean =
-      (sym.is(Module)) && {
-        // scalac uses atPickling here
-        // this would not work if modules are created after pickling
-        // for example by specialization
-        val original = toDenot(sym).initial
-        val validity = original.validFor
-        atPhase(validity.phaseId) {
-          toDenot(sym).isStatic
+      /**
+      * True for module classes of modules that are top-level or owned only by objects. Module classes
+      * for such objects will get a MODULE$ flag and a corresponding static initializer.
+      */
+      def isStaticModuleClass(using Context): Boolean =
+        (sym.is(Module)) && {
+          // scalac uses atPickling here
+          // this would not work if modules are created after pickling
+          // for example by specialization
+          val original = toDenot(sym).initial
+          val validity = original.validFor
+          atPhase(validity.phaseId) {
+            toDenot(sym).isStatic
+          }
         }
-      }
 
 
 
-    def originalLexicallyEnclosingClass(using Context): Symbol =
-      // used to populate the EnclosingMethod attribute.
-      // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
-      if (sym.exists) {
-        val validity = toDenot(sym).initial.validFor
-        atPhase(validity.phaseId) {
-          toDenot(sym).lexicallyEnclosingClass
+      def originalLexicallyEnclosingClass(using Context): Symbol =
+        // used to populate the EnclosingMethod attribute.
+        // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
+        if (sym.exists) {
+          val validity = toDenot(sym).initial.validFor
+          atPhase(validity.phaseId) {
+            toDenot(sym).lexicallyEnclosingClass
+          }
+        } else NoSymbol
+
+      /**
+      * True for module classes of package level objects. The backend will generate a mirror class for
+      * such objects.
+      */
+      def isTopLevelModuleClass(using Context): Boolean =
+        sym.is(ModuleClass) &&
+        atPhase(flattenPhase) {
+          toDenot(sym).owner.is(PackageClass)
         }
-      } else NoSymbol
 
-    /**
-     * True for module classes of package level objects. The backend will generate a mirror class for
-     * such objects.
-     */
-    def isTopLevelModuleClass(using Context): Boolean =
-      sym.is(ModuleClass) &&
-      atPhase(flattenPhase) {
-        toDenot(sym).owner.is(PackageClass)
-      }
+      def javaSimpleName(using Context): String = toDenot(sym).name.mangledString
+      def javaClassName(using Context): String = toDenot(sym).fullName.mangledString
+      def javaBinaryName(using Context): String = javaClassName.replace('.', '/')
 
-    def javaSimpleName(using Context): String = toDenot(sym).name.mangledString
-    def javaClassName(using Context): String = toDenot(sym).fullName.mangledString
-    def javaBinaryName(using Context): String = javaClassName.replace('.', '/')
-  }
+    end extension
+
+  end symExtensions
 
   private val primitiveCompilationUnits = Set(
     "Unit.scala",

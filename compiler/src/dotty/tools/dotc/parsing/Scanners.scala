@@ -30,7 +30,7 @@ object Cbufs {
   object Cbuf:
     def apply(): Cbuf = new StringBuilder(TargetCapacity)
 
-  extension StringBuilderOps on (buf: Cbuf):
+  extension (buf: Cbuf):
     def clear(): Unit = {
       if buf.capacity() > TargetCapacity then
         buf.setLength(TargetCapacity)
@@ -48,6 +48,7 @@ object Cbufs {
     def isEmpty: Boolean = buf.length() == 0
     def length: Int = buf.length()
     def last: Char = buf.charAt(buf.length() - 1)
+  end extension
 }
 
 import Cbufs._
