@@ -72,7 +72,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       .setOwner(defn.RootClass)
       .setTyper(new Typer)
       .addMode(Mode.ImplicitsEnabled)
-      .setTyperState(new TyperState(ctx.typerState))
+      .setTyperState(ctx.typerState.fresh(ctx.reporter))
     ctx.initialize()(using start) // re-initialize the base context with start
     def addImport(ctx: Context, rootRef: ImportInfo.RootRef) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(rootRef))

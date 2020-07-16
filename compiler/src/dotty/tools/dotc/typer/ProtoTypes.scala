@@ -57,7 +57,7 @@ object ProtoTypes {
             normalizedCompatible(tp, pt, keepConstraint = false)
           case _ => testCompat
         }
-      else ctx.test(testCompat)
+      else explore(testCompat)
     }
 
     private def disregardProto(pt: Type)(using Context): Boolean =
@@ -82,7 +82,7 @@ object ProtoTypes {
           case _ =>
             true
         }
-        if (!res) ctx.typerState.resetConstraintTo(savedConstraint)
+        if !res then ctx.typerState.constraint = savedConstraint
         res
       }
 

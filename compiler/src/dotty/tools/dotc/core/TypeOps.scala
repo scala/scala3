@@ -20,6 +20,7 @@ import typer.ProtoTypes._
 import typer.ForceDegree
 import typer.Inferencing._
 import typer.IfBottom
+import reporting.TestingReporter
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe

@@ -286,7 +286,7 @@ object Contexts {
       * contexts are created only on request and cached in this array
       */
     private var phasedCtx: Context = this
-    private var phasedCtxs: Array[Context] = _
+    private var phasedCtxs: Array[Context] = null
 
     /** This context at given phase.
      *  This method will always return a phase period equal to phaseId, thus will never return squashed phases
@@ -339,11 +339,6 @@ object Contexts {
 
     /** The current reporter */
     def reporter: Reporter = typerState.reporter
-
-    /** Run `op` as if it was run in a fresh explore typer state, but possibly
-     *  optimized to re-use the current typer state.
-     */
-    final def test[T](op: Context ?=> T): T = typerState.test(op)(using this)
 
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
@@ -453,15 +448,17 @@ object Contexts {
     /** Is the explicit nulls option set? */
     def explicitNulls: Boolean = base.settings.YexplicitNulls.value
 
-    protected def init(outer: Context, origin: Context): this.type = {
-      util.Stats.record("Context.fresh")
+    /** Initialize all context fields, except typerState, which has to be set separately
+     *  @param  outer   The outer context
+     *  @param  origin  The context from which fields are copied
+     */
+    private[Contexts] def init(outer: Context, origin: Context): this.type = {
       _outer = outer
       _period = origin.period
       _mode = origin.mode
       _owner = origin.owner
       _tree = origin.tree
       _scope = origin.scope
-      _typerState = origin.typerState
       _typeAssigner = origin.typeAssigner
       _gadt = origin.gadt
       _searchHistory = origin.searchHistory
@@ -472,11 +469,19 @@ object Contexts {
       this
     }
 
+    def reuseIn(outer: Context): this.type =
+      implicitsCache = null
+      phasedCtxs = null
+      sourceCtx = null
+      init(outer, outer)
+
     /** A fresh clone of this context embedded in this context. */
     def fresh: FreshContext = freshOver(this)
 
     /** A fresh clone of this context embedded in the specified `outer` context. */
-    def freshOver(outer: Context): FreshContext = new FreshContext(base).init(outer, this)
+    def freshOver(outer: Context): FreshContext =
+      util.Stats.record("Context.fresh")
+      FreshContext(base).init(outer, this).setTyperState(this.typerState)
 
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
@@ -539,25 +544,59 @@ object Contexts {
    *  of its attributes using the with... methods.
    */
   class FreshContext(base: ContextBase) extends Context(base) {
-    def setPeriod(period: Period): this.type = { this.period = period; this }
-    def setMode(mode: Mode): this.type = { this.mode = mode; this }
-    def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
-    def setTree(tree: Tree[? >: Untyped]): this.type = { this.tree = tree; this }
+    def setPeriod(period: Period): this.type =
+      util.Stats.record("Context.setPeriod")
+      this.period = period
+      this
+    def setMode(mode: Mode): this.type =
+      util.Stats.record("Context.setMode")
+      this.mode = mode
+      this
+    def setOwner(owner: Symbol): this.type =
+      util.Stats.record("Context.setOwner")
+      assert(owner != NoSymbol)
+      this.owner = owner
+      this
+    def setTree(tree: Tree[? >: Untyped]): this.type =
+      util.Stats.record("Context.setTree")
+      this.tree = tree
+      this
     def setScope(scope: Scope): this.type = { this.scope = scope; this }
-    def setNewScope: this.type = { this.scope = newScope; this }
+    def setNewScope: this.type =
+      util.Stats.record("Context.setScope")
+      this.scope = newScope
+      this
     def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
     def setNewTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(true))
     def setExploreTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(false))
     def setReporter(reporter: Reporter): this.type = setTyperState(typerState.fresh().setReporter(reporter))
-    def setTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
+    def setTypeAssigner(typeAssigner: TypeAssigner): this.type =
+      util.Stats.record("Context.setTypeAssigner")
+      this.typeAssigner = typeAssigner
+      this
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
-    def setGadt(gadt: GadtConstraint): this.type = { this.gadt = gadt; this }
+    def setGadt(gadt: GadtConstraint): this.type =
+      util.Stats.record("Context.setGadt")
+      this.gadt = gadt
+      this
     def setFreshGADTBounds: this.type = setGadt(gadt.fresh)
-    def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
-    def setSource(source: SourceFile): this.type = { this.source = source; this }
+    def setSearchHistory(searchHistory: SearchHistory): this.type =
+      util.Stats.record("Context.setSearchHistory")
+      this.searchHistory = searchHistory
+      this
+    def setSource(source: SourceFile): this.type =
+      util.Stats.record("Context.setSource")
+      this.source = source
+      this
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
-    private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
-    private def setStore(store: Store): this.type = { this.store = store; this }
+    private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type =
+      util.Stats.record("Context.setMoreProperties")
+      this.moreProperties = moreProperties
+      this
+    private def setStore(store: Store): this.type =
+      util.Stats.record("Context.setStore")
+      this.store = store
+      this
     def setImplicits(implicits: ContextualImplicits): this.type = { this.implicitsCache = implicits; this }
 
     def setCompilationUnit(compilationUnit: CompilationUnit): this.type = {
@@ -630,6 +669,34 @@ object Contexts {
     final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
   }
 
+  /** Test `op` in a fresh context with a typerstate that is not committable.
+   *  The passed context may not survive the operation.
+   */
+   def explore[T](op: Context ?=> T)(using Context): T =
+    util.Stats.record("Context.test")
+    val base = ctx.base
+    import base._
+    val nestedCtx =
+      if testsInUse < testContexts.size then
+        testContexts(testsInUse).reuseIn(ctx)
+      else
+        val ts = TyperState()
+          .setReporter(TestingReporter())
+          .setCommittable(false)
+        val c = FreshContext(ctx.base).init(ctx, ctx).setTyperState(ts)
+        testContexts += c
+        c
+    testsInUse += 1
+    val nestedTS = nestedCtx.typerState
+    nestedTS.init(ctx.typerState, ctx.typerState.constraint)
+    val result =
+      try op(using nestedCtx)
+      finally
+        nestedTS.reporter.asInstanceOf[TestingReporter].reset()
+        testsInUse -= 1
+    result
+  end explore
+
   /** A class defining the initial context with given context base
    *  and set of possible settings.
    */
@@ -637,7 +704,7 @@ object Contexts {
     outer = NoContext
     period = InitialPeriod
     mode = Mode.None
-    typerState = new TyperState(null)
+    typerState = TyperState.initialState()
     owner = NoSymbol
     tree = untpd.EmptyTree
     typeAssigner = TypeAssigner
@@ -782,6 +849,9 @@ object Contexts {
     private[dotc] var indent: Int = 0
 
     protected[dotc] val indentTab: String = "  "
+
+    private[dotc] val testContexts = new mutable.ArrayBuffer[FreshContext]
+    private[dotc] var testsInUse: Int = 0
 
     def reset(): Unit = {
       for ((_, set) <- uniqueSets) set.clear()

@@ -178,7 +178,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case args @ (arg1 :: arg2 :: Nil) =>
         List(arg1, arg2).foreach(fullyDefinedType(_, "eq argument", span))
         if canComparePredefined(arg1, arg2)
-            || !Implicits.strictEquality && ctx.test(validEqAnyArgs(arg1, arg2))
+            || !Implicits.strictEquality && explore(validEqAnyArgs(arg1, arg2))
         then ref(defn.Eql_eqlAny).appliedToTypes(args).withSpan(span)
         else EmptyTree
       case _ => EmptyTree

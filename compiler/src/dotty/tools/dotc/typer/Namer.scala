@@ -24,6 +24,7 @@ import transform.ValueClasses._
 import transform.TypeUtils._
 import transform.SymUtils._
 import reporting.messages._
+import reporting.TestingReporter
 import config.Feature.sourceVersion
 import config.SourceVersion._
 
@@ -813,7 +814,9 @@ class Namer { typer: Typer =>
 
     /** The context with which this completer was created */
     given creationContext as Context = ictx
-    ictx.typerState.markShared()
+
+    // make sure testing contexts are not captured by completers
+    assert(!ictx.reporter.isInstanceOf[TestingReporter])
 
     protected def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>

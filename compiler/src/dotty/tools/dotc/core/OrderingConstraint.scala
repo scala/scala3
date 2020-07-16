@@ -640,14 +640,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     upperMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "upper"))))
   end checkClosed
 
-// ---------- Invalidation -------------------------------------------
-
-  private var retracted = false
-
-  def isRetracted: Boolean = retracted
-
-  def markRetracted(): Unit = retracted = true
-
 // ---------- toText -----------------------------------------------------
 
   override def toText(printer: Printer): Text = {
