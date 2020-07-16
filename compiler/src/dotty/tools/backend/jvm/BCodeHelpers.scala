@@ -13,7 +13,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.Constants._
-import dotty.tools.dotc.core.Contexts.{Context, atPhase}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
@@ -927,7 +927,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     throw new RuntimeException(msg)
   }
 
-  private def compilingArray(using ctx: Context) =
+  private def compilingArray(using Context) =
     ctx.compilationUnit.source.file.name == "Array.scala"
 }
 

@@ -4,7 +4,7 @@ package transform
 import core._
 import DenotTransformers.SymTransformer
 import Phases.Phase
-import Contexts.{Context, ctx}
+import Contexts._
 import Flags._
 import Symbols._
 import SymDenotations.SymDenotation

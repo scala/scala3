@@ -4,7 +4,7 @@ package backend.jvm
 import dotc.ast.Trees.Select
 import dotc.ast.tpd._
 import dotc.core._
-import Contexts.{Context, ctx}
+import Contexts._
 import Names.TermName, StdNames._
 import Types.{JavaArrayType, UnspecifiedErrorType, Type}
 import Symbols.{Symbol, NoSymbol}

@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types._
 

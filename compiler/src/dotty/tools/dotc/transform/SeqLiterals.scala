@@ -3,7 +3,7 @@ package transform
 
 import core._
 import dotty.tools.dotc.transform.MegaPhase._
-import Contexts.{Context, ctx}
+import Contexts._
 
 /** A transformer that eliminates SeqLiteral's, transforming `SeqLiteral(elems)` to an operation
  *  equivalent to

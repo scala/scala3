@@ -327,7 +327,7 @@ class ReifyQuotes extends MacroTransform {
       val idx = embedded.addTree(body, NoSymbol)
 
       /** Remove references to local types that will not be defined in this quote */
-      def getTypeHoleType(using ctx: Context) = new TypeMap() {
+      def getTypeHoleType(using Context) = new TypeMap() {
         override def apply(tp: Type): Type = tp match
           case tp: TypeRef if tp.typeSymbol.isSplice =>
             apply(tp.dealias)
@@ -341,7 +341,7 @@ class ReifyQuotes extends MacroTransform {
       }
 
       /** Remove references to local types that will not be defined in this quote */
-      def getTermHoleType(using ctx: Context) = new TypeMap() {
+      def getTermHoleType(using Context) = new TypeMap() {
         override def apply(tp: Type): Type = tp match
           case tp @ TypeRef(NoPrefix, _) if capturers.contains(tp.symbol) =>
             // reference to term with a type defined in outer quote

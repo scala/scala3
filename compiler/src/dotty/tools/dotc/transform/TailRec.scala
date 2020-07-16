@@ -4,7 +4,7 @@ package transform
 import ast.Trees._
 import ast.{TreeTypeMap, tpd}
 import config.Printers.tailrec
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import core.Constants.Constant
 import core.Decorators._
 import core.Flags._

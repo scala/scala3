@@ -4,7 +4,7 @@ package reporting
 
 import scala.collection.mutable
 import util.SourceFile
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 
 /** This trait implements `isHidden` so that multiple messages per position
   * are suppressed, unless they are of increasing severity. */

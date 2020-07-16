@@ -5,7 +5,7 @@ package init
 import scala.collection.mutable
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import Symbols._
 import reporting.trace
 import config.Printers.init

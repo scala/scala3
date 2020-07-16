@@ -35,7 +35,7 @@ class InlinePatterns extends MiniPhase:
   // by the pattern matcher but are still not visible in that group of phases.
   override def runsAfterGroupsOf: Set[String] = Set(PatternMatcher.name)
 
-  override def transformApply(app: Apply)(using ctx: Context): Tree =
+  override def transformApply(app: Apply)(using Context): Tree =
     if app.symbol.name.isUnapplyName && !app.tpe.isInstanceOf[MethodicType] then
       app match
         case App(Select(fn, name), argss) =>
@@ -52,7 +52,7 @@ class InlinePatterns extends MiniPhase:
         case Apply(App(fn, argss), args) => (fn, argss :+ args)
         case _ => (app, Nil)
 
-  private def betaReduce(tree: Apply, fn: Tree, name: Name, args: List[Tree])(using ctx: Context): Tree =
+  private def betaReduce(tree: Apply, fn: Tree, name: Name, args: List[Tree])(using Context): Tree =
     fn match
       case Block(TypeDef(_, template: Template) :: Nil, Apply(Select(New(_),_), Nil)) if template.constr.rhs.isEmpty =>
         template.body match

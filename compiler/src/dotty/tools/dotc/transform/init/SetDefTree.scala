@@ -4,7 +4,7 @@ package init
 
 import MegaPhase._
 import ast.tpd
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 
 /** Set the `defTree` property of symbols */
 class SetDefTree extends MiniPhase {

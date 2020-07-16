@@ -75,7 +75,7 @@ object GenBCode {
   val name: String = "genBCode"
 }
 
-class GenBCodePipeline(val int: DottyBackendInterface)(using ctx: Context) extends BCodeSyncAndTry {
+class GenBCodePipeline(val int: DottyBackendInterface)(using Context) extends BCodeSyncAndTry {
   import DottyBackendInterface.symExtensions
 
   private var tree: Tree = _

@@ -3,7 +3,7 @@ package transform
 
 import core._
 import DenotTransformers._
-import Contexts.{Context, ctx}
+import Contexts._
 import Phases.phaseOf
 import SymDenotations.SymDenotation
 import Denotations._

@@ -19,7 +19,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.Erasure
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.Spans._
-import dotty.tools.dotc.core.Contexts.{inContext, atPhase}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.report
 

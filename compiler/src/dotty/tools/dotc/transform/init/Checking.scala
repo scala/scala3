@@ -5,7 +5,7 @@ package init
 import scala.collection.mutable
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import ast.tpd._
 import Decorators._
 import Symbols._

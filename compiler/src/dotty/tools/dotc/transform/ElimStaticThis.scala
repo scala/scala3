@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import Flags._
 import dotty.tools.dotc.ast.tpd
 import MegaPhase.MiniPhase

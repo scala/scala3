@@ -3,7 +3,7 @@ package dotc
 package printing
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import util.Property
 import Texts.Text
 

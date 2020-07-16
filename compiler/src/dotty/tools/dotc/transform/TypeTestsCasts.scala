@@ -196,7 +196,7 @@ object TypeTestsCasts {
         def transformIsInstanceOf(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = {
           def testCls = effectiveClass(testType.widen)
 
-          def unreachable(why: => String)(using ctx: Context): Boolean = {
+          def unreachable(why: => String)(using Context): Boolean = {
             if (flagUnrelated)
               if (inMatch) report.error(em"this case is unreachable since $why", expr.sourcePos)
               else report.warning(em"this will always yield false since $why", expr.sourcePos)

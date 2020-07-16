@@ -6,7 +6,7 @@ import Names._
 import NameOps._
 import StdNames._
 import NameTags._
-import Contexts.{Context, ctx}
+import Contexts._
 import collection.mutable
 
 import scala.annotation.internal.sharable

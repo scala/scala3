@@ -2,7 +2,7 @@ package dotty.tools.dotc.semanticdb
 
 import dotty.tools.dotc.core
 import core.Symbols.{ Symbol , defn }
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import core.Names
 import core.Names.Name
 import core.Types.Type

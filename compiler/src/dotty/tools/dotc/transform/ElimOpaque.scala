@@ -5,7 +5,7 @@ import core._
 import dotty.tools.dotc.transform.MegaPhase._
 import Flags._
 import Types._
-import Contexts.{Context, ctx}
+import Contexts._
 import Symbols._
 import Decorators._
 import Denotations.{SingleDenotation, NonSymSingleDenotation}

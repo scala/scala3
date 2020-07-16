@@ -5,7 +5,7 @@ import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicInteger
 
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 
 sealed trait AsyncHelper {
 

@@ -4,7 +4,7 @@ package transform
 import core._
 import MegaPhase._
 import dotty.tools.dotc.ast.tpd._
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StdNames._
 import ast._
 import Trees._

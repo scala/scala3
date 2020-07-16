@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.{Context, ctx}
+import Contexts._
 import Symbols._
 import Types._
 import StdNames._

@@ -197,7 +197,7 @@ object DottyBackendInterface {
    * True if the current compilation unit is of a primitive class (scala.Boolean et al).
    * Used only in assertions.
    */
-  def isCompilingPrimitive(using ctx: Context) = {
+  def isCompilingPrimitive(using Context) = {
     primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
   }
 

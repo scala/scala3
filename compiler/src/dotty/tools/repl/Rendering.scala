@@ -6,7 +6,7 @@ import java.lang.{ ClassLoader, ExceptionInInitializerError }
 import java.lang.reflect.InvocationTargetException
 
 import dotc.ast.tpd
-import dotc.core.Contexts.{Context, ctx}
+import dotc.core.Contexts._
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags
 import dotc.core.Flags._

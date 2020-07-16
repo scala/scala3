@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import Types._
 import MegaPhase._
 import ast.Trees._

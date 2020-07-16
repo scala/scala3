@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import collection.mutable
 import config.Printers.typr
 import Diagnostic._

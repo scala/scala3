@@ -5,7 +5,7 @@ import java.nio.file.{Files, Paths}
 import dotty.tools.FatalError
 import config.CompilerCommand
 import core.Comments.{ContextDoc, ContextDocstrings}
-import core.Contexts.{Context, ContextBase, inContext, ctx}
+import core.Contexts._
 import core.{MacroClassLoader, Mode, TypeError}
 import core.StdNames.nme
 import dotty.tools.dotc.ast.Positioned

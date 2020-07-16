@@ -2090,7 +2090,7 @@ import ast.tpd
            |This mechanism is used for instance in pattern ${hl("case List(x1, ..., xn)")}""".stripMargin
   }
 
-  class MemberWithSameNameAsStatic()(using ctx: Context)
+  class MemberWithSameNameAsStatic()(using Context)
     extends SyntaxMsg(MemberWithSameNameAsStaticID) {
     def msg = em"Companion classes cannot define members with same name as a ${hl("@static")} member"
     def explain = ""
@@ -2105,25 +2105,25 @@ import ast.tpd
           |It can be removed without changing the semantics of the program. This may indicate an error.""".stripMargin
   }
 
-  class TraitCompanionWithMutableStatic()(using ctx: Context)
+  class TraitCompanionWithMutableStatic()(using Context)
     extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
     def msg = em"Companion of traits cannot define mutable @static fields"
     def explain = ""
   }
 
-  class LazyStaticField()(using ctx: Context)
+  class LazyStaticField()(using Context)
     extends SyntaxMsg(LazyStaticFieldID) {
     def msg = em"Lazy @static fields are not supported"
     def explain = ""
   }
 
-  class StaticOverridingNonStaticMembers()(using ctx: Context)
+  class StaticOverridingNonStaticMembers()(using Context)
     extends SyntaxMsg(StaticOverridingNonStaticMembersID) {
     def msg = em"${hl("@static")} members cannot override or implement non-static ones"
     def explain = ""
   }
 
-  class OverloadInRefinement(rsym: Symbol)(using ctx: Context)
+  class OverloadInRefinement(rsym: Symbol)(using Context)
     extends DeclarationMsg(OverloadInRefinementID) {
     def msg = "Refinements cannot introduce overloaded definitions"
     def explain =
@@ -2131,14 +2131,14 @@ import ast.tpd
           |Refinements cannot contain overloaded definitions.""".stripMargin
   }
 
-  class NoMatchingOverload(val alternatives: List[SingleDenotation], pt: Type)(using ctx: Context)
+  class NoMatchingOverload(val alternatives: List[SingleDenotation], pt: Type)(using Context)
     extends TypeMismatchMsg(NoMatchingOverloadID) {
     def msg =
       em"""None of the ${err.overloadedAltsStr(alternatives)}
           |match ${err.expectedTypeStr(pt)}"""
     def explain = ""
   }
-  class StableIdentPattern(tree: untpd.Tree, pt: Type)(using ctx: Context)
+  class StableIdentPattern(tree: untpd.Tree, pt: Type)(using Context)
     extends TypeMsg(StableIdentPatternID) {
     def msg =
       em"""Stable identifier required, but $tree found"""
@@ -2147,7 +2147,7 @@ import ast.tpd
 
   class IllegalSuperAccessor(base: Symbol, memberName: Name,
       acc: Symbol, accTp: Type,
-      other: Symbol, otherTp: Type)(using ctx: Context) extends DeclarationMsg(IllegalSuperAccessorID) {
+      other: Symbol, otherTp: Type)(using Context) extends DeclarationMsg(IllegalSuperAccessorID) {
     def msg = {
       // The mixin containing a super-call that requires a super-accessor
       val accMixin = acc.owner
@@ -2200,7 +2200,7 @@ import ast.tpd
     def explain = ""
   }
 
-  class TraitParameterUsedAsParentPrefix(cls: Symbol)(using ctx: Context)
+  class TraitParameterUsedAsParentPrefix(cls: Symbol)(using Context)
     extends DeclarationMsg(TraitParameterUsedAsParentPrefixID) {
     def msg =
       s"${cls.show} cannot extend from a parent that is derived via its own parameters"
@@ -2215,7 +2215,7 @@ import ast.tpd
           |""".stripMargin
   }
 
-  class UnknownNamedEnclosingClassOrObject(name: TypeName)(using ctx: Context)
+  class UnknownNamedEnclosingClassOrObject(name: TypeName)(using Context)
     extends ReferenceMsg(UnknownNamedEnclosingClassOrObjectID) {
     def msg =
       em"""no enclosing class or object is named '${hl(name.show)}'"""
@@ -2228,7 +2228,7 @@ import ast.tpd
       """.stripMargin
     }
 
-  class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(using ctx: Context)
+  class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(using Context)
     extends CyclicMsg(IllegalCyclicTypeReferenceID) {
     def msg =
       val lastCheckedStr =
@@ -2238,7 +2238,7 @@ import ast.tpd
     def explain = ""
   }
 
-  class ErasedTypesCanOnlyBeFunctionTypes()(using ctx: Context)
+  class ErasedTypesCanOnlyBeFunctionTypes()(using Context)
     extends SyntaxMsg(ErasedTypesCanOnlyBeFunctionTypesID) {
     def msg = "Types with erased keyword can only be function types `(erased ...) => ...`"
     def explain = ""

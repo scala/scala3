@@ -4,7 +4,7 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.{Context, ctx, atPhase}
+import Contexts._
 import Flags._
 import SymUtils._
 import Symbols._

@@ -7,7 +7,7 @@ import StdNames.{nme, tpnme}
 import Types._
 import dotty.tools.dotc.transform.MegaPhase._
 import Flags._
-import Contexts.{Context, ctx}
+import Contexts._
 import Symbols._
 import Constants._
 import Decorators._

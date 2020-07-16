@@ -3,7 +3,7 @@ package transform
 
 import core._
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
-import Contexts.{Context, ctx}
+import Contexts._
 import Symbols._
 import Flags._
 import SymDenotations._

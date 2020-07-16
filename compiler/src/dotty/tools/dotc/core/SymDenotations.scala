@@ -300,7 +300,7 @@ object SymDenotations {
      *  Makes use of `rawParamss` when present, or constructs fresh parameter symbols otherwise.
      *  This method can be allocation-heavy.
      */
-    final def paramSymss(using ctx: Context): List[List[Symbol]] =
+    final def paramSymss(using Context): List[List[Symbol]] =
 
       def recurWithParamss(info: Type, paramss: List[List[Symbol]]): List[List[Symbol]] =
         info match
@@ -1446,7 +1446,7 @@ object SymDenotations {
       privateWithin: Symbol = null,
       annotations: List[Annotation] = null,
       rawParamss: List[List[Symbol]] = null)(
-        using ctx: Context): SymDenotation = {
+        using Context): SymDenotation = {
       // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
       val info1 = if (info != null) info else this.info

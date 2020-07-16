@@ -4,7 +4,7 @@ package util
 import ast.Trees._
 import ast.tpd
 import core.Constants.Constant
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import core.Denotations.SingleDenotation
 import core.Flags.Implicit
 import core.Names.TermName

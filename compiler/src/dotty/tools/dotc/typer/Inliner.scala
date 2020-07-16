@@ -13,7 +13,7 @@ import Constants._
 import StagingContext._
 import StdNames._
 import transform.SymUtils._
-import Contexts.{Context, inContext, ctx}
+import Contexts._
 import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName, BodyRetainerName}
 import ProtoTypes.selectionProto

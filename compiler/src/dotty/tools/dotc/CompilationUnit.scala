@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import SymDenotations.ClassDenotation
 import Symbols._
 import util.{FreshNameCreator, SourceFile, NoSource}

@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Constants.Constant
-import Contexts.{Context, ctx}
+import Contexts._
 import Flags._
 import Definitions._
 import DenotTransformers._

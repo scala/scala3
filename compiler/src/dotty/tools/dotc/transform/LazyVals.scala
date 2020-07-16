@@ -6,7 +6,7 @@ import java.util.IdentityHashMap
 import ast.tpd
 import core.Annotations.Annotation
 import core.Constants.Constant
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import core.Decorators._
 import core.DenotTransformers.IdentityDenotTransformer
 import core.Flags._

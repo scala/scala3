@@ -9,7 +9,7 @@ import java.io.IOException
 import scala.internal.Chars._
 import Spans._
 import scala.io.Codec
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import scala.annotation.internal.sharable
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable

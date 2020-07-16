@@ -3,7 +3,7 @@ package transform
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._

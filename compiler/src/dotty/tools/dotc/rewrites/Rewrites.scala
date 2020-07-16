@@ -3,7 +3,7 @@ package rewrites
 
 import util.{SourceFile, Spans}
 import Spans.Span
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import collection.mutable
 import scala.annotation.tailrec
 import dotty.tools.dotc.reporting.Reporter
