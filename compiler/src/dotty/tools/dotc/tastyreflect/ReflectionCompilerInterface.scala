@@ -6,7 +6,7 @@ import dotty.tools.dotc.ast.{TreeTypeMap, Trees, tpd, untpd}
 import dotty.tools.dotc.typer.{Implicits, Typer}
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Contexts.{ctx, CState}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.core.Symbols._
