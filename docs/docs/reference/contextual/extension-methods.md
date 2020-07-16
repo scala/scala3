@@ -30,9 +30,11 @@ def extension_circumference(c: Circle): Double = c.radius * math.Pi * 2
 
 assert(circle.circumference == extension_circumference(circle))
 ```
+
 ### Operators
 
 The extension method syntax can also be used to define operators. Examples:
+
 ```scala
 extension (x: String)
   def < (y: String): Boolean = ...
@@ -47,11 +49,13 @@ x min 3
 ```
 
 The three definitions above translate to
+
 ```scala
 def extension_< (x: String)(y: String): Boolean = ...
 def extension_+: (xs: Seq[Elem])(x: Elem): Seq[Elem] = ...
 @infix def extension_min(x: Number)(y: Number): Number = ...
 ```
+
 Note the swap of the two parameters `x` and `xs` when translating
 the right-associative operator `+:` to an extension method. This is analogous
 to the implementation of right binding operators as normal methods. The Scala
@@ -61,28 +65,30 @@ the two swaps cancel each other out).
 
 ### Generic Extensions
 
- It is also possible to extend generic types by adding type parameters to an extension. For instance:
+It is also possible to extend generic types by adding type parameters to an extension. For instance:
 
- ```scala
-  extension [T](xs: List[T])
-    def second = xs.tail.head
+```scala
+extension [T](xs: List[T])
+  def second = xs.tail.head
 
-  extension [T: Numeric](x: T)
-    def + (y: T): T = summon[Numeric[T]].plus(x, y)
+extension [T: Numeric](x: T)
+  def + (y: T): T = summon[Numeric[T]].plus(x, y)
 ```
 
 If an extension method has type parameters, they come immediately after `extension` and are followed by the extended parameter.
 When calling a generic extension method, any explicitly given type arguments follow the method name. So the `second` method could be instantiated as follows.
+
 ```scala
-  List(1, 2, 3).second[Int]
+List(1, 2, 3).second[Int]
 ```
+
 Of course, the type argument here would usually be left out since it can be inferred.
 
-
 Extensions can also take using clauses. For instance, the `+` extension above could equivalently be written with a using clause:
+
 ```scala
-  extension [T](x: T)(using n: Numeric[T])
-    def - (y: T): T = n.minus(x, y)
+extension [T](x: T)(using n: Numeric[T])
+  def + (y: T): T = n.plus(x, y)
 ```
 
 **Note**: Type parameters have to be given after the `extension` keyword;
@@ -94,6 +100,7 @@ Sometimes, one wants to define several extension methods that share the same
 left-hand parameter type. In this case one can "pull out" the common parameters into
 a single extension and enclose all methods in braces or an indented region following a '`:`'.
 Example:
+
 ```scala
 extension (ss: Seq[String])
 
@@ -109,6 +116,7 @@ assuming the common extended value `ss` as receiver.
 
 Collective extensions like these are a shorthand for individual extensions
 where each method is defined separately. For instance, the first extension above expands to
+
 ```scala
 extension (ss: Seq[String])
   def longestStrings: Seq[String] =
@@ -118,7 +126,9 @@ extension (ss: Seq[String])
 extension (ss: Seq[String])
   def longestString: String = ss.longestStrings.head
 ```
+
 Collective extensions also can take type parameters and have using clauses. Example
+
 ```scala
 extension [T](xs: List[T])(using Ordering[T])
   def smallest(n: Int): List[T] = xs.sorted.take(n)
@@ -167,7 +177,9 @@ trait SafeDiv:
       case (Some(d), Some(r)) => Some((d, r))
       case _ => None
 ```
+
 By the second rule, an extension method can be made available by defining a given instance containing it, like this:
+
 ```scala
 given ops1 as IntOps // brings safeMod into scope
 
@@ -175,6 +187,7 @@ given ops1 as IntOps // brings safeMod into scope
 ```
 
 By the third and fourth rule, an extension method is available if it is in the implicit scope of the receiver type or in a given instance in that scope. Example:
+
 ```scala
 class List[T]:
   ...
@@ -204,9 +217,9 @@ Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type ar
  2. If the first rewriting does not typecheck with expected type `T`,
     and there is an extension method `m` in some eligible object `o`, the selection is rewritten to `o.extension_m[Ts](e)`. An object `o` is _eligible_ if
 
-     - `o` forms part of the implicit scope of `T`, or
-     - `o` is a given instance that is visible at the point of the application, or
-     - `o` is a given instance in the implicit scope of `T`.
+    - `o` forms part of the implicit scope of `T`, or
+    - `o` is a given instance that is visible at the point of the application, or
+    - `o` is a given instance in the implicit scope of `T`.
 
     This second rewriting is attempted at the time where the compiler also tries an implicit conversion
     from `T` to a type containing `m`. If there is more than one way of rewriting, an ambiguity error results.
@@ -214,43 +227,48 @@ Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type ar
 An extension method can also be used as an identifier by itself. If an identifier `m` does not
 resolve, the identifier is rewritten to:
 
-  - `x.m`    if the identifier appears in an extension with parameter `x`
-  - `this.m` otherwise
+- `x.m`    if the identifier appears in an extension with parameter `x`
+- `this.m` otherwise
 
 and the rewritten term is again tried as an application of an extension method. Example:
+
 ```scala
-  extension (s: String)
-    def position(ch: Char, n: Int): Int =
-      if n < s.length && s(n) != ch then position(ch, n + 1)
-      else n
+extension (s: String)
+  def position(ch: Char, n: Int): Int =
+    if n < s.length && s(n) != ch then position(ch, n + 1)
+    else n
 ```
+
 The recursive call `position(ch, n + 1)` expands to `s.position(ch, n + 1)` in this case. The whole extension method rewrites to
+
 ```scala
 def extension_position(s: String)(ch: Char, n: Int): Int =
   if n < s.length && s(n) != ch then extension_position(s)(ch, n + 1)
   else n
 ```
+
 ### More Details
 
 1. To avoid confusion, names of normal methods are not allowed to start with `extension_`.
 
-2. A named import such as `import a.m` of an extension method in `a` will make `m`
-only available as an extension method. To access it under
-`extension_m` that name as to be imported separately. Example:
-```scala
-object DoubleOps:
-  extension (x: Double) def ** (exponent: Int): Double =
-    require(exponent > 0)
-    if exponent == 0 then 1 else x * (x ** (exponent - 1))
+2. A named import such as `import a.m` of an extension method in `a` will make `m` only available as an extension method.
+   To access it under `extension_m` that name as to be imported separately. Example:
 
-import DoubleOps.{**, extension_**}
-assert(2.0 ** 3 == extension_**(2.0)(3))
-```
+   ```scala
+   object DoubleOps:
+     extension (x: Double) def ** (exponent: Int): Double =
+       require(exponent >= 0)
+       if exponent == 0 then 1 else x * (x ** (exponent - 1))
+  
+   import DoubleOps.{**, extension_**}
+   assert(2.0 ** 3 == extension_**(2.0)(3))
+   ```
 
 ### Syntax
 
 Here are the syntax changes for extension methods and collective extensions relative
 to the [current syntax](../../internals/syntax.md).
+
 ```
 BlockStat         ::=  ... | Extension
 TemplateStat      ::=  ... | Extension
@@ -260,6 +278,7 @@ Extension         ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘
 ExtMethods        ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}’
 ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
 ```
+
 `extension` is a soft keyword. It is recognized as a keyword only if it appears
 at the start of a statement and is followed by `[` or `(`. In all other cases
 it is treated as an identifier.
