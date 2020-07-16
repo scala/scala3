@@ -209,6 +209,17 @@ object PrepareInlineable {
     if original.mods.hasMod(classOf[untpd.Mod.Transparent]) then rhs
     else Typed(rhs, tpt)
 
+  /** Return result of evaluating `op`, but drop `Inline` flag and `Body` annotation
+   *  of `sym` in case that leads to errors.
+   */
+  def dropInlineIfError(sym: Symbol, op: => Tree)(using Context): Tree =
+    val initialErrorCount = ctx.reporter.errorCount
+    try op
+    finally
+      if ctx.reporter.errorCount != initialErrorCount then
+        sym.resetFlag(Inline)
+        sym.removeAnnotation(defn.BodyAnnot)
+
   /** Register inline info for given inlineable method `sym`.
    *
    *  @param sym         The symbol denotation of the inlineable method for which info is registered
@@ -227,21 +238,18 @@ object PrepareInlineable {
           val inlineCtx = ctx
           inlined.updateAnnotation(LazyBodyAnnotation {
             given ctx as Context = inlineCtx
-            val initialErrorCount = ctx.reporter.errorCount
-            var inlinedBody = treeExpr
-            if (ctx.reporter.errorCount == initialErrorCount) {
-              inlinedBody = ctx.compilationUnit.inlineAccessors.makeInlineable(inlinedBody)
-              checkInlineMethod(inlined, inlinedBody)
-              if (ctx.reporter.errorCount != initialErrorCount)
-                inlinedBody = EmptyTree
-            }
+            var inlinedBody = dropInlineIfError(inlined, treeExpr)
+            if inlined.isInlineMethod then
+              inlinedBody = dropInlineIfError(inlined,
+                checkInlineMethod(inlined,
+                  ctx.compilationUnit.inlineAccessors.makeInlineable(inlinedBody)))
             inlining.println(i"Body to inline for $inlined: $inlinedBody")
             inlinedBody
           })
         }
     }
 
-  def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): Unit = {
+  def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): body.type = {
     if (inlined.owner.isClass && inlined.owner.seesOpaques)
       ctx.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.sourcePos)
     if Inliner.inInlineMethod(using ctx.outer) then
@@ -278,5 +286,6 @@ object PrepareInlineable {
       }
       checkMacro(body)
     }
+    body
   }
 }

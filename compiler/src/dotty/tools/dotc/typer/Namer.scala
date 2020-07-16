@@ -1492,7 +1492,8 @@ class Namer { typer: Typer =>
         rhsCtx.setFreshGADTBounds
         rhsCtx.gadt.addToConstraint(typeParams)
       }
-      def rhsType = typedAheadExpr(mdef.rhs, (inherited orElse rhsProto).widenExpr)(using rhsCtx).tpe
+      def rhsType = PrepareInlineable.dropInlineIfError(sym,
+        typedAheadExpr(mdef.rhs, (inherited orElse rhsProto).widenExpr)(using rhsCtx)).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.
       val deskolemize = new ApproximatingTypeMap {
