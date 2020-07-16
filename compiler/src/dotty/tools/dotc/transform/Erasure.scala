@@ -20,6 +20,7 @@ import core.Annotations.BodyAnnotation
 import typer.{NoChecking, LiftErased}
 import typer.Inliner
 import typer.ProtoTypes._
+import typer.ErrorReporting.errorTree
 import core.TypeErasure._
 import core.Decorators._
 import dotty.tools.dotc.ast.{tpd, untpd}
@@ -684,24 +685,52 @@ object Erasure {
           qual
       }
 
+      /** Can we safely use `cls` as a qualifier without getting a runtime error on
+       *  the JVM due to its accessibility checks?
+       */
+      def isJvmAccessible(cls: Symbol): Boolean =
+        // Scala classes are always emitted as public, unless the
+        // `private` modifier is used, but a non-private class can never
+        // extend a private class, so such a class will never be a cast target.
+        !cls.is(Flags.JavaDefined) || {
+          // We can't rely on `isContainedWith` here because packages are
+          // not nested from the JVM point of view.
+          val boundary = cls.accessBoundary(cls.owner)(using preErasureCtx)
+          (boundary eq defn.RootClass) ||
+          (ctx.owner.enclosingPackageClass eq boundary)
+        }
+
       def recur(qual: Tree): Tree = {
         val qualIsPrimitive = qual.tpe.widen.isPrimitiveValueType
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
+
+        def originalQual: Type =
+          erasure(tree.qualifier.typeOpt.widen.finalResultType)
+
         if (qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType)
           recur(box(qual))
         else if (!qualIsPrimitive && symIsPrimitive)
           recur(unbox(qual, sym.owner.typeRef))
         else if (sym.owner eq defn.ArrayClass)
-          selectArrayMember(qual, erasure(tree.qualifier.typeOpt.widen.finalResultType))
+          selectArrayMember(qual, originalQual)
         else {
           val qual1 = adaptIfSuper(qual)
           if (qual1.tpe.derivesFrom(sym.owner) || qual1.isInstanceOf[Super])
             select(qual1, sym)
           else
             val castTarget = // Avoid inaccessible cast targets, see i8661
-              if sym.owner.isAccessibleFrom(qual1.tpe)(using preErasureCtx)
-              then sym.owner.typeRef
-              else erasure(tree.qualifier.typeOpt.widen)
+              if isJvmAccessible(sym.owner)
+              then
+                sym.owner.typeRef
+              else
+                // If the owner is inaccessible, try going through the qualifier,
+                // but be careful to not go in an infinite loop in case that doesn't
+                // work either.
+                val tp = originalQual
+                if tp =:= qual1.tpe.widen then
+                  return errorTree(qual1,
+                    ex"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
+                tp
             recur(cast(qual1, castTarget))
         }
       }
