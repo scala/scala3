@@ -82,7 +82,7 @@ object DottyPredef {
    *
    *  Note that `.nn` performs a checked cast, so if invoked on a null value it'll throw an NPE.
    */
-  def[T] (x: T|Null) nn: x.type & T =
+  extension [T](x: T | Null) def nn: x.type & T =
     if (x == null) throw new NullPointerException("tried to cast away nullability, but value is null")
     else x.asInstanceOf[x.type & T]
 }

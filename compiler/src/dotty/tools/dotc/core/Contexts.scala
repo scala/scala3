@@ -603,15 +603,17 @@ object Contexts {
     def setDebug: this.type = setSetting(base.settings.Ydebug, true)
   }
 
-  extension ops on (c: Context):
-    def addNotNullInfo(info: NotNullInfo) =
-      c.withNotNullInfos(c.notNullInfos.extendWith(info))
+  given ops as AnyRef:
+    extension (c: Context):
+      def addNotNullInfo(info: NotNullInfo) =
+        c.withNotNullInfos(c.notNullInfos.extendWith(info))
 
-    def addNotNullRefs(refs: Set[TermRef]) =
-      c.addNotNullInfo(NotNullInfo(refs, Set()))
+      def addNotNullRefs(refs: Set[TermRef]) =
+        c.addNotNullInfo(NotNullInfo(refs, Set()))
 
-    def withNotNullInfos(infos: List[NotNullInfo]): Context =
-      if c.notNullInfos eq infos then c else c.fresh.setNotNullInfos(infos)
+      def withNotNullInfos(infos: List[NotNullInfo]): Context =
+        if c.notNullInfos eq infos then c else c.fresh.setNotNullInfos(infos)
+  end ops
 
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
   implicit class ModeChanges(val c: Context) extends AnyVal {
