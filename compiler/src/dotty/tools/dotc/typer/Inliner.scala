@@ -421,7 +421,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     val (bindingFlags, bindingType) =
       if (isByName) (inlineFlags, ExprType(argtpe.widen))
       else (inlineFlags, argtpe.widen)
-    val boundSym = newSym(name, bindingFlags, bindingType).asTerm
+    val boundSym = newSym(InlineBinderName.fresh(name.asTermName), bindingFlags, bindingType).asTerm
     val binding = {
       if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))
       else ValDef(boundSym, arg)

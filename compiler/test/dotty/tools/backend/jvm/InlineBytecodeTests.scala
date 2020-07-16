@@ -424,7 +424,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
-      val expected = List(Invoke(INVOKESTATIC, "Foo", "f$1", "()V", false), Op(RETURN))
+      val expected = List(Invoke(INVOKESTATIC, "Foo", "f$proxy1$1", "()V", false), Op(RETURN))
       assert(instructions == expected,
         "`inlined` was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
 

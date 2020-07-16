@@ -3,11 +3,11 @@ Normal function
   var i: scala.Int = 0
   val j: scala.Int = 5
   while (i.<(j)) {
-    f.apply(i)
+    f$proxy1.apply(i)
     i = i.+(1)
   }
   while ({
-    f.apply(i)
+    f$proxy1.apply(i)
     i = i.+(1)
     i.<(j)
   }) ()
@@ -18,11 +18,11 @@ By name function
   var i: scala.Int = 0
   val j: scala.Int = 5
   while (i.<(j)) {
-    f.apply(i)
+    f$proxy2.apply(i)
     i = i.+(1)
   }
   while ({
-    f.apply(i)
+    f$proxy2.apply(i)
     i = i.+(1)
     i.<(j)
   }) ()
