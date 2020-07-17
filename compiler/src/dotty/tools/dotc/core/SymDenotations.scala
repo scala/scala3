@@ -1153,7 +1153,7 @@ object SymDenotations {
 
     final def scalacLinkedClass(using Context): Symbol =
       if (this.is(ModuleClass)) companionNamed(effectiveName.toTypeName)
-      else if (this.isClass) companionNamed(effectiveName.moduleClassName).sourceModule.moduleClass
+      else if (this.isClass) companionNamed(effectiveName.moduleClassName)
       else NoSymbol
 
     /** Find companion class symbol with given name, or NoSymbol if none exists.
