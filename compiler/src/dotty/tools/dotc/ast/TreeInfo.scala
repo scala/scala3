@@ -887,7 +887,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       if tree.symbol.isSplice then Some(tree.args.head) else None
   }
 
-  /** Extractors for splices */
+  /** Extractors for type splices */
   object SplicedType {
     /** Extracts the content of a spliced type tree.
       *  The result can be the contents of a type splice, which
