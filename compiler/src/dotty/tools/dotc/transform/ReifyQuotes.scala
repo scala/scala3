@@ -187,13 +187,10 @@ class ReifyQuotes extends MacroTransform {
      *  and make a hole from these parts. Otherwise issue an error, unless we
      *  are in the body of an inline method.
      */
-    protected def transformSplice(body: Tree, splice: Tree)(using Context): Tree =
+    protected def transformSplice(body: Tree, splice: Apply)(using Context): Tree =
       if (level > 1) {
         val body1 = nested(isQuote = false).transform(body)(using spliceContext)
-        splice match {
-          case splice: Apply => cpy.Apply(splice)(splice.fun, body1 :: Nil)
-          case splice: Select => cpy.Select(splice)(body1, splice.name)
-        }
+        cpy.Apply(splice)(splice.fun, body1 :: Nil)
       }
       else {
         assert(level == 1, "unexpected top splice outside quote")
@@ -204,8 +201,24 @@ class ReifyQuotes extends MacroTransform {
         // enclosing quote. Any intemediate splice will add it's own Inlined node and cancel it before splicig the lifted tree.
         // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions.
         // For example we can have a lifted tree containing the LHS of an assignment (see tests/run-with-compiler/quote-var.scala).
-        if (splice.isType || outer.embedded.isLiftedSymbol(body.symbol)) hole
+        if (outer.embedded.isLiftedSymbol(body.symbol)) hole
         else Inlined(EmptyTree, Nil, hole).withSpan(splice.span)
+      }
+
+     /** If inside a quote, split the body of the splice into a core and a list of embedded quotes
+     *  and make a hole from these parts. Otherwise issue an error, unless we
+     *  are in the body of an inline method.
+     */
+     protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree =
+      if (level > 1) {
+        val body1 = nested(isQuote = false).transform(body)(using spliceContext)
+        cpy.Select(splice)(body1, splice.name)
+      }
+      else {
+        assert(level == 1, "unexpected top splice outside quote")
+        val (body1, quotes) = nested(isQuote = false).splitSplice(body)(using spliceContext)
+        val tpe = outer.embedded.getHoleType(body, splice)
+        makeHole(splice.isTerm, body1, quotes, tpe).withSpan(splice.span)
       }
 
     /** Transforms the contents of a nested splice
@@ -356,11 +369,11 @@ class ReifyQuotes extends MacroTransform {
             capturers(body.symbol)(body)
           case tree: RefTree if isCaptured(tree.symbol, level) =>
             val body = capturers(tree.symbol).apply(tree)
-            val splice: Tree =
-              if (tree.isType) body.select(tpnme.splice)
-              else ref(defn.InternalQuoted_exprSplice).appliedToType(tree.tpe).appliedTo(body)
-
-            transformSplice(body, splice)
+            if (tree.isType)
+              transformSpliceType(body, body.select(tpnme.splice))
+            else
+              val splice = ref(defn.InternalQuoted_exprSplice).appliedToType(tree.tpe).appliedTo(body).asInstanceOf[Apply]
+              transformSplice(body, splice)
 
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
             // Shrink size of the tree. The methods have already been inlined.

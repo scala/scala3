@@ -123,23 +123,26 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  - If inside inlined code, expand the macro code.
    *  - If inside of a macro definition, check the validity of the macro.
    */
-  protected def transformSplice(body: Tree, splice: Tree)(using Context): Tree = {
+  protected def transformSplice(body: Tree, splice: Apply)(using Context): Tree = {
     val body1 = transform(body)(using spliceContext)
-    splice match {
-      case Apply(fun @ TypeApply(_, _ :: Nil), _) if splice.isTerm =>
+    splice.fun match {
+      case fun @ TypeApply(_, _ :: Nil) =>
         // Type of the splice itsel must also be healed
         // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
         val tp = healType(splice.sourcePos)(splice.tpe.widenTermRefExpr)
         cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
-      case Apply(f @ Apply(fun @ TypeApply(_, _), qctx :: Nil), _) if splice.isTerm =>
+      case f @ Apply(fun @ TypeApply(_, _), qctx :: Nil) =>
         // Type of the splice itsel must also be healed
         // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
         val tp = healType(splice.sourcePos)(splice.tpe.widenTermRefExpr)
         cpy.Apply(splice)(cpy.Apply(f)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), qctx :: Nil), body1 :: Nil)
-      case splice: Select =>
-        val tagRef = getQuoteTypeTags.getTagRef(splice.qualifier.tpe.asInstanceOf[TermRef])
-        ref(tagRef).withSpan(splice.span)
     }
+  }
+
+  protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree = {
+    val body1 = transform(body)(using spliceContext)
+    val tagRef = getQuoteTypeTags.getTagRef(splice.qualifier.tpe.asInstanceOf[TermRef])
+    ref(tagRef).withSpan(splice.span)
   }
 
   /** Check that annotations do not contain quotes and and that splices are valid */

@@ -1450,6 +1450,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             level -= 1
             try apply(syms, body)
             finally level += 1
+          case SplicedType(body) =>
+            level -= 1
+            try apply(syms, body)
+            finally level += 1
           case _ =>
             foldOver(syms, tree)
         }
