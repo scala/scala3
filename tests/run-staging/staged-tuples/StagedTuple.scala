@@ -132,7 +132,7 @@ object StagedTuple {
     else {
       def fallbackApply(): Expr[Elem[Tup, N]] = nValue match {
         case Some(n) =>
-          Reporting.error("index out of bounds: " + n, tup)
+          report.error("index out of bounds: " + n, tup)
           '{ throw new IndexOutOfBoundsException(${Expr(n.toString)}) }
         case None => '{scala.runtime.Tuple.apply($tup, $n)}.as[Elem[Tup, N]]
       }

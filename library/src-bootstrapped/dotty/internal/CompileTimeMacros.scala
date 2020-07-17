@@ -8,4 +8,4 @@ object CompileTimeMacros:
       case (Expr.StringContext(Consts(parts)), Varargs(args2)) =>
         Expr(StringContext(parts: _*).s(args2.map(_.show): _*))
       case _ =>
-        Reporting.throwError("compiletime.code must be used as a string interpolator `code\"...\"`")
+        report.throwError("compiletime.code must be used as a string interpolator `code\"...\"`")

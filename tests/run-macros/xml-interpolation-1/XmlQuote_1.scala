@@ -48,7 +48,7 @@ object XmlQuote {
              values.forall(isStringConstant) =>
         values.collect { case Literal(Constant(value: String)) => value }
       case tree =>
-        Reporting.error(s"String literal expected, but ${tree.showExtractors} found")
+        report.error(s"String literal expected, but ${tree.showExtractors} found")
         return '{ ??? }
     }
 

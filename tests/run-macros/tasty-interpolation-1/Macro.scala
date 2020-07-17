@@ -1,7 +1,7 @@
 
 import scala.quoted._
 import scala.language.implicitConversions
-import scala.quoted.Reporting.error
+import scala.quoted.report.error
 
 object Macro {
 
