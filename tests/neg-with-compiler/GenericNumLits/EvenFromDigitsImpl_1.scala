@@ -9,7 +9,7 @@ object EvenFromDigitsImpl:
         try evenFromDigits(ds)
         catch {
           case ex: FromDigits.FromDigitsException =>
-            Reporting.error(ex.getMessage)
+            report.error(ex.getMessage)
             Even(0)
         }
       '{Even(${Expr(ev.n)})}

@@ -63,12 +63,12 @@ object StringContextMacro {
 
     val (partsExpr, parts) = strCtxExpr match {
       case Expr.StringContext(p1 @ Consts(p2)) => (p1.toList, p2.toList)
-      case _ => Reporting.throwError("Expected statically known String Context", strCtxExpr)
+      case _ => report.throwError("Expected statically known String Context", strCtxExpr)
     }
 
     val args = argsExpr match {
       case Varargs(args) => args
-      case _ => Reporting.throwError("Expected statically known argument list", argsExpr)
+      case _ => report.throwError("Expected statically known argument list", argsExpr)
     }
 
     val reporter = new Reporter{

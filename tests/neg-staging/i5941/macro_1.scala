@@ -33,7 +33,7 @@ object Lens {
           apply($getter)(setter)
         }
       case _ =>
-        Reporting.error("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
+        report.error("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
         '{???}
     }
   }

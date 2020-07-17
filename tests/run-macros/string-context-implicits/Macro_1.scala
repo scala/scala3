@@ -11,14 +11,14 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
           val showTp = '[Show[$tp]]
           Expr.summon(using showTp) match {
             case Some(showExpr) => '{ $showExpr.show($arg) }
-            case None => Reporting.error(s"could not find implicit for ${showTp.show}", arg); '{???}
+            case None => report.error(s"could not find implicit for ${showTp.show}", arg); '{???}
           }
       }
       val newArgsExpr = Varargs(argShowedExprs)
       '{ $sc.s($newArgsExpr: _*) }
     case _ =>
       // `new StringContext(...).showMeExpr(args: _*)` not an explicit `showMeExpr"..."`
-      Reporting.error(s"Args must be explicit", argsExpr)
+      report.error(s"Args must be explicit", argsExpr)
       '{???}
   }
 }

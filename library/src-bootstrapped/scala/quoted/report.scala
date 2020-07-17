@@ -1,6 +1,6 @@
 package scala.quoted
 
-object Reporting {
+object report:
 
   /** Report an error at the position of the macro expansion */
   def error(msg: => String)(using qctx: QuoteContext): Unit =
@@ -32,4 +32,7 @@ object Reporting {
   /** Throwable used to stop the expansion of a macro after an error was reported */
   class StopQuotedContext extends Throwable
 
-}
+end report
+
+@deprecated("Use scala.quoted.report", "")
+def Reporting: report.type = report
