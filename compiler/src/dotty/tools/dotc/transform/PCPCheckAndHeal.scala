@@ -270,13 +270,13 @@ object PCPCheckAndHeal {
 
     private def mkTagSymbolAndAssignType(spliced: TermRef): TypeDef = {
       val splicedTree = tpd.ref(spliced).withSpan(span)
-      val rhs = splicedTree.select(tpnme.splice).withSpan(span)
+      val rhs = splicedTree.select(tpnme.spliceType).withSpan(span)
       val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs, EmptyTree)
       val local = ctx.newSymbol(
         owner = ctx.owner,
         name = UniqueName.fresh((splicedTree.symbol.name.toString + "$_").toTermName).toTypeName,
         flags = Synthetic,
-        info = TypeAlias(splicedTree.tpe.select(tpnme.splice)),
+        info = TypeAlias(splicedTree.tpe.select(tpnme.spliceType)),
         coord = span).asType
       local.addAnnotation(Annotation(defn.InternalQuoted_QuoteTypeTagAnnot))
       ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)

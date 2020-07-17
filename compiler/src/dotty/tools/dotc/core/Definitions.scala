@@ -710,7 +710,7 @@ class Definitions {
     @tu lazy val InternalQuotedType_unapply: Symbol = InternalQuotedTypeModule.requiredMethod(nme.unapply)
 
   @tu lazy val QuotedTypeClass: ClassSymbol = ctx.requiredClass("scala.quoted.Type")
-    @tu lazy val QuotedType_splice: Symbol = QuotedTypeClass.requiredType(tpnme.splice)
+    @tu lazy val QuotedType_splice: Symbol = QuotedTypeClass.requiredType(tpnme.spliceType)
 
   @tu lazy val QuotedTypeModule: Symbol = QuotedTypeClass.companionModule
 

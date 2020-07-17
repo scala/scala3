@@ -3,8 +3,8 @@ package scala.quoted
 import scala.quoted.show.SyntaxHighlight
 
 /** Quoted type (or kind) `T` */
-abstract class Type[T <: AnyKind] private[scala] {
-  type `$splice` = T
+abstract class Type[X <: AnyKind] private[scala] {
+  type T = X
 
   /** Show a source code like representation of this type without syntax highlight */
   def show(using qctx: QuoteContext): String =
