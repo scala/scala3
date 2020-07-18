@@ -18,7 +18,7 @@ import reporting.Reporter
 import rewrites.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
 
-import profile.Profiler
+//import profile.Profiler
 import printing.XprintMode
 import parsing.Parsers.Parser
 import parsing.JavaParsers.JavaParser
@@ -171,15 +171,15 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
     def runPhases(using Context) = {
       var lastPrintedTree: PrintedTree = NoPrintedTree
-      val profiler = ctx.profiler
+      //val profiler = ctx.profiler
 
       for (phase <- ctx.base.allPhases)
         if (phase.isRunnable)
           Stats.trackTime(s"$phase ms ") {
             val start = System.currentTimeMillis
-            val profileBefore = profiler.beforePhase(phase)
+            //val profileBefore = profiler.beforePhase(phase)
             units = phase.runOn(units)
-            profiler.afterPhase(phase, profileBefore)
+            //profiler.afterPhase(phase, profileBefore)
             if (ctx.settings.Xprint.value.containsPhase(phase))
               for (unit <- units)
                 lastPrintedTree =
@@ -190,11 +190,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
               Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
           }
 
-      profiler.finished()
+      //profiler.finished()
     }
 
     val runCtx = ctx.fresh
-    runCtx.setProfiler(Profiler())
+    //runCtx.setProfiler(Profiler())
     curPhases.foreach(_.initContext(runCtx))
     runPhases(using runCtx)
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
