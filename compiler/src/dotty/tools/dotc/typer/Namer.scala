@@ -593,6 +593,9 @@ class Namer { typer: Typer =>
   def setDocstring(sym: Symbol, tree: Tree)(using Context): Unit = tree match {
     case t: MemberDef if t.rawComment.isDefined =>
       ctx.docCtx.foreach(_.addDocstring(sym, t.rawComment))
+    case t: ExtMethods =>
+      for meth <- t.methods.find(_.span.point == sym.span.point) do
+        setDocstring(sym, meth)
     case _ => ()
   }
 
