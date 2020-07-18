@@ -111,7 +111,7 @@ object CompilationUnit {
         NoSource
       }
       else source
-    new CompilationUnit(source)
+    new CompilationUnit(src)
   }
 
   /** Force the tree to be loaded */
