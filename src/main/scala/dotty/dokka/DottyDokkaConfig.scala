@@ -12,7 +12,7 @@ case class DottyDokkaConfig(paths: String*) extends DokkaConfiguration:
   override def getOfflineMode: Boolean = false
   override def getFailOnWarning: Boolean = false
   override def getSourceSets: JList[DokkaConfiguration.DokkaSourceSet] = List(mkSourceSet).asJava
-  override def getModules: JList[DokkaConfiguration.DokkaModuleDescription] = List(FakeDottyDokkaModule).asJava
+  override def getModules: JList[DokkaConfiguration.DokkaModuleDescription] = List().asJava
   override def getPluginsClasspath: JList[File] = Nil.asJava
   override def getPluginsConfiguration: JMap[String, String] = Map("dotty.dokka.DottyDokkaPlugin" -> "dottydoc").asJava
 
@@ -24,7 +24,7 @@ case class DottyDokkaConfig(paths: String*) extends DokkaConfiguration:
     Nil.asJava,
     Set().asJava,
     Nil.asJava,
-    Nil.asJava,
+    List("output/BaseDocs.md").asJava,
     true,
     true,
     true,

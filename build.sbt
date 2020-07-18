@@ -17,3 +17,20 @@ lazy val root = project
 
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test"
   )
+
+val dokkaJavaApiJar = file("libs") / "dokkaJavaApi-0.1.0.jar"
+
+val buildDokkaApi = taskKey[Unit]("Compile dokka wrapper and put jar in lib")
+buildDokkaApi := {
+  val gradleRootDir = file("dokkaJavaApi")
+  sys.process.Process(Seq("./gradlew", "clean", "build"), gradleRootDir).!
+
+  IO.delete(dokkaJavaApiJar)
+  IO.move(gradleRootDir / "build" / "libs" / "dokkaJavaApi-0.1.0.jar", dokkaJavaApiJar)
+  streams.value.log.success(s"Dokka api copied to $dokkaJavaApiJar")
+}
+
+unmanagedJars in Compile += dokkaJavaApiJar
+
+javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=krzysiek-MS-7971:5005,suspend=y"
+fork.in(run) := true
