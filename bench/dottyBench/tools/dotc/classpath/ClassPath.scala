@@ -1,0 +1,56 @@
+/*
+ * Copyright (c) 2014 Contributor. All rights reserved.
+ */
+package dottyBench.tools.dotc.classpath
+
+import dottyBench.tools.io.AbstractFile
+import dottyBench.tools.io.ClassRepresentation
+
+case class ClassPathEntries(packages: scala.collection.Seq[PackageEntry], classesAndSources: scala.collection.Seq[ClassRepresentation]) {
+  def toTuple: (scala.collection.Seq[PackageEntry], scala.collection.Seq[ClassRepresentation]) = (packages, classesAndSources)
+}
+
+trait ClassFileEntry extends ClassRepresentation {
+  def file: AbstractFile
+}
+
+trait SourceFileEntry extends ClassRepresentation {
+  def file: AbstractFile
+}
+
+trait PackageEntry {
+  def name: String
+}
+
+private[dottyBench] case class ClassFileEntryImpl(file: AbstractFile) extends ClassFileEntry {
+  override def name: String = FileUtils.stripClassExtension(file.name) // class name
+
+  override def binary: Option[AbstractFile] = Some(file)
+  override def source: Option[AbstractFile] = None
+}
+
+private[dottyBench] case class SourceFileEntryImpl(file: AbstractFile) extends SourceFileEntry {
+  override def name: String = FileUtils.stripSourceExtension(file.name)
+
+  override def binary: Option[AbstractFile] = None
+  override def source: Option[AbstractFile] = Some(file)
+}
+
+private[dottyBench] case class ClassAndSourceFilesEntry(classFile: AbstractFile, srcFile: AbstractFile) extends ClassRepresentation {
+  override def name: String = FileUtils.stripClassExtension(classFile.name)
+
+  override def binary: Option[AbstractFile] = Some(classFile)
+  override def source: Option[AbstractFile] = Some(srcFile)
+}
+
+private[dottyBench] case class PackageEntryImpl(name: String) extends PackageEntry
+
+private[dottyBench] trait NoSourcePaths {
+  def asSourcePathString: String = ""
+  private[dottyBench] def sources(inPackage: String): Seq[SourceFileEntry] = Seq.empty
+}
+
+private[dottyBench] trait NoClassPaths {
+  def findClassFile(className: String): Option[AbstractFile] = None
+  private[dottyBench] def classes(inPackage: String): Seq[ClassFileEntry] = Seq.empty
+}

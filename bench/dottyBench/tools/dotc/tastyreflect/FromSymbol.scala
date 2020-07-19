@@ -1,0 +1,63 @@
+package dottyBench.tools.dotc.tastyreflect
+
+import dottyBench.tools.dotc.ast.tpd
+import dottyBench.tools.dotc.ast.untpd
+import dottyBench.tools.dotc.core.Contexts._
+import dottyBench.tools.dotc.core.Flags._
+import dottyBench.tools.dotc.core.StdNames._
+import dottyBench.tools.dotc.core.Symbols._
+import dottyBench.tools.dotc.core.Types._
+
+object FromSymbol {
+
+  def definitionFromSym(sym: Symbol)(using Ctx, CState): tpd.Tree = {
+    assert(sym.exists)
+    if (sym.is(Package)) packageDefFromSym(sym)
+    else if (sym.isClass) classDef(sym.asClass)
+    else if (sym.isType && sym.is(Case)) typeBindFromSym(sym.asType)
+    else if (sym.isType) typeDefFromSym(sym.asType)
+    else if (sym.is(Method)) defDefFromSym(sym.asTerm)
+    else if (sym.is(Case)) bindFromSym(sym.asTerm)
+    else valDefFromSym(sym.asTerm)
+  }
+
+  def packageDefFromSym(sym: Symbol)(using Ctx, CState): PackageDefinition = PackageDefinitionImpl(sym)
+
+  def classDef(cls: ClassSymbol)(using Ctx, CState): tpd.TypeDef = cls.defTree match {
+    case tree: tpd.TypeDef => tree
+    case tpd.EmptyTree =>
+      val constrSym = cls.unforcedDecls.find(_.isPrimaryConstructor).orElse(
+        // Dummy constructor for classes such as `<refinement>`
+        newSymbol(cls, nme.CONSTRUCTOR, EmptyFlags, NoType)
+      )
+      val constr = tpd.DefDef(constrSym.asTerm)
+      val parents = cls.classParents.map(tpd.TypeTree(_))
+      val body = cls.unforcedDecls.filter(!_.isPrimaryConstructor).map(s => definitionFromSym(s))
+      tpd.ClassDefWithParents(cls, constr, parents, body)
+  }
+
+  def typeDefFromSym(sym: TypeSymbol)(using Ctx, CState): tpd.TypeDef = sym.defTree match {
+    case tree: tpd.TypeDef => tree
+    case tpd.EmptyTree => tpd.TypeDef(sym)
+  }
+
+  def defDefFromSym(sym: TermSymbol)(using Ctx, CState): tpd.DefDef = sym.defTree match {
+    case tree: tpd.DefDef => tree
+    case tpd.EmptyTree => tpd.DefDef(sym)
+  }
+
+  def valDefFromSym(sym: TermSymbol)(using Ctx, CState): tpd.ValDef = sym.defTree match {
+    case tree: tpd.ValDef => tree
+    case tpd.EmptyTree => tpd.ValDef(sym)
+  }
+
+  def bindFromSym(sym: TermSymbol)(using Ctx, CState): tpd.Bind = sym.defTree match {
+    case tree: tpd.Bind => tree
+    case tpd.EmptyTree => tpd.Bind(sym, untpd.Ident(nme.WILDCARD).withType(sym.typeRef))
+  }
+
+  def typeBindFromSym(sym: TypeSymbol)(using Ctx, CState): tpd.Bind = sym.defTree match {
+    case tree: tpd.Bind => tree
+    case tpd.EmptyTree => tpd.Bind(sym, untpd.Ident(nme.WILDCARD).withType(sym.typeRef))
+  }
+}
