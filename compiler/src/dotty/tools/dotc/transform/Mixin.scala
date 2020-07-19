@@ -122,7 +122,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
   override def changesMembers: Boolean = true  // the phase adds implementions of mixin accessors
 
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    def ownerIsTrait: Boolean = wasOneOf(sym.owner, Trait)
+    def ownerIsTrait: Boolean = was(sym.owner, Trait, butNot = JavaDefined)
 
     if (sym.is(Accessor, butNot = Deferred) && ownerIsTrait) {
       val sym1 =
@@ -140,7 +140,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         info = MethodType(Nil, sym.info.resultType))
     else if sym.is(Trait, butNot = JavaDefined) then
       val classInfo = sym.asClass.classInfo
-      val decls1 = classInfo.decls.cloneScope
+      lazy val decls1 = classInfo.decls.cloneScope
       var modified: Boolean = false
       for (decl <- classInfo.decls)
         // !decl.isClass avoids forcing nested traits, preventing cycles
@@ -159,6 +159,9 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
   private def wasOneOf(sym: Symbol, flags: FlagSet)(using Context): Boolean =
     atPhase(thisPhase) { sym.isOneOf(flags) }
+
+  private def was(sym: Symbol, flag: Flag, butNot: FlagSet)(using Context): Boolean =
+    atPhase(thisPhase) { sym.is(flag, butNot) }
 
   private def needsTraitSetter(sym: Symbol)(using Context): Boolean =
     sym.isGetter && !wasOneOf(sym, DeferredOrLazy | ParamAccessor)
