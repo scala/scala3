@@ -30,18 +30,13 @@ object Mixin {
 
 /** This phase performs the following transformations:
  *
- *   1. (done in `traitDefs` and `transformSym`) Map every concrete trait getter
+ *   1. (done in `traitDefs` and `transformSym`) For every concrete trait getter
  *
  *       <mods> def x(): T = expr
  *
- *   to the pair of definitions:
+ *   make it non-private, and add the definition of its trait setter:
  *
- *       <mods> def x(): T
- *       protected def initial$x(): T = { stats; expr }
- *
- *   where `stats` comprises all statements between either the start of the trait
- *   or the previous field definition which are not definitions (i.e. are executed for
- *   their side effects).
+ *       <mods> def TraitName$_setter_$x(v: T): Unit
  *
  *   2. (done in `traitDefs`) Make every concrete trait setter
  *
@@ -51,12 +46,16 @@ object Mixin {
  *
  *      <mods> def x_=(y: T)
  *
- *   3. For a non-trait class C:
+ *   3. (done in `transformSym`) For every module class constructor in traits,
+ *      remove its Private flag (but do not expand its name), since it will have
+ *      to be instantiated in the classes that mix in the trait.
+ *
+ *   4. For a non-trait class C:
  *
  *        For every trait M directly implemented by the class (see SymUtils.mixin), in
  *        reverse linearization order, add the following definitions to C:
  *
- *          3.1 (done in `traitInits`) For every parameter accessor `<mods> def x(): T` in M,
+ *          4.1 (done in `traitInits`) For every parameter accessor `<mods> def x(): T` in M,
  *              in order of textual occurrence, add
  *
  *               <mods> def x() = e
@@ -64,37 +63,32 @@ object Mixin {
  *              where `e` is the constructor argument in C that corresponds to `x`. Issue
  *              an error if no such argument exists.
  *
- *          3.2 (done in `traitInits`) For every concrete trait getter `<mods> def x(): T` in M
+ *          4.2 (done in `traitInits`) For every concrete trait getter `<mods> def x(): T` in M
  *              which is not a parameter accessor, in order of textual occurrence, produce the following:
  *
- *              3.2.1 If `x` is also a member of `C`, and is a lazy val,
+ *              4.2.1 If `x` is also a member of `C`, and is a lazy val,
  *
  *                <mods> lazy val x: T = super[M].x
  *
- *              3.2.2 If `x` is also a member of `C`, and M is a Dotty trait,
+ *              4.2.2 If `x` is also a member of `C`, and is a module,
  *
- *                <mods> def x(): T = super[M].initial$x()
+ *                <mods> lazy module val x: T = new T$(this)
  *
- *              3.2.3 If `x` is also a member of `C`, and M is a Scala 2.x trait:
+ *              4.2.3 If `x` is also a member of `C`, and is something else:
  *
  *                <mods> def x(): T = _
  *
- *              3.2.4 If `x` is not a member of `C`, and M is a Dotty trait:
+ *              4.2.5 If `x` is not a member of `C`, nothing gets added.
  *
- *                super[M].initial$x()
+ *          4.3 (done in `superCallOpt`) The call:
  *
- *              3.2.5 If `x` is not a member of `C`, and M is a Scala2.x trait, nothing gets added.
+ *                super[M].$init$()
  *
- *
- *          3.3 (done in `superCallOpt`) The call:
- *
- *                super[M].<init>
- *
- *          3.4 (done in `setters`) For every concrete setter `<mods> def x_=(y: T)` in M:
+ *          4.4 (done in `setters`) For every concrete setter `<mods> def x_=(y: T)` in M:
  *
  *                <mods> def x_=(y: T) = ()
  *
- *          3.5 (done in `mixinForwarders`) For every method
+ *          4.5 (done in `mixinForwarders`) For every method
  *          `<mods> def f[Ts](ps1)...(psN): U` imn M` that needs to be disambiguated:
  *
  *                <mods> def f[Ts](ps1)...(psN): U = super[M].f[Ts](ps1)...(psN)
@@ -102,10 +96,10 @@ object Mixin {
  *          A method in M needs to be disambiguated if it is concrete, not overridden in C,
  *          and if it overrides another concrete method.
  *
- *   4. (done in `transformTemplate` and `transformSym`) Drop all parameters from trait
- *      constructors.
+ *   5. (done in `transformTemplate` and `transformSym`) Drop all parameters from trait
+ *      constructors, and rename them to `nme.TRAIT_CONSTRUCTOR`.
  *
- *   5. (done in `transformSym`) Drop ParamAccessor flag from all parameter accessors in traits.
+ *   6. (done in `transformSym`) Drop ParamAccessor flag from all parameter accessors in traits.
  *
  *  Conceptually, this is the second half of the previous mixin phase. It needs to run
  *  after erasure because it copies references to possibly private inner classes and objects

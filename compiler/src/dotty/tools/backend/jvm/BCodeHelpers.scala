@@ -959,6 +959,7 @@ object BCodeHelpers {
   /** An attachment on Apply nodes indicating that it should be compiled with
    *  `invokespecial` instead of `invokevirtual`. This is used for static
    *  forwarders.
+   *  See BCodeSkelBuilder.makeStaticForwarder for more details.
    */
   val UseInvokeSpecial = new dotc.util.Property.Key[Unit]
 

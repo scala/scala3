@@ -25,7 +25,7 @@ object AugmentScala2Traits {
  *  Strangely, Scala 2 super accessors are pickled as private, but are compiled as public expanded.
  *  In this phase we expand them and make them non-private, so that `ResolveSuper` does something meaningful.
  *
- *  TODO Should we merge this into `ResolveSuper` at this point?
+ *  TODO Should we already drop the Private flag when reading from Scala2 pickles in Scala2Unpickler?
  */
 class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._

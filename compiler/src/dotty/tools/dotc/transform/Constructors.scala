@@ -212,7 +212,8 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
             val sym = stat.symbol
             assert(isRetained(sym), sym)
             if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
-              /* !!! This should really just be `sym.setter`. However, if we do that, we'll miss
+              /* !!! Work around #9390
+               * This should really just be `sym.setter`. However, if we do that, we'll miss
                * setters for mixed in `private var`s. Even though the scope clearly contains the
                * setter symbol with the correct Name structure (since the `find` finds it),
                * `.decl(setterName)` used by `.setter` through `.accessorNamed` will *not* find it.
