@@ -55,7 +55,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
           val cwd = java.nio.file.Paths.get("").toAbsolutePath().normalize()
           try cwd.relativize(path)
           catch case _: IllegalArgumentException =>
-            ctx.warning("Could not relativize path for pickling: " + originalPath)
+            report.warning("Could not relativize path for pickling: " + originalPath)
             originalPath
         else
           originalPath

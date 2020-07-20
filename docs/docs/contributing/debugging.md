@@ -363,4 +363,4 @@ trace.force(i"typing $tree", typr, show = true) { // ...
 ```
 
 ### Reporter
-Defined in [Reporter.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/Reporter.scala). Enables calls such as `ctx.log`, `ctx.error` etc. To enable, run dotc with `-Ylog:typer` option.
+Defined in [Reporter.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/Reporter.scala). Enables calls such as `report.log`. To enable, run dotc with `-Ylog:typer` option.

@@ -3,7 +3,7 @@ package printing
 
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
-import Contexts.{Context, ctx}
+import Contexts._
 import Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
 import ast.Trees._
@@ -48,7 +48,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     if (homogenizedView)
       tp match {
         case tp: ThisType if tp.cls.is(Package) && !tp.cls.isEffectiveRoot =>
-          ctx.requiredPackage(tp.cls.fullName).termRef
+          requiredPackage(tp.cls.fullName).termRef
         case tp: TypeVar if tp.isInstantiated =>
           homogenize(tp.instanceOpt)
         case AndType(tp1, tp2) =>
@@ -215,8 +215,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else {
           val constr = ctx.typerState.constraint
           val bounds =
-            if (constr.contains(tp)) ctx.addMode(Mode.Printing).typeComparer.fullBounds(tp.origin)
-            else TypeBounds.empty
+            if constr.contains(tp) then
+              withMode(Mode.Printing)(ctx.typeComparer.fullBounds(tp.origin))
+            else
+              TypeBounds.empty
           if (bounds.isTypeAlias) toText(bounds.lo) ~ (Str("^") provided printDebug)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
           else toText(tp.origin)

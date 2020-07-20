@@ -14,7 +14,7 @@ import dotty.tools.dotc.tastyreflect.ReflectionImpl
 class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
 
   private val myInitCtx: Context = {
-    val rootCtx = initCtx.fresh.addMode(Mode.Interactive).addMode(Mode.ReadPositions).addMode(Mode.ReadComments)
+    val rootCtx = initCtx.fresh.addMode(Mode.Interactive | Mode.ReadPositions | Mode.ReadComments)
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
     rootCtx.setSetting(rootCtx.settings.fromTasty, true)
     val ctx = setup(settings.toArray :+ "dummy.scala", rootCtx)._2

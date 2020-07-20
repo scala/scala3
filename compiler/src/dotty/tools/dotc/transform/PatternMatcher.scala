@@ -14,7 +14,7 @@ import Flags._, Constants._
 import Decorators._
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
 import config.Printers.patmatch
-import reporting.messages._
+import reporting._
 import dotty.tools.dotc.ast._
 import util.Property._
 
@@ -87,7 +87,7 @@ object PatternMatcher {
     // ------- Bindings for variables and labels ---------------------
 
     private val resultLabel =
-      ctx.newSymbol(ctx.owner, PatMatResultName.fresh(), Synthetic | Label, resultType)
+      newSymbol(ctx.owner, PatMatResultName.fresh(), Synthetic | Label, resultType)
 
     /** A map from variable symbols to their defining trees
      *  and from labels to their defining plans
@@ -95,7 +95,7 @@ object PatternMatcher {
     private val initializer = newMutableSymbolMap[Tree]
 
     private def newVar(rhs: Tree, flags: FlagSet): TermSymbol =
-      ctx.newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
+      newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
         sanitize(rhs.tpe), coord = rhs.span)
         // TODO: Drop Case once we use everywhere else `isPatmatGenerated`.
 
@@ -108,7 +108,7 @@ object PatternMatcher {
 
     /** The plan `l: { expr(l) }` where `l` is a fresh label */
     private def altsLabeledAbstract(expr: (=> Plan) => Plan): Plan = {
-      val label = ctx.newSymbol(ctx.owner, PatMatAltsName.fresh(), Synthetic | Label,
+      val label = newSymbol(ctx.owner, PatMatAltsName.fresh(), Synthetic | Label,
         defn.UnitType)
       LabeledPlan(label, expr(ReturnPlan(label)))
     }
@@ -974,7 +974,7 @@ object PatternMatcher {
           patmatch.println(i"original types: ${typesInCases(original.cases)}%, %")
           patmatch.println(i"switch types  : ${typesInCases(resultCases)}%, %")
           patmatch.println(i"tree = $result")
-          ctx.warning(UnableToEmitSwitch(numTypes(original.cases) < MinSwitchCases), original.sourcePos)
+          report.warning(UnableToEmitSwitch(numTypes(original.cases) < MinSwitchCases), original.sourcePos)
         }
       case _ =>
     }

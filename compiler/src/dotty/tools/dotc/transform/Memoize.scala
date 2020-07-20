@@ -3,7 +3,8 @@ package transform
 
 import core._
 import DenotTransformers._
-import Contexts.{Context, ctx}
+import Contexts._
+import Phases.phaseOf
 import SymDenotations.SymDenotation
 import Denotations._
 import Symbols._
@@ -43,8 +44,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
    * exist non-deferred definitions that are not implemented. */
   override def checkPostCondition(tree: Tree)(using Context): Unit = {
     def errorLackImplementation(t: Tree) = {
-      val firstPhaseId = t.symbol.initial.validFor.firstPhaseId
-      val definingPhase = ctx.withPhase(firstPhaseId).phase.prev
+      val definingPhase = phaseOf(t.symbol.initial.validFor.firstPhaseId)
       throw new AssertionError(
         i"Non-deferred definition introduced by $definingPhase lacks implementation: $t")
     }
@@ -77,7 +77,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         if (sym.isGetter) sym.info.resultType
         else /*sym.isSetter*/ sym.info.firstParamTypes.head
 
-      ctx.newSymbol(
+      newSymbol(
         owner = ctx.owner,
         name  = sym.name.asTermName.fieldName,
         flags = Private | (if (sym.is(StableRealizable)) EmptyFlags else Mutable),

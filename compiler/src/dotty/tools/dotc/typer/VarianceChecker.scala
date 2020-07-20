@@ -45,7 +45,7 @@ object VarianceChecker {
               .find(_.name.toTermName == paramName)
               .map(_.sourcePos)
               .getOrElse(tree.sourcePos)
-            accCtx.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
+            report.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
           }
           def apply(x: Boolean, t: Type) = x && {
             t match {
@@ -116,10 +116,10 @@ class VarianceChecker(using Context) {
         val required = compose(relative, this.variance)
         def tvar_s = s"$tvar (${varianceLabel(tvar.flags)} ${tvar.showLocated})"
         def base_s = s"$base in ${base.owner}" + (if (base.owner.isClass) "" else " in " + base.owner.enclosingClass)
-        accCtx.log(s"verifying $tvar_s is ${varianceLabel(required)} at $base_s")
-        accCtx.log(s"relative variance: ${varianceLabel(relative)}")
-        accCtx.log(s"current variance: ${this.variance}")
-        accCtx.log(s"owner chain: ${base.ownersIterator.toList}")
+        report.log(s"verifying $tvar_s is ${varianceLabel(required)} at $base_s")
+        report.log(s"relative variance: ${varianceLabel(relative)}")
+        report.log(s"current variance: ${this.variance}")
+        report.log(s"owner chain: ${base.ownersIterator.toList}")
         if (tvar.isOneOf(required)) None
         else Some(VarianceError(tvar, required))
       }
@@ -169,14 +169,14 @@ class VarianceChecker(using Context) {
         def msg = i"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym"
         if (migrateTo3 &&
             (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal))))
-          ctx.migrationWarning(
+          report.migrationWarning(
             s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg",
             pos)
             // patch(Span(pos.end), " @scala.annotation.unchecked.uncheckedVariance")
             // Patch is disabled until two TODOs are solved:
             // TODO use an import or shorten if possible
             // TODO need to use a `:' if annotation is on term
-        else ctx.error(msg, pos)
+        else report.error(msg, pos)
       case None =>
     }
 
@@ -189,7 +189,7 @@ class VarianceChecker(using Context) {
         || sym.is(TypeParam) && sym.owner.isClass // already taken care of in primary constructor of class
       try tree match {
         case defn: MemberDef if skip =>
-          ctx.debuglog(s"Skipping variance check of ${sym.showDcl}")
+          report.debuglog(s"Skipping variance check of ${sym.showDcl}")
         case tree: TypeDef =>
           checkVariance(sym, tree.sourcePos)
           tree.rhs match {
@@ -205,7 +205,7 @@ class VarianceChecker(using Context) {
         case _ =>
       }
       catch {
-        case ex: TypeError => ctx.error(ex, tree.sourcePos.focus)
+        case ex: TypeError => report.error(ex, tree.sourcePos.focus)
       }
     }
   }

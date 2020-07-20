@@ -9,7 +9,7 @@ import util.Spans._
 import util.CommentParsing._
 import util.Property.Key
 import parsing.Parsers.Parser
-import reporting.messages.ProperDefinitionNotFound
+import reporting.ProperDefinitionNotFound
 
 object Comments {
   val ContextDoc: Key[ContextDocstrings] = new Key[ContextDocstrings]
@@ -123,7 +123,7 @@ object Comments {
             val newName = ctx.compilationUnit.freshNames.newName(tree.name, NameKinds.DocArtifactName)
             untpd.cpy.DefDef(tree)(name = newName)
           case _ =>
-            ctx.error(ProperDefinitionNotFound(), ctx.source.atSpan(codePos))
+            report.error(ProperDefinitionNotFound(), ctx.source.atSpan(codePos))
             tree
         }
       }

@@ -298,7 +298,7 @@ class DottyLanguageServer extends LanguageServer
     /*thisServer.synchronized*/ {}
   }
 
-  // FIXME: share code with messages.NotAMember
+  // FIXME: share code with NotAMember
   override def completion(params: CompletionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
@@ -732,7 +732,7 @@ object DottyLanguageServer {
   private def displayMessage(message: Message, sourceFile: SourceFile)(implicit ctx: Context): Boolean = {
     if (isWorksheet(sourceFile)) {
       message match {
-        case msg: messages.PureExpressionInStatementPosition =>
+        case msg: PureExpressionInStatementPosition =>
           val ownerSym = if (msg.exprOwner.isLocalDummy) msg.exprOwner.owner else msg.exprOwner
           !isWorksheetWrapper(ownerSym)
         case _ =>

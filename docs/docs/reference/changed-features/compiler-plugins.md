@@ -81,7 +81,7 @@ class DivideZeroPhase extends PluginPhase {
     tree match {
       case Apply(Select(rcvr, nme.DIV), List(Literal(Constant(0))))
           if rcvr.tpe <:< defn.IntType =>
-        ctx.error("dividing by zero", tree.pos)
+        report.error("dividing by zero", tree.pos)
       case _ =>
         ()
     }
@@ -90,7 +90,7 @@ class DivideZeroPhase extends PluginPhase {
 }
 ```
 
-The plugin main class (`DivideZero`) must extend the trait `StandardPlugin` 
+The plugin main class (`DivideZero`) must extend the trait `StandardPlugin`
 and implement the method `init` that takes the plugin's options as argument
 and returns a list of `PluginPhase`s to be inserted into the compilation pipeline.
 

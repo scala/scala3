@@ -3,7 +3,7 @@ package dottydoc
 package core
 
 import dotc.core.Phases.Phase
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import dotc.core.Symbols.Symbol
 import dotc.core.Decorators._
 import dotc.core.Flags._
@@ -57,9 +57,9 @@ class StatisticsPhase extends Phase {
 
   def phaseName = "StatisticsPhase"
 
-  override def run(implicit ctx: Context): Unit = ()
+  override def run(using Context): Unit = ()
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     for {
       (pkgName, pack) <- ctx.docbase.packages
       externalApi = collectPublicStats(pack)
@@ -70,7 +70,7 @@ class StatisticsPhase extends Phase {
     units
   }
 
-  def collectPublicStats(pack: Package)(implicit ctx: Context): Counters = {
+  def collectPublicStats(pack: Package)(using Context): Counters = {
     var publicEntities: Int = 0
     var protectedEntities: Int = 0
     var publicDocstrings: Int = 0
@@ -112,7 +112,7 @@ class StatisticsPhase extends Phase {
     Counters(publicEntities, 0, protectedEntities, publicDocstrings, 0, protectedDocstrings)
   }
 
-  def collectInternalStats(pack: Package)(implicit ctx: Context): Counters = {
+  def collectInternalStats(pack: Package)(using Context): Counters = {
     var publicEntities: Int = 0
     var privateEntities: Int = 0
     var protectedEntities: Int = 0

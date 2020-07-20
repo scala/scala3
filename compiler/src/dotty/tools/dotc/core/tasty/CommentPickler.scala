@@ -2,7 +2,7 @@ package dotty.tools.dotc.core.tasty
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Comments.{Comment, CommentsContext, ContextDocstrings}
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 
 import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.{Addr, NoAddr}

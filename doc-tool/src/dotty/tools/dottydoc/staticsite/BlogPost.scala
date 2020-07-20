@@ -5,7 +5,7 @@ package staticsite
 import java.io.{ File => JFile }
 import java.util.{ List => JList, Map => JMap }
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import util.syntax._
 
 import MapOperations._
@@ -43,7 +43,7 @@ class BlogPost(
 
 object BlogPost {
   val extract = """(\d\d\d\d)-(\d\d)-(\d\d)-(.*)\.(md|html)""".r
-  def apply(file: JFile, page: Page)(implicit ctx: Context): Option[BlogPost] = {
+  def apply(file: JFile, page: Page)(using Context): Option[BlogPost] = {
     def report(key: String, fallback: String = "") = {
       ctx.docbase.error(s"couldn't find page.$key in ${file.getName}")
       fallback

@@ -18,6 +18,7 @@ import dotty.tools.dotc.core.StdNames.str
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.util.Spans._
+import dotty.tools.dotc.report
 
 /*
  *
@@ -118,12 +119,12 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val optSerial: Option[Long] =
         claszSymbol.getAnnotation(defn.SerialVersionUIDAnnot).flatMap { annot =>
           if (claszSymbol.is(Trait)) {
-            ctx.error("@SerialVersionUID does nothing on a trait", annot.tree.sourcePos)
+            report.error("@SerialVersionUID does nothing on a trait", annot.tree.sourcePos)
             None
           } else {
             val vuid = annot.argumentConstant(0).map(_.longValue)
             if (vuid.isEmpty)
-              ctx.error("The argument passed to @SerialVersionUID must be a constant",
+              report.error("The argument passed to @SerialVersionUID must be a constant",
                 annot.argument(0).getOrElse(annot.tree).sourcePos)
             vuid
           }
@@ -192,7 +193,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             // it must be a top level class (name contains no $s)
             val isCandidateForForwarders =  (lmoc.is(Module)) && lmoc.isStatic
             if (isCandidateForForwarders) {
-              ctx.log(s"Adding static forwarders from '$claszSymbol' to implementations in '$lmoc'")
+              report.log(s"Adding static forwarders from '$claszSymbol' to implementations in '$lmoc'")
               addForwarders(cnode, thisName, lmoc.moduleClass)
             }
           }
@@ -388,7 +389,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
        */
       def makeLocal(tk: BType, name: String, tpe: Type, pos: Span): Symbol = {
 
-        val locSym = ctx.newSymbol(methSymbol, name.toTermName, Synthetic, tpe, NoSymbol, pos)
+        val locSym = newSymbol(methSymbol, name.toTermName, Synthetic, tpe, NoSymbol, pos)
         makeLocal(locSym, tk)
         locSym
       }
@@ -407,7 +408,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val loc = Local(tk, sym.javaSimpleName, nxtIdx, sym.is(Synthetic))
         val existing = slots.put(sym, loc)
         if (existing.isDefined)
-          ctx.error("attempt to create duplicate local var.", ctx.source.atSpan(sym.span))
+          report.error("attempt to create duplicate local var.", ctx.source.atSpan(sym.span))
         assert(tk.size > 0, "makeLocal called for a symbol whose type is Unit.")
         nxtIdx += tk.size
         loc
@@ -560,7 +561,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       if (params.size > MaximumJvmParameters) {
         // SI-7324
-        ctx.error(s"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.", ctx.source.atSpan(methSymbol.span))
+        report.error(s"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.", ctx.source.atSpan(methSymbol.span))
         return
       }
 
@@ -587,7 +588,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             case (_: Return) | Block(_, (_: Return)) => ()
             case (_: Apply) | Block(_, (_: Apply)) if rhs.symbol eq defn.throwMethod => ()
             case tpd.EmptyTree =>
-              ctx.error("Concrete method has no definition: " + dd + (
+              report.error("Concrete method has no definition: " + dd + (
                 if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
                 else ""),
                 ctx.source.atSpan(NoSpan)

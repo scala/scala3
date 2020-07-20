@@ -16,7 +16,7 @@ import Phases.Phase
 import ast.tpd
 import transform.MegaPhase.MiniPhase
 import Decorators._
-import Symbols.Symbol
+import Symbols.{Symbol, requiredPackage}
 import Constants.Constant
 import Types._
 import transform.{ReifyQuotes, FirstTransform}
@@ -56,7 +56,7 @@ class InitChecker extends PluginPhase with StandardPlugin {
 
   private def checkDef(tree: Tree)(implicit ctx: Context): Tree = {
     if (tree.symbol.defTree.isEmpty)
-      ctx.error("cannot get tree for " + tree.show, tree.sourcePos)
+      report.error("cannot get tree for " + tree.show, tree.sourcePos)
     tree
   }
 
@@ -67,23 +67,23 @@ class InitChecker extends PluginPhase with StandardPlugin {
   private def checkRef(tree: Tree)(implicit ctx: Context): Tree =
     if (!checkable(tree.symbol)) tree
     else {
-      val helloPkgSym = ctx.requiredPackage("hello").moduleClass
-      val libPkgSym = ctx.requiredPackage("lib").moduleClass
+      val helloPkgSym = requiredPackage("hello").moduleClass
+      val libPkgSym = requiredPackage("lib").moduleClass
       val enclosingPkg = tree.symbol.enclosingPackageClass
 
       if (enclosingPkg == helloPkgSym) {  // source code
         checkDef(tree)
-        ctx.warning("tree: " + tree.symbol.defTree.show)
+        report.warning("tree: " + tree.symbol.defTree.show)
       }
       else if (enclosingPkg == libPkgSym) { // tasty from library
         checkDef(tree)
         // check that all sub-definitions have trees set properly
         // make sure that are no cycles in the code
         transformAllDeep(tree.symbol.defTree)
-        ctx.warning("tree: " + tree.symbol.defTree.show)
+        report.warning("tree: " + tree.symbol.defTree.show)
       }
       else {
-        ctx.warning(tree.symbol.toString + " is neither in lib nor hello, owner = " + enclosingPkg, tree.sourcePos)
+        report.warning(tree.symbol.toString + " is neither in lib nor hello, owner = " + enclosingPkg, tree.sourcePos)
       }
       tree
     }

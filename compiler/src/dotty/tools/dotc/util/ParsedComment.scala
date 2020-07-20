@@ -1,7 +1,7 @@
 package dotty.tools.dotc.util
 
 import dotty.tools.dotc.core.Comments.{Comment, CommentsContext}
-import dotty.tools.dotc.core.Contexts.{Context, ctx, inContext}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.printing.SyntaxHighlighting

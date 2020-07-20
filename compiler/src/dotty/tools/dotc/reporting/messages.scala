@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._, Phases._
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
@@ -20,6 +20,9 @@ import typer.ProtoTypes.ViewProto
 import scala.util.control.NonFatal
 import StdNames.nme
 import printing.Formatting.hl
+import ast.Trees._
+import ast.untpd
+import ast.tpd
 
 /**  Messages
   *  ========
@@ -33,16 +36,6 @@ import printing.Formatting.hl
   *  EmptyCatchBlock(tree).warning(pos) // res: Warning
   *  ```
   */
-object messages {
-
-  import ast.Trees._
-  import ast.untpd
-  import ast.tpd
-
-  /** Helper methods for messages */
-  def implicitClassRestrictionsText(using Context): String =
-    em"""|For a full list of restrictions on implicit classes visit
-         |${Blue("http://docs.scala-lang.org/overviews/core/implicit-classes.html")}"""
 
   abstract class SyntaxMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Syntax"
@@ -407,9 +400,7 @@ object messages {
            |the implicit class and a case class automatically gets a companion object with
            |the same name created by the compiler which would cause a naming conflict if it
            |were allowed.
-           |
-           |""" + implicitClassRestrictionsText + em"""|
-           |
+           |           |
            |To resolve the conflict declare ${cdef.name} inside of an ${hl("object")} then import the class
            |from the object at the use site if needed, for example:
            |
@@ -431,7 +422,7 @@ object messages {
            |
            |implicit class ${cdef.name}...
            |
-           |""" + implicitClassRestrictionsText
+           |"""
   }
 
   class ImplicitClassPrimaryConstructorArity()(using Context)
@@ -445,7 +436,7 @@ object messages {
           |
           |While it’s possible to create an implicit class with more than one non-implicit argument,
           |such classes aren’t used during implicit lookup.
-          |""" + implicitClassRestrictionsText
+          |"""
     }
   }
 
@@ -2020,9 +2011,8 @@ object messages {
             case NoMatch =>
               // If the signatures don't match at all at the current phase, then
               // they might match after erasure.
-              val elimErasedCtx = ctx.withPhaseNoEarlier(elimErasedValueTypePhase.next)
-              if (elimErasedCtx != ctx)
-                details(using elimErasedCtx)
+              if ctx.phase.id <= elimErasedValueTypePhase.id then
+                atPhase(elimErasedValueTypePhase.next)(details)
               else
                 "" // shouldn't be reachable
             case ParamMatch =>
@@ -2100,7 +2090,7 @@ object messages {
            |This mechanism is used for instance in pattern ${hl("case List(x1, ..., xn)")}""".stripMargin
   }
 
-  class MemberWithSameNameAsStatic()(using ctx: Context)
+  class MemberWithSameNameAsStatic()(using Context)
     extends SyntaxMsg(MemberWithSameNameAsStaticID) {
     def msg = em"Companion classes cannot define members with same name as a ${hl("@static")} member"
     def explain = ""
@@ -2115,25 +2105,25 @@ object messages {
           |It can be removed without changing the semantics of the program. This may indicate an error.""".stripMargin
   }
 
-  class TraitCompanionWithMutableStatic()(using ctx: Context)
+  class TraitCompanionWithMutableStatic()(using Context)
     extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
     def msg = em"Companion of traits cannot define mutable @static fields"
     def explain = ""
   }
 
-  class LazyStaticField()(using ctx: Context)
+  class LazyStaticField()(using Context)
     extends SyntaxMsg(LazyStaticFieldID) {
     def msg = em"Lazy @static fields are not supported"
     def explain = ""
   }
 
-  class StaticOverridingNonStaticMembers()(using ctx: Context)
+  class StaticOverridingNonStaticMembers()(using Context)
     extends SyntaxMsg(StaticOverridingNonStaticMembersID) {
     def msg = em"${hl("@static")} members cannot override or implement non-static ones"
     def explain = ""
   }
 
-  class OverloadInRefinement(rsym: Symbol)(using ctx: Context)
+  class OverloadInRefinement(rsym: Symbol)(using Context)
     extends DeclarationMsg(OverloadInRefinementID) {
     def msg = "Refinements cannot introduce overloaded definitions"
     def explain =
@@ -2141,14 +2131,14 @@ object messages {
           |Refinements cannot contain overloaded definitions.""".stripMargin
   }
 
-  class NoMatchingOverload(val alternatives: List[SingleDenotation], pt: Type)(using ctx: Context)
+  class NoMatchingOverload(val alternatives: List[SingleDenotation], pt: Type)(using Context)
     extends TypeMismatchMsg(NoMatchingOverloadID) {
     def msg =
       em"""None of the ${err.overloadedAltsStr(alternatives)}
           |match ${err.expectedTypeStr(pt)}"""
     def explain = ""
   }
-  class StableIdentPattern(tree: untpd.Tree, pt: Type)(using ctx: Context)
+  class StableIdentPattern(tree: untpd.Tree, pt: Type)(using Context)
     extends TypeMsg(StableIdentPatternID) {
     def msg =
       em"""Stable identifier required, but $tree found"""
@@ -2157,7 +2147,7 @@ object messages {
 
   class IllegalSuperAccessor(base: Symbol, memberName: Name,
       acc: Symbol, accTp: Type,
-      other: Symbol, otherTp: Type)(using ctx: Context) extends DeclarationMsg(IllegalSuperAccessorID) {
+      other: Symbol, otherTp: Type)(using Context) extends DeclarationMsg(IllegalSuperAccessorID) {
     def msg = {
       // The mixin containing a super-call that requires a super-accessor
       val accMixin = acc.owner
@@ -2210,7 +2200,7 @@ object messages {
     def explain = ""
   }
 
-  class TraitParameterUsedAsParentPrefix(cls: Symbol)(using ctx: Context)
+  class TraitParameterUsedAsParentPrefix(cls: Symbol)(using Context)
     extends DeclarationMsg(TraitParameterUsedAsParentPrefixID) {
     def msg =
       s"${cls.show} cannot extend from a parent that is derived via its own parameters"
@@ -2225,7 +2215,7 @@ object messages {
           |""".stripMargin
   }
 
-  class UnknownNamedEnclosingClassOrObject(name: TypeName)(using ctx: Context)
+  class UnknownNamedEnclosingClassOrObject(name: TypeName)(using Context)
     extends ReferenceMsg(UnknownNamedEnclosingClassOrObjectID) {
     def msg =
       em"""no enclosing class or object is named '${hl(name.show)}'"""
@@ -2238,7 +2228,7 @@ object messages {
       """.stripMargin
     }
 
-  class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(using ctx: Context)
+  class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(using Context)
     extends CyclicMsg(IllegalCyclicTypeReferenceID) {
     def msg =
       val lastCheckedStr =
@@ -2248,7 +2238,7 @@ object messages {
     def explain = ""
   }
 
-  class ErasedTypesCanOnlyBeFunctionTypes()(using ctx: Context)
+  class ErasedTypesCanOnlyBeFunctionTypes()(using Context)
     extends SyntaxMsg(ErasedTypesCanOnlyBeFunctionTypesID) {
     def msg = "Types with erased keyword can only be function types `(erased ...) => ...`"
     def explain = ""
@@ -2400,4 +2390,3 @@ object messages {
     def msg = s"Modifier `${flag.flagsString}` is not allowed for this definition"
     def explain = ""
   }
-}

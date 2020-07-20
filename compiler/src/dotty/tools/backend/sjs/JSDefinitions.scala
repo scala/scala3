@@ -20,15 +20,15 @@ object JSDefinitions {
 
 final class JSDefinitions()(using Context) {
 
-  @threadUnsafe lazy val InlineAnnotType: TypeRef = ctx.requiredClassRef("scala.inline")
+  @threadUnsafe lazy val InlineAnnotType: TypeRef = requiredClassRef("scala.inline")
   def InlineAnnot(using Context) = InlineAnnotType.symbol.asClass
-  @threadUnsafe lazy val NoinlineAnnotType: TypeRef = ctx.requiredClassRef("scala.noinline")
+  @threadUnsafe lazy val NoinlineAnnotType: TypeRef = requiredClassRef("scala.noinline")
   def NoinlineAnnot(using Context) = NoinlineAnnotType.symbol.asClass
 
-  @threadUnsafe lazy val JavaLangVoidType: TypeRef = ctx.requiredClassRef("java.lang.Void")
+  @threadUnsafe lazy val JavaLangVoidType: TypeRef = requiredClassRef("java.lang.Void")
   def JavaLangVoidClass(using Context) = JavaLangVoidType.symbol.asClass
 
-  @threadUnsafe lazy val ScalaJSJSPackageVal = ctx.requiredPackage("scala.scalajs.js")
+  @threadUnsafe lazy val ScalaJSJSPackageVal = requiredPackage("scala.scalajs.js")
   @threadUnsafe lazy val ScalaJSJSPackageClass = ScalaJSJSPackageVal.moduleClass.asClass
     @threadUnsafe lazy val JSPackage_typeOfR = ScalaJSJSPackageClass.requiredMethodRef("typeOf")
     def JSPackage_typeOf(using Context) = JSPackage_typeOfR.symbol
@@ -37,60 +37,60 @@ final class JSDefinitions()(using Context) {
     @threadUnsafe lazy val JSPackage_nativeR = ScalaJSJSPackageClass.requiredMethodRef("native")
     def JSPackage_native(using Context) = JSPackage_nativeR.symbol
 
-  @threadUnsafe lazy val JSNativeAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.native")
+  @threadUnsafe lazy val JSNativeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.native")
   def JSNativeAnnot(using Context) = JSNativeAnnotType.symbol.asClass
 
-  @threadUnsafe lazy val JSAnyType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.Any")
+  @threadUnsafe lazy val JSAnyType: TypeRef = requiredClassRef("scala.scalajs.js.Any")
   def JSAnyClass(using Context) = JSAnyType.symbol.asClass
-  @threadUnsafe lazy val JSObjectType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.Object")
+  @threadUnsafe lazy val JSObjectType: TypeRef = requiredClassRef("scala.scalajs.js.Object")
   def JSObjectClass(using Context) = JSObjectType.symbol.asClass
-  @threadUnsafe lazy val JSBaseThisFunctionType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.ThisFunction")
+  @threadUnsafe lazy val JSBaseThisFunctionType: TypeRef = requiredClassRef("scala.scalajs.js.ThisFunction")
   def JSBaseThisFunctionClass(using Context) = JSBaseThisFunctionType.symbol.asClass
 
-  @threadUnsafe lazy val JSArrayType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.Array")
+  @threadUnsafe lazy val JSArrayType: TypeRef = requiredClassRef("scala.scalajs.js.Array")
   def JSArrayClass(using Context) = JSArrayType.symbol.asClass
 
-  @threadUnsafe lazy val JSFunctionType = (0 to 22).map(n => ctx.requiredClassRef("scala.scalajs.js.Function" + n)).toArray
+  @threadUnsafe lazy val JSFunctionType = (0 to 22).map(n => requiredClassRef("scala.scalajs.js.Function" + n)).toArray
   def JSFunctionClass(n: Int)(using Context) = JSFunctionType(n).symbol.asClass
-  @threadUnsafe lazy val JSThisFunctionType = (0 to 21).map(n => ctx.requiredClassRef("scala.scalajs.js.ThisFunction" + n)).toArray
+  @threadUnsafe lazy val JSThisFunctionType = (0 to 21).map(n => requiredClassRef("scala.scalajs.js.ThisFunction" + n)).toArray
   def JSThisFunctionClass(n: Int)(using Context) = JSThisFunctionType(n).symbol.asClass
 
-  @threadUnsafe lazy val RuntimeExceptionType: TypeRef = ctx.requiredClassRef("java.lang.RuntimeException")
+  @threadUnsafe lazy val RuntimeExceptionType: TypeRef = requiredClassRef("java.lang.RuntimeException")
   def RuntimeExceptionClass(using Context) = RuntimeExceptionType.symbol.asClass
-  @threadUnsafe lazy val JavaScriptExceptionType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.JavaScriptException")
+  @threadUnsafe lazy val JavaScriptExceptionType: TypeRef = requiredClassRef("scala.scalajs.js.JavaScriptException")
   def JavaScriptExceptionClass(using Context) = JavaScriptExceptionType.symbol.asClass
 
-  @threadUnsafe lazy val JSGlobalScopeAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSGlobalScope")
+  @threadUnsafe lazy val JSGlobalScopeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSGlobalScope")
   def JSGlobalScopeAnnot(using Context) = JSGlobalScopeAnnotType.symbol.asClass
-  @threadUnsafe lazy val JSNameAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSName")
+  @threadUnsafe lazy val JSNameAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSName")
   def JSNameAnnot(using Context) = JSNameAnnotType.symbol.asClass
-  @threadUnsafe lazy val JSFullNameAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSFullName")
+  @threadUnsafe lazy val JSFullNameAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSFullName")
   def JSFullNameAnnot(using Context) = JSFullNameAnnotType.symbol.asClass
-  @threadUnsafe lazy val JSBracketAccessAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSBracketAccess")
+  @threadUnsafe lazy val JSBracketAccessAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSBracketAccess")
   def JSBracketAccessAnnot(using Context) = JSBracketAccessAnnotType.symbol.asClass
-  @threadUnsafe lazy val JSBracketCallAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSBracketCall")
+  @threadUnsafe lazy val JSBracketCallAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSBracketCall")
   def JSBracketCallAnnot(using Context) = JSBracketCallAnnotType.symbol.asClass
-  @threadUnsafe lazy val JSExportAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSExport")
+  @threadUnsafe lazy val JSExportAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExport")
   def JSExportAnnot(using Context) = JSExportAnnotType.symbol.asClass
-  @threadUnsafe lazy val JSExportDescendentObjectsAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSExportDescendentObjects")
+  @threadUnsafe lazy val JSExportDescendentObjectsAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExportDescendentObjects")
   def JSExportDescendentObjectsAnnot(using Context) = JSExportDescendentObjectsAnnotType.symbol.asClass
-  @threadUnsafe lazy val JSExportDescendentClassesAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSExportDescendentClasses")
+  @threadUnsafe lazy val JSExportDescendentClassesAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExportDescendentClasses")
   def JSExportDescendentClassesAnnot(using Context) = JSExportDescendentClassesAnnotType.symbol.asClass
-  @threadUnsafe lazy val JSExportAllAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSExportAll")
+  @threadUnsafe lazy val JSExportAllAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExportAll")
   def JSExportAllAnnot(using Context) = JSExportAllAnnotType.symbol.asClass
-  @threadUnsafe lazy val JSExportNamedAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSExportNamed")
+  @threadUnsafe lazy val JSExportNamedAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExportNamed")
   def JSExportNamedAnnot(using Context) = JSExportNamedAnnotType.symbol.asClass
-  @threadUnsafe lazy val RawJSTypeAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.RawJSType")
+  @threadUnsafe lazy val RawJSTypeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.RawJSType")
   def RawJSTypeAnnot(using Context) = RawJSTypeAnnotType.symbol.asClass
-  @threadUnsafe lazy val ExposedJSMemberAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.ExposedJSMember")
+  @threadUnsafe lazy val ExposedJSMemberAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.ExposedJSMember")
   def ExposedJSMemberAnnot(using Context) = ExposedJSMemberAnnotType.symbol.asClass
 
-  @threadUnsafe lazy val JSAnyModuleRef = ctx.requiredModuleRef("scala.scalajs.js.Any")
+  @threadUnsafe lazy val JSAnyModuleRef = requiredModuleRef("scala.scalajs.js.Any")
   def JSAnyModule(using Context) = JSAnyModuleRef.symbol
     @threadUnsafe lazy val JSAny_fromFunctionR = (0 to 22).map(n => JSAnyModule.requiredMethodRef("fromFunction" + n)).toArray
     def JSAny_fromFunction(n: Int)(using Context) = JSAny_fromFunctionR(n).symbol
 
-  @threadUnsafe lazy val JSDynamicModuleRef = ctx.requiredModuleRef("scala.scalajs.js.Dynamic")
+  @threadUnsafe lazy val JSDynamicModuleRef = requiredModuleRef("scala.scalajs.js.Dynamic")
   def JSDynamicModule(using Context) = JSDynamicModuleRef.symbol
     @threadUnsafe lazy val JSDynamic_globalR = JSDynamicModule.requiredMethodRef("global")
     def JSDynamic_global(using Context) = JSDynamic_globalR.symbol
@@ -104,25 +104,25 @@ final class JSDefinitions()(using Context) {
     @threadUnsafe lazy val JSDynamicLiteral_applyDynamicR = JSDynamicLiteralModule.requiredMethodRef("applyDynamic")
     def JSDynamicLiteral_applyDynamic(using Context) = JSDynamicLiteral_applyDynamicR.symbol
 
-  @threadUnsafe lazy val JSObjectModuleRef = ctx.requiredModuleRef("scala.scalajs.js.Object")
+  @threadUnsafe lazy val JSObjectModuleRef = requiredModuleRef("scala.scalajs.js.Object")
   def JSObjectModule(using Context) = JSObjectModuleRef.symbol
 
-  @threadUnsafe lazy val JSArrayModuleRef = ctx.requiredModuleRef("scala.scalajs.js.Array")
+  @threadUnsafe lazy val JSArrayModuleRef = requiredModuleRef("scala.scalajs.js.Array")
   def JSArrayModule(using Context) = JSArrayModuleRef.symbol
     @threadUnsafe lazy val JSArray_applyR = JSArrayModule.requiredMethodRef(nme.apply)
     def JSArray_apply(using Context) = JSArray_applyR.symbol
 
-  @threadUnsafe lazy val JSThisFunctionModuleRef = ctx.requiredModuleRef("scala.scalajs.js.ThisFunction")
+  @threadUnsafe lazy val JSThisFunctionModuleRef = requiredModuleRef("scala.scalajs.js.ThisFunction")
   def JSThisFunctionModule(using Context) = JSThisFunctionModuleRef.symbol
     @threadUnsafe lazy val JSThisFunction_fromFunctionR = (1 to 22).map(n => JSThisFunctionModule.requiredMethodRef("fromFunction" + n)).toArray
     def JSThisFunction_fromFunction(n: Int)(using Context) = JSThisFunction_fromFunctionR(n - 1).symbol
 
-  @threadUnsafe lazy val JSConstructorTagModuleRef = ctx.requiredModuleRef("scala.scalajs.js.ConstructorTag")
+  @threadUnsafe lazy val JSConstructorTagModuleRef = requiredModuleRef("scala.scalajs.js.ConstructorTag")
   def JSConstructorTagModule(using Context) = JSConstructorTagModuleRef.symbol
     @threadUnsafe lazy val JSConstructorTag_materializeR = JSConstructorTagModule.requiredMethodRef("materialize")
     def JSConstructorTag_materialize(using Context) = JSConstructorTag_materializeR.symbol
 
-  @threadUnsafe lazy val RuntimePackageVal = ctx.requiredPackage("scala.scalajs.runtime")
+  @threadUnsafe lazy val RuntimePackageVal = requiredPackage("scala.scalajs.runtime")
   @threadUnsafe lazy val RuntimePackageClass = RuntimePackageVal.moduleClass.asClass
     @threadUnsafe lazy val RuntimePackage_wrapJavaScriptExceptionR = RuntimePackageClass.requiredMethodRef("wrapJavaScriptException")
     def Runtime_wrapJavaScriptException(using Context) = RuntimePackage_wrapJavaScriptExceptionR.symbol
@@ -139,7 +139,7 @@ final class JSDefinitions()(using Context) {
     @threadUnsafe lazy val Runtime_linkingInfoR = RuntimePackageClass.requiredMethodRef("linkingInfo")
     def Runtime_linkingInfo(using Context) = Runtime_linkingInfoR.symbol
 
-  @threadUnsafe lazy val SpecialPackageVal = ctx.requiredPackage("scala.scalajs.js.special")
+  @threadUnsafe lazy val SpecialPackageVal = requiredPackage("scala.scalajs.js.special")
   @threadUnsafe lazy val SpecialPackageClass = SpecialPackageVal.moduleClass.asClass
     @threadUnsafe lazy val Special_debuggerR = SpecialPackageClass.requiredMethodRef("debugger")
     def Special_debugger(using Context) = Special_debuggerR.symbol
@@ -152,7 +152,7 @@ final class JSDefinitions()(using Context) {
     @threadUnsafe lazy val Special_instanceofR = SpecialPackageClass.requiredMethodRef("instanceof")
     def Special_instanceof(using Context) = Special_instanceofR.symbol
 
-  @threadUnsafe lazy val WrappedArrayType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.WrappedArray")
+  @threadUnsafe lazy val WrappedArrayType: TypeRef = requiredClassRef("scala.scalajs.js.WrappedArray")
   def WrappedArrayClass(using Context) = WrappedArrayType.symbol.asClass
 
   @threadUnsafe lazy val ScalaRunTime_isArrayR = defn.ScalaRuntimeModule.requiredMethodRef("isArray", List(???, ???))
@@ -163,10 +163,10 @@ final class JSDefinitions()(using Context) {
   @threadUnsafe lazy val BoxesRunTime_unboxToCharR = defn.BoxesRunTimeModule.requiredMethodRef("unboxToChar")
   def BoxesRunTime_unboxToChar(using Context): Symbol = BoxesRunTime_unboxToCharR.symbol
 
-  @threadUnsafe lazy val EnableReflectiveInstantiationAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.reflect.annotation.EnableReflectiveInstantiation")
+  @threadUnsafe lazy val EnableReflectiveInstantiationAnnotType: TypeRef = requiredClassRef("scala.scalajs.reflect.annotation.EnableReflectiveInstantiation")
   def EnableReflectiveInstantiationAnnot(using Context) = EnableReflectiveInstantiationAnnotType.symbol.asClass
 
-  @threadUnsafe lazy val ReflectModuleRef = ctx.requiredModuleRef("scala.scalajs.reflect.Reflect")
+  @threadUnsafe lazy val ReflectModuleRef = requiredModuleRef("scala.scalajs.reflect.Reflect")
   def ReflectModule(using Context) = ReflectModuleRef.symbol
     @threadUnsafe lazy val Reflect_registerLoadableModuleClassR = ReflectModule.requiredMethodRef("registerLoadableModuleClass")
     def Reflect_registerLoadableModuleClass(using Context) = Reflect_registerLoadableModuleClassR.symbol
@@ -181,7 +181,7 @@ final class JSDefinitions()(using Context) {
       val fullNames = baseNames.flatMap { base =>
         List(s"scala.runtime.${base}Ref", s"scala.runtime.Volatile${base}Ref")
       }
-      allRefClassesCache = fullNames.map(name => ctx.requiredClass(name)).toSet
+      allRefClassesCache = fullNames.map(name => requiredClass(name)).toSet
     }
     allRefClassesCache
   }
@@ -209,37 +209,37 @@ final class JSDefinitions()(using Context) {
 
   /** Definitions related to the treatment of JUnit boostrappers. */
   object junit {
-    @threadUnsafe lazy val TestAnnotType: TypeRef = ctx.requiredClassRef("org.junit.Test")
+    @threadUnsafe lazy val TestAnnotType: TypeRef = requiredClassRef("org.junit.Test")
     def TestAnnotClass(using Context): ClassSymbol = TestAnnotType.symbol.asClass
 
-    @threadUnsafe lazy val BeforeAnnotType: TypeRef = ctx.requiredClassRef("org.junit.Before")
+    @threadUnsafe lazy val BeforeAnnotType: TypeRef = requiredClassRef("org.junit.Before")
     def BeforeAnnotClass(using Context): ClassSymbol = BeforeAnnotType.symbol.asClass
 
-    @threadUnsafe lazy val AfterAnnotType: TypeRef = ctx.requiredClassRef("org.junit.After")
+    @threadUnsafe lazy val AfterAnnotType: TypeRef = requiredClassRef("org.junit.After")
     def AfterAnnotClass(using Context): ClassSymbol = AfterAnnotType.symbol.asClass
 
-    @threadUnsafe lazy val BeforeClassAnnotType: TypeRef = ctx.requiredClassRef("org.junit.BeforeClass")
+    @threadUnsafe lazy val BeforeClassAnnotType: TypeRef = requiredClassRef("org.junit.BeforeClass")
     def BeforeClassAnnotClass(using Context): ClassSymbol = BeforeClassAnnotType.symbol.asClass
 
-    @threadUnsafe lazy val AfterClassAnnotType: TypeRef = ctx.requiredClassRef("org.junit.AfterClass")
+    @threadUnsafe lazy val AfterClassAnnotType: TypeRef = requiredClassRef("org.junit.AfterClass")
     def AfterClassAnnotClass(using Context): ClassSymbol = AfterClassAnnotType.symbol.asClass
 
-    @threadUnsafe lazy val IgnoreAnnotType: TypeRef = ctx.requiredClassRef("org.junit.Ignore")
+    @threadUnsafe lazy val IgnoreAnnotType: TypeRef = requiredClassRef("org.junit.Ignore")
     def IgnoreAnnotClass(using Context): ClassSymbol = IgnoreAnnotType.symbol.asClass
 
-    @threadUnsafe lazy val BootstrapperType: TypeRef = ctx.requiredClassRef("org.scalajs.junit.Bootstrapper")
+    @threadUnsafe lazy val BootstrapperType: TypeRef = requiredClassRef("org.scalajs.junit.Bootstrapper")
 
-    @threadUnsafe lazy val TestMetadataType: TypeRef = ctx.requiredClassRef("org.scalajs.junit.TestMetadata")
+    @threadUnsafe lazy val TestMetadataType: TypeRef = requiredClassRef("org.scalajs.junit.TestMetadata")
 
-    @threadUnsafe lazy val NoSuchMethodExceptionType: TypeRef = ctx.requiredClassRef("java.lang.NoSuchMethodException")
+    @threadUnsafe lazy val NoSuchMethodExceptionType: TypeRef = requiredClassRef("java.lang.NoSuchMethodException")
 
-    @threadUnsafe lazy val FutureType: TypeRef = ctx.requiredClassRef("scala.concurrent.Future")
+    @threadUnsafe lazy val FutureType: TypeRef = requiredClassRef("scala.concurrent.Future")
     def FutureClass(using Context): ClassSymbol = FutureType.symbol.asClass
 
-    @threadUnsafe private lazy val FutureModule_successfulR = ctx.requiredModule("scala.concurrent.Future").requiredMethodRef("successful")
+    @threadUnsafe private lazy val FutureModule_successfulR = requiredModule("scala.concurrent.Future").requiredMethodRef("successful")
     def FutureModule_successful(using Context): Symbol = FutureModule_successfulR.symbol
 
-    @threadUnsafe private lazy val SuccessModule_applyR = ctx.requiredModule("scala.util.Success").requiredMethodRef(nme.apply)
+    @threadUnsafe private lazy val SuccessModule_applyR = requiredModule("scala.util.Success").requiredMethodRef(nme.apply)
     def SuccessModule_apply(using Context): Symbol = SuccessModule_applyR.symbol
   }
 

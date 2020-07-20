@@ -50,7 +50,7 @@ abstract class Lifter {
       // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
       var liftedType = expr.tpe.widen
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
-      val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span))
+      val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span))
       defs += liftedDef(lifted, expr)
         .withSpan(expr.span)
         .changeNonLocalOwners(lifted)

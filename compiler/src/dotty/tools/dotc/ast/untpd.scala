@@ -260,7 +260,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       else if compatible(this.flags, flags) then this | flags
       else
         val what = if flags.isTermFlags then "values" else "types"
-        ctx.error(em"${(flags & ModifierFlags).flagsString} $what cannot be ${this.flags.flagsString}", ctx.source.atSpan(span))
+        report.error(em"${(flags & ModifierFlags).flagsString} $what cannot be ${this.flags.flagsString}", ctx.source.atSpan(span))
         Modifiers(flags)
 
     /** Modifiers with given list of Mods. It is checked that

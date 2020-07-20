@@ -19,9 +19,11 @@ import Trees._
 import Names._
 import StdNames._
 import NameOps._
+import ContextOps._
 import NameKinds.DefaultGetterName
 import ProtoTypes._
 import Inferencing._
+import reporting._
 import transform.TypeUtils._
 import Nullables.{postProcessByNameArgs, given _}
 import config.Feature
@@ -30,10 +32,7 @@ import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
-import reporting.messages.{UnexpectedPatternForSummonFrom, NotFoundMsg, TypeMismatch}
-import reporting.{trace, Message}
 import Constants.{Constant, IntTag, LongTag}
-import dotty.tools.dotc.reporting.messages.{UnapplyInvalidReturnType, NotAnExtractor, UnapplyInvalidNumberOfArguments}
 import Denotations.SingleDenotation
 import annotation.{constructorOnly, threadUnsafe}
 
@@ -160,7 +159,7 @@ object Applications {
     def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
     def fail = {
-      ctx.error(UnapplyInvalidReturnType(unapplyResult, unapplyName), pos)
+      report.error(UnapplyInvalidReturnType(unapplyResult, unapplyName), pos)
       Nil
     }
 
@@ -728,12 +727,12 @@ trait Applications extends Compatibility {
     override def appPos: SourcePosition = app.sourcePos
 
     def fail(msg: Message, arg: Trees.Tree[T]): Unit = {
-      ctx.error(msg, arg.sourcePos)
+      report.error(msg, arg.sourcePos)
       ok = false
     }
 
     def fail(msg: Message): Unit = {
-      ctx.error(msg, app.sourcePos)
+      report.error(msg, app.sourcePos)
       ok = false
     }
 
@@ -942,7 +941,7 @@ trait Applications extends Compatibility {
                   case CaseDef(Bind(_, Typed(_: untpd.Ident, _)), _, _) => // OK
                   case CaseDef(Ident(name), _, _) if name == nme.WILDCARD => // Ok
                   case CaseDef(pat, _, _) =>
-                    ctx.error(UnexpectedPatternForSummonFrom(pat), pat.sourcePos)
+                    report.error(UnexpectedPatternForSummonFrom(pat), pat.sourcePos)
                 }
                 typed(untpd.InlineMatch(EmptyTree, cases).withSpan(arg.span), pt)
               case _ =>
@@ -1243,7 +1242,7 @@ trait Applications extends Compatibility {
             // We ignore whether constraining the pattern succeeded.
             // Constraining only fails if the pattern cannot possibly match,
             // but useless pattern checks detect more such cases, so we simply rely on them instead.
-            ctx.addMode(Mode.GadtConstraintInference).typeComparer.constrainPatternType(unapplyArgType, selType)
+            withMode(Mode.GadtConstraintInference)(ctx.typeComparer.constrainPatternType(unapplyArgType, selType))
             val patternBound = maximizeType(unapplyArgType, tree.span, fromScala2x)
             if (patternBound.nonEmpty) unapplyFn = addBinders(unapplyFn, patternBound)
             unapp.println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
@@ -1257,7 +1256,7 @@ trait Applications extends Compatibility {
             case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
             case Apply(unapply, `dummyArg` :: Nil) =>
             case Inlined(u, _, _) => loop(u)
-            case DynamicUnapply(_) => ctx.error("Structural unapply is not supported", unapplyFn.sourcePos)
+            case DynamicUnapply(_) => report.error("Structural unapply is not supported", unapplyFn.sourcePos)
             case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args
             case _ => ().assertingErrorsReported
           }
@@ -1274,7 +1273,7 @@ trait Applications extends Compatibility {
           case _ => args
         }
         if (argTypes.length != bunchedArgs.length) {
-          ctx.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.sourcePos)
+          report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.sourcePos)
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }
@@ -1302,20 +1301,20 @@ trait Applications extends Compatibility {
   def isApplicableMethodRef(methRef: TermRef, args: List[Tree], resultType: Type, keepConstraint: Boolean)(using Context): Boolean = {
     def isApp(using Context): Boolean =
       new ApplicableToTrees(methRef, args, resultType).success
-    if (keepConstraint) isApp else ctx.test(isApp)
+    if (keepConstraint) isApp else explore(isApp)
   }
 
   /** Is given method reference applicable to argument trees `args` without inferring views?
     *  @param  resultType   The expected result type of the application
     */
   def isDirectlyApplicableMethodRef(methRef: TermRef, args: List[Tree], resultType: Type)(using Context): Boolean =
-    ctx.test(new ApplicableToTreesDirectly(methRef, args, resultType).success)
+    explore(new ApplicableToTreesDirectly(methRef, args, resultType).success)
 
   /** Is given method reference applicable to argument types `args`?
    *  @param  resultType   The expected result type of the application
    */
   def isApplicableMethodRef(methRef: TermRef, args: List[Type], resultType: Type)(using Context): Boolean =
-    ctx.test(new ApplicableToTypes(methRef, args, resultType).success)
+    explore(new ApplicableToTypes(methRef, args, resultType).success)
 
   /** Is given type applicable to argument trees `args`, possibly after inserting an `apply`?
    *  @param  resultType   The expected result type of the application
@@ -1466,7 +1465,7 @@ trait Applications extends Compatibility {
           val tp1Params = tp1.newLikeThis(tp1.paramNames, tp1.paramInfos, defn.AnyType)
           fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.span)
 
-          val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
+          val tparams = newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
           isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
         }
       case _ => // (3)
@@ -1474,7 +1473,7 @@ trait Applications extends Compatibility {
           case tp2: MethodType => true // (3a)
           case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
           case tp2: PolyType => // (3b)
-            ctx.test(isAsSpecificValueType(tp1, constrained(tp2).resultType))
+            explore(isAsSpecificValueType(tp1, constrained(tp2).resultType))
           case _ => // (3b)
             isAsSpecificValueType(tp1, tp2)
         }
@@ -1658,9 +1657,9 @@ trait Applications extends Compatibility {
      *  do they prune much, on average.
      */
     def adaptByResult(chosen: TermRef, alts: List[TermRef]) = pt match {
-      case pt: FunProto if !ctx.test(resultConforms(chosen.symbol, chosen, pt.resultType)) =>
+      case pt: FunProto if !explore(resultConforms(chosen.symbol, chosen, pt.resultType)) =>
         val conformingAlts = alts.filter(alt =>
-          (alt ne chosen) && ctx.test(resultConforms(alt.symbol, alt, pt.resultType)))
+          (alt ne chosen) && explore(resultConforms(alt.symbol, alt, pt.resultType)))
         conformingAlts match {
           case Nil => chosen
           case alt2 :: Nil => alt2
@@ -1683,7 +1682,7 @@ trait Applications extends Compatibility {
             return resolveMapped(alts, alt => stripImplicit(alt.widen), pt)
         case _ =>
 
-      var found = resolveOverloaded1(alts, pt)(using ctx.retractMode(Mode.ImplicitsEnabled))
+      var found = withoutMode(Mode.ImplicitsEnabled)(resolveOverloaded1(alts, pt))
       if found.isEmpty && ctx.mode.is(Mode.ImplicitsEnabled) then
         found = resolveOverloaded1(alts, pt)
       found match
@@ -1840,11 +1839,11 @@ trait Applications extends Compatibility {
         }
 
         val alts1 = narrowBySize(alts)
-        //ctx.log(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
+        //report.log(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
         if isDetermined(alts1) then alts1
         else
           val alts2 = narrowByShapes(alts1)
-          //ctx.log(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
+          //report.log(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
           if isDetermined(alts2) then alts2
           else
             pretypeArgs(alts2, pt)
@@ -1998,7 +1997,7 @@ trait Applications extends Compatibility {
                 else defn.FunctionOf(commonParamTypes, WildcardType)
               overload.println(i"pretype arg $arg with expected type $commonFormal")
               if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.flipBottom)))
-                pt.typedArg(arg, commonFormal)(using ctx.addMode(Mode.ImplicitsEnabled))
+                withMode(Mode.ImplicitsEnabled)(pt.typedArg(arg, commonFormal))
             }
           case None =>
         }
@@ -2101,16 +2100,16 @@ trait Applications extends Compatibility {
         (methodRef, pt)
     }
     val (core, pt1) = integrateTypeArgs(pt)
-    val app =
-      typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)(
-        using ctx.addMode(Mode.SynthesizeExtMethodReceiver))
+    val app = withMode(Mode.SynthesizeExtMethodReceiver) {
+      typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)
+    }
     def isExtension(tree: Tree): Boolean = methPart(tree) match {
       case Inlined(call, _, _) => isExtension(call)
       case tree @ Select(qual, nme.apply) => tree.symbol.is(Extension) || isExtension(qual)
       case tree => tree.symbol.is(Extension)
     }
     if (!isExtension(app))
-      ctx.error(em"not an extension method: $methodRef", receiver.sourcePos)
+      report.error(em"not an extension method: $methodRef", receiver.sourcePos)
     app
   }
 }

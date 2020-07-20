@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Names.TypeName
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Scopes.{EmptyScope, newScope}
 import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.core.Symbols.defn
+import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.ExprType
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
@@ -62,10 +62,10 @@ private class QuoteCompiler extends Compiler:
 
           // Places the contents of expr in a compilable tree for a class with the following format.
           // `package __root__ { class ' { def apply: Any = <expr> } }`
-          val cls = unitCtx.newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
+          val cls = newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
             defn.ObjectType :: Nil, newScope, coord = pos, assocFile = assocFile).entered.asClass
-          cls.enter(unitCtx.newDefaultConstructor(cls), EmptyScope)
-          val meth = unitCtx.newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
+          cls.enter(newDefaultConstructor(cls), EmptyScope)
+          val meth = newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
 
           val quoted =
             given Context = unitCtx.withOwner(meth)

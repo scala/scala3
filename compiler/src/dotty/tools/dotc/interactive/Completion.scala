@@ -5,7 +5,7 @@ import java.nio.charset.Charset
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.config.Printers.interactiv
-import dotty.tools.dotc.core.Contexts.{Context, NoContext, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.CheckRealizable
 import dotty.tools.dotc.core.Decorators.StringInterpolators
 import dotty.tools.dotc.core.Denotations.SingleDenotation

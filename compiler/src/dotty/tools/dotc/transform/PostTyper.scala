@@ -13,7 +13,7 @@ import Decorators._
 import Symbols._, SymUtils._, NameOps._
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
-import reporting.messages._
+import reporting._
 
 object PostTyper {
   val name: String = "posttyper"
@@ -149,7 +149,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val sym = tree.symbol
           if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then
             if !sym.owner.unforcedDecls.exists(p => !p.isScala2Macro && p.name == sym.name && p.signature == sym.signature) then
-              ctx.error("No Scala 3 implementation found for this Scala 2 macro.", tree.sourcePos)
+              report.error("No Scala 3 implementation found for this Scala 2 macro.", tree.sourcePos)
         case _ =>
       processMemberDef(tree)
 
@@ -236,7 +236,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree @ Select(qual, name) =>
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.posd)
-            super.transform(tree)(using ctx.addMode(Mode.Type))
+            withMode(Mode.Type)(super.transform(tree))
           }
           else
             transformSelect(tree, Nil)
@@ -352,16 +352,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             if !exprTpe.member(sel.name).exists
                && !exprTpe.member(sel.name.toTypeName).exists
                && !exprTpe.member(sel.name.toExtensionName).exists then
-              ctx.error(NotAMember(exprTpe, sel.name, "value"), sel.imported.sourcePos)
+              report.error(NotAMember(exprTpe, sel.name, "value"), sel.imported.sourcePos)
             if seen.contains(sel.name) then
-              ctx.error(ImportRenamedTwice(sel.imported), sel.imported.sourcePos)
+              report.error(ImportRenamedTwice(sel.imported), sel.imported.sourcePos)
             seen += sel.name
 
           for sel <- selectors do
             if !sel.isWildcard then checkIdent(sel)
           super.transform(tree)
         case Typed(Ident(nme.WILDCARD), _) =>
-          super.transform(tree)(using ctx.addMode(Mode.Pattern))
+          withMode(Mode.Pattern)(super.transform(tree))
             // The added mode signals that bounds in a pattern need not
             // conform to selector bounds. I.e. assume
             //     type Tree[T >: Null <: Type]
@@ -372,7 +372,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case m @ MatchTypeTree(bounds, selector, cases) =>
           // Analog to the case above for match types
           def tranformIgnoringBoundsCheck(x: CaseDef): CaseDef =
-            super.transform(x)(using ctx.addMode(Mode.Pattern)).asInstanceOf[CaseDef]
+            withMode(Mode.Pattern)(super.transform(x)).asInstanceOf[CaseDef]
           cpy.MatchTypeTree(tree)(
             super.transform(bounds),
             super.transform(selector),

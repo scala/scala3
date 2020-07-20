@@ -1,6 +1,6 @@
 package dotty.tools.repl
 
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.parsing.Scanners.Scanner
 import dotty.tools.dotc.parsing.Tokens._
 import dotty.tools.dotc.printing.SyntaxHighlighting

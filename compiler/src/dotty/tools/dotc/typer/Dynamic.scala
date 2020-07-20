@@ -6,7 +6,7 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Types._
@@ -15,7 +15,7 @@ import util.Spans._
 import core.Symbols._
 import core.Definitions
 import ErrorReporting._
-import dotty.tools.dotc.reporting.messages.ReassignmentToVal
+import reporting._
 
 object Dynamic {
   def isDynamicMethod(name: Name): Boolean =

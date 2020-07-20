@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import Decorators._
 import tasty._
 import config.Printers.{noPrinter, pickling}
@@ -120,7 +120,7 @@ class Pickler extends Phase {
     if (previous != unpickled) {
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
-      ctx.error(s"""pickling difference for $cls in ${cls.source}, for details:
+      report.error(s"""pickling difference for $cls in ${cls.source}, for details:
                    |
                    |  diff before-pickling.txt after-pickling.txt""".stripMargin)
     }

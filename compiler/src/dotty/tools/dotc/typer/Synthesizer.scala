@@ -57,7 +57,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         ctx.compilationUnit.needsStaging = true // We will need to run ReifyQuotes
       val qctx = ctx.typer.inferImplicitArg(defn.QuoteContextClass.typeRef, span)
       qctx.tpe match
-        case tpe: Implicits.SearchFailureType => ctx.error(tpe.msg, ctx.source.atSpan(span))
+        case tpe: Implicits.SearchFailureType => report.error(tpe.msg, ctx.source.atSpan(span))
         case _ =>
       ref(defn.InternalQuoted_typeQuote).appliedToType(t).select(nme.apply).appliedTo(qctx)
     formal.argInfos match
@@ -129,7 +129,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       */
     def validEqAnyArgs(tp1: Type, tp2: Type)(using Context) =
       typer.assumedCanEqual(tp1, tp2)
-       || inContext(ctx.addMode(Mode.StrictEquality)) {
+       || withMode(Mode.StrictEquality) {
             !hasEq(tp1) && !hasEq(tp2)
           }
 
@@ -178,7 +178,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case args @ (arg1 :: arg2 :: Nil) =>
         List(arg1, arg2).foreach(fullyDefinedType(_, "eq argument", span))
         if canComparePredefined(arg1, arg2)
-            || !Implicits.strictEquality && ctx.test(validEqAnyArgs(arg1, arg2))
+            || !Implicits.strictEquality && explore(validEqAnyArgs(arg1, arg2))
         then ref(defn.Eql_eqlAny).appliedToTypes(args).withSpan(span)
         else EmptyTree
       case _ => EmptyTree

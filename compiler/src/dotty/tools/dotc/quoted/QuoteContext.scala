@@ -1,6 +1,6 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
 object QuoteContext {

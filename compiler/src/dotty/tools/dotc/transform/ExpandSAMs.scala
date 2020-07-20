@@ -6,7 +6,7 @@ import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Consta
 import MegaPhase._
 import SymUtils._
 import ast.Trees._
-import dotty.tools.dotc.reporting.messages.TypeMismatch
+import reporting._
 import dotty.tools.dotc.util.Spans.Span
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
@@ -111,7 +111,7 @@ class ExpandSAMs extends MiniPhase {
         val parents = List(
           defn.AbstractPartialFunctionClass.typeRef.appliedTo(anonTpe.firstParamTypes.head, anonTpe.resultType),
           defn.SerializableType)
-        val pfSym = ctx.newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, coord = tree.span)
+        val pfSym = newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, coord = tree.span)
 
         def overrideSym(sym: Symbol) = sym.copy(
           owner = pfSym,
@@ -124,7 +124,7 @@ class ExpandSAMs extends MiniPhase {
         def translateMatch(tree: Match, pfParam: Symbol, cases: List[CaseDef], defaultValue: Tree)(using Context) = {
           val selector = tree.selector
           val selectorTpe = selector.tpe.widen
-          val defaultSym = ctx.newSymbol(pfParam.owner, nme.WILDCARD, Synthetic | Case, selectorTpe)
+          val defaultSym = newSymbol(pfParam.owner, nme.WILDCARD, Synthetic | Case, selectorTpe)
           val defaultCase =
             CaseDef(
               Bind(defaultSym, Underscore(selectorTpe)),
@@ -155,7 +155,7 @@ class ExpandSAMs extends MiniPhase {
           translateMatch(pf, paramRef.symbol, pf.cases.map(translateCase), defaultValue)
         }
 
-        val constr = ctx.newConstructor(pfSym, Synthetic, Nil, Nil).entered
+        val constr = newConstructor(pfSym, Synthetic, Nil, Nil).entered
         val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)(using ctx.withOwner(isDefinedAtFn))))
         val applyOrElseDef = transformFollowingDeep(DefDef(applyOrElseFn, applyOrElseRhs(_)(using ctx.withOwner(applyOrElseFn))))
         val pfDef = ClassDef(pfSym, DefDef(constr), List(isDefinedAtDef, applyOrElseDef))
@@ -163,7 +163,7 @@ class ExpandSAMs extends MiniPhase {
 
       case _ =>
         val found = tpe.baseType(defn.FunctionClass(1))
-        ctx.error(TypeMismatch(found, tpe), tree.sourcePos)
+        report.error(TypeMismatch(found, tpe), tree.sourcePos)
         tree
     }
   }
@@ -171,7 +171,7 @@ class ExpandSAMs extends MiniPhase {
   private def checkRefinements(tpe: Type, tree: Tree)(using Context): Type = tpe.dealias match {
     case RefinedType(parent, name, _) =>
       if (name.isTermName && tpe.member(name).symbol.ownersIterator.isEmpty) // if member defined in the refinement
-        ctx.error("Lambda does not define " + name, tree.sourcePos)
+        report.error("Lambda does not define " + name, tree.sourcePos)
       checkRefinements(parent, tree)
     case tpe =>
       tpe

@@ -7,7 +7,7 @@ import MegaPhase._
 import Types._, Contexts._, Flags._, DenotTransformers._, Phases._
 import Symbols._, StdNames._, Trees._
 import TypeErasure.ErasedValueType, ValueClasses._
-import reporting.messages.DoubleDefinition
+import reporting._
 import NameKinds.SuperAccessorName
 
 object ElimErasedValueType {
@@ -78,11 +78,13 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
    *  this phase, yet do not have matching types before erasure.
    */
   private def checkNoClashes(root: Symbol)(using Context) = {
-    val opc = new OverridingPairs.Cursor(root)(using ctx.withPhase(thisPhase)) {
-      override def exclude(sym: Symbol) =
-        !sym.is(Method) || sym.is(Bridge) || super.exclude(sym)
-      override def matches(sym1: Symbol, sym2: Symbol) =
-        sym1.signature == sym2.signature
+    val opc = atPhase(thisPhase) {
+      new OverridingPairs.Cursor(root) {
+        override def exclude(sym: Symbol) =
+          !sym.is(Method) || sym.is(Bridge) || super.exclude(sym)
+        override def matches(sym1: Symbol, sym2: Symbol) =
+          sym1.signature == sym2.signature
+      }
     }
 
     def checkNoConflict(sym1: Symbol, sym2: Symbol, info: Type)(using Context): Unit = {
@@ -101,16 +103,15 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
       def bothSuperAccessors = sym1.name.is(SuperAccessorName) && sym2.name.is(SuperAccessorName)
       if (sym1.name != sym2.name && !bothSuperAccessors ||
           !info1.matchesLoosely(info2) && !bothPolyApply)
-        ctx.error(DoubleDefinition(sym1, sym2, root), root.sourcePos)
+        report.error(DoubleDefinition(sym1, sym2, root), root.sourcePos)
     }
-    val earlyCtx = ctx.withPhase(elimRepeatedPhase.next)
     while (opc.hasNext) {
       val sym1 = opc.overriding
       val sym2 = opc.overridden
       // Do the test at the earliest phase where both symbols existed.
       val phaseId =
         sym1.originDenotation.validFor.firstPhaseId max sym2.originDenotation.validFor.firstPhaseId
-      checkNoConflict(sym1, sym2, sym1.info)(using earlyCtx)
+      atPhase(elimRepeatedPhase.next)(checkNoConflict(sym1, sym2, sym1.info))
       opc.next()
     }
   }

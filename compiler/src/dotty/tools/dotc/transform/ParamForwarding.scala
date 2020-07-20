@@ -69,7 +69,7 @@ class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
             .select(alias)
             .ensureApplied
             .ensureConforms(sym.info.finalResultType)
-        ctx.log(i"adding param forwarder $superAcc")
+        report.log(i"adding param forwarder $superAcc")
         DefDef(sym, superAcc)
       else mdef
     else mdef

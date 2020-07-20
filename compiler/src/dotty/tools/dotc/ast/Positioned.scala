@@ -4,7 +4,7 @@ package ast
 
 import util.Spans._
 import util.{SourceFile, NoSource, SourcePosition}
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import core.Decorators._
 import core.Flags.{JavaDefined, Extension}
 import core.StdNames.nme

@@ -282,7 +282,7 @@ class ReifyQuotes extends MacroTransform {
       val lambdaOwner = if (level == -1) ctx.owner else outer.owner
 
       val tpe = MethodType(defn.SeqType.appliedTo(defn.AnyType) :: Nil, tree.tpe.widen)
-      val meth = ctx.newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
+      val meth = newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
       Closure(meth, tss => body(tss.head.head)(using ctx.withOwner(meth)).changeNonLocalOwners(meth)).withSpan(tree.span)
     }
 
@@ -327,7 +327,7 @@ class ReifyQuotes extends MacroTransform {
       val idx = embedded.addTree(body, NoSymbol)
 
       /** Remove references to local types that will not be defined in this quote */
-      def getTypeHoleType(using ctx: Context) = new TypeMap() {
+      def getTypeHoleType(using Context) = new TypeMap() {
         override def apply(tp: Type): Type = tp match
           case tp: TypeRef if tp.typeSymbol.isSplice =>
             apply(tp.dealias)
@@ -341,7 +341,7 @@ class ReifyQuotes extends MacroTransform {
       }
 
       /** Remove references to local types that will not be defined in this quote */
-      def getTermHoleType(using ctx: Context) = new TypeMap() {
+      def getTermHoleType(using Context) = new TypeMap() {
         override def apply(tp: Type): Type = tp match
           case tp @ TypeRef(NoPrefix, _) if capturers.contains(tp.symbol) =>
             // reference to term with a type defined in outer quote

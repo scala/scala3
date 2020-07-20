@@ -42,7 +42,7 @@ class FrontEnd extends Phase {
     try body
     catch {
       case NonFatal(ex) =>
-        ctx.echo(s"exception occurred while $doing ${ctx.compilationUnit}")
+        report.echo(s"exception occurred while $doing ${ctx.compilationUnit}")
         throw ex
     }
 
@@ -97,7 +97,7 @@ class FrontEnd extends Phase {
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     val unitContexts =
       for unit <- units yield
-        ctx.inform(s"compiling ${unit.source}")
+        report.inform(s"compiling ${unit.source}")
         ctx.fresh.setCompilationUnit(unit)
     unitContexts.foreach(parse(using _))
     record("parsedTrees", ast.Trees.ntrees)
@@ -107,7 +107,7 @@ class FrontEnd extends Phase {
       remaining = remaining.tail
 
     if (firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists)
-      ctx.error("""To support XML literals, your project must depend on scala-xml.
+      report.error("""To support XML literals, your project must depend on scala-xml.
                   |See https://github.com/scala/scala-xml for more information.""".stripMargin,
         firstXmlPos)
 
@@ -125,7 +125,7 @@ class FrontEnd extends Phase {
       val enableXprintSuspensionHint =
         if (ctx.settings.XprintSuspension.value) ""
         else "\n\nCompiling with  -Xprint-suspension   gives more information."
-      ctx.error(em"""Cyclic macro dependencies $where
+      report.error(em"""Cyclic macro dependencies $where
                     |Compilation stopped since no further progress can be made.
                     |
                     |To fix this, place macros in one set of files and their callers in another.$enableXprintSuspensionHint""")

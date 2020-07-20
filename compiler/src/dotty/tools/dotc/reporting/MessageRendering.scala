@@ -4,7 +4,7 @@ package reporting
 
 import java.lang.System.{lineSeparator => EOL}
 
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import core.Decorators._
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting

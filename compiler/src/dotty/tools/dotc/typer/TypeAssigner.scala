@@ -13,7 +13,7 @@ import ast.Trees._
 import NameOps._
 import ProtoTypes._
 import collection.mutable
-import reporting.messages._
+import reporting._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 
 trait TypeAssigner {
@@ -32,7 +32,7 @@ trait TypeAssigner {
       case Some(c) if packageOK || !c.is(Package) =>
         c
       case _ =>
-        ctx.error(
+        report.error(
           if (qual.isEmpty) tree.show + " can be used only in a class, object, or template"
           else qual.show + " is not an enclosing class", tree.sourcePos)
         NoSymbol
@@ -190,7 +190,7 @@ trait TypeAssigner {
       qualType match {
         case JavaArrayType(elemtp) => elemtp
         case _ =>
-          ctx.error("Expected Array but was " + qualType.show, tree.sourcePos)
+          report.error("Expected Array but was " + qualType.show, tree.sourcePos)
           defn.NothingType
       }
     }
@@ -314,9 +314,9 @@ trait TypeAssigner {
             val namedArgMap = new mutable.HashMap[Name, Type]
             for (NamedArg(name, arg) <- args)
               if (namedArgMap.contains(name))
-                ctx.error(DuplicateNamedTypeParameter(name), arg.sourcePos)
+                report.error(DuplicateNamedTypeParameter(name), arg.sourcePos)
               else if (!paramNames.contains(name))
-                ctx.error(UndefinedNamedTypeParameter(name, paramNames), arg.sourcePos)
+                report.error(UndefinedNamedTypeParameter(name, paramNames), arg.sourcePos)
               else
                 namedArgMap(name) = arg.tpe
 

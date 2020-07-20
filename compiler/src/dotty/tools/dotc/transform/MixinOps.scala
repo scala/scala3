@@ -15,7 +15,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   val mixins: List[ClassSymbol] = cls.mixins
 
   lazy val JUnit4Annotations: List[Symbol] = List("Test", "Ignore", "Before", "After", "BeforeClass", "AfterClass").
-    map(n => ctx.getClassIfDefined("org.junit." + n)).
+    map(n => getClassIfDefined("org.junit." + n)).
     filter(_.exists)
 
   def mkForwarderSym(member: TermSymbol, extraFlags: FlagSet = EmptyFlags): TermSymbol = {

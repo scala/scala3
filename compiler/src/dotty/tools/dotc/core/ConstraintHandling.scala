@@ -9,7 +9,7 @@ import Decorators._
 import Flags._
 import config.Config
 import config.Printers.typr
-import dotty.tools.dotc.reporting.trace
+import reporting.trace
 
 /** Methods for adding constraints and solving them.
  *
@@ -164,7 +164,7 @@ trait ConstraintHandling[AbstractContext] {
       def msg = i"!!! instantiated to Nothing: $param, constraint = $constraint"
       if Config.failOnInstantiationToNothing
       then assert(false, msg)
-      else ctx.log(msg)
+      else report.log(msg)
     def others = if isUpper then constraint.lower(param) else constraint.upper(param)
     val bound = adjust(rawBound)
     bound.exists
@@ -237,7 +237,7 @@ trait ConstraintHandling[AbstractContext] {
     constraint.forallParams { param =>
       val TypeBounds(lo, hi) = constraint.entry(param)
       isSubType(lo, hi) || {
-        ctx.log(i"sub fail $lo <:< $hi")
+        report.log(i"sub fail $lo <:< $hi")
         false
       }
     }

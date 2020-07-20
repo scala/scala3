@@ -128,7 +128,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         // see https://github.com/scala/bug/issues/11714
         val validJava = atPhase(thisPhase)(isValidJavaVarArgs(sym.info))
         if !validJava then
-          ctx.error("""To generate java-compatible varargs:
+          report.error("""To generate java-compatible varargs:
                     |  - there must be a single repeated parameter
                     |  - it must be the last argument in the last parameter list
                     |""".stripMargin,
@@ -141,7 +141,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         tree
     else
       if hasAnnotation then
-        ctx.error("A method without repeated parameters cannot be annotated with @varargs", sym.sourcePos)
+        report.error("A method without repeated parameters cannot be annotated with @varargs", sym.sourcePos)
       tree
 
   /** Is there a repeated parameter in some parameter list? */
@@ -178,7 +178,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  The solution is to add a method that converts its argument from `Array[? <: T]` to `Seq[T]` and
    *  forwards it to `ddef`.
    */
-  private def addVarArgsForwarder(ddef: DefDef, isBridge: Boolean)(using ctx: Context): Tree =
+  private def addVarArgsForwarder(ddef: DefDef, isBridge: Boolean)(using Context): Tree =
     val original = ddef.symbol
 
     // The java-compatible forwarder symbol
@@ -204,7 +204,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
     conflict match
       case Some(conflict) =>
-        ctx.error(s"@varargs produces a forwarder method that conflicts with ${conflict.showDcl}", original.sourcePos)
+        report.error(s"@varargs produces a forwarder method that conflicts with ${conflict.showDcl}", original.sourcePos)
         ddef
       case None =>
         val bridgeDef = polyDefDef(sym.enteredAfter(thisPhase), trefs => vrefss => {

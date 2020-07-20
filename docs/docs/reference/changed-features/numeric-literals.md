@@ -226,8 +226,7 @@ strings `fromDigitsImpl(digits)` is simply `apply(digits)`, i.e. everything is
 evaluated at runtime in this case.
 
 The interesting part is the `catch` part of the case where `digits` is constant.
-If the `apply` method throws a `FromDigitsException`, the exception's message is issued as a compile time error
-in the `ctx.error(ex.getMessage)` call.
+If the `apply` method throws a `FromDigitsException`, the exception's message is issued as a compile time error in the `ctx.error(ex.getMessage)` call.
 
 With this new implementation, a definition like
 ```scala

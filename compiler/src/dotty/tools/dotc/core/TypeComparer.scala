@@ -3,7 +3,8 @@ package dotc
 package core
 
 import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
-import Decorators._, Phases._
+import Decorators._
+import Phases.gettersPhase
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
@@ -196,14 +197,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
         pendingSubTypes = new mutable.HashSet[(Type, Type)]
-        ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
-        ctx.log(s"!!! constraint = ${constraint.show}")
+        report.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
+        report.log(s"!!! constraint = ${constraint.show}")
         //if (ctx.settings.YnoDeepSubtypes.value) {
         //  new Error("deep subtype").printStackTrace()
         //}
         assert(!ctx.settings.YnoDeepSubtypes.value)
         if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
-          ctx.log(TypeComparer.explained(summon[Context].typeComparer.isSubType(tp1, tp2, approx)))
+          report.log(TypeComparer.explained(summon[Context].typeComparer.isSubType(tp1, tp2, approx)))
       }
       // Eliminate LazyRefs before checking whether we have seen a type before
       val normalize = new TypeMap {
@@ -363,7 +364,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           if (!frozenConstraint && tp2.isRef(NothingClass) && state.isGlobalCommittable) {
             def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
             if (Config.failOnInstantiationToNothing) assert(false, msg)
-            else ctx.log(msg)
+            else report.log(msg)
           }
           true
         }
@@ -1133,11 +1134,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         if (recCount >= Config.LogPendingSubTypesThreshold) monitored = true
         val result = if (monitored) monitoredIsSubType else firstTry
         recCount = recCount - 1
-        if (!result) state.resetConstraintTo(saved)
-        else if (recCount == 0 && needsGc) {
+        if !result then
+          state.constraint = saved
+        else if recCount == 0 && needsGc then
           state.gc()
           needsGc = false
-        }
         if (Stats.monitored) recordStatistics(result, savedSuccessCount)
         result
       }
@@ -1145,7 +1146,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         case NonFatal(ex) =>
           if (ex.isInstanceOf[AssertionError]) showGoal(tp1, tp2)
           recCount -= 1
-          state.resetConstraintTo(saved)
+          state.constraint = saved
           successCount = savedSuccessCount
           throw ex
       }
@@ -2232,12 +2233,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
   /** Show subtype goal that led to an assertion failure */
   def showGoal(tp1: Type, tp2: Type)(using Context): Unit = {
-    ctx.echo(i"assertion failure for ${show(tp1)} <:< ${show(tp2)}, frozen = $frozenConstraint")
+    report.echo(i"assertion failure for ${show(tp1)} <:< ${show(tp2)}, frozen = $frozenConstraint")
     def explainPoly(tp: Type) = tp match {
-      case tp: TypeParamRef => ctx.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
-      case tp: TypeRef if tp.symbol.exists => ctx.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
-      case tp: TypeVar => ctx.echo(s"typevar ${tp.show}, origin = ${tp.origin}")
-      case _ => ctx.echo(s"${tp.show} is a ${tp.getClass}")
+      case tp: TypeParamRef => report.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
+      case tp: TypeRef if tp.symbol.exists => report.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
+      case tp: TypeVar => report.echo(s"typevar ${tp.show}, origin = ${tp.origin}")
+      case _ => report.echo(s"${tp.show} is a ${tp.getClass}")
     }
     if (Config.verboseExplainSubtype) {
       explainPoly(tp1)

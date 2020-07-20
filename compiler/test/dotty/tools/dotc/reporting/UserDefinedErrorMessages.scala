@@ -3,7 +3,6 @@ package dotc
 package reporting
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.reporting.messages._
 import org.junit.Assert._
 import org.junit.Test
 

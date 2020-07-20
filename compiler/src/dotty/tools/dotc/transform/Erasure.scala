@@ -33,7 +33,7 @@ import ContextFunctionResults._
 import ExplicitOuter._
 import core.Mode
 import util.Property
-import reporting.trace
+import reporting._
 import collection.mutable
 
 class Erasure extends Phase with DenotTransformer {
@@ -250,7 +250,7 @@ object Erasure {
             val arg = safelyRemovableUnboxArg(tree)
             if (arg.isEmpty) ref(boxMethod(cls.asClass)).appliedTo(tree)
             else {
-              ctx.log(s"boxing an unbox: ${tree.symbol} -> ${arg.tpe}")
+              report.log(s"boxing an unbox: ${tree.symbol} -> ${arg.tpe}")
               arg
             }
           }
@@ -448,7 +448,7 @@ object Erasure {
                   if (resultAdaptationNeeded) sam
                   else implType.derivedLambdaType(paramInfos = samParamTypes)
                 else implType.derivedLambdaType(resType = samResultType)
-              val bridge = ctx.newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)
+              val bridge = newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)
               Closure(bridge, bridgeParamss =>
                 inContext(ctx.withOwner(bridge)) {
                   val List(bridgeParams) = bridgeParamss
@@ -473,7 +473,7 @@ object Erasure {
      *  not yet instantiated.
      */
     def etaExpand(tree: Tree, mt: MethodType, pt: Type)(using Context): Tree =
-      ctx.log(i"eta expanding $tree")
+      report.log(i"eta expanding $tree")
       val defs = new mutable.ListBuffer[Tree]
       val tree1 = LiftErased.liftApp(defs, tree)
       val xmt = if tree.isInstanceOf[Apply] then mt else expandedMethodType(mt, tree)
@@ -489,7 +489,7 @@ object Erasure {
             val defn.ContextFunctionType(argTpes, resTpe, isErased): @unchecked = tp
             if isErased then abstracted(args, resTpe, pt)
             else
-              val anonFun = ctx.newSymbol(
+              val anonFun = newSymbol(
                 ctx.owner, nme.ANON_FUN, Flags.Synthetic | Flags.Method,
                 MethodType(argTpes, resTpe), coord = tree.span.endPos)
               anonFun.info = transformInfo(anonFun, anonFun.info)
@@ -543,19 +543,19 @@ object Erasure {
       if (sym is Flags.Package)
          || (sym.isAllOf(Flags.JavaModule) && !ctx.compilationUnit.isJava)
       then
-        ctx.error(reporting.messages.JavaSymbolIsNotAValue(sym), tree.sourcePos)
+        report.error(JavaSymbolIsNotAValue(sym), tree.sourcePos)
 
     private def checkNotErased(tree: Tree)(using Context): tree.type = {
       if (!ctx.mode.is(Mode.Type)) {
         if (isErased(tree))
-          ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.sourcePos)
+          report.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.sourcePos)
         tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match {
           case Some(annot) =>
             def defaultMsg =
               i"""Reference to ${tree.symbol.showLocated} should not have survived,
                  |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
             val message = annot.argumentConstant(0).fold(defaultMsg)(_.stringValue)
-            ctx.error(message, tree.sourcePos)
+            report.error(message, tree.sourcePos)
           case _ => // OK
         }
       }
@@ -575,7 +575,7 @@ object Erasure {
     override def promote(tree: untpd.Tree)(using Context): tree.ThisTree[Type] = {
       assert(tree.hasType)
       val erasedTp = erasedType(tree)
-      ctx.log(s"promoting ${tree.show}: ${erasedTp.showWithUnderlying()}")
+      report.log(s"promoting ${tree.show}: ${erasedTp.showWithUnderlying()}")
       tree.withType(erasedTp)
     }
 
@@ -741,7 +741,7 @@ object Erasure {
     override def typedThis(tree: untpd.This)(using Context): Tree =
       if (tree.symbol == ctx.owner.lexicallyEnclosingClass || tree.symbol.isStaticOwner) promote(tree)
       else {
-        ctx.log(i"computing outer path from ${ctx.owner.ownersIterator.toList}%, % to ${tree.symbol}, encl class = ${ctx.owner.enclosingClass}")
+        report.log(i"computing outer path from ${ctx.owner.ownersIterator.toList}%, % to ${tree.symbol}, encl class = ${ctx.owner.enclosingClass}")
         outer.path(toCls = tree.symbol)
       }
 
@@ -872,7 +872,7 @@ object Erasure {
         var rhs1 = skipContextClosures(ddef.rhs.asInstanceOf[Tree], contextResultCount(sym))
 
         if sym.isAnonymousFunction && vparams.length > MaxImplementedFunctionArity then
-          val bunchedParam = ctx.newSymbol(sym, nme.ALLARGS, Flags.TermParam, JavaArrayType(defn.ObjectType))
+          val bunchedParam = newSymbol(sym, nme.ALLARGS, Flags.TermParam, JavaArrayType(defn.ObjectType))
           def selector(n: Int) = ref(bunchedParam)
             .select(defn.Array_apply)
             .appliedTo(Literal(Constant(n)))
@@ -896,7 +896,7 @@ object Erasure {
       if constr.isConstructor && hasOuterParam(constr.owner.asClass) then
         constr.info match
           case MethodTpe(outerName :: _, outerType :: _, _) =>
-            val outerSym = ctx.newSymbol(constr, outerName, Flags.Param, outerType)
+            val outerSym = newSymbol(constr, outerName, Flags.Param, outerType)
             ValDef(outerSym) :: Nil
           case _ =>
             // There's a possible race condition that a constructor was looked at

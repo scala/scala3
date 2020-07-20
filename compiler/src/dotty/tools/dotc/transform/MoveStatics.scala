@@ -2,7 +2,7 @@ package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Annotations.Annotation
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.DenotTransformers.SymTransformer
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.NameOps._
@@ -44,7 +44,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
         val newBodyWithStaticConstr =
           if (staticFields.nonEmpty) {
             /* do NOT put Flags.JavaStatic here. It breaks .enclosingClass */
-            val staticCostructor = ctx.newSymbol(orig.symbol, nme.STATIC_CONSTRUCTOR, Flags.Synthetic | Flags.Method | Flags.Private, MethodType(Nil, defn.UnitType))
+            val staticCostructor = newSymbol(orig.symbol, nme.STATIC_CONSTRUCTOR, Flags.Synthetic | Flags.Method | Flags.Private, MethodType(Nil, defn.UnitType))
             staticCostructor.addAnnotation(Annotation(defn.ScalaStaticAnnot))
             staticCostructor.entered
 

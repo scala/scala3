@@ -19,6 +19,7 @@ import scala.util.matching.Regex
 import dotc.{Compiler, Driver}
 import dotc.core.Contexts._
 import dotc.decompiler
+import dotc.report
 import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
@@ -471,7 +472,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             ntimes(times) { run =>
               val start = System.nanoTime()
               val rep = super.doCompile(comp, files)
-              ctx.echo(s"\ntime run $run: ${(System.nanoTime - start) / 1000000}ms")
+              report.echo(s"\ntime run $run: ${(System.nanoTime - start) / 1000000}ms")
               rep
             }
         }

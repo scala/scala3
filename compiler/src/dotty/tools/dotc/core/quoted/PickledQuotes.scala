@@ -53,7 +53,8 @@ object PickledQuotes {
   /** Unpickle the tree contained in the TastyExpr */
   def unpickleExpr(tasty: PickledQuote, splices: PickledArgs)(using Context): Tree = {
     val tastyBytes = TastyString.unpickle(tasty)
-    val unpickled = unpickle(tastyBytes, splices, isType = false)(using ctx.addMode(Mode.ReadPositions))
+    val unpickled = withMode(Mode.ReadPositions)(
+      unpickle(tastyBytes, splices, isType = false))
     val Inlined(call, Nil, expnasion) = unpickled
     val inlineCtx = inlineContext(call)
     val expansion1 = spliceTypes(expnasion, splices)(using inlineCtx)
@@ -64,7 +65,8 @@ object PickledQuotes {
   /** Unpickle the tree contained in the TastyType */
   def unpickleType(tasty: PickledQuote, args: PickledArgs)(using Context): Tree = {
     val tastyBytes = TastyString.unpickle(tasty)
-    val unpickled = unpickle(tastyBytes, args, isType = true)(using ctx.addMode(Mode.ReadPositions))
+    val unpickled = withMode(Mode.ReadPositions)(
+      unpickle(tastyBytes, args, isType = true))
     spliceTypes(unpickled, args)
   }
 

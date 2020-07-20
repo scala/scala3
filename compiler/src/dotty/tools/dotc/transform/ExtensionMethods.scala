@@ -85,9 +85,9 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           // and the ErasedValueType. These methods are removed in ElimErasedValueType.
           val underlying = valueErasure(underlyingOfValueClass(valueClass))
           val evt = ErasedValueType(valueClass.typeRef, underlying)
-          val u2evtSym = ctx.newSymbol(moduleSym, nme.U2EVT, Synthetic | Method,
+          val u2evtSym = newSymbol(moduleSym, nme.U2EVT, Synthetic | Method,
             MethodType(List(nme.x_0), List(underlying), evt))
-          val evt2uSym = ctx.newSymbol(moduleSym, nme.EVT2U, Synthetic | Method,
+          val evt2uSym = newSymbol(moduleSym, nme.EVT2U, Synthetic | Method,
             MethodType(List(nme.x_0), List(evt), underlying))
           enterInModuleClass(u2evtSym)
           enterInModuleClass(evt2uSym)
@@ -131,7 +131,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
     else NoSymbol
 
   private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(using Context): TermSymbol = {
-    val extensionMeth = ctx.newSymbol(staticClass, extensionName(imeth),
+    val extensionMeth = newSymbol(staticClass, extensionName(imeth),
       (imeth.flags | Final) &~ (Override | Protected | AbsOverride),
       fullyParameterizedType(imeth.info, imeth.owner.asClass),
       privateWithin = imeth.privateWithin, coord = imeth.coord)
@@ -167,7 +167,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       val staticClass = origClass.linkedClass
       assert(staticClass.exists, s"$origClass lacks companion, ${origClass.owner.definedPeriodsString} ${origClass.owner.info.decls} ${origClass.owner.info.decls}")
       val extensionMeth = extensionMethod(origMeth)
-      ctx.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
+      report.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
       val store = extensionDefs.getOrElseUpdate(staticClass, new mutable.ListBuffer[Tree])
       store += fullyParameterizedDef(extensionMeth, tree)
       cpy.DefDef(tree)(rhs = forwarder(extensionMeth, tree))

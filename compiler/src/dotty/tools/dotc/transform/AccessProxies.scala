@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import Symbols._
 import Flags._
 import Names._
@@ -76,7 +76,7 @@ abstract class AccessProxies {
 
     /** A fresh accessor symbol */
     private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, span: Span)(using Context): TermSymbol = {
-      val sym = ctx.newSymbol(owner, name, Synthetic | Method, info, coord = span).entered
+      val sym = newSymbol(owner, name, Synthetic | Method, info, coord = span).entered
       if (sym.allOverriddenSymbols.exists(!_.is(Deferred))) sym.setFlag(Override)
       sym
     }
@@ -145,7 +145,7 @@ abstract class AccessProxies {
     def accessorIfNeeded(tree: Tree)(using Context): Tree = tree match {
       case tree: RefTree if needsAccessor(tree.symbol) =>
         if (tree.symbol.isConstructor) {
-          ctx.error("Implementation restriction: cannot use private constructors in inlineable methods", tree.sourcePos)
+          report.error("Implementation restriction: cannot use private constructors in inlineable methods", tree.sourcePos)
           tree // TODO: create a proper accessor for the private constructor
         }
         else useAccessor(tree)

@@ -361,7 +361,7 @@ object Inferencing {
         else {
           // We do not add the created symbols to GADT constraint immediately, since they may have inter-dependencies.
           // Instead, we simultaneously add them later on.
-          val wildCard = ctx.newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
+          val wildCard = newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
           tvar.instantiateWith(wildCard.typeRef)
           patternBound += wildCard
         }

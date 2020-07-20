@@ -3,7 +3,7 @@ package transform
 
 import core._
 import DenotTransformers.SymTransformer
-import Contexts.{Context, ctx, FreshContext}
+import Contexts._
 import Flags._
 import SymDenotations.SymDenotation
 import collection.mutable

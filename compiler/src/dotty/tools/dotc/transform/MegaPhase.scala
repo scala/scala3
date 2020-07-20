@@ -170,7 +170,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
       catch {
         case ex: TypeError =>
-          ctx.error(ex, tree.sourcePos)
+          report.error(ex, tree.sourcePos)
           tree
       }
     def goUnnamed(tree: Tree, start: Int) =
@@ -205,7 +205,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
       catch {
         case ex: TypeError =>
-          ctx.error(ex, tree.sourcePos)
+          report.error(ex, tree.sourcePos)
           tree
       }
     if (tree.isInstanceOf[NameTree]) goNamed(tree, start) else goUnnamed(tree, start)
@@ -308,7 +308,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         goTyped(cpy.Typed(tree)(expr, tpt), start)
       case tree: CaseDef =>
         given Context = prepCaseDef(tree, start)(using outerCtx)
-        val pat = transformTree(tree.pat, start)(using ctx.addMode(Mode.Pattern))
+        val pat = withMode(Mode.Pattern)(transformTree(tree.pat, start))
         val guard = transformTree(tree.guard, start)
         val body = transformTree(tree.body, start)
         goCaseDef(cpy.CaseDef(tree)(pat, guard, body), start)

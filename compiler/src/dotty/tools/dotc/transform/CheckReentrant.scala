@@ -4,10 +4,9 @@ package transform
 import core._
 import dotty.tools.dotc.transform.MegaPhase._
 import Flags._
-import Contexts.{Context, ctx}
+import Contexts._
 import Symbols._
 import Decorators._
-
 
 /** A no-op transform that checks whether the compiled sources are re-entrant.
  *  If -Ycheck:reentrant is set, the phase makes sure that there are no variables
@@ -37,12 +36,12 @@ class CheckReentrant extends MiniPhase {
   private var indent: Int = 0
 
   private val sharableAnnot = new CtxLazy(
-    summon[Context].requiredClass("scala.annotation.internal.sharable"))
+    requiredClass("scala.annotation.internal.sharable"))
   private val unsharedAnnot = new CtxLazy(
-    summon[Context].requiredClass("scala.annotation.internal.unshared"))
+    requiredClass("scala.annotation.internal.unshared"))
 
   private val scalaJSIRPackageClass = new CtxLazy(
-    summon[Context].getPackageClassIfDefined("org.scalajs.ir"))
+    getPackageClassIfDefined("org.scalajs.ir"))
 
   def isIgnored(sym: Symbol)(using Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
@@ -55,7 +54,7 @@ class CheckReentrant extends MiniPhase {
       // in the long run, we should make them vals
 
   def scanning(sym: Symbol)(op: => Unit)(using Context): Unit = {
-    ctx.log(i"${"  " * indent}scanning $sym")
+    report.log(i"${"  " * indent}scanning $sym")
     indent += 1
     try op
     finally indent -= 1
@@ -68,7 +67,7 @@ class CheckReentrant extends MiniPhase {
         for (sym <- cls.classInfo.decls)
           if (sym.isTerm && !sym.isSetter && !isIgnored(sym))
             if (sym.is(Mutable)) {
-              ctx.error(
+              report.error(
                 i"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
                    |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""")
               shared += sym

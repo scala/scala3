@@ -11,7 +11,7 @@ import java.util.{ Map => JMap, List => JList }
 import java.io.{ OutputStreamWriter, BufferedWriter }
 
 import io.VirtualFile
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import model.Package
 import scala.io.Codec
 
@@ -37,19 +37,19 @@ trait Page {
   def path: String
 
   /** YAML front matter from the top of the file */
-  def yaml(implicit ctx: Context): Map[String, AnyRef] = {
+  def yaml(using Context): Map[String, AnyRef] = {
     if (_yaml eq null) initFields
     _yaml
   }
 
   /** HTML generated from page */
-  def html(implicit ctx: Context): Option[String] = {
+  def html(using Context): Option[String] = {
     if (_html eq null) initFields
     _html
   }
 
   /** First paragraph of page extracted from rendered HTML */
-  def firstParagraph(implicit ctx: Context): String = {
+  def firstParagraph(using Context): String = {
     if (_html eq null) initFields
 
     _html.map { _html =>
@@ -91,7 +91,7 @@ trait Page {
 
   protected[this] var _yaml: Map[String, AnyRef /* String | JList[String] */] = _
   protected[this] var _html: Option[String] = _
-  protected[this] def initFields(implicit ctx: Context) = {
+  protected[this] def initFields(using Context) = {
     val md = Parser.builder(Site.markdownOptions).build.parse(content)
     val yamlCollector = new AbstractYamlFrontMatterVisitor()
     yamlCollector.visit(md)
@@ -160,7 +160,7 @@ class MarkdownPage(
   docs: Map[String, Package]
 ) extends Page {
 
-  override protected[this] def initFields(implicit ctx: Context) = {
+  override protected[this] def initFields(using Context) = {
     super.initFields
     _html = _html.map { _html =>
       val md = Parser.builder(Site.markdownOptions).build.parse(_html)

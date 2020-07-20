@@ -1,18 +1,18 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
-import dotty.tools.dotc.config.Printers.tailrec
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
-import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds.{TailLabelName, TailLocalName, TailTempName}
-import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.reporting.messages.TailrecNotApplicable
-import dotty.tools.dotc.transform.MegaPhase.MiniPhase
+import ast.Trees._
+import ast.{TreeTypeMap, tpd}
+import config.Printers.tailrec
+import core.Contexts._
+import core.Constants.Constant
+import core.Decorators._
+import core.Flags._
+import core.NameKinds.{TailLabelName, TailLocalName, TailTempName}
+import core.StdNames.nme
+import core.Symbols._
+import reporting._
+import transform.MegaPhase.MiniPhase
 
 import scala.collection.mutable
 
@@ -124,7 +124,7 @@ class TailRec extends MiniPhase {
       // We don't report a new error if failures were reported
       // during the transformation.
       if (mandatory && !failureReported)
-        ctx.error(TailrecNotApplicable(method), method.sourcePos)
+        report.error(TailrecNotApplicable(method), method.sourcePos)
 
       tree
     }
@@ -197,7 +197,7 @@ class TailRec extends MiniPhase {
         }
 
         if isInfiniteRecCall(rhsFullyTransformed) then
-          ctx.warning("Infinite recursive call", tree.sourcePos)
+          report.warning("Infinite recursive call", tree.sourcePos)
 
         cpy.DefDef(tree)(rhs =
           Block(
@@ -224,7 +224,7 @@ class TailRec extends MiniPhase {
     private var myContinueLabel: Symbol = _
     def continueLabel(using Context): Symbol = {
       if (myContinueLabel == null)
-        myContinueLabel = ctx.newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType)
+        myContinueLabel = newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType)
       myContinueLabel
     }
 
@@ -242,7 +242,7 @@ class TailRec extends MiniPhase {
           val tpe =
             if (enclosingClass.is(Module)) enclosingClass.thisType
             else enclosingClass.classInfo.selfType
-          val sym = ctx.newSymbol(method, nme.SELF, Synthetic | Mutable, tpe)
+          val sym = newSymbol(method, nme.SELF, Synthetic | Mutable, tpe)
           varForRewrittenThis = Some(sym)
           sym
       }
@@ -250,7 +250,7 @@ class TailRec extends MiniPhase {
     private def getVarForRewrittenParam(param: Symbol)(using Context): Symbol =
       rewrittenParamSyms.indexOf(param) match {
         case -1 =>
-          val sym = ctx.newSymbol(method, TailLocalName.fresh(param.name.toTermName), Synthetic | Mutable, param.info)
+          val sym = newSymbol(method, TailLocalName.fresh(param.name.toTermName), Synthetic | Mutable, param.info)
           rewrittenParamSyms ::= param
           varsForRewrittenParamSyms ::= sym
           sym
@@ -304,7 +304,7 @@ class TailRec extends MiniPhase {
         def fail(reason: String) = {
           if (isMandatory) {
             failureReported = true
-            ctx.error(s"Cannot rewrite recursive call: $reason", tree.sourcePos)
+            report.error(s"Cannot rewrite recursive call: $reason", tree.sourcePos)
           }
           else
             tailrec.println("Cannot rewrite recursive call at: " + tree.span + " because: " + reason)
@@ -349,7 +349,7 @@ class TailRec extends MiniPhase {
                 Assign(ref(lhs), rhs) :: Nil
               case _ :: _ =>
                 val (tempValDefs, assigns) = (for ((lhs, rhs) <- assignThisAndParamPairs) yield {
-                  val temp = ctx.newSymbol(method, TailTempName.fresh(lhs.name.toTermName), Synthetic, lhs.info)
+                  val temp = newSymbol(method, TailTempName.fresh(lhs.name.toTermName), Synthetic, lhs.info)
                   (ValDef(temp, rhs), Assign(ref(lhs), ref(temp)).withSpan(tree.span))
                 }).unzip
                 tempValDefs ::: assigns

@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 
 import dotty.tools.dotc.ast.Trees.{Tree, Untyped}
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.SymDenotations.SymDenotation

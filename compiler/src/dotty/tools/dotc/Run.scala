@@ -10,7 +10,7 @@ import Scopes._
 import typer.{ImportInfo, Typer}
 import Decorators._
 import io.{AbstractFile, PlainFile}
-import Phases.curPhases
+import Phases.unfusedPhases
 
 import scala.io.Codec
 import util.{Set => _, _}
@@ -72,7 +72,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       .setOwner(defn.RootClass)
       .setTyper(new Typer)
       .addMode(Mode.ImplicitsEnabled)
-      .setTyperState(new TyperState(ctx.typerState))
+      .setTyperState(ctx.typerState.fresh(ctx.reporter))
     ctx.initialize()(using start) // re-initialize the base context with start
     def addImport(ctx: Context, rootRef: ImportInfo.RootRef) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(rootRef))
@@ -126,12 +126,12 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   }
   catch {
     case NonFatal(ex) =>
-      if units != null then runContext.echo(i"exception occurred while compiling $units%, %")
-      else runContext.echo(s"exception occurred while compiling ${fileNames.mkString(", ")}")
+      if units != null then report.echo(i"exception occurred while compiling $units%, %")
+      else report.echo(s"exception occurred while compiling ${fileNames.mkString(", ")}")
       throw ex
   }
 
-  /** TODO: There's a fundamental design problem here: We assemble phases using `squash`
+  /** TODO: There's a fundamental design problem here: We assemble phases using `fusePhases`
    *  when we first build the compiler. But we modify them with -Yskip, -Ystop
    *  on each run. That modification needs to either transform the tree structure,
    *  or we need to assemble phases on each run, and take -Yskip, -Ystop into
@@ -165,7 +165,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       else ctx.settings.YstopAfter.value
 
     val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
-    val phases = ctx.base.squashPhases(pluginPlan,
+    val phases = ctx.base.fusePhases(pluginPlan,
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases)
 
@@ -184,7 +184,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
               for (unit <- units)
                 lastPrintedTree =
                   printTree(lastPrintedTree)(using ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
-            ctx.informTime(s"$phase ", start)
+            report.informTime(s"$phase ", start)
             Stats.record(s"total trees at end of $phase", ast.Trees.ntrees)
             for (unit <- units)
               Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
@@ -195,7 +195,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
     val runCtx = ctx.fresh
     runCtx.setProfiler(Profiler())
-    curPhases.foreach(_.initContext(runCtx))
+    unfusedPhases.foreach(_.initContext(runCtx))
     runPhases(using runCtx)
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
     while (finalizeActions.nonEmpty) {
@@ -237,26 +237,26 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private def printTree(last: PrintedTree)(using Context): PrintedTree = {
     val unit = ctx.compilationUnit
     val prevPhase = ctx.phase.prev // can be a mini-phase
-    val squashedPhase = ctx.base.squashed(prevPhase)
+    val fusedPhase = ctx.base.fusedContaining(prevPhase)
     val treeString = unit.tpdTree.show(using ctx.withProperty(XprintMode, Some(())))
 
-    ctx.echo(s"result of $unit after $squashedPhase:")
+    report.echo(s"result of $unit after $fusedPhase:")
 
     last match {
       case SomePrintedTree(phase, lastTreeSting) if lastTreeSting != treeString =>
         val msg =
           if (!ctx.settings.XprintDiff.value && !ctx.settings.XprintDiffDel.value) treeString
           else DiffUtil.mkColoredCodeDiff(treeString, lastTreeSting, ctx.settings.XprintDiffDel.value)
-        ctx.echo(msg)
-        SomePrintedTree(squashedPhase.toString, treeString)
+        report.echo(msg)
+        SomePrintedTree(fusedPhase.toString, treeString)
 
       case SomePrintedTree(phase, lastTreeSting) =>
-        ctx.echo("  Unchanged since " + phase)
+        report.echo("  Unchanged since " + phase)
         last
 
       case NoPrintedTree =>
-        ctx.echo(treeString)
-        SomePrintedTree(squashedPhase.toString, treeString)
+        report.echo(treeString)
+        SomePrintedTree(fusedPhase.toString, treeString)
     }
   }
 
