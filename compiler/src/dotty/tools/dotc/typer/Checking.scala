@@ -740,7 +740,7 @@ trait Checking {
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
         if (traitReq && !tref.symbol.is(Trait)) report.error(TraitIsExpected(tref.symbol), pos)
-        if (stablePrefixReq && currentPhase <= refchecksPhase) checkStable(tref.prefix, pos, "class prefix")
+        if (stablePrefixReq && ctx.phase <= refchecksPhase) checkStable(tref.prefix, pos, "class prefix")
         tp
       case _ =>
         report.error(ex"$tp is not a class type", pos)

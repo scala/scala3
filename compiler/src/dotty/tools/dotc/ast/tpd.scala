@@ -828,7 +828,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  owner by `from` to `to`.
      */
     def changeOwnerAfter(from: Symbol, to: Symbol, trans: DenotTransformer)(using Context): ThisTree =
-      if (currentPhase == trans.next) {
+      if (ctx.phase == trans.next) {
         val traverser = new TreeTraverser {
           def traverse(tree: Tree)(using Context) = tree match {
             case tree: DefTree =>

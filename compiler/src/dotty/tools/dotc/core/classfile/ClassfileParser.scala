@@ -309,7 +309,7 @@ class ClassfileParser(
 
   /** Map direct references to Object to references to Any */
   final def objToAny(tp: Type)(using Context): Type =
-    if (tp.isDirectRef(defn.ObjectClass) && !currentPhase.erasedTypes) defn.AnyType else tp
+    if (tp.isDirectRef(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else tp
 
   def constantTagToType(tag: Int)(using Context): Type =
     (tag: @switch) match {

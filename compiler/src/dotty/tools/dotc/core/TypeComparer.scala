@@ -388,7 +388,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         }
       case tp1: SkolemType =>
         tp2 match {
-          case tp2: SkolemType if !currentPhase.isTyper && recur(tp1.info, tp2.info) => true
+          case tp2: SkolemType if !ctx.phase.isTyper && recur(tp1.info, tp2.info) => true
           case _ => thirdTry
         }
       case tp1: TypeVar =>
@@ -808,7 +808,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           case _ => tp2.isAnyRef
         }
         compareJavaArray
-      case tp1: ExprType if currentPhase.id > gettersPhase.id =>
+      case tp1: ExprType if ctx.phase.id > gettersPhase.id =>
         // getters might have converted T to => T, need to compensate.
         recur(tp1.widenExpr, tp2)
       case _ =>
@@ -1233,7 +1233,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
      *  for equality would give the wrong result, so we should not use the sets
      *  for comparisons.
      */
-    def canCompare(ts: Set[Type]) = currentPhase.isTyper || {
+    def canCompare(ts: Set[Type]) = ctx.phase.isTyper || {
       val hasSkolems = new ExistsAccumulator(_.isInstanceOf[SkolemType]) {
         override def stopAtStatic = true
       }

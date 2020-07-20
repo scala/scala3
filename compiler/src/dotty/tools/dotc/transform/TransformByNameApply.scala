@@ -37,7 +37,7 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
   def mkByNameClosure(arg: Tree, argType: Type)(using Context): Tree = unsupported(i"mkClosure($arg)")
 
   override def transformApply(tree: Apply)(using Context): Tree =
-    trace(s"transforming ${tree.show} at phase ${currentPhase}", show = true) {
+    trace(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
 
       def transformArg(arg: Tree, formal: Type): Tree = formal.dealias match {
         case formalExpr: ExprType =>

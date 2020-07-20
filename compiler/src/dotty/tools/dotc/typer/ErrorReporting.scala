@@ -89,7 +89,7 @@ object ErrorReporting {
       if (tree.tpe.widen.exists)
         i"${exprStr(tree)} does not take ${kind}parameters"
       else {
-        i"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString} at ${currentPhase}"
+        i"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString} at ${ctx.phase}"
       }
 
     def patternConstrStr(tree: Tree): String = ???

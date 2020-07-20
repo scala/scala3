@@ -762,7 +762,7 @@ object SymDenotations {
 
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
-      if (ctx.explicitNulls && !currentPhase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyClass
+      if (ctx.explicitNulls && !ctx.phase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyClass
       else isNullableClassAfterErasure
 
     /** Is this symbol a class of which `null` is a value after erasure?
@@ -849,7 +849,7 @@ object SymDenotations {
         || this.is(Protected) &&
              (  superAccess
              || pre.isInstanceOf[ThisType]
-             || currentPhase.erasedTypes
+             || ctx.phase.erasedTypes
              || isProtectedAccessOK
              )
         )
@@ -1325,7 +1325,7 @@ object SymDenotations {
     final def accessBoundary(base: Symbol)(using Context): Symbol =
       if (this.is(Private)) owner
       else if (this.isAllOf(StaticProtected)) defn.RootClass
-      else if (privateWithin.exists && !currentPhase.erasedTypes) privateWithin
+      else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
       else if (this.is(Protected)) base
       else defn.RootClass
 
@@ -1451,7 +1451,7 @@ object SymDenotations {
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
       val info1 = if (info != null) info else this.info
       if (currentlyAfterTyper && changedClassParents(info, info1, completersMatter = false))
-        assert(currentPhase.changesParents, i"undeclared parent change at ${currentPhase} for $this, was: $info, now: $info1")
+        assert(ctx.phase.changesParents, i"undeclared parent change at ${ctx.phase} for $this, was: $info, now: $info1")
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
       val rawParamss1 = if rawParamss != null then rawParamss else this.rawParamss
@@ -2592,7 +2592,7 @@ object SymDenotations {
     private var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.Empty
 
     final def isValid(using Context): Boolean =
-      cache != null && isValidAt(currentPhase)
+      cache != null && isValidAt(ctx.phase)
 
     private var locked = false
 
@@ -2634,7 +2634,7 @@ object SymDenotations {
     private var locked = false
     private var provisional = false
 
-    final def isValid(using Context): Boolean = valid && isValidAt(currentPhase)
+    final def isValid(using Context): Boolean = valid && isValidAt(ctx.phase)
 
     def invalidate(): Unit =
       if (valid && !locked) {

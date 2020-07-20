@@ -43,7 +43,7 @@ object DenotTransformers {
         if (info1 eq ref.info) ref
         else ref match {
           case ref: SymDenotation =>
-            ref.copySymDenotation(info = info1).copyCaches(ref, currentPhase.next)
+            ref.copySymDenotation(info = info1).copyCaches(ref, ctx.phase.next)
           case _ =>
             ref.derivedSingleDenotation(ref.symbol, info1)
         }

@@ -122,7 +122,7 @@ object TypeOps:
   }
 
   def isLegalPrefix(pre: Type)(using Context): Boolean =
-    pre.isStable || !currentPhase.isTyper
+    pre.isStable || !ctx.phase.isTyper
 
   /** Implementation of Types#simplified */
   def simplify(tp: Type, theMap: SimplifyMap)(using Context): Type = {

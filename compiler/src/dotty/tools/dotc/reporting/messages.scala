@@ -2011,7 +2011,7 @@ import ast.tpd
             case NoMatch =>
               // If the signatures don't match at all at the current phase, then
               // they might match after erasure.
-              if currentPhase.id <= elimErasedValueTypePhase.id then
+              if ctx.phase.id <= elimErasedValueTypePhase.id then
                 atPhase(elimErasedValueTypePhase.next)(details)
               else
                 "" // shouldn't be reachable

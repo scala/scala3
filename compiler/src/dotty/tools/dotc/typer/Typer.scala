@@ -2092,7 +2092,7 @@ class Typer extends Namer
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
 
       val reportDynamicInheritance =
-        currentPhase.isTyper &&
+        ctx.phase.isTyper &&
         cdef1.symbol.ne(defn.DynamicClass) &&
         cdef1.tpe.derivesFrom(defn.DynamicClass) &&
         !dynamicsEnabled
@@ -2544,7 +2544,7 @@ class Typer extends Namer
     trace(i"typing $tree, pt = $pt", typr, show = true) {
       record(s"typed $getClass")
       record("typed total")
-      if currentPhase.isTyper then
+      if ctx.phase.isTyper then
         assertPositioned(tree)
       if tree.source != ctx.source && tree.source.exists then
         typed(tree, pt, locked)(using ctx.withSource(tree.source))
@@ -3614,7 +3614,7 @@ class Typer extends Namer
         tpd.Block(List(bundleVal), splice(tpd.ref(bundleVal.symbol))).withSpan(call.span)
       }
     }
-    if currentPhase.isTyper then
+    if ctx.phase.isTyper then
       call match
         case untpd.Ident(nme.???) => // Instinsic macros ignored
         case _ =>

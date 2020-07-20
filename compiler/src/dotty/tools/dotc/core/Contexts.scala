@@ -72,26 +72,20 @@ object Contexts {
     atPhase(phase.id)(op)
 
   inline def atNextPhase[T](inline op: Context ?=> T)(using Context): T =
-    atPhase(currentPhase.next)(op)
+    atPhase(ctx.phase.next)(op)
 
   inline def atPhaseNoLater[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
-    op(using if !limit.exists || currentPhase <= limit then ctx else ctx.withPhase(limit))
+    op(using if !limit.exists || ctx.phase <= limit then ctx else ctx.withPhase(limit))
 
   inline def atPhaseNoEarlier[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
-    op(using if !limit.exists || limit <= currentPhase then ctx else ctx.withPhase(limit))
+    op(using if !limit.exists || limit <= ctx.phase then ctx else ctx.withPhase(limit))
 
   inline def currentPeriod(using ctx: Context): Period = ctx.period
 
-  inline def currentPhase(using ctx: Context): Phase = ctx.base.phases(ctx.period.firstPhaseId)
-
-  inline def currentRunId(using ctx: Context): Int = ctx.period.runId
-
-  inline def currentPhaseId(using ctx: Context): Int = ctx.period.phaseId
-
-  def currentlyAfterTyper(using Context): Boolean = ctx.base.isAfterTyper(currentPhase)
+  def currentlyAfterTyper(using Context): Boolean = ctx.base.isAfterTyper(ctx.phase)
 
   /** Does current phase use an erased types interpretation? */
-  def currentlyAfterErasure(using Context): Boolean = currentPhase.erasedTypes
+  def currentlyAfterErasure(using Context): Boolean = ctx.phase.erasedTypes
 
   inline def inMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
     op(using if mode != ctx.mode then ctx.fresh.setMode(mode) else ctx)
@@ -369,8 +363,11 @@ object Contexts {
     /** The current reporter */
     def reporter: Reporter = typerState.reporter
 
+    final def phase: Phase = base.phases(period.firstPhaseId)
     final def runId = period.runId
     final def phaseId = period.phaseId
+    final def erasedTypes = phase.erasedTypes
+    final def isAfterTyper = base.isAfterTyper(phase)
 
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =

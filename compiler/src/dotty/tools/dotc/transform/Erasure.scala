@@ -50,13 +50,13 @@ class Erasure extends Phase with DenotTransformer {
     case ref: SymDenotation =>
       def isCompacted(symd: SymDenotation) =
         symd.isAnonymousFunction && {
-          atPhase(currentPhase.next)(symd.info) match {
+          atPhase(ctx.phase.next)(symd.info) match {
             case MethodType(nme.ALLARGS :: Nil) => true
             case _                              => false
           }
         }
 
-      assert(currentPhase == this, s"transforming $ref at ${currentPhase}")
+      assert(ctx.phase == this, s"transforming $ref at ${ctx.phase}")
       if (ref.symbol eq defn.ObjectClass) {
         // After erasure, all former Any members are now Object members
         val ClassInfo(pre, _, ps, decls, selfInfo) = ref.info
@@ -99,7 +99,7 @@ class Erasure extends Phase with DenotTransformer {
         then
           ref
         else
-          assert(!ref.is(Flags.PackageClass), s"trans $ref @ ${currentPhase} oldOwner = $oldOwner, newOwner = $newOwner, oldInfo = $oldInfo, newInfo = $newInfo ${oldOwner eq newOwner} ${oldInfo eq newInfo}")
+          assert(!ref.is(Flags.PackageClass), s"trans $ref @ ${ctx.phase} oldOwner = $oldOwner, newOwner = $newOwner, oldInfo = $oldInfo, newInfo = $newInfo ${oldOwner eq newOwner} ${oldInfo eq newInfo}")
           ref.copySymDenotation(
             symbol = newSymbol,
             owner = newOwner,
@@ -166,7 +166,7 @@ class Erasure extends Phase with DenotTransformer {
            isAllowed(defn.TupleClass, "Tuple.scala") ||
            isAllowed(defn.NonEmptyTupleClass, "Tuple.scala") ||
            isAllowed(defn.PairClass, "Tuple.scala"),
-        i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${currentPhase.prev}")
+        i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
   }
 }
 
@@ -981,7 +981,7 @@ object Erasure {
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree =
       trace(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
-        if currentPhase != erasurePhase && currentPhase != erasurePhase.next then
+        if ctx.phase != erasurePhase && ctx.phase != erasurePhase.next then
           // this can happen when reading annotations loaded during erasure,
           // since these are loaded at phase typer.
           atPhase(erasurePhase.next)(adapt(tree, pt, locked))

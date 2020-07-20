@@ -842,7 +842,7 @@ object Denotations {
     }
 
     private def demandOutsideDefinedMsg(using Context): String =
-      s"demanding denotation of $this at phase ${currentPhase}(${ctx.phaseId}) outside defined interval: defined periods are${definedPeriodsString}"
+      s"demanding denotation of $this at phase ${ctx.phase}(${ctx.phaseId}) outside defined interval: defined periods are${definedPeriodsString}"
 
     /** Install this denotation to be the result of the given denotation transformer.
      *  This is the implementation of the same-named method in SymDenotations.

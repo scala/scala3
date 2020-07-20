@@ -867,7 +867,7 @@ class Definitions {
 
   def ClassType(arg: Type)(using Context): Type = {
     val ctype = ClassClass.typeRef
-    if (currentPhase.erasedTypes) ctype else ctype.appliedTo(arg)
+    if (ctx.phase.erasedTypes) ctype else ctype.appliedTo(arg)
   }
 
   /** The enumeration type, goven a value of the enumeration */
@@ -1041,13 +1041,13 @@ class Definitions {
       name.drop(prefix.length).forall(_.isDigit))
 
   def isBottomClass(cls: Symbol): Boolean =
-    if (ctx.explicitNulls && !currentPhase.erasedTypes) cls == NothingClass
+    if (ctx.explicitNulls && !ctx.phase.erasedTypes) cls == NothingClass
     else isBottomClassAfterErasure(cls)
 
   def isBottomClassAfterErasure(cls: Symbol): Boolean = cls == NothingClass || cls == NullClass
 
   def isBottomType(tp: Type): Boolean =
-    if (ctx.explicitNulls && !currentPhase.erasedTypes) tp.derivesFrom(NothingClass)
+    if (ctx.explicitNulls && !ctx.phase.erasedTypes) tp.derivesFrom(NothingClass)
     else isBottomTypeAfterErasure(tp)
 
   def isBottomTypeAfterErasure(tp: Type): Boolean =

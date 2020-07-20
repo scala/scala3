@@ -14,7 +14,7 @@ import util.SourcePosition
 class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd._
 
-  assert(currentPhase == erasurePhase.next)
+  assert(ctx.phase == erasurePhase.next)
   private val preErasureCtx = ctx.withPhase(erasurePhase)
   private lazy val elimErasedCtx = ctx.withPhase(elimErasedValueTypePhase.next)
 

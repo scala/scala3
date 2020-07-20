@@ -970,7 +970,7 @@ trait Implicits { self: Typer =>
   def inferImplicit(pt: Type, argument: Tree, span: Span)(using Context): SearchResult =
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       record("inferImplicit")
-      assert(currentPhase.allowsImplicitSearch,
+      assert(ctx.phase.allowsImplicitSearch,
         if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
         else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
       val result0 =

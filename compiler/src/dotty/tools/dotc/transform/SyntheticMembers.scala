@@ -130,7 +130,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
         case nme.ordinal => Select(This(clazz), nme.ordinalDollar)
       }
-      report.log(s"adding $synthetic to $clazz at ${currentPhase}")
+      report.log(s"adding $synthetic to $clazz at ${ctx.phase}")
       synthesizeDef(synthetic, syntheticRHS)
     }
 

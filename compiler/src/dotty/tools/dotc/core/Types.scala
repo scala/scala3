@@ -980,7 +980,7 @@ object Types {
      */
     def matches(that: Type)(using Context): Boolean = {
       record("matches")
-      ctx.typeComparer.matchesType(this, that, relaxed = !currentPhase.erasedTypes)
+      ctx.typeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes)
     }
 
     /** This is the same as `matches` except that it also matches => T with T and
@@ -2094,7 +2094,7 @@ object Types {
       else {
         if (!ctx.reporter.errorsReported)
           throw new TypeError(
-            i"""bad parameter reference $this at ${currentPhase}
+            i"""bad parameter reference $this at ${ctx.phase}
                |the parameter is ${param.showLocated} but the prefix $prefix
                |does not define any corresponding arguments.""")
         NoDenotation
@@ -2155,7 +2155,7 @@ object Types {
         s"""data race? overwriting $lastSymbol with $sym in type $this,
            |last sym id = ${lastSymbol.id}, new sym id = ${sym.id},
            |last owner = ${lastSymbol.owner}, new owner = ${sym.owner},
-           |period = ${currentPhase} at run ${ctx.runId}""")
+           |period = ${ctx.phase} at run ${ctx.runId}""")
     }
 
     /** A reference with the initial symbol in `symd` has an info that
@@ -2489,7 +2489,7 @@ object Types {
 
   /** Assert current phase does not have erasure semantics */
   private def assertUnerased()(using Context) =
-    if (Config.checkUnerased) assert(!currentPhase.erasedTypes)
+    if (Config.checkUnerased) assert(!ctx.phase.erasedTypes)
 
   /** The designator to be used for a named type creation with given prefix, name, and denotation.
    *  This is the denotation's symbol, if it exists and the prefix is not the this type

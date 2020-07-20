@@ -39,7 +39,7 @@ class Staging extends MacroTransform {
   override def allowsImplicitSearch: Boolean = true
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
-    if (currentPhase <= reifyQuotesPhase) {
+    if (ctx.phase <= reifyQuotesPhase) {
       // Recheck that PCP holds but do not heal any inconsistent types as they should already have been heald
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>

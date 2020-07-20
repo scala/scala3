@@ -236,7 +236,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   private def printTree(last: PrintedTree)(using Context): PrintedTree = {
     val unit = ctx.compilationUnit
-    val prevPhase = currentPhase.prev // can be a mini-phase
+    val prevPhase = ctx.phase.prev // can be a mini-phase
     val squashedPhase = ctx.base.squashed(prevPhase)
     val treeString = unit.tpdTree.show(using ctx.withProperty(XprintMode, Some(())))
 
