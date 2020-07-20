@@ -454,8 +454,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       flags = flags &~ Scala2ExpandedName
     }
     if (flags.is(Scala2SuperAccessor)) {
-      name = name.asTermName.unmangle(SuperAccessorName)
-      flags = flags &~ Scala2SuperAccessor
+      /* Scala 2 super accessors are pickled as private, but are compiled as public expanded.
+       * Dotty super accessors, however, are already pickled as public expanded.
+       * We bridge the gap right now.
+       */
+      name = name.asTermName.unmangle(SuperAccessorName).expandedName(owner)
+      flags = flags &~ (Scala2SuperAccessor | Private)
     }
     name = name.mapLast(_.decode)
 
@@ -1310,4 +1314,3 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         errorBadSignature("expected an TypeDef (" + other + ")")
     }
 }
-
