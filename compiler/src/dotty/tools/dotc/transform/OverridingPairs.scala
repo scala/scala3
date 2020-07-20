@@ -40,7 +40,22 @@ object OverridingPairs {
      *  relative to <base>.this do
      */
     protected def matches(sym1: Symbol, sym2: Symbol): Boolean =
-      sym1.isType || sym1.asSeenFrom(self).matches(sym2.asSeenFrom(self))
+      // Similar to dotty.tools.dotc.core.Denotations.SingleDenotation.matches
+      // But in case MethodNotAMethodMatch, sym2 must not be a JavaDefined field
+      def symMatches =
+        val d1 = sym1.asSeenFrom(self)
+        val d2 = sym2.asSeenFrom(self)
+        import Signature.MatchDegree._
+        d1.signature.matchDegree(d2.signature) match
+          case FullMatch => true
+          case NoMatch => false
+          case MethodNotAMethodMatch =>
+            !ctx.erasedTypes && !d2.symbol.is(JavaDefinedVal, butNot = Method)
+          case ParamMatch =>
+            !ctx.erasedTypes && d1.info.matches(d2.info)
+
+      sym1.isType || symMatches
+    end matches
 
     /** The symbols that can take part in an overriding pair */
     private val decls = {
