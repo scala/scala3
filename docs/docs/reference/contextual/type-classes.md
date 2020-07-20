@@ -196,7 +196,7 @@ Let's define a `Config` type, and two functions using it:
 trait Config
 // ...
 def compute(i: Int)(config: Config): String = ???
-def layout(str: String)(config: Config): Unit = ???
+def show(str: String)(config: Config): Unit = ???
 ```
 
 We may want to combine `compute` and `show` into a single function, accepting a `Config` as parameter, and showing the result of the computation, and we'd like to use
