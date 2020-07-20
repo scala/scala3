@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package ast
 
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import core.Decorators._
 import util.Spans._
 import Trees.{MemberDef, DefTree, WithLazyField}

@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 package init
 
@@ -23,8 +24,8 @@ object Errors {
     def trace: Vector[Tree]
     def show(using Context): String
 
-    def report(using Context): Unit =
-      ctx.warning(show + stacktrace, source.sourcePos)
+    def issue(using Context): Unit =
+      report.warning(show + stacktrace, source.sourcePos)
 
     def toErrors: Errors = Set(this)
 
@@ -65,7 +66,8 @@ object Errors {
     def show(using Context): String =
       "Access non-initialized field " + field.name.show + "."
 
-    override def report(using Context): Unit = ctx.error(show + stacktrace, field.sourcePos)
+    override def issue(using Context): Unit =
+      report.error(show + stacktrace, field.sourcePos)
   }
 
   /** Promote `this` under initialization to fully-initialized */
@@ -104,7 +106,8 @@ object Errors {
   case class UnsafePromotion(pot: Potential, source: Tree, trace: Vector[Tree], errors: Errors) extends Error {
     assert(errors.nonEmpty)
 
-    override def report(using Context): Unit = ctx.warning(show, source.sourcePos)
+    override def issue(using Context): Unit =
+      report.warning(show, source.sourcePos)
 
     def show(using Context): String = {
       var index = 0

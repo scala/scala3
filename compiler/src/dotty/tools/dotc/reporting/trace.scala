@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import config.Config
 import config.Printers
 import core.Mode
@@ -79,7 +79,7 @@ abstract class TraceSyntax {
     val log: String => Unit = if (isForced) Console.println else {
       var logctx = ctx
       while (logctx.reporter.isInstanceOf[StoreReporter]) logctx = logctx.outer
-      logctx.log(_)
+      report.log(_)(using logctx)
     }
     doApply(leading, trailing, log)(op)
   }

@@ -34,7 +34,7 @@ class InitChecker extends PluginPhase {
 
   private def checkDef(tree: Tree)(implicit ctx: Context): Tree = {
     if (tree.symbol.defTree.isEmpty)
-      ctx.error("cannot get tree for " + tree.show, tree.sourcePos)
+      report.error("cannot get tree for " + tree.show, tree.sourcePos)
     tree
   }
 
@@ -51,17 +51,17 @@ class InitChecker extends PluginPhase {
 
       if (enclosingPkg == helloPkgSym) {  // source code
         checkDef(tree)
-        ctx.warning("tree: " + tree.symbol.defTree.show)
+        report.warning("tree: " + tree.symbol.defTree.show)
       }
       else if (enclosingPkg == libPkgSym) { // tasty from library
         checkDef(tree)
         // check that all sub-definitions have trees set properly
         // make sure that are no cycles in the code
         transformAllDeep(tree.symbol.defTree)
-        ctx.warning("tree: " + tree.symbol.defTree.show)
+        report.warning("tree: " + tree.symbol.defTree.show)
       }
       else {
-        ctx.warning(s"${tree.symbol} is neither in lib nor hello, owner = $enclosingPkg", tree.sourcePos)
+        report.warning(s"${tree.symbol} is neither in lib nor hello, owner = $enclosingPkg", tree.sourcePos)
       }
       tree
     }

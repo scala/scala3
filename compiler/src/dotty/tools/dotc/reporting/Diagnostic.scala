@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import util.SourcePosition
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, INFO, WARNING}
 

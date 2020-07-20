@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import SymDenotations.ClassDenotation
 import Symbols._
 import util.{FreshNameCreator, SourceFile, NoSource}
@@ -58,7 +58,7 @@ class CompilationUnit protected (val source: SourceFile) {
     assert(isSuspendable)
     if !suspended then
       if (ctx.settings.XprintSuspension.value)
-        ctx.echo(i"suspended: $this")
+        report.echo(i"suspended: $this")
       suspended = true
       ctx.run.suspendedUnits += this
     throw CompilationUnit.SuspendException()
@@ -103,11 +103,11 @@ object CompilationUnit {
       if (!mustExist)
         source
       else if (source.file.isDirectory) {
-        ctx.error(s"expected file, received directory '${source.file.path}'")
+        report.error(s"expected file, received directory '${source.file.path}'")
         NoSource
       }
       else if (!source.file.exists) {
-        ctx.error(s"not found: ${source.file.path}")
+        report.error(s"not found: ${source.file.path}")
         NoSource
       }
       else source

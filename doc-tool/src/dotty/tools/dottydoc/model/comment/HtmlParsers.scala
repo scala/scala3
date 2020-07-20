@@ -3,7 +3,7 @@ package dottydoc
 package model
 package comment
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import dotc.util.Spans._
 import dotty.tools.dottydoc.util.syntax._
 import util.MemberLookup
@@ -16,7 +16,7 @@ import com.vladsch.flexmark.util.sequence.CharSubSequence
 object HtmlParsers {
 
   implicit class StringToMarkdown(val text: String) extends AnyVal {
-    def toMarkdown(origin: Entity)(implicit ctx: Context): MarkdownNode = {
+    def toMarkdown(origin: Entity)(using Context): MarkdownNode = {
       import com.vladsch.flexmark.ast.Link
       import com.vladsch.flexmark.util.ast.{Visitor, VisitHandler, NodeVisitor }
 
@@ -59,15 +59,15 @@ object HtmlParsers {
       node
     }
 
-    def toMarkdownString(origin: Entity)(implicit ctx: Context): String =
+    def toMarkdownString(origin: Entity)(using Context): String =
       toMarkdown(origin).show
   }
 
   implicit class MarkdownToHtml(val markdown: MarkdownNode) extends AnyVal {
-    def show(implicit ctx: Context): String =
+    def show(using Context): String =
       HtmlRenderer.builder(staticsite.Site.markdownOptions).build().render(markdown)
 
-    def shortenAndShow(implicit ctx: Context): String =
+    def shortenAndShow(using Context): String =
       (new MarkdownShortener).shorten(markdown).show
   }
 

@@ -15,6 +15,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Denotations.staticRef
 import dotty.tools.dotc.core.{NameKinds, TypeErasure}
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
@@ -40,7 +41,7 @@ object Splicer {
   def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(using Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
     case _ =>
-      val macroOwner = ctx.newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
+      val macroOwner = newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
       try
         inContext(ctx.withOwner(macroOwner)) {
           val interpreter = new Interpreter(pos, classLoader)
@@ -58,7 +59,7 @@ object Splicer {
            // errors have been emitted
           EmptyTree
         case ex: StopInterpretation =>
-          ctx.error(ex.msg, ex.pos)
+          report.error(ex.msg, ex.pos)
           EmptyTree
         case NonFatal(ex) =>
           val msg =
@@ -66,7 +67,7 @@ object Splicer {
                |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
                |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").drop(1).mkString("\n    ")}
              """.stripMargin
-          ctx.error(msg, pos)
+          report.error(msg, pos)
           EmptyTree
       }
   }
@@ -88,7 +89,7 @@ object Splicer {
         tree match
           case tree: Ident if isEscapedVariable(tree.symbol) =>
             val sym = tree.symbol
-            ctx.error(em"While expanding a macro, a reference to $sym was used outside the scope where it was defined", tree.sourcePos)
+            report.error(em"While expanding a macro, a reference to $sym was used outside the scope where it was defined", tree.sourcePos)
           case Block(stats, _) =>
             val last = locals
             stats.foreach(markDef)
@@ -129,7 +130,7 @@ object Splicer {
           checkIfValidArgument(tree.rhs)
           summon[Env] + tree.symbol
         case _ =>
-          ctx.error("Macro should not have statements", tree.sourcePos)
+          report.error("Macro should not have statements", tree.sourcePos)
           summon[Env]
       }
 
@@ -163,7 +164,7 @@ object Splicer {
 
         case _ =>
           val extra = if tree.span.isZeroExtent then ": " + tree.show else ""
-          ctx.error(
+          report.error(
             s"""Malformed macro parameter$extra
               |
               |Parameters may only be:
@@ -188,11 +189,11 @@ object Splicer {
                fn.symbol.is(Module) || fn.symbol.isStatic ||
                (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic) =>
           if (fn.symbol.flags.is(Inline))
-            ctx.error("Macro cannot be implemented with an `inline` method", fn.sourcePos)
+            report.error("Macro cannot be implemented with an `inline` method", fn.sourcePos)
           args.flatten.foreach(checkIfValidArgument)
 
         case _ =>
-          ctx.error(
+          report.error(
             """Malformed macro.
               |
               |Expected the splice ${...} to contain a single call to a static method.
@@ -215,7 +216,7 @@ object Splicer {
         case obj: T => Some(obj)
         case obj =>
           // TODO upgrade to a full type tag check or something similar
-          ctx.error(s"Interpreted tree returned a result of an unexpected type. Expected ${ct.runtimeClass} but was ${obj.getClass}", pos)
+          report.error(s"Interpreted tree returned a result of an unexpected type. Expected ${ct.runtimeClass} but was ${obj.getClass}", pos)
           None
       }
 
@@ -395,7 +396,7 @@ object Splicer {
               throw ex
             case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
               if (ctx.settings.XprintSuspension.value)
-                ctx.echo(i"suspension triggered by a dependency on $sym", pos)
+                report.echo(i"suspension triggered by a dependency on $sym", pos)
               ctx.compilationUnit.suspend() // this throws a SuspendException
             case targetException =>
               val sw = new StringWriter()
@@ -418,7 +419,7 @@ object Splicer {
         val className = targetException.getMessage
         if (className eq null) None
         else {
-          val sym = ctx.base.staticRef(className.toTypeName).symbol
+          val sym = staticRef(className.toTypeName).symbol
           if (sym.isDefinedInCurrentRun) Some(sym) else None
         }
       }

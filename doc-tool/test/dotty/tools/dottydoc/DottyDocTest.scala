@@ -124,7 +124,7 @@ trait DottyDocTest extends MessageRendering {
         ctx.setSetting(ctx.settings.fromTasty, true)
       }
       val fromTastyCompiler = compilerWithChecker(assertion)
-      val fromTastyRun = fromTastyCompiler.newRun(fromTastyCtx)
+      val fromTastyRun = fromTastyCompiler.newRun(using fromTastyCtx)
       fromTastyRun.compile(classNames)
       assert(!fromTastyCtx.reporter.hasErrors)
     }

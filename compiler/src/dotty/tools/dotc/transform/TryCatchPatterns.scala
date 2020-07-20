@@ -7,7 +7,7 @@ import ast.Trees._
 import core.Types._
 import core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.Spans.Span
 
@@ -87,7 +87,7 @@ class TryCatchPatterns extends MiniPhase {
     else {
       val exName = ExceptionBinderName.fresh()
       val fallbackSelector =
-        ctx.newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType, coord = span)
+        newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType, coord = span)
       val sel = Ident(fallbackSelector.termRef).withSpan(span)
       val rethrow = CaseDef(EmptyTree, EmptyTree, Throw(ref(fallbackSelector)))
       Some(CaseDef(

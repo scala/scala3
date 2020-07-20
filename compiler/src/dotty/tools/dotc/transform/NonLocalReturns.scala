@@ -40,7 +40,7 @@ class NonLocalReturns extends MiniPhase {
   /** Return non-local return key for given method */
   private def nonLocalReturnKey(meth: Symbol)(using Context) =
     nonLocalReturnKeys.getOrElseUpdate(meth,
-      ctx.newSymbol(
+      newSymbol(
         meth, NonLocalReturnKeyName.fresh(), Synthetic, defn.ObjectType, coord = meth.span))
 
   /** Generate a non-local return throw with given return expression from given method.
@@ -71,7 +71,7 @@ class NonLocalReturns extends MiniPhase {
    */
   private def nonLocalReturnTry(body: Tree, key: TermSymbol, meth: Symbol)(using Context) = {
     val keyDef = ValDef(key, New(defn.ObjectType, Nil))
-    val ex = ctx.newSymbol(meth, nme.ex, Case, nonLocalReturnControl, coord = body.span)
+    val ex = newSymbol(meth, nme.ex, Case, nonLocalReturnControl, coord = body.span)
     val pat = BindTyped(ex, nonLocalReturnControl)
     val rhs = If(
         ref(ex).select(nme.key).appliedToNone.select(nme.eq).appliedTo(ref(key)),
@@ -91,7 +91,7 @@ class NonLocalReturns extends MiniPhase {
   override def transformReturn(tree: Return)(using Context): Tree =
     if isNonLocalReturn(tree) then
       if sourceVersion.isAtLeast(`3.1`) then
-        ctx.errorOrMigrationWarning("Non local returns are no longer supported; use scala.util.control.NonLocalReturns instead", tree.sourcePos)
+        report.errorOrMigrationWarning("Non local returns are no longer supported; use scala.util.control.NonLocalReturns instead", tree.sourcePos)
       nonLocalReturnThrow(tree.expr, tree.from.symbol).withSpan(tree.span)
     else tree
 }

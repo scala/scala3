@@ -23,6 +23,8 @@ import Phases._
 
 import dotty.tools.dotc.util
 import dotty.tools.dotc.util.Spans
+import dotty.tools.dotc.report
+
 import Decorators._
 import Constants._
 import tpd._
@@ -81,7 +83,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
-        ctx.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", ctx.source.atSpan(field.span))
+        report.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", ctx.source.atSpan(field.span))
         UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems
@@ -107,13 +109,19 @@ object DottyBackendInterface {
     else clazz.getName
   }
 
+  def requiredClass(str: String)(using Context): ClassSymbol =
+    Symbols.requiredClass(str)
+
   def requiredClass[T](using evidence: ClassTag[T], ctx: Context): Symbol =
-    ctx.requiredClass(erasureString(evidence.runtimeClass))
+    requiredClass(erasureString(evidence.runtimeClass))
+
+  def requiredModule(str: String)(using Context): Symbol =
+    Symbols.requiredModule(str)
 
   def requiredModule[T](using evidence: ClassTag[T], ctx: Context): Symbol = {
     val moduleName = erasureString(evidence.runtimeClass)
     val className = if (moduleName.endsWith("$")) moduleName.dropRight(1)  else moduleName
-    ctx.requiredModule(className)
+    requiredModule(className)
   }
 
   given symExtensions as AnyRef:
@@ -189,7 +197,7 @@ object DottyBackendInterface {
    * True if the current compilation unit is of a primitive class (scala.Boolean et al).
    * Used only in assertions.
    */
-  def isCompilingPrimitive(using ctx: Context) = {
+  def isCompilingPrimitive(using Context) = {
     primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
   }
 

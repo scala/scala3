@@ -16,30 +16,16 @@ import Periods._
 import typer.{FrontEnd, RefChecks}
 import ast.tpd
 
-trait Phases {
-  self: Context =>
-
-  import Phases._
-
-  def phase: Phase = base.phases(period.firstPhaseId)
-
-  def phasesStack: List[Phase] =
-    if ((this eq NoContext) || !phase.exists) Nil
-    else {
-      val rest = outersIterator.dropWhile(_.phase == phase)
-      phase :: (if (rest.hasNext) rest.next().phasesStack else Nil)
-    }
-
-  def isAfterTyper: Boolean = base.isAfterTyper(phase)
-}
-
 object Phases {
+
+  inline def phaseOf(id: PhaseId)(using Context): Phase =
+    ctx.base.phases(id)
 
   trait PhasesBase {
     this: ContextBase =>
 
     // drop NoPhase at beginning
-    def allPhases: Array[Phase] = (if (squashedPhases.nonEmpty) squashedPhases else phases).tail
+    def allPhases: Array[Phase] = (if (fusedPhases.nonEmpty) fusedPhases else phases).tail
 
     object NoPhase extends Phase {
       override def exists: Boolean = false
@@ -69,12 +55,12 @@ object Phases {
       * Each TreeTransform gets own period,
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
       */
-    final def squashPhases(phasess: List[List[Phase]],
+    final def fusePhases(phasess: List[List[Phase]],
                            phasesToSkip: List[String],
                            stopBeforePhases: List[String],
                            stopAfterPhases: List[String],
                            YCheckAfter: List[String])(using Context): List[Phase] = {
-      val squashedPhases = ListBuffer[Phase]()
+      val fusedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
       val YCheckAll = YCheckAfter.contains("all")
 
@@ -106,35 +92,35 @@ object Phases {
                       s"${phase.phaseName} requires ${unmetRequirements.mkString(", ")} to be in different TreeTransformer")
 
                   case _ =>
-                    assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
+                    assert(false, s"Only tree transforms can be fused, ${phase.phaseName} can not be fused")
                 }
               val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
               prevPhases ++= filteredPhaseBlock.map(_.phaseName)
               superPhase
             }
-            else { // block of a single phase, no squashing
+            else { // block of a single phase, no fusion
               val phase = filteredPhaseBlock.head
               prevPhases += phase.phaseName
               phase
             }
-          squashedPhases += phaseToAdd
+          fusedPhases += phaseToAdd
           val shouldAddYCheck = YCheckAfter.containsPhase(phaseToAdd) || YCheckAll
           if (shouldAddYCheck) {
             val checker = new TreeChecker
-            squashedPhases += checker
+            fusedPhases += checker
           }
         }
 
         i += 1
       }
-      squashedPhases.toList
+      fusedPhases.toList
     }
 
     /** Use the following phases in the order they are given.
      *  The list should never contain NoPhase.
-     *  if squashing is enabled, phases in same subgroup will be squashed to single phase.
+     *  if fusion is enabled, phases in same subgroup will be fused to single phase.
      */
-    final def usePhases(phasess: List[Phase], squash: Boolean = true): Unit = {
+    final def usePhases(phasess: List[Phase], fuse: Boolean = true): Unit = {
 
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
@@ -197,10 +183,10 @@ object Phases {
         nextDenotTransformerId(i) = lastTransformerId
       }
 
-      if (squash)
-        this.squashedPhases = (NoPhase :: phasess).toArray
+      if (fuse)
+        this.fusedPhases = (NoPhase :: phasess).toArray
       else
-        this.squashedPhases = this.phases
+        this.fusedPhases = this.phases
 
       config.println(s"Phases = ${phases.toList}")
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
@@ -322,7 +308,7 @@ object Phases {
     /** Is this phase the standard typerphase? True for FrontEnd, but
      *  not for other first phases (such as FromTasty). The predicate
      *  is tested in some places that perform checks and corrections. It's
-     *  different from isAfterTyper (and cheaper to test).
+     *  different from ctx.isAfterTyper (and cheaper to test).
      */
     def isTyper: Boolean = false
 
@@ -427,7 +413,7 @@ object Phases {
   def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
   def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase
 
-  def curPhases(using Context): Array[Phase] = ctx.base.phases
+  def unfusedPhases(using Context): Array[Phase] = ctx.base.phases
 
   /** Replace all instances of `oldPhaseClass` in `current` phases
    *  by the result of `newPhases` applied to the old phase.

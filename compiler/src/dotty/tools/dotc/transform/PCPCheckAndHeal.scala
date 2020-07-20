@@ -104,7 +104,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     val taggedTypes = new PCPCheckAndHeal.QuoteTypeTags(quote.span)
 
     if (ctx.property(InAnnotation).isDefined)
-      ctx.error("Cannot have a quote in an annotation", quote.sourcePos)
+      report.error("Cannot have a quote in an annotation", quote.sourcePos)
 
     val contextWithQuote =
       if level == 0 then contextWithQuoteTypeTags(taggedTypes)(using quoteContext)
@@ -182,7 +182,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
             case prefix: TermRef if tp.symbol.isSplice =>
               prefix.symbol.info.argInfos match
                 case (tb: TypeBounds) :: _ =>
-                  ctx.error(em"Cannot splice $tp because it is a wildcard type", pos)
+                  report.error(em"Cannot splice $tp because it is a wildcard type", pos)
                 case _ =>
               // Heal explicit type splice in the code
               if level > 0 then getQuoteTypeTags.getTagRef(prefix) else tp
@@ -228,13 +228,13 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         checkStable(tp, pos, "type witness")
         getQuoteTypeTags.getTagRef(tp)
       case _: SearchFailureType =>
-        ctx.error(i"""Reference to $tp withing quotes requires a $reqType in scope.
+        report.error(i"""Reference to $tp withing quotes requires a $reqType in scope.
                      |${ctx.typer.missingArgMsg(tag, reqType, "")}
                      |
                      |""", pos)
         tp
       case _ =>
-        ctx.error(i"""Reference to $tp withing quotes requires a $reqType in scope.
+        report.error(i"""Reference to $tp withing quotes requires a $reqType in scope.
                      |
                      |""", pos)
         tp
@@ -245,7 +245,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       if (!tp.isInstanceOf[ThisType]) sym.show
       else if (sym.is(ModuleClass)) sym.sourceModule.show
       else i"${sym.name}.this"
-    ctx.error(
+    report.error(
       em"""access to $symStr from wrong staging level:
           | - the definition is at level ${levelOf(sym)},
           | - but the access is at level $level.""", pos)
@@ -272,7 +272,7 @@ object PCPCheckAndHeal {
       val splicedTree = tpd.ref(spliced).withSpan(span)
       val rhs = splicedTree.select(tpnme.spliceType).withSpan(span)
       val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs, EmptyTree)
-      val local = ctx.newSymbol(
+      val local = newSymbol(
         owner = ctx.owner,
         name = UniqueName.fresh((splicedTree.symbol.name.toString + "$_").toTermName).toTypeName,
         flags = Synthetic,

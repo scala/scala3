@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package config
 
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import core.Names.TermName
 import core.StdNames.nme
 import core.Decorators.{given _}

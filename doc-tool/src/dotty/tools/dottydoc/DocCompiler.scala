@@ -3,7 +3,7 @@ package dottydoc
 
 import core._
 import core.transform._
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import dotc.core.Phases.Phase
 import dotc.core.Mode
 import dotc.{Compiler, CompilationUnit, Run}
@@ -26,7 +26,7 @@ import dotty.tools.dotc.transform.CookComments
  */
 class DocCompiler extends Compiler {
 
-  override def newRun(implicit ctx: Context): Run = {
+  override def newRun(using Context): Run = {
     if (ctx.settings.fromTasty.value) {
       reset()
       new TASTYRun(this, ctx.addMode(Mode.ReadPositions).addMode(Mode.ReadComments))
@@ -45,10 +45,10 @@ class DocCompiler extends Compiler {
    *  `discardAfterTyper`.
    */
   private class DocFrontEnd extends FrontEnd {
-    override protected def discardAfterTyper(unit: CompilationUnit)(implicit ctx: Context) =
+    override protected def discardAfterTyper(unit: CompilationUnit)(using Context) =
       unit.isJava
 
-    override def isRunnable(implicit ctx: Context): Boolean =
+    override def isRunnable(using Context): Boolean =
       super.isRunnable && !ctx.settings.fromTasty.value
   }
 

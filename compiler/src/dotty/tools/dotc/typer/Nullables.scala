@@ -506,7 +506,7 @@ object Nullables:
               else
                 val arg2 = retyper.typed(arg1, formal)(using nestedCtx)
                 if nestedCtx.reporter.hasErrors || !(arg2.tpe <:< formal) then
-                  ctx.error(em"""This argument was typed using flow assumptions about mutable variables
+                  report.error(em"""This argument was typed using flow assumptions about mutable variables
                                 |but it is passed to a by-name parameter where such flow assumptions are unsound.
                                 |Wrapping the argument in `byName(...)` fixes the problem by disabling the flow assumptions.
                                 |

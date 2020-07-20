@@ -248,7 +248,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
           case ex: TypeError =>
             // See neg/i1750a for an example where a cyclic error can arise.
             // The root cause in this example is an illegal "override" of an inner trait
-            ctx.error(ex, csym.sourcePos)
+            report.error(ex, csym.sourcePos)
             defn.ObjectType :: Nil
         }
       if (ValueClasses.isDerivedValueClass(csym)) {
@@ -453,7 +453,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
           case rinfo: TypeBounds =>
             typeRefinement(name, rinfo)
           case _ =>
-            ctx.debuglog(i"sbt-api: skipped structural refinement in $rt")
+            report.debuglog(i"sbt-api: skipped structural refinement in $rt")
             null
         }
 
@@ -514,7 +514,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       case tp: TypeVar =>
         apiType(tp.underlying)
       case _ => {
-        ctx.warning(i"sbt-api: Unhandled type ${tp.getClass} : $tp")
+        report.warning(i"sbt-api: Unhandled type ${tp.getClass} : $tp")
         Constants.emptyType
       }
     }

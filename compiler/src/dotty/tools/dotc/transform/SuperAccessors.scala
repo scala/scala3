@@ -74,14 +74,14 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     val superAcc = clazz.info.decl(superName)
       .suchThat(_.signature == superInfo.signature).symbol
       .orElse {
-        ctx.debuglog(s"add super acc ${sym.showLocated} to $clazz")
+        report.debuglog(s"add super acc ${sym.showLocated} to $clazz")
         val maybeDeferred = if (clazz.is(Trait)) Deferred else EmptyFlags
-        val acc = ctx.newSymbol(
+        val acc = newSymbol(
             clazz, superName, Artifact | Method | maybeDeferred,
             superInfo, coord = accRange).enteredAfter(thisPhase)
         // Diagnostic for SI-7091
         if (!accDefs.contains(clazz))
-          ctx.error(
+          report.error(
             s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz.is(Package)}. Accessor required for ${sel} (${sel.show})",
             sel.sourcePos)
         else accDefs(clazz) += DefDef(acc, EmptyTree).withSpan(accRange)
@@ -102,18 +102,18 @@ class SuperAccessors(thisPhase: DenotTransformer) {
 
     if (sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.isAllOf(ParamForwarder))
       // ParamForwaders as installed ParamForwarding.scala do use super calls to vals
-      ctx.error(s"super may be not be used on ${sym.underlyingSymbol}", sel.sourcePos)
+      report.error(s"super may be not be used on ${sym.underlyingSymbol}", sel.sourcePos)
     else if (isDisallowed(sym))
-      ctx.error(s"super not allowed here: use this.${sel.name} instead", sel.sourcePos)
+      report.error(s"super not allowed here: use this.${sel.name} instead", sel.sourcePos)
     else if (sym.is(Deferred)) {
       val member = sym.overridingSymbol(clazz.asClass)
       if (!mix.name.isEmpty ||
           !member.exists ||
           !(member.is(AbsOverride) && member.isIncompleteIn(clazz)))
-        ctx.error(
+        report.error(
             i"${sym.showLocated} is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'",
             sel.sourcePos)
-      else ctx.log(i"ok super $sel ${sym.showLocated} $member $clazz ${member.isIncompleteIn(clazz)}")
+      else report.log(i"ok super $sel ${sym.showLocated} $member $clazz ${member.isIncompleteIn(clazz)}")
     }
     else {
       val owner = sym.owner
@@ -123,7 +123,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
           for (intermediateClass <- clazz.info.baseClasses.tail.takeWhile(_ != sym.owner)) {
             val overriding = sym.overridingSymbol(intermediateClass)
             if (overriding.is(Deferred, butNot = AbsOverride) && !overriding.owner.is(Trait))
-              ctx.error(
+              report.error(
                 s"${sym.showLocated} cannot be directly accessed from ${clazz} because ${overriding.owner} redeclares it as abstract",
                 sel.sourcePos)
           }
@@ -139,7 +139,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
             else hasClassOverride(member, subCls.superClass.asClass)
           val superCls = clazz.asClass.superClass.asClass
           if (owner != superCls && hasClassOverride(sym, superCls))
-            ctx.error(
+            report.error(
               em"""Super call cannot be emitted: the selected $sym is declared in $owner, which is not the direct superclass of $clazz.
               |An unqualified super call (super.${sym.name}) would be allowed.""",
               sel.sourcePos)

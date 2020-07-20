@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package printing
 
 import dotty.tools.dotc.ast.untpd
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.parsing.Scanners.Scanner

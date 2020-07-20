@@ -1,7 +1,7 @@
 package dotty.tools.dotc.core
 
 import Names.Name
-import Contexts.{Context, ctx}
+import Contexts._
 import Types.Type
 import Variances.{Variance, varianceToInt}
 

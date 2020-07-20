@@ -1,4 +1,5 @@
-package dotty.tools.dotc.typer
+package dotty.tools.dotc
+package typer
 
 import dotty.tools.dotc.ast._
 import dotty.tools.dotc.ast.Trees._
@@ -41,17 +42,17 @@ trait QuotesAndSplices {
     ctx.compilationUnit.needsStaging = true
     tree.quoted match {
       case untpd.Splice(innerExpr) if tree.isTerm =>
-        ctx.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.sourcePos)
+        report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.sourcePos)
       case untpd.TypSplice(innerType) if tree.isType =>
-        ctx.warning("Canceled splice directly inside a quote. '[ ${ XYZ } ] is equivalent to XYZ.", tree.sourcePos)
+        report.warning("Canceled splice directly inside a quote. '[ ${ XYZ } ] is equivalent to XYZ.", tree.sourcePos)
       case _ =>
     }
     val qctx = inferImplicitArg(defn.QuoteContextClass.typeRef, tree.span)
 
     if qctx.tpe.isInstanceOf[SearchFailureType] then
-      ctx.error(missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(tree.span))
+      report.error(missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(tree.span))
     else if !qctx.tpe.isStable then
-      ctx.error(em"Quotes require stable QuoteContext, but found non stable $qctx", qctx.sourcePos)
+      report.error(em"Quotes require stable QuoteContext, but found non stable $qctx", qctx.sourcePos)
 
     val tree1 =
       if ctx.mode.is(Mode.Pattern) then
@@ -70,7 +71,7 @@ trait QuotesAndSplices {
     checkSpliceOutsideQuote(tree)
     tree.expr match {
       case untpd.Quote(innerExpr) if innerExpr.isTerm =>
-        ctx.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.sourcePos)
+        report.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.sourcePos)
       case _ =>
     }
     if (ctx.mode.is(Mode.QuotedPattern))
@@ -84,7 +85,7 @@ trait QuotesAndSplices {
         ref(defn.InternalQuoted_exprSplice).appliedToType(argType).appliedTo(pat)
       }
       else {
-        ctx.error(i"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.sourcePos)
+        report.error(i"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.sourcePos)
         tree.withType(UnspecifiedErrorType)
       }
     else {
@@ -120,7 +121,7 @@ trait QuotesAndSplices {
     assert(ctx.mode.is(Mode.QuotedPattern))
     val untpd.Apply(splice: untpd.Splice, args) = tree
     if !isFullyDefined(pt, ForceDegree.flipBottom) then
-      ctx.error(i"Type must be fully defined.", splice.sourcePos)
+      report.error(i"Type must be fully defined.", splice.sourcePos)
       tree.withType(UnspecifiedErrorType)
     else if splice.isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
@@ -132,11 +133,11 @@ trait QuotesAndSplices {
         case arg: untpd.Ident =>
           typedExpr(arg)
         case arg =>
-          ctx.error("Open patttern exprected an identifier", arg.sourcePos)
+          report.error("Open patttern exprected an identifier", arg.sourcePos)
           EmptyTree
       }
       if args.isEmpty then
-        ctx.error("Missing arguments for open pattern", tree.sourcePos)
+        report.error("Missing arguments for open pattern", tree.sourcePos)
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
       val typedPat = typedSplice(splice, defn.FunctionOf(argTypes, pt))
       ref(defn.InternalQuotedMatcher_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs, TypeTree(defn.AnyType)))
@@ -149,7 +150,7 @@ trait QuotesAndSplices {
     checkSpliceOutsideQuote(tree)
     tree.expr match {
       case untpd.Quote(innerType) if innerType.isType =>
-        ctx.warning("Canceled quote directly inside a splice. ${ '[ XYZ ] } is equivalent to XYZ.", tree.sourcePos)
+        report.warning("Canceled quote directly inside a splice. ${ '[ XYZ ] } is equivalent to XYZ.", tree.sourcePos)
       case _ =>
     }
 
@@ -159,14 +160,14 @@ trait QuotesAndSplices {
       val name = tree.expr match {
         case Ident(name) => ("$" + name).toTypeName
         case expr =>
-          ctx.error("expected a name binding", expr.sourcePos)
+          report.error("expected a name binding", expr.sourcePos)
           "$error".toTypeName
       }
 
       val typeSymInfo = pt match
         case pt: TypeBounds => pt
         case _ => TypeBounds.empty
-      val typeSym = ctx.newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.expr.span)
+      val typeSym = newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.expr.span)
       typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuotedMatcher_patternTypeAnnot.typeRef)).withSpan(tree.expr.span)))
       val pat = typedPattern(tree.expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
           using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
@@ -177,9 +178,9 @@ trait QuotesAndSplices {
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(using Context): Unit =
     if (level == 0 && !ctx.owner.ownersIterator.exists(_.is(Inline)))
-      ctx.error("Splice ${...} outside quotes '{...} or inline method", tree.sourcePos)
+      report.error("Splice ${...} outside quotes '{...} or inline method", tree.sourcePos)
     else if (level < 0)
-      ctx.error(
+      report.error(
         s"""Splice $${...} at level $level.
           |
           |Inline method may contain a splice at level 0 but the contents of this splice cannot have a splice.
@@ -212,7 +213,7 @@ trait QuotesAndSplices {
     def getBinding(sym: Symbol): Bind =
       typeBindings.getOrElseUpdate(sym, {
         val bindingBounds = sym.info
-        val bsym = ctx.newPatternBoundSymbol(sym.name.toTypeName, bindingBounds, quoted.span)
+        val bsym = newPatternBoundSymbol(sym.name.toTypeName, bindingBounds, quoted.span)
         Bind(bsym, untpd.Ident(nme.WILDCARD).withType(bindingBounds)).withSpan(quoted.span)
       })
 
@@ -266,7 +267,7 @@ trait QuotesAndSplices {
             transformTypeBindingTypeDef(tdef, typePatBuf)
           else if tdef.symbol.isClass then
             val kind = if tdef.symbol.is(Module) then "objects" else "classes"
-            ctx.error("Implementation restriction: cannot match " + kind, tree.sourcePos)
+            report.error("Implementation restriction: cannot match " + kind, tree.sourcePos)
             EmptyTree
           else
             super.transform(tree)
@@ -280,16 +281,16 @@ trait QuotesAndSplices {
             cpy.AppliedTypeTree(tree)(transform(tpt), args1)
         case tree: NamedDefTree =>
           if tree.name.isTermName && !tree.nameSpan.isSynthetic && tree.name.startsWith("$") then
-            ctx.error("Names cannot start with $ quote pattern ", tree.namePos)
+            report.error("Names cannot start with $ quote pattern ", tree.namePos)
           super.transform(tree)
         case _: Match =>
-          ctx.error("Implementation restriction: cannot match `match` expressions", tree.sourcePos)
+          report.error("Implementation restriction: cannot match `match` expressions", tree.sourcePos)
           EmptyTree
         case _: Try =>
-          ctx.error("Implementation restriction: cannot match `try` expressions", tree.sourcePos)
+          report.error("Implementation restriction: cannot match `try` expressions", tree.sourcePos)
           EmptyTree
         case _: Return =>
-          ctx.error("Implementation restriction: cannot match `return` statements", tree.sourcePos)
+          report.error("Implementation restriction: cannot match `return` statements", tree.sourcePos)
           EmptyTree
         case _ =>
           super.transform(tree)
@@ -301,7 +302,7 @@ trait QuotesAndSplices {
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
         val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
         val bindName = tdef.name.toString.stripPrefix("$").toTermName
-        val sym = ctx0.newPatternBoundSymbol(bindName, bindingTypeTpe, tdef.span, flags = ImplicitTerm)
+        val sym = newPatternBoundSymbol(bindName, bindingTypeTpe, tdef.span, flags = ImplicitTerm)(using ctx0)
         buff += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingTypeTpe)).withSpan(tdef.span)
         super.transform(tdef)
       }
@@ -380,9 +381,9 @@ trait QuotesAndSplices {
    */
   private def typedQuotePattern(tree: untpd.Quote, pt: Type, qctx: Tree)(using Context): Tree = {
     if tree.quoted.isTerm && !pt.derivesFrom(defn.QuotedExprClass) then
-      ctx.error("Quote pattern can only match scrutinees of type scala.quoted.Expr", tree.sourcePos)
+      report.error("Quote pattern can only match scrutinees of type scala.quoted.Expr", tree.sourcePos)
     else if tree.quoted.isType && !pt.derivesFrom(defn.QuotedTypeClass) then
-      ctx.error("Quote pattern can only match scrutinees of type scala.quoted.Type", tree.sourcePos)
+      report.error("Quote pattern can only match scrutinees of type scala.quoted.Type", tree.sourcePos)
 
     val quoted = tree.quoted
     val exprPt = pt.baseType(if quoted.isType then defn.QuotedTypeClass else defn.QuotedExprClass)
@@ -418,7 +419,7 @@ trait QuotesAndSplices {
           case tree: Bind =>
             val sym = tree.symbol
             val newInfo = replaceBindings(sym.info)
-            val newSym = ctx.newSymbol(sym.owner, sym.name, sym.flags, newInfo, sym.privateWithin, sym.coord)
+            val newSym = newSymbol(sym.owner, sym.name, sym.flags, newInfo, sym.privateWithin, sym.coord)
             bindMap += sym -> newSym
             Bind(newSym, transform(tree.body)).withSpan(sym.span)
           case _ =>

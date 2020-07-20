@@ -42,7 +42,7 @@ object Scopes {
    *  the given name in the given context. Returns `NoSymbol` if the
    *  no symbol should be synthesized for the given name.
    */
-  type SymbolSynthesizer = Name => Context => Symbol
+  type SymbolSynthesizer = Name => Context ?=> Symbol
 
   class ScopeEntry private[Scopes] (val name: Name, _sym: Symbol, val owner: Scope) {
 
@@ -192,10 +192,9 @@ object Scopes {
       extends Scope {
 
     /** Scope shares elements with `base` */
-    protected[Scopes] def this(base: Scope)(using Context) = {
+    protected[Scopes] def this(base: Scope)(using Context) =
       this(base.lastEntry, base.size, base.nestingLevel + 1)
       ensureCapacity(MinHashedScopeSize)
-    }
 
     def this() = this(null, 0, 0)
 
@@ -370,7 +369,7 @@ object Scopes {
           e = e.prev
       }
       if ((e eq null) && (synthesize != null)) {
-        val sym = synthesize(name)(ctx)
+        val sym = synthesize(name)
         if (sym.exists) newScopeEntry(sym) else e
       }
       else e

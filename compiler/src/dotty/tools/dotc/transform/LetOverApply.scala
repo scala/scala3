@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core._
-import Contexts.{Context, ctx}, Symbols._, Decorators._
+import Contexts._, Symbols._, Decorators._
 import MegaPhase._
 import ast.Trees._
 

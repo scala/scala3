@@ -76,7 +76,7 @@ class ClassfileParser(
   private var Scala2UnpicklingMode = Mode.Scala2Unpickling
 
   classRoot.info = NoLoader().withDecls(instanceScope)
-  moduleRoot.info = NoLoader().withDecls(staticScope).withSourceModule(_ => staticModule)
+  moduleRoot.info = NoLoader().withDecls(staticScope).withSourceModule(staticModule)
 
   private def currentIsTopLevel(using Context) = classRoot.owner.is(Flags.PackageClass)
 
@@ -84,7 +84,7 @@ class ClassfileParser(
     throw new IOException(s"class file '${in.file.canonicalPath}' has location not matching its contents: contains class $className")
 
   def run()(using Context): Option[Embedded] = try {
-    ctx.debuglog("[class] >> " + classRoot.fullName)
+    report.debuglog("[class] >> " + classRoot.fullName)
     parseHeader()
     this.pool = new ConstantPool
     parseClass()
@@ -113,7 +113,7 @@ class ClassfileParser(
   /** Return the class symbol of the given name. */
   def classNameToSymbol(name: Name)(using Context): Symbol = innerClasses.get(name) match {
     case Some(entry) => innerClasses.classSymbol(entry)
-    case None => ctx.requiredClass(name)
+    case None => requiredClass(name)
   }
 
   var sawPrivateConstructor: Boolean = false
@@ -225,7 +225,7 @@ class ClassfileParser(
       else fieldTranslation.flags(jflags)
     val name = pool.getName(in.nextChar)
     if (!sflags.isOneOf(Flags.PrivateOrArtifact) || name == nme.CONSTRUCTOR) {
-      val member = ctx.newSymbol(
+      val member = newSymbol(
         getOwner(jflags), name, sflags, memberCompleter,
         getPrivateWithin(jflags), coord = start)
       getScope(jflags).enter(member)
@@ -295,7 +295,7 @@ class ClassfileParser(
         if (isEnum) {
           val enumClass = sym.owner.linkedClass
           if (!enumClass.exists)
-            ctx.warning(s"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
+            report.warning(s"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
           else {
             if (!enumClass.is(Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
             enumClass.addAnnotation(Annotation.Child(sym, NoSpan))
@@ -452,7 +452,7 @@ class ClassfileParser(
       val start = index
       while (sig(index) != '>') {
         val tpname = subName(':'.==).toTypeName
-        val s = ctx.newSymbol(
+        val s = newSymbol(
           owner, tpname, owner.typeParamCreationFlags,
           typeParamCompleter(index), coord = indexCoord(index))
         if (owner.isClass) owner.asClass.enter(s)
@@ -510,7 +510,7 @@ class ClassfileParser(
         else if (s != NoSymbol)
           Some(lit(Constant(s)))
         else {
-          ctx.warning(s"""While parsing annotations in ${in.file}, could not find $n in enum $module.\nThis is likely due to an implementation restriction: an annotation argument cannot refer to a member of the annotated class (SI-7014).""")
+          report.warning(s"""While parsing annotations in ${in.file}, could not find $n in enum $module.\nThis is likely due to an implementation restriction: an annotation argument cannot refer to a member of the annotated class (SI-7014).""")
           None
         }
       case ARRAY_TAG =>
@@ -542,7 +542,7 @@ class ClassfileParser(
         // Silently ignore missing annotation classes like javac
         if tp.denot.infoOrCompleter.isInstanceOf[StubInfo] then
           if ctx.debug then
-            ctx.warning(i"Error while parsing annotations in ${in.file}: annotation class $tp not present on classpath")
+            report.warning(i"Error while parsing annotations in ${in.file}: annotation class $tp not present on classpath")
           return None
       case _ =>
 
@@ -568,7 +568,7 @@ class ClassfileParser(
       // the classpath would *not* end up here. A class not found is signaled
       // with a `FatalError` exception, handled above. Here you'd end up after a NPE (for example),
       // and that should never be swallowed silently.
-      ctx.warning("Caught: " + ex + " while parsing annotations in " + in.file)
+      report.warning("Caught: " + ex + " while parsing annotations in " + in.file)
       if (ctx.debug) ex.printStackTrace()
 
       None // ignore malformed annotations
@@ -598,7 +598,7 @@ class ClassfileParser(
         case tpnme.ConstantValueATTR =>
           val c = pool.getConstant(in.nextChar, symtype)
           if (c ne null) newType = ConstantType(c)
-          else ctx.warning(s"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
+          else report.warning(s"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
         case tpnme.AnnotationDefaultATTR =>
           sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil))
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
@@ -619,7 +619,7 @@ class ClassfileParser(
           if (sym.owner.isAllOf(Flags.JavaInterface)) {
             sym.resetFlag(Flags.Deferred)
             sym.owner.resetFlag(Flags.PureInterface)
-            ctx.log(s"$sym in ${sym.owner} is a java8+ default method.")
+            report.log(s"$sym in ${sym.owner} is a java8+ default method.")
           }
           in.skip(attrLen)
 
@@ -664,7 +664,7 @@ class ClassfileParser(
    *  parameters. For Java annotations we need to fake it by making up the constructor.
    */
   def addAnnotationConstructor(classInfo: TempClassInfoType)(using Context): Unit =
-    ctx.newSymbol(
+    newSymbol(
       owner = classRoot.symbol,
       name = nme.CONSTRUCTOR,
       flags = Flags.Synthetic | Flags.JavaDefined | Flags.Method,
@@ -752,7 +752,7 @@ class ClassfileParser(
         }
 
         val unpickler = new unpickleScala2.Scala2Unpickler(bytes, classRoot, moduleRoot)(ctx)
-        unpickler.run()(using ctx.addMode(Scala2UnpicklingMode))
+        withMode(Scala2UnpicklingMode)(unpickler.run())
         Some(unpickler)
       }
 
@@ -807,18 +807,18 @@ class ClassfileParser(
                 }
               }
               else {
-                ctx.error(s"Could not find $path in ${classfile.underlyingSource}")
+                report.error(s"Could not find $path in ${classfile.underlyingSource}")
                 Array.empty
               }
             case _ =>
               if (classfile.jpath == null) {
-                ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
+                report.error("Could not load TASTY from .tasty for virtual file " + classfile)
                 Array.empty
               } else {
                 val plainFile = new PlainFile(io.File(classfile.jpath).changeExtension("tasty"))
                 if (plainFile.exists) plainFile.toByteArray
                 else {
-                  ctx.error("Could not find " + plainFile)
+                  report.error("Could not find " + plainFile)
                   Array.empty
                 }
               }
@@ -828,7 +828,7 @@ class ClassfileParser(
             val expectedUUID = new UUID(reader.readUncompressedLong(), reader.readUncompressedLong())
             val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
             if (expectedUUID != tastyUUID)
-              ctx.warning(s"$classfile is out of sync with its TASTy file. Loaded TASTy file. Try cleaning the project to fix this issue", NoSourcePosition)
+              report.warning(s"$classfile is out of sync with its TASTy file. Loaded TASTy file. Try cleaning the project to fix this issue", NoSourcePosition)
             return unpickleTASTY(tastyBytes)
           }
         }
@@ -1058,7 +1058,7 @@ class ClassfileParser(
         val name = getExternalName(in.getChar(start + 1))
         if (name.endsWith("$") && (name ne nme.nothingRuntimeClass) && (name ne nme.nullRuntimeClass))
           // Null$ and Nothing$ ARE classes
-          c = ctx.requiredModule(name.dropRight(1))
+          c = requiredModule(name.dropRight(1))
         else c = classNameToSymbol(name)
         values(index) = c
       }

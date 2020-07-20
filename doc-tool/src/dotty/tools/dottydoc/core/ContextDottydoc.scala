@@ -9,10 +9,11 @@ import dotc.core.Comments.ContextDocstrings
 import model.{ Package, Entity }
 import model.comment.Comment
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import dotc.printing.Highlighting._
 import dotc.printing.Formatting.hl
 import dotc.util.{ SourcePosition, NoSourcePosition }
+import dotc.report
 
 class ContextDottydoc extends ContextDocstrings {
   import scala.collection.mutable
@@ -35,32 +36,32 @@ class ContextDottydoc extends ContextDocstrings {
     s -> _defs.get(s).map(xs => xs + d).getOrElse(Set(d))
   })
 
-  def error(msg: String, pos: SourcePosition)(implicit ctx: Context): Unit = ctx.error({
+  def error(msg: String, pos: SourcePosition)(using Context): Unit = report.error({
     NoColor("[") + Red("doc error") + "] " + msg
   }.toString, pos)
 
-  def error(msg: String)(implicit ctx: Context): Unit = error(msg, NoSourcePosition)
+  def error(msg: String)(using Context): Unit = error(msg, NoSourcePosition)
 
-  def warn(msg: String, pos: SourcePosition)(implicit ctx: Context): Unit = ctx.warning({
+  def warn(msg: String, pos: SourcePosition)(using Context): Unit = report.warning({
     NoColor("[") + Yellow("doc warn") + "] " + msg
   }.toString, pos)
 
-  def warn(msg: String)(implicit ctx: Context): Unit = warn(msg, NoSourcePosition)
+  def warn(msg: String)(using Context): Unit = warn(msg, NoSourcePosition)
 
-  def echo(msg: String, pos: SourcePosition)(implicit ctx: Context): Unit = ctx.echo({
+  def echo(msg: String, pos: SourcePosition)(using Context): Unit = report.echo({
     "[doc info] " + msg
   }.toString, pos)
 
-  def echo(msg: String)(implicit ctx: Context): Unit = echo(msg, NoSourcePosition)
+  def echo(msg: String)(using Context): Unit = echo(msg, NoSourcePosition)
 
-  def debug(msg: String, pos: SourcePosition)(implicit ctx: Context): Unit =
-    if (ctx.settings.Ydebug.value) ctx.inform({
+  def debug(msg: String, pos: SourcePosition)(using Context): Unit =
+    if (ctx.settings.Ydebug.value) report.inform({
       "[doc debug] " + msg
     }.toString, pos)
 
-  def debug(msg: String)(implicit ctx: Context): Unit = debug(msg, NoSourcePosition)
+  def debug(msg: String)(using Context): Unit = debug(msg, NoSourcePosition)
 
-  def printSummary()(implicit ctx: Context): Unit = {
+  def printSummary()(using Context): Unit = {
     def colored(part: Int, total: Int) =
       if (total == 0) "0"
       else {
@@ -106,7 +107,7 @@ class ContextDottydoc extends ContextDocstrings {
           |""".stripMargin
     }).mkString("\n")
 
-    ctx.echo {
+    report.echo {
       s"""|${Blue("=" * ctx.settings.pageWidth.value)}
           |Dottydoc summary report for project `$projectName`
           |${Blue("=" * ctx.settings.pageWidth.value)}

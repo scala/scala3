@@ -126,11 +126,11 @@ object Scanners {
     }
 
     def errorButContinue(msg: String, off: Offset = offset): Unit =
-      ctx.error(msg, sourcePos(off))
+      report.error(msg, sourcePos(off))
 
     /** signal an error where the input ended in the middle of a token */
     def incompleteInputError(msg: String): Unit = {
-      ctx.incompleteInputError(msg, sourcePos())
+      report.incompleteInputError(msg, sourcePos())
       token = EOF
       errOffset = offset
     }
@@ -249,7 +249,7 @@ object Scanners {
       else keyword
 
     private def treatAsIdent(): Token =
-      ctx.errorOrMigrationWarning(
+      report.errorOrMigrationWarning(
         i"$name is now a keyword, write `$name` instead of $name to keep it as an identifier",
         sourcePos())
       patch(source, Span(offset), "`")
@@ -390,7 +390,7 @@ object Scanners {
           val (what, previous) =
             if inConditional then ("Rest of line", "previous expression in parentheses")
             else ("Line", "expression on the previous line")
-          ctx.errorOrMigrationWarning(
+          report.errorOrMigrationWarning(
             em"""$what starts with an operator;
                 |it is now treated as a continuation of the $previous,
                 |not as a separate statement.""",
@@ -515,7 +515,7 @@ object Scanners {
                 currentRegion = r.enclosing
                 insert(OUTDENT, offset)
               case r: InBraces if !closingRegionTokens.contains(token) =>
-                ctx.warning("Line is indented too far to the left, or a `}` is missing",
+                report.warning("Line is indented too far to the left, or a `}` is missing",
                   source.atSpan(Span(offset)))
               case _ =>
 

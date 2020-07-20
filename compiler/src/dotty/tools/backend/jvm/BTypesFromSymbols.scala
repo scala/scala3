@@ -8,7 +8,7 @@ import scala.collection.mutable
 import scala.collection.generic.Clearable
 
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Contexts.{inContext, atPhase}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Phases.Phase

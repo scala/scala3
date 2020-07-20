@@ -4,7 +4,7 @@ package transform
 import core._
 import DenotTransformers.SymTransformer
 import Phases.Phase
-import Contexts.{Context, ctx}
+import Contexts._
 import Flags._
 import Symbols._
 import SymDenotations.SymDenotation
@@ -40,7 +40,7 @@ class DropEmptyCompanions extends MiniPhase { thisTransform =>
       case TypeDef(_, impl: Template) if tree.symbol.is(SyntheticModule) &&
         tree.symbol.companionClass.exists &&
         impl.body.forall(_.symbol.isPrimaryConstructor) =>
-        ctx.log(i"removing ${tree.symbol}")
+        report.log(i"removing ${tree.symbol}")
         true
       case _ =>
         false

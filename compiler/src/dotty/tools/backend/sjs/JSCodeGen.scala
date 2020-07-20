@@ -27,6 +27,7 @@ import StdNames._
 import dotty.tools.dotc.transform.Erasure
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.report
 
 import org.scalajs.ir
 import org.scalajs.ir.{ClassKind, Position, Trees => js, Types => jstpe}
@@ -574,7 +575,7 @@ class JSCodeGen()(using genCtx: Context) {
         val resultType = toIRType(m.info.resultType)
 
         if (existingPublicStaticMethodNames.contains(methodIdent.name)) {
-          ctx.error(
+          report.error(
               "Unexpected situation: found existing public static method " +
               s"${methodIdent.name.nameString} in the companion class of " +
               s"${moduleClass.fullName}; cannot generate a static forwarder " +
@@ -971,8 +972,8 @@ class JSCodeGen()(using genCtx: Context) {
   private def genStatOrExpr(tree: Tree, isStat: Boolean): js.Tree = {
     implicit val pos: SourcePosition = tree.sourcePos
 
-    ctx.debuglog("  " + tree)
-    ctx.debuglog("")
+    report.debuglog("  " + tree)
+    report.debuglog("")
 
     tree match {
       /** Local val or var declaration */
@@ -1791,7 +1792,7 @@ class JSCodeGen()(using genCtx: Context) {
   private lazy val externalEqualsNumNum: Symbol =
     defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumNum)
   private lazy val externalEqualsNumChar: Symbol =
-    NoSymbol // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
+    NoSymbol // requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
   private lazy val externalEqualsNumObject: Symbol =
     defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
   private lazy val externalEquals: Symbol =
@@ -1800,7 +1801,7 @@ class JSCodeGen()(using genCtx: Context) {
   /** Gen JS code for a call to Any.== */
   private def genEqEqPrimitive(ltpe: Type, rtpe: Type, lsrc: js.Tree, rsrc: js.Tree)(
       implicit pos: SourcePosition): js.Tree = {
-    ctx.debuglog(s"$ltpe == $rtpe")
+    report.debuglog(s"$ltpe == $rtpe")
     val lsym = ltpe.widenDealias.typeSymbol.asClass
     val rsym = rtpe.widenDealias.typeSymbol.asClass
 
@@ -1910,7 +1911,7 @@ class JSCodeGen()(using genCtx: Context) {
       case JavaArrayType(el) => el
       case tpe =>
         val msg = ex"expected Array $tpe"
-        ctx.error(msg)
+        report.error(msg)
         ErrorType(msg)
     }
 
@@ -2042,7 +2043,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     def requireNotSuper(): Unit = {
       if (jsSuperClassValue.isDefined)
-        ctx.error("Illegal super call in Scala.js-defined JS class", tree.sourcePos)
+        report.error("Illegal super call in Scala.js-defined JS class", tree.sourcePos)
     }
 
     def requireNotSpread(arg: js.TreeOrJSSpread): js.Tree =
@@ -2326,7 +2327,7 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     val closure = js.Closure(arrow = true, formalCaptures, formalParams, genBody, actualCaptures)
-    ctx.debuglog(closure.toString)
+    report.debuglog(closure.toString)
 
     val funInterfaceSym = functionalInterface.tpe.widenDealias.typeSymbol
     if (jsdefn.isJSFunctionClass(funInterfaceSym)) {
@@ -2426,7 +2427,7 @@ class JSCodeGen()(using genCtx: Context) {
       js.BinaryOp(js.BinaryOp.!==, value, js.Null())
     } else if (isJSType(sym)) {
       if (sym.is(Trait)) {
-        ctx.error(
+        report.error(
             s"isInstanceOf[${sym.fullName}] not supported because it is a JS trait",
             pos)
         js.BooleanLiteral(true)
@@ -2542,7 +2543,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     def resolveReifiedJSClassSym(arg: Tree): Symbol = {
       def fail(): Symbol = {
-        ctx.error(
+        report.error(
             tree.symbol.name.toString + " must be called with a constant " +
             "classOf[T] representing a class extending js.Any " +
             "(not a trait nor an object)",
@@ -2625,7 +2626,7 @@ class JSCodeGen()(using genCtx: Context) {
 
       case JS_NATIVE =>
         // js.native
-        ctx.error(
+        report.error(
             "js.native may only be used as stub implementation in facade types",
             tree.sourcePos)
         js.Undefined()
@@ -2958,7 +2959,7 @@ class JSCodeGen()(using genCtx: Context) {
    *  loaded as a value.
    */
   private def reportErrorLoadGlobalScope()(implicit pos: SourcePosition): js.Tree = {
-    ctx.error(
+    report.error(
         "Loading the global scope as a value (anywhere but as the " +
         "left-hand-side of a `.`-selection) is not allowed." +
         GenericGlobalObjectInformationMsg,
@@ -2988,14 +2989,14 @@ class JSCodeGen()(using genCtx: Context) {
             if (js.JSGlobalRef.isValidJSGlobalRefName(value)) {
               js.JSGlobalRef(value)
             } else if (js.JSGlobalRef.ReservedJSIdentifierNames.contains(value)) {
-              ctx.error(
+              report.error(
                   "Invalid selection in the global scope of the reserved " +
                   s"identifier name `$value`." +
                   GenericGlobalObjectInformationMsg,
                   pos)
               js.JSGlobalRef("erroneous")
             } else {
-              ctx.error(
+              report.error(
                   "Selecting a field of the global scope whose name is " +
                   "not a valid JavaScript identifier is not allowed." +
                   GenericGlobalObjectInformationMsg,
@@ -3004,7 +3005,7 @@ class JSCodeGen()(using genCtx: Context) {
             }
 
           case _ =>
-            ctx.error(
+            report.error(
                 "Selecting a field of the global scope with a dynamic " +
                 "name is not allowed." +
                 GenericGlobalObjectInformationMsg,
@@ -3037,14 +3038,14 @@ class JSCodeGen()(using genCtx: Context) {
             if (js.JSGlobalRef.isValidJSGlobalRefName(value)) {
               js.JSFunctionApply(js.JSGlobalRef(value), args)
             } else if (js.JSGlobalRef.ReservedJSIdentifierNames.contains(value)) {
-              ctx.error(
+              report.error(
                   "Invalid call in the global scope of the reserved " +
                   s"identifier name `$value`." +
                   GenericGlobalObjectInformationMsg,
                   pos)
               js.Undefined()
             } else {
-              ctx.error(
+              report.error(
                   "Calling a method of the global scope whose name is not " +
                   "a valid JavaScript identifier is not allowed." +
                   GenericGlobalObjectInformationMsg,
@@ -3053,7 +3054,7 @@ class JSCodeGen()(using genCtx: Context) {
             }
 
           case _ =>
-            ctx.error(
+            report.error(
                 "Calling a method of the global scope with a dynamic " +
                 "name is not allowed." +
                 GenericGlobalObjectInformationMsg,

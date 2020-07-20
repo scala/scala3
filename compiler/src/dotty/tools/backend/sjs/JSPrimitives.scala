@@ -9,6 +9,7 @@ import Symbols._
 
 import dotty.tools.dotc.ast.tpd._
 import dotty.tools.backend.jvm.DottyPrimitives
+import dotty.tools.dotc.report
 
 import scala.collection.mutable
 
@@ -76,7 +77,7 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit = {
       val alts = cls.info.member(method).alternatives.map(_.symbol)
       if (alts.isEmpty) {
-        ctx.error(s"Unknown primitive method $cls.$method")
+        report.error(s"Unknown primitive method $cls.$method")
       } else {
         for (s <- alts)
           addPrimitive(s, code)

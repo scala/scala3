@@ -16,6 +16,7 @@ import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation, PlainFile,
 import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Contexts._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Denotations.staticRef
 import classpath._
 import reporting._
 import util._
@@ -184,7 +185,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    */
   private def treesFromClassName(className: TypeName, id: String)(using Context): List[SourceTree] = {
     def trees(className: TypeName, id: String): List[SourceTree] = {
-      val clsd = ctx.base.staticRef(className)
+      val clsd = staticRef(className)
       clsd match {
         case clsd: ClassDenotation =>
           clsd.ensureCompleted()

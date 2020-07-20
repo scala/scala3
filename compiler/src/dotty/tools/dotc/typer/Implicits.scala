@@ -23,7 +23,6 @@ import StdNames._
 import Constants._
 import ProtoTypes._
 import ErrorReporting._
-import reporting.Message
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Trees._
 import transform.SymUtils._
@@ -34,7 +33,7 @@ import config.{Config, Feature}
 import Feature.migrateTo3
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
-import reporting.trace
+import reporting._
 import annotation.tailrec
 
 import scala.annotation.internal.sharable
@@ -125,7 +124,7 @@ object Implicits {
             else if (mt.paramInfos.lengthCompare(1) == 0 && {
                   var formal = widenSingleton(mt.paramInfos.head)
                   if (approx) formal = wildApprox(formal)
-                  ctx.test(argType relaxed_<:< formal.widenExpr)
+                  explore(argType relaxed_<:< formal.widenExpr)
                 })
               Candidate.Conversion
             else
@@ -242,7 +241,7 @@ object Implicits {
         val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
 
         def matchingCandidate(ref: ImplicitRef, extensionOnly: Boolean): Option[Candidate] =
-          var ckind = nestedCtx.test(candidateKind(ref.underlyingRef))
+          var ckind = explore(candidateKind(ref.underlyingRef))(using nestedCtx)
           if extensionOnly then ckind &= Candidate.Extension
           if ckind == Candidate.None then None
           else Some(new Candidate(ref, ckind, level))
@@ -789,7 +788,7 @@ trait Implicits { self: Typer =>
   def implicitArgTree(formal: Type, span: Span)(using Context): Tree = {
     val arg = inferImplicitArg(formal, span)
     if (arg.tpe.isInstanceOf[SearchFailureType])
-      ctx.error(missingArgMsg(arg, formal, ""), ctx.source.atSpan(span))
+      report.error(missingArgMsg(arg, formal, ""), ctx.source.atSpan(span))
     arg
   }
 
@@ -995,9 +994,9 @@ trait Implicits { self: Typer =>
             val deepPt = pt.deepenProto
             if (deepPt ne pt) inferImplicit(deepPt, argument, span)
             else if (migrateTo3 && !ctx.mode.is(Mode.OldOverloadingResolution))
-              inferImplicit(pt, argument, span)(using ctx.addMode(Mode.OldOverloadingResolution)) match {
+              withMode(Mode.OldOverloadingResolution)(inferImplicit(pt, argument, span)) match {
                 case altResult: SearchSuccess =>
-                  ctx.migrationWarning(
+                  report.migrationWarning(
                     s"According to new implicit resolution rules, this will be ambiguous:\n${result.reason.explanation}",
                     ctx.source.atSpan(span))
                   altResult
@@ -1052,7 +1051,7 @@ trait Implicits { self: Typer =>
                 if !extensionCtx.reporter.hasErrors then
                   extensionCtx.typerState.commit()
                   if !conversionCtx.reporter.hasErrors then
-                    ctx.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
+                    report.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
                   extensionResult
                 else
                   conversionCtx.typerState.commit()
@@ -1131,7 +1130,7 @@ trait Implicits { self: Typer =>
       def compareCandidate(prev: SearchSuccess, ref: TermRef, level: Int): Int =
         if (prev.ref eq ref) 0
         else if (prev.level != level) prev.level - level
-        else nestedContext().test(compare(prev.ref, ref))
+        else explore(compare(prev.ref, ref))(using nestedContext())
 
       /** If `alt1` is also a search success, try to disambiguate as follows:
        *    - If alt2 is preferred over alt1, pick alt2, otherwise return an
@@ -1236,7 +1235,7 @@ trait Implicits { self: Typer =>
         else result
 
       def warnAmbiguousNegation(ambi: AmbiguousImplicits) =
-        ctx.migrationWarning(
+        report.migrationWarning(
           i"""Ambiguous implicits ${ambi.alt1.ref.symbol.showLocated} and ${ambi.alt2.ref.symbol.showLocated}
              |seem to be used to implement a local failure in order to negate an implicit search.
              |According to the new implicit resolution rules this is no longer possible;
@@ -1515,7 +1514,7 @@ final class SearchRoot extends SearchHistory {
     implicitDictionary.get(tpe) match {
       case Some((ref, _)) => ref
       case None =>
-        val lazyImplicit = ctx.newLazyImplicit(tpe)
+        val lazyImplicit = newLazyImplicit(tpe)
         val ref = lazyImplicit.termRef
         implicitDictionary.put(tpe, (ref, tpd.EmptyTree))
         ref
@@ -1616,9 +1615,9 @@ final class SearchRoot extends SearchHistory {
             // }
 
             val parents = List(defn.ObjectType, defn.SerializableType)
-            val classSym = ctx.newNormalizedClassSymbol(ctx.owner, LazyImplicitName.fresh().toTypeName, Synthetic | Final, parents, coord = span)
+            val classSym = newNormalizedClassSymbol(ctx.owner, LazyImplicitName.fresh().toTypeName, Synthetic | Final, parents, coord = span)
             val vsyms = pruned.map(_._1.symbol)
-            val nsyms = vsyms.map(vsym => ctx.newSymbol(classSym, vsym.name, EmptyFlags, vsym.info, coord = span).entered)
+            val nsyms = vsyms.map(vsym => newSymbol(classSym, vsym.name, EmptyFlags, vsym.info, coord = span).entered)
             val vsymMap = (vsyms zip nsyms).toMap
 
             val rhss = pruned.map(_._2)
@@ -1634,10 +1633,10 @@ final class SearchRoot extends SearchHistory {
               case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs.changeNonLocalOwners(nsym))
             }
 
-            val constr = ctx.newConstructor(classSym, Synthetic, Nil, Nil).entered
+            val constr = newConstructor(classSym, Synthetic, Nil, Nil).entered
             val classDef = ClassDef(classSym, DefDef(constr), vdefs)
 
-            val valSym = ctx.newLazyImplicit(classSym.typeRef, span)
+            val valSym = newLazyImplicit(classSym.typeRef, span)
             val inst = ValDef(valSym, New(classSym.typeRef, Nil))
 
             // Substitute dictionary references into outermost result term.

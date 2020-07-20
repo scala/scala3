@@ -98,7 +98,7 @@ object LambdaLift {
       if (sym.maybeOwner.isTerm &&
         owner.isProperlyContainedIn(liftedOwner(sym)) &&
         owner != sym) {
-          ctx.log(i"narrow lifted $sym to $owner")
+          report.log(i"narrow lifted $sym to $owner")
           changedLiftedOwner = true
           liftedOwner(sym) = owner
       }
@@ -154,7 +154,7 @@ object LambdaLift {
         def nestedInConstructor(sym: Symbol): Boolean =
           sym.isConstructor ||
           sym.isTerm && nestedInConstructor(sym.enclosure)
-        ctx.debuglog(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
+        report.debuglog(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
         val intermediate =
           if (enclosure.is(PackageClass)) enclosure
           else if (enclosure.isConstructor) markFree(sym, enclosure.owner.enclosure)
@@ -169,7 +169,7 @@ object LambdaLift {
           if (!enclosure.is(Trait))
             if (symSet(free, enclosure).add(sym)) {
               changedFreeVars = true
-              ctx.log(i"$sym is free in $enclosure")
+              report.log(i"$sym is free in $enclosure")
             }
         if (intermediate.isRealClass) intermediate
         else if (enclosure.isRealClass) enclosure
@@ -185,7 +185,7 @@ object LambdaLift {
     }
 
     private def markCalled(callee: Symbol, caller: Symbol)(using Context): Unit = {
-      ctx.debuglog(i"mark called: $callee of ${callee.owner} is called by $caller in ${caller.owner}")
+      report.debuglog(i"mark called: $callee of ${callee.owner} is called by $caller in ${caller.owner}")
       assert(isLocal(callee))
       symSet(called, caller) += callee
       if (callee.enclosingClass != caller.enclosingClass) calledFromInner += callee
@@ -306,12 +306,12 @@ object LambdaLift {
     private def generateProxies()(using Context): Unit =
       for ((owner, freeValues) <- free.iterator) {
         val newFlags = Synthetic | (if (owner.isClass) ParamAccessor | Private else Param)
-        ctx.debuglog(i"free var proxy of ${owner.showLocated}: ${freeValues.toList}%, %")
+        report.debuglog(i"free var proxy of ${owner.showLocated}: ${freeValues.toList}%, %")
         proxyMap(owner) = {
           for (fv <- freeValues.toList) yield {
             val proxyName = newName(fv)
             val proxy =
-              ctx.newSymbol(owner, proxyName.asTermName, newFlags, fv.info, coord = fv.coord)
+              newSymbol(owner, proxyName.asTermName, newFlags, fv.info, coord = fv.coord)
                 .enteredAfter(thisPhase)
             (fv, proxy)
           }
@@ -394,7 +394,7 @@ object LambdaLift {
             if (encl.exists) encl :: enclosures(liftedEnclosure(encl)) else Nil
           throw new IllegalArgumentException(i"Could not find proxy for ${sym.showDcl} in ${sym.ownersIterator.toList}, encl = $currentEnclosure, owners = ${currentEnclosure.ownersIterator.toList}%, %; enclosures = ${enclosures(currentEnclosure)}%, %")
         }
-        ctx.debuglog(i"searching for $sym(${sym.owner}) in $enclosure")
+        report.debuglog(i"searching for $sym(${sym.owner}) in $enclosure")
         proxyMap get enclosure match {
           case Some(pmap) =>
             pmap get sym match {
@@ -447,7 +447,7 @@ object LambdaLift {
           val fvs = freeVars(sym.owner)
           val classProxies = fvs.map(proxyOf(sym.owner, _))
           val constrProxies = fvs.map(proxyOf(sym, _))
-          ctx.debuglog(i"copy params ${constrProxies.map(_.showLocated)}%, % to ${classProxies.map(_.showLocated)}%, %}")
+          report.debuglog(i"copy params ${constrProxies.map(_.showLocated)}%, % to ${classProxies.map(_.showLocated)}%, %}")
           seq(classProxies.lazyZip(constrProxies).map(proxyInit), rhs)
         }
 

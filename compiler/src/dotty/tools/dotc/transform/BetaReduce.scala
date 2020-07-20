@@ -35,15 +35,15 @@ class BetaReduce extends MiniPhase:
 
   def phaseName: String = "betaReduce"
 
-  override def transformApply(app: Apply)(using ctx: Context): Tree = app.fun match
+  override def transformApply(app: Apply)(using Context): Tree = app.fun match
     case Select(fn, nme.apply) if defn.isFunctionType(fn.tpe) =>
       val app1 = betaReduce(app, fn, app.args)
-      if app1 ne app then ctx.log(i"beta reduce $app -> $app1")
+      if app1 ne app then report.log(i"beta reduce $app -> $app1")
       app1
     case _ =>
       app
 
-  private def betaReduce(tree: Apply, fn: Tree, args: List[Tree])(using ctx: Context): Tree =
+  private def betaReduce(tree: Apply, fn: Tree, args: List[Tree])(using Context): Tree =
     fn match
       case Typed(expr, _) => betaReduce(tree, expr, args)
       case Block(Nil, expr) => betaReduce(tree, expr, args)
@@ -54,7 +54,7 @@ object BetaReduce:
   import ast.tpd._
 
   /** Beta-reduces a call to `ddef` with arguments `argSyms` */
-  def apply(ddef: DefDef, args: List[Tree])(using ctx: Context) =
+  def apply(ddef: DefDef, args: List[Tree])(using Context) =
     val bindings = List.newBuilder[ValDef]
     val vparams = ddef.vparamss.iterator.flatten.toList
     assert(args.hasSameLengthAs(vparams))
@@ -65,7 +65,7 @@ object BetaReduce:
             ref.symbol
           case _ =>
             val flags = Synthetic | (param.symbol.flags & Erased)
-            val binding = ValDef(ctx.newSymbol(ctx.owner, param.name, flags, arg.tpe.widen, coord = arg.span), arg)
+            val binding = ValDef(newSymbol(ctx.owner, param.name, flags, arg.tpe.widen, coord = arg.span), arg)
             bindings += binding
             binding.symbol
 

@@ -2,7 +2,7 @@ package dotty.tools.dottydoc
 package model
 package comment
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.config.Printers.dottydoc

@@ -2,14 +2,14 @@ package dotty.tools
 package dottydoc
 package core
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import model._
 import model.internal._
 import transform.DocMiniPhase
 
 class PackageObjectsPhase extends DocMiniPhase {
 
-  override def transformPackage(implicit ctx: Context) = { case pkg: PackageImpl =>
+  override def transformPackage(using Context) = { case pkg: PackageImpl =>
     pkg
       .members
       .collectFirst { case o: Object if o.symbol.isPackageObject => o }
@@ -23,7 +23,7 @@ class PackageObjectsPhase extends DocMiniPhase {
       .getOrElse(pkg) :: Nil
   }
 
-  override def transformObject(implicit ctx: Context) = { case obj: Object =>
+  override def transformObject(using Context) = { case obj: Object =>
     if (obj.symbol.isPackageObject) Nil
     else obj :: Nil
   }

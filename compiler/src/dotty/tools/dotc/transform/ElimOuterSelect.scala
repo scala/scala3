@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase.MiniPhase
-import Contexts.{Context, ctx}
+import Contexts._
 import Types._
 import NameKinds.OuterSelectName
 

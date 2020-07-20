@@ -10,8 +10,7 @@ import util.Spans._
 import util.SourcePosition
 import config.Feature
 import java.util.regex.Matcher.quoteReplacement
-import reporting.Message
-import reporting.messages._
+import reporting._
 
 object ErrorReporting {
 
@@ -27,12 +26,12 @@ object ErrorReporting {
     tree.withType(errorType(msg, pos))
 
   def errorType(msg: Message, pos: SourcePosition)(using Context): ErrorType = {
-    ctx.error(msg, pos)
+    report.error(msg, pos)
     ErrorType(msg)
   }
 
   def errorType(ex: TypeError, pos: SourcePosition)(using Context): ErrorType = {
-    ctx.error(ex, pos)
+    report.error(ex, pos)
     ErrorType(ex.toMessage)
   }
 

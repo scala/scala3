@@ -537,7 +537,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         // HKLambdas are hash-consed, need to create an artificial difference by adding
         // a LazyRef to a bound.
         val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos
-        paramInfos = TypeBounds(lo, LazyRef(_ => hi)) :: pinfos1
+        paramInfos = TypeBounds(lo, LazyRef(hi)) :: pinfos1
       }
       ensureFresh(tl.newLikeThis(tl.paramNames, paramInfos, tl.resultType))
     }
@@ -639,14 +639,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     lowerMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "lower"))))
     upperMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "upper"))))
   end checkClosed
-
-// ---------- Invalidation -------------------------------------------
-
-  private var retracted = false
-
-  def isRetracted: Boolean = retracted
-
-  def markRetracted(): Unit = retracted = true
 
 // ---------- toText -----------------------------------------------------
 

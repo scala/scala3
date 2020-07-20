@@ -7,7 +7,7 @@ import dotty.tools.dotc._
 import ast.tpd
 
 import dotty.tools.dotc.core._
-import Contexts.{Context, ctx}
+import Contexts._
 import Types._
 
 import dotty.tools.dotc.transform._

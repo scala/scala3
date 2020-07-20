@@ -1,10 +1,11 @@
-package dotty.tools.dotc.transform.localopt
+package dotty.tools.dotc
+package transform.localopt
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.MethodType
@@ -101,7 +102,7 @@ class StringInterpolatorOpt extends MiniPhase {
               case t @ InvalidEscapePosition(p) => {
                 val errorSpan = stringPosition.span.startPos.shift(p)
                 val errorPosition = stringPosition.withSpan(errorSpan)
-                ctx.error(t.getMessage() + "\n", errorPosition)
+                report.error(t.getMessage() + "\n", errorPosition)
                 None
               }
             }

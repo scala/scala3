@@ -5,7 +5,7 @@ package init
 import scala.collection.mutable
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import ast.tpd._
 import Decorators._
 import Symbols._
@@ -87,7 +87,7 @@ object Checking {
         else checkSecondaryConstructor(ctor)
       }
       else if (!cls.isOneOf(Flags.EffectivelyOpenFlags))
-        ctx.warning("Inheriting non-open class may cause initialization errors", source.sourcePos)
+        report.warning("Inheriting non-open class may cause initialization errors", source.sourcePos)
     }
 
     cls.paramAccessors.foreach { acc =>
@@ -143,7 +143,7 @@ object Checking {
     for {
       eff <- rebased
       error <- check(eff)
-    } error.report
+    } error.issue
   }
 
   private def check(eff: Effect)(implicit state: State): Errors =

@@ -1,7 +1,7 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags.Trait

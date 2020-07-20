@@ -114,8 +114,8 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
    * names of NothingClass and NullClass can't be emitted as-is.
    * TODO @lry Once there's a 2.11.3 starr, use the commented argument list. The current starr crashes on the type literal `scala.runtime.Nothing$`
    */
-  lazy val RT_NOTHING : ClassBType = classBTypeFromSymbol(ctx.requiredClass("scala.runtime.Nothing$")) // (requiredClass[scala.runtime.Nothing$])
-  lazy val RT_NULL    : ClassBType = classBTypeFromSymbol(ctx.requiredClass("scala.runtime.Null$"))    // (requiredClass[scala.runtime.Null$])
+  lazy val RT_NOTHING : ClassBType = classBTypeFromSymbol(requiredClass("scala.runtime.Nothing$")) // (requiredClass[scala.runtime.Nothing$])
+  lazy val RT_NULL    : ClassBType = classBTypeFromSymbol(requiredClass("scala.runtime.Null$"))    // (requiredClass[scala.runtime.Null$])
 
   lazy val ObjectReference   : ClassBType = classBTypeFromSymbol(defn.ObjectClass)
   lazy val objArrayReference : ArrayBType = ArrayBType(ObjectReference)

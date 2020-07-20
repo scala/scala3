@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 
 /**
  * This trait implements `isHidden` so that we avoid reporting non-sensical messages.

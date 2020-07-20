@@ -12,7 +12,6 @@ import scala.collection.mutable
 import util.SourcePosition
 import core.Contexts._
 import Reporter._
-import messages._
 import Diagnostic._
 import interfaces.Diagnostic.{ ERROR, WARNING, INFO }
 

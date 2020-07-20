@@ -15,8 +15,7 @@ import core.Phases._
 import core.Mode
 import typer._
 import typer.ErrorReporting._
-import reporting.ThrowingReporter
-import reporting.messages.TypeMismatch
+import reporting._
 import ast.Trees._
 import ast.{tpd, untpd}
 import scala.internal.Chars._
@@ -101,7 +100,7 @@ class TreeChecker extends Phase with SymTransformer {
           cur.signature
       }
       assert(curSig == initial.signature,
-        i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.squashed(ctx.phase.prev)}
+        i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.fusedContaining(ctx.phase.prev)}
            |Initial info: ${initial}
            |Initial sig : ${initial.signature}
            |Current info: ${cur}
@@ -116,7 +115,7 @@ class TreeChecker extends Phase with SymTransformer {
 
   def run(using Context): Unit =
     if (ctx.settings.YtestPickler.value && ctx.phase.prev.isInstanceOf[Pickler])
-      ctx.echo("Skipping Ycheck after pickling with -Ytest-pickler, the returned tree contains stale symbols")
+      report.echo("Skipping Ycheck after pickling with -Ytest-pickler, the returned tree contains stale symbols")
     else if (ctx.phase.prev.isCheckable)
       check(ctx.base.allPhases.toIndexedSeq, ctx)
 
@@ -134,8 +133,8 @@ class TreeChecker extends Phase with SymTransformer {
 
   def check(phasesToRun: Seq[Phase], ctx: Context): Tree = {
     val prevPhase = ctx.phase.prev // can be a mini-phase
-    val squahsedPhase = ctx.base.squashed(prevPhase)
-    ctx.echo(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
+    val fusedPhase = ctx.base.fusedContaining(prevPhase)
+    report.echo(s"checking ${ctx.compilationUnit} after phase ${fusedPhase}")(using ctx)
 
     inContext(ctx) {
       assertSelectWrapsNew(ctx.compilationUnit.tpdTree)
@@ -178,7 +177,7 @@ class TreeChecker extends Phase with SymTransformer {
             everDefinedSyms.get(sym) match {
               case Some(t)  =>
                 if (t ne tree)
-                  ctx.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
+                  report.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
               // should become an error
               case None =>
                 everDefinedSyms(sym) = tree
@@ -188,7 +187,7 @@ class TreeChecker extends Phase with SymTransformer {
             if (ctx.settings.YcheckMods.value)
               tree match {
                 case t: untpd.MemberDef =>
-                  if (t.name ne sym.name) ctx.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
+                  if (t.name ne sym.name) report.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
                 // todo: compare trees inside annotations
                 case _ =>
               }

@@ -17,26 +17,28 @@ import scala.annotation.internal.sharable
 
 object TyperState {
   @sharable private var nextId: Int = 0
+  def initialState() =
+    TyperState()
+      .init(null, OrderingConstraint.empty)
+      .setReporter(new ConsoleReporter())
+      .setCommittable(true)
 }
 
-class TyperState(private val previous: TyperState /* | Null */) {
+class TyperState() {
 
-  Stats.record("typerState")
+  private var myId: Int = _
+  def id: Int = myId
 
-  val id: Int = TyperState.nextId
-  TyperState.nextId += 1
+  private var previous: TyperState /* | Null */ = _
 
-  private var myReporter =
-    if (previous == null) new ConsoleReporter() else previous.reporter
+  private var myReporter: Reporter = _
 
   def reporter: Reporter = myReporter
 
   /** A fresh type state with the same constraint as this one and the given reporter */
   def setReporter(reporter: Reporter): this.type = { myReporter = reporter; this }
 
-  private var myConstraint: Constraint =
-    if (previous == null) OrderingConstraint.empty
-    else previous.constraint
+  private var myConstraint: Constraint = _
 
   def constraint: Constraint = myConstraint
   def constraint_=(c: Constraint)(using Context): Unit = {
@@ -44,84 +46,54 @@ class TyperState(private val previous: TyperState /* | Null */) {
     myConstraint = c
   }
 
-  /** Reset constraint to `c` and mark current constraint as retracted if it differs from `c` */
-  def resetConstraintTo(c: Constraint): Unit = {
-    if (c `ne` myConstraint) myConstraint.markRetracted()
-    myConstraint = c
-  }
+  private var previousConstraint: Constraint = _
 
-  private val previousConstraint =
-    if (previous == null) constraint else previous.constraint
-
-  private var myIsCommittable = true
+  private var myIsCommittable: Boolean = _
 
   def isCommittable: Boolean = myIsCommittable
 
-  def setCommittable(committable: Boolean): this.type = { this.myIsCommittable = committable; this }
+  def setCommittable(committable: Boolean): this.type =
+    this.myIsCommittable = committable
+    this
 
   def isGlobalCommittable: Boolean =
     isCommittable && (previous == null || previous.isGlobalCommittable)
 
-  private var isShared = false
+  private var isCommitted: Boolean = _
 
-  /** Mark typer state as shared (typically because it is the typer state of
-   *  the creation context of a source definition that potentially still needs
-   *  to be completed). Members of shared typer states are never overwritten in `test`.
+  /** The set of uninstantiated type variables which have this state as their owning state */
+  private var myOwnedVars: TypeVars = _
+  def ownedVars: TypeVars = myOwnedVars
+  def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
+
+  /** Initializes all fields except reporter, isCommittable, which need to be
+   *  set separately.
    */
-  def markShared(): Unit = isShared = true
-
-  private var isCommitted = false
+  private[core] def init(previous: TyperState /* | Null */, constraint: Constraint): this.type =
+    this.myId = TyperState.nextId
+    TyperState.nextId += 1
+    this.previous = previous
+    this.myConstraint = constraint
+    this.previousConstraint = constraint
+    this.myOwnedVars = SimpleIdentitySet.empty
+    this.isCommitted = false
+    this
 
   /** A fresh typer state with the same constraint as this one. */
-  def fresh(): TyperState =
-    new TyperState(this).setReporter(new StoreReporter(reporter)).setCommittable(isCommittable)
+  def fresh(reporter: Reporter = StoreReporter(this.reporter)): TyperState =
+    util.Stats.record("TyperState.fresh")
+    TyperState().init(this, this.constraint)
+      .setReporter(reporter)
+      .setCommittable(this.isCommittable)
 
   /** The uninstantiated variables */
   def uninstVars: collection.Seq[TypeVar] = constraint.uninstVars
-
-  /** The set of uninstantiated type variables which have this state as their owning state */
-  private var myOwnedVars: TypeVars = SimpleIdentitySet.empty
-  def ownedVars: TypeVars = myOwnedVars
-  def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
 
   /** The closest ancestor of this typer state (including possibly this typer state itself)
    *  which is not yet committed, or which does not have a parent.
    */
   def uncommittedAncestor: TyperState =
     if (isCommitted) previous.uncommittedAncestor else this
-
-  private var testReporter: TestReporter = null
-
-  /** Test using `op`. If current typerstate is shared, run `op` in a fresh exploration
-   *  typerstate. If it is unshared, run `op` in current typerState, restoring typerState
-   *  to previous state afterwards.
-   */
-  def test[T](op: Context ?=> T)(using Context): T =
-    if (isShared)
-      op(using ctx.fresh.setExploreTyperState())
-    else {
-      val savedConstraint = myConstraint
-      val savedReporter = myReporter
-      val savedCommittable = myIsCommittable
-      val savedCommitted = isCommitted
-      myIsCommittable = false
-      myReporter = {
-        if (testReporter == null || testReporter.inUse)
-          testReporter = new TestReporter(reporter)
-        else
-          testReporter.reset()
-        testReporter.inUse = true
-        testReporter
-      }
-      try op
-      finally {
-        testReporter.inUse = false
-        resetConstraintTo(savedConstraint)
-        myReporter = savedReporter
-        myIsCommittable = savedCommittable
-        isCommitted = savedCommitted
-      }
-    }
 
   /** Commit typer state so that its information is copied into current typer state
    *  In addition (1) the owning state of undetermined or temporarily instantiated
@@ -189,15 +161,4 @@ class TyperState(private val previous: TyperState /* | Null */) {
   }
 
   def stateChainStr: String = s"$this${if (previous == null) "" else previous.stateChainStr}"
-}
-
-/** Temporary, reusable reporter used in TyperState#test */
-private class TestReporter(outer: Reporter) extends StoreReporter(outer) {
-  /** Is this reporter currently used in a test? */
-  var inUse: Boolean = false
-
-  def reset(): Unit = {
-    assert(!inUse, s"Cannot reset reporter currently in use: $this")
-    infos = null
-  }
 }

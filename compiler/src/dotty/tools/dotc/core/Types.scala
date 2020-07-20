@@ -539,7 +539,7 @@ object Types {
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, excluded)
       case err: ErrorType =>
-        ctx.newErrorSymbol(classSymbol orElse defn.RootClass, name, err.msg)
+        newErrorSymbol(classSymbol orElse defn.RootClass, name, err.msg)
       case _ =>
         NoDenotation
     }
@@ -620,7 +620,7 @@ object Types {
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
         case err: ErrorType =>
-          ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg)
+          newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg)
         case _ =>
           NoDenotation
       }
@@ -1209,7 +1209,7 @@ object Types {
           case Atoms.Unknown => Atoms.Unknown
       case _ => Atoms.Unknown
 
-    private def dealias1(keep: AnnotatedType => Context => Boolean)(using Context): Type = this match {
+    private def dealias1(keep: AnnotatedType => Context ?=> Boolean)(using Context): Type = this match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
@@ -1225,7 +1225,7 @@ object Types {
         if (tp1.exists) tp1.dealias1(keep) else tp
       case tp: AnnotatedType =>
         val tp1 = tp.parent.dealias1(keep)
-        if (keep(tp)(ctx)) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
+        if keep(tp) then tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
         tp.ref.dealias1(keep)
       case _ => this
@@ -1260,7 +1260,7 @@ object Types {
      */
     def tryNormalize(using Context): Type = NoType
 
-    private def widenDealias1(keep: AnnotatedType => Context => Boolean)(using Context): Type = {
+    private def widenDealias1(keep: AnnotatedType => Context ?=> Boolean)(using Context): Type = {
       val res = this.widen.dealias1(keep)
       if (res eq this) res else res.widenDealias1(keep)
     }
@@ -1334,7 +1334,7 @@ object Types {
      *  that has the given type as info.
      */
     def narrow(using Context): TermRef =
-      TermRef(NoPrefix, ctx.newSkolem(this))
+      TermRef(NoPrefix, newSkolem(this))
 
     /** Useful for diagnostics: The underlying type if this type is a type proxy,
      *  otherwise NoType
@@ -1976,6 +1976,7 @@ object Types {
 
     /** The denotation currently denoted by this type */
     final def denot(using Context): Denotation = {
+      util.Stats.record("NamedType.denot")
       val now = ctx.period
       // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
       // as it may have been mutated by SymDenotation#installAfter
@@ -1987,6 +1988,7 @@ object Types {
     }
 
     private def computeDenot(using Context): Denotation = {
+      util.Stats.record("NamedType.computeDenot")
 
       def finish(d: Denotation) = {
         if (d.exists)
@@ -2006,7 +2008,7 @@ object Types {
           finish(memberDenot(name, allowPrivate))
         case sym: Symbol =>
           val symd = sym.lastKnownDenotation
-          if (symd.validFor.runId != ctx.runId && !ctx.stillValid(symd))
+          if (symd.validFor.runId != ctx.runId && !stillValid(symd))
             finish(memberDenot(symd.initial.name, allowPrivate = false))
           else if (prefix.isArgPrefixOf(symd))
             finish(argDenot(sym.asType))
@@ -2022,7 +2024,7 @@ object Types {
           if (lastd.validFor.runId == ctx.runId && (checkedPeriod != Nowhere)) finish(lastd.current)
           else lastd match {
             case lastd: SymDenotation =>
-              if (ctx.stillValid(lastd) && (checkedPeriod != Nowhere)) finish(lastd.current)
+              if (stillValid(lastd) && (checkedPeriod != Nowhere)) finish(lastd.current)
               else finish(memberDenot(lastd.initial.name, allowPrivate = false))
             case _ =>
               fromDesignator
@@ -2627,7 +2629,7 @@ object Types {
     }
   }
 
-  case class LazyRef(private var refFn: Context => Type, reportCycles: Boolean = false) extends UncachedProxyType with ValueType {
+  case class LazyRef(private var refFn: Context ?=> Type, reportCycles: Boolean = false) extends UncachedProxyType with ValueType {
     private var myRef: Type = null
     private var computed = false
 
@@ -2640,7 +2642,7 @@ object Types {
           throw CyclicReference(NoDenotation)
       else
         computed = true
-        val result = refFn(ctx)
+        val result = refFn
         refFn = null
         if result != null then myRef = result
         else assert(myRef != null)  // must have been `update`d
@@ -4431,7 +4433,7 @@ object Types {
             else defn.AnyType         // dummy type in case of errors
           def refineSelfType(selfType: Type) =
             RefinedType(selfType, sym.name,
-              TypeAlias(LazyRef(force(using _), reportCycles = true)))
+              TypeAlias(LazyRef(force, reportCycles = true)))
           cinfo.selfInfo match
             case self: Type =>
               cinfo.derivedClassInfo(
@@ -4990,14 +4992,14 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
-          LazyRef { c =>
-            val ref1 = tp.ref(using c)
-            if c.runId == mapCtx.runId then this(ref1)
+          LazyRef {
+            val ref1 = tp.ref
+            if ctx.runId == mapCtx.runId then this(ref1)
             else // splice in new run into map context
               val saved = mapCtx
               mapCtx = mapCtx.fresh
-                .setPeriod(Period(c.runId, mapCtx.phaseId))
-                .setRun(c.run)
+                .setPeriod(Period(ctx.runId, mapCtx.phaseId))
+                .setRun(ctx.run)
               try this(ref1) finally mapCtx = saved
           }
 
@@ -5039,7 +5041,7 @@ object Types {
 
     private def treeTypeMap = new TreeTypeMap(typeMap = this)
 
-    def mapOver(syms: List[Symbol]): List[Symbol] = mapCtx.mapSymbols(syms, treeTypeMap)
+    def mapOver(syms: List[Symbol]): List[Symbol] = mapSymbols(syms, treeTypeMap)
 
     def mapOver(scope: Scope): Scope = {
       val elems = scope.toList
@@ -5658,9 +5660,9 @@ object Types {
       }
   }
 
-  private val keepAlways: AnnotatedType => Context => Boolean = _ => _ => true
-  private val keepNever: AnnotatedType => Context => Boolean = _ => _ => false
-  private val keepIfRefining: AnnotatedType => Context => Boolean = tp => ctx => tp.isRefining(using ctx)
+  private val keepAlways: AnnotatedType => Context ?=> Boolean = _ => true
+  private val keepNever: AnnotatedType => Context ?=> Boolean = _ => false
+  private val keepIfRefining: AnnotatedType => Context ?=> Boolean = _.isRefining
 
   val isBounds: Type => Boolean = _.isInstanceOf[TypeBounds]
 }

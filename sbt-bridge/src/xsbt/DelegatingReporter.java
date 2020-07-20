@@ -15,7 +15,6 @@ import dotty.tools.dotc.util.SourceFile;
 import dotty.tools.dotc.util.SourcePosition;
 import dotty.tools.dotc.reporting.*;
 import dotty.tools.dotc.reporting.Message;
-import dotty.tools.dotc.reporting.messages;
 import dotty.tools.dotc.core.Contexts.*;
 
 import static dotty.tools.dotc.reporting.Diagnostic.*;

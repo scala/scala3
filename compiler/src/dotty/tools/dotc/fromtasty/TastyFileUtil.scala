@@ -4,7 +4,7 @@ package fromtasty
 import java.nio.file.{Files, Path, Paths}
 import java.io
 
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Names.SimpleName
 import dotty.tools.dotc.core.StdNames.nme

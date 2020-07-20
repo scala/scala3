@@ -2,7 +2,7 @@ package dotty.tools
 package dottydoc
 package core
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 
 import transform.DocMiniPhase
 import model._
@@ -22,12 +22,12 @@ class AlternateConstructors extends DocMiniPhase {
     (ent.constructors ++ paramLists, members)
   }
 
-  override def transformClass(implicit ctx: Context) = { case cls: ClassImpl =>
+  override def transformClass(using Context) = { case cls: ClassImpl =>
     val (constructors, members) = partitionMembers(cls)
     cls.copy(members = members, constructors = constructors) :: Nil
   }
 
-  override def transformCaseClass(implicit ctx: Context) = { case cc: CaseClassImpl =>
+  override def transformCaseClass(using Context) = { case cc: CaseClassImpl =>
     val (constructors, members) = partitionMembers(cc)
     cc.copy(members = members, constructors = constructors) :: Nil
   }

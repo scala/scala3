@@ -1,10 +1,12 @@
-package dotty.tools.dotc.ast
+package dotty.tools.dotc
+package ast
 
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.TypeError
+import Trees._
+import core.Contexts._
+import core.ContextOps.enter
+import core.Flags._
+import core.Symbols._
+import core.TypeError
 
 import scala.annotation.tailrec
 
@@ -72,7 +74,8 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     new TreeTraverser {
       def traverse(tree: Tree)(using Context): Unit = {
         tree match {
-          case d: DefTree if d.symbol.isOneOf(GivenOrImplicit) => nestedCtx.enter(d.symbol)
+          case d: DefTree if d.symbol.isOneOf(GivenOrImplicit) =>
+            nestedCtx.enter(d.symbol)
           case _ =>
         }
         traverseChildren(tree)
@@ -118,7 +121,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     }
     catch {
       case ex: TypeError =>
-        ctx.error(ex, tree.sourcePos)
+        report.error(ex, tree.sourcePos)
         tree
     }
   }

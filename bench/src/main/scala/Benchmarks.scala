@@ -102,7 +102,7 @@ class Worker extends Driver {
       }
       catch {
         case ex: FatalError  =>
-          ctx.error(ex.getMessage) // signals that we should fail compilation.
+          report.error(ex.getMessage) // signals that we should fail compilation.
           ctx.reporter
       }
     else ctx.reporter
