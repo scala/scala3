@@ -261,7 +261,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
                 // This is safe because X$ self-type is X.type
                 sym1 = sym1.companionModule
               if ((sym1 ne NoSymbol) && (sym1 eq sym2))
-                currentlyAfterErasure ||
+                ctx.erasedTypes ||
                 sym1.isStaticOwner ||
                 isSubPrefix(tp1.prefix, tp2.prefix) ||
                 thirdTryNamed(tp2)
@@ -1312,7 +1312,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
          */
         def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
           case tparam: Symbol =>
-            if (leftRoot.isStable || (currentlyAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
+            if (leftRoot.isStable || (ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
                 && leftRoot.member(tparam.name).exists) {
               val captured = TypeRef(leftRoot, tparam)
               try isSubArg(captured, arg2)
@@ -1862,7 +1862,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   final def glb(tps: List[Type]): Type = tps.foldLeft(AnyType: Type)(glb)
 
   def widenInUnions(using Context): Boolean =
-    migrateTo3 || currentlyAfterErasure
+    migrateTo3 || ctx.erasedTypes
 
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
@@ -2021,7 +2021,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     }
 
   private def andTypeGen(tp1: Type, tp2: Type, op: (Type, Type) => Type,
-      original: (Type, Type) => Type = _ & _, isErased: Boolean = currentlyAfterErasure): Type = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
+      original: (Type, Type) => Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
     else {
@@ -2049,7 +2049,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  Finally, refined types with the same refined name are
    *  opportunistically merged.
    */
-  final def andType(tp1: Type, tp2: Type, isErased: Boolean = currentlyAfterErasure): Type =
+  final def andType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type =
     andTypeGen(tp1, tp2, AndType(_, _), isErased = isErased)
 
   final def simplifyAndTypeWithFallback(tp1: Type, tp2: Type, fallback: Type): Type =
@@ -2064,7 +2064,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  @param isErased Apply erasure semantics. If erased is true, instead of creating
    *                  an OrType, the lub will be computed using TypeCreator#erasedLub.
    */
-  final def orType(tp1: Type, tp2: Type, isErased: Boolean = currentlyAfterErasure): Type = {
+  final def orType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type = {
     val t1 = distributeOr(tp1, tp2)
     if (t1.exists) t1
     else {

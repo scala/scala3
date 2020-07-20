@@ -1413,7 +1413,7 @@ object Types {
       TermRef(this, name, member(name))
 
     def select(name: TermName, sig: Signature)(using Context): TermRef =
-      TermRef(this, name, member(name).atSignature(sig, relaxed = !currentlyAfterErasure))
+      TermRef(this, name, member(name).atSignature(sig, relaxed = !ctx.erasedTypes))
 
 // ----- Access to parts --------------------------------------------
 
@@ -1601,8 +1601,8 @@ object Types {
     def toFunctionType(dropLast: Int = 0)(using Context): Type = this match {
       case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
-        val isContextual = mt.isContextualMethod && !currentlyAfterErasure
-        val isErased = mt.isErasedMethod && !currentlyAfterErasure
+        val isContextual = mt.isContextualMethod && !ctx.erasedTypes
+        val isErased = mt.isErasedMethod && !ctx.erasedTypes
         val result1 = mt.nonDependentResultApprox match {
           case res: MethodType => res.toFunctionType()
           case res => res
@@ -1904,7 +1904,7 @@ object Types {
     protected[dotc] def computeSignature(using Context): Signature =
       val lastd = lastDenotation
       if lastd != null then sigFromDenot(lastd)
-      else if currentlyAfterErasure then atPhase(erasurePhase)(computeSignature)
+      else if ctx.erasedTypes then atPhase(erasurePhase)(computeSignature)
       else symbol.asSeenFrom(prefix).signature
 
     /** The signature computed from the current denotation with `sigFromDenot` if it is
@@ -1918,7 +1918,7 @@ object Types {
       else
         val lastd = lastDenotation
         if lastd != null then sigFromDenot(lastd)
-        else if currentlyAfterErasure then atPhase(erasurePhase)(currentSignature)
+        else if ctx.erasedTypes then atPhase(erasurePhase)(currentSignature)
         else
           val sym = currentSymbol
           if sym.exists then sym.asSeenFrom(prefix).signature
@@ -1934,7 +1934,7 @@ object Types {
     final def symbol(using Context): Symbol =
       // We can rely on checkedPeriod (unlike in the definition of `denot` below)
       // because SymDenotation#installAfter never changes the symbol
-      if (checkedPeriod == currentPeriod) lastSymbol else computeSymbol
+      if (checkedPeriod == ctx.period) lastSymbol else computeSymbol
 
     private def computeSymbol(using Context): Symbol =
       designator match {
@@ -1977,7 +1977,7 @@ object Types {
     /** The denotation currently denoted by this type */
     final def denot(using Context): Denotation = {
       util.Stats.record("NamedType.denot")
-      val now = currentPeriod
+      val now = ctx.period
       // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
       // as it may have been mutated by SymDenotation#installAfter
       if (checkedPeriod != Nowhere && lastDenotation.validFor.contains(now)) {
@@ -2038,7 +2038,7 @@ object Types {
 
     private def disambiguate(d: Denotation, sig: Signature)(using Context): Denotation =
       if (sig != null)
-        d.atSignature(sig, relaxed = !currentlyAfterErasure) match {
+        d.atSignature(sig, relaxed = !ctx.erasedTypes) match {
           case d1: SingleDenotation => d1
           case d1 =>
             d1.atSignature(sig, relaxed = false) match {
@@ -2114,7 +2114,7 @@ object Types {
 
       lastDenotation = denot
       lastSymbol = denot.symbol
-      checkedPeriod = if (prefix.isProvisional) Nowhere else currentPeriod
+      checkedPeriod = if (prefix.isProvisional) Nowhere else ctx.period
       designator match {
         case sym: Symbol if designator ne lastSymbol =>
           designator = lastSymbol.asInstanceOf[Designator{ type ThisName = self.ThisName }]
@@ -2451,11 +2451,11 @@ object Types {
      *  based tests.
      */
     def canDropAlias(using Context) =
-      if myCanDropAliasPeriod != currentPeriod then
+      if myCanDropAliasPeriod != ctx.period then
         myCanDropAlias =
           !symbol.canMatchInheritedSymbols
           || !prefix.baseClasses.exists(_.info.decls.lookup(name).is(Deferred))
-        myCanDropAliasPeriod = currentPeriod
+        myCanDropAliasPeriod = ctx.period
       myCanDropAlias
 
     override def designator: Designator = myDesignator
@@ -2561,7 +2561,7 @@ object Types {
     }
 
     override def underlying(using Context): Type =
-      if (currentlyAfterErasure) tref
+      if (ctx.erasedTypes) tref
       else cls.info match {
         case cinfo: ClassInfo => cinfo.selfType
         case _: ErrorType | NoType if ctx.mode.is(Mode.Interactive) => cls.info
@@ -2729,7 +2729,7 @@ object Types {
       else make(RefinedType(parent, names.head, infos.head), names.tail, infos.tail)
 
     def apply(parent: Type, name: Name, info: Type)(using Context): RefinedType = {
-      assert(!currentlyAfterErasure)
+      assert(!ctx.erasedTypes)
       unique(new CachedRefinedType(parent, name, info)).checkInst
     }
   }
@@ -2875,7 +2875,7 @@ object Types {
     private var myBaseClasses: List[ClassSymbol] = _
     /** Base classes of are the merge of the operand base classes. */
     override final def baseClasses(using Context): List[ClassSymbol] = {
-      if (myBaseClassesPeriod != currentPeriod) {
+      if (myBaseClassesPeriod != ctx.period) {
         val bcs1 = tp1.baseClasses
         val bcs1set = BaseClassSet(bcs1)
         def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
@@ -2887,7 +2887,7 @@ object Types {
           case nil => bcs1
         }
         myBaseClasses = recur(tp2.baseClasses)
-        myBaseClassesPeriod = currentPeriod
+        myBaseClassesPeriod = ctx.period
       }
       myBaseClasses
     }
@@ -2940,7 +2940,7 @@ object Types {
     private var myBaseClasses: List[ClassSymbol] = _
     /** Base classes of are the intersection of the operand base classes. */
     override final def baseClasses(using Context): List[ClassSymbol] = {
-      if (myBaseClassesPeriod != currentPeriod) {
+      if (myBaseClassesPeriod != ctx.period) {
         val bcs1 = tp1.baseClasses
         val bcs1set = BaseClassSet(bcs1)
         def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
@@ -2953,7 +2953,7 @@ object Types {
             bcs2
         }
         myBaseClasses = recur(tp2.baseClasses)
-        myBaseClassesPeriod = currentPeriod
+        myBaseClassesPeriod = ctx.period
       }
       myBaseClasses
     }
@@ -2966,11 +2966,11 @@ object Types {
 
     /** Replace or type by the closest non-or type above it */
     def join(using Context): Type = {
-      if (myJoinPeriod != currentPeriod) {
+      if (myJoinPeriod != ctx.period) {
         myJoin = TypeOps.orDominator(this)
         core.println(i"join of $this == $myJoin")
         assert(myJoin != this)
-        myJoinPeriod = currentPeriod
+        myJoinPeriod = ctx.period
       }
       myJoin
     }
@@ -3790,14 +3790,14 @@ object Types {
     override def underlying(using Context): Type = tycon
 
     override def superType(using Context): Type = {
-      if (currentPeriod != validSuper) {
+      if (ctx.period != validSuper) {
         cachedSuper = tycon match {
           case tycon: HKTypeLambda => defn.AnyType
           case tycon: TypeRef if tycon.symbol.isClass => tycon
           case tycon: TypeProxy => tycon.superType.applyIfParameterized(args)
           case _ => defn.AnyType
         }
-        validSuper = if (tycon.isProvisional) Nowhere else currentPeriod
+        validSuper = if (tycon.isProvisional) Nowhere else ctx.period
       }
       cachedSuper
     }
@@ -4380,7 +4380,7 @@ object Types {
           val givenSelf = clsd.givenSelfType
           if (!givenSelf.isValueType) appliedRef
           else if (clsd.is(Module)) givenSelf
-          else if (currentlyAfterErasure) appliedRef
+          else if (ctx.erasedTypes) appliedRef
           else AndType(givenSelf, appliedRef)
         }
       selfTypeCache

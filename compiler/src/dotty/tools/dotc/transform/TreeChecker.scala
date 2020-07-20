@@ -316,7 +316,7 @@ class TreeChecker extends Phase with SymTransformer {
     override def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree = {
       val tpdTree = super.typed(tree, pt)
       Typer.assertPositioned(tree)
-      if (currentlyAfterErasure)
+      if (ctx.erasedTypes)
         // Can't be checked in earlier phases since `checkValue` is only run in
         // Erasure (because running it in Typer would force too much)
         checkIdentNotJavaClass(tpdTree)
@@ -366,7 +366,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree = {
-      assert(tree.isTerm || !currentlyAfterTyper, tree.show + " at " + ctx.phase)
+      assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       assert(tree.isType || ctx.mode.is(Mode.Pattern) && untpd.isWildcardArg(tree) || !needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
       assertDefined(tree)
 
@@ -378,11 +378,11 @@ class TreeChecker extends Phase with SymTransformer {
      *  Approximately means: The two symbols might be different but one still overrides the other.
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
-      assert(tree.isTerm || !currentlyAfterTyper, tree.show + " at " + ctx.phase)
+      assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       val tpe = tree.typeOpt
       val sym = tree.symbol
       val symIsFixed = tpe match {
-        case tpe: TermRef => currentlyAfterErasure || !tpe.isMemberRef
+        case tpe: TermRef => ctx.erasedTypes || !tpe.isMemberRef
         case _ => false
       }
       if (sym.exists && !sym.is(Private) &&
@@ -453,7 +453,7 @@ class TreeChecker extends Phase with SymTransformer {
         (ddef.tparams :: ddef.vparamss).filter(!_.isEmpty).map(_.map(_.symbol))
       def layout(symss: List[List[Symbol]]): String =
         symss.map(syms => i"($syms%, %)").mkString
-      assert(currentlyAfterErasure || sym.rawParamss == defParamss,
+      assert(ctx.erasedTypes || sym.rawParamss == defParamss,
         i"""param mismatch for ${sym.showLocated}:
            |defined in tree  = ${layout(defParamss)}
            |stored in symbol = ${layout(sym.rawParamss)}""")

@@ -1048,7 +1048,7 @@ trait Applications extends Compatibility {
     typedFunPart(tree.fun, PolyProto(typedArgs, pt)) match {
       case IntegratedTypeArgs(app) =>
         app
-      case _: TypeApply if !currentlyAfterTyper =>
+      case _: TypeApply if !ctx.isAfterTyper =>
         errorTree(tree, "illegal repeated type application")
       case typedFn =>
         typedFn.tpe.widen match {
@@ -1830,7 +1830,7 @@ trait Applications extends Compatibility {
           val alts2 = alts.filter(alt =>
             isDirectlyApplicableMethodRef(alt, args, resultType)
           )
-          if (alts2.isEmpty && !currentlyAfterTyper)
+          if (alts2.isEmpty && !ctx.isAfterTyper)
             alts.filter(alt =>
               isApplicableMethodRef(alt, args, resultType, keepConstraint = false)
             )
@@ -2048,7 +2048,7 @@ trait Applications extends Compatibility {
       case cdef: CaseDef => tpd.cpy.CaseDef(cdef)(body = adaptDeep(cdef.body, pt))
       case _ => adapt(tree, pt)
     }
-    if (currentlyAfterTyper) trees else harmonizeWith(trees)(_.tpe, adaptDeep)
+    if (ctx.isAfterTyper) trees else harmonizeWith(trees)(_.tpe, adaptDeep)
   }
 
   /** Apply a transformation `harmonize` on the results of operation `op`,

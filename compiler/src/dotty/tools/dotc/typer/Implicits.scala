@@ -730,7 +730,7 @@ trait Implicits { self: Typer =>
   override def viewExists(from: Type, to: Type)(using Context): Boolean =
        !from.isError
     && !to.isError
-    && !currentlyAfterTyper
+    && !ctx.isAfterTyper
     && ctx.mode.is(Mode.ImplicitsEnabled)
     && from.isValueType
     && (  from.isValueSubType(to)
@@ -956,7 +956,7 @@ trait Implicits { self: Typer =>
 
   /** Check that equality tests between types `ltp` and `rtp` make sense */
   def checkCanEqual(ltp: Type, rtp: Type, span: Span)(using Context): Unit =
-    if (!currentlyAfterTyper && !assumedCanEqual(ltp, rtp)) {
+    if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
       val res = implicitArgTree(defn.EqlClass.typeRef.appliedTo(ltp, rtp), span)
       implicits.println(i"Eql witness found for $ltp / $rtp: $res: ${res.tpe}")
     }

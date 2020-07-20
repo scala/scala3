@@ -287,7 +287,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     val typParams = self.typeParams
     val stripped = self.stripTypeVar
     val dealiased = stripped.safeDealias
-    if (args.isEmpty || currentlyAfterErasure) self
+    if (args.isEmpty || ctx.erasedTypes) self
     else dealiased match {
       case dealiased: HKTypeLambda =>
         def tryReduce =

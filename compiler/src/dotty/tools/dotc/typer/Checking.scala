@@ -727,7 +727,7 @@ trait Checking {
   /** Check that `path` is a legal prefix for an import or export clause */
   def checkLegalImportPath(path: Tree)(using Context): Unit = {
     checkStable(path.tpe, path.sourcePos, "import prefix")
-    if (!currentlyAfterTyper) Checking.checkRealizable(path.tpe, path.posd)
+    if (!ctx.isAfterTyper) Checking.checkRealizable(path.tpe, path.posd)
   }
 
  /**  Check that `tp` is a class type.
@@ -868,7 +868,7 @@ trait Checking {
 
   /** Check that `tree` can be right hand-side or argument to `inline` value or parameter. */
   def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = {
-    if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !currentlyAfterErasure && !Inliner.inInlineMethod then
+    if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !Inliner.inInlineMethod then
       tpt.tpe.widenTermRefExpr.dealias.normalized match
         case tp: ConstantType =>
           if !(exprPurity(tree) >= Pure) then
@@ -917,7 +917,7 @@ trait Checking {
   }
 
   def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit =
-    if (!currentlyAfterTyper) {
+    if (!ctx.isAfterTyper) {
       val called = call.tpe.classSymbol
       if (caller.is(Trait))
         report.error(i"$caller may not call constructor of $called", call.sourcePos)

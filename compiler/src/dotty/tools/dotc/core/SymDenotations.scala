@@ -862,7 +862,7 @@ object SymDenotations {
     def membersNeedAsSeenFrom(pre: Type)(using Context): Boolean =
       !(  this.isTerm
        || this.isStaticOwner && !this.seesOpaques
-       || currentlyAfterErasure
+       || ctx.erasedTypes
        || (pre eq NoPrefix)
        || (pre eq thisType)
        )
@@ -875,7 +875,7 @@ object SymDenotations {
      *  Default parameters are recognized until erasure.
      */
     def hasDefaultParams(using Context): Boolean =
-      if currentlyAfterErasure then false
+      if ctx.erasedTypes then false
       else if is(HasDefaultParams) then true
       else if is(NoDefaultParams) then false
       else
@@ -1450,7 +1450,7 @@ object SymDenotations {
       // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
       val info1 = if (info != null) info else this.info
-      if (currentlyAfterTyper && changedClassParents(info, info1, completersMatter = false))
+      if (ctx.isAfterTyper && changedClassParents(info, info1, completersMatter = false))
         assert(ctx.phase.changesParents, i"undeclared parent change at ${ctx.phase} for $this, was: $info, now: $info1")
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
@@ -1567,9 +1567,9 @@ object SymDenotations {
     private var memberNamesCache: MemberNames = MemberNames.None
 
     private def memberCache(using Context): LRUCache[Name, PreDenotation] = {
-      if (myMemberCachePeriod != currentPeriod) {
+      if (myMemberCachePeriod != ctx.period) {
         myMemberCache = new LRUCache
-        myMemberCachePeriod = currentPeriod
+        myMemberCachePeriod = ctx.period
       }
       myMemberCache
     }
@@ -1577,7 +1577,7 @@ object SymDenotations {
     private def baseTypeCache(using Context): BaseTypeMap = {
       if !currentHasSameBaseTypesAs(myBaseTypeCachePeriod) then
         myBaseTypeCache = new BaseTypeMap
-        myBaseTypeCachePeriod = currentPeriod
+        myBaseTypeCachePeriod = ctx.period
       myBaseTypeCache
     }
 
@@ -1641,7 +1641,7 @@ object SymDenotations {
     override final def typeParams(using Context): List[TypeSymbol] = {
       if (myTypeParams == null)
         myTypeParams =
-          if (currentlyAfterErasure || is(Module)) Nil // fast return for modules to avoid scanning package decls
+          if (ctx.erasedTypes || is(Module)) Nil // fast return for modules to avoid scanning package decls
           else {
             val di = initial
             if (this ne di) di.typeParams
@@ -1729,7 +1729,7 @@ object SymDenotations {
 
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       def emptyParentsExpected =
-        is(Package) || (symbol == defn.AnyClass) || currentlyAfterErasure && (symbol == defn.ObjectClass)
+        is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
@@ -1825,7 +1825,7 @@ object SymDenotations {
      */
     def ensureTypeParamsInCorrectOrder()(using Context): Unit = {
       val tparams = typeParams
-      if (!currentlyAfterErasure && !typeParamsFromDecls.corresponds(tparams)(_.name == _.name)) {
+      if (!ctx.erasedTypes && !typeParamsFromDecls.corresponds(tparams)(_.name == _.name)) {
         val decls = info.decls
         val decls1 = newScope
         for (tparam <- typeParams) decls1.enter(decls.lookup(tparam.name))
@@ -2372,7 +2372,7 @@ object SymDenotations {
   def traceInvalid(denot: Denotation)(using Context): Boolean = {
     def show(d: Denotation) = s"$d#${d.symbol.id}"
     def explain(msg: String) = {
-      println(s"${show(denot)} is invalid at ${currentPeriod} because $msg")
+      println(s"${show(denot)} is invalid at ${ctx.period} because $msg")
       false
     }
     denot match {
@@ -2535,7 +2535,7 @@ object SymDenotations {
     implicit val None: MemberNames = new InvalidCache with MemberNames {
       def apply(keepOnly: NameFilter, clsd: ClassDenotation)(implicit onBehalf: MemberNames, ctx: Context) = ???
     }
-    def newCache()(using Context): MemberNames = new MemberNamesImpl(currentPeriod)
+    def newCache()(using Context): MemberNames = new MemberNamesImpl(ctx.period)
   }
 
   /** A cache for baseclasses, as a sequence in linearization order and as a set that
@@ -2552,7 +2552,7 @@ object SymDenotations {
       def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context) = ???
       def signalProvisional() = ()
     }
-    def newCache()(using Context): BaseData = new BaseDataImpl(currentPeriod)
+    def newCache()(using Context): BaseData = new BaseDataImpl(ctx.period)
   }
 
   private abstract class InheritedCacheImpl(val createdAt: Period) extends InheritedCache {
@@ -2575,11 +2575,11 @@ object SymDenotations {
     }
 
     def isValidAt(phase: Phase)(using Context) =
-      checkedPeriod == currentPeriod ||
+      checkedPeriod == ctx.period ||
         createdAt.runId == ctx.runId &&
         createdAt.phaseId < unfusedPhases.length &&
         sameGroup(unfusedPhases(createdAt.phaseId), phase) &&
-        { checkedPeriod = currentPeriod; true }
+        { checkedPeriod = ctx.period; true }
   }
 
   private class InvalidCache extends InheritedCache {

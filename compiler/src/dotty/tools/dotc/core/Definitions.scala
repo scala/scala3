@@ -905,7 +905,7 @@ class Definitions {
 
   object ArrayOf {
     def apply(elem: Type)(using Context): Type =
-      if (currentlyAfterErasure) JavaArrayType(elem)
+      if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayType.appliedTo(elem :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp.dealias match {
       case AppliedType(at, arg :: Nil) if at.isRef(ArrayType.symbol) => Some(arg)
@@ -1020,7 +1020,7 @@ class Definitions {
   @tu lazy val Function0_apply: Symbol = ImplementedFunctionType(0).symbol.requiredMethod(nme.apply)
 
   def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(using Context): TypeRef =
-    if (n <= MaxImplementedFunctionArity && (!isContextual || currentlyAfterErasure) && !isErased) ImplementedFunctionType(n)
+    if (n <= MaxImplementedFunctionArity && (!isContextual || ctx.erasedTypes) && !isErased) ImplementedFunctionType(n)
     else FunctionClass(n, isContextual, isErased).typeRef
 
   lazy val PolyFunctionClass = requiredClass("scala.PolyFunction")
@@ -1285,7 +1285,7 @@ class Definitions {
    */
   object ContextFunctionType:
     def unapply(tp: Type)(using Context): Option[(List[Type], Type, Boolean)] =
-      if currentlyAfterErasure then
+      if ctx.erasedTypes then
         atPhase(erasurePhase)(unapply(tp))
       else
         val tp1 = tp.dealias

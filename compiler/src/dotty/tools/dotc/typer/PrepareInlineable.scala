@@ -234,7 +234,7 @@ object PrepareInlineable {
       case Some(ann: ConcreteBodyAnnotation) =>
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated || ann.isEvaluating =>
       case _ =>
-        if (!currentlyAfterTyper) {
+        if (!ctx.isAfterTyper) {
           val inlineCtx = ctx
           inlined.updateAnnotation(LazyBodyAnnotation {
             given ctx as Context = inlineCtx
@@ -255,7 +255,7 @@ object PrepareInlineable {
     if Inliner.inInlineMethod(using ctx.outer) then
       report.error(ex"Implementation restriction: nested inline methods are not supported", inlined.sourcePos)
 
-    if (inlined.is(Macro) && !currentlyAfterTyper) {
+    if (inlined.is(Macro) && !ctx.isAfterTyper) {
 
       def checkMacro(tree: Tree): Unit = tree match {
         case Spliced(code) =>

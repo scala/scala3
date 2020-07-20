@@ -766,7 +766,7 @@ class Typer extends Namer
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
       def handlePattern: Tree = {
         val tpt1 = typedTpt
-        if (!currentlyAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
+        if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
           withMode(Mode.GadtConstraintInference)(ctx.typeComparer.constrainPatternType(tpt1.tpe, pt))
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
@@ -783,7 +783,7 @@ class Typer extends Namer
    *  @pre We are in pattern-matching mode (Mode.Pattern)
    */
   def tryWithClassTag(tree: Typed, pt: Type)(using Context): Tree = tree.tpt.tpe.dealias match {
-    case tref: TypeRef if !tref.symbol.isClass && !currentlyAfterTyper && !(tref =:= pt) =>
+    case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper && !(tref =:= pt) =>
       require(ctx.mode.is(Mode.Pattern))
       withoutMode(Mode.Pattern)(
         inferImplicit(defn.ClassTagClass.typeRef.appliedTo(tref), EmptyTree, tree.tpt.span)
@@ -1391,7 +1391,7 @@ class Typer extends Namer
           if (sym.name != tpnme.WILDCARD)
             if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(sym)
             else report.error(new DuplicateBind(b, cdef), b.sourcePos)
-          if (!currentlyAfterTyper) {
+          if (!ctx.isAfterTyper) {
             val bounds = ctx.gadt.fullBounds(sym)
             if (bounds != null) sym.info = bounds
           }
@@ -1515,7 +1515,7 @@ class Typer extends Namer
       else {
         val from = tree.from.asInstanceOf[tpd.Tree]
         val proto =
-          if (currentlyAfterErasure) from.symbol.info.finalResultType
+          if (ctx.erasedTypes) from.symbol.info.finalResultType
           else WildcardType // We cannot reliably detect the internal type view of polymorphic or dependent methods
                             // because we do not know the internal type params and method params.
                             // Hence no adaptation is possible, and we assume WildcardType as prototype.
@@ -1789,7 +1789,7 @@ class Typer extends Namer
       // are eliminated once the enclosing pattern has been typechecked; see `indexPattern`
       // in `typedCase`.
       //val ptt = if (lo.isEmpty && hi.isEmpty) pt else
-      if (currentlyAfterTyper) tree1
+      if (ctx.isAfterTyper) tree1
       else {
         val wildcardSym = newPatternBoundSymbol(tpnme.WILDCARD, tree1.tpe & pt, tree.span)
         untpd.Bind(tpnme.WILDCARD, tree1).withType(wildcardSym.typeRef)
@@ -2008,7 +2008,7 @@ class Typer extends Namer
       case cinfo @ MethodType(Nil) if !cinfo.resultType.isInstanceOf[MethodType] =>
         ref
       case cinfo: MethodType =>
-        if (!currentlyAfterErasure) { // after constructors arguments are passed in super call.
+        if (!ctx.erasedTypes) { // after constructors arguments are passed in super call.
           typr.println(i"constr type: $cinfo")
           report.error(ParameterizedTypeLacksArguments(psym), ref.sourcePos)
         }
@@ -2034,7 +2034,7 @@ class Typer extends Namer
         if (!tree.span.isSourceDerived)
           return EmptyTree
 
-        if (!currentlyAfterTyper) report.error(i"$psym is extended twice", tree.sourcePos)
+        if (!ctx.isAfterTyper) report.error(i"$psym is extended twice", tree.sourcePos)
       }
       else seenParents += psym
       if (tree.isType) {
@@ -2083,7 +2083,7 @@ class Typer extends Namer
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
         .withType(dummy.termRef)
-      if (!cls.isOneOf(AbstractOrTrait) && !currentlyAfterTyper)
+      if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
       if (cls.derivesFrom(defn.EnumClass)) {
         val firstParent = parents1.head.tpe.dealias.typeSymbol
@@ -2205,7 +2205,7 @@ class Typer extends Namer
       case pid1: RefTree if pkg.is(Package) =>
         val packageCtx = ctx.packageContext(tree, pkg)
         var stats1 = typedStats(tree.stats, pkg.moduleClass)(using packageCtx)._1
-        if (!currentlyAfterTyper)
+        if (!ctx.isAfterTyper)
           stats1 = stats1 ++ typedBlockStats(MainProxies.mainProxies(stats1))(using packageCtx)._1
         cpy.PackageDef(tree)(pid1, stats1).withType(pkg.termRef)
       case _ =>
@@ -2475,7 +2475,7 @@ class Typer extends Namer
               && xtree.isTerm
               && !untpd.isContextualClosure(xtree)
               && !ctx.mode.is(Mode.Pattern)
-              && !currentlyAfterTyper
+              && !ctx.isAfterTyper
               && !ctx.isInlineContext
             then
               makeContextualFunction(xtree, ifpt)
@@ -3201,7 +3201,7 @@ class Typer extends Namer
           !isApplyProto(pt) &&
           pt != AssignProto &&
           !ctx.mode.is(Mode.Pattern) &&
-          !currentlyAfterTyper &&
+          !ctx.isAfterTyper &&
           !ctx.isInlineContext) {
         typr.println(i"insert apply on implicit $tree")
         typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt, locked)
@@ -3556,7 +3556,7 @@ class Typer extends Namer
   }
 
   // Overridden in InlineTyper
-  def suppressInline(using Context): Boolean = currentlyAfterTyper
+  def suppressInline(using Context): Boolean = ctx.isAfterTyper
 
   /** Does the "contextuality" of the method type `methType` match the one of the prototype `pt`?
    *  This is the case if
@@ -3593,7 +3593,7 @@ class Typer extends Namer
     }
 
   private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol)(using Context): Unit =
-    if (!tree.tpe.isErroneous && !currentlyAfterTyper && isPureExpr(tree) &&
+    if (!tree.tpe.isErroneous && !ctx.isAfterTyper && isPureExpr(tree) &&
         !tree.tpe.isRef(defn.UnitClass) && !isSelfOrSuperConstrCall(tree))
       report.warning(PureExpressionInStatementPosition(original, exprOwner), original.sourcePos)
 

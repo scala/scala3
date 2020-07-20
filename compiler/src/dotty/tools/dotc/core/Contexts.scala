@@ -80,13 +80,6 @@ object Contexts {
   inline def atPhaseNoEarlier[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
     op(using if !limit.exists || limit <= ctx.phase then ctx else ctx.withPhase(limit))
 
-  inline def currentPeriod(using ctx: Context): Period = ctx.period
-
-  def currentlyAfterTyper(using Context): Boolean = ctx.base.isAfterTyper(ctx.phase)
-
-  /** Does current phase use an erased types interpretation? */
-  def currentlyAfterErasure(using Context): Boolean = ctx.phase.erasedTypes
-
   inline def inMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
     op(using if mode != ctx.mode then ctx.fresh.setMode(mode) else ctx)
 
@@ -366,7 +359,11 @@ object Contexts {
     final def phase: Phase = base.phases(period.firstPhaseId)
     final def runId = period.runId
     final def phaseId = period.phaseId
+
+    /** Does current phase use an erased types interpretation? */
     final def erasedTypes = phase.erasedTypes
+
+    /** Is current phase after FrontEnd? */
     final def isAfterTyper = base.isAfterTyper(phase)
 
     /** Is this a context for the members of a class definition? */

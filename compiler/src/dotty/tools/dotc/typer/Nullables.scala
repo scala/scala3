@@ -261,7 +261,7 @@ object Nullables:
       /* The nullability info of `tree` */
       def notNullInfo(using Context): NotNullInfo =
         stripInlined(tree).getAttachment(NNInfo) match
-          case Some(info) if !currentlyAfterErasure => info
+          case Some(info) if !ctx.erasedTypes => info
           case _ => NotNullInfo.empty
 
       /* The nullability info of `tree`, assuming it is a condition that evaluates to `c` */
@@ -276,7 +276,7 @@ object Nullables:
       */
       def notNullConditional(using Context): NotNullConditional =
         stripBlock(tree).getAttachment(NNConditional) match
-          case Some(cond) if !currentlyAfterErasure => cond
+          case Some(cond) if !ctx.erasedTypes => cond
           case _ => NotNullConditional.empty
 
       /** The current context augmented with nullability information of `tree` */
@@ -297,7 +297,7 @@ object Nullables:
       *  of the left argument, if the application is a boolean `&&` or `||`.
       */
       def nullableInArgContext(using Context): Context = tree match
-        case Select(x, _) if !currentlyAfterErasure =>
+        case Select(x, _) if !ctx.erasedTypes =>
           if tree.symbol == defn.Boolean_&& then x.nullableContextIf(true)
           else if tree.symbol == defn.Boolean_|| then x.nullableContextIf(false)
           else ctx
@@ -313,7 +313,7 @@ object Nullables:
       def computeNullable()(using Context): tree.type =
         def setConditional(ifTrue: Set[TermRef], ifFalse: Set[TermRef]) =
           tree.putAttachment(NNConditional, NotNullConditional(ifTrue, ifFalse))
-        if !currentlyAfterErasure && analyzedOps.contains(tree.symbol.name.toTermName) then
+        if !ctx.erasedTypes && analyzedOps.contains(tree.symbol.name.toTermName) then
           tree match
             case CompareNull(TrackedRef(ref), testEqual) =>
               if testEqual then setConditional(Set(), Set(ref))

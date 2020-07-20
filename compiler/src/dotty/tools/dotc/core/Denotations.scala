@@ -131,10 +131,10 @@ object Denotations {
     /** The denotation with info(s) as seen from prefix type */
     final def asSeenFrom(pre: Type)(using Context): AsSeenFromResult =
       if (Config.cacheAsSeenFrom) {
-        if ((cachedPrefix ne pre) || currentPeriod != validAsSeenFrom) {
+        if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
           cachedAsSeenFrom = computeAsSeenFrom(pre)
           cachedPrefix = pre
-          validAsSeenFrom = if (pre.isProvisional) Nowhere else currentPeriod
+          validAsSeenFrom = if (pre.isProvisional) Nowhere else ctx.period
         }
         cachedAsSeenFrom
       }
@@ -693,7 +693,7 @@ object Denotations {
         s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
       var d: SingleDenotation = this
       while ({
-        d.validFor = Period(currentPeriod.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
+        d.validFor = Period(ctx.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
         d.invalidateInheritedInfo()
         d = d.nextInRun
         d ne this
@@ -746,7 +746,7 @@ object Denotations {
       if (myValidFor.code <= 0) nextDefined else this
 
     /** Produce a denotation that is valid for the given context.
-     *  Usually called when !(validFor contains currentPeriod)
+     *  Usually called when !(validFor contains ctx.period)
      *  (even though this is not a precondition).
      *  If the runId of the context is the same as runId of this denotation,
      *  the right flock member is located, or, if it does not exist yet,
@@ -758,7 +758,7 @@ object Denotations {
      *  the symbol is stale, which constitutes an internal error.
      */
     def current(using Context): SingleDenotation = {
-      val currentPeriod = Contexts.currentPeriod
+      val currentPeriod = ctx.period
       val valid = myValidFor
       if (valid.code <= 0) {
         // can happen if we sit on a stale denotation which has been replaced
@@ -919,7 +919,7 @@ object Denotations {
         case denot: SymDenotation => s"in ${denot.owner}"
         case _ => ""
       }
-      s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${myValidFor}, is referred to in run ${currentPeriod}"
+      s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${myValidFor}, is referred to in run ${ctx.period}"
     }
 
     /** The period (interval of phases) for which there exists
@@ -977,10 +977,10 @@ object Denotations {
           true
         case MethodNotAMethodMatch =>
           // Java allows defining both a field and a zero-parameter method with the same name
-          !currentlyAfterErasure && !(symbol.is(JavaDefined) && other.symbol.is(JavaDefined))
+          !ctx.erasedTypes && !(symbol.is(JavaDefined) && other.symbol.is(JavaDefined))
         case ParamMatch =>
            // The signatures do not tell us enough to be sure about matching
-          !currentlyAfterErasure && info.matches(other.info)
+          !ctx.erasedTypes && info.matches(other.info)
         case noMatch =>
           false
     end matches

@@ -223,7 +223,7 @@ object EtaExpansion extends LiftImpure {
    */
   def etaExpand(tree: Tree, mt: MethodType, xarity: Int)(using Context): untpd.Tree = {
     import untpd._
-    assert(!currentlyAfterTyper)
+    assert(!ctx.isAfterTyper)
     val defs = new mutable.ListBuffer[tpd.Tree]
     val lifted: Tree = TypedSplice(liftApp(defs, tree))
     val isLastApplication = mt.resultType match {

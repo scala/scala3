@@ -414,7 +414,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
 
   private def followOuterLinks(t: Tree)(using Context) = t match {
-    case t: This if currentlyAfterErasure && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
+    case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
       // after erasure outer paths should be respected
       ExplicitOuter.OuterOps(ctx).path(toCls = t.tpe.widen.classSymbol)
     case t =>
@@ -458,7 +458,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def newArr =
       ref(defn.DottyArraysModule).select(defn.newArrayMethod).withSpan(span)
 
-    if (!currentlyAfterErasure) {
+    if (!ctx.erasedTypes) {
       assert(!TypeErasure.isGeneric(elemTpe), elemTpe) //needs to be done during typer. See Applications.convertNewGenericArray
       newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
     }
@@ -962,7 +962,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     /** cast tree to `tp`, assuming no exception is raised, i.e the operation is pure */
     def cast(tp: Type)(using Context): Tree = {
       assert(tp.isValueType, i"bad cast: $tree.asInstanceOf[$tp]")
-      tree.select(if (currentlyAfterErasure) defn.Any_asInstanceOf else defn.Any_typeCast)
+      tree.select(if (ctx.erasedTypes) defn.Any_asInstanceOf else defn.Any_typeCast)
         .appliedToType(tp)
     }
 
@@ -972,7 +972,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      */
     def ensureConforms(tp: Type)(using Context): Tree =
       if (tree.tpe <:< tp) tree
-      else if (!currentlyAfterErasure) cast(tp)
+      else if (!ctx.erasedTypes) cast(tp)
       else Erasure.Boxing.adaptToType(tree, tp)
 
     /** `tree ne null` (might need a cast to be type correct) */
@@ -1156,7 +1156,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** A tree that corresponds to `Predef.classOf[$tp]` in source */
   def clsOf(tp: Type)(using Context): Tree =
-    if currentlyAfterErasure then
+    if ctx.erasedTypes then
       def TYPE(module: TermSymbol) = ref(module).select(nme.TYPE_)
       defn.scalaClassName(tp) match
         case tpnme.Boolean => TYPE(defn.BoxedBooleanModule)

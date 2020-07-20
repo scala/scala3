@@ -228,7 +228,7 @@ trait TypeAssigner {
       value.tag match {
         case UnitTag => defn.UnitType
         case NullTag => defn.NullType
-        case _ => if (currentlyAfterErasure) value.tpe else ConstantType(value)
+        case _ => if (ctx.erasedTypes) value.tpe else ConstantType(value)
       }
     }
 
@@ -256,7 +256,7 @@ trait TypeAssigner {
         val owntype =
           if (mixinClass.exists) mixinClass.appliedRef
           else if (!mix.isEmpty) findMixinSuper(cls.info)
-          else if (currentlyAfterErasure) cls.info.firstParent.typeConstructor
+          else if (ctx.erasedTypes) cls.info.firstParent.typeConstructor
           else {
             val ps = cls.classInfo.parents
             if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
@@ -431,7 +431,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.SeqLiteral, elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral = {
     val ownType = tree match {
       case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemtpt.tpe)
-      case _ => if (currentlyAfterErasure) defn.SeqType else defn.SeqType.appliedTo(elemtpt.tpe)
+      case _ => if (ctx.erasedTypes) defn.SeqType else defn.SeqType.appliedTo(elemtpt.tpe)
     }
     tree.withType(ownType)
   }

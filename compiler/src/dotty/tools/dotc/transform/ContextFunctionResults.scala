@@ -120,7 +120,7 @@ object ContextFunctionResults:
    *  @param `n` the select nodes seen in previous recursive iterations of this method
    */
   def integrateSelect(tree: untpd.Tree, n: Int = 0)(using Context): Boolean =
-    if currentlyAfterErasure then
+    if ctx.erasedTypes then
       atPhase(erasurePhase)(integrateSelect(tree, n))
     else tree match
       case Select(qual, name) =>

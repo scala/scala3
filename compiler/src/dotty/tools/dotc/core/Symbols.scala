@@ -102,13 +102,13 @@ object Symbols {
     final def denot(using Context): SymDenotation = {
       util.Stats.record("Symbol.denot")
       val lastd = lastDenot
-      if (checkedPeriod == currentPeriod) lastd
+      if (checkedPeriod == ctx.period) lastd
       else computeDenot(lastd)
     }
 
     private def computeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.computeDenot")
-      val now = currentPeriod
+      val now = ctx.period
       checkedPeriod = now
       if (lastd.validFor contains now) lastd else recomputeDenot(lastd)
     }

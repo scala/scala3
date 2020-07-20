@@ -308,7 +308,7 @@ object Phases {
     /** Is this phase the standard typerphase? True for FrontEnd, but
      *  not for other first phases (such as FromTasty). The predicate
      *  is tested in some places that perform checks and corrections. It's
-     *  different from currentlyAfterTyper (and cheaper to test).
+     *  different from ctx.isAfterTyper (and cheaper to test).
      */
     def isTyper: Boolean = false
 

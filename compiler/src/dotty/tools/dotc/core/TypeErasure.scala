@@ -132,7 +132,7 @@ object TypeErasure {
 
   /** The current context with a phase no later than erasure */
   def preErasureCtx(using Context) =
-    if (currentlyAfterErasure) ctx.withPhase(erasurePhase) else ctx
+    if (ctx.erasedTypes) ctx.withPhase(erasurePhase) else ctx
 
   /** The standard erasure of a Scala type. Value classes are erased as normal classes.
    *
@@ -608,7 +608,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         else
           val cls = normalizeClass(sym.asClass)
           val fullName =
-            if !currentlyAfterErasure then
+            if !ctx.erasedTypes then
               // It's important to use the initial symbol to compute the full name
               // because the current symbol might have a different name or owner
               // and signatures are required to be stable before erasure.

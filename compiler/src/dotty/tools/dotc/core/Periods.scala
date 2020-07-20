@@ -19,7 +19,7 @@ object Periods {
 
   /** Are all base types in the current period guaranteed to be the same as in period `p`? */
   def currentHasSameBaseTypesAs(p: Period)(using Context): Boolean =
-    val period = currentPeriod
+    val period = ctx.period
     period == p ||
     period.runId == p.runId &&
       unfusedPhases(period.phaseId).sameBaseTypesStartId ==
