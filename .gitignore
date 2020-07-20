@@ -32,3 +32,6 @@ repo
 
 # custom things
 output
+
+.vscode
+
