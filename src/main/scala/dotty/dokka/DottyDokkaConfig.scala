@@ -5,8 +5,9 @@ import org.jetbrains.dokka.DokkaSourceSetImpl
 import java.io.File
 import java.util.{ List => JList, Map => JMap}
 import collection.JavaConverters._
+import dotty.tastydoc.representations._
 
-case class DottyDokkaConfig(paths: String*) extends DokkaConfiguration:
+case class DottyDokkaConfig(compilationUnit: DDUnit) extends DokkaConfiguration:
   override def getOutputDir: String = new File("output").getAbsolutePath
   override def getCacheRoot: String = null
   override def getOfflineMode: Boolean = false

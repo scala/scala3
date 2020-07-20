@@ -2,6 +2,9 @@ val dottyVersion = "0.25.0-RC2"
 
 libraryDependencies += "org.jetbrains.dokka" % "dokka-base" % "1.4.0-M3-dev-81"
 libraryDependencies += "org.jetbrains.dokka" % "dokka-core" % "1.4.0-M3-dev-81"
+libraryDependencies += "ch.epfl.lamp" % "dotty-tastydoc_0.25" % dottyVersion
+libraryDependencies += "ch.epfl.lamp" % "dotty-compiler_0.25" % dottyVersion
+libraryDependencies += "ch.epfl.lamp" % "dotty-library_0.25" % dottyVersion
 
 resolvers += Resolver.jcenterRepo
 
@@ -32,5 +35,7 @@ buildDokkaApi := {
 
 unmanagedJars in Compile += dokkaJavaApiJar
 
-javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=krzysiek-MS-7971:5005,suspend=y"
+// javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=krzysiek-MS-7971:5005,suspend=y"
 fork.in(run) := true
+
+scalacOptions in Compile += "-language:implicitConversion"

@@ -21,21 +21,13 @@ class DottyDokkaPlugin extends JavaDokkaPlugin:
       
       val doc = parser.parse("## THIS IS MY DOC!")
 
-      val pck = new DPackage(
-        new DRI("foo", null, null, PointingToDeclaration.INSTANCE, null),
-        Nil.asJava,
-        Nil.asJava,
-        List(DottyReader.parseClasslike("foo.bar.Foo", sourceSet, parser)).asJava,
-        Nil.asJava,
-        sourceSet.asMap(doc),
-        null,
-        sourceSet.toSet,
-        PropertyContainer.Companion.empty()
-      )
+      val reader = DottyReader(sourceSet, parser, dottyConfig)
+
+      val packages = dottyConfig.compilationUnit.packages.map(reader.parsePackage).toList
 
       val res = new DModule(
         sourceSet.getSourceSet.getSourceSetID.getModuleName,
-        List(pck).asJava,
+        packages.asJava,
         Map().asJava,
         null,
         sourceSet.toSet,
