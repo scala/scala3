@@ -84,6 +84,13 @@ class FrontEnd extends Phase {
       case ex: CompilationUnit.SuspendException =>
   }
 
+  def javaCheck(using Context): Unit = monitor("checking java") {
+    val unit = ctx.compilationUnit
+    if unit.isJava then
+      JavaChecks.check(unit.tpdTree)
+  }
+
+
   private def firstTopLevelDef(trees: List[tpd.Tree])(using Context): Symbol = trees match {
     case PackageDef(_, defs) :: _    => firstTopLevelDef(defs)
     case Import(_, _) :: defs        => firstTopLevelDef(defs)
@@ -113,6 +120,8 @@ class FrontEnd extends Phase {
 
     unitContexts.foreach(typeCheck(using _))
     record("total trees after typer", ast.Trees.ntrees)
+    unitContexts.foreach(javaCheck(using _)) // after typechecking to avoid cycles
+
     val newUnits = unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
     val suspendedUnits = ctx.run.suspendedUnits
     if newUnits.isEmpty && suspendedUnits.nonEmpty && !ctx.reporter.errorsReported then
