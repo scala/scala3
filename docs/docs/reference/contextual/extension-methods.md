@@ -102,7 +102,7 @@ a single extension and enclose all methods in braces or an indented region follo
 Example:
 
 ```scala
-extension (ss: Seq[String])
+extension (ss: Seq[String]):
 
   def longestStrings: Seq[String] =
     val maxLength = ss.map(_.length).max
@@ -130,7 +130,7 @@ extension (ss: Seq[String])
 Collective extensions also can take type parameters and have using clauses. Example
 
 ```scala
-extension [T](xs: List[T])(using Ordering[T])
+extension [T](xs: List[T])(using Ordering[T]):
   def smallest(n: Int): List[T] = xs.sorted.take(n)
   def smallestIndices(n: Int): List[Int] =
     val limit = smallest(n).max
