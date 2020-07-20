@@ -623,7 +623,7 @@ object Denotations {
           relaxed && !symbol.is(JavaDefined)
         case ParamMatch =>
           relaxed
-        case noMatch =>
+        case NoMatch =>
           false
       if matches then this else NoDenotation
 
@@ -981,7 +981,7 @@ object Denotations {
         case ParamMatch =>
            // The signatures do not tell us enough to be sure about matching
           !ctx.erasedTypes && info.matches(other.info)
-        case noMatch =>
+        case NoMatch =>
           false
     end matches
 
