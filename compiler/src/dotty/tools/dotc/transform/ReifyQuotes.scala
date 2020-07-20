@@ -78,7 +78,8 @@ class ReifyQuotes extends MacroTransform {
     tree match {
       case tree: RefTree if !Inliner.inInlineMethod =>
         assert(!tree.symbol.isQuote)
-        assert(!tree.symbol.isSplice)
+        assert(!tree.symbol.isExprSplice)
+        assert(!tree.symbol.isTypeSplice)
       case _ : TypeDef =>
         assert(!tree.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot),
           s"${tree.symbol} should have been removed by PickledQuotes because it has a @quoteTypeTag")
@@ -329,7 +330,7 @@ class ReifyQuotes extends MacroTransform {
       /** Remove references to local types that will not be defined in this quote */
       def getTypeHoleType(using ctx: Context) = new TypeMap() {
         override def apply(tp: Type): Type = tp match
-          case tp: TypeRef if tp.typeSymbol.isSplice =>
+          case tp: TypeRef if tp.typeSymbol.isTypeSplice =>
             apply(tp.dealias)
           case tp @ TypeRef(pre, _) if pre == NoPrefix || pre.termSymbol.isLocal =>
             val hiBound = tp.typeSymbol.info match

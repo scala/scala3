@@ -179,7 +179,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
               tryHeal(tp.symbol, tp, pos)
             case prefix: ThisType if !tp.symbol.isStatic && level > levelOf(prefix.cls) =>
               tryHeal(tp.symbol, tp, pos)
-            case prefix: TermRef if tp.symbol.isSplice =>
+            case prefix: TermRef if tp.symbol.isTypeSplice =>
               prefix.symbol.info.argInfos match
                 case (tb: TypeBounds) :: _ =>
                   ctx.error(em"Cannot splice $tp because it is a wildcard type", pos)

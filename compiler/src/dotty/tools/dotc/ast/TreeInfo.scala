@@ -884,7 +884,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
      *  will return a term tree.
      */
     def unapply(tree: tpd.Apply)(using Context): Option[tpd.Tree] =
-      if tree.symbol.isSplice then Some(tree.args.head) else None
+      if tree.symbol.isExprSplice then Some(tree.args.head) else None
   }
 
   /** Extractors for type splices */
@@ -894,7 +894,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       *  will return a type tree.
       */
     def unapply(tree: tpd.Select)(using Context): Option[tpd.Tree] =
-      if tree.symbol.isSplice then Some(tree.qualifier) else None
+      if tree.symbol.isTypeSplice then Some(tree.qualifier) else None
   }
 
   /** Extractor for not-null assertions.

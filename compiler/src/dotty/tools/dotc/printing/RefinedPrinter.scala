@@ -369,7 +369,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else if (name.isTypeName) typeText(txt)
         else txt
       case tree @ Select(qual, name) =>
-        if (!printDebug && tree.hasType && tree.symbol == defn.QuotedType_splice) typeText("${") ~ toTextLocal(qual) ~ typeText("}")
+        if (!printDebug && tree.hasType && tree.symbol.isTypeSplice) typeText("${") ~ toTextLocal(qual) ~ typeText("}")
         else if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
         else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided (name != nme.CONSTRUCTOR || printDebug))
       case tree: This =>
@@ -383,7 +383,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
         else if (!printDebug && fun.hasType && fun.symbol == defn.InternalQuoted_exprQuote)
           keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
-        else if (!printDebug && fun.hasType && (fun.symbol == defn.InternalQuoted_exprSplice || fun.symbol == defn.InternalQuoted_exprNestedSplice))
+        else if (!printDebug && fun.hasType && fun.symbol.isExprSplice)
           keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else
           toTextLocal(fun)
