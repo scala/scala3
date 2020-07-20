@@ -26,18 +26,5 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
         } override dokkaBase.descriptorToDocumentableTranslator
     }
 
-    val inspectTheThing by extending {
-        CoreExtensions.preMergeDocumentableTransformer providing { ctx ->
-            object : PreMergeDocumentableTransformer {
-                override fun invoke(modules: List<DModule>): List<DModule> {
-                    println(modules)
-                    println("@@@@@@@@@")
-                    println(modules.map { it.packages })
-                    return modules
-                }
-            }
-        }
-    }
-
     abstract fun createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule
 }

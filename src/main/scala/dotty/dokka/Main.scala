@@ -13,19 +13,21 @@ import scala.tasty.inspector.TastyInspector
 import dotty.tastydoc.representations
 import dotty.tastydoc.representations._
 
+case class DocConfiguration(tastyFiles: List[String], classpath: String)
 
 object Main:
   def main(args: Array[String]): Unit =
-    val cp = args.headOption.getOrElse("/home/krzysiek/workspace/dotty-dokka/target/scala-0.25/classes")
+    // TODO change the default to something more reasonable...
+    val cp = args.headOption.getOrElse("target/scala-0.25/classes")
     def listTastyFiles(f: File): Seq[File] = 
       val (files, dirs) = f.listFiles().partition(_.isFile)
       files.filter(_.getName.endsWith(".tasty")) ++ dirs.flatMap(listTastyFiles)
     
-    val tastyFiles = cp.split(File.pathSeparatorChar).toList.flatMap(p => listTastyFiles(new File(p))).map(_.toString)
+    val config = DocConfiguration(
+      tastyFiles = cp.split(File.pathSeparatorChar).toList.flatMap(p => listTastyFiles(new File(p))).map(_.toString),
+      classpath = System.getProperty("java.class.path")
+    )
 
-    val inspector = new DokkaTastyInspector()
-    inspector.inspect(System.getProperty("java.class.path"), tastyFiles)
-
-    val config = DottyDokkaConfig(inspector.result())
-    new DokkaGenerator(config, DokkaConsoleLogger.INSTANCE).generate()
+    // TODO pass options, classpath etc.
+    new DokkaGenerator(new DottyDokkaConfig(config), DokkaConsoleLogger.INSTANCE).generate()
     println("Done")
