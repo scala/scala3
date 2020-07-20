@@ -1,1 +1,1 @@
-The contents of this page have [moved](./givens.html).
+The contents of this page have [moved](./givens.md).

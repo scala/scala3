@@ -1,1 +1,1 @@
-The contents of this page have [moved](./using-clauses.html).
+The contents of this page have [moved](./using-clauses.md).

@@ -1,1 +1,1 @@
-The contents of this page have [moved](./context-functions.html).
+The contents of this page have [moved](./context-functions.md).
