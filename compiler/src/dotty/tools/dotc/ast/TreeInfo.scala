@@ -879,15 +879,22 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** Extractors for splices */
   object Spliced {
-    /** Extracts the content of a spliced tree.
-     *  The result can be the contents of a term or type splice, which
-     *  will return a term or type tree respectively.
+    /** Extracts the content of a spliced expresion tree.
+     *  The result can be the contents of a term splice, which
+     *  will return a term tree.
      */
-    def unapply(tree: tpd.Tree)(using Context): Option[tpd.Tree] = tree match {
-      case tree: tpd.Apply if tree.symbol.isSplice => Some(tree.args.head)
-      case tree: tpd.Select if tree.symbol.isSplice => Some(tree.qualifier)
-      case _ => None
-    }
+    def unapply(tree: tpd.Apply)(using Context): Option[tpd.Tree] =
+      if tree.symbol.isSplice then Some(tree.args.head) else None
+  }
+
+  /** Extractors for type splices */
+  object SplicedType {
+    /** Extracts the content of a spliced type tree.
+      *  The result can be the contents of a type splice, which
+      *  will return a type tree.
+      */
+    def unapply(tree: tpd.Select)(using Context): Option[tpd.Tree] =
+      if tree.symbol.isSplice then Some(tree.qualifier) else None
   }
 
   /** Extractor for not-null assertions.

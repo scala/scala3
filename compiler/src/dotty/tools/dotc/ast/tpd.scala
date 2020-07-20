@@ -891,11 +891,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       selectWithSig(sym.name, sym.signature)
 
     /** A unary apply node with given argument: `tree(arg)` */
-    def appliedTo(arg: Tree)(using Context): Tree =
+    def appliedTo(arg: Tree)(using Context): Apply =
       appliedToArgs(arg :: Nil)
 
     /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
-    def appliedTo(arg: Tree, args: Tree*)(using Context): Tree =
+    def appliedTo(arg: Tree, args: Tree*)(using Context): Apply =
       appliedToArgs(arg :: args.toList)
 
     /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))` */
@@ -903,7 +903,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Apply(tree, args)
 
     /** An applied node that accepts only varargs as arguments */
-    def appliedToVarargs(args: List[Tree], tpt: Tree)(using Context): Tree =
+    def appliedToVarargs(args: List[Tree], tpt: Tree)(using Context): Apply =
       appliedTo(repeated(args, tpt))
 
     /** The current tree applied to given argument lists:

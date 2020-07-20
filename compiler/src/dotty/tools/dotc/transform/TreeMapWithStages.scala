@@ -71,8 +71,11 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
       case quote: TypeApply => cpy.TypeApply(quote)(quote.fun, body :: Nil)
     }
 
-  /** Transform the splice `splice` which contains the spliced `body`. */
-  protected def transformSplice(body: Tree, splice: Tree)(using Context): Tree
+  /** Transform the expression splice `splice` which contains the spliced `body`. */
+  protected def transformSplice(body: Tree, splice: Apply)(using Context): Tree
+
+  /** Transform the typee splice `splice` which contains the spliced `body`. */
+  protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree
 
   override def transform(tree: Tree)(using Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
@@ -94,7 +97,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
       tree match {
         case Apply(Select(Quoted(quotedTree), _), _) if quotedTree.isType =>
           dropEmptyBlocks(quotedTree) match
-            case Spliced(t) =>
+            case SplicedType(t) =>
               // '[ x.$splice ] --> x
               transform(t)
             case _ =>
@@ -119,6 +122,12 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
             case Quoted(t) => transform(t) // ${ 'x } --> x
             case _ => transformSplice(splicedTree, tree)
           }
+          finally inQuoteOrSplice = old
+
+        case tree @ SplicedType(splicedTree) =>
+          val old = inQuoteOrSplice
+          inQuoteOrSplice = true
+          try transformSpliceType(splicedTree, tree)
           finally inQuoteOrSplice = old
 
         case Block(stats, _) =>

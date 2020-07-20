@@ -170,9 +170,9 @@ trait QuotesAndSplices {
       typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuotedMatcher_patternTypeAnnot.typeRef)).withSpan(tree.expr.span)))
       val pat = typedPattern(tree.expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
           using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
-      pat.select(tpnme.splice)
+      pat.select(tpnme.spliceType)
     else
-      typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(using spliceContext).withSpan(tree.span)
+      typedSelect(untpd.Select(tree.expr, tpnme.spliceType), pt)(using spliceContext).withSpan(tree.span)
   }
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(using Context): Unit =
