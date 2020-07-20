@@ -40,11 +40,10 @@ class FrontEnd extends Phase {
 
   def monitor(doing: String)(body: => Unit)(using Context): Unit =
     try body
-    catch {
+    catch
       case NonFatal(ex) =>
         report.echo(s"exception occurred while $doing ${ctx.compilationUnit}")
         throw ex
-    }
 
   def parse(using Context): Unit = monitor("parsing") {
     val unit = ctx.compilationUnit
@@ -91,17 +90,16 @@ class FrontEnd extends Phase {
   }
 
 
-  private def firstTopLevelDef(trees: List[tpd.Tree])(using Context): Symbol = trees match {
+  private def firstTopLevelDef(trees: List[tpd.Tree])(using Context): Symbol = trees match
     case PackageDef(_, defs) :: _    => firstTopLevelDef(defs)
     case Import(_, _) :: defs        => firstTopLevelDef(defs)
     case (tree @ TypeDef(_, _)) :: _ => tree.symbol
     case _ => NoSymbol
-  }
 
   protected def discardAfterTyper(unit: CompilationUnit)(using Context): Boolean =
     unit.isJava || unit.suspended
 
-  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val unitContexts =
       for unit <- units yield
         report.inform(s"compiling ${unit.source}")
@@ -113,7 +111,7 @@ class FrontEnd extends Phase {
       enterSyms(using remaining.head)
       remaining = remaining.tail
 
-    if (firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists)
+    if firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists then
       report.error("""To support XML literals, your project must depend on scala-xml.
                   |See https://github.com/scala/scala-xml for more information.""".stripMargin,
         firstXmlPos)
@@ -132,14 +130,13 @@ class FrontEnd extends Phase {
                 |  ${suspendedUnits.toList}%, %
                 |"""
       val enableXprintSuspensionHint =
-        if (ctx.settings.XprintSuspension.value) ""
+        if ctx.settings.XprintSuspension.value then ""
         else "\n\nCompiling with  -Xprint-suspension   gives more information."
       report.error(em"""Cyclic macro dependencies $where
                     |Compilation stopped since no further progress can be made.
                     |
                     |To fix this, place macros in one set of files and their callers in another.$enableXprintSuspensionHint""")
     newUnits
-  }
 
   def run(using Context): Unit = unsupported("run")
 }
