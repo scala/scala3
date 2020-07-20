@@ -51,7 +51,6 @@ object Main:
     val inspector = new DokkaTastyInspector()
     inspector.inspect(System.getProperty("java.class.path"), tastyFiles)
 
-    
     val config = DottyDokkaConfig(inspector.result())
     new DokkaGenerator(config, DokkaConsoleLogger.INSTANCE).generate()
     println("Done")
