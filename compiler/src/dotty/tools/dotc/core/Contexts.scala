@@ -305,7 +305,7 @@ object Contexts {
     private var phasedCtxs: Array[Context] = null
 
     /** This context at given phase.
-     *  This method will always return a phase period equal to phaseId, thus will never return squashed phases
+     *  This method will always return a phase period equal to phaseId, thus will never return a fused phase
      */
     final def withPhase(phaseId: PhaseId): Context =
       if (this.period.phaseId == phaseId) this
@@ -323,12 +323,6 @@ object Contexts {
 
     final def withPhase(phase: Phase): Context =
       withPhase(phase.id)
-
-    final def withPhaseNoLater(phase: Phase): Context =
-      if (phase.exists && period.phaseId > phase.id) withPhase(phase) else this
-
-    final def withPhaseNoEarlier(phase: Phase): Context =
-      if (phase.exists && period.phaseId < phase.id) withPhase(phase) else this
 
     // `creationTrace`-related code. To enable, uncomment the code below and the
     // call to `setCreationTrace()` in this file.
@@ -662,8 +656,8 @@ object Contexts {
     def updateStore[T](loc: Store.Location[T], value: T): this.type =
       setStore(store.updated(loc, value))
 
-    def setPhase(pid: PhaseId): this.type = setPeriod(Period(period.runId, pid))
-    def setPhase(phase: Phase): this.type = setPeriod(Period(period.runId, phase.start, phase.end))
+    def setPhase(pid: PhaseId): this.type = setPeriod(Period(runId, pid))
+    def setPhase(phase: Phase): this.type = setPeriod(Period(runId, phase.start, phase.end))
 
     def setSetting[T](setting: Setting[T], value: T): this.type =
       setSettings(setting.updateIn(settingsState, value))
@@ -709,7 +703,7 @@ object Contexts {
         testContexts(testsInUse).reuseIn(ctx)
       else
         val ts = TyperState()
-          .setReporter(TestingReporter())
+          .setReporter(ExploringReporter())
           .setCommittable(false)
         val c = FreshContext(ctx.base).init(ctx, ctx).setTyperState(ts)
         testContexts += c
@@ -720,7 +714,7 @@ object Contexts {
     val result =
       try op(using nestedCtx)
       finally
-        nestedTS.reporter.asInstanceOf[TestingReporter].reset()
+        nestedTS.reporter.asInstanceOf[ExploringReporter].reset()
         testsInUse -= 1
     result
   end explore
@@ -796,7 +790,7 @@ object Contexts {
       definitions.init()
     }
 
-    def squashed(p: Phase): Phase =
+    def fusedContaining(p: Phase): Phase =
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
   }
 
@@ -864,7 +858,7 @@ object Contexts {
     /** Phases by id */
     private[dotc] var phases: Array[Phase] = _
 
-    /** Phases with consecutive Transforms grouped into a single phase, Empty array if squashing is disabled */
+    /** Phases with consecutive Transforms grouped into a single phase, Empty array if fusion is disabled */
     private[core] var fusedPhases: Array[Phase] = Array.empty[Phase]
 
     /** Next denotation transformer id */

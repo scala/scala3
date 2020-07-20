@@ -100,7 +100,7 @@ class TreeChecker extends Phase with SymTransformer {
           cur.signature
       }
       assert(curSig == initial.signature,
-        i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.squashed(ctx.phase.prev)}
+        i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.fusedContaining(ctx.phase.prev)}
            |Initial info: ${initial}
            |Initial sig : ${initial.signature}
            |Current info: ${cur}
@@ -133,8 +133,8 @@ class TreeChecker extends Phase with SymTransformer {
 
   def check(phasesToRun: Seq[Phase], ctx: Context): Tree = {
     val prevPhase = ctx.phase.prev // can be a mini-phase
-    val squashedPhase = ctx.base.squashed(prevPhase)
-    report.echo(s"checking ${ctx.compilationUnit} after phase ${squashedPhase}")(using ctx)
+    val fusedPhase = ctx.base.fusedContaining(prevPhase)
+    report.echo(s"checking ${ctx.compilationUnit} after phase ${fusedPhase}")(using ctx)
 
     inContext(ctx) {
       assertSelectWrapsNew(ctx.compilationUnit.tpdTree)

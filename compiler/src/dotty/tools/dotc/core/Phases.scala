@@ -92,13 +92,13 @@ object Phases {
                       s"${phase.phaseName} requires ${unmetRequirements.mkString(", ")} to be in different TreeTransformer")
 
                   case _ =>
-                    assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
+                    assert(false, s"Only tree transforms can be fused, ${phase.phaseName} can not be fused")
                 }
               val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
               prevPhases ++= filteredPhaseBlock.map(_.phaseName)
               superPhase
             }
-            else { // block of a single phase, no squashing
+            else { // block of a single phase, no fusion
               val phase = filteredPhaseBlock.head
               prevPhases += phase.phaseName
               phase
@@ -118,9 +118,9 @@ object Phases {
 
     /** Use the following phases in the order they are given.
      *  The list should never contain NoPhase.
-     *  if squashing is enabled, phases in same subgroup will be squashed to single phase.
+     *  if fusion is enabled, phases in same subgroup will be fused to single phase.
      */
-    final def usePhases(phasess: List[Phase], squash: Boolean = true): Unit = {
+    final def usePhases(phasess: List[Phase], fuse: Boolean = true): Unit = {
 
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
@@ -183,7 +183,7 @@ object Phases {
         nextDenotTransformerId(i) = lastTransformerId
       }
 
-      if (squash)
+      if (fuse)
         this.fusedPhases = (NoPhase :: phasess).toArray
       else
         this.fusedPhases = this.phases

@@ -672,7 +672,7 @@ class Namer { typer: Typer =>
     given creationContext as Context = ictx
 
     // make sure testing contexts are not captured by completers
-    assert(!ictx.reporter.isInstanceOf[TestingReporter])
+    assert(!ictx.reporter.isInstanceOf[ExploringReporter])
 
     protected def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
@@ -1216,10 +1216,8 @@ class Namer { typer: Typer =>
   }
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
-    withoutMode(Mode.PatternOrTypeBits) {
-      withMode(Mode.Type) {
-        typedAhead(tree, typer.typed(_, pt))
-      }
+    inMode(ctx.mode &~ Mode.PatternOrTypeBits | Mode.Type) {
+      typedAhead(tree, typer.typed(_, pt))
     }
 
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =

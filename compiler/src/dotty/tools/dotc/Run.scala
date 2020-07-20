@@ -131,7 +131,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       throw ex
   }
 
-  /** TODO: There's a fundamental design problem here: We assemble phases using `squash`
+  /** TODO: There's a fundamental design problem here: We assemble phases using `fusePhases`
    *  when we first build the compiler. But we modify them with -Yskip, -Ystop
    *  on each run. That modification needs to either transform the tree structure,
    *  or we need to assemble phases on each run, and take -Yskip, -Ystop into
@@ -237,10 +237,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private def printTree(last: PrintedTree)(using Context): PrintedTree = {
     val unit = ctx.compilationUnit
     val prevPhase = ctx.phase.prev // can be a mini-phase
-    val squashedPhase = ctx.base.squashed(prevPhase)
+    val fusedPhase = ctx.base.fusedContaining(prevPhase)
     val treeString = unit.tpdTree.show(using ctx.withProperty(XprintMode, Some(())))
 
-    report.echo(s"result of $unit after $squashedPhase:")
+    report.echo(s"result of $unit after $fusedPhase:")
 
     last match {
       case SomePrintedTree(phase, lastTreeSting) if lastTreeSting != treeString =>
@@ -248,7 +248,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
           if (!ctx.settings.XprintDiff.value && !ctx.settings.XprintDiffDel.value) treeString
           else DiffUtil.mkColoredCodeDiff(treeString, lastTreeSting, ctx.settings.XprintDiffDel.value)
         report.echo(msg)
-        SomePrintedTree(squashedPhase.toString, treeString)
+        SomePrintedTree(fusedPhase.toString, treeString)
 
       case SomePrintedTree(phase, lastTreeSting) =>
         report.echo("  Unchanged since " + phase)
@@ -256,7 +256,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
       case NoPrintedTree =>
         report.echo(treeString)
-        SomePrintedTree(squashedPhase.toString, treeString)
+        SomePrintedTree(fusedPhase.toString, treeString)
     }
   }
 

@@ -397,16 +397,19 @@ object ExplicitOuter {
       try
         @tailrec def loop(tree: Tree, count: Int): Tree =
           val treeCls = tree.tpe.widen.classSymbol
-          val outerAccessorCtx = ctx.withPhaseNoLater(lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
-          report.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${outerAccName(treeCls.asClass)(using outerAccessorCtx)} in $treeCls")
+          report.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${atPhaseNoLater(lambdaLiftPhase)(outerAccName(treeCls.asClass))} in $treeCls")
           if (count == 0 || count < 0 && treeCls == toCls) tree
           else
             val enclClass = ctx.owner.lexicallyEnclosingClass.asClass
-            val outerAcc = tree match
-              case tree: This if tree.symbol == enclClass && !enclClass.is(Trait) =>
-                outerParamAccessor(enclClass)(using outerAccessorCtx)
-              case _ =>
-                outerAccessor(treeCls.asClass)(using outerAccessorCtx)
+            val outerAcc = atPhaseNoLater(lambdaLiftPhase) {
+              // lambdalift mangles local class names, which means we cannot
+              // reliably find outer acessors anymore
+              tree match
+                case tree: This if tree.symbol == enclClass && !enclClass.is(Trait) =>
+                  outerParamAccessor(enclClass)
+                case _ =>
+                  outerAccessor(treeCls.asClass)
+            }
             assert(outerAcc.exists,
                 i"failure to construct path from ${ctx.owner.ownersIterator.toList}%/% to `this` of ${toCls.showLocated};\n${treeCls.showLocated} does not have an outer accessor")
             loop(tree.select(outerAcc).ensureApplied, count - 1)

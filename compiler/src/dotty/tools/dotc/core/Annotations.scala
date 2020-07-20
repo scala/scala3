@@ -59,6 +59,11 @@ object Annotations {
         case symFn: (Context ?=> Symbol) @unchecked =>
           mySym = null
           mySym = atPhaseNoLater(picklerPhase)(symFn)
+            // We should always produce the same annotation tree, no matter when the
+            // annotation is evaluated. Setting the phase to a pre-transformation phase
+            // seems to be enough to ensure this (note that after erasure, `ctx.typer`
+            // will be the Erasure typer, but that doesn't seem to affect the annotation
+            // trees we create, so we leave it as is)
         case sym: Symbol if sym.defRunId != parentCtx.runId =>
           mySym = sym.denot.current.symbol
         case _ =>

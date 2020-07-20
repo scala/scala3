@@ -29,7 +29,7 @@ class TyperState() {
   private var myId: Int = _
   def id: Int = myId
 
-  private var previous: TyperState = _
+  private var previous: TyperState /* | Null */ = _
 
   private var myReporter: Reporter = _
 
@@ -69,7 +69,7 @@ class TyperState() {
   /** Initializes all fields except reporter, isCommittable, which need to be
    *  set separately.
    */
-  private[core] def init(previous: TyperState, constraint: Constraint): this.type =
+  private[core] def init(previous: TyperState /* | Null */, constraint: Constraint): this.type =
     this.myId = TyperState.nextId
     TyperState.nextId += 1
     this.previous = previous
@@ -78,15 +78,6 @@ class TyperState() {
     this.myOwnedVars = SimpleIdentitySet.empty
     this.isCommitted = false
     this
-
-  def disable() =
-    previous = null
-    myConstraint = null
-    previousConstraint = null
-    myOwnedVars = null
-    isCommitted = false
-    myReporter = null
-    myIsCommittable = true
 
   /** A fresh typer state with the same constraint as this one. */
   def fresh(reporter: Reporter = StoreReporter(this.reporter)): TyperState =
