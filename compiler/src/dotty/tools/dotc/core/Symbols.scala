@@ -134,14 +134,14 @@ object Symbols {
 
     /** Does this symbol come from a currently compiled source file? */
     final def isDefinedInCurrentRun(using Context): Boolean =
-      span.exists && defRunId == currentRunId && {
+      span.exists && defRunId == ctx.runId && {
         val file = associatedFile
         file != null && ctx.run.files.contains(file)
       }
 
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(using Context): Boolean =
-      (lastDenot.validFor.runId == currentRunId || stillValid(lastDenot)) &&
+      (lastDenot.validFor.runId == ctx.runId || stillValid(lastDenot)) &&
       (lastDenot.symbol eq this)
         // the last condition is needed because under ctx.staleOK overwritten
         // members keep denotations pointing to the new symbol, so the validity
@@ -149,9 +149,9 @@ object Symbols {
         // valid. If the option would be removed, the check would be no longer needed.
 
     final def isTerm(using Context): Boolean =
-      (if (defRunId == currentRunId) lastDenot else denot).isTerm
+      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
     final def isType(using Context): Boolean =
-      (if (defRunId == currentRunId) lastDenot else denot).isType
+      (if (defRunId == ctx.runId) lastDenot else denot).isType
     final def asTerm(using Context): TermSymbol = {
       assert(isTerm, s"asTerm called on not-a-Term $this" );
       asInstanceOf[TermSymbol]
@@ -204,7 +204,7 @@ object Symbols {
      *  @pre  Symbol is a class member
      */
     def enteredAfter(phase: DenotTransformer)(using Context): this.type =
-      if currentPhaseId != phase.next.id then
+      if ctx.phaseId != phase.next.id then
         atPhase(phase.next)(enteredAfter(phase))
       else this.owner match {
         case owner: ClassSymbol =>
@@ -229,7 +229,7 @@ object Symbols {
      *  @pre  Symbol is a class member
      */
     def dropAfter(phase: DenotTransformer)(using Context): Unit =
-      if currentPhaseId != phase.next.id then
+      if ctx.phaseId != phase.next.id then
         atPhase(phase.next)(dropAfter(phase))
       else {
         assert (!this.owner.is(Package))

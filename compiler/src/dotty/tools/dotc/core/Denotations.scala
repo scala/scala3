@@ -686,11 +686,11 @@ object Denotations {
 
     private def updateValidity()(using Context): this.type = {
       assert(
-        currentRunId >= validFor.runId
+        ctx.runId >= validFor.runId
         || ctx.settings.YtestPickler.value // mixing test pickler with debug printing can travel back in time
         || ctx.mode.is(Mode.Printing)  // no use to be picky when printing error messages
         || symbol.isOneOf(ValidForeverFlags),
-        s"denotation $this invalid in run ${currentRunId}. ValidFor: $validFor")
+        s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
       var d: SingleDenotation = this
       while ({
         d.validFor = Period(currentPeriod.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
@@ -720,7 +720,7 @@ object Denotations {
         case _ =>
       }
       if (!symbol.exists) return updateValidity()
-      if (!coveredInterval.containsPhaseId(currentPhaseId)) return NoDenotation
+      if (!coveredInterval.containsPhaseId(ctx.phaseId)) return NoDenotation
       if (ctx.debug) traceInvalid(this)
       staleSymbolError
     }
@@ -842,7 +842,7 @@ object Denotations {
     }
 
     private def demandOutsideDefinedMsg(using Context): String =
-      s"demanding denotation of $this at phase ${currentPhase}(${currentPhaseId}) outside defined interval: defined periods are${definedPeriodsString}"
+      s"demanding denotation of $this at phase ${currentPhase}(${ctx.phaseId}) outside defined interval: defined periods are${definedPeriodsString}"
 
     /** Install this denotation to be the result of the given denotation transformer.
      *  This is the implementation of the same-named method in SymDenotations.
@@ -851,16 +851,16 @@ object Denotations {
      */
     protected def installAfter(phase: DenotTransformer)(using Context): Unit = {
       val targetId = phase.next.id
-      if (currentPhaseId != targetId) atPhase(phase.next)(installAfter(phase))
+      if (ctx.phaseId != targetId) atPhase(phase.next)(installAfter(phase))
       else {
         val current = symbol.current
         // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
         // printPeriods(current)
-        this.validFor = Period(currentRunId, targetId, current.validFor.lastPhaseId)
+        this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
         if (current.validFor.firstPhaseId >= targetId)
           current.replaceWith(this)
         else {
-          current.validFor = Period(currentRunId, current.validFor.firstPhaseId, targetId - 1)
+          current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
           insertAfter(current)
         }
       }
@@ -1071,7 +1071,7 @@ object Denotations {
   class ErrorDenotation(using Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
     override def exists: Boolean = false
     override def hasUniqueSym: Boolean = false
-    validFor = Period.allInRun(currentRunId)
+    validFor = Period.allInRun(ctx.runId)
     protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
       this
   }

@@ -2104,7 +2104,7 @@ object SymDenotations {
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
      */
     def ensureFreshScopeAfter(phase: DenotTransformer)(using Context): Unit =
-      if (currentPhaseId != phase.next.id) atPhase(phase.next)(ensureFreshScopeAfter(phase))
+      if (ctx.phaseId != phase.next.id) atPhase(phase.next)(ensureFreshScopeAfter(phase))
       else {
         val prevClassInfo = atPhase(phase) {
           current.asInstanceOf[ClassDenotation].classInfo
@@ -2154,8 +2154,8 @@ object SymDenotations {
 
     /** The package objects in this class */
     def packageObjs(using Context): List[ClassDenotation] = {
-      if (packageObjsRunId != currentRunId) {
-        packageObjsRunId = currentRunId
+      if (packageObjsRunId != ctx.runId) {
+        packageObjsRunId = ctx.runId
         packageObjsCache = Nil // break cycle in case we are looking for package object itself
         packageObjsCache = {
           val pkgObjBuf = new mutable.ListBuffer[ClassDenotation]
@@ -2296,7 +2296,7 @@ object SymDenotations {
       for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
-        if (sym.defRunId != currentRunId && sym.isClass && sym.asClass.assocFile == file)
+        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
           scope.unlink(sym, sym.lastKnownDenotation.name)
     }
   }
@@ -2348,7 +2348,7 @@ object SymDenotations {
     else {
       val initial = denot.initial
       val firstPhaseId = initial.validFor.firstPhaseId.max(typerPhase.id)
-      if ((initial ne denot) || currentPhaseId != firstPhaseId)
+      if ((initial ne denot) || ctx.phaseId != firstPhaseId)
         atPhase(firstPhaseId)(stillValidInOwner(initial))
       else
         stillValidInOwner(denot)
@@ -2381,7 +2381,7 @@ object SymDenotations {
         if (denot.isOneOf(ValidForeverFlags) || denot.isRefinementClass) true
         else
           val initial = denot.initial
-          if ((initial ne denot) || currentPhaseId != initial.validFor.firstPhaseId)
+          if ((initial ne denot) || ctx.phaseId != initial.validFor.firstPhaseId)
             atPhase(initial.validFor.firstPhaseId)(traceInvalid(initial))
           else try {
             val owner = denot.owner.denot
@@ -2576,7 +2576,7 @@ object SymDenotations {
 
     def isValidAt(phase: Phase)(using Context) =
       checkedPeriod == currentPeriod ||
-        createdAt.runId == currentRunId &&
+        createdAt.runId == ctx.runId &&
         createdAt.phaseId < unfusedPhases.length &&
         sameGroup(unfusedPhases(createdAt.phaseId), phase) &&
         { checkedPeriod = currentPeriod; true }

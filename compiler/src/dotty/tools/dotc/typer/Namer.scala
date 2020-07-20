@@ -703,9 +703,9 @@ class Namer { typer: Typer =>
           else levels(c.outer) + 1
         println(s"!!!completing ${denot.symbol.showLocated} in buried typerState, gap = ${levels(ctx)}")
       }
-      val creationRunId = currentRunId(using creationContext)
-      if currentRunId > creationRunId then
-        assert(ctx.mode.is(Mode.Interactive), s"completing $denot in wrong run ${currentRunId}, was created in $creationRunId")
+      val creationRunId = creationContext.runId
+      if ctx.runId > creationRunId then
+        assert(ctx.mode.is(Mode.Interactive), s"completing $denot in wrong run ${ctx.runId}, was created in $creationRunId")
         denot.info = UnspecifiedErrorType
       else
         try

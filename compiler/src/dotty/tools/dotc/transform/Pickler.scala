@@ -47,7 +47,7 @@ class Pickler extends Phase {
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
-    pickling.println(i"unpickling in run ${currentRunId}")
+    pickling.println(i"unpickling in run ${ctx.runId}")
 
     for {
       cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
@@ -92,7 +92,7 @@ class Pickler extends Phase {
     if (ctx.settings.YtestPickler.value)
       testUnpickler(
         using ctx.fresh
-            .setPeriod(Period(currentRunId + 1, FirstPhaseId))
+            .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
             .setReporter(new ThrowingReporter(ctx.reporter))
             .addMode(Mode.ReadPositions)
             .addMode(Mode.ReadComments)
@@ -101,7 +101,7 @@ class Pickler extends Phase {
   }
 
   private def testUnpickler(using Context): Unit = {
-    pickling.println(i"testing unpickler at run ${currentRunId}")
+    pickling.println(i"testing unpickler at run ${ctx.runId}")
     ctx.initialize()
     val unpicklers =
       for ((cls, pickler) <- picklers) yield {

@@ -369,6 +369,9 @@ object Contexts {
     /** The current reporter */
     def reporter: Reporter = typerState.reporter
 
+    final def runId = period.runId
+    final def phaseId = period.phaseId
+
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
       owner.isClass && (owner ne outer.owner)

@@ -59,7 +59,7 @@ object Annotations {
         case symFn: (Context ?=> Symbol) @unchecked =>
           mySym = null
           mySym = atPhaseNoLater(picklerPhase)(symFn)
-        case sym: Symbol if sym.defRunId != currentRunId(using parentCtx) =>
+        case sym: Symbol if sym.defRunId != parentCtx.runId =>
           mySym = sym.denot.current.symbol
         case _ =>
       }

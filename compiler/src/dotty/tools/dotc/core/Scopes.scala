@@ -265,7 +265,7 @@ object Scopes {
 
     /** enter a symbol in this scope. */
     final def enter[T <: Symbol](sym: T)(using Context): T = {
-      if (sym.isType && currentPhaseId <= typerPhase.id)
+      if (sym.isType && ctx.phaseId <= typerPhase.id)
         assert(lookup(sym.name) == NoSymbol,
           s"duplicate ${sym.debugString}; previous was ${lookup(sym.name).debugString}") // !!! DEBUG
       newScopeEntry(sym)

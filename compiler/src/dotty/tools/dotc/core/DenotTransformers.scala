@@ -24,7 +24,7 @@ object DenotTransformers {
 
     /** The validity period of the transformed denotations in the given context */
     def validFor(using Context): Period =
-      Period(currentRunId, id + 1, lastPhaseId)
+      Period(ctx.runId, id + 1, lastPhaseId)
 
     /** The transformation method */
     def transform(ref: SingleDenotation)(using Context): SingleDenotation

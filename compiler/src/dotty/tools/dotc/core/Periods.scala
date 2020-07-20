@@ -11,11 +11,11 @@ object Periods {
    *  we take the next transformer id following the current phase.
    */
   def currentStablePeriod(using Context): Period =
-    var first = currentPhaseId
+    var first = ctx.phaseId
     val nxTrans = ctx.base.nextDenotTransformerId(first)
     while (first - 1 > NoPhaseId && (ctx.base.nextDenotTransformerId(first - 1) == nxTrans))
       first -= 1
-    Period(currentRunId, first, nxTrans)
+    Period(ctx.runId, first, nxTrans)
 
   /** Are all base types in the current period guaranteed to be the same as in period `p`? */
   def currentHasSameBaseTypesAs(p: Period)(using Context): Boolean =

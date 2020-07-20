@@ -1356,9 +1356,9 @@ class Definitions {
     private var current: RunId = NoRunId
     private var cached: T = _
     def apply()(using Context): T = {
-      if (current != currentRunId) {
+      if (current != ctx.runId) {
         cached = generate
-        current = currentRunId
+        current = ctx.runId
       }
       cached
     }

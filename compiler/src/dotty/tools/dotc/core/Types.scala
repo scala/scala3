@@ -677,7 +677,7 @@ object Types {
         }
         else
           val joint = pdenot.meet(
-            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(currentRunId), pre),
+            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre),
             pre,
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
           joint match
@@ -1914,7 +1914,7 @@ object Types {
      *  some symbols change their signature at erasure.
      */
     private def currentSignature(using Context): Signature =
-      if currentRunId == mySignatureRunId then mySignature
+      if ctx.runId == mySignatureRunId then mySignature
       else
         val lastd = lastDenotation
         if lastd != null then sigFromDenot(lastd)
@@ -1948,7 +1948,7 @@ object Types {
      *  current run.
      */
     def denotationIsCurrent(using Context): Boolean =
-      lastDenotation != null && lastDenotation.validFor.runId == currentRunId
+      lastDenotation != null && lastDenotation.validFor.runId == ctx.runId
 
     /** If the reference is symbolic or the denotation is current, its symbol, otherwise NoDenotation.
      *
@@ -1969,7 +1969,7 @@ object Types {
      *  Used to get the class underlying a ThisType.
      */
     private[Types] def stableInRunSymbol(using Context): Symbol =
-      if (checkedPeriod.runId == currentRunId) lastSymbol
+      if (checkedPeriod.runId == ctx.runId) lastSymbol
       else symbol
 
     def info(using Context): Type = denot.info
@@ -2008,7 +2008,7 @@ object Types {
           finish(memberDenot(name, allowPrivate))
         case sym: Symbol =>
           val symd = sym.lastKnownDenotation
-          if (symd.validFor.runId != currentRunId && !stillValid(symd))
+          if (symd.validFor.runId != ctx.runId && !stillValid(symd))
             finish(memberDenot(symd.initial.name, allowPrivate = false))
           else if (prefix.isArgPrefixOf(symd))
             finish(argDenot(sym.asType))
@@ -2021,7 +2021,7 @@ object Types {
       lastDenotation match {
         case lastd0: SingleDenotation =>
           val lastd = lastd0.skipRemoved
-          if (lastd.validFor.runId == currentRunId && (checkedPeriod != Nowhere)) finish(lastd.current)
+          if (lastd.validFor.runId == ctx.runId && (checkedPeriod != Nowhere)) finish(lastd.current)
           else lastd match {
             case lastd: SymDenotation =>
               if (stillValid(lastd) && (checkedPeriod != Nowhere)) finish(lastd.current)
@@ -2053,9 +2053,9 @@ object Types {
       if (!d.exists && !allowPrivate && ctx.mode.is(Mode.Interactive))
         // In the IDE we might change a public symbol to private, and would still expect to find it.
         d = memberDenot(prefix, name, true)
-      if (!d.exists && currentPhaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation])
+      if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation])
         // name has changed; try load in earlier phase and make current
-        d = atPhase(currentPhaseId - 1)(memberDenot(name, allowPrivate)).current
+        d = atPhase(ctx.phaseId - 1)(memberDenot(name, allowPrivate)).current
       if (d.isOverloaded)
         d = disambiguate(d)
       d
@@ -2155,7 +2155,7 @@ object Types {
         s"""data race? overwriting $lastSymbol with $sym in type $this,
            |last sym id = ${lastSymbol.id}, new sym id = ${sym.id},
            |last owner = ${lastSymbol.owner}, new owner = ${sym.owner},
-           |period = ${currentPhase} at run ${currentRunId}""")
+           |period = ${currentPhase} at run ${ctx.runId}""")
     }
 
     /** A reference with the initial symbol in `symd` has an info that
@@ -2980,12 +2980,12 @@ object Types {
     private var myWidened: Type = _
 
     private def ensureAtomsComputed()(using Context): Unit =
-      if atomsRunId != currentRunId then
+      if atomsRunId != ctx.runId then
         myAtoms = tp1.atoms | tp2.atoms
         val tp1w = tp1.widenSingletons
         val tp2w = tp2.widenSingletons
         myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
-        atomsRunId = currentRunId
+        atomsRunId = ctx.runId
 
     override def atoms(using Context): Atoms =
       ensureAtomsComputed()
@@ -3070,9 +3070,9 @@ object Types {
     protected[dotc] def computeSignature(using Context): Signature
 
     final override def signature(using Context): Signature = {
-      if (currentRunId != mySignatureRunId) {
+      if (ctx.runId != mySignatureRunId) {
         mySignature = computeSignature
-        if (!mySignature.isUnderDefined) mySignatureRunId = currentRunId
+        if (!mySignature.isUnderDefined) mySignatureRunId = ctx.runId
       }
       mySignature
     }
@@ -4992,14 +4992,14 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
-          LazyRef {
+          LazyRef { (using refCtx) =>
             val ref1 = tp.ref
-            if currentRunId == currentRunId(using mapCtx) then this(ref1)
+            if refCtx.runId == mapCtx.runId then this(ref1)
             else // splice in new run into map context
               val saved = mapCtx
               mapCtx = mapCtx.fresh
-                .setPeriod(Period(currentRunId, currentPhaseId(using mapCtx)))
-                .setRun(ctx.run)
+                .setPeriod(Period(refCtx.runId, mapCtx.phaseId))
+                .setRun(refCtx.run)
               try this(ref1) finally mapCtx = saved
           }
 
