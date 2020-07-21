@@ -752,12 +752,12 @@ then the rest of the quote can refer to this definition.
 }
 ```
 
-To match such a term we need to match the definition and the rest of the code, but we need to expicilty state that the rest of the code may refer to this definition.
+To match such a term we need to match the definition and the rest of the code, but we need to explicitly state that the rest of the code may refer to this definition.
 ```scala
 case '{ val y: Int = $x; $body(y): Int } =>
 ```
-Here `$x` will match any closed expression while `$body(y)` will match expression that is closed under `y`. Then
-the subxpression of type `Expr[Int]` is bound to `body` as an `Expr[Int => Int]`. The extra argument represents the references to `y`. Usually this expression is used in compination with `Expr.betaReduce` to replace the extra argument.
+Here `$x` will match any closed expression while `$body(y)` will match an expression that is closed under `y`. Then
+the subexpression of type `Expr[Int]` is bound to `body` as an `Expr[Int => Int]`. The extra argument represents the references to `y`. Usually this expression is used in combination with `Expr.betaReduce` to replace the extra argument.
 
 ```scala
 inline def eval(inline e: Int): Int = ${ evalExpr('e) }
