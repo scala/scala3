@@ -731,7 +731,7 @@ object Contexts {
       result.init(ctx)
       result
 
-  def comparing[T](op: TypeComparer => T)(using Context): T =
+  inline def comparing[T](inline op: TypeComparer => T)(using Context): T =
     val saved = ctx.base.comparersInUse
     try op(comparer)
     finally ctx.base.comparersInUse = saved
