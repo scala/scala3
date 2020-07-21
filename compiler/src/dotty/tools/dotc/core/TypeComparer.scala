@@ -24,16 +24,10 @@ import typer.Applications.productSelectorTypes
 import reporting.trace
 import NullOpsDecorator.NullOps
 
-final class AbsentContext
-object AbsentContext {
-  implicit val absentContext: AbsentContext = new AbsentContext
-}
-
 /** Provides methods to compare types.
  */
-class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] with PatternTypeConstrainer {
+class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling with PatternTypeConstrainer {
   import TypeComparer._
-  def comparerCtx(using AbsentContext): Context = initctx
 
   val state = ctx.typerState
   def constraint: Constraint = state.constraint
@@ -175,7 +169,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     }
   }
 
-  def isSubType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean = isSubType(tp1, tp2, FreshApprox)
+  def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, FreshApprox)
+
+  override protected def isSub(tp1: Type, tp2: Type)(using Context): Boolean = isSubType(tp1, tp2)
 
   /** The inner loop of the isSubType comparison.
    *  Recursive calls from recur should go to recur directly if the two types
@@ -1769,10 +1765,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   // Type equality =:=
 
   /** Two types are the same if are mutual subtypes of each other */
-  def isSameType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean =
+  def isSameType(tp1: Type, tp2: Type): Boolean =
     if (tp1 eq NoType) false
     else if (tp1 eq tp2) true
     else isSubType(tp1, tp2) && isSubType(tp2, tp1)
+
+  override protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean = isSameType(tp1, tp2)
 
   /** Same as `isSameType` but also can be applied to overloaded TermRefs, where
    *  two overloaded refs are the same if they have pairwise equal alternatives
@@ -2215,7 +2213,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   }
 
   /** A new type comparer of the same type as this one, using the given context. */
-  def copyIn(ctx: Context): TypeComparer = new TypeComparer(ctx)
+  def copyIn(ctx: Context): TypeComparer = new TypeComparer(using ctx)
 
   // ----------- Diagnostics --------------------------------------------------
 
@@ -2469,7 +2467,7 @@ object TypeComparer {
 
   /** Show trace of comparison operations when performing `op` */
   def explaining[T](say: String => Unit)(op: Context ?=> T)(using Context): T = {
-    val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
+    val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(using _))
     val res = try { op(using nestedCtx) } finally { say(nestedCtx.typeComparer.lastTrace()) }
     res
   }
@@ -2482,17 +2480,17 @@ object TypeComparer {
   }
 }
 
-class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+class TrackingTypeComparer(using Context) extends TypeComparer {
   import state.constraint
 
   val footprint: mutable.Set[Type] = mutable.Set[Type]()
 
-  override def bounds(param: TypeParamRef)(implicit nc: AbsentContext): TypeBounds = {
+  override def bounds(param: TypeParamRef)(using Context): TypeBounds = {
     if (param.binder `ne` caseLambda) footprint += param
     super.bounds(param)
   }
 
-  override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit nc: AbsentContext): Boolean = {
+  override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using Context): Boolean = {
     if (param.binder `ne` caseLambda) footprint += param
     super.addOneBound(param, bound, isUpper)
   }
@@ -2630,7 +2628,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 }
 
 /** A type comparer that can record traces of subtype operations */
-class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+class ExplainingTypeComparer(using Context) extends TypeComparer {
   import TypeComparer._
 
   private var indent = 0
@@ -2678,12 +2676,12 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.glb(tp1, tp2)
     }
 
-  override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit nc: AbsentContext): Boolean =
+  override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(using Context): Boolean =
     traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint, constraint = ${ctx.typerState.constraint}") {
       super.addConstraint(param, bound, fromBelow)
     }
 
-  override def copyIn(ctx: Context): ExplainingTypeComparer = new ExplainingTypeComparer(ctx)
+  override def copyIn(using Context): ExplainingTypeComparer = new ExplainingTypeComparer
 
   override def lastTrace(): String = "Subtype trace:" + { try b.toString finally b.clear() }
 }

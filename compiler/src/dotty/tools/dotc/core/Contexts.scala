@@ -735,7 +735,7 @@ object Contexts {
     store = initialStore
       .updated(settingsStateLoc, settingsGroup.defaultState)
       .updated(notNullInfosLoc, Nil)
-    typeComparer = new TypeComparer(this)
+    typeComparer = new TypeComparer(using this)
     searchHistory = new SearchRoot
     gadt = EmptyGadtConstraint
   }

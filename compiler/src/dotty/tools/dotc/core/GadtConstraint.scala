@@ -61,7 +61,7 @@ final class ProperGadtConstraint private(
   private var myConstraint: Constraint,
   private var mapping: SimpleIdentityMap[Symbol, TypeVar],
   private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
-) extends GadtConstraint with ConstraintHandling[Context] {
+) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
   def this() = this(
@@ -140,7 +140,7 @@ final class ProperGadtConstraint private(
       case tv: TypeVar => tv
       case inst =>
         gadts.println(i"instantiated: $sym -> $inst")
-        return if (isUpper) isSubType(inst , bound) else isSubType(bound, inst)
+        return if (isUpper) isSub(inst, bound) else isSub(bound, inst)
     }
 
     val internalizedBound = bound match {
@@ -217,13 +217,11 @@ final class ProperGadtConstraint private(
 
   // ---- Protected/internal -----------------------------------------------
 
-  override def comparerCtx(using Context): Context = ctx
-
   override protected def constraint = myConstraint
   override protected def constraint_=(c: Constraint) = myConstraint = c
 
-  override def isSubType(tp1: Type, tp2: Type)(using Context): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
-  override def isSameType(tp1: Type, tp2: Type)(using Context): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
+  override protected def isSub(tp1: Type, tp2: Type)(using Context): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
+  override protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
 
    override def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds =
      constraint.nonParamBounds(param) match {
