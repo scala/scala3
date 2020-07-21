@@ -143,7 +143,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val (uptoSuperStats, remainingConstrStats) = splitAtSuper(impl.constr.rhs.asInstanceOf[Block].stats)
         val clInitSymbol: TermSymbol =
           if (clinits.nonEmpty) clinits.head.symbol.asTerm
-          else ctx.newSymbol(
+          else newSymbol(
             claszSymbol,
             nme.STATIC_CONSTRUCTOR,
             JavaStatic | Method,
@@ -152,7 +152,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             coord = claszSymbol.coord
           )
 
-        val moduleField = ctx.newSymbol(
+        val moduleField = newSymbol(
             claszSymbol,
             str.MODULE_INSTANCE_FIELD.toTermName,
             JavaStatic | Final,
