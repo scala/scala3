@@ -116,8 +116,18 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         // Because the assigments to both the module instance fields, and the fields of the module itself
         // are in the <clinit>, these fields can be static + final.
 
-        // TODO should we do this transformation earlier, say in Constructors? Or would that just cause
+        // Should we do this transformation earlier, say in Constructors? Or would that just cause
         // pain for scala-{js, native}?
+        //
+        // @sjrd (https://github.com/lampepfl/dotty/pull/9181#discussion_r457458205):
+        // moving that before the back-end would make things significantly more complicated for
+        // Scala.js and Native. Both have a first-class concept of ModuleClass, and encode the
+        // singleton pattern of MODULE$ in a completely different way. In the Scala.js IR, there
+        // even isn't anything that corresponds to MODULE$ per se.
+        //
+        // So if you move this before the back-end, then Scala.js and Scala Native will have to
+        // reverse all the effects of this transformation, which would be counter-productive.
+
 
         // TODO: enable once we change lazy val encoding
         //
