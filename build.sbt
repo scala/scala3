@@ -43,4 +43,4 @@ unmanagedJars in Compile += dokkaJavaApiJar
 
 fork.in(run) := true
 
-scalacOptions in Compile += "-language:implicitConversion"
+scalacOptions in Compile += "-language:implicitConversions"
