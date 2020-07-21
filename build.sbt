@@ -36,6 +36,9 @@ buildDokkaApi := {
   dokkaJavaApiJar
 }
 
+val generateExapleDocumentation = taskKey[Unit]("Generate example documentation")
+generateExapleDocumentation := run.in(Compile).toTask("").value // TODO 
+
 unmanagedJars in Compile += dokkaJavaApiJar
 
 // Uncomment to debug dokka processing (require to run debug in listen mode on 5005 port)
