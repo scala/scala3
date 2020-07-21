@@ -229,8 +229,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      */
     final def checkFile(testSource: TestSource): Option[JFile] = (testSource match {
       case ts: JointCompilationSource =>
-        ts.files.collectFirst { case f if !f.isDirectory => new JFile(f.getPath.replaceFirst("\\.scala$", ".check")) }
-
+        ts.files.collectFirst {
+          case f if !f.isDirectory =>
+            new JFile(f.getPath.replaceFirst("\\.(scala|java)$", ".check"))
+        }
       case ts: SeparateCompilationSource =>
         Option(new JFile(ts.dir.getPath + ".check"))
     }).filter(_.exists)
@@ -679,7 +681,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def getErrorMapAndExpectedCount(files: Seq[JFile]): (HashMap[String, Integer], Int) = {
       val errorMap = new HashMap[String, Integer]()
       var expectedErrors = 0
-      files.filter(_.getName.endsWith(".scala")).foreach { file =>
+      files.filter(isSourceFile).foreach { file =>
         Using(Source.fromFile(file, "UTF-8")) { source =>
           source.getLines.zipWithIndex.foreach { case (line, lineNbr) =>
             val errors = line.toSeq.sliding("// error".length).count(_.unwrap == "// error")
