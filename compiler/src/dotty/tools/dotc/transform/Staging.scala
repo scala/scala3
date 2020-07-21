@@ -64,7 +64,7 @@ class Staging extends MacroTransform {
       }
 
       tree.tpe match {
-        case tpe @ TypeRef(prefix, _) if tpe.typeSymbol eq defn.QuotedType_splice =>
+        case tpe @ TypeRef(prefix, _) if tpe.typeSymbol.isTypeSplice =>
           // Type splices must have a know term ref, usually to an implicit argument
           // This is mostly intended to catch `quoted.Type[T]#splice` types which should just be `T`
           assert(prefix.isInstanceOf[TermRef] || prefix.isInstanceOf[ThisType], prefix)

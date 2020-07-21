@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.reporting._
+import dotty.tools.dotc.transform.SymUtils.decorateSymbol
 import dotty.tools.dotc.typer.Implicits._
 import dotty.tools.dotc.typer.Inferencing._
 import dotty.tools.dotc.typer.ProtoTypes._
@@ -233,7 +234,7 @@ trait QuotesAndSplices {
       val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
       val typePatBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(using Context) = tree match {
-        case Typed(Apply(fn, pat :: Nil), tpt) if fn.symbol == defn.InternalQuoted_exprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
+        case Typed(Apply(fn, pat :: Nil), tpt) if fn.symbol.isExprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           val tpt1 = transform(tpt) // Transform type bindings
           val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), tpt1 :: Nil)
           val newSplice = ref(defn.InternalQuoted_exprSplice).appliedToType(tpt1.tpe).appliedTo(Typed(pat, exprTpt))
@@ -246,7 +247,7 @@ trait QuotesAndSplices {
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
             patBuf += pat1
           }
-        case Apply(fn, pat :: Nil) if fn.symbol == defn.InternalQuoted_exprSplice =>
+        case Apply(fn, pat :: Nil) if fn.symbol.isExprSplice =>
           try ref(defn.InternalQuotedMatcher_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
           finally {
             val patType = pat.tpe.widen
@@ -254,7 +255,7 @@ trait QuotesAndSplices {
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
             patBuf += pat1
           }
-        case Select(pat, _) if tree.symbol == defn.QuotedType_splice =>
+        case Select(pat, _) if tree.symbol.isTypeSplice =>
           val sym = tree.tpe.dealias.typeSymbol
           if sym.exists then
             val tdef = TypeDef(sym.asType).withSpan(sym.span)
@@ -321,7 +322,7 @@ trait QuotesAndSplices {
         val isFreshTypeBindings = freshTypeBindings.map(_.symbol).toSet
         val typeMap = new TypeMap() {
           def apply(tp: Type): Type = tp match {
-            case tp: TypeRef if tp.typeSymbol == defn.QuotedType_splice =>
+            case tp: TypeRef if tp.typeSymbol.isTypeSplice =>
               val tp1 = tp.dealias
               if (isFreshTypeBindings(tp1.typeSymbol)) tp1
               else tp
@@ -402,7 +403,7 @@ trait QuotesAndSplices {
     class ReplaceBindings extends TypeMap() {
       override def apply(tp: Type): Type = tp match {
         case tp: TypeRef =>
-          val tp1 = if (tp.typeSymbol == defn.QuotedType_splice) tp.dealias else tp
+          val tp1 = if (tp.typeSymbol.isTypeSplice) tp.dealias else tp
           typeBindings.get(tp1.typeSymbol).fold(tp)(_.symbol.typeRef)
         case tp => mapOver(tp)
       }

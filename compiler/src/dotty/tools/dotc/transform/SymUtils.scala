@@ -208,9 +208,13 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isQuote(using Context): Boolean =
     self == defn.InternalQuoted_exprQuote || self == defn.InternalQuoted_typeQuote
 
-  /** Is symbol a splice operation? */
-  def isSplice(using Context): Boolean =
-    self == defn.InternalQuoted_exprSplice || self == defn.InternalQuoted_exprNestedSplice || self == defn.QuotedType_splice
+  /** Is symbol a term splice operation? */
+  def isExprSplice(using Context): Boolean =
+    self == defn.InternalQuoted_exprSplice || self == defn.InternalQuoted_exprNestedSplice
+
+  /** Is symbol a type splice operation? */
+  def isTypeSplice(using Context): Boolean =
+    self == defn.QuotedType_splice
 
   /** Is symbol an extension method? Accessors are excluded since
    *  after the getters phase collective extension objects become accessors

@@ -1208,8 +1208,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     }
 
     private def checkStaging(tree: Tree): tree.type =
-      val sym = tree.symbol
-      if sym == defn.InternalQuoted_exprQuote || sym == defn.InternalQuoted_typeQuote then
+      if tree.symbol.isQuote then
         ctx.compilationUnit.needsStaging = true
       tree
 
