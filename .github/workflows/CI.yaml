@@ -1,0 +1,51 @@
+name: CI for context buddy
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v2
+      - run: git fetch --prune --unshallow --tags
+
+      - name: Cache Coursier
+        uses: actions/cache@v1
+        with:
+          path: ~/.cache/coursier
+          key: sbt-coursier-cache
+      - name: Cache SBT
+        uses: actions/cache@v1
+        with:
+          path: ~/.sbt
+          key: sbt-${{ hashFiles('**/build.sbt') }}
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: Compile and test
+        run: sbt compile test
+
+      - name: Generate test documentation
+        run: sbt generateExapleDocumentation       
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Publish all
+        run: |
+              dest=s3://contextbuddy/dokka-dotty/$([ $GITHUB_REF = "master" ] && echo master || echo pr-$(echo $GITHUB_REF | cut '-d/' -f3))
+              aws s3 rm $dest
+              aws s3 sync output $dest
+
+
