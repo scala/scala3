@@ -26,6 +26,7 @@ import ErrorReporting._
 import Checking._
 import Inferencing._
 import EtaExpansion.etaExpand
+import TypeComparer.CompareResult
 import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
@@ -3282,23 +3283,22 @@ class Typer extends Namer
               |To turn this error into a warning, pass -Xignore-scala2-macros to the compiler""".stripMargin, tree.srcPos.startPos)
           tree
         }
-      else if (tree.tpe.widenExpr <:< pt) {
-        if (ctx.typeComparer.GADTused && pt.isValueType)
+      else ctx.typeComparer.testSubType(tree.tpe.widenExpr, pt) match
+        case CompareResult.Fail =>
+          wtp match
+            case wtp: MethodType => missingArgs(wtp)
+            case _ =>
+              typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
+              //typr.println(TypeComparer.explained(tree.tpe <:< pt))
+              adaptToSubType(wtp)
+        case CompareResult.OKwithGADTUsed if pt.isValueType =>
           // Insert an explicit cast, so that -Ycheck in later phases succeeds.
           // I suspect, but am not 100% sure that this might affect inferred types,
           // if the expected type is a supertype of the GADT bound. It would be good to come
           // up with a test case for this.
           tree.cast(pt)
-        else
-          tree
-      }
-      else wtp match {
-        case wtp: MethodType => missingArgs(wtp)
         case _ =>
-          typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
-          //typr.println(TypeComparer.explained(tree.tpe <:< pt))
-          adaptToSubType(wtp)
-      }
+          tree
     }
 
     // Follow proxies and approximate type paramrefs by their upper bound

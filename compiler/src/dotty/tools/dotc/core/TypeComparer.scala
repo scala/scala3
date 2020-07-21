@@ -133,6 +133,12 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
     }
   }
 
+  def testSubType(tp1: Type, tp2: Type): CompareResult =
+    GADTused = false
+    if !topLevelSubType(tp1, tp2) then CompareResult.Fail
+    else if GADTused then CompareResult.OKwithGADTUsed
+    else CompareResult.OK
+
   /** The current approximation state. See `ApproxState`. */
   private var approx: ApproxState = FreshApprox
   protected def approxState: ApproxState = approx
@@ -141,7 +147,7 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
    *  every time we compare components of the previous pair of types.
    *  This type is used for capture conversion in `isSubArgs`.
    */
-  private [this] var leftRoot: Type = _
+  private [this] var leftRoot: Type = null
 
   /** Are we forbidden from recording GADT constraints? */
   private var frozenGadt = false
@@ -2492,6 +2498,9 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
 }
 
 object TypeComparer {
+
+  enum CompareResult:
+    case OK, Fail, OKwithGADTUsed
 
   /** Class for unification variables used in `natValue`. */
   private class AnyConstantType extends UncachedGroundType with ValueType {
