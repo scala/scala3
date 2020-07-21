@@ -17,24 +17,32 @@ import Decorators._
 
 object ImportInfo {
 
-  type RootRef = (
-    () => TermRef,  // a lazy reference to the root module to be imported
-    Boolean         // true if this will refer to scala.Predef
-  )
+  case class RootRef(refFn: () => TermRef, isPredef: Boolean = false)
 
-  /** The import info for a root import from given symbol `sym` */
-  def rootImport(rootRef: RootRef)(using Context): ImportInfo =
-    val (refFn, isPredef) = rootRef
+  /** The import info for a root import */
+  def rootImport(ref: RootRef)(using Context): ImportInfo =
     var selectors =
       untpd.ImportSelector(untpd.Ident(nme.WILDCARD))  // import all normal members...
       :: untpd.ImportSelector(untpd.Ident(nme.EMPTY))  // ... and also all given members
       :: Nil
-    if isPredef then                                   // do not import any2stringadd
+    if ref.isPredef then                               // do not import any2stringadd
       selectors = untpd.ImportSelector(untpd.Ident(nme.any2stringadd), untpd.Ident(nme.WILDCARD))
         :: selectors
-    def expr(using Context) = tpd.Ident(refFn())
-    def imp(using Context) = tpd.Import(expr, selectors)
-    ImportInfo(imp.symbol, selectors, None, isRootImport = true)
+
+    def sym(using Context) =
+      val expr = tpd.Ident(ref.refFn()) // refFn must be called in the context of ImportInfo.sym
+      tpd.Import(expr, selectors).symbol
+
+    ImportInfo(sym, selectors, None, isRootImport = true)
+
+  extension (c: Context):
+    def withRootImports(rootRefs: List[RootRef])(using Context): Context =
+      rootRefs.foldLeft(c)((ctx, ref) => ctx.fresh.setImportInfo(rootImport(ref)))
+
+    def withRootImports: Context =
+      given Context = c
+      c.withRootImports(defn.rootImportFns)
+
 }
 
 /** Info relating to an import clause
@@ -164,7 +172,7 @@ class ImportInfo(symf: Context ?=> Symbol,
         case Some(symName) => defn.ShadowableImportNames.contains(symName)
         case None => false
       myUnimported =
-        if maybeShadowsRoot && defn.RootImportTypes.exists(_.symbol == sym) then sym
+        if maybeShadowsRoot && defn.rootImportTypes.exists(_.symbol == sym) then sym
         else NoSymbol
       assert(myUnimported != null)
     myUnimported

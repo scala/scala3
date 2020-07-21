@@ -1140,28 +1140,61 @@ class Definitions {
   def isPredefClass(cls: Symbol): Boolean =
     (cls.owner eq ScalaPackageClass) && predefClassNames.contains(cls.name)
 
-  val StaticRootImportFns: List[RootRef] = List[RootRef](
-    (() => JavaLangPackageVal.termRef, false),
-    (() => ScalaPackageVal.termRef, false)
+  private val JavaImportFns: List[RootRef] = List(
+    RootRef(() => JavaLangPackageVal.termRef)
   )
 
-  val PredefImportFns: List[RootRef] = List[RootRef](
-    (() => ScalaPredefModule.termRef, true),
-    (() => DottyPredefModule.termRef, false)
+  private val ScalaImportFns: List[RootRef] =
+    JavaImportFns :+
+    RootRef(() => ScalaPackageVal.termRef)
+
+  private val PredefImportFns: List[RootRef] = List(
+    RootRef(() => ScalaPredefModule.termRef, isPredef=true),
+    RootRef(() => DottyPredefModule.termRef)
   )
 
-  @tu lazy val RootImportFns: List[RootRef] =
-    if (ctx.settings.YnoImports.value) Nil
-    else if (ctx.settings.YnoPredef.value) StaticRootImportFns
-    else StaticRootImportFns ++ PredefImportFns
+  @tu private lazy val JavaRootImportFns: List[RootRef] =
+    if ctx.settings.YnoImports.value then Nil
+    else JavaImportFns
 
-  @tu lazy val ShadowableImportNames: Set[TermName] = Set("Predef", "DottyPredef").map(_.toTermName)
-  @tu lazy val RootImportTypes: List[TermRef] = RootImportFns.map(_._1())
+  @tu private lazy val ScalaRootImportFns: List[RootRef] =
+    if ctx.settings.YnoImports.value then Nil
+    else if ctx.settings.YnoPredef.value then ScalaImportFns
+    else ScalaImportFns ++ PredefImportFns
+
+  @tu private lazy val JavaRootImportTypes: List[TermRef] = JavaRootImportFns.map(_.refFn())
+  @tu private lazy val ScalaRootImportTypes: List[TermRef] = ScalaRootImportFns.map(_.refFn())
+  @tu private lazy val JavaUnqualifiedOwnerTypes: Set[NamedType] = unqualifiedTypes(JavaRootImportTypes)
+  @tu private lazy val ScalaUnqualifiedOwnerTypes: Set[NamedType] = unqualifiedTypes(ScalaRootImportTypes)
+
+  /** Are we compiling a java source file? */
+  private def isJavaContext(using Context): Boolean =
+    val unit = ctx.compilationUnit
+    unit != null && unit.isJava
+
+  private def unqualifiedTypes(refs: List[TermRef]) =
+    val types = refs.toSet[NamedType]
+    types ++ types.map(_.symbol.moduleClass.typeRef)
+
+  /** Lazy references to the root imports */
+  def rootImportFns(using Context): List[RootRef] =
+    if isJavaContext then JavaRootImportFns
+    else ScalaRootImportFns
+
+  /** Root types imported by default */
+  def rootImportTypes(using Context): List[TermRef] =
+    if isJavaContext then JavaRootImportTypes
+    else ScalaRootImportTypes
 
   /** Modules whose members are in the default namespace and their module classes */
-  @tu lazy val UnqualifiedOwnerTypes: Set[NamedType] =
-    RootImportTypes.toSet[NamedType] ++ RootImportTypes.map(_.symbol.moduleClass.typeRef)
+  def unqualifiedOwnerTypes(using Context): Set[NamedType] =
+    if isJavaContext then JavaUnqualifiedOwnerTypes
+    else ScalaUnqualifiedOwnerTypes
 
+  /** Names of the root import symbols that can be hidden by other imports */
+  @tu lazy val ShadowableImportNames: Set[TermName] = Set("Predef", "DottyPredef").map(_.toTermName)
+
+  /** Class symbols for which no class exist at runtime */
   @tu lazy val NotRuntimeClasses: Set[Symbol] = Set(AnyClass, AnyValClass, NullClass, NothingClass)
 
   /** Classes that are known not to have an initializer irrespective of

@@ -101,7 +101,7 @@ object JavaParsers {
     def javaLangObject(): Tree = javaLangDot(tpnme.Object)
 
     def arrayOf(tpt: Tree): AppliedTypeTree =
-      AppliedTypeTree(Ident(nme.Array.toTypeName), List(tpt))
+      AppliedTypeTree(scalaDot(tpnme.Array), List(tpt))
 
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean): Template = {
       def pullOutFirstConstr(stats: List[Tree]): (Tree, List[Tree]) = stats match {

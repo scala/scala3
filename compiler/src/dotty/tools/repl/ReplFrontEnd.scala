@@ -4,6 +4,7 @@ package repl
 import dotc.typer.FrontEnd
 import dotc.CompilationUnit
 import dotc.core.Contexts._
+import dotc.typer.ImportInfo.withRootImports
 
 /** A customized `FrontEnd` for the REPL
  *
@@ -17,10 +18,10 @@ private[repl] class REPLFrontEnd extends FrontEnd {
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     assert(units.size == 1) // REPl runs one compilation unit at a time
-
-    val unitContext = ctx.fresh.setCompilationUnit(units.head)
+    val unit = units.head
+    val unitContext = ctx.fresh.setCompilationUnit(unit).withRootImports
     enterSyms(using unitContext)
     typeCheck(using unitContext)
-    List(unitContext.compilationUnit)
+    List(unit)
   }
 }

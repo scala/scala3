@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.transform.{PostTyper, Staging}
-import dotty.tools.dotc.typer.ImportInfo
+import dotty.tools.dotc.typer.ImportInfo._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.{ParsedComment, SourceFile}
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
@@ -48,21 +48,19 @@ class ReplCompiler extends Compiler {
       def importPreviousRun(id: Int)(using Context) = {
         // we first import the wrapper object id
         val path = nme.EMPTY_PACKAGE ++ "." ++ objectNames(id)
-        def importWrapper(c: Context, importGiven: Boolean) = {
-          val importInfo = ImportInfo.rootImport(() =>
-            requiredModuleRef(path), importGiven)(using c)
-          c.fresh.setNewScope.setImportInfo(importInfo)
-        }
-        val ctx0 = importWrapper(importWrapper(ctx, false), true)
+        val ctx0 = ctx.fresh
+          .setNewScope
+          .withRootImports(RootRef(() => requiredModuleRef(path)) :: Nil)
 
         // then its user defined imports
         val imports = state.imports.getOrElse(id, Nil)
-        if (imports.isEmpty) ctx0
+        if imports.isEmpty then ctx0
         else imports.foldLeft(ctx0.fresh.setNewScope)((ctx, imp) =>
           importContext(imp)(using ctx))
       }
 
-      (1 to state.objectIndex).foldLeft(super.rootContext)((ctx, id) =>
+      val rootCtx = super.rootContext.withRootImports
+      (1 to state.objectIndex).foldLeft(rootCtx)((ctx, id) =>
         importPreviousRun(id)(using ctx))
     }
   }
