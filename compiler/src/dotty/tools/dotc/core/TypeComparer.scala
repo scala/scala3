@@ -23,15 +23,31 @@ import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
 import NullOpsDecorator._
+import annotation.constructorOnly
 
 /** Provides methods to compare types.
  */
-class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling with PatternTypeConstrainer {
+class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling, PatternTypeConstrainer {
   import TypeComparer._
+  Stats.record("TypeComparer")
 
-  val state = ctx.typerState
+  private var myContext: Context = initctx
+  def comparerContext: Context = myContext
+
+  protected given [DummySoItsADef] as Context = myContext
+
+  protected var state: TyperState = null
   def constraint: Constraint = state.constraint
   def constraint_=(c: Constraint): Unit = state.constraint = c
+
+  def init(c: Context): Unit =
+    myContext = c
+    state = c.typerState
+    monitored = false
+    GADTused = false
+    recCount = 0
+    needsGc = false
+    if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private var recCount = 0
@@ -40,6 +56,12 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
   private var needsGc = false
 
   private var canCompareAtoms: Boolean = true // used for internal consistency checking
+
+  /** Indicates whether the subtype check used GADT bounds */
+  private var GADTused: Boolean = false
+
+  private var myInstance: TypeComparer = this
+  def currentInstance: TypeComparer = myInstance
 
   /** Is a subtype check in progress? In that case we may not
    *  permanently instantiate type variables, because the corresponding
@@ -59,50 +81,24 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
   private var successCount = 0
   private var totalCount = 0
 
-  private var myAnyClass: ClassSymbol = null
-  private var myAnyKindClass: ClassSymbol = null
-  private var myNothingClass: ClassSymbol = null
-  private var myNullClass: ClassSymbol = null
-  private var myObjectClass: ClassSymbol = null
-  private var myAnyType: TypeRef = null
-  private var myAnyKindType: TypeRef = null
-  private var myNothingType: TypeRef = null
+  protected val AnyClass     = defn.AnyClass
+  protected val AnyKindClass = defn.AnyKindClass
+  protected val NothingClass = defn.NothingClass
+  protected val NullClass    = defn.NullClass
+  protected val ObjectClass  = defn.ObjectClass
+  protected val AnyType      = AnyClass.typeRef
+  protected val AnyKindType  = AnyKindClass.typeRef
+  protected val NothingType  = NothingClass.typeRef
 
-  def AnyClass: ClassSymbol = {
-    if (myAnyClass == null) myAnyClass = defn.AnyClass
-    myAnyClass
-  }
-  def AnyKindClass: ClassSymbol = {
-    if (myAnyKindClass == null) myAnyKindClass = defn.AnyKindClass
-    myAnyKindClass
-  }
-  def NothingClass: ClassSymbol = {
-    if (myNothingClass == null) myNothingClass = defn.NothingClass
-    myNothingClass
-  }
-  def NullClass: ClassSymbol = {
-    if (myNullClass == null) myNullClass = defn.NullClass
-    myNullClass
-  }
-  def ObjectClass: ClassSymbol = {
-    if (myObjectClass == null) myObjectClass = defn.ObjectClass
-    myObjectClass
-  }
-  def AnyType: TypeRef = {
-    if (myAnyType == null) myAnyType = AnyClass.typeRef
-    myAnyType
-  }
-  def AnyKindType: TypeRef = {
-    if (myAnyKindType == null) myAnyKindType = AnyKindClass.typeRef
-    myAnyKindType
-  }
-  def NothingType: TypeRef = {
-    if (myNothingType == null) myNothingType = NothingClass.typeRef
-    myNothingType
-  }
-
-  /** Indicates whether a previous subtype check used GADT bounds */
-  var GADTused: Boolean = false
+  override def checkReset() =
+    super.checkReset()
+    assert(pendingSubTypes == null || pendingSubTypes.isEmpty)
+    assert(canCompareAtoms == true)
+    assert(successCount == 0)
+    assert(totalCount == 0)
+    assert(approx == FreshApprox)
+    assert(leftRoot == null)
+    assert(frozenGadt == false)
 
   /** Record that GADT bounds of `sym` were used in a subtype check.
    *  But exclude constructor type parameters, as these are aliased
@@ -206,7 +202,7 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
         //}
         assert(!ctx.settings.YnoDeepSubtypes.value)
         if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
-          report.log(TypeComparer.explained(summon[Context].typeComparer.isSubType(tp1, tp2, approx)))
+          report.log(explained(_.isSubType(tp1, tp2, approx)))
       }
       // Eliminate LazyRefs before checking whether we have seen a type before
       val normalize = new TypeMap {
@@ -240,7 +236,7 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
     def firstTry: Boolean = tp2 match {
       case tp2: NamedType =>
         def compareNamed(tp1: Type, tp2: NamedType): Boolean =
-          val ctx = comparerCtx
+          val ctx = comparerContext
           given Context = ctx // optimization for performance
           val info2 = tp2.info
           info2 match
@@ -1193,16 +1189,16 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
     }
 
     // begin recur
-    if (tp2 eq NoType) false
-    else if (tp1 eq tp2) true
-    else {
+    if tp2 eq NoType then false
+    else if tp1 eq tp2 then true
+    else
       val saved = constraint
       val savedSuccessCount = successCount
-      try {
-        recCount = recCount + 1
-        if (recCount >= Config.LogPendingSubTypesThreshold) monitored = true
-        val result = if (monitored) monitoredIsSubType else firstTry
-        recCount = recCount - 1
+      try
+        recCount += 1
+        if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
+        val result = if monitored then monitoredIsSubType else firstTry
+        recCount -= 1
         if !result then
           state.constraint = saved
         else if recCount == 0 && needsGc then
@@ -1210,16 +1206,12 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
           needsGc = false
         if (Stats.monitored) recordStatistics(result, savedSuccessCount)
         result
-      }
-      catch {
-        case NonFatal(ex) =>
-          if (ex.isInstanceOf[AssertionError]) showGoal(tp1, tp2)
-          recCount -= 1
-          state.constraint = saved
-          successCount = savedSuccessCount
-          throw ex
-      }
-    }
+      catch case NonFatal(ex) =>
+        if ex.isInstanceOf[AssertionError] then showGoal(tp1, tp2)
+        recCount -= 1
+        state.constraint = saved
+        successCount = savedSuccessCount
+        throw ex
   }
 
   private def nonExprBaseType(tp: Type, cls: Symbol)(using Context): Type =
@@ -1929,9 +1921,6 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
     }
   }
 
-  /** The greatest lower bound of a list types */
-  final def glb(tps: List[Type]): Type = tps.foldLeft(AnyType: Type)(glb)
-
   def widenInUnions(using Context): Boolean =
     migrateTo3 || ctx.erasedTypes
 
@@ -1966,15 +1955,11 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
         def widen(tp: Type) = if (widenInUnions) tp.widen else tp.widenIfUnstable
         val tp1w = widen(tp1)
         val tp2w = widen(tp2)
-        if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w)
+        if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w, canConstrain)
         else orType(tp1w, tp2w) // no need to check subtypes again
       }
       mergedLub(tp1.stripLazyRef, tp2.stripLazyRef)
   }
-
-  /** The least upper bound of a list of types */
-  final def lub(tps: List[Type]): Type =
-    tps.foldLeft(NothingType: Type)(lub(_,_, canConstrain = false))
 
   /** Try to produce joint arguments for a lub `A[T_1, ..., T_n] | A[T_1', ..., T_n']` using
    *  the following strategies:
@@ -2285,9 +2270,6 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
       false
   }
 
-  /** A new type comparer of the same type as this one, using the given context. */
-  def copyIn(ctx: Context): TypeComparer = new TypeComparer(using ctx)
-
   // ----------- Diagnostics --------------------------------------------------
 
   /** A hook for showing subtype traces. Overridden in ExplainingTypeComparer */
@@ -2332,9 +2314,6 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
       totalCount = 0
     }
   }
-
-  /** Returns last check's debug mode, if explicitly enabled. */
-  def lastTrace(): String = ""
 
   /** Does `tycon` have a field with type `tparam`? Special cased for `scala.*:`
    *  as that type is artificially added to tuples. */
@@ -2495,6 +2474,24 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
         false
     }
   }
+
+  protected def explainingTypeComparer = ExplainingTypeComparer(comparerContext)
+  protected def trackingTypeComparer = TrackingTypeComparer(comparerContext)
+
+  private def inSubComparer[T, Cmp <: TypeComparer](comparer: Cmp)(op: Cmp => T): T =
+    val saved = myInstance
+    myInstance = comparer
+    try op(comparer)
+    finally myInstance = saved
+
+  /** The trace of comparison operations when performing `op` */
+  def explained[T](op: ExplainingTypeComparer => T)(using Context): String =
+    val cmp = explainingTypeComparer
+    inSubComparer(cmp)(op)
+    cmp.lastTrace()
+
+  def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
+    inSubComparer(trackingTypeComparer)(op)
 }
 
 object TypeComparer {
@@ -2541,23 +2538,106 @@ object TypeComparer {
    */
   val FreshApprox: ApproxState = new ApproxState(4)
 
-  /** Show trace of comparison operations when performing `op` */
-  def explaining[T](say: String => Unit)(op: Context ?=> T)(using Context): T = {
-    val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(using _))
-    val res = try { op(using nestedCtx) } finally { say(nestedCtx.typeComparer.lastTrace()) }
-    res
-  }
+  def topLevelSubType(tp1: Type, tp2: Type)(using Context): Boolean =
+    comparing(_.topLevelSubType(tp1, tp2))
 
-  /** Like [[explaining]], but returns the trace instead */
-  def explained[T](op: Context ?=> T)(using Context): String = {
-    var trace: String = null
-    try { explaining(trace = _)(op) } catch { case ex: Throwable => ex.printStackTrace }
-    trace
-  }
+  def isSubType(tp1: Type, tp2: Type)(using Context): Boolean =
+    comparing(_.isSubType(tp1, tp2))
+
+  def isSameType(tp1: Type, tp2: Type)(using Context): Boolean =
+    comparing(_.isSameType(tp1, tp2))
+
+  def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
+    comparing(_.isSubTypeWhenFrozen(tp1, tp2))
+
+  def testSubType(tp1: Type, tp2: Type)(using Context): CompareResult =
+    comparing(_.testSubType(tp1, tp2))
+
+  def isSameTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
+    comparing(_.isSameTypeWhenFrozen(tp1, tp2))
+
+  def isSameRef(tp1: Type, tp2: Type)(using Context): Boolean =
+    comparing(_.isSameRef(tp1, tp2))
+
+  def matchesType(tp1: Type, tp2: Type, relaxed: Boolean)(using Context): Boolean =
+    comparing(_.matchesType(tp1, tp2, relaxed))
+
+  def matchingMethodParams(tp1: MethodType, tp2: MethodType)(using Context): Boolean =
+    comparing(_.matchingMethodParams(tp1, tp2))
+
+  def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false)(using Context): Type =
+    comparing(_.lub(tp1, tp2, canConstrain))
+
+  /** The least upper bound of a list of types */
+  final def lub(tps: List[Type])(using Context): Type =
+    tps.foldLeft(defn.NothingType: Type)(lub(_,_))
+
+  def lubArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo], canConstrain: Boolean = false)(using Context): List[Type] =
+    comparing(_.lubArgs(args1, args2, tparams, canConstrain))
+
+  def glb(tp1: Type, tp2: Type)(using Context): Type =
+    comparing(_.glb(tp1, tp2))
+
+  /** The greatest lower bound of a list types */
+  def glb(tps: List[Type])(using Context): Type =
+    tps.foldLeft(defn.AnyType: Type)(glb)
+
+  def orType(using Context)(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type =
+    comparing(_.orType(tp1, tp2, isErased))
+
+  def andType(using Context)(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type =
+    comparing(_.andType(tp1, tp2, isErased))
+
+  def provablyDisjoint(tp1: Type, tp2: Type)(using Context): Boolean =
+    comparing(_.provablyDisjoint(tp1, tp2))
+
+  def constValue(tp: Type)(using Context): Option[Constant] =
+    comparing(_.constValue(tp))
+
+  def subtypeCheckInProgress(using Context): Boolean =
+    comparing(_.subtypeCheckInProgress)
+
+  def instType(tvar: TypeVar)(using Context): Type =
+    comparing(_.instType(tvar))
+
+  def instanceType(param: TypeParamRef, fromBelow: Boolean)(using Context): Type =
+    comparing(_.instanceType(param, fromBelow))
+
+  def approximation(param: TypeParamRef, fromBelow: Boolean)(using Context): Type =
+    comparing(_.approximation(param, fromBelow))
+
+  def bounds(param: TypeParamRef)(using Context): TypeBounds =
+    comparing(_.bounds(param))
+
+  def fullBounds(param: TypeParamRef)(using Context): TypeBounds =
+    comparing(_.fullBounds(param))
+
+  def fullLowerBound(param: TypeParamRef)(using Context): Type =
+    comparing(_.fullLowerBound(param))
+
+  def fullUpperBound(param: TypeParamRef)(using Context): Type =
+    comparing(_.fullUpperBound(param))
+
+  def addToConstraint(tl: TypeLambda, tvars: List[TypeVar])(using Context): Boolean =
+    comparing(_.addToConstraint(tl, tvars))
+
+  def widenInferred(inst: Type, bound: Type)(using Context): Type =
+    comparing(_.widenInferred(inst, bound))
+
+  def constrainPatternType(pat: Type, scrut: Type)(using Context): Boolean =
+    comparing(_.constrainPatternType(pat, scrut))
+
+  def explained[T](op: ExplainingTypeComparer => T)(using Context): String =
+    comparing(_.explained(op))
+
+  def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
+    comparing(_.tracked(op))
 }
 
-class TrackingTypeComparer(using Context) extends TypeComparer {
-  import state.constraint
+class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+  init(initctx)
+
+  override def trackingTypeComparer = this
 
   val footprint: mutable.Set[Type] = mutable.Set[Type]()
 
@@ -2704,8 +2784,12 @@ class TrackingTypeComparer(using Context) extends TypeComparer {
 }
 
 /** A type comparer that can record traces of subtype operations */
-class ExplainingTypeComparer(using Context) extends TypeComparer {
+class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   import TypeComparer._
+
+  init(initctx)
+
+  override def explainingTypeComparer = this
 
   private var indent = 0
   private val b = new StringBuilder
@@ -2757,7 +2841,5 @@ class ExplainingTypeComparer(using Context) extends TypeComparer {
       super.addConstraint(param, bound, fromBelow)
     }
 
-  override def copyIn(using Context): ExplainingTypeComparer = new ExplainingTypeComparer
-
-  override def lastTrace(): String = "Subtype trace:" + { try b.toString finally b.clear() }
+  def lastTrace(): String = "Subtype trace:" + { try b.toString finally b.clear() }
 }

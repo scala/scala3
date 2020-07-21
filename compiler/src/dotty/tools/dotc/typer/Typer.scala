@@ -168,7 +168,7 @@ class Typer extends Namer
        *                   the previous (inner) definition. This models what scalac does.
        */
       def checkNewOrShadowed(found: Type, newPrec: BindingPrec, scala2pkg: Boolean = false)(using Context): Type =
-        if !previous.exists || ctx.typeComparer.isSameRef(previous, found) then
+        if !previous.exists || TypeComparer.isSameRef(previous, found) then
            found
         else if (prevCtx.scope eq ctx.scope)
                 && (newPrec == Definition || newPrec == NamedImport && prevPrec == WildImport)
@@ -768,7 +768,9 @@ class Typer extends Namer
       def handlePattern: Tree = {
         val tpt1 = typedTpt
         if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
-          withMode(Mode.GadtConstraintInference)(ctx.typeComparer.constrainPatternType(tpt1.tpe, pt))
+          withMode(Mode.GadtConstraintInference) {
+            TypeComparer.constrainPatternType(tpt1.tpe, pt)
+          }
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
       }
@@ -1616,7 +1618,7 @@ class Typer extends Namer
         else if (tree.elems.isEmpty && tree.isInstanceOf[Trees.JavaSeqLiteral[?]])
           defn.ObjectType // generic empty Java varargs are of type Object[]
         else
-          ctx.typeComparer.lub(elems1.tpes)
+          TypeComparer.lub(elems1.tpes)
       val elemtpt1 = typed(tree.elemtpt, elemtptType)
       assign(elems1, elemtpt1)
     }
@@ -2195,7 +2197,7 @@ class Typer extends Namer
       case _ =>
         val pcls = parents.foldLeft(defn.ObjectClass)(improve)
         typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseType pcls)}%, %")
-        val first = ctx.typeComparer.glb(defn.ObjectType :: parents.map(_.baseType(pcls)))
+        val first = TypeComparer.glb(defn.ObjectType :: parents.map(_.baseType(pcls)))
         checkFeasibleParent(first, ctx.source.atSpan(span), em" in inferred superclass $first") :: parents
     }
   }
@@ -2384,7 +2386,7 @@ class Typer extends Namer
         if (ctx.mode.is(Mode.Pattern)) app1
         else {
           val elemTpes = elems.lazyZip(pts).map((elem, pt) =>
-            ctx.typeComparer.widenInferred(elem.tpe, pt))
+            TypeComparer.widenInferred(elem.tpe, pt))
           val resTpe = TypeOps.nestedPairs(elemTpes)
           app1.cast(resTpe)
         }
@@ -3228,7 +3230,6 @@ class Typer extends Namer
     }
 
     def adaptNoArgsOther(wtp: Type): Tree = {
-      ctx.typeComparer.GADTused = false
       if (isContextFunctionRef(wtp) &&
           !untpd.isContextualClosure(tree) &&
           !isApplyProto(pt) &&
@@ -3283,7 +3284,7 @@ class Typer extends Namer
               |To turn this error into a warning, pass -Xignore-scala2-macros to the compiler""".stripMargin, tree.srcPos.startPos)
           tree
         }
-      else ctx.typeComparer.testSubType(tree.tpe.widenExpr, pt) match
+      else TypeComparer.testSubType(tree.tpe.widenExpr, pt) match
         case CompareResult.Fail =>
           wtp match
             case wtp: MethodType => missingArgs(wtp)
@@ -3307,7 +3308,7 @@ class Typer extends Namer
     def underlyingApplied(tp: Type): Type = tp.stripTypeVar match {
       case tp: RefinedType => tp
       case tp: AppliedType => tp
-      case tp: TypeParamRef => underlyingApplied(ctx.typeComparer.bounds(tp).hi)
+      case tp: TypeParamRef => underlyingApplied(TypeComparer.bounds(tp).hi)
       case tp: TypeProxy => underlyingApplied(tp.superType)
       case _ => tp
     }
@@ -3615,9 +3616,11 @@ class Typer extends Namer
   protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(using Context) : Unit =
     tree match {
       case _: RefTree | _: Literal
-        if !isVarPattern(tree) &&
-           !(pt <:< tree.tpe) &&
-           !withMode(Mode.GadtConstraintInference)(ctx.typeComparer.constrainPatternType(tree.tpe, pt)) =>
+      if !isVarPattern(tree)
+         && !(pt <:< tree.tpe)
+         && !withMode(Mode.GadtConstraintInference) {
+              TypeComparer.constrainPatternType(tree.tpe, pt)
+            } =>
         val cmp =
           untpd.Apply(
             untpd.Select(untpd.TypedSplice(tree), nme.EQ),

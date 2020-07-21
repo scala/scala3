@@ -153,7 +153,6 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/conditionalWarnings.scala", allowDeepSubtypes.and("-deprecation").and("-Xfatal-warnings")),
       compileFilesInDir("tests/neg-custom-args/isInstanceOf", allowDeepSubtypes and "-Xfatal-warnings"),
       compileFile("tests/neg-custom-args/i3627.scala", allowDeepSubtypes),
-      compileFile("tests/neg-custom-args/matchtype-loop.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/sourcepath/outer/nested/Test1.scala", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath")),
       compileDir("tests/neg-custom-args/sourcepath2/hi", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath2", "-Xfatal-warnings")),
       compileList("duplicate source", List(

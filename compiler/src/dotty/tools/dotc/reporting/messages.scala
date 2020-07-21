@@ -248,8 +248,8 @@ import ast.tpd
         case tp: TypeParamRef =>
           constraint.entry(tp) match
             case bounds: TypeBounds =>
-              if variance < 0 then apply(mapCtx.typeComparer.fullUpperBound(tp))
-              else if variance > 0 then apply(mapCtx.typeComparer.fullLowerBound(tp))
+              if variance < 0 then apply(TypeComparer.fullUpperBound(tp))
+              else if variance > 0 then apply(TypeComparer.fullLowerBound(tp))
               else tp
             case NoType => tp
             case instType => apply(instType)

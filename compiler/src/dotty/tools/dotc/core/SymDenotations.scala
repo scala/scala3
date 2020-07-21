@@ -1991,7 +1991,7 @@ object SymDenotations {
             computeApplied
 
           case tp: TypeParamRef =>  // uncachable, since baseType depends on context bounds
-            recur(ctx.typeComparer.bounds(tp).hi)
+            recur(TypeComparer.bounds(tp).hi)
 
           case tp: TypeProxy =>
             def computeTypeProxy = {

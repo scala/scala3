@@ -220,8 +220,8 @@ final class ProperGadtConstraint private(
   override protected def constraint = myConstraint
   override protected def constraint_=(c: Constraint) = myConstraint = c
 
-  override protected def isSub(tp1: Type, tp2: Type)(using Context): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
-  override protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
+  override protected def isSub(tp1: Type, tp2: Type)(using Context): Boolean = TypeComparer.isSubType(tp1, tp2)
+  override protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean = TypeComparer.isSameType(tp1, tp2)
 
    override def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds =
      constraint.nonParamBounds(param) match {

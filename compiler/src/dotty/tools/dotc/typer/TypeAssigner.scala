@@ -413,7 +413,7 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.Match, scrutinee: Tree, cases: List[CaseDef])(using Context): Match =
-    tree.withType(ctx.typeComparer.lub(cases.tpes))
+    tree.withType(TypeComparer.lub(cases.tpes))
 
   def assignType(tree: untpd.Labeled)(using Context): Labeled =
     tree.withType(tree.bind.symbol.info)
@@ -426,7 +426,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Try, expr: Tree, cases: List[CaseDef])(using Context): Try =
     if (cases.isEmpty) tree.withType(expr.tpe)
-    else tree.withType(ctx.typeComparer.lub(expr.tpe :: cases.tpes))
+    else tree.withType(TypeComparer.lub(expr.tpe :: cases.tpes))
 
   def assignType(tree: untpd.SeqLiteral, elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral = {
     val ownType = tree match {
@@ -487,7 +487,7 @@ trait TypeAssigner {
     tree.withType(NamedType(NoPrefix, sym))
 
   def assignType(tree: untpd.Alternative, trees: List[Tree])(using Context): Alternative =
-    tree.withType(ctx.typeComparer.lub(trees.tpes))
+    tree.withType(TypeComparer.lub(trees.tpes))
 
   def assignType(tree: untpd.UnApply, proto: Type)(using Context): UnApply =
     tree.withType(proto)

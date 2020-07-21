@@ -172,17 +172,6 @@ object Contexts {
     protected def searchHistory_= (searchHistory: SearchHistory): Unit = _searchHistory = searchHistory
     final def searchHistory: SearchHistory = _searchHistory
 
-    /** The current type comparer. This ones updates itself automatically for
-     *  each new context.
-     */
-    private var _typeComparer: TypeComparer = _
-    protected def typeComparer_=(typeComparer: TypeComparer): Unit = _typeComparer = typeComparer
-    def typeComparer: TypeComparer = {
-      if (_typeComparer.comparerCtx ne this)
-        _typeComparer = _typeComparer.copyIn(this)
-      _typeComparer
-    }
-
     /** The current source file */
     private var _source: SourceFile = _
     protected def source_=(source: SourceFile): Unit = _source = source
@@ -479,7 +468,6 @@ object Contexts {
       _typeAssigner = origin.typeAssigner
       _gadt = origin.gadt
       _searchHistory = origin.searchHistory
-      _typeComparer = origin.typeComparer
       _source = origin.source
       _moreProperties = origin.moreProperties
       _store = origin.store
@@ -610,7 +598,6 @@ object Contexts {
       util.Stats.record("Context.setSource")
       this.source = source
       this
-    def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type =
       util.Stats.record("Context.setMoreProperties")
       this.moreProperties = moreProperties
@@ -699,25 +686,56 @@ object Contexts {
     val base = ctx.base
     import base._
     val nestedCtx =
-      if testsInUse < testContexts.size then
-        testContexts(testsInUse).reuseIn(ctx)
+      if exploresInUse < exploreContexts.size then
+        exploreContexts(exploresInUse).reuseIn(ctx)
       else
         val ts = TyperState()
           .setReporter(ExploringReporter())
           .setCommittable(false)
         val c = FreshContext(ctx.base).init(ctx, ctx).setTyperState(ts)
-        testContexts += c
+        exploreContexts += c
         c
-    testsInUse += 1
+    exploresInUse += 1
     val nestedTS = nestedCtx.typerState
     nestedTS.init(ctx.typerState, ctx.typerState.constraint)
     val result =
       try op(using nestedCtx)
       finally
         nestedTS.reporter.asInstanceOf[ExploringReporter].reset()
-        testsInUse -= 1
+        exploresInUse -= 1
     result
   end explore
+
+  /** The type comparer of the kind created by `maker` to be used.
+   *  This is the currently active type comparer CMP if
+   *   - CMP is associated with the current context, and
+   *   - CMP is of the kind created by maker or maker creates a plain type comparer.
+   *  Note: plain TypeComparers always take on the kind of the outer comparer if they are in the same context.
+   *  In other words: tracking or explaining is a sticky property in the same context.
+   */
+  private def comparer(using Context): TypeComparer =
+    val base = ctx.base
+    if base.comparersInUse > 0
+       && (base.comparers(base.comparersInUse - 1).comparerContext eq ctx)
+    then
+      base.comparers(base.comparersInUse - 1).currentInstance
+    else
+      val result =
+        if base.comparersInUse < base.comparers.size then
+          base.comparers(base.comparersInUse)
+        else
+          val result = TypeComparer(ctx)
+          base.comparers += result
+          result
+      base.comparersInUse += 1
+      result.init(ctx)
+      result
+
+  def comparing[T](op: TypeComparer => T)(using Context): T =
+    val saved = ctx.base.comparersInUse
+    try op(comparer)
+    finally ctx.base.comparersInUse = saved
+  end comparing
 
   /** A class defining the initial context with given context base
    *  and set of possible settings.
@@ -735,7 +753,6 @@ object Contexts {
     store = initialStore
       .updated(settingsStateLoc, settingsGroup.defaultState)
       .updated(notNullInfosLoc, Nil)
-    typeComparer = new TypeComparer(using this)
     searchHistory = new SearchRoot
     gadt = EmptyGadtConstraint
   }
@@ -871,14 +888,18 @@ object Contexts {
 
     protected[dotc] val indentTab: String = "  "
 
-    private[dotc] val testContexts = new mutable.ArrayBuffer[FreshContext]
-    private[dotc] var testsInUse: Int = 0
+    private[Contexts] val exploreContexts = new mutable.ArrayBuffer[FreshContext]
+    private[Contexts] var exploresInUse: Int = 0
+
+    private[Contexts] val comparers = new mutable.ArrayBuffer[TypeComparer]
+    private[Contexts] var comparersInUse: Int = 0
 
     def reset(): Unit = {
       for ((_, set) <- uniqueSets) set.clear()
       errorTypeMsg.clear()
       sources.clear()
       sourceNamed.clear()
+      comparers.clear()  // forces re-evaluation of top and bottom classes in TypeComparer
     }
 
     // Test that access is single threaded
