@@ -7,6 +7,7 @@ package tests
   * @author Gal Anonim
   * @version 1.0.0
   * @result A class doesn't actually have a result.
+  * @constructor A class has a constructor, and this one is important.
   */
 class A
 class B extends A

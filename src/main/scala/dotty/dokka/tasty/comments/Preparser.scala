@@ -1,18 +1,15 @@
-package dotty.dokka.tasty.comment
+package dotty.dokka.tasty.comments
 
 import scala.collection.mutable
 import scala.util.matching.Regex
-// import com.vladsch.flexmark.util.ast.{ Node => MarkdownNode }
-// import com.vladsch.flexmark.parser.{ Parser => MarkdownParser }
-import dotty.tastydoc.representations._
 
-object CommentParser {
+object Preparser {
   import Regexes._
 
   /** Parses a raw comment string into a `Comment` object. */
-  def parse(
+  def preparse(
     comment: List[String],
-  ): ParsedComment = {
+  ): PreparsedComment = {
 
     /** Parses a comment (in the form of a list of lines) to a `Comment`
       * instance, recursively on lines. To do so, it splits the whole comment
@@ -28,21 +25,20 @@ object CommentParser {
       * @param inCodeBlock Whether the next line is part of a code block (in
       *                    which no tags must be read).
       */
-    def parseComment (
+    def go(
       docBody: StringBuilder,
       tags: Map[TagKey, List[String]],
       lastTagKey: Option[TagKey],
       remaining: List[String],
       inCodeBlock: Boolean
-    ): ParsedComment = remaining match {
-
+    ): PreparsedComment = remaining match {
       case CodeBlockStartRegex(before, marker, after) :: ls if !inCodeBlock =>
         if (!before.trim.isEmpty && !after.trim.isEmpty)
-          parseComment(docBody, tags, lastTagKey, before :: marker :: after :: ls, inCodeBlock = false)
+          go(docBody, tags, lastTagKey, before :: marker :: after :: ls, inCodeBlock = false)
         else if (!before.trim.isEmpty)
-          parseComment(docBody, tags, lastTagKey, before :: marker :: ls, inCodeBlock = false)
+          go(docBody, tags, lastTagKey, before :: marker :: ls, inCodeBlock = false)
         else if (!after.trim.isEmpty)
-          parseComment(docBody, tags, lastTagKey, marker :: after :: ls, inCodeBlock = true)
+          go(docBody, tags, lastTagKey, marker :: after :: ls, inCodeBlock = true)
         else lastTagKey match {
           case Some(key) =>
             val value =
@@ -50,18 +46,18 @@ object CommentParser {
                 case Some(b :: bs) => (b + endOfLine + marker) :: bs
                 case None => oops("lastTagKey set when no tag exists for key")
               }
-            parseComment(docBody, tags + (key -> value), lastTagKey, ls, inCodeBlock = true)
+            go(docBody, tags + (key -> value), lastTagKey, ls, inCodeBlock = true)
           case None =>
-            parseComment(docBody append endOfLine append marker, tags, lastTagKey, ls, inCodeBlock = true)
+            go(docBody append endOfLine append marker, tags, lastTagKey, ls, inCodeBlock = true)
         }
 
       case CodeBlockEndRegex(before, marker, after) :: ls =>
         if (!before.trim.isEmpty && !after.trim.isEmpty)
-          parseComment(docBody, tags, lastTagKey, before :: marker :: after :: ls, inCodeBlock = true)
+          go(docBody, tags, lastTagKey, before :: marker :: after :: ls, inCodeBlock = true)
         if (!before.trim.isEmpty)
-          parseComment(docBody, tags, lastTagKey, before :: marker :: ls, inCodeBlock = true)
+          go(docBody, tags, lastTagKey, before :: marker :: ls, inCodeBlock = true)
         else if (!after.trim.isEmpty)
-          parseComment(docBody, tags, lastTagKey, marker :: after :: ls, inCodeBlock = false)
+          go(docBody, tags, lastTagKey, marker :: after :: ls, inCodeBlock = false)
         else lastTagKey match {
           case Some(key) =>
             val value =
@@ -69,27 +65,27 @@ object CommentParser {
                 case Some(b :: bs) => (b + endOfLine + marker) :: bs
                 case None => oops("lastTagKey set when no tag exists for key")
               }
-            parseComment(docBody, tags + (key -> value), lastTagKey, ls, inCodeBlock = false)
+            go(docBody, tags + (key -> value), lastTagKey, ls, inCodeBlock = false)
           case None =>
-            parseComment(docBody append endOfLine append marker, tags, lastTagKey, ls, inCodeBlock = false)
+            go(docBody append endOfLine append marker, tags, lastTagKey, ls, inCodeBlock = false)
         }
 
 
       case SymbolTagRegex(name, sym, body) :: ls if !inCodeBlock =>
         val key = SymbolTagKey(name, sym)
         val value = body :: tags.getOrElse(key, Nil)
-        parseComment(docBody, tags + (key -> value), Some(key), ls, inCodeBlock)
+        go(docBody, tags + (key -> value), Some(key), ls, inCodeBlock)
 
       case SimpleTagRegex(name, body) :: ls if !inCodeBlock =>
         val key = SimpleTagKey(name)
         val value = body :: tags.getOrElse(key, Nil)
-        parseComment(docBody, tags + (key -> value), Some(key), ls, inCodeBlock)
+        go(docBody, tags + (key -> value), Some(key), ls, inCodeBlock)
 
 
       case SingleTagRegex(name) :: ls if !inCodeBlock =>
         val key = SimpleTagKey(name)
         val value = "" :: tags.getOrElse(key, Nil)
-        parseComment(docBody, tags + (key -> value), Some(key), ls, inCodeBlock)
+        go(docBody, tags + (key -> value), Some(key), ls, inCodeBlock)
 
 
       case line :: ls if lastTagKey.isDefined =>
@@ -102,13 +98,13 @@ object CommentParser {
             }
           tags + (key -> value)
         } else tags
-        parseComment(docBody, newtags, lastTagKey, ls, inCodeBlock)
+        go(docBody, newtags, lastTagKey, ls, inCodeBlock)
 
 
       case line :: ls =>
         if docBody.length > 0 then docBody.append(endOfLine)
         docBody.append(line)
-        parseComment(docBody, tags, lastTagKey, ls, inCodeBlock)
+        go(docBody, tags, lastTagKey, ls, inCodeBlock)
 
 
       case Nil =>
@@ -154,7 +150,7 @@ object CommentParser {
           Map.empty[String, String] ++ pairs
         }
 
-        val cmt = ParsedComment(
+        val cmt = PreparsedComment(
           body                    = docBody.toString,
           authors                 = allTags(SimpleTagKey("author")),
           see                     = allTags(SimpleTagKey("see")),
@@ -177,20 +173,10 @@ object CommentParser {
           shortDescription        = allTags(SimpleTagKey("shortDescription"))
         )
 
-        // for ((key, _) <- bodyTags) ctx.docbase.warn(
-        //   hl"Tag '${"@" + key.name}' is not recognised",
-        //   // FIXME: here the position is stretched out over the entire comment,
-        //   // with the point being at the very end. This ensures that the entire
-        //   // comment will be visible in error reporting. A more fine-grained
-        //   // reporting would be amazing here.
-        //   entity.symbol.sourcePosition(Span(span.start, span.end, span.end))
-        // )
-
         cmt
-
     }
 
-    parseComment(new StringBuilder(comment.size), Map.empty, None, comment, inCodeBlock = false)
+    go(new StringBuilder(comment.size), Map.empty, None, comment, inCodeBlock = false)
   }
 
   /** A key used for a tag map. The key is built from the name of the tag and
@@ -200,8 +186,8 @@ object CommentParser {
     def name: String
   }
 
-  private /*final*/ case class SimpleTagKey(name: String) extends TagKey
-  private /*final*/ case class SymbolTagKey(name: String, symbol: String) extends TagKey
+  private case class SimpleTagKey(name: String) extends TagKey
+  private case class SymbolTagKey(name: String, symbol: String) extends TagKey
 
   /** Something that should not have happened, happened, and Scaladoc should exit. */
   private def oops(msg: String): Nothing =

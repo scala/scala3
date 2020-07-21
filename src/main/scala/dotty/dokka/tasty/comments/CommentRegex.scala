@@ -1,4 +1,4 @@
-package dotty.dokka.tasty.comment
+package dotty.dokka.tasty.comments
 
 import scala.util.matching.Regex
 

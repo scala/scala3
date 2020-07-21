@@ -1,9 +1,13 @@
-package dotty.dokka.tasty.comment
+package dotty.dokka.tasty.comments
 
-object CommentCleaner {
+object Cleaner {
   import Regexes._
   import java.util.regex.Matcher
 
+  /** Prepares the comment for pre-parsing: removes documentation markers and
+    * extra whitespace, removes dangerous HTML and Javadoc tags, and splits it
+    * into lines.
+    */
   def clean(comment: String): List[String] = {
     def cleanLine(line: String): String = {
       // Remove trailing whitespaces

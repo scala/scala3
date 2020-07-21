@@ -12,8 +12,8 @@ trait ScaladocSupport { self: TastyParser =>
     tree: reflect.Tree
   ): dokkaDoc.DocumentationNode = {
 
-    val preParsed = comment.CommentParser.parse(comment.CommentCleaner.clean(commentNode.raw))
-    val parsed = comment.MarkdownComment((), preParsed, ()).comment
+    val preparsed = comments.Preparser.preparse(comments.Cleaner.clean(commentNode.raw))
+    val parsed = comments.MarkdownParser((), ()).parse(preparsed)
 
     def ktEmptyList[T]() = new KtListBuilder[T]().build()
     def ktEmptyMap[A, B]() = new KtMapBuilder[A, B]().build()
@@ -25,7 +25,6 @@ trait ScaladocSupport { self: TastyParser =>
 
     val bld = new KtListBuilder[dokkaDoc.TagWrapper]
     bld.add(dokkaDoc.Description(dokkaTag.text(parsed.body)))
-    bld.add(dokkaDoc.Description(dokkaTag.text("hello world")))
 
     inline def addOpt(opt: Option[String])(wrap: dokkaDoc.DocTag => dokkaDoc.TagWrapper) =
       opt.foreach { t => bld.add(wrap(dokkaTag.text(t))) }
@@ -36,12 +35,9 @@ trait ScaladocSupport { self: TastyParser =>
     addSeq(parsed.authors)(dokkaDoc.Author(_))
     addOpt(parsed.version)(dokkaDoc.Version(_))
     addOpt(parsed.since)(dokkaDoc.Since(_))
-    addOpt(parsed.result)(dokkaDoc.Return(_))
+    addOpt(parsed.constructor)(dokkaDoc.Constructor(_))
+    addOpt(parsed.result)(dokkaDoc.Return(_)) // does not seem to render for classes, intentional?
 
-    val res = new dokkaDoc.DocumentationNode(bld.build())
-
-    res
-
-    // inspector.parser.parse(commentNode.raw) // TODO use scaladoc reader to generate proper docs
+    new dokkaDoc.DocumentationNode(bld.build())
   }
 }

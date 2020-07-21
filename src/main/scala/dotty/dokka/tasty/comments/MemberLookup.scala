@@ -1,6 +1,4 @@
-package dotty.dokka.tasty.comment
-
-// import dotty.tastydoc.representations._
+package dotty.dokka.tasty.comments
 
 trait MemberLookup {
 
@@ -100,5 +98,4 @@ trait MemberLookup {
   //       throw new IllegalArgumentException("`query` cannot be empty")
   //   }
   // }
-
 }
