@@ -13,6 +13,17 @@ jobs:
       - uses: actions/checkout@v2
       - run: git fetch --prune --unshallow --tags
 
+      - name: Cache Coursier
+        uses: actions/cache@v1
+        with:
+          path: ~/.cache/coursier
+          key: sbt-coursier-cache
+      - name: Cache SBT
+        uses: actions/cache@v1
+        with:
+          path: ~/.sbt
+          key: sbt-${{ hashFiles('**/build.sbt') }}
+
       - name: Set up JDK 11
         uses: actions/setup-java@v1
         with:
@@ -36,3 +47,5 @@ jobs:
               dest=s3://contextbuddy/dokka-dotty/$([ $GITHUB_REF = "master" ] && echo master || echo pr-$(echo $GITHUB_REF | cut '-d/' -f3))
               aws s3 rm $dest
               aws s3 sync output $dest
+
+
