@@ -4283,7 +4283,7 @@ object Types {
     override def tryNormalize(using Context): Type = reduced.normalized
 
     def reduced(using Context): Type = {
-      val trackingCtx = ctx.fresh.setTypeComparerFn(new TrackingTypeComparer(_))
+      val trackingCtx = ctx.fresh.setTypeComparerFn(new TrackingTypeComparer(using _))
       val typeComparer = trackingCtx.typeComparer.asInstanceOf[TrackingTypeComparer]
 
       def contextInfo(tp: Type): Type = tp match {
