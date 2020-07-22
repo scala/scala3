@@ -1,8 +1,12 @@
 package dotty.dokka.tasty
 
+import scala.jdk.CollectionConverters._
 import scala.tasty.reflect._
-import org.jetbrains.dokka.model.{doc => dokkaDoc}
+
 import kotlin.collections.builders.{ListBuilder => KtListBuilder, MapBuilder => KtMapBuilder}
+
+import org.jetbrains.dokka.model.{doc => dokkaDoc}
+import com.vladsch.flexmark.util.{ast => mdu}
 
 trait ScaladocSupport { self: TastyParser =>
   import reflect.{given _, _}
@@ -13,7 +17,8 @@ trait ScaladocSupport { self: TastyParser =>
   ): dokkaDoc.DocumentationNode = {
 
     val preparsed = comments.Preparser.preparse(comments.Cleaner.clean(commentNode.raw))
-    val parsed = comments.MarkdownParser((), ()).parse(preparsed)
+    val parser = comments.MarkdownParser((), ())
+    val parsed = parser.parse(preparsed)
 
     def ktEmptyList[T]() = new KtListBuilder[T]().build()
     def ktEmptyMap[A, B]() = new KtMapBuilder[A, B]().build()
@@ -24,7 +29,10 @@ trait ScaladocSupport { self: TastyParser =>
     }
 
     val bld = new KtListBuilder[dokkaDoc.TagWrapper]
-    bld.add(dokkaDoc.Description(dokkaTag.text(parsed.body)))
+    // TODO determine how to have short and long descriptions
+    bld.add(dokkaDoc.Description(comments.MarkdownConverter.convertNode(
+      parser.stringToMarkup(preparsed.body)
+    )))
 
     inline def addOpt(opt: Option[String])(wrap: dokkaDoc.DocTag => dokkaDoc.TagWrapper) =
       opt.foreach { t => bld.add(wrap(dokkaTag.text(t))) }

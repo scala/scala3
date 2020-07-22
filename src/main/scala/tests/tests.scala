@@ -1,8 +1,28 @@
 package tests
 
-/** * AN IMPORTANT TEST CLASS
+/** # AN IMPORTANT TEST CLASS
   *
-  * This is an *important* test class.
+  * Very important, in fact
+  * -----------------------
+  *
+  * ### So important it gets three headers
+  *
+  * This is an *important* _test_ class. And `this` is inline code.
+  *
+  * And this
+  * ```scala
+  * is.an("actual code block")
+  * ```
+  *
+  * And this
+  *
+  *      is.an("indented code block")
+  *
+  * And this
+  * > is
+  * > > a
+  * > blockquote
+  *
   *
   * @author Gal Anonim
   * @version 1.0.0
