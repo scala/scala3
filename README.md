@@ -15,5 +15,5 @@ In order to complete this PoC we should have a version that can:
 Nice to have:
 
 1) Render type members
-2) ...
+2) Add information about methods that comes from extensions to given symbol
 
