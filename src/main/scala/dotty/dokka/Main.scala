@@ -19,15 +19,16 @@ object Main:
   def main(args: Array[String]): Unit =
     // TODO change the default to something more reasonable...
     val cp = args.headOption.getOrElse("target/scala-0.25/classes")
-    def listTastyFiles(f: File): Seq[File] = 
+    def listTastyFiles(f: File): Seq[String] = 
       val (files, dirs) = f.listFiles().partition(_.isFile)
-      files.filter(_.getName.endsWith(".tasty")) ++ dirs.flatMap(listTastyFiles)
+      files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
     
     val config = DocConfiguration(
-      tastyFiles = cp.split(File.pathSeparatorChar).toList
-        .flatMap(p => listTastyFiles(new File(p)))
-        .map(_.toString)
-        .filter(_.contains("tests")),
+      tastyFiles = 
+        for
+          root <- cp.split(File.pathSeparatorChar).toList
+          tastyFile <- listTastyFiles(new File(root)) if tastyFile.contains("tests") || tastyFile.contains("example")
+        yield tastyFile,
       classpath = System.getProperty("java.class.path")
     )
 
