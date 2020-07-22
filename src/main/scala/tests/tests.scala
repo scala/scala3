@@ -10,8 +10,11 @@ class E[T] extends D[T]
 
 class Constructors(a: String):
     def this() = this("Ala")
+    def this(a: A)(b: A) = this("Ala")
 
+/** Some methods to tests */
 class Methods:
+ def nobraces: A = ???
  def simple(): B = ???
  def oneParam(a: A): B = ???
  def multipleParams(a: A, b: B): C = ???

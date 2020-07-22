@@ -21,6 +21,8 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
     override def signature(documentable: Documentable) = documentable match {
         case method: DFunction =>
            List(methodSignature(method)).asJava
+        case clazz: DClass =>
+           List(classSignature(clazz)).asJava
         case _ => default.signature(documentable)
     }
 
@@ -28,41 +30,74 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
 
     val utils: JvmSignatureUtils = KotlinSignatureUtils.INSTANCE
 
+    private def classSignature(clazz: DClass): ContentNode = 
+        content(clazz){ builder =>
+            val ext = clazz.get(ClasslikeExtension)
+            utils.annotationsBlock(builder, clazz)
+            // builder.addText("TODO modifiers")
+            builder.addText("class ")
+            builder.addLink(clazz.getName, clazz.getDri)
+            builder.generics(clazz)
+            ext.constructor.foreach(c => builder.functionParameters(c))
+            ext.parentTypes match 
+                case Nil =>
+                case extendType :: withTypes =>
+                    builder.addText(" extends ") 
+                    builder.typeSignature(extendType)
+                    withTypes.foreach { t => 
+                        builder.addText(" with ")  
+                        builder.typeSignature(extendType)
+                    }
+        }
+
     private def methodSignature(method: DFunction): ContentNode = 
-        val methodExtension = method.get(tasty.MethodExtension)
         content(method){ builder =>
             utils.annotationsBlock(builder, method)
             // builder.addText("TODO modifiers")
             builder.addText("def")
             builder.addText(" ")
             builder.addLink(method.getName, method.getDri)
-            builder.addList(method.getGenerics, "[", "]")(e => builder.unaryPlus(builder.buildSignature(e)))
-            val params = methodExtension.parametersListSizes.foldLeft(0){ (from, size) =>
-                val toIndex = from + size
-                builder.addList(method.getParameters.subList(from, toIndex), "(", ")"){ param =>
-                    utils.annotationsInline(builder, param)
-                    // builder.addText("TODO modifiers")
-                    builder.addText(param.getName)
-                    builder.addText(":")
-                    builder.typeSignature(param.getType)
-                }
-                toIndex
-            }
+            builder.generics(method)  
+            builder.functionParameters(method)
             builder.addText(":")
             builder.addText(" ")
             builder.typeSignature(method.getType)
         }
-    
+
+
     extension on (builder: PageContentBuilder$DocumentableContentBuilder):
         def typeSignature(b: Projection): Unit = b match {
             case tc: TypeConstructor =>
-                // TODO we should handle types differnetly...
-                builder.addLink(tc.getDri.getClassNames, tc.getDri)
-                builder.addList(tc.getProjections, "[", "]")(p => builder.typeSignature(p))
-
+                tc.getProjections.asScala.foreach {
+                    case text: UnresolvedBound => builder.addText(text.getName)
+                    case link: OtherParameter => 
+                        builder.addLink(link.getName, link.getDeclarationDRI)
+                    case other =>
+                        builder.addText(s"TODO($other)")
+                }
             case other =>
              builder.addText(s"TODO: $other")
         }
+
+        def generics(on: WithGenerics) = builder.addList(on.getGenerics, "[", "]"){ e => 
+            builder.addText(e.getName)
+            e.getBounds.forEach(b => builder.typeSignature(b))
+        }
+        
+        def functionParameters(method: DFunction) = 
+            val methodExtension = method.get(MethodExtension)
+            methodExtension.parametersListSizes.foldLeft(0){ (from, size) =>
+                val toIndex = from + size
+                if from == toIndex then builder.addText("()")
+                else builder.addList(method.getParameters.subList(from, toIndex), "(", ")"){ param =>
+                    utils.annotationsInline(builder, param)
+                    // builder.addText("TODO modifiers")
+                    builder.addText(param.getName)
+                    builder.addText(": ")
+                    builder.typeSignature(param.getType)
+                }
+                toIndex
+            }
 
     private def content(d: Documentable)(render: PageContentBuilder$DocumentableContentBuilder => Unit): ContentGroup = 
         val lambda: Consumer[PageContentBuilder$DocumentableContentBuilder] = new Consumer:

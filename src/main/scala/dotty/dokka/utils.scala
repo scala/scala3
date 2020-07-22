@@ -18,7 +18,7 @@ import java.util.{List => JList, Set => JSet}
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 
 extension  on[T, V] (a: WithExtraProperties[T]):
-  def get(key: ExtraProperty.Key[T, V]): V = a.getExtra().getMap().get(key).asInstanceOf[V]
+  def get(key: ExtraProperty.Key[_ >: T, V]): V = a.getExtra().getMap().get(key).asInstanceOf[V]
 
 
 extension on(builder: PageContentBuilder$DocumentableContentBuilder):

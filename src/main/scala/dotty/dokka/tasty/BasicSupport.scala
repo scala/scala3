@@ -3,6 +3,7 @@ package dotty.dokka.tasty
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model._
 import collection.JavaConverters._
+import dotty.dokka._
 
 trait BasicSupport:
   self: TastyParser =>
@@ -16,8 +17,25 @@ trait BasicSupport:
     def topLevelEntryName(using ctx: Context): Option[String] = if (sym.isPackageDef) None else
       if (sym.owner.isPackageDef) Some(sym.name) else sym.owner.topLevelEntryName
 
-    def dri = asDRI(sym)
-    def declarationDri = asDRI(sym, true)   
+    // TODO make sure that DRIs are unique plus probably reuse semantic db code?  
+    def dri =
+      if sym == Symbol.noSymbol then emptyDRI else
+        val pointsTo = 
+          if (!sym.isTypeDef) PointingToDeclaration.INSTANCE 
+          else PointingToGenericParameters(sym.owner.typeMembers.indexOf(sym))
+
+        val method = 
+          if (sym.isDefDef) Some(sym) 
+          else if (sym.maybeOwner.isDefDef) Some(sym.owner)
+          else None 
+          
+        new DRI(
+          sym.packageName,
+          sym.topLevelEntryName.orNull, // TODO do we need any of this fields?
+          method.map(s => new org.jetbrains.dokka.links.Callable(s.name, null, Nil.asJava)).orNull,
+          pointsTo, // TODO different targets?
+          s"${sym.show}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
+        )
 
     def documentation(using cxt: reflect.Context) = sym.comment match 
         case Some(comment) => 
@@ -25,38 +43,11 @@ trait BasicSupport:
         case None =>  
             Map.empty.asJava
 
-    def source(using ctx: Context) = sourceSet.asMap(getSource(sym)) 
-    
-    def dokkaType(using cxt: reflect.Context): Bound =  // TODO render primitives better?
-      // TODO support varags
-      val params = sym.typeMembers.map(_.dokkaType)
-      println(s"${sym.show} -> ${sym.dri}")
-      new org.jetbrains.dokka.model.TypeConstructor(sym.dri, params.asJava, FunctionModifiers.NONE)
-    
-
-  val emptyDRI =  DRI.Companion.getTopLevel
-
-    // TODO add support for type aliases!
-  def asDRI(symbol: reflect.Symbol, declaration: Boolean = false): DRI = 
-    if symbol == Symbol.noSymbol then emptyDRI else
-      val pointsTo = 
-        if (!symbol.isTypeDef || declaration) PointingToDeclaration.INSTANCE 
-        else PointingToGenericParameters(symbol.owner.typeMembers.indexOf(symbol))
-
-      val method = 
-        if (symbol.isDefDef) Some(symbol) 
-        else if (symbol.maybeOwner.isDefDef) Some(symbol.owner)
-        else None 
-
-      new DRI(
-        symbol.packageName,
-        symbol.topLevelEntryName.orNull, // TODO do we need any of this fields?
-        method.map(s => new org.jetbrains.dokka.links.Callable(s.name, null, Nil.asJava)).orNull,
-        pointsTo, // TODO different targets?
-        symbol.show
-      )
-
-  def getSource(symbol: reflect.Symbol)(using ctx: Context): DocumentableSource = 
-    val path = symbol.pos.sourceFile.jpath.toString
-    new DocumentableSource:
-      override def getPath = path 
+    def source(using ctx: Context) =
+      val path = sym.pos.sourceFile.jpath.toString
+      sourceSet.asMap(
+        new DocumentableSource:
+          override def getPath = path
+      )          
+  
+  private val emptyDRI =  DRI.Companion.getTopLevel
