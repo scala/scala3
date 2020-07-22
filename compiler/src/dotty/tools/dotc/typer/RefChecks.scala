@@ -778,8 +778,10 @@ object RefChecks {
         )
       def classDecls = inclazz.info.nonPrivateDecl(member.name)
 
-      (inclazz != clazz) &&
-        classDecls.hasAltWith(d => isSignatureMatch(d.symbol) && javaAccessCheck(d.symbol))
+      (inclazz != clazz) && classDecls.hasAltWith(d =>
+        isSignatureMatch(d.symbol) && javaAccessCheck(d.symbol) &&
+        !d.symbol.is(JavaDefinedVal, butNot = Method) // Java fields cannot be overriden
+      )
     }
 
     // 4. Check that every defined member with an `override` modifier overrides some other member.
